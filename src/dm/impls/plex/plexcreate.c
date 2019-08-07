@@ -2756,11 +2756,11 @@ PETSC_EXTERN PetscErrorCode DMCreate_Plex(DM dm)
   dm->data = mesh;
 
   mesh->refct             = 1;
-  ierr                    = PetscSectionCreate(PetscObjectComm((PetscObject)dm), &mesh->coneSection);CHKERRQ(ierr);
+  ierr                    = PetscSectionCreate(PETSC_COMM_SELF, &mesh->coneSection);CHKERRQ(ierr);
   mesh->maxConeSize       = 0;
   mesh->cones             = NULL;
   mesh->coneOrientations  = NULL;
-  ierr                    = PetscSectionCreate(PetscObjectComm((PetscObject)dm), &mesh->supportSection);CHKERRQ(ierr);
+  ierr                    = PetscSectionCreate(PETSC_COMM_SELF, &mesh->supportSection);CHKERRQ(ierr);
   mesh->maxSupportSize    = 0;
   mesh->supports          = NULL;
   mesh->refinementUniform = PETSC_TRUE;

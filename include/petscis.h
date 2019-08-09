@@ -361,5 +361,6 @@ PETSC_EXTERN PetscErrorCode PetscSFConvertPartition(PetscSF, PetscSection, IS, I
 PETSC_EXTERN PetscErrorCode PetscSFCreateRemoteOffsets(PetscSF, PetscSection, PetscSection, PetscInt **);
 PETSC_EXTERN PetscErrorCode PetscSFDistributeSection(PetscSF, PetscSection, PetscInt **, PetscSection);
 PETSC_EXTERN PetscErrorCode PetscSFCreateSectionSF(PetscSF, PetscSection, PetscInt [], PetscSection, PetscSF *);
+PETSC_EXTERN PetscErrorCode PetscSFCreateSectionMigrationSF(PetscSF, PetscSection, PetscSection, PetscSF *);
 
 #endif

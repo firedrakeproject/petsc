@@ -1863,6 +1863,140 @@ PetscErrorCode DMPlexGetOverlap(DM dm, PetscInt *overlap)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode GetBcastRank(MPI_Comm commA,MPI_Comm commB,PetscMPIInt *rank)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  if (commA == MPI_COMM_NULL) {
+    *rank = -1;
+  } else {
+    ierr = MPI_Comm_rank(commB,rank);CHKERRQ(ierr);
+  }
+  ierr = MPI_Allreduce(MPI_IN_PLACE,rank,1,MPI_INT,MPI_MAX,commB);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*
+  DMPlexCopyToComm - Copy a DMPlex onto a new communicator. Effectively migrates the
+  topology and geometry across onto the new communicator, filling
+  with empty data in the remaining ranks. Requires comm(old) \subset
+  comm.
+
+  Input Parameters:
+  + old - The original DMPlex
+  - comm - The communicator to copy onto.
+
+  Output Parameter:
+  - new - The new DMPlex
+
+  Level: Advanced
+
+.seealso: DMPlexDistributeToComm
+*/
+static PetscErrorCode DMPlexCopyToComm(DM old, MPI_Comm comm, DM *new)
+{
+  PetscSF            origsf           = NULL, newsf = NULL;
+  PetscInt          *numPoints        = NULL;
+  PetscInt          *coneSize         = NULL;
+  PetscInt          *cones            = NULL;
+  PetscInt          *coneOrientations = NULL;
+  PetscInt           metadata[3]; /* tdim, gdim, depth */
+  const PetscScalar *vertexCoords     = NULL;
+  PetscInt           depth;
+  PetscMPIInt        bcastRank;
+  PetscErrorCode     ierr;
+
+  PetscFunctionBegin;
+
+  ierr = DMPlexCreate(comm, new);CHKERRQ(ierr);
+
+  ierr = GetBcastRank(old ? PetscObjectComm((PetscObject)old) : MPI_COMM_NULL, comm, &bcastRank);CHKERRQ(ierr);
+
+  if (old) {
+    ierr = DMGetDimension(old, &metadata[0]);CHKERRQ(ierr);
+    ierr = DMGetCoordinateDim(old, &metadata[1]);CHKERRQ(ierr);
+    ierr = DMPlexGetDepth(old, &metadata[2]);CHKERRQ(ierr);
+    ierr = DMGetPointSF(old, &origsf);CHKERRQ(ierr);
+  }
+  ierr = PetscSFCopyToComm(origsf, comm, &newsf);CHKERRQ(ierr);
+  ierr = DMSetPointSF(*new, newsf);CHKERRQ(ierr);
+  ierr = PetscSFDestroy(&newsf);CHKERRQ(ierr);
+
+  ierr = MPI_Bcast(metadata, 3, MPIU_INT, bcastRank, comm);CHKERRQ(ierr);
+  ierr = DMSetDimension(*new, metadata[0]);CHKERRQ(ierr);
+  ierr = DMSetCoordinateDim(*new, metadata[1]);CHKERRQ(ierr);
+  depth = metadata[2];
+  ierr = PetscCalloc1(depth+1, &numPoints);CHKERRQ(ierr);
+
+  if (old) {
+    PetscInt i;
+    Vec coords;
+    PetscSection coneSizes;
+    for (i = 0; i < depth+1; i++) {
+      PetscInt pStart, pEnd;
+      ierr = DMPlexGetDepthStratum(old, i, &pStart, &pEnd);CHKERRQ(ierr);
+      numPoints[i] = pEnd - pStart;
+    }
+    ierr = DMPlexGetCones(old, &cones);CHKERRQ(ierr);
+    ierr = DMPlexGetConeOrientations(old, &coneOrientations);CHKERRQ(ierr);
+    ierr = DMGetCoordinatesLocal(old, &coords);CHKERRQ(ierr);
+    ierr = VecGetArrayRead(coords, &vertexCoords);CHKERRQ(ierr);
+
+    ierr = DMPlexGetConeSection(old, &coneSizes);
+    coneSize = coneSizes->atlasDof;
+  }
+
+  ierr = DMPlexCreateFromDAG(*new, depth, numPoints, coneSize, cones, coneOrientations, vertexCoords);CHKERRQ(ierr);
+
+  ierr = PetscFree(numPoints);CHKERRQ(ierr);
+  if (old) {
+    Vec coords;
+    ierr = DMGetCoordinatesLocal(old, &coords);CHKERRQ(ierr);
+    ierr = VecRestoreArrayRead(coords, &vertexCoords);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMPlexDistributeToComm - Distributes the mesh onto a new communicator
+
+  Collective on the union of dm and the new communicator
+
+  Input Parameter:
++ dm  - The original DMPlex object
+. overlap - The overlap of partitions, 0 is the default
+- comm - The communicator to distribute onto.
+
+  Output Parameter:
++ migrationSF - The PetscSF used for point distribution, or NULL if not needed
+- dmNew - The distributed DMPlex object
+
+  Note: If the mesh was not distributed, the output dmParallel will be NULL.
+
+  Level: Advanced
+
+.seealso: DMPlexDistribute()
+@*/
+PetscErrorCode DMPlexDistributeToComm(DM dm, PetscInt overlap, MPI_Comm comm, PetscSF *migrationSF, DM *dmNew)
+{
+  DM               copied;
+  PetscPartitioner part;
+  PetscErrorCode   ierr;
+
+  PetscFunctionBegin;
+
+  ierr = DMPlexCopyToComm(dm, comm, &copied);CHKERRQ(ierr);
+  /* Parmetis can't cope with empty start partitions */
+  ierr = DMPlexGetPartitioner(copied, &part);CHKERRQ(ierr);
+  ierr = PetscPartitionerSetType(part, PETSCPARTITIONERPTSCOTCH);CHKERRQ(ierr);
+  ierr = DMPlexDistribute(copied, overlap, migrationSF, dmNew);CHKERRQ(ierr);
+  ierr = DMDestroy(&copied);CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
 
 /*@C
   DMPlexGetGatherDM - Get a copy of the DMPlex that gathers all points on the

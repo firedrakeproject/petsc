@@ -99,6 +99,7 @@ PETSC_EXTERN PetscErrorCode PetscSFViewFromOptions(PetscSF,PetscObject,const cha
 PETSC_EXTERN PetscErrorCode PetscSFSetUp(PetscSF);
 PETSC_EXTERN PetscErrorCode PetscSFSetFromOptions(PetscSF);
 PETSC_EXTERN PetscErrorCode PetscSFDuplicate(PetscSF,PetscSFDuplicateOption,PetscSF*);
+PETSC_EXTERN PetscErrorCode PetscSFCopyToComm(PetscSF,MPI_Comm,PetscSF*);
 PETSC_EXTERN PetscErrorCode PetscSFWindowSetSyncType(PetscSF,PetscSFWindowSyncType);
 PETSC_EXTERN PetscErrorCode PetscSFWindowGetSyncType(PetscSF,PetscSFWindowSyncType*);
 PETSC_EXTERN PetscErrorCode PetscSFWindowSetFlavorType(PetscSF,PetscSFWindowFlavorType);

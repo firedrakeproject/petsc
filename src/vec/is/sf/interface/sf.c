@@ -737,6 +737,87 @@ PetscErrorCode PetscSFDuplicate(PetscSF sf,PetscSFDuplicateOption opt,PetscSF *n
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode GetBcastRank(MPI_Comm commA,MPI_Comm commB,PetscMPIInt *rank)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  if (commA == MPI_COMM_NULL) {
+    *rank = -1;
+  } else {
+    ierr = MPI_Comm_rank(commB,rank);CHKERRQ(ierr);
+  }
+  ierr = MPI_Allreduce(MPI_IN_PLACE,rank,1,MPI_INT,MPI_MAX,commB);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@
+ PetscSFCopyToComm - Copy a PetscSF onto a new communicator
+
+ Translates the ranks in iremote into ranks in the new communicator.
+ Only works if the new communicator covers all the ranks of the old
+ communicator.
+
+ Input parameters:
+
+ + sfA - The old PetscSF
+ . comm - The new communicator
+
+ Output parameters:
+
+ . sfB - The new PetscSF on the provided communicator
+
+ Level: developer
+@*/
+PetscErrorCode PetscSFCopyToComm(PetscSF sfA,MPI_Comm comm,PetscSF *sfB)
+{
+  MPI_Comm           ocomm       = MPI_COMM_NULL;
+  MPI_Group          old_group   = MPI_GROUP_NULL, new_group = MPI_GROUP_NULL;
+  PetscInt           nroots      = 0, nleaves = 0, i;
+  const PetscInt    *ilocal      = NULL;
+  const PetscSFNode *iremote     = NULL;
+  PetscMPIInt       *old_ranks   = NULL, *new_ranks = NULL;
+  PetscSFNode       *new_iremote = NULL;
+  PetscMPIInt        bcastRank;
+  PetscBool          graphSet = PETSC_FALSE;
+  PetscErrorCode     ierr;
+
+  PetscFunctionBegin;
+
+  ierr = PetscSFCreate(comm,sfB);CHKERRQ(ierr);
+  ierr = MPI_Comm_group(comm,&new_group);CHKERRQ(ierr);
+  if (sfA) {
+    graphSet = sfA->graphset;
+    ocomm = PetscObjectComm((PetscObject)sfA);
+    if (sfA->graphset) {
+      ierr = MPI_Comm_group(ocomm,&old_group);CHKERRQ(ierr);
+      ierr = PetscSFGetGraph(sfA,&nroots,&nleaves,&ilocal,&iremote);CHKERRQ(ierr);
+      ierr = PetscMalloc1(nleaves,&old_ranks);CHKERRQ(ierr);
+      for (i = 0; i < nleaves; i++) {
+        old_ranks[i] = (PetscMPIInt)iremote[i].rank;
+      }
+      ierr = PetscMalloc1(nleaves,&new_iremote);CHKERRQ(ierr);
+      ierr = PetscMalloc1(nleaves,&new_ranks);CHKERRQ(ierr);
+
+      ierr = MPI_Group_translate_ranks(old_group,nleaves,old_ranks,new_group,new_ranks);CHKERRQ(ierr);
+      for (i = 0; i < nleaves; i++) {
+        new_iremote[i].rank = (PetscInt)new_ranks[i];
+        new_iremote[i].index = iremote[i].index;
+      }
+      ierr = PetscFree(new_ranks);CHKERRQ(ierr);
+      ierr = PetscFree(old_ranks);CHKERRQ(ierr);
+    }
+  }
+  ierr = GetBcastRank(ocomm,comm,&bcastRank);CHKERRQ(ierr);
+  ierr = MPI_Bcast(&graphSet,1,MPIU_BOOL,bcastRank,comm);CHKERRQ(ierr);
+  if (graphSet) {
+    ierr = PetscSFSetGraph(*sfB,nroots,nleaves,ilocal,PETSC_COPY_VALUES,new_iremote,PETSC_OWN_POINTER);CHKERRQ(ierr);
+  }
+
+  PetscFunctionReturn(0);
+}
+
 /*@C
    PetscSFGetGraph - Get the graph specifying a parallel star forest
 

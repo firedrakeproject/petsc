@@ -1950,6 +1950,22 @@ static PetscErrorCode DMPlexCopyToComm(DM old, MPI_Comm comm, DM *new)
 
   ierr = DMPlexCreateFromDAG(*new, depth, numPoints, coneSize, cones, coneOrientations, vertexCoords);CHKERRQ(ierr);
 
+  if (old) {
+    PetscInt    i, nlabel;
+    DMLabel     label;
+    const char *name = NULL;
+    PetscBool   flg;
+    ierr = DMGetNumLabels(old, &nlabel);CHKERRQ(ierr);
+    for (i = 0; i < nlabel; i++) {
+      ierr = DMGetLabelByNum(old, i, &label);CHKERRQ(ierr);
+      ierr = PetscObjectGetName((PetscObject)label, &name);CHKERRQ(ierr);
+      ierr = PetscStrcmp(name, "depth", &flg);CHKERRQ(ierr);
+      if (flg) continue;
+      ierr = DMAddLabel(*new, label);CHKERRQ(ierr);
+      /* TODO: DMAddLabel should do this! */
+      ierr = PetscObjectReference((PetscObject)label);CHKERRQ(ierr);
+    }
+  }
   ierr = PetscFree(numPoints);CHKERRQ(ierr);
   if (old) {
     Vec coords;

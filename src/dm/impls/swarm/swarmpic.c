@@ -236,7 +236,7 @@ PETSC_EXTERN PetscErrorCode DMSwarmSetPointCoordinates(DM dm,PetscInt npoints,Pe
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
   
   ierr = DMSwarmGetCellDM(dm,&celldm);CHKERRQ(ierr);
-  ierr = DMGetCoordinatesLocal(celldm,&coorlocal);CHKERRQ(ierr);
+  ierr = DMGetCoordinates(celldm,&coorlocal);CHKERRQ(ierr);
   ierr = VecGetSize(coorlocal,&N);CHKERRQ(ierr);
   ierr = VecGetBlockSize(coorlocal,&bs);CHKERRQ(ierr);
   N = N / bs;

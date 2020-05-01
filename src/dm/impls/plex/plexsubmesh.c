@@ -3219,7 +3219,7 @@ static PetscErrorCode DMPlexCreateCohesiveSubmesh_Uninterpolated(DM dm, DMLabel 
 
   Level: developer
 
-.seealso: DMPlexCreateSubmesh(), DMPlexCreateSubpointIS()
+.seealso: DMPlexCreateSubmesh(), DMPlexGetSubpointIS()
 @*/
 PetscErrorCode DMPlexGetSubpointMap(DM dm, DMLabel *subpointMap)
 {
@@ -3687,13 +3687,18 @@ static PetscErrorCode DMPlexSubmeshSetConeSizes(DM dm, DM subdm, const PetscInt 
   ierr = DMPlexGetChart(dm, &pStart, &pEnd);CHKERRQ(ierr);
   ierr = DMPlexGetSubpointMap(subdm, &subpointMap);CHKERRQ(ierr);
   ierr = DMLabelCreateIndex(subpointMap, pStart, pEnd);CHKERRQ(ierr);
+  /* We do not want this label automatically computed, instead we compute it here */
+  ierr = DMCreateLabel(subdm, "celltype");CHKERRQ(ierr);
 
   for (d = 0; d <= subdepth; ++d) {
     for (p = 0; p < stratumSizes[d]; ++p) {
-      const PetscInt point = stratumIndices[d][p];
-      const PetscInt subpoint = stratumOffsets[d] + p;
+      const PetscInt  point = stratumIndices[d][p];
+      const PetscInt  subpoint = stratumOffsets[d] + p;
       const PetscInt *cone;
-      PetscInt coneSize, coneSizeNew, c;
+      PetscInt        coneSize, coneSizeNew, c;
+      DMPolytopeType  ct;
+      ierr = DMPlexGetCellType(dm, point, &ct);CHKERRQ(ierr);
+      ierr = DMPlexSetCellType(subdm, subpoint, ct);CHKERRQ(ierr);
       ierr = DMPlexGetConeSize(dm, point, &coneSize);CHKERRQ(ierr);
       ierr = DMPlexGetCone(dm, point, &cone);CHKERRQ(ierr);
       coneSizeNew = 0;
@@ -3727,7 +3732,7 @@ static PetscErrorCode DMPlexSubmeshSetCones(DM dm, DM subdm, const PetscInt subd
   ierr = DMPlexGetMaxSizes(dm, &maxConeSize, NULL);CHKERRQ(ierr);
   ierr = PetscMalloc2(maxConeSize, &coneNew, maxConeSize, &orntNew);CHKERRQ(ierr);
   ierr = DMPlexGetHeightStratum(dm, 0, NULL, &cEnd);CHKERRQ(ierr);
-  ierr = DMPlexGetHybridBounds(dm, &cMax, NULL, NULL, NULL);CHKERRQ(ierr);
+  ierr = DMPlexGetGhostCellStratum(dm, &cMax,NULL);CHKERRQ(ierr);
   cMax = (cMax < 0) ? cEnd : cMax;
   for (d = 0; d <= subdepth; ++d) {
     for (p = 0; p < stratumSizes[d]; ++p) {
@@ -3968,15 +3973,12 @@ static PetscErrorCode DMPlexSubmeshSetPointSF(DM dm, DM subdm,
   ierr = DMGetPointSF(dm, &sf);CHKERRQ(ierr);
   ierr = DMGetPointSF(subdm, &subsf);CHKERRQ(ierr);
   ierr = PetscSFGetGraph(sf, &nroots, &nleaves, &ilocal, &iremote);CHKERRQ(ierr);
-  if (nroots < 0) {
-    ierr = PetscSFSetGraph(subsf, 0, 0, NULL, PETSC_OWN_POINTER, NULL, PETSC_OWN_POINTER);CHKERRQ(ierr);
-    PetscFunctionReturn(0);
-  }
+  if (nroots < 0) PetscFunctionReturn(0);
   ierr = DMPlexGetChart(dm, &pStart, &pEnd);CHKERRQ(ierr);
   if (nroots != (pEnd - pStart)) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Number of roots does not match chart");
   ierr = DMPlexGetChart(subdm, &subStart, &subEnd);CHKERRQ(ierr);
 
-  ierr = DMPlexCreateSubpointIS(subdm, &subpointIS);CHKERRQ(ierr);
+  ierr = DMPlexGetSubpointIS(subdm, &subpointIS);CHKERRQ(ierr);
   if (subpointIS) {
     ierr = ISGetIndices(subpointIS, &subpoints);CHKERRQ(ierr);
     ierr = ISGetLocalSize(subpointIS, &nsubpoints);CHKERRQ(ierr);
@@ -4054,7 +4056,6 @@ static PetscErrorCode DMPlexSubmeshSetPointSF(DM dm, DM subdm,
   }
   if (subpointIS) {
     ierr = ISRestoreIndices(subpointIS, &subpoints);CHKERRQ(ierr);
-    ierr = ISDestroy(&subpointIS);CHKERRQ(ierr);
   }
   ierr = PetscFree(updatedOwners);CHKERRQ(ierr);
   ierr = PetscFree(updatedIndices);CHKERRQ(ierr);
@@ -4211,9 +4212,6 @@ PetscErrorCode DMPlexCreateSubmesh(DM dm, DMPlexSubmeshType submeshType, DMLabel
     ierr = ISDestroy(&stratumISes[d]);CHKERRQ(ierr);
   }
   ierr = PetscFree4(stratumSizes, stratumOffsets, stratumIndices, stratumISes);CHKERRQ(ierr);
-
-  if (submeshType == DMPLEX_SUBMESH_CLOSURE) {ierr = DMPlexCheckFaces(*subdm, subdepth-(dim-height));CHKERRQ(ierr);}
-  ierr = DMPlexCheckSymmetry(*subdm);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }

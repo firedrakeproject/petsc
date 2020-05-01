@@ -171,7 +171,7 @@ static PetscErrorCode CreateBoundaryMesh(DM dm, DMLabel *bdLabel, DM *subdm, App
   ierr = DMLabelCreate(PETSC_COMM_SELF, "sub", &label);CHKERRQ(ierr);
   ierr = DMPlexMarkBoundaryFaces(dm, 1, label);CHKERRQ(ierr);
   ierr = DMPlexLabelComplete(dm, label);CHKERRQ(ierr);
-  ierr = DMPlexCreateSubmesh(dm, label, 1, PETSC_TRUE, subdm);CHKERRQ(ierr);
+  ierr = DMPlexCreateSubmesh(dm, DMPLEX_SUBMESH_HYPERSURFACE, label, 1, 1, PETSC_FALSE, PETSC_TRUE, PETSC_FALSE, NULL, NULL, PETSC_FALSE, subdm);CHKERRQ(ierr);
   ierr = DMGetDimension(*subdm, &dim);CHKERRQ(ierr);
   ierr = SetupDiscretization(*subdm, dim, user->cellSimplex, user);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) *subdm, "boundary");CHKERRQ(ierr);

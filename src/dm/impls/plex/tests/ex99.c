@@ -211,9 +211,9 @@ PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   options->overlap = 0;
 
   ierr = PetscOptionsBegin(comm, "", "Meshing Interpolation Test Options", "DMPLEX");CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-test_num", "The test #", "ex37.c", options->testNum, &options->testNum, NULL,0);CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-subdim", "The mesh to create", "ex37.c", options->subdim, &options->subdim, NULL,0);CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-overlap", "The partition overlap", "ex37.c", options->overlap, &options->overlap, NULL,0);CHKERRQ(ierr);
+  ierr = PetscOptionsBoundedInt("-test_num", "The test #", "ex99.c", options->testNum, &options->testNum, NULL,0);CHKERRQ(ierr);
+  ierr = PetscOptionsBoundedInt("-subdim", "The mesh to create", "ex99.c", options->subdim, &options->subdim, NULL,0);CHKERRQ(ierr);
+  ierr = PetscOptionsBoundedInt("-overlap", "The partition overlap", "ex99.c", options->overlap, &options->overlap, NULL,0);CHKERRQ(ierr);
   ierr = PetscOptionsEnd();
   PetscFunctionReturn(0);
 }

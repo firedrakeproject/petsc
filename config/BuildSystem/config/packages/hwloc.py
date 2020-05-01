@@ -4,11 +4,18 @@ import os
 class Configure(config.package.GNUPackage):
   def __init__(self, framework):
     config.package.GNUPackage.__init__(self, framework)
-    self.download          = ['http://www.open-mpi.org/software/hwloc/v1.11/downloads/hwloc-1.11.1.tar.gz']
+    self.download          = ['http://www.open-mpi.org/software/hwloc/v1.11/downloads/hwloc-2.1.0.tar.gz',
+                              'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/hwloc-2.1.0.tar.gz']
     self.functions         = ['hwloc_topology_init']
     self.includes          = ['hwloc.h']
     self.liblist           = [['libhwloc.a'],['libhwloc.a','libxml2.a']]
     self.downloadonWindows = 1
+    return
+
+  def setupDependencies(self, framework):
+    config.package.Package.setupDependencies(self, framework)
+    self.x       = framework.require('config.packages.X',self)
+    self.odeps   = [self.x]
     return
 
   def getSearchDirectories(self):
@@ -19,11 +26,18 @@ class Configure(config.package.GNUPackage):
 
   def formGNUConfigureArgs(self):
     args = config.package.GNUPackage.formGNUConfigureArgs(self)
-    # Don't require x libraries since they may not always be available or hwloc may not be able to locate them on Apple
-    if self.setCompilers.isDarwin(self.log):
-      args.append('--without-x')
+    if self.x.found:
+      args.append('--with-x=yes')
+    else:
+      args.append('--with-x=no')
     # don't require unneeded external dependency
     args.append('--disable-libxml2')
+    args.append('--disable-opencl')
+    args.append('--disable-cuda')
+    args.append('--disable-nvml')
+    args.append('--disable-gl')
+    args.append('CPPFLAGS="'+self.headers.toStringNoDupes(self.dinclude)+'"')
+    args.append('LIBS="'+self.libraries.toStringNoDupes(self.dlib)+'"')
     return args
 
   def configure(self):

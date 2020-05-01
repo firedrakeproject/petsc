@@ -35,12 +35,8 @@ static PetscErrorCode PCBDDCMatTransposeMatSolve_SeqDense(Mat A,Mat B,Mat X)
   ierr = MatDenseRestoreArrayRead(B,&b);CHKERRQ(ierr);
 
   if (A->factortype == MAT_FACTOR_LU) {
-#if defined(PETSC_MISSING_LAPACK_GETRS)
-    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"GETRS - Lapack routine is unavailable.");
-#else
     PetscStackCallBLAS("LAPACKgetrs",LAPACKgetrs_("T",&m,&nrhs,mat->v,&mat->lda,mat->pivots,x,&m,&info));
     if (info) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_LIB,"GETRS - Bad solve");
-#endif
   } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only LU factor supported");
 
   ierr = MatDenseRestoreArray(X,&x);CHKERRQ(ierr);
@@ -562,12 +558,12 @@ static PetscErrorCode PCBDDCScalingSetUp_Deluxe_Private(PC pc)
       ierr = MatDestroy(&X);CHKERRQ(ierr);
       if (deluxe_ctx->change) {
         Mat C,CY;
-
         if (!deluxe_ctx->change_with_qr) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only QR based change of basis");
         ierr = KSPGetOperators(deluxe_ctx->change[i],&C,NULL);CHKERRQ(ierr);
         ierr = MatMatMult(C,Y,MAT_INITIAL_MATRIX,PETSC_DEFAULT,&CY);CHKERRQ(ierr);
         ierr = MatMatTransposeMult(CY,C,MAT_REUSE_MATRIX,PETSC_DEFAULT,&Y);CHKERRQ(ierr);
         ierr = MatDestroy(&CY);CHKERRQ(ierr);
+        ierr = MatProductClear(Y);CHKERRQ(ierr); /* clear internal matproduct structure of Y since CY is destroyed */
       }
       ierr = MatTranspose(Y,MAT_INPLACE_MATRIX,&Y);CHKERRQ(ierr);
       deluxe_ctx->seq_mat[i] = Y;

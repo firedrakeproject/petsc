@@ -334,6 +334,7 @@ PetscErrorCode MatHeaderMerge(Mat A,Mat *C)
   PetscOps       Abops;
   struct _MatOps Aops;
   char           *mtype,*mname,*mprefix;
+  Mat_Product    *product;
 
   PetscFunctionBegin;
   /* save the parts of A we need */
@@ -343,6 +344,7 @@ PetscErrorCode MatHeaderMerge(Mat A,Mat *C)
   mtype = ((PetscObject)A)->type_name;
   mname = ((PetscObject)A)->name;
   mprefix = ((PetscObject)A)->prefix;
+  product = A->product;
 
   /* zero these so the destroy below does not free them */
   ((PetscObject)A)->type_name = 0;
@@ -367,6 +369,7 @@ PetscErrorCode MatHeaderMerge(Mat A,Mat *C)
   ((PetscObject)A)->type_name = mtype;
   ((PetscObject)A)->name      = mname;
   ((PetscObject)A)->prefix    = mprefix;
+  A->product                  = product;
 
   /* since these two are copied into A we do not want them destroyed in C */
   ((PetscObject)*C)->qlist = 0;
@@ -408,29 +411,30 @@ PETSC_EXTERN PetscErrorCode MatHeaderReplace(Mat A,Mat *C)
   ((PetscObject)A)->state = state + 1;
 
   ((PetscObject)*C)->refct = 1;
+  ierr = MatShellSetOperation(*C,MATOP_DESTROY,(void(*)(void))NULL);CHKERRQ(ierr);
   ierr = MatDestroy(C);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 /*@
-     MatPinToCPU - marks a matrix to temporarily stay on the CPU and perform computations on the CPU
+     MatBindToCPU - marks a matrix to temporarily stay on the CPU and perform computations on the CPU
 
    Input Parameters:
 +   A - the matrix
--   flg - pin to the CPU if value of PETSC_TRUE
+-   flg - bind to the CPU if value of PETSC_TRUE
 
    Level: intermediate
 @*/
-PetscErrorCode MatPinToCPU(Mat A,PetscBool flg)
+PetscErrorCode MatBindToCPU(Mat A,PetscBool flg)
 {
 #if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  if (A->pinnedtocpu == flg) PetscFunctionReturn(0);
-  A->pinnedtocpu = flg;
-  if (A->ops->pintocpu) {
-    ierr = (*A->ops->pintocpu)(A,flg);CHKERRQ(ierr);
+  if (A->boundtocpu == flg) PetscFunctionReturn(0);
+  A->boundtocpu = flg;
+  if (A->ops->bindtocpu) {
+    ierr = (*A->ops->bindtocpu)(A,flg);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 #else

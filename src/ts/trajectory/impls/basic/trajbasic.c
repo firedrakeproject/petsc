@@ -17,7 +17,7 @@ static PetscErrorCode TSTrajectorySet_Basic(TSTrajectory tj,TS ts,PetscInt stepn
   ierr = PetscViewerFileSetName(tjbasic->viewer,filename);CHKERRQ(ierr); /* this triggers PetscViewer to be set up again */
   ierr = PetscViewerSetUp(tjbasic->viewer);CHKERRQ(ierr);
   ierr = VecView(X,tjbasic->viewer);CHKERRQ(ierr);
-  ierr = PetscViewerBinaryWrite(tjbasic->viewer,&time,1,PETSC_REAL,PETSC_FALSE);CHKERRQ(ierr);
+  ierr = PetscViewerBinaryWrite(tjbasic->viewer,&time,1,PETSC_REAL);CHKERRQ(ierr);
   if (stepnum && !tj->solution_only) {
     Vec       *Y;
     PetscReal tprev;
@@ -27,7 +27,7 @@ static PetscErrorCode TSTrajectorySet_Basic(TSTrajectory tj,TS ts,PetscInt stepn
       ierr = VecView(Y[i],tjbasic->viewer);CHKERRQ(ierr);
     }
     ierr = TSGetPrevTime(ts,&tprev);CHKERRQ(ierr);
-    ierr = PetscViewerBinaryWrite(tjbasic->viewer,&tprev,1,PETSC_REAL,PETSC_FALSE);CHKERRQ(ierr);
+    ierr = PetscViewerBinaryWrite(tjbasic->viewer,&tprev,1,PETSC_REAL);CHKERRQ(ierr);
   }
   /* Tangent linear sensitivities needed by second-order adjoint */
   if (ts->forward_solve) {
@@ -144,7 +144,7 @@ static PetscErrorCode TSTrajectoryDestroy_Basic(TSTrajectory tj)
 /*MC
       TSTRAJECTORYBASIC - Stores each solution of the ODE/DAE in a file
 
-      Saves each timestep into a seperate file named TS-data-XXXXXX/TS-%06d.bin. The file name can be changed.
+      Saves each timestep into a separate file named TS-data-XXXXXX/TS-%06d.bin. The file name can be changed.
 
       This version saves the solutions at all the stages
 

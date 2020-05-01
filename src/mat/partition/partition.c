@@ -522,9 +522,7 @@ PetscErrorCode  MatPartitioningSetVertexWeights(MatPartitioning part,const Petsc
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
-
   ierr = PetscFree(part->vertex_weights);CHKERRQ(ierr);
-
   part->vertex_weights = (PetscInt*)weights;
   PetscFunctionReturn(0);
 }
@@ -557,10 +555,58 @@ PetscErrorCode  MatPartitioningSetPartitionWeights(MatPartitioning part,const Pe
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
-
   ierr = PetscFree(part->part_weights);CHKERRQ(ierr);
-
   part->part_weights = (PetscReal*)weights;
+  PetscFunctionReturn(0);
+}
+
+/*@
+   MatPartitioningSetUseEdgeWeights - Set a flag to indicate whether or not to use edge weights.
+
+   Logically Collective on Partitioning
+
+   Input Parameters:
++  part - the partitioning context
+-  use_edge_weights - the flag indicateing whether or not to use edge weights. By default no edge weights will be used,
+                      that is, use_edge_weights is set to FALSE. If set use_edge_weights to TRUE, users need to make sure legal
+                      edge weights are stored in an ADJ matrix.
+   Level: beginner
+
+   Options Database Keys:
+.  -mat_partitioning_use_edge_weights - (true or false)
+
+.seealso: MatPartitioningCreate(), MatPartitioningSetType(), MatPartitioningSetVertexWeights(), MatPartitioningSetPartitionWeights()
+@*/
+PetscErrorCode  MatPartitioningSetUseEdgeWeights(MatPartitioning part,PetscBool use_edge_weights)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
+  part->use_edge_weights = use_edge_weights;
+  PetscFunctionReturn(0);
+}
+
+/*@
+   MatPartitioningGetUseEdgeWeights - Get a flag that indicates whether or not to edge weights are used.
+
+   Logically Collective on Partitioning
+
+   Input Parameters:
+.  part - the partitioning context
+
+   Output Parameters:
+.  use_edge_weights - the flag indicateing whether or not to edge weights are used.
+
+   Level: beginner
+
+.seealso: MatPartitioningCreate(), MatPartitioningSetType(), MatPartitioningSetVertexWeights(), MatPartitioningSetPartitionWeights(),
+          MatPartitioningSetUseEdgeWeights
+@*/
+PetscErrorCode  MatPartitioningGetUseEdgeWeights(MatPartitioning part,PetscBool *use_edge_weights)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
+  PetscValidPointer(use_edge_weights,2);
+  *use_edge_weights = part->use_edge_weights;
   PetscFunctionReturn(0);
 }
 
@@ -594,6 +640,7 @@ PetscErrorCode  MatPartitioningCreate(MPI_Comm comm,MatPartitioning *newp)
   ierr = PetscHeaderCreate(part,MAT_PARTITIONING_CLASSID,"MatPartitioning","Matrix/graph partitioning","MatOrderings",comm,MatPartitioningDestroy,MatPartitioningView);CHKERRQ(ierr);
   part->vertex_weights = NULL;
   part->part_weights   = NULL;
+  part->use_edge_weights = PETSC_FALSE; /* By default we don't use edge weights */
 
   ierr    = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
   part->n = (PetscInt)size;
@@ -609,8 +656,8 @@ PetscErrorCode  MatPartitioningCreate(MPI_Comm comm,MatPartitioning *newp)
 
    Input Parameters:
 +  A - the partitioning context
--  obj - Optional object
-.  name - command line option
+.  obj - Optional object
+-  name - command line option
 
    Level: intermediate
 .seealso:  MatPartitioning, MatPartitioningView, PetscObjectViewFromOptions(), MatPartitioningCreate()
@@ -780,6 +827,8 @@ PetscErrorCode  MatPartitioningSetFromOptions(MatPartitioning part)
 
   ierr = PetscOptionsInt("-mat_partitioning_nparts","number of fine parts",NULL,part->n,& part->n,&flag);CHKERRQ(ierr);
 
+  ierr = PetscOptionsBool("-mat_partitioning_use_edge_weights","whether or not to use edge weights",NULL,part->use_edge_weights,&part->use_edge_weights,&flag);CHKERRQ(ierr);
+
   /*
     Set the type if it was never set.
   */
@@ -793,9 +842,3 @@ PetscErrorCode  MatPartitioningSetFromOptions(MatPartitioning part)
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
-
-
-
-
-

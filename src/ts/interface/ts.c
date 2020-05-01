@@ -87,7 +87,7 @@ static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt,TSAdaptType default_ty
 .  -ts_init_time <time> - initial time to start computation
 .  -ts_final_time <time> - final time to compute to (deprecated: use -ts_max_time)
 .  -ts_dt <dt> - initial time step
-.  -ts_exact_final_time <stepover,interpolate,matchstep> whether to stop at the exact given final time and how to compute the solution at that ti,e
+.  -ts_exact_final_time <stepover,interpolate,matchstep> - whether to stop at the exact given final time and how to compute the solution at that ti,e
 .  -ts_max_snes_failures <maxfailures> - Maximum number of nonlinear solve failures allowed
 .  -ts_max_reject <maxrejects> - Maximum number of step rejections before step fails
 .  -ts_error_if_step_fails <true,false> - Error if no step succeeds
@@ -168,12 +168,12 @@ PetscErrorCode  TSSetFromOptions(TS ts)
   ierr = PetscOptionsBool("-ts_use_splitrhsfunction","Use the split RHS function for multirate solvers ","TSSetUseSplitRHSFunction",ts->use_splitrhsfunction,&ts->use_splitrhsfunction,NULL);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_SAWS)
   {
-  PetscBool set;
-  flg  = PETSC_FALSE;
-  ierr = PetscOptionsBool("-ts_saws_block","Block for SAWs memory snooper at end of TSSolve","PetscObjectSAWsBlock",((PetscObject)ts)->amspublishblock,&flg,&set);CHKERRQ(ierr);
-  if (set) {
-    ierr = PetscObjectSAWsSetBlock((PetscObject)ts,flg);CHKERRQ(ierr);
-  }
+    PetscBool set;
+    flg  = PETSC_FALSE;
+    ierr = PetscOptionsBool("-ts_saws_block","Block for SAWs memory snooper at end of TSSolve","PetscObjectSAWsBlock",((PetscObject)ts)->amspublishblock,&flg,&set);CHKERRQ(ierr);
+    if (set) {
+      ierr = PetscObjectSAWsSetBlock((PetscObject)ts,flg);CHKERRQ(ierr);
+    }
   }
 #endif
 
@@ -441,7 +441,7 @@ PetscErrorCode  TSSetFromOptions(TS ts)
    Input Parameters:
 .  ts - the TS context obtained from TSCreate()
 
-   Output Parameters;
+   Output Parameters:
 .  tr - the TSTrajectory object, if it exists
 
    Note: This routine should be called after all TS options have been set
@@ -685,9 +685,11 @@ PetscErrorCode TSComputeRHSFunction(TS ts,PetscReal t,Vec U,Vec y)
 
   ierr = PetscLogEventBegin(TS_FunctionEval,ts,U,y,0);CHKERRQ(ierr);
   if (rhsfunction) {
+    ierr = VecLockReadPush(U);CHKERRQ(ierr);
     PetscStackPush("TS user right-hand-side function");
     ierr = (*rhsfunction)(ts,t,U,y,ctx);CHKERRQ(ierr);
     PetscStackPop;
+    ierr = VecLockReadPop(U);CHKERRQ(ierr);
   } else {
     ierr = VecZeroEntries(y);CHKERRQ(ierr);
   }
@@ -1763,6 +1765,109 @@ PetscErrorCode TSComputeI2Jacobian(TS ts,PetscReal t,Vec U,Vec V,Vec A,PetscReal
   PetscFunctionReturn(0);
 }
 
+/*@C
+   TSSetTransientVariable - sets function to transform from state to transient variables
+
+   Logically Collective
+
+   Input Arguments:
++  ts - time stepping context on which to change the transient variable
+.  tvar - a function that transforms in-place to transient variables
+-  ctx - a context for tvar
+
+   Level: advanced
+
+   Notes:
+   This is typically used to transform from primitive to conservative variables so that a time integrator (e.g., TSBDF)
+   can be conservative.  In this context, primitive variables P are used to model the state (e.g., because they lead to
+   well-conditioned formulations even in limiting cases such as low-Mach or zero porosity).  The transient variable is
+   C(P), specified by calling this function.  An IFunction thus receives arguments (P, Cdot) and the IJacobian must be
+   evaluated via the chain rule, as in
+
+     dF/dP + shift * dF/dCdot dC/dP.
+
+.seealso: DMTSSetTransientVariable(), DMTSGetTransientVariable(), TSSetIFunction(), TSSetIJacobian()
+@*/
+PetscErrorCode TSSetTransientVariable(TS ts,TSTransientVariable tvar,void *ctx)
+{
+  PetscErrorCode ierr;
+  DM             dm;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  ierr = TSGetDM(ts,&dm);CHKERRQ(ierr);
+  ierr = DMTSSetTransientVariable(dm,tvar,ctx);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@
+   TSComputeTransientVariable - transforms state (primitive) variables to transient (conservative) variables
+
+   Logically Collective
+
+   Input Parameters:
++  ts - TS on which to compute
+-  U - state vector to be transformed to transient variables
+
+   Output Parameters:
+.  C - transient (conservative) variable
+
+   Developer Notes:
+   If DMTSSetTransientVariable() has not been called, then C is not modified in this routine and C=NULL is allowed.
+   This makes it safe to call without a guard.  One can use TSHasTransientVariable() to check if transient variables are
+   being used.
+
+   Level: developer
+
+.seealso: DMTSSetTransientVariable(), TSComputeIFunction(), TSComputeIJacobian()
+@*/
+PetscErrorCode TSComputeTransientVariable(TS ts,Vec U,Vec C)
+{
+  PetscErrorCode ierr;
+  DM             dm;
+  DMTS           dmts;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  PetscValidHeaderSpecific(U,VEC_CLASSID,2);
+  ierr = TSGetDM(ts,&dm);CHKERRQ(ierr);
+  ierr = DMGetDMTS(dm,&dmts);CHKERRQ(ierr);
+  if (dmts->ops->transientvar) {
+    PetscValidHeaderSpecific(C,VEC_CLASSID,3);
+    ierr = (*dmts->ops->transientvar)(ts,U,C,dmts->transientvarctx);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+/*@
+   TSHasTransientVariable - determine whether transient variables have been set
+
+   Logically Collective
+
+   Input Parameters:
+.  ts - TS on which to compute
+
+   Output Parameters:
+.  has - PETSC_TRUE if transient variables have been set
+
+   Level: developer
+
+.seealso: DMTSSetTransientVariable(), TSComputeTransientVariable()
+@*/
+PetscErrorCode TSHasTransientVariable(TS ts,PetscBool *has)
+{
+  PetscErrorCode ierr;
+  DM             dm;
+  DMTS           dmts;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  ierr = TSGetDM(ts,&dm);CHKERRQ(ierr);
+  ierr = DMGetDMTS(dm,&dmts);CHKERRQ(ierr);
+  *has = dmts->ops->transientvar ? PETSC_TRUE : PETSC_FALSE;
+  PetscFunctionReturn(0);
+}
+
 /*@
    TS2SetSolution - Sets the initial solution and time derivative vectors
    for use by the TS routines handling second order equations.
@@ -1893,8 +1998,8 @@ PetscErrorCode  TSLoad(TS ts, PetscViewer viewer)
 
    Input Parameters:
 +  A - the application ordering context
--  obj - Optional object
-.  name - command line option
+.  obj - Optional object
+-  name - command line option
 
    Level: intermediate
 .seealso:  TS, TSView, PetscObjectViewFromOptions(), TSCreate()
@@ -2010,9 +2115,9 @@ PetscErrorCode  TSView(TS ts,PetscViewer viewer)
     ierr = PetscObjectGetComm((PetscObject)ts,&comm);CHKERRQ(ierr);
     ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
     if (!rank) {
-      ierr = PetscViewerBinaryWrite(viewer,&classid,1,PETSC_INT,PETSC_FALSE);CHKERRQ(ierr);
+      ierr = PetscViewerBinaryWrite(viewer,&classid,1,PETSC_INT);CHKERRQ(ierr);
       ierr = PetscStrncpy(type,((PetscObject)ts)->type_name,256);CHKERRQ(ierr);
-      ierr = PetscViewerBinaryWrite(viewer,type,256,PETSC_CHAR,PETSC_FALSE);CHKERRQ(ierr);
+      ierr = PetscViewerBinaryWrite(viewer,type,256,PETSC_CHAR);CHKERRQ(ierr);
     }
     if (ts->ops->view) {
       ierr = (*ts->ops->view)(ts,viewer);CHKERRQ(ierr);
@@ -2553,7 +2658,11 @@ PetscErrorCode  TSSetUp(TS ts)
     ierr = TSSetType(ts,ifun ? TSBEULER : TSEULER);CHKERRQ(ierr);
   }
 
-  if (!ts->vec_sol) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Must call TSSetSolution() first");
+  if (!ts->vec_sol) {
+    if (ts->dm) {
+      ierr = DMCreateGlobalVector(ts->dm,&ts->vec_sol);CHKERRQ(ierr);
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Must call TSSetSolution() first");
+  }
 
   if (!ts->Jacp && ts->Jacprhs) { /* IJacobianP shares the same matrix with RHSJacobianP if only RHSJacobianP is provided */
     ierr = PetscObjectReference((PetscObject)ts->Jacprhs);CHKERRQ(ierr);
@@ -3486,7 +3595,7 @@ PetscErrorCode TSMonitorDefault(TS ts,PetscInt step,PetscReal ptime,Vec v,PetscV
 
       ierr = PetscViewerBinaryGetSkipHeader(viewer,&skipHeader);CHKERRQ(ierr);
       if (!skipHeader) {
-         ierr = PetscViewerBinaryWrite(viewer,&classid,1,PETSC_INT,PETSC_FALSE);CHKERRQ(ierr);
+         ierr = PetscViewerBinaryWrite(viewer,&classid,1,PETSC_INT);CHKERRQ(ierr);
        }
       ierr = PetscRealView(1,&ptime,viewer);CHKERRQ(ierr);
     } else {
@@ -3599,6 +3708,7 @@ PetscErrorCode  TSStep(TS ts)
   ierr = TSSetUp(ts);CHKERRQ(ierr);
   ierr = TSTrajectorySetUp(ts->trajectory,ts);CHKERRQ(ierr);
 
+  if (!ts->ops->step) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_SUP,"TSStep not implemented for type '%s'",((PetscObject)ts)->type_name);
   if (ts->max_time >= PETSC_MAX_REAL && ts->max_steps == PETSC_MAX_INT) SETERRQ(PetscObjectComm((PetscObject)ts),PETSC_ERR_ARG_WRONGSTATE,"You must call TSSetMaxTime() or TSSetMaxSteps(), or use -ts_max_time <time> or -ts_max_steps <steps>");
   if (ts->exact_final_time == TS_EXACTFINALTIME_UNSPECIFIED) SETERRQ(PetscObjectComm((PetscObject)ts),PETSC_ERR_ARG_WRONGSTATE,"You must call TSSetExactFinalTime() or use -ts_exact_final_time <stepover,interpolate,matchstep> before calling TSStep()");
   if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP && !ts->adapt) SETERRQ(PetscObjectComm((PetscObject)ts),PETSC_ERR_SUP,"Since TS is not adaptive you cannot use TS_EXACTFINALTIME_MATCHSTEP, suggest TS_EXACTFINALTIME_INTERPOLATE");
@@ -3606,24 +3716,25 @@ PetscErrorCode  TSStep(TS ts)
   if (!ts->steps) ts->ptime_prev = ts->ptime;
   ptime = ts->ptime; ts->ptime_prev_rollback = ts->ptime_prev;
   ts->reason = TS_CONVERGED_ITERATING;
-  if (!ts->ops->step) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_SUP,"TSStep not implemented for type '%s'",((PetscObject)ts)->type_name);
+
   ierr = PetscLogEventBegin(TS_Step,ts,0,0,0);CHKERRQ(ierr);
   ierr = (*ts->ops->step)(ts);CHKERRQ(ierr);
   ierr = PetscLogEventEnd(TS_Step,ts,0,0,0);CHKERRQ(ierr);
-  ts->ptime_prev = ptime;
-  ts->steps++;
-  ts->steprollback = PETSC_FALSE;
-  ts->steprestart  = PETSC_FALSE;
 
-  if (ts->reason < 0) {
-    if (ts->errorifstepfailed) {
-      if (ts->reason == TS_DIVERGED_NONLINEAR_SOLVE) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_NOT_CONVERGED,"TSStep has failed due to %s, increase -ts_max_snes_failures or make negative to attempt recovery",TSConvergedReasons[ts->reason]);
-      else SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_NOT_CONVERGED,"TSStep has failed due to %s",TSConvergedReasons[ts->reason]);
-    }
-  } else if (!ts->reason) {
+  if (ts->reason >= 0) {
+    ts->ptime_prev = ptime;
+    ts->steps++;
+    ts->steprollback = PETSC_FALSE;
+    ts->steprestart  = PETSC_FALSE;
+  }
+
+  if (!ts->reason) {
     if (ts->steps >= ts->max_steps) ts->reason = TS_CONVERGED_ITS;
     else if (ts->ptime >= ts->max_time) ts->reason = TS_CONVERGED_TIME;
   }
+
+  if (ts->reason < 0 && ts->errorifstepfailed && ts->reason == TS_DIVERGED_NONLINEAR_SOLVE) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_NOT_CONVERGED,"TSStep has failed due to %s, increase -ts_max_snes_failures or make negative to attempt recovery",TSConvergedReasons[ts->reason]);
+  if (ts->reason < 0 && ts->errorifstepfailed) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_NOT_CONVERGED,"TSStep has failed due to %s",TSConvergedReasons[ts->reason]);
   PetscFunctionReturn(0);
 }
 
@@ -3910,7 +4021,6 @@ PetscErrorCode TSSolve(TS ts,Vec u)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
   if (u) PetscValidHeaderSpecific(u,VEC_CLASSID,2);
-
   if (ts->exact_final_time == TS_EXACTFINALTIME_INTERPOLATE && u) {   /* Need ts->vec_sol to be distinct so it is not overwritten when we interpolate at the end */
     if (!ts->vec_sol || u == ts->vec_sol) {
       ierr = VecDuplicate(u,&solution);CHKERRQ(ierr);
@@ -3945,8 +4055,16 @@ PetscErrorCode TSSolve(TS ts,Vec u)
     ts->reject            = 0;
     ts->steprestart       = PETSC_TRUE;
     ts->steprollback      = PETSC_FALSE;
+    ts->rhsjacobian.time  = PETSC_MIN_REAL;
   }
-  if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP && ts->ptime < ts->max_time && ts->ptime + ts->time_step > ts->max_time) ts->time_step = ts->max_time - ts->ptime;
+
+  /* make sure initial time step does not overshoot final time */
+  if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP) {
+    PetscReal maxdt = ts->max_time-ts->ptime;
+    PetscReal dt = ts->time_step;
+
+    ts->time_step = dt >= maxdt ? maxdt : (PetscIsCloseAtTol(dt,maxdt,10*PETSC_MACHINE_EPSILON,0) ? maxdt : dt);
+  }
   ts->reason = TS_CONVERGED_ITERATING;
 
   {
@@ -7376,7 +7494,7 @@ PetscErrorCode  TSClone(TS tsin, TS *tsout)
   t->ksp_its           = 0;
   t->snes_its          = 0;
   t->nwork             = 0;
-  t->rhsjacobian.time  = -1e20;
+  t->rhsjacobian.time  = PETSC_MIN_REAL;
   t->rhsjacobian.scale = 1.;
   t->ijacobian.shift   = 1.;
 

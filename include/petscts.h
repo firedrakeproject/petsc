@@ -370,8 +370,6 @@ PETSC_EXTERN PetscErrorCode TSForwardSetSensitivities(TS,PetscInt,Mat);
 PETSC_EXTERN PetscErrorCode TSForwardGetSensitivities(TS,PetscInt*,Mat*);
 PETSC_EXTERN PETSC_DEPRECATED_FUNCTION("Use TSCreateQuadratureTS() and TSForwardSetSensitivities() (since version 3.12)") PetscErrorCode TSForwardSetIntegralGradients(TS,PetscInt,Vec *);
 PETSC_EXTERN PETSC_DEPRECATED_FUNCTION("Use TSForwardGetSensitivities()")                          PetscErrorCode TSForwardGetIntegralGradients(TS,PetscInt*,Vec **);
-PETSC_EXTERN PetscErrorCode TSForwardSetRHSJacobianP(TS,Vec*,PetscErrorCode(*)(TS,PetscReal,Vec,Vec*,void*),void*);
-PETSC_EXTERN PetscErrorCode TSForwardComputeRHSJacobianP(TS,PetscReal,Vec,Vec*);
 PETSC_EXTERN PetscErrorCode TSForwardSetUp(TS);
 PETSC_EXTERN PetscErrorCode TSForwardReset(TS);
 PETSC_EXTERN PetscErrorCode TSForwardCostIntegral(TS);
@@ -543,6 +541,13 @@ PETSC_EXTERN PetscErrorCode DMTSGetI2Function(DM,TSI2Function*,void**);
 PETSC_EXTERN PetscErrorCode DMTSSetI2Jacobian(DM,TSI2Jacobian,void*);
 PETSC_EXTERN PetscErrorCode DMTSGetI2Jacobian(DM,TSI2Jacobian*,void**);
 
+PETSC_EXTERN_TYPEDEF typedef PetscErrorCode (*TSTransientVariable)(TS,Vec,Vec,void*);
+PETSC_EXTERN PetscErrorCode TSSetTransientVariable(TS,TSTransientVariable,void*);
+PETSC_EXTERN PetscErrorCode DMTSSetTransientVariable(DM,TSTransientVariable,void*);
+PETSC_EXTERN PetscErrorCode DMTSGetTransientVariable(DM,TSTransientVariable*,void*);
+PETSC_EXTERN PetscErrorCode TSComputeTransientVariable(TS,Vec,Vec);
+PETSC_EXTERN PetscErrorCode TSHasTransientVariable(TS,PetscBool*);
+
 PETSC_EXTERN PetscErrorCode DMTSSetSolutionFunction(DM,TSSolutionFunction,void*);
 PETSC_EXTERN PetscErrorCode DMTSGetSolutionFunction(DM,TSSolutionFunction*,void**);
 PETSC_EXTERN PetscErrorCode DMTSSetForcingFunction(DM,TSForcingFunction,void*);
@@ -666,13 +671,13 @@ PETSC_EXTERN PetscFunctionList TSSSPList;
 S*/
 typedef struct _p_TSAdapt *TSAdapt;
 
-/*E
+/*J
     TSAdaptType - String with the name of TSAdapt scheme.
 
    Level: beginner
 
 .seealso: TSAdaptSetType(), TS
-E*/
+J*/
 typedef const char *TSAdaptType;
 #define TSADAPTNONE    "none"
 #define TSADAPTBASIC   "basic"
@@ -707,6 +712,8 @@ PETSC_EXTERN PetscErrorCode TSAdaptSetMaxIgnore(TSAdapt,PetscReal);
 PETSC_EXTERN PetscErrorCode TSAdaptGetMaxIgnore(TSAdapt,PetscReal*);
 PETSC_EXTERN PetscErrorCode TSAdaptSetClip(TSAdapt,PetscReal,PetscReal);
 PETSC_EXTERN PetscErrorCode TSAdaptGetClip(TSAdapt,PetscReal*,PetscReal*);
+PETSC_EXTERN PetscErrorCode TSAdaptSetScaleSolveFailed(TSAdapt,PetscReal);
+PETSC_EXTERN PetscErrorCode TSAdaptGetScaleSolveFailed(TSAdapt,PetscReal*);
 PETSC_EXTERN PetscErrorCode TSAdaptSetStepLimits(TSAdapt,PetscReal,PetscReal);
 PETSC_EXTERN PetscErrorCode TSAdaptGetStepLimits(TSAdapt,PetscReal*,PetscReal*);
 PETSC_EXTERN PetscErrorCode TSAdaptSetCheckStage(TSAdapt,PetscErrorCode(*)(TSAdapt,TS,PetscReal,Vec,PetscBool*));
@@ -815,11 +822,12 @@ typedef const char* TSRKType;
 #define TSRK7VR   "7vr"
 #define TSRK8VR   "8vr"
 
-PETSC_EXTERN PetscErrorCode TSRKGetType(TS ts,TSRKType*);
-PETSC_EXTERN PetscErrorCode TSRKSetType(TS ts,TSRKType);
+PETSC_EXTERN PetscErrorCode TSRKGetOrder(TS,PetscInt*);
+PETSC_EXTERN PetscErrorCode TSRKGetType(TS,TSRKType*);
+PETSC_EXTERN PetscErrorCode TSRKSetType(TS,TSRKType);
+PETSC_EXTERN PetscErrorCode TSRKGetTableau(TS,PetscInt*,const PetscReal**,const PetscReal**,const PetscReal**,const PetscReal**,PetscInt*,const PetscReal**,PetscBool*);
 PETSC_EXTERN PetscErrorCode TSRKSetMultirate(TS,PetscBool);
 PETSC_EXTERN PetscErrorCode TSRKGetMultirate(TS,PetscBool*);
-PETSC_EXTERN PetscErrorCode TSRKSetFullyImplicit(TS,PetscBool);
 PETSC_EXTERN PetscErrorCode TSRKRegister(TSRKType,PetscInt,PetscInt,const PetscReal[],const PetscReal[],const PetscReal[],const PetscReal[],PetscInt,const PetscReal[]);
 PETSC_EXTERN PetscErrorCode TSRKInitializePackage(void);
 PETSC_EXTERN PetscErrorCode TSRKFinalizePackage(void);
@@ -833,10 +841,10 @@ PETSC_EXTERN PetscErrorCode TSRKRegisterDestroy(void);
 .seealso: TSMPRKSetType(), TS, TSMPRK, TSMPRKRegister()
 J*/
 typedef const char* TSMPRKType;
-#define TSMPRK2A22   "2a22"
-#define TSMPRK2A23   "2a23"
-#define TSMPRK2A32   "2a32"
-#define TSMPRK2A33   "2a33"
+#define TSMPRK2A22  "2a22"
+#define TSMPRK2A23  "2a23"
+#define TSMPRK2A32  "2a32"
+#define TSMPRK2A33  "2a33"
 #define TSMPRKP2    "p2"
 #define TSMPRKP3    "p3"
 
@@ -901,6 +909,7 @@ typedef const char* TSARKIMEXType;
 PETSC_EXTERN PetscErrorCode TSARKIMEXGetType(TS ts,TSARKIMEXType*);
 PETSC_EXTERN PetscErrorCode TSARKIMEXSetType(TS ts,TSARKIMEXType);
 PETSC_EXTERN PetscErrorCode TSARKIMEXSetFullyImplicit(TS,PetscBool);
+PETSC_EXTERN PetscErrorCode TSARKIMEXGetFullyImplicit(TS,PetscBool*);
 PETSC_EXTERN PetscErrorCode TSARKIMEXRegister(TSARKIMEXType,PetscInt,PetscInt,const PetscReal[],const PetscReal[],const PetscReal[],const PetscReal[],const PetscReal[],const PetscReal[],const PetscReal[],const PetscReal[],PetscInt,const PetscReal[],const PetscReal[]);
 PETSC_EXTERN PetscErrorCode TSARKIMEXInitializePackage(void);
 PETSC_EXTERN PetscErrorCode TSARKIMEXFinalizePackage(void);
@@ -982,6 +991,7 @@ PETSC_EXTERN PetscErrorCode TSSundialsSetLinearTolerance(TS,PetscReal);
 PETSC_EXTERN PetscErrorCode TSSundialsMonitorInternalSteps(TS,PetscBool );
 PETSC_EXTERN PetscErrorCode TSSundialsGetParameters(TS,PetscInt *,long*[],double*[]);
 PETSC_EXTERN PetscErrorCode TSSundialsSetMaxl(TS,PetscInt);
+PETSC_EXTERN PetscErrorCode TSSundialsSetMaxord(TS,PetscInt);
 #endif
 
 PETSC_EXTERN PetscErrorCode TSThetaSetTheta(TS,PetscReal);

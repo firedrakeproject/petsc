@@ -4,16 +4,16 @@
 #include "petsc/finclude/petscdmplex.h"
 
 !
+! DMPlexCellRefinerType
+!
+      PetscEnum, parameter :: DM_REFINER_REGULAR = 0
+      PetscEnum, parameter :: DM_REFINER_TO_BOX = 1
+      PetscEnum, parameter :: DM_REFINER_TO_SIMPLEX = 2
+!
 ! DMPlexInterpolatedFlag
 !
-      PetscEnum DMPLEX_INTERPOLATED_INVALID
-      PetscEnum DMPLEX_INTERPOLATED_NONE
-      PetscEnum DMPLEX_INTERPOLATED_PARTIAL
-      PetscEnum DMPLEX_INTERPOLATED_MIXED
-      PetscEnum DMPLEX_INTERPOLATED_FULL
-
-      parameter (DMPLEX_INTERPOLATED_INVALID = -1)
-      parameter (DMPLEX_INTERPOLATED_NONE = 0)
-      parameter (DMPLEX_INTERPOLATED_PARTIAL = 1)
-      parameter (DMPLEX_INTERPOLATED_MIXED = 2)
-      parameter (DMPLEX_INTERPOLATED_FULL = 3)
+      PetscEnum, parameter :: DMPLEX_INTERPOLATED_INVALID = -1
+      PetscEnum, parameter :: DMPLEX_INTERPOLATED_NONE = 0
+      PetscEnum, parameter :: DMPLEX_INTERPOLATED_PARTIAL = 1
+      PetscEnum, parameter :: DMPLEX_INTERPOLATED_MIXED = 2
+      PetscEnum, parameter :: DMPLEX_INTERPOLATED_FULL = 3

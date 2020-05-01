@@ -279,6 +279,7 @@ typedef int MPI_Errhandler;
 #define MPI_ERRHANDLER_NULL  0
 #define MPI_ERRORS_RETURN    0
 #define MPI_ERRORS_ARE_FATAL 0
+#define MPI_ERR_LASTCODE     0x3fffffff
 typedef void (MPI_Handler_function)(MPI_Comm *, int *, ...);
 
 /*
@@ -985,6 +986,42 @@ typedef int MPI_Offset;
 
 #define MPI_File_read_all(mpi_fh,buf,count,datatype,status) \
   (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_File_write_at(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_File_read_at(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_File_write_at_all(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_File_read_at_all(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
    MPIUNI_ARG(buf),\
    MPIUNI_ARG(count),\
    MPIUNI_ARG(datatype),\

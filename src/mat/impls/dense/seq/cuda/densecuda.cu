@@ -59,58 +59,6 @@
 #endif
 #endif
 
-/* copy and pasted from the CUBLAS implementation */
-#define CHKERRCUSOLVER(err) do {if (PetscUnlikely(err)) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"CUSOLVER error %d",err);} while(0)
-static PetscErrorCode PetscCUSOLVERDnDestroyHandle();
-static PetscErrorCode PetscCUSOLVERDnGetHandle_Private(cusolverDnHandle_t **handle)
-{
-  static cusolverDnHandle_t cusolverdnhandle = NULL;
-  cusolverStatus_t          cerr;
-  PetscErrorCode            ierr;
-
-  PetscFunctionBegin;
-  if (!cusolverdnhandle) {
-    cerr = cusolverDnCreate(&cusolverdnhandle);CHKERRCUSOLVER(cerr);
-    ierr = PetscRegisterFinalize(PetscCUSOLVERDnDestroyHandle);CHKERRQ(ierr);
-  }
-  *handle = &cusolverdnhandle;
-  PetscFunctionReturn(0);
-}
-
-PETSC_EXTERN PetscErrorCode PetscCUSOLVERDnInitializeHandle(void)
-{
-  cusolverDnHandle_t *p_cusolverdnhandle;
-  PetscErrorCode     ierr;
-
-  PetscFunctionBegin;
-  ierr = PetscCUSOLVERDnGetHandle_Private(&p_cusolverdnhandle);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode PetscCUSOLVERDnGetHandle(cusolverDnHandle_t *handle)
-{
-  cusolverDnHandle_t *p_cusolverdnhandle;
-  PetscErrorCode     ierr;
-
-  PetscFunctionBegin;
-  ierr    = PetscCUSOLVERDnGetHandle_Private(&p_cusolverdnhandle);CHKERRQ(ierr);
-  *handle = *p_cusolverdnhandle;
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode PetscCUSOLVERDnDestroyHandle()
-{
-  cusolverDnHandle_t *p_cusolverdnhandle;
-  cusolverStatus_t cerr;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = PetscCUSOLVERDnGetHandle_Private(&p_cusolverdnhandle);CHKERRQ(ierr);
-  cerr = cusolverDnDestroy(*p_cusolverdnhandle);CHKERRCUSOLVER(cerr);
-  *p_cusolverdnhandle = NULL;  /* Ensures proper reinitialization */
-  PetscFunctionReturn(0);
-}
-
 typedef struct {
   PetscScalar *d_v;   /* pointer to the matrix on the GPU */
   /* factorization support */
@@ -161,7 +109,7 @@ PetscErrorCode MatSeqDenseCUDACopyToGPU(Mat A)
 
   PetscFunctionBegin;
   PetscCheckTypeName(A,MATSEQDENSECUDA);
-  if (A->pinnedtocpu) PetscFunctionReturn(0);
+  if (A->boundtocpu) PetscFunctionReturn(0);
   if (!dA->d_v) {
     cerr = cudaMalloc((void**)&dA->d_v,cA->lda*cA->Nmax*sizeof(PetscScalar));CHKERRCUDA(cerr);
   }
@@ -649,6 +597,15 @@ PetscErrorCode MatMatTransposeMultNumeric_SeqDenseCUDA_SeqDenseCUDA(Mat A,Mat B,
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode MatProductSetFromOptions_SeqDenseCUDA(Mat C)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = MatProductSetFromOptions_SeqDense(C);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 /* zz = op(A)*xx + yy
    if yy == NULL, only MatMult */
 static PetscErrorCode MatMultAdd_SeqDenseCUDA_Private(Mat A,Vec xx,Vec yy,Vec zz,PetscBool trans)
@@ -925,12 +882,12 @@ PETSC_INTERN PetscErrorCode MatGetFactor_seqdense_cuda(Mat A,MatFactorType ftype
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatPinToCPU_SeqDenseCUDA(Mat A,PetscBool flg)
+static PetscErrorCode MatBindToCPU_SeqDenseCUDA(Mat A,PetscBool flg)
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  A->pinnedtocpu = flg;
+  A->boundtocpu = flg;
   if (!flg) {
     ierr = PetscObjectComposeFunction((PetscObject)A,"MatSeqDenseSetPreallocation_C",MatSeqDenseSetPreallocation_SeqDenseCUDA);CHKERRQ(ierr);
     ierr = PetscObjectComposeFunction((PetscObject)A,"MatDenseGetArray_C",           MatDenseGetArray_SeqDenseCUDA);CHKERRQ(ierr);
@@ -948,6 +905,7 @@ static PetscErrorCode MatPinToCPU_SeqDenseCUDA(Mat A,PetscBool flg)
     A->ops->axpy                    = MatAXPY_SeqDenseCUDA;
     A->ops->choleskyfactor          = MatCholeskyFactor_SeqDenseCUDA;
     A->ops->lufactor                = MatLUFactor_SeqDenseCUDA;
+    A->ops->productsetfromoptions   = MatProductSetFromOptions_SeqDenseCUDA;
   } else {
     /* make sure we have an up-to-date copy on the CPU */
     ierr = MatSeqDenseCUDACopyFromGPU(A);CHKERRQ(ierr);
@@ -961,12 +919,14 @@ static PetscErrorCode MatPinToCPU_SeqDenseCUDA(Mat A,PetscBool flg)
     A->ops->multadd                 = MatMultAdd_SeqDense;
     A->ops->multtranspose           = MatMultTranspose_SeqDense;
     A->ops->multtransposeadd        = MatMultTransposeAdd_SeqDense;
+    A->ops->productsetfromoptions   = MatProductSetFromOptions_SeqDense;
     A->ops->matmultnumeric          = MatMatMultNumeric_SeqDense_SeqDense;
     A->ops->mattransposemultnumeric = MatMatTransposeMultNumeric_SeqDense_SeqDense;
     A->ops->transposematmultnumeric = MatTransposeMatMultNumeric_SeqDense_SeqDense;
     A->ops->axpy                    = MatAXPY_SeqDense;
     A->ops->choleskyfactor          = MatCholeskyFactor_SeqDense;
     A->ops->lufactor                = MatLUFactor_SeqDense;
+    A->ops->productsetfromoptions   = MatProductSetFromOptions_SeqDense;
  }
   PetscFunctionReturn(0);
 }
@@ -984,14 +944,14 @@ PetscErrorCode MatConvert_SeqDenseCUDA_SeqDense(Mat M,MatType type,MatReuse reus
   }
 
   B    = *newmat;
-  ierr = MatPinToCPU_SeqDenseCUDA(B,PETSC_TRUE);CHKERRQ(ierr);
+  ierr = MatBindToCPU_SeqDenseCUDA(B,PETSC_TRUE);CHKERRQ(ierr);
   ierr = MatReset_SeqDenseCUDA(B);CHKERRQ(ierr);
   ierr = PetscFree(B->defaultvectype);CHKERRQ(ierr);
   ierr = PetscStrallocpy(VECSTANDARD,&B->defaultvectype);CHKERRQ(ierr);
   ierr = PetscObjectChangeTypeName((PetscObject)B,MATSEQDENSE);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_seqdensecuda_seqdense_C",NULL);CHKERRQ(ierr);
 
-  B->ops->pintocpu    = NULL;
+  B->ops->bindtocpu    = NULL;
   B->ops->destroy     = MatDestroy_SeqDense;
   B->offloadmask = PETSC_OFFLOAD_CPU;
   PetscFunctionReturn(0);
@@ -1022,8 +982,8 @@ PetscErrorCode MatConvert_SeqDense_SeqDenseCUDA(Mat M,MatType type,MatReuse reus
 
   B->offloadmask = PETSC_OFFLOAD_UNALLOCATED;
 
-  ierr = MatPinToCPU_SeqDenseCUDA(B,PETSC_FALSE);CHKERRQ(ierr);
-  B->ops->pintocpu = MatPinToCPU_SeqDenseCUDA;
+  ierr = MatBindToCPU_SeqDenseCUDA(B,PETSC_FALSE);CHKERRQ(ierr);
+  B->ops->bindtocpu = MatBindToCPU_SeqDenseCUDA;
   B->ops->destroy  = MatDestroy_SeqDenseCUDA;
   PetscFunctionReturn(0);
 }
@@ -1036,7 +996,7 @@ PetscErrorCode MatConvert_SeqDense_SeqDenseCUDA(Mat M,MatType type,MatReuse reus
 
   Level: beginner
 
-.seealso: MatCreateSeqDenseCuda()
+.seealso: MatCreateSeqDenseCUDA()
 
 M*/
 PETSC_EXTERN PetscErrorCode MatCreate_SeqDenseCUDA(Mat B)

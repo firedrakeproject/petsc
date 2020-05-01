@@ -68,11 +68,12 @@ PetscErrorCode  PetscViewerInitializePackage(void)
   ierr = PetscClassIdRegister("Viewer",&PETSC_VIEWER_CLASSID);CHKERRQ(ierr);
   /* Register Constructors */
   ierr = PetscViewerRegisterAll();CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("viewer",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(PETSC_VIEWER_CLASSID);CHKERRQ(ierr);}
+  /* Process Info */
+  {
+    PetscClassId  classids[1];
+
+    classids[0] = PETSC_VIEWER_CLASSID;
+    ierr = PetscInfoProcessClass("viewer", 1, classids);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
@@ -110,7 +111,7 @@ PetscErrorCode  PetscViewerDestroy(PetscViewer *viewer)
   PetscValidHeaderSpecific(*viewer,PETSC_VIEWER_CLASSID,1);
 
   ierr = PetscViewerFlush(*viewer);CHKERRQ(ierr);
-  if (--((PetscObject)(*viewer))->refct > 0) {*viewer = 0; PetscFunctionReturn(0);}
+  if (--((PetscObject)(*viewer))->refct > 0) {*viewer = NULL; PetscFunctionReturn(0);}
 
   ierr = PetscObjectSAWsViewOff((PetscObject)*viewer);CHKERRQ(ierr);
   if ((*viewer)->ops->destroy) {
@@ -337,8 +338,8 @@ PetscErrorCode  PetscViewerSetUp(PetscViewer viewer)
 
    Input Parameters:
 +  A - the PetscViewer context
--  obj - Optional object
-.  name - command line option
+.  obj - Optional object
+-  name - command line option
 
    Level: intermediate
 .seealso:  PetscViewer, PetscViewerView, PetscObjectViewFromOptions(), PetscViewerCreate()

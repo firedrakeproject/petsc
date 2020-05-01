@@ -24,12 +24,24 @@ class Configure(config.base.Configure):
     self.fmainlibs = []
     self.clibs = []
     self.cxxlibs = []
+    self.skipdefaultpaths = []
     self.cxxCompileC = False
     self.cRestrict = ' '
     self.cxxRestrict = ' '
     self.cxxdialect = ''
     self.c99flag = None
     return
+
+  def getSkipDefaultPaths(self):
+    if len(self.skipdefaultpaths):
+      return self.skipdefaultpaths
+    else:
+      self.skipdefaultpaths = ['/usr/lib','/lib','/usr/lib64','/lib64']
+      conda_sysrt = os.getenv('CONDA_BUILD_SYSROOT')
+      if conda_sysrt:
+        conda_sysrt = os.path.abspath(conda_sysrt)
+        self.skipdefaultpaths.extend([conda_sysrt+lib for lib in self.skipdefaultpaths])
+      return self.skipdefaultpaths
 
   def setupHelp(self, help):
     import nargs
@@ -260,6 +272,7 @@ class Configure(config.base.Configure):
     # Parse output
     argIter = iter(output.split())
     clibs = []
+    skipdefaultpaths = self.getSkipDefaultPaths()
     lflags  = []
     rpathflags = []
     try:
@@ -308,7 +321,7 @@ class Configure(config.base.Configure):
             self.logPrint('already in lflags: '+arg, 4, 'compilers')
           continue
         # Check for system libraries
-        m = re.match(r'^-l(ang.*|crt[0-9].o|crtbegin.o|c|gcc|gcc_ext(.[0-9]+)*|System|cygwin|crt[0-9].[0-9][0-9].[0-9].o)$', arg)
+        m = re.match(r'^-l(ang.*|crt[0-9].o|crtbegin.o|c|gcc|gcc_ext(.[0-9]+)*|System|cygwin|xlomp_ser|crt[0-9].[0-9][0-9].[0-9].o)$', arg)
         if m:
           self.logPrint('Skipping system library: '+arg, 4, 'compilers')
           continue
@@ -325,8 +338,9 @@ class Configure(config.base.Configure):
           continue
         m = re.match(r'^-L.*$', arg)
         if m:
-          arg = '-L'+os.path.abspath(arg[2:])
-          if arg in ['-L/usr/lib','-L/lib','-L/usr/lib64','-L/lib64']: continue
+          arg = os.path.abspath(arg[2:])
+          if arg in skipdefaultpaths: continue
+          arg = '-L'+arg
           lflags.append(arg)
           self.logPrint('Found library directory: '+arg, 4, 'compilers')
           clibs.append(arg)
@@ -337,7 +351,7 @@ class Configure(config.base.Configure):
           if lib.startswith('-'): continue # perhaps the path was striped due to quotes?
           if lib.startswith('"') and lib.endswith('"') and lib.find(' ') == -1: lib = lib[1:-1]
           lib = os.path.abspath(lib)
-          if lib in ['/usr/lib','/lib','/usr/lib64','/lib64']: continue
+          if lib in skipdefaultpaths: continue
           if not lib in rpathflags:
             rpathflags.append(lib)
             self.logPrint('Found '+arg+' library: '+lib, 4, 'compilers')
@@ -473,6 +487,7 @@ class Configure(config.base.Configure):
     includes = """
           #include <random>
           #include <iostream>
+          #include <complex>
           template<typename T> constexpr T Cubed( T x ) { return x*x*x; }
           """
     body = """
@@ -483,6 +498,7 @@ class Configure(config.base.Configure):
           std::cout << x;
           """
     body14 = """
+          constexpr std::complex<double> I(0.0,1.0);
           auto lambda = [](auto x, auto y) {return x + y;};
           return lambda(3,4);
           """
@@ -636,6 +652,7 @@ class Configure(config.base.Configure):
     # Parse output
     argIter = iter(output.split())
     cxxlibs = []
+    skipdefaultpaths = self.getSkipDefaultPaths()
     lflags  = []
     rpathflags = []
     try:
@@ -685,7 +702,7 @@ class Configure(config.base.Configure):
             self.logPrint('already in lflags: '+arg, 4, 'compilers')
           continue
         # Check for system libraries
-        m = re.match(r'^-l(ang.*|crt[0-9].o|crtbegin.o|c|gcc|gcc_ext(.[0-9]+)*|System|cygwin|crt[0-9].[0-9][0-9].[0-9].o)$', arg)
+        m = re.match(r'^-l(ang.*|crt[0-9].o|crtbegin.o|c|gcc|gcc_ext(.[0-9]+)*|System|cygwin|xlomp_ser|crt[0-9].[0-9][0-9].[0-9].o)$', arg)
         if m:
           self.logPrint('Skipping system library: '+arg, 4, 'compilers')
           continue
@@ -707,8 +724,9 @@ class Configure(config.base.Configure):
           continue
         m = re.match(r'^-L.*$', arg)
         if m:
-          arg = '-L'+os.path.abspath(arg[2:])
-          if arg in ['-L/usr/lib','-L/lib','-L/usr/lib64','-L/lib64']: continue
+          arg = os.path.abspath(arg[2:])
+          if arg in skipdefaultpaths: continue
+          arg = '-L'+arg
           if not arg in lflags:
             lflags.append(arg)
             self.logPrint('Found library directory: '+arg, 4, 'compilers')
@@ -720,7 +738,7 @@ class Configure(config.base.Configure):
           if lib.startswith('-'): continue # perhaps the path was striped due to quotes?
           if lib.startswith('"') and lib.endswith('"') and lib.find(' ') == -1: lib = lib[1:-1]
           lib = os.path.abspath(lib)
-          if lib in ['/usr/lib','/lib','/usr/lib64','/lib64']: continue
+          if lib in skipdefaultpaths: continue
           if not lib in rpathflags:
             rpathflags.append(lib)
             self.logPrint('Found '+arg+' library: '+lib, 4, 'compilers')
@@ -834,7 +852,7 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
     return found
 
   def checkFortranNameMangling(self):
-    '''Checks Fortran name mangling, and defines HAVE_FORTRAN_UNDERSCORE, HAVE_FORTRAN_NOUNDERSCORE, HAVE_FORTRAN_CAPS, or HAVE_FORTRAN_STDCALL'''
+    '''Checks Fortran name mangling, and defines HAVE_FORTRAN_UNDERSCORE, HAVE_FORTRAN_NOUNDERSCORE, HAVE_FORTRAN_CAPS'''
     self.manglerFuncs = {'underscore': ('void d1chk_(void);', 'void d1chk_(void){return;}\n', '       call d1chk()\n'),
                          'unchanged': ('void d1chk(void);', 'void d1chk(void){return;}\n', '       call d1chk()\n'),
                          'caps': ('void D1CHK(void);', 'void D1CHK(void){return;}\n', '       call d1chk()\n'),
@@ -864,10 +882,7 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
     elif self.fortranMangling == 'caps':
       self.addDefine('HAVE_FORTRAN_CAPS', 1)
     elif self.fortranMangling == 'stdcall':
-      self.addDefine('HAVE_FORTRAN_STDCALL', 1)
-      self.addDefine('STDCALL', '__stdcall')
-      self.addDefine('HAVE_FORTRAN_CAPS', 1)
-      self.addDefine('HAVE_FORTRAN_MIXED_STR_ARG', 1)
+      raise RuntimeError('Fortran STDCALL compilers are unsupported!\n')
     if config.setCompilers.Configure.isGfortran8plus(self.getCompiler('FC'), self.log):
       self.addDefine('FORTRAN_CHARLEN_T', 'size_t')
     else:
@@ -910,12 +925,13 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
       return
     skipfortranlibraries = 1
     self.setCompilers.saveLog()
-    cbody = "int main(int argc,char **args)\n{return 0;}\n";
+    asub=self.mangleFortranFunction("asub")
+    cbody = "extern void "+asub+"(void);\nint main(int argc,char **args)\n{\n  "+asub+"();\n  return 0;\n}\n";
     self.pushLanguage('FC')
     if self.checkLink(includes='#include <mpif.h>',body='      call MPI_Allreduce()\n'):
-      fbody = "subroutine asub()\n      print*,'testing'\n      call MPI_Allreduce()\n      return\n      end\n"
+      fbody = "      subroutine asub()\n      print*,'testing'\n      call MPI_Allreduce()\n      return\n      end\n"
     else:
-      fbody = "subroutine asub()\n      print*,'testing'\n      return\n      end\n"
+      fbody = "      subroutine asub()\n      print*,'testing'\n      return\n      end\n"
     self.popLanguage()
     try:
       if self.checkCrossLink(fbody,cbody,language1='FC',language2='C'):
@@ -1011,6 +1027,7 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
     argIter = iter(output.split())
     fincs   = []
     flibs   = []
+    skipdefaultpaths = self.getSkipDefaultPaths()
     fmainlibs = []
     lflags  = []
     rpathflags = []
@@ -1083,7 +1100,7 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
             self.logPrint('Already in lflags so skipping: '+arg, 4, 'compilers')
           continue
         # Check for system libraries
-        m = re.match(r'^-l(ang.*|crt[0-9].o|crtbegin.o|c|gcc|gcc_ext(.[0-9]+)*|System|cygwin|crt[0-9].[0-9][0-9].[0-9].o)$', arg)
+        m = re.match(r'^-l(ang.*|crt[0-9].o|crtbegin.o|c|gcc|gcc_ext(.[0-9]+)*|System|cygwin|xlomp_ser|crt[0-9].[0-9][0-9].[0-9].o)$', arg)
         if m:
           self.logPrint('Found system library therefore skipping: '+arg, 4, 'compilers')
           continue
@@ -1127,8 +1144,9 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
           continue
         m = re.match(r'^-L.*$', arg)
         if m:
-          arg = '-L'+os.path.abspath(arg[2:])
-          if arg in ['-L/usr/lib','-L/lib','-L/usr/lib64','-L/lib64']: continue
+          arg = os.path.abspath(arg[2:])
+          if arg in skipdefaultpaths: continue
+          arg = '-L'+arg
           if not arg in lflags:
             lflags.append(arg)
             self.logPrint('Found library directory: '+arg, 4, 'compilers')
@@ -1143,7 +1161,7 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
           if lib.startswith('-'): continue # perhaps the path was striped due to quotes?
           if lib.startswith('"') and lib.endswith('"') and lib.find(' ') == -1: lib = lib[1:-1]
           lib = os.path.abspath(lib)
-          if lib in ['/usr/lib','/lib','/usr/lib64','/lib64']: continue
+          if lib in skipdefaultpaths: continue
           if not lib in rpathflags:
             rpathflags.append(lib)
             self.logPrint('Found '+arg+' library: '+lib, 4, 'compilers')
@@ -1178,8 +1196,9 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
             #solaris gnu g77 has this extra P, here, not sure why it means
             if lib.startswith('P,'):lib = lib[2:]
             self.logPrint('Handling -Y option: '+lib, 4, 'compilers')
-            lib1 = '-L'+os.path.abspath(lib)
-            if lib1 in ['-L/usr/lib','-L/lib','-L/usr/lib64','-L/lib64']: continue
+            lib1 = os.path.abspath(lib)
+            if lib1 in skipdefaultpaths: continue
+            lib1 = '-L'+lib1
             flibs.append(lib1)
           continue
         if arg.startswith('COMPILER_PATH=') or arg.startswith('LIBRARY_PATH='):
@@ -1190,8 +1209,9 @@ Otherwise you need a different combination of C, C++, and Fortran compilers")
           founddir = 0
           for l in arg.split(':'):
             if os.path.isdir(l):
-              lib1 = '-L'+os.path.abspath(l)
-              if lib1 in ['-L/usr/lib','-L/lib','-L/usr/lib64','-L/lib64']: continue
+              lib1 = os.path.abspath(l)
+              if lib1 in skipdefaultpaths: continue
+              lib1 = '-L'+lib1
               if not arg in lflags:
                 flibs.append(lib1)
                 lflags.append(lib1)

@@ -463,9 +463,6 @@ static PetscErrorCode DMAdaptorModifyHessian_Private(PetscInt dim, PetscReal h_m
 
     lwork = 5*dim;
     ierr = PetscMalloc1(5*dim, &work);CHKERRQ(ierr);
-#if defined(PETSC_MISSING_LAPACK_GEEV)
-    SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "GEEV - Lapack routine is unavailable\nNot able to provide eigen values.");
-#else
     {
       PetscBLASInt lierr;
       PetscBLASInt nb;
@@ -485,7 +482,6 @@ static PetscErrorCode DMAdaptorModifyHessian_Private(PetscInt dim, PetscReal h_m
       if (lierr) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in LAPACK routine %d", (int) lierr);
       ierr = PetscFPTrapPop();CHKERRQ(ierr);
     }
-#endif
     ierr = PetscFree(work);CHKERRQ(ierr);
   }
 #if 0
@@ -723,7 +719,7 @@ static PetscErrorCode DMAdaptorAdapt_Sequence_Private(DMAdaptor adaptor, Vec inx
 
       ierr = DMConvert(dm, DMPLEX, &plex);CHKERRQ(ierr);
       ierr = DMLabelCreate(PETSC_COMM_SELF, "adapt", &adaptLabel);CHKERRQ(ierr);
-      ierr = DMPlexGetInteriorCellStratum(plex, &cStart, &cEnd);CHKERRQ(ierr);
+      ierr = DMPlexGetSimplexOrBoxCells(plex, 0, &cStart, &cEnd);CHKERRQ(ierr);
 
       ierr = VecCreateMPI(PetscObjectComm((PetscObject) adaptor), cEnd-cStart, PETSC_DETERMINE, &errVec);CHKERRQ(ierr);
       ierr = VecSetUp(errVec);CHKERRQ(ierr);
@@ -941,7 +937,7 @@ static PetscErrorCode DMAdaptorAdapt_Sequence_Private(DMAdaptor adaptor, Vec inx
 - -adapt_metric_view : View the metric tensor for adaptive mesh refinement
 
   Note: The available adaptation strategies are:
-$ 1) Adapt the intial mesh until a quality metric, e,g, a priori error bound, is satisfied
+$ 1) Adapt the initial mesh until a quality metric, e.g., a priori error bound, is satisfied
 $ 2) Solve the problem on a series of adapted meshes until a quality metric, e.g. a posteriori error bound, is satisfied
 $ 3) Solve the problem on a hierarchy of adapted meshes generated to satisfy a quality metric using multigrid
 

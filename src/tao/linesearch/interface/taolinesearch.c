@@ -15,8 +15,8 @@ PetscLogEvent TAOLINESEARCH_Eval;
 
    Input Parameters:
 +  A - the Tao context
--  obj - Optional object
-.  name - command line option
+.  obj - Optional object
+-  name - command line option
 
    Level: intermediate
 .seealso:  TaoLineSearch, TaoLineSearchView, PetscObjectViewFromOptions(), TaoLineSearchCreate()
@@ -265,7 +265,7 @@ PetscErrorCode TaoLineSearchReset(TaoLineSearch ls)
 
   Collective on TaoLineSearch
 
-  Input Parameter
+  Input Parameter:
 . ls - the TaoLineSearch context
 
   Level: beginner
@@ -592,7 +592,7 @@ PetscErrorCode TaoLineSearchSetFromOptions(TaoLineSearch ls)
   Input Parameter:
 . ls - the TaoLineSearch context
 
-  Output Paramter:
+  Output Parameter:
 . type - the line search algorithm in effect
 
   Level: developer
@@ -1247,7 +1247,7 @@ PetscErrorCode TaoLineSearchSetInitialStepLength(TaoLineSearch ls,PetscReal s)
   Input Parameters:
 . ls - the TaoLineSearch context
 
-  Output Parameters
+  Output Parameters:
 . s - the current step length
 
   Level: beginner

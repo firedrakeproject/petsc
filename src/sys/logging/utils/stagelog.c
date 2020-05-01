@@ -7,7 +7,7 @@
 */
 #include <petsc/private/logimpl.h> /*I    "petscsys.h"   I*/
 
-PetscStageLog petsc_stageLog = 0;
+PetscStageLog petsc_stageLog = NULL;
 
 /*@C
   PetscLogGetStageLog - This function returns the default stage logging object.
@@ -69,9 +69,7 @@ PetscErrorCode  PetscStageLogGetCurrent(PetscStageLog stageLog, int *stage)
   } else {
     ierr = PetscIntStackTop(stageLog->stack, stage);CHKERRQ(ierr);
   }
-#ifdef PETSC_USE_DEBUG
   if (*stage != stageLog->curStage) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_PLIB, "Inconsistency in stage log: stage %d should be %d", *stage, stageLog->curStage);
-#endif
   PetscFunctionReturn(0);
 }
 
@@ -108,7 +106,7 @@ PetscErrorCode  PetscStageLogGetEventPerfLog(PetscStageLog stageLog, int stage, 
 
   Not collective
 
-  Input Paramter:
+  Input Parameter:
 . stageInfo - The PetscStageInfo
 
   Level: developer
@@ -131,7 +129,7 @@ PetscErrorCode  PetscStageInfoDestroy(PetscStageInfo *stageInfo)
 
   Not collective
 
-  Input Paramter:
+  Input Parameter:
 . stageLog - The PetscStageLog
 
   Level: developer

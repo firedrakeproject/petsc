@@ -10,13 +10,13 @@
 #endif
 
 /*@C
-   PetscStrToArray - Separates a string by a charactor (for example ' ' or '\n') and creates an array of strings
+   PetscStrToArray - Separates a string by a character (for example ' ' or '\n') and creates an array of strings
 
    Not Collective
 
    Input Parameters:
 +  s - pointer to string
--  sp - separator charactor
+-  sp - separator character
 
    Output Parameter:
 +   argc - the number of entries in the array
@@ -81,7 +81,7 @@ PetscErrorCode  PetscStrToArray(const char s[],char sp,int *argc,char ***args)
     }
   }
   free(lens);
-  (*args)[*argc] = 0;
+  (*args)[*argc] = NULL;
 
   *argc = 0;
   for (i=0; i<n; i++) {
@@ -179,7 +179,7 @@ PetscErrorCode  PetscStrallocpy(const char s[],char *t[])
 {
   PetscErrorCode ierr;
   size_t         len;
-  char           *tmp = 0;
+  char           *tmp = NULL;
 
   PetscFunctionBegin;
   if (s) {
@@ -812,10 +812,10 @@ PetscErrorCode  PetscStrbeginswith(const char a[],const char b[],PetscBool *flg)
 
    Input Parameters:
 +  a - pointer to string
--  bs - strings to endwith (last entry must be null)
+-  bs - strings to end with (last entry must be NULL)
 
    Output Parameter:
-.  cnt - the index of the string it ends with or 1+the last possible index
+.  cnt - the index of the string it ends with or the index of NULL
 
    Notes:
     Not for use in Fortran
@@ -858,7 +858,7 @@ PetscErrorCode  PetscStrendswithwhich(const char a[],const char *const *bs,Petsc
 @*/
 PetscErrorCode  PetscStrrstr(const char a[],const char b[],char *tmp[])
 {
-  const char *stmp = a, *ltmp = 0;
+  const char *stmp = a, *ltmp = NULL;
 
   PetscFunctionBegin;
   while (stmp) {
@@ -933,7 +933,7 @@ PetscErrorCode  PetscTokenFind(PetscToken a,char *result[])
 
   PetscFunctionBegin;
   *result = a->current;
-  if (ptr && !*ptr) {*result = 0;PetscFunctionReturn(0);}
+  if (ptr && !*ptr) {*result = NULL; PetscFunctionReturn(0);}
   token = a->token;
   if (ptr && (*ptr == '"')) {token = '"';(*result)++;ptr++;}
   while (ptr) {
@@ -944,7 +944,7 @@ PetscErrorCode  PetscTokenFind(PetscToken a,char *result[])
       break;
     }
     if (!*ptr) {
-      a->current = 0;
+      a->current = NULL;
       break;
     }
     ptr++;
@@ -1104,8 +1104,8 @@ PetscErrorCode  PetscStrreplace(MPI_Comm comm,const char aa[],char b[],size_t le
   int            i = 0;
   size_t         l,l1,l2,l3;
   char           *work,*par,*epar,env[1024],*tfree,*a = (char*)aa;
-  const char     *s[] = {"${PETSC_ARCH}","${PETSC_DIR}","${PETSC_LIB_DIR}","${DISPLAY}","${HOMEDIRECTORY}","${WORKINGDIRECTORY}","${USERNAME}","${HOSTNAME}",0};
-  char           *r[] = {0,0,0,0,0,0,0,0,0};
+  const char     *s[] = {"${PETSC_ARCH}","${PETSC_DIR}","${PETSC_LIB_DIR}","${DISPLAY}","${HOMEDIRECTORY}","${WORKINGDIRECTORY}","${USERNAME}","${HOSTNAME}",NULL};
+  char           *r[] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
   PetscBool      flag;
 
   PetscFunctionBegin;

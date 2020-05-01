@@ -39,8 +39,14 @@ gnumake:
 	+@echo "make gnumake is deprecated, use make libs"
 	+@make libs
 
-libs:
-	+@cd ${PETSC_DIR} && MAKEFLAGS="-j$(MAKE_NP) -l$(MAKE_LOAD) $(MAKEFLAGS)" ${OMAKE_PRINTDIR} -f gmakefile ${MAKE_PAR_OUT_FLG} V=${V}
+${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/files:
+	@touch -t 197102020000 ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/files
+
+./${PETSC_ARCH}/tests/testfiles:
+	@${MKDIR} -p ./${PETSC_ARCH}/tests && touch -t 197102020000 ./${PETSC_ARCH}/tests/testfiles
+
+libs: ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/files ./${PETSC_ARCH}/tests/testfiles
+	+@cd ${PETSC_DIR} && MAKEFLAGS="-j$(MAKE_NP) -l$(MAKE_LOAD) $(MAKEFLAGS)" ${OMAKE_PRINTDIR} -f gmakefile ${MAKE_PAR_OUT_FLG} V=${V} libs
 
 # Does nothing; needed for some rules that require actions.
 foo:
@@ -152,9 +158,6 @@ alltree: ${ACTION}
 	PETSC_ARCH=${PETSC_ARCH} LOC=${LOC} ; ) fi; \
 	done ; fi
 
-getpetscflags:
-	-@echo  ${PETSCFLAGS}
-
 getmpilinklibs:
 	-@echo  ${MPI_LIB}
 
@@ -253,14 +256,14 @@ getautoconfargs:
 	fi
 
 .c.o:
-	-+@mypwd=`pwd`; newpwd=`echo $${mypwd} | sed "s+/examples/tutorials+DUMMY+g"`;\
+	-+@mypwd=`pwd`; newpwd=`echo $${mypwd} | sed "s+/tutorials+DUMMY+g"`;\
         if [ $${mypwd} != $${newpwd} ]; then \
 	  ${OMAKE}  PETSC_ARCH=${PETSC_ARCH}  chk_petscdir;\
         fi
 	${PETSC_COMPILE_SINGLE} `pwd`/$<
 
 .cpp.o .cxx.o .cc.o .C.o:
-	-+@mypwd=`pwd`; newpwd=`echo $${mypwd} | sed "s+/examples/tutorials+DUMMY+g"`;\
+	-+@mypwd=`pwd`; newpwd=`echo $${mypwd} | sed "s+/tutorials+DUMMY+g"`;\
         if [ $${mypwd} != $${newpwd} ]; then \
 	  ${OMAKE}  PETSC_ARCH=${PETSC_ARCH}  chk_petscdir;\
         fi
@@ -324,6 +327,7 @@ getautoconfargs:
           grep -v "may result in errors or" | \
           grep -v "is deprecated" | \
           grep -v "Werror=format-security" | \
+          grep -v " -Werror " | \
 	  egrep -i '(Error|warning|Can|Unresolved)' >> /dev/null;\
 	  if [ "$$?" != 1 ]; then \
           printf ${PETSC_TEXT_HILIGHT}"*******************Error detected during compile or link!*******************\n";\
@@ -370,6 +374,7 @@ getautoconfargs:
           grep -v "IPO Error: unresolved" | \
           grep -v "warning multiple definitions of symbol _matdensegetarray_" | \
           grep -v "Werror=format-security" | \
+          grep -v " -Werror " | \
 	  egrep -i '(Error|warning|Can|Unresolved)'  >> /dev/null ; \
 	  if [ "$$?" != 1 ]; then \
           printf ${PETSC_TEXT_HILIGHT}"*******************Error detected during compile or link!*******************\n";\
@@ -696,7 +701,7 @@ checkTestCoverage:
 	  fi; \
 	done
 
-#  Lists all the URLs in the PETSc repository that are unaccessable, nonexistent, or permanently moved (301)
+#  Lists all the URLs in the PETSc repository that are unaccessible, nonexistent, or permanently moved (301)
 #  REPLACE=1 locations marked as permanently moved (301) are replaced in the repository
 #  This code is fragile; always check the changes after a use of REPLACE=1 before commiting the changes
 #

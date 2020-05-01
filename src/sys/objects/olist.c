@@ -79,14 +79,14 @@ PetscErrorCode  PetscObjectListAdd(PetscObjectList *fl,const char name[],PetscOb
 
   PetscFunctionBegin;
   if (!obj) { /* this means remove from list if it is there */
-    nlist = *fl; prev = 0;
+    nlist = *fl; prev = NULL;
     while (nlist) {
       ierr = PetscStrcmp(name,nlist->name,&match);CHKERRQ(ierr);
       if (match) {  /* found it already in the list */
         /* Remove it first to prevent circular derefs */
         if (prev) prev->next = nlist->next;
         else if (nlist->next) *fl = nlist->next;
-        else *fl = 0;
+        else *fl = NULL;
         if (!nlist->skipdereference) {
           ierr = PetscObjectDereference(nlist->obj);CHKERRQ(ierr);
         }
@@ -116,7 +116,7 @@ PetscErrorCode  PetscObjectListAdd(PetscObjectList *fl,const char name[],PetscOb
 
   /* add it to list, because it was not already there */
   ierr        = PetscNew(&olist);CHKERRQ(ierr);
-  olist->next = 0;
+  olist->next = NULL;
   olist->obj  = obj;
 
   ierr = PetscObjectReference(obj);CHKERRQ(ierr);
@@ -171,7 +171,7 @@ PetscErrorCode  PetscObjectListDestroy(PetscObjectList *ifl)
 -   name - name string
 
     Output Parameters:
-.   ob - the PETSc object
+.   obj - the PETSc object
 
     Level: developer
 
@@ -189,7 +189,7 @@ PetscErrorCode  PetscObjectListFind(PetscObjectList fl,const char name[],PetscOb
   PetscBool      match;
 
   PetscFunctionBegin;
-  *obj = 0;
+  *obj = NULL;
   while (fl) {
     ierr = PetscStrcmp(name,fl->name,&match);CHKERRQ(ierr);
     if (match) {
@@ -206,11 +206,11 @@ PetscErrorCode  PetscObjectListFind(PetscObjectList fl,const char name[],PetscOb
 
     Input Parameters:
 +   fl   - pointer to list
--   ob - the PETSc object
+-   obj - the PETSc object
 
     Output Parameters:
 +  name - name string
--  skipdereference - if the object is list but does not have the increased reference count for a circular dependency
+-  skipdereference - if the object is in list but does not have the increased reference count for a circular dependency
 
     Level: developer
 
@@ -225,7 +225,7 @@ PetscErrorCode  PetscObjectListFind(PetscObjectList fl,const char name[],PetscOb
 PetscErrorCode  PetscObjectListReverseFind(PetscObjectList fl,PetscObject obj,char **name,PetscBool *skipdereference)
 {
   PetscFunctionBegin;
-  *name = 0;
+  *name = NULL;
   while (fl) {
     if (fl->obj == obj) {
       *name = fl->name;
@@ -238,7 +238,7 @@ PetscErrorCode  PetscObjectListReverseFind(PetscObjectList fl,PetscObject obj,ch
 }
 
 /*@C
-    PetscObjectListDuplicate - Creates a new list from a give object list.
+    PetscObjectListDuplicate - Creates a new list from a given object list.
 
     Input Parameters:
 .   fl   - pointer to list
@@ -262,8 +262,3 @@ PetscErrorCode  PetscObjectListDuplicate(PetscObjectList fl,PetscObjectList *nl)
   }
   PetscFunctionReturn(0);
 }
-
-
-
-
-

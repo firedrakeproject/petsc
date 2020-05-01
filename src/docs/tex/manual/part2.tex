@@ -100,7 +100,7 @@ the user's code can perform any series of other actions between these
 two calls while the messages are in transition.
 
 Example usage of \lstinline{VecSetValues()} may be found in
-\trl{$PETSC_DIR/src/vec/vec/examples/tutorials/ex2.c} or \trl{ex2f.F}.
+\trl{$PETSC_DIR/src/vec/vec/tutorials/ex2.c} or \trl{ex2f.F}.
 
 Often, rather than inserting elements in a vector, one may wish to
 add values. This process \sindex{vector values, setting}
@@ -747,8 +747,8 @@ DMDAVecGetArray(DM da,Vec global,&f);
 DMDAVecRestoreArray(DM da,Vec local,&u);
 DMDAVecRestoreArray(DM da,Vec global,&f);
 \end{lstlisting}
-See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex5.c.html}{\trl{$PETSC_DIR/src/snes/examples/tutorials/ex5.c}} for a
-complete example and see \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex19.c.html}{\trl{$PETSC_DIR/src/snes/examples/tutorials/ex19.c}} for an
+See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex5.c.html}{\trl{$PETSC_DIR/src/snes/tutorials/ex5.c}} for a
+complete example and see \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex19.c.html}{\trl{$PETSC_DIR/src/snes/tutorials/ex19.c}} for an
 example for a multi-component PDE.
 
 %---------------------------------------------------------------------------
@@ -813,10 +813,10 @@ array, divided among four processes.
 \end{figure}
 
 The example
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex5.c.html}{\trl{$PETSC_DIR/src/snes/examples/tutorials/ex5.c}}
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex5.c.html}{\trl{$PETSC_DIR/src/snes/tutorials/ex5.c}}
 illustrates the use of a distributed array in the solution of
 a nonlinear problem.  The analogous Fortran program is
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex5f.F90.html}{\trl{$PETSC_DIR/src/snes/examples/tutorials/ex5f.F90}};
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex5f.F90.html}{\trl{$PETSC_DIR/src/snes/tutorials/ex5f.F90}};
 see Chapter \ref{chapter_snes} for a discussion of the nonlinear
 solvers.
 
@@ -1223,7 +1223,7 @@ should be specified after the first matrix has been fully assembled.
 This option ensures that certain data structures and communication
 information will be reused (instead of regenerated) during successive
 steps, thereby increasing efficiency.
-See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex5.c.html}{\trl{$PETSC_DIR/src/ksp/ksp/examples/tutorials/ex5.c}} for a simple example of
+See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex5.c.html}{\trl{$PETSC_DIR/src/ksp/ksp/tutorials/ex5.c}} for a simple example of
 solving two linear systems that use the same matrix data structure.
 
 \subsection{Sparse Matrices}
@@ -1665,7 +1665,7 @@ If a monolithic matrix format is used, then \lstinline{MatGetLocalSubMatrix()} r
 Note that although \lstinline{submat} may not be a fully functional matrix and the caller does not even know a priori which communicator it will reside on, it always implements the local assembly functions (which are not collective).
 The index sets \lstinline{isrow,iscol} can be obtained using \break\lstinline{DMCompositeGetLocalISs()} if \lstinline{DMComposite} is being used.
 DMComposite can also be used to create matrices, in which case the MATNEST format can be specified using \trl{-prefix_dm_mat_type nest} and MATAIJ can be specified using \trl{-prefix_dm_mat_type aij}.
-See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex28.c.html}{\trl{$PETSC_DIR/src/snes/examples/tutorials/ex28.c}} for a simple example using this interface.
+See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex28.c.html}{\trl{$PETSC_DIR/src/snes/tutorials/ex28.c}} for a simple example using this interface.
 
 \section{Basic Matrix Operations}
 \label{sec_matoptions}
@@ -2820,8 +2820,8 @@ user {\em must} explicitly call \lstinline{KSPSetUp()}
 before calling \lstinline{PCBJacobiGetSubKSP()} or
 \lstinline{PCASMGetSubKSP(}).
 For further details, see the
-examples \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex7.c.html}{\trl{$PETSC_DIR/src/ksp/ksp/examples/tutorials/ex7.c}}
-or \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex7.c.html}{\trl{$PETSC_DIR/src/ksp/ksp/examples/tutorials/ex8.c}}.
+examples \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex7.c.html}{\trl{$PETSC_DIR/src/ksp/ksp/tutorials/ex7.c}}
+or \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex7.c.html}{\trl{$PETSC_DIR/src/ksp/ksp/tutorials/ex8.c}}.
 
 The block Jacobi, block Gauss-Seidel, and additive Schwarz
 preconditioners allow the user
@@ -2929,7 +2929,7 @@ decompositions.
 Currently there is no support for increasing the overlap of multi-rank subdomains via\break \lstinline{PCGASMSetOverlap()} -- this
 functionality works only for subdomains that fit within a single MPI rank, exactly as in \lstinline{PCASM}.
 
-Examples of the described PCGASM usage can be found in \href{https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCGASM.html}{\trl{${PETSC_DIR}/src/ksp/ksp/examples/tutorials/ex62.c}}.
+Examples of the described PCGASM usage can be found in \href{https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCGASM.html}{\trl{${PETSC_DIR}/src/ksp/ksp/tutorials/ex62.c}}.
 In particular, \trl{runex62_superlu_dist}
 illustrates the use of \trl{SuperLU_DIST} as the subdomain solver on
 coalesced multi-rank subdomains. The \trl{runex62_2D_*} examples illustrate the use of \lstinline{PCGASMCreateSubdomains2D()}.
@@ -3017,8 +3017,8 @@ large jumps in material coefficients with complex geometry (AMG is
 particularly well suited to jumps in coefficients but it is not a
 perfect solution), highly incompressible elasticity, not to mention
 ill-posed problems, and many others. For Grad-Div and Curl-Curl operators,
-you may want to try the Auxilary Maxwell Space (AMS, \trl{-pc_type hypre -pc_hypre_set_type ams})
-or the Auxilary Divergence Space (ADS, \trl{-pc_type hypre -pc_hypre_set_type ads}) solvers.
+you may want to try the Auxiliary-space Maxwell Solver (AMS, \trl{-pc_type hypre -pc_hypre_type ams})
+or the Auxiliary-space Divergence Solver (ADS, \trl{-pc_type hypre -pc_hypre_type ads}) solvers.
 These solvers need some additional information on the underlying mesh;
 specifically, AMS needs the discrete gradient operator, which can be specified via
 \lstinline{PCHYPRESetDiscreteGradient()}. In addition to the discrete gradient, ADS also needs the
@@ -3076,7 +3076,7 @@ graph (\trl{-pc_gamg_square_graph <N>}, squares the graph on the finest N levels
 Likewise if your \lstinline{MatPtAP} time is small and your convergence rate is not ideal then you could decrease the coarsening rate.
 
 PETSc's AMG solver is constructed as a framework for developers to
-easily add AMG capabilities, like a new AMG methods or anAMG component like a matrix
+easily add AMG capabilities, like a new AMG methods or an AMG component like a matrix
 triple product. Contact us directly if you are interested in contributing.
 
 %----------------------------------------------------------------------
@@ -3146,7 +3146,7 @@ The latter can be requested by specifying the number of requested level at comma
 An additional parameter (see \lstinline{PCBDDCSetCoarseningRatio()}) controls the number of subdomains that will be generated at the next level;
 the larger the coarsening ratio, the lower the number of coarser subdomains.
 
-For further details, see the example \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex59.c}{\trl{${PETSC_DIR}/src/ksp/ksp/examples/tutorials/ex59.c}} and the online documentation for \lstinline{PCBDDC}.
+For further details, see the example \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex59.c}{\trl{${PETSC_DIR}/src/ksp/ksp/tutorials/ex59.c}} and the online documentation for \lstinline{PCBDDC}.
 
 %----------------------------------------------------------------------
 \subsection{Shell Preconditioners}
@@ -3350,7 +3350,7 @@ call
 PCMGGetCoarseSolve(PC pc,KSP *ksp);
 \end{lstlisting}
 and set the appropriate options in \lstinline{ksp}. Similarly, the
-smoothers are setcontrolled by first calling
+smoothers are controlled by first calling
 \begin{lstlisting}
 PCMGGetSmoother(PC pc,PetscInt level,KSP *ksp);
 \end{lstlisting}
@@ -3921,7 +3921,7 @@ routines are discussed below.
 To provide an overview of the use of the nonlinear solvers,
 we first introduce a complete and simple example in
 Figure~\ref{fig_snesexample}, corresponding to
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex1.c.html}{\trl{$PETSC_DIR/src/snes/examples/tutorials/ex1.c}}.
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex1.c.html}{\trl{$PETSC_DIR/src/snes/tutorials/ex1.c}}.
 
 \begin{figure}[H]
   \input{listing_snesex1tmp.tex}
@@ -3992,8 +3992,8 @@ function evaluation routine; \lstinline{NULL} should be used if such information
 is not needed.  In C and C++, a user-defined context is merely a
 structure in which various objects can be stashed; in Fortran a user
 context can be an integer array that contains both parameters and
-pointers to PETSc objects. \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex5.c.html}{\trl{${PETSC_DIR}/src/snes/examples/tutorials/ex5.c}} and
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex5f.F90.html}{\trl{${PETSC_DIR}/src/snes/examples/tutorials/ex5f.F90}} give examples of user-defined
+pointers to PETSc objects. \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex5.c.html}{\trl{${PETSC_DIR}/src/snes/tutorials/ex5.c}} and
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex5f.F90.html}{\trl{${PETSC_DIR}/src/snes/tutorials/ex5f.F90}} give examples of user-defined
 application contexts in C and Fortran, respectively.
 
 \subsection{Jacobian Evaluation}
@@ -4056,7 +4056,7 @@ entries to zero by calling \lstinline{MatZeroEntries()}.  See
 Section~\ref{sec_othermat} for details on the reuse of the matrix
 context.
 
-The directory \trl{${PETSC_DIR}/src/snes/examples/tutorials} provides
+The directory \trl{${PETSC_DIR}/src/snes/tutorials} provides
 a variety of examples.
 
 
@@ -4422,7 +4422,7 @@ form of comparison, users can employ the option \trl{-snes_test_jacobian}
 to compare the matrices at several points.  Although not exhaustive,
 this test will generally catch obvious problems.  One can compare the
 elements of the two matrices by using the option \trl{
--snes_test_display} \findex{-snes_test_jacobian_display -snes_test_jacobian_display_threshold}, which causes the two
+-snes_test_jacobian_view} \findex{-snes_test_jacobian_view}, which causes the two
 matrices to be printed to the screen.  \sindex{Jacobian, testing}
 
 Another means for verifying the correctness of a code for Jacobian
@@ -4608,7 +4608,7 @@ Table~\ref{tab_jacobians} summarizes the various matrix situations
 that \lstinline{SNES} supports.  In particular, different linear system matrices
 and preconditioning matrices are allowed, as well as both matrix-free
 and application-provided preconditioners.  If
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex3.c.html}{\trl{${PETSC_DIR}/src/snes/examples/tutorials/ex3.c}},
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex3.c.html}{\trl{${PETSC_DIR}/src/snes/tutorials/ex3.c}},
  listed in Figure~\ref{fig_snesexample2}, is run with the options \trl{-snes_mf} and \trl{-user_precond} then it uses a matrix-free application of the matrix-vector multiple and a user provided matrix free Jacobian.
 
 \begin{center}
@@ -5486,8 +5486,8 @@ To utilize PETSc's ODE solvers for these systems, first install PETSc with the a
 \trl{./configure} option \trl{--download-tchem}. We currently provide two examples of its use;
 one for single cell reaction and one for an ``artificial'' one dimensional problem with
 periodic boundary conditions and diffusion of all species. The self-explanatory examples
-are \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/extchem.c.html}{\trl{$PETSC_DIR/src/ts/examples/tutorials/extchem.c}}
-and \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/exchemfield.c.html}{\trl{$PETSC_DIR/src/ts/examples/tutorials/exchemfield.c}}.
+are \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/extchem.c.html}{\trl{$PETSC_DIR/src/ts/tutorials/extchem.c}}
+and \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/exchemfield.c.html}{\trl{$PETSC_DIR/src/ts/tutorials/exchemfield.c}}.
 
 \section{Using Sundials from PETSc}
 \label{sec_sundials}
@@ -5599,29 +5599,36 @@ TSSetRHSJacobianP(TS ts,Mat Amat,PetscErrorCode (*fp)(TS,PetscReal,Vec,Mat,void*
 The arguments for the function \lstinline{fp()}
 are the timestep context, current time, $y$, and the (optional) user-provided context.
 
-If there is an integral term in the cost function, i.e. $r()$ is nonzero, one must also call
+If there is an integral term in the cost function, i.e. $r$ is nonzero, it can be transformed into another ODE that is augmented to the original ODE. To evaluate the integral, one needs to create a child \lstinline{TS} objective by calling
 \begin{lstlisting}
-TSSetCostIntegrand(TS ts,PetscInt numcost,Vec costintegral,
-                   PetscErrorCode (*rf)(TS,PetscReal,Vec,Vec,void*),
-                   PetscErrorCode (*drdyf)(TS,PetscReal,Vec,Vec*,void*),
-                   PetscErrorCode (*drdpf)(TS,PetscReal,Vec,Vec*,void*),void *ctx)
+TSCreateQuadratureTS(TS ts,PetscBool fwd,TS *quadts);
 \end{lstlisting}
-where $\mathrm{drdyf}= dr /dy$, $\mathrm{drdpf} = dr /dp$.
+and provide the ODE RHS function (which evaluates the integrand $r$) with
+\begin{lstlisting}
+TSSetRHSFunction(TS quadts,Vec R,PetscErrorCode (*rf)(TS,PetscReal,Vec,Vec,void*),void *ctx)
+\end{lstlisting}
+
+Similar to the settings for the original ODE, Jacobians of the integrand can be provided with
+\begin{lstlisting}
+TSSetRHSJacobian(TS quadts,Vec DRDU,Vec DRDU,PetscErrorCode (*drdyf)(TS,PetscReal,Vec,Vec*,void*),void *ctx)
+TSSetRHSJacobianP(TS quadts,Vec DRDU,Vec DRDU,PetscErrorCode (*drdyp)(TS,PetscReal,Vec,Vec*,void*),void *ctx)
+\end{lstlisting}
+where $\mathrm{drdyf}= dr /dy$, $\mathrm{drdpf} = dr /dp$. Since the integral term is additive to the cost function, its gradient information will be included in $\lambda$ and $\mu$.
 
 Lastly, one starts the backward run by calling
 \begin{lstlisting}
 TSAdjointSolve(TS ts).
 \end{lstlisting}
 
-One can get the value of the integral term by calling
+One can obtain the value of the integral term by calling
 \begin{lstlisting}
 TSGetCostIntegral(TS ts,Vec *q).
 \end{lstlisting}
-If \lstinline{TSSetCostGradients()} and \lstinline{TSSetCostIntegrand()} are called before \lstinline{TSSolve()}, the integral term will be evaluated in the forward run.
-Otherwise, the computation will take place in the backward run (inside \lstinline{TSAdjointSolve()}).
-Note that this allows the evaluation of the integral term in the cost function without having to run the adjoint solvers.
+or accessing directly the solution vector used by quadts.
 
-To provide a better understanding of the use of the adjoint solvers, we introduce a simple example, corresponding to \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/power_grid/ex3adj.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/power_grid/ex3adj.c}}.
+The second argument of \lstinline{TSCreateQuadratureTS()} allows one to choose if the integral term is evaluated in the forward run (inside \lstinline{TSSolve()}) or in the backward run (inside \lstinline{TSAdjointSolve()}) when \lstinline{TSSetCostGradients()} and \lstinline{TSSetCostIntegrand()} are called before \lstinline{TSSolve()}. Note that this also allows for evaluating the integral without having to use the adjoint solvers.
+
+To provide a better understanding of the use of the adjoint solvers, we introduce a simple example, corresponding to \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/power_grid/ex3adj.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/power_grid/ex3adj.c}}.
 The problem is to study dynamic security of power system when there are credible contingencies such as short-circuits or loss of generators, transmission lines, or loads.
 The dynamic security constraints are incorporated as equality constraints in the form of discretized differential equations and inequality constraints for bounds on the trajectory.
 The governing ODE system is
@@ -5673,23 +5680,23 @@ Examples
 include:
 \begin{itemize}
 \item a discrete adjoint sensitivity using explicit time stepping
-  methods \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex16adj.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/ex16adj.c}},
+  methods \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/ex16adj.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/ex16adj.c}},
 \item a discrete adjoint sensitivity using implicit time stepping
-  methods \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex20adj.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/ex20adj.c}},
+  methods \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/ex20adj.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/ex20adj.c}},
 \item an optimization using the discrete adjoint models of ERK
-  \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex16opt_ic.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/ex16opt_ic.c}} and \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex16opt_p.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/ex16opt_p.c}},
+  \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/ex16opt_ic.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/ex16opt_ic.c}} and \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/ex16opt_p.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/ex16opt_p.c}},
 \item an optimization using the discrete adjoint models of Theta
 methods for stiff DAEs
-    \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex20opt_ic.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/ex20opt_ic.c}} and \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex20opt_p.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/ex20opt_p.c}},
+    \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/ex20opt_ic.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/ex20opt_ic.c}} and \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/ex20opt_p.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/ex20opt_p.c}},
 \item an ODE-constrained optimization using the discrete adjoint
-  models of Theta methods for cost function with an integral term \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/power_grid/ex3opt.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/power_grid/ex3opt.c}},
+  models of Theta methods for cost function with an integral term \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/power_grid/ex3opt.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/power_grid/ex3opt.c}},
 \item a discrete adjoint sensitivity using \lstinline{TSCN} (Crank-Nicolson)
-  methods for DAEs with discontinuities \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/power_grid/stability/stability_9bus/ex9busadj.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/power_grid/stability_9bus/ex9busadj.c}},
+  methods for DAEs with discontinuities \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/power_grid/stability/stability_9bus/ex9busadj.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/power_grid/stability_9bus/ex9busadj.c}},
 \item a DAE-constrained optimization using the discrete adjoint
 models of \lstinline{TSCN} (Crank-Nicolson) methods for cost function with an
-    integral term \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/power_grid/stability/stability_9bus/ex9busopt.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/power_grid/stability_9bus/ex9busopt.c}},
+    integral term \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/power_grid/stability/stability_9bus/ex9busopt.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/power_grid/stability_9bus/ex9busopt.c}},
   \item a discrete adjoint sensitivity using \lstinline{TSCN} methods for a
-  PDE problem \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/advection-diffusion-reaction/ex5adj.c.html}{\trl{${PETSC_DIR}/src/ts/examples/tutorials/advection-diffusion-reaction/ex5adj.c}}.
+  PDE problem \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/advection-diffusion-reaction/ex5adj.c.html}{\trl{${PETSC_DIR}/src/ts/tutorials/advection-diffusion-reaction/ex5adj.c}}.
 \end{itemize}
 
 \section{Checkpointing}
@@ -5771,7 +5778,7 @@ as follows.
 \begin{itemize}
 \item Provide the function \lstinline{G(u)} with the routine
 \begin{lstlisting}
- TSSetRHSFunction(TS ts,PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,void*),void *fP);
+ TSSetRHSFunction(TS ts,Vec r,PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,void*),void *fP);
 \end{lstlisting}
 The  arguments to the function \lstinline{f()} are
 the timestep context, the current time, the input for the function,
@@ -6112,7 +6119,7 @@ for (p = 0; p <= numPoints*2; p += 2) {
 
   PetscSectionGetDof(section, points[p], &dof);
   PetscSectionGetOffset(section, points[p], &off);
-  for=(d = 0; d <= dof; ++d) {
+  for (d = 0; d <= dof; ++d) {
     myfunc(a[off+d]);
   }
 }
@@ -6149,7 +6156,7 @@ PetscSectionGetOffset(section, points[1*2], &offB);
 myfunc(a[offA], a[offB]);
 VecRestoreArray(u, &a);
 \end{lstlisting}
-This kind of calculation is used in \lstinline{TS} \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/examples/tutorials/ex11.c.html}{\trl{$PETSC_DIR/src/ts/examples/tutorials/ex11.c}}.
+This kind of calculation is used in \lstinline{TS} \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ts/tutorials/ex11.c.html}{\trl{$PETSC_DIR/src/ts/tutorials/ex11.c}}.
 
 \section{Networks}
 Built on top of \lstinline{DMPlex}, the \lstinline{DMNetwork} subclass provides abstractions for representing general unstructured
@@ -6159,98 +6166,140 @@ networks such as communication networks, power grid, computer networks, transpor
 The general flow of an application code using \lstinline{DMNetwork} is as follows:
 
 \begin{enumerate}
-  \item Create a network object and a ``component'' library:
+  \item Create a network object
 \begin{lstlisting}
-DMNetworkCreate(MPI_Comm, DM*);
+DMNetworkCreate(MPI_Comm comm, DM *dm);
 \end{lstlisting}
-  creates an empty network object. A ``component'' is specific application data at a node/edge of the network required for its residual evaluation. For example, components could be resistor, inductor data for circuit applications, edge weights for graph problems, generator/transmission line data for power grids. Components are registered by calling
+  \item Create components and register them with the network. A ``component'' is specific application data at a vertex/edge of the network required for its residual evaluation. For example, components could be resistor, inductor data for circuit applications, edge weights for graph problems, generator/transmission line data for power grids. Components are registered by calling
 \begin{lstlisting}
-DMNetworkRegisterComponent(DM,const char* name, PetscInt size, PetscInt* compkey);
+DMNetworkRegisterComponent(DM dm, const char *name, size_t size, PetscInt *compkey);
 \end{lstlisting}
-  Here, \lstinline{name} is the component name,\lstinline{size} is the size of component data type, and \lstinline{compkey} is an integer key that can be used for
-  setting/getting the component at a node or an edge.
-  \item Set network size (number of nodes, edges), edge connectivity.
-  \item Set the bare layout (graph) of the network
+  Here, \lstinline{name} is the component name, \lstinline{size} is the size of component data type, and \lstinline{compkey} is an integer key that can be used for setting/getting the component at a vertex or an edge. DMNetwork currently allows upto 16 components to be registered for a network.
+
+  \item A DMNetwork can consist of one or more {\em physical} subnetworks. When multiple physical subnetworks are used one can (optionally) provide {\em coupling information between subnetworks} which consist only of edges connecting the vertices of the physical subnetworks. The topological sizes of the network are set by calling
+\begin{lstlisting}
+DMNetworkSetSizes(DM dm, PetscInt Nsubnet, PetscInt nV[], PetscInt nE[], PetscInt NsubnetCouple, PetscInt nec[]);
+\end{lstlisting}
+Here, \lstinline{Nsubnet} is the number of subnetworks, \lstinline{nV} and \lstinline{nE} is the number of vertices and edges for each subnetwork, \lstinline{NsubnetCouple} is the number of pairs of subnetworks that are coupled, and \lstinline{nec} is the number of edges coupling each subnetwork pair. DMNetwork assumes coupling between the subnetworks through coupling edges. For a single network, set \lstinline{Nsubnet} = 1, \lstinline{NsubnetCouple} = 0, and \lstinline{nec} = NULL. Note that the coupling between subnetworks is still an experimental feature and under development.
+  \item The next step is to set up the connectivity for the network. This is done by specifying the connectivity within each subnetwork (\lstinline{edgelist}) and between subnetworks (\lstinline{edgelistCouple}).
+\begin{lstlisting}
+DMNetworkSetEdgeList(DM dm, PetscInt *edgelist[], PetscInt *edgelistCouple[]);
+\end{lstlisting}
+Each element of \lstinline{edgelist} is an integer array of size 2*nE[i] containing the edge connectivity for the i-th subnetwork. Each element in \lstinline{edgelistCouple} has four entries - {from subnetwork number (net.id), from subnetwork vertex number (vertex.id), to subnetwork number (net.id), to subetwork vertex number (vertex.id)}.
+
+As an example, consider a network comprising of 2 subnetworks that are coupled. The topological information for the network is as follows: \\
+subnetwork 0: v0 --- v1 --- v2 --- v3 \\
+subnetwork 1: v1 --- v2 --- v0 \\
+coupling between subnetworks: subnetwork 1: v2 --- subnetwork 0: v0  \\
+The \lstinline{edgelist} and \lstinline{edgelistCouple} for this network are \\
+edgelist[0] = \{0,1,1,2,2,3\} \\
+edgelist[1] = \{1,2,2,0\} \\
+edgelistCouple[0] = \{1,2,0,0\}.
+
+\item The next step is to have DMNetwork to create a bare layout (graph) of the network by calling
 \begin{lstlisting}
 DMNetworkLayoutSetUp(DM dm);
 \end{lstlisting}
+
+\item After completing the previous steps, the network graph is set up, but no physics is associated yet. This is done by adding the components and setting the number of variables for the vertices and edges.
+
+A component is added to a vertex/edge by calling
 \begin{lstlisting}
-DMNetworkSetSizes(DM dm, PetscInt nnodes, PetscInt nedges, PetscInt Nnodes, PetscInt Nedges);
+DMNetworkAddComponent(DM dm, PetscInt p, PetscInt compkey, void* compdata);
 \end{lstlisting}
+where \lstinline{p} is the network vertex/edge point in the range obtained by either DMNetworkGetEdgeRange or DMNetworkGetVertexRange, \lstinline{compkey} is the component key returned when registering the component (DMNetworkRegisterComponent), and \lstinline{compdata} holds the data for the component. DMNetwork supports setting multiple components (max. 36) at a vertex/edge.
+
+DMNetwork currently assumes the component data to be stored in a contiguous chunk of memory. As such, it does not do any packing/unpacking before/after the component data gets distributed. Any such serialization (packing/unpacking) should be done by the application.
+ 
+The number of variables at each vertex/edge are set by
 \begin{lstlisting}
-DMNetworkSetEdgeList(DM dm, int edgeconns[]);
-\end{lstlisting}
-  \item Set components and number of variables for nodes/edges.
+DMNetworkSetNumVariables(DM dm, PetscInt p, PetscInt nvar);
+\end{lstlisting} or
 \begin{lstlisting}
-DMNetworkAddComponent(DM dm, PetscInt p,PetscInt component,void* component);
+DMNetworkAddNumVariables(DM dm, PetscInt p, PetscInt nvar);
 \end{lstlisting}
-  Multiple components can be added at a node/edge.
+
+Alternatively, the number of variables can be set for a component directly. This allows much finer control, specifically for vertices/edges that have multiple components set on them.
 \begin{lstlisting}
-DMNetworkSetNumVariables(DM dm,PetscInt p,PetscInt nvar);
+DMNetworkSetComponentNumVariables(DM dm, PetscInt p, PetscInt compnum, PetscInt nvar);
 \end{lstlisting}
-\begin{lstlisting}
-DMNetworkAddNumVariables(DM dm,PetscInt p,PetscInt nvar);
-\end{lstlisting}
-  \item Signal network ready to be distributed.
+
+\item Set up network internal data structures.
+  %Signal network ready to be distributed.
 \begin{lstlisting}
 DMSetUp(DM dm);
 \end{lstlisting}
-  \item Distribute the network (also moves components attached with nodes/edges)
+  \item Distribute the network (also moves components attached with vertices/edges) to multiple processors.
 \begin{lstlisting}
-DMNetworkDistribute(DM oldDM, const char partitioner[], PetscInt overlap,DM *distDM);
+DMNetworkDistribute(DM dm, const char partitioner[], PetscInt overlap, DM *distDM);
 \end{lstlisting}
-\item Hook up the \lstinline{DM} with the solver: \lstinline{KSPSetDM()}, \lstinline{SNESSetDM()}, \lstinline{TSSetDM()}
+\item Associate the \lstinline{DM} with a PETSc solver:
+\begin{lstlisting}
+KSPSetDM(KSP ksp, DM dm) or SNESSetDM(SNES snes, DM dm) or TSSetDM(TS ts, DM dm).
+\end{lstlisting}
 \end{enumerate}
 
 \subsection{Utility functions}
-  \lstinline{DMNetwork} provides functions for obtaining iterators for nodes/edges, checking the ``ghost''
-  status of a node (vertex), and retrieving local/global indices of node/edge variables for inserting
+  \lstinline{DMNetwork} provides several utility functions for operations on the network. The mostly commonly used functions are:
+obtaining iterators for vertices/edges,
+\begin{lstlisting}
+DMNetworkGetEdgeRange(DM dm, PetscInt *eStart, PetscInt *eEnd);
+\end{lstlisting}
+\begin{lstlisting}
+DMNetworkGetVertexRange(DM dm, PetscInt *vStart, PetscInt *vEnd);
+\end{lstlisting}
+\begin{lstlisting}
+DMNetworkGetSubnetworkInfo(DM dm, PetscInt netid, PetscInt *nv, PetscInt *ne, const PetscInt **vtx, const PetscInt **edge);
+\end{lstlisting}
+Checking the ``ghost'' status of a vertex,
+\begin{lstlisting}
+DMNetworkIsGhostVertex(DM dm, PetscInt p, PetscBool *isghost);
+\end{lstlisting}
+and retrieving local/global indices of vertex/edge variables for inserting
   elements in vectors/matrices.
 \begin{lstlisting}
-DMNetworkGetEdgeRange(DM dm,PetscInt *eStart,PetscInt *eEnd);
+DMNetworkGetVariableOffset(DM dm, PetscInt p, PetscInt *offset);
 \end{lstlisting}
 \begin{lstlisting}
-DMNetworkGetVertexRange(DM dm,PetscInt *vStart, PetscInt *vEnd);
+DMNetworkGetVariableGlobalOffset(DM dm, PetscInt p, PetscInt *offsetg);
+\end{lstlisting}
+If the number of variables are set at the component level, then their local/global offsets can be retrieved via
+\begin{lstlisting}
+DMNetworkGetComponentVariableOffset(DM dm, PetscInt p, PetscInt compnum, PetscInt *offset);
 \end{lstlisting}
 \begin{lstlisting}
-DMNetworkIsGhostVertex(DM dm,PetscInt p,PetscBool *isghost);
+DMNetworkGetComponentVariableGlobalOffset(DM dm, PetscInt p, PetscInt compnum, PetscInt *offsetg);
+\end{lstlisting}
+In network applications, one frequently needs to find the supporting edges for a vertex or
+the connecting vertices covering an edge. These can be obtained by the following two routines.
+\begin{lstlisting}
+DMNetworkGetConnectedVertices(DM dm, PetscInt edge, const PetscInt *vertices[]);
 \end{lstlisting}
 \begin{lstlisting}
-DMNetworkGetVariableOffset(DM dm,PetscInt p,PetscInt *offset);
-\end{lstlisting}
-\begin{lstlisting}
-DMNetworkGetVariableGlobalOffset(DM dm,PetscInt p,PetscInt *offsetg);
-\end{lstlisting}
-In network applications, one frequently needs to find the supporting edges for a node or
-the connecting nodes covering an edge. These can be obtained by the following two routines.
-\begin{lstlisting}
-DMNetworkGetConnectedVertices(DM dm,PetscInt edge,const PetscInt *vertices[]);
-\end{lstlisting}
-\begin{lstlisting}
-DMNetworkGetSupportingEdges(DM dm,PetscInt vertex,PetscInt *nedges,const PetscInt *edges[]) ;
+DMNetworkGetSupportingEdges(DM dm, PetscInt vertex, PetscInt *nedges, const PetscInt *edges[]);
 \end{lstlisting}
 
 \subsection{Retrieving components}
-The components set at nodes/edges be accessed by
+The components set at a vertex/edge can be accessed by
 \begin{lstlisting}
-DMNetworkGetComponent(DM dm,PetscInt p, PetscInt compnum, PetscInt *compkey, void** component);
+DMNetworkGetComponent(DM dm, PetscInt p, PetscInt compnum, PetscInt *compkey, void** component);
 \end{lstlisting}
-\lstinline{compkey} is the key set by \lstinline{DMNetworkRegisterComponent}. An example of accessing and retrieving the components at nodes is:
+\lstinline{compkey} is the key set by \lstinline{DMNetworkRegisterComponent}. An example of accessing and retrieving the components at vertices is:
 
 \begin{lstlisting}
 PetscInt Start, End, numcomps,key,v,compnum;
 void *component;
 
 DMNetworkGetVertexRange(dm, &Start, &End);
-for(v=Start; v  < End; v++) {
+for (v=Start; v  < End; v++) {
   DMNetworkGetNumComponents(dm,v, &numcomps);
-  for(compnum=0; compnum < numcomps;compnum++) {
+  for (compnum=0; compnum < numcomps;compnum++) {
     DMNetworkGetComponent(dm,v,compnum, &key, &component);
     compdata = (UserCompDataType)(component);
   }
 }
 \end{lstlisting}
-The above example does not explicitly make use the component key. It is used when different component types are set at different nodes. In this case, the {compkey} is the used to differentiate the component type.
+The above example does not explicitly make use the component key. It is used when different component types are set at different vertices. In this case, the {compkey} is used to differentiate the component type.
 
 % --------------------------------------------------------------------
 %                            PART 3
@@ -6485,11 +6534,11 @@ See the manual pages for details and pointers to example programs.
 Sample programs that illustrate the PETSc interface for Fortran
 are given in Figures \ref{fig_vec-Fortran} {\em --} \ref{fig_SNES-Fortran},
 corresponding to
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/vec/vec/examples/tests/ex19f.F.html}{\trl{${PETSC_DIR}/src/vec/vec/examples/tests/ex19f.F}},
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/vec/vec/examples/tutorials/ex4f.F.html}{\trl{${PETSC_DIR}/src/vec/vec/examples/tutorials/ex4f.F}},
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/vec/vec/tests/ex19f.F.html}{\trl{${PETSC_DIR}/src/vec/vec/tests/ex19f.F}},
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/vec/vec/tutorials/ex4f.F.html}{\trl{${PETSC_DIR}/src/vec/vec/tutorials/ex4f.F}},
 \break
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/sys/classes/draw/examples/tests/ex5f.F.html}{\trl{${PETSC_DIR}/src/sys/classes/draw/examples/tests/ex5f.F}}, and
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex1f.F90.html}{\trl{${PETSC_DIR}/src/snes/examples/ex1f.F90}}, respectively.  We also
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/sys/classes/draw/tests/ex5f.F.html}{\trl{${PETSC_DIR}/src/sys/classes/draw/tests/ex5f.F}}, and
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex1f.F90.html}{\trl{${PETSC_DIR}/src/snes/examples/ex1f.F90}}, respectively.  We also
 refer Fortran programmers to the C examples listed throughout the manual,
 since PETSc usage within the two languages differs only slightly.
 
@@ -6631,7 +6680,7 @@ PetscViewerPushFormat(viewer,PETSC_VIEWER_BINARY_MATLAB}
 \end{lstlisting}
 to dump both a PETSc binary file and a corresponding \trl{.info} file which
 \lstinline{PetscReadBinaryMatlab.m} will use to format the binary file in more complex cases, such as using a \lstinline{DMDA}.
-For an example, see \href{https://www.mcs.anl.gov/petsc/petsc-current/src/dm/examples/tutorials/ex7.c.html}{\trl{${PETSC_DIR}/src/dm/examples/tutorials/ex7.c}}.
+For an example, see \href{https://www.mcs.anl.gov/petsc/petsc-current/src/dm/tutorials/ex7.c.html}{\trl{${PETSC_DIR}/src/dm/tutorials/ex7.c}}.
 In MATLAB (R2015b), one may then generate a useful structure. For example:
 \begin{outputlisting}[\normalsize\ttfamily]
 setenv('PETSC_DIR','~/petsc');
@@ -6666,7 +6715,7 @@ your call to \lstinline{PetscViewerSocketOpen()}), and then \lstinline{a = Petsc
 viewing a single vector or matrix. \lstinline{close()} closes the connection from MATLAB.
 On the PETSc side, one should destroy the viewer object with \lstinline{PetscViewerDestroy()}.
 
-For an example, which includes sending data back to PETSc, see \href{https://www.mcs.anl.gov/petsc/petsc-current/src/vec/vec/examples/tutorials/ex42.c.html}{\trl{${PETSC_DIR}/src/vec/vec/examples/tutorials/ex42.c}} and the associated \trl{.m} file.
+For an example, which includes sending data back to PETSc, see \href{https://www.mcs.anl.gov/petsc/petsc-current/src/vec/vec/tutorials/ex42.c.html}{\trl{${PETSC_DIR}/src/vec/vec/tutorials/ex42.c}} and the associated \trl{.m} file.
 
 \section{Using the MATLAB Compute Engine}
 \label{sec_matlabengine}
@@ -6864,7 +6913,7 @@ We next discuss performance summaries for parallel programs,
 \findex{-log_view} as shown within Figures~\ref{fig_exparprof}
 and~\ref{fig_exparprof2}, which present the combined output generated by
 the \trl{-log_view} option.  The program that generated this data is
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex10.c.html}{\trl{${PETSC_DIR}/src/ksp/ksp/examples/tutorials/ex10.c}}.
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex10.c.html}{\trl{${PETSC_DIR}/src/ksp/ksp/tutorials/ex10.c}}.
 The code loads a
 matrix and right-hand-side vector from a binary file and then solves
 the resulting linear system; the program then repeats this process for
@@ -7306,7 +7355,7 @@ performance numbers are not distorted.
 When this procedure is used in conjunction with the user-defined stages of profiling
 described in Section~\ref{sec_profstages}, we can focus easily on the
 problem of interest.  For example, we used this technique in the program
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex10.c.html}{\trl{${PETSC_DIR}/src/ksp/ksp/examples/tutorials/ex10.c}} to
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex10.c.html}{\trl{${PETSC_DIR}/src/ksp/ksp/tutorials/ex10.c}} to
 generate the timings within Figures~\ref{fig_exparprof} and \ref{fig_exparprof2}.
 In this case,
 the profiled code of interest (solving the linear system for the larger problem)
@@ -7825,8 +7874,8 @@ A simple technique for saving work vectors, matrices, etc. is employing
 a user-defined context.  In C and C++ such a context is merely a
 structure in which various objects can be stashed; in Fortran a user
 context can be an integer array that contains both parameters and pointers
-to PETSc objects. See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex5.c.html}{\trl{${PETSC_DIR}/snes/examples/tutorials/ex5.c}} and
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/examples/tutorials/ex5f.F90.html}{\trl{${PETSC_DIR}/snes/examples/tutorials/ex5f.F90}} for examples of user-defined application
+to PETSc objects. See \href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex5.c.html}{\trl{${PETSC_DIR}/snes/tutorials/ex5.c}} and
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/snes/tutorials/ex5f.F90.html}{\trl{${PETSC_DIR}/snes/tutorials/ex5f.F90}} for examples of user-defined application
 contexts in C and Fortran, respectively.
 
 \subsection{Numerical Experiments}
@@ -8400,10 +8449,10 @@ numbers when using the complex versions of the PETSc libraries;
 however, when working {\em only} with real numbers in a code,
 one should use a version of PETSc for real numbers for best efficiency.
 
-The program \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex11.c.html}{\trl{${PETSC_DIR}/src/ksp/ksp/examples/tutorials/ex11.c}}
+The program \href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex11.c.html}{\trl{${PETSC_DIR}/src/ksp/ksp/tutorials/ex11.c}}
 solves a linear system with a complex
 coefficient matrix.  Its Fortran counterpart is
-\href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/examples/tutorials/ex11f.F90.html}{\trl{${PETSC_DIR}/src/ksp/ksp/examples/tutorials/ex11f.F90}}.
+\href{https://www.mcs.anl.gov/petsc/petsc-current/src/ksp/ksp/tutorials/ex11f.F90.html}{\trl{${PETSC_DIR}/src/ksp/ksp/tutorials/ex11f.F90}}.
 
 \section{Parallel Communication}
 
@@ -9079,268 +9128,6 @@ You can also use \trl{getExecutable()} to search for executables.
 
 After configure tests have been run, various kinds of output can be generated.A \#define statement can be added to the configure header using \trl{addDefine()}, and \trl{addTypedef()} and \trl{addPrototype()} also put information in this header file. Using \trl{addMakeMacro()} and \trl{addMakeRule()} will add make macros and rules to the output makefiles specified in the framework. In addition we provide \trl{addSubstitution()} and \trl{addArgumentSubstitution()} to mimic the bahvior of Autoconf if necessary. The object may define a \trl{headerPrefix} member, which will be appended, followed by an underscore, to every define which is output from it. Similarly, a \trl{substPrefix} can be defined which applies to every substitution from the object. Typedefs and function prototypes are placed in a separate header in order to accommodate languages such as Fortran whose preprocessor can sometimes fail at these statements.
 
-%----------------------------------------------------------------------
-\cleardoublepage
-\chapter{Makefiles}
-\label{ch_makefiles}
-
-This chapter describes the design of the PETSc makefiles, which are
-key to managing code portability across a wide variety of UNIX and Windows systems.
-
-\section{Makefile System}
-
-To make a program named \trl{ex1}, one may use the command
-\begin{bashlisting}
-make PETSC_ARCH=arch ex1
-\end{bashlisting}
-which will compile the
-example and automatically link the appropriate libraries.  The
-architecture, \trl{arch}, is one of \trl{solaris, rs6000, IRIX,
-hpux, arch-darwin-double-debug}, etc., as determined during the PETSc configuration process.
-Note that when using command line options with \trl{make} (as illustrated above),
-one must {\em not} place spaces on either side of the ``\trl{=}'' signs.
-The variable \trl{PETSC_ARCH} can also be set as an environment
-variable.
-
-\subsection{Makefile Commands} \label{sec_common}
-
-The directory
-\trl{${PETSC_DIR}/lib/petsc/conf}
-contains virtually all
-makefile commands and customizations to enable portability across
-different architectures.  Most makefile commands for maintaining the
-PETSc system are defined in the file
-\trl{${PETSC_DIR}/lib/petsc/conf/rules}
-These commands, which process all appropriate files within the
-directory of execution, include
-\begin{itemize}
-\item \trl{lib} - Update the PETSc libraries based on the source code
-      in the directory.
-\item \trl{libfast} - Update the libraries faster.  Since
-      \trl{libfast} recompiles all source files in the directory at once,
-      rather than individually, this command saves time when many files
-      must be compiled.
-\item \trl{clean} - Remove garbage files.
-\end{itemize}
-
-The \trl{tree} command enables the user to execute a particular action
-within a directory and all of its subdirectories.  The action is specified
-by \trl{ACTION=[action]}, where \trl{action} is one of the basic commands
-listed above. For example, if the command
-\trl{make ACTION=lib tree}
-were executed from the directory
-\trl{${PETSC_DIR}/src/ksp/ksp}
-the debugging library for all Krylov subspace solvers would be built.
-
-\subsection{Customized Makefiles}
-\label{sec_custom}
-
-The directory \trl{${PETSC_DIR}/} contains a subdirectory for each
-architecture that contains machine-specific information, enabling the
-portability of our makefile system, these are
-\trl{${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf}
- Each architecture directory contains
-two makefiles:
-\begin{itemize}
-\item \trl{petscvariables} - definitions of the compilers, linkers, etc.
-\item \trl{petscrules} - some build rules specific to this machine.
-\end{itemize}
-These files are generated automatically when you run \trl{./configure}.
-
-These are included by the architecture-independent makefiles located in
-\trl{${PETSC_DIR}/lib/petsc/conf}.
-
-\section{PETSc Flags}
-\label{sec_makeflags}
-
-PETSc has several flags that determine how the source code will be
-compiled.  The default flags for particular versions are specified in
-\trl{${PETSC_DIR}/${PETSC_ARCH}/include/petscconf.h}.
-The flags include
-\begin{itemize}
-\item \trl{PETSC_USE_DEBUG} - The PETSc debugging options are activated. We
-      recommend always using this except when doing performance analysis or production runs. \findex{PETSC_USE_DEBUG}
-\item \trl{PETSC_USE_COMPLEX} - The version with scalars represented
-      as complex numbers is used. \findex{PETSC_USE_COMPLEX}
-\item \trl{PETSC_USE_LOG} - Various monitoring statistics on floating-point operations,
-      and message-passing activity are kept. \findex{PETSC_USE_LOG}
-\end{itemize}
-
-\subsection{Sample Makefiles}
-
-Maintaining portable PETSc makefiles is very simple.
-
-A first example, shown in Figure \ref{fig_make1}, is a ``minimum'' makefile for maintaining
-a single program that uses the PETSc libraries.
-The most important lines in this makefile are the lines starting with \trl{include}:
-\begin{makelisting}
-include ${PETSC_DIR}/lib/petsc/conf/variables
-include ${PETSC_DIR}/lib/petsc/conf/rules
-\end{makelisting}
-These lines includes other makefiles that provide the needed definitions
-and rules for the particular base PETSc installation (specified by
-\trl{PETSC_DIR}) and architecture (specified by
-\trl{PETSC_ARCH}).  (See \ref{sec_running} for information on
-setting these environmental variables.)  As listed in the sample
-makefile, the appropriate \trl{include} file is automatically
-completely specified; the user should {\em not} alter this statement
-within the makefile.
-
-\begin{figure}[H]
-\begin{makelisting}
-   ALL: ex2
-   CFLAGS     =
-   FFLAGS     =
-   CPPFLAGS   =
-   FPPFLAGS   =
-   CLEANFILES = ex2
-
-   include ${PETSC_DIR}/lib/petsc/conf/variables
-   include ${PETSC_DIR}/lib/petsc/conf/rules
-
-   ex2: ex2.o
-           ${CLINKER} -o ex2 ex2.o  ${PETSC_LIB}
-           ${RM} ex2.o
-\end{makelisting}
-\caption{Sample PETSc Makefile for a Single Program}
-\label{fig_make1}
-\end{figure}
-
-Users who wish to manage the compile process themselves
-and {\emph not} use the rules PETSc uses for compiling programs
-should only include \trl{variables}. That is, use something like
-the makefile shown in Figure \ref{fig_make1var}.
-
-\begin{figure}[H]
-\begin{makelisting}
-   ALL: ex2
-   CFLAGS   = ${PETSC_CC_INCLUDES}
-   FFLAGS   = ${PETSC_FC_INCLUDES}
-
-   include ${PETSC_DIR}/lib/petsc/conf/variables
-
-   ex2: ex2.o
-           mylinkercommand -o ex2 ex2.o  ${PETSC_LIB}
-\end{makelisting}
-\caption{Sample PETSc Makefile that does {\bf not} use PETSc's rules for compiling}
-\label{fig_make1var}
-\end{figure}
-
-The variables \trl{PETSC_CC_INCLUDES}, \trl{PETSC_FC_INCLUDES}
-and \trl{PETSC_LIB} are defined by the included \trl{${PETSC_DIR}/lib/petsc/conf/variables} file.
-
-If you do not wish to include any PETSc makefiles in your makefile,
-you can use the following commands in the PETSc root directory to get the information
-needed by your makefile:
-\begin{bashlisting}
-make getlinklibs getincludedirs getpetscflags
-\end{bashlisting}
-All the libraries listed need to be linked into your executable and the
-include directories and flags need to be passed to the compiler.
-Usually this is done with \lstinline{CFLAGS=<list of -I and other flags>} and
-\lstinline{FFLAGS=<list of -I and other flags>} in your makefile.
-
-\findex{PETSC_LIB} \findex{PETSC_LIB}
-Note that the variable \trl{PETSC_LIB} (as listed on the link
-line in the above makefile) specifies {\em all} of the various PETSc
-libraries in the appropriate order for correct linking.  For users who
-employ only a specific PETSc library, can use alternative variables
-like  \trl{PETSC_SYS_LIB}, \trl{PETSC_VEC_LIB},
-\trl{PETSC_MAT_LIB}, \trl{PETSC_DM_LIB},
-\trl{PETSC_KSP_LIB}, \trl{PETSC_SNES_LIB} or
-\trl{PETSC_TS_LIB}.
-
-The second sample makefile, given in Figure~\ref{fig_make2},
-controls the generation of several example programs.
-
-\begin{figure}[H]
-\begin{makelisting}
-   CFLAGS   =
-   FFLAGS   =
-   CPPFLAGS =
-   FPPFLAGS =
-
-   include ${PETSC_DIR}/lib/petsc/conf/variables
-   include ${PETSC_DIR}/lib/petsc/conf/rules
-
-   ex1: ex1.o
-        -${CLINKER} -o ex1 ex1.o  ${PETSC_LIB}
-        ${RM} ex1.o
-   ex2: ex2.o
-        -${CLINKER} -o ex2 ex2.o  ${PETSC_LIB}
-        ${RM} ex2.o
-   ex3: ex3.o
-        -${FLINKER} -o ex3 ex3.o  ${PETSC_LIB}
-        ${RM} ex3.o
-   ex4: ex4.o
-        -${CLINKER} -o ex4 ex4.o  ${PETSC_LIB}
-        ${RM} ex4.o
-
-   runex1:
-        -@${MPIEXEC} ex1
-   runex2:
-        -@${MPIEXEC} -n 2 ./ex2 -mat_seqdense -options_left
-   runex3:
-        -@${MPIEXEC} ex3 -v -log_view
-   runex4:
-        -@${MPIEXEC} -n 4 ./ex4 -trdump
-\end{makelisting}
-\caption{Sample PETSc Makefile for Several Example Programs}
-\label{fig_make2}
-\end{figure}
-
-Again, the most important lines in this makefile are the \lstinline{include}
-lines that include the files defining all of the macro variables.
-Some additional variables that can be used in the makefile are defined
-as follows:
-\begin{tightitemize}
-\item \lstinline{CFLAGS, FFLAGS} User specified additional options for the C compiler and
-        Fortran compiler.
-\item \lstinline{CPPFLAGS, FPPFLAGS} User specified additional flags for the C preprocessor
-        and Fortran preprocessor.
-\item \lstinline{CLINKER, FLINKER} the C and Fortran linkers.
-\item \lstinline{RM} the remove command for deleting files.
-\end{tightitemize}
-
-Figure \ref{fig_make3} contains a makefile that maintains a PETSc
-library.  Although most users do not need to understand or deal with such
-makefiles, they are also easily used.
-\begin{figure}[H]
-\begin{makelisting}
-ALL: lib
-
-CFLAGS   =
-SOURCEC  = sp1wd.c spinver.c spnd.c spqmd.c sprcm.c
-SOURCEF  = degree.F  fnroot.F genqmd.F qmdqt.F rcm.F fn1wd.F gen1wd.F \
-          genrcm.F qmdrch.F rootls.F fndsep.F gennd.F qmdmrg.F qmdupd.F
-SOURCEH  =
-LIBBASE  = libpetscmat
-MANSEC   = Mat
-
-include ${PETSC_DIR}/lib/petsc/conf/variables
-include ${PETSC_DIR}/lib/petsc/conf/rules
-\end{makelisting}
-\caption{Sample PETSc Makefile for Library Maintenance}
-\label{fig_make3}
-\end{figure}
-
-The library's name is \trl{libpetscmat.a}, and the source files being added
-to it are indicated by \lstinline{SOURCEC} (for C files) and \lstinline{SOURCEF} (for
-Fortran files).
-
-The variable \lstinline{MANSEC} indicates that any manual pages generated
-from this source should be included in the \lstinline{Mat} section.
-
-\section{Limitations}
-
-This approach to portable makefiles has some minor limitations, including
-the following:
-\begin{itemize}
-\item Each makefile must be called ``makefile''.
-\item Each makefile can maintain at most one archive library.
-\end{itemize}
-
-%------------------------------------------------------------------
 
 \cleardoublepage
 \chapter{Unimportant and Advanced Features of Matrices and Solvers}
@@ -9715,7 +9502,7 @@ make -f gmakefile test search='vec_vec_tutorials-ex6'
 (see the discussion of \trl{search} below), denotes the shell
 script:
 \begin{bashlisting}
-${PETSC_DIR}/${PETSC_ARCH}/tests/vec/vec/examples/tutorials/runex6.sh
+${PETSC_DIR}/${PETSC_ARCH}/tests/vec/vec/tutorials/runex6.sh
 \end{bashlisting}
 These shell scripts can be run independently in those directories, and
 take arguments to show the commands run, change arguments, etc.  Use the
@@ -9738,6 +9525,8 @@ make -f gmakefile test search='ts%'                      # Run all TS examples
 make -f gmakefile test searchin='tutorials'              # Run all tutorials
 make -f gmakefile test search='ts%' searchin='tutorials' # Run all TS tutorials
 make -f gmakefile test argsearch='cuda'                  # Run examples with cuda in arguments
+make -f gmakefile test test-fail='1'
+make -f gmakefile test query='requires' queryval='*MPI_PROCESS_SHARED_MEMORY*'
 \end{bashlisting}
 
 It is useful before invoking the tests to see what targets will
@@ -9762,7 +9551,7 @@ where the latter is needed to make have it run in the local directory instead of
 \trl{$PREFIX_DIR}.
 
 To learn more about the test system details, one can look at the
-\href{https://www.mcs.anl.gov/petsc/petsc-current/docs/developers.pdf}{Developer's Guide}.
+\href{https://docs.petsc.org/en/latest/developers/index.html}{Developer's Guide}.
 
 \cleardoublepage
 \input{acknowltmp.tex}

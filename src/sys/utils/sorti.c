@@ -1,7 +1,7 @@
 
 /*
    This file contains routines for sorting integers. Values are sorted in place.
-   One can use src/sys/examples/tests/ex52.c for benchmarking.
+   One can use src/sys/tests/ex52.c for benchmarking.
  */
 #include <petsc/private/petscimpl.h>                /*I  "petscsys.h"  I*/
 #include <petsc/private/hashseti.h>
@@ -300,8 +300,8 @@ PetscErrorCode  PetscSortedRemoveDupsInt(PetscInt *n,PetscInt X[])
   PetscInt i,s = 0,N = *n, b = 0;
 
   PetscFunctionBegin;
+  PetscCheckSorted(*n,X);
   for (i=0; i<N-1; i++) {
-    if (PetscUnlikely(X[b+s+1] < X[b])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Input array is not sorted");
     if (X[b+s+1] != X[b]) {
       X[b+1] = X[b+s+1]; b++;
     } else s++;

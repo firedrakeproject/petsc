@@ -4,8 +4,8 @@ import os
 class Configure(config.package.GNUPackage):
   def __init__(self, framework):
     config.package.GNUPackage.__init__(self, framework)
-    self.download          = ['https://cmake.org/files/v3.9/cmake-3.9.6.tar.gz',
-                              'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/cmake-3.9.6.tar.gz']
+    self.download          = ['https://cmake.org/files/v3.15/cmake-3.15.6.tar.gz',
+                              'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/cmake-3.15.6.tar.gz']
     self.download_311      = ['https://cmake.org/files/v3.11/cmake-3.11.4.tar.gz',
                               'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/cmake-3.11.4.tar.gz']
     self.downloadonWindows = 1
@@ -20,6 +20,7 @@ class Configure(config.package.GNUPackage):
     import nargs
     config.package.GNUPackage.setupHelp(self, help)
     help.addArgument('CMAKE', '-download-cmake-cc=<prog>',                   nargs.Arg(None, None, 'C compiler for Cmake configure'))
+    help.addArgument('CMAKE', '-download-cmake-cxx=<prog>',                  nargs.Arg(None, None, 'C++ compiler for Cmake configure'))
     help.addArgument('CMAKE', '-download-cmake-configure-options=<options>', nargs.Arg(None, None, 'Additional options for Cmake configure'))
     help.addArgument('CMAKE', '-with-cmake-exec=<executable>',                nargs.Arg(None, None, 'CMake executable to look for'))
     help.addArgument('CMAKE', '-with-ctest-exec=<executable>',                nargs.Arg(None, None, 'Ctest executable to look for'))
@@ -32,6 +33,8 @@ class Configure(config.package.GNUPackage):
     args.append('--parallel='+str(self.make.make_np))
     if 'download-cmake-cc' in self.argDB and self.argDB['download-cmake-cc']:
       args.append('CC="'+self.argDB['download-cmake-cc']+'"')
+    if 'download-cmake-cxx' in self.argDB and self.argDB['download-cmake-cxx']:
+      args.append('CXX="'+self.argDB['download-cmake-cxx']+'"')
     if 'download-cmake-configure-options' in self.argDB and self.argDB['download-cmake-configure-options']:
       args.append(self.argDB['download-cmake-configure-options'])
     return args

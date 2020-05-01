@@ -51,11 +51,12 @@ PetscErrorCode  MatMFFDInitializePackage(void)
   ierr = MatMFFDRegisterAll();CHKERRQ(ierr);
   /* Register Events */
   ierr = PetscLogEventRegister("MatMult MF",MATMFFD_CLASSID,&MATMFFD_Mult);CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("matmffd",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(MATMFFD_CLASSID);CHKERRQ(ierr);}
+ /* Process Info */
+  {
+    PetscClassId  classids[1];
+
+    classids[0] = MATMFFD_CLASSID;
+    ierr = PetscInfoProcessClass("matmffd", 1, classids);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
@@ -226,7 +227,7 @@ static PetscErrorCode MatDestroy_MFFD(Mat mat)
     ierr = VecDestroy(&ctx->current_f);CHKERRQ(ierr);
   }
   if (ctx->ops->destroy) {ierr = (*ctx->ops->destroy)(ctx);CHKERRQ(ierr);}
-  ierr      = PetscHeaderDestroy(&ctx);CHKERRQ(ierr);
+  ierr = PetscHeaderDestroy(&ctx);CHKERRQ(ierr);
 
   ierr = PetscObjectComposeFunction((PetscObject)mat,"MatMFFDSetBase_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)mat,"MatMFFDSetFunctioniBase_C",NULL);CHKERRQ(ierr);
@@ -768,7 +769,7 @@ PetscErrorCode  MatCreateMFFD(MPI_Comm comm,PetscInt m,PetscInt n,PetscInt M,Pet
    Input Parameters:
 .  mat - the matrix obtained with MatCreateSNESMF()
 
-   Output Paramter:
+   Output Parameter:
 .  h - the differencing step size
 
    Level: advanced

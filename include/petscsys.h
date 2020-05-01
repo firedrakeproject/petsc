@@ -134,6 +134,46 @@ void assert_never_put_petsc_headers_inside_an_extern_c(int); void assert_never_p
 #  include <mpi.h>
 #endif
 
+/*MC
+  PetscDefined - determine whether a boolean macro is defined
+
+  Notes:
+  Typical usage is within normal code,
+
+$   if (PetscDefined(USE_DEBUG)) { ... }
+
+  but can also be used in the preprocessor,
+
+$   #if PetscDefined(USE_DEBUG)
+$     ...
+$   #else
+
+  Either way evaluates true if PETSC_USE_DEBUG is defined (merely defined or defined to 1) or undefined.  This macro
+  should not be used if its argument may be defined to a non-empty value other than 1.
+
+  Developer Notes:
+  Getting something that works in C and CPP for an arg that may or may not be defined is tricky.  Here, if we have
+  "#define PETSC_HAVE_BOOGER 1" we match on the placeholder define, insert the "0," for arg1 and generate the triplet
+  (0, 1, 0).  Then the last step cherry picks the 2nd arg (a one).  When PETSC_HAVE_BOOGER is not defined, we generate
+  a (... 1, 0) pair, and when the last step cherry picks the 2nd arg, we get a zero.
+
+  Our extra expansion via PetscDefined__take_second_expand() is needed with MSVC, which has a nonconforming
+  implementation of variadic macros.
+
+  Level: developer
+M*/
+#if !defined(PETSC_SKIP_VARIADIC_MACROS)
+#  define PetscDefined_arg_1    shift,
+#  define PetscDefined_arg_     shift,
+#  define PetscDefined__take_second_expanded(ignored, val, ...) val
+#  define PetscDefined__take_second_expand(args) PetscDefined__take_second_expanded args
+#  define PetscDefined__take_second(...) PetscDefined__take_second_expand((__VA_ARGS__))
+#  define PetscDefined___(arg1_or_junk) PetscDefined__take_second(arg1_or_junk 1, 0, at_)
+#  define PetscDefined__(value) PetscDefined___(PetscDefined_arg_ ## value)
+#  define PetscDefined_(d)      PetscDefined__(d)
+#  define PetscDefined(d)       PetscDefined_(PETSC_ ## d)
+#endif
+
 /*
    Perform various sanity checks that the correct mpi.h is being included at compile time.
    This usually happens because
@@ -168,8 +208,14 @@ void assert_never_put_petsc_headers_inside_an_extern_c(int); void assert_never_p
 #  elif (OMPI_MAJOR_VERSION != PETSC_HAVE_OMPI_MAJOR_VERSION) || (OMPI_MINOR_VERSION != PETSC_HAVE_OMPI_MINOR_VERSION) || (OMPI_RELEASE_VERSION < PETSC_HAVE_OMPI_RELEASE_VERSION)
 #    error "PETSc was configured with one OpenMPI mpi.h version but now appears to be compiling using a different OpenMPI mpi.h version"
 #  endif
-#elif defined(OMPI_MAJOR_VERSION) || defined(MPICH_NUMVERSION)
-#  error "PETSc was configured with undetermined MPI - but now appears to be compiling using either of OpenMPI or a MPICH variant"
+#elif defined(PETSC_HAVE_MSMPI_VERSION)
+#  if !defined(MSMPI_VER)
+#    error "PETSc was configured with MSMPI but now appears to be compiling using a non-MSMPI mpi.h"
+#  elif (MSMPI_VER != PETSC_HAVE_MSMPI_VERSION)
+#    error "PETSc was configured with one MSMPI mpi.h version but now appears to be compiling using a different MSMPI mpi.h version"
+#  endif
+#elif defined(OMPI_MAJOR_VERSION) || defined(MPICH_NUMVERSION) || defined(MSMPI_VER)
+#  error "PETSc was configured with undetermined MPI - but now appears to be compiling using any of OpenMPI, MS-MPI or a MPICH variant"
 #endif
 
 /*
@@ -273,7 +319,7 @@ PETSC_EXTERN FILE* PETSC_STDERR;
 
     Level: advanced
 
-.seealso: PetscLikely(), CHKERRQ
+.seealso: PetscUnlikelyDebug(), PetscLikely(), CHKERRQ
 M*/
 
 /*MC
@@ -303,6 +349,28 @@ M*/
 #  define PetscUnlikely(cond)   (cond)
 #  define PetscLikely(cond)     (cond)
 #endif
+
+/*MC
+    PetscUnlikelyDebug - hints the compiler that the given condition is usually FALSE, eliding the check in optimized mode
+
+    Synopsis:
+    #include <petscsys.h>
+    PetscBool  PetscUnlikelyDebug(PetscBool  cond)
+
+    Not Collective
+
+    Input Parameters:
+.   cond - condition or expression
+
+    Notes:
+    This returns the same truth value, it is only a hint to compilers that the resulting
+    branch is unlikely.  When compiled in optimized mode, it always returns false.
+
+    Level: advanced
+
+.seealso: PetscUnlikely(), CHKERRQ, SETERRQ
+M*/
+#define PetscUnlikelyDebug(cond) (PetscDefined(USE_DEBUG) && PetscUnlikely(cond))
 
 /*
     Declare extern C stuff after including external header files
@@ -510,7 +578,7 @@ M*/
 .  m1 - number of elements to allocate  (may be zero)
 
    Output Parameter:
-.  r1 - memory allocated in first chunk
+.  r1 - memory allocated
 
    Note:
    This uses the sizeof() of the memory type requested to determine the total memory to be allocated, therefore you should not
@@ -521,7 +589,7 @@ $  PetscMalloc1(10,&id);
 $  PetscInt *id;
 $  PetscMalloc1(10*sizeof(PetscInt),&id);
 
-        Does not zero the memory allocatd, used PetscCalloc1() to obtain memory that has been zeroed.
+        Does not zero the memory allocated, use PetscCalloc1() to obtain memory that has been zeroed.
 
    Level: beginner
 
@@ -543,7 +611,7 @@ M*/
 .  m1 - number of elements to allocate in 1st chunk  (may be zero)
 
    Output Parameter:
-.  r1 - memory allocated in first chunk
+.  r1 - memory allocated
 
    Notes:
    See PetsMalloc1() for more details on usage.
@@ -955,7 +1023,7 @@ M*/
    Not Collective
 
    Input Parameter:
-.   memory - memory to free (the pointer is ALWAYS set to NULL upon sucess)
+.   memory - memory to free (the pointer is ALWAYS set to NULL upon success)
 
    Level: beginner
 
@@ -1139,6 +1207,10 @@ PETSC_EXTERN PetscErrorCode PetscMallocClear(void);
 */
 PETSC_EXTERN PetscErrorCode PetscMallocSetDRAM(void);
 PETSC_EXTERN PetscErrorCode PetscMallocResetDRAM(void);
+#if defined(PETSC_HAVE_CUDA)
+PETSC_EXTERN PetscErrorCode PetscMallocSetCUDAHost(void);
+PETSC_EXTERN PetscErrorCode PetscMallocResetCUDAHost(void);
+#endif
 
 #define MPIU_PETSCLOGDOUBLE  MPI_DOUBLE
 #define MPIU_2PETSCLOGDOUBLE MPI_2DOUBLE_PRECISION
@@ -1203,8 +1275,8 @@ PETSC_EXTERN void PetscStrcmpNoError(const char[],const char[],PetscBool  *);
 PETSC_EXTERN PetscErrorCode PetscTokenCreate(const char[],const char,PetscToken*);
 PETSC_EXTERN PetscErrorCode PetscTokenFind(PetscToken,char *[]);
 PETSC_EXTERN PetscErrorCode PetscTokenDestroy(PetscToken*);
-PETSC_EXTERN PetscErrorCode PetscStrInList(const char[],const char[],char,PetscBool*);
 
+PETSC_EXTERN PetscErrorCode PetscStrInList(const char[],const char[],char,PetscBool*);
 PETSC_EXTERN PetscErrorCode PetscEListFind(PetscInt,const char *const*,const char*,PetscInt*,PetscBool*);
 PETSC_EXTERN PetscErrorCode PetscEnumFind(const char *const*,const char*,PetscEnum*,PetscBool*);
 
@@ -1240,6 +1312,9 @@ PETSC_EXTERN const char *const PetscFileModes[];
 PETSC_EXTERN PetscClassId PETSC_LARGEST_CLASSID;
 PETSC_EXTERN PetscClassId PETSC_OBJECT_CLASSID;
 PETSC_EXTERN PetscErrorCode PetscClassIdRegister(const char[],PetscClassId *);
+PETSC_EXTERN PetscErrorCode PetscObjectGetId(PetscObject,PetscObjectId*);
+PETSC_EXTERN PetscErrorCode PetscObjectCompareId(PetscObject,PetscObjectId,PetscBool*);
+
 
 /*
    Routines that get memory usage information from the OS
@@ -1249,7 +1324,6 @@ PETSC_EXTERN PetscErrorCode PetscMemoryGetMaximumUsage(PetscLogDouble *);
 PETSC_EXTERN PetscErrorCode PetscMemorySetGetMaximumUsage(void);
 PETSC_EXTERN PetscErrorCode PetscMemoryTrace(const char[]);
 
-PETSC_EXTERN PetscErrorCode PetscInfoAllow(PetscBool ,const char []);
 PETSC_EXTERN PetscErrorCode PetscSleep(PetscReal);
 
 /*
@@ -1273,6 +1347,9 @@ PETSC_EXTERN PetscErrorCode PetscPythonInitialize(const char[],const char[]);
 PETSC_EXTERN PetscErrorCode PetscPythonFinalize(void);
 PETSC_EXTERN PetscErrorCode PetscPythonPrintError(void);
 PETSC_EXTERN PetscErrorCode PetscPythonMonitorSet(PetscObject,const char[]);
+
+PETSC_EXTERN PetscErrorCode PetscMonitorCompare(PetscErrorCode (*)(void),void *,PetscErrorCode (*)(void**),PetscErrorCode (*)(void),void *,PetscErrorCode (*)(void**),PetscBool *);
+
 
 /*
      These are so that in extern C code we can caste function pointers to non-extern C
@@ -1925,6 +2002,10 @@ M*/
 #if defined(PETSC_HAVE_MPIIO)
 PETSC_EXTERN PetscErrorCode MPIU_File_write_all(MPI_File,void*,PetscMPIInt,MPI_Datatype,MPI_Status*);
 PETSC_EXTERN PetscErrorCode MPIU_File_read_all(MPI_File,void*,PetscMPIInt,MPI_Datatype,MPI_Status*);
+PETSC_EXTERN PetscErrorCode MPIU_File_write_at(MPI_File,MPI_Offset,void*,PetscMPIInt,MPI_Datatype,MPI_Status*);
+PETSC_EXTERN PetscErrorCode MPIU_File_read_at(MPI_File,MPI_Offset,void*,PetscMPIInt,MPI_Datatype,MPI_Status*);
+PETSC_EXTERN PetscErrorCode MPIU_File_write_at_all(MPI_File,MPI_Offset,void*,PetscMPIInt,MPI_Datatype,MPI_Status*);
+PETSC_EXTERN PetscErrorCode MPIU_File_read_at_all(MPI_File,MPI_Offset,void*,PetscMPIInt,MPI_Datatype,MPI_Status*);
 #endif
 
 /* the following petsc_static_inline require petscerror.h */
@@ -2399,8 +2480,8 @@ PETSC_STATIC_INLINE PetscBool PetscBinaryBigEndian(void) {long _petsc_v = 1; ret
 
 PETSC_EXTERN PetscErrorCode PetscBinaryRead(int,void*,PetscInt,PetscInt*,PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscBinarySynchronizedRead(MPI_Comm,int,void*,PetscInt,PetscInt*,PetscDataType);
-PETSC_EXTERN PetscErrorCode PetscBinaryWrite(int,void*,PetscInt,PetscDataType,PetscBool);
-PETSC_EXTERN PetscErrorCode PetscBinarySynchronizedWrite(MPI_Comm,int,void*,PetscInt,PetscDataType,PetscBool);
+PETSC_EXTERN PetscErrorCode PetscBinaryWrite(int,const void*,PetscInt,PetscDataType);
+PETSC_EXTERN PetscErrorCode PetscBinarySynchronizedWrite(MPI_Comm,int,const void*,PetscInt,PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscBinaryOpen(const char[],PetscFileMode,int *);
 PETSC_EXTERN PetscErrorCode PetscBinaryClose(int);
 PETSC_EXTERN PetscErrorCode PetscSharedTmp(MPI_Comm,PetscBool  *);
@@ -2472,6 +2553,9 @@ PETSC_EXTERN PetscErrorCode PetscSubcommSetTypeGeneral(PetscSubcomm,PetscMPIInt,
 PETSC_EXTERN PetscErrorCode PetscSubcommView(PetscSubcomm,PetscViewer);
 PETSC_EXTERN PetscErrorCode PetscSubcommSetFromOptions(PetscSubcomm);
 PETSC_EXTERN PetscErrorCode PetscSubcommSetOptionsPrefix(PetscSubcomm,const char[]);
+PETSC_EXTERN PetscErrorCode PetscSubcommGetParent(PetscSubcomm,MPI_Comm*);
+PETSC_EXTERN PetscErrorCode PetscSubcommGetContiguousParent(PetscSubcomm,MPI_Comm*);
+PETSC_EXTERN PetscErrorCode PetscSubcommGetChild(PetscSubcomm,MPI_Comm*);
 
 PETSC_EXTERN PetscErrorCode PetscHeapCreate(PetscInt,PetscHeap*);
 PETSC_EXTERN PetscErrorCode PetscHeapAdd(PetscHeap,PetscInt,PetscInt);

@@ -417,7 +417,7 @@ PetscErrorCode TSComputeDRDPFunction(TS ts,PetscReal t,Vec U,Vec *DRDP)
 . ihp3 - an array of vectors storing the result of vector-Hessian-vector product for F_PU
 . hessianproductfunc3 - vector-Hessian-vector product function for F_PU
 . ihp4 - an array of vectors storing the result of vector-Hessian-vector product for F_PP
-. hessianproductfunc4 - vector-Hessian-vector product function for F_PP
+- hessianproductfunc4 - vector-Hessian-vector product function for F_PP
 
   Calling sequence of ihessianproductfunc:
 $ ihessianproductfunc (TS ts,PetscReal t,Vec U,Vec *Vl,Vec Vr,Vec *VHV,void *ctx);
@@ -643,7 +643,7 @@ PetscErrorCode TSComputeIHessianProductFunctionPP(TS ts,PetscReal t,Vec U,Vec *V
 . rhshp3 - an array of vectors storing the result of vector-Hessian-vector product for G_PU
 . hessianproductfunc3 - vector-Hessian-vector product function for G_PU
 . rhshp4 - an array of vectors storing the result of vector-Hessian-vector product for G_PP
-. hessianproductfunc4 - vector-Hessian-vector product function for G_PP
+- hessianproductfunc4 - vector-Hessian-vector product function for G_PP
 
   Calling sequence of ihessianproductfunc:
 $ rhshessianproductfunc (TS ts,PetscReal t,Vec U,Vec *Vl,Vec Vr,Vec *VHV,void *ctx);
@@ -825,6 +825,7 @@ PetscErrorCode TSComputeRHSHessianProductFunctionPP(TS ts,PetscReal t,Vec U,Vec 
 
    Input Parameters:
 +  ts - the TS context obtained from TSCreate()
+.  numcost - number of gradients to be computed, this is the number of cost functions
 .  lambda - gradients with respect to the initial condition variables, the dimension and parallel layout of these vectors is the same as the ODE solution vector
 -  mu - gradients with respect to the parameters, the number of entries in these vectors is the same as the number of parameters
 
@@ -1866,7 +1867,7 @@ PetscErrorCode TSForwardCostIntegral(TS ts)
 
   Collective on TS
 
-  Input Parameter
+  Input Parameter:
 + ts - the TS context obtained from TSCreate()
 - didp - parametric sensitivities of the initial condition
 

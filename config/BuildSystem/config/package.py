@@ -7,7 +7,7 @@ import re
 try:
   from hashlib import md5 as new_md5
 except ImportError:
-  from md5 import new as new_md5
+  from md5 import new as new_md5 # novermin
 
 class FakePETScDir:
   def __init__(self):
@@ -56,6 +56,8 @@ class Package(config.base.Configure):
     self.liblist                = [[]] # list of libraries we wish to check for (packages can override with their own generateLibList() method)
     self.extraLib               = []   # additional libraries needed to link
     self.includes               = []   # headers to check for
+    self.optionalincludes       = []   # headers to check for, do not error if not found
+    self.foundoptionalincludes  = 0
     self.functions              = []   # functions we wish to check for in the libraries
     self.functionsDefine        = []   # optional functions we wish to check for in the libraries that should generate a PETSC_HAVE_ define
     self.functionsFortran       = 0    # 1 means the symbols in self.functions are Fortran symbols, so name-mangling is done
@@ -116,7 +118,7 @@ class Package(config.base.Configure):
       if self.lib:     output += '  Library:  '+self.libraries.toStringNoDupes(self.lib)+'\n'
       if self.executablename: output += '  '+getattr(self,self.executablename)+'\n'
       if self.usesopenmp == 'yes': output += '  uses OpenMP; use export OMP_NUM_THREADS=<p> or -omp_num_threads <p> to control the number of threads\n'
-      if self.usesopenmp == 'unknown': output += '  Unkown if this uses OpenMP (try export OMP_NUM_THREADS=<1-4> yourprogram -log_view) \n'
+      if self.usesopenmp == 'unknown': output += '  Unknown if this uses OpenMP (try export OMP_NUM_THREADS=<1-4> yourprogram -log_view) \n'
     return output
 
   def setupDependencies(self, framework):
@@ -141,7 +143,7 @@ class Package(config.base.Configure):
       self.petscdir        = FakePETScDir()
     # All packages depend on make
     self.make          = framework.require('config.packages.make',self)
-    if not self.isMPI and not self.package == 'make':
+    if not self.isMPI and not self.package in ['make','cuda']:
       # force MPI to be the first package configured since all other packages
       # may depend on its compilers defined here
       self.mpi         = framework.require('config.packages.MPI',self)
@@ -342,6 +344,13 @@ class Package(config.base.Configure):
       raise RuntimeError(self.package+' forgot to return the install directory from the method Install()\n')
     return os.path.abspath(installDir)
 
+  def withSudo(self, *args):
+    """Convert args to a list prepended by sudo when using sudo"""
+    if self.installSudo:
+      return [self.installSudo] + list(args)
+    else:
+      return list(args)
+
   def getChecksum(self,source, chunkSize = 1024*1024):
     '''Return the md5 checksum for a given file, which may also be specified by its filename
        - The chunkSize argument specifies the size of blocks read from the file'''
@@ -461,9 +470,9 @@ class Package(config.base.Configure):
         else: path = None
         os.environ['PKG_CONFIG_PATH'] = self.argDB['with-'+self.package+'-pkg-config']
 
-      l,err,ret  = config.base.Configure.executeShellCommand('pkg-config '+self.pkgname+' --libs', timeout=5, log = self.log)
+      l,err,ret  = config.base.Configure.executeShellCommand('pkg-config '+self.pkgname+' --libs', timeout=60, log = self.log)
       l = l.strip()
-      i,err,ret  = config.base.Configure.executeShellCommand('pkg-config '+self.pkgname+' --cflags', timeout=5, log = self.log)
+      i,err,ret  = config.base.Configure.executeShellCommand('pkg-config '+self.pkgname+' --cflags', timeout=60, log = self.log)
       i = i.strip()
       if self.argDB['with-'+self.package+'-pkg-config']:
         if path: os.environ['PKG_CONFIG_PATH'] = path
@@ -889,10 +898,14 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
       self.libraries.saveLog()
       if self.executeTest(self.libraries.check,[lib, self.functions],{'otherLibs' : self.dlib, 'fortranMangle' : self.functionsFortran, 'cxxMangle' : self.functionsCxx[0], 'prototype' : self.functionsCxx[1], 'call' : self.functionsCxx[2], 'cxxLink': self.cxx}):
         self.lib = lib
-        self.executeTest(self.libraries.check,[lib, self.functionsDefine],{'otherLibs' : self.dlib, 'fortranMangle' : self.functionsFortran, 'cxxMangle' : self.functionsCxx[0], 'prototype' : self.functionsCxx[1], 'call' : self.functionsCxx[2], 'cxxLink': self.cxx, 'functionDefine': 1})
+        if self.functionsDefine:
+          self.executeTest(self.libraries.check,[lib, self.functionsDefine],{'otherLibs' : self.dlib, 'fortranMangle' : self.functionsFortran, 'cxxMangle' : self.functionsCxx[0], 'prototype' : self.functionsCxx[1], 'call' : self.functionsCxx[2], 'cxxLink': self.cxx, 'functionDefine': 1})
         self.logWrite(self.libraries.restoreLog())
-        self.logPrint('Checking for headers '+location+': '+str(incl))
-        if (not self.includes) or self.checkInclude(incl, self.includes, self.dinclude, timeout = 40.0):
+        self.logPrint('Checking for optional headers '+str(self.optionalincludes)+' in '+location+': '+str(incl))
+        if self.checkInclude(incl, self.optionalincludes, self.dinclude, timeout = 60.0):
+          self.foundoptionalincludes = 1
+        self.logPrint('Checking for headers '+str(self.includes)+' in '+location+': '+str(incl))
+        if (not self.includes) or self.checkInclude(incl, self.includes, self.dinclude, timeout = 60.0):
           if self.includes:
             self.include = testedincl
           self.found     = 1
@@ -993,7 +1006,10 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
 
     if not self.version and not self.minversion and not self.maxversion and not self.versionname: return
     if not self.versioninclude:
-      if not self.includes: return
+      if not self.includes:
+        self.log.write('For '+self.package+' unable to find version information since includes and version includes are missing skipping version check\n')
+        self.version = ''
+        return
       self.versioninclude = self.includes[0]
     if self.cxx:
       self.pushLanguage('C++')
@@ -1002,12 +1018,16 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
     flagsArg = self.getPreprocessorFlagsArg()
     oldFlags = getattr(self.compilers, flagsArg)
     setattr(self.compilers, flagsArg, oldFlags+' '+self.headers.toString(self.include))
+    self.compilers.saveLog()
     try:
       output = self.outputPreprocess('#include "'+self.versioninclude+'"\n;petscpkgver('+self.versionname+');\n')
+      self.logWrite(self.compilers.restoreLog())
     except:
       self.log.write('For '+self.package+' unable to run preprocessor to obtain version information, skipping version check\n')
+      self.logWrite(self.compilers.restoreLog())
       self.popLanguage()
       setattr(self.compilers, flagsArg,oldFlags)
+      self.version = ''
       return
     self.popLanguage()
     setattr(self.compilers, flagsArg,oldFlags)
@@ -1064,6 +1084,8 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
     return
 
   def configure(self):
+    if hasattr(self, 'download_solaris') and config.setCompilers.Configure.isSolaris(self.log):
+      self.download = self.download_solaris
     if self.download and self.argDB['download-'+self.downloadname.lower()] and (not self.framework.batchBodies or self.installwithbatch):
       self.argDB['with-'+self.package] = 1
       downloadPackageVal = self.argDB['download-'+self.downloadname.lower()]
@@ -1177,20 +1199,20 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
     if self.framework.argDB['prefix']:
       try:
         self.logPrintBox('Installing PETSc; this may take several minutes')
-        output,err,ret  = config.package.Package.executeShellCommand(self.installDirProvider.installSudo+self.make.make+' install PETSC_DIR='+self.petscdir.dir+' PETSC_ARCH='+self.arch, cwd=self.petscdir.dir, timeout=50, log = self.log)
+        output,err,ret  = config.package.Package.executeShellCommand(self.installDirProvider.installSudo+self.make.make+' install PETSC_DIR='+self.petscdir.dir+' PETSC_ARCH='+self.arch, cwd=self.petscdir.dir, timeout=60, log = self.log)
         self.log.write(output+err)
       except RuntimeError as e:
         raise RuntimeError('Error running make install on PETSc: '+str(e))
     elif not self.argDB['with-batch']:
       try:
         self.logPrintBox('Testing PETSc; this may take several minutes')
-        output,err,ret  = config.package.Package.executeShellCommand(self.make.make+' test PETSC_DIR='+self.petscdir.dir+' PETSC_ARCH='+self.arch, cwd=self.petscdir.dir, timeout=50, log = self.log)
+        output,err,ret  = config.package.Package.executeShellCommand(self.make.make+' test PETSC_DIR='+self.petscdir.dir+' PETSC_ARCH='+self.arch, cwd=self.petscdir.dir, timeout=60, log = self.log)
         output = output+err
         self.log.write(output)
         if output.find('error') > -1 or output.find('Error') > -1:
-          raise RuntimeError('Error running make test on PETSc: '+output)
+          raise RuntimeError('Error running make check on PETSc: '+output)
       except RuntimeError as e:
-        raise RuntimeError('Error running make test on PETSc: '+str(e))
+        raise RuntimeError('Error running make check on PETSc: '+str(e))
     self.installedpetsc = 1
 
 
@@ -1523,17 +1545,17 @@ class GNUPackage(Package):
           args.append('F90="'+self.setCompilers.cross_fc+'"')
         else:
           args.append('F90="'+fc+'"')
-        args.append('F90FLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','')+'"')
+        args.append('F90FLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','').replace('-fdefault-integer-8','')+'"')
       else:
         args.append('--disable-f90')
-      args.append('FFLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','')+'"')
+      args.append('FFLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','').replace('-fdefault-integer-8','')+'"')
       if not self.installwithbatch and hasattr(self.setCompilers,'cross_fc'):
         args.append('FC="'+self.setCompilers.cross_fc+'"')
         args.append('F77="'+self.setCompilers.cross_fc+'"')
       else:
         args.append('FC="'+fc+'"')
         args.append('F77="'+fc+'"')
-      args.append('FCFLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','')+'"')
+      args.append('FCFLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','').replace('-fdefault-integer-8','')+'"')
       self.popLanguage()
     else:
       args.append('--disable-fortran')
@@ -1547,20 +1569,8 @@ class GNUPackage(Package):
 
     return args
 
-  def Install(self):
-    ##### getInstallDir calls this, and it sets up self.packageDir (source download), self.confDir and self.installDir
-    args = self.formGNUConfigureArgs()  # allow package to change self.packageDir
-    if self.download and self.argDB['download-'+self.downloadname.lower()+'-configure-arguments']:
-       args.append(self.argDB['download-'+self.downloadname.lower()+'-configure-arguments'])
-    args = ' '.join(args)
-    conffile = os.path.join(self.packageDir,self.package+'.petscconf')
-    fd = open(conffile, 'w')
-    fd.write(args)
-    fd.close()
-    ### Use conffile to check whether a reconfigure/rebuild is required
-    if not self.installNeeded(conffile):
-      return self.installDir
-
+  def preInstall(self):
+    '''Run pre-install steps like generate configure script'''
     if not os.path.isfile(os.path.join(self.packageDir,'configure')):
       if not self.programs.autoreconf:
         raise RuntimeError('autoreconf required for ' + self.PACKAGE+' not found (or broken)! Use your package manager to install autoconf')
@@ -1577,6 +1587,23 @@ class GNUPackage(Package):
           raise RuntimeError('Error in autoreconf: ' + str(e))
       except RuntimeError as e:
         raise RuntimeError('Error running libtoolize or autoreconf on ' + self.PACKAGE+': '+str(e))
+
+
+  def Install(self):
+    ##### getInstallDir calls this, and it sets up self.packageDir (source download), self.confDir and self.installDir
+    args = self.formGNUConfigureArgs()  # allow package to change self.packageDir
+    if self.download and self.argDB['download-'+self.downloadname.lower()+'-configure-arguments']:
+       args.append(self.argDB['download-'+self.downloadname.lower()+'-configure-arguments'])
+    args = ' '.join(args)
+    conffile = os.path.join(self.packageDir,self.package+'.petscconf')
+    fd = open(conffile, 'w')
+    fd.write(args)
+    fd.close()
+    ### Use conffile to check whether a reconfigure/rebuild is required
+    if not self.installNeeded(conffile):
+      return self.installDir
+
+    self.preInstall()
 
     if self.builddir == 'yes':
       folder = os.path.join(self.packageDir, 'petsc-build')

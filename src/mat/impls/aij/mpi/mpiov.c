@@ -452,7 +452,7 @@ static PetscErrorCode MatIncreaseOverlap_MPIAIJ_Local_Scalable(Mat mat,PetscInt 
 
   Notes:
   nrqs - no of requests sent (or to be sent out)
-  nrqr - no of requests recieved (which have to be or which have been processed
+  nrqr - no of requests received (which have to be or which have been processed)
 */
 static PetscErrorCode MatIncreaseOverlap_MPIAIJ_Once(Mat C,PetscInt imax,IS is[])
 {
@@ -909,13 +909,13 @@ static PetscErrorCode MatIncreaseOverlap_MPIAIJ_Local(Mat C,PetscInt imax,PetscB
 }
 
 /*
-      MatIncreaseOverlap_MPIAIJ_Receive - Process the recieved messages,
+      MatIncreaseOverlap_MPIAIJ_Receive - Process the received messages,
          and return the output
 
          Input:
            C    - the matrix
            nrqr - no of messages being processed.
-           rbuf - an array of pointers to the recieved requests
+           rbuf - an array of pointers to the received requests
 
          Output:
            xdata - array of messages to be sent back
@@ -1977,7 +1977,7 @@ PetscErrorCode MatCreateSubMatrices_MPIAIJ(Mat C,PetscInt ismax,const IS isrow[]
   /* Check for special case: each processor has a single IS */
   if (C->submat_singleis) { /* flag is set in PCSetUp_ASM() to skip MPIU_Allreduce() */
     ierr = MatCreateSubMatrices_MPIAIJ_SingleIS(C,ismax,isrow,iscol,scall,submat);CHKERRQ(ierr);
-    C->submat_singleis = PETSC_FALSE; /* resume its default value in case C will be used for non-singlis */
+    C->submat_singleis = PETSC_FALSE; /* resume its default value in case C will be used for non-single IS */
     PetscFunctionReturn(0);
   }
 

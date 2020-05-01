@@ -298,6 +298,19 @@ extern "C" {
       self.logPrint('Warning: tgamma() not found')
     return
 
+  def checkMathLgamma(self):
+    '''Check for lgamma() in libm, the math library'''
+    if not self.math is None and self.check(self.math, ['lgamma'], prototype = ['#include <math.h>\n#include <stdlib.h>'], call = ['double (*checkLgamma)(double) = lgamma;double x = 1,y; y = (*checkLgamma)(x);if (y != 0.) abort()']):
+      self.logPrint('lgamma() found')
+      self.addDefine('HAVE_LGAMMA', 1)
+    elif not self.math is None and self.check(self.math, ['gamma'], prototype = ['#include <math.h>\n#include <stdlib.h>'], call = ['double (*checkLgamma)(double) = gamma;double x = 1,y; y = (*checkLgamma)(x);if (y != 0.) abort()']):
+      self.logPrint('gamma() found')
+      self.addDefine('HAVE_LGAMMA', 1)
+      self.addDefine('HAVE_LGAMMA_IS_GAMMA', 1)
+    else:
+      self.logPrint('Warning: lgamma() and gamma() not found')
+    return
+
   def checkMathFenv(self):
     '''Checks if <fenv.h> can be used with FE_DFL_ENV'''
     if not self.math is None and self.check(self.math, ['fesetenv'], prototype = ['#include <fenv.h>'], call = ['fesetenv(FE_DFL_ENV);']):
@@ -338,7 +351,7 @@ extern "C" {
     self.headers.check('dlfcn.h')
     return
 
-  def checkShared(self, includes, initFunction, checkFunction, finiFunction = None, checkLink = None, libraries = [], initArgs = '&argc, &argv', boolType = 'int', noCheckArg = 0, defaultArg = '', executor = None, timeout = 15):
+  def checkShared(self, includes, initFunction, checkFunction, finiFunction = None, checkLink = None, libraries = [], initArgs = '&argc, &argv', boolType = 'int', noCheckArg = 0, defaultArg = '', executor = None, timeout = 60):
     '''Determine whether a library is shared
        - initFunction(int *argc, char *argv[]) is called to initialize some static data
        - checkFunction(int *check) is called to verify that the static data wer set properly
@@ -498,6 +511,7 @@ int checkInit(void) {
     self.executeTest(self.checkMath)
     self.executeTest(self.checkMathErf)
     self.executeTest(self.checkMathTgamma)
+    self.executeTest(self.checkMathLgamma)
     self.executeTest(self.checkMathFenv)
     self.executeTest(self.checkMathLog2)
     self.executeTest(self.checkRealtime)

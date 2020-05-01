@@ -122,9 +122,9 @@ typedef struct _p_PetscOptionItems {
 
   Input Parameters:
 +   comm - communicator that shares GUI
-.   prefix - options prefix for all options displayed on window
+.   prefix - options prefix for all options displayed on window (optional)
 .   title - short descriptive text, for example "Krylov Solver Options"
--   mansec - section of manual pages for options, for example KSP
+-   mansec - section of manual pages for options, for example KSP (optional)
 
   Level: intermediate
 
@@ -282,6 +282,7 @@ M*/
 #define PetscOptionsBoolArray(a,b,c,d,e,f) PetscOptionsBoolArray_Private(PetscOptionsObject,a,b,c,d,e,f)
 #define PetscOptionsEnumArray(a,b,c,d,e,f,g) PetscOptionsEnumArray_Private(PetscOptionsObject,a,b,c,d,e,f,g)
 #define PetscOptionsDeprecated(a,b,c,d) PetscOptionsDeprecated_Private(PetscOptionsObject,a,b,c,d)
+#define PetscOptionsDeprecatedNoObject(a,b,c,d) PetscOptionsDeprecated_Private(NULL,a,b,c,d)
 
 
 PETSC_EXTERN PetscErrorCode PetscOptionsEnum_Private(PetscOptionItems*,const char[],const char[],const char[],const char *const*,PetscEnum,PetscEnum*,PetscBool*);

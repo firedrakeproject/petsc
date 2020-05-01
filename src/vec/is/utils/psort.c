@@ -132,14 +132,12 @@ static PetscErrorCode PetscParallelSampleSelect(PetscLayout mapin, PetscLayout m
   }
   /* sort the pivots in parallel */
   ierr = PetscParallelSortInt_Bitonic(mapin->comm, size - 1, pivots);CHKERRQ(ierr);
-#if defined(PETSC_USE_DEBUG)
-  {
+  if (PetscDefined(USE_DEBUG)) {
     PetscBool sorted;
 
     ierr = PetscParallelSortedInt(mapin->comm, size - 1, pivots, &sorted);CHKERRQ(ierr);
     if (!sorted) SETERRQ(mapin->comm, PETSC_ERR_PLIB, "bitonic sort failed");CHKERRQ(ierr);
   }
-#endif
 
   /* if there are Z nonempty processes, we have (P - 1) * Z real pivots, and we want to select
    * at indices Z - 1, 2*Z - 1, ... (P - 1) * Z - 1 */
@@ -308,7 +306,7 @@ static PetscErrorCode PetscParallelSortInt_Samplesort(PetscLayout mapin, PetscLa
 }
 
 /*@
-  PetscParallelSortInt - Globally sort a distrbuted array of integers
+  PetscParallelSortInt - Globally sort a distributed array of integers
 
   Collective
 
@@ -317,7 +315,7 @@ static PetscErrorCode PetscParallelSortInt_Samplesort(PetscLayout mapin, PetscLa
 . mapout - PetscLayout describing the distribution of the output keys
 - keysin - the pre-sorted array of integers
 
-  Output Parameters:
+  Output Parameter:
 . keysout - the array in which the sorted integers will be stored.  If mapin == mapout, then keysin may be equal to keysout.
 
   Level: developer

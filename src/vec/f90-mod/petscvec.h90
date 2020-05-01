@@ -92,7 +92,7 @@
        Vec a
        VecScatter b
        Vec c
-       integer z
+       PetscErrorCode z
        end subroutine
       end Interface
 
@@ -102,7 +102,7 @@
        Vec a
        VecScatter b
        Vec c
-       integer z
+       PetscErrorCode z
        end subroutine
       end Interface
 
@@ -114,7 +114,7 @@
           PetscInt c (*) ! PetscInt
           PetscScalar d (*) ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
         subroutine VecSetValuesLocal11(a,b,c,d,e,z)
           use petscvecdef
@@ -123,9 +123,36 @@
           PetscInt c ! PetscInt
           PetscScalar d ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
       end interface VecSetValuesLocal
+
+      Interface VecGetValues
+        subroutine VecGetValues0(a,b,c,d,z)
+          use petscvecdef
+          Vec a ! Vec
+          PetscInt b ! PetscInt
+          PetscInt c (*) ! PetscInt
+          PetscScalar d (*) ! PetscScalar
+          PetscErrorCode z
+        end subroutine
+        subroutine VecGetValues1(a,b,c,d,z)
+          use petscvecdef
+          Vec a ! Vec
+          PetscInt b ! PetscInt
+          PetscInt c ! PetscInt
+          PetscScalar d (*) ! PetscScalar
+          PetscErrorCode z
+        end subroutine
+        subroutine VecGetValues11(a,b,c,d,z)
+          use petscvecdef
+          Vec a ! Vec
+          PetscInt b ! PetscInt
+          PetscInt c ! PetscInt
+          PetscScalar d ! PetscScalar
+          PetscErrorCode z
+        end subroutine
+      End Interface VecGetValues
 
       Interface VecSetValues
         subroutine VecSetValues0(a,b,c,d,e,z)
@@ -135,7 +162,7 @@
           PetscInt c (*) ! PetscInt
           PetscScalar d (*) ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
         subroutine VecSetValues1(a,b,c,d,e,z)
           use petscvecdef
@@ -144,7 +171,7 @@
           PetscInt c ! PetscInt
           PetscScalar d (*) ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
         subroutine VecSetValues11(a,b,c,d,e,z)
           use petscvecdef
@@ -153,7 +180,7 @@
           PetscInt c ! PetscInt
           PetscScalar d ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
       End Interface VecSetValues
 
@@ -165,7 +192,7 @@
           PetscInt c (*) ! PetscInt
           PetscScalar d (*) ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
         subroutine VecSetValuesBlocked1(a,b,c,d,e,z)
           use petscvecdef
@@ -174,7 +201,7 @@
           PetscInt c ! PetscInt
           PetscScalar d (*) ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
         subroutine VecSetValuesBlocked11(a,b,c,d,e,z)
           use petscvecdef
@@ -183,7 +210,7 @@
           PetscInt c ! PetscInt
           PetscScalar d ! PetscScalar
           InsertMode e ! InsertMode
-          integer z
+          PetscErrorCode z
         end subroutine
       End Interface VecSetValuesBlocked
 

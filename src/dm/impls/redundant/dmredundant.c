@@ -26,6 +26,7 @@ static PetscErrorCode DMCreateMatrix_Redundant(DM dm,Mat *J)
 
   ierr = DMGetLocalToGlobalMapping(dm,&ltog);CHKERRQ(ierr);
   ierr = MatSetLocalToGlobalMapping(*J,ltog,ltog);CHKERRQ(ierr);
+  ierr = MatSetDM(*J,dm);CHKERRQ(ierr);
 
   ierr = PetscMalloc2(red->N,&cols,red->N,&vals);CHKERRQ(ierr);
   for (i=0; i<red->N; i++) {
@@ -173,14 +174,7 @@ static PetscErrorCode DMGlobalToLocalEnd_Redundant(DM dm,Vec g,InsertMode imode,
 
 static PetscErrorCode DMSetUp_Redundant(DM dm)
 {
-  PetscErrorCode ierr;
-  DM_Redundant   *red = (DM_Redundant*)dm->data;
-  PetscInt       i,*globals;
-
   PetscFunctionBegin;
-  ierr = PetscMalloc1(red->N,&globals);CHKERRQ(ierr);
-  for (i=0; i<red->N; i++) globals[i] = i;
-  ierr = ISLocalToGlobalMappingCreate(PETSC_COMM_SELF,1,red->N,globals,PETSC_OWN_POINTER,&dm->ltogmap);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -339,12 +333,19 @@ static PetscErrorCode DMRedundantSetSize_Redundant(DM dm,PetscMPIInt rank,PetscI
   DM_Redundant   *red = (DM_Redundant*)dm->data;
   PetscErrorCode ierr;
   PetscMPIInt    myrank;
+  PetscInt       i,*globals;
 
   PetscFunctionBegin;
   ierr      = MPI_Comm_rank(PetscObjectComm((PetscObject)dm),&myrank);CHKERRQ(ierr);
   red->rank = rank;
   red->N    = N;
   red->n    = (myrank == rank) ? N : 0;
+
+  /* mapping is setup here */
+  ierr = PetscMalloc1(red->N,&globals);CHKERRQ(ierr);
+  for (i=0; i<red->N; i++) globals[i] = i;
+  ierr = ISLocalToGlobalMappingDestroy(&dm->ltogmap);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingCreate(PetscObjectComm((PetscObject)dm),1,red->N,globals,PETSC_OWN_POINTER,&dm->ltogmap);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

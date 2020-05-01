@@ -1,6 +1,5 @@
 #include <petsc/private/petscfeimpl.h> /*I "petscfe.h" I*/
 #include <petsc/private/dtimpl.h> /*I "petscdt.h" I*/
-#include <petsc/private/dmpleximpl.h> /* For CellRefiner */
 #include <petscblaslapack.h>
 
 static PetscErrorCode PetscFEDestroy_Composite(PetscFE fem)
@@ -9,7 +8,6 @@ static PetscErrorCode PetscFEDestroy_Composite(PetscFE fem)
   PetscErrorCode     ierr;
 
   PetscFunctionBegin;
-  ierr = CellRefinerRestoreAffineTransforms_Internal(cmp->cellRefiner, &cmp->numSubelements, &cmp->v0, &cmp->jac, &cmp->invjac);CHKERRQ(ierr);
   ierr = PetscFree(cmp->embedding);CHKERRQ(ierr);
   ierr = PetscFree(cmp);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -19,41 +17,45 @@ static PetscErrorCode PetscFESetUp_Composite(PetscFE fem)
 {
   PetscFE_Composite *cmp = (PetscFE_Composite *) fem->data;
   DM                 K;
+  DMPolytopeType     ct;
+  DMPlexCellRefiner  cr;
   PetscReal         *subpoint;
   PetscBLASInt      *pivots;
   PetscBLASInt       n, info;
   PetscScalar       *work, *invVscalar;
   PetscInt           dim, pdim, spdim, j, s;
+  PetscSection       section;
   PetscErrorCode     ierr;
 
   PetscFunctionBegin;
   /* Get affine mapping from reference cell to each subcell */
   ierr = PetscDualSpaceGetDM(fem->dualSpace, &K);CHKERRQ(ierr);
   ierr = DMGetDimension(K, &dim);CHKERRQ(ierr);
-  ierr = DMPlexGetCellRefiner_Internal(K, &cmp->cellRefiner);CHKERRQ(ierr);
-  ierr = CellRefinerGetAffineTransforms_Internal(cmp->cellRefiner, &cmp->numSubelements, &cmp->v0, &cmp->jac, &cmp->invjac);CHKERRQ(ierr);
+  ierr = DMPlexGetCellType(K, 0, &ct);CHKERRQ(ierr);
+  ierr = DMPlexCellRefinerCreate(K, &cr);CHKERRQ(ierr);
+  ierr = DMPlexCellRefinerGetAffineTransforms(cr, ct, &cmp->numSubelements, &cmp->v0, &cmp->jac, &cmp->invjac);CHKERRQ(ierr);
+  ierr = DMPlexCellRefinerDestroy(&cr);CHKERRQ(ierr);
   /* Determine dof embedding into subelements */
   ierr = PetscDualSpaceGetDimension(fem->dualSpace, &pdim);CHKERRQ(ierr);
   ierr = PetscSpaceGetDimension(fem->basisSpace, &spdim);CHKERRQ(ierr);
   ierr = PetscMalloc1(cmp->numSubelements*spdim,&cmp->embedding);CHKERRQ(ierr);
   ierr = DMGetWorkArray(K, dim, MPIU_REAL, &subpoint);CHKERRQ(ierr);
+  ierr = PetscDualSpaceGetSection(fem->dualSpace, &section);CHKERRQ(ierr);
   for (s = 0; s < cmp->numSubelements; ++s) {
     PetscInt sd = 0;
+    PetscInt closureSize;
+    PetscInt *closure = NULL;
 
-    for (j = 0; j < pdim; ++j) {
-      PetscBool       inside;
-      PetscQuadrature f;
-      PetscInt        d, e;
+    ierr = DMPlexGetTransitiveClosure(K, s, PETSC_TRUE, &closureSize, &closure);CHKERRQ(ierr);
+    for (j = 0; j < closureSize; j++) {
+      PetscInt point = closure[2*j];
+      PetscInt dof, off, k;
 
-      ierr = PetscDualSpaceGetFunctional(fem->dualSpace, j, &f);CHKERRQ(ierr);
-      /* Apply transform to first point, and check that point is inside subcell */
-      for (d = 0; d < dim; ++d) {
-        subpoint[d] = -1.0;
-        for (e = 0; e < dim; ++e) subpoint[d] += cmp->invjac[(s*dim + d)*dim+e]*(f->points[e] - cmp->v0[s*dim+e]);
-      }
-      ierr = CellRefinerInCellTest_Internal(cmp->cellRefiner, subpoint, &inside);CHKERRQ(ierr);
-      if (inside) {cmp->embedding[s*spdim+sd++] = j;}
+      ierr = PetscSectionGetDof(section, point, &dof);CHKERRQ(ierr);
+      ierr = PetscSectionGetOffset(section, point, &off);CHKERRQ(ierr);
+      for (k = 0; k < dof; k++) cmp->embedding[s*spdim+sd++] = off + k;
     }
+    ierr = DMPlexRestoreTransitiveClosure(K, s, PETSC_TRUE, &closureSize, &closure);CHKERRQ(ierr);
     if (sd != spdim) SETERRQ3(PetscObjectComm((PetscObject) fem), PETSC_ERR_PLIB, "Subelement %d has %d dual basis vectors != %d", s, sd, spdim);
   }
   ierr = DMRestoreWorkArray(K, dim, MPIU_REAL, &subpoint);CHKERRQ(ierr);
@@ -97,22 +99,27 @@ static PetscErrorCode PetscFESetUp_Composite(PetscFE fem)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEGetTabulation_Composite(PetscFE fem, PetscInt npoints, const PetscReal points[], PetscReal *B, PetscReal *D, PetscReal *H)
+static PetscErrorCode PetscFECreateTabulation_Composite(PetscFE fem, PetscInt npoints, const PetscReal points[], PetscInt K, PetscTabulation T)
 {
   PetscFE_Composite *cmp = (PetscFE_Composite *) fem->data;
   DM                 dm;
+  DMPolytopeType     ct;
   PetscInt           pdim;  /* Dimension of FE space P */
   PetscInt           spdim; /* Dimension of subelement FE space P */
   PetscInt           dim;   /* Spatial dimension */
   PetscInt           comp;  /* Field components */
   PetscInt          *subpoints;
-  PetscReal         *tmpB, *tmpD, *tmpH, *subpoint;
+  PetscReal         *B = K >= 0 ? T->T[0] : NULL;
+  PetscReal         *D = K >= 1 ? T->T[1] : NULL;
+  PetscReal         *H = K >= 2 ? T->T[2] : NULL;
+  PetscReal         *tmpB = NULL, *tmpD = NULL, *tmpH = NULL, *subpoint;
   PetscInt           p, s, d, e, j, k;
   PetscErrorCode     ierr;
 
   PetscFunctionBegin;
   ierr = PetscDualSpaceGetDM(fem->dualSpace, &dm);CHKERRQ(ierr);
   ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
+  ierr = DMPlexGetCellType(dm, 0, &ct);CHKERRQ(ierr);
   ierr = PetscSpaceGetDimension(fem->basisSpace, &spdim);CHKERRQ(ierr);
   ierr = PetscDualSpaceGetDimension(fem->dualSpace, &pdim);CHKERRQ(ierr);
   ierr = PetscFEGetNumComponents(fem, &comp);CHKERRQ(ierr);
@@ -128,21 +135,21 @@ static PetscErrorCode PetscFEGetTabulation_Composite(PetscFE fem, PetscInt npoin
         subpoint[d] = -1.0;
         for (e = 0; e < dim; ++e) subpoint[d] += cmp->invjac[(s*dim + d)*dim+e]*(points[p*dim+e] - cmp->v0[s*dim+e]);
       }
-      ierr = CellRefinerInCellTest_Internal(cmp->cellRefiner, subpoint, &inside);CHKERRQ(ierr);
+      ierr = CellRefinerInCellTest_Internal(ct, subpoint, &inside);CHKERRQ(ierr);
       if (inside) {subpoints[p] = s; break;}
     }
     if (s >= cmp->numSubelements) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Point %d was not found in any subelement", p);
   }
   ierr = DMRestoreWorkArray(dm, dim, MPIU_REAL, &subpoint);CHKERRQ(ierr);
   /* Evaluate the prime basis functions at all points */
-  if (B) {ierr = DMGetWorkArray(dm, npoints*spdim, MPIU_REAL, &tmpB);CHKERRQ(ierr);}
-  if (D) {ierr = DMGetWorkArray(dm, npoints*spdim*dim, MPIU_REAL, &tmpD);CHKERRQ(ierr);}
-  if (H) {ierr = DMGetWorkArray(dm, npoints*spdim*dim*dim, MPIU_REAL, &tmpH);CHKERRQ(ierr);}
-  ierr = PetscSpaceEvaluate(fem->basisSpace, npoints, points, B ? tmpB : NULL, D ? tmpD : NULL, H ? tmpH : NULL);CHKERRQ(ierr);
+  if (K >= 0) {ierr = DMGetWorkArray(dm, npoints*spdim, MPIU_REAL, &tmpB);CHKERRQ(ierr);}
+  if (K >= 1) {ierr = DMGetWorkArray(dm, npoints*spdim*dim, MPIU_REAL, &tmpD);CHKERRQ(ierr);}
+  if (K >= 2) {ierr = DMGetWorkArray(dm, npoints*spdim*dim*dim, MPIU_REAL, &tmpH);CHKERRQ(ierr);}
+  ierr = PetscSpaceEvaluate(fem->basisSpace, npoints, points, tmpB, tmpD, tmpH);CHKERRQ(ierr);
   /* Translate to the nodal basis */
-  if (B) {ierr = PetscArrayzero(B, npoints*pdim*comp);CHKERRQ(ierr);}
-  if (D) {ierr = PetscArrayzero(D, npoints*pdim*comp*dim);CHKERRQ(ierr);}
-  if (H) {ierr = PetscArrayzero(H, npoints*pdim*comp*dim*dim);CHKERRQ(ierr);}
+  if (K >= 0) {ierr = PetscArrayzero(B, npoints*pdim*comp);CHKERRQ(ierr);}
+  if (K >= 1) {ierr = PetscArrayzero(D, npoints*pdim*comp*dim);CHKERRQ(ierr);}
+  if (K >= 2) {ierr = PetscArrayzero(H, npoints*pdim*comp*dim*dim);CHKERRQ(ierr);}
   for (p = 0; p < npoints; ++p) {
     const PetscInt s = subpoints[p];
 
@@ -185,9 +192,9 @@ static PetscErrorCode PetscFEGetTabulation_Composite(PetscFE fem, PetscInt npoin
     }
   }
   ierr = DMRestoreWorkArray(dm, npoints, MPIU_INT, &subpoints);CHKERRQ(ierr);
-  if (B) {ierr = DMRestoreWorkArray(dm, npoints*spdim, MPIU_REAL, &tmpB);CHKERRQ(ierr);}
-  if (D) {ierr = DMRestoreWorkArray(dm, npoints*spdim*dim, MPIU_REAL, &tmpD);CHKERRQ(ierr);}
-  if (H) {ierr = DMRestoreWorkArray(dm, npoints*spdim*dim*dim, MPIU_REAL, &tmpH);CHKERRQ(ierr);}
+  if (K >= 0) {ierr = DMRestoreWorkArray(dm, npoints*spdim, MPIU_REAL, &tmpB);CHKERRQ(ierr);}
+  if (K >= 1) {ierr = DMRestoreWorkArray(dm, npoints*spdim*dim, MPIU_REAL, &tmpD);CHKERRQ(ierr);}
+  if (K >= 2) {ierr = DMRestoreWorkArray(dm, npoints*spdim*dim*dim, MPIU_REAL, &tmpH);CHKERRQ(ierr);}
   PetscFunctionReturn(0);
 }
 
@@ -199,7 +206,7 @@ static PetscErrorCode PetscFEInitialize_Composite(PetscFE fem)
   fem->ops->view                    = NULL;
   fem->ops->destroy                 = PetscFEDestroy_Composite;
   fem->ops->getdimension            = PetscFEGetDimension_Basic;
-  fem->ops->gettabulation           = PetscFEGetTabulation_Composite;
+  fem->ops->createtabulation        = PetscFECreateTabulation_Composite;
   fem->ops->integrateresidual       = PetscFEIntegrateResidual_Basic;
   fem->ops->integratebdresidual     = PetscFEIntegrateBdResidual_Basic;
   fem->ops->integratejacobianaction = NULL/* PetscFEIntegrateJacobianAction_Basic */;
@@ -224,7 +231,6 @@ PETSC_EXTERN PetscErrorCode PetscFECreate_Composite(PetscFE fem)
   ierr      = PetscNewLog(fem, &cmp);CHKERRQ(ierr);
   fem->data = cmp;
 
-  cmp->cellRefiner    = REFINER_NOOP;
   cmp->numSubelements = -1;
   cmp->v0             = NULL;
   cmp->jac            = NULL;

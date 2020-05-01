@@ -122,19 +122,19 @@ class Configure(config.base.Configure):
         self.registerPythonFile(fname,'')
 
     # test for a variety of basic headers and functions
-    headersC = map(lambda name: name+'.h', ['setjmp','dos', 'fcntl', 'float', 'io',  'malloc', 'pwd',  'strings',
-                                            'unistd', 'sys/sysinfo', 'machine/endian', 'sys/param', 'sys/procfs', 'sys/resource',
-                                            'sys/systeminfo', 'sys/times', 'sys/utsname',
-                                            'sys/socket','sys/wait','netinet/in','netdb','Direct','time','Ws2tcpip','sys/types',
-                                            'WindowsX', 'float','ieeefp','stdint','pthread','inttypes','immintrin','zmmintrin'])
-    functions = ['access', '_access', 'clock', 'drand48', 'getcwd', '_getcwd', 'getdomainname', 'gethostname',
-                 'getwd', 'memalign', 'popen', 'PXFGETARG', 'rand', 'getpagesize',
-                 'readlink', 'realpath',  'usleep', 'sleep', '_sleep',
+    headersC = map(lambda name: name+'.h',['setjmp','dos','fcntl','float','io','malloc','pwd','strings',
+                                            'unistd','sys/sysinfo','machine/endian','sys/param','sys/procfs','sys/resource',
+                                            'sys/systeminfo','sys/times','sys/utsname',
+                                            'sys/socket','sys/wait','netinet/in','netdb','direct','time','Ws2tcpip','sys/types',
+                                            'WindowsX','float','ieeefp','stdint','pthread','inttypes','immintrin','zmmintrin'])
+    functions = ['access','_access','clock','drand48','getcwd','_getcwd','getdomainname','gethostname',
+                 'getwd','memalign','popen','PXFGETARG','rand','getpagesize',
+                 'readlink','realpath','usleep','sleep','_sleep',
                  'uname','snprintf','_snprintf','lseek','_lseek','time','fork','stricmp',
-                 'strcasecmp', 'bzero', 'dlopen', 'dlsym', 'dlclose', 'dlerror',
-                 '_set_output_format','_mkdir','socket','gethostbyname']
-    libraries = [(['fpe'], 'handle_sigfpes')]
-    librariessock = [(['socket', 'nsl'], 'socket')]
+                 'strcasecmp','bzero','dlopen','dlsym','dlclose','dlerror',
+                 '_set_output_format','_mkdir','socket','gethostbyname','_pipe']
+    libraries = [(['fpe'],'handle_sigfpes')]
+    librariessock = [(['socket','nsl'],'socket')]
     self.headers.headers.extend(headersC)
     self.functions.functions.extend(functions)
     self.libraries.libraries.extend(libraries)
@@ -288,6 +288,8 @@ prepend-path PATH "%s"
 
     if hasattr(self.compilers, 'FC'):
       if self.framework.argDB['with-fortran-bindings']:
+        if not self.fortran.fortranIsF90:
+          raise RuntimeError('Error! Fortran compiler "'+self.compilers.FC+'" does not support F90! PETSc fortran bindings require a F90 compiler')
         self.addDefine('HAVE_FORTRAN','1')
       self.setCompilers.pushLanguage('FC')
       # need FPPFLAGS in config/setCompilers
@@ -466,7 +468,7 @@ prepend-path PATH "%s"
     import time
     import script
     def escape(s):
-      return s.replace('"',r'\"').replace(r'\ ',r'\\ ')
+      return s.replace('"',r'\"').replace(r'\ ',r'\\ ') # novermin
     fd = open(os.path.join(self.arch.arch,'include','petscmachineinfo.h'),'w')
     fd.write('static const char *petscmachineinfo = \"\\n\"\n')
     fd.write('\"-----------------------------------------\\n\"\n')
@@ -608,7 +610,7 @@ prepend-path PATH "%s"
       self.addDefine('DEPRECATED_ENUM(why)', '__attribute((deprecated))')
     else:
       self.addDefine('DEPRECATED_ENUM(why)', ' ')
-    # I was unable to make a CPP macro that takes the old and new values as seperate arguments and builds the message needed by _Pragma
+    # I was unable to make a CPP macro that takes the old and new values as separate arguments and builds the message needed by _Pragma
     # hence the deprecation message is handled as it is
     if self.checkCompile('#define TEST _Pragma("GCC warning \"Testing _Pragma\"") value'):
       self.addDefine('DEPRECATED_MACRO(why)', '_Pragma(why)')
@@ -706,38 +708,38 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
   def configureWin32(self):
     '''Win32 non-cygwin specific stuff'''
     kernel32=0
-    if self.libraries.add('Kernel32.lib','GetComputerName',prototype='#include <Windows.h>', call='GetComputerName(NULL,NULL);'):
+    if self.libraries.add('Kernel32.lib','GetComputerName',prototype='#include <windows.h>', call='GetComputerName(NULL,NULL);'):
       self.addDefine('HAVE_WINDOWS_H',1)
       self.addDefine('HAVE_GETCOMPUTERNAME',1)
       kernel32=1
-    elif self.libraries.add('kernel32','GetComputerName',prototype='#include <Windows.h>', call='GetComputerName(NULL,NULL);'):
+    elif self.libraries.add('kernel32','GetComputerName',prototype='#include <windows.h>', call='GetComputerName(NULL,NULL);'):
       self.addDefine('HAVE_WINDOWS_H',1)
       self.addDefine('HAVE_GETCOMPUTERNAME',1)
       kernel32=1
     if kernel32:
       if self.framework.argDB['with-windows-graphics']:
         self.addDefine('USE_WINDOWS_GRAPHICS',1)
-      if self.checkLink('#include <Windows.h>','LoadLibrary(0)'):
+      if self.checkLink('#include <windows.h>','LoadLibrary(0)'):
         self.addDefine('HAVE_LOADLIBRARY',1)
-      if self.checkLink('#include <Windows.h>','GetProcAddress(0,0)'):
+      if self.checkLink('#include <windows.h>','GetProcAddress(0,0)'):
         self.addDefine('HAVE_GETPROCADDRESS',1)
-      if self.checkLink('#include <Windows.h>','FreeLibrary(0)'):
+      if self.checkLink('#include <windows.h>','FreeLibrary(0)'):
         self.addDefine('HAVE_FREELIBRARY',1)
-      if self.checkLink('#include <Windows.h>','GetLastError()'):
+      if self.checkLink('#include <windows.h>','GetLastError()'):
         self.addDefine('HAVE_GETLASTERROR',1)
-      if self.checkLink('#include <Windows.h>','SetLastError(0)'):
+      if self.checkLink('#include <windows.h>','SetLastError(0)'):
         self.addDefine('HAVE_SETLASTERROR',1)
-      if self.checkLink('#include <Windows.h>\n','QueryPerformanceCounter(0);\n'):
+      if self.checkLink('#include <windows.h>\n','QueryPerformanceCounter(0);\n'):
         self.addDefine('USE_MICROSOFT_TIME',1)
-    if self.libraries.add('Advapi32.lib','GetUserName',prototype='#include <Windows.h>', call='GetUserName(NULL,NULL);'):
+    if self.libraries.add('Advapi32.lib','GetUserName',prototype='#include <windows.h>', call='GetUserName(NULL,NULL);'):
       self.addDefine('HAVE_GET_USER_NAME',1)
-    elif self.libraries.add('advapi32','GetUserName',prototype='#include <Windows.h>', call='GetUserName(NULL,NULL);'):
+    elif self.libraries.add('advapi32','GetUserName',prototype='#include <windows.h>', call='GetUserName(NULL,NULL);'):
       self.addDefine('HAVE_GET_USER_NAME',1)
 
-    if not self.libraries.add('User32.lib','GetDC',prototype='#include <Windows.h>',call='GetDC(0);'):
-      self.libraries.add('user32','GetDC',prototype='#include <Windows.h>',call='GetDC(0);')
-    if not self.libraries.add('Gdi32.lib','CreateCompatibleDC',prototype='#include <Windows.h>',call='CreateCompatibleDC(0);'):
-      self.libraries.add('gdi32','CreateCompatibleDC',prototype='#include <Windows.h>',call='CreateCompatibleDC(0);')
+    if not self.libraries.add('User32.lib','GetDC',prototype='#include <windows.h>',call='GetDC(0);'):
+      self.libraries.add('user32','GetDC',prototype='#include <windows.h>',call='GetDC(0);')
+    if not self.libraries.add('Gdi32.lib','CreateCompatibleDC',prototype='#include <windows.h>',call='CreateCompatibleDC(0);'):
+      self.libraries.add('gdi32','CreateCompatibleDC',prototype='#include <windows.h>',call='CreateCompatibleDC(0);')
 
     self.types.check('int32_t', 'int')
     if not self.checkCompile('#include <sys/types.h>\n','uid_t u;\n'):
@@ -750,11 +752,11 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
     if not self.checkLink('#include <sys/stat.h>\n','int a=0;\nif (S_ISDIR(a)){}\n'):
       self.framework.addDefine('S_ISREG(a)', '(((a)&_S_IFMT) == _S_IFREG)')
       self.framework.addDefine('S_ISDIR(a)', '(((a)&_S_IFMT) == _S_IFDIR)')
-    if self.checkCompile('#include <Windows.h>\n','LARGE_INTEGER a;\nDWORD b=a.u.HighPart;\n'):
+    if self.checkCompile('#include <windows.h>\n','LARGE_INTEGER a;\nDWORD b=a.u.HighPart;\n'):
       self.addDefine('HAVE_LARGE_INTEGER_U',1)
 
     # Windows requires a Binary file creation flag when creating/opening binary files.  Is a better test in order?
-    if self.checkCompile('#include <Windows.h>\n#include <fcntl.h>\n', 'int flags = O_BINARY;'):
+    if self.checkCompile('#include <windows.h>\n#include <fcntl.h>\n', 'int flags = O_BINARY;'):
       self.addDefine('HAVE_O_BINARY',1)
 
     if self.compilers.CC.find('win32fe') >= 0:

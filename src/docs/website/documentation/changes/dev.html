@@ -3,6 +3,7 @@
   <head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8">
     <link href="../../style.css" rel="stylesheet" type="text/css">
+    <link rel="icon" href="../images/PETSc_RGB-logo.png" type="image/png" sizes="16x16">
     <title>PETSc: Documentation: Changes: Development</title>
   </head>
   <body>
@@ -34,6 +35,7 @@
               <a href="index.html">Changes</a>
               <ul>
                 <li><span class="current">dev</span></li>
+                <li><a href="313.html">3.13</a></li>
                 <li><a href="312.html">3.12</a></li>
                 <li><a href="311.html">3.11</a></li>
                 <li><a href="310.html">3.10</a></li>
@@ -79,7 +81,7 @@
         <li><a href="../../publications/index.html">Applications/Publications</a></li>
         <li><a href="../../miscellaneous/index.html">Miscellaneous</a></li>
         <li><a href="../../miscellaneous/external.html">External Software</a></li>
-        <li><a href="../../developers/index.html">Developers Site</a></li>
+        <li><a href="https://docs.petsc.org/en/latest/developers/index.html">Developers Site</a></li>
       </ul>
     </div>
 
@@ -105,45 +107,37 @@
       <!-- Please use Imperative with first letter cap, e.g. Add, Improve, Change etc. WITHOUT dot at the end -->
       <h4>General:</h4>
         <ul>
-          <li>Change PetscLayoutFindOwner() and PetscLayoutFindOwnerIndex() to return a PetscMPIInt instead of a PetscInt</li>
+          <li>Change the default of -cuda_initialize from yes to no</li>
         </ul>
       <h4>Configure/Build:</h4>
       <h4>IS:</h4>
-        <ul>
-          <li>Add ISSetInfo(): set local and global properties of an IS (whether the IS is sorted, unique, a permutation, an interval, or identity).</li>
-          <li>Add ISGetInfo(): query local and global properties of an IS.</li>
-        </ul>
       <h4>PetscDraw:</h4>
+      <h4>PetscSF:</h4>
       <h4>PF:</h4>
       <h4>Vec:</h4>
       <h4>VecScatter:</h4>
       <h4>PetscSection:</h4>
+      <h4>PetscPartitioner:</h4>
       <h4>Mat:</h4>
-        <ul>
-          <li>Improve the performance of MatConvert_AIJ_BAIJ by preallocating the Mat before dispatching to MatConvert_Basic</li>
-          <li>Change the behavior of MatConvert_AIJ_SBAIJ for block size greater than one, the block structure is now preserved (even for the diagonal entries)</li>
-        </ul>
       <h4>PC:</h4>
       <h4>KSP:</h4>
       <h4>SNES:</h4>
       <h4>SNESLineSearch:</h4>
       <h4>TS:</h4>
+      <h4>TAO:</h4>
       <h4>DM/DA:</h4>
-        <ul>
-          <li>DMCopyLabels(): Add two additional input flags</li>
-        </ul>
       <h4>DMPlex:</h4>
         <ul>
-          <li>Add DMPlexOrientCell() which orients a single cell</li>
-          <li>Add DMPlexCompareOrientations() which compares the cone point order of a single cell with the given reference cone</li>
-          <li>Add DMPlexIsInterpolated() which finds out whether the plex is interpolated</li>
-          <li>Add DMPlexIsInterpolatedCollective() which finds out whether the plex is interpolated on all ranks</li>
-          <li>Add DMPlexIsDistributed() which finds out whether the plex is distributed</li>
+          <li>Add DMPlexInsertBoundaryValuesEssentialBdField() to insert boundary values using a field only supported on the boundary</li>
+          <li>Change DMPlexCreateSubpointIS() to DMPlexGetSubpointIS()</li>
+        </ul>
+      <h4>DT:</h4>
+        <ul>
+          <li>Add PetscDTJacobiNorm() for the weighted L2 norm of Jacobi polynomials</li>
+          <li>Add PetscDTJacobiEvalJet() and PetscDTPKDEvalJet() for evaluating the derivatives of orthogonal polynomials on the segment (Jacobi) and simplex (PKD)</li>
+          <li>Add PetscDTIndexToGradedOrder() and PetscDTGradedOrderToIndex() for indexing multivariate monomials and derivatives in a linear order</li>
         </ul>
       <h4>PetscViewer:</h4>
-        <ul>
-          <li>Add "fieldnum" argument to PetscViewerVTKAddField() to indicate only one field of the vector should be viewed</li>
-        </ul>
       <h4>SYS:</h4>
       <h4>AO:</h4>
       <h4>Sieve:</h4>

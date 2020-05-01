@@ -38,7 +38,7 @@ PetscErrorCode  PetscRandomDestroy(PetscRandom *r)
   PetscFunctionBegin;
   if (!*r) PetscFunctionReturn(0);
   PetscValidHeaderSpecific(*r,PETSC_RANDOM_CLASSID,1);
-  if (--((PetscObject)(*r))->refct > 0) {*r = 0; PetscFunctionReturn(0);}
+  if (--((PetscObject)(*r))->refct > 0) {*r = NULL; PetscFunctionReturn(0);}
   if ((*r)->ops->destroy) {
     ierr = (*(*r)->ops->destroy)(*r);CHKERRQ(ierr);
   }
@@ -213,8 +213,8 @@ PetscErrorCode  PetscRandomSetFromOptions(PetscRandom rnd)
 
    Input Parameters:
 +  A - the  random number generator context
--  obj - Optional object
-.  name - command line option
+.  obj - Optional object
+-  name - command line option
 
    Level: intermediate
 .seealso:  PetscRandom, PetscRandomView, PetscObjectViewFromOptions(), PetscRandomCreate()

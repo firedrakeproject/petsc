@@ -1,6 +1,0 @@
-Graph Partitioner: 8 MPI Processes
-  type: ptscotch
-  edge cut: 0
-  balance:  0
-  using partitioning strategy DEFAULT
-  using load imbalance ratio 0.1

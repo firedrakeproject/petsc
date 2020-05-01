@@ -97,7 +97,7 @@ inline PetscErrorCode DMatrix_Invert_4x4_Internal (PetscReal *inmat, PetscReal *
 }
 
 
-/*@
+/*@C
   Compute_Lagrange_Basis_1D_Internal - Evaluate bases and derivatives at quadrature points for a EDGE2 or EDGE3 element.
 
   The routine is given the coordinates of the vertices of a linear or quadratic edge element.
@@ -229,7 +229,7 @@ PetscErrorCode Compute_Lagrange_Basis_1D_Internal ( const PetscInt nverts, const
 }
 
 
-/*@
+/*@C
   Compute_Lagrange_Basis_2D_Internal - Evaluate bases and derivatives at quadrature points for a QUAD4 or TRI3 element.
 
   The routine is given the coordinates of the vertices of a quadrangle or triangle.
@@ -404,7 +404,7 @@ PetscErrorCode Compute_Lagrange_Basis_2D_Internal ( const PetscInt nverts, const
 }
 
 
-/*@
+/*@C
   Compute_Lagrange_Basis_3D_Internal - Evaluate bases and derivatives at quadrature points for a HEX8 or TET4 element.
 
   The routine is given the coordinates of the vertices of a hexahedra or tetrahedra.
@@ -636,12 +636,12 @@ PetscErrorCode Compute_Lagrange_Basis_3D_Internal ( const PetscInt nverts, const
         dphidx[1 + offset] = Dx[1];
         dphidx[2 + offset] = Dx[2];
         dphidx[3 + offset] = Dx[3];
-      
+
         dphidy[0 + offset] = Dy[0];
         dphidy[1 + offset] = Dy[1];
         dphidy[2 + offset] = Dy[2];
         dphidy[3 + offset] = Dy[3];
-      
+
         dphidz[0 + offset] = Dz[0];
         dphidz[1 + offset] = Dz[1];
         dphidz[2 + offset] = Dz[2];
@@ -674,7 +674,7 @@ PetscErrorCode Compute_Lagrange_Basis_3D_Internal ( const PetscInt nverts, const
 
 
 
-/*@
+/*@C
   DMMoabFEMComputeBasis - Evaluate bases and derivatives at quadrature points for a linear EDGE/QUAD/TRI/HEX/TET element.
 
   The routine takes the coordinates of the vertices of an element and computes basis functions associated with
@@ -695,8 +695,8 @@ PetscErrorCode Compute_Lagrange_Basis_3D_Internal ( const PetscInt nverts, const
   Level: advanced
 
 @*/
-PetscErrorCode DMMoabFEMComputeBasis ( const PetscInt dim, const PetscInt nverts, const PetscReal *coordinates, const PetscQuadrature quadrature, 
-                                       PetscReal *phypts, PetscReal *jacobian_quadrature_weight_product, 
+PetscErrorCode DMMoabFEMComputeBasis ( const PetscInt dim, const PetscInt nverts, const PetscReal *coordinates, const PetscQuadrature quadrature,
+                                       PetscReal *phypts, PetscReal *jacobian_quadrature_weight_product,
                                        PetscReal *fe_basis, PetscReal **fe_basis_derivatives)
 {
   PetscErrorCode  ierr;
@@ -707,7 +707,7 @@ PetscErrorCode DMMoabFEMComputeBasis ( const PetscInt dim, const PetscInt nverts
 
   PetscFunctionBegin;
   PetscValidPointer(coordinates, 3);
-  PetscValidHeaderSpecific(quadrature, PETSC_OBJECT_CLASSID, 4);
+  PetscValidHeaderSpecific(quadrature, PETSCQUADRATURE_CLASSID, 4);
   PetscValidPointer(fe_basis, 7);
   compute_der = (fe_basis_derivatives != NULL);
 
@@ -748,7 +748,7 @@ PetscErrorCode DMMoabFEMComputeBasis ( const PetscInt dim, const PetscInt nverts
 
 
 
-/*@
+/*@C
   DMMoabFEMCreateQuadratureDefault - Create default quadrature rules for integration over an element with a given
   dimension and polynomial order (deciphered from number of element vertices).
 
@@ -775,7 +775,7 @@ PetscErrorCode DMMoabFEMCreateQuadratureDefault ( const PetscInt dim, const Pets
   {
   case 1:
     /* Create Gauss quadrature rules with <order = nverts> in the span [-1, 1] */
-    ierr = PetscDTGaussJacobiQuadrature(1, nc, nverts, 0, 1.0, quadrature);CHKERRQ(ierr);
+    ierr = PetscDTStroudConicalQuadrature(1, nc, nverts, 0, 1.0, quadrature);CHKERRQ(ierr);
     break;
   case 2:
     /* Create Gauss quadrature rules with <order = nverts> in the span [-1, 1] */
@@ -804,7 +804,7 @@ PetscErrorCode DMMoabFEMCreateQuadratureDefault ( const PetscInt dim, const Pets
       ierr = PetscQuadratureCreate(PETSC_COMM_SELF, quadrature);CHKERRQ(ierr);
       ierr = PetscQuadratureSetOrder(*quadrature, order);CHKERRQ(ierr);
       ierr = PetscQuadratureSetData(*quadrature, dim, nc, npoints, x, w);CHKERRQ(ierr);
-      /* ierr = PetscDTGaussJacobiQuadrature(dim, nverts, 0.0, 1.0, quadrature);CHKERRQ(ierr); */
+      /* ierr = PetscDTStroudConicalQuadrature(dim, nc, nverts, 0.0, 1.0, quadrature);CHKERRQ(ierr); */
     }
     else {
       ierr = PetscDTGaussTensorQuadrature(dim, nc, nverts, 0.0, 1.0, quadrature);CHKERRQ(ierr);
@@ -851,7 +851,7 @@ PetscErrorCode DMMoabFEMCreateQuadratureDefault ( const PetscInt dim, const Pets
       ierr = PetscQuadratureCreate(PETSC_COMM_SELF, quadrature);CHKERRQ(ierr);
       ierr = PetscQuadratureSetOrder(*quadrature, order);CHKERRQ(ierr);
       ierr = PetscQuadratureSetData(*quadrature, dim, nc, npoints, x, w);CHKERRQ(ierr);
-      /* ierr = PetscDTGaussJacobiQuadrature(dim, nverts, 0.0, 1.0, quadrature);CHKERRQ(ierr); */
+      /* ierr = PetscDTStroudConicalQuadrature(dim, nc, nverts, 0.0, 1.0, quadrature);CHKERRQ(ierr); */
     }
     else {
       ierr = PetscDTGaussTensorQuadrature(dim, nc, nverts, 0.0, 1.0, quadrature);CHKERRQ(ierr);
@@ -1048,7 +1048,7 @@ PetscErrorCode FEMComputeBasis_JandF ( const PetscInt dim, const PetscInt nverts
 
 
 
-/*@
+/*@C
   DMMoabPToRMapping - Compute the mapping from the physical coordinate system for a given element to the
   canonical reference element. In addition to finding the inverse mapping evaluation through Newton iteration,
   the basis function at the parametric point is also evaluated optionally.
@@ -1158,4 +1158,3 @@ PetscErrorCode DMMoabPToRMapping( const PetscInt dim, const PetscInt nverts, con
   }
   PetscFunctionReturn(0);
 }
-

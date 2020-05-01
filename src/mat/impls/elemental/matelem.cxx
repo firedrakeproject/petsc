@@ -69,7 +69,6 @@ static PetscErrorCode MatView_Elemental(Mat A,PetscViewer viewer)
       ierr = PetscViewerASCIIUseTabs(viewer,PETSC_TRUE);CHKERRQ(ierr);
       if (A->factortype == MAT_FACTOR_NONE){
         Mat Adense;
-        ierr = PetscPrintf(PetscObjectComm((PetscObject)viewer),"Elemental matrix (explicit ordering)\n");CHKERRQ(ierr);
         ierr = MatConvert(A,MATDENSE,MAT_INITIAL_MATRIX,&Adense);CHKERRQ(ierr);
         ierr = MatView(Adense,viewer);CHKERRQ(ierr);
         ierr = MatDestroy(&Adense);CHKERRQ(ierr);
@@ -78,7 +77,6 @@ static PetscErrorCode MatView_Elemental(Mat A,PetscViewer viewer)
   } else {
     /* convert to dense format and call MatView() */
     Mat Adense;
-    ierr = PetscPrintf(PetscObjectComm((PetscObject)viewer),"Elemental matrix (explicit ordering)\n");CHKERRQ(ierr);
     ierr = MatConvert(A,MATDENSE,MAT_INITIAL_MATRIX,&Adense);CHKERRQ(ierr);
     ierr = MatView(Adense,viewer);CHKERRQ(ierr);
     ierr = MatDestroy(&Adense);CHKERRQ(ierr);
@@ -129,6 +127,7 @@ PetscErrorCode MatSetOption_Elemental(Mat A,MatOption op,PetscBool flg)
   case MAT_NEW_NONZERO_ALLOCATION_ERR:
   case MAT_SYMMETRIC:
   case MAT_SORTED_FULL:
+  case MAT_HERMITIAN:
     break;
   case MAT_ROW_ORIENTED:
     a->roworiented = flg;
@@ -327,7 +326,7 @@ static PetscErrorCode MatMultTransposeAdd_Elemental(Mat A,Vec X,Vec Y,Vec Z)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMatMultNumeric_Elemental(Mat A,Mat B,Mat C)
+PetscErrorCode MatMatMultNumeric_Elemental(Mat A,Mat B,Mat C)
 {
   Mat_Elemental    *a = (Mat_Elemental*)A->data;
   Mat_Elemental    *b = (Mat_Elemental*)B->data;
@@ -342,35 +341,15 @@ static PetscErrorCode MatMatMultNumeric_Elemental(Mat A,Mat B,Mat C)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMatMultSymbolic_Elemental(Mat A,Mat B,PetscReal fill,Mat *C)
+PetscErrorCode MatMatMultSymbolic_Elemental(Mat A,Mat B,PetscReal fill,Mat Ce)
 {
   PetscErrorCode ierr;
-  Mat            Ce;
-  MPI_Comm       comm;
 
   PetscFunctionBegin;
-  ierr = PetscObjectGetComm((PetscObject)A,&comm);CHKERRQ(ierr);
-  ierr = MatCreate(comm,&Ce);CHKERRQ(ierr);
   ierr = MatSetSizes(Ce,A->rmap->n,B->cmap->n,PETSC_DECIDE,PETSC_DECIDE);CHKERRQ(ierr);
   ierr = MatSetType(Ce,MATELEMENTAL);CHKERRQ(ierr);
   ierr = MatSetUp(Ce);CHKERRQ(ierr);
-  *C = Ce;
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode MatMatMult_Elemental(Mat A,Mat B,MatReuse scall,PetscReal fill,Mat *C)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  if (scall == MAT_INITIAL_MATRIX){
-    ierr = PetscLogEventBegin(MAT_MatMultSymbolic,A,B,0,0);CHKERRQ(ierr);
-    ierr = MatMatMultSymbolic_Elemental(A,B,1.0,C);CHKERRQ(ierr);
-    ierr = PetscLogEventEnd(MAT_MatMultSymbolic,A,B,0,0);CHKERRQ(ierr);
-  }
-  ierr = PetscLogEventBegin(MAT_MatMultNumeric,A,B,0,0);CHKERRQ(ierr);
-  ierr = MatMatMultNumeric_Elemental(A,B,*C);CHKERRQ(ierr);
-  ierr = PetscLogEventEnd(MAT_MatMultNumeric,A,B,0,0);CHKERRQ(ierr);
+  Ce->ops->matmultnumeric = MatMatMultNumeric_Elemental;
   PetscFunctionReturn(0);
 }
 
@@ -389,37 +368,53 @@ static PetscErrorCode MatMatTransposeMultNumeric_Elemental(Mat A,Mat B,Mat C)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMatTransposeMultSymbolic_Elemental(Mat A,Mat B,PetscReal fill,Mat *C)
+static PetscErrorCode MatMatTransposeMultSymbolic_Elemental(Mat A,Mat B,PetscReal fill,Mat C)
 {
   PetscErrorCode ierr;
-  Mat            Ce;
-  MPI_Comm       comm;
 
   PetscFunctionBegin;
-  ierr = PetscObjectGetComm((PetscObject)A,&comm);CHKERRQ(ierr);
-  ierr = MatCreate(comm,&Ce);CHKERRQ(ierr);
-  ierr = MatSetSizes(Ce,A->rmap->n,B->rmap->n,PETSC_DECIDE,PETSC_DECIDE);CHKERRQ(ierr);
-  ierr = MatSetType(Ce,MATELEMENTAL);CHKERRQ(ierr);
-  ierr = MatSetUp(Ce);CHKERRQ(ierr);
-  *C = Ce;
+  ierr = MatSetSizes(C,A->rmap->n,B->rmap->n,PETSC_DECIDE,PETSC_DECIDE);CHKERRQ(ierr);
+  ierr = MatSetType(C,MATELEMENTAL);CHKERRQ(ierr);
+  ierr = MatSetUp(C);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMatTransposeMult_Elemental(Mat A,Mat B,MatReuse scall,PetscReal fill,Mat *C)
+/* --------------------------------------- */
+static PetscErrorCode MatProductSetFromOptions_Elemental_AB(Mat C)
+{
+  PetscFunctionBegin;
+  C->ops->matmultsymbolic = MatMatMultSymbolic_Elemental;
+  C->ops->productsymbolic = MatProductSymbolic_AB;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode MatProductSetFromOptions_Elemental_ABt(Mat C)
+{
+  PetscFunctionBegin;
+  C->ops->mattransposemultsymbolic = MatMatTransposeMultSymbolic_Elemental;
+  C->ops->productsymbolic          = MatProductSymbolic_ABt;
+  PetscFunctionReturn(0);
+}
+
+PETSC_INTERN PetscErrorCode MatProductSetFromOptions_Elemental(Mat C)
 {
   PetscErrorCode ierr;
+  Mat_Product    *product = C->product;
 
   PetscFunctionBegin;
-  if (scall == MAT_INITIAL_MATRIX){
-    ierr = PetscLogEventBegin(MAT_MatTransposeMultSymbolic,A,B,0,0);CHKERRQ(ierr);
-    ierr = MatMatMultSymbolic_Elemental(A,B,1.0,C);CHKERRQ(ierr);
-    ierr = PetscLogEventEnd(MAT_MatTransposeMultSymbolic,A,B,0,0);CHKERRQ(ierr);
+  ierr = MatSetType(C,MATELEMENTAL);CHKERRQ(ierr);
+  switch (product->type) {
+  case MATPRODUCT_AB:
+    ierr = MatProductSetFromOptions_Elemental_AB(C);CHKERRQ(ierr);
+    break;
+  case MATPRODUCT_ABt:
+    ierr = MatProductSetFromOptions_Elemental_ABt(C);CHKERRQ(ierr);
+    break;
+  default: SETERRQ1(PetscObjectComm((PetscObject)C),PETSC_ERR_SUP,"MatProduct type %s is not supported for Elemental and Elemental matrices",MatProductTypes[product->type]);
   }
-  ierr = PetscLogEventBegin(MAT_MatTransposeMultNumeric,A,B,0,0);CHKERRQ(ierr);
-  ierr = MatMatTransposeMultNumeric_Elemental(A,B,*C);CHKERRQ(ierr);
-  ierr = PetscLogEventEnd(MAT_MatTransposeMultNumeric,A,B,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
+/* --------------------------------------- */
 
 static PetscErrorCode MatGetDiagonal_Elemental(Mat A,Vec D)
 {
@@ -1015,8 +1010,10 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_Elemental(Mat A, MatType newtype
     /* PETSc-Elemental interface uses axpy for setting off-processor entries, only ADD_VALUES is allowed */
     ierr = MatSetValues(mat_elemental,1,&row,ncols,cols,vals,ADD_VALUES);CHKERRQ(ierr);
     for (j=0; j<ncols; j++) { /* lower triangular part */
+      PetscScalar v;
       if (cols[j] == row) continue;
-      ierr = MatSetValues(mat_elemental,1,&cols[j],1,&row,&vals[j],ADD_VALUES);CHKERRQ(ierr);
+      v    = A->hermitian ? PetscConj(vals[j]) : vals[j];
+      ierr = MatSetValues(mat_elemental,1,&cols[j],1,&row,&v,ADD_VALUES);CHKERRQ(ierr);
     }
     ierr = MatRestoreRow(A,row,&ncols,&cols,&vals);CHKERRQ(ierr);
   }
@@ -1056,8 +1053,10 @@ PETSC_INTERN PetscErrorCode MatConvert_MPISBAIJ_Elemental(Mat A, MatType newtype
     /* PETSc-Elemental interface uses axpy for setting off-processor entries, only ADD_VALUES is allowed */
     ierr = MatSetValues(mat_elemental,1,&row,ncols,cols,vals,ADD_VALUES);CHKERRQ(ierr);
     for (j=0; j<ncols; j++) { /* lower triangular part */
+      PetscScalar v;
       if (cols[j] == row) continue;
-      ierr = MatSetValues(mat_elemental,1,&cols[j],1,&row,&vals[j],ADD_VALUES);CHKERRQ(ierr);
+      v    = A->hermitian ? PetscConj(vals[j]) : vals[j];
+      ierr = MatSetValues(mat_elemental,1,&cols[j],1,&row,&v,ADD_VALUES);CHKERRQ(ierr);
     }
     ierr = MatRestoreRow(A,row,&ncols,&cols,&vals);CHKERRQ(ierr);
   }
@@ -1266,17 +1265,17 @@ static struct _MatOps MatOps_Values = {
        0,
        0,
        0,
-/*89*/ MatMatMult_Elemental,
-       MatMatMultSymbolic_Elemental,
+/*89*/ 0,
+       0,
        MatMatMultNumeric_Elemental,
        0,
        0,
 /*94*/ 0,
-       MatMatTransposeMult_Elemental,
-       MatMatTransposeMultSymbolic_Elemental,
+       0,
+       0,
        MatMatTransposeMultNumeric_Elemental,
        0,
-/*99*/ 0,
+/*99*/ MatProductSetFromOptions_Elemental,
        0,
        0,
        MatConjugate_Elemental,
@@ -1314,6 +1313,15 @@ static struct _MatOps MatOps_Values = {
 /*134*/0,
        0,
        0,
+       0,
+       0,
+       0,
+/*140*/0,
+       0,
+       0,
+       0,
+       0,
+/*145*/0,
        0,
        0
 };

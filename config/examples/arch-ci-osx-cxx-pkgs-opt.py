@@ -2,7 +2,6 @@
 
 import os
 petsc_hash_pkgs=os.path.join(os.getenv('HOME'),'petsc-hash-pkgs')
-if not os.path.isdir(petsc_hash_pkgs): os.mkdir(petsc_hash_pkgs)
 
 # moab appears to break with -with-visibility=1 - so disable it
 
@@ -35,6 +34,8 @@ configure_options = [
   '--download-med=1',
   '--download-sundials=1',
   '--download-hypre=1',
+  '--download-amrex=1',
+  '--download-cmake=1',
   '--download-suitesparse=1',
   '--download-chaco=1',
   '--download-spai=1',

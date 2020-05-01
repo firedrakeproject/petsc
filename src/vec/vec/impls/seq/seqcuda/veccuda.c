@@ -13,95 +13,6 @@
 #include <../src/vec/vec/impls/dvecimpl.h>
 #include <../src/vec/vec/impls/seq/seqcuda/cudavecimpl.h>
 
-static PetscErrorCode PetscCUBLASDestroyHandle();
-
-/*
-   Implementation for obtaining read-write access to the cuBLAS handle.
-   Required to properly deal with repeated calls of PetscInitizalize()/PetscFinalize().
- */
-static PetscErrorCode PetscCUBLASGetHandle_Private(cublasHandle_t **handle)
-{
-  static cublasHandle_t cublasv2handle = NULL;
-  cublasStatus_t        cberr;
-  PetscErrorCode        ierr;
-
-  PetscFunctionBegin;
-  if (!cublasv2handle) {
-    cberr = cublasCreate(&cublasv2handle);CHKERRCUBLAS(cberr);
-    /* Make sure that the handle will be destroyed properly */
-    ierr = PetscRegisterFinalize(PetscCUBLASDestroyHandle);CHKERRQ(ierr);
-  }
-  *handle = &cublasv2handle;
-  PetscFunctionReturn(0);
-}
-
-/*
-    Initializing the cuBLAS handle can take 1/2 a second therefore
-    initialize in PetscInitialize() before being timing so it does
-    not distort the -log_view information
-*/
-PetscErrorCode PetscCUBLASInitializeHandle(void)
-{
-  cublasHandle_t *p_cublasv2handle;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = PetscCUBLASGetHandle_Private(&p_cublasv2handle);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
-/*
-   Singleton for obtaining a handle to cuBLAS.
-   The handle is required for calls to routines in cuBLAS.
- */
-PetscErrorCode PetscCUBLASGetHandle(cublasHandle_t *handle)
-{
-  cublasHandle_t *p_cublasv2handle;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = PetscCUBLASGetHandle_Private(&p_cublasv2handle);CHKERRQ(ierr);
-  *handle = *p_cublasv2handle;
-  PetscFunctionReturn(0);
-}
-
-
-/*
-   Destroys the CUBLAS handle.
-   This function is intended and registered for PetscFinalize - do not call manually!
- */
-PetscErrorCode PetscCUBLASDestroyHandle()
-{
-  cublasHandle_t *p_cublasv2handle;
-  cublasStatus_t cberr;
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = PetscCUBLASGetHandle_Private(&p_cublasv2handle);CHKERRQ(ierr);
-  cberr = cublasDestroy(*p_cublasv2handle);CHKERRCUBLAS(cberr);
-  *p_cublasv2handle = NULL;  /* Ensures proper reinitialization */
-  PetscFunctionReturn(0);
-}
-
-PETSC_EXTERN const char* PetscCUBLASGetErrorName(cublasStatus_t status)
-{
-  switch(status) {
-#if (CUDART_VERSION >= 8000) /* At least CUDA 8.0 of Sep. 2016 had these */
-    case CUBLAS_STATUS_SUCCESS:          return "CUBLAS_STATUS_SUCCESS";
-    case CUBLAS_STATUS_NOT_INITIALIZED:  return "CUBLAS_STATUS_NOT_INITIALIZED";
-    case CUBLAS_STATUS_ALLOC_FAILED:     return "CUBLAS_STATUS_ALLOC_FAILED";
-    case CUBLAS_STATUS_INVALID_VALUE:    return "CUBLAS_STATUS_INVALID_VALUE";
-    case CUBLAS_STATUS_ARCH_MISMATCH:    return "CUBLAS_STATUS_ARCH_MISMATCH";
-    case CUBLAS_STATUS_MAPPING_ERROR:    return "CUBLAS_STATUS_MAPPING_ERROR";
-    case CUBLAS_STATUS_EXECUTION_FAILED: return "CUBLAS_STATUS_EXECUTION_FAILED";
-    case CUBLAS_STATUS_INTERNAL_ERROR:   return "CUBLAS_STATUS_INTERNAL_ERROR";
-    case CUBLAS_STATUS_NOT_SUPPORTED:    return "CUBLAS_STATUS_NOT_SUPPORTED";
-    case CUBLAS_STATUS_LICENSE_ERROR:    return "CUBLAS_STATUS_LICENSE_ERROR";
-#endif
-    default:                             return "unknown error";
-  }
-}
-
 /*
     Allocates space for the vector array on the Host if it does not exist.
     Does NOT change the PetscCUDAFlag for the vector
@@ -120,10 +31,17 @@ PetscErrorCode VecCUDAAllocateCheckHost(Vec v)
     v->data = s;
   }
   if (!s->array) {
+    if (n*sizeof(PetscScalar) > v->minimum_bytes_pinned_memory) {
+      ierr = PetscMallocSetCUDAHost();CHKERRQ(ierr);
+      v->pinned_memory = PETSC_TRUE;
+    }
     ierr = PetscMalloc1(n,&array);CHKERRQ(ierr);
     ierr = PetscLogObjectMemory((PetscObject)v,n*sizeof(PetscScalar));CHKERRQ(ierr);
     s->array           = array;
     s->array_allocated = array;
+    if (n*sizeof(PetscScalar) > v->minimum_bytes_pinned_memory) {
+      ierr = PetscMallocResetCUDAHost();CHKERRQ(ierr);
+    }
     if (v->offloadmask == PETSC_OFFLOAD_UNALLOCATED) {
       v->offloadmask = PETSC_OFFLOAD_CPU;
     }
@@ -174,7 +92,16 @@ PetscErrorCode VecDestroy_SeqCUDA_Private(Vec v)
   PetscLogObjectState((PetscObject)v,"Length=%D",v->map->n);
 #endif
   if (vs) {
-    if (vs->array_allocated) { ierr = PetscFree(vs->array_allocated);CHKERRQ(ierr); }
+    if (vs->array_allocated) {
+      if (v->pinned_memory) {
+        ierr = PetscMallocSetCUDAHost();CHKERRQ(ierr);
+      }
+      ierr = PetscFree(vs->array_allocated);CHKERRQ(ierr);
+      if (v->pinned_memory) {
+        ierr = PetscMallocResetCUDAHost();CHKERRQ(ierr);
+        v->pinned_memory = PETSC_FALSE;
+      }
+    }
     ierr = PetscFree(vs);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
@@ -402,12 +329,12 @@ PetscErrorCode VecGetArrayWrite_SeqCUDA(Vec v,PetscScalar **vv)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode VecPinToCPU_SeqCUDA(Vec V,PetscBool pin)
+PetscErrorCode VecBindToCPU_SeqCUDA(Vec V,PetscBool pin)
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  V->pinnedtocpu = pin;
+  V->boundtocpu = pin;
   if (pin) {
     ierr = VecCUDACopyFromGPU(V);CHKERRQ(ierr);
     V->offloadmask                 = PETSC_OFFLOAD_CPU; /* since the CPU code will likely change values in the vector */
@@ -488,24 +415,33 @@ PetscErrorCode VecCreate_SeqCUDA_Private(Vec V,const PetscScalar *array)
   PetscErrorCode ierr;
   Vec_CUDA       *veccuda;
   PetscMPIInt    size;
+  PetscBool      option_set;
 
   PetscFunctionBegin;
   ierr = MPI_Comm_size(PetscObjectComm((PetscObject)V),&size);CHKERRQ(ierr);
   if (size > 1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Cannot create VECSEQCUDA on more than one process");
   ierr = VecCreate_Seq_Private(V,0);CHKERRQ(ierr);
   ierr = PetscObjectChangeTypeName((PetscObject)V,VECSEQCUDA);CHKERRQ(ierr);
-  ierr = VecPinToCPU_SeqCUDA(V,PETSC_FALSE);CHKERRQ(ierr);
-  V->ops->pintocpu = VecPinToCPU_SeqCUDA;
+  ierr = VecBindToCPU_SeqCUDA(V,PETSC_FALSE);CHKERRQ(ierr);
+  V->ops->bindtocpu = VecBindToCPU_SeqCUDA;
 
   /* Later, functions check for the Vec_CUDA structure existence, so do not create it without array */
   if (array) {
     if (!V->spptr) {
+      PetscReal pinned_memory_min;
       ierr = PetscMalloc(sizeof(Vec_CUDA),&V->spptr);CHKERRQ(ierr);
       veccuda = (Vec_CUDA*)V->spptr;
       veccuda->stream = 0; /* using default stream */
       veccuda->GPUarray_allocated = 0;
-      veccuda->hostDataRegisteredAsPageLocked = PETSC_FALSE;
       V->offloadmask = PETSC_OFFLOAD_UNALLOCATED;
+
+      pinned_memory_min = 0;
+      /* Need to parse command line for minimum size to use for pinned memory allocations on host here.
+         Note: This same code duplicated in VecCUDAAllocateCheck() and VecCreate_MPICUDA_Private(). Is there a good way to avoid this? */
+      ierr = PetscOptionsBegin(PetscObjectComm((PetscObject)V),((PetscObject)V)->prefix,"VECCUDA Options","Vec");CHKERRQ(ierr);
+      ierr = PetscOptionsReal("-vec_pinned_memory_min","Minimum size (in bytes) for an allocation to use pinned memory on host","VecSetPinnedMemoryMin",pinned_memory_min,&pinned_memory_min,&option_set);CHKERRQ(ierr);
+      if (option_set) V->minimum_bytes_pinned_memory = pinned_memory_min;
+      ierr = PetscOptionsEnd();CHKERRQ(ierr);
     }
     veccuda = (Vec_CUDA*)V->spptr;
     veccuda->GPUarray = (PetscScalar*)array;

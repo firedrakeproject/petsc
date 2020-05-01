@@ -26,21 +26,19 @@ static PetscErrorCode  KSPSolve_PREONLY(KSP ksp)
   } else {
     ksp->its    = 1;
     ksp->reason = KSP_CONVERGED_ITS;
-#if defined(PETSC_USE_DEBUG)
-    {
+    if (PetscDefined(USE_DEBUG)) {
       PetscReal norm;
       ierr = VecNorm(ksp->vec_sol,NORM_2,&norm);CHKERRQ(ierr);
       if (PetscIsInfOrNanReal(norm)) {
         ksp->reason = KSP_DIVERGED_NANORINF;
       }
     }
-#endif
   }
   PetscFunctionReturn(0);
 }
 
 /*MC
-     KSPPREONLY - This implements a stub method that applies ONLY the preconditioner.
+     KSPPREONLY - This implements a method that applies ONLY the preconditioner exactly once.
                   This may be used in inner iterations, where it is desired to
                   allow multiple iterations as well as the "0-iteration" case. It is
                   commonly used with the direct solver preconditioners like PCLU and PCCHOLESKY
@@ -54,11 +52,13 @@ static PetscErrorCode  KSPSolve_PREONLY(KSP ksp)
     Since this does not involve an iteration the basic KSP parameters such as tolerances and iteration counts
           do not apply
 
+    To apply multiple preconditioners in a simple iteration use KSPRICHARDSON
+
    Developer Notes:
     Even though this method does not use any norms, the user is allowed to set the KSPNormType to any value.
     This is so the users does not have to change KSPNormType options when they switch from other KSP methods to this one.
 
-.seealso:  KSPCreate(), KSPSetType(), KSPType (for list of available types), KSP
+.seealso:  KSPCreate(), KSPSetType(), KSPType, KSP, KSPRICHARDSON, KSPCHEBYSHEV
 
 M*/
 

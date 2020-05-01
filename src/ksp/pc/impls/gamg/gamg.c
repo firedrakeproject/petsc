@@ -109,8 +109,8 @@ static PetscErrorCode PCGAMGCreateLevel_GAMG(PC pc,Mat Amat_fine,PetscInt cr_bs,
       /* odd case where multiple coarse grids are on one processor or no coarsening ... */
       ierr = PetscInfo1(pc,"reduced grid using same number of processors (%d) as last grid (use larger coarse grid)\n",nactive);CHKERRQ(ierr);
       if (pc_gamg->cpu_pin_coarse_grids) {
-        ierr = MatPinToCPU(*a_Amat_crs,PETSC_TRUE);CHKERRQ(ierr);
-        ierr = MatPinToCPU(*a_P_inout,PETSC_TRUE);CHKERRQ(ierr);
+        ierr = MatBindToCPU(*a_Amat_crs,PETSC_TRUE);CHKERRQ(ierr);
+        ierr = MatBindToCPU(*a_P_inout,PETSC_TRUE);CHKERRQ(ierr);
       }
     }
     /* we know that the grid structure can be reused in MatPtAP */
@@ -405,16 +405,16 @@ static PetscErrorCode PCGAMGCreateLevel_GAMG(PC pc,Mat Amat_fine,PetscInt cr_bs,
       static PetscInt llev = 2;
       ierr = PetscInfo1(pc,"Pinning level %D to the CPU\n",llev++);CHKERRQ(ierr);
 #endif
-      ierr = MatPinToCPU(*a_Amat_crs,PETSC_TRUE);CHKERRQ(ierr);
-      ierr = MatPinToCPU(*a_P_inout,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatBindToCPU(*a_Amat_crs,PETSC_TRUE);CHKERRQ(ierr);
+      ierr = MatBindToCPU(*a_P_inout,PETSC_TRUE);CHKERRQ(ierr);
       if (1) { /* lvec is created, need to pin it, this is done in MatSetUpMultiply_MPIAIJ. Hack */
         Mat         A = *a_Amat_crs, P = *a_P_inout;
         PetscMPIInt size;
         ierr = MPI_Comm_size(PetscObjectComm((PetscObject)A),&size);CHKERRQ(ierr);
         if (size > 1) {
           Mat_MPIAIJ     *a = (Mat_MPIAIJ*)A->data, *p = (Mat_MPIAIJ*)P->data;
-          ierr = VecPinToCPU(a->lvec,PETSC_TRUE);CHKERRQ(ierr);
-          ierr = VecPinToCPU(p->lvec,PETSC_TRUE);CHKERRQ(ierr);
+          ierr = VecBindToCPU(a->lvec,PETSC_TRUE);CHKERRQ(ierr);
+          ierr = VecBindToCPU(p->lvec,PETSC_TRUE);CHKERRQ(ierr);
         }
       }
     }
@@ -1265,7 +1265,8 @@ static PetscErrorCode PCGAMGSetNlevels_GAMG(PC pc, PetscInt n)
 
    Input Parameters:
 +  pc - the preconditioner context
--  threshold - the threshold value, 0.0 means keep all nonzero entries in the graph; negative means keep even zero entries in the graph
+.  threshold - array of threshold values for finest n levels; 0.0 means keep all nonzero entries in the graph; negative means keep even zero entries in the graph
+-  n - number of threshold values provided in array
 
    Options Database Key:
 .  -pc_gamg_threshold <threshold>
@@ -1273,6 +1274,10 @@ static PetscErrorCode PCGAMGSetNlevels_GAMG(PC pc, PetscInt n)
    Notes:
     Increasing the threshold decreases the rate of coarsening. Conversely reducing the threshold increases the rate of coarsening (aggressive coarsening) and thereby reduces the complexity of the coarse grids, and generally results in slower solver converge rates. Reducing coarse grid complexity reduced the complexity of Galerkin coarse grid construction considerably.
     Before coarsening or aggregating the graph, GAMG removes small values from the graph with this threshold, and thus reducing the coupling in the graph and a different (perhaps better) coarser set of points.
+
+    If n is less than the total number of coarsenings (see PCGAMGSetNlevels()), then threshold scaling (see PCGAMGSetThresholdScale()) is used for each successive coarsening.
+    In this case, PCGAMGSetThresholdScale() must be called before PCGAMGSetThreshold().
+    If n is greater than the total number of levels, the excess entries in threshold will not be used.
 
    Level: intermediate
 
@@ -1284,6 +1289,7 @@ PetscErrorCode PCGAMGSetThreshold(PC pc, PetscReal v[], PetscInt n)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc,PC_CLASSID,1);
+  if (n) PetscValidRealPointer(v,2);
   ierr = PetscTryMethod(pc,"PCGAMGSetThreshold_C",(PC,PetscReal[],PetscInt),(pc,v,n));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -1294,8 +1300,8 @@ static PetscErrorCode PCGAMGSetThreshold_GAMG(PC pc, PetscReal v[], PetscInt n)
   PC_GAMG *pc_gamg = (PC_GAMG*)mg->innerctx;
   PetscInt i;
   PetscFunctionBegin;
-  for (i=0;i<n;i++) pc_gamg->threshold[i] = v[i];
-  do {pc_gamg->threshold[i] = pc_gamg->threshold[i-1]*pc_gamg->threshold_scale;} while (++i<PETSC_MG_MAXLEVELS);
+  for (i=0; i<PetscMin(n,PETSC_MG_MAXLEVELS); i++) pc_gamg->threshold[i] = v[i];
+  for ( ; i<PETSC_MG_MAXLEVELS; i++) pc_gamg->threshold[i] = pc_gamg->threshold[i-1]*pc_gamg->threshold_scale;
   PetscFunctionReturn(0);
 }
 
@@ -1311,9 +1317,13 @@ static PetscErrorCode PCGAMGSetThreshold_GAMG(PC pc, PetscReal v[], PetscInt n)
    Options Database Key:
 .  -pc_gamg_threshold_scale <v>
 
+   Notes:
+   The initial threshold (for an arbitrary number of levels starting from the finest) can be set with PCGAMGSetThreshold().
+   This scaling is used for each subsequent coarsening, but must be called before PCGAMGSetThreshold().
+
    Level: advanced
 
-.seealso: ()
+.seealso: PCGAMGSetThreshold()
 @*/
 PetscErrorCode PCGAMGSetThresholdScale(PC pc, PetscReal v)
 {
@@ -1445,6 +1455,10 @@ static PetscErrorCode PCMGGetGridComplexity(PC pc, PetscReal *gc)
   MatInfo        info;
 
   PetscFunctionBegin;
+  if (!pc->setupcalled) {
+    *gc = 0;
+    PetscFunctionReturn(0);
+  }
   if (!mg->nlevels) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_PLIB,"MG has no levels");
   for (lev=0; lev<mg->nlevels; lev++) {
     Mat dB;

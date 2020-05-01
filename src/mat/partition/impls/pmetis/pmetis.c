@@ -62,9 +62,8 @@ static PetscErrorCode MatPartitioningApply_Parmetis_Private(MatPartitioning part
     real_t     *tpwgts,*ubvec,itr=0.1;
 
     ierr = PetscObjectGetComm((PetscObject)pmat,&pcomm);CHKERRQ(ierr);
-#if defined(PETSC_USE_DEBUG)
-    /* check that matrix has no diagonal entries */
-    {
+    if (PetscDefined(USE_DEBUG)) {
+      /* check that matrix has no diagonal entries */
       PetscInt rstart;
       ierr = MatGetOwnershipRange(pmat,&rstart,NULL);CHKERRQ(ierr);
       for (i=0; i<pmat->rmap->n; i++) {
@@ -73,7 +72,6 @@ static PetscErrorCode MatPartitioningApply_Parmetis_Private(MatPartitioning part
         }
       }
     }
-#endif
 
     ierr = PetscMalloc1(pmat->rmap->n,&locals);CHKERRQ(ierr);
 
@@ -87,9 +85,9 @@ static PetscErrorCode MatPartitioningApply_Parmetis_Private(MatPartitioning part
       ierr = ISDestroy(partitioning);CHKERRQ(ierr);
     }
 
-    if (adj->values && !part->vertex_weights) wgtflag = 1;
+    if (adj->values && part->use_edge_weights && !part->vertex_weights) wgtflag = 1;
     if (part->vertex_weights && !adj->values) wgtflag = 2;
-    if (part->vertex_weights && adj->values) wgtflag = 3;
+    if (part->vertex_weights && adj->values && part->use_edge_weights) wgtflag = 3;
 
     if (PetscLogPrintInfo) {itmp = pmetis->printout; pmetis->printout = 127;}
     ierr = PetscMalloc1(ncon*nparts,&tpwgts);CHKERRQ(ierr);

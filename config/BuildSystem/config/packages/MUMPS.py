@@ -16,9 +16,8 @@ class Configure(config.package.Package):
     self.functions        = ['dmumps_c']
     self.includes         = ['dmumps_c.h']
     #
-    # Mumps does NOT work with 64 bit integers without a huge number of hacks we ain't making
+    self.fc               = 1
     self.precisions       = ['single','double']
-    self.requires32bitint = 1;  # 1 means that the package will not work with 64 bit integers
     self.downloadonWindows= 1
     self.hastests         = 1
     self.hastestsdatafiles= 1
@@ -66,8 +65,6 @@ class Configure(config.package.Package):
       self.usesopenmp = 'yes'
       # use OMP_NUM_THREADS to control the number of threads used
 
-    if not hasattr(self.compilers, 'FC'):
-      raise RuntimeError('Cannot install '+self.name+' without Fortran, make sure you do NOT have --with-fc=0')
     if not self.fortran.FortranDefineCompilerOption:
       raise RuntimeError('Fortran compiler cannot handle preprocessing directives from command line.')
     g = open(os.path.join(self.packageDir,'Makefile.inc'),'w')
@@ -152,7 +149,7 @@ class Configure(config.package.Package):
     g.close()
     if self.installNeeded('Makefile.inc'):
       try:
-        output1,err1,ret1  = config.package.Package.executeShellCommand('make clean', cwd=self.packageDir, timeout=5, log = self.log)
+        output1,err1,ret1  = config.package.Package.executeShellCommand('make clean', cwd=self.packageDir, timeout=60, log = self.log)
       except RuntimeError as e:
         pass
       try:
@@ -166,9 +163,9 @@ class Configure(config.package.Package):
           [self.installSudo+'mkdir -p '+libDir+' '+includeDir,
            self.installSudo+'cp -f lib/*.* '+libDir+'/.',
            self.installSudo+'cp -f include/*.* '+includeDir+'/.'
-          ], cwd=self.packageDir, timeout=50, log = self.log)
+          ], cwd=self.packageDir, timeout=60, log = self.log)
         if self.argDB['with-mumps-serial']:
-          output,err,ret = config.package.Package.executeShellCommand([self.installSudo+'cp', '-f', 'libseq/libmpiseq.a', libDir+'/.'], cwd=self.packageDir, timeout=25, log = self.log)
+          output,err,ret = config.package.Package.executeShellCommand([self.installSudo+'cp', '-f', 'libseq/libmpiseq.a', libDir+'/.'], cwd=self.packageDir, timeout=60, log = self.log)
       except RuntimeError as e:
         self.logPrint('Error running make on MUMPS: '+str(e))
         raise RuntimeError('Error running make on MUMPS')

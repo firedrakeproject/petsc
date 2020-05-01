@@ -205,14 +205,9 @@ static PetscErrorCode DMCreateMatrix_Shell(DM dm,Mat *J)
       if (!(aij && (seqaij || mpiaij))) SETERRQ2(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_NOTSAMETYPE,"Requested matrix of type %s, but only %s available",dm->mattype,((PetscObject)A)->type_name);
     }
   }
-  if (((PetscObject)A)->refct < 2) { /* We have an exclusive reference so we can give it out */
-    ierr = PetscObjectReference((PetscObject)A);CHKERRQ(ierr);
-    ierr = MatZeroEntries(A);CHKERRQ(ierr);
-    *J   = A;
-  } else {                      /* Need to create a copy, could use MAT_SHARE_NONZERO_PATTERN in most cases */
-    ierr = MatDuplicate(A,MAT_DO_NOT_COPY_VALUES,J);CHKERRQ(ierr);
-    ierr = MatZeroEntries(*J);CHKERRQ(ierr);
-  }
+  /* Need to create a copy in order to attach the DM to the matrix */
+  ierr = MatDuplicate(A,MAT_SHARE_NONZERO_PATTERN,J);CHKERRQ(ierr);
+  ierr = MatSetDM(*J,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -228,14 +223,9 @@ PetscErrorCode DMCreateGlobalVector_Shell(DM dm,Vec *gvec)
   *gvec = 0;
   X     = shell->Xglobal;
   if (!X) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_USER,"Must call DMShellSetGlobalVector() or DMShellSetCreateGlobalVector()");
-  if (((PetscObject)X)->refct < 2) { /* We have an exclusive reference so we can give it out */
-    ierr  = PetscObjectReference((PetscObject)X);CHKERRQ(ierr);
-    ierr  = VecZeroEntries(X);CHKERRQ(ierr);
-    *gvec = X;
-  } else {                      /* Need to create a copy, could use MAT_SHARE_NONZERO_PATTERN in most cases */
-    ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
-    ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
-  }
+  /* Need to create a copy in order to attach the DM to the vector */
+  ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
+  ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
   ierr = VecSetDM(*gvec,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -252,14 +242,9 @@ PetscErrorCode DMCreateLocalVector_Shell(DM dm,Vec *gvec)
   *gvec = 0;
   X     = shell->Xlocal;
   if (!X) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_USER,"Must call DMShellSetLocalVector() or DMShellSetCreateLocalVector()");
-  if (((PetscObject)X)->refct < 2) { /* We have an exclusive reference so we can give it out */
-    ierr  = PetscObjectReference((PetscObject)X);CHKERRQ(ierr);
-    ierr  = VecZeroEntries(X);CHKERRQ(ierr);
-    *gvec = X;
-  } else {                      /* Need to create a copy, could use MAT_SHARE_NONZERO_PATTERN in most cases */
-    ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
-    ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
-  }
+  /* Need to create a copy in order to attach the DM to the vector */
+  ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
+  ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
   ierr = VecSetDM(*gvec,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -331,6 +316,9 @@ PetscErrorCode DMShellGetContext(DM dm,void **ctx)
 
    Level: advanced
 
+   Developer Notes:
+    To avoid circular references, if J is already associated to the same DM, then MatDuplicate(SHARE_NONZERO_PATTERN) is called, followed by removing the DM reference from the private template.
+
 .seealso: DMCreateMatrix(), DMShellSetCreateMatrix(), DMShellSetContext(), DMShellGetContext()
 @*/
 PetscErrorCode DMShellSetMatrix(DM dm,Mat J)
@@ -338,15 +326,21 @@ PetscErrorCode DMShellSetMatrix(DM dm,Mat J)
   DM_Shell       *shell = (DM_Shell*)dm->data;
   PetscErrorCode ierr;
   PetscBool      isshell;
+  DM             mdm;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   PetscValidHeaderSpecific(J,MAT_CLASSID,2);
   ierr = PetscObjectTypeCompare((PetscObject)dm,DMSHELL,&isshell);CHKERRQ(ierr);
   if (!isshell) PetscFunctionReturn(0);
-  ierr     = PetscObjectReference((PetscObject)J);CHKERRQ(ierr);
-  ierr     = MatDestroy(&shell->A);CHKERRQ(ierr);
-  shell->A = J;
+  if (J == shell->A) PetscFunctionReturn(0);
+  ierr = MatGetDM(J,&mdm);CHKERRQ(ierr);
+  ierr = PetscObjectReference((PetscObject)J);CHKERRQ(ierr);
+  ierr = MatDestroy(&shell->A);CHKERRQ(ierr);
+  if (mdm == dm) {
+    ierr = MatDuplicate(J,MAT_SHARE_NONZERO_PATTERN,&shell->A);CHKERRQ(ierr);
+    ierr = MatSetDM(shell->A,NULL);CHKERRQ(ierr);
+  } else shell->A = J;
   PetscFunctionReturn(0);
 }
 
@@ -365,7 +359,6 @@ PetscErrorCode DMShellSetMatrix(DM dm,Mat J)
 @*/
 PetscErrorCode DMShellSetCreateMatrix(DM dm,PetscErrorCode (*func)(DM,Mat*))
 {
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->creatematrix = func;
@@ -430,7 +423,6 @@ PetscErrorCode DMShellSetGlobalVector(DM dm,Vec X)
 @*/
 PetscErrorCode DMShellSetCreateGlobalVector(DM dm,PetscErrorCode (*func)(DM,Vec*))
 {
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->createglobalvector = func;
@@ -462,7 +454,7 @@ PetscErrorCode DMShellSetLocalVector(DM dm,Vec X)
   PetscValidHeaderSpecific(X,VEC_CLASSID,2);
   ierr = PetscObjectTypeCompare((PetscObject)dm,DMSHELL,&isshell);CHKERRQ(ierr);
   if (!isshell) PetscFunctionReturn(0);
-  ierr           = VecGetDM(X,&vdm);CHKERRQ(ierr);
+  ierr = VecGetDM(X,&vdm);CHKERRQ(ierr);
   /*
       if the vector proposed as the new base global vector for the DM is a DM vector associated
       with the same DM then the current base global vector for the DM is ok and if we replace it with the new one

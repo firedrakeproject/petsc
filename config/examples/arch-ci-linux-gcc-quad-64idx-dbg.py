@@ -2,7 +2,6 @@
 
 import os
 petsc_hash_pkgs=os.path.join(os.getenv('HOME'),'petsc-hash-pkgs')
-if not os.path.isdir(petsc_hash_pkgs): os.mkdir(petsc_hash_pkgs)
 
 configure_options = [
   '--package-prefix-hash='+petsc_hash_pkgs,
@@ -11,7 +10,8 @@ configure_options = [
   'FOPTFLAGS=-g -O',
   'CXXOPTFLAGS=-g -O',
   '--with-clanguage=c',
-  '--with-shared-libraries=no',
+  '--with-shared-libraries=0',
+  '--with-single-library=0',
   '--with-scalar-type=real',
   '--with-64-bit-indices=yes',
   '--with-precision=__float128',

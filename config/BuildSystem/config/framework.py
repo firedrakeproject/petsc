@@ -59,7 +59,7 @@ import pickle
 try:
   from hashlib import md5 as new_md5
 except ImportError:
-  from md5 import new as new_md5
+  from md5 import new as new_md5 # novermin
 
 
 class Framework(config.base.Configure, script.LanguageProcessor):
@@ -1020,7 +1020,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
   #  the only allow non-blocking IO operations etc, they don't provide real parallelism
   #  Also changing values in LIBS is currently buggy for threads as are possible other variables
   def parallelQueueEvaluation(self, depGraph, numThreads = 1):
-    import Queue
+    import Queue # novermin
     from threading import Thread
 
     if numThreads < 1: raise RuntimeError('Parallel configure must use at least one thread')
@@ -1113,7 +1113,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
         # Udpate queue
         #self.logPrint('PUSH  %s to DONE ' % child.__class__.__module__)
         done.put((ret, out, emsg, child))
-        q.task_done()
+        q.task_done() # novermin
         if ret: break
       return
 
@@ -1142,17 +1142,51 @@ class Framework(config.base.Configure, script.LanguageProcessor):
         if push:
           #self.logPrint('PUSH %s to   TODO' % child.__class__.__module__)
           todo.put(child)
-      done.task_done()
-    todo.join()
-    done.join()
+      done.task_done() # novermin
+    todo.join() # novermin
+    done.join() # novermin
     return
 
   def serialEvaluation(self, depGraph):
     import graph
 
+    ndepGraph = graph.DirectedGraph.topologicalSort(depGraph)
+    for child in ndepGraph:
+      if hasattr(child,'setCompilers'): setCompilers = child.setCompilers
+
+    ndepGraph = graph.DirectedGraph.topologicalSort(depGraph)
+    for child in ndepGraph:
+      if (self.argDB['with-batch'] and
+          hasattr(child,'package') and
+          'download-'+child.package in self.framework.clArgDB and
+          self.argDB['download-'+child.package] and not
+          (hasattr(setCompilers,'cross_cc') or child.installwithbatch)): raise RuntimeError('--download-'+child.package+' cannot be used on this batch systems\n')
+
+      # note, only classes derived from package.py have this attribute
+      if hasattr(child,'deps'):
+        found = 0
+        if child.lookforbydefault: found = 1
+        if 'download-'+child.package in self.framework.clArgDB and self.argDB['download-'+child.package]: found = 1
+        if 'with-'+child.package in self.framework.clArgDB and self.argDB['with-'+child.package]: found = 1
+        if 'with-'+child.package+'-lib' in self.framework.clArgDB and self.argDB['with-'+child.package+'-lib']: found = 1
+        if 'with-'+child.package+'-dir' in self.framework.clArgDB and self.argDB['with-'+child.package+'-dir']: found = 1
+        if not found: continue
+        msg = ''
+        for dep in child.deps:
+          found = 0
+          if dep.lookforbydefault: found = 1
+          if 'download-'+dep.package in self.framework.clArgDB and self.argDB['download-'+dep.package]: found = 1
+          if 'with-'+dep.package in self.framework.clArgDB and self.argDB['with-'+dep.package]: found = 1
+          if 'with-'+dep.package+'-lib' in self.framework.clArgDB and self.argDB['with-'+dep.package+'-lib']: found = 1
+          if 'with-'+dep.package+'-dir' in self.framework.clArgDB and self.argDB['with-'+dep.package+'-dir']: found = 1
+          if not found: msg += 'Package '+child.package+' requested but dependency '+dep.package+' not requested. Perhaps you want --download-'+dep.package+'\n'
+        if msg: raise RuntimeError(msg)
+        if child.cxx and ('with-cxx' in self.framework.clArgDB) and (self.argDB['with-cxx'] == '0'): raise RuntimeError('Package '+child.package+' requested requires C++ but compiler turned off.')
+        if child.fc and ('with-fc' in self.framework.clArgDB) and (self.argDB['with-fc'] == '0'): raise RuntimeError('Package '+child.package+' requested requires Fortran but compiler turned off.')
+
+    depGraph = graph.DirectedGraph.topologicalSort(depGraph)
     totaltime = 0
     starttime = time.time()
-    depGraph = graph.DirectedGraph.topologicalSort(depGraph)
     for child in depGraph:
       start = time.time()
       if not hasattr(child, '_configured'):
@@ -1174,9 +1208,9 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     useParallel = False
     if script.useParallel:
       try:
-        import Queue
+        import Queue # novermin
         from threading import Thread
-        if hasattr(Queue.Queue(), 'join'): useParallel = True
+        if hasattr(Queue.Queue(), 'join'): useParallel = True # novermin
       except: pass
     if useParallel:
       self.parallelQueueEvaluation(self.childGraph, script.useParallel)

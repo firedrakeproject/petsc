@@ -3,10 +3,10 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.gitcommit              = 'f94ef3f' #master oct-21-2019
+    self.gitcommit              = 'e8639ff' # master mar-15-2020
     self.download               = ['git://https://github.com/hpddm/hpddm','https://github.com/hpddm/hpddm/archive/'+self.gitcommit+'.tar.gz']
-    self.version                = '2.0.2'
-    self.minversion             = '2.0.0' # first release with --download-hpddm support, broken for Pmat of type MATMPISBAIJ
+    self.version                = '2.0.3'
+    self.minversion             = '2.0.3' # prior versions are not handling KSPHPDDM options properly
     self.versionname            = 'HPDDM_VERSION'
     self.versioninclude         = 'HPDDM_define.hpp'
     self.requirescxx11          = 1
@@ -38,9 +38,7 @@ class Configure(config.package.Package):
     import os
     if self.slepc.found and not self.checkSharedLibrariesEnabled():
       raise RuntimeError('Shared libraries enabled needed to build PCHPDDM')
-    if self.framework.argDB['with-64-bit-blas-indices']:
-      raise RuntimeError('32-bit BLAS needed to build HPDDM')
-    buildDir   = os.path.join(self.packageDir,'petsc-build')
+    buildDir = os.path.join(self.packageDir,'petsc-build')
     self.setCompilers.pushLanguage('Cxx')
     cxx = self.setCompilers.getCompiler()
     cxxflags = self.setCompilers.getCompilerFlags()
@@ -67,7 +65,7 @@ class Configure(config.package.Package):
     self.framework.packages.append(self)
     cpstr = newuser+' mkdir -p '+incDir+' && '+newuser+' cp '+os.path.join(self.packageDir,'include','*')+' '+incDir
     self.logPrintBox('Copying HPDDM; this may take several seconds')
-    output,err,ret  = config.package.Package.executeShellCommand(cpstr,timeout=100,log=self.log)
+    output,err,ret = config.package.Package.executeShellCommand(cpstr,timeout=100,log=self.log)
     self.log.write(output+err)
     # SLEPc dependency
     if self.mpi.found:

@@ -146,11 +146,11 @@
           PetscErrorCode, intent(out) :: ierr
         End Subroutine PetscOptionsView
 
-      subroutine PetscRandomSetType(a,b,z)
+      subroutine PetscRandomSetType(a,b,ierr)
       use petscsysdef
        PetscRandom a
        character(*) b
-       integer z
+       PetscErrorCode ierr
        end subroutine
 
       subroutine PetscErrorf(ierr)
@@ -164,55 +164,86 @@
        PetscErrorCode, intent(out) :: ierr
       end Subroutine PetscInitialize
       
+      subroutine PetscInitializeNoArguments(ierr)
+      use petscsysdef
+       PetscErrorCode, intent(out) :: ierr
+      end Subroutine PetscInitializeNoArguments
+
       subroutine PetscFinalize(ierr)
       use petscsysdef
        PetscErrorCode, intent(out) :: ierr
       end Subroutine PetscFinalize
 
-      subroutine PetscRandomView(a,b,z)
+      subroutine PetscRandomView(a,b,ierr)
       use petscsysdef
        PetscRandom a
        PetscViewer b
-       integer z
+       PetscErrorCode ierr
+       end subroutine
+
+      subroutine PetscSubcommView(a,b,z)
+      use petscsysdef
+       PetscSubcomm a ! PetscSubcomm
+       PetscViewer b ! PetscViewer
+       PetscErrorCode z
+      end subroutine
+      subroutine PetscSubcommGetParent(a,b,z)
+      use petscsysdef
+       PetscSubcomm a ! PetscSubcomm
+       MPI_Comm b ! MPI_Comm
+       PetscErrorCode z
+       end subroutine
+      subroutine PetscSubcommGetContiguousParent(a,b,z)
+      use petscsysdef
+       PetscSubcomm a ! PetscSubcomm
+       MPI_Comm b ! MPI_Comm
+       PetscErrorCode z
+       end subroutine
+      subroutine PetscSubcommGetChild(a,b,z)
+      use petscsysdef
+       PetscSubcomm a ! PetscSubcomm
+       MPI_Comm b ! MPI_Comm
+       PetscErrorCode z
        end subroutine
 
       subroutine MPIU_abort(comm,ierr)
-      integer,intent(in) ::  comm,ierr
+      MPI_Comm,intent(in) ::  comm
+      PetscErrorCode,intent(in) ::  ierr
       end subroutine
 
       subroutine PetscLogEventRegister(name,classid,event,ierr)
        use petscsysdef
        character(len=*), intent(in) :: name
-       PetscLogEvent, intent(in) :: classid
-       integer, intent(in) :: event
-       integer, intent(out) :: ierr
+       PetscClassId, intent(in) :: classid
+       PetscLogEvent, intent(in) :: event
+       PetscErrorCode, intent(out) :: ierr
       end subroutine PetscLogEventRegister
 
       subroutine PetscLogStageRegister(name,stage,ierr)
        use petscsysdef
        character(len=*), intent(in) :: name
        PetscLogStage, intent(out) :: stage
-       integer, intent(out) :: ierr
+       PetscErrorCode, intent(out) :: ierr
       end subroutine PetscLogStageRegister
 
       subroutine PetscLogEventBegin(event,ierr)
-        integer, intent(in) :: event
-        integer, intent(out) :: ierr
+        PetscLogEvent, intent(in) :: event
+        PetscErrorCode, intent(out) :: ierr
       end subroutine PetscLogEventBegin
 
       subroutine PetscLogEventEnd(event,ierr)
-        integer, intent(in) :: event
-        integer, intent(out) :: ierr
+        PetscLogEvent, intent(in) :: event
+        PetscErrorCode, intent(out) :: ierr
       end subroutine PetscLogEventEnd
 
       subroutine PetscLogStagePop(ierr)
-        integer, intent(out) :: ierr
+        PetscErrorCode, intent(out) :: ierr
       end subroutine PetscLogStagePop
 
       subroutine PetscLogStagePush(s,ierr)
        use petscsysdef
        PetscLogStage, intent(in) :: s
-       integer, intent(out) :: ierr
+       PetscErrorCode, intent(out) :: ierr
       end subroutine PetscLogStagePush
       end Interface
 

@@ -11,7 +11,7 @@
 /*
    Contains the list of registered PetscDraw routines
 */
-PetscFunctionList PetscDrawList = 0;
+PetscFunctionList PetscDrawList = NULL;
 
 /*@C
    PetscDrawView - Prints the PetscDraw data structure.
@@ -95,8 +95,8 @@ PetscErrorCode  PetscDrawView(PetscDraw indraw,PetscViewer viewer)
 
    Input Parameters:
 +  A - the PetscDraw context
--  obj - Optional object
-.  name - command line option
+.  obj - Optional object
+-  name - command line option
 
    Level: intermediate
 .seealso:  PetscDraw, PetscDrawView, PetscObjectViewFromOptions(), PetscDrawCreate()
@@ -151,7 +151,7 @@ PetscErrorCode  PetscDrawCreate(MPI_Comm comm,const char display[],const char ti
 
   PetscFunctionBegin;
   ierr = PetscDrawInitializePackage();CHKERRQ(ierr);
-  *indraw = 0;
+  *indraw = NULL;
   ierr = PetscHeaderCreate(draw,PETSC_DRAW_CLASSID,"Draw","Graphics","Draw",comm,PetscDrawDestroy,PetscDrawView);CHKERRQ(ierr);
 
   draw->data    = NULL;
@@ -248,13 +248,17 @@ PetscErrorCode  PetscDrawSetType(PetscDraw draw,PetscDrawType type)
   }
 #endif
   if (flg) {
+    ierr = PetscStrcmp(type,"tikz",&flg);CHKERRQ(ierr);
+    if (!flg) type = PETSC_DRAW_NULL;
+  }
+
+  ierr = PetscStrcmp(type,PETSC_DRAW_NULL,&match);CHKERRQ(ierr);
+  if (match) {
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_double_buffer",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_virtual",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_fast",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_ports",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_coordinates",NULL);CHKERRQ(ierr);
-    ierr = PetscStrcmp(type,"tikz",&flg);CHKERRQ(ierr);
-    if (!flg) type = PETSC_DRAW_NULL;
   }
 
   ierr =  PetscFunctionListFind(PetscDrawList,type,&r);CHKERRQ(ierr);

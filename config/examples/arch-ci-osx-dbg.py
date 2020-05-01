@@ -2,7 +2,6 @@
 
 import os
 petsc_hash_pkgs=os.path.join(os.getenv('HOME'),'petsc-hash-pkgs')
-if not os.path.isdir(petsc_hash_pkgs): os.mkdir(petsc_hash_pkgs)
 
 configure_options = [
   '--package-prefix-hash='+petsc_hash_pkgs,
@@ -17,12 +16,12 @@ configure_options = [
   '--download-metis=1',
   '--download-parmetis=1',
   '--download-elemental=1',
-  '--download-metis',
-  '--download-parmetis',
   '--download-ptscotch',
   '--download-scalapack',
   '--download-strumpack',
-  '--download-fblaslapack', #vecLib has incomplete lapack - so unuseable by strumpack
+  #'--download-fblaslapack', #vecLib has incomplete lapack - so unuseable by strumpack
+  '--download-f2cblaslapack',
+  '--download-blis',
   '--download-codipack=1',
   '--download-adblaslapack=1',
   '--download-libpng=1',

@@ -11,6 +11,7 @@ typedef struct {
   char      mshNam[PETSC_MAX_PATH_LEN];  /* Name of the mesh filename if any */
   PetscInt  nbrVerEdge;                  /* Number of vertices per edge if unit square/cube generated */
   char      bdLabel[PETSC_MAX_PATH_LEN]; /* Name of the label marking boundary facets */
+  PetscBool splitDomain;                 /* Split the domain into two subregions*/
   PetscInt  metOpt;                      /* Different choices of metric */
   PetscReal hmax, hmin;                  /* Max and min sizes prescribed by the metric */
   PetscBool doL2;                        /* Test L2 projection */
@@ -21,21 +22,23 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  options->dim        = 2;
+  options->dim         = 2;
   ierr = PetscStrcpy(options->mshNam, "");CHKERRQ(ierr);
-  options->nbrVerEdge = 5;
+  options->nbrVerEdge  = 5;
   ierr = PetscStrcpy(options->bdLabel, "");CHKERRQ(ierr);
-  options->metOpt     = 1;
-  options->hmin       = 0.05;
-  options->hmax       = 0.5;
-  options->doL2       = PETSC_FALSE;
+  options->splitDomain = PETSC_FALSE;
+  options->metOpt      = 1;
+  options->hmin        = 0.05;
+  options->hmax        = 0.5;
+  options->doL2        = PETSC_FALSE;
 
   ierr = PetscOptionsBegin(comm, "", "Meshing Adaptation Options", "DMPLEX");CHKERRQ(ierr);
-  ierr = PetscOptionsRangeInt("-dim", "The topological mesh dimension", "ex19.c", options->dim, &options->dim, NULL,1,3);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-msh", "Name of the mesh filename if any", "ex19.c", options->mshNam, options->mshNam, sizeof(options->mshNam), NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-nbrVerEdge", "Number of vertices per edge if unit square/cube generated", "ex19.c", options->nbrVerEdge, &options->nbrVerEdge, NULL,0);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-bdLabel", "Name of the label marking boundary facets", "ex19.c", options->bdLabel, options->bdLabel, sizeof(options->bdLabel), NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-met", "Different choices of metric", "ex19.c", options->metOpt, &options->metOpt, NULL,0);CHKERRQ(ierr);
+  ierr = PetscOptionsInt("-dim", "The topological mesh dimension", "ex19.c", options->dim, &options->dim, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-msh", "Name of the mesh filename if any", "ex19.c", options->mshNam, options->mshNam, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsInt("-nbrVerEdge", "Number of vertices per edge if unit square/cube generated", "ex19.c", options->nbrVerEdge, &options->nbrVerEdge, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-bdLabel", "Name of the label marking boundary facets", "ex19.c", options->bdLabel, options->bdLabel, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-splitdomain", "Create two internal regions", "ex19.c", options->splitDomain, &options->splitDomain, NULL);CHKERRQ(ierr); 
+  ierr = PetscOptionsInt("-met", "Different choices of metric", "ex19.c", options->metOpt, &options->metOpt, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-hmax", "Max size prescribed by the metric", "ex19.c", options->hmax, &options->hmax, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-hmin", "Min size prescribed by the metric", "ex19.c", options->hmin, &options->hmin, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-do_L2", "Test L2 projection", "ex19.c", options->doL2, &options->doL2, NULL);CHKERRQ(ierr);
@@ -76,6 +79,45 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode SplitDomain(DM dm, DMLabel * rgLabel, AppCtx *user){
+  DM                 udm, cdm;
+  PetscSection       coordSection;
+  Vec                coordinates;
+  const PetscScalar *coords;
+  PetscInt           cStart, cEnd, numCells, c;
+  PetscErrorCode     ierr;
+
+
+  ierr = DMCreateLabel(dm, "regions");CHKERRQ(ierr);
+  ierr = DMGetLabel(dm, "regions", rgLabel);CHKERRQ(ierr);
+  ierr = DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd);CHKERRQ(ierr);
+  numCells = cEnd - cStart;
+  ierr = DMPlexUninterpolate(dm, &udm);CHKERRQ(ierr);
+  ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
+  ierr = DMGetSection(cdm, &coordSection);CHKERRQ(ierr);
+  ierr = DMGetCoordinatesLocal(dm, &coordinates);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(coordinates, &coords);CHKERRQ(ierr);
+  for (c = 0; c < numCells; ++c) {
+    const PetscInt *cone;
+    PetscInt        coneSize, cl, v, tag = -1;
+    PetscReal       xG = 0.;
+
+    ierr = DMPlexGetConeSize(udm, c, &coneSize);CHKERRQ(ierr);
+    ierr = DMPlexGetCone(udm, c, &cone);CHKERRQ(ierr);
+    for (cl = 0; cl < coneSize; ++cl) {
+      PetscInt           off;
+
+      v = cone[cl];
+      ierr = PetscSectionGetOffset(coordSection, v, &off);CHKERRQ(ierr);
+      xG += PetscRealPart(coords[off+0]);
+    }
+    if (xG > 0.5*(user->dim+1)) {tag = 2;}
+    else                        {tag = 1;}
+    ierr = DMLabelSetValue(*rgLabel, c+cStart, tag);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode ComputeMetric(DM dm, AppCtx *user, Vec *metric)
 {
   DM                 cdm, mdm;
@@ -92,7 +134,7 @@ static PetscErrorCode ComputeMetric(DM dm, AppCtx *user, Vec *metric)
   ierr = PetscCalloc1(PetscMax(3, dim),&lambda);CHKERRQ(ierr);
   ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
   ierr = DMClone(cdm, &mdm);CHKERRQ(ierr);
-  ierr = DMGetLocalSection(cdm, &csec);CHKERRQ(ierr);
+  ierr = DMGetSection(cdm, &csec);CHKERRQ(ierr);
 
   ierr = PetscSectionCreate(PetscObjectComm((PetscObject) dm), &msec);CHKERRQ(ierr);
   ierr = PetscSectionSetNumFields(msec, 1);CHKERRQ(ierr);
@@ -104,7 +146,7 @@ static PetscErrorCode ComputeMetric(DM dm, AppCtx *user, Vec *metric)
     ierr = PetscSectionSetFieldDof(msec, p, 0, Nd);CHKERRQ(ierr);
   }
   ierr = PetscSectionSetUp(msec);CHKERRQ(ierr);
-  ierr = DMSetLocalSection(mdm, msec);CHKERRQ(ierr);
+  ierr = DMSetSection(mdm, msec);CHKERRQ(ierr);
   ierr = PetscSectionDestroy(&msec);CHKERRQ(ierr);
 
   ierr = DMGetCoordinatesLocal(dm, &coordinates);CHKERRQ(ierr);
@@ -136,6 +178,12 @@ static PetscErrorCode ComputeMetric(DM dm, AppCtx *user, Vec *metric)
       lambda[0] = lbd;
       lambda[1] = lmax;
       lambda[2] = lmax;
+      break;
+    case 3:
+      h = user->hmin;
+      if (pcoords[0] < 0.5) {h=user->hmax;}
+      lbd = 1/(h*h);
+      lambda[0] = lambda[1] = lambda[2] = lbd;
       break;
     default:
       SETERRQ1(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "metOpt = 0, 1 or 2, cannot be %d", user->metOpt);
@@ -251,7 +299,7 @@ static PetscErrorCode TestL2Projection(DM dm, DM dma, AppCtx *user)
 
 int main (int argc, char * argv[]) {
   AppCtx         user;                 /* user-defined work context */
-  DMLabel        bdLabel = NULL;
+  DMLabel        bdLabel = NULL, rgLabel = NULL;
   MPI_Comm       comm;
   DM             dma, odm;
   Vec            metric;
@@ -276,7 +324,11 @@ int main (int argc, char * argv[]) {
     ierr = DMCreateLabel(user.dm, user.bdLabel);CHKERRQ(ierr);
     ierr = DMGetLabel(user.dm, user.bdLabel, &bdLabel);CHKERRQ(ierr);
   }
-  ierr = DMAdaptMetric(user.dm, metric, bdLabel, &dma);CHKERRQ(ierr);
+  if (user.splitDomain){
+    ierr = SplitDomain(user.dm, &rgLabel, &user);CHKERRQ(ierr);
+  }
+
+  ierr = DMAdaptMetric(user.dm, metric, bdLabel, rgLabel, &dma);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) dma, "DMadapt");CHKERRQ(ierr);
   ierr = PetscObjectSetOptionsPrefix((PetscObject) dma, "adapt_");CHKERRQ(ierr);
   ierr = DMViewFromOptions(dma, NULL, "-dm_view");CHKERRQ(ierr);
@@ -293,56 +345,50 @@ int main (int argc, char * argv[]) {
   test:
     suffix: 0
     requires: pragmatic
-    TODO: broken
     args: -dim 2 -nbrVerEdge 5 -dm_plex_separate_marker 0 -met 2 -init_dm_view -adapt_dm_view
   test:
     suffix: 1
     requires: pragmatic
-    TODO: broken
     args: -dim 2 -nbrVerEdge 5 -dm_plex_separate_marker 1 -bdLabel marker -met 2 -init_dm_view -adapt_dm_view
   test:
     suffix: 2
     requires: pragmatic
-    TODO: broken
     args: -dim 3 -nbrVerEdge 5 -met 2 -init_dm_view -adapt_dm_view
   test:
     suffix: 3
     requires: pragmatic
-    TODO: broken
     args: -dim 3 -nbrVerEdge 5 -bdLabel marker -met 2 -init_dm_view -adapt_dm_view
   test:
     suffix: 4
     requires: pragmatic
-    TODO: broken
     nsize: 2
     args: -dim 2 -nbrVerEdge 3 -dm_plex_separate_marker 0 -met 2 -init_dm_view -adapt_dm_view
   test:
     suffix: 5
     requires: pragmatic
-    TODO: broken
     nsize: 4
     args: -dim 2 -nbrVerEdge 3 -dm_plex_separate_marker 0 -met 2 -init_dm_view -adapt_dm_view
   test:
     suffix: 6
     requires: pragmatic
-    TODO: broken
     nsize: 2
     args: -dim 3 -nbrVerEdge 10 -dm_plex_separate_marker 0 -met 0 -hmin 0.01 -hmax 0.03 -init_dm_view -adapt_dm_view
   test:
     suffix: 7
     requires: pragmatic
-    TODO: broken
     nsize: 5
     args: -dim 2 -nbrVerEdge 20 -dm_plex_separate_marker 0 -met 2 -hmax 0.5 -hmin 0.001 -init_dm_view -adapt_dm_view
   test:
+    suffix: grad_0
+    nsize: 1
+    args: -dim 2 -nbrVerEdge 5 -met 3 -hmin=0.003 -hmax=0.1 -dm_plex_separate_marker 1 -bdLabel marker -init_dm_view -adapt_dm_view 
+  test:
     suffix: proj_0
     requires: pragmatic
-    TODO: broken
     args: -dim 2 -nbrVerEdge 3 -dm_plex_separate_marker 0 -init_dm_view -adapt_dm_view -do_L2 -petscspace_degree 1 -petscfe_default_quadrature_order 1 -dm_plex_hash_location -pc_type lu
   test:
     suffix: proj_1
     requires: pragmatic
-    TODO: broken
     args: -dim 2 -nbrVerEdge 5 -dm_plex_separate_marker 0 -init_dm_view -adapt_dm_view -do_L2 -petscspace_degree 2 -petscfe_default_quadrature_order 4 -dm_plex_hash_location -pc_type lu
 
 TEST*/

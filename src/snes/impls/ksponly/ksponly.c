@@ -24,7 +24,10 @@ static PetscErrorCode SNESSolve_KSPONLY(SNES snes)
   F = snes->vec_func;
   Y = snes->vec_sol_update;
 
-  ierr = SNESComputeFunction(snes,X,F);CHKERRQ(ierr);
+  if (!snes->vec_func_init_set) {
+    ierr = SNESComputeFunction(snes,X,F);CHKERRQ(ierr);
+  } else snes->vec_func_init_set = PETSC_FALSE;
+
   if (snes->numbermonitors) {
     PetscReal fnorm;
     ierr = VecNorm(F,NORM_2,&fnorm);CHKERRQ(ierr);
@@ -102,9 +105,9 @@ PETSC_EXTERN PetscErrorCode SNESCreate_KSPONLY(SNES snes)
   snes->ops->setup          = SNESSetUp_KSPONLY;
   snes->ops->solve          = SNESSolve_KSPONLY;
   snes->ops->destroy        = SNESDestroy_KSPONLY;
-  snes->ops->setfromoptions = 0;
-  snes->ops->view           = 0;
-  snes->ops->reset          = 0;
+  snes->ops->setfromoptions = NULL;
+  snes->ops->view           = NULL;
+  snes->ops->reset          = NULL;
 
   snes->usesksp = PETSC_TRUE;
   snes->usesnpc = PETSC_FALSE;
@@ -132,6 +135,7 @@ PETSC_EXTERN PetscErrorCode SNESCreate_KSPTRANSPOSEONLY(SNES snes)
 
   PetscFunctionBegin;
   ierr = SNESCreate_KSPONLY(snes);CHKERRQ(ierr);
+  ierr = PetscObjectChangeTypeName((PetscObject)snes,SNESKSPTRANSPOSEONLY);CHKERRQ(ierr);
   kspo = (SNES_KSPONLY*)snes->data;
   kspo->transpose_solve = PETSC_TRUE;
   PetscFunctionReturn(0);

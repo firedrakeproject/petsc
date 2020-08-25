@@ -5,12 +5,12 @@
 #include <petscsys.h>    /*I   "petscsys.h"    I*/
 #include <petscviewer.h>
 
-const char *const PetscSubcommTypes[] = {"GENERAL","CONTIGUOUS","INTERLACED","PetscSubcommType","PETSC_SUBCOMM_",0};
+const char *const PetscSubcommTypes[] = {"GENERAL","CONTIGUOUS","INTERLACED","PetscSubcommType","PETSC_SUBCOMM_",NULL};
 
 static PetscErrorCode PetscSubcommCreate_contiguous(PetscSubcomm);
 static PetscErrorCode PetscSubcommCreate_interlaced(PetscSubcomm);
 
-/*@C
+/*@
    PetscSubcommSetFromOptions - Allows setting options from a PetscSubcomm
 
    Collective on PetscSubcomm
@@ -53,7 +53,7 @@ PetscErrorCode PetscSubcommSetFromOptions(PetscSubcomm psubcomm)
 
   ierr = PetscOptionsName("-psubcomm_view","Triggers display of PetscSubcomm context","PetscSubcommView",&flg);CHKERRQ(ierr);
   if (flg) {
-    ierr = PetscSubcommView(psubcomm,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
+    ierr = PetscSubcommView(psubcomm,PETSC_VIEWER_STDOUT_(psubcomm->parent));CHKERRQ(ierr);
   }
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -118,25 +118,25 @@ PetscErrorCode PetscSubcommView(PetscSubcomm psubcomm,PetscViewer viewer)
       ierr = MPI_Comm_size(psubcomm->child,&subsize);CHKERRQ(ierr);
       ierr = MPI_Comm_rank(psubcomm->child,&subrank);CHKERRQ(ierr);
       ierr = MPI_Comm_rank(psubcomm->dupparent,&duprank);CHKERRQ(ierr);
-      ierr = PetscSynchronizedPrintf(comm,"  [%d], color %d, sub-size %d, sub-rank %d, duprank %d\n",rank,psubcomm->color,subsize,subrank,duprank);CHKERRQ(ierr);
-      ierr = PetscSynchronizedFlush(comm,PETSC_STDOUT);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPushSynchronized(viewer);CHKERRQ(ierr);
+      ierr = PetscViewerASCIISynchronizedPrintf(viewer,"  [%d], color %d, sub-size %d, sub-rank %d, duprank %d\n",rank,psubcomm->color,subsize,subrank,duprank);CHKERRQ(ierr);
+      ierr = PetscViewerFlush(viewer);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPopSynchronized(viewer);CHKERRQ(ierr);
     }
   } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Not supported yet");
   PetscFunctionReturn(0);
 }
 
-/*@C
+/*@
   PetscSubcommSetNumber - Set total number of subcommunicators.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 +  psubcomm - PetscSubcomm context
 -  nsubcomm - the total number of subcommunicators in psubcomm
 
    Level: advanced
-
-.keywords: communicator
 
 .seealso: PetscSubcommCreate(),PetscSubcommDestroy(),PetscSubcommSetType(),PetscSubcommSetTypeGeneral()
 @*/
@@ -156,10 +156,10 @@ PetscErrorCode  PetscSubcommSetNumber(PetscSubcomm psubcomm,PetscInt nsubcomm)
   PetscFunctionReturn(0);
 }
 
-/*@C
+/*@
   PetscSubcommSetType - Set type of subcommunicators.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 +  psubcomm - PetscSubcomm context
@@ -167,9 +167,7 @@ PetscErrorCode  PetscSubcommSetNumber(PetscSubcomm psubcomm,PetscInt nsubcomm)
 
    Level: advanced
 
-.keywords: communicator
-
-.seealso: PetscSubcommCreate(),PetscSubcommDestroy(),PetscSubcommSetNumber(),PetscSubcommSetTypeGeneral()
+.seealso: PetscSubcommCreate(),PetscSubcommDestroy(),PetscSubcommSetNumber(),PetscSubcommSetTypeGeneral(), PetscSubcommType
 @*/
 PetscErrorCode  PetscSubcommSetType(PetscSubcomm psubcomm,PetscSubcommType subcommtype)
 {
@@ -187,10 +185,10 @@ PetscErrorCode  PetscSubcommSetType(PetscSubcomm psubcomm,PetscSubcommType subco
   PetscFunctionReturn(0);
 }
 
-/*@C
+/*@
   PetscSubcommSetTypeGeneral - Set a PetscSubcomm from user's specifications
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 +  psubcomm - PetscSubcomm context
@@ -198,8 +196,6 @@ PetscErrorCode  PetscSubcommSetType(PetscSubcomm psubcomm,PetscSubcommType subco
 -  subrank - rank in the subcommunicator
 
    Level: advanced
-
-.keywords: communicator, create
 
 .seealso: PetscSubcommCreate(),PetscSubcommDestroy(),PetscSubcommSetNumber(),PetscSubcommSetType()
 @*/
@@ -256,7 +252,7 @@ PetscErrorCode PetscSubcommSetTypeGeneral(PetscSubcomm psubcomm,PetscMPIInt colo
   PetscFunctionReturn(0);
 }
 
-/*@C
+/*@
   PetscSubcommDestroy - Destroys a PetscSubcomm object
 
    Collective on PetscSubcomm
@@ -282,10 +278,10 @@ PetscErrorCode  PetscSubcommDestroy(PetscSubcomm *psubcomm)
   PetscFunctionReturn(0);
 }
 
-/*@C
+/*@
   PetscSubcommCreate - Create a PetscSubcomm context.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - MPI communicator
@@ -295,9 +291,8 @@ PetscErrorCode  PetscSubcommDestroy(PetscSubcomm *psubcomm)
 
    Level: advanced
 
-.keywords: communicator, create
-
-.seealso: PetscSubcommDestroy()
+.seealso: PetscSubcommDestroy(), PetscSubcommSetTypeGeneral(), PetscSubcommSetFromOptions(), PetscSubcommSetType(),
+          PetscSubcommSetNumber()
 @*/
 PetscErrorCode  PetscSubcommCreate(MPI_Comm comm,PetscSubcomm *psubcomm)
 {
@@ -319,6 +314,73 @@ PetscErrorCode  PetscSubcommCreate(MPI_Comm comm,PetscSubcomm *psubcomm)
   (*psubcomm)->subsize   = NULL;
   (*psubcomm)->type      = PETSC_SUBCOMM_INTERLACED;
   PetscFunctionReturn(0);
+}
+
+/*@C
+  PetscSubcommGetParent - Gets the communicator that was used to create the PetscSubcomm
+
+   Collective
+
+   Input Parameter:
+.  scomm - the PetscSubcomm
+
+   Output Parameter:
+.  pcomm - location to store the parent communicator
+
+   Level: intermediate
+
+.seealso: PetscSubcommDestroy(), PetscSubcommSetTypeGeneral(), PetscSubcommSetFromOptions(), PetscSubcommSetType(),
+          PetscSubcommSetNumber(), PetscSubcommGetChild(), PetscSubcommContiguousParent()
+@*/
+PetscErrorCode  PetscSubcommGetParent(PetscSubcomm scomm,MPI_Comm *pcomm)
+{
+  *pcomm = PetscSubcommParent(scomm);
+  return 0;
+}
+
+/*@C
+  PetscSubcommGetContiguousParent - Gets a communicator that that is a duplicate of the parent but has the ranks
+                                    reordered by the order they are in the children
+
+   Collective
+
+   Input Parameter:
+.  scomm - the PetscSubcomm
+
+   Output Parameter:
+.  pcomm - location to store the parent communicator
+
+   Level: intermediate
+
+.seealso: PetscSubcommDestroy(), PetscSubcommSetTypeGeneral(), PetscSubcommSetFromOptions(), PetscSubcommSetType(),
+          PetscSubcommSetNumber(), PetscSubcommGetChild(), PetscSubcommContiguousParent()
+@*/
+PetscErrorCode  PetscSubcommGetContiguousParent(PetscSubcomm scomm,MPI_Comm *pcomm)
+{
+  *pcomm = PetscSubcommContiguousParent(scomm);
+  return 0;
+}
+
+/*@C
+  PetscSubcommGetChild - Gets the communicator created by the PetscSubcomm
+
+   Collective
+
+   Input Parameter:
+.  scomm - the PetscSubcomm
+
+   Output Parameter:
+.  ccomm - location to store the child communicator
+
+   Level: intermediate
+
+.seealso: PetscSubcommDestroy(), PetscSubcommSetTypeGeneral(), PetscSubcommSetFromOptions(), PetscSubcommSetType(),
+          PetscSubcommSetNumber(), PetscSubcommGetParent(), PetscSubcommContiguousParent()
+@*/
+PetscErrorCode  PetscSubcommGetChild(PetscSubcomm scomm,MPI_Comm *ccomm)
+{
+  *ccomm = PetscSubcommChild(scomm);
+  return 0;
 }
 
 static PetscErrorCode PetscSubcommCreate_contiguous(PetscSubcomm psubcomm)

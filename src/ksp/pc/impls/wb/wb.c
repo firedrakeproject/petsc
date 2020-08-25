@@ -10,7 +10,7 @@ typedef struct {
   KSP          ksp;
 } PC_Exotic;
 
-const char *const PCExoticTypes[] = {"face","wirebasket","PCExoticType","PC_Exotic",0};
+const char *const PCExoticTypes[] = {"face","wirebasket","PCExoticType","PC_Exotic",NULL};
 
 
 /*
@@ -29,16 +29,17 @@ PetscErrorCode DMDAGetWireBasketInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat 
   Mat                    A,Aii,Ais,Asi,*Aholder,iAii;
   MatFactorInfo          info;
   PetscScalar            *xsurf,*xint;
+  const PetscScalar      *rxint;
 #if defined(PETSC_USE_DEBUG_foo)
   PetscScalar            tmp;
 #endif
   PetscTable             ht;
 
   PetscFunctionBegin;
-  ierr = DMDAGetInfo(da,&dim,0,0,0,&mp,&np,&pp,&dof,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,&dim,NULL,NULL,NULL,&mp,&np,&pp,&dof,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
   if (dof != 1) SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_SUP,"Only for single field problems");
   if (dim != 3) SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_SUP,"Only coded for 3d problems");
-  ierr   = DMDAGetCorners(da,0,0,0,&m,&n,&p);CHKERRQ(ierr);
+  ierr   = DMDAGetCorners(da,NULL,NULL,NULL,&m,&n,&p);CHKERRQ(ierr);
   ierr   = DMDAGetGhostCorners(da,&istart,&jstart,&kstart,&mwidth,&nwidth,&pwidth);CHKERRQ(ierr);
   istart = istart ? -1 : 0;
   jstart = jstart ? -1 : 0;
@@ -199,9 +200,9 @@ PetscErrorCode DMDAGetWireBasketInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat 
     PetscScalar *xint_tmp;
 
     ierr = MatDenseGetArray(Xint,&xint);CHKERRQ(ierr);
-    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,0,&x);CHKERRQ(ierr);
+    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,NULL,&x);CHKERRQ(ierr);
     ierr = MatDenseGetArray(Xint_tmp,&xint_tmp);CHKERRQ(ierr);
-    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,0,&b);CHKERRQ(ierr);
+    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,NULL,&b);CHKERRQ(ierr);
     ierr = KSPSetOperators(exotic->ksp,Aii,Aii);CHKERRQ(ierr);
     for (i=0; i<26; i++) {
       ierr = VecPlaceArray(x,xint+i*Nint);CHKERRQ(ierr);
@@ -219,14 +220,14 @@ PetscErrorCode DMDAGetWireBasketInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat 
   ierr = MatDestroy(&Xint_tmp);CHKERRQ(ierr);
 
 #if defined(PETSC_USE_DEBUG_foo)
-  ierr = MatDenseGetArray(Xint,&xint);CHKERRQ(ierr);
+  ierr = MatDenseGetArrayRead(Xint,&rxint);CHKERRQ(ierr);
   for (i=0; i<Nint; i++) {
     tmp = 0.0;
-    for (j=0; j<26; j++) tmp += xint[i+j*Nint];
+    for (j=0; j<26; j++) tmp += rxint[i+j*Nint];
 
     if (PetscAbsScalar(tmp-1.0) > 1.e-10) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Wrong Xint interpolation at i %D value %g",i,(double)PetscAbsScalar(tmp));
   }
-  ierr = MatDenseRestoreArray(Xint,&xint);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArrayRead(Xint,&rxint);CHKERRQ(ierr);
   /* ierr =MatView(Xint,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr); */
 #endif
 
@@ -282,12 +283,12 @@ PetscErrorCode DMDAGetWireBasketInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat 
     ierr = MatZeroEntries(*P);CHKERRQ(ierr);
   }
   ierr = MatSetOption(*P,MAT_ROW_ORIENTED,PETSC_FALSE);CHKERRQ(ierr);
-  ierr = MatDenseGetArray(Xint,&xint);CHKERRQ(ierr);
-  ierr = MatSetValues(*P,Nint,IIint,26,gl,xint,INSERT_VALUES);CHKERRQ(ierr);
-  ierr = MatDenseRestoreArray(Xint,&xint);CHKERRQ(ierr);
-  ierr = MatDenseGetArray(Xsurf,&xsurf);CHKERRQ(ierr);
-  ierr = MatSetValues(*P,Nsurf,IIsurf,26,gl,xsurf,INSERT_VALUES);CHKERRQ(ierr);
-  ierr = MatDenseRestoreArray(Xsurf,&xsurf);CHKERRQ(ierr);
+  ierr = MatDenseGetArrayRead(Xint,&rxint);CHKERRQ(ierr);
+  ierr = MatSetValues(*P,Nint,IIint,26,gl,rxint,INSERT_VALUES);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArrayRead(Xint,&rxint);CHKERRQ(ierr);
+  ierr = MatDenseGetArrayRead(Xsurf,&rxint);CHKERRQ(ierr);
+  ierr = MatSetValues(*P,Nsurf,IIsurf,26,gl,rxint,INSERT_VALUES);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArrayRead(Xsurf,&rxint);CHKERRQ(ierr);
   ierr = MatAssemblyBegin(*P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(*P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = PetscFree2(IIint,IIsurf);CHKERRQ(ierr);
@@ -338,16 +339,17 @@ PetscErrorCode DMDAGetFaceInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat Agloba
   Mat                    A,Aii,Ais,Asi,*Aholder,iAii;
   MatFactorInfo          info;
   PetscScalar            *xsurf,*xint;
+  const PetscScalar      *rxint;
 #if defined(PETSC_USE_DEBUG_foo)
   PetscScalar            tmp;
 #endif
   PetscTable             ht;
 
   PetscFunctionBegin;
-  ierr = DMDAGetInfo(da,&dim,0,0,0,&mp,&np,&pp,&dof,0,0,0,0,0);CHKERRQ(ierr);
+  ierr = DMDAGetInfo(da,&dim,NULL,NULL,NULL,&mp,&np,&pp,&dof,NULL,NULL,NULL,NULL,NULL);CHKERRQ(ierr);
   if (dof != 1) SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_SUP,"Only for single field problems");
   if (dim != 3) SETERRQ(PetscObjectComm((PetscObject)da),PETSC_ERR_SUP,"Only coded for 3d problems");
-  ierr   = DMDAGetCorners(da,0,0,0,&m,&n,&p);CHKERRQ(ierr);
+  ierr   = DMDAGetCorners(da,NULL,NULL,NULL,&m,&n,&p);CHKERRQ(ierr);
   ierr   = DMDAGetGhostCorners(da,&istart,&jstart,&kstart,&mwidth,&nwidth,&pwidth);CHKERRQ(ierr);
   istart = istart ? -1 : 0;
   jstart = jstart ? -1 : 0;
@@ -481,9 +483,9 @@ PetscErrorCode DMDAGetFaceInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat Agloba
     PetscScalar *xint_tmp;
 
     ierr = MatDenseGetArray(Xint,&xint);CHKERRQ(ierr);
-    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,0,&x);CHKERRQ(ierr);
+    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,NULL,&x);CHKERRQ(ierr);
     ierr = MatDenseGetArray(Xint_tmp,&xint_tmp);CHKERRQ(ierr);
-    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,0,&b);CHKERRQ(ierr);
+    ierr = VecCreateSeqWithArray(PETSC_COMM_SELF,1,Nint,NULL,&b);CHKERRQ(ierr);
     ierr = KSPSetOperators(exotic->ksp,Aii,Aii);CHKERRQ(ierr);
     for (i=0; i<6; i++) {
       ierr = VecPlaceArray(x,xint+i*Nint);CHKERRQ(ierr);
@@ -501,14 +503,14 @@ PetscErrorCode DMDAGetFaceInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat Agloba
   ierr = MatDestroy(&Xint_tmp);CHKERRQ(ierr);
 
 #if defined(PETSC_USE_DEBUG_foo)
-  ierr = MatDenseGetArray(Xint,&xint);CHKERRQ(ierr);
+  ierr = MatDenseGetArrayRead(Xint,&rxint);CHKERRQ(ierr);
   for (i=0; i<Nint; i++) {
     tmp = 0.0;
-    for (j=0; j<6; j++) tmp += xint[i+j*Nint];
+    for (j=0; j<6; j++) tmp += rxint[i+j*Nint];
 
     if (PetscAbsScalar(tmp-1.0) > 1.e-10) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Wrong Xint interpolation at i %D value %g",i,(double)PetscAbsScalar(tmp));
   }
-  ierr = MatDenseRestoreArray(Xint,&xint);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArrayRead(Xint,&rxint);CHKERRQ(ierr);
   /* ierr =MatView(Xint,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr); */
 #endif
 
@@ -559,12 +561,12 @@ PetscErrorCode DMDAGetFaceInterpolation(PC pc,DM da,PC_Exotic *exotic,Mat Agloba
     ierr = MatZeroEntries(*P);CHKERRQ(ierr);
   }
   ierr = MatSetOption(*P,MAT_ROW_ORIENTED,PETSC_FALSE);CHKERRQ(ierr);
-  ierr = MatDenseGetArray(Xint,&xint);CHKERRQ(ierr);
-  ierr = MatSetValues(*P,Nint,IIint,6,gl,xint,INSERT_VALUES);CHKERRQ(ierr);
-  ierr = MatDenseRestoreArray(Xint,&xint);CHKERRQ(ierr);
-  ierr = MatDenseGetArray(Xsurf,&xsurf);CHKERRQ(ierr);
-  ierr = MatSetValues(*P,Nsurf,IIsurf,6,gl,xsurf,INSERT_VALUES);CHKERRQ(ierr);
-  ierr = MatDenseRestoreArray(Xsurf,&xsurf);CHKERRQ(ierr);
+  ierr = MatDenseGetArrayRead(Xint,&rxint);CHKERRQ(ierr);
+  ierr = MatSetValues(*P,Nint,IIint,6,gl,rxint,INSERT_VALUES);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArrayRead(Xint,&rxint);CHKERRQ(ierr);
+  ierr = MatDenseGetArrayRead(Xsurf,&rxint);CHKERRQ(ierr);
+  ierr = MatSetValues(*P,Nsurf,IIsurf,6,gl,rxint,INSERT_VALUES);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArrayRead(Xsurf,&rxint);CHKERRQ(ierr);
   ierr = MatAssemblyBegin(*P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(*P,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = PetscFree2(IIint,IIsurf);CHKERRQ(ierr);
@@ -809,10 +811,10 @@ PETSC_EXTERN PetscErrorCode PCCreate_Exotic(PC pc)
   /* if type was previously mg; must manually destroy it because call to PCSetType(pc,PCMG) will not destroy it */
   if (pc->ops->destroy) { 
     ierr =  (*pc->ops->destroy)(pc);CHKERRQ(ierr);
-    pc->data = 0;
+    pc->data = NULL;
   }
   ierr = PetscFree(((PetscObject)pc)->type_name);CHKERRQ(ierr);
-  ((PetscObject)pc)->type_name = 0;
+  ((PetscObject)pc)->type_name = NULL;
 
   ierr         = PCSetType(pc,PCMG);CHKERRQ(ierr);
   ierr         = PCMGSetLevels(pc,2,NULL);CHKERRQ(ierr);

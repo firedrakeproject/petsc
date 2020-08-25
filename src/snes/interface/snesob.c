@@ -10,7 +10,6 @@
      Input Parameters:
 +      snes - the SNES context
 .      X - solution
-.      F - current function/gradient
 .      obj - real to hold the objective value
 -      ctx - optional user-defined objective context
 
@@ -36,8 +35,6 @@ M*/
    Note: This is not used in the SNESLINESEARCHCP line search.
 
          If not provided then this defaults to the two norm of the function evaluation (set with SNESSetFunction())
-
-.keywords: SNES, nonlinear, set, objective
 
 .seealso: SNESGetObjective(), SNESComputeObjective(), SNESSetFunction(), SNESSetJacobian(), SNESObjectiveFunction
 @*/
@@ -67,8 +64,6 @@ PetscErrorCode  SNESSetObjective(SNES snes,PetscErrorCode (*obj)(SNES,Vec,PetscR
 
    Level: advanced
 
-.keywords: SNES, nonlinear, get, objective
-
 .seealso: SNESSetObjective(), SNESGetSolution()
 @*/
 PetscErrorCode SNESGetObjective(SNES snes,PetscErrorCode (**obj)(SNES,Vec,PetscReal*,void*),void **ctx)
@@ -97,8 +92,6 @@ PetscErrorCode SNESGetObjective(SNES snes,PetscErrorCode (**obj)(SNES,Vec,PetscR
 
    Level: advanced
 
-.keywords: SNES, nonlinear, compute, objective
-
 .seealso: SNESSetObjective(), SNESGetSolution()
 @*/
 PetscErrorCode SNESComputeObjective(SNES snes,Vec X,PetscReal *ob)
@@ -110,7 +103,7 @@ PetscErrorCode SNESComputeObjective(SNES snes,Vec X,PetscReal *ob)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes,SNES_CLASSID,1);
   PetscValidHeaderSpecific(X,VEC_CLASSID,2);
-  PetscValidPointer(ob,3);
+  PetscValidRealPointer(ob,3);
   ierr = SNESGetDM(snes,&dm);CHKERRQ(ierr);
   ierr = DMGetDMSNES(dm,&sdm);CHKERRQ(ierr);
   if (sdm->ops->computeobjective) {
@@ -149,8 +142,6 @@ PetscErrorCode SNESComputeObjective(SNES snes,Vec X,PetscReal *ob)
    Note that this uses quadratic interpolation of the objective to form each value in the function.
 
    Level: advanced
-
-.keywords: SNES, objective, debugging, finite differences, function
 
 .seealso: SNESSetFunction(), SNESComputeObjective(), SNESComputeJacobianDefault()
 @*/

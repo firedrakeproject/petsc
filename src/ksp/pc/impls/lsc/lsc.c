@@ -1,4 +1,3 @@
-
 #include <petsc/private/pcimpl.h>   /*I "petscpc.h" I*/
 
 typedef struct {
@@ -169,7 +168,7 @@ static PetscErrorCode PCView_LSC(PC pc,PetscViewer viewer)
 .ve
 
    The product A10 A01 can be computed for you, but you can provide it (this is
-   usually more efficient anyway).  In the case of incompressible flow, A10 A10 is a Laplacian, call it L.  The current
+   usually more efficient anyway).  In the case of incompressible flow, A10 A01 is a Laplacian; call it L.  The current
    interface is to hang L and a preconditioning matrix Lp on the preconditioning matrix.
 
    If you had called KSPSetOperators(ksp,S,Sp), S should have type MATSCHURCOMPLEMENT and Sp can be any type you
@@ -202,8 +201,6 @@ static PetscErrorCode PCView_LSC(PC pc,PetscViewer viewer)
 +  1. - Elman, Howle, Shadid, Shuttleworth, and Tuminaro, Block preconditioners based on approximate commutators, 2006.
 -  2. - Silvester, Elman, Kay, Wathen, Efficient preconditioning of the linearized Navier Stokes equations for incompressible flow, 2001.
 
-   Concepts: physics based preconditioners, block preconditioners
-
 .seealso:  PCCreate(), PCSetType(), PCType (for list of available types), PC, Block_Preconditioners, PCFIELDSPLIT,
            PCFieldSplitGetSubKSP(), PCFieldSplitSetFields(), PCFieldSplitSetType(), PCFieldSplitSetIS(), PCFieldSplitSetSchurPre(),
            MatCreateSchurComplement()
@@ -219,12 +216,12 @@ PETSC_EXTERN PetscErrorCode PCCreate_LSC(PC pc)
   pc->data = (void*)lsc;
 
   pc->ops->apply           = PCApply_LSC;
-  pc->ops->applytranspose  = 0;
+  pc->ops->applytranspose  = NULL;
   pc->ops->setup           = PCSetUp_LSC;
   pc->ops->reset           = PCReset_LSC;
   pc->ops->destroy         = PCDestroy_LSC;
   pc->ops->setfromoptions  = PCSetFromOptions_LSC;
   pc->ops->view            = PCView_LSC;
-  pc->ops->applyrichardson = 0;
+  pc->ops->applyrichardson = NULL;
   PetscFunctionReturn(0);
 }

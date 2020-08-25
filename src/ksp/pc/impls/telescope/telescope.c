@@ -18,7 +18,7 @@ static const char citation[] =
 "  pages     = {5:1--5:12},\n"
 "  articleno = {5},\n"
 "  numpages  = {12},\n"
-"  url       = {http://doi.acm.org/10.1145/2929908.2929913},\n"
+"  url       = {https://doi.acm.org/10.1145/2929908.2929913},\n"
 "  doi       = {10.1145/2929908.2929913},\n"
 "  acmid     = {2929913},\n"
 "  publisher = {ACM},\n"
@@ -44,7 +44,7 @@ static const char citation[] =
 */
 
 /*
-  Collective on MPI_Comm[comm_f]
+  Collective[comm_f]
   Notes
    * Using comm_f = MPI_COMM_NULL will result in an error
    * Using comm_c = MPI_COMM_NULL is valid. If all instances of comm_c are NULL the subcomm is not valid.
@@ -56,7 +56,7 @@ PetscErrorCode PCTelescopeTestValidSubcomm(MPI_Comm comm_f,MPI_Comm comm_c,Petsc
   MPI_Group      group_f,group_c;
   PetscErrorCode ierr;
   PetscMPIInt    count,k,size_f = 0,size_c = 0,size_c_sum = 0;
-  int            *ranks_f = NULL,*ranks_c = NULL;
+  PetscMPIInt    *ranks_f,*ranks_c;
 
   PetscFunctionBegin;
   if (comm_f == MPI_COMM_NULL) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"comm_f cannot be MPI_COMM_NULL");
@@ -74,19 +74,13 @@ PetscErrorCode PCTelescopeTestValidSubcomm(MPI_Comm comm_f,MPI_Comm comm_c,Petsc
   /* check not all comm_c's are NULL */
   size_c_sum = size_c;
   ierr = MPI_Allreduce(MPI_IN_PLACE,&size_c_sum,1,MPI_INT,MPI_SUM,comm_f);CHKERRQ(ierr);
-  if (size_c_sum == 0) {
-    valid = 0;
-  }
+  if (size_c_sum == 0) valid = 0;
 
   /* check we can map at least 1 rank in comm_c to comm_f */
   ierr = PetscMalloc1(size_f,&ranks_f);CHKERRQ(ierr);
   ierr = PetscMalloc1(size_c,&ranks_c);CHKERRQ(ierr);
-  for (k=0; k<size_f; k++) {
-    ranks_f[k] = MPI_UNDEFINED;
-  }
-  for (k=0; k<size_c; k++) {
-    ranks_c[k] = (int)k;
-  }
+  for (k=0; k<size_f; k++) ranks_f[k] = MPI_UNDEFINED;
+  for (k=0; k<size_c; k++) ranks_c[k] = k;
 
   /*
    MPI_Group_translate_ranks() returns a non-zero exit code if any rank cannot be translated.
@@ -104,13 +98,11 @@ PetscErrorCode PCTelescopeTestValidSubcomm(MPI_Comm comm_f,MPI_Comm comm_c,Petsc
       }
     }
   }
-  if (count == size_f) {
-    valid = 0;
-  }
+  if (count == size_f) valid = 0;
 
   ierr = MPI_Allreduce(MPI_IN_PLACE,&valid,1,MPIU_INT,MPI_MIN,comm_f);CHKERRQ(ierr);
-  if (valid == 1) { *isvalid = PETSC_TRUE; }
-  else { *isvalid = PETSC_FALSE; }
+  if (valid == 1) *isvalid = PETSC_TRUE;
+  else *isvalid = PETSC_FALSE;
 
   ierr = PetscFree(ranks_f);CHKERRQ(ierr);
   ierr = PetscFree(ranks_c);CHKERRQ(ierr);
@@ -217,7 +209,9 @@ PetscErrorCode PCTelescopeMatCreate_default(PC pc,PC_Telescope sred,MatReuse reu
   ierr = PCGetOperators(pc,NULL,&B);CHKERRQ(ierr);
   ierr = MatGetSize(B,&nr,&nc);CHKERRQ(ierr);
   isrow = sred->isin;
-  ierr = ISCreateStride(comm,nc,0,1,&iscol);CHKERRQ(ierr);
+  ierr = ISCreateStride(PETSC_COMM_SELF,nc,0,1,&iscol);CHKERRQ(ierr);
+  ierr = ISSetIdentity(iscol);CHKERRQ(ierr);
+  ierr = MatSetOption(B,MAT_SUBMAT_SINGLEIS,PETSC_TRUE);CHKERRQ(ierr);
   ierr = MatCreateSubMatrices(B,1,&isrow,&iscol,MAT_INITIAL_MATRIX,&_Blocal);CHKERRQ(ierr);
   Blocal = *_Blocal;
   ierr = PetscFree(_Blocal);CHKERRQ(ierr);
@@ -758,11 +752,11 @@ static PetscErrorCode PCSetFromOptions_Telescope(PetscOptionItems *PetscOptionsO
   if (flg) {
     ierr = PCTelescopeSetSubcommType(pc,subcommtype);CHKERRQ(ierr);
   }
-  ierr = PetscOptionsInt("-pc_telescope_reduction_factor","Factor to reduce comm size by","PCTelescopeSetReductionFactor",sred->redfactor,&sred->redfactor,0);CHKERRQ(ierr);
+  ierr = PetscOptionsInt("-pc_telescope_reduction_factor","Factor to reduce comm size by","PCTelescopeSetReductionFactor",sred->redfactor,&sred->redfactor,NULL);CHKERRQ(ierr);
   if (sred->redfactor > size) SETERRQ(comm,PETSC_ERR_ARG_WRONG,"-pc_telescope_reduction_factor <= comm size");
-  ierr = PetscOptionsBool("-pc_telescope_ignore_dm","Ignore any DM attached to the PC","PCTelescopeSetIgnoreDM",sred->ignore_dm,&sred->ignore_dm,0);CHKERRQ(ierr);
-  ierr = PetscOptionsBool("-pc_telescope_ignore_kspcomputeoperators","Ignore method used to compute A","PCTelescopeSetIgnoreKSPComputeOperators",sred->ignore_kspcomputeoperators,&sred->ignore_kspcomputeoperators,0);CHKERRQ(ierr);
-  ierr = PetscOptionsBool("-pc_telescope_use_coarse_dm","Define sub-communicator from the coarse DM","PCTelescopeSetUseCoarseDM",sred->use_coarse_dm,&sred->use_coarse_dm,0);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-pc_telescope_ignore_dm","Ignore any DM attached to the PC","PCTelescopeSetIgnoreDM",sred->ignore_dm,&sred->ignore_dm,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-pc_telescope_ignore_kspcomputeoperators","Ignore method used to compute A","PCTelescopeSetIgnoreKSPComputeOperators",sred->ignore_kspcomputeoperators,&sred->ignore_kspcomputeoperators,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-pc_telescope_use_coarse_dm","Define sub-communicator from the coarse DM","PCTelescopeSetUseCoarseDM",sred->use_coarse_dm,&sred->use_coarse_dm,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -886,7 +880,6 @@ static PetscErrorCode PCTelescopeGetDM_Telescope(PC pc,DM *dm)
 
  Level: advanced
 
-.keywords: PC, telescopting solve
 @*/
 PetscErrorCode PCTelescopeGetKSP(PC pc,KSP *subksp)
 {
@@ -909,7 +902,6 @@ PetscErrorCode PCTelescopeGetKSP(PC pc,KSP *subksp)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeGetReductionFactor(PC pc,PetscInt *fact)
 {
@@ -932,7 +924,6 @@ PetscErrorCode PCTelescopeGetReductionFactor(PC pc,PetscInt *fact)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeSetReductionFactor(PC pc,PetscInt fact)
 {
@@ -955,7 +946,6 @@ PetscErrorCode PCTelescopeSetReductionFactor(PC pc,PetscInt fact)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeGetIgnoreDM(PC pc,PetscBool *v)
 {
@@ -978,7 +968,6 @@ PetscErrorCode PCTelescopeGetIgnoreDM(PC pc,PetscBool *v)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeSetIgnoreDM(PC pc,PetscBool v)
 {
@@ -1001,7 +990,6 @@ PetscErrorCode PCTelescopeSetIgnoreDM(PC pc,PetscBool v)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeGetUseCoarseDM(PC pc,PetscBool *v)
 {
@@ -1122,7 +1110,6 @@ PetscErrorCode PCTelescopeGetUseCoarseDM(PC pc,PetscBool *v)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeSetUseCoarseDM(PC pc,PetscBool v)
 {
@@ -1145,7 +1132,6 @@ PetscErrorCode PCTelescopeSetUseCoarseDM(PC pc,PetscBool v)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeGetIgnoreKSPComputeOperators(PC pc,PetscBool *v)
 {
@@ -1168,7 +1154,6 @@ PetscErrorCode PCTelescopeGetIgnoreKSPComputeOperators(PC pc,PetscBool *v)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeSetIgnoreKSPComputeOperators(PC pc,PetscBool v)
 {
@@ -1191,7 +1176,6 @@ PetscErrorCode PCTelescopeSetIgnoreKSPComputeOperators(PC pc,PetscBool v)
 
  Level: advanced
 
-.keywords: PC, telescoping solve
 @*/
 PetscErrorCode PCTelescopeGetDM(PC pc,DM *subdm)
 {
@@ -1211,8 +1195,6 @@ PetscErrorCode PCTelescopeGetDM(PC pc,DM *subdm)
 -  subcommtype - the subcommunicator type (see PetscSubcommType)
 
  Level: advanced
-
-.keywords: PC, telescoping solve
 
 .seealso: PetscSubcommType, PetscSubcomm, PCTELESCOPE
 @*/
@@ -1236,8 +1218,6 @@ PetscErrorCode PCTelescopeSetSubcommType(PC pc, PetscSubcommType subcommtype)
 .  subcommtype - the subcommunicator type (see PetscSubcommType)
 
  Level: advanced
-
-.keywords: PC, telescoping solve
 
 .seealso: PetscSubcomm, PetscSubcommType, PCTELESCOPE
 @*/
@@ -1324,7 +1304,7 @@ PetscErrorCode PCTelescopeGetSubcommType(PC pc, PetscSubcommType *subcommtype)
    a new (near) nullspace, defined on the sub-communicator, which is attached to B' (the B operator which was scattered to c')
 
    The telescoping preconditioner can re-partition an attached DM if it is a DMDA (2D or 3D -
-   support for 1D DMDAs is not provided). If a DMDA is found, a topolgically equivalent DMDA is created on c'
+   support for 1D DMDAs is not provided). If a DMDA is found, a topologically equivalent DMDA is created on c'
    and this new DM is attached the sub KSP. The design of telescope is such that it should be possible to extend support
    for re-partitioning other to DM's (e.g. DMPLEX). The user can supply a flag to ignore attached DMs.
    Alternatively, user-provided re-partitioned DMs can be used via -pc_telescope_use_coarse_dm.

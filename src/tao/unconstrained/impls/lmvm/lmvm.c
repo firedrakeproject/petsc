@@ -23,7 +23,7 @@ static PetscErrorCode TaoSolve_LMVM(Tao tao)
   ierr = TaoComputeObjectiveAndGradient(tao, tao->solution, &f, tao->gradient);CHKERRQ(ierr);
   ierr = TaoGradientNorm(tao, tao->gradient,NORM_2,&gnorm);CHKERRQ(ierr);
 
-  if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+  if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
   
   tao->reason = TAO_CONTINUE_ITERATING;
   ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
@@ -242,8 +242,8 @@ static PetscErrorCode TaoView_LMVM(Tao tao, PetscViewer viewer)
   to computed the steplength in the dk direction
      
   Options Database Keys:
-.   -tao_lmvm_recycle - enable recycling LMVM updates between TaoSolve() calls
-.   -tao_lmvm_no_scale - (developer) disables diagonal Broyden scaling on the LMVM approximation
++   -tao_lmvm_recycle - enable recycling LMVM updates between TaoSolve() calls
+-   -tao_lmvm_no_scale - (developer) disables diagonal Broyden scaling on the LMVM approximation
 
   Level: beginner
 M*/
@@ -262,10 +262,10 @@ PETSC_EXTERN PetscErrorCode TaoCreate_LMVM(Tao tao)
   tao->ops->destroy = TaoDestroy_LMVM;
 
   ierr = PetscNewLog(tao,&lmP);CHKERRQ(ierr);
-  lmP->D = 0;
-  lmP->M = 0;
-  lmP->Xold = 0;
-  lmP->Gold = 0;
+  lmP->D = NULL;
+  lmP->M = NULL;
+  lmP->Xold = NULL;
+  lmP->Gold = NULL;
   lmP->H0   = NULL;
   lmP->recycle = PETSC_FALSE;
 
@@ -279,7 +279,7 @@ PETSC_EXTERN PetscErrorCode TaoCreate_LMVM(Tao tao)
   ierr = TaoLineSearchSetType(tao->linesearch,morethuente_type);CHKERRQ(ierr);
   ierr = TaoLineSearchUseTaoRoutines(tao->linesearch,tao);CHKERRQ(ierr);
   ierr = TaoLineSearchSetOptionsPrefix(tao->linesearch,tao->hdr.prefix);CHKERRQ(ierr);
-  
+
   ierr = KSPInitializePackage();CHKERRQ(ierr);
   ierr = MatCreate(((PetscObject)tao)->comm, &lmP->M);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)lmP->M, (PetscObject)tao, 1);CHKERRQ(ierr);

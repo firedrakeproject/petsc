@@ -315,7 +315,7 @@ PetscErrorCode  DMSetUp_DA_1D(DM da)
    DMDACreate1d - Creates an object that will manage the communication of  one-dimensional
    regular array data that is distributed across some processors.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI communicator
@@ -350,11 +350,10 @@ PetscErrorCode  DMSetUp_DA_1D(DM da)
    If you wish to use the options database to change values in the DMDA call DMSetFromOptions() after this call
    but before DMSetUp(). 
 
-.keywords: distributed array, create, one-dimensional
-
 .seealso: DMDestroy(), DMView(), DMDACreate2d(), DMDACreate3d(), DMGlobalToLocalBegin(), DMDASetRefinementFactor(),
           DMGlobalToLocalEnd(), DMLocalToGlobalBegin(), DMLocalToLocalBegin(), DMLocalToLocalEnd(), DMDAGetRefinementFactor(),
-          DMDAGetInfo(), DMCreateGlobalVector(), DMCreateLocalVector(), DMDACreateNaturalVector(), DMLoad(), DMDAGetOwnershipRanges()
+          DMDAGetInfo(), DMCreateGlobalVector(), DMCreateLocalVector(), DMDACreateNaturalVector(), DMLoad(), DMDAGetOwnershipRanges(),
+          DMStagCreate1d()
 
 @*/
 PetscErrorCode  DMDACreate1d(MPI_Comm comm, DMBoundaryType bx, PetscInt M, PetscInt dof, PetscInt s, const PetscInt lx[], DM *da)

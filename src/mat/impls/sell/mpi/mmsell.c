@@ -142,10 +142,8 @@ PetscErrorCode MatSetUpMultiply_MPISELL(Mat mat)
       }
     }
   }
-  sell->B->cmap->n = sell->B->cmap->N = ec;
-  sell->B->cmap->bs = 1;
-
-  ierr = PetscLayoutSetUp((sell->B->cmap));CHKERRQ(ierr);
+  ierr = PetscLayoutDestroy(&sell->B->cmap);CHKERRQ(ierr);
+  ierr = PetscLayoutCreateFromSizes(PetscObjectComm((PetscObject)sell->B),ec,ec,1,&sell->B->cmap);CHKERRQ(ierr);
   ierr = PetscTableDestroy(&gid1_lid1);CHKERRQ(ierr);
 #else
   /* Make an array as long as the number of columns */
@@ -180,16 +178,14 @@ PetscErrorCode MatSetUpMultiply_MPISELL(Mat mat)
       if (isnonzero) bcolidx[j] = indices[bcolidx[j]];
     }
   }
-  sell->B->cmap->n = sell->B->cmap->N = ec; /* number of columns that are not all zeros */
-  sell->B->cmap->bs = 1;
-
-  ierr = PetscLayoutSetUp((sell->B->cmap));CHKERRQ(ierr);
+  ierr = PetscLayoutDestroy(&sell->B->cmap);CHKERRQ(ierr);
+  ierr = PetscLayoutCreateFromSizes(PetscObjectComm((PetscObject)sell->B),ec,ec,1,&sell->B->cmap);CHKERRQ(ierr);
   ierr = PetscFree(indices);CHKERRQ(ierr);
 #endif
   /* create local vector that is used to scatter into */
   ierr = VecCreateSeq(PETSC_COMM_SELF,ec,&sell->lvec);CHKERRQ(ierr);
   /* create two temporary Index sets for build scatter gather */
-  ierr = ISCreateGeneral(((PetscObject)mat)->comm,ec,garray,PETSC_COPY_VALUES,&from);CHKERRQ(ierr);
+  ierr = ISCreateGeneral(PETSC_COMM_SELF,ec,garray,PETSC_COPY_VALUES,&from);CHKERRQ(ierr);
   ierr = ISCreateStride(PETSC_COMM_SELF,ec,0,1,&to);CHKERRQ(ierr);
 
   /* create temporary global vector to generate scatter context */

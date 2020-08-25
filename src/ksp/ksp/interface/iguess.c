@@ -1,6 +1,6 @@
 #include <petsc/private/kspimpl.h> /*I "petscksp.h"  I*/
 
-PetscFunctionList KSPGuessList = 0;
+PetscFunctionList KSPGuessList = NULL;
 static PetscBool KSPGuessRegisterAllCalled;
 
 /*
@@ -27,8 +27,6 @@ $     -ksp_guess_type my_initial_guess
 
    Level: advanced
 
-.keywords: KSP, register, KSPGuess
-
 .seealso: KSPGuess, KSPGuessRegisterAll()
 
 @*/
@@ -49,8 +47,6 @@ PetscErrorCode  KSPGuessRegister(const char sname[],PetscErrorCode (*function)(K
 
   Level: advanced
 
-.keywords: KSPGuess, register, all
-
 .seealso: KSPRegisterAll(),  KSPInitializePackage()
 */
 PetscErrorCode KSPGuessRegisterAll(void)
@@ -66,7 +62,16 @@ PetscErrorCode KSPGuessRegisterAll(void)
 }
 
 /*@
-    KSPGuessSetFromOptions
+    KSPGuessSetFromOptions - Sets the options for a KSPGuess from the options database
+
+    Collective on guess
+
+    Input Parameter:
+.    guess - KSPGuess object
+
+   Level: intermediate
+
+.seealso: KSPGuess, KSPGetGuess(), KSPSetGuessType(), KSPGuessType
 @*/
 PetscErrorCode KSPGuessSetFromOptions(KSPGuess guess)
 {
@@ -81,14 +86,12 @@ PetscErrorCode KSPGuessSetFromOptions(KSPGuess guess)
 /*@
    KSPGuessDestroy - Destroys KSPGuess context.
 
-   Collective on KSPGuess
+   Collective on kspGuess
 
    Input Parameter:
 .  guess - initial guess object
 
    Level: beginner
-
-.keywords: KSP, destroy
 
 .seealso: KSPGuessCreate(), KSPGuess, KSPGuessType
 @*/
@@ -99,7 +102,7 @@ PetscErrorCode  KSPGuessDestroy(KSPGuess *guess)
   PetscFunctionBegin;
   if (!*guess) PetscFunctionReturn(0);
   PetscValidHeaderSpecific((*guess),KSPGUESS_CLASSID,1);
-  if (--((PetscObject)(*guess))->refct > 0) {*guess = 0; PetscFunctionReturn(0);}
+  if (--((PetscObject)(*guess))->refct > 0) {*guess = NULL; PetscFunctionReturn(0);}
   if ((*guess)->ops->destroy) { ierr = (*(*guess)->ops->destroy)(*guess);CHKERRQ(ierr); }
   ierr = MatDestroy(&(*guess)->A);CHKERRQ(ierr);
   ierr = PetscHeaderDestroy(guess);CHKERRQ(ierr);
@@ -109,7 +112,7 @@ PetscErrorCode  KSPGuessDestroy(KSPGuess *guess)
 /*@C
    KSPGuessView - View the KSPGuess object
 
-   Logically Collective on KSPGuess
+   Logically Collective on guess
 
    Input Parameters:
 +  guess  - the initial guess object for the Krylov method
@@ -148,7 +151,7 @@ PetscErrorCode  KSPGuessView(KSPGuess guess, PetscViewer view)
 /*@
    KSPGuessCreate - Creates the default KSPGuess context.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - MPI communicator
@@ -161,8 +164,6 @@ PetscErrorCode  KSPGuessView(KSPGuess guess, PetscViewer view)
 
    Level: beginner
 
-.keywords: KSP, create, context
-
 .seealso: KSPSolve(), KSPGuessDestroy(), KSPGuess, KSPGuessType, KSP
 @*/
 PetscErrorCode  KSPGuessCreate(MPI_Comm comm,KSPGuess *guess)
@@ -172,7 +173,7 @@ PetscErrorCode  KSPGuessCreate(MPI_Comm comm,KSPGuess *guess)
 
   PetscFunctionBegin;
   PetscValidPointer(guess,2);
-  *guess = 0;
+  *guess = NULL;
   ierr = KSPInitializePackage();CHKERRQ(ierr);
   ierr = PetscHeaderCreate(tguess,KSPGUESS_CLASSID,"KSPGuess","Initial guess for Krylov Method","KSPGuess",comm,KSPGuessDestroy,KSPGuessView);CHKERRQ(ierr);
   tguess->omatstate = -1;
@@ -183,7 +184,7 @@ PetscErrorCode  KSPGuessCreate(MPI_Comm comm,KSPGuess *guess)
 /*@C
    KSPGuessSetType - Sets the type of a KSPGuess
 
-   Logically Collective on KSPGuess
+   Logically Collective on guess
 
    Input Parameters:
 +  guess - the initial guess object for the Krylov method
@@ -237,8 +238,6 @@ PetscErrorCode  KSPGuessSetType(KSPGuess guess, KSPGuessType type)
 
    Level: intermediate
 
-.keywords: KSP, get, method, name
-
 .seealso: KSPGuessSetType()
 @*/
 PetscErrorCode  KSPGuessGetType(KSPGuess guess,KSPGuessType *type)
@@ -253,7 +252,7 @@ PetscErrorCode  KSPGuessGetType(KSPGuess guess,KSPGuessType *type)
 /*@
     KSPGuessUpdate - Updates the guess object with the current solution and rhs vector
 
-   Collective on KSPGuess
+   Collective on guess
 
    Input Parameter:
 +  guess - the initial guess context
@@ -261,8 +260,6 @@ PetscErrorCode  KSPGuessGetType(KSPGuess guess,KSPGuessType *type)
 -  sol   - the computed solution
 
    Level: intermediate
-
-.keywords: KSP, get, method, name
 
 .seealso: KSPGuessCreate(), KSPGuess
 @*/
@@ -281,7 +278,7 @@ PetscErrorCode  KSPGuessUpdate(KSPGuess guess, Vec rhs, Vec sol)
 /*@
     KSPGuessFormGuess - Form the initial guess
 
-   Collective on KSPGuess
+   Collective on guess
 
    Input Parameter:
 +  guess - the initial guess context
@@ -289,8 +286,6 @@ PetscErrorCode  KSPGuessUpdate(KSPGuess guess, Vec rhs, Vec sol)
 -  sol   - the initial guess vector
 
    Level: intermediate
-
-.keywords: KSP, get, method, name
 
 .seealso: KSPGuessCreate(), KSPGuess
 @*/
@@ -309,14 +304,12 @@ PetscErrorCode  KSPGuessFormGuess(KSPGuess guess, Vec rhs, Vec sol)
 /*@
     KSPGuessSetUp - Setup the initial guess object
 
-   Collective on KSPGuess
+   Collective on guess
 
    Input Parameter:
 -  guess - the initial guess context
 
    Level: intermediate
-
-.keywords: KSP, get, method, name
 
 .seealso: KSPGuessCreate(), KSPGuess
 @*/
@@ -326,6 +319,8 @@ PetscErrorCode  KSPGuessSetUp(KSPGuess guess)
   PetscObjectState matstate;
   PetscInt         oM = 0, oN = 0, M, N;
   Mat              omat = NULL;
+  PC               pc;
+  PetscBool        reuse;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(guess,KSPGUESS_CLASSID,1);
@@ -334,12 +329,18 @@ PetscErrorCode  KSPGuessSetUp(KSPGuess guess)
     ierr = MatGetSize(guess->A,&oM,&oN);CHKERRQ(ierr);
   }
   ierr = KSPGetOperators(guess->ksp,&guess->A,NULL);CHKERRQ(ierr);
+  ierr = KSPGetPC(guess->ksp,&pc);CHKERRQ(ierr);
+  ierr = PCGetReusePreconditioner(pc,&reuse);CHKERRQ(ierr);
   ierr = PetscObjectReference((PetscObject)guess->A);CHKERRQ(ierr);
   ierr = MatGetSize(guess->A,&M,&N);CHKERRQ(ierr);
   ierr = PetscObjectStateGet((PetscObject)guess->A,&matstate);CHKERRQ(ierr);
-  if (omat != guess->A || guess->omatstate != matstate || M != oM || N != oN) {
-    ierr = PetscInfo7(guess,"Resetting KSPGuess since matrix, mat state or sizes have changed (mat %d, %D != %D, %D != %D, %D != %D)\n",(PetscBool)(omat != guess->A),guess->omatstate,matstate,oM,M,oN,N);CHKERRQ(ierr);
+  if (M != oM || N != oN) {
+    ierr = PetscInfo4(guess,"Resetting KSPGuess since matrix sizes have changed (%D != %D, %D != %D)\n",oM,M,oN,N);CHKERRQ(ierr);
+  } else if (!reuse && (omat != guess->A || guess->omatstate != matstate)) {
+    ierr = PetscInfo1(guess,"Resetting KSPGuess since %s has changed\n",omat != guess->A ? "matrix" : "matrix state");CHKERRQ(ierr);
     if (guess->ops->reset) { ierr = (*guess->ops->reset)(guess);CHKERRQ(ierr); }
+  } else if (reuse) {
+    ierr = PetscInfo(guess,"Not resettting KSPGuess since reuse preconditioner has been specified\n");CHKERRQ(ierr);
   } else {
     ierr = PetscInfo(guess,"KSPGuess status unchanged\n");CHKERRQ(ierr);
   }

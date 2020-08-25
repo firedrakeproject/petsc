@@ -1,3 +1,4 @@
+-include ../../../../petscdir.mk
 #requirespackage 'PETSC_HAVE_ELEMENTAL'
 
 ALL: lib
@@ -5,7 +6,7 @@ ALL: lib
 FFLAGS   =
 SOURCECXX= matelem.cxx
 SOURCEF  =
-SOURCEH  = matelemimpl.h
+SOURCEH  =
 LIBBASE  = libpetscmat
 DIRS     =
 MANSEC   = Mat

@@ -221,6 +221,34 @@ static PetscErrorCode PCApply_PBJacobi_N(PC pc,Vec x,Vec y)
   ierr = PetscLogFlops((2.0*bs*bs-bs)*m);CHKERRQ(ierr); /* 2*bs2 - bs */
   PetscFunctionReturn(0);
 }
+
+static PetscErrorCode PCApplyTranspose_PBJacobi_N(PC pc,Vec x,Vec y)
+{
+  PC_PBJacobi       *jac = (PC_PBJacobi*)pc->data;
+  PetscErrorCode    ierr;
+  PetscInt          i,j,k,m = jac->mbs,bs=jac->bs;
+  const MatScalar   *diag = jac->diag;
+  const PetscScalar *xx;
+  PetscScalar       *yy;
+
+  PetscFunctionBegin;
+  ierr = VecGetArrayRead(x,&xx);CHKERRQ(ierr);
+  ierr = VecGetArray(y,&yy);CHKERRQ(ierr);
+  for (i=0; i<m; i++) {
+    for (j=0; j<bs; j++) yy[i*bs+j] = 0.;
+    for (j=0; j<bs; j++) {
+      for (k=0; k<bs; k++) {
+        yy[i*bs+k] += diag[k*bs+j]*xx[i*bs+j];
+      }
+    }
+    diag += bs*bs;
+  }
+  ierr = VecRestoreArrayRead(x,&xx);CHKERRQ(ierr);
+  ierr = VecRestoreArray(y,&yy);CHKERRQ(ierr);
+  ierr = PetscLogFlops(m*bs*(2*bs-1));CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 /* -------------------------------------------------------------------------- */
 static PetscErrorCode PCSetUp_PBJacobi(PC pc)
 {
@@ -264,6 +292,7 @@ static PetscErrorCode PCSetUp_PBJacobi(PC pc)
     pc->ops->apply = PCApply_PBJacobi_N;
     break;
   }
+  pc->ops->applytranspose = PCApplyTranspose_PBJacobi_N;
   PetscFunctionReturn(0);
 }
 /* -------------------------------------------------------------------------- */
@@ -317,8 +346,6 @@ static PetscErrorCode PCView_PBJacobi(PC pc,PetscViewer viewer)
 
    Level: beginner
 
-  Concepts: point block Jacobi
-
 
 .seealso:  PCCreate(), PCSetType(), PCType (for list of available types), PC, PCJACOBI
 
@@ -341,7 +368,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_PBJacobi(PC pc)
      Initialize the pointers to vectors to ZERO; these will be used to store
      diagonal entries of the matrix for fast preconditioner application.
   */
-  jac->diag = 0;
+  jac->diag = NULL;
 
   /*
       Set the pointers for the functions that are provided above.
@@ -350,15 +377,15 @@ PETSC_EXTERN PetscErrorCode PCCreate_PBJacobi(PC pc)
       choose not to provide a couple of these functions since they are
       not needed.
   */
-  pc->ops->apply               = 0; /*set depending on the block size */
-  pc->ops->applytranspose      = 0;
+  pc->ops->apply               = NULL; /*set depending on the block size */
+  pc->ops->applytranspose      = NULL;
   pc->ops->setup               = PCSetUp_PBJacobi;
   pc->ops->destroy             = PCDestroy_PBJacobi;
-  pc->ops->setfromoptions      = 0;
+  pc->ops->setfromoptions      = NULL;
   pc->ops->view                = PCView_PBJacobi;
-  pc->ops->applyrichardson     = 0;
-  pc->ops->applysymmetricleft  = 0;
-  pc->ops->applysymmetricright = 0;
+  pc->ops->applyrichardson     = NULL;
+  pc->ops->applysymmetricleft  = NULL;
+  pc->ops->applysymmetricright = NULL;
   PetscFunctionReturn(0);
 }
 

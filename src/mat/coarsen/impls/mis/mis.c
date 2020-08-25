@@ -14,7 +14,7 @@
 
    Input Parameter:
    . perm - serial permutation of rows of local to process in MIS
-   . Gmat - glabal matrix of graph (data not defined)
+   . Gmat - global matrix of graph (data not defined)
    . strict_aggs - flag for whether to keep strict (non overlapping) aggregates in 'llist';
 
    Output Parameter:
@@ -318,17 +318,15 @@ PetscErrorCode MatCoarsenDestroy_MIS(MatCoarsen coarse)
 /*MC
    MATCOARSENMIS - Creates a coarsen context via the external package MIS.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  coarse - the coarsen context
 
    Options Database Keys:
-+  -mat_coarsen_MIS_xxx -
+.  -mat_coarsen_MIS_xxx -
 
    Level: beginner
-
-.keywords: Coarsen, create, context
 
 .seealso: MatCoarsenSetType(), MatCoarsenType
 

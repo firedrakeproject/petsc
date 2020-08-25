@@ -4,19 +4,11 @@
 
 PetscErrorCode KSPComputeExtremeSingularValues_GMRES(KSP ksp,PetscReal *emax,PetscReal *emin)
 {
-#if defined(PETSC_MISSING_LAPACK_GESVD)
-  PetscFunctionBegin;
-  /*
-      The Cray math libraries on T3D/T3E, and early versions of Intel Math Kernel Libraries (MKL)
-      for PCs do not seem to have the DGESVD() lapack routines
-  */
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"GESVD - Lapack routine is unavailable\nNot able to provide singular value estimates.");
-#else
   KSP_GMRES      *gmres = (KSP_GMRES*)ksp->data;
   PetscErrorCode ierr;
   PetscInt       n = gmres->it + 1,i,N = gmres->max_k + 2;
   PetscBLASInt   bn, bN,lwork, idummy,lierr;
-  PetscScalar    *R        = gmres->Rsvd,*work = R + N*N,sdummy;
+  PetscScalar    *R        = gmres->Rsvd,*work = R + N*N,sdummy = 0;
   PetscReal      *realpart = gmres->Dsvd;
 
   PetscFunctionBegin;
@@ -29,7 +21,7 @@ PetscErrorCode KSPComputeExtremeSingularValues_GMRES(KSP ksp,PetscReal *emax,Pet
     PetscFunctionReturn(0);
   }
   /* copy R matrix to work space */
-  ierr = PetscMemcpy(R,gmres->hh_origin,(gmres->max_k+2)*(gmres->max_k+1)*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(R,gmres->hh_origin,(gmres->max_k+2)*(gmres->max_k+1));CHKERRQ(ierr);
 
   /* zero below diagonal garbage */
   for (i=0; i<n; i++) R[i*N+i+1] = 0.0;
@@ -46,7 +38,6 @@ PetscErrorCode KSPComputeExtremeSingularValues_GMRES(KSP ksp,PetscReal *emax,Pet
 
   *emin = realpart[n-1];
   *emax = realpart[0];
-#endif
   PetscFunctionReturn(0);
 }
 
@@ -60,14 +51,13 @@ PetscErrorCode KSPComputeEigenvalues_GMRES(KSP ksp,PetscInt nmax,PetscReal *r,Pe
   PetscInt       n = gmres->it + 1,N = gmres->max_k + 1;
   PetscInt       i,*perm;
   PetscScalar    *R     = gmres->Rsvd;
-  PetscScalar    *cwork = R + N*N,sdummy;
+  PetscScalar    *cwork = R + N*N,sdummy = 0;
   PetscReal      *work,*realpart = gmres->Dsvd;
-  PetscBLASInt   zero = 0,bn,bN,idummy,lwork;
+  PetscBLASInt   zero = 0,bn,bN,idummy = -1,lwork;
 
   PetscFunctionBegin;
   ierr   = PetscBLASIntCast(n,&bn);CHKERRQ(ierr);
   ierr   = PetscBLASIntCast(N,&bN);CHKERRQ(ierr);
-  idummy = -1;                  /* unused */
   ierr   = PetscBLASIntCast(5*N,&lwork);CHKERRQ(ierr);
   if (nmax < n) SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_ARG_SIZ,"Not enough room in work space r and c for eigenvalues");
   *neig = n;
@@ -75,7 +65,7 @@ PetscErrorCode KSPComputeEigenvalues_GMRES(KSP ksp,PetscInt nmax,PetscReal *r,Pe
   if (!n) PetscFunctionReturn(0);
 
   /* copy R matrix to work space */
-  ierr = PetscMemcpy(R,gmres->hes_origin,N*N*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(R,gmres->hes_origin,N*N);CHKERRQ(ierr);
 
   /* compute eigenvalues */
 
@@ -114,16 +104,13 @@ PetscErrorCode KSPComputeEigenvalues_GMRES(KSP ksp,PetscInt nmax,PetscReal *r,Pe
   }
 #endif
   ierr = PetscFree(perm);CHKERRQ(ierr);
-#elif defined(PETSC_MISSING_LAPACK_GEEV)
-  PetscFunctionBegin;
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"GEEV - Lapack routine is unavailable\nNot able to provide eigen values.");
 #elif !defined(PETSC_USE_COMPLEX)
   KSP_GMRES      *gmres = (KSP_GMRES*)ksp->data;
   PetscErrorCode ierr;
   PetscInt       n = gmres->it + 1,N = gmres->max_k + 1,i,*perm;
-  PetscBLASInt   bn, bN, lwork, idummy, lierr;
+  PetscBLASInt   bn, bN, lwork, idummy, lierr = -1;
   PetscScalar    *R        = gmres->Rsvd,*work = R + N*N;
-  PetscScalar    *realpart = gmres->Dsvd,*imagpart = realpart + N,sdummy;
+  PetscScalar    *realpart = gmres->Dsvd,*imagpart = realpart + N,sdummy = 0;
 
   PetscFunctionBegin;
   ierr = PetscBLASIntCast(n,&bn);CHKERRQ(ierr);
@@ -136,7 +123,7 @@ PetscErrorCode KSPComputeEigenvalues_GMRES(KSP ksp,PetscInt nmax,PetscReal *r,Pe
   if (!n) PetscFunctionReturn(0);
 
   /* copy R matrix to work space */
-  ierr = PetscMemcpy(R,gmres->hes_origin,N*N*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(R,gmres->hes_origin,N*N);CHKERRQ(ierr);
 
   /* compute eigenvalues */
   ierr = PetscFPTrapPush(PETSC_FP_TRAP_OFF);CHKERRQ(ierr);
@@ -156,7 +143,7 @@ PetscErrorCode KSPComputeEigenvalues_GMRES(KSP ksp,PetscInt nmax,PetscReal *r,Pe
   PetscErrorCode ierr;
   PetscInt       n  = gmres->it + 1,N = gmres->max_k + 1,i,*perm;
   PetscScalar    *R = gmres->Rsvd,*work = R + N*N,*eigs = work + 5*N,sdummy;
-  PetscBLASInt   bn,bN,lwork,idummy,lierr;
+  PetscBLASInt   bn,bN,lwork,idummy,lierr = -1;
 
   PetscFunctionBegin;
   ierr = PetscBLASIntCast(n,&bn);CHKERRQ(ierr);
@@ -169,7 +156,7 @@ PetscErrorCode KSPComputeEigenvalues_GMRES(KSP ksp,PetscInt nmax,PetscReal *r,Pe
   if (!n) PetscFunctionReturn(0);
 
   /* copy R matrix to work space */
-  ierr = PetscMemcpy(R,gmres->hes_origin,N*N*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(R,gmres->hes_origin,N*N);CHKERRQ(ierr);
 
   /* compute eigenvalues */
   ierr = PetscFPTrapPush(PETSC_FP_TRAP_OFF);CHKERRQ(ierr);
@@ -200,7 +187,7 @@ PetscErrorCode KSPComputeRitz_GMRES(KSP ksp,PetscBool ritz,PetscBool small,Petsc
   PetscReal      *wr,*wi,*modul;       /* Real and imaginary part and modul of the Ritz values*/
   PetscReal      *SR,*work;
   PetscBLASInt   bn,bN,lwork,idummy;
-  PetscScalar    *t,sdummy;
+  PetscScalar    *t,sdummy = 0;
 
   PetscFunctionBegin;
   /* n: size of the Hessenberg matrix */
@@ -222,9 +209,9 @@ PetscErrorCode KSPComputeRitz_GMRES(KSP ksp,PetscBool ritz,PetscBool small,Petsc
 
   /* copy H matrix to work space */
   if (gmres->fullcycle) {
-    ierr = PetscMemcpy(H,gmres->hes_ritz,bN*bN*sizeof(PetscReal));CHKERRQ(ierr);
+    ierr = PetscArraycpy(H,gmres->hes_ritz,bN*bN);CHKERRQ(ierr);
   } else {
-    ierr = PetscMemcpy(H,gmres->hes_origin,bN*bN*sizeof(PetscReal));CHKERRQ(ierr);
+    ierr = PetscArraycpy(H,gmres->hes_origin,bN*bN);CHKERRQ(ierr);
   }
 
   /* Modify H to compute Harmonic Ritz pairs H = H + H^{-T}*h^2_{m+1,m}e_m*e_m^T */
@@ -245,9 +232,6 @@ PetscErrorCode KSPComputeRitz_GMRES(KSP ksp,PetscBool ritz,PetscBool small,Petsc
       t[bn-1] = PetscSqr(gmres->hes_origin[(bn-1)*bN+bn]); 
     }
     /* Call the LAPACK routine dgesv to compute t = H^{-T}*t */
-#if   defined(PETSC_MISSING_LAPACK_GESV)
-    SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"GESV - Lapack routine is unavailable.");
-#else
     {
       PetscBLASInt info;
       PetscBLASInt nrhs = 1;
@@ -258,23 +242,18 @@ PetscErrorCode KSPComputeRitz_GMRES(KSP ksp,PetscBool ritz,PetscBool small,Petsc
       ierr = PetscFree(ipiv);CHKERRQ(ierr);
       ierr = PetscFree(Ht);CHKERRQ(ierr);
     }
-#endif
     /* Now form H + H^{-T}*h^2_{m+1,m}e_m*e_m^T */
     for (i=0; i<bn; i++) H[(bn-1)*bn+i] += t[i];
     ierr = PetscFree(t);CHKERRQ(ierr);
   }
 
   /* Compute (harmonic) Ritz pairs */
-#if defined(PETSC_MISSING_LAPACK_HSEQR)
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"GEEV - Lapack routine is unavailable\nNot able to provide eigen values.");
-#else
   {
     PetscBLASInt info;
     ierr = PetscFPTrapPush(PETSC_FP_TRAP_OFF);CHKERRQ(ierr);
     PetscStackCallBLAS("LAPACKgeev",LAPACKgeev_("N","V",&bn,H,&bN,wr,wi,&sdummy,&idummy,Q,&bn,work,&lwork,&info));
     if (info) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_LIB,"Error in LAPACK routine");
   }
-#endif
   /* sort the (harmonic) Ritz values */
   ierr = PetscMalloc1(n,&modul);CHKERRQ(ierr);
   ierr = PetscMalloc1(n,&perm);CHKERRQ(ierr);
@@ -291,7 +270,7 @@ PetscErrorCode KSPComputeRitz_GMRES(KSP ksp,PetscBool ritz,PetscBool small,Petsc
     for (i=0; i<nb; i++) {
       tetar[i] = wr[perm[i]];
       tetai[i] = wi[perm[i]];
-      ierr = PetscMemcpy(&SR[i*n],&(Q[perm[i]*bn]),n*sizeof(PetscReal));CHKERRQ(ierr);
+      ierr = PetscArraycpy(&SR[i*n],&(Q[perm[i]*bn]),n);CHKERRQ(ierr);
     }
   } else {
     while (nb < NbrRitz) {
@@ -302,7 +281,7 @@ PetscErrorCode KSPComputeRitz_GMRES(KSP ksp,PetscBool ritz,PetscBool small,Petsc
     for (i=0; i<nb; i++) {
       tetar[i] = wr[perm[n-nb+i]];
       tetai[i] = wi[perm[n-nb+i]];
-      ierr = PetscMemcpy(&SR[i*n], &(Q[perm[n-nb+i]*bn]), n*sizeof(PetscReal));CHKERRQ(ierr);
+      ierr = PetscArraycpy(&SR[i*n], &(Q[perm[n-nb+i]*bn]), n);CHKERRQ(ierr);
     }
   }
   ierr = PetscFree(modul);CHKERRQ(ierr);

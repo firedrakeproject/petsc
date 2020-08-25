@@ -234,8 +234,8 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = PetscObjectSAWsGrantAccess((PetscObject)ksp);CHKERRQ(ierr);
     KSPLogResidualHistory(ksp,rnorm);CHKERRQ(ierr);
     ierr = KSPMonitor(ksp,ksp->its,rnorm);CHKERRQ(ierr);
-    ierr = (*ksp->converged)(ksp,ksp->its+1,rnorm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
-    if (ksp->reason) break;
+    ierr = (*ksp->converged)(ksp,ksp->its,rnorm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
+    if (ksp->reason) PetscFunctionReturn(0);
 
     /* compute new eta and scale beta */
     *eta = 0.;
@@ -260,7 +260,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = VecCopy(z,p);CHKERRQ(ierr);
     ierr = VecCopy(w,s);CHKERRQ(ierr);
     ierr = VecCopy(m,q);CHKERRQ(ierr);
-    if(pipegcr->unroll_w){
+    if (pipegcr->unroll_w) {
       ierr = VecCopy(n,t);CHKERRQ(ierr);
       ierr = VecMAXPY(t,j,betas,pipegcr->told);CHKERRQ(ierr); /* ti <- n  - sum_k beta_k t_k */
     }
@@ -269,6 +269,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = VecMAXPY(q,j,betas,pipegcr->qold);CHKERRQ(ierr); /* qi <- m  - sum_k beta_k q_k */
 
   } while (ksp->its < ksp->max_it);
+  if (ksp->its >= ksp->max_it) ksp->reason = KSP_DIVERGED_ITS;
   PetscFunctionReturn(0);
 }
 
@@ -322,9 +323,9 @@ static PetscErrorCode KSPSolve_PIPEGCR(KSP ksp)
   }
 
   /* Is A symmetric? */
-  ierr = PetscObjectTypeCompareAny((PetscObject)A,&issym,"sbaij","seqsbaij","mpibaij","");CHKERRQ(ierr);
+  ierr = PetscObjectTypeCompareAny((PetscObject)A,&issym,MATSBAIJ,MATSEQSBAIJ,MATMPISBAIJ,"");CHKERRQ(ierr);
   if (!issym) {
-    ierr = PetscInfo(A,"Matrix type is not any of MATSBAIJ,MATSEQSBAIJ,MATMPIBAIJ. Is matrix A symmetric (as required by CR methods)?");CHKERRQ(ierr);
+    ierr = PetscInfo(A,"Matrix type is not any of MATSBAIJ,MATSEQSBAIJ,MATMPISBAIJ. Is matrix A symmetric (as required by CR methods)?");CHKERRQ(ierr);
   }
 
   /* logging */
@@ -339,7 +340,7 @@ static PetscErrorCode KSPSolve_PIPEGCR(KSP ksp)
 
   do {
     ierr = KSPSolve_PIPEGCR_cycle(ksp);CHKERRQ(ierr);
-    if (ksp->reason) break;
+    if (ksp->reason) PetscFunctionReturn(0);
     if (pipegcr->norm_breakdown) {
       pipegcr->n_restarts++;
       pipegcr->norm_breakdown = PETSC_FALSE;
@@ -366,7 +367,7 @@ static PetscErrorCode KSPView_PIPEGCR(KSP ksp, PetscViewer viewer)
   } else if(pipegcr->truncstrat == KSP_FCD_TRUNC_TYPE_NOTAY){
     truncstr = "Using Notay's truncation strategy";
   } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Undefined FCD truncation strategy");
-  
+
 
   if (isascii) {
     ierr = PetscViewerASCIIPrintf(viewer,"  max previous directions = %D\n",pipegcr->mmax);CHKERRQ(ierr);
@@ -374,7 +375,7 @@ static PetscErrorCode KSPView_PIPEGCR(KSP ksp, PetscViewer viewer)
     ierr = PetscViewerASCIIPrintf(viewer,"  %s\n",truncstr);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  w unrolling = %D \n", pipegcr->unroll_w);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  restarts performed = %D \n", pipegcr->n_restarts);CHKERRQ(ierr);
-  } else if (isstring) { 
+  } else if (isstring) {
     ierr = PetscViewerStringSPrintf(viewer, "max previous directions = %D, preallocated %D directions, %s truncation strategy", pipegcr->mmax,pipegcr->nprealloc,truncstr);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
@@ -405,7 +406,7 @@ static PetscErrorCode KSPSetUp_PIPEGCR(KSP ksp)
     ierr = PetscMalloc3(pipegcr->mmax+1,&(pipegcr->tvecs),pipegcr->mmax+1,&(pipegcr->ptvecs),pipegcr->mmax+2,&(pipegcr->told));CHKERRQ(ierr);
   }
   ierr = PetscMalloc4(pipegcr->mmax+2,&(pipegcr->pold),pipegcr->mmax+2,&(pipegcr->sold),pipegcr->mmax+2,&(pipegcr->qold),pipegcr->mmax+2,&(pipegcr->chunksizes));CHKERRQ(ierr);
-  ierr = PetscMalloc3(pipegcr->mmax+2,&(pipegcr->dots),pipegcr->mmax+1,&(pipegcr->etas),pipegcr->mmax+2,&(pipegcr->redux));CHKERRQ(ierr); 
+  ierr = PetscMalloc3(pipegcr->mmax+2,&(pipegcr->dots),pipegcr->mmax+1,&(pipegcr->etas),pipegcr->mmax+2,&(pipegcr->redux));CHKERRQ(ierr);
   /* If the requested number of preallocated vectors is greater than mmax reduce nprealloc */
   if(pipegcr->nprealloc > pipegcr->mmax+1){
     ierr = PetscInfo2(NULL,"Requested nprealloc=%d is greater than m_max+1=%d. Resetting nprealloc = m_max+1.\n",pipegcr->nprealloc, pipegcr->mmax+1);CHKERRQ(ierr);
@@ -475,7 +476,7 @@ static PetscErrorCode KSPDestroy_PIPEGCR(KSP ksp)
 /*@
   KSPPIPEGCRSetUnrollW - Set to PETSC_TRUE to use PIPEGCR with unrolling of the w vector
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   Input Parameters:
 +  ksp - the Krylov space context
@@ -490,7 +491,7 @@ static PetscErrorCode KSPDestroy_PIPEGCR(KSP ksp)
 @*/
 PetscErrorCode KSPPIPEGCRSetUnrollW(KSP ksp,PetscBool unroll_w)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -502,7 +503,7 @@ PetscErrorCode KSPPIPEGCRSetUnrollW(KSP ksp,PetscBool unroll_w)
 /*@
   KSPPIPEGCRGetUnrollW - Get information on PIPEGCR unrolling the w vector
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
    Input Parameter:
 .  ksp - the Krylov space context
@@ -519,7 +520,7 @@ PetscErrorCode KSPPIPEGCRSetUnrollW(KSP ksp,PetscBool unroll_w)
 @*/
 PetscErrorCode KSPPIPEGCRGetUnrollW(KSP ksp,PetscBool *unroll_w)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -534,7 +535,7 @@ PetscErrorCode KSPPIPEGCRGetUnrollW(KSP ksp,PetscBool *unroll_w)
   and whether all are used in each iteration also depends on the truncation strategy
   (see KSPPIPEGCRSetTruncationType)
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   Input Parameters:
 +  ksp - the Krylov space context
@@ -549,7 +550,7 @@ PetscErrorCode KSPPIPEGCRGetUnrollW(KSP ksp,PetscBool *unroll_w)
 @*/
 PetscErrorCode KSPPIPEGCRSetMmax(KSP ksp,PetscInt mmax)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -576,14 +577,12 @@ PetscErrorCode KSPPIPEGCRSetMmax(KSP ksp,PetscInt mmax)
 
    Level: intermediate
 
-.keywords: KSP, PIPEGCR, truncation
-
 .seealso: KSPPIPEGCR, KSPPIPEGCRGetTruncationType(), KSPPIPEGCRGetNprealloc(), KSPPIPEGCRSetMmax()
 @*/
 
 PetscErrorCode KSPPIPEGCRGetMmax(KSP ksp,PetscInt *mmax)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -594,7 +593,7 @@ PetscErrorCode KSPPIPEGCRGetMmax(KSP ksp,PetscInt *mmax)
 /*@
   KSPPIPEGCRSetNprealloc - set the number of directions to preallocate with PIPEGCR
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   Input Parameters:
 +  ksp - the Krylov space context
@@ -609,7 +608,7 @@ PetscErrorCode KSPPIPEGCRGetMmax(KSP ksp,PetscInt *mmax)
 @*/
 PetscErrorCode KSPPIPEGCRSetNprealloc(KSP ksp,PetscInt nprealloc)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -634,13 +633,11 @@ PetscErrorCode KSPPIPEGCRSetNprealloc(KSP ksp,PetscInt nprealloc)
 
    Level: advanced
 
-.keywords: KSP, PIPEGCR, truncation
-
 .seealso: KSPPIPEGCR, KSPPIPEGCRGetTruncationType(), KSPPIPEGCRSetNprealloc()
 @*/
 PetscErrorCode KSPPIPEGCRGetNprealloc(KSP ksp,PetscInt *nprealloc)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -651,7 +648,7 @@ PetscErrorCode KSPPIPEGCRGetNprealloc(KSP ksp,PetscInt *nprealloc)
 /*@
   KSPPIPEGCRSetTruncationType - specify how many of its stored previous directions PIPEGCR uses during orthoganalization
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   KSP_FCD_TRUNC_TYPE_STANDARD uses all (up to mmax) stored directions
   KSP_FCD_TRUNC_TYPE_NOTAY uses the last max(1,mod(i,mmax)) directions at iteration i=0,1,..
@@ -669,7 +666,7 @@ PetscErrorCode KSPPIPEGCRGetNprealloc(KSP ksp,PetscInt *nprealloc)
 @*/
 PetscErrorCode KSPPIPEGCRSetTruncationType(KSP ksp,KSPFCDTruncationType truncstrat)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -697,13 +694,11 @@ PetscErrorCode KSPPIPEGCRSetTruncationType(KSP ksp,KSPFCDTruncationType truncstr
 
    Level: intermediate
 
-.keywords: KSP, PIPEGCR, truncation
-
 .seealso: KSPPIPEGCR, KSPPIPEGCRSetTruncationType, KSPPIPEGCRTruncationType, KSPFCDTruncationType
 @*/
 PetscErrorCode KSPPIPEGCRGetTruncationType(KSP ksp,KSPFCDTruncationType *truncstrat)
 {
-  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;;
+  KSP_PIPEGCR *pipegcr=(KSP_PIPEGCR*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -749,7 +744,7 @@ static PetscErrorCode  KSPPIPEGCRSetModifyPC_PIPEGCR(KSP ksp,KSPPIPEGCRModifyPCF
 /*@C
  KSPPIPEGCRSetModifyPC - Sets the routine used by PIPEGCR to modify the preconditioner.
 
- Logically Collective on KSP
+ Logically Collective on ksp
 
  Input Parameters:
  +  ksp      - iterative context obtained from KSPCreate()
@@ -786,10 +781,10 @@ PetscErrorCode  KSPPIPEGCRSetModifyPC(KSP ksp,PetscErrorCode (*function)(KSP,Pet
      KSPPIPEGCR - Implements a Pipelined Generalized Conjugate Residual method.
 
   Options Database Keys:
-.   -ksp_pipegcr_mmax <N>  - the max number of Krylov directions to orthogonalize against
++   -ksp_pipegcr_mmax <N>  - the max number of Krylov directions to orthogonalize against
 .   -ksp_pipegcr_unroll_w - unroll w at the storage cost of a maximum of (mmax+1) extra vectors with the benefit of better pipelining (default: PETSC_TRUE)
 .   -ksp_pipegcr_nprealloc <N> - the number of vectors to preallocated for storing Krylov directions. Once exhausted new directions are allocated blockwise (default: 5)
-.   -ksp_pipegcr_truncation_type <standard,notay> - which previous search directions to orthogonalize against
+-   -ksp_pipegcr_truncation_type <standard,notay> - which previous search directions to orthogonalize against
 
 
   Notes:

@@ -46,7 +46,12 @@ PetscErrorCode TaoTestGradient(Tao tao,Vec x,Vec g1)
   ierr = PetscOptionsName("-tao_test_gradient","Compare hand-coded and finite difference Gradients","None",&test);CHKERRQ(ierr);
   ierr = PetscOptionsViewer("-tao_test_gradient_view","View difference between hand-coded and finite difference Gradients element entries","None",&mviewer,&format,&complete_print);CHKERRQ(ierr);
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
-  if (!test) PetscFunctionReturn(0);
+  if (!test) {
+    if (complete_print) {
+      ierr = PetscViewerDestroy(&mviewer);CHKERRQ(ierr);
+    }
+    PetscFunctionReturn(0);
+  }
 
   ierr = PetscObjectGetComm((PetscObject)tao,&comm);CHKERRQ(ierr);
   ierr = PetscViewerASCIIGetStdout(comm,&viewer);CHKERRQ(ierr);
@@ -58,8 +63,8 @@ PetscErrorCode TaoTestGradient(Tao tao,Vec x,Vec g1)
     ierr = PetscViewerASCIIPrintf(viewer,"    of hand-coded and finite difference gradient entries greater than <threshold>.\n");CHKERRQ(ierr);
   }
   if (!directionsprinted) {
-    ierr = PetscViewerASCIIPrintf(viewer,"  Testing hand-coded Gradient, if (for double precision runs) ||G - Gfd||_F/||G||_F is\n");CHKERRQ(ierr);
-    ierr = PetscViewerASCIIPrintf(viewer,"    O(1.e-8), the hand-coded Hessian is probably correct.\n");CHKERRQ(ierr);
+    ierr = PetscViewerASCIIPrintf(viewer,"  Testing hand-coded Gradient, if (for double precision runs) ||G - Gfd||/||G|| is\n");CHKERRQ(ierr);
+    ierr = PetscViewerASCIIPrintf(viewer,"    O(1.e-8), the hand-coded Gradient is probably correct.\n");CHKERRQ(ierr);
     directionsprinted = PETSC_TRUE;
   }
   if (complete_print) {
@@ -98,6 +103,7 @@ PetscErrorCode TaoTestGradient(Tao tao,Vec x,Vec g1)
 
   if (complete_print) {
     ierr = PetscViewerPopFormat(mviewer);CHKERRQ(ierr);
+    ierr = PetscViewerDestroy(&mviewer);CHKERRQ(ierr);
   }
   ierr = PetscViewerASCIISetTab(viewer,tabs);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -153,7 +159,7 @@ PetscErrorCode TaoComputeGradient(Tao tao, Vec X, Vec G)
     PetscStackPop;
     ierr = PetscLogEventEnd(TAO_ObjGradEval,tao,X,G,NULL);CHKERRQ(ierr);
     tao->nfuncgrads++;
-  } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"TaoSetGradientRoutine() has not been called");
+  } else SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_ARG_WRONGSTATE,"TaoSetGradientRoutine() has not been called");
   ierr = VecLockReadPop(X);CHKERRQ(ierr);
 
   ierr = TaoTestGradient(tao,X,G);CHKERRQ(ierr);
@@ -207,7 +213,7 @@ PetscErrorCode TaoComputeObjective(Tao tao, Vec X, PetscReal *f)
     ierr = PetscLogEventEnd(TAO_ObjGradEval,tao,X,NULL,NULL);CHKERRQ(ierr);
     ierr = VecDestroy(&temp);CHKERRQ(ierr);
     tao->nfuncgrads++;
-  }  else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"TaoSetObjectiveRoutine() has not been called");
+  }  else SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_ARG_WRONGSTATE,"TaoSetObjectiveRoutine() has not been called");
   ierr = PetscInfo1(tao,"TAO Function evaluation: %20.19e\n",(double)(*f));CHKERRQ(ierr);
   ierr = VecLockReadPop(X);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -270,7 +276,7 @@ PetscErrorCode TaoComputeObjectiveAndGradient(Tao tao, Vec X, PetscReal *f, Vec 
     PetscStackPop;
     ierr = PetscLogEventEnd(TAO_GradientEval,tao,X,G,NULL);CHKERRQ(ierr);
     tao->ngrads++;
-  } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"TaoSetObjectiveRoutine() or TaoSetGradientRoutine() not set");
+  } else SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_ARG_WRONGSTATE,"TaoSetObjectiveRoutine() or TaoSetGradientRoutine() not set");
   ierr = PetscInfo1(tao,"TAO Function evaluation: %20.19e\n",(double)(*f));CHKERRQ(ierr);
   ierr = VecLockReadPop(X);CHKERRQ(ierr);
 
@@ -401,8 +407,8 @@ PetscErrorCode TaoSetResidualWeights(Tao tao, Vec sigma_v, PetscInt n, PetscInt 
     }
   } else {
     tao->res_weights_n=0;
-    tao->res_weights_rows=0;
-    tao->res_weights_cols=0;
+    tao->res_weights_rows=NULL;
+    tao->res_weights_cols=NULL;
   }
   PetscFunctionReturn(0);
 }
@@ -444,7 +450,7 @@ PetscErrorCode TaoComputeResidual(Tao tao, Vec X, Vec F)
     PetscStackPop;
     ierr = PetscLogEventEnd(TAO_ObjectiveEval,tao,X,NULL,NULL);CHKERRQ(ierr);
     tao->nfuncs++;
-  } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"TaoSetResidualRoutine() has not been called");
+  } else SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_ARG_WRONGSTATE,"TaoSetResidualRoutine() has not been called");
   ierr = PetscInfo(tao,"TAO least-squares residual evaluation.\n");CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -532,7 +538,7 @@ PetscErrorCode TaoIsObjectiveDefined(Tao tao, PetscBool *flg)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao,TAO_CLASSID,1);
-  if (tao->ops->computeobjective == 0) *flg = PETSC_FALSE;
+  if (tao->ops->computeobjective == NULL) *flg = PETSC_FALSE;
   else *flg = PETSC_TRUE;
   PetscFunctionReturn(0);
 }
@@ -556,7 +562,7 @@ PetscErrorCode TaoIsGradientDefined(Tao tao, PetscBool *flg)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao,TAO_CLASSID,1);
-  if (tao->ops->computegradient == 0) *flg = PETSC_FALSE;
+  if (tao->ops->computegradient == NULL) *flg = PETSC_FALSE;
   else *flg = PETSC_TRUE;
   PetscFunctionReturn(0);
 }
@@ -580,7 +586,7 @@ PetscErrorCode TaoIsObjectiveAndGradientDefined(Tao tao, PetscBool *flg)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao,TAO_CLASSID,1);
-  if (tao->ops->computeobjectiveandgradient == 0) *flg = PETSC_FALSE;
+  if (tao->ops->computeobjectiveandgradient == NULL) *flg = PETSC_FALSE;
   else *flg = PETSC_TRUE;
   PetscFunctionReturn(0);
 }

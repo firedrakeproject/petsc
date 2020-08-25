@@ -11,7 +11,7 @@
 /*
    Contains the list of registered PetscDraw routines
 */
-PetscFunctionList PetscDrawList = 0;
+PetscFunctionList PetscDrawList = NULL;
 
 /*@C
    PetscDrawView - Prints the PetscDraw data structure.
@@ -36,8 +36,6 @@ PetscFunctionList PetscDrawList = 0;
    PetscViewerASCIIOpen() - output to a specified file.
 
    Level: beginner
-
-.keywords: PetscDraw, view
 
 .seealso: PCView(), PetscViewerASCIIOpen()
 @*/
@@ -91,9 +89,32 @@ PetscErrorCode  PetscDrawView(PetscDraw indraw,PetscViewer viewer)
 }
 
 /*@C
+   PetscDrawViewFromOptions - View from Options
+
+   Collective on PetscDraw
+
+   Input Parameters:
++  A - the PetscDraw context
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  PetscDraw, PetscDrawView, PetscObjectViewFromOptions(), PetscDrawCreate()
+@*/
+PetscErrorCode  PetscDrawViewFromOptions(PetscDraw A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,PETSC_DRAW_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
    PetscDrawCreate - Creates a graphics context.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 +  comm - MPI communicator
@@ -108,8 +129,6 @@ PetscErrorCode  PetscDrawView(PetscDraw indraw,PetscViewer viewer)
 
    Level: beginner
 
-   Concepts: graphics^creating context
-   Concepts: drawing^creating context
 
 .seealso: PetscDrawSetType(), PetscDrawSetFromOptions(), PetscDrawDestroy(), PetscDrawSetType(), PetscDrawLGCreate(), PetscDrawSPCreate(),
           PetscDrawViewPortsCreate(), PetscDrawViewPortsSet(), PetscDrawAxisCreate(), PetscDrawHGCreate(), PetscDrawBarCreate(),
@@ -132,7 +151,7 @@ PetscErrorCode  PetscDrawCreate(MPI_Comm comm,const char display[],const char ti
 
   PetscFunctionBegin;
   ierr = PetscDrawInitializePackage();CHKERRQ(ierr);
-  *indraw = 0;
+  *indraw = NULL;
   ierr = PetscHeaderCreate(draw,PETSC_DRAW_CLASSID,"Draw","Graphics","Draw",comm,PetscDrawDestroy,PetscDrawView);CHKERRQ(ierr);
 
   draw->data    = NULL;
@@ -194,10 +213,6 @@ PetscErrorCode  PetscDrawCreate(MPI_Comm comm,const char display[],const char ti
    See "petsc/include/petscdraw.h" for available methods (for instance,
    PETSC_DRAW_X, PETSC_DRAW_TIKZ or PETSC_DRAW_IMAGE)
 
-   Concepts: drawing^X windows
-   Concepts: X windows^graphics
-   Concepts: drawing^Microsoft Windows
-
 .seealso: PetscDrawSetFromOptions(), PetscDrawCreate(), PetscDrawDestroy(), PetscDrawType
 @*/
 PetscErrorCode  PetscDrawSetType(PetscDraw draw,PetscDrawType type)
@@ -233,13 +248,17 @@ PetscErrorCode  PetscDrawSetType(PetscDraw draw,PetscDrawType type)
   }
 #endif
   if (flg) {
+    ierr = PetscStrcmp(type,"tikz",&flg);CHKERRQ(ierr);
+    if (!flg) type = PETSC_DRAW_NULL;
+  }
+
+  ierr = PetscStrcmp(type,PETSC_DRAW_NULL,&match);CHKERRQ(ierr);
+  if (match) {
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_double_buffer",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_virtual",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_fast",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_ports",NULL);CHKERRQ(ierr);
     ierr = PetscOptionsHasName(NULL,NULL,"-draw_coordinates",NULL);CHKERRQ(ierr);
-    ierr = PetscStrcmp(type,"tikz",&flg);CHKERRQ(ierr);
-    if (!flg) type = PETSC_DRAW_NULL;
   }
 
   ierr =  PetscFunctionListFind(PetscDrawList,type,&r);CHKERRQ(ierr);
@@ -300,8 +319,6 @@ $     PetscDrawSetType(ksp,"my_draw_type")
    or at runtime via the option
 $     -draw_type my_draw_type
 
-   Concepts: graphics^registering new draw classes
-   Concepts: PetscDraw^registering new draw classes
 
 .seealso: PetscDrawRegisterAll(), PetscDrawRegisterDestroy(), PetscDrawType, PetscDrawSetType()
 @*/
@@ -326,8 +343,6 @@ PetscErrorCode  PetscDrawRegister(const char *sname,PetscErrorCode (*function)(P
 -  prefix - the prefix to prepend to all option names
 
    Level: advanced
-
-.keywords: PetscDraw, set, options, prefix, database
 
 .seealso: PetscDrawSetFromOptions(), PetscDrawCreate()
 @*/
@@ -367,8 +382,6 @@ PetscErrorCode  PetscDrawSetOptionsPrefix(PetscDraw draw,const char prefix[])
    Notes:
     Must be called after PetscDrawCreate() before the PetscDraw is used.
 
-   Concepts: drawing^setting options
-   Concepts: graphics^setting options
 
 .seealso: PetscDrawCreate(), PetscDrawSetType(), PetscDrawSetSave(), PetscDrawSetSaveFinalImage(), PetscDrawPause(), PetscDrawSetPause()
 

@@ -3,7 +3,7 @@
 #include <petscdm.h>
 #include <petscblaslapack.h>
 
-static const char        *TSGLLEErrorDirections[] = {"FORWARD","BACKWARD","TSGLLEErrorDirection","TSGLLEERROR_",0};
+static const char        *TSGLLEErrorDirections[] = {"FORWARD","BACKWARD","TSGLLEErrorDirection","TSGLLEERROR_",NULL};
 static PetscFunctionList TSGLLEList;
 static PetscFunctionList TSGLLEAcceptList;
 static PetscBool         TSGLLEPackageInitialized;
@@ -127,7 +127,7 @@ static PetscErrorCode TSGLLESchemeCreate(PetscInt p,PetscInt q,PetscInt r,PetscI
   if (r < 1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"At least one item must be carried between steps");
   if (s < 1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"At least one stage is required");
   PetscValidPointer(inscheme,4);
-  *inscheme = 0;
+  *inscheme = NULL;
   ierr      = PetscNew(&scheme);CHKERRQ(ierr);
   scheme->p = p;
   scheme->q = q;
@@ -135,7 +135,7 @@ static PetscErrorCode TSGLLESchemeCreate(PetscInt p,PetscInt q,PetscInt r,PetscI
   scheme->s = s;
 
   ierr = PetscMalloc5(s,&scheme->c,s*s,&scheme->a,r*s,&scheme->b,r*s,&scheme->u,r*r,&scheme->v);CHKERRQ(ierr);
-  ierr = PetscMemcpy(scheme->c,c,s*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(scheme->c,c,s);CHKERRQ(ierr);
   for (j=0; j<s*s; j++) scheme->a[j] = (PetscAbsScalar(a[j]) < 1e-12) ? 0 : a[j];
   for (j=0; j<r*s; j++) scheme->b[j] = (PetscAbsScalar(b[j]) < 1e-12) ? 0 : b[j];
   for (j=0; j<s*r; j++) scheme->u[j] = (PetscAbsScalar(u[j]) < 1e-12) ? 0 : u[j];
@@ -147,9 +147,7 @@ static PetscErrorCode TSGLLESchemeCreate(PetscInt p,PetscInt q,PetscInt r,PetscI
     PetscBLASInt m,n,one=1,*ipiv,lwork=4*((s+3)*3+3),info,ldb;
     PetscReal    rcond,*sing,*workreal;
     PetscScalar  *ImV,*H,*bmat,*workscalar,*c=scheme->c,*a=scheme->a,*b=scheme->b,*u=scheme->u,*v=scheme->v;
-#if !defined(PETSC_MISSING_LAPACK_GELSS)
     PetscBLASInt rank;
-#endif
     ierr = PetscMalloc7(PetscSqr(r),&ImV,3*s,&H,3*ss,&bmat,lwork,&workscalar,5*(3+r),&workreal,r+s,&sing,r+s,&ipiv);CHKERRQ(ierr);
 
     /* column-major input */
@@ -245,10 +243,6 @@ static PetscErrorCode TSGLLESchemeCreate(PetscInt p,PetscInt q,PetscInt r,PetscI
     ierr  = PetscBLASIntCast(s,&n);CHKERRQ(ierr);
     ierr  = PetscBLASIntCast(ss,&ldb);CHKERRQ(ierr);
     rcond = 1e-12;
-#if defined(PETSC_MISSING_LAPACK_GELSS)
-    /* ESSL does not have this routine */
-    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"GELSS - Lapack routine is unavailable\nNot able to run GL time stepping.");
-#else
 #if defined(PETSC_USE_COMPLEX)
     /* ZGELSS( M, N, NRHS, A, LDA, B, LDB, S, RCOND, RANK, WORK, LWORK, RWORK, INFO) */
     PetscStackCallBLAS("LAPACKgelss",LAPACKgelss_(&m,&n,&m,H,&m,bmat,&ldb,sing,&rcond,&rank,workscalar,&lwork,workreal,&info));
@@ -258,7 +252,6 @@ static PetscErrorCode TSGLLESchemeCreate(PetscInt p,PetscInt q,PetscInt r,PetscI
 #endif
     if (info < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_LIB,"Bad argument to GELSS");
     if (info > 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_LIB,"SVD failed to converge");
-#endif
 
     for (j=0; j<3; j++) {
       for (k=0; k<s; k++) scheme->phi[k+j*s] = bmat[k+j*ss];
@@ -620,7 +613,6 @@ static PetscErrorCode TSGLLECreate_IRKS(TS ts)
 
    Level: intermediate
 
-.keywords: TS, TSGLLE, set, type
 @*/
 PetscErrorCode  TSGLLESetType(TS ts,TSGLLEType type)
 {
@@ -1236,8 +1228,6 @@ $     -ts_gl_type my_scheme
 
    Level: advanced
 
-.keywords: TSGLLE, register
-
 .seealso: TSGLLERegisterAll()
 @*/
 PetscErrorCode  TSGLLERegister(const char sname[],PetscErrorCode (*function)(TS))
@@ -1274,8 +1264,6 @@ $     -ts_gl_accept_type my_scheme
 
    Level: advanced
 
-.keywords: TSGLLE, TSGLLEAcceptType, register
-
 .seealso: TSGLLERegisterAll()
 @*/
 PetscErrorCode  TSGLLEAcceptRegister(const char sname[],TSGLLEAcceptFunction function)
@@ -1293,8 +1281,6 @@ PetscErrorCode  TSGLLEAcceptRegister(const char sname[],TSGLLEAcceptFunction fun
   Not Collective
 
   Level: advanced
-
-.keywords: TS, TSGLLE, register, all
 
 .seealso:  TSGLLERegisterDestroy()
 @*/
@@ -1317,7 +1303,6 @@ PetscErrorCode  TSGLLERegisterAll(void)
 
   Level: developer
 
-.keywords: TS, TSGLLE, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  TSGLLEInitializePackage(void)
@@ -1338,7 +1323,6 @@ PetscErrorCode  TSGLLEInitializePackage(void)
 
   Level: developer
 
-.keywords: Petsc, destroy, package
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode  TSGLLEFinalizePackage(void)

@@ -34,7 +34,7 @@ PetscErrorCode PetscFreeSpaceContiguous(PetscFreeSpaceList *head,PetscInt *space
   PetscFunctionBegin;
   while ((*head)) {
     a      =  (*head)->more_space;
-    ierr   =  PetscMemcpy(space,(*head)->array_head,((*head)->local_used)*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr   =  PetscArraycpy(space,(*head)->array_head,(*head)->local_used);CHKERRQ(ierr);
     space += (*head)->local_used;
     ierr   =  PetscFree((*head)->array_head);CHKERRQ(ierr);
     ierr   =  PetscFree(*head);CHKERRQ(ierr);
@@ -50,13 +50,13 @@ PetscErrorCode PetscFreeSpaceContiguous(PetscFreeSpaceList *head,PetscInt *space
 
    Input Parameters:
 +  head - linked list of column indices obtained from matrix symbolic ILU or LU factorization
-.  space - an allocated int array with length nnz of factored matrix.
+.  space - an allocated array with length nnz of factored matrix.
 .  n - order of the matrix
 .  bi - row pointer of factored matrix L with length n+1.
--  bdiag - int array of length n+1. bdiag[i] points to diagonal of U(i,:), and bdiag[n] points to entry of U(n-1,0)-1.
+-  bdiag - array of length n+1. bdiag[i] points to diagonal of U(i,:), and bdiag[n] points to entry of U(n-1,0)-1.
 
    Output Parameter:
-.  space - column indices are copied into this int array with contiguous layout of L and U
+.  space - column indices are copied into this array with contiguous layout of L and U
 
    See MatILUFactorSymbolic_SeqAIJ_ilu0() for detailed data structure of L and U
 */
@@ -90,7 +90,7 @@ PetscErrorCode PetscFreeSpaceContiguous_LU(PetscFreeSpaceList *head,PetscInt *sp
       /* L part */
       nnzL = bdiag[row];
       bj   = space+bi[row];
-      ierr = PetscMemcpy(bj,array,nnzL*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr = PetscArraycpy(bj,array,nnzL);CHKERRQ(ierr);
 
       /* diagonal entry */
       bdiag[row]        = bi_temp - 1;
@@ -101,7 +101,7 @@ PetscErrorCode PetscFreeSpaceContiguous_LU(PetscFreeSpaceList *head,PetscInt *sp
       bi_temp = bi_temp - nnzU;
       nnzU--;       /* exclude diagonal */
       bj     = space + bi_temp;
-      ierr   = PetscMemcpy(bj,array+nnzL+1,nnzU*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr   = PetscArraycpy(bj,array+nnzL+1,nnzU);CHKERRQ(ierr);
       array += nnz;
       row++;
     }
@@ -125,13 +125,13 @@ PetscErrorCode PetscFreeSpaceContiguous_LU(PetscFreeSpaceList *head,PetscInt *sp
 
    Input Parameters:
 +  head - linked list of column indices obtained from matrix symbolic ICC or Cholesky factorization
-.  space - an allocated int array with length nnz of factored matrix.
+.  space - an allocated array with length nnz of factored matrix.
 .  n - order of the matrix
 .  ui - row pointer of factored matrix with length n+1. All entries are set based on the traditional layout U matrix.
--  udiag - int array of length n.
+-  udiag - array of length n.
 
    Output Parameter:
-+  space - column indices are copied into this int array with contiguous layout of U, with diagonal located as the last entry in each row
++  space - column indices are copied into this array with contiguous layout of U, with diagonal located as the last entry in each row
 -  udiag - indices of diagonal entries
 
    See MatICCFactorSymbolic_SeqAIJ_newdatastruct() for detailed description.
@@ -155,7 +155,7 @@ PetscErrorCode PetscFreeSpaceContiguous_Cholesky(PetscFreeSpaceList *head,PetscI
       udiag[row] = ui[row+1] - 1;     /* points to the last entry of U(row,:) */
       nnz        = ui[row+1] - ui[row] - 1; /* exclude diagonal */
       uj         = space + ui[row];
-      ierr       = PetscMemcpy(uj,array+1,nnz*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr       = PetscArraycpy(uj,array+1,nnz);CHKERRQ(ierr);
       uj[nnz]    = array[0]; /* diagonal */
       array     += nnz + 1;
       row++;

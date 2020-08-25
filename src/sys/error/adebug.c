@@ -21,7 +21,7 @@ static PetscBool Xterm = PETSC_TRUE;
    Not Collective
 
    Input Parameters:
-+  terminal - name of terminal and any flags required to execute a program.
+.  terminal - name of terminal and any flags required to execute a program.
               For example "xterm -e", "urxvt -e", "gnome-terminal -x".
 
    Options Database Keys:
@@ -39,8 +39,6 @@ static PetscBool Xterm = PETSC_TRUE;
    Fortran Note:
    This routine is not supported in Fortran.
 
-   Concepts: debugger^setting
-
 .seealso: PetscSetDebugger()
 @*/
 PetscErrorCode  PetscSetDebugTerminal(const char terminal[])
@@ -48,7 +46,7 @@ PetscErrorCode  PetscSetDebugTerminal(const char terminal[])
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscStrcpy(DebugTerminal,terminal);CHKERRQ(ierr);
+  ierr = PetscStrncpy(DebugTerminal,terminal,sizeof(DebugTerminal));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -59,7 +57,7 @@ PetscErrorCode  PetscSetDebugTerminal(const char terminal[])
 
    Input Parameters:
 +  debugger - name of debugger, which should be in your path,
-              usually "lldb", "dbx", "gdb", "idb", "xxgdb", "kdgb" or "ddd". Also, HP-UX
+              usually "lldb", "dbx", "gdb", "cuda-gdb", "idb", "xxgdb", "kdgb" or "ddd". Also, HP-UX
               supports "xdb", and IBM rs6000 supports "xldb".
 
 -  xterm - flag to indicate debugger window, set to either PETSC_TRUE (to indicate
@@ -72,8 +70,6 @@ PetscErrorCode  PetscSetDebugTerminal(const char terminal[])
    Fortran Note:
    This routine is not supported in Fortran.
 
-  Concepts: debugger^setting
-
 .seealso: PetscAttachDebugger(), PetscAttachDebuggerErrorHandler()
 @*/
 PetscErrorCode  PetscSetDebugger(const char debugger[],PetscBool xterm)
@@ -82,9 +78,9 @@ PetscErrorCode  PetscSetDebugger(const char debugger[],PetscBool xterm)
 
   PetscFunctionBegin;
   if (debugger) {
-    ierr = PetscStrcpy(PetscDebugger,debugger);CHKERRQ(ierr);
+    ierr = PetscStrncpy(PetscDebugger,debugger,sizeof(PetscDebugger));CHKERRQ(ierr);
   }
-  Xterm = xterm;
+  if(Xterm) Xterm = xterm;
   PetscFunctionReturn(0);
 }
 
@@ -102,16 +98,8 @@ PetscErrorCode  PetscSetDefaultDebugger(void)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-#if defined(PETSC_USE_LLDB_DEBUGGER)
-  ierr = PetscSetDebugger("lldb",PETSC_TRUE);CHKERRQ(ierr);
-#elif defined(PETSC_USE_DBX_DEBUGGER)
-  ierr = PetscSetDebugger("dbx",PETSC_TRUE);CHKERRQ(ierr);
-#elif defined(PETSC_USE_XDB_DEBUGGER)
-  ierr = PetscSetDebugger("xdb",PETSC_TRUE);CHKERRQ(ierr);
-#elif defined(PETSC_USE_IDB_DEBUGGER)
-  ierr = PetscSetDebugger("idb",PETSC_TRUE);CHKERRQ(ierr);
-#else  /* Default is gdb */
-  ierr = PetscSetDebugger("gdb",PETSC_TRUE);CHKERRQ(ierr);
+#if defined(PETSC_USE_DEBUGGER)
+  ierr = PetscSetDebugger(PETSC_USE_DEBUGGER,PETSC_TRUE);CHKERRQ(ierr);
 #endif
   ierr = PetscSetDebugTerminal("xterm -e");CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -159,6 +147,7 @@ PetscErrorCode  PetscSetDebuggerFromString(const char *string)
   ierr = PetscCheckDebugger_Private("dbx",      string, &debugger);CHKERRQ(ierr);
   ierr = PetscCheckDebugger_Private("xldb",     string, &debugger);CHKERRQ(ierr);
   ierr = PetscCheckDebugger_Private("gdb",      string, &debugger);CHKERRQ(ierr);
+  ierr = PetscCheckDebugger_Private("cuda-gdb", string, &debugger);CHKERRQ(ierr);
   ierr = PetscCheckDebugger_Private("idb",      string, &debugger);CHKERRQ(ierr);
   ierr = PetscCheckDebugger_Private("xxgdb",    string, &debugger);CHKERRQ(ierr);
   ierr = PetscCheckDebugger_Private("ddd",      string, &debugger);CHKERRQ(ierr);
@@ -181,8 +170,6 @@ PetscErrorCode  PetscSetDebuggerFromString(const char *string)
 
    Level: advanced
 
-   Concepts: debugger^starting from program
-
    Developer Notes:
     Since this can be called by the error handler should it be calling SETERRQ() and CHKERRQ()?
 
@@ -190,7 +177,7 @@ PetscErrorCode  PetscSetDebuggerFromString(const char *string)
 @*/
 PetscErrorCode  PetscAttachDebugger(void)
 {
-#if !defined(PETSC_CANNOT_START_DEBUGGER)
+#if !defined(PETSC_CANNOT_START_DEBUGGER) && defined(PETSC_HAVE_FORK)
   int            child    =0;
   PetscReal      sleeptime=0;
   PetscErrorCode ierr;
@@ -202,10 +189,10 @@ PetscErrorCode  PetscAttachDebugger(void)
   (*PetscErrorPrintf)("System cannot start debugger\n");
   (*PetscErrorPrintf)("On Cray run program in Totalview debugger\n");
   (*PetscErrorPrintf)("On Windows use Developer Studio(MSDEV)\n");
-  MPI_Abort(PETSC_COMM_WORLD,1);
+  PETSCABORT(PETSC_COMM_WORLD,PETSC_ERR_SUP_SYS);
 #else
-  ierr = PetscGetDisplay(display,128);CHKERRQ(ierr);
-  ierr = PetscGetProgramName(program,PETSC_MAX_PATH_LEN);CHKERRQ(ierr);
+  ierr = PetscGetDisplay(display,sizeof(display));CHKERRQ(ierr);
+  ierr = PetscGetProgramName(program,sizeof(program));CHKERRQ(ierr);
   if (ierr) {
     (*PetscErrorPrintf)("Cannot determine program name\n");
     PetscFunctionReturn(1);
@@ -224,8 +211,10 @@ PetscErrorCode  PetscAttachDebugger(void)
       Swap role the parent and child. This is (I think) so that control c typed
     in the debugger goes to the correct process.
   */
+#if !defined(PETSC_DO_NOT_SWAP_CHILD_FOR_DEBUGGER)
   if (child) child = 0;
   else       child = (int)getppid();
+#endif
 
   if (child) { /* I am the parent, will run the debugger */
     const char *args[10];
@@ -233,7 +222,7 @@ PetscErrorCode  PetscAttachDebugger(void)
     PetscInt   j,jj;
     PetscBool  isdbx,isidb,isxldb,isxxgdb,isups,isxdb,isworkshop,isddd,iskdbg,islldb;
 
-    ierr = PetscGetHostName(hostname,64);CHKERRQ(ierr);
+    ierr = PetscGetHostName(hostname,sizeof(hostname));CHKERRQ(ierr);
     /*
          We need to send a continue signal to the "child" process on the
        alpha, otherwise it just stays off forever
@@ -256,7 +245,7 @@ PetscErrorCode  PetscAttachDebugger(void)
 
     if (isxxgdb || isups || isddd) {
       args[1] = program; args[2] = pid; args[3] = "-display";
-      args[0] = PetscDebugger; args[4] = display; args[5] = 0;
+      args[0] = PetscDebugger; args[4] = display; args[5] = NULL;
       printf("PETSC: Attaching %s to %s %s on %s\n",args[0],args[1],pid,hostname);
       if (execvp(args[0],(char**)args)  < 0) {
         perror("Unable to start debugger");
@@ -264,7 +253,7 @@ PetscErrorCode  PetscAttachDebugger(void)
       }
     } else if (iskdbg) {
       args[1] = "-p"; args[2] = pid; args[3] = program;  args[4] = "-display";
-      args[0] = PetscDebugger; args[5] = display; args[6] = 0;
+      args[0] = PetscDebugger; args[5] = display; args[6] = NULL;
       printf("PETSC: Attaching %s to %s %s on %s\n",args[0],args[3],pid,hostname);
       if (execvp(args[0],(char**)args)  < 0) {
         perror("Unable to start debugger");
@@ -272,7 +261,7 @@ PetscErrorCode  PetscAttachDebugger(void)
       }
     } else if (isxldb) {
       args[1] = "-a"; args[2] = pid; args[3] = program;  args[4] = "-display";
-      args[0] = PetscDebugger; args[5] = display; args[6] = 0;
+      args[0] = PetscDebugger; args[5] = display; args[6] = NULL;
       printf("PETSC: Attaching %s to %s %s on %s\n",args[0],args[1],pid,hostname);
       if (execvp(args[0],(char**)args)  < 0) {
         perror("Unable to start debugger");
@@ -280,7 +269,7 @@ PetscErrorCode  PetscAttachDebugger(void)
       }
     } else if (isworkshop) {
       args[1] = "-s"; args[2] = pid; args[3] = "-D"; args[4] = "-";
-      args[0] = PetscDebugger; args[5] = pid; args[6] = "-display"; args[7] = display; args[8] = 0;
+      args[0] = PetscDebugger; args[5] = pid; args[6] = "-display"; args[7] = display; args[8] = NULL;
       printf("PETSC: Attaching %s to %s on %s\n",args[0],pid,hostname);
       if (execvp(args[0],(char**)args)  < 0) {
         perror("Unable to start debugger");
@@ -308,7 +297,7 @@ PetscErrorCode  PetscAttachDebugger(void)
       }
       args[j++] = PetscDebugger;
       jj = j;
-      args[j++] = program; args[j++] = pid; args[j++] = 0;
+      args[j++] = program; args[j++] = pid; args[j++] = NULL;
 
       if (isidb) {
         j = jj;
@@ -316,13 +305,13 @@ PetscErrorCode  PetscAttachDebugger(void)
         args[j++] = pid;
         args[j++] = "-gdb";
         args[j++] = program;
-        args[j++] = 0;
+        args[j++] = NULL;
       }
       if (islldb) {
         j = jj;
         args[j++] = "-p";
         args[j++] = pid;
-        args[j++] = 0;
+        args[j++] = NULL;
       }
       if (isdbx) {
         j = jj;
@@ -347,7 +336,7 @@ PetscErrorCode  PetscAttachDebugger(void)
         args[j++] = program;
         args[j++] = pid;
 #endif
-        args[j++] = 0;
+        args[j++] = NULL;
       }
       if (Xterm) {
         if (display[0]) printf("PETSC: Attaching %s to %s of pid %s on display %s on machine %s\n",PetscDebugger,program,pid,display,hostname);
@@ -417,7 +406,7 @@ PetscErrorCode  PetscAttachDebugger(void)
    Level: developer
 
    Notes:
-   By default the GNU debugger, gdb, is used.  Alternatives are lldb, dbx and
+   By default the GNU debugger, gdb, is used.  Alternatives are cuda-gdb, lldb, dbx and
    xxgdb,xldb (on IBM rs6000), xdb (on HP-UX).
 
    Most users need not directly employ this routine and the other error
@@ -433,8 +422,6 @@ $    PetscAttachDebuggerErrorHandler()
 $    PetscAbortErrorHandler()
    or you may write your own.
 
-   Concepts: debugger^error handler
-   Concepts: error handler^attach debugger
 
 .seealso:  PetscPushErrorHandler(), PetscTraceBackErrorHandler(),
            PetscAbortErrorHandler()
@@ -469,8 +456,6 @@ PetscErrorCode  PetscAttachDebuggerErrorHandler(MPI_Comm comm,int line,const cha
    Developer Notes:
     Since this can be called by the error handler, should it be calling SETERRQ() and CHKERRQ()?
 
-   Concepts: debugger^waiting for attachment
-
 .seealso: PetscSetDebugger(), PetscAttachDebugger()
 @*/
 PetscErrorCode  PetscStopForDebugger(void)
@@ -490,13 +475,13 @@ PetscErrorCode  PetscStopForDebugger(void)
 #else
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);
   if (ierr) rank = 0; /* ignore error since this may be already in error handler */
-  ierr = PetscGetHostName(hostname,256);
+  ierr = PetscGetHostName(hostname,sizeof(hostname));
   if (ierr) {
     (*PetscErrorPrintf)("Cannot determine hostname; just continuing program\n");
     PetscFunctionReturn(0);
   }
 
-  ierr = PetscGetProgramName(program,256);
+  ierr = PetscGetProgramName(program,sizeof(program));
   if (ierr) {
     (*PetscErrorPrintf)("Cannot determine program name; just continuing program\n");
     PetscFunctionReturn(0);

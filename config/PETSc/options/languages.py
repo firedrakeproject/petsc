@@ -12,7 +12,7 @@ class Configure(config.base.Configure):
   def __str1__(self):
     if not hasattr(self, 'clanguage'):
       return ''
-    return '  Clanguage: ' + self.clanguage +'\n'
+    return '  Language used to compile PETSc: ' + self.clanguage +'\n'
 
   def setupHelp(self, help):
     import nargs
@@ -21,6 +21,7 @@ class Configure(config.base.Configure):
 
   def setupDependencies(self, framework):
     config.base.Configure.setupDependencies(self, framework)
+
     return
 
   def configureCLanguage(self):
@@ -32,7 +33,7 @@ class Configure(config.base.Configure):
       self.logPrintBox('WARNING -with-clanguage=C++ is a developer feature and is *not* required for regular usage of PETSc either from C or C++')
     self.logPrint('C language is '+str(self.clanguage))
     self.addDefine('CLANGUAGE_'+self.clanguage.upper(),'1')
-    self.framework.require('config.setCompilers', None).mainLanguage = self.clanguage
+    self.addMakeMacro('CLANGUAGE',self.clanguage.upper())
 
   def configure(self):
     self.executeTest(self.configureCLanguage)

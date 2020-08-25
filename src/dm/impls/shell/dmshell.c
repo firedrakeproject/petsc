@@ -205,14 +205,9 @@ static PetscErrorCode DMCreateMatrix_Shell(DM dm,Mat *J)
       if (!(aij && (seqaij || mpiaij))) SETERRQ2(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_NOTSAMETYPE,"Requested matrix of type %s, but only %s available",dm->mattype,((PetscObject)A)->type_name);
     }
   }
-  if (((PetscObject)A)->refct < 2) { /* We have an exclusive reference so we can give it out */
-    ierr = PetscObjectReference((PetscObject)A);CHKERRQ(ierr);
-    ierr = MatZeroEntries(A);CHKERRQ(ierr);
-    *J   = A;
-  } else {                      /* Need to create a copy, could use MAT_SHARE_NONZERO_PATTERN in most cases */
-    ierr = MatDuplicate(A,MAT_DO_NOT_COPY_VALUES,J);CHKERRQ(ierr);
-    ierr = MatZeroEntries(*J);CHKERRQ(ierr);
-  }
+  /* Need to create a copy in order to attach the DM to the matrix */
+  ierr = MatDuplicate(A,MAT_SHARE_NONZERO_PATTERN,J);CHKERRQ(ierr);
+  ierr = MatSetDM(*J,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -228,14 +223,9 @@ PetscErrorCode DMCreateGlobalVector_Shell(DM dm,Vec *gvec)
   *gvec = 0;
   X     = shell->Xglobal;
   if (!X) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_USER,"Must call DMShellSetGlobalVector() or DMShellSetCreateGlobalVector()");
-  if (((PetscObject)X)->refct < 2) { /* We have an exclusive reference so we can give it out */
-    ierr  = PetscObjectReference((PetscObject)X);CHKERRQ(ierr);
-    ierr  = VecZeroEntries(X);CHKERRQ(ierr);
-    *gvec = X;
-  } else {                      /* Need to create a copy, could use MAT_SHARE_NONZERO_PATTERN in most cases */
-    ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
-    ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
-  }
+  /* Need to create a copy in order to attach the DM to the vector */
+  ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
+  ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
   ierr = VecSetDM(*gvec,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -252,14 +242,9 @@ PetscErrorCode DMCreateLocalVector_Shell(DM dm,Vec *gvec)
   *gvec = 0;
   X     = shell->Xlocal;
   if (!X) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_USER,"Must call DMShellSetLocalVector() or DMShellSetCreateLocalVector()");
-  if (((PetscObject)X)->refct < 2) { /* We have an exclusive reference so we can give it out */
-    ierr  = PetscObjectReference((PetscObject)X);CHKERRQ(ierr);
-    ierr  = VecZeroEntries(X);CHKERRQ(ierr);
-    *gvec = X;
-  } else {                      /* Need to create a copy, could use MAT_SHARE_NONZERO_PATTERN in most cases */
-    ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
-    ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
-  }
+  /* Need to create a copy in order to attach the DM to the vector */
+  ierr = VecDuplicate(X,gvec);CHKERRQ(ierr);
+  ierr = VecZeroEntries(*gvec);CHKERRQ(ierr);
   ierr = VecSetDM(*gvec,dm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -331,6 +316,9 @@ PetscErrorCode DMShellGetContext(DM dm,void **ctx)
 
    Level: advanced
 
+   Developer Notes:
+    To avoid circular references, if J is already associated to the same DM, then MatDuplicate(SHARE_NONZERO_PATTERN) is called, followed by removing the DM reference from the private template.
+
 .seealso: DMCreateMatrix(), DMShellSetCreateMatrix(), DMShellSetContext(), DMShellGetContext()
 @*/
 PetscErrorCode DMShellSetMatrix(DM dm,Mat J)
@@ -338,22 +326,28 @@ PetscErrorCode DMShellSetMatrix(DM dm,Mat J)
   DM_Shell       *shell = (DM_Shell*)dm->data;
   PetscErrorCode ierr;
   PetscBool      isshell;
+  DM             mdm;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   PetscValidHeaderSpecific(J,MAT_CLASSID,2);
   ierr = PetscObjectTypeCompare((PetscObject)dm,DMSHELL,&isshell);CHKERRQ(ierr);
   if (!isshell) PetscFunctionReturn(0);
-  ierr     = PetscObjectReference((PetscObject)J);CHKERRQ(ierr);
-  ierr     = MatDestroy(&shell->A);CHKERRQ(ierr);
-  shell->A = J;
+  if (J == shell->A) PetscFunctionReturn(0);
+  ierr = MatGetDM(J,&mdm);CHKERRQ(ierr);
+  ierr = PetscObjectReference((PetscObject)J);CHKERRQ(ierr);
+  ierr = MatDestroy(&shell->A);CHKERRQ(ierr);
+  if (mdm == dm) {
+    ierr = MatDuplicate(J,MAT_SHARE_NONZERO_PATTERN,&shell->A);CHKERRQ(ierr);
+    ierr = MatSetDM(shell->A,NULL);CHKERRQ(ierr);
+  } else shell->A = J;
   PetscFunctionReturn(0);
 }
 
 /*@C
    DMShellSetCreateMatrix - sets the routine to create a matrix associated with the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments:
 +  dm - the shell DM
@@ -365,7 +359,6 @@ PetscErrorCode DMShellSetMatrix(DM dm,Mat J)
 @*/
 PetscErrorCode DMShellSetCreateMatrix(DM dm,PetscErrorCode (*func)(DM,Mat*))
 {
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->creatematrix = func;
@@ -375,7 +368,7 @@ PetscErrorCode DMShellSetCreateMatrix(DM dm,PetscErrorCode (*func)(DM,Mat*))
 /*@
    DMShellSetGlobalVector - sets a template global vector associated with the DMShell
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments:
 +  dm - shell DM
@@ -430,7 +423,6 @@ PetscErrorCode DMShellSetGlobalVector(DM dm,Vec X)
 @*/
 PetscErrorCode DMShellSetCreateGlobalVector(DM dm,PetscErrorCode (*func)(DM,Vec*))
 {
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->createglobalvector = func;
@@ -440,7 +432,7 @@ PetscErrorCode DMShellSetCreateGlobalVector(DM dm,PetscErrorCode (*func)(DM,Vec*
 /*@
    DMShellSetLocalVector - sets a template local vector associated with the DMShell
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments:
 +  dm - shell DM
@@ -462,7 +454,7 @@ PetscErrorCode DMShellSetLocalVector(DM dm,Vec X)
   PetscValidHeaderSpecific(X,VEC_CLASSID,2);
   ierr = PetscObjectTypeCompare((PetscObject)dm,DMSHELL,&isshell);CHKERRQ(ierr);
   if (!isshell) PetscFunctionReturn(0);
-  ierr           = VecGetDM(X,&vdm);CHKERRQ(ierr);
+  ierr = VecGetDM(X,&vdm);CHKERRQ(ierr);
   /*
       if the vector proposed as the new base global vector for the DM is a DM vector associated
       with the same DM then the current base global vector for the DM is ok and if we replace it with the new one
@@ -495,7 +487,6 @@ PetscErrorCode DMShellSetLocalVector(DM dm,Vec X)
 @*/
 PetscErrorCode DMShellSetCreateLocalVector(DM dm,PetscErrorCode (*func)(DM,Vec*))
 {
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->createlocalvector = func;
@@ -505,7 +496,7 @@ PetscErrorCode DMShellSetCreateLocalVector(DM dm,PetscErrorCode (*func)(DM,Vec*)
 /*@C
    DMShellSetGlobalToLocal - Sets the routines used to perform a global to local scatter
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -522,6 +513,7 @@ PetscErrorCode DMShellSetCreateLocalVector(DM dm,PetscErrorCode (*func)(DM,Vec*)
 @*/
 PetscErrorCode DMShellSetGlobalToLocal(DM dm,PetscErrorCode (*begin)(DM,Vec,InsertMode,Vec),PetscErrorCode (*end)(DM,Vec,InsertMode,Vec)) {
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->globaltolocalbegin = begin;
   dm->ops->globaltolocalend = end;
   PetscFunctionReturn(0);
@@ -530,7 +522,7 @@ PetscErrorCode DMShellSetGlobalToLocal(DM dm,PetscErrorCode (*begin)(DM,Vec,Inse
 /*@C
    DMShellSetLocalToGlobal - Sets the routines used to perform a local to global scatter
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -547,6 +539,7 @@ PetscErrorCode DMShellSetGlobalToLocal(DM dm,PetscErrorCode (*begin)(DM,Vec,Inse
 @*/
 PetscErrorCode DMShellSetLocalToGlobal(DM dm,PetscErrorCode (*begin)(DM,Vec,InsertMode,Vec),PetscErrorCode (*end)(DM,Vec,InsertMode,Vec)) {
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->localtoglobalbegin = begin;
   dm->ops->localtoglobalend = end;
   PetscFunctionReturn(0);
@@ -555,7 +548,7 @@ PetscErrorCode DMShellSetLocalToGlobal(DM dm,PetscErrorCode (*begin)(DM,Vec,Inse
 /*@C
    DMShellSetLocalToLocal - Sets the routines used to perform a local to local scatter
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -572,6 +565,7 @@ PetscErrorCode DMShellSetLocalToGlobal(DM dm,PetscErrorCode (*begin)(DM,Vec,Inse
 @*/
 PetscErrorCode DMShellSetLocalToLocal(DM dm,PetscErrorCode (*begin)(DM,Vec,InsertMode,Vec),PetscErrorCode (*end)(DM,Vec,InsertMode,Vec)) {
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   dm->ops->localtolocalbegin = begin;
   dm->ops->localtolocalend = end;
   PetscFunctionReturn(0);
@@ -580,7 +574,7 @@ PetscErrorCode DMShellSetLocalToLocal(DM dm,PetscErrorCode (*begin)(DM,Vec,Inser
 /*@
    DMShellSetGlobalToLocalVecScatter - Sets a VecScatter context for global to local communication
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -596,8 +590,9 @@ PetscErrorCode DMShellSetGlobalToLocalVecScatter(DM dm, VecScatter gtol)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm,DM_CLASSID,1);
+  PetscValidHeaderSpecific(gtol,VEC_SCATTER_CLASSID,2);
   ierr = PetscObjectReference((PetscObject)gtol);CHKERRQ(ierr);
-  /* Call VecScatterDestroy() to avoid a memory leak in case of re-setting. */
   ierr = VecScatterDestroy(&shell->gtol);CHKERRQ(ierr);
   shell->gtol = gtol;
   PetscFunctionReturn(0);
@@ -606,7 +601,7 @@ PetscErrorCode DMShellSetGlobalToLocalVecScatter(DM dm, VecScatter gtol)
 /*@
    DMShellSetLocalToGlobalVecScatter - Sets a VecScatter context for local to global communication
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -622,8 +617,9 @@ PetscErrorCode DMShellSetLocalToGlobalVecScatter(DM dm, VecScatter ltog)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm,DM_CLASSID,1);
+  PetscValidHeaderSpecific(ltog,VEC_SCATTER_CLASSID,2);
   ierr = PetscObjectReference((PetscObject)ltog);CHKERRQ(ierr);
-  /* Call VecScatterDestroy() to avoid a memory leak in case of re-setting. */
   ierr = VecScatterDestroy(&shell->ltog);CHKERRQ(ierr);
   shell->ltog = ltog;
   PetscFunctionReturn(0);
@@ -632,7 +628,7 @@ PetscErrorCode DMShellSetLocalToGlobalVecScatter(DM dm, VecScatter ltog)
 /*@
    DMShellSetLocalToLocalVecScatter - Sets a VecScatter context for local to local communication
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -648,8 +644,9 @@ PetscErrorCode DMShellSetLocalToLocalVecScatter(DM dm, VecScatter ltol)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm,DM_CLASSID,1);
+  PetscValidHeaderSpecific(ltol,VEC_SCATTER_CLASSID,2);
   ierr = PetscObjectReference((PetscObject)ltol);CHKERRQ(ierr);
-  /* Call VecScatterDestroy() to avoid a memory leak in case of re-setting. */
   ierr = VecScatterDestroy(&shell->ltol);CHKERRQ(ierr);
   shell->ltol = ltol;
   PetscFunctionReturn(0);
@@ -658,7 +655,7 @@ PetscErrorCode DMShellSetLocalToLocalVecScatter(DM dm, VecScatter ltol)
 /*@C
    DMShellSetCoarsen - Set the routine used to coarsen the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -684,7 +681,7 @@ PetscErrorCode DMShellSetCoarsen(DM dm, PetscErrorCode (*coarsen)(DM,MPI_Comm,DM
 /*@C
    DMShellGetCoarsen - Get the routine used to coarsen the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Argument:
 .  dm - the shell DM
@@ -712,7 +709,7 @@ PetscErrorCode DMShellGetCoarsen(DM dm, PetscErrorCode (**coarsen)(DM,MPI_Comm,D
 /*@C
    DMShellSetRefine - Set the routine used to refine the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -738,7 +735,7 @@ PetscErrorCode DMShellSetRefine(DM dm, PetscErrorCode (*refine)(DM,MPI_Comm,DM*)
 /*@C
    DMShellGetRefine - Get the routine used to refine the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Argument:
 .  dm - the shell DM
@@ -766,7 +763,7 @@ PetscErrorCode DMShellGetRefine(DM dm, PetscErrorCode (**refine)(DM,MPI_Comm,DM*
 /*@C
    DMShellSetCreateInterpolation - Set the routine used to create the interpolation operator
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -792,7 +789,7 @@ PetscErrorCode DMShellSetCreateInterpolation(DM dm, PetscErrorCode (*interp)(DM,
 /*@C
    DMShellGetCreateInterpolation - Get the routine used to create the interpolation operator
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Argument:
 +  dm - the shell DM
@@ -820,7 +817,7 @@ PetscErrorCode DMShellGetCreateInterpolation(DM dm, PetscErrorCode (**interp)(DM
 /*@C
    DMShellSetCreateRestriction - Set the routine used to create the restriction operator
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -846,7 +843,7 @@ PetscErrorCode DMShellSetCreateRestriction(DM dm, PetscErrorCode (*restriction)(
 /*@C
    DMShellGetCreateRestriction - Get the routine used to create the restriction operator
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Argument:
 +  dm - the shell DM
@@ -874,7 +871,7 @@ PetscErrorCode DMShellGetCreateRestriction(DM dm, PetscErrorCode (**restriction)
 /*@C
    DMShellSetCreateInjection - Set the routine used to create the injection operator
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -893,14 +890,14 @@ PetscErrorCode DMShellSetCreateInjection(DM dm, PetscErrorCode (*inject)(DM,DM,M
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   ierr = PetscObjectTypeCompare((PetscObject)dm,DMSHELL,&isshell);CHKERRQ(ierr);
   if (!isshell) PetscFunctionReturn(0);
-  dm->ops->getinjection = inject;
+  dm->ops->createinjection = inject;
   PetscFunctionReturn(0);
 }
 
 /*@C
    DMShellGetCreateInjection - Get the routine used to create the injection operator
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Argument:
 +  dm - the shell DM
@@ -921,30 +918,14 @@ PetscErrorCode DMShellGetCreateInjection(DM dm, PetscErrorCode (**inject)(DM,DM,
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   ierr = PetscObjectTypeCompare((PetscObject)dm,DMSHELL,&isshell);CHKERRQ(ierr);
   if (!isshell) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Can only use with DMSHELL type DMs");
-  *inject = dm->ops->getinjection;
+  *inject = dm->ops->createinjection;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMHasCreateInjection_Shell(DM dm, PetscBool *flg)
-{
-  PetscErrorCode ierr;
-  PetscBool      isshell;
-
-  PetscFunctionBegin;
-  PetscValidHeaderSpecific(dm,DM_CLASSID,1);
-  PetscValidPointer(flg,2);
-  ierr = PetscObjectTypeCompare((PetscObject)dm,DMSHELL,&isshell);CHKERRQ(ierr);
-  if (!isshell) {
-    *flg = PETSC_FALSE;
-  } else {
-    *flg = dm->ops->getinjection ? PETSC_TRUE : PETSC_FALSE;
-  }
-  PetscFunctionReturn(0);
-}
 /*@C
    DMShellSetCreateFieldDecomposition - Set the routine used to create a decomposition of fields for the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -970,7 +951,7 @@ PetscErrorCode DMShellSetCreateFieldDecomposition(DM dm, PetscErrorCode (*decomp
 /*@C
    DMShellSetCreateDomainDecomposition - Set the routine used to create a domain decomposition for the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -996,7 +977,7 @@ PetscErrorCode DMShellSetCreateDomainDecomposition(DM dm, PetscErrorCode (*decom
 /*@C
    DMShellSetCreateDomainDecompositionScatters - Set the routine used to create the scatter contexts for domain decomposition with a shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -1022,7 +1003,7 @@ PetscErrorCode DMShellSetCreateDomainDecompositionScatters(DM dm, PetscErrorCode
 /*@C
    DMShellSetCreateSubDM - Set the routine used to create a sub DM from the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Arguments
 +  dm - the shell DM
@@ -1048,7 +1029,7 @@ PetscErrorCode DMShellSetCreateSubDM(DM dm, PetscErrorCode (*subdm)(DM,PetscInt,
 /*@C
    DMShellGetCreateSubDM - Get the routine used to create a sub DM from the shell DM
 
-   Logically Collective on DM
+   Logically Collective on dm
 
    Input Argument:
 +  dm - the shell DM
@@ -1130,8 +1111,6 @@ PETSC_EXTERN PetscErrorCode DMCreate_Shell(DM dm)
   ierr     = PetscNewLog(dm,&shell);CHKERRQ(ierr);
   dm->data = shell;
 
-  ierr = PetscObjectChangeTypeName((PetscObject)dm,DMSHELL);CHKERRQ(ierr);
-
   dm->ops->destroy            = DMDestroy_Shell;
   dm->ops->createglobalvector = DMCreateGlobalVector_Shell;
   dm->ops->createlocalvector  = DMCreateLocalVector_Shell;
@@ -1145,14 +1124,13 @@ PETSC_EXTERN PetscErrorCode DMCreate_Shell(DM dm)
   dm->ops->localtolocalbegin  = DMLocalToLocalBeginDefaultShell;
   dm->ops->localtolocalend    = DMLocalToLocalEndDefaultShell;
   dm->ops->createsubdm        = DMCreateSubDM_Shell;
-  dm->ops->hascreateinjection = DMHasCreateInjection_Shell;
   PetscFunctionReturn(0);
 }
 
 /*@
     DMShellCreate - Creates a shell DM object, used to manage user-defined problem data
 
-    Collective on MPI_Comm
+    Collective
 
     Input Parameter:
 .   comm - the processors that will share the global vector

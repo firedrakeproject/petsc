@@ -12,12 +12,13 @@ static PetscErrorCode PCBDDCScalingReset_Deluxe_Solvers(PCBDDCDeluxeScaling);
 
 static PetscErrorCode PCBDDCMatTransposeMatSolve_SeqDense(Mat A,Mat B,Mat X)
 {
-  Mat_SeqDense   *mat = (Mat_SeqDense*)A->data;
-  PetscErrorCode ierr;
-  PetscScalar    *b,*x;
-  PetscInt       n;
-  PetscBLASInt   nrhs,info,m;
-  PetscBool      flg;
+  Mat_SeqDense      *mat = (Mat_SeqDense*)A->data;
+  PetscErrorCode    ierr;
+  const PetscScalar *b;
+  PetscScalar       *x;
+  PetscInt          n;
+  PetscBLASInt      nrhs,info,m;
+  PetscBool         flg;
 
   PetscFunctionBegin;
   ierr = PetscBLASIntCast(A->rmap->n,&m);CHKERRQ(ierr);
@@ -28,21 +29,16 @@ static PetscErrorCode PCBDDCMatTransposeMatSolve_SeqDense(Mat A,Mat B,Mat X)
 
   ierr = MatGetSize(B,NULL,&n);CHKERRQ(ierr);
   ierr = PetscBLASIntCast(n,&nrhs);CHKERRQ(ierr);
-  ierr = MatDenseGetArray(B,&b);CHKERRQ(ierr);
+  ierr = MatDenseGetArrayRead(B,&b);CHKERRQ(ierr);
   ierr = MatDenseGetArray(X,&x);CHKERRQ(ierr);
-
-  ierr = PetscMemcpy(x,b,m*nrhs*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(x,b,m*nrhs);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArrayRead(B,&b);CHKERRQ(ierr);
 
   if (A->factortype == MAT_FACTOR_LU) {
-#if defined(PETSC_MISSING_LAPACK_GETRS)
-    SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"GETRS - Lapack routine is unavailable.");
-#else
     PetscStackCallBLAS("LAPACKgetrs",LAPACKgetrs_("T",&m,&nrhs,mat->v,&mat->lda,mat->pivots,x,&m,&info));
     if (info) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_LIB,"GETRS - Bad solve");
-#endif
   } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only LU factor supported");
 
-  ierr = MatDenseRestoreArray(B,&b);CHKERRQ(ierr);
   ierr = MatDenseRestoreArray(X,&x);CHKERRQ(ierr);
   ierr = PetscLogFlops(nrhs*(2.0*m*m - m));CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -288,6 +284,7 @@ PetscErrorCode PCBDDCScalingSetUp(PC pc)
     ierr = PetscObjectComposeFunction((PetscObject)pc,"PCBDDCScalingRestriction_C",PCBDDCScalingRestriction_Basic);CHKERRQ(ierr);
     ierr = PetscObjectComposeFunction((PetscObject)pc,"PCBDDCScalingExtension_C",PCBDDCScalingExtension_Basic);CHKERRQ(ierr);
   }
+  ierr = PetscLogEventEnd(PC_BDDC_Scaling[pcbddc->current_level],pc,0,0,0);CHKERRQ(ierr);
 
   /* test */
   if (pcbddc->dbg_flag) {
@@ -349,7 +346,6 @@ PetscErrorCode PCBDDCScalingSetUp(PC pc)
     ierr = VecDestroy(&B0_Bv);CHKERRQ(ierr);
     ierr = VecDestroy(&B0_Bv2);CHKERRQ(ierr);
   }
-  ierr = PetscLogEventEnd(PC_BDDC_Scaling[pcbddc->current_level],pc,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -467,7 +463,7 @@ static PetscErrorCode PCBDDCScalingSetUp_Deluxe(PC pc)
     }
   } else {
     deluxe_ctx->n_simple = 0;
-    deluxe_ctx->idx_simple_B = 0;
+    deluxe_ctx->idx_simple_B = NULL;
   }
   PetscFunctionReturn(0);
 }
@@ -562,12 +558,12 @@ static PetscErrorCode PCBDDCScalingSetUp_Deluxe_Private(PC pc)
       ierr = MatDestroy(&X);CHKERRQ(ierr);
       if (deluxe_ctx->change) {
         Mat C,CY;
-
         if (!deluxe_ctx->change_with_qr) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Only QR based change of basis");
         ierr = KSPGetOperators(deluxe_ctx->change[i],&C,NULL);CHKERRQ(ierr);
         ierr = MatMatMult(C,Y,MAT_INITIAL_MATRIX,PETSC_DEFAULT,&CY);CHKERRQ(ierr);
         ierr = MatMatTransposeMult(CY,C,MAT_REUSE_MATRIX,PETSC_DEFAULT,&Y);CHKERRQ(ierr);
         ierr = MatDestroy(&CY);CHKERRQ(ierr);
+        ierr = MatProductClear(Y);CHKERRQ(ierr); /* clear internal matproduct structure of Y since CY is destroyed */
       }
       ierr = MatTranspose(Y,MAT_INPLACE_MATRIX,&Y);CHKERRQ(ierr);
       deluxe_ctx->seq_mat[i] = Y;

@@ -22,17 +22,6 @@ static PetscErrorCode PCSetFromOptions_Cholesky(PetscOptionItems *PetscOptionsOb
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCView_Cholesky(PC pc,PetscViewer viewer)
-{
-  PetscErrorCode ierr;
-  PetscBool      iascii;
-
-  PetscFunctionBegin;
-  ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII,&iascii);CHKERRQ(ierr);
-  ierr = PCView_Factor(pc,viewer);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
 static PetscErrorCode PCSetUp_Cholesky(PC pc)
 {
   PetscErrorCode         ierr;
@@ -51,6 +40,7 @@ static PetscErrorCode PCSetUp_Cholesky(PC pc)
       ierr = ISDestroy(&dir->row);CHKERRQ(ierr);
     }
     ierr = ISDestroy(&dir->col);CHKERRQ(ierr);
+    /* should only get reordering if the factor matrix uses it but cannot determine because MatGetFactor() not called */
     ierr = MatGetOrdering(pc->pmat,((PC_Factor*)dir)->ordering,&dir->row,&dir->col);CHKERRQ(ierr);
     if (dir->col && (dir->row != dir->col)) {  /* only use row ordering for SBAIJ */
       ierr = ISDestroy(&dir->col);CHKERRQ(ierr);
@@ -68,32 +58,18 @@ static PetscErrorCode PCSetUp_Cholesky(PC pc)
     MatInfo info;
 
     if (!pc->setupcalled) {
-      ierr = MatGetOrdering(pc->pmat,((PC_Factor*)dir)->ordering,&dir->row,&dir->col);CHKERRQ(ierr);
-      /* check if dir->row == dir->col */
-      ierr = ISEqual(dir->row,dir->col,&flg);CHKERRQ(ierr);
-      if (!flg) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"row and column permutations must equal");
-      ierr = ISDestroy(&dir->col);CHKERRQ(ierr); /* only pass one ordering into CholeskyFactor */
-
-      flg  = PETSC_FALSE;
-      ierr = PetscOptionsGetBool(((PetscObject)pc)->options,((PetscObject)pc)->prefix,"-pc_factor_nonzeros_along_diagonal",&flg,NULL);CHKERRQ(ierr);
-      if (flg) {
-        PetscReal tol = 1.e-10;
-        ierr = PetscOptionsGetReal(((PetscObject)pc)->options,((PetscObject)pc)->prefix,"-pc_factor_nonzeros_along_diagonal",&tol,NULL);CHKERRQ(ierr);
-        ierr = MatReorderForNonzeroDiagonal(pc->pmat,tol,dir->row,dir->row);CHKERRQ(ierr);
-      }
-      if (dir->row) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)dir->row);CHKERRQ(ierr);}
+      PetscBool useordering;
       if (!((PC_Factor*)dir)->fact) {
         ierr = MatGetFactor(pc->pmat,((PC_Factor*)dir)->solvertype,MAT_FACTOR_CHOLESKY,&((PC_Factor*)dir)->fact);CHKERRQ(ierr);
+        ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)((PC_Factor*)dir)->fact);CHKERRQ(ierr);
       }
-      ierr                = MatCholeskyFactorSymbolic(((PC_Factor*)dir)->fact,pc->pmat,dir->row,&((PC_Factor*)dir)->info);CHKERRQ(ierr);
-      ierr                = MatGetInfo(((PC_Factor*)dir)->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
-      dir->hdr.actualfill = info.fill_ratio_needed;
-      ierr                = PetscLogObjectParent((PetscObject)pc,(PetscObject)((PC_Factor*)dir)->fact);CHKERRQ(ierr);
-    } else if (pc->flag != SAME_NONZERO_PATTERN) {
-      if (!dir->hdr.reuseordering) {
-        ierr = ISDestroy(&dir->row);CHKERRQ(ierr);
+      ierr = MatFactorGetUseOrdering(((PC_Factor*)dir)->fact,&useordering);CHKERRQ(ierr);
+      if (useordering) { 
         ierr = MatGetOrdering(pc->pmat,((PC_Factor*)dir)->ordering,&dir->row,&dir->col);CHKERRQ(ierr);
-        ierr = ISDestroy(&dir->col);CHKERRQ(ierr); /* only use dir->row ordering in CholeskyFactor */
+        /* check if dir->row == dir->col */
+        ierr = ISEqual(dir->row,dir->col,&flg);CHKERRQ(ierr);
+        if (!flg) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"row and column permutations must equal");
+        ierr = ISDestroy(&dir->col);CHKERRQ(ierr); /* only pass one ordering into CholeskyFactor */
 
         flg  = PETSC_FALSE;
         ierr = PetscOptionsGetBool(((PetscObject)pc)->options,((PetscObject)pc)->prefix,"-pc_factor_nonzeros_along_diagonal",&flg,NULL);CHKERRQ(ierr);
@@ -102,10 +78,33 @@ static PetscErrorCode PCSetUp_Cholesky(PC pc)
           ierr = PetscOptionsGetReal(((PetscObject)pc)->options,((PetscObject)pc)->prefix,"-pc_factor_nonzeros_along_diagonal",&tol,NULL);CHKERRQ(ierr);
           ierr = MatReorderForNonzeroDiagonal(pc->pmat,tol,dir->row,dir->row);CHKERRQ(ierr);
         }
-        if (dir->row) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)dir->row);CHKERRQ(ierr);}
+        ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)dir->row);CHKERRQ(ierr);
       }
-      ierr                = MatDestroy(&((PC_Factor*)dir)->fact);CHKERRQ(ierr);
-      ierr                = MatGetFactor(pc->pmat,((PC_Factor*)dir)->solvertype,MAT_FACTOR_CHOLESKY,&((PC_Factor*)dir)->fact);CHKERRQ(ierr);
+      ierr                = MatCholeskyFactorSymbolic(((PC_Factor*)dir)->fact,pc->pmat,dir->row,&((PC_Factor*)dir)->info);CHKERRQ(ierr);
+      ierr                = MatGetInfo(((PC_Factor*)dir)->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
+      dir->hdr.actualfill = info.fill_ratio_needed;
+    } else if (pc->flag != SAME_NONZERO_PATTERN) {
+      if (!dir->hdr.reuseordering) {
+        PetscBool useordering;
+        ierr = MatDestroy(&((PC_Factor*)dir)->fact);CHKERRQ(ierr);
+        ierr = MatGetFactor(pc->pmat,((PC_Factor*)dir)->solvertype,MAT_FACTOR_CHOLESKY,&((PC_Factor*)dir)->fact);CHKERRQ(ierr);
+        ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)((PC_Factor*)dir)->fact);CHKERRQ(ierr);
+        ierr = MatFactorGetUseOrdering(((PC_Factor*)dir)->fact,&useordering);CHKERRQ(ierr);
+        if (useordering) { 
+          ierr = ISDestroy(&dir->row);CHKERRQ(ierr);
+          ierr = MatGetOrdering(pc->pmat,((PC_Factor*)dir)->ordering,&dir->row,&dir->col);CHKERRQ(ierr);
+          ierr = ISDestroy(&dir->col);CHKERRQ(ierr); /* only use dir->row ordering in CholeskyFactor */
+
+          flg  = PETSC_FALSE;
+          ierr = PetscOptionsGetBool(((PetscObject)pc)->options,((PetscObject)pc)->prefix,"-pc_factor_nonzeros_along_diagonal",&flg,NULL);CHKERRQ(ierr);
+          if (flg) {
+            PetscReal tol = 1.e-10;
+            ierr = PetscOptionsGetReal(((PetscObject)pc)->options,((PetscObject)pc)->prefix,"-pc_factor_nonzeros_along_diagonal",&tol,NULL);CHKERRQ(ierr);
+            ierr = MatReorderForNonzeroDiagonal(pc->pmat,tol,dir->row,dir->row);CHKERRQ(ierr);
+          }
+          ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)dir->row);CHKERRQ(ierr);
+        }
+      }
       ierr                = MatCholeskyFactorSymbolic(((PC_Factor*)dir)->fact,pc->pmat,dir->row,&((PC_Factor*)dir)->info);CHKERRQ(ierr);
       ierr                = MatGetInfo(((PC_Factor*)dir)->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
       dir->hdr.actualfill = info.fill_ratio_needed;
@@ -178,6 +177,20 @@ static PetscErrorCode PCApply_Cholesky(PC pc,Vec x,Vec y)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode PCMatApply_Cholesky(PC pc,Mat X,Mat Y)
+{
+  PC_Cholesky    *dir = (PC_Cholesky*)pc->data;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  if (dir->hdr.inplace) {
+    ierr = MatMatSolve(pc->pmat,X,Y);CHKERRQ(ierr);
+  } else {
+    ierr = MatMatSolve(((PC_Factor*)dir)->fact,X,Y);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode PCApplySymmetricLeft_Cholesky(PC pc,Vec x,Vec y)
 {
   PC_Cholesky    *dir = (PC_Cholesky*)pc->data;
@@ -240,8 +253,6 @@ static PetscErrorCode PCApplyTranspose_Cholesky(PC pc,Vec x,Vec y)
 
    Level: intermediate
 
-.keywords: PC, levels, reordering, factorization, incomplete, LU
-
 .seealso: PCFactorSetReuseFill()
 @*/
 PetscErrorCode  PCFactorSetReuseOrdering(PC pc,PetscBool flag)
@@ -271,8 +282,6 @@ PetscErrorCode  PCFactorSetReuseOrdering(PC pc,PetscBool flag)
 
    Level: beginner
 
-   Concepts: Cholesky factorization, direct solver
-
    Notes:
     Usually this will compute an "exact" solution in one iteration and does
           not need a Krylov method (i.e. you can use -ksp_type preonly, or
@@ -298,20 +307,22 @@ PETSC_EXTERN PetscErrorCode PCCreate_Cholesky(PC pc)
   ((PC_Factor*)dir)->factortype         = MAT_FACTOR_CHOLESKY;
   ((PC_Factor*)dir)->info.fill          = 5.0;
 
-  dir->col = 0;
-  dir->row = 0;
+  dir->col = NULL;
+  dir->row = NULL;
 
-  ierr = PetscStrallocpy(MATORDERINGNATURAL,(char**)&((PC_Factor*)dir)->ordering);CHKERRQ(ierr);
+  /* MATORDERINGNATURAL_OR_ND allows selecting type based on matrix type sbaij or aij */
+  ierr = PetscStrallocpy(MATORDERINGNATURAL_OR_ND,(char**)&((PC_Factor*)dir)->ordering);CHKERRQ(ierr);
 
   pc->ops->destroy             = PCDestroy_Cholesky;
   pc->ops->reset               = PCReset_Cholesky;
   pc->ops->apply               = PCApply_Cholesky;
+  pc->ops->matapply            = PCMatApply_Cholesky;
   pc->ops->applysymmetricleft  = PCApplySymmetricLeft_Cholesky;
   pc->ops->applysymmetricright = PCApplySymmetricRight_Cholesky;
   pc->ops->applytranspose      = PCApplyTranspose_Cholesky;
   pc->ops->setup               = PCSetUp_Cholesky;
   pc->ops->setfromoptions      = PCSetFromOptions_Cholesky;
-  pc->ops->view                = PCView_Cholesky;
-  pc->ops->applyrichardson     = 0;
+  pc->ops->view                = PCView_Factor;
+  pc->ops->applyrichardson     = NULL;
   PetscFunctionReturn(0);
 }

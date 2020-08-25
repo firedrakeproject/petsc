@@ -33,7 +33,7 @@ PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelTmpShared(MPI_Comm comm,PetscMPIInt key
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscInfo1(0,"Deleting tmp/shared data in an MPI_Comm %ld\n",(long)comm);CHKERRMPI(ierr);
+  ierr = PetscInfo1(NULL,"Deleting tmp/shared data in an MPI_Comm %ld\n",(long)comm);CHKERRMPI(ierr);
   ierr = PetscFree(count_val);CHKERRMPI(ierr);
   PetscFunctionReturn(MPI_SUCCESS);
 }
@@ -41,7 +41,7 @@ PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelTmpShared(MPI_Comm comm,PetscMPIInt key
 /*@C
    PetscGetTmp - Gets the name of the tmp directory
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI_Communicator that may share /tmp
@@ -84,7 +84,7 @@ PetscErrorCode  PetscGetTmp(MPI_Comm comm,char dir[],size_t len)
    PetscSharedTmp - Determines if all processors in a communicator share a
          /tmp or have different ones.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 .  comm - MPI_Communicator that may share /tmp
@@ -150,7 +150,7 @@ PetscErrorCode  PetscSharedTmp(MPI_Comm comm,PetscBool  *shared)
   }
 
   if (Petsc_Tmp_keyval == MPI_KEYVAL_INVALID) {
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_DelTmpShared,&Petsc_Tmp_keyval,0);CHKERRQ(ierr);
+    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_DelTmpShared,&Petsc_Tmp_keyval,NULL);CHKERRQ(ierr);
   }
 
   ierr = MPI_Comm_get_attr(comm,Petsc_Tmp_keyval,(void**)&tagvalp,(int*)&iflg);CHKERRQ(ierr);
@@ -201,7 +201,7 @@ PetscErrorCode  PetscSharedTmp(MPI_Comm comm,PetscBool  *shared)
       } else if (sum != 1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP_SYS,"Subset of processes share /tmp ");
     }
     *tagvalp = (int)*shared;
-    ierr = PetscInfo2(0,"processors %s %s\n",(*shared) ? "share":"do NOT share",(iflg ? tmpname:"/tmp"));CHKERRQ(ierr);
+    ierr = PetscInfo2(NULL,"processors %s %s\n",(*shared) ? "share":"do NOT share",(iflg ? tmpname:"/tmp"));CHKERRQ(ierr);
   } else *shared = (PetscBool) *tagvalp;
   PetscFunctionReturn(0);
 }
@@ -210,7 +210,7 @@ PetscErrorCode  PetscSharedTmp(MPI_Comm comm,PetscBool  *shared)
    PetscSharedWorkingDirectory - Determines if all processors in a communicator share a
          working directory or have different ones.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 .  comm - MPI_Communicator that may share working directory
@@ -220,7 +220,7 @@ PetscErrorCode  PetscSharedTmp(MPI_Comm comm,PetscBool  *shared)
 
    Options Database Keys:
 +    -shared_working_directory
-.    -not_shared_working_directory
+-    -not_shared_working_directory
 
    Environmental Variables:
 +     PETSC_SHARED_WORKING_DIRECTORY
@@ -271,7 +271,7 @@ PetscErrorCode  PetscSharedWorkingDirectory(MPI_Comm comm,PetscBool  *shared)
   }
 
   if (Petsc_WD_keyval == MPI_KEYVAL_INVALID) {
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_DelTmpShared,&Petsc_WD_keyval,0);CHKERRQ(ierr);
+    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_DelTmpShared,&Petsc_WD_keyval,NULL);CHKERRQ(ierr);
   }
 
   ierr = MPI_Comm_get_attr(comm,Petsc_WD_keyval,(void**)&tagvalp,(int*)&iflg);CHKERRQ(ierr);
@@ -317,7 +317,7 @@ PetscErrorCode  PetscSharedWorkingDirectory(MPI_Comm comm,PetscBool  *shared)
     }
     *tagvalp = (int)*shared;
   } else *shared = (PetscBool) *tagvalp;
-  ierr = PetscInfo1(0,"processors %s working directory\n",(*shared) ? "shared" : "do NOT share");CHKERRQ(ierr);
+  ierr = PetscInfo1(NULL,"processors %s working directory\n",(*shared) ? "shared" : "do NOT share");CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -326,7 +326,7 @@ PetscErrorCode  PetscSharedWorkingDirectory(MPI_Comm comm,PetscBool  *shared)
     PetscFileRetrieve - Obtains a file from a URL or compressed
         and copies into local disk space as uncompressed.
 
-    Collective on MPI_Comm
+    Collective
 
     Input Parameter:
 +   comm     - processors accessing the file

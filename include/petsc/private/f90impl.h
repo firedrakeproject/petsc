@@ -1,6 +1,6 @@
 
-#if !defined(__PETSCF90_H)
-#define __PETSCF90_H
+#if !defined(PETSCF90_H)
+#define PETSCF90_H
 #include <petsc/private/fortranimpl.h>
 
 /* PGI compilers pass in f90 pointers as 2 arguments */
@@ -14,7 +14,6 @@
 #define PETSC_F90_2PTR_PARAM(ptr)
 #endif
 
-#if defined(PETSC_USING_F90)
 typedef struct { char dummy; } F90Array1d;
 typedef struct { char dummy; } F90Array2d;
 typedef struct { char dummy; } F90Array3d;
@@ -56,5 +55,4 @@ PETSC_EXTERN PetscErrorCode F90Array4dGetNextRecord(F90Array4d*,void** PETSC_F90
 .   ptr - Fortran 90 pointer
 */
 
-#endif /* PETSC_USING_F90 */
 #endif

@@ -33,7 +33,7 @@ static PetscErrorCode PCSetUp_CP(PC pc)
   if (!cp->d) {ierr = PetscMalloc1(cp->n,&cp->d);CHKERRQ(ierr);}
   if (cp->a && pc->flag != SAME_NONZERO_PATTERN) {
     ierr  = PetscFree3(cp->a,cp->i,cp->j);CHKERRQ(ierr);
-    cp->a = 0;
+    cp->a = NULL;
   }
 
   /* convert to column format */
@@ -45,7 +45,7 @@ static PetscErrorCode PCSetUp_CP(PC pc)
   for (i=0; i<aij->nz; i++) colcnt[aij->j[i]]++;
   cp->i[0] = 0;
   for (i=0; i<cp->n; i++) cp->i[i+1] = cp->i[i] + colcnt[i];
-  ierr = PetscMemzero(colcnt,cp->n*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArrayzero(colcnt,cp->n);CHKERRQ(ierr);
   for (i=0; i<cp->m; i++) {  /* over rows */
     for (j=aij->i[i]; j<aij->i[i+1]; j++) {  /* over columns in row */
       cp->j[cp->i[aij->j[j]]+colcnt[aij->j[j]]]   = i;
@@ -181,8 +181,8 @@ PETSC_EXTERN PetscErrorCode PCCreate_CP(PC pc)
   pc->ops->reset           = PCReset_CP;
   pc->ops->destroy         = PCDestroy_CP;
   pc->ops->setfromoptions  = PCSetFromOptions_CP;
-  pc->ops->view            = 0;
-  pc->ops->applyrichardson = 0;
+  pc->ops->view            = NULL;
+  pc->ops->applyrichardson = NULL;
   PetscFunctionReturn(0);
 }
 

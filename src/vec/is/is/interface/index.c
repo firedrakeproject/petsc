@@ -1,4 +1,3 @@
-
 /*
    Defines the abstract operations on index sets, i.e. the public interface.
 */
@@ -8,6 +7,9 @@
 
 /* Logging support */
 PetscClassId IS_CLASSID;
+/* TODO: Much more events are missing! */
+PetscLogEvent IS_View;
+PetscLogEvent IS_Load;
 
 /*@
    ISRenumber - Renumbers an index set (with multiplicities) in a contiguous way.
@@ -15,12 +17,12 @@ PetscClassId IS_CLASSID;
    Collective on IS
 
    Input Parmeters:
-.  subset - the index set
-.  subset_mult - the multiplcity of each entry in subset (optional, can be NULL)
++  subset - the index set
+-  subset_mult - the multiplcity of each entry in subset (optional, can be NULL)
 
    Output Parameters:
-.  N - the maximum entry of the new IS
-.  subset_n - the new IS
++  N - the maximum entry of the new IS
+-  subset_n - the new IS
 
    Level: intermediate
 
@@ -39,10 +41,14 @@ PetscErrorCode ISRenumber(IS subset, IS subset_mult, PetscInt *N, IS *subset_n)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(subset,IS_CLASSID,1);
+  if (subset_mult) {
+    PetscValidHeaderSpecific(subset_mult,IS_CLASSID,2);
+  }
+  if (!N && !subset_n) PetscFunctionReturn(0);
   ierr = ISGetLocalSize(subset,&n);CHKERRQ(ierr);
   if (subset_mult) {
-    PetscCheckSameComm(subset,1,subset_mult,2);
-    ierr = ISGetLocalSize(subset,&i);CHKERRQ(ierr);
+    ierr = ISGetLocalSize(subset_mult,&i);CHKERRQ(ierr);
     if (i != n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Local subset and multiplicity sizes don't match! %d != %d",n,i);
   }
   /* create workspace layout for computing global indices of subset */
@@ -55,7 +61,8 @@ PetscErrorCode ISRenumber(IS subset, IS subset_mult, PetscInt *N, IS *subset_n)
   lbounds[0] = -lbounds[0];
   ierr = MPIU_Allreduce(lbounds,gbounds,2,MPIU_INT,MPI_MAX,PetscObjectComm((PetscObject)subset));CHKERRQ(ierr);
   gbounds[0] = -gbounds[0];
-  N_n= gbounds[1] - gbounds[0] + 1;
+  N_n  = gbounds[1] - gbounds[0] + 1;
+
   ierr = PetscLayoutCreate(PetscObjectComm((PetscObject)subset),&map);CHKERRQ(ierr);
   ierr = PetscLayoutSetBlockSize(map,1);CHKERRQ(ierr);
   ierr = PetscLayoutSetSize(map,N_n);CHKERRQ(ierr);
@@ -68,7 +75,7 @@ PetscErrorCode ISRenumber(IS subset, IS subset_mult, PetscInt *N, IS *subset_n)
     const PetscInt* idxs_mult;
 
     ierr = ISGetIndices(subset_mult,&idxs_mult);CHKERRQ(ierr);
-    ierr = PetscMemcpy(leaf_data,idxs_mult,n*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArraycpy(leaf_data,idxs_mult,n);CHKERRQ(ierr);
     ierr = ISRestoreIndices(subset_mult,&idxs_mult);CHKERRQ(ierr);
   } else {
     for (i=0;i<n;i++) leaf_data[i] = 1;
@@ -86,7 +93,7 @@ PetscErrorCode ISRenumber(IS subset, IS subset_mult, PetscInt *N, IS *subset_n)
   ierr = PetscLayoutDestroy(&map);CHKERRQ(ierr);
 
   /* reduce from leaves to roots */
-  ierr = PetscMemzero(root_data,Nl*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArrayzero(root_data,Nl);CHKERRQ(ierr);
   ierr = PetscSFReduceBegin(sf,MPIU_INT,leaf_data,root_data,MPI_MAX);CHKERRQ(ierr);
   ierr = PetscSFReduceEnd(sf,MPIU_INT,leaf_data,root_data,MPI_MAX);CHKERRQ(ierr);
 
@@ -105,16 +112,23 @@ PetscErrorCode ISRenumber(IS subset, IS subset_mult, PetscInt *N, IS *subset_n)
   /* cumulative of number of indexes and size of subset without holes */
 #if defined(PETSC_HAVE_MPI_EXSCAN)
   start = 0;
-  ierr = MPI_Exscan(&nlocals,&start,1,MPIU_INT,MPI_SUM,PetscObjectComm((PetscObject)subset));CHKERRQ(ierr);
+  ierr  = MPI_Exscan(&nlocals,&start,1,MPIU_INT,MPI_SUM,PetscObjectComm((PetscObject)subset));CHKERRQ(ierr);
 #else
-  ierr = MPI_Scan(&nlocals,&start,1,MPIU_INT,MPI_SUM,PetscObjectComm((PetscObject)subset));CHKERRQ(ierr);
+  ierr  = MPI_Scan(&nlocals,&start,1,MPIU_INT,MPI_SUM,PetscObjectComm((PetscObject)subset));CHKERRQ(ierr);
   start = start-nlocals;
 #endif
 
   if (N) { /* compute total size of new subset if requested */
-    *N = start + nlocals;
+    *N   = start + nlocals;
     ierr = MPI_Comm_size(PetscObjectComm((PetscObject)subset),&commsize);CHKERRQ(ierr);
     ierr = MPI_Bcast(N,1,MPIU_INT,commsize-1,PetscObjectComm((PetscObject)subset));CHKERRQ(ierr);
+  }
+
+  if (!subset_n) {
+    ierr = PetscFree(gidxs);CHKERRQ(ierr);
+    ierr = PetscSFDestroy(&sf);CHKERRQ(ierr);
+    ierr = PetscFree2(leaf_data,root_data);CHKERRQ(ierr);
+    PetscFunctionReturn(0);
   }
 
   /* adapt root data with cumulative */
@@ -165,8 +179,8 @@ PetscErrorCode ISRenumber(IS subset, IS subset_mult, PetscInt *N, IS *subset_n)
    Collective on IS
 
    Input Parmeters:
-.  is - the index set
-.  comps - which components we will extract from is
++  is - the index set
+-  comps - which components we will extract from is
 
    Output Parameters:
 .  subis - the new sub index set
@@ -187,7 +201,8 @@ PetscErrorCode ISCreateSubIS(IS is,IS comps,IS *subis)
 {
   PetscSF         sf;
   const PetscInt  *is_indices,*comps_indices;
-  PetscInt        *subis_indices,nroots,nleaves,*mine,i,owner,lidx;
+  PetscInt        *subis_indices,nroots,nleaves,*mine,i,lidx;
+  PetscMPIInt     owner;
   PetscSFNode     *remote;
   PetscErrorCode  ierr;
   MPI_Comm        comm;
@@ -214,7 +229,7 @@ PetscErrorCode ISCreateSubIS(IS is,IS comps,IS *subis)
      * */
     owner = -1;
     lidx =  -1;
-    ierr = PetscLayoutFindOwnerIndex(is->map,comps_indices[i],&owner, &lidx);CHKERRQ(ierr);
+    ierr = PetscLayoutFindOwnerIndex(is->map,comps_indices[i],&owner,&lidx);CHKERRQ(ierr);
     remote[i].rank = owner;
     remote[i].index = lidx;
   }
@@ -233,6 +248,571 @@ PetscErrorCode ISCreateSubIS(IS is,IS comps,IS *subis)
   PetscFunctionReturn(0);
 }
 
+/*@
+   ISClearInfoCache - clear the cache of computed index set properties
+
+   Not collective
+
+   Input Parameters:
++  is - the index set
+-  clear_permanent_local - whether to remove the permanent status of local properties
+
+   NOTE: because all processes must agree on the global permanent status of a property,
+   the permanent status can only be changed with ISSetInfo(), because this routine is not collective
+
+   Level: developer
+
+.seealso:  ISInfo, ISInfoType, ISSetInfo(), ISClearInfoCache()
+
+@*/
+PetscErrorCode ISClearInfoCache(IS is, PetscBool clear_permanent_local)
+{
+  PetscInt i, j;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(is,IS_CLASSID,1);
+  PetscValidType(is,1);
+  for (i = 0; i < IS_INFO_MAX; i++) {
+    if (clear_permanent_local) is->info_permanent[IS_LOCAL][i] = PETSC_FALSE;
+    for (j = 0; j < 2; j++) {
+      if (!is->info_permanent[j][i]) is->info[j][i] = IS_INFO_UNKNOWN;
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ISSetInfo_Internal(IS is, ISInfo info, ISInfoType type, ISInfoBool ipermanent, PetscBool flg)
+{
+  ISInfoBool     iflg = flg ? IS_INFO_TRUE : IS_INFO_FALSE;
+  PetscInt       itype = (type == IS_LOCAL) ? 0 : 1;
+  PetscBool      permanent_set = (ipermanent == IS_INFO_UNKNOWN) ? PETSC_FALSE : PETSC_TRUE;
+  PetscBool      permanent = (ipermanent == IS_INFO_TRUE) ? PETSC_TRUE : PETSC_FALSE;
+
+  PetscFunctionBegin;
+  /* set this property */
+  is->info[itype][(int)info] = iflg;
+  if (permanent_set) is->info_permanent[itype][(int)info] = permanent;
+  /* set implications */
+  switch (info) {
+  case IS_SORTED:
+    if (flg && type == IS_GLOBAL) { /* an array that is globally sorted is also locally sorted */
+      is->info[IS_LOCAL][(int)info] = IS_INFO_TRUE;
+      /* global permanence implies local permanence */
+      if (permanent_set && permanent) is->info_permanent[IS_LOCAL][(int)info] = PETSC_TRUE;
+    }
+    if (!flg) { /* if an array is not sorted, it cannot be an interval or the identity */
+      is->info[itype][IS_INTERVAL] = IS_INFO_FALSE;
+      is->info[itype][IS_IDENTITY] = IS_INFO_FALSE;
+      if (permanent_set) {
+        is->info_permanent[itype][IS_INTERVAL] = permanent;
+        is->info_permanent[itype][IS_IDENTITY] = permanent;
+      }
+    }
+    break;
+  case IS_UNIQUE:
+    if (flg && type == IS_GLOBAL) { /* an array that is globally unique is also locally unique */
+      is->info[IS_LOCAL][(int)info] = IS_INFO_TRUE;
+      /* global permanence implies local permanence */
+      if (permanent_set && permanent) is->info_permanent[IS_LOCAL][(int)info] = PETSC_TRUE;
+    }
+    if (!flg) { /* if an array is not unique, it cannot be a permutation, and interval, or the identity */
+      is->info[itype][IS_PERMUTATION] = IS_INFO_FALSE;
+      is->info[itype][IS_INTERVAL]    = IS_INFO_FALSE;
+      is->info[itype][IS_IDENTITY]    = IS_INFO_FALSE;
+      if (permanent_set) {
+        is->info_permanent[itype][IS_PERMUTATION] = permanent;
+        is->info_permanent[itype][IS_INTERVAL]    = permanent;
+        is->info_permanent[itype][IS_IDENTITY]    = permanent;
+      }
+    }
+    break;
+  case IS_PERMUTATION:
+    if (flg) { /* an array that is a permutation is unique and is unique locally */
+      is->info[itype][IS_UNIQUE] = IS_INFO_TRUE;
+      is->info[IS_LOCAL][IS_UNIQUE] = IS_INFO_TRUE;
+      if (permanent_set && permanent) {
+        is->info_permanent[itype][IS_UNIQUE] = PETSC_TRUE;
+        is->info_permanent[IS_LOCAL][IS_UNIQUE] = PETSC_TRUE;
+      }
+    } else { /* an array that is not a permutation cannot be the identity */
+      is->info[itype][IS_IDENTITY] = IS_INFO_FALSE;
+      if (permanent_set) is->info_permanent[itype][IS_IDENTITY] = permanent;
+    }
+    break;
+  case IS_INTERVAL:
+    if (flg) { /* an array that is an interval is sorted and unique */
+      is->info[itype][IS_SORTED]         = IS_INFO_TRUE;
+      is->info[IS_LOCAL][IS_SORTED]      = IS_INFO_TRUE;
+      is->info[itype][IS_UNIQUE]         = IS_INFO_TRUE;
+      is->info[IS_LOCAL][IS_UNIQUE]      = IS_INFO_TRUE;
+      if (permanent_set && permanent) {
+        is->info_permanent[itype][IS_SORTED]    = PETSC_TRUE;
+        is->info_permanent[IS_LOCAL][IS_SORTED] = PETSC_TRUE;
+        is->info_permanent[itype][IS_UNIQUE]    = PETSC_TRUE;
+        is->info_permanent[IS_LOCAL][IS_UNIQUE] = PETSC_TRUE;
+      }
+    } else { /* an array that is not an interval cannot be the identity */
+      is->info[itype][IS_IDENTITY] = IS_INFO_FALSE;
+      if (permanent_set) is->info_permanent[itype][IS_IDENTITY] = permanent;
+    }
+    break;
+  case IS_IDENTITY:
+    if (flg) { /* an array that is the identity is sorted, unique, an interval, and a permutation */
+      is->info[itype][IS_SORTED]         = IS_INFO_TRUE;
+      is->info[IS_LOCAL][IS_SORTED]      = IS_INFO_TRUE;
+      is->info[itype][IS_UNIQUE]         = IS_INFO_TRUE;
+      is->info[IS_LOCAL][IS_UNIQUE]      = IS_INFO_TRUE;
+      is->info[itype][IS_PERMUTATION]    = IS_INFO_TRUE;
+      is->info[itype][IS_INTERVAL]       = IS_INFO_TRUE;
+      is->info[IS_LOCAL][IS_INTERVAL]    = IS_INFO_TRUE;
+      if (permanent_set && permanent) {
+        is->info_permanent[itype][IS_SORTED]         = PETSC_TRUE;
+        is->info_permanent[IS_LOCAL][IS_SORTED]      = PETSC_TRUE;
+        is->info_permanent[itype][IS_UNIQUE]         = PETSC_TRUE;
+        is->info_permanent[IS_LOCAL][IS_UNIQUE]      = PETSC_TRUE;
+        is->info_permanent[itype][IS_PERMUTATION]    = PETSC_TRUE;
+        is->info_permanent[itype][IS_INTERVAL]       = PETSC_TRUE;
+        is->info_permanent[IS_LOCAL][IS_INTERVAL]    = PETSC_TRUE;
+      }
+    }
+    break;
+  default:
+    if (type == IS_LOCAL) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Unknown IS property");
+    else SETERRQ(PetscObjectComm((PetscObject)is), PETSC_ERR_ARG_OUTOFRANGE, "Unknown IS property");
+  }
+  PetscFunctionReturn(0);
+}
+
+/*@
+   ISSetInfo - Set known information about an index set.
+
+   Logically Collective on IS if type is IS_GLOBAL
+
+   Input Parameters:
++  is - the index set
+.  info - describing a property of the index set, one of those listed below,
+.  type - IS_LOCAL if the information describes the local portion of the index set,
+          IS_GLOBAL if it describes the whole index set
+.  permanent - PETSC_TRUE if it is known that the property will persist through changes to the index set, PETSC_FALSE otherwise
+               If the user sets a property as permanently known, it will bypass computation of that property
+-  flg - set the described property as true (PETSC_TRUE) or false (PETSC_FALSE)
+
+  Info Describing IS Structure:
++    IS_SORTED - the [local part of the] index set is sorted in ascending order
+.    IS_UNIQUE - each entry in the [local part of the] index set is unique
+.    IS_PERMUTATION - the [local part of the] index set is a permutation of the integers {0, 1, ..., N-1}, where N is the size of the [local part of the] index set
+.    IS_INTERVAL - the [local part of the] index set is equal to a contiguous range of integers {f, f + 1, ..., f + N-1}
+-    IS_IDENTITY - the [local part of the] index set is equal to the integers {0, 1, ..., N-1}
+
+
+   Notes:
+   If type is IS_GLOBAL, all processes that share the index set must pass the same value in flg
+
+   It is possible to set a property with ISSetInfo() that contradicts what would be previously computed with ISGetInfo()
+
+   Level: advanced
+
+.seealso:  ISInfo, ISInfoType, IS
+
+@*/
+PetscErrorCode ISSetInfo(IS is, ISInfo info, ISInfoType type, PetscBool permanent, PetscBool flg)
+{
+  MPI_Comm       comm, errcomm;
+  PetscMPIInt    size;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(is,IS_CLASSID,1);
+  PetscValidType(is,1);
+  comm = PetscObjectComm((PetscObject)is);
+  if (type == IS_GLOBAL) {
+    PetscValidLogicalCollectiveEnum(is,info,2);
+    PetscValidLogicalCollectiveBool(is,permanent,4);
+    PetscValidLogicalCollectiveBool(is,flg,5);
+    errcomm = comm;
+  } else {
+    errcomm = PETSC_COMM_SELF;
+  }
+
+  if (((int) info) <= IS_INFO_MIN || ((int) info) >= IS_INFO_MAX) SETERRQ1(errcomm,PETSC_ERR_ARG_OUTOFRANGE,"Options %d is out of range",(int)info);
+
+  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  /* do not use global values if size == 1: it makes it easier to keep the implications straight */
+  if (size == 1) type = IS_LOCAL;
+  ierr = ISSetInfo_Internal(is, info, type, permanent ? IS_INFO_TRUE : IS_INFO_FALSE, flg);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ISGetInfo_Sorted(IS is, ISInfoType type, PetscBool *flg)
+{
+  MPI_Comm       comm;
+  PetscMPIInt    size, rank;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  comm = PetscObjectComm((PetscObject)is);
+  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_size(comm, &rank);CHKERRQ(ierr);
+  if (type == IS_GLOBAL && is->ops->sortedglobal) {
+    ierr = (*is->ops->sortedglobal)(is,flg);CHKERRQ(ierr);
+  } else {
+    PetscBool sortedLocal = PETSC_FALSE;
+
+    /* determine if the array is locally sorted */
+    if (type == IS_GLOBAL && size > 1) {
+      /* call ISGetInfo so that a cached value will be used if possible */
+      ierr = ISGetInfo(is, IS_SORTED, IS_LOCAL, PETSC_TRUE, &sortedLocal);CHKERRQ(ierr);
+    } else if (is->ops->sortedlocal) {
+      ierr = (*is->ops->sortedlocal)(is,&sortedLocal);CHKERRQ(ierr);
+    } else {
+      /* default: get the local indices and directly check */
+      const PetscInt *idx;
+      PetscInt n;
+
+      ierr = ISGetIndices(is, &idx);CHKERRQ(ierr);
+      ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+      ierr = PetscSortedInt(n, idx, &sortedLocal);CHKERRQ(ierr);
+      ierr = ISRestoreIndices(is, &idx);CHKERRQ(ierr);
+    }
+
+    if (type == IS_LOCAL || size == 1) {
+      *flg = sortedLocal;
+    } else {
+      ierr = MPI_Allreduce(&sortedLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+      if (*flg) {
+        PetscInt  n, min = PETSC_MAX_INT, max = PETSC_MIN_INT;
+        PetscInt  maxprev;
+
+        ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+        if (n) {ierr = ISGetMinMax(is, &min, &max);CHKERRQ(ierr);}
+        maxprev = PETSC_MIN_INT;
+        ierr = MPI_Exscan(&max, &maxprev, 1, MPIU_INT, MPI_MAX, comm);CHKERRQ(ierr);
+        if (rank && (maxprev > min)) sortedLocal = PETSC_FALSE;
+        ierr = MPI_Allreduce(&sortedLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode ISGetIndicesCopy(IS is, PetscInt idx[]);
+
+static PetscErrorCode ISGetInfo_Unique(IS is, ISInfoType type, PetscBool *flg)
+{
+  MPI_Comm       comm;
+  PetscMPIInt    size, rank;
+  PetscInt       i;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  comm = PetscObjectComm((PetscObject)is);
+  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_size(comm, &rank);CHKERRQ(ierr);
+  if (type == IS_GLOBAL && is->ops->uniqueglobal) {
+    ierr = (*is->ops->uniqueglobal)(is,flg);CHKERRQ(ierr);
+  } else {
+    PetscBool uniqueLocal;
+    PetscInt  n = -1;
+    PetscInt  *idx = NULL;
+
+    /* determine if the array is locally unique */
+    if (type == IS_GLOBAL && size > 1) {
+      /* call ISGetInfo so that a cached value will be used if possible */
+      ierr = ISGetInfo(is, IS_UNIQUE, IS_LOCAL, PETSC_TRUE, &uniqueLocal);CHKERRQ(ierr);
+    } else if (is->ops->uniquelocal) {
+      ierr = (*is->ops->uniquelocal)(is,&uniqueLocal);CHKERRQ(ierr);
+    } else {
+      /* default: get the local indices and directly check */
+      uniqueLocal = PETSC_TRUE;
+      ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+      ierr = PetscMalloc1(n, &idx);CHKERRQ(ierr);
+      ierr = ISGetIndicesCopy(is, idx);CHKERRQ(ierr);
+      ierr = PetscSortInt(n, idx);CHKERRQ(ierr);
+      for (i = 1; i < n; i++) if (idx[i] == idx[i-1]) break;
+      if (i < n) uniqueLocal = PETSC_FALSE;
+    }
+
+    ierr = PetscFree(idx);CHKERRQ(ierr);
+    if (type == IS_LOCAL || size == 1) {
+      *flg = uniqueLocal;
+    } else {
+      ierr = MPI_Allreduce(&uniqueLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+      if (*flg) {
+        PetscInt  min = PETSC_MAX_INT, max = PETSC_MIN_INT, maxprev;
+
+        if (!idx) {
+          ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+          ierr = PetscMalloc1(n, &idx);CHKERRQ(ierr);
+          ierr = ISGetIndicesCopy(is, idx);CHKERRQ(ierr);
+        }
+        ierr = PetscParallelSortInt(is->map, is->map, idx, idx);CHKERRQ(ierr);
+        if (n) {
+          min = idx[0];
+          max = idx[n - 1];
+        }
+        for (i = 1; i < n; i++) if (idx[i] == idx[i-1]) break;
+        if (i < n) uniqueLocal = PETSC_FALSE;
+        maxprev = PETSC_MIN_INT;
+        ierr = MPI_Exscan(&max, &maxprev, 1, MPIU_INT, MPI_MAX, comm);CHKERRQ(ierr);
+        if (rank && (maxprev == min)) uniqueLocal = PETSC_FALSE;
+        ierr = MPI_Allreduce(&uniqueLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+      }
+    }
+    ierr = PetscFree(idx);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ISGetInfo_Permutation(IS is, ISInfoType type, PetscBool *flg)
+{
+  MPI_Comm       comm;
+  PetscMPIInt    size, rank;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  comm = PetscObjectComm((PetscObject)is);
+  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_size(comm, &rank);CHKERRQ(ierr);
+  if (type == IS_GLOBAL && is->ops->permglobal) {
+    ierr = (*is->ops->permglobal)(is,flg);CHKERRQ(ierr);
+  } else if (type == IS_LOCAL && is->ops->permlocal) {
+    ierr = (*is->ops->permlocal)(is,flg);CHKERRQ(ierr);
+  } else {
+    PetscBool permLocal;
+    PetscInt  n, i, rStart;
+    PetscInt  *idx;
+
+    ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+    ierr = PetscMalloc1(n, &idx);CHKERRQ(ierr);
+    ierr = ISGetIndicesCopy(is, idx);CHKERRQ(ierr);
+    if (type == IS_GLOBAL) {
+      ierr = PetscParallelSortInt(is->map, is->map, idx, idx);CHKERRQ(ierr);
+      ierr = PetscLayoutGetRange(is->map, &rStart, NULL);CHKERRQ(ierr);
+    } else {
+      ierr = PetscSortInt(n, idx);CHKERRQ(ierr);
+      rStart = 0;
+    }
+    permLocal = PETSC_TRUE;
+    for (i = 0; i < n; i++) {
+      if (idx[i] != rStart + i) break;
+    }
+    if (i < n) permLocal = PETSC_FALSE;
+    if (type == IS_LOCAL || size == 1) {
+      *flg = permLocal;
+    } else {
+      ierr = MPI_Allreduce(&permLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+    }
+    ierr = PetscFree(idx);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ISGetInfo_Interval(IS is, ISInfoType type, PetscBool *flg)
+{
+  MPI_Comm       comm;
+  PetscMPIInt    size, rank;
+  PetscInt       i;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  comm = PetscObjectComm((PetscObject)is);
+  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_size(comm, &rank);CHKERRQ(ierr);
+  if (type == IS_GLOBAL && is->ops->intervalglobal) {
+    ierr = (*is->ops->intervalglobal)(is,flg);CHKERRQ(ierr);
+  } else {
+    PetscBool intervalLocal;
+
+    /* determine if the array is locally an interval */
+    if (type == IS_GLOBAL && size > 1) {
+      /* call ISGetInfo so that a cached value will be used if possible */
+      ierr = ISGetInfo(is, IS_INTERVAL, IS_LOCAL, PETSC_TRUE, &intervalLocal);CHKERRQ(ierr);
+    } else if (is->ops->intervallocal) {
+      ierr = (*is->ops->intervallocal)(is,&intervalLocal);CHKERRQ(ierr);
+    } else {
+      PetscInt        n;
+      const PetscInt  *idx;
+      /* default: get the local indices and directly check */
+      intervalLocal = PETSC_TRUE;
+      ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+      ierr = PetscMalloc1(n, &idx);CHKERRQ(ierr);
+      ierr = ISGetIndices(is, &idx);CHKERRQ(ierr);
+      for (i = 1; i < n; i++) if (idx[i] != idx[i-1] + 1) break;
+      if (i < n) intervalLocal = PETSC_FALSE;
+      ierr = ISRestoreIndices(is, &idx);CHKERRQ(ierr);
+    }
+
+    if (type == IS_LOCAL || size == 1) {
+      *flg = intervalLocal;
+    } else {
+      ierr = MPI_Allreduce(&intervalLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+      if (*flg) {
+        PetscInt  n, min = PETSC_MAX_INT, max = PETSC_MIN_INT;
+        PetscInt  maxprev;
+
+        ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+        if (n) {ierr = ISGetMinMax(is, &min, &max);CHKERRQ(ierr);}
+        maxprev = PETSC_MIN_INT;
+        ierr = MPI_Exscan(&max, &maxprev, 1, MPIU_INT, MPI_MAX, comm);CHKERRQ(ierr);
+        if (rank && n && (maxprev != min - 1)) intervalLocal = PETSC_FALSE;
+        ierr = MPI_Allreduce(&intervalLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ISGetInfo_Identity(IS is, ISInfoType type, PetscBool *flg)
+{
+  MPI_Comm       comm;
+  PetscMPIInt    size, rank;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  comm = PetscObjectComm((PetscObject)is);
+  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_size(comm, &rank);CHKERRQ(ierr);
+  if (type == IS_GLOBAL && is->ops->intervalglobal) {
+    PetscBool isinterval;
+
+    ierr = (*is->ops->intervalglobal)(is,&isinterval);CHKERRQ(ierr);
+    *flg = PETSC_FALSE;
+    if (isinterval) {
+      PetscInt  min;
+
+      ierr = ISGetMinMax(is, &min, NULL);CHKERRQ(ierr);
+      ierr = MPI_Bcast(&min, 1, MPIU_INT, 0, comm);CHKERRQ(ierr);
+      if (min == 0) *flg = PETSC_TRUE;
+    }
+  } else if (type == IS_LOCAL && is->ops->intervallocal) {
+    PetscBool isinterval;
+
+    ierr = (*is->ops->intervallocal)(is,&isinterval);CHKERRQ(ierr);
+    *flg = PETSC_FALSE;
+    if (isinterval) {
+      PetscInt  min;
+
+      ierr = ISGetMinMax(is, &min, NULL);CHKERRQ(ierr);
+      if (min == 0) *flg = PETSC_TRUE;
+    }
+  } else {
+    PetscBool identLocal;
+    PetscInt  n, i, rStart;
+    const PetscInt *idx;
+
+    ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+    ierr = ISGetIndices(is, &idx);CHKERRQ(ierr);
+    ierr = PetscLayoutGetRange(is->map, &rStart, NULL);CHKERRQ(ierr);
+    identLocal = PETSC_TRUE;
+    for (i = 0; i < n; i++) {
+      if (idx[i] != rStart + i) break;
+    }
+    if (i < n) identLocal = PETSC_FALSE;
+    if (type == IS_LOCAL || size == 1) {
+      *flg = identLocal;
+    } else {
+      ierr = MPI_Allreduce(&identLocal, flg, 1, MPIU_BOOL, MPI_LAND, comm);CHKERRQ(ierr);
+    }
+    ierr = ISRestoreIndices(is, &idx);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+}
+
+/*@
+   ISGetInfo - Determine whether an index set satisfies a given property
+
+   Collective or logically collective on IS if the type is IS_GLOBAL (logically collective if the value of the property has been permanently set with ISSetInfo())
+
+   Input Parameters:
++  is - the index set
+.  info - describing a property of the index set, one of those listed in the documentation of ISSetInfo()
+.  compute - if PETSC_FALSE, the property will not be computed if it is not already known and the property will be assumed to be false
+-  type - whether the property is local (IS_LOCAL) or global (IS_GLOBAL)
+
+   Output Parameter:
+.  flg - wheter the property is true (PETSC_TRUE) or false (PETSC_FALSE)
+
+   Note: ISGetInfo uses cached values when possible, which will be incorrect if ISSetInfo() has been called with incorrect information.  To clear cached values, use ISClearInfoCache().
+
+   Level: advanced
+
+.seealso:  ISInfo, ISInfoType, ISSetInfo(), ISClearInfoCache()
+
+@*/
+PetscErrorCode ISGetInfo(IS is, ISInfo info, ISInfoType type, PetscBool compute, PetscBool *flg)
+{
+  MPI_Comm       comm, errcomm;
+  PetscMPIInt    rank, size;
+  PetscInt       itype;
+  PetscBool      hasprop;
+  PetscBool      infer;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(is,IS_CLASSID,1);
+  PetscValidType(is,1);
+  comm = PetscObjectComm((PetscObject)is);
+  if (type == IS_GLOBAL) {
+    PetscValidLogicalCollectiveEnum(is,info,2);
+    errcomm = comm;
+  } else {
+    errcomm = PETSC_COMM_SELF;
+  }
+
+  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
+
+  if (((int) info) <= IS_INFO_MIN || ((int) info) >= IS_INFO_MAX) SETERRQ1(errcomm,PETSC_ERR_ARG_OUTOFRANGE,"Options %d is out of range",(int)info);
+  if (size == 1) type = IS_LOCAL;
+  itype = (type == IS_LOCAL) ? 0 : 1;
+  hasprop = PETSC_FALSE;
+  infer = PETSC_FALSE;
+  if (is->info_permanent[itype][(int)info]) {
+    hasprop = (is->info[itype][(int)info] == IS_INFO_TRUE) ? PETSC_TRUE : PETSC_FALSE;
+    infer = PETSC_TRUE;
+  } else if ((itype == IS_LOCAL) && (is->info[IS_LOCAL][info] != IS_INFO_UNKNOWN)) {
+    /* we can cache local properties as long as we clear them when the IS changes */
+    /* NOTE: we only cache local values because there is no ISAssemblyBegin()/ISAssemblyEnd(),
+     so we have no way of knowing when a cached value has been invalidated by changes on a different process */
+    hasprop = (is->info[itype][(int)info] == IS_INFO_TRUE) ? PETSC_TRUE : PETSC_FALSE;
+    infer = PETSC_TRUE;
+  } else if (compute) {
+    switch (info) {
+    case IS_SORTED:
+      ierr = ISGetInfo_Sorted(is, type, &hasprop);CHKERRQ(ierr);
+      break;
+    case IS_UNIQUE:
+      ierr = ISGetInfo_Unique(is, type, &hasprop);CHKERRQ(ierr);
+      break;
+    case IS_PERMUTATION:
+      ierr = ISGetInfo_Permutation(is, type, &hasprop);CHKERRQ(ierr);
+      break;
+    case IS_INTERVAL:
+      ierr = ISGetInfo_Interval(is, type, &hasprop);CHKERRQ(ierr);
+      break;
+    case IS_IDENTITY:
+      ierr = ISGetInfo_Identity(is, type, &hasprop);CHKERRQ(ierr);
+      break;
+    default:
+      SETERRQ(errcomm, PETSC_ERR_ARG_OUTOFRANGE, "Unknown IS property");
+    }
+    infer = PETSC_TRUE;
+  }
+  /* call ISSetInfo_Internal to keep all of the implications straight */
+  if (infer) {ierr = ISSetInfo_Internal(is, info, type, IS_INFO_UNKNOWN, hasprop);CHKERRQ(ierr);}
+  *flg = hasprop;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode ISCopyInfo(IS source, IS dest)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = PetscArraycpy(&dest->info[0], &source->info[0], 2);CHKERRQ(ierr);
+  ierr = PetscArraycpy(&dest->info_permanent[0], &source->info_permanent[0], 2);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
 
 /*@
    ISIdentity - Determines whether index set is the identity mapping.
@@ -247,10 +827,13 @@ PetscErrorCode ISCreateSubIS(IS is,IS comps,IS *subis)
 
    Level: intermediate
 
-   Concepts: identity mapping
-   Concepts: index sets^is identity
+   Note: If ISSetIdentity() (or ISSetInfo() for a permanent property) has been called,
+   ISIdentity() will return its answer without communication between processes, but
+   otherwise the output ident will be computed from ISGetInfo(),
+   which may require synchronization on the communicator of IS.  To avoid this computation,
+   call ISGetInfo() directly with the compute flag set to PETSC_FALSE, and ident will be assumed false.
 
-.seealso: ISSetIdentity()
+.seealso: ISSetIdentity(), ISGetInfo()
 @*/
 PetscErrorCode  ISIdentity(IS is,PetscBool  *ident)
 {
@@ -259,11 +842,7 @@ PetscErrorCode  ISIdentity(IS is,PetscBool  *ident)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
   PetscValidIntPointer(ident,2);
-  *ident = is->isidentity;
-  if (*ident) PetscFunctionReturn(0);
-  if (is->ops->identity) {
-    ierr = (*is->ops->identity)(is,ident);CHKERRQ(ierr);
-  }
+  ierr = ISGetInfo(is,IS_IDENTITY,IS_GLOBAL,PETSC_TRUE,ident);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -277,10 +856,11 @@ PetscErrorCode  ISIdentity(IS is,PetscBool  *ident)
 
    Level: intermediate
 
-   Concepts: identity mapping
-   Concepts: index sets^is identity
+   Note: The IS will be considered the identity permanently, even if indices have been changes (for example, with
+   ISGeneralSetIndices()).  It's a good idea to only set this property if the IS will not change in the future.
+   To clear this property, use ISClearInfoCache().
 
-.seealso: ISIdentity()
+.seealso: ISIdentity(), ISSetInfo(), ISClearInfoCache()
 @*/
 PetscErrorCode  ISSetIdentity(IS is)
 {
@@ -288,8 +868,7 @@ PetscErrorCode  ISSetIdentity(IS is)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
-  is->isidentity = PETSC_TRUE;
-  ierr = ISSetPermutation(is);CHKERRQ(ierr);
+  ierr = ISSetInfo(is,IS_IDENTITY,IS_GLOBAL,PETSC_TRUE,PETSC_TRUE);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -301,15 +880,13 @@ PetscErrorCode  ISSetIdentity(IS is)
    Input Parmeters:
 +  is - the index set
 .  gstart - global start
-.  gend - global end
+-  gend - global end
 
    Output Parameters:
 +  start - start of contiguous block, as an offset from gstart
 -  contig - PETSC_TRUE if the index set refers to contiguous entries on this process, else PETSC_FALSE
 
    Level: developer
-
-   Concepts: index sets^is contiguous
 
 .seealso: ISGetLocalSize(), VecGetOwnershipRange()
 @*/
@@ -344,17 +921,22 @@ PetscErrorCode  ISContiguousLocal(IS is,PetscInt gstart,PetscInt gend,PetscInt *
 
    Level: intermediate
 
-  Concepts: permutation
-  Concepts: index sets^is permutation
+   Note: If it is not alread known that the IS is a permutation (if ISSetPermutation()
+   or ISSetInfo() has not been called), this routine will not attempt to compute
+   whether the index set is a permutation and will assume perm is PETSC_FALSE.
+   To compute the value when it is not already known, use ISGetInfo() with
+   the compute flag set to PETSC_TRUE.
 
-.seealso: ISSetPermutation()
+.seealso: ISSetPermutation(), ISGetInfo()
 @*/
 PetscErrorCode  ISPermutation(IS is,PetscBool  *perm)
 {
+  PetscErrorCode ierr;
+
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
   PetscValidIntPointer(perm,2);
-  *perm = (PetscBool) is->isperm;
+  ierr = ISGetInfo(is,IS_PERMUTATION,IS_GLOBAL,PETSC_FALSE,perm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -368,22 +950,24 @@ PetscErrorCode  ISPermutation(IS is,PetscBool  *perm)
 
    Level: intermediate
 
-  Concepts: permutation
-  Concepts: index sets^permutation
 
    The debug version of the libraries (./configure --with-debugging=1) checks if the
   index set is actually a permutation. The optimized version just believes you.
 
-.seealso: ISPermutation()
+   Note: The IS will be considered a permutation permanently, even if indices have been changes (for example, with
+   ISGeneralSetIndices()).  It's a good idea to only set this property if the IS will not change in the future.
+   To clear this property, use ISClearInfoCache().
+
+.seealso: ISPermutation(), ISSetInfo(), ISClearInfoCache().
 @*/
 PetscErrorCode  ISSetPermutation(IS is)
 {
+  PetscErrorCode ierr;
+
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
-#if defined(PETSC_USE_DEBUG)
-  {
+  if (PetscDefined(USE_DEBUG)) {
     PetscMPIInt    size;
-    PetscErrorCode ierr;
 
     ierr = MPI_Comm_size(PetscObjectComm((PetscObject)is),&size);CHKERRQ(ierr);
     if (size == 1) {
@@ -393,7 +977,7 @@ PetscErrorCode  ISSetPermutation(IS is)
       ierr = ISGetSize(is,&n);CHKERRQ(ierr);
       ierr = PetscMalloc1(n,&idx);CHKERRQ(ierr);
       ierr = ISGetIndices(is,&iidx);CHKERRQ(ierr);
-      ierr = PetscMemcpy(idx,iidx,n*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr = PetscArraycpy(idx,iidx,n);CHKERRQ(ierr);
       ierr = PetscSortInt(n,idx);CHKERRQ(ierr);
       for (i=0; i<n; i++) {
         if (idx[i] != i) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Index set is not a permutation");
@@ -402,8 +986,7 @@ PetscErrorCode  ISSetPermutation(IS is)
       ierr = ISRestoreIndices(is,&iidx);CHKERRQ(ierr);
     }
   }
-#endif
-  is->isperm = PETSC_TRUE;
+  ierr = ISSetInfo(is,IS_PERMUTATION,IS_GLOBAL,PETSC_TRUE,PETSC_TRUE);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -464,19 +1047,29 @@ PetscErrorCode  ISDestroy(IS *is)
     For parallel index sets this does the complete parallel permutation, but the
     code is not efficient for huge index sets (10,000,000 indices).
 
-   Concepts: inverse permutation
-   Concepts: permutation^inverse
-   Concepts: index sets^inverting
 @*/
 PetscErrorCode  ISInvertPermutation(IS is,PetscInt nlocal,IS *isout)
 {
+  PetscBool      isperm, isidentity, issame;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
   PetscValidPointer(isout,3);
-  if (!is->isperm) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Not a permutation, must call ISSetPermutation() on the IS first");
-  if (is->isidentity) {
+  ierr = ISGetInfo(is,IS_PERMUTATION,IS_GLOBAL,PETSC_TRUE,&isperm);CHKERRQ(ierr);
+  if (!isperm) SETERRQ(PetscObjectComm((PetscObject)is),PETSC_ERR_ARG_WRONG,"Not a permutation");
+  ierr = ISGetInfo(is,IS_IDENTITY,IS_GLOBAL,PETSC_TRUE,&isidentity);CHKERRQ(ierr);
+  issame = PETSC_FALSE;
+  if (isidentity) {
+    PetscInt n;
+    PetscBool isallsame;
+
+    ierr = ISGetLocalSize(is, &n);CHKERRQ(ierr);
+    issame = (PetscBool) (n == nlocal);
+    ierr = MPI_Allreduce(&issame, &isallsame, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is));CHKERRQ(ierr);
+    issame = isallsame;
+  }
+  if (issame) {
     ierr = ISDuplicate(is,isout);CHKERRQ(ierr);
   } else {
     ierr = (*is->ops->invertpermutation)(is,nlocal,isout);CHKERRQ(ierr);
@@ -498,18 +1091,14 @@ PetscErrorCode  ISInvertPermutation(IS is,PetscInt nlocal,IS *isout)
 
    Level: beginner
 
-   Concepts: size^of index set
-   Concepts: index sets^size
 
 @*/
 PetscErrorCode  ISGetSize(IS is,PetscInt *size)
 {
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
   PetscValidIntPointer(size,2);
-  ierr = (*is->ops->getsize)(is,size);CHKERRQ(ierr);
+  *size = is->map->N;
   PetscFunctionReturn(0);
 }
 
@@ -526,19 +1115,38 @@ PetscErrorCode  ISGetSize(IS is,PetscInt *size)
 
    Level: beginner
 
-   Concepts: size^of index set
-   Concepts: local size^of index set
-   Concepts: index sets^local size
-
 @*/
 PetscErrorCode  ISGetLocalSize(IS is,PetscInt *size)
 {
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
   PetscValidIntPointer(size,2);
-  ierr = (*is->ops->getlocalsize)(is,size);CHKERRQ(ierr);
+  *size = is->map->n;
+  PetscFunctionReturn(0);
+}
+
+/*@
+   ISGetLayout - get PetscLayout describing index set layout
+
+   Not Collective
+
+   Input Arguments:
+.  is - the index set
+
+   Output Arguments:
+.  map - the layout
+
+   Level: developer
+
+.seealso: ISGetSize(), ISGetLocalSize()
+@*/
+PetscErrorCode ISGetLayout(IS is,PetscLayout *map)
+{
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(is,IS_CLASSID,1);
+  PetscValidIntPointer(map,2);
+  *map = is->map;
   PetscFunctionReturn(0);
 }
 
@@ -578,12 +1186,10 @@ $          call ISGetIndicesF90(i,array,ierr)
 
 
    See the Fortran chapter of the users manual and
-   petsc/src/is/examples/[tutorials,tests] for details.
+   petsc/src/is/[tutorials,tests] for details.
 
    Level: intermediate
 
-   Concepts: index sets^getting indices
-   Concepts: indices of index set
 
 .seealso: ISRestoreIndices(), ISGetIndicesF90()
 @*/
@@ -616,8 +1222,6 @@ PetscErrorCode  ISGetIndices(IS is,const PetscInt *ptr[])
     Empty index sets return min=PETSC_MAX_INT and max=PETSC_MIN_INT.
     In parallel, it returns the min and max of the local portion of the IS
 
-   Concepts: index sets^getting indices
-   Concepts: indices of index set
 
 .seealso: ISGetIndices(), ISRestoreIndices(), ISGetIndicesF90()
 @*/
@@ -702,7 +1306,7 @@ $      ...... other code
 $       call ISRestoreIndices(is,is_array,i_is,ierr)
 
    See the Fortran chapter of the users manual and
-   petsc/src/is/examples/[tutorials,tests] for details.
+   petsc/src/vec/is/tests for details.
 
    Level: intermediate
 
@@ -778,7 +1382,6 @@ static PetscErrorCode ISGatherTotal_Private(IS is)
      (use ISGetIndices() and ISGetNonlocalIndices() to retrieve just the local and just
       the nonlocal part (complement), respectively).
 
-   Concepts: index sets^getting nonlocal indices
 .seealso: ISRestoreTotalIndices(), ISGetNonlocalIndices(), ISGetSize()
 @*/
 PetscErrorCode ISGetTotalIndices(IS is, const PetscInt *indices[])
@@ -812,8 +1415,6 @@ PetscErrorCode ISGetTotalIndices(IS is, const PetscInt *indices[])
 
    Level: intermediate
 
-   Concepts: index sets^getting nonlocal indices
-   Concepts: index sets^restoring nonlocal indices
 .seealso: ISRestoreTotalIndices(), ISGetNonlocalIndices()
 @*/
 PetscErrorCode  ISRestoreTotalIndices(IS is, const PetscInt *indices[])
@@ -854,7 +1455,6 @@ PetscErrorCode  ISRestoreTotalIndices(IS is, const PetscInt *indices[])
           The same scalability considerations as those for ISGetTotalIndices
           apply here.
 
-   Concepts: index sets^getting nonlocal indices
 .seealso: ISGetTotalIndices(), ISRestoreNonlocalIndices(), ISGetSize(), ISGetLocalSize().
 @*/
 PetscErrorCode  ISGetNonlocalIndices(IS is, const PetscInt *indices[])
@@ -875,8 +1475,8 @@ PetscErrorCode  ISGetNonlocalIndices(IS is, const PetscInt *indices[])
     ierr = ISGetLocalSize(is,&n);CHKERRQ(ierr);
     ierr = ISGetSize(is,&N);CHKERRQ(ierr);
     ierr = PetscMalloc1(N-n, &(is->nonlocal));CHKERRQ(ierr);
-    ierr = PetscMemcpy(is->nonlocal, is->total, sizeof(PetscInt)*is->local_offset);CHKERRQ(ierr);
-    ierr = PetscMemcpy(is->nonlocal+is->local_offset, is->total+is->local_offset+n, sizeof(PetscInt)*(N - is->local_offset - n));CHKERRQ(ierr);
+    ierr = PetscArraycpy(is->nonlocal, is->total, is->local_offset);CHKERRQ(ierr);
+    ierr = PetscArraycpy(is->nonlocal+is->local_offset, is->total+is->local_offset+n,N - is->local_offset - n);CHKERRQ(ierr);
     *indices = is->nonlocal;
   }
   PetscFunctionReturn(0);
@@ -893,8 +1493,6 @@ PetscErrorCode  ISGetNonlocalIndices(IS is, const PetscInt *indices[])
 
    Level: intermediate
 
-   Concepts: index sets^getting nonlocal indices
-   Concepts: index sets^restoring nonlocal indices
 .seealso: ISGetTotalIndices(), ISGetNonlocalIndices(), ISRestoreTotalIndices()
 @*/
 PetscErrorCode  ISRestoreNonlocalIndices(IS is, const PetscInt *indices[])
@@ -927,7 +1525,6 @@ PetscErrorCode  ISRestoreNonlocalIndices(IS is, const PetscInt *indices[])
           Therefore scalability issues similar to ISGetNonlocalIndices apply.
           The resulting IS must be restored using ISRestoreNonlocalIS().
 
-   Concepts: index sets^getting nonlocal indices
 .seealso: ISGetNonlocalIndices(), ISRestoreNonlocalIndices(),  ISAllGather(), ISGetSize()
 @*/
 PetscErrorCode  ISGetNonlocalIS(IS is, IS *complement)
@@ -967,8 +1564,6 @@ PetscErrorCode  ISGetNonlocalIS(IS is, IS *complement)
    Level: intermediate
 
 
-   Concepts: index sets^getting nonlocal indices
-   Concepts: index sets^restoring nonlocal indices
 .seealso: ISGetNonlocalIS(), ISGetNonlocalIndices(), ISRestoreNonlocalIndices()
 @*/
 PetscErrorCode  ISRestoreNonlocalIS(IS is, IS *complement)
@@ -983,6 +1578,29 @@ PetscErrorCode  ISRestoreNonlocalIS(IS is, IS *complement)
   ierr = PetscObjectGetReference((PetscObject)(is->complement), &refcnt);CHKERRQ(ierr);
   if (refcnt <= 1) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Duplicate call to ISRestoreNonlocalIS() detected");
   ierr = PetscObjectDereference((PetscObject)(is->complement));CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
+   ISViewFromOptions - View from Options
+
+   Collective on IS
+
+   Input Parameters:
++  A - the index set
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  IS, ISView, PetscObjectViewFromOptions(), ISCreate()
+@*/
+PetscErrorCode  ISViewFromOptions(IS A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,IS_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1005,14 +1623,14 @@ PetscErrorCode  ISView(IS is,PetscViewer viewer)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
-  if (!viewer) {
-    ierr = PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)is),&viewer);CHKERRQ(ierr);
-  }
+  if (!viewer) {ierr = PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)is),&viewer);CHKERRQ(ierr);}
   PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,2);
   PetscCheckSameComm(is,1,viewer,2);
 
   ierr = PetscObjectPrintClassNamePrefixType((PetscObject)is,viewer);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(IS_View,is,viewer,0,0);CHKERRQ(ierr);
   ierr = (*is->ops->view)(is,viewer);CHKERRQ(ierr);
+  ierr = PetscLogEventEnd(IS_View,is,viewer,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1032,8 +1650,6 @@ PetscErrorCode  ISView(IS is,PetscViewer viewer)
   that was stored in the file using PetscObjectSetName(). Otherwise you will
   get the error message: "Cannot H5DOpen2() with Vec name NAMEOFOBJECT"
 
-  Concepts: index set^loading from file
-
 .seealso: PetscViewerBinaryOpen(), ISView(), MatLoad(), VecLoad()
 @*/
 PetscErrorCode ISLoad(IS is, PetscViewer viewer)
@@ -1044,11 +1660,14 @@ PetscErrorCode ISLoad(IS is, PetscViewer viewer)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is, IS_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
+  PetscCheckSameComm(is,1,viewer,2);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERBINARY, &isbinary);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
   if (!isbinary && !ishdf5) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Invalid viewer; open viewer with PetscViewerBinaryOpen()");
   if (!((PetscObject)is)->type_name) {ierr = ISSetType(is, ISGENERAL);CHKERRQ(ierr);}
+  ierr = PetscLogEventBegin(IS_Load,is,viewer,0,0);CHKERRQ(ierr);
   ierr = (*is->ops->load)(is, viewer);CHKERRQ(ierr);
+  ierr = PetscLogEventEnd(IS_Load,is,viewer,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1062,8 +1681,6 @@ PetscErrorCode ISLoad(IS is, PetscViewer viewer)
 
    Level: intermediate
 
-   Concepts: index sets^sorting
-   Concepts: sorting^index set
 
 .seealso: ISSortRemoveDups(), ISSorted()
 @*/
@@ -1074,6 +1691,7 @@ PetscErrorCode  ISSort(IS is)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
   ierr = (*is->ops->sort)(is);CHKERRQ(ierr);
+  ierr = ISSetInfo(is,IS_SORTED,IS_LOCAL,is->info_permanent[IS_LOCAL][IS_SORTED],PETSC_TRUE);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1087,8 +1705,6 @@ PetscErrorCode  ISSort(IS is)
 
   Level: intermediate
 
-  Concepts: index sets^sorting
-  Concepts: sorting^index set
 
 .seealso: ISSort(), ISSorted()
 @*/
@@ -1098,7 +1714,10 @@ PetscErrorCode ISSortRemoveDups(IS is)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
+  ierr = ISClearInfoCache(is,PETSC_FALSE);CHKERRQ(ierr);
   ierr = (*is->ops->sortremovedups)(is);CHKERRQ(ierr);
+  ierr = ISSetInfo(is,IS_SORTED,IS_LOCAL,is->info_permanent[IS_LOCAL][IS_SORTED],PETSC_TRUE);CHKERRQ(ierr);
+  ierr = ISSetInfo(is,IS_UNIQUE,IS_LOCAL,is->info_permanent[IS_LOCAL][IS_UNIQUE],PETSC_TRUE);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1112,8 +1731,6 @@ PetscErrorCode ISSortRemoveDups(IS is)
 
    Level: intermediate
 
-   Concepts: index sets^sorting
-   Concepts: sorting^index set
 
 .seealso: ISSorted()
 @*/
@@ -1156,8 +1773,8 @@ PetscErrorCode  ISSorted(IS is,PetscBool  *flg)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
-  PetscValidIntPointer(flg,2);
-  ierr = (*is->ops->sorted)(is,flg);CHKERRQ(ierr);
+  PetscValidBoolPointer(flg,2);
+  ierr = ISGetInfo(is,IS_SORTED,IS_LOCAL,PETSC_TRUE,flg);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1174,8 +1791,6 @@ PetscErrorCode  ISSorted(IS is,PetscBool  *flg)
 
    Level: beginner
 
-   Concepts: index sets^duplicating
-
 .seealso: ISCreateGeneral(), ISCopy()
 @*/
 PetscErrorCode  ISDuplicate(IS is,IS *newIS)
@@ -1186,8 +1801,7 @@ PetscErrorCode  ISDuplicate(IS is,IS *newIS)
   PetscValidHeaderSpecific(is,IS_CLASSID,1);
   PetscValidPointer(newIS,2);
   ierr = (*is->ops->duplicate)(is,newIS);CHKERRQ(ierr);
-  (*newIS)->isidentity = is->isidentity;
-  (*newIS)->isperm     = is->isperm;
+  ierr = ISCopyInfo(is,*newIS);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1204,8 +1818,6 @@ PetscErrorCode  ISDuplicate(IS is,IS *newIS)
 
    Level: beginner
 
-   Concepts: index sets^copying
-
 .seealso: ISDuplicate()
 @*/
 PetscErrorCode  ISCopy(IS is,IS isy)
@@ -1217,18 +1829,17 @@ PetscErrorCode  ISCopy(IS is,IS isy)
   PetscValidHeaderSpecific(isy,IS_CLASSID,2);
   PetscCheckSameComm(is,1,isy,2);
   if (is == isy) PetscFunctionReturn(0);
-  ierr = (*is->ops->copy)(is,isy);CHKERRQ(ierr);
-  isy->isperm     = is->isperm;
+  ierr = ISCopyInfo(is,isy);CHKERRQ(ierr);
   isy->max        = is->max;
   isy->min        = is->min;
-  isy->isidentity = is->isidentity;
+  ierr = (*is->ops->copy)(is,isy);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 /*@
    ISOnComm - Split a parallel IS on subcomms (usually self) or concatenate index sets on subcomms into a parallel index set
 
-   Collective on IS and comm
+   Collective on IS
 
    Input Arguments:
 + is - index set
@@ -1278,8 +1889,14 @@ PetscErrorCode  ISOnComm(IS is,MPI_Comm comm,PetscCopyMode mode,IS *newis)
 - bs - block size
 
    Level: intermediate
+   
+   Notes: 
+   This is much like the block size for Vecs. It indicates that one can think of the indices as 
+   being in a collection of equal size blocks. For ISBlock() these collections of blocks are all contiquous
+   within a block but this is not the case for other IS.
+   ISBlockGetIndices() only works for ISBlock IS, not others.
 
-.seealso: ISGetBlockSize(), ISCreateBlock()
+.seealso: ISGetBlockSize(), ISCreateBlock(), ISBlockGetIndices(), 
 @*/
 PetscErrorCode  ISSetBlockSize(IS is,PetscInt bs)
 {
@@ -1306,8 +1923,11 @@ PetscErrorCode  ISSetBlockSize(IS is,PetscInt bs)
 
    Level: intermediate
 
-   Concepts: IS^block size
-   Concepts: index sets^block size
+Notes: 
+   This is much like the block size for Vecs. It indicates that one can think of the indices as 
+   being in a collection of equal size blocks. For ISBlock() these collections of blocks are all contiquous
+   within a block but this is not the case for other IS.
+   ISBlockGetIndices() only works for ISBlock IS, not others.
 
 .seealso: ISBlockGetSize(), ISGetSize(), ISCreateBlock(), ISSetBlockSize()
 @*/
@@ -1327,7 +1947,7 @@ PetscErrorCode ISGetIndicesCopy(IS is, PetscInt idx[])
   const PetscInt *ptr;
 
   PetscFunctionBegin;
-  ierr = ISGetSize(is,&len);CHKERRQ(ierr);
+  ierr = ISGetLocalSize(is,&len);CHKERRQ(ierr);
   ierr = ISGetIndices(is,&ptr);CHKERRQ(ierr);
   for (i=0; i<len; i++) idx[i] = ptr[i];
   ierr = ISRestoreIndices(is,&ptr);CHKERRQ(ierr);
@@ -1364,8 +1984,6 @@ PetscErrorCode ISGetIndicesCopy(IS is, PetscInt idx[])
 
 .seealso:  ISRestoreIndicesF90(), ISGetIndices(), ISRestoreIndices()
 
-  Concepts: index sets^getting indices in f90
-  Concepts: indices of index set in f90
 
 M*/
 
@@ -1379,8 +1997,8 @@ M*/
     Not collective
 
     Input Parameters:
-.   x - index set
-.   xx_v - the Fortran90 pointer to the array
++   x - index set
+-   xx_v - the Fortran90 pointer to the array
 
     Output Parameter:
 .   ierr - error code
@@ -1430,10 +2048,6 @@ M*/
 
 .seealso:  ISBlockRestoreIndicesF90(), ISGetIndices(), ISRestoreIndices(),
            ISRestoreIndices()
-
-  Concepts: index sets^getting block indices in f90
-  Concepts: indices of index set in f90
-  Concepts: block^ indices of index set in f90
 
 M*/
 

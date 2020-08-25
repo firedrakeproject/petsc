@@ -90,7 +90,7 @@ static PetscErrorCode KSPSolve_FCG(KSP ksp)
   Mat            Amat,Pmat;
   PetscInt       eigs = ksp->calc_sings; /* Variables for eigen estimation - START*/
   PetscInt       stored_max_it = ksp->max_it;
-  PetscScalar    alphaold = 0,betaold = 1.0,*e = 0,*d = 0;/* Variables for eigen estimation  - FINISH */
+  PetscScalar    alphaold = 0,betaold = 1.0,*e = NULL,*d = NULL;/* Variables for eigen estimation  - FINISH */
 
   PetscFunctionBegin;
 
@@ -326,7 +326,7 @@ static PetscErrorCode KSPView_FCG(KSP ksp,PetscViewer viewer)
   and whether all are used in each iteration also depends on the truncation strategy
   (see KSPFCGSetTruncationType())
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   Input Parameters:
 +  ksp - the Krylov space context
@@ -368,8 +368,6 @@ PetscErrorCode KSPFCGSetMmax(KSP ksp,PetscInt mmax)
 
    Level: intermediate
 
-.keywords: KSP, FCG, truncation
-
 .seealso: KSPFCG, KSPFCGGetTruncationType(), KSPFCGGetNprealloc(), KSPFCGSetMmax()
 @*/
 
@@ -386,7 +384,7 @@ PetscErrorCode KSPFCGGetMmax(KSP ksp,PetscInt *mmax)
 /*@
   KSPFCGSetNprealloc - set the number of directions to preallocate with FCG
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   Input Parameters:
 +  ksp - the Krylov space context
@@ -424,8 +422,6 @@ PetscErrorCode KSPFCGSetNprealloc(KSP ksp,PetscInt nprealloc)
 
    Level: advanced
 
-.keywords: KSP, FCG, truncation
-
 .seealso: KSPFCG, KSPFCGGetTruncationType(), KSPFCGSetNprealloc()
 @*/
 PetscErrorCode KSPFCGGetNprealloc(KSP ksp,PetscInt *nprealloc)
@@ -441,7 +437,7 @@ PetscErrorCode KSPFCGGetNprealloc(KSP ksp,PetscInt *nprealloc)
 /*@
   KSPFCGSetTruncationType - specify how many of its stored previous directions FCG uses during orthoganalization
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   KSP_FCD_TRUNC_TYPE_STANDARD uses all (up to mmax) stored directions
   KSP_FCD_TRUNC_TYPE_NOTAY uses the last max(1,mod(i,mmax)) stored directions at iteration i=0,1,..
@@ -480,8 +476,6 @@ PetscErrorCode KSPFCGSetTruncationType(KSP ksp,KSPFCDTruncationType truncstrat)
 .  truncstrat - the strategy type
 
    Level: intermediate
-
-.keywords: KSP, FCG, truncation
 
 .seealso: KSPFCG, KSPFCGSetTruncationType, KSPFCDTruncationType
 @*/

@@ -3,16 +3,16 @@
 #include <petsc/private/pcpatchimpl.h> /* For new events */
 #include <petsc/private/kspimpl.h>
 
-static const char *const PCSides_Shifted[]    = {"DEFAULT","LEFT","RIGHT","SYMMETRIC","PCSide","PC_",0};
+static const char *const PCSides_Shifted[]    = {"DEFAULT","LEFT","RIGHT","SYMMETRIC","PCSide","PC_",NULL};
 const char *const *const PCSides              = PCSides_Shifted + 1;
-const char *const        PCASMTypes[]         = {"NONE","RESTRICT","INTERPOLATE","BASIC","PCASMType","PC_ASM_",0};
-const char *const        PCGASMTypes[]        = {"NONE","RESTRICT","INTERPOLATE","BASIC","PCGASMType","PC_GASM_",0};
-const char *const        PCCompositeTypes[]   = {"ADDITIVE","MULTIPLICATIVE","SYMMETRIC_MULTIPLICATIVE","SPECIAL","SCHUR","GKB","PCCompositeType","PC_COMPOSITE",0};
-const char *const        PCPARMSGlobalTypes[] = {"RAS","SCHUR","BJ","PCPARMSGlobalType","PC_PARMS_",0};
-const char *const        PCPARMSLocalTypes[]  = {"ILU0","ILUK","ILUT","ARMS","PCPARMSLocalType","PC_PARMS_",0};
-const char *const        PCPatchConstructTypes[] = {"star", "vanka", "pardecomp", "user", "python", "PCPatchSetConstructType", "PC_PATCH_", 0};
+const char *const        PCASMTypes[]         = {"NONE","RESTRICT","INTERPOLATE","BASIC","PCASMType","PC_ASM_",NULL};
+const char *const        PCGASMTypes[]        = {"NONE","RESTRICT","INTERPOLATE","BASIC","PCGASMType","PC_GASM_",NULL};
+const char *const        PCCompositeTypes[]   = {"ADDITIVE","MULTIPLICATIVE","SYMMETRIC_MULTIPLICATIVE","SPECIAL","SCHUR","GKB","PCCompositeType","PC_COMPOSITE",NULL};
+const char *const        PCPARMSGlobalTypes[] = {"RAS","SCHUR","BJ","PCPARMSGlobalType","PC_PARMS_",NULL};
+const char *const        PCPARMSLocalTypes[]  = {"ILU0","ILUK","ILUT","ARMS","PCPARMSLocalType","PC_PARMS_",NULL};
+const char *const        PCPatchConstructTypes[] = {"star", "vanka", "pardecomp", "user", "python", "PCPatchSetConstructType", "PC_PATCH_", NULL};
 
-const char *const        PCFailedReasons[]    = {"FACTOR_NOERROR","FACTOR_STRUCT_ZEROPIVOT","FACTOR_NUMERIC_ZEROPIVOT","FACTOR_OUTMEMORY","FACTOR_OTHER","SUBPC_ERROR",0};
+const char *const        PCFailedReasons[]    = {"FACTOR_NOERROR","FACTOR_STRUCT_ZEROPIVOT","FACTOR_NUMERIC_ZEROPIVOT","FACTOR_OUTMEMORY","FACTOR_OTHER","SUBPC_ERROR",NULL};
 
 static PetscBool PCPackageInitialized = PETSC_FALSE;
 /*@C
@@ -21,7 +21,6 @@ static PetscBool PCPackageInitialized = PETSC_FALSE;
 
   Level: developer
 
-.keywords: Petsc, destroy, package, mathematica
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode  PCFinalizePackage(void)
@@ -42,7 +41,6 @@ PetscErrorCode  PCFinalizePackage(void)
 
   Level: developer
 
-.keywords: PC, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  PCInitializePackage(void)
@@ -57,6 +55,9 @@ PetscErrorCode  PCInitializePackage(void)
   /* Initialize subpackages */
   ierr = PCGAMGInitializePackage();CHKERRQ(ierr);
   ierr = PCBDDCInitializePackage();CHKERRQ(ierr);
+#if defined(PETSC_HAVE_HPDDM)
+  ierr = PCHPDDMInitializePackage();CHKERRQ(ierr);
+#endif
   /* Register Classes */
   ierr = PetscClassIdRegister("Preconditioner",&PC_CLASSID);CHKERRQ(ierr);
   /* Register Constructors */
@@ -65,6 +66,7 @@ PetscErrorCode  PCInitializePackage(void)
   ierr = PetscLogEventRegister("PCSetUp",          PC_CLASSID,&PC_SetUp);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCSetUpOnBlocks",  PC_CLASSID,&PC_SetUpOnBlocks);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCApply",          PC_CLASSID,&PC_Apply);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("PCMatApply",       PC_CLASSID,&PC_MatApply);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCApplyOnBlocks",  PC_CLASSID,&PC_ApplyOnBlocks);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCApplyCoarse",    PC_CLASSID,&PC_ApplyCoarse);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCApplyMultiple",  PC_CLASSID,&PC_ApplyMultiple);CHKERRQ(ierr);
@@ -76,7 +78,6 @@ PetscErrorCode  PCInitializePackage(void)
   ierr = PetscLogEventRegister("PCPATCHComputeOp", PC_CLASSID, &PC_Patch_ComputeOp);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCPATCHSolve",     PC_CLASSID, &PC_Patch_Solve);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCPATCHApply",     PC_CLASSID, &PC_Patch_Apply);CHKERRQ(ierr);
-  ierr = PetscLogEventRegister("PCPATCHScatter",   PC_CLASSID, &PC_Patch_Scatter);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("PCPATCHPrealloc",  PC_CLASSID, &PC_Patch_Prealloc);CHKERRQ(ierr);
 
   ierr = PetscLogEventRegister("KSPSolve_FS_0",    KSP_CLASSID,&KSP_Solve_FS_0);CHKERRQ(ierr);
@@ -87,12 +88,12 @@ PetscErrorCode  PCInitializePackage(void)
   ierr = PetscLogEventRegister("KSPSolve_FS_Schu", KSP_CLASSID,&KSP_Solve_FS_S);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("KSPSolve_FS_Up",   KSP_CLASSID,&KSP_Solve_FS_U);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("KSPSolve_FS_Low",  KSP_CLASSID,&KSP_Solve_FS_L);CHKERRQ(ierr);
+  /* Process Info */
+  {
+    PetscClassId  classids[1];
 
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("pc",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(PC_CLASSID);CHKERRQ(ierr);}
+    classids[0] = PC_CLASSID;
+    ierr = PetscInfoProcessClass("pc", 1, classids);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
@@ -107,18 +108,18 @@ PetscErrorCode  PCInitializePackage(void)
   PetscFunctionReturn(0);
 }
 
-const char *const KSPCGTypes[]                  = {"SYMMETRIC","HERMITIAN","KSPCGType","KSP_CG_",0};
-const char *const KSPGMRESCGSRefinementTypes[]  = {"REFINE_NEVER", "REFINE_IFNEEDED", "REFINE_ALWAYS","KSPGMRESRefinementType","KSP_GMRES_CGS_",0};
-const char *const KSPNormTypes_Shifted[]        = {"DEFAULT","NONE","PRECONDITIONED","UNPRECONDITIONED","NATURAL","KSPNormType","KSP_NORM_",0};
+const char *const KSPCGTypes[]                  = {"SYMMETRIC","HERMITIAN","KSPCGType","KSP_CG_",NULL};
+const char *const KSPGMRESCGSRefinementTypes[]  = {"REFINE_NEVER", "REFINE_IFNEEDED", "REFINE_ALWAYS","KSPGMRESRefinementType","KSP_GMRES_CGS_",NULL};
+const char *const KSPNormTypes_Shifted[]        = {"DEFAULT","NONE","PRECONDITIONED","UNPRECONDITIONED","NATURAL","KSPNormType","KSP_NORM_",NULL};
 const char *const*const KSPNormTypes = KSPNormTypes_Shifted + 1;
 const char *const KSPConvergedReasons_Shifted[] = {"DIVERGED_PC_FAILED","DIVERGED_INDEFINITE_MAT","DIVERGED_NANORINF","DIVERGED_INDEFINITE_PC",
                                                    "DIVERGED_NONSYMMETRIC", "DIVERGED_BREAKDOWN_BICG","DIVERGED_BREAKDOWN",
                                                    "DIVERGED_DTOL","DIVERGED_ITS","DIVERGED_NULL","","CONVERGED_ITERATING",
                                                    "CONVERGED_RTOL_NORMAL","CONVERGED_RTOL","CONVERGED_ATOL","CONVERGED_ITS",
                                                    "CONVERGED_CG_NEG_CURVE","CONVERGED_CG_CONSTRAINED","CONVERGED_STEP_LENGTH",
-                                                   "CONVERGED_HAPPY_BREAKDOWN","CONVERGED_ATOL_NORMAL","KSPConvergedReason","KSP_",0};
+                                                   "CONVERGED_HAPPY_BREAKDOWN","CONVERGED_ATOL_NORMAL","KSPConvergedReason","KSP_",NULL};
 const char *const*KSPConvergedReasons = KSPConvergedReasons_Shifted + 11;
-const char *const KSPFCDTruncationTypes[] = {"STANDARD","NOTAY","KSPFCDTruncationTypes","KSP_FCD_TRUNC_TYPE_",0};
+const char *const KSPFCDTruncationTypes[] = {"STANDARD","NOTAY","KSPFCDTruncationTypes","KSP_FCD_TRUNC_TYPE_",NULL};
 
 static PetscBool KSPPackageInitialized = PETSC_FALSE;
 /*@C
@@ -127,7 +128,6 @@ static PetscBool KSPPackageInitialized = PETSC_FALSE;
 
   Level: developer
 
-.keywords: Petsc, destroy, package, mathematica
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode  KSPFinalizePackage(void)
@@ -149,7 +149,6 @@ PetscErrorCode  KSPFinalizePackage(void)
 
   Level: developer
 
-.keywords: KSP, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  KSPInitializePackage(void)
@@ -175,15 +174,18 @@ PetscErrorCode  KSPInitializePackage(void)
   ierr = PetscLogEventRegister("KSPSetUp",         KSP_CLASSID,&KSP_SetUp);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("KSPSolve",         KSP_CLASSID,&KSP_Solve);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("KSPGMRESOrthog",   KSP_CLASSID,&KSP_GMRESOrthogonalization);CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("ksp",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(KSP_CLASSID);CHKERRQ(ierr);}
-    ierr = PetscStrInList("dm",logList,',',&cls);CHKERRQ(ierr);
-    if (pkg || cls) {ierr = PetscInfoDeactivateClass(DMKSP_CLASSID);CHKERRQ(ierr);}
-    ierr = PetscStrInList("kspguess",logList,',',&cls);CHKERRQ(ierr);
-    if (pkg || cls) {ierr = PetscInfoDeactivateClass(KSPGUESS_CLASSID);CHKERRQ(ierr);}
+  ierr = PetscLogEventRegister("KSPSolveTranspos", KSP_CLASSID,&KSP_SolveTranspose);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("KSPMatSolve",      KSP_CLASSID,&KSP_MatSolve);CHKERRQ(ierr);
+  /* Process Info */
+  {
+    PetscClassId  classids[3];
+
+    classids[0] = KSP_CLASSID;
+    classids[1] = DMKSP_CLASSID;
+    classids[2] = KSPGUESS_CLASSID;
+    ierr = PetscInfoProcessClass("ksp", 1, &classids[0]);CHKERRQ(ierr);
+    ierr = PetscInfoProcessClass("dm", 1, &classids[1]);CHKERRQ(ierr);
+    ierr = PetscInfoProcessClass("kspguess", 1, &classids[2]);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);

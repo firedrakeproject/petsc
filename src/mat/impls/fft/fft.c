@@ -1,4 +1,3 @@
-
 /*
     Provides an interface to the FFT packages.
 */
@@ -23,22 +22,25 @@ PetscErrorCode MatDestroy_FFT(Mat A)
 /*@C
       MatCreateFFT - Creates a matrix object that provides FFT via an external package
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 +   comm - MPI communicator
 .   ndim - the ndim-dimensional transform
 .   dim - array of size ndim, dim[i] contains the vector length in the i-dimension
--   type - package type, e.g., FFTW or FFTCU
+-   type - package type, e.g., FFTW or MATSEQCUFFT
 
    Output Parameter:
 .   A  - the matrix
 
-  Options Database Keys:
-+ -mat_fft_type - set FFT type
+   Options Database Keys:
+.   -mat_fft_type - set FFT type fft or seqcufft
+
+   Note: this serves as a base class for all FFT marix classes, currently MATFFTW or MATSEQCUFFT
 
    Level: intermediate
 
+.seealso: MatCreateVecsFFTW()
 @*/
 PetscErrorCode MatCreateFFT(MPI_Comm comm,PetscInt ndim,const PetscInt dim[],MatType mattype,Mat *A)
 {
@@ -62,7 +64,7 @@ PetscErrorCode MatCreateFFT(MPI_Comm comm,PetscInt ndim,const PetscInt dim[],Mat
   }
 
   ierr = PetscMalloc1(ndim,&fft->dim);CHKERRQ(ierr);
-  ierr = PetscMemcpy(fft->dim,dim,ndim*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArraycpy(fft->dim,dim,ndim);CHKERRQ(ierr);
 
   fft->ndim = ndim;
   fft->n    = PETSC_DECIDE;

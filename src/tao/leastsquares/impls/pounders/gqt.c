@@ -88,7 +88,7 @@ static PetscErrorCode estsv(PetscInt n, PetscReal *r, PetscInt ldr, PetscReal *s
 /*
 c     ***********
 c
-c     Subroutine dgqt
+c     Subroutine gqt
 c
 c     Given an n by n symmetric matrix A, an n-vector b, and a
 c     positive number delta, this subroutine determines a vector
@@ -116,7 +116,7 @@ c            f(x) <= ((1 - rtol)**2)*f(xsol)
 c
 c     The subroutine statement is
 c
-c       subroutine dgqt(n,a,lda,b,delta,rtol,atol,itmax,
+c       subroutine gqt(n,a,lda,b,delta,rtol,atol,itmax,
 c                        par,f,x,info,z,wa1,wa2)
 c
 c     where
@@ -315,6 +315,7 @@ PetscErrorCode gqt(PetscInt n, PetscReal *a, PetscInt lda, PetscReal *b,
       PetscStackCallBLAS("LAPACKtrtrs",LAPACKtrtrs_("U","T","N",&blasn,&blas1,a,&blaslda,wa2,&blasn,&blasinfo));
       rxnorm = BLASnrm2_(&blasn, wa2, &blas1);
       PetscStackCallBLAS("LAPACKtrtrs",LAPACKtrtrs_("U","N","N",&blasn,&blas1,a,&blaslda,wa2,&blasn,&blasinfo));
+
       PetscStackCallBLAS("BLAScopy",BLAScopy_(&blasn, wa2, &blas1, x, &blas1));
       PetscStackCallBLAS("BLASscal",BLASscal_(&blasn, &minusone, x, &blas1));
       xnorm = BLASnrm2_(&blasn, x, &blas1);

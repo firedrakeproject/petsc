@@ -269,7 +269,7 @@ static PetscErrorCode MatCreateSubMatrices_ADA(Mat A,PetscInt n, IS *irow,IS *ic
 
   PetscFunctionBegin;
   if (scall == MAT_INITIAL_MATRIX) {
-    ierr = PetscCalloc1(n+1,B );CHKERRQ(ierr);
+    ierr = PetscCalloc1(n+1,B);CHKERRQ(ierr);
   }
   for ( i=0; i<n; i++ ) {
     ierr = MatCreateSubMatrix_ADA(A,irow[i],icol[i],scall,&(*B)[i]);CHKERRQ(ierr);
@@ -355,7 +355,7 @@ PETSC_INTERN PetscErrorCode MatConvert_ADA(Mat mat,MatType newtype,Mat *NewMat)
     ierr = MatAssemblyBegin(*NewMat,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
     ierr = MatAssemblyEnd(*NewMat,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
     ierr = VecDestroy(&X);CHKERRQ(ierr);
-  } else SETERRQ(PETSC_COMM_SELF,1,"No support to convert objects to that type");
+  } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_PLIB,"No support to convert objects to that type");
   PetscFunctionReturn(0);
 }
 

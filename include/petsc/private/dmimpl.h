@@ -6,7 +6,7 @@
 #include <petscdm.h>
 #include <petsc/private/petscimpl.h>
 #include <petsc/private/petscdsimpl.h>
-#include <petsc/private/isimpl.h>     /* for inline access to atlasOff */
+#include <petsc/private/sectionimpl.h>     /* for inline access to atlasOff */
 
 PETSC_EXTERN PetscBool DMRegisterAllCalled;
 PETSC_EXTERN PetscErrorCode DMRegisterAll(void);
@@ -19,7 +19,7 @@ struct _DMOps {
   PetscErrorCode (*clone)(DM,DM*);
   PetscErrorCode (*setfromoptions)(PetscOptionItems*,DM);
   PetscErrorCode (*setup)(DM);
-  PetscErrorCode (*createdefaultsection)(DM);
+  PetscErrorCode (*createlocalsection)(DM);
   PetscErrorCode (*createdefaultconstraints)(DM);
   PetscErrorCode (*createglobalvector)(DM,Vec*);
   PetscErrorCode (*createlocalvector)(DM,Vec*);
@@ -33,9 +33,8 @@ struct _DMOps {
   PetscErrorCode (*createinterpolation)(DM,DM,Mat*,Vec*);
   PetscErrorCode (*createrestriction)(DM,DM,Mat*);
   PetscErrorCode (*createmassmatrix)(DM,DM,Mat*);
-  PetscErrorCode (*getaggregates)(DM,DM,Mat*);
   PetscErrorCode (*hascreateinjection)(DM,PetscBool*);
-  PetscErrorCode (*getinjection)(DM,DM,Mat*);
+  PetscErrorCode (*createinjection)(DM,DM,Mat*);
 
   PetscErrorCode (*refine)(DM,MPI_Comm,DM*);
   PetscErrorCode (*coarsen)(DM,MPI_Comm,DM*);
@@ -72,6 +71,7 @@ struct _DMOps {
   PetscErrorCode (*projectfunctionlabellocal)(DM,PetscReal,DMLabel,PetscInt,const PetscInt[],PetscInt,const PetscInt[],PetscErrorCode(**)(PetscInt,PetscReal,const PetscReal[],PetscInt,PetscScalar *,void *),void **,InsertMode,Vec);
   PetscErrorCode (*projectfieldlocal)(DM,PetscReal,Vec,void(**)(PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],PetscReal,const PetscReal[],PetscInt,const PetscScalar[],PetscScalar[]),InsertMode,Vec);
   PetscErrorCode (*projectfieldlabellocal)(DM,PetscReal,DMLabel,PetscInt,const PetscInt[],PetscInt,const PetscInt[],Vec,void(**)(PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],PetscReal,const PetscReal[],PetscInt,const PetscScalar[],PetscScalar[]),InsertMode,Vec);
+  PetscErrorCode (*projectbdfieldlabellocal)(DM,PetscReal,DMLabel,PetscInt,const PetscInt[],PetscInt,const PetscInt[],Vec,void(**)(PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],PetscReal,const PetscReal[],const PetscReal[],PetscInt,const PetscScalar[],PetscScalar[]),InsertMode,Vec);
   PetscErrorCode (*computel2diff)(DM,PetscReal,PetscErrorCode(**)(PetscInt, PetscReal,const PetscReal [], PetscInt, PetscScalar *, void *), void **, Vec, PetscReal *);
   PetscErrorCode (*computel2gradientdiff)(DM,PetscReal,PetscErrorCode(**)(PetscInt,PetscReal,const PetscReal [],const PetscReal[],PetscInt, PetscScalar *,void *),void **,Vec,const PetscReal[],PetscReal *);
   PetscErrorCode (*computel2fielddiff)(DM,PetscReal,PetscErrorCode(**)(PetscInt, PetscReal,const PetscReal [], PetscInt, PetscScalar *, void *), void **, Vec, PetscReal *);
@@ -148,12 +148,6 @@ struct _n_DMLabelLink {
 };
 typedef struct _n_DMLabelLink *DMLabelLink;
 
-struct _n_DMLabelLinkList {
-  PetscInt refct;
-  DMLabelLink next;
-};
-typedef struct _n_DMLabelLinkList *DMLabelLinkList;
-
 typedef struct _n_Boundary *DMBoundary;
 
 struct _n_Boundary {
@@ -169,11 +163,14 @@ typedef struct _n_Field {
 } RegionField;
 
 typedef struct _n_Space {
-  PetscDS ds;
-  DMLabel label;
+  PetscDS ds;     /* Approximation space in this domain */
+  DMLabel label;  /* Label defining the domain of definition of the discretization */
+  IS      fields; /* Map from DS field numbers to original field numbers in the DM */
 } DMSpace;
 
-PETSC_EXTERN PetscErrorCode DMDestroyLabelLinkList(DM);
+PETSC_INTERN PetscErrorCode DMDestroyLabelLinkList_Internal(DM);
+
+#define MAXDMMONITORS 5
 
 struct _p_DM {
   PETSCHEADER(struct _DMOps);
@@ -182,11 +179,11 @@ struct _p_DM {
   DMNamedVecLink          namedglobal;
   DMNamedVecLink          namedlocal;
   DMWorkLink              workin,workout;
-  DMLabelLinkList         labels;            /* Linked list of labels */
+  DMLabelLink             labels;            /* Linked list of labels */
   DMLabel                 depthLabel;        /* Optimized access to depth label */
+  DMLabel                 celltypeLabel;     /* Optimized access to celltype label */
   void                    *ctx;    /* a user context */
   PetscErrorCode          (*ctxdestroy)(void**);
-  Vec                     x;       /* location at which the functions/Jacobian are computed */
   ISColoringType          coloringtype;
   MatFDColoring           fd;
   VecType                 vectype;  /* type of vector created with DMCreateLocalVector() and DMCreateGlobalVector() */
@@ -212,20 +209,27 @@ struct _p_DM {
   /* Flexible communication */
   PetscSF                 sfMigration;          /* SF for point distribution created during distribution */
   PetscSF                 sf;                   /* SF for parallel point overlap */
-  PetscSF                 defaultSF;            /* SF for parallel dof overlap using default section */
+  PetscSF                 sectionSF;            /* SF for parallel dof overlap using section */
   PetscSF                 sfNatural;            /* SF mapping to the "natural" ordering */
   PetscBool               useNatural;           /* Create the natural SF */
   /* Allows a non-standard data layout */
   PetscBool               adjacency[2];         /* [use cone() or support() first, use the transitive closure] */
-  PetscSection            defaultSection;       /* Layout for local vectors */
-  PetscSection            defaultGlobalSection; /* Layout for global vectors */
+  PetscSection            localSection;         /* Layout for local vectors */
+  PetscSection            globalSection;        /* Layout for global vectors */
   PetscLayout             map;
   /* Constraints */
   PetscSection            defaultConstraintSection;
   Mat                     defaultConstraintMat;
+  /* Basis transformation */
+  DM                      transformDM;          /* Layout for basis transformation */
+  Vec                     transform;            /* Basis transformation matrices */
+  void                   *transformCtx;         /* Basis transformation context */
+  PetscErrorCode        (*transformSetUp)(DM, void *);
+  PetscErrorCode        (*transformDestroy)(DM, void *);
+  PetscErrorCode        (*transformGetMatrix)(DM, const PetscReal[], PetscBool, const PetscScalar **, void *);
   /* Coordinates */
   PetscInt                dimEmbed;             /* The dimension of the embedding space */
-  DM                      coordinateDM;         /* Layout for coordinates (default section) */
+  DM                      coordinateDM;         /* Layout for coordinates */
   Vec                     coordinates;          /* Coordinate values in global vector */
   Vec                     coordinatesLocal;     /* Coordinate values in local  vector */
   PetscBool               periodic;             /* Is the DM periodic? */
@@ -246,6 +250,10 @@ struct _p_DM {
   DM                      dmBC;                 /* The DM with boundary conditions in the global DM */
   PetscInt                outputSequenceNum;    /* The current sequence number for output */
   PetscReal               outputSequenceVal;    /* The current sequence value for output */
+  PetscErrorCode        (*monitor[MAXDMMONITORS])(DM, void *);
+  PetscErrorCode        (*monitordestroy[MAXDMMONITORS])(void **);
+  void                   *monitorcontext[MAXDMMONITORS];
+  PetscInt                numbermonitors;
 
   PetscObject             dmksp,dmsnes,dmts;
 };
@@ -258,6 +266,9 @@ PETSC_EXTERN PetscLogEvent DM_Coarsen;
 PETSC_EXTERN PetscLogEvent DM_Refine;
 PETSC_EXTERN PetscLogEvent DM_CreateInterpolation;
 PETSC_EXTERN PetscLogEvent DM_CreateRestriction;
+PETSC_EXTERN PetscLogEvent DM_CreateInjection;
+PETSC_EXTERN PetscLogEvent DM_CreateMatrix;
+PETSC_EXTERN PetscLogEvent DM_Load;
 
 PETSC_EXTERN PetscErrorCode DMCreateGlobalVector_Section_Private(DM,Vec*);
 PETSC_EXTERN PetscErrorCode DMCreateLocalVector_Section_Private(DM,Vec*);
@@ -342,14 +353,14 @@ PETSC_STATIC_INLINE PetscErrorCode DMGetLocalOffset_Private(DM dm, PetscInt poin
     PetscInt       dof;
     PetscErrorCode ierr;
     *start = *end = 0; /* Silence overzealous compiler warning */
-    if (!dm->defaultSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a default Section, see DMSetDefaultSection()");
-    ierr = PetscSectionGetOffset(dm->defaultSection, point, start);CHKERRQ(ierr);
-    ierr = PetscSectionGetDof(dm->defaultSection, point, &dof);CHKERRQ(ierr);
+    if (!dm->localSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a local section, see DMSetLocalSection()");
+    ierr = PetscSectionGetOffset(dm->localSection, point, start);CHKERRQ(ierr);
+    ierr = PetscSectionGetDof(dm->localSection, point, &dof);CHKERRQ(ierr);
     *end = *start + dof;
   }
 #else
   {
-    const PetscSection s = dm->defaultSection;
+    const PetscSection s = dm->localSection;
     *start = s->atlasOff[point - s->pStart];
     *end   = *start + s->atlasDof[point - s->pStart];
   }
@@ -365,14 +376,14 @@ PETSC_STATIC_INLINE PetscErrorCode DMGetLocalFieldOffset_Private(DM dm, PetscInt
     PetscInt       dof;
     PetscErrorCode ierr;
     *start = *end = 0; /* Silence overzealous compiler warning */
-    if (!dm->defaultSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a default Section, see DMSetDefaultSection()");
-    ierr = PetscSectionGetFieldOffset(dm->defaultSection, point, field, start);CHKERRQ(ierr);
-    ierr = PetscSectionGetFieldDof(dm->defaultSection, point, field, &dof);CHKERRQ(ierr);
+    if (!dm->localSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a local section, see DMSetLocalSection()");
+    ierr = PetscSectionGetFieldOffset(dm->localSection, point, field, start);CHKERRQ(ierr);
+    ierr = PetscSectionGetFieldDof(dm->localSection, point, field, &dof);CHKERRQ(ierr);
     *end = *start + dof;
   }
 #else
   {
-    const PetscSection s = dm->defaultSection->field[field];
+    const PetscSection s = dm->localSection->field[field];
     *start = s->atlasOff[point - s->pStart];
     *end   = *start + s->atlasDof[point - s->pStart];
   }
@@ -388,16 +399,16 @@ PETSC_STATIC_INLINE PetscErrorCode DMGetGlobalOffset_Private(DM dm, PetscInt poi
     PetscErrorCode ierr;
     PetscInt       dof,cdof;
     *start = *end = 0; /* Silence overzealous compiler warning */
-    if (!dm->defaultSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a default Section, see DMSetDefaultSection()");
-    if (!dm->defaultGlobalSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a default global Section. It will be created automatically by DMGetDefaultGlobalSection()");
-    ierr = PetscSectionGetOffset(dm->defaultGlobalSection, point, start);CHKERRQ(ierr);
-    ierr = PetscSectionGetDof(dm->defaultGlobalSection, point, &dof);CHKERRQ(ierr);
-    ierr = PetscSectionGetConstraintDof(dm->defaultGlobalSection, point, &cdof);CHKERRQ(ierr);
+    if (!dm->localSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a local section, see DMSetLocalSection()");
+    if (!dm->globalSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a global section. It will be created automatically by DMGetGlobalSection()");
+    ierr = PetscSectionGetOffset(dm->globalSection, point, start);CHKERRQ(ierr);
+    ierr = PetscSectionGetDof(dm->globalSection, point, &dof);CHKERRQ(ierr);
+    ierr = PetscSectionGetConstraintDof(dm->globalSection, point, &cdof);CHKERRQ(ierr);
     *end = *start + dof - cdof + (dof < 0 ? 1 : 0);
   }
 #else
   {
-    const PetscSection s    = dm->defaultGlobalSection;
+    const PetscSection s    = dm->globalSection;
     const PetscInt     dof  = s->atlasDof[point - s->pStart];
     const PetscInt     cdof = s->bc ? s->bc->atlasDof[point - s->bc->pStart] : 0;
     *start = s->atlasOff[point - s->pStart];
@@ -415,25 +426,25 @@ PETSC_STATIC_INLINE PetscErrorCode DMGetGlobalFieldOffset_Private(DM dm, PetscIn
     PetscInt       loff, lfoff, fdof, fcdof, ffcdof, f;
     PetscErrorCode ierr;
     *start = *end = 0; /* Silence overzealous compiler warning */
-    if (!dm->defaultSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a default Section, see DMSetDefaultSection()");
-    if (!dm->defaultGlobalSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a default global Section. It will be crated automatically by DMGetDefaultGlobalSection()");
-    ierr = PetscSectionGetOffset(dm->defaultGlobalSection, point, start);CHKERRQ(ierr);
-    ierr = PetscSectionGetOffset(dm->defaultSection, point, &loff);CHKERRQ(ierr);
-    ierr = PetscSectionGetFieldOffset(dm->defaultSection, point, field, &lfoff);CHKERRQ(ierr);
-    ierr = PetscSectionGetFieldDof(dm->defaultSection, point, field, &fdof);CHKERRQ(ierr);
-    ierr = PetscSectionGetFieldConstraintDof(dm->defaultSection, point, field, &fcdof);CHKERRQ(ierr);
+    if (!dm->localSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a local section, see DMSetLocalSection()");
+    if (!dm->globalSection) SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_ARG_WRONG, "DM must have a global section. It will be crated automatically by DMGetGlobalSection()");
+    ierr = PetscSectionGetOffset(dm->globalSection, point, start);CHKERRQ(ierr);
+    ierr = PetscSectionGetOffset(dm->localSection, point, &loff);CHKERRQ(ierr);
+    ierr = PetscSectionGetFieldOffset(dm->localSection, point, field, &lfoff);CHKERRQ(ierr);
+    ierr = PetscSectionGetFieldDof(dm->localSection, point, field, &fdof);CHKERRQ(ierr);
+    ierr = PetscSectionGetFieldConstraintDof(dm->localSection, point, field, &fcdof);CHKERRQ(ierr);
     *start = *start < 0 ? *start - (lfoff-loff) : *start + lfoff-loff;
     for (f = 0; f < field; ++f) {
-      ierr = PetscSectionGetFieldConstraintDof(dm->defaultSection, point, f, &ffcdof);CHKERRQ(ierr);
+      ierr = PetscSectionGetFieldConstraintDof(dm->localSection, point, f, &ffcdof);CHKERRQ(ierr);
       *start = *start < 0 ? *start + ffcdof : *start - ffcdof;
     }
     *end   = *start < 0 ? *start - (fdof-fcdof) : *start + fdof-fcdof;
   }
 #else
   {
-    const PetscSection s     = dm->defaultSection;
-    const PetscSection fs    = dm->defaultSection->field[field];
-    const PetscSection gs    = dm->defaultGlobalSection;
+    const PetscSection s     = dm->localSection;
+    const PetscSection fs    = dm->localSection->field[field];
+    const PetscSection gs    = dm->globalSection;
     const PetscInt     loff  = s->atlasOff[point - s->pStart];
     const PetscInt     goff  = gs->atlasOff[point - s->pStart];
     const PetscInt     lfoff = fs->atlasOff[point - s->pStart];
@@ -442,7 +453,7 @@ PETSC_STATIC_INLINE PetscErrorCode DMGetGlobalFieldOffset_Private(DM dm, PetscIn
     PetscInt           ffcdof = 0, f;
 
     for (f = 0; f < field; ++f) {
-      const PetscSection ffs = dm->defaultSection->field[f];
+      const PetscSection ffs = dm->localSection->field[f];
       ffcdof += ffs->bc ? ffs->bc->atlasDof[point - ffs->bc->pStart] : 0;
     }
     *start = goff + (goff < 0 ? loff-lfoff + ffcdof : lfoff-loff - ffcdof);
@@ -451,5 +462,12 @@ PETSC_STATIC_INLINE PetscErrorCode DMGetGlobalFieldOffset_Private(DM dm, PetscIn
 #endif
   PetscFunctionReturn(0);
 }
+
+PETSC_EXTERN PetscErrorCode DMGetBasisTransformDM_Internal(DM, DM *);
+PETSC_EXTERN PetscErrorCode DMGetBasisTransformVec_Internal(DM, Vec *);
+PETSC_INTERN PetscErrorCode DMConstructBasisTransform_Internal(DM);
+
+PETSC_INTERN PetscErrorCode DMGetLocalBoundingIndices_DMDA(DM, PetscReal[], PetscReal[]);
+PETSC_INTERN PetscErrorCode DMSetField_Internal(DM, PetscInt, DMLabel, PetscObject);
 
 #endif

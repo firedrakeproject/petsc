@@ -4,12 +4,14 @@
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
 #define pcgamggettype_                PCGAMGGETTYPE
 #define pcgamgsettype_                PCGAMGSETTYPE
+#define pcgamgsetesteigksptype_       PCGAMGSETESTEIGKSPTYPE
 #elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)
 #define pcgamggettype_                pcgamggettype
 #define pcgamgsettype_                pcgamgsettype
+#define pcgamgsetesteigksptype_       pcgamgsetesteigksptype
 #endif
 
-PETSC_EXTERN void PETSC_STDCALL pcgamggettype_(PC *pc,char* name PETSC_MIXED_LEN(len),PetscErrorCode *ierr PETSC_END_LEN(len))
+PETSC_EXTERN void pcgamggettype_(PC *pc,char* name,PetscErrorCode *ierr,PETSC_FORTRAN_CHARLEN_T len)
 {
   const char *tname;
 
@@ -19,12 +21,21 @@ PETSC_EXTERN void PETSC_STDCALL pcgamggettype_(PC *pc,char* name PETSC_MIXED_LEN
 
 }
 
-PETSC_EXTERN void PETSC_STDCALL pcgamgsettype_(PC *pc,char* type PETSC_MIXED_LEN(len),PetscErrorCode *ierr PETSC_END_LEN(len))
+PETSC_EXTERN void pcgamgsettype_(PC *pc,char* type,PetscErrorCode *ierr,PETSC_FORTRAN_CHARLEN_T len)
 {
   char *t;
 
   FIXCHAR(type,len,t);
   *ierr = PCGAMGSetType(*pc,t);if (*ierr) return;
+  FREECHAR(type,t);
+}
+
+PETSC_EXTERN void pcgamgsetesteigksptype_(PC *pc,char* type,PetscErrorCode *ierr,PETSC_FORTRAN_CHARLEN_T len)
+{
+  char *t;
+
+  FIXCHAR(type,len,t);
+  *ierr = PCGAMGSetEstEigKSPType(*pc,t);if (*ierr) return;
   FREECHAR(type,t);
 }
 

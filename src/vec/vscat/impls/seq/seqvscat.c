@@ -11,7 +11,6 @@
 #include <../src/vec/vec/impls/seq/seqcuda/cudavecimpl.h>
 #endif
 
-#if defined(PETSC_USE_DEBUG)
 /*
      Checks if any indices are less than zero and generates an error
 */
@@ -20,13 +19,13 @@ static PetscErrorCode VecScatterCheckIndices_Private(PetscInt nmax,PetscInt n,co
   PetscInt i;
 
   PetscFunctionBegin;
+  if (!PetscDefined(USE_DEBUG)) PetscFunctionReturn(0);
   for (i=0; i<n; i++) {
     if (idx[i] < 0)     SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Negative index %D at %D location",idx[i],i);
     if (idx[i] >= nmax) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Index %D at %D location greater than max %D",idx[i],i,nmax);
   }
   PetscFunctionReturn(0);
 }
-#endif
 
 PetscErrorCode VecScatterDestroy_SGToSG(VecScatter ctx)
 {
@@ -34,8 +33,8 @@ PetscErrorCode VecScatterDestroy_SGToSG(VecScatter ctx)
 
   PetscFunctionBegin;
   ierr = PetscFree2(((VecScatter_Seq_General*)ctx->todata)->vslots,((VecScatter_Seq_General*)ctx->fromdata)->vslots);CHKERRQ(ierr);
-  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->fromdata)->memcpy_plan);CHKERRQ(ierr);;
-  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->todata)->memcpy_plan);CHKERRQ(ierr);;
+  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->fromdata)->memcpy_plan);CHKERRQ(ierr);
+  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->todata)->memcpy_plan);CHKERRQ(ierr);
   ierr = PetscFree2(ctx->todata,ctx->fromdata);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -46,7 +45,7 @@ PetscErrorCode VecScatterDestroy_SGToSS(VecScatter ctx)
 
   PetscFunctionBegin;
   ierr = PetscFree(((VecScatter_Seq_General*)ctx->fromdata)->vslots);CHKERRQ(ierr);
-  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->fromdata)->memcpy_plan);CHKERRQ(ierr);;
+  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->fromdata)->memcpy_plan);CHKERRQ(ierr);
   ierr = PetscFree2(ctx->todata,ctx->fromdata);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -57,7 +56,7 @@ PetscErrorCode VecScatterDestroy_SSToSG(VecScatter ctx)
 
   PetscFunctionBegin;
   ierr = PetscFree(((VecScatter_Seq_General*)ctx->todata)->vslots);CHKERRQ(ierr);
-  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->todata)->memcpy_plan);CHKERRQ(ierr);;
+  ierr = VecScatterMemcpyPlanDestroy(&((VecScatter_Seq_General*)ctx->todata)->memcpy_plan);CHKERRQ(ierr);
   ierr = PetscFree2(ctx->todata,ctx->fromdata);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -83,13 +82,14 @@ PetscErrorCode VecScatterBegin_SGToSG(VecScatter ctx,Vec x,Vec y,InsertMode addv
   PetscInt               i,n = gen_from->n,*fslots,*tslots;
   PetscScalar            *xv,*yv;
 #if defined(PETSC_HAVE_CUDA)
-  PetscBool              is_veccuda;
+  PetscBool              is_veccuda,isy_veccuda;
 #endif
 
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_CUDA)
   ierr = PetscObjectTypeCompareAny((PetscObject)x,&is_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
-  if (is_veccuda && x->valid_GPU_array == PETSC_OFFLOAD_GPU) {
+  ierr = PetscObjectTypeCompareAny((PetscObject)y,&isy_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
+  if (is_veccuda && isy_veccuda && x->offloadmask == PETSC_OFFLOAD_GPU) {
     /* create the scatter indices if not done already */
     if (!ctx->spptr) {
       PetscInt tofirst = 0,tostep = 0,fromfirst = 0,fromstep = 0;
@@ -134,13 +134,14 @@ PetscErrorCode VecScatterBegin_SGToSS_Stride1(VecScatter ctx,Vec x,Vec y,InsertM
   PetscInt               first = gen_to->first;
   PetscScalar            *xv,*yv;
 #if defined(PETSC_HAVE_CUDA)
-  PetscBool              is_veccuda;
+  PetscBool              is_veccuda,isy_veccuda;
 #endif
 
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_CUDA)
   ierr = PetscObjectTypeCompareAny((PetscObject)x,&is_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
-  if (is_veccuda && x->valid_GPU_array == PETSC_OFFLOAD_GPU) {
+  ierr = PetscObjectTypeCompareAny((PetscObject)y,&isy_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
+  if (is_veccuda && isy_veccuda && x->offloadmask == PETSC_OFFLOAD_GPU) {
     /* create the scatter indices if not done already */
     if (!ctx->spptr) {
       PetscInt tofirst = first,tostep = 1,fromfirst = 0,fromstep = 0;
@@ -189,13 +190,14 @@ PetscErrorCode VecScatterBegin_SGToSS(VecScatter ctx,Vec x,Vec y,InsertMode addv
   PetscInt               first = gen_to->first,step = gen_to->step;
   PetscScalar            *xv,*yv;
 #if defined(PETSC_HAVE_CUDA)
-  PetscBool              is_veccuda;
+  PetscBool              is_veccuda,isy_veccuda;
 #endif
 
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_CUDA)
   ierr = PetscObjectTypeCompareAny((PetscObject)x,&is_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
-  if (is_veccuda && x->valid_GPU_array == PETSC_OFFLOAD_GPU) {
+  ierr = PetscObjectTypeCompareAny((PetscObject)y,&isy_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
+  if (is_veccuda && isy_veccuda && x->offloadmask == PETSC_OFFLOAD_GPU) {
     /* create the scatter indices if not done already */
     if (!ctx->spptr) {
       PetscInt tofirst = first,tostep = step,fromfirst = 0,fromstep = 0;
@@ -246,13 +248,14 @@ PetscErrorCode VecScatterBegin_SSToSG_Stride1(VecScatter ctx,Vec x,Vec y,InsertM
   PetscInt               first = gen_from->first;
   PetscScalar            *xv,*yv;
 #if defined(PETSC_HAVE_CUDA)
-  PetscBool              is_veccuda;
+  PetscBool              is_veccuda,isy_veccuda;
 #endif
 
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_CUDA)
   ierr = PetscObjectTypeCompareAny((PetscObject)x,&is_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
-  if (is_veccuda && x->valid_GPU_array == PETSC_OFFLOAD_GPU) {
+  ierr = PetscObjectTypeCompareAny((PetscObject)y,&isy_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
+  if (is_veccuda && isy_veccuda && x->offloadmask == PETSC_OFFLOAD_GPU) {
     /* create the scatter indices if not done already */
     if (!ctx->spptr) {
       PetscInt tofirst = 0,tostep = 0,fromfirst = first,fromstep = 1;
@@ -301,13 +304,14 @@ PetscErrorCode VecScatterBegin_SSToSG(VecScatter ctx,Vec x,Vec y,InsertMode addv
   PetscInt               first = gen_from->first,step = gen_from->step;
   PetscScalar            *xv,*yv;
 #if defined(PETSC_HAVE_CUDA)
-  PetscBool              is_veccuda;
+  PetscBool              is_veccuda,isy_veccuda;
 #endif
 
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_CUDA)
   ierr = PetscObjectTypeCompareAny((PetscObject)x,&is_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
-  if (is_veccuda && x->valid_GPU_array == PETSC_OFFLOAD_GPU) {
+  ierr = PetscObjectTypeCompareAny((PetscObject)y,&isy_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
+  if (is_veccuda && isy_veccuda && x->offloadmask == PETSC_OFFLOAD_GPU) {
     /* create the scatter indices if not done already */
     if (!ctx->spptr) {
       PetscInt tofirst = 0,tostep = 0,fromfirst = first,fromstep = step;
@@ -379,13 +383,14 @@ PetscErrorCode VecScatterBegin_SSToSS(VecScatter ctx,Vec x,Vec y,InsertMode addv
   PetscInt              from_first = gen_from->first,from_step = gen_from->step;
   PetscScalar           *xv,*yv;
 #if defined(PETSC_HAVE_CUDA)
-  PetscBool              is_veccuda;
+  PetscBool              is_veccuda,isy_veccuda;
 #endif
 
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_CUDA)
   ierr = PetscObjectTypeCompareAny((PetscObject)x,&is_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
-  if (is_veccuda && x->valid_GPU_array == PETSC_OFFLOAD_GPU) {
+  ierr = PetscObjectTypeCompareAny((PetscObject)y,&isy_veccuda,VECSEQCUDA,VECMPICUDA,VECCUDA,"");CHKERRQ(ierr);
+  if (is_veccuda && isy_veccuda && x->offloadmask == PETSC_OFFLOAD_GPU) {
     /* create the scatter indices if not done already */
     if (!ctx->spptr) {
       PetscInt *tslots = 0,*fslots = 0;
@@ -407,7 +412,7 @@ PetscErrorCode VecScatterBegin_SSToSS(VecScatter ctx,Vec x,Vec y,InsertMode addv
 
   if (addv == INSERT_VALUES) {
     if (to_step == 1 && from_step == 1) {
-      ierr = PetscMemcpy(yv+to_first,xv+from_first,n*sizeof(PetscScalar));CHKERRQ(ierr);
+      ierr = PetscArraycpy(yv+to_first,xv+from_first,n);CHKERRQ(ierr);
     } else  {
       for (i=0; i<n; i++) yv[to_first + i*to_step] = xv[from_first+i*from_step];
     }
@@ -454,14 +459,14 @@ PetscErrorCode VecScatterCopy_SGToSG(VecScatter in,VecScatter out)
   out_to->format               = in_to->format;
   out_to->nonmatching_computed = PETSC_FALSE;
   out_to->slots_nonmatching    = 0;
-  ierr = PetscMemcpy(out_to->vslots,in_to->vslots,(out_to->n)*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArraycpy(out_to->vslots,in_to->vslots,out_to->n);CHKERRQ(ierr);
   ierr = VecScatterMemcpyPlanCopy(&in_to->memcpy_plan,&out_to->memcpy_plan);CHKERRQ(ierr);
 
   out_from->n                    = in_from->n;
   out_from->format               = in_from->format;
   out_from->nonmatching_computed = PETSC_FALSE;
   out_from->slots_nonmatching    = 0;
-  ierr = PetscMemcpy(out_from->vslots,in_from->vslots,(out_from->n)*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArraycpy(out_from->vslots,in_from->vslots,out_from->n);CHKERRQ(ierr);
   ierr = VecScatterMemcpyPlanCopy(&in_from->memcpy_plan,&out_from->memcpy_plan);CHKERRQ(ierr);
 
   out->todata   = (void*)out_to;
@@ -517,7 +522,7 @@ PetscErrorCode VecScatterCopy_SGToSS(VecScatter in,VecScatter out)
   out_from->format               = in_from->format;
   out_from->nonmatching_computed = PETSC_FALSE;
   out_from->slots_nonmatching    = 0;
-  ierr = PetscMemcpy(out_from->vslots,in_from->vslots,(out_from->n)*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArraycpy(out_from->vslots,in_from->vslots,out_from->n);CHKERRQ(ierr);
   ierr = VecScatterMemcpyPlanCopy(&in_from->memcpy_plan,&out_from->memcpy_plan);CHKERRQ(ierr);
 
   out->todata   = (void*)out_to;
@@ -633,8 +638,8 @@ PetscErrorCode VecScatterMemcpyPlanCreate_SGToSG(PetscInt bs,VecScatter_Seq_Gene
       j = 0;  /* j-th copy */
       for (i=0; i<n-1; i++) {
         if (to_slots[i]+bs != to_slots[i+1] || from_slots[i]+bs != from_slots[i+1]) {
-          to->memcpy_plan.copy_lengths[j]    = sizeof(PetscScalar)*(to_slots[i]+bs-to->memcpy_plan.copy_starts[j]);
-          from->memcpy_plan.copy_lengths[j]  = sizeof(PetscScalar)*(from_slots[i]+bs-from->memcpy_plan.copy_starts[j]);
+          to->memcpy_plan.copy_lengths[j]    = to_slots[i]+bs-to->memcpy_plan.copy_starts[j];
+          from->memcpy_plan.copy_lengths[j]  = from_slots[i]+bs-from->memcpy_plan.copy_starts[j];
           to->memcpy_plan.copy_starts[j+1]   = to_slots[i+1];
           from->memcpy_plan.copy_starts[j+1] = from_slots[i+1];
           j++;
@@ -643,8 +648,8 @@ PetscErrorCode VecScatterMemcpyPlanCreate_SGToSG(PetscInt bs,VecScatter_Seq_Gene
     }
 
     /* set up copy_lengths[] of the last copy */
-    to->memcpy_plan.copy_lengths[n_copies-1]   = sizeof(PetscScalar)*(to_slots[n-1]+bs-to->memcpy_plan.copy_starts[n_copies-1]);
-    from->memcpy_plan.copy_lengths[n_copies-1] = sizeof(PetscScalar)*(from_slots[n-1]+bs-from->memcpy_plan.copy_starts[n_copies-1]);
+    to->memcpy_plan.copy_lengths[n_copies-1]   = to_slots[n-1]+bs-to->memcpy_plan.copy_starts[n_copies-1];
+    from->memcpy_plan.copy_lengths[n_copies-1] = from_slots[n-1]+bs-from->memcpy_plan.copy_starts[n_copies-1];
 
     /* check if to and from have the same copy_starts[] values */
     same_copy_starts = PETSC_TRUE;
@@ -690,17 +695,13 @@ PetscErrorCode VecScatterSetUp_Seq(VecScatter ctx)
     ierr  = PetscMalloc2(1,&to,1,&from);CHKERRQ(ierr);
     ierr  = PetscMalloc2(nx,&to->vslots,nx,&from->vslots);CHKERRQ(ierr);
     to->n = nx;
-#if defined(PETSC_USE_DEBUG)
     ierr = VecScatterCheckIndices_Private(ctx->to_n,ny,idy);CHKERRQ(ierr);
-#endif
-    ierr    = PetscMemcpy(to->vslots,idy,nx*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr    = PetscArraycpy(to->vslots,idy,nx);CHKERRQ(ierr);
     from->n = nx;
-#if defined(PETSC_USE_DEBUG)
     ierr = VecScatterCheckIndices_Private(ctx->from_n,nx,idx);CHKERRQ(ierr);
-#endif
-    ierr              =  PetscMemcpy(from->vslots,idx,nx*sizeof(PetscInt));CHKERRQ(ierr);
-    to->format          = VEC_SCATTER_SEQ_GENERAL;
-    from->format        = VEC_SCATTER_SEQ_GENERAL;
+    ierr              = PetscArraycpy(from->vslots,idx,nx);CHKERRQ(ierr);
+    to->format        = VEC_SCATTER_SEQ_GENERAL;
+    from->format      = VEC_SCATTER_SEQ_GENERAL;
     ctx->todata       = (void*)to;
     ctx->fromdata     = (void*)from;
     ierr              = VecScatterMemcpyPlanCreate_SGToSG(1,to,from);CHKERRQ(ierr);
@@ -756,10 +757,8 @@ PetscErrorCode VecScatterSetUp_Seq(VecScatter ctx)
     to9->first = first;
     to9->step  = step;
     from9->n   = nx;
-#if defined(PETSC_USE_DEBUG)
     ierr           = VecScatterCheckIndices_Private(ctx->from_n,nx,idx);CHKERRQ(ierr);
-#endif
-    ierr           = PetscMemcpy(from9->vslots,idx,nx*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr           = PetscArraycpy(from9->vslots,idx,nx);CHKERRQ(ierr);
     ctx->todata    = (void*)to9; ctx->fromdata = (void*)from9;
     if (step == 1) {
       PetscInt tmp[2];
@@ -795,10 +794,8 @@ PetscErrorCode VecScatterSetUp_Seq(VecScatter ctx)
     from10->first = first;
     from10->step  = step;
     to10->n       = nx;
-#if defined(PETSC_USE_DEBUG)
     ierr = VecScatterCheckIndices_Private(ctx->to_n,ny,idy);CHKERRQ(ierr);
-#endif
-    ierr = PetscMemcpy(to10->vslots,idy,nx*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArraycpy(to10->vslots,idy,nx);CHKERRQ(ierr);
     ctx->todata   = (void*)to10;
     ctx->fromdata = (void*)from10;
     if (step == 1) {
@@ -856,15 +853,11 @@ PetscErrorCode VecScatterSetUp_Seq(VecScatter ctx)
     ierr = PetscMalloc2(1,&to11,1,&from11);CHKERRQ(ierr);
     ierr = PetscMalloc2(nx,&to11->vslots,nx,&from11->vslots);CHKERRQ(ierr);
     to11->n = nx;
-#if defined(PETSC_USE_DEBUG)
     ierr = VecScatterCheckIndices_Private(ctx->to_n,ny,idy);CHKERRQ(ierr);
-#endif
-    ierr = PetscMemcpy(to11->vslots,idy,nx*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArraycpy(to11->vslots,idy,nx);CHKERRQ(ierr);
     from11->n = nx;
-#if defined(PETSC_USE_DEBUG)
     ierr = VecScatterCheckIndices_Private(ctx->from_n,nx,idx);CHKERRQ(ierr);
-#endif
-    ierr = PetscMemcpy(from11->vslots,idx,nx*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArraycpy(from11->vslots,idx,nx);CHKERRQ(ierr);
     to11->format        = VEC_SCATTER_SEQ_GENERAL;
     from11->format      = VEC_SCATTER_SEQ_GENERAL;
     ctx->todata       = (void*)to11;

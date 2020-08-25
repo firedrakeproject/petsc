@@ -1,4 +1,4 @@
-#include <petsctaolinesearch.h>
+#include <petsctaolinesearch.h>      /*I "petsctaolinesearch.h" I*/
 #include <../src/tao/unconstrained/impls/lmvm/lmvm.h>
 #include <../src/tao/bound/impls/blmvm/blmvm.h>
 
@@ -23,7 +23,7 @@ static PetscErrorCode TaoSolve_BLMVM(Tao tao)
   ierr = VecBoundGradientProjection(blmP->unprojected_gradient,tao->solution, tao->XL,tao->XU,tao->gradient);CHKERRQ(ierr);
 
   ierr = TaoGradientNorm(tao, tao->gradient,NORM_2,&gnorm);CHKERRQ(ierr);
-  if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+  if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
 
   tao->reason = TAO_CONTINUE_ITERATING;
   ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
@@ -52,7 +52,7 @@ static PetscErrorCode TaoSolve_BLMVM(Tao tao)
     } else {
       delta = 2.0 * PetscAbsScalar(f) / gnorm2;
     }
-    ierr = MatSymBrdnSetDelta(blmP->M, delta);CHKERRQ(ierr);
+    ierr = MatLMVMSymBroydenSetDelta(blmP->M, delta);CHKERRQ(ierr);
     ierr = MatLMVMUpdate(blmP->M, tao->solution, tao->gradient);CHKERRQ(ierr);
     ierr = MatSolve(blmP->M, blmP->unprojected_gradient, tao->stepdirection);CHKERRQ(ierr);
     ierr = VecBoundGradientProjection(tao->stepdirection,tao->solution,tao->XL,tao->XU,tao->gradient);CHKERRQ(ierr);
@@ -107,9 +107,7 @@ static PetscErrorCode TaoSolve_BLMVM(Tao tao)
     /* Check for converged */
     ierr = VecBoundGradientProjection(blmP->unprojected_gradient, tao->solution, tao->XL, tao->XU, tao->gradient);CHKERRQ(ierr);
     ierr = TaoGradientNorm(tao, tao->gradient, NORM_2, &gnorm);CHKERRQ(ierr);
-
-
-    if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Not-a-Number");
+    if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Not-a-Number");
     tao->niter++;
     ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
     ierr = TaoMonitor(tao,tao->niter,f,gnorm,0.0,stepsize);CHKERRQ(ierr);
@@ -193,7 +191,7 @@ static PetscErrorCode TaoSetFromOptions_BLMVM(PetscOptionItems* PetscOptionsObje
 
 
 /*------------------------------------------------------------*/
-static int TaoView_BLMVM(Tao tao, PetscViewer viewer)
+static PetscErrorCode TaoView_BLMVM(Tao tao, PetscViewer viewer)
 {
   TAO_BLMVM      *lmP = (TAO_BLMVM *)tao->data;
   PetscBool      isascii;
@@ -271,7 +269,7 @@ PETSC_EXTERN PetscErrorCode TaoCreate_BLMVM(Tao tao)
   ierr = TaoLineSearchSetType(tao->linesearch, morethuente_type);CHKERRQ(ierr);
   ierr = TaoLineSearchUseTaoRoutines(tao->linesearch,tao);CHKERRQ(ierr);
   ierr = TaoLineSearchSetOptionsPrefix(tao->linesearch,tao->hdr.prefix);CHKERRQ(ierr);
-  
+
   ierr = KSPInitializePackage();CHKERRQ(ierr);
   ierr = MatCreate(((PetscObject)tao)->comm, &blmP->M);CHKERRQ(ierr);
   ierr = MatSetType(blmP->M, MATLMVMBFGS);CHKERRQ(ierr);
@@ -280,42 +278,56 @@ PETSC_EXTERN PetscErrorCode TaoCreate_BLMVM(Tao tao)
   PetscFunctionReturn(0);
 }
 
+/*@
+  TaoLMVMRecycle - Enable/disable recycling of the QN history between subsequent TaoSolve calls.
+
+  Input Parameters:
++  tao  - the Tao solver context
+-  flg - Boolean flag for recycling (PETSC_TRUE or PETSC_FALSE)
+
+  Level: intermediate
+@*/
 PetscErrorCode TaoLMVMRecycle(Tao tao, PetscBool flg)
 {
   TAO_LMVM       *lmP;
   TAO_BLMVM      *blmP;
-  TaoType        type;
   PetscBool      is_lmvm, is_blmvm;
   PetscErrorCode ierr;
-  
+
   PetscFunctionBegin;
-  ierr = TaoGetType(tao, &type);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOLMVM,  &is_lmvm);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOBLMVM, &is_blmvm);CHKERRQ(ierr);
-  
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOLMVM,&is_lmvm);CHKERRQ(ierr);
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOBLMVM,&is_blmvm);CHKERRQ(ierr);
   if (is_lmvm) {
     lmP = (TAO_LMVM *)tao->data;
     lmP->recycle = flg;
   } else if (is_blmvm) {
     blmP = (TAO_BLMVM *)tao->data;
     blmP->recycle = flg;
-  } else SETERRQ(PetscObjectComm((PetscObject)tao), PETSC_ERR_ARG_WRONGSTATE, "This routine applies to TAO_LMVM and TAO_BLMVM.");
+  }
   PetscFunctionReturn(0);
 }
 
+/*@
+  TaoLMVMSetH0 - Set the initial Hessian for the QN approximation
+
+  Input Parameters:
++  tao  - the Tao solver context
+-  H0 - Mat object for the initial Hessian
+
+  Level: advanced
+
+.seealso: TaoLMVMGetH0(), TaoLMVMGetH0KSP()
+@*/
 PetscErrorCode TaoLMVMSetH0(Tao tao, Mat H0)
 {
   TAO_LMVM       *lmP;
   TAO_BLMVM      *blmP;
-  TaoType        type;
   PetscBool      is_lmvm, is_blmvm;
   PetscErrorCode ierr;
-  
-  PetscFunctionBegin;
-  ierr = TaoGetType(tao, &type);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOLMVM,  &is_lmvm);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOBLMVM, &is_blmvm);CHKERRQ(ierr);
 
+  PetscFunctionBegin;
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOLMVM,&is_lmvm);CHKERRQ(ierr);
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOBLMVM,&is_blmvm);CHKERRQ(ierr);
   if (is_lmvm) {
     lmP = (TAO_LMVM *)tao->data;
     ierr = PetscObjectReference((PetscObject)H0);CHKERRQ(ierr);
@@ -324,56 +336,76 @@ PetscErrorCode TaoLMVMSetH0(Tao tao, Mat H0)
     blmP = (TAO_BLMVM *)tao->data;
     ierr = PetscObjectReference((PetscObject)H0);CHKERRQ(ierr);
     blmP->H0 = H0;
-  } else SETERRQ(PetscObjectComm((PetscObject)tao), PETSC_ERR_ARG_WRONGSTATE, "This routine applies to TAO_LMVM and TAO_BLMVM.");
+  }
   PetscFunctionReturn(0);
 }
 
+/*@
+  TaoLMVMGetH0 - Get the matrix object for the QN initial Hessian
+
+  Input Parameters:
+.  tao  - the Tao solver context
+
+  Output Parameters:
+.  H0 - Mat object for the initial Hessian
+
+  Level: advanced
+
+.seealso: TaoLMVMSetH0(), TaoLMVMGetH0KSP()
+@*/
 PetscErrorCode TaoLMVMGetH0(Tao tao, Mat *H0)
 {
   TAO_LMVM       *lmP;
   TAO_BLMVM      *blmP;
-  TaoType        type;
   PetscBool      is_lmvm, is_blmvm;
   Mat            M;
-
   PetscErrorCode ierr;
-  
-  PetscFunctionBegin;
-  ierr = TaoGetType(tao, &type);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOLMVM,  &is_lmvm);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOBLMVM, &is_blmvm);CHKERRQ(ierr);
 
+  PetscFunctionBegin;
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOLMVM,&is_lmvm);CHKERRQ(ierr);
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOBLMVM,&is_blmvm);CHKERRQ(ierr);
   if (is_lmvm) {
     lmP = (TAO_LMVM *)tao->data;
     M = lmP->M;
   } else if (is_blmvm) {
     blmP = (TAO_BLMVM *)tao->data;
     M = blmP->M;
-  } else SETERRQ(PetscObjectComm((PetscObject)tao), PETSC_ERR_ARG_WRONGSTATE, "This routine applies to TAO_LMVM and TAO_BLMVM.");
+  } else SETERRQ(PetscObjectComm((PetscObject)tao), PETSC_ERR_ARG_WRONG, "This routine applies to TAO_LMVM and TAO_BLMVM.");
   ierr = MatLMVMGetJ0(M, H0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
+/*@
+  TaoLMVMGetH0KSP - Get the iterative solver for applying the inverse of the QN initial Hessian
+
+  Input Parameters:
+.  tao  - the Tao solver context
+
+  Output Parameters:
+.  ksp - KSP solver context for the initial Hessian
+
+  Level: advanced
+
+.seealso: TaoLMVMGetH0(), TaoLMVMGetH0KSP()
+@*/
 PetscErrorCode TaoLMVMGetH0KSP(Tao tao, KSP *ksp)
 {
   TAO_LMVM       *lmP;
   TAO_BLMVM      *blmP;
-  TaoType        type;
   PetscBool      is_lmvm, is_blmvm;
   Mat            M;
   PetscErrorCode ierr;
 
-  ierr = TaoGetType(tao, &type);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOLMVM,  &is_lmvm);CHKERRQ(ierr);
-  ierr = PetscStrcmp(type, TAOBLMVM, &is_blmvm);CHKERRQ(ierr);
-
+  PetscFunctionBegin;
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOLMVM,&is_lmvm);CHKERRQ(ierr);
+  ierr = PetscObjectTypeCompare((PetscObject)tao,TAOBLMVM,&is_blmvm);CHKERRQ(ierr);
   if (is_lmvm) {
     lmP = (TAO_LMVM *)tao->data;
     M = lmP->M;
   } else if (is_blmvm) {
     blmP = (TAO_BLMVM *)tao->data;
     M = blmP->M;
-  } else SETERRQ(PetscObjectComm((PetscObject)tao), PETSC_ERR_ARG_WRONGSTATE, "This routine applies to TAO_LMVM and TAO_BLMVM.");
+  } else SETERRQ(PetscObjectComm((PetscObject)tao), PETSC_ERR_ARG_WRONG, "This routine applies to TAO_LMVM and TAO_BLMVM.");
   ierr = MatLMVMGetJ0KSP(M, ksp);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

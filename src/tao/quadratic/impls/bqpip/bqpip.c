@@ -47,7 +47,7 @@ static PetscErrorCode  QPIPSetInitialPoint(TAO_BQPIP *qp, Tao tao)
   ierr = VecDot(tao->solution,qp->Work,&fff);CHKERRQ(ierr);
   qp->pobj = fff + qp->d;
 
-  if (PetscIsInfOrNanReal(qp->pobj)) SETERRQ(PETSC_COMM_SELF,1, "User provided data contains Inf or NaN");
+  if (PetscIsInfOrNanReal(qp->pobj)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_USER, "User provided data contains Inf or NaN");
 
   /* Initialize slack vectors */
   /* T = XU - X; G = X - XL */
@@ -485,7 +485,7 @@ static PetscErrorCode TaoSetFromOptions_BQPIP(PetscOptionItems *PetscOptionsObje
 
   PetscFunctionBegin;
   ierr = PetscOptionsHead(PetscOptionsObject,"Interior point method for bound constrained quadratic optimization");CHKERRQ(ierr);
-  ierr = PetscOptionsInt("-tao_bqpip_predcorr","Use a predictor-corrector method","",qp->predcorr,&qp->predcorr,0);CHKERRQ(ierr);
+  ierr = PetscOptionsInt("-tao_bqpip_predcorr","Use a predictor-corrector method","",qp->predcorr,&qp->predcorr,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   ierr = KSPSetFromOptions(tao->ksp);CHKERRQ(ierr);
   PetscFunctionReturn(0);

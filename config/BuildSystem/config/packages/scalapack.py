@@ -3,15 +3,18 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.gitcommit         = 'v2.0.2-p1'
+    self.gitcommit        = 'v2.1.0-p2'  # modification to avoid calling zdotc, zladiv on MacOS
     self.download         = ['git://https://bitbucket.org/petsc/pkg-scalapack','https://bitbucket.org/petsc/pkg-scalapack/get/'+self.gitcommit+'.tar.gz']
     self.downloaddirnames = ['petsc-pkg-scalapack','scalapack']
     self.includes         = []
-    self.liblist          = [['libscalapack.a']]
+    self.liblist          = [['libscalapack.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_intelmpi_lp64.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_mpich_lp64.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_sgimpt_lp64.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_openmpi_lp64.a']]
     self.functions        = ['pssytrd']
     self.functionsFortran = 1
     self.fc               = 1
-    self.useddirectly     = 0 # PETSc does not use ScaLAPACK, it is only used by MUMPS
     self.precisions       = ['single','double']
     self.downloadonWindows= 1
     return
@@ -42,7 +45,12 @@ class Configure(config.package.Package):
     g.write('CDEFS        = '+fdef+'\n')
     self.setCompilers.pushLanguage('FC')
     g.write('FC           = '+self.setCompilers.getCompiler()+'\n')
-    g.write('FCFLAGS      = '+self.setCompilers.getCompilerFlags().replace('-Wall','').replace('-Wshadow','').replace('-Mfree','')+'\n')
+    extra_fcflags = ''
+    if config.setCompilers.Configure.isNAG(self.setCompilers.getLinker(), self.log):
+      extra_fcflags = '-dusty -dcfuns '
+    elif config.setCompilers.Configure.isGfortran100plus(self.setCompilers.getCompiler(), self.log):
+      extra_fcflags = '-fallow-argument-mismatch '
+    g.write('FCFLAGS      = '+extra_fcflags+self.setCompilers.getCompilerFlags().replace('-Wall','').replace('-Wshadow','').replace('-Mfree','')+'\n')
     g.write('FCLOADER     = '+self.setCompilers.getLinker()+'\n')
     g.write('FCLOADFLAGS  = '+self.setCompilers.getLinkerFlags()+'\n')
     self.setCompilers.popLanguage()
@@ -62,15 +70,21 @@ class Configure(config.package.Package):
 
     if self.installNeeded('SLmake.inc'):
       try:
-        output,err,ret  = config.package.Package.executeShellCommand('cd '+self.packageDir+' && make cleanlib', timeout=2500, log = self.log)
+        output,err,ret  = config.package.Package.executeShellCommand('cd '+self.packageDir+' && '+self.make.make+' -f Makefile.parallel cleanlib', timeout=60, log = self.log)
       except RuntimeError as e:
         pass
       try:
         self.logPrintBox('Compiling and installing Scalapack; this may take several minutes')
         self.installDirProvider.printSudoPasswordMessage()
         libDir = os.path.join(self.installDir, self.libdir)
-        output,err,ret  = config.package.Package.executeShellCommand('cd '+self.packageDir+' && make lib && '+self.installSudo+'mkdir -p '+libDir+' && '+self.installSudo+'cp libscalapack.* '+libDir, timeout=2500, log = self.log)
+        output,err,ret  = config.package.Package.executeShellCommand('cd '+self.packageDir+' && '+self.make.make_jnp+' -f Makefile.parallel lib && '+self.installSudo+'mkdir -p '+libDir+' && '+self.installSudo+'cp libscalapack.* '+libDir, timeout=2500, log = self.log)
       except RuntimeError as e:
-        raise RuntimeError('Error running make on SCALAPACK: '+str(e))
+        self.logPrint('Error running make on SCALAPACK: '+str(e))
+        raise RuntimeError('Error running make on SCALAPACK')
       self.postInstall(output,'SLmake.inc')
     return self.installDir
+
+def getSearchDirectories(self):
+  '''Generate list of possible locations of Scalapack'''
+  yield ''
+  if os.getenv('MKLROOT'): yield os.getenv('MKLROOT')

@@ -12,6 +12,7 @@ static PetscErrorCode  PCKSPCreateKSP_KSP(PC pc)
   PetscErrorCode ierr;
   const char     *prefix;
   PC_KSP         *jac = (PC_KSP*)pc->data;
+  DM             dm;
 
   PetscFunctionBegin;
   ierr = KSPCreate(PetscObjectComm((PetscObject)pc),&jac->ksp);CHKERRQ(ierr);
@@ -20,6 +21,11 @@ static PetscErrorCode  PCKSPCreateKSP_KSP(PC pc)
   ierr = PCGetOptionsPrefix(pc,&prefix);CHKERRQ(ierr);
   ierr = KSPSetOptionsPrefix(jac->ksp,prefix);CHKERRQ(ierr);
   ierr = KSPAppendOptionsPrefix(jac->ksp,"ksp_");CHKERRQ(ierr);
+  ierr = PCGetDM(pc, &dm);CHKERRQ(ierr);
+  if (dm) {
+    ierr = KSPSetDM(jac->ksp, dm);CHKERRQ(ierr);
+    ierr = KSPSetDMActive(jac->ksp, PETSC_FALSE);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -37,6 +43,25 @@ static PetscErrorCode PCApply_KSP(PC pc,Vec x,Vec y)
     ierr = KSPSolve(jac->ksp,x,y);CHKERRQ(ierr);
   }
   ierr = KSPCheckSolve(jac->ksp,pc,y);CHKERRQ(ierr);
+  ierr      = KSPGetIterationNumber(jac->ksp,&its);CHKERRQ(ierr);
+  jac->its += its;
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode PCMatApply_KSP(PC pc,Mat X,Mat Y)
+{
+  PetscErrorCode     ierr;
+  PetscInt           its;
+  PC_KSP             *jac = (PC_KSP*)pc->data;
+
+  PetscFunctionBegin;
+  if (jac->ksp->presolve) {
+    ierr = MatCopy(X,Y,SAME_NONZERO_PATTERN);CHKERRQ(ierr);
+    ierr = KSPMatSolve(jac->ksp,Y,Y);CHKERRQ(ierr); /* TODO FIXME: this will fail since KSPMatSolve does not allow inplace solve yet */
+  } else {
+    ierr = KSPMatSolve(jac->ksp,X,Y);CHKERRQ(ierr);
+  }
+  ierr = KSPCheckSolve(jac->ksp,pc,NULL);CHKERRQ(ierr);
   ierr      = KSPGetIterationNumber(jac->ksp,&its);CHKERRQ(ierr);
   jac->its += its;
   PetscFunctionReturn(0);
@@ -154,7 +179,6 @@ static PetscErrorCode  PCKSPSetKSP_KSP(PC pc,KSP ksp)
 
    Level: advanced
 
-.keywords:  PC, KSP, set, context
 @*/
 PetscErrorCode  PCKSPSetKSP(PC pc,KSP ksp)
 {
@@ -197,7 +221,6 @@ static PetscErrorCode  PCKSPGetKSP_KSP(PC pc,KSP *ksp)
 
    Level: advanced
 
-.keywords:  PC, KSP, get, context
 @*/
 PetscErrorCode  PCKSPGetKSP(PC pc,KSP *ksp)
 {
@@ -237,8 +260,6 @@ static PetscErrorCode PCSetFromOptions_KSP(PetscOptionItems *PetscOptionsObject,
 
    Level: intermediate
 
-   Concepts: inner iteration
-
    Notes:
     Using a Krylov method inside another Krylov method can be dangerous (you get divergence or
           the incorrect answer) unless you use KSPFGMRES as the other Krylov method
@@ -269,6 +290,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_KSP(PC pc)
 
   ierr = PetscMemzero(pc->ops,sizeof(struct _PCOps));CHKERRQ(ierr);
   pc->ops->apply           = PCApply_KSP;
+  pc->ops->matapply        = PCMatApply_KSP;
   pc->ops->applytranspose  = PCApplyTranspose_KSP;
   pc->ops->setup           = PCSetUp_KSP;
   pc->ops->reset           = PCReset_KSP;

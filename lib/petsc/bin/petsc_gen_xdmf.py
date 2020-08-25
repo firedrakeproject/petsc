@@ -7,8 +7,14 @@ class Xdmf:
   def __init__(self, filename):
     self.filename = filename
     self.cellMap  = {1 : {1 : 'Polyvertex', 2 : 'Polyline'}, 2 : {3 : 'Triangle', 4 : 'Quadrilateral'}, 3 : {4 : 'Tetrahedron', 6: 'Wedge', 8 : 'Hexahedron'}}
-    self.typeMap  = {'scalar' : 'Scalar', 'vector' : 'Vector', 'tensor' : 'Tensor6', 'matrix' : 'Matrix'}
-    self.typeExt  = {2 : {'vector' : ['x', 'y'], 'tensor' : ['xx', 'yy', 'xy']}, 3 : {'vector' : ['x', 'y', 'z'], 'tensor' : ['xx', 'yy', 'zz', 'xy', 'yz', 'xz']}}
+
+    # py2/py3 compatibility, see https://github.com/h5py/h5py/issues/379
+    if sys.version_info[0] < 3:
+      self.typeMap = {'scalar' : 'Scalar', 'vector' : 'Vector', 'tensor' : 'Tensor6', 'matrix' : 'Matrix'}
+      self.typeExt = {2 : {'vector' : ['x', 'y'], 'tensor' : ['xx', 'yy', 'xy']}, 3 : {'vector' : ['x', 'y', 'z'], 'tensor' : ['xx', 'yy', 'zz', 'xy', 'yz', 'xz']}}
+    else:
+      self.typeMap = {b'scalar' : 'Scalar', b'vector' : 'Vector', b'tensor' : 'Tensor6', b'matrix' : 'Matrix'}
+      self.typeExt = {2 : {b'vector' : ['x', 'y'], b'tensor' : ['xx', 'yy', 'xy']}, 3 : {b'vector' : ['x', 'y', 'z'], b'tensor' : ['xx', 'yy', 'zz', 'xy', 'yz', 'xz']}}
     return
 
   def writeHeader(self, fp, hdfFilename):
@@ -21,16 +27,16 @@ class Xdmf:
     fp.write('\n<Xdmf>\n  <Domain Name="domain">\n')
     return
 
-  def writeCells(self, fp, topologyPath, numCells, numCorners):
+  def writeCells(self, fp, topologyPath, numCells, numCorners, cellsName = "cells"):
     fp.write('''\
-    <DataItem Name="cells"
+    <DataItem Name="%s"
               ItemType="Uniform"
               Format="HDF"
               NumberType="Float" Precision="8"
               Dimensions="%d %d">
       &HeavyData;:/%s/cells
     </DataItem>
-''' % (numCells, numCorners, topologyPath))
+''' % (cellsName, numCells, numCorners, topologyPath))
     return
 
   def writeVertices(self, fp, geometryPath, numVertices, spaceDim):
@@ -46,28 +52,12 @@ class Xdmf:
 
   def writeLocations(self, fp, numParticles, spaceDim):
     fp.write('''\
-    <DataItem Name="xcoord"
+    <DataItem Name="particle_coordinates"
               Format="HDF"
-              Dimensions="%d">
-      &HeavyData;:/particles/xcoord
+              Dimensions="%d %d">
+      &HeavyData;:/particles/coordinates
     </DataItem>
-''' % (numParticles))
-    if spaceDim == 1: return
-    fp.write('''\
-    <DataItem Name="ycoord"
-              Format="HDF"
-              Dimensions="%d">
-      &HeavyData;:/particles/ycoord
-    </DataItem>
-''' % (numParticles))
-    if spaceDim == 2: return
-    fp.write('''\
-    <DataItem Name="zcoord"
-              Format="HDF"
-              Dimensions="%d">
-      &HeavyData;:/particles/zcoord
-    </DataItem>
-''' % (numParticles))
+''' % (numParticles, spaceDim))
     return
 
   def writeTimeGridHeader(self, fp, time):
@@ -83,14 +73,19 @@ class Xdmf:
 ''')
     return
 
-  def writeSpaceGridHeader(self, fp, numCells, numCorners, cellDim, spaceDim):
+  #http://www.xdmf.org/index.php/XDMF_Model_and_Format#Topology
+  def writeHybridSpaceGridHeader(self, fp):
+    fp.write('      <Grid Name="domain" GridType="Collection">\n')
+    return
+
+  def writeSpaceGridHeader(self, fp, numCells, numCorners, cellDim, spaceDim, cellsName = "cells"):
     fp.write('''\
       <Grid Name="domain" GridType="Uniform">
         <Topology
            TopologyType="%s"
            NumberOfElements="%d">
           <DataItem Reference="XML">
-            /Xdmf/Domain/DataItem[@Name="cells"]
+            /Xdmf/Domain/DataItem[@Name="%s"]
           </DataItem>
         </Topology>
         <Geometry GeometryType="%s">
@@ -98,7 +93,7 @@ class Xdmf:
             /Xdmf/Domain/DataItem[@Name="vertices"]
           </DataItem>
         </Geometry>
-''' % (self.cellMap[cellDim][numCorners], numCells, "XYZ" if spaceDim > 2 else "XY"))
+''' % (self.cellMap[cellDim][numCorners], numCells, cellsName, "XYZ" if spaceDim > 2 else "XY"))
     return
 
   def writeFieldSingle(self, fp, numSteps, timestep, spaceDim, name, f, domain):
@@ -205,22 +200,21 @@ class Xdmf:
       <Grid Name="particle_domain" GridType="Uniform">
         <Topology TopologyType="Polyvertex" NodesPerElement="%d" />
         <Geometry GeometryType="%s">
-          <DataItem Reference="XML">/Xdmf/Domain/DataItem[@Name="xcoord"]</DataItem>
-          <DataItem Reference="XML">/Xdmf/Domain/DataItem[@Name="ycoord"]</DataItem>
-          %s
+          <DataItem Reference="XML">/Xdmf/Domain/DataItem[@Name="particle_coordinates"]</DataItem>
         </Geometry>
-''' % (numParticles, "X_Y_Z" if spaceDim > 2 else "X_Y", "<DataItem Reference=\"XML\">/Xdmf/Domain/DataItem[@Name=\"zcoord\"]</DataItem>" if spaceDim > 2 else ""))
+''' % (numParticles, "XYZ" if spaceDim > 2 else "XY"))
     return
 
-  def writeParticleField(self, fp, numParticles, spaceDim):
+  def writeParticleField(self, fp, fieldname, numParticles, numComp):
     fp.write('''\
-    <Attribute Name="particles/icoord">
-      <DataItem Name="icoord"
+    <Attribute Name="particles/%s">
+      <DataItem Name="%s"
                 Format="HDF"
-                Dimensions="%d">
-                &HeavyData;:/particles/icoord
+                Dimensions="%d %d">
+                &HeavyData;:/particle_fields/%s
       </DataItem>
-    </Attribute>''' % (numParticles))
+    </Attribute>
+''' % (fieldname, fieldname, numParticles, numComp, fieldname))
     return
 
   def writeTimeGridFooter(self, fp):
@@ -231,25 +225,35 @@ class Xdmf:
     fp.write('  </Domain>\n</Xdmf>\n')
     return
 
-  def write(self, hdfFilename, topologyPath, numCells, numCorners, cellDim, geometryPath, numVertices, spaceDim, time, vfields, cfields, numParticles):
+  def write(self, hdfFilename, topologyPath, numCells, numCorners, cellDim, htopologyPath, numHCells, numHCorners, geometryPath, numVertices, spaceDim, time, vfields, cfields, numParticles, pfields):
     useTime = not (len(time) < 2 and time[0] == -1)
     with open(self.filename, 'w') as fp:
       self.writeHeader(fp, hdfFilename)
       # Field information
       self.writeCells(fp, topologyPath, numCells, numCorners)
+      if numHCells:
+        self.writeCells(fp, htopologyPath, numHCells, numHCorners, "hcells")
       self.writeVertices(fp, geometryPath, numVertices, spaceDim)
       if useTime: self.writeTimeGridHeader(fp, time)
       for t in range(len(time)):
+        if numHCells:
+          self.writeHybridSpaceGridHeader(fp)
+          self.writeSpaceGridHeader(fp, numHCells, numHCorners, cellDim, spaceDim, "hcells")
+          self.writeSpaceGridFooter(fp)
         self.writeSpaceGridHeader(fp, numCells, numCorners, cellDim, spaceDim)
         for vf in vfields: self.writeField(fp, len(time), t, cellDim, spaceDim, '/vertex_fields/'+vf[0], vf, 'Node')
         for cf in cfields: self.writeField(fp, len(time), t, cellDim, spaceDim, '/cell_fields/'+cf[0], cf, 'Cell')
         self.writeSpaceGridFooter(fp)
+        if numHCells:
+          self.writeSpaceGridFooter(fp)
       if useTime: self.writeTimeGridFooter(fp)
       if numParticles:
         self.writeLocations(fp, numParticles, spaceDim)
         if useTime: self.writeTimeGridHeader(fp, time)
         for t in range(len(time)):
           self.writeParticleGridHeader(fp, numParticles, spaceDim)
+          for pf in pfields:
+            self.writeParticleField(fp, pf[0], numParticles, int(pf[1].attrs['Nc']))
           self.writeSpaceGridFooter(fp)
         if useTime: self.writeTimeGridFooter(fp)
       self.writeFooter(fp)
@@ -272,6 +276,12 @@ def generateXdmf(hdfFilename, xdmfFilename = None):
   else:
     topoPath  = 'topology'
     topo      = h5['topology']
+  if 'viz' in h5 and 'hybrid_topology' in h5['viz']:
+    htopoPath = 'viz/hybrid_topology'
+    htopo     = h5['viz']['hybrid_topology']
+  else:
+    htopoPath = None
+    htopo     = None
   vertices    = geom['vertices']
   numVertices = vertices.shape[0]
   spaceDim    = vertices.shape[1]
@@ -279,19 +289,30 @@ def generateXdmf(hdfFilename, xdmfFilename = None):
   numCells    = cells.shape[0]
   numCorners  = cells.shape[1]
   cellDim     = topo['cells'].attrs['cell_dim']
+  if htopo:
+    hcells      = htopo['cells']
+    numHCells   = hcells.shape[0]
+    numHCorners = hcells.shape[1]
+  else:
+    numHCells   = 0
+    numHCorners = 0
   if 'time' in h5:
     time      = np.array(h5['time']).flatten()
   else:
     time      = [-1]
   vfields     = []
   cfields     = []
+  pfields     = []
+  pfields     = []
   if 'vertex_fields' in h5: vfields = h5['vertex_fields'].items()
   if 'cell_fields' in h5: cfields = h5['cell_fields'].items()
   numParticles = 0
-  if 'particles' in h5: numParticles = h5['particles']['xcoord'].shape[0]
+  if 'particles' in h5:
+    numParticles = h5['particles']['coordinates'].shape[0]
+  if 'particle_fields' in h5: pfields = h5['particle_fields'].items()
 
   # Write Xdmf
-  Xdmf(xdmfFilename).write(hdfFilename, topoPath, numCells, numCorners, cellDim, geomPath, numVertices, spaceDim, time, vfields, cfields, numParticles)
+  Xdmf(xdmfFilename).write(hdfFilename, topoPath, numCells, numCorners, cellDim, htopoPath, numHCells, numHCorners, geomPath, numVertices, spaceDim, time, vfields, cfields, numParticles, pfields)
   h5.close()
   return
 

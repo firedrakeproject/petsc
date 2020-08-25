@@ -14,7 +14,7 @@ struct SH {
   void           *ctx;
   struct SH      *previous;
 };
-static struct SH *sh       = 0;
+static struct SH *sh       = NULL;
 static PetscBool SignalSet = PETSC_FALSE;
 
 /*
@@ -42,7 +42,7 @@ static void PetscSignalHandler_Private(int sig)
     if (sh->classid != SIGNAL_CLASSID) SETERRABORT(PETSC_COMM_WORLD,PETSC_ERR_COR,"Signal object has been corrupted");
     ierr = (*sh->handler)(sig,sh->ctx);
   }
-  if (ierr) MPI_Abort(PETSC_COMM_WORLD,0);
+  if (ierr) PETSCABORT(PETSC_COMM_WORLD,PETSC_ERR_COR);
 }
 
 /*@
@@ -56,8 +56,6 @@ static void PetscSignalHandler_Private(int sig)
 +  sig - signal value
 -  ptr - unused pointer
 
-   Concepts: signal handler^default
-
 @*/
 PetscErrorCode  PetscSignalHandlerDefault(int sig,void *ptr)
 {
@@ -65,7 +63,7 @@ PetscErrorCode  PetscSignalHandlerDefault(int sig,void *ptr)
   const char     *SIGNAME[64];
 
   PetscFunctionBegin;
-  if (sig == SIGSEGV) PetscSignalSegvCheckPointer();
+  if (sig == SIGSEGV) PetscSignalSegvCheckPointerOrMpi();
   SIGNAME[0]       = "Unknown signal";
 #if !defined(PETSC_MISSING_SIGABRT)
   SIGNAME[SIGABRT] = "Abort";
@@ -134,24 +132,23 @@ PetscErrorCode  PetscSignalHandlerDefault(int sig,void *ptr)
   else (*PetscErrorPrintf)("Caught signal\n");
 
   (*PetscErrorPrintf)("Try option -start_in_debugger or -on_error_attach_debugger\n");
-  (*PetscErrorPrintf)("or see http://www.mcs.anl.gov/petsc/documentation/faq.html#valgrind\n");
+  (*PetscErrorPrintf)("or see https://www.mcs.anl.gov/petsc/documentation/faq.html#valgrind\n");
   (*PetscErrorPrintf)("or try http://valgrind.org on GNU/linux and Apple Mac OS X to find memory corruption errors\n");
-#if defined(PETSC_USE_DEBUG)
-  if (!PetscStackActive()) (*PetscErrorPrintf)("  or try option -log_stack\n");
-  else {
-    PetscStackPop;  /* remove stack frames for error handlers */
-    PetscStackPop;
-    (*PetscErrorPrintf)("likely location of problem given in stack below\n");
-    (*PetscErrorPrintf)("---------------------  Stack Frames ------------------------------------\n");
-    PetscStackView(PETSC_STDOUT);
+  if (PetscDefined(USE_DEBUG)) {
+    if (!PetscStackActive()) (*PetscErrorPrintf)("  or try option -log_stack\n");
+    else {
+      PetscStackPop;  /* remove stack frames for error handlers */
+      PetscStackPop;
+      (*PetscErrorPrintf)("likely location of problem given in stack below\n");
+      (*PetscErrorPrintf)("---------------------  Stack Frames ------------------------------------\n");
+      PetscStackView(PETSC_STDOUT);
+    }
+  } else {
+    (*PetscErrorPrintf)("configure using --with-debugging=yes, recompile, link, and run \n");
+    (*PetscErrorPrintf)("to get more information on the crash.\n");
   }
-#endif
-#if !defined(PETSC_USE_DEBUG)
-  (*PetscErrorPrintf)("configure using --with-debugging=yes, recompile, link, and run \n");
-  (*PetscErrorPrintf)("to get more information on the crash.\n");
-#endif
   ierr =  PetscError(PETSC_COMM_SELF,0,"User provided function"," unknown file",PETSC_ERR_SIG,PETSC_ERROR_INITIAL,NULL);
-  MPI_Abort(PETSC_COMM_WORLD,(int)ierr);
+  PETSCABORT(PETSC_COMM_WORLD,(int)ierr);
   PetscFunctionReturn(0);
 }
 
@@ -170,8 +167,6 @@ PetscErrorCode  PetscSignalHandlerDefault(int sig,void *ptr)
 -  ctx - optional context needed by the routine
 
   Level: developer
-
-   Concepts: signal handler^setting
 
 .seealso: PetscPopSignalHandler(), PetscSignalHandlerDefault(), PetscPushErrorHandler()
 
@@ -200,8 +195,16 @@ PetscErrorCode  PetscPushSignalHandler(PetscErrorCode (*routine)(int,void*),void
 #if !defined(PETSC_MISSING_SIGFPE)
     signal(SIGFPE,  PETSC_SIGNAL_CAST PetscSignalHandler_Private);
 #endif
-#if !defined(PETSC_MISSING_SIGHUP)
-    signal(SIGHUP, PETSC_SIGNAL_CAST PetscSignalHandler_Private);
+#if !defined(PETSC_MISSING_SIGHUP) && defined(PETSC_HAVE_STRUCT_SIGACTION)
+    {
+      struct  sigaction action;
+      sigaction(SIGHUP,NULL,&action);
+      if (action.sa_handler == SIG_IGN) {
+        ierr = PetscInfo(NULL,"SIGHUP previously set to ignore, therefor not changing its signal handler\n");CHKERRQ(ierr);
+      } else {
+        signal(SIGHUP, PETSC_SIGNAL_CAST PetscSignalHandler_Private);
+      }
+    }
 #endif
 #if !defined(PETSC_MISSING_SIGILL)
     signal(SIGILL,  PETSC_SIGNAL_CAST PetscSignalHandler_Private);
@@ -234,7 +237,7 @@ PetscErrorCode  PetscPushSignalHandler(PetscErrorCode (*routine)(int,void*),void
     signal(SIGURG,  PETSC_SIGNAL_CAST PetscSignalHandler_Private);
 #endif
 #if !defined(PETSC_MISSING_SIGUSR1)
-    /*    signal(SIGUSR1, PETSC_SIGNAL_CAST PetscSignalHandler_Private); */
+    /* signal(SIGUSR1, PETSC_SIGNAL_CAST PetscSignalHandler_Private); */
 #endif
 #if !defined(PETSC_MISSING_SIGUSR2)
     /* signal(SIGUSR2, PETSC_SIGNAL_CAST PetscSignalHandler_Private); */
@@ -243,55 +246,55 @@ PetscErrorCode  PetscPushSignalHandler(PetscErrorCode (*routine)(int,void*),void
   }
   if (!routine) {
 #if !defined(PETSC_MISSING_SIGALRM)
-    /* signal(SIGALRM, 0); */
+    /* signal(SIGALRM, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGBUS)
-    signal(SIGBUS,  0);
+    signal(SIGBUS,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGCONT)
-    /* signal(SIGCONT, 0); */
+    /* signal(SIGCONT, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGFPE)
-    signal(SIGFPE,  0);
+    signal(SIGFPE,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGHUP)
-    signal(SIGHUP,  0);
+    signal(SIGHUP,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGILL)
-    signal(SIGILL,  0);
+    signal(SIGILL,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGINT)
-    /* signal(SIGINT,  0); */
+    /* signal(SIGINT,  SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGPIPE)
-    signal(SIGPIPE, 0);
+    signal(SIGPIPE, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGQUIT)
-    signal(SIGQUIT, 0);
+    signal(SIGQUIT, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGSEGV)
-    signal(SIGSEGV, 0);
+    signal(SIGSEGV, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGSYS)
-    signal(SIGSYS,  0);
+    signal(SIGSYS,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGTERM)
-    signal(SIGTERM, 0);
+    signal(SIGTERM, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGTRAP)
-    signal(SIGTRAP, 0);
+    signal(SIGTRAP, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGTSTP)
-    /* signal(SIGTSTP, 0); */
+    /* signal(SIGTSTP, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGURG)
-    signal(SIGURG,  0);
+    signal(SIGURG,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGUSR1)
-    /*    signal(SIGUSR1, 0); */
+    /* signal(SIGUSR1, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGUSR2)
-    /* signal(SIGUSR2, 0); */
+    /* signal(SIGUSR2, SIG_DFL); */
 #endif
     SignalSet = PETSC_FALSE;
   }
@@ -299,7 +302,7 @@ PetscErrorCode  PetscPushSignalHandler(PetscErrorCode (*routine)(int,void*),void
   if (sh) {
     if (sh->classid != SIGNAL_CLASSID) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_COR,"Signal object has been corrupted");
     newsh->previous = sh;
-  }  else newsh->previous = 0;
+  }  else newsh->previous = NULL;
   newsh->handler = routine;
   newsh->ctx     = ctx;
   newsh->classid = SIGNAL_CLASSID;
@@ -315,8 +318,6 @@ PetscErrorCode  PetscPushSignalHandler(PetscErrorCode (*routine)(int,void*),void
    Not Collective
 
   Level: developer
-
-   Concepts: signal handler^setting
 
 .seealso: PetscPushSignalHandler()
 
@@ -335,55 +336,55 @@ PetscErrorCode  PetscPopSignalHandler(void)
   ierr = PetscFree(tmp);CHKERRQ(ierr);
   if (!sh || !sh->handler) {
 #if !defined(PETSC_MISSING_SIGALRM)
-    /* signal(SIGALRM, 0); */
+    /* signal(SIGALRM, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGBUS)
-    signal(SIGBUS,  0);
+    signal(SIGBUS,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGCONT)
-    /* signal(SIGCONT, 0); */
+    /* signal(SIGCONT, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGFPE)
-    signal(SIGFPE,  0);
+    signal(SIGFPE,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGHUP)
-    signal(SIGHUP,  0);
+    signal(SIGHUP,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGILL)
-    signal(SIGILL,  0);
+    signal(SIGILL,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGINT)
-    /* signal(SIGINT,  0); */
+    /* signal(SIGINT,  SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGPIPE)
-    signal(SIGPIPE, 0);
+    signal(SIGPIPE, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGQUIT)
-    signal(SIGQUIT, 0);
+    signal(SIGQUIT, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGSEGV)
-    signal(SIGSEGV, 0);
+    signal(SIGSEGV, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGSYS)
-    signal(SIGSYS,  0);
+    signal(SIGSYS,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGTERM)
-    signal(SIGTERM, 0);
+    signal(SIGTERM, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGTRAP)
-    signal(SIGTRAP, 0);
+    signal(SIGTRAP, SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGTSTP)
-    /* signal(SIGTSTP, 0); */
+    /* signal(SIGTSTP, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGURG)
-    signal(SIGURG,  0);
+    signal(SIGURG,  SIG_DFL);
 #endif
 #if !defined(PETSC_MISSING_SIGUSR1)
-    /*    signal(SIGUSR1, 0); */
+    /* signal(SIGUSR1, SIG_DFL); */
 #endif
 #if !defined(PETSC_MISSING_SIGUSR2)
-    /* signal(SIGUSR2, 0); */
+    /* signal(SIGUSR2, SIG_DFL); */
 #endif
     SignalSet = PETSC_FALSE;
   } else {

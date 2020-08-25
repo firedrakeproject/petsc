@@ -53,8 +53,6 @@ static PetscErrorCode PetscViewerFlush_Draw(PetscViewer v)
 
     Level: intermediate
 
-   Concepts: drawing^accessing PetscDraw context from PetscViewer
-   Concepts: graphics
 
 .seealso: PetscViewerDrawGetLG(), PetscViewerDrawGetAxis(), PetscViewerDrawOpen()
 @*/
@@ -84,11 +82,9 @@ PetscErrorCode  PetscViewerDrawGetDraw(PetscViewer viewer,PetscInt windownumber,
     vdraw->draw_max = 2*windownumber;
 
     ierr = PetscCalloc3(vdraw->draw_max,&vdraw->draw,vdraw->draw_max,&vdraw->drawlg,vdraw->draw_max,&vdraw->drawaxis);CHKERRQ(ierr);
-
-    ierr = PetscMemcpy(vdraw->draw,tdraw,draw_max*sizeof(PetscDraw));CHKERRQ(ierr);
-    ierr = PetscMemcpy(vdraw->drawlg,drawlg,draw_max*sizeof(PetscDrawLG));CHKERRQ(ierr);
-    ierr = PetscMemcpy(vdraw->drawaxis,drawaxis,draw_max*sizeof(PetscDrawAxis));CHKERRQ(ierr);
-
+    ierr = PetscArraycpy(vdraw->draw,tdraw,draw_max);CHKERRQ(ierr);
+    ierr = PetscArraycpy(vdraw->drawlg,drawlg,draw_max);CHKERRQ(ierr);
+    ierr = PetscArraycpy(vdraw->drawaxis,drawaxis,draw_max);CHKERRQ(ierr);
     ierr = PetscFree3(tdraw,drawlg,drawaxis);CHKERRQ(ierr);
   }
 
@@ -123,8 +119,6 @@ PetscErrorCode  PetscViewerDrawGetDraw(PetscViewer viewer,PetscInt windownumber,
 
     Level: developer
 
-   Concepts: drawing^accessing PetscDraw context from PetscViewer
-   Concepts: graphics
 
 .seealso: PetscViewerDrawGetLG(), PetscViewerDrawGetAxis(), PetscViewerDrawOpen(), PetscViewerDrawGetDraw(), PetscViewerDrawBaseSet()
 @*/
@@ -157,8 +151,6 @@ PetscErrorCode  PetscViewerDrawBaseAdd(PetscViewer viewer,PetscInt windownumber)
 
     Level: developer
 
-   Concepts: drawing^accessing PetscDraw context from PetscViewer
-   Concepts: graphics
 
 .seealso: PetscViewerDrawGetLG(), PetscViewerDrawGetAxis(), PetscViewerDrawOpen(), PetscViewerDrawGetDraw(), PetscViewerDrawBaseAdd()
 @*/
@@ -195,8 +187,6 @@ PetscErrorCode  PetscViewerDrawBaseSet(PetscViewer viewer,PetscInt windownumber)
 .   draw - the draw line graph object
 
     Level: intermediate
-
-  Concepts: line graph^accessing context
 
 .seealso: PetscViewerDrawGetDraw(), PetscViewerDrawGetAxis(), PetscViewerDrawOpen()
 @*/
@@ -242,8 +232,6 @@ PetscErrorCode  PetscViewerDrawGetDrawLG(PetscViewer viewer,PetscInt windownumbe
 .   drawaxis - the draw axis object
 
     Level: advanced
-
-  Concepts: line graph^accessing context
 
 .seealso: PetscViewerDrawGetDraw(), PetscViewerDrawGetLG(), PetscViewerDrawOpen()
 @*/
@@ -380,7 +368,7 @@ PetscErrorCode PetscViewerDrawGetTitle(PetscViewer v,const char *title[])
    do graphics in this window, you must call PetscViewerDrawGetDraw() and
    perform the graphics on the PetscDraw object.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - communicator that will share window
@@ -416,8 +404,6 @@ PetscErrorCode PetscViewerDrawGetTitle(PetscViewer v,const char *title[])
    correct for character data!  Thus, PETSC_NULL_CHARACTER can be
    used for the display and title input parameters.
 
-  Concepts: graphics^opening PetscViewer
-  Concepts: drawing^opening PetscViewer
 
 
 .seealso: PetscDrawCreate(), PetscViewerDestroy(), PetscViewerDrawGetDraw(), PetscViewerCreate(), PETSC_VIEWER_DRAW_,
@@ -447,7 +433,11 @@ PetscErrorCode PetscViewerGetSubViewer_Draw(PetscViewer viewer,MPI_Comm comm,Pet
   if (sviewer) *sviewer = NULL;
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)viewer),&rank);CHKERRQ(ierr);
   if (!rank) {
-    ierr = PetscViewerCreate(PETSC_COMM_SELF,sviewer);CHKERRQ(ierr);
+    PetscMPIInt flg;
+
+    ierr = MPI_Comm_compare(PETSC_COMM_SELF,comm,&flg);CHKERRQ(ierr);
+    if (flg != MPI_IDENT && flg != MPI_CONGRUENT) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"PetscViewerGetSubViewer() for PETSCVIEWERDRAW requires a singleton MPI_Comm");
+    ierr = PetscViewerCreate(comm,sviewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(*sviewer,PETSCVIEWERDRAW);CHKERRQ(ierr);
     svdraw = (PetscViewer_Draw*)(*sviewer)->data;
     (*sviewer)->format = viewer->format;
@@ -741,7 +731,7 @@ PetscMPIInt Petsc_Viewer_Draw_keyval = MPI_KEYVAL_INVALID;
     PETSC_VIEWER_DRAW_ - Creates a window PetscViewer shared by all processors
                      in a communicator.
 
-     Collective on MPI_Comm
+     Collective
 
      Input Parameter:
 .    comm - the MPI communicator to share the window PetscViewer
@@ -763,23 +753,23 @@ PetscViewer  PETSC_VIEWER_DRAW_(MPI_Comm comm)
   MPI_Comm       ncomm;
 
   PetscFunctionBegin;
-  ierr = PetscCommDuplicate(comm,&ncomm,NULL);if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(0);}
+  ierr = PetscCommDuplicate(comm,&ncomm,NULL);if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
   if (Petsc_Viewer_Draw_keyval == MPI_KEYVAL_INVALID) {
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Viewer_Draw_keyval,0);
-    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(0);}
+    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Viewer_Draw_keyval,NULL);
+    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
   }
   ierr = MPI_Comm_get_attr(ncomm,Petsc_Viewer_Draw_keyval,(void**)&viewer,&flag);
-  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(0);}
+  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
   if (!flag) { /* PetscViewer not yet created */
-    ierr = PetscViewerDrawOpen(ncomm,0,0,PETSC_DECIDE,PETSC_DECIDE,300,300,&viewer);
-    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(0);}
+    ierr = PetscViewerDrawOpen(ncomm,NULL,NULL,PETSC_DECIDE,PETSC_DECIDE,300,300,&viewer);
+    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
     ierr = PetscObjectRegisterDestroy((PetscObject)viewer);
-    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(0);}
+    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
     ierr = MPI_Comm_set_attr(ncomm,Petsc_Viewer_Draw_keyval,(void*)viewer);
-    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(0);}
+    if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
   }
   ierr = PetscCommDestroy(&ncomm);
-  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(0);}
+  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_DRAW_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
   PetscFunctionReturn(viewer);
 }
 
@@ -804,8 +794,6 @@ PetscViewer  PETSC_VIEWER_DRAW_(MPI_Comm comm)
       bounds are moved to the bound value before plotting. In this way the color index from color to physical value remains the same for all plots generated with
       this viewer. Otherwise the color to physical value meaning changes with each new image if this is not set.
 
-   Concepts: drawing^accessing PetscDraw context from PetscViewer
-   Concepts: graphics
 
 .seealso: PetscViewerDrawGetLG(), PetscViewerDrawGetAxis(), PetscViewerDrawOpen()
 @*/
@@ -825,7 +813,7 @@ PetscErrorCode  PetscViewerDrawSetBounds(PetscViewer viewer,PetscInt nbounds,con
   vdraw->nbounds = nbounds;
   ierr = PetscFree(vdraw->bounds);CHKERRQ(ierr);
   ierr = PetscMalloc1(2*nbounds,&vdraw->bounds);CHKERRQ(ierr);
-  ierr = PetscMemcpy(vdraw->bounds,bounds,2*nbounds*sizeof(PetscReal));CHKERRQ(ierr);
+  ierr = PetscArraycpy(vdraw->bounds,bounds,2*nbounds);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -837,14 +825,12 @@ PetscErrorCode  PetscViewerDrawSetBounds(PetscViewer viewer,PetscInt nbounds,con
     Input Parameter:
 .   viewer - the PetscViewer (created with PetscViewerDrawOpen())
 
-    Output Paramters:
+    Output Parameters:
 +   nbounds - number of plots that can be made with this viewer, for example the dof passed to DMDACreate()
 -   bounds - the actual bounds, the size of this is 2*nbounds, the values are stored in the order min F_0, max F_0, min F_1, max F_1, .....
 
     Level: intermediate
 
-   Concepts: drawing^accessing PetscDraw context from PetscViewer
-   Concepts: graphics
 
 .seealso: PetscViewerDrawGetLG(), PetscViewerDrawGetAxis(), PetscViewerDrawOpen(), PetscViewerDrawSetBounds()
 @*/

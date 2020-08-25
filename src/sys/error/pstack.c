@@ -1,7 +1,7 @@
 
 #include <petscsys.h>        /*I  "petscsys.h"   I*/
 
-PetscStack *petscstack = 0;
+PetscStack *petscstack = NULL;
 
 #if defined(PETSC_HAVE_SAWS)
 #include <petscviewersaws.h>
@@ -14,8 +14,6 @@ static PetscBool amsmemstack = PETSC_FALSE;
    Collective on PETSC_COMM_WORLD?
 
    Level: developer
-
-   Concepts: publishing object
 
    Developers Note: Cannot use PetscFunctionBegin/Return() or PetscStackCallSAWs() since it may be used within those routines
 
@@ -36,8 +34,6 @@ void  PetscStackSAWsGrantAccess(void)
    Collective on PETSC_COMM_WORLD?
 
    Level: developer
-
-   Concepts: publishing object
 
    Developers Note: Cannot use PetscFunctionBegin/Return() or PetscStackCallSAWs() since it may be used within those routines
 
@@ -88,8 +84,8 @@ PetscErrorCode PetscStackCreate(void)
   petscstack_in->currentsize = 0;
   petscstack_in->hotdepth    = 0;
   for (i=0; i<PETSCSTACKSIZE; i++) {
-    petscstack_in->function[i] = 0;
-    petscstack_in->file[i]     = 0;
+    petscstack_in->function[i] = NULL;
+    petscstack_in->file[i]     = NULL;
   }
   petscstack = petscstack_in;
 

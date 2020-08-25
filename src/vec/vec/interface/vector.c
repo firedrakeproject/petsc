@@ -1,4 +1,3 @@
-
 /*
      Provides the interface functions for vector operations that do NOT have PetscScalar/PetscReal in the signature
    These are the vector functions the user calls.
@@ -63,8 +62,6 @@ PetscErrorCode  VecStashGetInfo(Vec vec,PetscInt *nstash,PetscInt *reallocs,Pets
 
    Level: intermediate
 
-   Concepts: vector^setting values with local numbering
-
 seealso:  VecAssemblyBegin(), VecAssemblyEnd(), VecSetValues(), VecSetValuesLocal(),
            VecSetLocalToGlobalMapping(), VecSetValuesBlockedLocal()
 @*/
@@ -97,8 +94,6 @@ PetscErrorCode  VecSetLocalToGlobalMapping(Vec x,ISLocalToGlobalMapping mapping)
 
    Level: advanced
 
-   Concepts: vectors^local to global mapping
-   Concepts: local to global mapping^for vectors
 
 .seealso:  VecSetValuesLocal()
 @*/
@@ -122,8 +117,6 @@ PetscErrorCode VecGetLocalToGlobalMapping(Vec X,ISLocalToGlobalMapping *mapping)
 .  vec - the vector
 
    Level: beginner
-
-   Concepts: assembly^vectors
 
 .seealso: VecAssemblyEnd(), VecSetValues()
 @*/
@@ -199,8 +192,6 @@ PetscErrorCode  VecAssemblyEnd(Vec vec)
     any subset of the x, y, and w may be the same vector.
           For complex numbers compares only the real part
 
-   Concepts: vector^pointwise multiply
-
 .seealso: VecPointwiseDivide(), VecPointwiseMult(), VecPointwiseMin(), VecPointwiseMaxAbs(), VecMaxPointwiseDivide()
 @*/
 PetscErrorCode  VecPointwiseMax(Vec w,Vec x,Vec y)
@@ -218,11 +209,11 @@ PetscErrorCode  VecPointwiseMax(Vec w,Vec x,Vec y)
   PetscCheckSameTypeAndComm(y,3,w,1);
   VecCheckSameSize(w,1,x,2);
   VecCheckSameSize(w,1,y,3);
+  ierr = VecSetErrorIfLocked(w,1);CHKERRQ(ierr);
   ierr = (*w->ops->pointwisemax)(w,x,y);CHKERRQ(ierr);
   ierr = PetscObjectStateIncrease((PetscObject)w);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*@
    VecPointwiseMin - Computes the componentwise minimum w_i = min(x_i, y_i).
@@ -241,8 +232,6 @@ PetscErrorCode  VecPointwiseMax(Vec w,Vec x,Vec y)
     any subset of the x, y, and w may be the same vector.
           For complex numbers compares only the real part
 
-   Concepts: vector^pointwise multiply
-
 .seealso: VecPointwiseDivide(), VecPointwiseMult(), VecPointwiseMin(), VecPointwiseMaxAbs(), VecMaxPointwiseDivide()
 @*/
 PetscErrorCode  VecPointwiseMin(Vec w,Vec x,Vec y)
@@ -260,6 +249,7 @@ PetscErrorCode  VecPointwiseMin(Vec w,Vec x,Vec y)
   PetscCheckSameTypeAndComm(y,3,w,1);
   VecCheckSameSize(w,1,x,2);
   VecCheckSameSize(w,1,y,3);
+  ierr = VecSetErrorIfLocked(w,1);CHKERRQ(ierr);
   ierr = (*w->ops->pointwisemin)(w,x,y);CHKERRQ(ierr);
   ierr = PetscObjectStateIncrease((PetscObject)w);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -281,8 +271,6 @@ PetscErrorCode  VecPointwiseMin(Vec w,Vec x,Vec y)
    Notes:
     any subset of the x, y, and w may be the same vector.
 
-   Concepts: vector^pointwise multiply
-
 .seealso: VecPointwiseDivide(), VecPointwiseMult(), VecPointwiseMin(), VecPointwiseMax(), VecMaxPointwiseDivide()
 @*/
 PetscErrorCode  VecPointwiseMaxAbs(Vec w,Vec x,Vec y)
@@ -300,6 +288,7 @@ PetscErrorCode  VecPointwiseMaxAbs(Vec w,Vec x,Vec y)
   PetscCheckSameTypeAndComm(y,3,w,1);
   VecCheckSameSize(w,1,x,2);
   VecCheckSameSize(w,1,y,3);
+  ierr = VecSetErrorIfLocked(w,1);CHKERRQ(ierr);
   ierr = (*w->ops->pointwisemaxabs)(w,x,y);CHKERRQ(ierr);
   ierr = PetscObjectStateIncrease((PetscObject)w);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -321,8 +310,6 @@ PetscErrorCode  VecPointwiseMaxAbs(Vec w,Vec x,Vec y)
    Notes:
     any subset of the x, y, and w may be the same vector.
 
-   Concepts: vector^pointwise divide
-
 .seealso: VecPointwiseMult(), VecPointwiseMax(), VecPointwiseMin(), VecPointwiseMaxAbs(), VecMaxPointwiseDivide()
 @*/
 PetscErrorCode  VecPointwiseDivide(Vec w,Vec x,Vec y)
@@ -340,6 +327,7 @@ PetscErrorCode  VecPointwiseDivide(Vec w,Vec x,Vec y)
   PetscCheckSameTypeAndComm(y,3,w,1);
   VecCheckSameSize(w,1,x,2);
   VecCheckSameSize(w,1,y,3);
+  ierr = VecSetErrorIfLocked(w,1);CHKERRQ(ierr);
   ierr = (*w->ops->pointwisedivide)(w,x,y);CHKERRQ(ierr);
   ierr = PetscObjectStateIncrease((PetscObject)w);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -483,6 +471,29 @@ PetscErrorCode  VecDestroyVecs(PetscInt m,Vec *vv[])
 }
 
 /*@C
+   VecViewFromOptions - View from Options
+
+   Collective on Vec
+
+   Input Parameters:
++  A - the vector
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  Vec, VecView, PetscObjectViewFromOptions(), VecCreate()
+@*/
+PetscErrorCode  VecViewFromOptions(Vec A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,VEC_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
    VecView - Views a vector object.
 
    Collective on Vec
@@ -500,12 +511,13 @@ PetscErrorCode  VecDestroyVecs(PetscInt m,Vec *vv[])
    You can change the format the vector is printed using the
    option PetscViewerPushFormat().
 
-   The user can open alternative visualization contexts with
+   The user can open alternative viewers with
 +    PetscViewerASCIIOpen() - Outputs vector to a specified file
 .    PetscViewerBinaryOpen() - Outputs vector in binary to a
          specified file; corresponding input uses VecLoad()
 .    PetscViewerDrawOpen() - Outputs vector to an X window display
--    PetscViewerSocketOpen() - Outputs vector to Socket viewer
+.    PetscViewerSocketOpen() - Outputs vector to Socket viewer
+-    PetscViewerHDF5Open() - Outputs vector to HDF5 file viewer
 
    The user can call PetscViewerPushFormat() to specify the output
    format of ASCII printed objects (when using PETSC_VIEWER_STDOUT_SELF,
@@ -519,31 +531,39 @@ PetscErrorCode  VecDestroyVecs(PetscInt m,Vec *vv[])
    Notes:
     You can pass any number of vector objects, or other PETSc objects to the same viewer.
 
-   Notes for binary viewer: If you pass multiply vectors to a binary viewer you can read them back in in the same order
-$     with VecLoad().
-$
-$    If the blocksize of the vector is greater than one then you must provide a unique prefix to
-$    the vector with PetscObjectSetOptionsPrefix((PetscObject)vec,"uniqueprefix"); BEFORE calling VecView() on the
-$    vector to be stored and then set that same unique prefix on the vector that you pass to VecLoad(). The blocksize
-$    information is stored in an ASCII file with the same name as the binary file plus a ".info" appended to the
-$    filename. If you copy the binary file, make sure you copy the associated .info file with it.
+   Notes for binary viewer:
+     If you pass multiple vectors to a binary viewer you can read them back in in the same order
+     with VecLoad().
 
-   Notes for HDF5 Viewer: the name of the Vec (given with PetscObjectSetName() is the name that is used
-$    for the object in the HDF5 file. If you wish to store the same vector to the HDF5 viewer (with different values,
-$    obviously) several times, you must change its name each time before calling the VecView(). The name you use
-$    here should equal the name that you use in the Vec object that you use with VecLoad().
+     If the blocksize of the vector is greater than one then you must provide a unique prefix to
+     the vector with PetscObjectSetOptionsPrefix((PetscObject)vec,"uniqueprefix"); BEFORE calling VecView() on the
+     vector to be stored and then set that same unique prefix on the vector that you pass to VecLoad(). The blocksize
+     information is stored in an ASCII file with the same name as the binary file plus a ".info" appended to the
+     filename. If you copy the binary file, make sure you copy the associated .info file with it.
 
-   See the manual page for VecLoad() on the exact format the binary viewer stores
-   the values in the file.
+     See the manual page for VecLoad() on the exact format the binary viewer stores
+     the values in the file.
+
+
+   Notes for HDF5 Viewer:
+     The name of the Vec (given with PetscObjectSetName() is the name that is used
+     for the object in the HDF5 file. If you wish to store the same Vec into multiple
+     datasets in the same file (typically with different values), you must change its
+     name each time before calling the VecView(). To load the same vector,
+     the name of the Vec object passed to VecLoad() must be the same.
+
+     If the block size of the vector is greater than 1 then it is used as the first dimension in the HDF5 array.
+     If the function PetscViewerHDF5SetBaseDimension2()is called then even if the block size is one it will
+     be used as the first dimension in the HDF5 array (that is the HDF5 array will always be two dimensional)
+     See also PetscViewerHDF5SetTimestep() which adds an additional complication to reading and writing Vecs
+     with the HDF5 viewer.
 
    Level: beginner
 
-   Concepts: vector^printing
-   Concepts: vector^saving to disk
 
 .seealso: PetscViewerASCIIOpen(), PetscViewerDrawOpen(), PetscDrawLGCreate(),
           PetscViewerSocketOpen(), PetscViewerBinaryOpen(), VecLoad(), PetscViewerCreate(),
-          PetscRealView(), PetscScalarView(), PetscIntView()
+          PetscRealView(), PetscScalarView(), PetscIntView(), PetscViewerHDF5SetTimestep()
 @*/
 PetscErrorCode  VecView(Vec vec,PetscViewer viewer)
 {
@@ -555,9 +575,7 @@ PetscErrorCode  VecView(Vec vec,PetscViewer viewer)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(vec,VEC_CLASSID,1);
   PetscValidType(vec,1);
-  if (!viewer) {
-    ierr = PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)vec),&viewer);CHKERRQ(ierr);
-  }
+  if (!viewer) {ierr = PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)vec),&viewer);CHKERRQ(ierr);}
   PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,2);
   ierr = PetscViewerGetFormat(viewer,&format);CHKERRQ(ierr);
   ierr = MPI_Comm_size(PetscObjectComm((PetscObject)vec),&size);CHKERRQ(ierr);
@@ -565,7 +583,6 @@ PetscErrorCode  VecView(Vec vec,PetscViewer viewer)
 
   if (vec->stash.n || vec->bstash.n) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Must call VecAssemblyBegin/End() before viewing this vector");
 
-  ierr = PetscLogEventBegin(VEC_View,vec,viewer,0,0);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII,&iascii);CHKERRQ(ierr);
   if (iascii) {
     PetscInt rows,bs;
@@ -584,6 +601,7 @@ PetscErrorCode  VecView(Vec vec,PetscViewer viewer)
     }
   }
   ierr = VecLockReadPush(vec);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(VEC_View,vec,viewer,0,0);CHKERRQ(ierr);
   if ((format == PETSC_VIEWER_NATIVE || format == PETSC_VIEWER_LOAD_BALANCE) && vec->ops->viewnative) {
     ierr = (*vec->ops->viewnative)(vec,viewer);CHKERRQ(ierr);
   } else {
@@ -627,8 +645,6 @@ PETSC_UNUSED static int TV_display_type(const struct _p_Vec *v)
 
    Level: beginner
 
-   Concepts: vector^local size
-
 .seealso: VecGetLocalSize()
 @*/
 PetscErrorCode  VecGetSize(Vec x,PetscInt *size)
@@ -645,8 +661,7 @@ PetscErrorCode  VecGetSize(Vec x,PetscInt *size)
 
 /*@
    VecGetLocalSize - Returns the number of elements of the vector stored
-   in local memory. This routine may be implementation dependent, so use
-   with care.
+   in local memory.
 
    Not Collective
 
@@ -657,8 +672,6 @@ PetscErrorCode  VecGetSize(Vec x,PetscInt *size)
 .  size - the length of the local piece of the vector
 
    Level: beginner
-
-   Concepts: vector^size
 
 .seealso: VecGetSize()
 @*/
@@ -697,8 +710,6 @@ PetscErrorCode  VecGetLocalSize(Vec x,PetscInt *size)
 
    Level: beginner
 
-   Concepts: ownership^of vectors
-   Concepts: vector^ownership of elements
 
 .seealso:   MatGetOwnershipRange(), MatGetOwnershipRanges(), VecGetOwnershipRanges()
 @*/
@@ -736,8 +747,6 @@ PetscErrorCode  VecGetOwnershipRange(Vec x,PetscInt *low,PetscInt *high)
 
    Level: beginner
 
-   Concepts: ownership^of vectors
-   Concepts: vector^ownership of elements
 
 .seealso:   MatGetOwnershipRange(), MatGetOwnershipRanges(), VecGetOwnershipRange()
 @*/
@@ -772,9 +781,11 @@ PetscErrorCode  VecGetOwnershipRanges(Vec x,const PetscInt *ranges[])
           ignored.
 -     VEC_SUBSET_OFF_PROC_ENTRIES, which causes VecAssemblyBegin() to assume that the off-process
           entries will always be a subset (possibly equal) of the off-process entries set on the
-          first assembly.  This reuses the communication pattern, thus avoiding a global reduction.
-          Subsequent assemblies setting off-process values should use the same InsertMode as the
-          first assembly.
+          first assembly which had a true VEC_SUBSET_OFF_PROC_ENTRIES and the vector has not
+          changed this flag afterwards. If this assembly is not such first assembly, then this
+          assembly can reuse the communication pattern setup in that first assembly, thus avoiding
+          a global reduction. Subsequent assemblies setting off-process values should use the same
+          InsertMode as the first assembly.
 
    Developer Note:
    The InsertMode restriction could be removed by packing the stash messages out of place.
@@ -858,7 +869,7 @@ PetscErrorCode  VecResetArray(Vec vec)
   Collective on PetscViewer
 
   Input Parameters:
-+ newvec - the newly loaded vector, this needs to have been created with VecCreate() or
++ vec - the newly loaded vector, this needs to have been created with VecCreate() or
            some related function before a call to VecLoad().
 - viewer - binary file viewer, obtained from PetscViewerBinaryOpen() or
            HDF5 file viewer, obtained from PetscViewerHDF5Open()
@@ -872,11 +883,11 @@ PetscErrorCode  VecResetArray(Vec vec)
   The input file must contain the full global vector, as
   written by the routine VecView().
 
-  If the type or size of newvec is not set before a call to VecLoad, PETSc
+  If the type or size of vec is not set before a call to VecLoad, PETSc
   sets the type and the local and global sizes. If type and/or
   sizes are already set, then the same are used.
 
-  If using binary and the blocksize of the vector is greater than one then you must provide a unique prefix to
+  If using the binary viewer and the blocksize of the vector is greater than one then you must provide a unique prefix to
   the vector with PetscObjectSetOptionsPrefix((PetscObject)vec,"uniqueprefix"); BEFORE calling VecView() on the
   vector to be stored and then set that same unique prefix on the vector that you pass to VecLoad(). The blocksize
   information is stored in an ASCII file with the same name as the binary file plus a ".info" appended to the
@@ -884,53 +895,57 @@ PetscErrorCode  VecResetArray(Vec vec)
 
   If using HDF5, you must assign the Vec the same name as was used in the Vec
   that was stored in the file using PetscObjectSetName(). Otherwise you will
-  get the error message: "Cannot H5DOpen2() with Vec name NAMEOFOBJECT"
+  get the error message: "Cannot H5DOpen2() with Vec name NAMEOFOBJECT".
 
-  Notes for advanced users:
+  If the HDF5 file contains a two dimensional array the first dimension is treated as the block size
+  in loading the vector. Hence, for example, using Matlab notation h5create('vector.dat','/Test_Vec',[27 1]);
+  will load a vector of size 27 and block size 27 thus resulting in all 27 entries being on the first process of
+  vectors communicator and the rest of the processes having zero entries
+
+  Notes for advanced users when using the binary viewer:
   Most users should not need to know the details of the binary storage
   format, since VecLoad() and VecView() completely hide these details.
   But for anyone who's interested, the standard binary vector storage
   format is
 .vb
-     int    VEC_FILE_CLASSID
-     int    number of rows
+     PetscInt    VEC_FILE_CLASSID
+     PetscInt    number of rows
      PetscScalar *values of all entries
 .ve
 
-   In addition, PETSc automatically does the byte swapping for
-machines that store the bytes reversed, e.g.  DEC alpha, freebsd,
-linux, Windows and the paragon; thus if you write your own binary
-read/write routines you have to swap the bytes; see PetscBinaryRead()
-and PetscBinaryWrite() to see how this may be done.
-
-  Concepts: vector^loading from file
+   In addition, PETSc automatically uses byte swapping to work on all machines; the files
+   are written ALWAYS using big-endian ordering. On small-endian machines the numbers
+   are converted to the small-endian format when they are read in from the file.
+   See PetscBinaryRead() and PetscBinaryWrite() to see how this may be done.
 
 .seealso: PetscViewerBinaryOpen(), VecView(), MatLoad(), VecLoad()
 @*/
-PetscErrorCode  VecLoad(Vec newvec, PetscViewer viewer)
+PetscErrorCode  VecLoad(Vec vec, PetscViewer viewer)
 {
   PetscErrorCode    ierr;
   PetscBool         isbinary,ishdf5,isadios,isadios2;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(newvec,VEC_CLASSID,1);
+  PetscValidHeaderSpecific(vec,VEC_CLASSID,1);
   PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,2);
+  PetscCheckSameComm(vec,1,viewer,2);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERBINARY,&isbinary);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERHDF5,&ishdf5);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERADIOS,&isadios);CHKERRQ(ierr);
-  ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERADIOS,&isadios2);CHKERRQ(ierr);    
+  ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERADIOS,&isadios2);CHKERRQ(ierr);
   if (!isbinary && !ishdf5 && !isadios && !isadios2) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Invalid viewer; open viewer with PetscViewerBinaryOpen()");
 
-  ierr = PetscLogEventBegin(VEC_Load,viewer,0,0,0);CHKERRQ(ierr);
-  if (!((PetscObject)newvec)->type_name && !newvec->ops->create) {
-    ierr = VecSetType(newvec, VECSTANDARD);CHKERRQ(ierr);
+  ierr = VecSetErrorIfLocked(vec,1);CHKERRQ(ierr);
+  if (!((PetscObject)vec)->type_name && !vec->ops->create) {
+    ierr = VecSetType(vec, VECSTANDARD);CHKERRQ(ierr);
   }
+  ierr = PetscLogEventBegin(VEC_Load,viewer,0,0,0);CHKERRQ(ierr);
   ierr = PetscViewerGetFormat(viewer,&format);CHKERRQ(ierr);
-  if (format == PETSC_VIEWER_NATIVE && newvec->ops->loadnative) {
-    ierr = (*newvec->ops->loadnative)(newvec,viewer);CHKERRQ(ierr);
+  if (format == PETSC_VIEWER_NATIVE && vec->ops->loadnative) {
+    ierr = (*vec->ops->loadnative)(vec,viewer);CHKERRQ(ierr);
   } else {
-    ierr = (*newvec->ops->load)(newvec,viewer);CHKERRQ(ierr);
+    ierr = (*vec->ops->load)(vec,viewer);CHKERRQ(ierr);
   }
   ierr = PetscLogEventEnd(VEC_Load,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -950,8 +965,6 @@ PetscErrorCode  VecLoad(Vec newvec, PetscViewer viewer)
 
    Level: intermediate
 
-   Concepts: vector^reciprocal
-
 .seealso: VecLog(), VecExp(), VecSqrtAbs()
 
 @*/
@@ -964,6 +977,7 @@ PetscErrorCode  VecReciprocal(Vec vec)
   PetscValidType(vec,1);
   if (vec->stash.insertmode != NOT_SET_VALUES) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for unassembled vector");
   if (!vec->ops->reciprocal) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Vector does not support reciprocal operation");
+  ierr = VecSetErrorIfLocked(vec,1);CHKERRQ(ierr);
   ierr = (*vec->ops->reciprocal)(vec);CHKERRQ(ierr);
   ierr = PetscObjectStateIncrease((PetscObject)vec);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -993,8 +1007,6 @@ $      ierr = VecSetOperation(x,VECOP_VIEW,(void(*)(void))userview);CHKERRQ(ierr
     user interface routine (e.g., VecView() -> VECOP_VIEW).
 
     This function is not currently available from Fortran.
-
-.keywords: vector, set, operation
 
 .seealso: VecCreate(), MatShellSetOperation()
 @*/
@@ -1040,8 +1052,6 @@ PetscErrorCode VecSetOperation(Vec vec,VecOperation op, void (*f)(void))
      VecAssemblyBegin_MPIXXX:Block-Stash has BMM entries, uses nn mallocs.
      to determine the value, BMM to use for bsize
 
-   Concepts: vector^stash
-   Concepts: stash^vector
 
 .seealso: VecSetBlockSize(), VecSetValues(), VecSetValuesBlocked(), VecStashView()
 
@@ -1067,8 +1077,6 @@ PetscErrorCode  VecStashSetInitialSize(Vec vec,PetscInt size,PetscInt bsize)
 
    Level: intermediate
 
-   Concepts: vector^conjugate
-
 @*/
 PetscErrorCode  VecConjugate(Vec x)
 {
@@ -1079,6 +1087,7 @@ PetscErrorCode  VecConjugate(Vec x)
   PetscValidHeaderSpecific(x,VEC_CLASSID,1);
   PetscValidType(x,1);
   if (x->stash.insertmode != NOT_SET_VALUES) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for unassembled vector");
+  ierr = VecSetErrorIfLocked(x,1);CHKERRQ(ierr);
   ierr = (*x->ops->conjugate)(x);CHKERRQ(ierr);
   /* we need to copy norms here */
   ierr = PetscObjectStateIncrease((PetscObject)x);CHKERRQ(ierr);
@@ -1104,8 +1113,6 @@ PetscErrorCode  VecConjugate(Vec x)
    Notes:
     any subset of the x, y, and w may be the same vector.
 
-   Concepts: vector^pointwise multiply
-
 .seealso: VecPointwiseDivide(), VecPointwiseMax(), VecPointwiseMin(), VecPointwiseMaxAbs(), VecMaxPointwiseDivide()
 @*/
 PetscErrorCode  VecPointwiseMult(Vec w, Vec x,Vec y)
@@ -1123,6 +1130,7 @@ PetscErrorCode  VecPointwiseMult(Vec w, Vec x,Vec y)
   PetscCheckSameTypeAndComm(y,3,w,1);
   VecCheckSameSize(w,1,x,2);
   VecCheckSameSize(w,2,y,3);
+  ierr = VecSetErrorIfLocked(w,1);CHKERRQ(ierr);
   ierr = PetscLogEventBegin(VEC_PointwiseMult,x,y,w,0);CHKERRQ(ierr);
   ierr = (*w->ops->pointwisemult)(w,x,y);CHKERRQ(ierr);
   ierr = PetscLogEventEnd(VEC_PointwiseMult,x,y,w,0);CHKERRQ(ierr);
@@ -1152,8 +1160,6 @@ PetscErrorCode  VecPointwiseMult(Vec w, Vec x,Vec y)
 
    Level: intermediate
 
-   Concepts: vector^setting to random
-   Concepts: random^vector
 
 .seealso: VecSet(), VecSetValues(), PetscRandomCreate(), PetscRandomDestroy()
 @*/
@@ -1167,6 +1173,7 @@ PetscErrorCode  VecSetRandom(Vec x,PetscRandom rctx)
   if (rctx) PetscValidHeaderSpecific(rctx,PETSC_RANDOM_CLASSID,2);
   PetscValidType(x,1);
   if (x->stash.insertmode != NOT_SET_VALUES) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for unassembled vector");
+  ierr = VecSetErrorIfLocked(x,1);CHKERRQ(ierr);
 
   if (!rctx) {
     MPI_Comm comm;
@@ -1195,12 +1202,6 @@ PetscErrorCode  VecSetRandom(Vec x,PetscRandom rctx)
 
   Level: beginner
 
-  Developer Note: This routine does not need to exist since the exact functionality is obtained with
-     VecSet(vec,0);  I guess someone added it to mirror the functionality of MatZeroEntries() but Mat is nothing
-     like a Vec (one is an operator and one is an element of a vector space, yeah yeah dual blah blah blah) so
-     this routine should not exist.
-
-.keywords: Vec, set, options, database
 .seealso: VecCreate(),  VecSetOptionsPrefix(), VecSet(), VecSetValues()
 @*/
 PetscErrorCode  VecZeroEntries(Vec vec)
@@ -1223,7 +1224,6 @@ PetscErrorCode  VecZeroEntries(Vec vec)
 
   Level: intermediate
 
-.keywords: Vec, set, options, database, type
 .seealso: VecSetFromOptions(), VecSetType()
 */
 static PetscErrorCode VecSetTypeFromOptions_Private(PetscOptionItems *PetscOptionsObject,Vec vec)
@@ -1266,10 +1266,7 @@ static PetscErrorCode VecSetTypeFromOptions_Private(PetscOptionItems *PetscOptio
 
   Level: beginner
 
-  Concepts: vectors^setting options
-  Concepts: vectors^setting type
 
-.keywords: Vec, set, options, database
 .seealso: VecCreate(), VecSetOptionsPrefix()
 @*/
 PetscErrorCode  VecSetFromOptions(Vec vec)
@@ -1347,7 +1344,6 @@ PetscErrorCode  VecSetSizes(Vec v, PetscInt n, PetscInt N)
 
 .seealso: VecSetValuesBlocked(), VecSetLocalToGlobalMapping(), VecGetBlockSize()
 
-  Concepts: block size^vectors
 @*/
 PetscErrorCode  VecSetBlockSize(Vec v,PetscInt bs)
 {
@@ -1355,7 +1351,6 @@ PetscErrorCode  VecSetBlockSize(Vec v,PetscInt bs)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(v,VEC_CLASSID,1);
-  if (bs < 0 || bs == v->map->bs) PetscFunctionReturn(0);
   PetscValidLogicalCollectiveInt(v,bs,2);
   ierr = PetscLayoutSetBlockSize(v->map,bs);CHKERRQ(ierr);
   v->bstash.bs = bs; /* use the same blocksize for the vec's block-stash */
@@ -1381,8 +1376,6 @@ PetscErrorCode  VecSetBlockSize(Vec v,PetscInt bs)
 
 .seealso: VecSetValuesBlocked(), VecSetLocalToGlobalMapping(), VecSetBlockSize()
 
-   Concepts: vector^block size
-   Concepts: block^vector
 
 @*/
 PetscErrorCode  VecGetBlockSize(Vec v,PetscInt *bs)
@@ -1412,8 +1405,6 @@ PetscErrorCode  VecGetBlockSize(Vec v,PetscInt *bs)
 
    Level: advanced
 
-.keywords: Vec, set, options, prefix, database
-
 .seealso: VecSetFromOptions()
 @*/
 PetscErrorCode  VecSetOptionsPrefix(Vec v,const char prefix[])
@@ -1441,8 +1432,6 @@ PetscErrorCode  VecSetOptionsPrefix(Vec v,const char prefix[])
    The first character of all runtime options is AUTOMATICALLY the hyphen.
 
    Level: advanced
-
-.keywords: Vec, append, options, prefix, database
 
 .seealso: VecGetOptionsPrefix()
 @*/
@@ -1474,8 +1463,6 @@ PetscErrorCode  VecAppendOptionsPrefix(Vec v,const char prefix[])
 
    Level: advanced
 
-.keywords: Vec, get, options, prefix, database
-
 .seealso: VecAppendOptionsPrefix()
 @*/
 PetscErrorCode  VecGetOptionsPrefix(Vec v,const char *prefix[])
@@ -1502,8 +1489,6 @@ PetscErrorCode  VecGetOptionsPrefix(Vec v,const char *prefix[])
 
    Level: advanced
 
-.keywords: Vec, setup
-
 .seealso: VecCreate(), VecDestroy()
 @*/
 PetscErrorCode  VecSetUp(Vec v)
@@ -1513,6 +1498,7 @@ PetscErrorCode  VecSetUp(Vec v)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(v,VEC_CLASSID,1);
+  if (v->map->n < 0 && v->map->N < 0) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Sizes not set");
   if (!((PetscObject)v)->type_name) {
     ierr = MPI_Comm_size(PetscObjectComm((PetscObject)v), &size);CHKERRQ(ierr);
     if (size == 1) {
@@ -1637,8 +1623,6 @@ PetscErrorCode  VecCopy(Vec x,Vec y)
 
    Level: advanced
 
-   Concepts: vector^swapping values
-
 @*/
 PetscErrorCode  VecSwap(Vec x,Vec y)
 {
@@ -1656,6 +1640,8 @@ PetscErrorCode  VecSwap(Vec x,Vec y)
   VecCheckSameSize(x,1,y,2);
   if (x->stash.insertmode != NOT_SET_VALUES) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for unassembled vector");
   if (y->stash.insertmode != NOT_SET_VALUES) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for unassembled vector");
+  ierr = VecSetErrorIfLocked(x,1);CHKERRQ(ierr);
+  ierr = VecSetErrorIfLocked(y,2);CHKERRQ(ierr);
 
   ierr = PetscLogEventBegin(VEC_Swap,x,y,0,0);CHKERRQ(ierr);
   for (i=0; i<4; i++) {
@@ -1723,8 +1709,6 @@ PetscErrorCode VecStashViewFromOptions(Vec obj,PetscObject bobj,const char optio
 
    Level: advanced
 
-   Concepts: vector^stash
-   Concepts: stash^vector
 
 .seealso: VecSetBlockSize(), VecSetValues(), VecSetValuesBlocked()
 
@@ -1869,4 +1853,86 @@ PetscErrorCode VecSetInf(Vec xin)
   for (i=0; i<n; i++) xx[i] = inf;
   ierr = VecRestoreArray(xin,&xx);CHKERRQ(ierr);
   PetscFunctionReturn(0);
+}
+
+/*@
+     VecBindToCPU - marks a vector to temporarily stay on the CPU and perform computations on the CPU
+
+   Input Parameters:
++   v - the vector
+-   flg - bind to the CPU if value of PETSC_TRUE
+
+   Level: intermediate
+@*/
+PetscErrorCode VecBindToCPU(Vec v,PetscBool flg)
+{
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  if (v->boundtocpu == flg) PetscFunctionReturn(0);
+  v->boundtocpu = flg;
+  if (v->ops->bindtocpu) {
+    ierr = (*v->ops->bindtocpu)(v,flg);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+#else
+  return 0;
+#endif
+}
+
+/*@C
+  VecSetPinnedMemoryMin - Set the minimum data size for which pinned memory will be used for host (CPU) allocations.
+
+  Logically Collective on Vec
+
+  Input Parameters:
++  v    - the vector
+-  mbytes - minimum data size in bytes
+
+  Options Database Keys:
+
+. -vec_pinned_memory_min <size> - minimum size (in bytes) for an allocation to use pinned memory on host.
+                                  Note that this takes a PetscScalar, to accommodate large values;
+                                  specifying -1 ensures that pinned memory will always be used.
+
+  Level: developer
+
+.seealso: VecGetPinnedMemoryMin()
+@*/
+PetscErrorCode VecSetPinnedMemoryMin(Vec v,size_t mbytes)
+{
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
+  PetscFunctionBegin;
+  v->minimum_bytes_pinned_memory = mbytes;
+  PetscFunctionReturn(0);
+#else
+  return 0;
+#endif
+}
+
+/*@C
+  VecGetPinnedMemoryMin - Get the minimum data size for which pinned memory will be used for host (CPU) allocations.
+
+  Logically Collective on Vec
+
+  Input Parameters:
+.  v    - the vector
+
+  Output Parameters:
+.  mbytes - minimum data size in bytes
+
+  Level: developer
+
+.seealso: VecSetPinnedMemoryMin()
+@*/
+PetscErrorCode VecGetPinnedMemoryMin(Vec v,size_t *mbytes)
+{
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
+  PetscFunctionBegin;
+  *mbytes = v->minimum_bytes_pinned_memory;
+  PetscFunctionReturn(0);
+#else
+  return 0;
+#endif
 }

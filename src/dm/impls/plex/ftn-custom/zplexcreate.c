@@ -11,7 +11,7 @@
 
 /* Definitions of Fortran Wrapper routines */
 
-PETSC_EXTERN void PETSC_STDCALL dmplexcreateboxmesh_(MPI_Fint *comm, PetscInt *dim, PetscBool *simplex, PetscInt faces[], PetscReal lower[], PetscReal upper[], DMBoundaryType periodicity[], PetscBool *interpolate, DM *dm, int *ierr)
+PETSC_EXTERN void dmplexcreateboxmesh_(MPI_Fint *comm, PetscInt *dim, PetscBool *simplex, PetscInt faces[], PetscReal lower[], PetscReal upper[], DMBoundaryType periodicity[], PetscBool *interpolate, DM *dm, int *ierr)
 {
   CHKFORTRANNULLINTEGER(faces);
   CHKFORTRANNULLREAL(lower);
@@ -20,7 +20,7 @@ PETSC_EXTERN void PETSC_STDCALL dmplexcreateboxmesh_(MPI_Fint *comm, PetscInt *d
   *ierr = DMPlexCreateBoxMesh(MPI_Comm_f2c(*(comm)),*dim,*simplex,faces,lower,upper,periodicity,*interpolate,dm);
 }
 
-PETSC_EXTERN void PETSC_STDCALL dmplexcreatefromfile_(MPI_Fint *comm, char* name PETSC_MIXED_LEN(lenN), PetscBool *interpolate, DM *dm, int *ierr PETSC_END_LEN(lenN))
+PETSC_EXTERN void dmplexcreatefromfile_(MPI_Fint *comm, char* name, PetscBool *interpolate, DM *dm, int *ierr,PETSC_FORTRAN_CHARLEN_T lenN)
 {
   char *filename;
 

@@ -1,7 +1,7 @@
 
 /*
     Provides an interface to the CUFFT package.
-    Testing examples can be found in ~src/mat/examples/tests
+    Testing examples can be found in ~src/mat/tests
 */
 
 #include <petsc/private/matimpl.h>          /*I "petscmat.h" I*/
@@ -116,7 +116,7 @@ PetscErrorCode MatDestroy_SeqCUFFT(Mat A)
 /*@
   MatCreateSeqCUFFT - Creates a matrix object that provides sequential FFT via the external package CUFFT
 
-  Collective on MPI_Comm
+  Collective
 
   Input Parameters:
 + comm - MPI communicator, set to PETSC_COMM_SELF
@@ -151,7 +151,7 @@ PetscErrorCode  MatCreateSeqCUFFT(MPI_Comm comm, PetscInt ndim, const PetscInt d
   ierr       = PetscNewLog(*A,&cufft);CHKERRQ(ierr);
   (*A)->data = (void*) cufft;
   ierr       = PetscMalloc1(ndim+1, &cufft->dim);CHKERRQ(ierr);
-  ierr       = PetscMemcpy(cufft->dim, dim, ndim*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr       = PetscArraycpy(cufft->dim, dim, ndim);CHKERRQ(ierr);
 
   cufft->ndim       = ndim;
   cufft->p_forward  = 0;

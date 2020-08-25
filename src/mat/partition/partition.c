@@ -36,16 +36,16 @@ static PetscErrorCode MatPartitioningApply_Average(MatPartitioning part,IS *part
   PetscInt       m,M,nparts,*indices,r,d,*parts,i,start,end,loc;
 
   PetscFunctionBegin;
-  ierr = MatGetSize(part->adj,&M,NULL);CHKERRQ(ierr);
-  ierr = MatGetLocalSize(part->adj,&m,NULL);CHKERRQ(ierr);
+  ierr   = MatGetSize(part->adj,&M,NULL);CHKERRQ(ierr);
+  ierr   = MatGetLocalSize(part->adj,&m,NULL);CHKERRQ(ierr);
   nparts = part->n;
-  ierr = PetscCalloc1(nparts,&parts);CHKERRQ(ierr);
-  d = M/nparts;
+  ierr   = PetscMalloc1(nparts,&parts);CHKERRQ(ierr);
+  d      = M/nparts;
   for (i=0; i<nparts; i++) parts[i] = d;
   r = M%nparts;
   for (i=0; i<r; i++) parts[i] += 1;
   for (i=1; i<nparts; i++) parts[i] += parts[i-1];
-  ierr = PetscCalloc1(m,&indices);CHKERRQ(ierr);
+  ierr = PetscMalloc1(m,&indices);CHKERRQ(ierr);
   ierr = MatGetOwnershipRange(part->adj,&start,&end);CHKERRQ(ierr);
   for (i=start; i<end; i++) {
     ierr = PetscFindInt(i,nparts,parts,&loc);CHKERRQ(ierr);
@@ -127,8 +127,8 @@ PETSC_INTERN PetscErrorCode MatPartitioningSizesToSep_Private(PetscInt p, PetscI
   l2p = PetscLog2Real(p);
   if (l2p - (PetscInt)PetscLog2Real(p)) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"%D is not a power of 2",p);
   if (!p) PetscFunctionReturn(0);
-  ierr = PetscMemzero(seps,(2*p-2)*sizeof(PetscInt));CHKERRQ(ierr);
-  ierr = PetscMemzero(level,(p-1)*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArrayzero(seps,2*p-2);CHKERRQ(ierr);
+  ierr = PetscArrayzero(level,p-1);CHKERRQ(ierr);
   seps[2*p-2] = sizes[2*p-2];
   pTree = p;
   pStartTree = 0;
@@ -158,7 +158,7 @@ PETSC_INTERN PetscErrorCode MatPartitioningSizesToSep_Private(PetscInt p, PetscI
   }
   /* I know there should be a formula */
   ierr = PetscSortIntWithArrayPair(p-1,seps+p,sizes+p,level);CHKERRQ(ierr);
-  for (i=2*p-2;i>=0;i--) { seps[2*i] = seps[i]; seps[2*i+1] = seps[i] + sizes[i] - 1; }
+  for (i=2*p-2;i>=0;i--) { seps[2*i] = seps[i]; seps[2*i+1] = seps[i] + PetscMax(sizes[i] - 1,0); }
   PetscFunctionReturn(0);
 }
 
@@ -189,8 +189,6 @@ $     MatPartitioningSetType(part,"my_part")
    or at runtime via the option
 $     -mat_partitioning_type my_part
 
-.keywords: matrix, partitioning, register
-
 .seealso: MatPartitioningRegisterDestroy(), MatPartitioningRegisterAll()
 @*/
 PetscErrorCode  MatPartitioningRegister(const char sname[],PetscErrorCode (*function)(MatPartitioning))
@@ -219,7 +217,6 @@ PetscErrorCode  MatPartitioningRegister(const char sname[],PetscErrorCode (*func
 
    Not Collective
 
-.keywords: Partitioning, get, method, name, type
 @*/
 PetscErrorCode  MatPartitioningGetType(MatPartitioning partitioning,MatPartitioningType *type)
 {
@@ -238,14 +235,12 @@ PetscErrorCode  MatPartitioningGetType(MatPartitioning partitioning,MatPartition
    Not collective
 
    Input Parameter:
-.  partitioning - the partitioning context
-.  n - the number of partitions
++  partitioning - the partitioning context
+-  n - the number of partitions
 
    Level: intermediate
 
    Not Collective
-
-.keywords: Partitioning, set
 
 .seealso: MatPartitioningCreate(), MatPartitioningApply()
 @*/
@@ -271,8 +266,6 @@ PetscErrorCode  MatPartitioningSetNParts(MatPartitioning part,PetscInt n)
    Level: beginner
 
    The user can define additional partitionings; see MatPartitioningRegister().
-
-.keywords: matrix, get, partitioning
 
 .seealso:  MatPartitioningRegister(), MatPartitioningCreate(),
            MatPartitioningDestroy(), MatPartitioningSetAdjacency(), ISPartitioningToNumbering(),
@@ -320,8 +313,6 @@ $    -mat_partitioning_view
 
    The user can define additional partitionings; see MatPartitioningRegister().
 
-.keywords: matrix, get, partitioning
-
 .seealso:  MatPartitioningRegister(), MatPartitioningCreate(),
            MatPartitioningDestroy(), MatPartitioningSetAdjacency(), ISPartitioningToNumbering(),
            ISPartitioningCount()
@@ -368,8 +359,8 @@ PetscErrorCode  MatPartitioningApply(MatPartitioning matp,IS *partitioning)
    Collective on Mat
 
    Input Parameters:
-.  matp - the matrix partitioning object
-.  partitioning - the partitioning. For each local node this tells the processor
++  matp - the matrix partitioning object
+-  partitioning - the partitioning. For each local node this tells the processor
                    number that that node is assigned to.
 
    Output Parameters:
@@ -382,8 +373,6 @@ $    -mat_partitioning_improve
 
    Level: beginner
 
-
-.keywords: matrix, improve, partitioning
 
 .seealso:  MatPartitioningApply(), MatPartitioningCreate(),
            MatPartitioningDestroy(), MatPartitioningSetAdjacency(), ISPartitioningToNumbering(),
@@ -412,8 +401,8 @@ PetscErrorCode  MatPartitioningImprove(MatPartitioning matp,IS *partitioning)
    Collective on MatPartitioning
 
    Input Parameters:
-.  matp - the matrix partitioning object
-.  partitioning - the partitioning. For each local node this tells the processor
++  matp - the matrix partitioning object
+-  partitioning - the partitioning. For each local node this tells the processor
                    number that that node is assigned to.
 
    Options Database Keys:
@@ -421,8 +410,6 @@ PetscErrorCode  MatPartitioningImprove(MatPartitioning matp,IS *partitioning)
 $    -mat_partitioning_view_balance
 
    Level: beginner
-
-.keywords: matrix, imbalance, partitioning
 
 .seealso:  MatPartitioningApply(), MatPartitioningView()
 @*/
@@ -463,15 +450,13 @@ PetscErrorCode  MatPartitioningViewImbalance(MatPartitioning matp, IS partitioni
    MatPartitioningSetAdjacency - Sets the adjacency graph (matrix) of the thing to be
       partitioned.
 
-   Collective on MatPartitioning and Mat
+   Collective on MatPartitioning
 
    Input Parameters:
 +  part - the partitioning context
 -  adj - the adjacency matrix
 
    Level: beginner
-
-.keywords: Partitioning, adjacency
 
 .seealso: MatPartitioningCreate()
 @*/
@@ -493,8 +478,6 @@ PetscErrorCode  MatPartitioningSetAdjacency(MatPartitioning part,Mat adj)
 .  part - the partitioning context
 
    Level: beginner
-
-.keywords: Partitioning, destroy, context
 
 .seealso: MatPartitioningCreate()
 @*/
@@ -531,8 +514,6 @@ PetscErrorCode  MatPartitioningDestroy(MatPartitioning *part)
       The array weights is freed by PETSc so the user should not free the array. In C/C++
    the array must be obtained with a call to PetscMalloc(), not malloc().
 
-.keywords: Partitioning, destroy, context
-
 .seealso: MatPartitioningCreate(), MatPartitioningSetType(), MatPartitioningSetPartitionWeights()
 @*/
 PetscErrorCode  MatPartitioningSetVertexWeights(MatPartitioning part,const PetscInt weights[])
@@ -541,9 +522,7 @@ PetscErrorCode  MatPartitioningSetVertexWeights(MatPartitioning part,const Petsc
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
-
   ierr = PetscFree(part->vertex_weights);CHKERRQ(ierr);
-
   part->vertex_weights = (PetscInt*)weights;
   PetscFunctionReturn(0);
 }
@@ -568,8 +547,6 @@ PetscErrorCode  MatPartitioningSetVertexWeights(MatPartitioning part,const Petsc
       The array weights is freed by PETSc so the user should not free the array. In C/C++
    the array must be obtained with a call to PetscMalloc(), not malloc().
 
-.keywords: Partitioning, destroy, context
-
 .seealso: MatPartitioningCreate(), MatPartitioningSetType(), MatPartitioningSetVertexWeights()
 @*/
 PetscErrorCode  MatPartitioningSetPartitionWeights(MatPartitioning part,const PetscReal weights[])
@@ -578,17 +555,65 @@ PetscErrorCode  MatPartitioningSetPartitionWeights(MatPartitioning part,const Pe
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
-
   ierr = PetscFree(part->part_weights);CHKERRQ(ierr);
-
   part->part_weights = (PetscReal*)weights;
+  PetscFunctionReturn(0);
+}
+
+/*@
+   MatPartitioningSetUseEdgeWeights - Set a flag to indicate whether or not to use edge weights.
+
+   Logically Collective on Partitioning
+
+   Input Parameters:
++  part - the partitioning context
+-  use_edge_weights - the flag indicateing whether or not to use edge weights. By default no edge weights will be used,
+                      that is, use_edge_weights is set to FALSE. If set use_edge_weights to TRUE, users need to make sure legal
+                      edge weights are stored in an ADJ matrix.
+   Level: beginner
+
+   Options Database Keys:
+.  -mat_partitioning_use_edge_weights - (true or false)
+
+.seealso: MatPartitioningCreate(), MatPartitioningSetType(), MatPartitioningSetVertexWeights(), MatPartitioningSetPartitionWeights()
+@*/
+PetscErrorCode  MatPartitioningSetUseEdgeWeights(MatPartitioning part,PetscBool use_edge_weights)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
+  part->use_edge_weights = use_edge_weights;
+  PetscFunctionReturn(0);
+}
+
+/*@
+   MatPartitioningGetUseEdgeWeights - Get a flag that indicates whether or not to edge weights are used.
+
+   Logically Collective on Partitioning
+
+   Input Parameters:
+.  part - the partitioning context
+
+   Output Parameters:
+.  use_edge_weights - the flag indicateing whether or not to edge weights are used.
+
+   Level: beginner
+
+.seealso: MatPartitioningCreate(), MatPartitioningSetType(), MatPartitioningSetVertexWeights(), MatPartitioningSetPartitionWeights(),
+          MatPartitioningSetUseEdgeWeights
+@*/
+PetscErrorCode  MatPartitioningGetUseEdgeWeights(MatPartitioning part,PetscBool *use_edge_weights)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(part,MAT_PARTITIONING_CLASSID,1);
+  PetscValidPointer(use_edge_weights,2);
+  *use_edge_weights = part->use_edge_weights;
   PetscFunctionReturn(0);
 }
 
 /*@
    MatPartitioningCreate - Creates a partitioning context.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .   comm - MPI communicator
@@ -597,8 +622,6 @@ PetscErrorCode  MatPartitioningSetPartitionWeights(MatPartitioning part,const Pe
 .  newp - location to put the context
 
    Level: beginner
-
-.keywords: Partitioning, create, context
 
 .seealso: MatPartitioningSetType(), MatPartitioningApply(), MatPartitioningDestroy(),
           MatPartitioningSetAdjacency()
@@ -617,6 +640,7 @@ PetscErrorCode  MatPartitioningCreate(MPI_Comm comm,MatPartitioning *newp)
   ierr = PetscHeaderCreate(part,MAT_PARTITIONING_CLASSID,"MatPartitioning","Matrix/graph partitioning","MatOrderings",comm,MatPartitioningDestroy,MatPartitioningView);CHKERRQ(ierr);
   part->vertex_weights = NULL;
   part->part_weights   = NULL;
+  part->use_edge_weights = PETSC_FALSE; /* By default we don't use edge weights */
 
   ierr    = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
   part->n = (PetscInt)size;
@@ -626,13 +650,36 @@ PetscErrorCode  MatPartitioningCreate(MPI_Comm comm,MatPartitioning *newp)
 }
 
 /*@C
+   MatPartitioningViewFromOptions - View from Options
+
+   Collective on MatPartitioning
+
+   Input Parameters:
++  A - the partitioning context
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  MatPartitioning, MatPartitioningView, PetscObjectViewFromOptions(), MatPartitioningCreate()
+@*/
+PetscErrorCode  MatPartitioningViewFromOptions(MatPartitioning A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,MAT_PARTITIONING_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
    MatPartitioningView - Prints the partitioning data structure.
 
    Collective on MatPartitioning
 
    Input Parameters:
-.  part - the partitioning context
-.  viewer - optional visualization context
++  part - the partitioning context
+-  viewer - optional visualization context
 
    Level: intermediate
 
@@ -646,8 +693,6 @@ PetscErrorCode  MatPartitioningCreate(MPI_Comm comm,MatPartitioning *newp)
 
    The user can open alternative visualization contexts with
 .     PetscViewerASCIIOpen() - output to a specified file
-
-.keywords: Partitioning, view
 
 .seealso: PetscViewerASCIIOpen()
 @*/
@@ -685,8 +730,8 @@ PetscErrorCode  MatPartitioningView(MatPartitioning part,PetscViewer viewer)
    Collective on MatPartitioning
 
    Input Parameter:
-.  part - the partitioning context.
-.  type - a known method
++  part - the partitioning context.
+-  type - a known method
 
    Options Database Command:
 $  -mat_partitioning_type  <type>
@@ -694,8 +739,6 @@ $      Use -help for a list of available methods
 $      (for instance, parmetis)
 
    Level: intermediate
-
-.keywords: partitioning, set, method, type
 
 .seealso: MatPartitioningCreate(), MatPartitioningApply(), MatPartitioningType
 
@@ -752,7 +795,6 @@ $  -mat_partitioning_nparts - number of subgraphs
 
    Level: beginner
 
-.keywords: partitioning, set, method, type
 @*/
 PetscErrorCode  MatPartitioningSetFromOptions(MatPartitioning part)
 {
@@ -785,6 +827,8 @@ PetscErrorCode  MatPartitioningSetFromOptions(MatPartitioning part)
 
   ierr = PetscOptionsInt("-mat_partitioning_nparts","number of fine parts",NULL,part->n,& part->n,&flag);CHKERRQ(ierr);
 
+  ierr = PetscOptionsBool("-mat_partitioning_use_edge_weights","whether or not to use edge weights",NULL,part->use_edge_weights,&part->use_edge_weights,&flag);CHKERRQ(ierr);
+
   /*
     Set the type if it was never set.
   */
@@ -798,9 +842,3 @@ PetscErrorCode  MatPartitioningSetFromOptions(MatPartitioning part)
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
-
-
-
-
-

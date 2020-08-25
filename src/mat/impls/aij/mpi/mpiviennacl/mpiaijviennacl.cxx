@@ -1,3 +1,5 @@
+#define PETSC_SKIP_IMMINTRIN_H_CUDAWORKAROUND 1
+
 #include <petscconf.h>
 #include <../src/mat/impls/aij/mpi/mpiaij.h>   /*I "petscmat.h" I*/
 #include <../src/mat/impls/aij/seq/seqviennacl/viennaclmatimpl.h>
@@ -69,7 +71,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_MPIAIJViennaCL(Mat A)
 }
 
 
-/*@
+/*@C
    MatCreateAIJViennaCL - Creates a sparse matrix in AIJ (compressed row) format
    (the default parallel PETSc format).  This matrix will ultimately be pushed down
    to GPUs and use the ViennaCL library for calculations. For good matrix
@@ -78,7 +80,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_MPIAIJViennaCL(Mat A)
    performance during matrix assembly can be increased substantially.
 
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI communicator, set to PETSC_COMM_SELF
@@ -144,7 +146,7 @@ PetscErrorCode  MatCreateAIJViennaCL(MPI_Comm comm,PetscInt m,PetscInt n,PetscIn
    the above preallocation routines for simplicity.
 
    Options Database Keys:
-+  -mat_type mpiaijviennacl - sets the matrix type to "mpiaijviennacl" during a call to MatSetFromOptions()
+.  -mat_type mpiaijviennacl - sets the matrix type to "mpiaijviennacl" during a call to MatSetFromOptions()
 
   Level: beginner
 

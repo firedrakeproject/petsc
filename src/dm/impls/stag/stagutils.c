@@ -14,7 +14,7 @@
 
   Level: intermediate
 
-.seealso: DMSTAG
+.seealso: DMSTAG, DMDAGetBoundaryTypes()
 @*/
 PetscErrorCode DMStagGetBoundaryTypes(DM dm,DMBoundaryType *boundaryTypeX,DMBoundaryType *boundaryTypeY,DMBoundaryType *boundaryTypeZ)
 {
@@ -31,37 +31,19 @@ PetscErrorCode DMStagGetBoundaryTypes(DM dm,DMBoundaryType *boundaryTypeX,DMBoun
   PetscFunctionReturn(0);
 }
 
-/*@C
-  DMStagGet1dCoordinateArraysDOFRead - extract 1D coordinate arrays
-
-  Logically Collective
-
-  A high-level helper function to quickly extract raw 1D local coordinate arrays.
-  Checks that the coordinate DM is a DMProduct or 1D DMStags, with the same number of dof.
-  Check on the number of dof and dimension ensures that the elementwise data
-  is the same for each, so the same indexing can be used on the arrays.
-
-  Input Parameter:
-. dm - the DMStag object
-
-  Output Parameters:
-. arrX,arrY,arrX - local 1D coordinate arrays
-
-  Level: intermediate
-
-.seealso: DMSTAG, DMPRODUCT, DMStagSetUniformCoordinates(), DMStagSetUniformCoordinatesProduct(), DMStagGet1dCoordinateLocationSlot()
-@*/
-PetscErrorCode DMStagGet1dCoordinateArraysDOFRead(DM dm,void* arrX,void* arrY,void* arrZ)
+static PetscErrorCode DMStagGetProductCoordinateArrays_Private(DM dm,void* arrX,void* arrY,void* arrZ,PetscBool read)
 {
   PetscErrorCode ierr;
   PetscInt       dim,d,dofCheck[DMSTAG_MAX_STRATA],s;
   DM             dmCoord;
   void*          arr[DMSTAG_MAX_DIM];
+  PetscBool      checkDof;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
-  arr[0] = arrX; arr[1] = arrY; arr[2] = arrZ;
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
+  if (dim > DMSTAG_MAX_DIM) SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Not implemented for %D dimensions",dim);
+  arr[0] = arrX; arr[1] = arrY; arr[2] = arrZ;
   ierr = DMGetCoordinateDM(dm,&dmCoord);CHKERRQ(ierr);
   if (!dmCoord) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"DM does not have a coordinate DM");
   {
@@ -72,12 +54,17 @@ PetscErrorCode DMStagGet1dCoordinateArraysDOFRead(DM dm,void* arrX,void* arrY,vo
     if (!isProduct) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"Coordinate DM is not of type DMPRODUCT");
   }
   for (s=0; s<DMSTAG_MAX_STRATA; ++s) dofCheck[s] = 0;
+  checkDof = PETSC_FALSE;
   for (d=0; d<dim; ++d) {
     DM        subDM;
     DMType    dmType;
     PetscBool isStag;
     PetscInt  dof[DMSTAG_MAX_STRATA],subDim;
-    Vec       coord1d;
+    Vec       coord1d_local;
+
+    /* Ignore unrequested arrays */
+    if (!arr[d]) continue;
+
     ierr = DMProductGetDM(dmCoord,d,&subDM);CHKERRQ(ierr);
     if (!subDM) SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"Coordinate DM is missing sub DM %D",d);
     ierr = DMGetDimension(subDM,&subDim);CHKERRQ(ierr);
@@ -86,26 +73,93 @@ PetscErrorCode DMStagGet1dCoordinateArraysDOFRead(DM dm,void* arrX,void* arrY,vo
     ierr = PetscStrcmp(DMSTAG,dmType,&isStag);CHKERRQ(ierr);
     if (!isStag) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"Coordinate sub-DM is not of type DMSTAG");
     ierr = DMStagGetDOF(subDM,&dof[0],&dof[1],&dof[2],&dof[3]);CHKERRQ(ierr);
-    if (d == 0) {
+    if (!checkDof) {
       for (s=0; s<DMSTAG_MAX_STRATA; ++s) dofCheck[s] = dof[s];
+      checkDof = PETSC_TRUE;
     } else {
       for (s=0; s<DMSTAG_MAX_STRATA; ++s) {
         if (dofCheck[s] != dof[s]) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"Coordinate sub-DMs have different dofs");
       }
     }
-    ierr = DMGetCoordinatesLocal(subDM,&coord1d);CHKERRQ(ierr);
-    ierr = DMStagVecGetArrayDOFRead(subDM,coord1d,arr[d]);CHKERRQ(ierr);
+    ierr = DMGetCoordinatesLocal(subDM,&coord1d_local);CHKERRQ(ierr);
+    if (read) {
+      ierr = DMStagVecGetArrayRead(subDM,coord1d_local,arr[d]);CHKERRQ(ierr);
+    } else {
+      ierr = DMStagVecGetArray(subDM,coord1d_local,arr[d]);CHKERRQ(ierr);
+    }
   }
   PetscFunctionReturn(0);
 }
 
 /*@C
-  DMStagGet1dCoordinateLocationSlot - get slot for use with local 1D coordinate arrays
+  DMStagGetProductCoordinateArrays - extract local product coordinate arrays, one per dimension
 
-  High-level helper function to get slot ids for 1D coordinate DMs.
-  For use with DMStagGetIDCoordinateArraysDOFRead() and related functions.
+  Logically Collective
+
+  A high-level helper function to quickly extract local coordinate arrays.
+
+  Note that 2-dimensional arrays are returned. See
+  DMStagVecGetArray(), which is called internally to produce these arrays
+  representing coordinates on elements and vertices (element boundaries)
+  for a 1-dimensional DMStag in each coordinate direction.
+
+  One should use DMStagGetProductCoordinateSlot() to determine appropriate
+  indices for the second dimension in these returned arrays. This function
+  checks that the coordinate array is a suitable product of 1-dimensional
+  DMStag objects.
+
+  Input Parameter:
+. dm - the DMStag object
+
+  Output Parameters:
+. arrX,arrY,arrZ - local 1D coordinate arrays
+
+  Level: intermediate
+
+.seealso: DMSTAG, DMPRODUCT, DMStagGetProductCoordinateArraysRead(), DMStagSetUniformCoordinates(), DMStagSetUniformCoordinatesProduct(), DMStagGetProductCoordinateLocationSlot()
+@*/
+PetscErrorCode DMStagGetProductCoordinateArrays(DM dm,void* arrX,void* arrY,void* arrZ)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = DMStagGetProductCoordinateArrays_Private(dm,arrX,arrY,arrZ,PETSC_FALSE);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMStagGetProductCoordinateArraysRead - extract product coordinate arrays, read-only
+
+  Logically Collective
+
+  See the man page for DMStagGetProductCoordinateArrays() for more information.
+
+  Input Parameter:
+. dm - the DMStag object
+
+  Output Parameters:
+. arrX,arrY,arrZ - local 1D coordinate arrays
+
+  Level: intermediate
+
+.seealso: DMSTAG, DMPRODUCT, DMStagGetProductCoordinateArrays(), DMStagSetUniformCoordinates(), DMStagSetUniformCoordinatesProduct(), DMStagGetProductCoordinateLocationSlot()
+@*/
+PetscErrorCode DMStagGetProductCoordinateArraysRead(DM dm,void* arrX,void* arrY,void* arrZ)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = DMStagGetProductCoordinateArrays_Private(dm,arrX,arrY,arrZ,PETSC_TRUE);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMStagGetProductCoordinateLocationSlot - get slot for use with local product coordinate arrays
 
   Not Collective
+
+  High-level helper function to get slot indices for 1D coordinate DMs,
+  for use with DMStagGetProductCoordinateArrays() and related functions.
 
   Input Parameters:
 + dm - the DMStag object
@@ -120,9 +174,9 @@ PetscErrorCode DMStagGet1dCoordinateArraysDOFRead(DM dm,void* arrX,void* arrY,vo
 
   Level: intermediate
 
-.seealso: DMSTAG, DMPRODUCT, DMStagGet1dCoordinateArraysDOFRead(), DMStagSetUniformCoordinates()
+.seealso: DMSTAG, DMPRODUCT, DMStagGetProductCoordinateArrays(), DMStagGetProductCoordinateArraysRead(), DMStagSetUniformCoordinates()
 @*/
-PETSC_EXTERN PetscErrorCode DMStagGet1dCoordinateLocationSlot(DM dm,DMStagStencilLocation loc,PetscInt *slot)
+PETSC_EXTERN PetscErrorCode DMStagGetProductCoordinateLocationSlot(DM dm,DMStagStencilLocation loc,PetscInt *slot)
 {
   PetscErrorCode ierr;
   DM             dmCoord;
@@ -178,14 +232,18 @@ PETSC_EXTERN PetscErrorCode DMStagGet1dCoordinateLocationSlot(DM dm,DMStagStenci
   Output Parameters:
 + x,y,z - starting element indices in each direction
 . m,n,p - element widths in each direction
-- nExtrax,nExtray,nExtraz - number of extra partial elements in each direction. The number is 1 on the right, top, and front boundaries of the grid, otherwise 0.
+- nExtrax,nExtray,nExtraz - number of extra partial elements in each direction.
 
   Notes:
   Arguments corresponding to higher dimensions are ignored for 1D and 2D grids. These arguments may be set to NULL in this case.
 
+  The number of extra partial elements is either 1 or 0.
+  The value is 1 on right, top, and front non-periodic domain ("physical") boundaries,
+  in the x, y, and z directions respectively, and otherwise 0.
+
   Level: beginner
 
-.seealso: DMSTAG, DMStagGetGhostCorners()
+.seealso: DMSTAG, DMStagGetGhostCorners(), DMDAGetCorners()
 @*/
 PetscErrorCode DMStagGetCorners(DM dm,PetscInt *x,PetscInt *y,PetscInt *z,PetscInt *m,PetscInt *n,PetscInt *p,PetscInt *nExtrax,PetscInt *nExtray,PetscInt *nExtraz)
 {
@@ -199,9 +257,9 @@ PetscErrorCode DMStagGetCorners(DM dm,PetscInt *x,PetscInt *y,PetscInt *z,PetscI
   if (m) *m = stag->n[0];
   if (n) *n = stag->n[1];
   if (p) *p = stag->n[2];
-  if (nExtrax) *nExtrax = stag->lastRank[0] ? 1 : 0;
-  if (nExtray) *nExtray = stag->lastRank[1] ? 1 : 0;
-  if (nExtraz) *nExtraz = stag->lastRank[2] ? 1 : 0;
+  if (nExtrax) *nExtrax = stag->boundaryType[0] != DM_BOUNDARY_PERIODIC && stag->lastRank[0] ? 1 : 0;
+  if (nExtray) *nExtray = stag->boundaryType[1] != DM_BOUNDARY_PERIODIC && stag->lastRank[1] ? 1 : 0;
+  if (nExtraz) *nExtraz = stag->boundaryType[2] != DM_BOUNDARY_PERIODIC && stag->lastRank[2] ? 1 : 0;
   PetscFunctionReturn(0);
 }
 
@@ -215,13 +273,13 @@ PetscErrorCode DMStagGetCorners(DM dm,PetscInt *x,PetscInt *y,PetscInt *z,PetscI
 
   Output Parameters:
 + dof0 - the number of points per 0-cell (vertex/node)
-. dof1 - the number of points per 1-cell (elementin 1D, edge in 2D and 3D)
+. dof1 - the number of points per 1-cell (element in 1D, edge in 2D and 3D)
 . dof2 - the number of points per 2-cell (element in 2D, face in 3D)
-- dof3 - the number of points per 3-cell (elementin 3D)
+- dof3 - the number of points per 3-cell (element in 3D)
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagGetCorners(), DMStagGetGhostCorners(), DMStagGetGlobalSizes(), DMStagGetStencilWidth(), DMStagGetBoundaryTypes()
+.seealso: DMSTAG, DMStagGetCorners(), DMStagGetGhostCorners(), DMStagGetGlobalSizes(), DMStagGetStencilWidth(), DMStagGetBoundaryTypes(), DMStagGetLocationDof(), DMDAGetDof()
 @*/
 PetscErrorCode DMStagGetDOF(DM dm,PetscInt *dof0,PetscInt *dof1,PetscInt *dof2,PetscInt *dof3)
 {
@@ -242,7 +300,7 @@ PetscErrorCode DMStagGetDOF(DM dm,PetscInt *dof0,PetscInt *dof1,PetscInt *dof2,P
   Not Collective
 
   Input Argument:
-+ dm - the DMStag object
+. dm - the DMStag object
 
   Output Arguments:
 + x,y,z - starting element indices in each direction
@@ -253,7 +311,7 @@ PetscErrorCode DMStagGetDOF(DM dm,PetscInt *dof0,PetscInt *dof1,PetscInt *dof2,P
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagGetCorners()
+.seealso: DMSTAG, DMStagGetCorners(), DMDAGetGhostCorners()
 @*/
 PetscErrorCode DMStagGetGhostCorners(DM dm,PetscInt *x,PetscInt *y,PetscInt *z,PetscInt *m,PetscInt *n,PetscInt *p)
 {
@@ -286,7 +344,7 @@ PetscErrorCode DMStagGetGhostCorners(DM dm,PetscInt *x,PetscInt *y,PetscInt *z,P
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagGetLocalSizes()
+.seealso: DMSTAG, DMStagGetLocalSizes(), DMDAGetInfo()
 @*/
 PetscErrorCode DMStagGetGlobalSizes(DM dm,PetscInt* M,PetscInt* N,PetscInt* P)
 {
@@ -378,7 +436,7 @@ PetscErrorCode DMStagGetIsLastRank(DM dm,PetscBool *isLastRank0,PetscBool *isLas
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagGetGlobalSizes(), DMStagGetDOF(), DMStagGetNumRanks()
+.seealso: DMSTAG, DMStagGetGlobalSizes(), DMStagGetDOF(), DMStagGetNumRanks(), DMDAGetLocalInfo()
 @*/
 PetscErrorCode DMStagGetLocalSizes(DM dm,PetscInt* m,PetscInt* n,PetscInt* p)
 {
@@ -409,7 +467,7 @@ PetscErrorCode DMStagGetLocalSizes(DM dm,PetscInt* m,PetscInt* n,PetscInt* p)
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagGetGlobalSizes(), DMStagGetLocalSize(), DMStagSetNumRank()
+.seealso: DMSTAG, DMStagGetGlobalSizes(), DMStagGetLocalSize(), DMStagSetNumRanks(), DMDAGetInfo()
 @*/
 PetscErrorCode DMStagGetNumRanks(DM dm,PetscInt *nRanks0,PetscInt *nRanks1,PetscInt *nRanks2)
 {
@@ -420,6 +478,34 @@ PetscErrorCode DMStagGetNumRanks(DM dm,PetscInt *nRanks0,PetscInt *nRanks1,Petsc
   if (nRanks0) *nRanks0 = stag->nRanks[0];
   if (nRanks1) *nRanks1 = stag->nRanks[1];
   if (nRanks2) *nRanks2 = stag->nRanks[2];
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMStagGetEntries - get number of native entries in the global representation
+
+  Not Collective
+
+  Input Parameter:
+. dm - the DMStag object
+
+  Output Parameters:
+. entries - number of rank-native entries in the global representation
+
+  Note:
+  This is the number of entries on this rank for a global vector associated with dm.
+
+  Level: developer
+
+.seealso: DMSTAG, DMStagGetDOF(), DMStagGetEntriesPerElement(), DMCreateLocalVector()
+@*/
+PetscErrorCode DMStagGetEntries(DM dm,PetscInt *entries)
+{
+  const DM_Stag * const stag = (DM_Stag*)dm->data;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
+  if (entries) *entries = stag->entries;
   PetscFunctionReturn(0);
 }
 
@@ -465,7 +551,7 @@ PetscErrorCode DMStagGetEntriesPerElement(DM dm,PetscInt *entriesPerElement)
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagSetStencilType(), DMStagStencilType
+.seealso: DMSTAG, DMStagSetStencilType(), DMStagStencilType, DMDAGetInfo()
 @*/
 PetscErrorCode DMStagGetStencilType(DM dm,DMStagStencilType *stencilType)
 {
@@ -490,7 +576,7 @@ PetscErrorCode DMStagGetStencilType(DM dm,DMStagStencilType *stencilType)
 
   Level: beginner
 
-.seealso: DMSTAG
+.seealso: DMSTAG, DMDAGetStencilWidth(), DMDAGetInfo()
 @*/
 PetscErrorCode DMStagGetStencilWidth(DM dm,PetscInt *stencilWidth)
 {
@@ -499,20 +585,6 @@ PetscErrorCode DMStagGetStencilWidth(DM dm,PetscInt *stencilWidth)
   PetscFunctionBegin;
   PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
   if (stencilWidth) *stencilWidth = stag->stencilWidth;
-  PetscFunctionReturn(0);
-}
-
-/*@C
-  DMStagGetGhostType - deprecated; use DMStagGetStencilType()
-
-  Level: deprecated
-@*/
-PetscErrorCode DMStagGetGhostType(DM dm,DMStagStencilType *stencilType)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = DMStagGetStencilType(dm,stencilType);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -539,7 +611,7 @@ PetscErrorCode DMStagGetGhostType(DM dm,DMStagStencilType *stencilType)
 
   Level: intermediate
 
-.seealso: DMSTAG, DMStagSetGlobalSizes(), DMStagSetOwnershipRanges(), DMStagCreate1d(), DMStagCreate2d(), DMStagCreate3d()
+.seealso: DMSTAG, DMStagSetGlobalSizes(), DMStagSetOwnershipRanges(), DMStagCreate1d(), DMStagCreate2d(), DMStagCreate3d(), DMDAGetOwnershipRanges()
 @*/
 PetscErrorCode DMStagGetOwnershipRanges(DM dm,const PetscInt *lx[],const PetscInt *ly[],const PetscInt *lz[])
 {
@@ -558,7 +630,7 @@ PetscErrorCode DMStagGetOwnershipRanges(DM dm,const PetscInt *lx[],const PetscIn
 
   Collective
 
-  Input Parameters
+  Input Parameters:
 + dm - the DMStag object
 - dof0,dof1,dof2,dof3 - number of dof on each stratum in the new DMStag
 
@@ -567,33 +639,23 @@ PetscErrorCode DMStagGetOwnershipRanges(DM dm,const PetscInt *lx[],const PetscIn
 
   Notes:
   Dof supplied for strata too big for the dimension are ignored; these may be set to 0.
+  For example, for a 2-dimensional DMStag, dof2 sets the number of dof per element,
+  and dof3 is unused. For a 3-dimensional DMStag, dof3 sets the number of dof per element.
+  
   In contrast to DMDACreateCompatibleDMDA(), coordinates are not reused.
 
   Level: intermediate
 
-.seealso: DMSTAG, DMDACreatCompatibleDMDA(), DMGetCompatibility(), DMStagMigrateVec()
+.seealso: DMSTAG, DMDACreateCompatibleDMDA(), DMGetCompatibility(), DMStagMigrateVec()
 @*/
 PetscErrorCode DMStagCreateCompatibleDMStag(DM dm,PetscInt dof0,PetscInt dof1,PetscInt dof2,PetscInt dof3,DM *newdm)
 {
   PetscErrorCode  ierr;
-  const DM_Stag * const stag = (DM_Stag*)dm->data;
-  PetscInt        dim;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
-  ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
-  switch (dim) {
-    case 1:
-      ierr = DMStagCreate1d(PetscObjectComm((PetscObject)dm),stag->boundaryType[0],stag->N[0],dof0,dof1,stag->stencilType,stag->stencilWidth,NULL,newdm);CHKERRQ(ierr);
-      break;
-    case 2:
-      ierr = DMStagCreate2d(PetscObjectComm((PetscObject)dm),stag->boundaryType[0],stag->boundaryType[1],stag->N[0],stag->N[1],stag->nRanks[0],stag->nRanks[1],dof0,dof1,dof2,stag->stencilType,stag->stencilWidth,NULL,NULL,newdm);CHKERRQ(ierr);
-      break;
-    case 3:
-      ierr = DMStagCreate3d(PetscObjectComm((PetscObject)dm),stag->boundaryType[0],stag->boundaryType[1],stag->boundaryType[2],stag->N[0],stag->N[1],stag->N[2],stag->nRanks[0],stag->nRanks[1],stag->nRanks[2],dof0,dof1,dof2,dof3,stag->stencilType,stag->stencilWidth,NULL,NULL,NULL,newdm);CHKERRQ(ierr);
-      break;
-    default: SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Unsupported dimension %D",dim);
-  }
+  ierr = DMStagDuplicateWithoutSetup(dm,PetscObjectComm((PetscObject)dm),newdm);CHKERRQ(ierr);
+  ierr = DMStagSetDOF(*newdm,dof0,dof1,dof2,dof3);CHKERRQ(ierr);
   ierr = DMSetUp(*newdm);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -612,13 +674,13 @@ PetscErrorCode DMStagCreateCompatibleDMStag(DM dm,PetscInt dof0,PetscInt dof1,Pe
 . slot - index to use
 
   Notes:
-  Provides an appropriate index to use with DMStagVecGetArrayDOF() and friends.
+  Provides an appropriate index to use with DMStagVecGetArray() and friends.
   This is required so that the user doesn't need to know about the ordering of
   dof associated with each local element.
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagVecGetArrayDOF(), DMStagVecGetArrayDOFRead(), DMStagGetDOF(), DStagMGetEntriesPerElement()
+.seealso: DMSTAG, DMStagVecGetArray(), DMStagVecGetArrayRead(), DMStagGetDOF(), DMStagGetEntriesPerElement()
 @*/
 PetscErrorCode DMStagGetLocationSlot(DM dm,DMStagStencilLocation loc,PetscInt c,PetscInt *slot)
 {
@@ -626,15 +688,13 @@ PetscErrorCode DMStagGetLocationSlot(DM dm,DMStagStencilLocation loc,PetscInt c,
 
   PetscFunctionBegin;
   PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
-#if defined(PETSC_USE_DEBUG)
-  {
+  if (PetscDefined(USE_DEBUG)) {
     PetscErrorCode ierr;
     PetscInt       dof;
     ierr = DMStagGetLocationDOF(dm,loc,&dof);CHKERRQ(ierr);
     if (dof < 1) SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Location %s has no dof attached",DMStagStencilLocations[loc]);
     if (c > dof-1) SETERRQ3(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Supplied component number (%D) for location %s is too big (maximum %D)",c,DMStagStencilLocations[loc],dof-1);
   }
-#endif
   *slot = stag->locationOffsets[loc] + c;
   PetscFunctionReturn(0);
 }
@@ -760,21 +820,57 @@ PetscErrorCode DMStagMigrateVec(DM dm,Vec vec,DM dmTo,Vec vecTo)
 }
 
 /*@C
-  DMStagRestore1dCoordinateArraysDOFRead - restore local array access
+  DMStagPopulateLocalToGlobalInjective - populate an internal 1-to-1 local-to-global map
 
-  Logically Collective
+  Collective
+
+  Creates an internal object which explicitly maps a single local degree of
+  freedom to each global degree of freedom. This is used, if populated,
+  instead of SCATTER_REVERSE_LOCAL with the (1-to-many, in general)
+  global-to-local map, when DMLocalToGlobal() is called with INSERT_VALUES.
+  This allows usage, for example, even in the periodic, 1-rank case, where
+  the inverse of the global-to-local map, even when restricted to on-rank
+  communication, is non-injective. This is at the cost of storing an additional
+  VecScatter object inside each DMStag object.
 
   Input Parameter:
 . dm - the DMStag object
 
-  Output Parameters:
-. arrX,arrY,arrX - local 1D coordinate arrays
+  Notes:
+  In normal usage, library users shouldn't be concerned with this function,
+  as it is called during DMSetUp(), when required.
 
-  Level: intermediate
+  Returns immediately if the internal map is already populated.
 
-.seealso: DMSTAG, DMStagGet1dCoordinateArraysDOFRead()
+  Developer Notes:
+  This could, if desired, be moved up to a general DM routine. It would allow,
+  for example, DMDA to support DMLocalToGlobal() with INSERT_VALUES,
+  even in the single-rank periodic case.
+
+  Level: developer
+
+.seealso: DMSTAG, DMLocalToGlobal(), VecScatter
 @*/
-PetscErrorCode DMStagRestore1dCoordinateArraysDOFRead(DM dm,void *arrX,void *arrY,void *arrZ)
+PetscErrorCode DMStagPopulateLocalToGlobalInjective(DM dm)
+{
+  PetscErrorCode  ierr;
+  PetscInt        dim;
+  DM_Stag * const stag  = (DM_Stag*)dm->data;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
+  if (stag->ltog_injective) PetscFunctionReturn(0); /* Don't re-populate */
+  ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
+  switch (dim) {
+    case 1: ierr = DMStagPopulateLocalToGlobalInjective_1d(dm);CHKERRQ(ierr); break;
+    case 2: ierr = DMStagPopulateLocalToGlobalInjective_2d(dm);CHKERRQ(ierr); break;
+    case 3: ierr = DMStagPopulateLocalToGlobalInjective_3d(dm);CHKERRQ(ierr); break;
+    default: SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Unsupported dimension %D",dim);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMStagRestoreProductCoordinateArrays_Private(DM dm,void *arrX,void *arrY,void *arrZ,PetscBool read)
 {
   PetscErrorCode  ierr;
   PetscInt        dim,d;
@@ -784,15 +880,88 @@ PetscErrorCode DMStagRestore1dCoordinateArraysDOFRead(DM dm,void *arrX,void *arr
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm,DM_CLASSID,1);
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
+  if (dim > DMSTAG_MAX_DIM) SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Not implemented for %D dimensions",dim);
   arr[0] = arrX; arr[1] = arrY; arr[2] = arrZ;
   ierr = DMGetCoordinateDM(dm,&dmCoord);CHKERRQ(ierr);
   for (d=0; d<dim; ++d) {
-    DM        subDM;
-    Vec       coord1d;
+    DM  subDM;
+    Vec coord1d_local;
+
+    /* Ignore unrequested arrays */
+    if (!arr[d]) continue;
+
     ierr = DMProductGetDM(dmCoord,d,&subDM);CHKERRQ(ierr);
-    ierr = DMGetCoordinatesLocal(subDM,&coord1d);CHKERRQ(ierr);
-    ierr = DMStagVecRestoreArrayDOFRead(subDM,coord1d,arr[d]);CHKERRQ(ierr);
+    ierr = DMGetCoordinatesLocal(subDM,&coord1d_local);CHKERRQ(ierr);
+    if (read) {
+      ierr = DMStagVecRestoreArrayRead(subDM,coord1d_local,arr[d]);CHKERRQ(ierr);
+    } else {
+      ierr = DMStagVecRestoreArray(subDM,coord1d_local,arr[d]);CHKERRQ(ierr);
+    }
   }
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMStagRestoreProductCoordinateArrays - restore local array access
+
+  Logically Collective
+
+  Input Parameter:
+. dm - the DMStag object
+
+  Output Parameters:
+. arrX,arrY,arrZ - local 1D coordinate arrays
+
+  Level: intermediate
+
+  Notes:
+  This function does not automatically perform a local->global scatter to populate global coordinates from the local coordinates. Thus, it may be required to explicitly perform these operations in some situations, as in the following partial example:
+
+$   ierr = DMGetCoordinateDM(dm,&cdm);CHKERRQ(ierr);
+$   for (d=0; d<3; ++d) {
+$     DM  subdm;
+$     Vec coor,coor_local;
+
+$     ierr = DMProductGetDM(cdm,d,&subdm);CHKERRQ(ierr);
+$     ierr = DMGetCoordinates(subdm,&coor);CHKERRQ(ierr);
+$     ierr = DMGetCoordinatesLocal(subdm,&coor_local);CHKERRQ(ierr);
+$     ierr = DMLocalToGlobal(subdm,coor_local,INSERT_VALUES,coor);CHKERRQ(ierr);
+$     ierr = PetscPrintf(PETSC_COMM_WORLD,"Coordinates dim %D:\n",d);CHKERRQ(ierr);
+$     ierr = VecView(coor,PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
+$   }
+
+.seealso: DMSTAG, DMStagGetProductCoordinateArrays(), DMStagGetProductCoordinateArraysRead()
+@*/
+PetscErrorCode DMStagRestoreProductCoordinateArrays(DM dm,void *arrX,void *arrY,void *arrZ)
+{
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  ierr = DMStagRestoreProductCoordinateArrays_Private(dm,arrX,arrY,arrZ,PETSC_FALSE);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMStagRestoreProductCoordinateArraysRead - restore local product array access, read-only
+
+  Logically Collective
+
+  Input Parameter:
+. dm - the DMStag object
+
+  Output Parameters:
+. arrX,arrY,arrZ - local 1D coordinate arrays
+
+  Level: intermediate
+
+.seealso: DMSTAG, DMStagGetProductCoordinateArrays(), DMStagGetProductCoordinateArraysRead()
+@*/
+PetscErrorCode DMStagRestoreProductCoordinateArraysRead(DM dm,void *arrX,void *arrY,void *arrZ)
+{
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  ierr = DMStagRestoreProductCoordinateArrays_Private(dm,arrX,arrY,arrZ,PETSC_TRUE);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -810,7 +979,7 @@ PetscErrorCode DMStagRestore1dCoordinateArraysDOFRead(DM dm,void *arrX,void *arr
 
   Level: advanced
 
-.seealso: DMSTAG, DMBoundaryType, DMStagCreate1d(), DMStagCreate2d(), DMStagCreate3d()
+.seealso: DMSTAG, DMBoundaryType, DMStagCreate1d(), DMStagCreate2d(), DMStagCreate3d(), DMDASetBoundaryType()
 @*/
 PetscErrorCode DMStagSetBoundaryTypes(DM dm,DMBoundaryType boundaryType0,DMBoundaryType boundaryType1,DMBoundaryType boundaryType2)
 {
@@ -819,15 +988,15 @@ PetscErrorCode DMStagSetBoundaryTypes(DM dm,DMBoundaryType boundaryType0,DMBound
   PetscInt        dim;
 
   PetscFunctionBegin;
+  ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
   PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
   PetscValidLogicalCollectiveEnum(dm,boundaryType0,2);
-  PetscValidLogicalCollectiveEnum(dm,boundaryType1,3);
-  PetscValidLogicalCollectiveEnum(dm,boundaryType2,4);
+  if (dim > 1) PetscValidLogicalCollectiveEnum(dm,boundaryType1,3);
+  if (dim > 2) PetscValidLogicalCollectiveEnum(dm,boundaryType2,4);
   if (dm->setupcalled) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"This function must be called before DMSetUp()");
-  ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
-  if (boundaryType0           ) stag->boundaryType[0] = boundaryType0;
-  if (boundaryType1 && dim > 1) stag->boundaryType[1] = boundaryType1;
-  if (boundaryType2 && dim > 2) stag->boundaryType[2] = boundaryType2;
+               stag->boundaryType[0] = boundaryType0;
+  if (dim > 1) stag->boundaryType[1] = boundaryType1;
+  if (dim > 2) stag->boundaryType[2] = boundaryType2;
   PetscFunctionReturn(0);
 }
 
@@ -846,11 +1015,13 @@ PetscErrorCode DMStagSetBoundaryTypes(DM dm,DMBoundaryType boundaryType0,DMBound
 @*/
 PetscErrorCode DMStagSetCoordinateDMType(DM dm,DMType dmtype)
 {
+  PetscErrorCode  ierr;
   DM_Stag * const stag = (DM_Stag*)dm->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
-  stag->coordinateDMType = dmtype;
+  ierr = PetscFree(stag->coordinateDMType);CHKERRQ(ierr);
+  ierr = PetscStrallocpy(dmtype,(char**)&stag->coordinateDMType);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -868,7 +1039,7 @@ PetscErrorCode DMStagSetCoordinateDMType(DM dm,DMType dmtype)
 
   Level: advanced
 
-.seealso: DMSTAG
+.seealso: DMSTAG, DMDASetDof()
 @*/
 PetscErrorCode DMStagSetDOF(DM dm,PetscInt dof0, PetscInt dof1,PetscInt dof2,PetscInt dof3)
 {
@@ -909,7 +1080,7 @@ PetscErrorCode DMStagSetDOF(DM dm,PetscInt dof0, PetscInt dof1,PetscInt dof2,Pet
 
   Level: developer
 
-.seealso: DMSTAG
+.seealso: DMSTAG, DMDASetNumProcs()
 @*/
 PetscErrorCode DMStagSetNumRanks(DM dm,PetscInt nRanks0,PetscInt nRanks1,PetscInt nRanks2)
 {
@@ -924,26 +1095,12 @@ PetscErrorCode DMStagSetNumRanks(DM dm,PetscInt nRanks0,PetscInt nRanks1,PetscIn
   PetscValidLogicalCollectiveInt(dm,nRanks2,4);
   if (dm->setupcalled) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"This function must be called before DMSetUp()");
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
-  if (nRanks0 < 1) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"number of ranks in X direction cannot be less than 1");
-  if (dim > 1 && nRanks1 < 1) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"number of ranks in Y direction cannot be less than 1");
-  if (dim > 2 && nRanks2 < 1) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"number of ranks in Z direction cannot be less than 1");
+  if (nRanks0 != PETSC_DECIDE && nRanks0 < 1) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"number of ranks in X direction cannot be less than 1");
+  if (dim > 1 && nRanks1 != PETSC_DECIDE && nRanks1 < 1) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"number of ranks in Y direction cannot be less than 1");
+  if (dim > 2 && nRanks2 != PETSC_DECIDE && nRanks2 < 1) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"number of ranks in Z direction cannot be less than 1");
   if (nRanks0) stag->nRanks[0] = nRanks0;
-  if (nRanks1) stag->nRanks[1] = nRanks1;
-  if (nRanks2) stag->nRanks[2] = nRanks2;
-  PetscFunctionReturn(0);
-}
-
-/*@C
-  DMStagSetGhostType - deprecated; use DMStagSetStencilType()
-
-  Level: deprecated
-@*/
-PetscErrorCode DMStagSetGhostType(DM dm,DMStagStencilType stencilType)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = DMStagSetStencilType(dm,stencilType);CHKERRQ(ierr);
+  if (dim > 1 && nRanks1) stag->nRanks[1] = nRanks1;
+  if (dim > 2 && nRanks2) stag->nRanks[2] = nRanks2;
   PetscFunctionReturn(0);
 }
 
@@ -958,7 +1115,7 @@ PetscErrorCode DMStagSetGhostType(DM dm,DMStagStencilType stencilType)
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagGetStencilType(), DMStagStencilType
+.seealso: DMSTAG, DMStagGetStencilType(), DMStagStencilType, DMDASetStencilType()
 @*/
 PetscErrorCode DMStagSetStencilType(DM dm,DMStagStencilType stencilType)
 {
@@ -983,7 +1140,7 @@ PetscErrorCode DMStagSetStencilType(DM dm,DMStagStencilType stencilType)
 
   Level: beginner
 
-.seealso: DMSTAG
+.seealso: DMSTAG, DMDASetStencilWidth()
 @*/
 PetscErrorCode DMStagSetStencilWidth(DM dm,PetscInt stencilWidth)
 {
@@ -1012,7 +1169,7 @@ PetscErrorCode DMStagSetStencilWidth(DM dm,PetscInt stencilWidth)
 
   Level: advanced
 
-.seealso: DMSTAG, DMStagGetGlobalSizes()
+.seealso: DMSTAG, DMStagGetGlobalSizes(), DMDASetSizes()
 @*/
 PetscErrorCode DMStagSetGlobalSizes(DM dm,PetscInt N0,PetscInt N1,PetscInt N2)
 {
@@ -1047,26 +1204,27 @@ PetscErrorCode DMStagSetGlobalSizes(DM dm,PetscInt N0,PetscInt N1,PetscInt N2)
 
   Level: developer
 
-.seealso: DMSTAG, DMStagSetGlobalSizes(), DMStagGetOwnershipRanges()
+.seealso: DMSTAG, DMStagSetGlobalSizes(), DMStagGetOwnershipRanges(), DMDASetOwnershipRanges()
 @*/
 PetscErrorCode DMStagSetOwnershipRanges(DM dm,PetscInt const *lx,PetscInt const *ly,PetscInt const *lz)
 {
   PetscErrorCode  ierr;
   DM_Stag * const stag = (DM_Stag*)dm->data;
   const PetscInt  *lin[3];
-  PetscInt        d;
+  PetscInt        d,dim;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecificType(dm,DM_CLASSID,1,DMSTAG);
   if (dm->setupcalled) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"This function must be called before DMSetUp()");
   lin[0] = lx; lin[1] = ly; lin[2] = lz;
-  for (d=0; d<3; ++d) {
+  ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
+  for (d=0; d<dim; ++d) {
     if (lin[d]) {
       if (stag->nRanks[d] < 0) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"Cannot set ownership ranges before setting number of ranks");
       if (!stag->l[d]) {
         ierr = PetscMalloc1(stag->nRanks[d], &stag->l[d]);CHKERRQ(ierr);
       }
-      ierr = PetscMemcpy(stag->l[d], lin[d], stag->nRanks[d]*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr = PetscArraycpy(stag->l[d], lin[d], stag->nRanks[d]);CHKERRQ(ierr);
     }
   }
   PetscFunctionReturn(0);
@@ -1087,7 +1245,7 @@ PetscErrorCode DMStagSetOwnershipRanges(DM dm,PetscInt const *lx,PetscInt const 
 
   Level: advanced
 
-.seealso: DMSTAG, DMPRODUCT, DMStagSetUniformCoordinatesExplicit(), DMStagSetUniformCoordinatesProduct(), DMStagSetCoordinateDMType(), DMGetCoordinateDM(), DMGetCoordinates()
+.seealso: DMSTAG, DMPRODUCT, DMStagSetUniformCoordinatesExplicit(), DMStagSetUniformCoordinatesProduct(), DMStagSetCoordinateDMType(), DMGetCoordinateDM(), DMGetCoordinates(), DMDASetUniformCoordinates()
 @*/
 PetscErrorCode DMStagSetUniformCoordinates(DM dm,PetscReal xmin,PetscReal xmax,PetscReal ymin,PetscReal ymax,PetscReal zmin,PetscReal zmax)
 {
@@ -1153,8 +1311,7 @@ PetscErrorCode DMStagSetUniformCoordinatesExplicit(DM dm,PetscReal xmin,PetscRea
 /*@C
   DMStagSetUniformCoordinatesProduct - create uniform coordinates, as a product of 1D arrays
 
-  Set the coordinate DM to be a DMProduct of 1D DMStag objects, each of which have a coordinate DM (also a 1d DMStag) holding uniform
-  coordinates.
+  Set the coordinate DM to be a DMProduct of 1D DMStag objects, each of which have a coordinate DM (also a 1d DMStag) holding uniform coordinates.
 
   Collective
 
@@ -1164,6 +1321,10 @@ PetscErrorCode DMStagSetUniformCoordinatesExplicit(DM dm,PetscReal xmin,PetscRea
 
   Notes:
   Arguments corresponding to higher dimensions are ignored for 1D and 2D grids.
+
+  The per-dimension 1-dimensional DMStag objects that comprise the product
+  always have active 0-cells (vertices, element boundaries) and 1-cells
+  (element centers).
 
   Level: intermediate
 
@@ -1186,16 +1347,10 @@ PetscErrorCode DMStagSetUniformCoordinatesProduct(DM dm,PetscReal xmin,PetscReal
   ierr = DMGetCoordinateDM(dm,&dmc);CHKERRQ(ierr);
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
 
-  /* Create 1D sub-DMs, living on subcommunicators */
-
-  dof0 = 0;
-  for (d=0; d<dim; ++d) {          /* Include point dof in the sub-DMs if any non-element strata are active in the original DMStag */
-    if (stag->dof[d]) {
-      dof0 = 1;
-      break;
-    }
-  }
-  dof1 = stag->dof[dim] ? 1 : 0; /*  Include element dof in the sub-DMs if the elements are active in the original DMStag */
+  /* Create 1D sub-DMs, living on subcommunicators.
+     Always include both vertex and element dof, regardless of the active strata of the DMStag */
+  dof0 = 1;
+  dof1 = 1;
 
   for (d=0; d<dim; ++d) {
     DM                subdm;
@@ -1236,9 +1391,27 @@ PetscErrorCode DMStagSetUniformCoordinatesProduct(DM dm,PetscReal xmin,PetscReal
 }
 
 /*@C
-  DMStagVecGetArrayDOF - get access to raw local array
+  DMStagVecGetArray - get access to local array
 
   Logically Collective
+
+  This function returns a (dim+1)-dimensional array for a dim-dimensional
+  DMStag.
+
+  The first 1-3 dimensions indicate an element in the global
+  numbering, using the standard C ordering.
+
+  The final dimension in this array corresponds to a degree
+  of freedom with respect to this element, for example corresponding to
+  the element or one of its neighboring faces, edges, or vertices.
+
+  For example, for a 3D DMStag, indexing is array[k][j][i][idx], where k is the
+  index in the z-direction, j is the index in the y-direction, and i is the
+  index in the x-direction.
+
+  "idx" is obtained with DMStagGetLocationSlot(), since the correct offset
+  into the (dim+1)-dimensional C array depends on the grid size and the number
+  of dof stored at each location.
 
   Input Parameters:
 + dm - the DMStag object
@@ -1248,14 +1421,13 @@ PetscErrorCode DMStagSetUniformCoordinatesProduct(DM dm,PetscReal xmin,PetscReal
 . array - the array
 
   Notes:
-  Indexing is array[k][j][i][idx].
-  Obtain idx with DMStagGetLocationSlot().
+  DMStagVecRestoreArray() must be called, once finished with the array
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagVecGetArrayDOFRead(), DMStagGetLocationSlot(), DMGetLocalVector(), DMCreateLocalVector(), DMGetGlobalVector(), DMCreateGlobalVector()
+.seealso: DMSTAG, DMStagVecGetArrayRead(), DMStagGetLocationSlot(), DMGetLocalVector(), DMCreateLocalVector(), DMGetGlobalVector(), DMCreateGlobalVector(), DMDAVecGetArray(), DMDAVecGetArrayDOF()
 @*/
-PetscErrorCode DMStagVecGetArrayDOF(DM dm,Vec vec,void *array)
+PetscErrorCode DMStagVecGetArray(DM dm,Vec vec,void *array)
 {
   PetscErrorCode  ierr;
   DM_Stag * const stag = (DM_Stag*)dm->data;
@@ -1284,26 +1456,27 @@ PetscErrorCode DMStagVecGetArrayDOF(DM dm,Vec vec,void *array)
 }
 
 /*@C
-  DMStagVecGetArrayDOFRead - get read-only access to raw local array
+  DMStagVecGetArrayRead - get read-only access to a local array
 
   Logically Collective
+
+  See the man page for DMStagVecGetArray() for more information.
 
   Input Parameters:
 + dm - the DMStag object
 - vec - the Vec object
 
   Output Parameters:
-. array - read-only the array
+. array - the read-only array
 
   Notes:
-  Indexing is array[k][j][i][idx].
-  Obtain idx with DMStagGetLocationSlot()
+  DMStagVecRestoreArrayRead() must be called, once finished with the array
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagVecGetArrayDOFRead(), DMStagGetLocationSlot(), DMGetLocalVector(), DMCreateLocalVector(), DMGetGlobalVector(), DMCreateGlobalVector()
+.seealso: DMSTAG, DMStagVecGetArrayRead(), DMStagGetLocationSlot(), DMGetLocalVector(), DMCreateLocalVector(), DMGetGlobalVector(), DMCreateGlobalVector(), DMDAVecGetArrayRead(), DMDAVecGetArrayDOFRead()
 @*/
-PetscErrorCode DMStagVecGetArrayDOFRead(DM dm,Vec vec,void *array)
+PetscErrorCode DMStagVecGetArrayRead(DM dm,Vec vec,void *array)
 {
   PetscErrorCode  ierr;
   DM_Stag * const stag = (DM_Stag*)dm->data;
@@ -1332,7 +1505,7 @@ PetscErrorCode DMStagVecGetArrayDOFRead(DM dm,Vec vec,void *array)
 }
 
 /*@C
-  DMStagVecRestoreArrayDOF - restore read-only access to a raw array
+  DMStagVecRestoreArray - restore access to a raw array
 
   Logically Collective
 
@@ -1345,9 +1518,9 @@ PetscErrorCode DMStagVecGetArrayDOFRead(DM dm,Vec vec,void *array)
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagVecGetArrayDOF()
+.seealso: DMSTAG, DMStagVecGetArray(), DMDAVecRestoreArray(), DMDAVecRestoreArrayDOF()
 @*/
-PetscErrorCode DMStagVecRestoreArrayDOF(DM dm,Vec vec,void *array)
+PetscErrorCode DMStagVecRestoreArray(DM dm,Vec vec,void *array)
 {
   PetscErrorCode  ierr;
   DM_Stag * const stag = (DM_Stag*)dm->data;
@@ -1376,7 +1549,7 @@ PetscErrorCode DMStagVecRestoreArrayDOF(DM dm,Vec vec,void *array)
 }
 
 /*@C
-  DMStagVecRestoreArrayDOFRead - restore read-only access to a raw array
+  DMStagVecRestoreArrayRead - restore read-only access to a raw array
 
   Logically Collective
 
@@ -1389,9 +1562,9 @@ PetscErrorCode DMStagVecRestoreArrayDOF(DM dm,Vec vec,void *array)
 
   Level: beginner
 
-.seealso: DMSTAG, DMStagVecGetArrayDOFRead()
+.seealso: DMSTAG, DMStagVecGetArrayRead(), DMDAVecRestoreArrayRead(), DMDAVecRestoreArrayDOFRead()
 @*/
-PetscErrorCode DMStagVecRestoreArrayDOFRead(DM dm,Vec vec,void *array)
+PetscErrorCode DMStagVecRestoreArrayRead(DM dm,Vec vec,void *array)
 {
   PetscErrorCode  ierr;
   DM_Stag * const stag = (DM_Stag*)dm->data;

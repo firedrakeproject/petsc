@@ -39,7 +39,7 @@ PetscErrorCode  PetscViewersDestroy(PetscViewers *v)
 /*@C
    PetscViewersCreate - Creates a container to hold a set of PetscViewers.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .   comm - the MPI communicator
@@ -48,8 +48,6 @@ PetscErrorCode  PetscViewersDestroy(PetscViewers *v)
 .  v - the collection of PetscViewers
 
    Level: intermediate
-
-   Concepts: PetscViewer^array of
 
 .seealso: PetscViewerCreate(), PetscViewersDestroy()
 
@@ -81,8 +79,6 @@ PetscErrorCode  PetscViewersCreate(MPI_Comm comm,PetscViewers *v)
 
    Level: intermediate
 
-   Concepts: PetscViewer^array of
-
 .seealso: PetscViewersCreate(), PetscViewersDestroy()
 
 @*/
@@ -97,7 +93,7 @@ PetscErrorCode  PetscViewersGetViewer(PetscViewers viewers,PetscInt n,PetscViewe
     int         newn = n + 64; /* add 64 new ones at a time */
 
     ierr = PetscCalloc1(newn,&v);CHKERRQ(ierr);
-    ierr = PetscMemcpy(v,viewers->viewer,viewers->n*sizeof(PetscViewer));CHKERRQ(ierr);
+    ierr = PetscArraycpy(v,viewers->viewer,viewers->n);CHKERRQ(ierr);
     ierr = PetscFree(viewers->viewer);CHKERRQ(ierr);
 
     viewers->viewer = v;
@@ -109,8 +105,41 @@ PetscErrorCode  PetscViewersGetViewer(PetscViewers viewers,PetscInt n,PetscViewe
   PetscFunctionReturn(0);
 }
 
+/*
+  PetscMonitorCompare - Checks if two monitors are identical; if they are then it destroys the new one
 
+  Not collective
 
+  Input Parameters:
++ nmon      - The new monitor
+. nmctx     - The new monitor context, or NULL
+. nmdestroy - The new monitor destroy function, or NULL
+. mon       - The old monitor
+. mctx      - The old monitor context, or NULL
+- mdestroy  - The old monitor destroy function, or NULL
 
+  Output Parameter:
+. identical - PETSC_TRUE if the monitors are the same
 
+  Level: developer
 
+.seealsp: DMMonitorSetFromOptions(), KSPMonitorSetFromOptions(), SNESMonitorSetFromOptions()
+*/
+PetscErrorCode PetscMonitorCompare(PetscErrorCode (*nmon)(void), void *nmctx, PetscErrorCode (*nmdestroy)(void **), PetscErrorCode (*mon)(void), void *mctx, PetscErrorCode (*mdestroy)(void **), PetscBool *identical)
+{
+  *identical = PETSC_FALSE;
+  if (nmon == mon && nmdestroy == mdestroy) {
+    if (nmctx == mctx) *identical = PETSC_TRUE;
+    else if (nmdestroy == (PetscErrorCode (*)(void**)) PetscViewerAndFormatDestroy) {
+      PetscViewerAndFormat *old = (PetscViewerAndFormat*)mctx, *newo = (PetscViewerAndFormat*)nmctx;
+      if (old->viewer == newo->viewer && old->format == newo->format) *identical = PETSC_TRUE;
+    }
+    if (*identical) {
+      if (mdestroy) {
+        PetscErrorCode ierr;
+        ierr = (*mdestroy)(&nmctx);CHKERRQ(ierr);
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}

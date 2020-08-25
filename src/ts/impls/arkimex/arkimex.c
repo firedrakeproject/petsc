@@ -142,7 +142,7 @@ M*/
 
      Options Database:
 .      -ts_arkimex_type 2e
- 
+
     Level: advanced
 
 .seealso: TSARKIMEX, TSARKIMEXType, TSARKIMEXSetType()
@@ -155,7 +155,7 @@ M*/
      References:
 .   1. -  L. Pareschi, G. Russo, Implicit Explicit Runge Kutta schemes and applications to hyperbolic systems with relaxations. Journal of Scientific Computing Volume: 25, Issue: 1, October, 2005.
 
-     This method is referred to as SSP2-(3,3,2) in http://arxiv.org/abs/1110.4375
+     This method is referred to as SSP2-(3,3,2) in https://arxiv.org/abs/1110.4375
 
      Options Database:
 .      -ts_arkimex_type prssp2
@@ -189,7 +189,7 @@ M*/
 
      References:
 +   1. -  U. Ascher, S. Ruuth, R. J. Spiteri, Implicit explicit Runge Kutta methods for time dependent Partial Differential Equations. Appl. Numer. Math. 25, (1997).
--   2. -  This method is referred to as ARS(4,4,3) in http://arxiv.org/abs/1110.4375
+-   2. -  This method is referred to as ARS(4,4,3) in https://arxiv.org/abs/1110.4375
 
      Level: advanced
 
@@ -204,7 +204,7 @@ M*/
 .      -ts_arkimex_type bpr3
 
      References:
- .    This method is referred to as ARK3 in http://arxiv.org/abs/1110.4375
+ .    This method is referred to as ARK3 in https://arxiv.org/abs/1110.4375
 
      Level: advanced
 
@@ -247,8 +247,6 @@ M*/
   Not Collective, but should be called by all processes which will need the schemes to be registered
 
   Level: advanced
-
-.keywords: TS, TSARKIMEX, register, all
 
 .seealso:  TSARKIMEXRegisterDestroy()
 @*/
@@ -472,7 +470,6 @@ PetscErrorCode TSARKIMEXRegisterAll(void)
 
    Level: advanced
 
-.keywords: TSARKIMEX, register, destroy
 .seealso: TSARKIMEXRegister(), TSARKIMEXRegisterAll()
 @*/
 PetscErrorCode TSARKIMEXRegisterDestroy(void)
@@ -500,7 +497,6 @@ PetscErrorCode TSARKIMEXRegisterDestroy(void)
 
   Level: developer
 
-.keywords: TS, TSARKIMEX, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode TSARKIMEXInitializePackage(void)
@@ -521,7 +517,6 @@ PetscErrorCode TSARKIMEXInitializePackage(void)
 
   Level: developer
 
-.keywords: Petsc, destroy, package
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode TSARKIMEXFinalizePackage(void)
@@ -560,8 +555,6 @@ PetscErrorCode TSARKIMEXFinalizePackage(void)
 
    Level: advanced
 
-.keywords: TS, register
-
 .seealso: TSARKIMEX
 @*/
 PetscErrorCode TSARKIMEXRegister(TSARKIMEXType name,PetscInt order,PetscInt s,
@@ -577,21 +570,21 @@ PetscErrorCode TSARKIMEXRegister(TSARKIMEXType name,PetscInt order,PetscInt s,
 
   PetscFunctionBegin;
   ierr     = TSARKIMEXInitializePackage();CHKERRQ(ierr);
-  ierr     = PetscCalloc1(1,&link);CHKERRQ(ierr);
+  ierr     = PetscNew(&link);CHKERRQ(ierr);
   t        = &link->tab;
   ierr     = PetscStrallocpy(name,&t->name);CHKERRQ(ierr);
   t->order = order;
   t->s     = s;
   ierr     = PetscMalloc6(s*s,&t->At,s,&t->bt,s,&t->ct,s*s,&t->A,s,&t->b,s,&t->c);CHKERRQ(ierr);
-  ierr     = PetscMemcpy(t->At,At,s*s*sizeof(At[0]));CHKERRQ(ierr);
-  ierr     = PetscMemcpy(t->A,A,s*s*sizeof(A[0]));CHKERRQ(ierr);
-  if (bt) { ierr = PetscMemcpy(t->bt,bt,s*sizeof(bt[0]));CHKERRQ(ierr); }
+  ierr     = PetscArraycpy(t->At,At,s*s);CHKERRQ(ierr);
+  ierr     = PetscArraycpy(t->A,A,s*s);CHKERRQ(ierr);
+  if (bt) { ierr = PetscArraycpy(t->bt,bt,s);CHKERRQ(ierr); }
   else for (i=0; i<s; i++) t->bt[i] = At[(s-1)*s+i];
-  if (b)  { ierr = PetscMemcpy(t->b,b,s*sizeof(b[0]));CHKERRQ(ierr); }
+  if (b)  { ierr = PetscArraycpy(t->b,b,s);CHKERRQ(ierr); }
   else for (i=0; i<s; i++) t->b[i] = t->bt[i];
-  if (ct) { ierr = PetscMemcpy(t->ct,ct,s*sizeof(ct[0]));CHKERRQ(ierr); }
+  if (ct) { ierr = PetscArraycpy(t->ct,ct,s);CHKERRQ(ierr); }
   else for (i=0; i<s; i++) for (j=0,t->ct[i]=0; j<s; j++) t->ct[i] += At[i*s+j];
-  if (c)  { ierr = PetscMemcpy(t->c,c,s*sizeof(c[0]));CHKERRQ(ierr); }
+  if (c)  { ierr = PetscArraycpy(t->c,c,s);CHKERRQ(ierr); }
   else for (i=0; i<s; i++) for (j=0,t->c[i]=0; j<s; j++) t->c[i] += A[i*s+j];
   t->stiffly_accurate = PETSC_TRUE;
   for (i=0; i<s; i++) if (t->At[(s-1)*s+i] != t->bt[i]) t->stiffly_accurate = PETSC_FALSE;
@@ -601,14 +594,14 @@ PetscErrorCode TSARKIMEXRegister(TSARKIMEXType name,PetscInt order,PetscInt s,
   t->FSAL_implicit = (PetscBool)(t->explicit_first_stage && t->stiffly_accurate);
   if (bembedt) {
     ierr = PetscMalloc2(s,&t->bembedt,s,&t->bembed);CHKERRQ(ierr);
-    ierr = PetscMemcpy(t->bembedt,bembedt,s*sizeof(bembedt[0]));CHKERRQ(ierr);
-    ierr = PetscMemcpy(t->bembed,bembed ? bembed : bembedt,s*sizeof(bembed[0]));CHKERRQ(ierr);
+    ierr = PetscArraycpy(t->bembedt,bembedt,s);CHKERRQ(ierr);
+    ierr = PetscArraycpy(t->bembed,bembed ? bembed : bembedt,s);CHKERRQ(ierr);
   }
 
   t->pinterp     = pinterp;
   ierr           = PetscMalloc2(s*pinterp,&t->binterpt,s*pinterp,&t->binterp);CHKERRQ(ierr);
-  ierr           = PetscMemcpy(t->binterpt,binterpt,s*pinterp*sizeof(binterpt[0]));CHKERRQ(ierr);
-  ierr           = PetscMemcpy(t->binterp,binterp ? binterp : binterpt,s*pinterp*sizeof(binterpt[0]));CHKERRQ(ierr);
+  ierr           = PetscArraycpy(t->binterpt,binterpt,s*pinterp);CHKERRQ(ierr);
+  ierr           = PetscArraycpy(t->binterp,binterp ? binterp : binterpt,s*pinterp);CHKERRQ(ierr);
   link->next     = ARKTableauList;
   ARKTableauList = link;
   PetscFunctionReturn(0);
@@ -1193,11 +1186,15 @@ static PetscErrorCode TSView_ARKIMEX(TS ts,PetscViewer viewer)
     ARKTableau    tab = ark->tableau;
     TSARKIMEXType arktype;
     char          buf[512];
+    PetscBool     flg;
+
     ierr = TSARKIMEXGetType(ts,&arktype);CHKERRQ(ierr);
+    ierr = TSARKIMEXGetFullyImplicit(ts,&flg);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  ARK IMEX %s\n",arktype);CHKERRQ(ierr);
     ierr = PetscFormatRealArray(buf,sizeof(buf),"% 8.6f",tab->s,tab->ct);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  Stiff abscissa       ct = %s\n",buf);CHKERRQ(ierr);
     ierr = PetscFormatRealArray(buf,sizeof(buf),"% 8.6f",tab->s,tab->c);CHKERRQ(ierr);
+    ierr = PetscViewerASCIIPrintf(viewer,"Fully implicit: %s\n",flg ? "yes" : "no");CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"Stiffly accurate: %s\n",tab->stiffly_accurate ? "yes" : "no");CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"Explicit first stage: %s\n",tab->explicit_first_stage ? "yes" : "no");CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"FSAL property: %s\n",tab->FSAL_implicit ? "yes" : "no");CHKERRQ(ierr);
@@ -1287,7 +1284,7 @@ PetscErrorCode TSARKIMEXGetType(TS ts,TSARKIMEXType *arktype)
 
   Level: intermediate
 
-.seealso: TSARKIMEXGetType()
+.seealso: TSARKIMEXGetType(), TSARKIMEXGetFullyImplicit()
 @*/
 PetscErrorCode TSARKIMEXSetFullyImplicit(TS ts,PetscBool flg)
 {
@@ -1295,7 +1292,34 @@ PetscErrorCode TSARKIMEXSetFullyImplicit(TS ts,PetscBool flg)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  PetscValidLogicalCollectiveBool(ts,flg,2);
   ierr = PetscTryMethod(ts,"TSARKIMEXSetFullyImplicit_C",(TS,PetscBool),(ts,flg));CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@
+  TSARKIMEXGetFullyImplicit - Inquires if both parts of the equation are solved implicitly
+
+  Logically collective
+
+  Input Parameter:
+.  ts - timestepping context
+
+  Output Parameter:
+.  flg - PETSC_TRUE for fully implicit
+
+  Level: intermediate
+
+.seealso: TSARKIMEXGetType(), TSARKIMEXSetFullyImplicit()
+@*/
+PetscErrorCode TSARKIMEXGetFullyImplicit(TS ts,PetscBool *flg)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  PetscValidPointer(flg,2);
+  ierr = PetscUseMethod(ts,"TSARKIMEXGetFullyImplicit_C",(TS,PetscBool*),(ts,flg));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1342,6 +1366,15 @@ static PetscErrorCode  TSARKIMEXSetFullyImplicit_ARKIMEX(TS ts,PetscBool flg)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode  TSARKIMEXGetFullyImplicit_ARKIMEX(TS ts,PetscBool *flg)
+{
+  TS_ARKIMEX *ark = (TS_ARKIMEX*)ts->data;
+
+  PetscFunctionBegin;
+  *flg = (PetscBool)!ark->imex;
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode TSDestroy_ARKIMEX(TS ts)
 {
   PetscErrorCode ierr;
@@ -1355,6 +1388,7 @@ static PetscErrorCode TSDestroy_ARKIMEX(TS ts)
   ierr = PetscFree(ts->data);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXGetType_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXSetType_C",NULL);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXSetFullyImplicit_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXSetFullyImplicit_C",NULL);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -1378,8 +1412,8 @@ static PetscErrorCode TSDestroy_ARKIMEX(TS ts)
 
   Level: beginner
 
-.seealso:  TSCreate(), TS, TSSetType(), TSARKIMEXSetType(), TSARKIMEXGetType(), TSARKIMEXSetFullyImplicit(), TSARKIMEX1BEE,
-           TSARKIMEX2C, TSARKIMEX2D, TSARKIMEX2E, TSARKIMEX3, TSARKIMEXL2, TSARKIMEXA2, TSARKIMEXARS122,
+.seealso:  TSCreate(), TS, TSSetType(), TSARKIMEXSetType(), TSARKIMEXGetType(), TSARKIMEXSetFullyImplicit(), TSARKIMEXGetFullyImplicit(),
+           TSARKIMEX1BEE, TSARKIMEX2C, TSARKIMEX2D, TSARKIMEX2E, TSARKIMEX3, TSARKIMEXL2, TSARKIMEXA2, TSARKIMEXARS122,
            TSARKIMEX4, TSARKIMEX5, TSARKIMEXPRSSP2, TSARKIMEXARS443, TSARKIMEXBPR3, TSARKIMEXType, TSARKIMEXRegister()
 
 M*/
@@ -1413,6 +1447,7 @@ PETSC_EXTERN PetscErrorCode TSCreate_ARKIMEX(TS ts)
   ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXGetType_C",TSARKIMEXGetType_ARKIMEX);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXSetType_C",TSARKIMEXSetType_ARKIMEX);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXSetFullyImplicit_C",TSARKIMEXSetFullyImplicit_ARKIMEX);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)ts,"TSARKIMEXGetFullyImplicit_C",TSARKIMEXGetFullyImplicit_ARKIMEX);CHKERRQ(ierr);
 
   ierr = TSARKIMEXSetType(ts,TSARKIMEXDefault);CHKERRQ(ierr);
   PetscFunctionReturn(0);

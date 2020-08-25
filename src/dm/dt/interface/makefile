@@ -1,9 +1,9 @@
-
+-include ../../../../petscdir.mk
 ALL: lib
 
 CFLAGS   =
 FFLAGS   =
-SOURCEC  = dt.c dtfv.c dtds.c
+SOURCEC  = dt.c dtds.c dtaltv.c
 SOURCEF  =
 SOURCEH  =
 LIBBASE  = libpetscdm

@@ -220,9 +220,6 @@ PetscErrorCode  DMSetUp_DA_2D(DM da)
   if (((PetscInt64) M)*((PetscInt64) N)*((PetscInt64) dof) > (PetscInt64) PETSC_MPI_INT_MAX) SETERRQ3(comm,PETSC_ERR_INT_OVERFLOW,"Mesh of %D by %D by %D (dof) is too large for 32 bit indices",M,N,dof);
 #endif
 
-  if (dof < 1) SETERRQ1(comm,PETSC_ERR_ARG_OUTOFRANGE,"Must have 1 or more degrees of freedom per node: %D",dof);
-  if (s < 0) SETERRQ1(comm,PETSC_ERR_ARG_OUTOFRANGE,"Stencil width cannot be negative: %D",s);
-
   ierr = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
 
@@ -274,13 +271,13 @@ PetscErrorCode  DMSetUp_DA_2D(DM da)
   for (i=0; i<(rank % m); i++) {
     xs += lx[i];
   }
-#if defined(PETSC_USE_DEBUG)
-  left = xs;
-  for (i=(rank % m); i<m; i++) {
-    left += lx[i];
+  if (PetscDefined(USE_DEBUG)) {
+    left = xs;
+    for (i=(rank % m); i<m; i++) {
+      left += lx[i];
+    }
+    if (left != M) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Sum of lx across processors not equal to M: %D %D",left,M);
   }
-  if (left != M) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Sum of lx across processors not equal to M: %D %D",left,M);
-#endif
 
   /*
      Determine locally owned region
@@ -298,13 +295,13 @@ PetscErrorCode  DMSetUp_DA_2D(DM da)
   for (i=0; i<(rank/m); i++) {
     ys += ly[i];
   }
-#if defined(PETSC_USE_DEBUG)
-  left = ys;
-  for (i=(rank/m); i<n; i++) {
-    left += ly[i];
+  if (PetscDefined(USE_DEBUG)) {
+    left = ys;
+    for (i=(rank/m); i<n; i++) {
+      left += ly[i];
+    }
+    if (left != N) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Sum of ly across processors not equal to N: %D %D",left,N);
   }
-  if (left != N) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Sum of ly across processors not equal to N: %D %D",left,N);
-#endif
 
   /*
    check if the scatter requires more than one process neighbor or wraps around
@@ -745,7 +742,7 @@ PetscErrorCode  DMSetUp_DA_2D(DM da)
    DMDACreate2d -  Creates an object that will manage the communication of  two-dimensional
    regular array data that is distributed across some processors.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI communicator
@@ -793,16 +790,15 @@ PetscErrorCode  DMSetUp_DA_2D(DM da)
    If you wish to use the options database to change values in the DMDA call DMSetFromOptions() after this call
    but before DMSetUp().
 
-.keywords: distributed array, create, two-dimensional
-
 .seealso: DMDestroy(), DMView(), DMDACreate1d(), DMDACreate3d(), DMGlobalToLocalBegin(), DMDAGetRefinementFactor(),
           DMGlobalToLocalEnd(), DMLocalToGlobalBegin(), DMLocalToLocalBegin(), DMLocalToLocalEnd(), DMDASetRefinementFactor(),
-          DMDAGetInfo(), DMCreateGlobalVector(), DMCreateLocalVector(), DMDACreateNaturalVector(), DMLoad(), DMDAGetOwnershipRanges()
+          DMDAGetInfo(), DMCreateGlobalVector(), DMCreateLocalVector(), DMDACreateNaturalVector(), DMLoad(), DMDAGetOwnershipRanges(),
+          DMStagCreate2d()
 
 @*/
 
 PetscErrorCode  DMDACreate2d(MPI_Comm comm,DMBoundaryType bx,DMBoundaryType by,DMDAStencilType stencil_type,
-                          PetscInt M,PetscInt N,PetscInt m,PetscInt n,PetscInt dof,PetscInt s,const PetscInt lx[],const PetscInt ly[],DM *da)
+                             PetscInt M,PetscInt N,PetscInt m,PetscInt n,PetscInt dof,PetscInt s,const PetscInt lx[],const PetscInt ly[],DM *da)
 {
   PetscErrorCode ierr;
 

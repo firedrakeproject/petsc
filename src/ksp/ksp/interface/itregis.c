@@ -8,10 +8,11 @@ PETSC_EXTERN PetscErrorCode KSPCreate_GROPPCG(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_PIPECG(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_PIPECGRR(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_PIPELCG(KSP);
+PETSC_EXTERN PetscErrorCode KSPCreate_PIPEPRCG(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_CGNE(KSP);
-PETSC_EXTERN PetscErrorCode KSPCreate_CGNASH(KSP);
-PETSC_EXTERN PetscErrorCode KSPCreate_CGSTCG(KSP);
-PETSC_EXTERN PetscErrorCode KSPCreate_CGGLTR(KSP);
+PETSC_EXTERN PetscErrorCode KSPCreate_NASH(KSP);
+PETSC_EXTERN PetscErrorCode KSPCreate_STCG(KSP);
+PETSC_EXTERN PetscErrorCode KSPCreate_GLTR(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_TCQMR(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_FCG(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_PIPEFCG(KSP);
@@ -45,6 +46,9 @@ PETSC_EXTERN PetscErrorCode KSPCreate_DGMRES(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_TSIRM(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_CGLS(KSP);
 PETSC_EXTERN PetscErrorCode KSPCreate_FETIDP(KSP);
+#if defined(PETSC_HAVE_HPDDM)
+PETSC_EXTERN PetscErrorCode KSPCreate_HPDDM(KSP);
+#endif
 
 /*@C
   KSPRegisterAll - Registers all of the Krylov subspace methods in the KSP package.
@@ -52,10 +56,6 @@ PETSC_EXTERN PetscErrorCode KSPCreate_FETIDP(KSP);
   Not Collective
 
   Level: advanced
-
-.keywords: KSP, register, all
-
-.seealso:  KSPRegisterDestroy()
 @*/
 PetscErrorCode  KSPRegisterAll(void)
 {
@@ -70,10 +70,11 @@ PetscErrorCode  KSPRegisterAll(void)
   ierr = KSPRegister(KSPPIPECG,      KSPCreate_PIPECG);CHKERRQ(ierr);
   ierr = KSPRegister(KSPPIPECGRR,    KSPCreate_PIPECGRR);CHKERRQ(ierr);
   ierr = KSPRegister(KSPPIPELCG,     KSPCreate_PIPELCG);CHKERRQ(ierr);
+  ierr = KSPRegister(KSPPIPEPRCG,    KSPCreate_PIPEPRCG);CHKERRQ(ierr);
   ierr = KSPRegister(KSPCGNE,        KSPCreate_CGNE);CHKERRQ(ierr);
-  ierr = KSPRegister(KSPCGNASH,      KSPCreate_CGNASH);CHKERRQ(ierr);
-  ierr = KSPRegister(KSPCGSTCG,      KSPCreate_CGSTCG);CHKERRQ(ierr);
-  ierr = KSPRegister(KSPCGGLTR,      KSPCreate_CGGLTR);CHKERRQ(ierr);
+  ierr = KSPRegister(KSPNASH,        KSPCreate_NASH);CHKERRQ(ierr);
+  ierr = KSPRegister(KSPSTCG,        KSPCreate_STCG);CHKERRQ(ierr);
+  ierr = KSPRegister(KSPGLTR,        KSPCreate_GLTR);CHKERRQ(ierr);
   ierr = KSPRegister(KSPRICHARDSON,  KSPCreate_Richardson);CHKERRQ(ierr);
   ierr = KSPRegister(KSPCHEBYSHEV,   KSPCreate_Chebyshev);CHKERRQ(ierr);
   ierr = KSPRegister(KSPGMRES,       KSPCreate_GMRES);CHKERRQ(ierr);
@@ -109,6 +110,9 @@ PetscErrorCode  KSPRegisterAll(void)
   ierr = KSPRegister(KSPTSIRM,       KSPCreate_TSIRM);CHKERRQ(ierr);
   ierr = KSPRegister(KSPCGLS,        KSPCreate_CGLS);CHKERRQ(ierr);
   ierr = KSPRegister(KSPFETIDP,      KSPCreate_FETIDP);CHKERRQ(ierr);
+#if defined(PETSC_HAVE_HPDDM)
+  ierr = KSPRegister(KSPHPDDM,       KSPCreate_HPDDM);CHKERRQ(ierr);
+#endif
   PetscFunctionReturn(0);
 }
 

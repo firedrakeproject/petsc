@@ -7,7 +7,7 @@
 */
 #include <petsc/private/logimpl.h> /*I    "petscsys.h"   I*/
 
-PetscStageLog petsc_stageLog = 0;
+PetscStageLog petsc_stageLog = NULL;
 
 /*@C
   PetscLogGetStageLog - This function returns the default stage logging object.
@@ -22,7 +22,6 @@ PetscStageLog petsc_stageLog = 0;
   Developer Notes:
     Inline since called for EACH PetscEventLogBeginDefault() and PetscEventLogEndDefault()
 
-.keywords: log, stage
 .seealso: PetscStageLogCreate()
 @*/
 PetscErrorCode PetscLogGetStageLog(PetscStageLog *stageLog)
@@ -31,7 +30,7 @@ PetscErrorCode PetscLogGetStageLog(PetscStageLog *stageLog)
   PetscValidPointer(stageLog,1);
   if (!petsc_stageLog) {
     fprintf(stderr, "PETSC ERROR: Logging has not been enabled.\nYou might have forgotten to call PetscInitialize().\n");
-    MPI_Abort(MPI_COMM_WORLD, PETSC_ERR_SUP);
+    PETSCABORT(MPI_COMM_WORLD, PETSC_ERR_SUP);
   }
   *stageLog = petsc_stageLog;
   PetscFunctionReturn(0);
@@ -56,7 +55,6 @@ PetscErrorCode PetscLogGetStageLog(PetscStageLog *stageLog)
   Developer Notes:
     Inline since called for EACH PetscEventLogBeginDefault() and PetscEventLogEndDefault()
 
-.keywords: log, stage
 .seealso: PetscStageLogPush(), PetscStageLogPop(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetCurrent(PetscStageLog stageLog, int *stage)
@@ -71,9 +69,7 @@ PetscErrorCode  PetscStageLogGetCurrent(PetscStageLog stageLog, int *stage)
   } else {
     ierr = PetscIntStackTop(stageLog->stack, stage);CHKERRQ(ierr);
   }
-#ifdef PETSC_USE_DEBUG
   if (*stage != stageLog->curStage) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_PLIB, "Inconsistency in stage log: stage %d should be %d", *stage, stageLog->curStage);
-#endif
   PetscFunctionReturn(0);
 }
 
@@ -94,7 +90,6 @@ PetscErrorCode  PetscStageLogGetCurrent(PetscStageLog stageLog, int *stage)
   Developer Notes:
     Inline since called for EACH PetscEventLogBeginDefault() and PetscEventLogEndDefault()
 
-.keywords: log, stage
 .seealso: PetscStageLogPush(), PetscStageLogPop(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetEventPerfLog(PetscStageLog stageLog, int stage, PetscEventPerfLog *eventLog)
@@ -111,12 +106,11 @@ PetscErrorCode  PetscStageLogGetEventPerfLog(PetscStageLog stageLog, int stage, 
 
   Not collective
 
-  Input Paramter:
+  Input Parameter:
 . stageInfo - The PetscStageInfo
 
   Level: developer
 
-.keywords: log, stage, destroy
 .seealso: PetscStageLogCreate()
 @*/
 PetscErrorCode  PetscStageInfoDestroy(PetscStageInfo *stageInfo)
@@ -135,12 +129,11 @@ PetscErrorCode  PetscStageInfoDestroy(PetscStageInfo *stageInfo)
 
   Not collective
 
-  Input Paramter:
+  Input Parameter:
 . stageLog - The PetscStageLog
 
   Level: developer
 
-.keywords: log, stage, destroy
 .seealso: PetscStageLogCreate()
 @*/
 PetscErrorCode  PetscStageLogDestroy(PetscStageLog stageLog)
@@ -175,7 +168,6 @@ PetscErrorCode  PetscStageLogDestroy(PetscStageLog stageLog)
 
   Level: developer
 
-.keywords: log, stage, register
 .seealso: PetscStageLogPush(), PetscStageLogPop(), PetscStageLogCreate()
 @*/
 PetscErrorCode  PetscStageLogRegister(PetscStageLog stageLog, const char sname[], int *stage)
@@ -198,7 +190,7 @@ PetscErrorCode  PetscStageLogRegister(PetscStageLog stageLog, const char sname[]
   s = stageLog->numStages++;
   if (stageLog->numStages > stageLog->maxStages) {
     ierr = PetscMalloc1(stageLog->maxStages*2, &stageInfo);CHKERRQ(ierr);
-    ierr = PetscMemcpy(stageInfo, stageLog->stageInfo, stageLog->maxStages * sizeof(PetscStageInfo));CHKERRQ(ierr);
+    ierr = PetscArraycpy(stageInfo, stageLog->stageInfo, stageLog->maxStages);CHKERRQ(ierr);
     ierr = PetscFree(stageLog->stageInfo);CHKERRQ(ierr);
     stageLog->stageInfo  = stageInfo;
     stageLog->maxStages *= 2;
@@ -249,7 +241,6 @@ PetscErrorCode  PetscStageLogRegister(PetscStageLog stageLog, const char sname[]
 
   Level: developer
 
-.keywords: log, push, stage
 .seealso: PetscStageLogPop(), PetscStageLogGetCurrent(), PetscStageLogRegister(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogPush(PetscStageLog stageLog, int stage)
@@ -318,7 +309,6 @@ PetscErrorCode  PetscStageLogPush(PetscStageLog stageLog, int stage)
 
   Level: developer
 
-.keywords: log, pop, stage
 .seealso: PetscStageLogPush(), PetscStageLogGetCurrent(), PetscStageLogRegister(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogPop(PetscStageLog stageLog)
@@ -367,7 +357,6 @@ PetscErrorCode  PetscStageLogPop(PetscStageLog stageLog)
 
   Level: developer
 
-.keywords: log, stage
 .seealso: PetscStageLogPush(), PetscStageLogPop(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetClassRegLog(PetscStageLog stageLog, PetscClassRegLog *classLog)
@@ -391,7 +380,6 @@ PetscErrorCode  PetscStageLogGetClassRegLog(PetscStageLog stageLog, PetscClassRe
 
   Level: developer
 
-.keywords: log, stage
 .seealso: PetscStageLogPush(), PetscStageLogPop(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetEventRegLog(PetscStageLog stageLog, PetscEventRegLog *eventLog)
@@ -416,7 +404,6 @@ PetscErrorCode  PetscStageLogGetEventRegLog(PetscStageLog stageLog, PetscEventRe
 
   Level: developer
 
-.keywords: log, stage
 .seealso: PetscStageLogPush(), PetscStageLogPop(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetClassPerfLog(PetscStageLog stageLog, int stage, PetscClassPerfLog *classLog)
@@ -441,7 +428,6 @@ PetscErrorCode  PetscStageLogGetClassPerfLog(PetscStageLog stageLog, int stage, 
 
   Level: developer
 
-.keywords: log, active, stage
 .seealso: PetscStageLogGetActive(), PetscStageLogGetCurrent(), PetscStageLogRegister(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogSetActive(PetscStageLog stageLog, int stage, PetscBool isActive)
@@ -466,7 +452,6 @@ PetscErrorCode  PetscStageLogSetActive(PetscStageLog stageLog, int stage, PetscB
 
   Level: developer
 
-.keywords: log, visible, stage
 .seealso: PetscStageLogSetActive(), PetscStageLogGetCurrent(), PetscStageLogRegister(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetActive(PetscStageLog stageLog, int stage, PetscBool  *isActive)
@@ -493,7 +478,6 @@ PetscErrorCode  PetscStageLogGetActive(PetscStageLog stageLog, int stage, PetscB
 
   Level: developer
 
-.keywords: log, visible, stage
 .seealso: PetscStageLogGetVisible(), PetscStageLogGetCurrent(), PetscStageLogRegister(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogSetVisible(PetscStageLog stageLog, int stage, PetscBool isVisible)
@@ -521,7 +505,6 @@ PetscErrorCode  PetscStageLogSetVisible(PetscStageLog stageLog, int stage, Petsc
 
   Level: developer
 
-.keywords: log, visible, stage
 .seealso: PetscStageLogSetVisible(), PetscStageLogGetCurrent(), PetscStageLogRegister(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetVisible(PetscStageLog stageLog, int stage, PetscBool  *isVisible)
@@ -547,7 +530,6 @@ PetscErrorCode  PetscStageLogGetVisible(PetscStageLog stageLog, int stage, Petsc
 
   Level: developer
 
-.keywords: log, stage
 .seealso: PetscStageLogGetCurrent(), PetscStageLogRegister(), PetscLogGetStageLog()
 @*/
 PetscErrorCode  PetscStageLogGetStage(PetscStageLog stageLog, const char name[], PetscLogStage *stage)
@@ -580,7 +562,6 @@ PetscErrorCode  PetscStageLogGetStage(PetscStageLog stageLog, const char name[],
 
   Level: developer
 
-.keywords: log, stage, create
 .seealso: PetscStageLogCreate()
 @*/
 PetscErrorCode  PetscStageLogCreate(PetscStageLog *stageLog)

@@ -1,8 +1,8 @@
 /*
       mathematical function module.
 */
-#if !defined(__PETSCPF_H)
-#define __PETSCPF_H
+#if !defined(PETSCPF_H)
+#define PETSCPF_H
 #include <petscvec.h>
 
 /*
@@ -31,8 +31,6 @@ typedef const char* PFType;
 
    Level: beginner
 
-  Concepts: functions
-
 .seealso:  PFCreate(), PFDestroy(), PFSetType(), PFApply(), PFApplyVec(), PFSet(), PFType
 S*/
 typedef struct _p_PF* PF;
@@ -54,7 +52,7 @@ PETSC_EXTERN PetscErrorCode PFSetFromOptions(PF);
 PETSC_EXTERN PetscErrorCode PFGetType(PF,PFType*);
 
 PETSC_EXTERN PetscErrorCode PFView(PF,PetscViewer);
-PETSC_STATIC_INLINE PetscErrorCode PFViewFromOptions(PF A,PetscObject obj,const char name[]) {return PetscObjectViewFromOptions((PetscObject)A,obj,name);}
+PETSC_EXTERN PetscErrorCode PFViewFromOptions(PF,PetscObject,const char[]);
 
 #define PFSetOptionsPrefix(a,s) PetscObjectSetOptionsPrefix((PetscObject)(a),s)
 

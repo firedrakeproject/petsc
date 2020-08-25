@@ -1,16 +1,16 @@
 #define PETSC_DESIRE_FEATURE_TEST_MACROS /* for popen() */
 /*
-      Some PETSc utilites routines to add simple parallel IO capability
+      Some PETSc utility routines to add simple parallel IO capabilities
 */
 #include <petscsys.h>
-
+#include <petsc/private/logimpl.h>
 #include <errno.h>
 
 /*@C
     PetscFOpen - Has the first process in the communicator open a file;
     all others do nothing.
 
-    Logically Collective on MPI_Comm
+    Logically Collective
 
     Input Parameters:
 +   comm - the communicator
@@ -28,8 +28,6 @@
     Fortran Note:
     This routine is not supported in Fortran.
 
-    Concepts: opening ASCII file
-    Concepts: files^opening ASCII
 
 .seealso: PetscFClose(), PetscSynchronizedFGets(), PetscSynchronizedPrintf(), PetscSynchronizedFlush(),
           PetscFPrintf()
@@ -61,7 +59,7 @@ PetscErrorCode  PetscFOpen(MPI_Comm comm,const char name[],const char mode[],FIL
       fd   = fopen(fname,mode);
       if (!fd) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_FILE_OPEN,"Unable to open file %s\n",fname);
     }
-  } else fd = 0;
+  } else fd = NULL;
   *fp = fd;
   PetscFunctionReturn(0);
 }
@@ -70,7 +68,7 @@ PetscErrorCode  PetscFOpen(MPI_Comm comm,const char name[],const char mode[],FIL
     PetscFClose - Has the first processor in the communicator close a
     file; all others do nothing.
 
-    Logically Collective on MPI_Comm
+    Logically Collective
 
     Input Parameters:
 +   comm - the communicator
@@ -81,8 +79,6 @@ PetscErrorCode  PetscFOpen(MPI_Comm comm,const char name[],const char mode[],FIL
     Fortran Note:
     This routine is not supported in Fortran.
 
-    Concepts: files^closing ASCII
-    Concepts: closing file
 
 .seealso: PetscFOpen()
 @*/
@@ -107,7 +103,7 @@ static char PetscPOpenMachine[128] = "";
 /*@C
       PetscPClose - Closes (ends) a program on processor zero run with PetscPOpen()
 
-     Collective on MPI_Comm, but only process 0 runs the command
+     Collective, but only process 0 runs the command
 
    Input Parameters:
 +   comm - MPI communicator, only processor zero runs the program
@@ -141,7 +137,7 @@ PetscErrorCode PetscPClose(MPI_Comm comm,FILE *fd)
       PetscPOpen - Runs a program on processor zero and sends either its input or output to
           a file.
 
-     Logically Collective on MPI_Comm, but only process 0 runs the command
+     Logically Collective, but only process 0 runs the command
 
    Input Parameters:
 +   comm - MPI communicator, only processor zero runs the program
@@ -205,7 +201,7 @@ PetscErrorCode  PetscPOpen(MPI_Comm comm,const char machine[],const char program
 
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
   if (!rank) {
-    ierr = PetscInfo1(0,"Running command :%s\n",commandt);CHKERRQ(ierr);
+    ierr = PetscInfo1(NULL,"Running command :%s\n",commandt);CHKERRQ(ierr);
     if (!(fd = popen(commandt,mode))) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"Cannot run command %s",commandt);
     if (fp) *fp = fd;
   }
@@ -215,7 +211,7 @@ PetscErrorCode  PetscPOpen(MPI_Comm comm,const char machine[],const char program
 /*@C
       PetscPOpenSetMachine - Sets the name of the default machine to run PetscPOpen() calls on
 
-     Logically Collective on MPI_Comm, but only process 0 runs the command
+     Logically Collective, but only process 0 runs the command
 
    Input Parameter:
 .   machine - machine to run command on or NULL to remove previous entry

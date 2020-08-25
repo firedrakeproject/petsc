@@ -104,7 +104,7 @@ static PetscErrorCode TaoSolve_TRON(Tao tao)
   /* Compute the objective function and gradient */
   ierr = TaoComputeObjectiveAndGradient(tao,tao->solution,&tron->f,tao->gradient);CHKERRQ(ierr);
   ierr = VecNorm(tao->gradient,NORM_2,&tron->gnorm);CHKERRQ(ierr);
-  if (PetscIsInfOrNanReal(tron->f) || PetscIsInfOrNanReal(tron->gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+  if (PetscIsInfOrNanReal(tron->f) || PetscIsInfOrNanReal(tron->gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
 
   /* Project the gradient and calculate the norm */
   ierr = VecBoundGradientProjection(tao->gradient,tao->solution,tao->XL,tao->XU,tao->gradient);CHKERRQ(ierr);
@@ -193,7 +193,7 @@ static PetscErrorCode TaoSolve_TRON(Tao tao)
       stepsize=1.0;f_new=f;
 
       ierr = TaoLineSearchSetInitialStepLength(tao->linesearch,1.0);CHKERRQ(ierr);
-      ierr = TaoLineSearchApply(tao->linesearch, tron->X_New, &f_new, tron->G_New, tao->stepdirection,&stepsize,&ls_reason);CHKERRQ(ierr);CHKERRQ(ierr);
+      ierr = TaoLineSearchApply(tao->linesearch, tron->X_New, &f_new, tron->G_New, tao->stepdirection,&stepsize,&ls_reason);CHKERRQ(ierr);
       ierr = TaoAddLineSearchCounts(tao);CHKERRQ(ierr);
 
       ierr = MatMult(tao->hessian, tao->stepdirection, tron->Work);CHKERRQ(ierr);
@@ -386,6 +386,6 @@ PETSC_EXTERN PetscErrorCode TaoCreate_TRON(Tao tao)
   ierr = KSPCreate(((PetscObject)tao)->comm, &tao->ksp);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)tao->ksp, (PetscObject)tao, 1);CHKERRQ(ierr);
   ierr = KSPSetOptionsPrefix(tao->ksp, tao->hdr.prefix);CHKERRQ(ierr);
-  ierr = KSPSetType(tao->ksp,KSPCGSTCG);CHKERRQ(ierr);
+  ierr = KSPSetType(tao->ksp,KSPSTCG);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

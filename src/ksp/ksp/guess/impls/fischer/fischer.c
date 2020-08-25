@@ -245,7 +245,7 @@ static PetscErrorCode KSPGuessView_Fischer(KSPGuess guess,PetscViewer viewer)
 /*@
    KSPGuessFischerSetModel - Use the Paul Fischer algorithm
 
-   Logically Collective on KSP
+   Logically Collective on guess
 
    Input Parameters:
 +  guess - the initial guess context
@@ -256,8 +256,6 @@ static PetscErrorCode KSPGuessView_Fischer(KSPGuess guess,PetscViewer viewer)
 .   -ksp_guess_fischer_model <model,size> - uses the Fischer initial guess generator for repeated linear solves
 
    Level: advanced
-
-.keywords: set, options, prefix, database
 
 .seealso: KSPGuess, KSPGuessCreate(), KSPSetUseFischerGuess(), KSPSetGuess(), KSPGetGuess(), KSP
 @*/
@@ -308,13 +306,13 @@ static PetscErrorCode KSPGuessFischerSetModel_Fischer(KSPGuess guess,PetscInt mo
     a linear system is solved repeatedly
 
   References:
-.   1. -   http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19940020363_1994020363.pdf
+.   1. -   https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19940020363_1994020363.pdf
 
    Notes:
     the algorithm is different from the paper because we do not CHANGE the right hand side of the new
-    problem and solve the problem with an initial guess of zero, rather we solve the original new problem
+    problem and solve the problem with an initial guess of zero, rather we solve the original problem
     with a nonzero initial guess (this is done so that the linear solver convergence tests are based on
-    the original RHS.) But we use the xtilde = x - xguess as the new direction so that it is not
+    the original RHS). We use the xtilde = x - xguess as the new direction so that it is not
     mostly orthogonal to the previous solutions.
 
     These are not intended to be used directly, they are called by KSP automatically with the command line options -ksp_guess_type fischer -ksp_guess_fischer_model <int,int> or programmatically as

@@ -1,5 +1,5 @@
-#ifndef __PETSCCTABLE_H
-#define __PETSCCTABLE_H
+#ifndef PETSCCTABLE_H
+#define PETSCCTABLE_H
 #include <petscsys.h>
 
 struct _n_PetscTable {
@@ -57,6 +57,9 @@ PETSC_STATIC_INLINE PetscErrorCode PetscTableAdd(PetscTable ta,PetscInt key,Pets
         break;
       case MAX_VALUES:
         ta->table[hash] = PetscMax(ta->table[hash],data);
+        break;
+      case MIN_VALUES:
+        ta->table[hash] = PetscMin(ta->table[hash],data);
         break;
       case NOT_SET_VALUES:
       case INSERT_ALL_VALUES:

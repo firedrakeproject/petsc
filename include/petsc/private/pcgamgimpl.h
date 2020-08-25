@@ -1,5 +1,6 @@
 #if !defined(__GAMG_IMPL)
 #define __GAMG_IMPL
+#include <petscksp.h>
 #include <petsc/private/pcimpl.h>
 #include <petsc/private/pcmgimpl.h>                    /*I "petscksp.h" I*/
 #include <petscmatcoarsen.h>                           /*I "petscmatcoarsen.h" I*/
@@ -15,7 +16,6 @@ struct _PCGAMGOps {
   PetscErrorCode (*destroy)(PC);
   PetscErrorCode (*view)(PC,PetscViewer);
 };
-#define PETSC_GAMG_MAXLEVELS 30
 /* Private context for the GAMG preconditioner */
 typedef struct gamg_TAG {
   PCGAMGType type;
@@ -25,11 +25,13 @@ typedef struct gamg_TAG {
   PetscBool reuse_prol;
   PetscBool use_aggs_in_asm;
   PetscBool use_parallel_coarse_grid_solver;
+  PCGAMGLayoutType layout_type;
+  PetscBool cpu_pin_coarse_grids;
   PetscInt  min_eq_proc;
   PetscInt  coarse_eq_limit;
   PetscReal threshold_scale;
   PetscInt  current_level; /* stash construction state */
-  PetscReal threshold[PETSC_GAMG_MAXLEVELS]; /* common quatity to many AMG methods so keep it up here */
+  PetscReal threshold[PETSC_MG_MAXLEVELS]; /* common quatity to many AMG methods so keep it up here */
 
   /* these 4 are all related to the method data and should be in the subctx */
   PetscInt  data_sz;      /* nloc*data_rows*data_cols */
@@ -41,17 +43,22 @@ typedef struct gamg_TAG {
   PetscReal *orig_data;          /* cache data */
 
   struct _PCGAMGOps *ops;
-  char *gamg_type_name;
+  char      *gamg_type_name;
 
-  void *subctx;
+  void      *subctx;
+
+  char       esteig_type[32];
+  PetscInt   esteig_max_it;
+  PetscInt   use_sa_esteig;
+  PetscReal  emin,emax;
 } PC_GAMG;
 
 PetscErrorCode PCReset_MG(PC);
 
 /* hooks create derivied classes */
-PetscErrorCode  PCCreateGAMG_GEO(PC);
-PetscErrorCode  PCCreateGAMG_AGG(PC);
-PetscErrorCode  PCCreateGAMG_Classical(PC);
+PetscErrorCode PCCreateGAMG_GEO(PC);
+PetscErrorCode PCCreateGAMG_AGG(PC);
+PetscErrorCode PCCreateGAMG_Classical(PC);
 
 PetscErrorCode PCDestroy_GAMG(PC);
 

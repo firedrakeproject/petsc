@@ -1,5 +1,5 @@
-#if !defined(_PETSCFVIMPL_H)
-#define _PETSCFVIMPL_H
+#if !defined(PETSCFVIMPL_H)
+#define PETSCFVIMPL_H
 
 #include <petscfv.h>
 #include <petsc/private/petscimpl.h>
@@ -67,16 +67,16 @@ struct _PetscFVOps {
 
 struct _p_PetscFV {
   PETSCHEADER(struct _PetscFVOps);
-  void           *data;             /* Implementation object */
-  PetscLimiter    limiter;          /* The slope limiter */
-  PetscDualSpace  dualSpace;        /* The dual space P', usually simple */
-  PetscInt        numComponents;    /* The number of field components */
-  PetscInt        dim;              /* The spatial dimension */
-  PetscBool       computeGradients; /* Flag for gradient computation */
-  PetscScalar    *fluxWork;         /* The work array for flux calculation */
-  PetscQuadrature quadrature;       /* Suitable quadrature on the volume */
-  PetscReal      *B, *D, *H;        /* Tabulation of pseudo-basis and derivatives at quadrature points */
-  char          **componentNames;   /* Names of the component fields */
+  void             *data;             /* Implementation object */
+  PetscLimiter      limiter;          /* The slope limiter */
+  PetscDualSpace    dualSpace;        /* The dual space P', usually simple */
+  PetscInt          numComponents;    /* The number of field components */
+  PetscInt          dim;              /* The spatial dimension */
+  PetscBool         computeGradients; /* Flag for gradient computation */
+  PetscScalar      *fluxWork;         /* The work array for flux calculation */
+  PetscQuadrature   quadrature;       /* Suitable quadrature on the volume */
+  PetscTabulation T;                /* Tabulation of pseudo-basis and derivatives at quadrature points */
+  char            **componentNames;   /* Names of the component fields */
 };
 
 typedef struct {

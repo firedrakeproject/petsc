@@ -1,7 +1,0 @@
-Graph Partitioner: 4 MPI Processes
-  type: parmetis
-  edge cut: 8
-  balance:  0
-  ParMetis type: kway
-  load imbalance ratio 1.05
-  debug flag 0

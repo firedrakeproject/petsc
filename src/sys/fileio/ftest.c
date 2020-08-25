@@ -217,7 +217,7 @@ PetscErrorCode  PetscTestDirectory(const char dirname[],char mode,PetscBool  *fl
 /*@C
    PetscLs - produce a listing of the files in a directory
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 +  comm - the MPI communicator
@@ -254,7 +254,7 @@ PetscErrorCode  PetscLs(MPI_Comm comm,const char dirname[],char found[],size_t t
     ierr = PetscStrlen(found,&len);CHKERRQ(ierr);
     f    = fgets(found+len,tlen-len,fp);
   }
-  if (*flg) {ierr = PetscInfo2(0,"ls on %s gives \n%s\n",dirname,found);CHKERRQ(ierr);}
+  if (*flg) {ierr = PetscInfo2(NULL,"ls on %s gives \n%s\n",dirname,found);CHKERRQ(ierr);}
 #if defined(PETSC_HAVE_POPEN)
   ierr = PetscPClose(comm,fp);CHKERRQ(ierr);
 #else

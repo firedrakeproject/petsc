@@ -1,6 +1,8 @@
 #include <petsc/private/tsimpl.h>      /*I "petscts.h"  I*/
 
 const char *const TSConvergedReasons_Shifted[] = {
+  "ADJOINT_DIVERGED_LINEAR_SOLVE",
+  "FORWARD_DIVERGED_LINEAR_SOLVE",
   "DIVERGED_STEP_REJECTED",
   "DIVERGED_NONLINEAR_SOLVE",
   "CONVERGED_ITERATING",
@@ -10,14 +12,14 @@ const char *const TSConvergedReasons_Shifted[] = {
   "CONVERGED_EVENT",
   "CONVERGED_PSEUDO_FATOL",
   "CONVERGED_PSEUDO_FATOL",
-  "TSConvergedReason","TS_",0};
-const char *const*TSConvergedReasons = TSConvergedReasons_Shifted + 2;
+  "TSConvergedReason","TS_",NULL};
+const char *const*TSConvergedReasons = TSConvergedReasons_Shifted + 4;
 
 /*@C
   TSCreate - This function creates an empty timestepper. The problem type can then be set with TSSetProblemType() and the
        type of solver can then be set with TSSetType().
 
-  Collective on MPI_Comm
+  Collective
 
   Input Parameter:
 . comm - The communicator
@@ -34,7 +36,6 @@ const char *const*TSConvergedReasons = TSConvergedReasons_Shifted + 2;
                     in TSView(). TSSetFromOptions() does call SNESSetFromOptions() which can lead to users being confused
                     by help messages about meaningless SNES options.
 
-.keywords: TS, create
 .seealso: TSSetType(), TSSetUp(), TSDestroy(), TSSetProblemType()
 @*/
 PetscErrorCode  TSCreate(MPI_Comm comm, TS *ts)

@@ -6,6 +6,17 @@
 #include <../src/vec/vec/impls/mpi/pvecimpl.h>   /*I  "petscvec.h"   I*/
 #include <../src/vec/vec/impls/seq/seqviennacl/viennaclvecimpl.h>
 
+/*MC
+   VECVIENNACL - VECVIENNACL = "viennacl" - A VECSEQVIENNACL on a single-process communicator, and VECMPIVIENNACL otherwise.
+
+   Options Database Keys:
+. -vec_type viennacl - sets the vector type to VECVIENNACL during a call to VecSetFromOptions()
+
+  Level: beginner
+
+.seealso: VecCreate(), VecSetType(), VecSetFromOptions(), VecCreateMPIWithArray(), VECSEQVIENNACL, VECMPIVIENNACL, VECSTANDARD, VecType, VecCreateMPI(), VecCreateMPI()
+M*/
+
 PetscErrorCode VecDestroy_MPIViennaCL(Vec v)
 {
   PetscErrorCode ierr;
@@ -104,7 +115,7 @@ PetscErrorCode VecMDot_MPIViennaCL(Vec xin,PetscInt nv,const Vec y[],PetscScalar
 
   Level: beginner
 
-.seealso: VecCreate(), VecSetType(), VecSetFromOptions(), VecCreateMpiWithArray(), VECMPI, VecType, VecCreateMPI(), VecCreateMpi()
+.seealso: VecCreate(), VecSetType(), VecSetFromOptions(), VecCreateMPIWithArray(), VECMPI, VecType, VecCreateMPI(), VecCreateMPI()
 M*/
 
 
@@ -201,8 +212,10 @@ PETSC_EXTERN PetscErrorCode VecCreate_MPIViennaCL(Vec vv)
      get values?
   */
   ierr = VecViennaCLAllocateCheck(vv);CHKERRQ(ierr);
-  vv->valid_GPU_array      = PETSC_OFFLOAD_GPU;
+  ierr = VecViennaCLAllocateCheckHost(vv);CHKERRQ(ierr);
   ierr = VecSet(vv,0.0);CHKERRQ(ierr);
+  ierr = VecSet_Seq(vv,0.0);CHKERRQ(ierr);
+  vv->offloadmask = PETSC_OFFLOAD_BOTH;
   PetscFunctionReturn(0);
 }
 

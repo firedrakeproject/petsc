@@ -89,7 +89,7 @@ static PetscErrorCode SortByRemote_Private(PetscSF sf, PetscInt *rmine1[], Petsc
   PetscErrorCode      ierr;
 
   PetscFunctionBegin;
-  ierr = PetscSFGetRanks(sf, &nranks, &ranks, &roffset, &rmine, &rremote);CHKERRQ(ierr);
+  ierr = PetscSFGetRootRanks(sf, &nranks, &ranks, &roffset, &rmine, &rremote);CHKERRQ(ierr);
   nleaves = roffset[nranks];
   ierr = PetscMalloc2(nleaves, rmine1, nleaves, rremote1);CHKERRQ(ierr);
   for (r=0; r<nranks; r++) {
@@ -97,8 +97,8 @@ static PetscErrorCode SortByRemote_Private(PetscSF sf, PetscInt *rmine1[], Petsc
        - to unify order with the other side */
     o = roffset[r];
     n = roffset[r+1] - o;
-    ierr = PetscMemcpy(&(*rmine1)[o], &rmine[o], n*sizeof(PetscInt));CHKERRQ(ierr);
-    ierr = PetscMemcpy(&(*rremote1)[o], &rremote[o], n*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArraycpy(&(*rmine1)[o], &rmine[o], n);CHKERRQ(ierr);
+    ierr = PetscArraycpy(&(*rremote1)[o], &rremote[o], n);CHKERRQ(ierr);
     ierr = PetscSortIntWithArray(n, &(*rremote1)[o], &(*rmine1)[o]);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
@@ -115,13 +115,13 @@ static PetscErrorCode GetRecursiveConeCoordinatesPerRank_Private(DM dm, PetscSF 
 
   PetscFunctionBegin;
   ierr = DMGetCoordinatesLocalSetUp(dm);CHKERRQ(ierr);
-  ierr = PetscSFGetRanks(sf, &nranks, &ranks, &roffset, NULL, NULL);CHKERRQ(ierr);
+  ierr = PetscSFGetRootRanks(sf, &nranks, &ranks, &roffset, NULL, NULL);CHKERRQ(ierr);
   ierr = PetscMalloc1(nranks, coordinatesPerRank);CHKERRQ(ierr);
   for (r=0; r<nranks; r++) {
     o = roffset[r];
     n = roffset[r+1] - o;
     ierr = ISCreateGeneral(PETSC_COMM_SELF, n, &rmine[o], PETSC_USE_POINTER, &pointsPerRank);CHKERRQ(ierr);
-    ierr = DMPlexGetConeRecursive(dm, pointsPerRank, &conesPerRank);CHKERRQ(ierr);
+    ierr = DMPlexGetConeRecursiveVertices(dm, pointsPerRank, &conesPerRank);CHKERRQ(ierr);
     ierr = DMGetCoordinatesLocalTuple(dm, conesPerRank, NULL, &(*coordinatesPerRank)[r]);CHKERRQ(ierr);
     ierr = ISDestroy(&pointsPerRank);CHKERRQ(ierr);
     ierr = ISDestroy(&conesPerRank);CHKERRQ(ierr);
@@ -139,13 +139,11 @@ static PetscErrorCode PetscSFComputeMultiRootOriginalNumberingByRank_Private(Pet
 
   PetscFunctionBegin;
   ierr = PetscSFGetGraph(imsf, NULL, &nileaves, NULL, NULL);CHKERRQ(ierr);
-  ierr = PetscSFGetRanks(imsf, &niranks, NULL, &iroffset, &irmine, NULL);CHKERRQ(ierr);
-#if defined(PETSC_USE_DEBUG)
+  ierr = PetscSFGetRootRanks(imsf, &niranks, NULL, &iroffset, &irmine, NULL);CHKERRQ(ierr);
   if (PetscUnlikely(nileaves != iroffset[niranks])) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_PLIB,"nileaves != iroffset[niranks])");
-#endif
   ierr = PetscSFComputeDegreeBegin(sf, &degree);CHKERRQ(ierr);
   ierr = PetscSFComputeDegreeEnd(sf, &degree);CHKERRQ(ierr);
-  ierr = PetscSFComputeMultiRootOriginalNumbering(sf, degree, &mRootsOrigNumbering);CHKERRQ(ierr);
+  ierr = PetscSFComputeMultiRootOriginalNumbering(sf, degree, NULL, &mRootsOrigNumbering);CHKERRQ(ierr);
   ierr = PetscMalloc1(nileaves, irmine1);CHKERRQ(ierr);
   for (r=0; r<niranks; r++) {
     o = iroffset[r];
@@ -157,22 +155,27 @@ static PetscErrorCode PetscSFComputeMultiRootOriginalNumberingByRank_Private(Pet
 }
 
 /*@
-  DMPlexCheckConesConformOnInterfaces - Check that points on inter-partition interfaces have conforming order of cone points.
-    For example, if there is an edge (rank,index)=(0,2) connecting points cone(0,2)=[(0,0),(0,1)] in this order, and the point SF containts connections 0 <- (1,0), 1 <- (1,1) and 2 <- (1,2),
-    then this check would pass if the edge (1,2) has cone(1,2)=[(1,0),(1,1)]. By contrast, if cone(1,2)=[(1,1),(1,0)], then this check would fail.
+  DMPlexCheckInterfaceCones - Check that points on inter-partition interfaces have conforming order of cone points.
 
   Input Parameters:
 . dm - The DMPlex object
 
-  Note: This is mainly intended for debugging/testing purposes. Does not check cone orientation, for this purpose use DMPlexCheckFaces().
+  Notes:
+  For example, if there is an edge (rank,index)=(0,2) connecting points cone(0,2)=[(0,0),(0,1)] in this order, and the point SF containts connections 0 <- (1,0), 1 <- (1,1) and 2 <- (1,2),
+  then this check would pass if the edge (1,2) has cone(1,2)=[(1,0),(1,1)]. By contrast, if cone(1,2)=[(1,1),(1,0)], then this check would fail.
 
-  Developer Note: Interface cones are expanded into vertices and then their coordinates are compared.
+  This is mainly intended for debugging/testing purposes. Does not check cone orientation, for this purpose use DMPlexCheckFaces().
+
+  For the complete list of DMPlexCheck* functions, see DMSetFromOptions().
+
+  Developer Note:
+  Interface cones are expanded into vertices and then their coordinates are compared.
 
   Level: developer
 
-.seealso: DMPlexGetCone(), DMPlexGetConeSize(), DMGetPointSF(), DMGetCoordinates(), DMPlexCheckFaces(), DMPlexCheckPointSF(), DMPlexCheckSymmetry(), DMPlexCheckSkeleton()
+.seealso: DMPlexGetCone(), DMPlexGetConeSize(), DMGetPointSF(), DMGetCoordinates(), DMSetFromOptions()
 @*/
-PetscErrorCode DMPlexCheckConesConformOnInterfaces(DM dm)
+PetscErrorCode DMPlexCheckInterfaceCones(DM dm)
 {
   PetscSF             sf;
   PetscInt            nleaves, nranks, nroots;
@@ -191,6 +194,7 @@ PetscErrorCode DMPlexCheckConesConformOnInterfaces(DM dm)
   PetscInt            r;
   PetscMPIInt         commsize, myrank;
   PetscBool           same;
+  PetscBool           verbose=PETSC_FALSE;
   MPI_Comm            comm;
   PetscErrorCode      ierr;
 
@@ -206,7 +210,7 @@ PetscErrorCode DMPlexCheckConesConformOnInterfaces(DM dm)
   if (nroots < 0) PetscFunctionReturn(0);
   if (!dm->coordinates && !dm->coordinatesLocal) SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONGSTATE, "DM coordinates must be set");
   ierr = PetscSFSetUp(sf);CHKERRQ(ierr);
-  ierr = PetscSFGetRanks(sf, &nranks, &ranks, &roffset, &rmine, &rremote);CHKERRQ(ierr);
+  ierr = PetscSFGetRootRanks(sf, &nranks, &ranks, &roffset, &rmine, &rremote);CHKERRQ(ierr);
 
   /* Expand sent cones per rank */
   ierr = SortByRemote_Private(sf, &rmine1, &rremote1);CHKERRQ(ierr);
@@ -217,7 +221,7 @@ PetscErrorCode DMPlexCheckConesConformOnInterfaces(DM dm)
   ierr = PetscSFCreateInverseSF(msf,&imsf);CHKERRQ(ierr);
   ierr = PetscSFSetUp(imsf);CHKERRQ(ierr);
   ierr = PetscSFGetGraph(imsf, NULL, &nileaves, NULL, NULL);CHKERRQ(ierr);
-  ierr = PetscSFGetRanks(imsf, &niranks, &iranks, &iroffset, &irmine, &irremote);CHKERRQ(ierr);
+  ierr = PetscSFGetRootRanks(imsf, &niranks, &iranks, &iroffset, &irmine, &irremote);CHKERRQ(ierr);
 
   /* Compute original numbering of multi-roots (referenced points) */
   ierr = PetscSFComputeMultiRootOriginalNumberingByRank_Private(sf, imsf, &mine_orig_numbering);CHKERRQ(ierr);
@@ -227,6 +231,41 @@ PetscErrorCode DMPlexCheckConesConformOnInterfaces(DM dm)
 
   /* Send the coordinates */
   ierr = ExchangeVecByRank_Private((PetscObject)sf, nranks, ranks, sntCoordinatesPerRank, niranks, iranks, &recCoordinatesPerRank);CHKERRQ(ierr);
+
+  /* verbose output */
+  ierr = PetscOptionsGetBool(((PetscObject)dm)->options, ((PetscObject)dm)->prefix, "-dm_plex_check_cones_conform_on_interfaces_verbose", &verbose, NULL);CHKERRQ(ierr);
+  if (verbose) {
+    PetscViewer sv, v = PETSC_VIEWER_STDOUT_WORLD;
+    ierr = PetscViewerASCIIPrintf(v, "============\nDMPlexCheckInterfaceCones output\n============\n");CHKERRQ(ierr);
+    ierr = PetscViewerASCIIPushSynchronized(v);CHKERRQ(ierr);
+    ierr = PetscViewerASCIISynchronizedPrintf(v, "[%d] --------\n", myrank);CHKERRQ(ierr);
+    for (r=0; r<nranks; r++) {
+      ierr = PetscViewerASCIISynchronizedPrintf(v, "  r=%D ranks[r]=%d sntCoordinatesPerRank[r]:\n", r, ranks[r]);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
+      ierr = PetscViewerGetSubViewer(v,PETSC_COMM_SELF,&sv);CHKERRQ(ierr);
+      ierr = VecView(sntCoordinatesPerRank[r], sv);CHKERRQ(ierr);
+      ierr = PetscViewerRestoreSubViewer(v,PETSC_COMM_SELF,&sv);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPopTab(v);CHKERRQ(ierr);
+    }
+    ierr = PetscViewerASCIISynchronizedPrintf(v, "  ----------\n");CHKERRQ(ierr);
+    for (r=0; r<niranks; r++) {
+      ierr = PetscViewerASCIISynchronizedPrintf(v, "  r=%D iranks[r]=%d refCoordinatesPerRank[r]:\n", r, iranks[r]);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
+      ierr = PetscViewerGetSubViewer(v,PETSC_COMM_SELF,&sv);CHKERRQ(ierr);
+      ierr = VecView(refCoordinatesPerRank[r], sv);CHKERRQ(ierr);
+      ierr = PetscViewerRestoreSubViewer(v,PETSC_COMM_SELF,&sv);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPopTab(v);CHKERRQ(ierr);
+    }
+    ierr = PetscViewerASCIISynchronizedPrintf(v, "  ----------\n");CHKERRQ(ierr);
+    for (r=0; r<niranks; r++) {
+      ierr = PetscViewerASCIISynchronizedPrintf(v, "  r=%D iranks[r]=%d recCoordinatesPerRank[r]:\n", r, iranks[r]);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPushTab(v);CHKERRQ(ierr);
+      ierr = PetscViewerGetSubViewer(v,PETSC_COMM_SELF,&sv);CHKERRQ(ierr);
+      ierr = VecView(recCoordinatesPerRank[r], sv);CHKERRQ(ierr);
+      ierr = PetscViewerRestoreSubViewer(v,PETSC_COMM_SELF,&sv);CHKERRQ(ierr);
+      ierr = PetscViewerASCIIPopTab(v);CHKERRQ(ierr);
+    }
+  }
 
   /* Compare recCoordinatesPerRank with refCoordinatesPerRank */
   for (r=0; r<niranks; r++) {

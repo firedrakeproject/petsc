@@ -364,7 +364,7 @@ static PetscErrorCode MatCopy_DiagBrdn(Mat B, Mat M, MatStructure str)
   for (i=0; i<=bdata->k; ++i) {
     mctx->yty[i] = bctx->yty[i];
     mctx->yts[i] = bctx->yts[i];
-    mctx->sts[i] = mctx->sts[i];
+    mctx->sts[i] = bctx->sts[i];
   }
   PetscFunctionReturn(0);
 }
@@ -523,7 +523,7 @@ PetscErrorCode MatCreate_LMVMDiagBrdn(Mat B)
 
   PetscFunctionBegin;
   ierr = MatCreate_LMVM(B);CHKERRQ(ierr);
-  ierr = PetscObjectChangeTypeName((PetscObject)B, MATLMVMDIAGBRDN);CHKERRQ(ierr);
+  ierr = PetscObjectChangeTypeName((PetscObject)B, MATLMVMDIAGBROYDEN);CHKERRQ(ierr);
   B->ops->setup = MatSetUp_DiagBrdn;
   B->ops->setfromoptions = MatSetFromOptions_DiagBrdn;
   B->ops->destroy = MatDestroy_DiagBrdn;
@@ -559,7 +559,7 @@ PetscErrorCode MatCreate_LMVMDiagBrdn(Mat B)
 /*------------------------------------------------------------*/
 
 /*@
-   MatCreateLMVMDiagBrdn - DiagBrdn creates a symmetric Broyden-type diagonal matrix used 
+   MatCreateLMVMDiagBroyden - DiagBrdn creates a symmetric Broyden-type diagonal matrix used 
    for approximating Hessians. It consists of a convex combination of DFP and BFGS 
    diagonal approximation schemes, such that DiagBrdn = (1-theta)*BFGS + theta*DFP. 
    To preserve symmetric positive-definiteness, we restrict theta to be in [0, 1]. 
@@ -577,7 +577,7 @@ PetscErrorCode MatCreate_LMVMDiagBrdn(Mat B)
    (via MatLMVMUpdate) in one's favored solver implementation. 
    This allows for MPI compatibility.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI communicator, set to PETSC_COMM_SELF
@@ -591,27 +591,27 @@ PetscErrorCode MatCreate_LMVMDiagBrdn(Mat B)
    paradigm instead of this routine directly.
 
    Options Database Keys:
-.   -mat_lmvm_theta - (developer) convex ratio between BFGS and DFP components of the diagonal J0 scaling
++   -mat_lmvm_theta - (developer) convex ratio between BFGS and DFP components of the diagonal J0 scaling
 .   -mat_lmvm_rho - (developer) update limiter for the J0 scaling
 .   -mat_lmvm_alpha - (developer) coefficient factor for the quadratic subproblem in J0 scaling
 .   -mat_lmvm_beta - (developer) exponential factor for the diagonal J0 scaling
 .   -mat_lmvm_sigma_hist - (developer) number of past updates to use in J0 scaling.
 .   -mat_lmvm_tol - (developer) tolerance for bounding the denominator of the rescaling away from 0.
-.   -mat_lmvm_forward - (developer) whether or not to use the forward or backward Broyden update to the diagonal
+-   -mat_lmvm_forward - (developer) whether or not to use the forward or backward Broyden update to the diagonal
 
    Level: intermediate
 
 .seealso: MatCreate(), MATLMVM, MATLMVMDIAGBRDN, MatCreateLMVMDFP(), MatCreateLMVMSR1(),
           MatCreateLMVMBFGS(), MatCreateLMVMBrdn(), MatCreateLMVMSymBrdn()
 @*/
-PetscErrorCode MatCreateLMVMDiagBrdn(MPI_Comm comm, PetscInt n, PetscInt N, Mat *B)
+PetscErrorCode MatCreateLMVMDiagBroyden(MPI_Comm comm, PetscInt n, PetscInt N, Mat *B)
 {
   PetscErrorCode    ierr;
 
   PetscFunctionBegin;
   ierr = MatCreate(comm, B);CHKERRQ(ierr);
   ierr = MatSetSizes(*B, n, n, N, N);CHKERRQ(ierr);
-  ierr = MatSetType(*B, MATLMVMDIAGBRDN);CHKERRQ(ierr);
+  ierr = MatSetType(*B, MATLMVMDIAGBROYDEN);CHKERRQ(ierr);
   ierr = MatSetUp(*B);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

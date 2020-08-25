@@ -1,7 +1,7 @@
 
 /*
     Provides an implementation of the Unevenly Sampled FFT algorithm as a Mat.
-    Testing examples can be found in ~/src/mat/examples/tests FIX: should these be moved to dm/da/examples/tests?
+    Testing examples can be found in ~/src/mat/tests FIX: should these be moved to dm/da/tests?
 */
 
 #include <petsc/private/matimpl.h>          /*I "petscmat.h" I*/
@@ -143,16 +143,16 @@ PetscErrorCode MatDestroy_SeqUSFFT(Mat A)
       MatCreateSeqUSFFT - Creates a matrix object that provides sequential USFFT
   via the external package FFTW
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
-+   da - geometry of the domain encoded by a DMDA
+.   da - geometry of the domain encoded by a DMDA
 
    Output Parameter:
 .   A  - the matrix
 
   Options Database Keys:
-+ -mat_usfft_plannerflags - set the FFTW planner flags
+. -mat_usfft_plannerflags - set the FFTW planner flags
 
    Level: intermediate
 

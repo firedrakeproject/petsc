@@ -10,6 +10,29 @@
 
 #define SWAP(a,b,t) {t=a;a=b;b=t;}
 
+/*@
+   PetscSortedReal - Determines whether the array is sorted.
+
+   Not Collective
+
+   Input Parameters:
++  n  - number of values
+-  X  - array of integers
+
+   Output Parameters:
+.  sorted - flag whether the array is sorted
+
+   Level: intermediate
+
+.seealso: PetscSortReal(), PetscSortedInt(), PetscSortedMPIInt()
+@*/
+PetscErrorCode  PetscSortedReal(PetscInt n,const PetscReal X[],PetscBool *sorted)
+{
+  PetscFunctionBegin;
+  PetscSorted(n,X,*sorted);
+  PetscFunctionReturn(0);
+}
+
 /* A simple version of quicksort; taken from Kernighan and Ritchie, page 87 */
 static PetscErrorCode PetscSortReal_Private(PetscReal *v,PetscInt right)
 {
@@ -45,8 +68,6 @@ static PetscErrorCode PetscSortReal_Private(PetscReal *v,PetscInt right)
 -  v  - array of doubles
 
    Level: intermediate
-
-   Concepts: sorting^doubles
 
 .seealso: PetscSortInt(), PetscSortRealWithPermutation(), PetscSortRealWithArrayInt()
 @*/
@@ -111,8 +132,6 @@ static PetscErrorCode PetscSortRealWithArrayInt_Private(PetscReal *v,PetscInt *V
 
    Level: intermediate
 
-   Concepts: sorting^ints with array
-
 .seealso: PetscSortReal()
 @*/
 PetscErrorCode  PetscSortRealWithArrayInt(PetscInt n,PetscReal r[],PetscInt Ii[])
@@ -156,8 +175,6 @@ PetscErrorCode  PetscSortRealWithArrayInt(PetscInt n,PetscReal r[],PetscInt Ii[]
 
    Level: intermediate
 
-   Concepts: sorting^ints
-
 .seealso: PetscSortReal(), PetscSortRealWithArrayInt()
 @*/
 PetscErrorCode PetscFindReal(PetscReal key, PetscInt n, const PetscReal t[], PetscReal eps, PetscInt *loc)
@@ -168,6 +185,7 @@ PetscErrorCode PetscFindReal(PetscReal key, PetscInt n, const PetscReal t[], Pet
   PetscValidPointer(loc,4);
   if (!n) {*loc = -1; PetscFunctionReturn(0);}
   PetscValidPointer(t,3);
+  PetscCheckSorted(n,t);
   while (hi - lo > 1) {
     PetscInt mid = lo + (hi - lo)/2;
     if (key < t[mid]) hi = mid;
@@ -190,8 +208,6 @@ PetscErrorCode PetscFindReal(PetscReal key, PetscInt n, const PetscReal t[], Pet
 .  n - number of non-redundant values
 
    Level: intermediate
-
-   Concepts: sorting^doubles
 
 .seealso: PetscSortReal(), PetscSortRemoveDupsInt()
 @*/
@@ -229,8 +245,6 @@ PetscErrorCode  PetscSortRemoveDupsReal(PetscInt *n,PetscReal v[])
 -  idx   - permuted index of array a
 
    Level: intermediate
-
-   Concepts: sorting^doubles
 
 .seealso: PetscSortInt(), PetscSortRealWithPermutation()
 @*/
@@ -292,8 +306,6 @@ PetscErrorCode  PetscSortSplit(PetscInt ncut,PetscInt n,PetscScalar a[],PetscInt
 -  idx   - permuted index of array a
 
    Level: intermediate
-
-   Concepts: sorting^doubles
 
 .seealso: PetscSortInt(), PetscSortRealWithPermutation()
 @*/

@@ -3,7 +3,7 @@
 */
 #include <petsc/private/tsimpl.h>                /*I   "petscts.h"   I*/
 
-PetscFunctionList TSSSPList = 0;
+PetscFunctionList TSSSPList = NULL;
 static PetscBool TSSSPPackageInitialized;
 
 typedef struct {
@@ -502,7 +502,6 @@ PETSC_EXTERN PetscErrorCode TSCreate_SSP(TS ts)
 
   Level: developer
 
-.keywords: TS, TSSSP, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode TSSSPInitializePackage(void)
@@ -525,7 +524,6 @@ PetscErrorCode TSSSPInitializePackage(void)
 
   Level: developer
 
-.keywords: Petsc, destroy, package
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode TSSSPFinalizePackage(void)

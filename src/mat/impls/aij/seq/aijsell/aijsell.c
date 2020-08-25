@@ -38,10 +38,6 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJSELL_SeqAIJ(Mat A,MatType type,MatR
   B->ops->sor              = MatSOR_SeqAIJ;
 
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_seqaijsell_seqaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMult_seqdense_seqaijsell_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultSymbolic_seqdense_seqaijsell_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultNumeric_seqdense_seqaijsell_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_is_seqaijsell_C",NULL);CHKERRQ(ierr);
 
   if (reuse == MAT_INITIAL_MATRIX) aijsell = (Mat_SeqAIJSELL*)B->spptr;
 
@@ -121,7 +117,7 @@ PetscErrorCode MatDuplicate_SeqAIJSELL(Mat A, MatDuplicateOption op, Mat *M)
   ierr = MatDuplicate_SeqAIJ(A,op,M);CHKERRQ(ierr);
   aijsell      = (Mat_SeqAIJSELL*) A->spptr;
   aijsell_dest = (Mat_SeqAIJSELL*) (*M)->spptr;
-  ierr = PetscMemcpy(aijsell_dest,aijsell,sizeof(Mat_SeqAIJSELL));CHKERRQ(ierr);
+  ierr = PetscArraycpy(aijsell_dest,aijsell,1);CHKERRQ(ierr);
   /* We don't duplicate the shadow matrix -- that will be constructed as needed. */
   aijsell_dest->S = NULL;
   if (aijsell->eager_shadow) {
@@ -216,9 +212,6 @@ PetscErrorCode MatSOR_SeqAIJSELL(Mat A,Vec bb,PetscReal omega,MatSORType flag,Pe
   PetscFunctionReturn(0);
 }
 
-/* This function prototype is needed in MatConvert_SeqAIJ_SeqAIJSELL(), below. */
-PETSC_INTERN PetscErrorCode MatPtAP_IS_XAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-
 /* MatConvert_SeqAIJ_SeqAIJSELL converts a SeqAIJ matrix into a
  * SeqAIJSELL matrix.  This routine is called by the MatCreate_SeqAIJSELL()
  * routine, but can also be used to convert an assembled SeqAIJ matrix
@@ -275,10 +268,6 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJSELL(Mat A,MatType type,MatR
   B->ops->sor              = MatSOR_SeqAIJSELL;
 
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_seqaijsell_seqaij_C",MatConvert_SeqAIJSELL_SeqAIJ);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMult_seqdense_seqaijsell_C",MatMatMult_SeqDense_SeqAIJ);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultSymbolic_seqdense_seqaijsell_C",MatMatMultSymbolic_SeqDense_SeqAIJ);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultNumeric_seqdense_seqaijsell_C",MatMatMultNumeric_SeqDense_SeqAIJ);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_is_seqaijsell_C",MatPtAP_IS_XAIJ);CHKERRQ(ierr);
 
   ierr    = PetscObjectChangeTypeName((PetscObject)B,MATSEQAIJSELL);CHKERRQ(ierr);
   *newmat = B;
@@ -295,7 +284,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJSELL(Mat A,MatType type,MatR
    Because SEQAIJSELL is a subtype of SEQAIJ, the option "-mat_seqaij_type seqaijsell" can be used to make
    sequential AIJ matrices default to being instances of MATSEQAIJSELL.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI communicator, set to PETSC_COMM_SELF
@@ -315,8 +304,6 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJSELL(Mat A,MatType type,MatR
    If nnz is given then nz is ignored
 
    Level: intermediate
-
-.keywords: matrix, sparse
 
 .seealso: MatCreate(), MatCreateMPIAIJSELL(), MatSetValues()
 @*/

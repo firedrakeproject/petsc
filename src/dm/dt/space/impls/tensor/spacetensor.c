@@ -45,7 +45,7 @@ static PetscErrorCode PetscSpaceSetFromOptions_Tensor(PetscOptionItems *PetscOpt
   }
   Ns = (Ns == PETSC_DEFAULT) ? PetscMax(Nv,1) : Ns;
   ierr = PetscOptionsHead(PetscOptionsObject,"PetscSpace tensor options");CHKERRQ(ierr);
-  ierr = PetscOptionsInt("-petscspace_tensor_spaces", "The number of subspaces", "PetscSpaceTensorSetNumSubspaces", Ns, &Ns, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBoundedInt("-petscspace_tensor_spaces", "The number of subspaces", "PetscSpaceTensorSetNumSubspaces", Ns, &Ns, NULL,0);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-petscspace_tensor_uniform", "Subspaces are identical", "PetscSpaceTensorSetFromOptions", uniform, &uniform, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   if (Ns < 0 || (Nv > 0 && Ns == 0)) SETERRQ1(PetscObjectComm((PetscObject)sp),PETSC_ERR_ARG_OUTOFRANGE,"Cannot have a tensor space made up of %D spaces\n",Ns);
@@ -269,7 +269,7 @@ static PetscErrorCode PetscSpaceEvaluate_Tensor(PetscSpace sp, PetscInt npoints,
     }
   }
   if (H) {
-    for (i = 0; i < npoints*pdim*Nc*Nc*Nv*Nv; i++) D[i] = 0.;
+    for (i = 0; i < npoints*pdim*Nc*Nc*Nv*Nv; i++) H[i] = 0.;
     for (i = 0; i < npoints*pdim; i++) {
       for (l = 0; l < Nv*Nv; l++) {
         H[i * Nc*Nc*Nv*Nv + l] = 1.;
@@ -390,6 +390,17 @@ static PetscErrorCode PetscSpaceEvaluate_Tensor(PetscSpace sp, PetscInt npoints,
   PetscFunctionReturn(0);
 }
 
+/*@
+  PetscSpaceTensorSetNumSubspaces - Set the number of spaces in the tensor product
+
+  Input Parameters:
++ sp  - the function space object
+- numTensSpaces - the number of spaces
+
+  Level: intermediate
+
+.seealso: PetscSpaceTensorGetNumSubspaces(), PetscSpaceSetDegree(), PetscSpaceSetNumVariables()
+@*/
 PetscErrorCode PetscSpaceTensorSetNumSubspaces(PetscSpace sp, PetscInt numTensSpaces)
 {
   PetscErrorCode ierr;
@@ -400,6 +411,19 @@ PetscErrorCode PetscSpaceTensorSetNumSubspaces(PetscSpace sp, PetscInt numTensSp
   PetscFunctionReturn(0);
 }
 
+/*@
+  PetscSpaceTensorGetNumSubspaces - Get the number of spaces in the tensor product
+
+  Input Parameter:
+. sp  - the function space object
+
+  Output Parameter:
+. numTensSpaces - the number of spaces
+
+  Level: intermediate
+
+.seealso: PetscSpaceTensorSetNumSubspaces(), PetscSpaceSetDegree(), PetscSpaceSetNumVariables()
+@*/
 PetscErrorCode PetscSpaceTensorGetNumSubspaces(PetscSpace sp, PetscInt *numTensSpaces)
 {
   PetscErrorCode ierr;
@@ -411,6 +435,18 @@ PetscErrorCode PetscSpaceTensorGetNumSubspaces(PetscSpace sp, PetscInt *numTensS
   PetscFunctionReturn(0);
 }
 
+/*@
+  PetscSpaceTensorSetSubspace - Set a space in the tensor product
+
+  Input Parameters:
++ sp    - the function space object
+. s     - The space number
+- subsp - the number of spaces
+
+  Level: intermediate
+
+.seealso: PetscSpaceTensorGetSubspace(), PetscSpaceSetDegree(), PetscSpaceSetNumVariables()
+@*/
 PetscErrorCode PetscSpaceTensorSetSubspace(PetscSpace sp, PetscInt s, PetscSpace subsp)
 {
   PetscErrorCode ierr;
@@ -422,6 +458,20 @@ PetscErrorCode PetscSpaceTensorSetSubspace(PetscSpace sp, PetscInt s, PetscSpace
   PetscFunctionReturn(0);
 }
 
+/*@
+  PetscSpaceTensorGetSubspace - Get a space in the tensor product
+
+  Input Parameters:
++ sp - the function space object
+- s  - The space number
+
+  Output Parameter:
+. subsp - the PetscSpace
+
+  Level: intermediate
+
+.seealso: PetscSpaceTensorSetSubspace(), PetscSpaceSetDegree(), PetscSpaceSetNumVariables()
+@*/
 PetscErrorCode PetscSpaceTensorGetSubspace(PetscSpace sp, PetscInt s, PetscSpace *subsp)
 {
   PetscErrorCode ierr;
@@ -578,4 +628,3 @@ PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Tensor(PetscSpace sp)
   ierr = PetscSpaceInitialize_Tensor(sp);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-

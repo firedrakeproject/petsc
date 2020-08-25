@@ -4,13 +4,12 @@
 #define DEFAULT_STASH_SIZE   10000
 
 static PetscErrorCode MatStashScatterBegin_Ref(Mat,MatStash*,PetscInt*);
-static PetscErrorCode MatStashScatterGetMesg_Ref(MatStash*,PetscMPIInt*,PetscInt**,PetscInt**,PetscScalar**,PetscInt*);
-static PetscErrorCode MatStashScatterEnd_Ref(MatStash*);
+PETSC_INTERN PetscErrorCode MatStashScatterGetMesg_Ref(MatStash*,PetscMPIInt*,PetscInt**,PetscInt**,PetscScalar**,PetscInt*);
+PETSC_INTERN PetscErrorCode MatStashScatterEnd_Ref(MatStash*);
 #if !defined(PETSC_HAVE_MPIUNI)
 static PetscErrorCode MatStashScatterBegin_BTS(Mat,MatStash*,PetscInt*);
 static PetscErrorCode MatStashScatterGetMesg_BTS(MatStash*,PetscMPIInt*,PetscInt**,PetscInt**,PetscScalar**,PetscInt*);
 static PetscErrorCode MatStashScatterEnd_BTS(MatStash*);
-static PetscErrorCode MatStashScatterDestroy_BTS(MatStash*);
 #endif
 
 /*
@@ -82,6 +81,7 @@ PetscErrorCode MatStashCreate_Private(MPI_Comm comm,PetscInt bs,MatStash *stash)
 
   ierr = PetscOptionsGetBool(NULL,NULL,"-matstash_reproduce",&stash->reproduce,NULL);CHKERRQ(ierr);
 #if !defined(PETSC_HAVE_MPIUNI)
+  flg  = PETSC_FALSE;
   ierr = PetscOptionsGetBool(NULL,NULL,"-matstash_legacy",&flg,NULL);CHKERRQ(ierr);
   if (!flg) {
     stash->ScatterBegin   = MatStashScatterBegin_BTS;
@@ -134,7 +134,7 @@ PetscErrorCode MatStashScatterEnd_Private(MatStash *stash)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatStashScatterEnd_Ref(MatStash *stash)
+PETSC_INTERN PetscErrorCode MatStashScatterEnd_Ref(MatStash *stash)
 {
   PetscErrorCode ierr;
   PetscInt       nsends=stash->nsends,bs2,oldnmax,i;
@@ -488,7 +488,6 @@ static PetscErrorCode MatStashScatterBegin_Ref(Mat mat,MatStash *stash,PetscInt 
   bs2 = stash->bs*stash->bs;
 
   /*  first count number of contributors to each processor */
-  ierr = PetscCalloc1(size,&sizes);CHKERRQ(ierr);
   ierr = PetscCalloc1(size,&nlengths);CHKERRQ(ierr);
   ierr = PetscMalloc1(stash->n+1,&owner);CHKERRQ(ierr);
 
@@ -511,7 +510,9 @@ static PetscErrorCode MatStashScatterBegin_Ref(Mat mat,MatStash *stash,PetscInt 
     }
     space = space_next;
   }
+
   /* Now check what procs get messages - and compute nsends. */
+  ierr = PetscCalloc1(size,&sizes);CHKERRQ(ierr);
   for (i=0, nsends=0; i<size; i++) {
     if (nlengths[i]) {
       sizes[i] = 1; nsends++;
@@ -643,7 +644,7 @@ PetscErrorCode MatStashScatterGetMesg_Private(MatStash *stash,PetscMPIInt *nvals
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatStashScatterGetMesg_Ref(MatStash *stash,PetscMPIInt *nvals,PetscInt **rows,PetscInt **cols,PetscScalar **vals,PetscInt *flg)
+PETSC_INTERN PetscErrorCode MatStashScatterGetMesg_Ref(MatStash *stash,PetscMPIInt *nvals,PetscInt **rows,PetscInt **cols,PetscScalar **vals,PetscInt *flg)
 {
   PetscErrorCode ierr;
   PetscMPIInt    i,*flg_v = stash->flg_v,i1,i2;
@@ -736,12 +737,12 @@ static PetscErrorCode MatStashSortCompress_Private(MatStash *stash,InsertMode in
         ierr = PetscSegBufferGet(stash->segsendblocks,1,&block);CHKERRQ(ierr);
         block->row = row[rowstart];
         block->col = col[colstart];
-        ierr = PetscMemcpy(block->vals,valptr[perm[colstart]],bs2*sizeof(block->vals[0]));CHKERRQ(ierr);
+        ierr = PetscArraycpy(block->vals,valptr[perm[colstart]],bs2);CHKERRQ(ierr);
         for (j=colstart+1; j<i && col[j] == col[colstart]; j++) { /* Add any extra stashed blocks at the same (row,col) */
           if (insertmode == ADD_VALUES) {
             for (l=0; l<bs2; l++) block->vals[l] += valptr[perm[j]][l];
           } else {
-            ierr = PetscMemcpy(block->vals,valptr[perm[j]],bs2*sizeof(block->vals[0]));CHKERRQ(ierr);
+            ierr = PetscArraycpy(block->vals,valptr[perm[j]],bs2);CHKERRQ(ierr);
           }
         }
         colstart = j;
@@ -763,11 +764,23 @@ static PetscErrorCode MatStashBlockTypeSetUp(MatStash *stash)
     PetscMPIInt  blocklens[2];
     MPI_Aint     displs[2];
     MPI_Datatype types[2],stype;
-    /* C++ std::complex is not my favorite datatype.  Since it is not POD, we cannot use offsetof to find the offset of
-     * vals.  But the layout is actually guaranteed by the standard, so we do a little dance here with struct
-     * DummyBlock, substituting PetscReal for PetscComplex so that we can determine the offset.
+    /* Note that DummyBlock is a type having standard layout, even when PetscScalar is C++ std::complex.
+       std::complex itself has standard layout, so does DummyBlock, recursively.
+       To be compatiable with C++ std::complex, complex implementations on GPUs must also have standard layout,
+       though they can have different alignment, e.g, 16 bytes for double complex, instead of 8 bytes as in GCC stdlibc++.
+       offsetof(type, member) only requires type to have standard layout. Ref. https://en.cppreference.com/w/cpp/types/offsetof.
+
+       We can test if std::complex has standard layout with the following code:
+       #include <iostream>
+       #include <type_traits>
+       #include <complex>
+       int main() {
+         std::cout << std::boolalpha;
+         std::cout << std::is_standard_layout<std::complex<double> >::value << '\n';
+       }
+       Output: true
      */
-    struct DummyBlock {PetscInt row,col; PetscReal vals;};
+    struct DummyBlock {PetscInt row,col; PetscScalar vals;};
 
     stash->blocktype_size = offsetof(struct DummyBlock,vals) + bs2*sizeof(PetscScalar);
     if (stash->blocktype_size % sizeof(PetscInt)) { /* Implies that PetscInt is larger and does not satisfy alignment without padding */
@@ -837,23 +850,17 @@ static PetscErrorCode MatStashScatterBegin_BTS(Mat mat,MatStash *stash,PetscInt 
   char *sendblocks;
 
   PetscFunctionBegin;
-#if defined(PETSC_USE_DEBUG)
-  {                             /* make sure all processors are either in INSERTMODE or ADDMODE */
+  if (PetscDefined(USE_DEBUG)) { /* make sure all processors are either in INSERTMODE or ADDMODE */
     InsertMode addv;
     ierr = MPIU_Allreduce((PetscEnum*)&mat->insertmode,(PetscEnum*)&addv,1,MPIU_ENUM,MPI_BOR,PetscObjectComm((PetscObject)mat));CHKERRQ(ierr);
     if (addv == (ADD_VALUES|INSERT_VALUES)) SETERRQ(PetscObjectComm((PetscObject)mat),PETSC_ERR_ARG_WRONGSTATE,"Some processors inserted others added");
-  }
-#endif
-
-  if (stash->subset_off_proc && !mat->subsetoffprocentries) { /* We won't use the old scatter context. */
-    ierr = MatStashScatterDestroy_BTS(stash);CHKERRQ(ierr);
   }
 
   ierr = MatStashBlockTypeSetUp(stash);CHKERRQ(ierr);
   ierr = MatStashSortCompress_Private(stash,mat->insertmode);CHKERRQ(ierr);
   ierr = PetscSegBufferGetSize(stash->segsendblocks,&nblocks);CHKERRQ(ierr);
   ierr = PetscSegBufferExtractInPlace(stash->segsendblocks,&sendblocks);CHKERRQ(ierr);
-  if (stash->subset_off_proc && mat->subsetoffprocentries) { /* Set up sendhdrs and sendframes for each rank that we sent before */
+  if (stash->first_assembly_done) { /* Set up sendhdrs and sendframes for each rank that we sent before */
     PetscInt i;
     size_t b;
     for (i=0,b=0; i<stash->nsendranks; i++) {
@@ -918,7 +925,7 @@ static PetscErrorCode MatStashScatterBegin_BTS(Mat mat,MatStash *stash,PetscInt 
     }
   }
 
-  if (stash->subset_off_proc && mat->subsetoffprocentries) {
+  if (stash->first_assembly_done) {
     PetscMPIInt i,tag;
     ierr = PetscCommGetNewTag(stash->comm,&tag);CHKERRQ(ierr);
     for (i=0; i<stash->nrecvranks; i++) {
@@ -937,13 +944,13 @@ static PetscErrorCode MatStashScatterBegin_BTS(Mat mat,MatStash *stash,PetscInt 
   }
 
   ierr = PetscSegBufferExtractInPlace(stash->segrecvframe,&stash->recvframes);CHKERRQ(ierr);
-  stash->recvframe_active = NULL;
-  stash->recvframe_i      = 0;
-  stash->some_i           = 0;
-  stash->some_count       = 0;
-  stash->recvcount        = 0;
-  stash->subset_off_proc  = mat->subsetoffprocentries;
-  stash->insertmode       = &mat->insertmode;
+  stash->recvframe_active     = NULL;
+  stash->recvframe_i          = 0;
+  stash->some_i               = 0;
+  stash->some_count           = 0;
+  stash->recvcount            = 0;
+  stash->first_assembly_done  = mat->assembly_subset; /* See the same logic in VecAssemblyBegin_MPI_BTS */
+  stash->insertmode           = &mat->insertmode;
   PetscFunctionReturn(0);
 }
 
@@ -992,7 +999,7 @@ static PetscErrorCode MatStashScatterEnd_BTS(MatStash *stash)
 
   PetscFunctionBegin;
   ierr = MPI_Waitall(stash->nsendranks,stash->sendreqs,MPI_STATUSES_IGNORE);CHKERRQ(ierr);
-  if (stash->subset_off_proc) { /* Reuse the communication contexts, so consolidate and reset segrecvblocks  */
+  if (stash->first_assembly_done) { /* Reuse the communication contexts, so consolidate and reset segrecvblocks  */
     void *dummy;
     ierr = PetscSegBufferExtractInPlace(stash->segrecvblocks,&dummy);CHKERRQ(ierr);
   } else {                      /* No reuse, so collect everything. */
@@ -1020,7 +1027,7 @@ static PetscErrorCode MatStashScatterEnd_BTS(MatStash *stash)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatStashScatterDestroy_BTS(MatStash *stash)
+PetscErrorCode MatStashScatterDestroy_BTS(MatStash *stash)
 {
   PetscErrorCode ierr;
 

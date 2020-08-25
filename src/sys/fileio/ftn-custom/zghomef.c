@@ -7,8 +7,13 @@
 #define petscfixfilename_          petscfixfilename
 #endif
 
-PETSC_EXTERN void PETSC_STDCALL petscfixfilename_(char* filein PETSC_MIXED_LEN(len1),char* fileout PETSC_MIXED_LEN(len2),
-                                     PetscErrorCode *ierr PETSC_END_LEN(len1) PETSC_END_LEN(len2))
+/* Definitions of Fortran Wrapper routines */
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+PETSC_EXTERN void petscfixfilename_(char* filein,char* fileout,
+                                     PetscErrorCode *ierr,PETSC_FORTRAN_CHARLEN_T len1,PETSC_FORTRAN_CHARLEN_T len2)
 {
   PetscInt i,n;
   char     *in,*out;
@@ -23,3 +28,7 @@ PETSC_EXTERN void PETSC_STDCALL petscfixfilename_(char* filein PETSC_MIXED_LEN(l
   }
   out[i] = 0;
 }
+
+#if defined(__cplusplus)
+}
+#endif

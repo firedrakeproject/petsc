@@ -4,6 +4,7 @@
 */
 
 #include <petsc/private/pcimpl.h>        /*I "petscpc.h" I*/
+#include <petsc/private/matimpl.h>
 
 typedef struct {
   Vec  xwork, ywork;
@@ -190,7 +191,7 @@ static PetscErrorCode PCView_LMVM(PC pc,PetscViewer viewer)
 
   PetscFunctionBegin;
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII,&iascii);CHKERRQ(ierr);
-  if (iascii) {
+  if (iascii && ctx->B->assembled) {
     ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_INFO);CHKERRQ(ierr);
     ierr = MatView(ctx->B, viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
@@ -250,12 +251,12 @@ PETSC_EXTERN PetscErrorCode PCCreate_LMVM(PC pc)
   pc->ops->view            = PCView_LMVM;
   pc->ops->apply           = PCApply_LMVM;
   pc->ops->setfromoptions  = PCSetFromOptions_LMVM;
-  pc->ops->applysymmetricleft  = 0;
-  pc->ops->applysymmetricright = 0;
-  pc->ops->applytranspose  = 0;
-  pc->ops->applyrichardson = 0;
-  pc->ops->presolve        = 0;
-  pc->ops->postsolve       = 0;
+  pc->ops->applysymmetricleft  = NULL;
+  pc->ops->applysymmetricright = NULL;
+  pc->ops->applytranspose  = NULL;
+  pc->ops->applyrichardson = NULL;
+  pc->ops->presolve        = NULL;
+  pc->ops->postsolve       = NULL;
   
   ierr = PCSetReusePreconditioner(pc, PETSC_TRUE);CHKERRQ(ierr);
   

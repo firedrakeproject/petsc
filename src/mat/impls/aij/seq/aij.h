@@ -45,20 +45,21 @@ typedef struct {
   Mat                  Bt_den;       /* dense matrix of B^T */
   Mat                  ABt_den;      /* dense matrix of A*B^T */
   PetscBool            usecoloring;
-  PetscErrorCode (*destroy)(Mat);
 } Mat_MatMatTransMult;
 
 typedef struct { /* used by MatTransposeMatMult() */
   Mat          At;           /* transpose of the first matrix */
   Mat          mA;           /* maij matrix of A */
   Vec          bt,ct;        /* vectors to hold locally transposed arrays of B and C */
-  PetscErrorCode (*destroy)(Mat);
+  PetscBool    updateAt;     /* flg to avoid recomputing At in MatProductNumeric_AtB_SeqAIJ_SeqAIJ() */
+  /* used by PtAP */
+  void           *data;
+  PetscErrorCode (*destroy)(void*);
 } Mat_MatTransMatMult;
 
 typedef struct {
   PetscInt    *api,*apj;       /* symbolic structure of A*P */
   PetscScalar *apa;            /* temporary array for storing one row of A*P */
-  PetscErrorCode (*destroy)(Mat);
 } Mat_AP;
 
 typedef struct {
@@ -67,12 +68,13 @@ typedef struct {
   Mat                  RARt;  /* dense matrix of R*A*R^T */
   Mat                  ARt;   /* A*R^T used for the case -matrart_color_art */
   MatScalar            *work; /* work array to store columns of A*R^T used in MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqDense() */
-  PetscErrorCode (*destroy)(Mat);
+  /* free intermediate products needed for PtAP */
+  void                 *data;
+  PetscErrorCode       (*destroy)(void*);
 } Mat_RARt;
 
 typedef struct {
   Mat BC;               /* temp matrix for storing B*C */
-  PetscErrorCode (*destroy)(Mat);
 } Mat_MatMatMatMult;
 
 /*
@@ -106,6 +108,8 @@ PETSC_INTERN PetscErrorCode MatDuplicate_SeqAIJ_Inode(Mat,MatDuplicateOption,Mat
 PETSC_INTERN PetscErrorCode MatDuplicateNoCreate_SeqAIJ(Mat,Mat,MatDuplicateOption,PetscBool);
 PETSC_INTERN PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode_inplace(Mat,Mat,const MatFactorInfo*);
 PETSC_INTERN PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat,Mat,const MatFactorInfo*);
+PETSC_INTERN PetscErrorCode MatSeqAIJGetArray_SeqAIJ(Mat,PetscScalar**);
+PETSC_INTERN PetscErrorCode MatSeqAIJRestoreArray_SeqAIJ(Mat,PetscScalar**);
 
 typedef struct {
   SEQAIJHEADER(MatScalar);
@@ -118,15 +122,6 @@ typedef struct {
   PetscBool   ibdiagvalid;                    /* inverses of block diagonals are valid. */
   PetscBool   diagonaldense;                  /* all entries along the diagonal have been set; i.e. no missing diagonal terms */
   PetscScalar fshift,omega;                   /* last used omega and fshift */
-
-  ISColoring  coloring;                       /* set with MatADSetColoring() used by MatADSetValues() */
-
-  PetscScalar         *matmult_abdense;    /* used by MatMatMult() */
-  Mat_AP              *ap;                 /* used by MatPtAP() */
-  Mat_MatMatMatMult   *matmatmatmult;      /* used by MatMatMatMult() */
-  Mat_RARt            *rart;               /* used by MatRARt() */
-  Mat_MatMatTransMult *abt;                /* used by MatMatTransposeMult() */
-  Mat_MatTransMatMult *atb;                /* used by MatTransposeMatMult() */
 } Mat_SeqAIJ;
 
 /*
@@ -163,12 +158,12 @@ PETSC_STATIC_INLINE PetscErrorCode MatSeqXAIJFreeAIJ(Mat AA,MatScalar **a,PetscI
     /* copy over old data into new slots */ \
     for (ii=0; ii<ROW+1; ii++) {new_i[ii] = AI[ii];} \
     for (ii=ROW+1; ii<AM+1; ii++) {new_i[ii] = AI[ii]+CHUNKSIZE;} \
-    ierr = PetscMemcpy(new_j,AJ,(AI[ROW]+NROW)*sizeof(PetscInt));CHKERRQ(ierr); \
+    ierr = PetscArraycpy(new_j,AJ,AI[ROW]+NROW);CHKERRQ(ierr); \
     len  = (new_nz - CHUNKSIZE - AI[ROW] - NROW); \
-    ierr = PetscMemcpy(new_j+AI[ROW]+NROW+CHUNKSIZE,AJ+AI[ROW]+NROW,len*sizeof(PetscInt));CHKERRQ(ierr); \
-    ierr = PetscMemcpy(new_a,AA,BS2*(AI[ROW]+NROW)*sizeof(datatype));CHKERRQ(ierr); \
-    ierr = PetscMemzero(new_a+BS2*(AI[ROW]+NROW),BS2*CHUNKSIZE*sizeof(datatype));CHKERRQ(ierr); \
-    ierr = PetscMemcpy(new_a+BS2*(AI[ROW]+NROW+CHUNKSIZE),AA+BS2*(AI[ROW]+NROW),BS2*len*sizeof(datatype));CHKERRQ(ierr);  \
+    ierr = PetscArraycpy(new_j+AI[ROW]+NROW+CHUNKSIZE,AJ+AI[ROW]+NROW,len);CHKERRQ(ierr); \
+    ierr = PetscArraycpy(new_a,AA,BS2*(AI[ROW]+NROW));CHKERRQ(ierr);    \
+    ierr = PetscArrayzero(new_a+BS2*(AI[ROW]+NROW),BS2*CHUNKSIZE);CHKERRQ(ierr); \
+    ierr = PetscArraycpy(new_a+BS2*(AI[ROW]+NROW+CHUNKSIZE),AA+BS2*(AI[ROW]+NROW),BS2*len);CHKERRQ(ierr);  \
     /* free up old matrix storage */ \
     ierr              = MatSeqXAIJFreeAIJ(A,&Ain->a,&Ain->j,&Ain->i);CHKERRQ(ierr); \
     AA                = new_a; \
@@ -196,9 +191,9 @@ PETSC_STATIC_INLINE PetscErrorCode MatSeqXAIJFreeAIJ(Mat AA,MatScalar **a,PetscI
     /* copy over old data into new slots */ \
     for (ii=0; ii<ROW+1; ii++) {new_i[ii] = AI[ii];} \
     for (ii=ROW+1; ii<AM+1; ii++) {new_i[ii] = AI[ii]+CHUNKSIZE;} \
-    ierr = PetscMemcpy(new_j,AJ,(AI[ROW]+NROW)*sizeof(PetscInt));CHKERRQ(ierr); \
+    ierr = PetscArraycpy(new_j,AJ,AI[ROW]+NROW);CHKERRQ(ierr); \
     len  = (new_nz - CHUNKSIZE - AI[ROW] - NROW); \
-    ierr = PetscMemcpy(new_j+AI[ROW]+NROW+CHUNKSIZE,AJ+AI[ROW]+NROW,len*sizeof(PetscInt));CHKERRQ(ierr); \
+    ierr = PetscArraycpy(new_j+AI[ROW]+NROW+CHUNKSIZE,AJ+AI[ROW]+NROW,len);CHKERRQ(ierr); \
  \
     /* free up old matrix storage */ \
     ierr              = MatSeqXAIJFreeAIJ(A,&Ain->a,&Ain->j,&Ain->i);CHKERRQ(ierr); \
@@ -240,7 +235,6 @@ PETSC_INTERN PetscErrorCode MatSetOption_SeqAIJ(Mat,MatOption,PetscBool);
 
 PETSC_INTERN PetscErrorCode MatGetSymbolicTranspose_SeqAIJ(Mat,PetscInt *[],PetscInt *[]);
 PETSC_INTERN PetscErrorCode MatGetSymbolicTransposeReduced_SeqAIJ(Mat,PetscInt,PetscInt,PetscInt *[],PetscInt *[]);
-PETSC_INTERN PetscErrorCode MatTranspose_SeqAIJ_FAST(Mat,MatReuse,Mat *);
 PETSC_INTERN PetscErrorCode MatRestoreSymbolicTranspose_SeqAIJ(Mat,PetscInt *[],PetscInt *[]);
 PETSC_INTERN PetscErrorCode MatTransposeSymbolic_SeqAIJ(Mat,Mat*);
 PETSC_INTERN PetscErrorCode MatTranspose_SeqAIJ(Mat,MatReuse,Mat*);
@@ -275,58 +269,59 @@ PETSC_INTERN PetscErrorCode MatLoad_SeqAIJ_Binary(Mat,PetscViewer);
 PETSC_INTERN PetscErrorCode MatLoad_SeqAIJ(Mat,PetscViewer);
 PETSC_INTERN PetscErrorCode RegisterApplyPtAPRoutines_Private(Mat);
 
-PETSC_INTERN PetscErrorCode MatMatMult_SeqAIJ_SeqAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Sorted(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqDense_SeqAIJ(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Scalable(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Scalable_fast(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Heap(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_BTHeap(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_RowMerge(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_LLCondensed(Mat,Mat,PetscReal,Mat*);
 #if defined(PETSC_HAVE_HYPRE)
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_AIJ_AIJ_wHYPRE(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatProductSetFromOptions_Transpose_AIJ_AIJ(Mat);
 #endif
-PETSC_INTERN PetscErrorCode MatMatMult_SeqAIJ_SeqAIJ_Combined(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatProductSetFromOptions_SeqAIJ(Mat);
+
+PETSC_INTERN PetscErrorCode MatProductSymbolic_SeqAIJ_SeqAIJ(Mat);
+PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqAIJ(Mat);
+PETSC_INTERN PetscErrorCode MatProductSymbolic_RARt_SeqAIJ_SeqAIJ(Mat);
+
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Sorted(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqDense_SeqAIJ(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Scalable(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Scalable_fast(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Heap(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_BTHeap(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_RowMerge(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_LLCondensed(Mat,Mat,PetscReal,Mat);
+#if defined(PETSC_HAVE_HYPRE)
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_AIJ_AIJ_wHYPRE(Mat,Mat,PetscReal,Mat);
+#endif
+
 PETSC_INTERN PetscErrorCode MatMatMultNumeric_SeqAIJ_SeqAIJ(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatMatMultNumeric_SeqAIJ_SeqAIJ_Sorted(Mat,Mat,Mat);
+
 PETSC_INTERN PetscErrorCode MatMatMultNumeric_SeqDense_SeqAIJ(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatMatMultNumeric_SeqAIJ_SeqAIJ_Scalable(Mat,Mat,Mat);
-PETSC_INTERN PetscErrorCode MatMatMultNumeric_SeqAIJ_SeqAIJ_Combined(Mat,Mat,Mat);
 
-PETSC_INTERN PetscErrorCode MatPtAP_SeqAIJ_SeqAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy(Mat,Mat,Mat);
 
-PETSC_INTERN PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_matmattransposemult(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_colorrart(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_matmattransposemult(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_colorrart(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_matmattransposemult(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_colorrart(Mat,Mat,Mat);
 
-PETSC_INTERN PetscErrorCode MatTransposeMatMult_SeqAIJ_SeqAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_SeqAIJ_SeqAIJ(Mat,Mat,Mat);
-PETSC_INTERN PetscErrorCode MatDestroy_SeqAIJ_MatTransMatMult(Mat);
+PETSC_INTERN PetscErrorCode MatDestroy_SeqAIJ_MatTransMatMult(void*);
 
-PETSC_INTERN PetscErrorCode MatTransposeMatMult_SeqAIJ_SeqDense(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqDense(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_SeqAIJ_SeqDense(Mat,Mat,Mat);
-
-PETSC_INTERN PetscErrorCode MatMatTransposeMult_SeqAIJ_SeqAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatTransposeMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatMatTransposeMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatMatTransposeMultNumeric_SeqAIJ_SeqAIJ(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatTransposeColoringCreate_SeqAIJ(Mat,ISColoring,MatTransposeColoring);
 PETSC_INTERN PetscErrorCode MatTransColoringApplySpToDen_SeqAIJ(MatTransposeColoring,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatTransColoringApplyDenToSp_SeqAIJ(MatTransposeColoring,Mat,Mat);
 
-PETSC_INTERN PetscErrorCode MatMatMatMult_SeqAIJ_SeqAIJ_SeqAIJ(Mat,Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMatMultSymbolic_SeqAIJ_SeqAIJ_SeqAIJ(Mat,Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatMatMatMultSymbolic_SeqAIJ_SeqAIJ_SeqAIJ(Mat,Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqAIJ(Mat,Mat,Mat,Mat);
 
+PETSC_INTERN PetscErrorCode MatSetRandomSkipColumnRange_SeqAIJ_Private(Mat,PetscInt,PetscInt,PetscRandom);
 PETSC_INTERN PetscErrorCode MatSetValues_SeqAIJ(Mat,PetscInt,const PetscInt[],PetscInt,const PetscInt[],const PetscScalar[],InsertMode);
 PETSC_INTERN PetscErrorCode MatGetRow_SeqAIJ(Mat,PetscInt,PetscInt*,PetscInt**,PetscScalar**);
 PETSC_INTERN PetscErrorCode MatRestoreRow_SeqAIJ(Mat,PetscInt,PetscInt*,PetscInt**,PetscScalar**);
@@ -351,7 +346,6 @@ PETSC_INTERN PetscErrorCode MatSeqAIJCheckInode_FactorLU(Mat);
 
 PETSC_INTERN PetscErrorCode MatAXPYGetPreallocation_SeqAIJ(Mat,Mat,PetscInt*);
 
-PETSC_INTERN PetscErrorCode MatMatMatMult_Transpose_AIJ_AIJ(Mat,Mat,Mat,MatReuse,PetscReal,Mat*);
 #if defined(PETSC_HAVE_MATLAB_ENGINE)
 PETSC_EXTERN PetscErrorCode MatlabEnginePut_SeqAIJ(PetscObject,void*);
 PETSC_EXTERN PetscErrorCode MatlabEngineGet_SeqAIJ(PetscObject,void*);
@@ -361,13 +355,15 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqBAIJ(Mat,MatType,MatReuse,Mat*)
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqDense(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJCRL(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_Elemental(Mat,MatType,MatReuse,Mat*);
+#if defined(PETSC_HAVE_SCALAPACK)
+PETSC_INTERN PetscErrorCode MatConvert_AIJ_ScaLAPACK(Mat,MatType,MatReuse,Mat*);
+#endif
 PETSC_INTERN PetscErrorCode MatConvert_AIJ_HYPRE(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJPERM(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJSELL(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJMKL(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJViennaCL(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatReorderForNonzeroDiagonal_SeqAIJ(Mat,PetscReal,IS,IS);
-PETSC_INTERN PetscErrorCode MatMatMult_SeqDense_SeqAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
 PETSC_INTERN PetscErrorCode MatRARt_SeqAIJ_SeqAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
 PETSC_EXTERN PetscErrorCode MatCreate_SeqAIJ(Mat);
 PETSC_INTERN PetscErrorCode MatAssemblyEnd_SeqAIJ(Mat,MatAssemblyType);
@@ -384,6 +380,7 @@ PETSC_INTERN PetscErrorCode MatDestroySubMatrices_Dummy(PetscInt, Mat*[]);
 PETSC_INTERN PetscErrorCode MatCreateSubMatrix_SeqAIJ(Mat,IS,IS,PetscInt,MatReuse,Mat*);
 
 PETSC_INTERN PetscErrorCode MatSeqAIJCompactOutExtraColumns_SeqAIJ(Mat,ISLocalToGlobalMapping*);
+PETSC_INTERN PetscErrorCode MatSetSeqAIJWithArrays_private(MPI_Comm,PetscInt,PetscInt,PetscInt[],PetscInt[],PetscScalar[],MatType,Mat);
 
 /*
     PetscSparseDenseMinusDot - The inner kernel of triangular solves and Gauss-Siedel smoothing. \sum_i xv[i] * r[xi[i]] for CSR storage
@@ -487,7 +484,7 @@ PETSC_INTERN PetscErrorCode MatSeqAIJCompactOutExtraColumns_SeqAIJ(Mat,ISLocalTo
                                     sum += (xv[__i]*r[__i1] + xv[__i+1]*r[__i2]);} \
     if (nnz & 0x1) sum += xv[__i] * r[xi[__i]];}
 
-#elif defined(PETSC_USE_AVX512_KERNELS) && defined(PETSC_HAVE_IMMINTRIN_H) && defined(__AVX512F__) && defined(PETSC_USE_REAL_DOUBLE) && !defined(PETSC_USE_COMPLEX) && !defined(PETSC_USE_64BIT_INDICES)
+#elif defined(PETSC_USE_AVX512_KERNELS) && defined(PETSC_HAVE_IMMINTRIN_H) && defined(__AVX512F__) && defined(PETSC_USE_REAL_DOUBLE) && !defined(PETSC_USE_COMPLEX) && !defined(PETSC_USE_64BIT_INDICES) && !defined(PETSC_SKIP_IMMINTRIN_H_CUDAWORKAROUND)
 #define PetscSparseDensePlusDot(sum,r,xv,xi,nnz) PetscSparseDensePlusDot_AVX512_Private(&(sum),(r),(xv),(xi),(nnz))
 
 #else
@@ -496,7 +493,7 @@ PETSC_INTERN PetscErrorCode MatSeqAIJCompactOutExtraColumns_SeqAIJ(Mat,ISLocalTo
     for (__i=0; __i<nnz; __i++) sum += xv[__i] * r[xi[__i]];}
 #endif
 
-#if defined(PETSC_USE_AVX512_KERNELS) && defined(PETSC_HAVE_IMMINTRIN_H) && defined(__AVX512F__) && defined(PETSC_USE_REAL_DOUBLE) && !defined(PETSC_USE_COMPLEX) && !defined(PETSC_USE_64BIT_INDICES)
+#if defined(PETSC_USE_AVX512_KERNELS) && defined(PETSC_HAVE_IMMINTRIN_H) && defined(__AVX512F__) && defined(PETSC_USE_REAL_DOUBLE) && !defined(PETSC_USE_COMPLEX) && !defined(PETSC_USE_64BIT_INDICES) && !defined(PETSC_SKIP_IMMINTRIN_H_CUDAWORKAROUND)
   #include <immintrin.h>
   #if !defined(_MM_SCALE_8)
   #define _MM_SCALE_8    8

@@ -3,7 +3,7 @@ import config.package
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.gitcommit         = '4ff2234bba3a456aa834c872002188919dd2ba72'
+    self.gitcommit         = 'e7308f4401dd8692318d22bc6abb1dc84d3fb404'
     self.download          = ['git://https://github.com/gsjaardema/seacas.git','https://github.com/gsjaardema/seacas/archive/'+self.gitcommit+'.tar.gz']
     self.downloaddirnames  = ['seacas']
     self.functions         = ['ex_close']
@@ -41,6 +41,10 @@ class Configure(config.package.CMakePackage):
       args.append('-DCMAKE_Fortran_COMPILER:FILEPATH="'+self.setCompilers.getCompiler()+'"')
       args.append('-DSEACASProj_ENABLE_SEACASExodus_for=ON')
       args.append('-DSEACASProj_ENABLE_SEACASExoIIv2for32=ON')
+      if config.setCompilers.Configure.isGfortran100plus(self.setCompilers.getCompiler(), self.log):
+        args = self.addArgStartsWith(args,'-DCMAKE_Fortran_FLAGS:STRING','-fallow-argument-mismatch')
+        args = self.addArgStartsWith(args,'-DCMAKE_Fortran_FLAGS_DEBUG:STRING','-fallow-argument-mismatch')
+        args = self.addArgStartsWith(args,'-DCMAKE_Fortran_FLAGS_RELEASE:STRING','-fallow-argument-mismatch')
       self.setCompilers.popLanguage()
     else:
       args.append('-DSEACASProj_ENABLE_SEACASExodus_for=OFF')
@@ -55,10 +59,16 @@ class Configure(config.package.CMakePackage):
     args.append('-DTPL_ENABLE_MPI=ON')
     args.append('-DTPL_ENABLE_Pamgen=OFF')
     args.append('-DTPL_ENABLE_CGNS:BOOL=OFF')
-    args.append('-DNetCDF_DIR:PATH='+self.netcdf.directory)
+    if not self.netcdf.directory:
+      raise RuntimeError('NetCDF dir is not known! ExodusII requires explicit path to NetCDF. Suggest using --with-netcdf-dir or --download-netcdf')
+    else:
+      args.append('-DNetCDF_DIR:PATH='+self.netcdf.directory)
     args.append('-DHDF5_DIR:PATH='+self.hdf5.directory)
-    args.append('-DPnetcdf_LIBRARY_DIRS:PATH='+os.path.join(self.pnetcdf.directory,'lib'))
-    args.append('-DPnetcdf_INCLUDE_DIRS:PATH='+os.path.join(self.pnetcdf.directory,'include'))
+    if not self.pnetcdf.directory:
+      raise RuntimeError('PNetCDF dir is not known! ExodusII requires explicit path to PNetCDF. Suggest using --with-pnetcdf-dir or --download-pnetcdf')
+    else:
+      args.append('-DPnetcdf_LIBRARY_DIRS:PATH='+os.path.join(self.pnetcdf.directory,'lib'))
+      args.append('-DPnetcdf_INCLUDE_DIRS:PATH='+os.path.join(self.pnetcdf.directory,'include'))
     if self.checkSharedLibrariesEnabled():
       args.append('-DBUILD_SHARED_LIBS:BOOL=ON')
     if self.compilerFlags.debugging:

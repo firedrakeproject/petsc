@@ -1,13 +1,15 @@
 /*
    Routines to determine options set in the options database.
 */
-#if !defined(__PETSCOPTIONS_H)
-#define __PETSCOPTIONS_H
+#if !defined(PETSCOPTIONS_H)
+#define PETSCOPTIONS_H
 #include <petscsys.h>
 #include <petscviewertypes.h>
 
 typedef struct _n_PetscOptions* PetscOptions;
 PETSC_EXTERN PetscErrorCode PetscOptionsCreate(PetscOptions*);
+PETSC_EXTERN PetscErrorCode PetscOptionsPush(PetscOptions);
+PETSC_EXTERN PetscErrorCode PetscOptionsPop(void);
 PETSC_EXTERN PetscErrorCode PetscOptionsDestroy(PetscOptions*);
 PETSC_EXTERN PetscErrorCode PetscOptionsCreateDefault(void);
 PETSC_EXTERN PetscErrorCode PetscOptionsDestroyDefault(void);
@@ -50,6 +52,9 @@ PETSC_EXTERN PetscErrorCode PetscOptionsInsertFile(MPI_Comm,PetscOptions,const c
 PETSC_EXTERN PetscErrorCode PetscOptionsInsertFileYAML(MPI_Comm,const char[],PetscBool);
 #endif
 PETSC_EXTERN PetscErrorCode PetscOptionsInsertString(PetscOptions,const char[]);
+#if defined(PETSC_HAVE_YAML)
+PETSC_EXTERN PetscErrorCode PetscOptionsInsertStringYAML(PetscOptions,const char[]);
+#endif
 PETSC_EXTERN PetscErrorCode PetscOptionsClear(PetscOptions);
 PETSC_EXTERN PetscErrorCode PetscOptionsPrefixPush(PetscOptions,const char[]);
 PETSC_EXTERN PetscErrorCode PetscOptionsPrefixPop(PetscOptions);
@@ -61,7 +66,6 @@ PETSC_EXTERN PetscErrorCode PetscOptionsStringToReal(const char[],PetscReal*);
 PETSC_EXTERN PetscErrorCode PetscOptionsStringToScalar(const char[],PetscScalar*);
 
 PETSC_EXTERN PetscErrorCode PetscOptionsMonitorSet(PetscErrorCode (*)(const char[], const char[], void*), void*, PetscErrorCode (*)(void**));
-PETSC_EXTERN PetscErrorCode PetscOptionsMonitorCancel(void);
 PETSC_EXTERN PetscErrorCode PetscOptionsMonitorDefault(const char[], const char[], void*);
 
 PETSC_EXTERN PetscErrorCode PetscObjectSetOptions(PetscObject,PetscOptions);
@@ -116,34 +120,34 @@ typedef struct _p_PetscOptionItems {
     #include <petscoptions.h>
     PetscErrorCode PetscOptionsBegin(MPI_Comm comm,const char prefix[],const char title[],const char mansec[])
 
-    Collective on MPI_Comm
+    Collective
 
   Input Parameters:
 +   comm - communicator that shares GUI
-.   prefix - options prefix for all options displayed on window
+.   prefix - options prefix for all options displayed on window (optional)
 .   title - short descriptive text, for example "Krylov Solver Options"
--   mansec - section of manual pages for options, for example KSP
+-   mansec - section of manual pages for options, for example KSP (optional)
 
   Level: intermediate
 
   Notes:
-    Needs to be ended by a call the PetscOptionsEnd()
-         Can add subheadings with PetscOptionsHead()
+    The set of queries needs to be ended by a call to PetscOptionsEnd().
+
+    One can add subheadings with PetscOptionsHead().
 
   Developer Notes:
-    PetscOptionsPublish is set in PetscOptionsCheckInitial_Private() with -saws_options. When PetscOptionsPublish is set the
-$             loop between PetscOptionsBegin() and PetscOptionsEnd() is run THREE times with PetscOptionsPublishCount of values -1,0,1 otherwise
-$             the loop is run ONCE with a PetscOptionsPublishCount of 1.
-$             = -1 : The PetscOptionsInt() etc just call the PetscOptionsGetInt() etc
-$             = 0  : The GUI objects are created in PetscOptionsInt() etc and displayed in PetscOptionsEnd() and the options
-$                    database updated updated with user changes; PetscOptionsGetInt() etc are also called
-$             = 1 : The PetscOptionsInt() etc again call the PetscOptionsGetInt() etc (possibly getting new values), in addition the help message and
-$                   default values are printed if -help was given.
-$           When PetscOptionsObject.changedmethod is set this causes PetscOptionsPublishCount to be reset to -2 (so in the next loop iteration it is -1)
-$           and the whole process is repeated. This is to handle when, for example, the KSPType is changed thus changing the list of
-$           options available so they need to be redisplayed so the user can change the. Chaning PetscOptionsObjects.changedmethod is never
-$           currently set.
-
+      PetscOptionsPublish is set in PetscOptionsCheckInitial_Private() with -saws_options. When PetscOptionsPublish is set the
+      loop between PetscOptionsBegin() and PetscOptionsEnd() is run THREE times with PetscOptionsPublishCount of values -1,0,1.
+      Otherwise the loop is run ONCE with a PetscOptionsPublishCount of 1.
++      \-1 - PetscOptionsInt() etc. just call PetscOptionsGetInt() etc.
+.      0  - The GUI objects are created in PetscOptionsInt() etc. and displayed in PetscOptionsEnd() and the options
+               database updated with user changes; PetscOptionsGetInt() etc. are also called.
+-      1 - PetscOptionsInt() etc. again call PetscOptionsGetInt() etc. (possibly getting new values), in addition the help message and
+              default values are printed if -help was given.
+      When PetscOptionsObject.changedmethod is set this causes PetscOptionsPublishCount to be reset to -2 (so in the next loop iteration it is -1)
+      and the whole process is repeated. This is to handle when, for example, the KSPType is changed thus changing the list of
+      options available so they need to be redisplayed so the user can change the. Changing PetscOptionsObjects.changedmethod is never
+      currently set.
 
 .seealso: PetscOptionsGetReal(), PetscOptionsHasName(), PetscOptionsGetString(), PetscOptionsGetInt(),
           PetscOptionsGetIntArray(), PetscOptionsGetRealArray(), PetscOptionsBool()
@@ -159,7 +163,7 @@ M*/
              PetscOptionItems *PetscOptionsObject = &PetscOptionsObjectBase; \
              PetscMemzero(PetscOptionsObject,sizeof(PetscOptionItems)); \
              for (PetscOptionsObject->count=(PetscOptionsPublish?-1:1); PetscOptionsObject->count<2; PetscOptionsObject->count++) {\
-             PetscErrorCode _5_ierr = PetscOptionsBegin_Private(PetscOptionsObject,comm,prefix,mess,sec);CHKERRQ(_5_ierr);
+             PetscErrorCode _5_ierr = PetscOptionsBegin_Private(PetscOptionsObject,comm,prefix,mess,sec);CHKERRQ(_5_ierr)
 
 /*MC
     PetscObjectOptionsBegin - Begins a set of queries on the options database that are related and should be
@@ -169,7 +173,7 @@ M*/
     #include <petscoptions.h>
     PetscErrorCode PetscObjectOptionsBegin(PetscObject obj)
 
-    Collective on PetscObject
+    Collective on obj
 
   Input Parameters:
 .   obj - object to set options for
@@ -194,13 +198,13 @@ M*/
              PetscOptionItems *PetscOptionsObject = &PetscOptionsObjectBase; \
              PetscOptionsObject->options = ((PetscObject)obj)->options; \
              for (PetscOptionsObject->count=(PetscOptionsPublish?-1:1); PetscOptionsObject->count<2; PetscOptionsObject->count++) {\
-             PetscErrorCode _5_ierr = PetscObjectOptionsBegin_Private(PetscOptionsObject,obj);CHKERRQ(_5_ierr);
+             PetscErrorCode _5_ierr = PetscObjectOptionsBegin_Private(PetscOptionsObject,obj);CHKERRQ(_5_ierr)
 
 /*MC
     PetscOptionsEnd - Ends a set of queries on the options database that are related and should be
      displayed on the same window of a GUI that allows the user to set the options interactively.
 
-    Collective on the MPI_Comm used in PetscOptionsBegin()
+    Collective on the comm used in PetscOptionsBegin() or obj used in PetscObjectOptionsBegin()
 
    Synopsis:
      #include <petscoptions.h>
@@ -231,7 +235,7 @@ PETSC_EXTERN PetscErrorCode PetscOptionsHead(PetscOptionItems *,const char[]);
      PetscOptionsTail - Ends a section of options begun with PetscOptionsHead()
             See, for example, KSPSetFromOptions_GMRES().
 
-   Collective on the communicator passed in PetscOptionsBegin()
+    Collective on the comm used in PetscOptionsBegin() or obj used in PetscObjectOptionsBegin()
 
    Synopsis:
      #include <petscoptions.h>
@@ -250,8 +254,6 @@ PETSC_EXTERN PetscErrorCode PetscOptionsHead(PetscOptionItems *,const char[]);
 
           This is only for use with the PETSc options GUI
 
-   Concepts: options database^subheading
-
 .seealso: PetscOptionsGetInt(), PetscOptionsGetReal(),
            PetscOptionsHasName(), PetscOptionsGetIntArray(), PetscOptionsGetRealArray(), PetscOptionsBool(),
           PetscOptionsName(), PetscOptionsBegin(), PetscOptionsEnd(), PetscOptionsHead(),
@@ -259,10 +261,12 @@ PETSC_EXTERN PetscErrorCode PetscOptionsHead(PetscOptionItems *,const char[]);
           PetscOptionsBoolGroupBegin(), PetscOptionsBoolGroup(), PetscOptionsBoolGroupEnd(),
           PetscOptionsFList(), PetscOptionsEList(), PetscOptionsEnum()
 M*/
-#define    PetscOptionsTail() 0; {if (PetscOptionsObject->count != 1) PetscFunctionReturn(0);}
+#define    PetscOptionsTail() 0; do {if (PetscOptionsObject->count != 1) PetscFunctionReturn(0);} while(0)
 
 #define PetscOptionsEnum(a,b,c,d,e,f,g) PetscOptionsEnum_Private(PetscOptionsObject,a,b,c,d,e,f,g)
-#define PetscOptionsInt(a,b,c,d,e,f) PetscOptionsInt_Private(PetscOptionsObject,a,b,c,d,e,f)
+#define PetscOptionsInt(a,b,c,d,e,f) PetscOptionsInt_Private(PetscOptionsObject,a,b,c,d,e,f,PETSC_MIN_INT,PETSC_MAX_INT)
+#define PetscOptionsBoundedInt(a,b,c,d,e,f,g) PetscOptionsInt_Private(PetscOptionsObject,a,b,c,d,e,f,g,PETSC_MAX_INT)
+#define PetscOptionsRangeInt(a,b,c,d,e,f,g,h) PetscOptionsInt_Private(PetscOptionsObject,a,b,c,d,e,f,g,h)
 #define PetscOptionsReal(a,b,c,d,e,f) PetscOptionsReal_Private(PetscOptionsObject,a,b,c,d,e,f)
 #define PetscOptionsScalar(a,b,c,d,e,f) PetscOptionsScalar_Private(PetscOptionsObject,a,b,c,d,e,f)
 #define PetscOptionsName(a,b,c,d) PetscOptionsName_Private(PetscOptionsObject,a,b,c,d)
@@ -280,10 +284,11 @@ M*/
 #define PetscOptionsBoolArray(a,b,c,d,e,f) PetscOptionsBoolArray_Private(PetscOptionsObject,a,b,c,d,e,f)
 #define PetscOptionsEnumArray(a,b,c,d,e,f,g) PetscOptionsEnumArray_Private(PetscOptionsObject,a,b,c,d,e,f,g)
 #define PetscOptionsDeprecated(a,b,c,d) PetscOptionsDeprecated_Private(PetscOptionsObject,a,b,c,d)
+#define PetscOptionsDeprecatedNoObject(a,b,c,d) PetscOptionsDeprecated_Private(NULL,a,b,c,d)
 
 
 PETSC_EXTERN PetscErrorCode PetscOptionsEnum_Private(PetscOptionItems*,const char[],const char[],const char[],const char *const*,PetscEnum,PetscEnum*,PetscBool*);
-PETSC_EXTERN PetscErrorCode PetscOptionsInt_Private(PetscOptionItems*,const char[],const char[],const char[],PetscInt,PetscInt*,PetscBool*);
+PETSC_EXTERN PetscErrorCode PetscOptionsInt_Private(PetscOptionItems*,const char[],const char[],const char[],PetscInt,PetscInt*,PetscBool*,PetscInt,PetscInt);
 PETSC_EXTERN PetscErrorCode PetscOptionsReal_Private(PetscOptionItems*,const char[],const char[],const char[],PetscReal,PetscReal*,PetscBool*);
 PETSC_EXTERN PetscErrorCode PetscOptionsScalar_Private(PetscOptionItems*,const char[],const char[],const char[],PetscScalar,PetscScalar*,PetscBool*);
 PETSC_EXTERN PetscErrorCode PetscOptionsName_Private(PetscOptionItems*,const char[],const char[],const char[],PetscBool*);
@@ -302,8 +307,6 @@ PETSC_EXTERN PetscErrorCode PetscOptionsBoolArray_Private(PetscOptionItems*,cons
 PETSC_EXTERN PetscErrorCode PetscOptionsEnumArray_Private(PetscOptionItems*,const char[],const char[],const char[],const char *const*,PetscEnum[],PetscInt*,PetscBool*);
 PETSC_EXTERN PetscErrorCode PetscOptionsDeprecated_Private(PetscOptionItems*,const char[],const char[],const char[],const char[]);
 
-
-PETSC_EXTERN PetscErrorCode PetscOptionsSetFromOptions(PetscOptions);
 PETSC_EXTERN PetscErrorCode PetscOptionsSAWsDestroy(void);
 
 PETSC_EXTERN PetscErrorCode PetscObjectAddOptionsHandler(PetscObject,PetscErrorCode (*)(PetscOptionItems*,PetscObject,void*),PetscErrorCode (*)(PetscObject,void*),void*);

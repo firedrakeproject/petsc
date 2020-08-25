@@ -12,7 +12,7 @@ static PetscErrorCode TSAdaptChoose_History(TSAdapt adapt,TS ts,PetscReal h,Pets
   TSAdapt_History *thadapt = (TSAdapt_History*)adapt->data;
 
   PetscFunctionBegin;
-  if (!thadapt->hist) SETERRQ(PetscObjectComm((PetscObject)adapt),PETSC_ERR_USER,"Need call TSAdaptHistorySetHistory()");
+  if (!thadapt->hist) SETERRQ(PetscObjectComm((PetscObject)adapt),PETSC_ERR_ORDER,"Need to call TSAdaptHistorySetHistory() first");
   ierr = TSGetStepNumber(ts,&step);CHKERRQ(ierr);
   ierr = TSHistoryGetTimeStep(thadapt->hist,thadapt->bw,step+1,next_h);CHKERRQ(ierr);
   *accept  = PETSC_TRUE;
@@ -78,7 +78,6 @@ PetscErrorCode TSAdaptHistorySetTSHistory(TSAdapt adapt, TSHistory hist, PetscBo
 
    Level: advanced
 
-.keywords: TSAdapt
 .seealso: TSGetAdapt(), TSAdaptSetType(), TSAdaptHistorySetTrajectory(), TSADAPTHISTORY
 @*/
 PetscErrorCode TSAdaptHistoryGetStep(TSAdapt adapt, PetscInt step, PetscReal *t, PetscReal *dt)
@@ -113,7 +112,6 @@ PetscErrorCode TSAdaptHistoryGetStep(TSAdapt adapt, PetscInt step, PetscReal *t,
 
    Level: advanced
 
-.keywords: TSAdapt
 .seealso: TSGetAdapt(), TSAdaptSetType(), TSAdaptHistorySetTrajectory(), TSADAPTHISTORY
 @*/
 PetscErrorCode TSAdaptHistorySetHistory(TSAdapt adapt, PetscInt n, PetscReal hist[], PetscBool backward)
@@ -151,7 +149,6 @@ PetscErrorCode TSAdaptHistorySetHistory(TSAdapt adapt, PetscInt n, PetscReal his
 
    Level: advanced
 
-.keywords: TSAdapt
 .seealso: TSGetAdapt(), TSAdaptSetType(), TSAdaptHistorySetHistory(), TSADAPTHISTORY
 @*/
 PetscErrorCode TSAdaptHistorySetTrajectory(TSAdapt adapt, TSTrajectory tj, PetscBool backward)

@@ -473,7 +473,6 @@ int FormJacobian(SNES snes,Vec x,Mat Jac,Mat pc_mat,void *dummy)
     ierr = PetscViewerBinaryOpen(MPI_COMM_WORLD,mat_file,FILE_MODE_WRITE,&viewer);
     ierr = MatView(pc_mat,viewer);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);
-    /*ierr = MPI_Abort(MPI_COMM_WORLD,1);*/
   }
 #endif
   PetscFunctionReturn(0);
@@ -521,7 +520,7 @@ int Update(SNES snes,void *ctx)
     ierr = PetscOptionsGetInt(NULL,NULL,"-e1",&event1,&flg);CHKERRQ(ierr);
     ierr = PetscTime(&time_start_counters);CHKERRQ(ierr);
     if ((gen_start = start_counters(event0,event1)) < 0)
-    SETERRQ(PETSC_COMM_SELF,1,"Error in start_counters\n");
+    SETERRQ(PETSC_COMM_SELF,1,>"Error in start_counters\n");
   }*/
 #endif
   /*cpu_ini = PetscGetCPUTime();*/
@@ -685,7 +684,7 @@ int GetLocalOrdering(GRID *grid)
   ICALLOC(grid_param,&tmp);
   if (!rank) {
     PetscBool exists;
-    ierr = PetscOptionsGetString(NULL,NULL,"-mesh",mesh_file,256,&flg);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,NULL,"-mesh",mesh_file,sizeof(mesh_file),&flg);CHKERRQ(ierr);
     ierr = PetscTestFile(mesh_file,'r',&exists);CHKERRQ(ierr);
     if (!exists) { /* try uns3d.msh as the file name */
       ierr = PetscStrcpy(mesh_file,"uns3d.msh");CHKERRQ(ierr);
@@ -741,7 +740,7 @@ int GetLocalOrdering(GRID *grid)
       char      spart_file[PETSC_MAX_PATH_LEN],part_file[PETSC_MAX_PATH_LEN];
       PetscBool exists;
 
-      ierr = PetscOptionsGetString(NULL,NULL,"-partition",spart_file,PETSC_MAX_PATH_LEN,&flg);CHKERRQ(ierr);
+      ierr = PetscOptionsGetString(NULL,NULL,"-partition",spart_file,sizeof(spart_file),&flg);CHKERRQ(ierr);
       ierr = PetscTestFile(spart_file,'r',&exists);CHKERRQ(ierr);
       if (!exists) { /* try appending the number of processors */
         sprintf(part_file,"part_vec.part.%d",size);
@@ -2193,13 +2192,14 @@ static PetscErrorCode WritePVTU(AppCtx *user,const char *fname,PetscBool base64)
   char              pvtu_fname[PETSC_MAX_PATH_LEN],vtu_fname[PETSC_MAX_PATH_LEN];
   MPI_Comm          comm;
   PetscMPIInt       rank,size;
-  PetscInt          i,nvertices = 0,nedgeLoc = 0,ncells,bs,nloc,boffset,*eptr = NULL;
+  PetscInt          i,nvertices = 0,nedgeLoc = 0,ncells,bs,nloc,boffset = 0,*eptr = NULL;
   PetscErrorCode    ierr;
   Vec               Xloc,Xploc,Xuloc;
   unsigned char     *celltype;
   int               *celloffset,*conn,*cellrank;
   const PetscScalar *x;
   PetscScalar       *xu,*xp;
+  const char        *byte_order = PetscBinaryBigEndian() ? "BigEndian" : "LittleEndian";
 
   PetscFunctionBegin;
   ierr = GridCompleteOverlap(user->grid,&nvertices,&nedgeLoc,&eptr);CHKERRQ(ierr);
@@ -2213,11 +2213,7 @@ static PetscErrorCode WritePVTU(AppCtx *user,const char *fname,PetscBool base64)
   ierr = PetscSNPrintf(vtu_fname,sizeof(vtu_fname),"%s-%D-%D.vtu",fname,tsCtx->itstep,rank);CHKERRQ(ierr);
   ierr = PetscFOpen(comm,pvtu_fname,"w",&pvtu);CHKERRQ(ierr);
   ierr = PetscFPrintf(comm,pvtu,"<?xml version=\"1.0\"?>\n");CHKERRQ(ierr);
-#if defined(PETSC_WORDS_BIGENDIAN)
-  ierr = PetscFPrintf(comm,pvtu,"<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");CHKERRQ(ierr);
-#else
-  ierr = PetscFPrintf(comm,pvtu,"<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");CHKERRQ(ierr);
-#endif
+  ierr = PetscFPrintf(comm,pvtu,"<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"%s\">\n",byte_order);CHKERRQ(ierr);
   ierr = PetscFPrintf(comm,pvtu," <PUnstructuredGrid GhostLevel=\"0\">\n");CHKERRQ(ierr);
   ierr = PetscFPrintf(comm,pvtu,"  <PPointData Scalars=\"Pressure\" Vectors=\"Velocity\">\n");CHKERRQ(ierr);
   ierr = PetscFPrintf(comm,pvtu,"   <PDataArray type=\"Float64\" Name=\"Pressure\" NumberOfComponents=\"1\" />\n");CHKERRQ(ierr);
@@ -2269,14 +2265,9 @@ static PetscErrorCode WritePVTU(AppCtx *user,const char *fname,PetscBool base64)
 
   ierr = InferLocalCellConnectivity(nvertices,nedgeLoc,eptr,&ncells,&conn);CHKERRQ(ierr);
 
-  ierr    = PetscFOpen(PETSC_COMM_SELF,vtu_fname,"w",&vtu);CHKERRQ(ierr);
-  boffset = 0;
-  ierr    = PetscFPrintf(PETSC_COMM_SELF,vtu,"<?xml version=\"1.0\"?>\n");CHKERRQ(ierr);
-#if defined(PETSC_WORDS_BIGENDIAN)
-  ierr = PetscFPrintf(PETSC_COMM_SELF,vtu,"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"BigEndian\">\n");CHKERRQ(ierr);
-#else
-  ierr = PetscFPrintf(PETSC_COMM_SELF,vtu,"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n");CHKERRQ(ierr);
-#endif
+  ierr = PetscFOpen(PETSC_COMM_SELF,vtu_fname,"w",&vtu);CHKERRQ(ierr);
+  ierr = PetscFPrintf(PETSC_COMM_SELF,vtu,"<?xml version=\"1.0\"?>\n");CHKERRQ(ierr);
+  ierr = PetscFPrintf(PETSC_COMM_SELF,vtu,"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"%s\">\n",byte_order);CHKERRQ(ierr);
   ierr = PetscFPrintf(PETSC_COMM_SELF,vtu," <UnstructuredGrid>\n");CHKERRQ(ierr);
   ierr = PetscFPrintf(PETSC_COMM_SELF,vtu,"  <Piece NumberOfPoints=\"%D\" NumberOfCells=\"%D\">\n",nvertices,ncells);CHKERRQ(ierr);
 
@@ -2535,7 +2526,7 @@ int SetPetscDS(GRID *grid,TstepCtx *tsCtx)
 /*                                                                           */
 /*===========================================================================*/
 EXTERN_C_BEGIN
-void PETSC_STDCALL f77CLINK(CINFO *p1,CRUNGE *p2,CGMCOM *p3)
+void f77CLINK(CINFO *p1,CRUNGE *p2,CGMCOM *p3)
 {
   c_info  = p1;
   c_runge = p2;

@@ -49,12 +49,9 @@ static PetscErrorCode    KSPSetUp_AGMRES(KSP ksp)
   hes             = (N + 1) * (N + 1);
 
   /* Data for the Newton basis GMRES */
-  ierr = PetscCalloc4(max_k,&agmres->Rshift,max_k,&agmres->Ishift,hes,&agmres->Rloc,((N+1)*4),&agmres->wbufptr);CHKERRQ(ierr);
-  ierr = PetscMalloc7((N+1),&agmres->Scale,(N+1),&agmres->sgn,(N+1),&agmres->tloc,(N+1),&agmres->temp,(N+1),&agmres->tau,lwork,&agmres->work,(N+1),&agmres->nrs);CHKERRQ(ierr);
-  ierr = PetscMemzero(agmres->Scale, (N+1)*sizeof(PetscScalar));CHKERRQ(ierr);
-  ierr = PetscMemzero(agmres->sgn, (N+1)*sizeof(PetscScalar));CHKERRQ(ierr);
-  ierr = PetscMemzero(agmres->tloc, (N+1)*sizeof(PetscScalar));CHKERRQ(ierr);
-  ierr = PetscMemzero(agmres->temp, (N+1)*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscCalloc4(max_k,&agmres->Rshift,max_k,&agmres->Ishift,hes,&agmres->Rloc,(N+1)*4,&agmres->wbufptr);CHKERRQ(ierr);
+  ierr = PetscMalloc3(N+1,&agmres->tau,lwork,&agmres->work,N+1,&agmres->nrs);CHKERRQ(ierr);
+  ierr = PetscCalloc4(N+1,&agmres->Scale,N+1,&agmres->sgn,N+1,&agmres->tloc,N+1,&agmres->temp);CHKERRQ(ierr);
 
   /* Allocate space for the vectors in the orthogonalized basis*/
   ierr = VecGetLocalSize(agmres->vecs[0], &nloc);CHKERRQ(ierr);
@@ -385,7 +382,7 @@ static PetscErrorCode KSPAGMRESBuildHessenberg(KSP ksp)
   PetscInt       N       = MAXKSPSIZE+1;
 
   PetscFunctionBegin;
-  ierr = PetscMemzero(agmres->hh_origin, (N+1)*N*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArrayzero(agmres->hh_origin, (N+1)*N);CHKERRQ(ierr);
   while (j < max_k) {
     /* Real shifts */
     if (Ishift[j] == 0) {
@@ -446,30 +443,18 @@ static PetscErrorCode KSPAGMRESBuildSoln(KSP ksp,PetscInt it)
     }
   }
   /* QR factorize the Hessenberg matrix */
-#if defined(PETSC_MISSING_LAPACK_GEQRF)
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"GEQRF - Lapack routine is unavailable.");
-#else
   PetscStackCallBLAS("LAPACKgeqrf",LAPACKgeqrf_(&lC, &KspSize, agmres->hh_origin, &ldH, agmres->tau, agmres->work, &lwork, &info));
   if (info) SETERRQ1(PetscObjectComm((PetscObject)ksp), PETSC_ERR_LIB,"Error in LAPACK routine XGEQRF INFO=%d", info);
-#endif
   /* Update the right hand side of the least square problem */
-  ierr = PetscMemzero(agmres->nrs, N*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArrayzero(agmres->nrs, N);CHKERRQ(ierr);
 
   agmres->nrs[0] = ksp->rnorm;
-#if defined(PETSC_MISSING_LAPACK_ORMQR)
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"GEQRF - Lapack routine is unavailable.");
-#else
   PetscStackCallBLAS("LAPACKormqr",LAPACKormqr_("L", "T", &lC, &nrhs, &KspSize, agmres->hh_origin, &ldH, agmres->tau, agmres->nrs, &N, agmres->work, &lwork, &info));
   if (info) SETERRQ1(PetscObjectComm((PetscObject)ksp), PETSC_ERR_LIB,"Error in LAPACK routine XORMQR INFO=%d",info);
-#endif
   ksp->rnorm = PetscAbsScalar(agmres->nrs[KspSize]);
   /* solve the least-square problem */
-#if defined(PETSC_MISSING_LAPACK_TRTRS)
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"TRTRS - Lapack routine is unavailable.");
-#else
   PetscStackCallBLAS("LAPACKtrtrs",LAPACKtrtrs_("U", "N", "N", &KspSize, &nrhs, agmres->hh_origin, &ldH, agmres->nrs, &N, &info));
   if (info) SETERRQ1(PetscObjectComm((PetscObject)ksp), PETSC_ERR_LIB,"Error in LAPACK routine XTRTRS INFO=%d",info);
-#endif
   /* Accumulate the correction to the solution of the preconditioned problem in VEC_TMP */
   ierr = VecZeroEntries(VEC_TMP);CHKERRQ(ierr);
   ierr = VecMAXPY(VEC_TMP, max_k, agmres->nrs, &VEC_V(0));CHKERRQ(ierr);
@@ -601,18 +586,12 @@ static PetscErrorCode KSPDestroy_AGMRES(KSP ksp)
 
   PetscFunctionBegin;
   ierr = PetscFree(agmres->hh_origin);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->nrs);CHKERRQ(ierr);
+
   ierr = PetscFree(agmres->Qloc);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->Rloc);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->sgn);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->tloc);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->Rshift);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->Ishift);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->Scale);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->wbufptr);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->tau);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->work);CHKERRQ(ierr);
-  ierr = PetscFree(agmres->temp);CHKERRQ(ierr);
+  ierr = PetscFree4(agmres->Rshift,agmres->Ishift,agmres->Rloc,agmres->wbufptr);CHKERRQ(ierr);
+  ierr = PetscFree3(agmres->tau,agmres->work,agmres->nrs);CHKERRQ(ierr);
+  ierr = PetscFree4(agmres->Scale,agmres->sgn,agmres->tloc,agmres->temp);CHKERRQ(ierr);
+
   ierr = PetscFree(agmres->select);CHKERRQ(ierr);
   ierr = PetscFree(agmres->wr);CHKERRQ(ierr);
   ierr = PetscFree(agmres->wi);CHKERRQ(ierr);
@@ -729,7 +708,7 @@ There are  many ongoing work that aim at avoiding (or minimizing) the communicat
  Inputs from Guy Atenekeng <atenekeng@yahoo.com> and R.B. Sidje <roger.b.sidje@ua.edu>
 
  References :
- +   [1] D. Nuentsa Wakam and J. Erhel, Parallelism and robustness in GMRES with the Newton basis and the deflated restarting. Research report INRIA RR-7787, November 2011,http://hal.inria.fr/inria-00638247/en,  in revision for ETNA.
+ +   [1] D. Nuentsa Wakam and J. Erhel, Parallelism and robustness in GMRES with the Newton basis and the deflated restarting. Research report INRIA RR-7787, November 2011,https://hal.inria.fr/inria-00638247/en,  in revision for ETNA.
  .  [2] D. NUENTSA WAKAM and F. PACULL, Memory Efficient Hybrid Algebraic Solvers for Linear Systems Arising from Compressible Flows, Computers and Fluids, In Press, http://dx.doi.org/10.1016/j.compfluid.2012.03.023
  .  [3] B. Philippe and L. Reichel, On the generation of Krylov subspace bases, Applied Numerical
 Mathematics, 62(9), pp. 1171-1186, 2012
@@ -785,12 +764,12 @@ PETSC_EXTERN PetscErrorCode KSPCreate_AGMRES(KSP ksp)
   agmres->q_preallocate  = 0;
   agmres->delta_allocate = AGMRES_DELTA_DIRECTIONS;
   agmres->orthog         = KSPGMRESClassicalGramSchmidtOrthogonalization;
-  agmres->nrs            = 0;
-  agmres->sol_temp       = 0;
+  agmres->nrs            = NULL;
+  agmres->sol_temp       = NULL;
   agmres->max_k          = AGMRES_DEFAULT_MAXK;
-  agmres->Rsvd           = 0;
+  agmres->Rsvd           = NULL;
   agmres->cgstype        = KSP_GMRES_CGS_REFINE_NEVER;
-  agmres->orthogwork     = 0;
+  agmres->orthogwork     = NULL;
 
   /* Default values for the deflation */
   agmres->r           = 0;

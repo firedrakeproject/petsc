@@ -2,8 +2,8 @@
 !
 !  Include file for Fortran use of the Mat package in PETSc
 !
-#if !defined (__PETSCMATDEF_H)
-#define __PETSCMATDEF_H
+#if !defined (PETSCMATDEF_H)
+#define PETSCMATDEF_H
 
 #include "petsc/finclude/petscvec.h"
 
@@ -27,6 +27,8 @@
 #define MatFactorType PetscEnum
 #define MatFactorError PetscEnum
 #define MatFactorShiftType PetscEnum
+#define MatProductType PetscEnum
+#define MatProductAlgorithm character*(80)
 #define MatFactorSchurStatus PetscEnum
 #define MatOrderingType character*(80)
 #define MatSORType PetscEnum
@@ -41,6 +43,7 @@
 #define MatPartitioningType character*(80)
 #define MatCoarsenType character*(80)
 #define MatCompositeType PetscEnum
+#define MatCompositeMergeType PetscEnum
 #define MatStencil PetscInt
 #define MatStencil_k 1
 #define MatStencil_j 2
@@ -60,6 +63,7 @@
 #define MATCOLORINGJP      'jp'
 
 #define MATORDERINGNATURAL   'natural'
+#define MATORDERINGNATURAL_OR_ND 'natural_or_nd'
 #define MATORDERINGND        'nd'
 #define MATORDERING1WD       '1wd'
 #define MATORDERINGRCM       'rcm'
@@ -68,6 +72,7 @@
 #define MATORDERINGWBM       'wbm'
 #define MATORDERINGSPECTRAL  'spectral'
 #define MATORDERINGAMD       'amd'
+#define MATORDERINGEXTERNAL  'external'
 !
 !  Matrix types
 !
@@ -103,8 +108,10 @@
 #define MATSHELL           'shell'
 #define MATDENSE           'dense'
 #define MATSEQDENSE        'seqdense'
+#define MATSEQDENSECUDA    'seqdensecuda'
 #define MATMPIDENSE        'mpidense'
 #define MATELEMENTAL       'elemental'
+#define MATSCALAPACK       'scalapack'
 #define MATBAIJ            'baij'
 #define MATSEQBAIJ         'seqbaij'
 #define MATMPIBAIJ         'mpibaij'
@@ -112,7 +119,6 @@
 #define MATSBAIJ           'sbaij'
 #define MATSEQSBAIJ        'seqsbaij'
 #define MATMPISBAIJ        'mpisbaij'
-
 #define MATDAAD            'daad'
 #define MATMFFD            'mffd'
 #define MATNORMAL          'normal'
@@ -137,6 +143,16 @@
 #define MATSEQSELL         'seqsell'
 #define MATMPISELL         'mpisell'
 #define MATDUMMY           'dummy'
+#define MATLMVM            'lmvm'
+#define MATLMVMDFP         'lmvmdfp'
+#define MATLMVMBFGS        'lmvmbfgs'
+#define MATLMVMSR1         'lmvmsr1'
+#define MATLMVMBROYDEN     'lmvmbroyden'
+#define MATLMVMBADBROYDEN  'lmvmbadbroyden'
+#define MATLMVMSYMBROYDEN  'lmvmsymbroyden'
+#define MATLMVMSYMBADBROYDEN 'lmvmsymbadbroyden'
+#define MATLMVMDIAGBROYDEN 'lmvmdiagbroyden'
+#define MATHARA            'hara'
 
 !
 ! MatMFFDType values
@@ -155,6 +171,7 @@
 #define MATSOLVERSPARSEELEMENTAL 'sparseelemental'
 #define MATSOLVERKLU             'klu'
 #define MATSOLVERELEMENTAL       'elemental'
+#define MATSOLVERSCALAPACK       'scalapack'
 #define MATSOLVERESSL            'essl'
 #define MATSOLVERLUSOL           'lusol'
 #define MATSOLVERMUMPS           'mumps'
@@ -165,6 +182,7 @@
 #define MATSOLVERPETSC           'petsc'
 #define MATSOLVERBAS             'bas'
 #define MATSOLVERCUSPARSE        'cusparse'
+#define MATSOLVERCUDA            'cuda'
 
 !
 ! GPU Storage Formats for CUSPARSE

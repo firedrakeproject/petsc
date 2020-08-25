@@ -144,7 +144,7 @@ static PetscErrorCode PCDestroy_NN(PC pc)
 .    -pc_is_remove_nullspace_fixed -
 .    -pc_is_set_damping_factor_floating <fact> -
 .    -pc_is_not_damp_floating -
-+    -pc_is_not_remove_nullspace_floating -
+-    -pc_is_not_remove_nullspace_floating -
 
    Level: intermediate
 
@@ -178,11 +178,11 @@ PETSC_EXTERN PetscErrorCode PCCreate_NN(PC pc)
   pc->data = (void*)pcnn;
 
   ierr             = PCISCreate(pc);CHKERRQ(ierr);
-  pcnn->coarse_mat = 0;
-  pcnn->coarse_x   = 0;
-  pcnn->coarse_b   = 0;
-  pcnn->ksp_coarse = 0;
-  pcnn->DZ_IN      = 0;
+  pcnn->coarse_mat = NULL;
+  pcnn->coarse_x   = NULL;
+  pcnn->coarse_b   = NULL;
+  pcnn->ksp_coarse = NULL;
+  pcnn->DZ_IN      = NULL;
 
   /*
       Set the pointers for the functions that are provided above.
@@ -192,13 +192,13 @@ PETSC_EXTERN PetscErrorCode PCCreate_NN(PC pc)
       not needed.
   */
   pc->ops->apply               = PCApply_NN;
-  pc->ops->applytranspose      = 0;
+  pc->ops->applytranspose      = NULL;
   pc->ops->setup               = PCSetUp_NN;
   pc->ops->destroy             = PCDestroy_NN;
-  pc->ops->view                = 0;
-  pc->ops->applyrichardson     = 0;
-  pc->ops->applysymmetricleft  = 0;
-  pc->ops->applysymmetricright = 0;
+  pc->ops->view                = NULL;
+  pc->ops->applyrichardson     = NULL;
+  pc->ops->applysymmetricleft  = NULL;
+  pc->ops->applysymmetricright = NULL;
   PetscFunctionReturn(0);
 }
 
@@ -337,10 +337,10 @@ PetscErrorCode PCNNCreateCoarseMatrix(PC pc)
     ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)pc),&rank);CHKERRQ(ierr);
     /* "Zero out" rows of not-purely-Neumann subdomains */
     if (pcis->pure_neumann) {  /* does NOT zero the row; create an empty index set. The reason is that MatZeroRows() is collective. */
-      ierr = MatZeroRows(pcnn->coarse_mat,0,NULL,one,0,0);CHKERRQ(ierr);
+      ierr = MatZeroRows(pcnn->coarse_mat,0,NULL,one,NULL,NULL);CHKERRQ(ierr);
     } else { /* here it DOES zero the row, since it's not a floating subdomain. */
       PetscInt row = (PetscInt) rank;
-      ierr = MatZeroRows(pcnn->coarse_mat,1,&row,one,0,0);CHKERRQ(ierr);
+      ierr = MatZeroRows(pcnn->coarse_mat,1,&row,one,NULL,NULL);CHKERRQ(ierr);
     }
   }
 
@@ -413,7 +413,7 @@ PetscErrorCode PCNNApplySchurToChunk(PC pc, PetscInt n, PetscInt *idx, PetscScal
   PC_IS          *pcis = (PC_IS*)(pc->data);
 
   PetscFunctionBegin;
-  ierr = PetscMemzero((void*)array_N, pcis->n*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArrayzero(array_N, pcis->n);CHKERRQ(ierr);
   for (i=0; i<n; i++) array_N[idx[i]] = chunk[i];
   ierr = PCISScatterArrayNToVecB(array_N,vec2_B,INSERT_VALUES,SCATTER_FORWARD,pc);CHKERRQ(ierr);
   ierr = PCISApplySchur(pc,vec2_B,vec1_B,(Vec)0,vec1_D,vec2_D);CHKERRQ(ierr);

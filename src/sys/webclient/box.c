@@ -6,8 +6,8 @@
 /*
    These variables identify the code as a PETSc application to Box.
 
-   See -   http://stackoverflow.com/questions/4616553/using-oauth-in-free-open-source-software
-   Users can get their own application IDs - goto https://developers.box.com
+   See -   https://stackoverflow.com/questions/4616553/using-oauth-in-free-open-source-software
+   Users can get their own application IDs - goto https://developer.box.com
 
 */
 #define PETSC_BOX_CLIENT_ID  "sse42nygt4zqgrdwi0luv79q1u1f0xza"
@@ -87,7 +87,7 @@ static PetscErrorCode PetscBoxStartWebServer_Private(void)
    Notes:
     This call requires stdout and stdin access from process 0 on the MPI communicator
 
-   You can run src/sys/webclient/examples/tutorials/boxobtainrefreshtoken to get a refresh token and then in the future pass it to
+   You can run src/sys/webclient/tutorials/boxobtainrefreshtoken to get a refresh token and then in the future pass it to
    PETSc programs with -box_refresh_token XXX
 
    This requires PETSc be installed using --with-saws or --download-saws
@@ -195,7 +195,7 @@ PetscErrorCode PetscBoxRefresh(MPI_Comm comm,const char refresh_token[],char acc
     if (!refresh_token) {
       PetscBool set;
       ierr = PetscMalloc1(512,&refreshtoken);CHKERRQ(ierr);
-      ierr = PetscOptionsGetString(NULL,NULL,"-box_refresh_token",refreshtoken,512,&set);CHKERRQ(ierr);
+      ierr = PetscOptionsGetString(NULL,NULL,"-box_refresh_token",refreshtoken,sizeof(refreshtoken),&set);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_SAWS)
       if (!set) {
         ierr = PetscBoxAuthorize(comm,access_token,new_refresh_token,512*sizeof(char));CHKERRQ(ierr);

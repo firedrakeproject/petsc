@@ -14,11 +14,15 @@ wPETSC_DIR='@WPETSC_DIR@'
 @PKG_NAME@_dir='@PKG_DIR@'
 @PKG_NAME@_arch='@PKG_ARCH@'
 # Must be consistent with gmakefile.test
-testlogfile=@TESTROOT@/examples_${@PKG_NAME@_arch}.log
+testlogtapfile=@TESTROOT@/test_${@PKG_NAME@_arch}_tap.log
+testlogerrfile=@TESTROOT@/test_${@PKG_NAME@_arch}_err.log
 config_dir='@CONFIG_DIR@'
+filter='@FILTER@'
+filter_output='@FILTER_OUTPUT@'
 petsc_bindir='@PETSC_BINDIR@'
 @DATAFILESPATH_LINE@
 args='@ARGS@'
+diff_args='@DIFF_ARGS@'
 timeoutfactor=@TIMEOUTFACTOR@
 
 mpiexec=${PETSCMPIEXEC:-"@MPIEXEC@"}
@@ -27,15 +31,14 @@ diffexec=${PETSCDIFF:-"${petsc_bindir}/petscdiff"}
 . "${config_dir}/petsc_harness.sh"
 
 # The diff flags come from script arguments
-diff_exe="${diffexec} ${diff_flags}"
+diff_exe="${diffexec} ${diff_flags} ${diff_args}"
 mpiexec="${mpiexec} ${mpiexec_flags}"
 """
 
 footer='petsc_testend "@TESTROOT@" '
 
-todoline='printf "ok ${label} # TODO @TODOCOMMENT@\\n"'
-skipline='printf "ok ${label} # SKIP @SKIPCOMMENT@\\n"'
-mpitest='petsc_testrun "${mpiexec} -n ${nsize} ${exec} ${args} @SUBARGS@" @REDIRECT_FILE@ ${testname}.err "${label}@LABEL_SUFFIX@" @FILTER@'
+todoline='petsc_report_tapoutput "" "${label}" "TODO @TODOCOMMENT@"'
+skipline='petsc_report_tapoutput "" "${label}" "SKIP @SKIPCOMMENT@"'
+mpitest='petsc_testrun "${mpiexec} -n ${insize} ${exec} ${args} @SUBARGS@" @REDIRECT_FILE@ ${testname}.err "${label}@LABEL_SUFFIX@" @ERROR@'
 difftest='petsc_testrun "${diff_exe} @OUTPUT_FILE@ @REDIRECT_FILE@" diff-${testname}.out diff-${testname}.out diff-${label}@LABEL_SUFFIX@ ""'
-filterdifftest='petsc_testrun "@FILTER_OUTPUT@ @OUTPUT_FILE@ | ${diff_exe} - @REDIRECT_FILE@" diff-${testname}.out diff-${testname}.out diff-${label}@LABEL_SUFFIX@ ""'
-commandtest='petsc_testrun "@COMMAND@" @REDIRECT_FILE@ ${testname}.err cmd-${label}@LABEL_SUFFIX@ @FILTER@'
+commandtest='petsc_testrun "@COMMAND@" @REDIRECT_FILE@ ${testname}.err cmd-${label}@LABEL_SUFFIX@ @ERROR@'

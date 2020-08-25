@@ -20,8 +20,6 @@ PetscClassId MAT_NULLSPACE_CLASSID;
 
    Level: advanced
 
-.keywords: PC, null space, create
-
 .seealso: MatNullSpaceDestroy(), MatNullSpaceRemove(), MatSetNullSpace(), MatNullSpace, MatNullSpaceCreate()
 @*/
 PetscErrorCode  MatNullSpaceSetFunction(MatNullSpace sp, PetscErrorCode (*rem)(MatNullSpace,Vec,void*),void *ctx)
@@ -215,7 +213,7 @@ PetscErrorCode MatNullSpaceView(MatNullSpace sp,PetscViewer viewer)
    MatNullSpaceCreate - Creates a data structure used to project vectors
    out of null spaces.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - the MPI communicator associated with the object
@@ -240,8 +238,6 @@ PetscErrorCode MatNullSpaceView(MatNullSpace sp,PetscViewer viewer)
   Users manual sections:
 .   sec_singular
 
-.keywords: PC, null space, create
-
 .seealso: MatNullSpaceDestroy(), MatNullSpaceRemove(), MatSetNullSpace(), MatNullSpace, MatNullSpaceSetFunction()
 @*/
 PetscErrorCode  MatNullSpaceCreate(MPI_Comm comm,PetscBool has_cnst,PetscInt n,const Vec vecs[],MatNullSpace *SP)
@@ -261,8 +257,7 @@ PetscErrorCode  MatNullSpaceCreate(MPI_Comm comm,PetscBool has_cnst,PetscInt n,c
       ierr = VecLockReadPush(vecs[i]);CHKERRQ(ierr);
     }
   }
-#if defined(PETSC_USE_DEBUG)
-  if (n) {
+  if (PetscUnlikelyDebug(n)) {
     PetscScalar *dots;
     for (i=0; i<n; i++) {
       PetscReal norm;
@@ -286,7 +281,6 @@ PetscErrorCode  MatNullSpaceCreate(MPI_Comm comm,PetscBool has_cnst,PetscInt n,c
     }
     PetscFree(dots);CHKERRQ(ierr);
   }
-#endif
 
   *SP = NULL;
   ierr = MatInitializePackage();CHKERRQ(ierr);
@@ -325,8 +319,6 @@ PetscErrorCode  MatNullSpaceCreate(MPI_Comm comm,PetscBool has_cnst,PetscInt n,c
 
    Level: advanced
 
-.keywords: PC, null space, destroy
-
 .seealso: MatNullSpaceCreate(), MatNullSpaceRemove(), MatNullSpaceSetFunction()
 @*/
 PetscErrorCode  MatNullSpaceDestroy(MatNullSpace *sp)
@@ -359,8 +351,6 @@ PetscErrorCode  MatNullSpaceDestroy(MatNullSpace *sp)
 -  vec - the vector from which the null space is to be removed
 
    Level: advanced
-
-.keywords: PC, null space, remove
 
 .seealso: MatNullSpaceCreate(), MatNullSpaceDestroy(), MatNullSpaceSetFunction()
 @*/
@@ -410,8 +400,6 @@ PetscErrorCode  MatNullSpaceRemove(MatNullSpace sp,Vec vec)
 .  isNull - PETSC_TRUE if the nullspace is valid for this matrix
 
    Level: advanced
-
-.keywords: PC, null space, remove
 
 .seealso: MatNullSpaceCreate(), MatNullSpaceDestroy(), MatNullSpaceSetFunction()
 @*/

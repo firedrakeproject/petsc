@@ -53,13 +53,13 @@ class Configure(config.package.CMakePackage):
     # we check this in two places, before doing a Trilinos install and (for when PETSc does not install Trilinos) when checking that
     # the the Trilinos libraries are valid
     if self.zoltan.found:
-      raise RuntimeError('Trilinos contains Zoltan, therefor do not provide/build a Zoltan if you are providing/building Trilinos')
+      raise RuntimeError('Trilinos contains Zoltan, therefore do not provide/build a Zoltan if you are providing/building Trilinos')
     if self.ml.found:
-      raise RuntimeError('Trilinos contains ml, therefor do not provide/build a ml if you are providing/building Trilinos')
+      raise RuntimeError('Trilinos contains ml, therefore do not provide/build a ml if you are providing/building Trilinos')
     if self.chaco.found:
-      raise RuntimeError('Trilinos contains chaco, therefor do not provide/build a chaco if you are providing/building Trilinos')
+      raise RuntimeError('Trilinos contains chaco, therefore do not provide/build a chaco if you are providing/building Trilinos')
     if self.exodusii.found:
-      raise RuntimeError('Trilinos contains Exodusii, therefor do not provide/build a Exodusii if you are providing/building Trilinos')
+      raise RuntimeError('Trilinos contains Exodusii, therefore do not provide/build a Exodusii if you are providing/building Trilinos')
 
   def configureLibrary(self):
     self.checkTrilinosDuplicates()
@@ -123,7 +123,7 @@ class Configure(config.package.CMakePackage):
       raise RuntimeError('Trilinos requires hdf5 so make sure you have --download-hdf5 or --with-hdf5-dir if you are building Trilinos')
 
     # Check for 64bit pointers
-    if self.types.sizes['known-sizeof-void-p'] != 8:
+    if self.types.sizes['void-p'] != 8:
       raise RuntimeError('Trilinos requires 64bit compilers, your compiler is using 32 bit pointers!')
 
     args = config.package.CMakePackage.formCMakeConfigureArgs(self)
@@ -289,7 +289,7 @@ class Configure(config.package.CMakePackage):
     fd.write('listlibs:\n\t-@echo ${Trilinos_LIBRARIES}')
     fd.close()
     try:
-      output1,err1,ret1  = config.package.Package.executeShellCommand('make -f simplemake listlibs', timeout=25, log = self.log)
+      output1,err1,ret1  = config.package.Package.executeShellCommand('make -f simplemake listlibs', timeout=60, log = self.log)
       os.unlink('simplemake')
     except RuntimeError as e:
       raise RuntimeError('Unable to generate list of Trilinos Libraries')

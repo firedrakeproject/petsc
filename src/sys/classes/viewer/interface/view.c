@@ -10,7 +10,6 @@ static PetscBool PetscViewerPackageInitialized = PETSC_FALSE;
 
   Level: developer
 
-.keywords: Petsc, destroy, package, mathematica
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode  PetscViewerFinalizePackage(void)
@@ -54,7 +53,6 @@ PetscErrorCode  PetscViewerFinalizePackage(void)
 
   Level: developer
 
-.keywords: Petsc, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  PetscViewerInitializePackage(void)
@@ -70,11 +68,12 @@ PetscErrorCode  PetscViewerInitializePackage(void)
   ierr = PetscClassIdRegister("Viewer",&PETSC_VIEWER_CLASSID);CHKERRQ(ierr);
   /* Register Constructors */
   ierr = PetscViewerRegisterAll();CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("viewer",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(PETSC_VIEWER_CLASSID);CHKERRQ(ierr);}
+  /* Process Info */
+  {
+    PetscClassId  classids[1];
+
+    classids[0] = PETSC_VIEWER_CLASSID;
+    ierr = PetscInfoProcessClass("viewer", 1, classids);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
@@ -112,7 +111,7 @@ PetscErrorCode  PetscViewerDestroy(PetscViewer *viewer)
   PetscValidHeaderSpecific(*viewer,PETSC_VIEWER_CLASSID,1);
 
   ierr = PetscViewerFlush(*viewer);CHKERRQ(ierr);
-  if (--((PetscObject)(*viewer))->refct > 0) {*viewer = 0; PetscFunctionReturn(0);}
+  if (--((PetscObject)(*viewer))->refct > 0) {*viewer = NULL; PetscFunctionReturn(0);}
 
   ierr = PetscObjectSAWsViewOff((PetscObject)*viewer);CHKERRQ(ierr);
   if ((*viewer)->ops->destroy) {
@@ -191,11 +190,11 @@ PetscErrorCode  PetscViewerAndFormatDestroy(PetscViewerAndFormat **vf)
 .  type - PetscViewer type (see below)
 
    Available Types Include:
-.  PETSCVIEWERSOCKET - Socket PetscViewer
++  PETSCVIEWERSOCKET - Socket PetscViewer
 .  PETSCVIEWERASCII - ASCII PetscViewer
 .  PETSCVIEWERBINARY - binary file PetscViewer
 .  PETSCVIEWERSTRING - string PetscViewer
-.  PETSCVIEWERDRAW - drawing PetscViewer
+-  PETSCVIEWERDRAW - drawing PetscViewer
 
    Level: intermediate
 
@@ -232,8 +231,6 @@ PetscErrorCode  PetscViewerGetType(PetscViewer viewer,PetscViewerType *type)
 
    Level: advanced
 
-.keywords: PetscViewer, set, options, prefix, database
-
 .seealso: PetscViewerSetFromOptions()
 @*/
 PetscErrorCode  PetscViewerSetOptionsPrefix(PetscViewer viewer,const char prefix[])
@@ -261,8 +258,6 @@ PetscErrorCode  PetscViewerSetOptionsPrefix(PetscViewer viewer,const char prefix
    The first character of all runtime options is AUTOMATICALLY the hyphen.
 
    Level: advanced
-
-.keywords: PetscViewer, append, options, prefix, database
 
 .seealso: PetscViewerGetOptionsPrefix()
 @*/
@@ -294,8 +289,6 @@ PetscErrorCode  PetscViewerAppendOptionsPrefix(PetscViewer viewer,const char pre
 
    Level: advanced
 
-.keywords: PetscViewer, get, options, prefix, database
-
 .seealso: PetscViewerAppendOptionsPrefix()
 @*/
 PetscErrorCode  PetscViewerGetOptionsPrefix(PetscViewer viewer,const char *prefix[])
@@ -322,8 +315,6 @@ PetscErrorCode  PetscViewerGetOptionsPrefix(PetscViewer viewer,const char *prefi
 
    Level: advanced
 
-.keywords: PetscViewer, setup
-
 .seealso: PetscViewerCreate(), PetscViewerDestroy()
 @*/
 PetscErrorCode  PetscViewerSetUp(PetscViewer viewer)
@@ -341,12 +332,35 @@ PetscErrorCode  PetscViewerSetUp(PetscViewer viewer)
 }
 
 /*@C
+   PetscViewerViewFromOptions - View from Options
+
+   Collective on PetscViewer
+
+   Input Parameters:
++  A - the PetscViewer context
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  PetscViewer, PetscViewerView, PetscObjectViewFromOptions(), PetscViewerCreate()
+@*/
+PetscErrorCode  PetscViewerViewFromOptions(PetscViewer A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,PETSC_VIEWER_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
    PetscViewerView - Visualizes a viewer object.
 
    Collective on PetscViewer
 
    Input Parameters:
-+  v - the viewer
++  v - the viewer to be viewed
 -  viewer - visualization context
 
   Notes:
@@ -414,7 +428,7 @@ PetscErrorCode  PetscViewerView(PetscViewer v,PetscViewer viewer)
 /*@C
    PetscViewerRead - Reads data from a PetscViewer
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  viewer   - The viewer
@@ -430,8 +444,6 @@ PetscErrorCode  PetscViewerView(PetscViewer v,PetscViewer viewer)
    until a maximum of (-num - 1) chars.
 
    Level: beginner
-
-   Concepts: binary files, ascii files
 
 .seealso: PetscViewerASCIIOpen(), PetscViewerPushFormat(), PetscViewerDestroy(),
           VecView(), MatView(), VecLoad(), MatLoad(), PetscViewerBinaryGetDescriptor(),
@@ -449,18 +461,18 @@ PetscErrorCode  PetscViewerRead(PetscViewer viewer, void *data, PetscInt num, Pe
     if (num >= 0) {
       for (c = 0; c < num; c++) {
         /* Skip leading whitespaces */
-        do {ierr = (*viewer->ops->read)(viewer, &(s[i]), 1, &cnt, PETSC_CHAR);CHKERRQ(ierr); if (count && !cnt) break;}
+        do {ierr = (*viewer->ops->read)(viewer, &(s[i]), 1, &cnt, PETSC_CHAR);CHKERRQ(ierr); if (!cnt) break;}
         while (s[i]=='\n' || s[i]=='\t' || s[i]==' ' || s[i]=='\0' || s[i]=='\v' || s[i]=='\f' || s[i]=='\r');
         i++;
         /* Read strings one char at a time */
-        do {ierr = (*viewer->ops->read)(viewer, &(s[i++]), 1, &cnt, PETSC_CHAR);CHKERRQ(ierr); if (count && !cnt) break;}
+        do {ierr = (*viewer->ops->read)(viewer, &(s[i++]), 1, &cnt, PETSC_CHAR);CHKERRQ(ierr); if (!cnt) break;}
         while (s[i-1]!='\n' && s[i-1]!='\t' && s[i-1]!=' ' && s[i-1]!='\0' && s[i-1]!='\v' && s[i-1]!='\f' && s[i-1]!='\r');
         /* Terminate final string */
         if (c == num-1) s[i-1] = '\0';
       }
     } else {
       /* Read until a \n is encountered (-num is the max size allowed) */
-      do {ierr = (*viewer->ops->read)(viewer, &(s[i++]), 1, &cnt, PETSC_CHAR);CHKERRQ(ierr); if (i == -num && !cnt) break;}
+      do {ierr = (*viewer->ops->read)(viewer, &(s[i++]), 1, &cnt, PETSC_CHAR);CHKERRQ(ierr); if (i == -num || !cnt) break;}
       while (s[i-1]!='\n');
       /* Terminate final string */
       s[i-1] = '\0';
@@ -502,7 +514,7 @@ PetscErrorCode  PetscViewerReadable(PetscViewer viewer, PetscBool *flg)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,1);
-  PetscValidIntPointer(flg,2);
+  PetscValidBoolPointer(flg,2);
   ierr = PetscObjectQueryFunction((PetscObject)viewer, "PetscViewerFileGetMode_C", &f);CHKERRQ(ierr);
   *flg = PETSC_FALSE;
   if (!f) PetscFunctionReturn(0);
@@ -544,7 +556,7 @@ PetscErrorCode  PetscViewerWritable(PetscViewer viewer, PetscBool *flg)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,1);
-  PetscValidIntPointer(flg,2);
+  PetscValidBoolPointer(flg,2);
   ierr = PetscObjectQueryFunction((PetscObject)viewer, "PetscViewerFileGetMode_C", &f);CHKERRQ(ierr);
   *flg = PETSC_TRUE;
   if (!f) PetscFunctionReturn(0);

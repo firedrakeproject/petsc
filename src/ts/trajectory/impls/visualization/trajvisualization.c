@@ -6,7 +6,7 @@ static PetscErrorCode OutputBIN(MPI_Comm comm,const char *filename,PetscViewer *
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscViewerCreate(PETSC_COMM_WORLD,viewer);CHKERRQ(ierr);
+  ierr = PetscViewerCreate(comm,viewer);CHKERRQ(ierr);
   ierr = PetscViewerSetType(*viewer,PETSCVIEWERBINARY);CHKERRQ(ierr);
   ierr = PetscViewerFileSetMode(*viewer,FILE_MODE_WRITE);CHKERRQ(ierr);
   ierr = PetscViewerFileSetName(*viewer,filename);CHKERRQ(ierr);
@@ -46,7 +46,7 @@ static PetscErrorCode TSTrajectorySet_Visualization(TSTrajectory tj,TS ts,PetscI
       ierr = VecView(XX,viewer);CHKERRQ(ierr);
       ierr = VecDestroy(&XX);CHKERRQ(ierr);
     }
-    ierr = PetscViewerBinaryWrite(viewer,&time,1,PETSC_REAL,PETSC_FALSE);CHKERRQ(ierr);
+    ierr = PetscViewerBinaryWrite(viewer,&time,1,PETSC_REAL);CHKERRQ(ierr);
     ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
     PetscFunctionReturn(0);
   }
@@ -60,10 +60,10 @@ static PetscErrorCode TSTrajectorySet_Visualization(TSTrajectory tj,TS ts,PetscI
     ierr = VecView(XX,viewer);CHKERRQ(ierr);
     ierr = VecDestroy(&XX);CHKERRQ(ierr);
   }
-  ierr = PetscViewerBinaryWrite(viewer,&time,1,PETSC_REAL,PETSC_FALSE);CHKERRQ(ierr);
+  ierr = PetscViewerBinaryWrite(viewer,&time,1,PETSC_REAL);CHKERRQ(ierr);
 
   ierr = TSGetPrevTime(ts,&tprev);CHKERRQ(ierr);
-  ierr = PetscViewerBinaryWrite(viewer,&tprev,1,PETSC_REAL,PETSC_FALSE);CHKERRQ(ierr);
+  ierr = PetscViewerBinaryWrite(viewer,&tprev,1,PETSC_REAL);CHKERRQ(ierr);
 
   ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -72,7 +72,7 @@ static PetscErrorCode TSTrajectorySet_Visualization(TSTrajectory tj,TS ts,PetscI
 /*MC
       TSTRAJECTORYVISUALIZATION - Stores each solution of the ODE/DAE in a file
 
-      Saves each timestep into a seperate file in Visualization-data/SA-%06d.bin
+      Saves each timestep into a separate file in Visualization-data/SA-%06d.bin
 
       This version saves only the solutions at each timestep, it does not save the solution at each stage,
       see TSTRAJECTORYBASIC that saves all stages

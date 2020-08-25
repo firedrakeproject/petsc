@@ -166,7 +166,7 @@ PetscErrorCode TaoSolve_BNLS(Tao tao)
     /*  Check for termination */
     ierr = VecFischer(tao->solution, bnk->unprojected_gradient, tao->XL, tao->XU, bnk->W);CHKERRQ(ierr);
     ierr = VecNorm(bnk->W, NORM_2, &resnorm);CHKERRQ(ierr);
-    if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+    if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
     ierr = TaoLogConvergenceHistory(tao, bnk->f, resnorm, 0.0, tao->ksp_its);CHKERRQ(ierr);
     ierr = TaoMonitor(tao, tao->niter, bnk->f, resnorm, 0.0, steplen);CHKERRQ(ierr);
     ierr = (*tao->ops->convergencetest)(tao, tao->cnvP);CHKERRQ(ierr);
@@ -179,10 +179,10 @@ PetscErrorCode TaoSolve_BNLS(Tao tao)
   TAOBNLS - Bounded Newton Line Search for nonlinear minimization with bound constraints.
 
   Options Database Keys:
-  + -tao_bnk_max_cg_its - maximum number of bounded conjugate-gradient iterations taken in each Newton loop
-  . -tao_bnk_init_type - trust radius initialization method ("constant", "direction", "interpolation")
-  . -tao_bnk_update_type - trust radius update method ("step", "direction", "interpolation")
-  - -tao_bnk_as_type - active-set estimation method ("none", "bertsekas")
++ -tao_bnk_max_cg_its - maximum number of bounded conjugate-gradient iterations taken in each Newton loop
+. -tao_bnk_init_type - trust radius initialization method ("constant", "direction", "interpolation")
+. -tao_bnk_update_type - trust radius update method ("step", "direction", "interpolation")
+- -tao_bnk_as_type - active-set estimation method ("none", "bertsekas")
 
   Level: beginner
 M*/

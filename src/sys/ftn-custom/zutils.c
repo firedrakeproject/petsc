@@ -62,7 +62,7 @@ size_t PetscIntAddressToFortran(const PetscInt *base,const PetscInt *addr)
     (*PetscErrorPrintf)("PetscIntAddressToFortran:C and Fortran arrays are\n");
     (*PetscErrorPrintf)("not commonly aligned or are too far apart to be indexed \n");
     (*PetscErrorPrintf)("by an integer. Locations: C %uld Fortran %uld\n",tmp1,tmp3);
-    MPI_Abort(PETSC_COMM_WORLD,1);
+    PETSCABORT(PETSC_COMM_WORLD,PETSC_ERR_PLIB);
   }
   return itmp2;
 }
@@ -131,7 +131,7 @@ PetscErrorCode PetscScalarAddressToFortran(PetscObject obj,PetscInt align,PetscS
 
     /* shift work by that number of bytes */
     work = (PetscScalar*)(((char*)work) + shift);
-    ierr = PetscMemcpy(work,addr,N*sizeof(PetscScalar));CHKERRQ(ierr);
+    ierr = PetscArraycpy(work,addr,N);CHKERRQ(ierr);
 
     /* store in the first location in addr how much you shift it */
     ((PetscInt*)addr)[0] = shift;
@@ -154,7 +154,7 @@ PetscErrorCode PetscScalarAddressToFortran(PetscObject obj,PetscInt align,PetscS
       (*PetscErrorPrintf)("PetscScalarAddressToFortran:C and Fortran arrays are\n");
       (*PetscErrorPrintf)("not commonly aligned.\n");
       (*PetscErrorPrintf)("Locations/sizeof(PetscScalar): C %f Fortran %f\n",((PetscReal)tmp3)/(PetscReal)sizeof(PetscScalar),((PetscReal)tmp1)/(PetscReal)sizeof(PetscScalar));
-      MPI_Abort(PETSC_COMM_WORLD,1);
+      PETSCABORT(PETSC_COMM_WORLD,PETSC_ERR_PLIB);
     }
     ierr = PetscInfo(obj,"Efficiency warning, copying array in XXXGetArray() due\n\
     to alignment differences between C and Fortran\n");CHKERRQ(ierr);
@@ -184,7 +184,7 @@ PetscErrorCode PetscScalarAddressFromFortran(PetscObject obj,PetscScalar *base,s
     tlx  = base + addr;
 
     shift = *(PetscInt*)*lx;
-    ierr  = PetscMemcpy(*lx,tlx,N*sizeof(PetscScalar));CHKERRQ(ierr);
+    ierr  = PetscArraycpy(*lx,tlx,N);CHKERRQ(ierr);
     tlx   = (PetscScalar*)(((char*)tlx) - shift);
 
     ierr = PetscFree(tlx);CHKERRQ(ierr);
@@ -204,12 +204,12 @@ PetscErrorCode PetscScalarAddressFromFortran(PetscObject obj,PetscScalar *base,s
 #define petscisinfornanreal_            petscisinfornanreal
 #endif
 
-PETSC_EXTERN PetscBool PETSC_STDCALL petscisinfornanscalar_(PetscScalar *v)
+PETSC_EXTERN PetscBool petscisinfornanscalar_(PetscScalar *v)
 {
   return (PetscBool) PetscIsInfOrNanScalar(*v);
 }
 
-PETSC_EXTERN PetscBool PETSC_STDCALL petscisinfornanreal_(PetscReal *v)
+PETSC_EXTERN PetscBool petscisinfornanreal_(PetscReal *v)
 {
   return (PetscBool) PetscIsInfOrNanReal(*v);
 }

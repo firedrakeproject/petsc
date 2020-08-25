@@ -59,7 +59,7 @@ static PetscErrorCode KSPAllocateVectors_PIPEFCG(KSP ksp, PetscInt nvecsneeded, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode    KSPSetUp_PIPEFCG(KSP ksp)
+static PetscErrorCode KSPSetUp_PIPEFCG(KSP ksp)
 {
   PetscErrorCode ierr;
   KSP_PIPEFCG    *pipefcg;
@@ -193,8 +193,8 @@ static PetscErrorCode KSPSolve_PIPEFCG_cycle(KSP ksp)
     ksp->rnorm = dp;
     KSPLogResidualHistory(ksp,dp);CHKERRQ(ierr);
     ierr = KSPMonitor(ksp,ksp->its,dp);CHKERRQ(ierr);
-    ierr = (*ksp->converged)(ksp,ksp->its+1,dp,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
-    if (ksp->reason) break;
+    ierr = (*ksp->converged)(ksp,ksp->its,dp,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
+    if (ksp->reason) PetscFunctionReturn(0);
 
     /* Computations of current iteration done */
     ++i;
@@ -272,6 +272,7 @@ static PetscErrorCode KSPSolve_PIPEFCG_cycle(KSP ksp)
     ierr = VecMAXPY(ZETAcurr,j,betas,pipefcg->ZETAold);CHKERRQ(ierr); /* zetai <- n  - sum_k beta_k zeta_k */
 
   } while (ksp->its < ksp->max_it);
+  if (i >= ksp->max_it) ksp->reason = KSP_DIVERGED_ITS;
   PetscFunctionReturn(0);
 }
 
@@ -328,11 +329,7 @@ static PetscErrorCode KSPSolve_PIPEFCG(KSP ksp)
   ierr       = KSPLogResidualHistory(ksp,dp);CHKERRQ(ierr);
   ierr       = KSPMonitor(ksp,0,dp);CHKERRQ(ierr);
   ksp->rnorm = dp;
-  if (ksp->normtype == KSP_NORM_NONE) {
-    ierr = KSPConvergedSkip (ksp,0,dp,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
-  } else {
-    ierr = (*ksp->converged)(ksp,0,dp,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
-  }
+  ierr       = (*ksp->converged)(ksp,0,dp,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
   if (ksp->reason) PetscFunctionReturn(0);
 
   do {
@@ -340,7 +337,7 @@ static PetscErrorCode KSPSolve_PIPEFCG(KSP ksp)
        This is coded this way to allow both truncation and truncation-restart strategy
        (see KSPFCDGetNumOldDirections()) */
     ierr = KSPSolve_PIPEFCG_cycle(ksp);CHKERRQ(ierr);
-    if (ksp->reason) break;
+    if (ksp->reason) PetscFunctionReturn(0);
     if (pipefcg->norm_breakdown) {
       pipefcg->n_restarts++;
       pipefcg->norm_breakdown = PETSC_FALSE;
@@ -420,7 +417,7 @@ static PetscErrorCode KSPView_PIPEFCG(KSP ksp,PetscViewer viewer)
   and whether all are used in each iteration also depends on the truncation strategy
   (see KSPPIPEFCGSetTruncationType)
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   Input Parameters:
 +  ksp - the Krylov space context
@@ -435,7 +432,7 @@ static PetscErrorCode KSPView_PIPEFCG(KSP ksp,PetscViewer viewer)
 @*/
 PetscErrorCode KSPPIPEFCGSetMmax(KSP ksp,PetscInt mmax)
 {
-  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;;
+  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -462,13 +459,11 @@ PetscErrorCode KSPPIPEFCGSetMmax(KSP ksp,PetscInt mmax)
 
    Level: intermediate
 
-.keywords: KSP, PIPEFCG, truncation
-
 .seealso: KSPPIPEFCG, KSPPIPEFCGGetTruncationType(), KSPPIPEFCGGetNprealloc(), KSPPIPEFCGSetMmax()
 @*/
 PetscErrorCode KSPPIPEFCGGetMmax(KSP ksp,PetscInt *mmax)
 {
-  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;;
+  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -479,7 +474,7 @@ PetscErrorCode KSPPIPEFCGGetMmax(KSP ksp,PetscInt *mmax)
 /*@
   KSPPIPEFCGSetNprealloc - set the number of directions to preallocate with PIPEFCG
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   Input Parameters:
 +  ksp - the Krylov space context
@@ -494,7 +489,7 @@ PetscErrorCode KSPPIPEFCGGetMmax(KSP ksp,PetscInt *mmax)
 @*/
 PetscErrorCode KSPPIPEFCGSetNprealloc(KSP ksp,PetscInt nprealloc)
 {
-  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;;
+  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -519,13 +514,11 @@ PetscErrorCode KSPPIPEFCGSetNprealloc(KSP ksp,PetscInt nprealloc)
 
    Level: advanced
 
-.keywords: KSP, PIPEFCG, truncation
-
 .seealso: KSPPIPEFCG, KSPPIPEFCGGetTruncationType(), KSPPIPEFCGSetNprealloc()
 @*/
 PetscErrorCode KSPPIPEFCGGetNprealloc(KSP ksp,PetscInt *nprealloc)
 {
-  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;;
+  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -536,7 +529,7 @@ PetscErrorCode KSPPIPEFCGGetNprealloc(KSP ksp,PetscInt *nprealloc)
 /*@
   KSPPIPEFCGSetTruncationType - specify how many of its stored previous directions PIPEFCG uses during orthoganalization
 
-  Logically Collective on KSP
+  Logically Collective on ksp
 
   KSP_FCD_TRUNC_TYPE_STANDARD uses all (up to mmax) stored directions
   KSP_FCD_TRUNC_TYPE_NOTAY uses max(1,mod(i,mmax)) stored directions at iteration i=0,1,..
@@ -554,7 +547,7 @@ PetscErrorCode KSPPIPEFCGGetNprealloc(KSP ksp,PetscInt *nprealloc)
 @*/
 PetscErrorCode KSPPIPEFCGSetTruncationType(KSP ksp,KSPFCDTruncationType truncstrat)
 {
-  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;;
+  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -579,13 +572,11 @@ PetscErrorCode KSPPIPEFCGSetTruncationType(KSP ksp,KSPFCDTruncationType truncstr
 
    Level: intermediate
 
-.keywords: KSP, PIPEFCG, truncation
-
 .seealso: KSPPIPEFCG, KSPPIPEFCGSetTruncationType, KSPFCDTruncationType
 @*/
 PetscErrorCode KSPPIPEFCGGetTruncationType(KSP ksp,KSPFCDTruncationType *truncstrat)
 {
-  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;;
+  KSP_PIPEFCG *pipefcg=(KSP_PIPEFCG*)ksp->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -616,9 +607,9 @@ static PetscErrorCode KSPSetFromOptions_PIPEFCG(PetscOptionItems *PetscOptionsOb
   KSPPIPEFCG - Implements a Pipelined, Flexible Conjugate Gradient method.
 
   Options Database Keys:
-.   -ksp_pipefcg_mmax <N> - The number of previous search directions to store
++   -ksp_pipefcg_mmax <N> - The number of previous search directions to store
 .   -ksp_pipefcg_nprealloc <N> - The number of previous search directions to preallocate
-.   -ksp_pipefcg_truncation_type <standard,notay> - which stored search directions to orthogonalize against
+-   -ksp_pipefcg_truncation_type <standard,notay> - which stored search directions to orthogonalize against
 
   Notes:
    Supports left preconditioning only.

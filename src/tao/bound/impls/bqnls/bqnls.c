@@ -18,7 +18,7 @@ static PetscErrorCode TaoBQNLSComputeHessian(Tao tao)
   } else {
     delta = 2.0 * PetscAbsScalar(bnk->f) / gnorm2;
   }
-  ierr = MatSymBrdnSetDelta(bqnk->B, delta);CHKERRQ(ierr);
+  ierr = MatLMVMSymBroydenSetDelta(bqnk->B, delta);CHKERRQ(ierr);
   ierr = MatLMVMUpdate(bqnk->B, tao->solution, bnk->unprojected_gradient);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -54,7 +54,7 @@ static PetscErrorCode TaoSetFromOptions_BQNLS(PetscOptionItems *PetscOptionsObje
 
   PetscFunctionBegin;
   ierr = PetscOptionsHead(PetscOptionsObject,"Quasi-Newton-Krylov method for bound constrained optimization");CHKERRQ(ierr);
-  ierr = PetscOptionsEList("-tao_bqnls_as_type", "active set estimation method", "", BNK_AS, BNK_AS_TYPES, BNK_AS[bnk->as_type], &bnk->as_type, 0);CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-tao_bqnls_as_type", "active set estimation method", "", BNK_AS, BNK_AS_TYPES, BNK_AS[bnk->as_type], &bnk->as_type, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bqnls_epsilon", "(developer) tolerance used when computing actual and predicted reduction", "", bnk->epsilon, &bnk->epsilon,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bqnls_as_tol", "(developer) initial tolerance used when estimating actively bounded variables", "", bnk->as_tol, &bnk->as_tol,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bqnls_as_step", "(developer) step length used when estimating actively bounded variables", "", bnk->as_step, &bnk->as_step,NULL);CHKERRQ(ierr);
@@ -78,8 +78,8 @@ static PetscErrorCode TaoSetFromOptions_BQNLS(PetscOptionItems *PetscOptionsObje
              accessible via the prefix `-tao_bqnls_`
 
   Options Database Keys:
-  + -tao_bqnls_max_cg_its - maximum number of bounded conjugate-gradient iterations taken in each Newton loop
-  - -tao_bqnls_as_type - active-set estimation method ("none", "bertsekas")
++ -tao_bqnls_max_cg_its - maximum number of bounded conjugate-gradient iterations taken in each Newton loop
+- -tao_bqnls_as_type - active-set estimation method ("none", "bertsekas")
 
   Level: beginner
 M*/

@@ -1,5 +1,5 @@
-#if !defined(__PETSCSYSTYPES_H)
-#define __PETSCSYSTYPES_H
+#if !defined(PETSCSYSTYPES_H)
+#define PETSCSYSTYPES_H
 
 #include <petscconf.h>
 #include <petscfix.h>
@@ -225,6 +225,9 @@ M*/
        typedef petsccomplexlib::complex<__float128> PetscComplex; /* Notstandard and not expected to work, use __complex128 */
 #    endif  /* PETSC_USE_REAL_ */
 #  endif  /* ! PETSC_SKIP_COMPLEX */
+#  if !defined(PETSC_SKIP_CXX_COMPLEX_FIX)
+#    include <petsccxxcomplexfix.h>
+#  endif /* ! PETSC_SKIP_CXX_COMPLEX_FIX */
 #elif defined(PETSC_HAVE_C99_COMPLEX) && !defined(PETSC_USE_REAL___FP16)
 #  if !defined(PETSC_SKIP_COMPLEX)
 #    define PETSC_HAVE_COMPLEX 1
@@ -261,15 +264,22 @@ M*/
 #endif /* PETSC_USE_COMPLEX */
 
 /*E
-    PetscCopyMode  - Determines how an array passed to certain functions is copied or retained
+    PetscCopyMode  - Determines how an array or PetscObject passed to certain functions is copied or retained by the aggregate PetscObject
 
    Level: beginner
 
+   For the array input:
 $   PETSC_COPY_VALUES - the array values are copied into new space, the user is free to reuse or delete the passed in array
 $   PETSC_OWN_POINTER - the array values are NOT copied, the object takes ownership of the array and will free it later, the user cannot change or
 $                       delete the array. The array MUST have been obtained with PetscMalloc(). Hence this mode cannot be used in Fortran.
 $   PETSC_USE_POINTER - the array values are NOT copied, the object uses the array but does NOT take ownership of the array. The user cannot use
-                        the array but the user must delete the array after the object is destroyed.
+$                       the array but the user must delete the array after the object is destroyed.
+
+   For the PetscObject input:
+$   PETSC_COPY_VALUES - the input PetscObject is cloned into the aggregate PetscObject; the user is free to reuse/modify the input PetscObject without side effects.
+$   PETSC_OWN_POINTER - the input PetscObject is referenced by pointer (with reference count), thus should not be modified by the user. (Modification may cause errors or unintended side-effects in this or a future version of PETSc.)
+   For either case above, the input PetscObject should be destroyed by the user when no longer needed (the aggregate object increases its reference count).
+$   PETSC_USE_POINTER - invalid for PetscObject inputs.
 
 E*/
 typedef enum {PETSC_COPY_VALUES, PETSC_OWN_POINTER, PETSC_USE_POINTER} PetscCopyMode;
@@ -315,8 +325,16 @@ typedef double PetscLogDouble;
    Notes:
    Use of this should be avoided if one can directly use MPI_Datatype instead.
 
+   PETSC_INT is the datatype for a PetscInt, regardless of whether it is 4 or 8 bytes.
+   PETSC_REAL, PETSC_COMPLEX and PETSC_SCALAR are the datatypes for PetscReal, PetscComplex and PetscScalar, regardless of their sizes.
+
    Developer comment:
    It would be nice if we could always just use MPI Datatypes, why can we not?
+
+   If you change any values in PetscDatatype make sure you update their usage in
+   share/petsc/matlab/PetscBagRead.m
+
+   TODO: Add PETSC_INT32 and remove use of improper PETSC_ENUM
 
 .seealso: PetscBinaryRead(), PetscBinaryWrite(), PetscDataTypeToMPIDataType(),
           PetscDataTypeGetSize()
@@ -328,21 +346,10 @@ typedef enum {PETSC_DATATYPE_UNKNOWN = 0,
               PETSC_OBJECT = 11, PETSC_FUNCTION = 12, PETSC_STRING = 13, PETSC___FP16 = 14, PETSC_STRUCT = 15,
               PETSC_INT = 16, PETSC_INT64 = 17} PetscDataType;
 
-#if defined(PETSC_USE_COMPLEX)
-#  define PETSC_SCALAR PETSC_COMPLEX
-#else
-#  if defined(PETSC_USE_REAL_SINGLE)
-#    define PETSC_SCALAR PETSC_FLOAT
-#  elif defined(PETSC_USE_REAL___FLOAT128)
-#    define PETSC_SCALAR PETSC___FLOAT128
-#  elif defined(PETSC_USE_REAL___FP16)
-#    define PETSC_SCALAR PETSC___FP16
-#  else
-#    define PETSC_SCALAR PETSC_DOUBLE
-#  endif
-#endif
 #if defined(PETSC_USE_REAL_SINGLE)
 #  define PETSC_REAL PETSC_FLOAT
+#elif defined(PETSC_USE_REAL_DOUBLE)
+#  define PETSC_REAL PETSC_DOUBLE
 #elif defined(PETSC_USE_REAL___FLOAT128)
 #  define PETSC_REAL PETSC___FLOAT128
 #elif defined(PETSC_USE_REAL___FP16)
@@ -350,6 +357,13 @@ typedef enum {PETSC_DATATYPE_UNKNOWN = 0,
 #else
 #  define PETSC_REAL PETSC_DOUBLE
 #endif
+
+#if defined(PETSC_USE_COMPLEX)
+#  define PETSC_SCALAR PETSC_COMPLEX
+#else
+#  define PETSC_SCALAR PETSC_REAL
+#endif
+
 #define PETSC_FORTRANADDR PETSC_LONG
 
 /*S
@@ -383,11 +397,7 @@ typedef struct _p_PetscObject* PetscObject;
 
 .seealso: PetscObjectState, PetscObjectGetId()
 M*/
-#if defined(PETSC_USING_F90) && !defined(PETSC_USE_FORTRANKIND) /* compaq F90 */
-   typedef int PetscObjectId;
-#else
-   typedef PetscInt64 PetscObjectId;
-#endif
+typedef PetscInt64 PetscObjectId;
 
 /*MC
     PetscObjectState - integer state for a PetscObject
@@ -400,11 +410,7 @@ M*/
 
 .seealso: PetscObjectId, PetscObjectStateGet(), PetscObjectStateIncrease(), PetscObjectStateSet()
 M*/
-#if defined(PETSC_USING_F90) && !defined(PETSC_USE_FORTRANKIND) /* compaq F90 */
-   typedef int PetscObjectState;
-#else
-   typedef PetscInt64 PetscObjectState;
-#endif
+typedef PetscInt64 PetscObjectState;
 
 /*S
      PetscFunctionList - Linked list of functions, possibly stored in dynamic libraries, accessed
@@ -412,7 +418,7 @@ M*/
 
    Level: advanced
 
-.seealso:  PetscFunctionListAdd(), PetscFunctionListDestroy(), PetscOpFlist
+.seealso:  PetscFunctionListAdd(), PetscFunctionListDestroy()
 S*/
 typedef struct _n_PetscFunctionList *PetscFunctionList;
 
@@ -435,7 +441,7 @@ typedef void* PetscDLHandle;
 typedef enum {PETSC_DL_DECIDE=0,PETSC_DL_NOW=1,PETSC_DL_LOCAL=2} PetscDLMode;
 
 /*S
-     PetscObjectList - Linked list of PETSc objects, each accessable by string name
+     PetscObjectList - Linked list of PETSc objects, each accessible by string name
 
    Level: developer
 
@@ -468,8 +474,6 @@ typedef struct _p_PetscContainer*  PetscContainer;
      PetscRandom - Abstract PETSc object that manages generating random numbers
 
    Level: intermediate
-
-  Concepts: random numbers
 
 .seealso:  PetscRandomCreate(), PetscRandomGetValue(), PetscRandomType
 S*/
@@ -520,6 +524,7 @@ typedef enum {
   /* Updates here must be accompanied by updates in finclude/petscsys.h and the string array in mpits.c */
 } PetscBuildTwoSidedType;
 
+/* NOTE: If you change this, you must also change the values in src/vec/f90-mod/petscvec.h */
 /*E
   InsertMode - Whether entries are inserted or added into vectors or matrices
 
@@ -529,7 +534,7 @@ typedef enum {
           VecSetValuesLocal(), VecSetValuesBlockedLocal(), MatSetValuesBlocked(),
           MatSetValuesBlockedLocal(), MatSetValuesLocal(), VecScatterBegin(), VecScatterEnd()
 E*/
- typedef enum {NOT_SET_VALUES, INSERT_VALUES, ADD_VALUES, MAX_VALUES, INSERT_ALL_VALUES, ADD_ALL_VALUES, INSERT_BC_VALUES, ADD_BC_VALUES} InsertMode;
+ typedef enum {NOT_SET_VALUES, INSERT_VALUES, ADD_VALUES, MAX_VALUES, MIN_VALUES, INSERT_ALL_VALUES, ADD_ALL_VALUES, INSERT_BC_VALUES, ADD_BC_VALUES} InsertMode;
 
 /*MC
     INSERT_VALUES - Put a value into a vector or matrix, overwrites any previous value
@@ -563,6 +568,16 @@ M*/
 
 M*/
 
+/*MC
+    MIN_VALUES - Puts the minimal of the scattered/gathered value and the current value into each location
+
+    Level: beginner
+
+.seealso: InsertMode, VecScatterBegin(), VecScatterEnd(), ADD_VALUES, INSERT_VALUES
+
+M*/
+
+
 /*S
    PetscSubcomm - A decomposition of an MPI communicator into subcommunicators
 
@@ -579,8 +594,6 @@ $     PetscSubcommContiguousParent() returns a parent communitor but with all ch
        PetscSubcommDestroy()
 
    Level: advanced
-
-   Concepts: communicator, create
 
    Notes:
 $   PETSC_SUBCOMM_GENERAL - similar to MPI_Comm_split() each process sets the new communicator (color) they will belong to and the order within that communicator
@@ -606,8 +619,6 @@ typedef enum {PETSC_SUBCOMM_GENERAL=0,PETSC_SUBCOMM_CONTIGUOUS=1,PETSC_SUBCOMM_I
      PetscHeap - A simple class for managing heaps
 
    Level: intermediate
-
-  Concepts: random numbers
 
 .seealso:  PetscHeapCreate(), PetscHeapAdd(), PetscHeapPop(), PetscHeapPeek(), PetscHeapStash(), PetscHeapUnstash(), PetscHeapView(), PetscHeapDestroy()
 S*/

@@ -1,4 +1,4 @@
-
+-include ../../../../../../petscdir.mk
 # This directory contains some computational kernels written in
 # Fortran77.  These are mainly intended to provide high performance for
 # COMPLEX arithmetic (since most C++ compilers do not do a good job
@@ -11,7 +11,7 @@ ALL: lib
 CFLAGS   =
 FFLAGS   =
 SOURCEC  =
-SOURCEF  = fmult.F fmultadd.F fsolve.F frelax.F
+SOURCEF90= fmult.F90 fmultadd.F90 fsolve.F90 frelax.F90
 SOURCEH  =
 LIBBASE  = libpetscmat
 MANSEC   = Sys

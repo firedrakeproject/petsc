@@ -68,7 +68,7 @@ static PetscErrorCode DMPlexLabelToMetricConstraint(DM dm, DMLabel adaptLabel, P
   ierr = DMPlexUninterpolate(dm, &udm);CHKERRQ(ierr);
   ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
   ierr = DMGetCoordinateDM(dm, &coordDM);CHKERRQ(ierr);
-  ierr = DMGetSection(coordDM, &coordSection);CHKERRQ(ierr);
+  ierr = DMGetLocalSection(coordDM, &coordSection);CHKERRQ(ierr);
   ierr = DMGetCoordinatesLocal(dm, &coordinates);CHKERRQ(ierr);
   Nv   = vEnd - vStart;
   ierr = VecCreateSeq(PETSC_COMM_SELF, Nv*PetscSqr(dim), metricVec);CHKERRQ(ierr);
@@ -190,7 +190,7 @@ PetscErrorCode DMPlexRefine_Internal(DM dm, DMLabel adaptLabel, DM *dmRefined)
   if (refinementLimit == 0.0 && !refinementFunc && !adaptLabel) PetscFunctionReturn(0);
   ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
   ierr = DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(((PetscObject) dm)->options,((PetscObject) dm)->prefix, "-dm_plex_generator", genname, 1024, &flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(((PetscObject) dm)->options,((PetscObject) dm)->prefix, "-dm_plex_generator", genname, sizeof(genname), &flg);CHKERRQ(ierr);
   if (flg) name = genname;
 
   fl = DMPlexGenerateList;
@@ -274,7 +274,7 @@ PetscErrorCode DMPlexCoarsen_Internal(DM dm, DMLabel adaptLabel, DM *dmCoarsened
   ierr = DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd);CHKERRQ(ierr);
   ierr = DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd);CHKERRQ(ierr);
   ierr = DMPlexLabelToMetricConstraint(dm, adaptLabel, cStart, cEnd, vStart, vEnd, PETSC_DEFAULT, &metricVec);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL, dm->hdr.prefix, "-dm_plex_coarsen_bd_label", bdLabelName, PETSC_MAX_PATH_LEN-1, &flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, dm->hdr.prefix, "-dm_plex_coarsen_bd_label", bdLabelName, sizeof(bdLabelName), &flg);CHKERRQ(ierr);
   if (flg) {ierr = DMGetLabel(dm, bdLabelName, &bdLabel);CHKERRQ(ierr);}
   ierr = PetscOptionsGetString(NULL, dm->hdr.prefix, "-dm_plex_coarsen_regions_label", rgLabelName, PETSC_MAX_PATH_LEN-1, &flg);CHKERRQ(ierr);
   if (flg) {ierr = DMGetLabel(dm, rgLabelName, &rgLabel);CHKERRQ(ierr);}
@@ -431,7 +431,7 @@ PetscErrorCode DMAdaptMetric_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLa
   ierr = ISRestoreIndices(globalVertexNum, &gV);CHKERRQ(ierr);
   ierr = DMDestroy(&udm);CHKERRQ(ierr);
   ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
-  ierr = DMGetSection(cdm, &coordSection);CHKERRQ(ierr);
+  ierr = DMGetLocalSection(cdm, &coordSection);CHKERRQ(ierr);
   ierr = DMGetCoordinatesLocal(dm, &coordinates);CHKERRQ(ierr);
   ierr = VecGetArrayRead(coordinates, &coords);CHKERRQ(ierr);
   for (v = vStart; v < vEnd; ++v) {

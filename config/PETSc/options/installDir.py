@@ -8,11 +8,15 @@ class Configure(config.base.Configure):
     config.base.Configure.__init__(self, framework)
     self.headerPrefix = ''
     self.substPrefix  = ''
+    self.isprefix = False
     self.dir = ''
     return
 
-  def __str__(self):
-    return ''
+  def __str1__(self):
+    if self.isprefix:
+      return '  Prefix: ' + self.dir + '\n'
+    else:
+      return '  Prefix: <inplace installation>\n'
 
   def setupHelp(self, help):
     import nargs
@@ -37,13 +41,15 @@ class Configure(config.base.Configure):
     self.installSudo        = ''
     self.installSudoMessage = ''
     if self.framework.argDB['prefix']:
+      self.isprefix = True
       self.dir = os.path.abspath(os.path.expanduser(self.framework.argDB['prefix']))
       self.petscDir = self.dir
       self.petscArch = ''
       try:
         os.makedirs(os.path.join(self.dir,'PETScTestDirectory'))
         os.rmdir(os.path.join(self.dir,'PETScTestDirectory'))
-      except:
+      except Exception as e:
+        self.logPrint('Error trying to to test write permissions on directory '+str(e))
         self.installSudoMessage = 'You do not have write permissions to the --prefix directory '+self.dir+'\nYou will be prompted for the sudo password for any external package installs'
         self.installSudo = 'sudo '
     else:

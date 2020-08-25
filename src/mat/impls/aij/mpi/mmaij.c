@@ -60,10 +60,8 @@ PetscErrorCode MatSetUpMultiply_MPIAIJ(Mat mat)
         aj[B->i[i] + j] = lid;
       }
     }
-    aij->B->cmap->n = aij->B->cmap->N = ec;
-    aij->B->cmap->bs = 1;
-
-    ierr = PetscLayoutSetUp((aij->B->cmap));CHKERRQ(ierr);
+    ierr = PetscLayoutDestroy(&aij->B->cmap);CHKERRQ(ierr);
+    ierr = PetscLayoutCreateFromSizes(PetscObjectComm((PetscObject)aij->B),ec,ec,1,&aij->B->cmap);CHKERRQ(ierr);
     ierr = PetscTableDestroy(&gid1_lid1);CHKERRQ(ierr);
 #else
     /* Make an array as long as the number of columns */
@@ -94,10 +92,8 @@ PetscErrorCode MatSetUpMultiply_MPIAIJ(Mat mat)
         aj[B->i[i] + j] = indices[aj[B->i[i] + j]];
       }
     }
-    aij->B->cmap->n = aij->B->cmap->N = ec;
-    aij->B->cmap->bs = 1;
-
-    ierr = PetscLayoutSetUp((aij->B->cmap));CHKERRQ(ierr);
+    ierr = PetscLayoutDestroy(&aij->B->cmap);CHKERRQ(ierr);
+    ierr = PetscLayoutCreateFromSizes(PetscObjectComm((PetscObject)aij->B),ec,ec,1,&aij->B->cmap);CHKERRQ(ierr);
     ierr = PetscFree(indices);CHKERRQ(ierr);
 #endif
   } else {
@@ -112,8 +108,7 @@ PetscErrorCode MatSetUpMultiply_MPIAIJ(Mat mat)
   }
 
   /* create two temporary Index sets for build scatter gather */
-  ierr = ISCreateGeneral(((PetscObject)mat)->comm,ec,garray,PETSC_COPY_VALUES,&from);CHKERRQ(ierr);
-
+  ierr = ISCreateGeneral(PETSC_COMM_SELF,ec,garray,PETSC_COPY_VALUES,&from);CHKERRQ(ierr);
   ierr = ISCreateStride(PETSC_COMM_SELF,ec,0,1,&to);CHKERRQ(ierr);
 
   /* create temporary global vector to generate scatter context */

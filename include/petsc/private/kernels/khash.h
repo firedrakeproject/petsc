@@ -1,4 +1,4 @@
-/* https://github.com/attractivechaos/klib/blob/503312bb4d7a00e69cadaa1d691e9dfba2d3b022/khash.h */
+/* https://github.com/attractivechaos/klib/blob/928581a78413bed4efa956731b35b18a638f20f3/khash.h */
 
 /* The MIT License
 
@@ -169,10 +169,10 @@ typedef khint_t khiter_t;
 #define __ac_isempty(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&2)
 #define __ac_isdel(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&1)
 #define __ac_iseither(flag, i) ((flag[i>>4]>>((i&0xfU)<<1))&3)
-#define __ac_set_isdel_false(flag, i) (flag[i>>4]&=~(1ul<<((i&0xfU)<<1)))
-#define __ac_set_isempty_false(flag, i) (flag[i>>4]&=~(2ul<<((i&0xfU)<<1)))
-#define __ac_set_isboth_false(flag, i) (flag[i>>4]&=~(3ul<<((i&0xfU)<<1)))
-#define __ac_set_isdel_true(flag, i) (flag[i>>4]|=1ul<<((i&0xfU)<<1))
+#define __ac_set_isdel_false(flag, i) (flag[i>>4]&=~(1U<<((i&0xfU)<<1)))
+#define __ac_set_isempty_false(flag, i) (flag[i>>4]&=~(2U<<((i&0xfU)<<1)))
+#define __ac_set_isboth_false(flag, i) (flag[i>>4]&=~(3U<<((i&0xfU)<<1)))
+#define __ac_set_isdel_true(flag, i) (flag[i>>4]|=1U<<((i&0xfU)<<1))
 
 #define __ac_fsize(m) ((m) < 16? 1 : (m)>>4)
 
@@ -247,7 +247,7 @@ static const double __ac_HASH_UPPER = 0.77;
 	}																	\
 	SCOPE int kh_resize_##name(kh_##name##_t *h, khint_t new_n_buckets) \
 	{ /* This function uses 0.25*n_buckets bytes of working space instead of [sizeof(key_t+val_t)+.25]*n_buckets. */ \
-		khint32_t *new_flags = 0;										\
+		khint32_t *new_flags = NULL;										\
 		khint_t j = 1;													\
 		{																\
 			kroundup32(new_n_buckets); 									\
@@ -399,7 +399,7 @@ static const double __ac_HASH_UPPER = 0.77;
 static kh_inline khint_t __ac_X31_hash_string(const char *s)
 {
 	khint_t h = (khint_t)*s;
-	if (h) for (++s ; *s; ++s) h = (h << 5) - h + (khint_t)*s;
+	if (h) for (++s ; *s; ++s) h = (khint_t)((h << 5) - h) + (khint_t)*s;
 	return h;
 }
 /*! @function
@@ -580,7 +580,7 @@ static kh_inline khint_t __ac_Wang_hash(khint_t key)
 		code;												\
 	} }
 
-/* More conenient interfaces */
+/* More convenient interfaces */
 
 /*! @function
   @abstract     Instantiate a hash set containing integer keys
@@ -598,7 +598,7 @@ static kh_inline khint_t __ac_Wang_hash(khint_t key)
 	KHASH_INIT(name, khint32_t, khval_t, 1, kh_int_hash_func, kh_int_hash_equal)
 
 /*! @function
-  @abstract     Instantiate a hash map containing 64-bit integer keys
+  @abstract     Instantiate a hash set containing 64-bit integer keys
   @param  name  Name of the hash table [symbol]
  */
 #define KHASH_SET_INIT_INT64(name)										\

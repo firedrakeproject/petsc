@@ -1,7 +1,10 @@
 #define PETSC_SKIP_SPINLOCK
+#define PETSC_SKIP_CXX_COMPLEX_FIX
+#define PETSC_SKIP_IMMINTRIN_H_CUDAWORKAROUND 1
 
 #include <petscconf.h>
 #include <../src/mat/impls/aij/mpi/mpiaij.h>   /*I "petscmat.h" I*/
+#include <../src/mat/impls/aij/seq/seqcusparse/cusparsematimpl.h>
 #include <../src/mat/impls/aij/mpi/mpicusparse/mpicusparsematimpl.h>
 
 PetscErrorCode  MatMPIAIJSetPreallocation_MPIAIJCUSPARSE(Mat B,PetscInt d_nz,const PetscInt d_nnz[],PetscInt o_nz,const PetscInt o_nnz[])
@@ -27,10 +30,12 @@ PetscErrorCode  MatMPIAIJSetPreallocation_MPIAIJCUSPARSE(Mat B,PetscInt d_nz,con
   if (!B->preallocated) {
     /* Explicitly create 2 MATSEQAIJCUSPARSE matrices. */
     ierr = MatCreate(PETSC_COMM_SELF,&b->A);CHKERRQ(ierr);
+    ierr = MatBindToCPU(b->A,B->boundtocpu);CHKERRQ(ierr);
     ierr = MatSetSizes(b->A,B->rmap->n,B->cmap->n,B->rmap->n,B->cmap->n);CHKERRQ(ierr);
     ierr = MatSetType(b->A,MATSEQAIJCUSPARSE);CHKERRQ(ierr);
     ierr = PetscLogObjectParent((PetscObject)B,(PetscObject)b->A);CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_SELF,&b->B);CHKERRQ(ierr);
+    ierr = MatBindToCPU(b->B,B->boundtocpu);CHKERRQ(ierr);
     ierr = MatSetSizes(b->B,B->rmap->n,B->cmap->N,B->rmap->n,B->cmap->N);CHKERRQ(ierr);
     ierr = MatSetType(b->B,MATSEQAIJCUSPARSE);CHKERRQ(ierr);
     ierr = PetscLogObjectParent((PetscObject)B,(PetscObject)b->B);CHKERRQ(ierr);
@@ -50,17 +55,6 @@ PetscErrorCode  MatMPIAIJSetPreallocation_MPIAIJCUSPARSE(Mat B,PetscInt d_nz,con
 
 PetscErrorCode MatMult_MPIAIJCUSPARSE(Mat A,Vec xx,Vec yy)
 {
-  /* This multiplication sequence is different sequence
-     than the CPU version. In particular, the diagonal block
-     multiplication kernel is launched in one stream. Then,
-     in a separate stream, the data transfers from DeviceToHost
-     (with MPI messaging in between), then HostToDevice are
-     launched. Once the data transfer stream is synchronized,
-     to ensure messaging is complete, the MatMultAdd kernel
-     is launched in the original (MatMult) stream to protect
-     against race conditions.
-
-     This sequence should only be called for GPU computation. */
   Mat_MPIAIJ     *a = (Mat_MPIAIJ*)A->data;
   PetscErrorCode ierr;
   PetscInt       nt;
@@ -69,27 +63,34 @@ PetscErrorCode MatMult_MPIAIJCUSPARSE(Mat A,Vec xx,Vec yy)
   ierr = VecGetLocalSize(xx,&nt);CHKERRQ(ierr);
   if (nt != A->cmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Incompatible partition of A (%D) and xx (%D)",A->cmap->n,nt);
   ierr = VecScatterInitializeForGPU(a->Mvctx,xx);CHKERRQ(ierr);
-  ierr = (*a->A->ops->mult)(a->A,xx,yy);CHKERRQ(ierr);
   ierr = VecScatterBegin(a->Mvctx,xx,a->lvec,INSERT_VALUES,SCATTER_FORWARD);CHKERRQ(ierr);
+  ierr = (*a->A->ops->mult)(a->A,xx,yy);CHKERRQ(ierr);
   ierr = VecScatterEnd(a->Mvctx,xx,a->lvec,INSERT_VALUES,SCATTER_FORWARD);CHKERRQ(ierr);
   ierr = (*a->B->ops->multadd)(a->B,a->lvec,yy,yy);CHKERRQ(ierr);
   ierr = VecScatterFinalizeForGPU(a->Mvctx);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode MatMultAdd_MPIAIJCUSPARSE(Mat A,Vec xx,Vec yy,Vec zz)
+{
+  Mat_MPIAIJ     *a = (Mat_MPIAIJ*)A->data;
+  PetscErrorCode ierr;
+  PetscInt       nt;
+
+  PetscFunctionBegin;
+  ierr = VecGetLocalSize(xx,&nt);CHKERRQ(ierr);
+  if (nt != A->cmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Incompatible partition of A (%D) and xx (%D)",A->cmap->n,nt);
+  ierr = VecScatterInitializeForGPU(a->Mvctx,xx);CHKERRQ(ierr);
+  ierr = VecScatterBegin(a->Mvctx,xx,a->lvec,INSERT_VALUES,SCATTER_FORWARD);CHKERRQ(ierr);
+  ierr = (*a->A->ops->multadd)(a->A,xx,yy,zz);CHKERRQ(ierr);
+  ierr = VecScatterEnd(a->Mvctx,xx,a->lvec,INSERT_VALUES,SCATTER_FORWARD);CHKERRQ(ierr);
+  ierr = (*a->B->ops->multadd)(a->B,a->lvec,zz,zz);CHKERRQ(ierr);
+  ierr = VecScatterFinalizeForGPU(a->Mvctx);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode MatMultTranspose_MPIAIJCUSPARSE(Mat A,Vec xx,Vec yy)
 {
-  /* This multiplication sequence is different sequence
-     than the CPU version. In particular, the diagonal block
-     multiplication kernel is launched in one stream. Then,
-     in a separate stream, the data transfers from DeviceToHost
-     (with MPI messaging in between), then HostToDevice are
-     launched. Once the data transfer stream is synchronized,
-     to ensure messaging is complete, the MatMultAdd kernel
-     is launched in the original (MatMult) stream to protect
-     against race conditions.
-
-     This sequence should only be called for GPU computation. */
   Mat_MPIAIJ     *a = (Mat_MPIAIJ*)A->data;
   PetscErrorCode ierr;
   PetscInt       nt;
@@ -97,7 +98,7 @@ PetscErrorCode MatMultTranspose_MPIAIJCUSPARSE(Mat A,Vec xx,Vec yy)
   PetscFunctionBegin;
   ierr = VecGetLocalSize(xx,&nt);CHKERRQ(ierr);
   if (nt != A->rmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Incompatible partition of A (%D) and xx (%D)",A->rmap->n,nt);
-  ierr = VecScatterInitializeForGPU(a->Mvctx,xx);CHKERRQ(ierr);
+  ierr = VecScatterInitializeForGPU(a->Mvctx,a->lvec);CHKERRQ(ierr);
   ierr = (*a->B->ops->multtranspose)(a->B,xx,a->lvec);CHKERRQ(ierr);
   ierr = (*a->A->ops->multtranspose)(a->A,xx,yy);CHKERRQ(ierr);
   ierr = VecScatterBegin(a->Mvctx,a->lvec,yy,ADD_VALUES,SCATTER_REVERSE);CHKERRQ(ierr);
@@ -184,51 +185,72 @@ PetscErrorCode MatDestroy_MPIAIJCUSPARSE(Mat A)
 
   PetscFunctionBegin;
   try {
-    ierr = MatCUSPARSEClearHandle(a->A);CHKERRQ(ierr);
-    ierr = MatCUSPARSEClearHandle(a->B);CHKERRQ(ierr);
-    stat = cusparseDestroy(cusparseStruct->handle);CHKERRCUDA(stat);
-    err = cudaStreamDestroy(cusparseStruct->stream);CHKERRCUDA(err);
+    if (a->A) { ierr = MatCUSPARSEClearHandle(a->A);CHKERRQ(ierr); }
+    if (a->B) { ierr = MatCUSPARSEClearHandle(a->B);CHKERRQ(ierr); }
+    stat = cusparseDestroy(cusparseStruct->handle);CHKERRCUSPARSE(stat);
+    if (cusparseStruct->stream) {
+      err = cudaStreamDestroy(cusparseStruct->stream);CHKERRCUDA(err);
+    }
     delete cusparseStruct;
   } catch(char *ex) {
     SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"Mat_MPIAIJCUSPARSE error: %s", ex);
   }
-  cusparseStruct = 0;
-
+  ierr = PetscObjectComposeFunction((PetscObject)A,"MatMPIAIJSetPreallocation_C",NULL);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)A,"MatCUSPARSESetFormat_C",NULL);CHKERRQ(ierr);
   ierr = MatDestroy_MPIAIJ(A);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode MatCreate_MPIAIJCUSPARSE(Mat A)
+PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPIAIJCUSPARSE(Mat B, MatType mtype, MatReuse reuse, Mat* newmat)
 {
   PetscErrorCode     ierr;
   Mat_MPIAIJ         *a;
-  Mat_MPIAIJCUSPARSE * cusparseStruct;
-  cudaError_t        err;
+  Mat_MPIAIJCUSPARSE *cusparseStruct;
   cusparseStatus_t   stat;
+  Mat                A;
 
   PetscFunctionBegin;
-  ierr = MatCreate_MPIAIJ(A);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatMPIAIJSetPreallocation_C",MatMPIAIJSetPreallocation_MPIAIJCUSPARSE);CHKERRQ(ierr);
+  if (reuse == MAT_INITIAL_MATRIX) {
+    ierr = MatDuplicate(B,MAT_COPY_VALUES,newmat);CHKERRQ(ierr);
+  } else if (reuse == MAT_REUSE_MATRIX) {
+    ierr = MatCopy(B,*newmat,SAME_NONZERO_PATTERN);CHKERRQ(ierr);
+  }
+  A = *newmat;
+
   ierr = PetscFree(A->defaultvectype);CHKERRQ(ierr);
   ierr = PetscStrallocpy(VECCUDA,&A->defaultvectype);CHKERRQ(ierr);
 
-  a        = (Mat_MPIAIJ*)A->data;
-  a->spptr = new Mat_MPIAIJCUSPARSE;
+  a = (Mat_MPIAIJ*)A->data;
+  if (reuse != MAT_REUSE_MATRIX && !a->spptr) {
+    a->spptr = new Mat_MPIAIJCUSPARSE;
 
-  cusparseStruct                      = (Mat_MPIAIJCUSPARSE*)a->spptr;
-  cusparseStruct->diagGPUMatFormat    = MAT_CUSPARSE_CSR;
-  cusparseStruct->offdiagGPUMatFormat = MAT_CUSPARSE_CSR;
-  stat = cusparseCreate(&(cusparseStruct->handle));CHKERRCUDA(stat);
-  err = cudaStreamCreate(&(cusparseStruct->stream));CHKERRCUDA(err);
+    cusparseStruct                      = (Mat_MPIAIJCUSPARSE*)a->spptr;
+    cusparseStruct->diagGPUMatFormat    = MAT_CUSPARSE_CSR;
+    cusparseStruct->offdiagGPUMatFormat = MAT_CUSPARSE_CSR;
+    cusparseStruct->stream              = 0;
+    stat = cusparseCreate(&(cusparseStruct->handle));CHKERRCUSPARSE(stat);
+  }
 
   A->ops->assemblyend    = MatAssemblyEnd_MPIAIJCUSPARSE;
   A->ops->mult           = MatMult_MPIAIJCUSPARSE;
+  A->ops->multadd        = MatMultAdd_MPIAIJCUSPARSE;
   A->ops->multtranspose  = MatMultTranspose_MPIAIJCUSPARSE;
   A->ops->setfromoptions = MatSetFromOptions_MPIAIJCUSPARSE;
   A->ops->destroy        = MatDestroy_MPIAIJCUSPARSE;
 
   ierr = PetscObjectChangeTypeName((PetscObject)A,MATMPIAIJCUSPARSE);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatCUSPARSESetFormat_C",  MatCUSPARSESetFormat_MPIAIJCUSPARSE);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)A,"MatMPIAIJSetPreallocation_C",MatMPIAIJSetPreallocation_MPIAIJCUSPARSE);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)A,"MatCUSPARSESetFormat_C",MatCUSPARSESetFormat_MPIAIJCUSPARSE);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PETSC_EXTERN PetscErrorCode MatCreate_MPIAIJCUSPARSE(Mat A)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = MatCreate_MPIAIJ(A);CHKERRQ(ierr);
+  ierr = MatConvert_MPIAIJ_MPIAIJCUSPARSE(A,MATMPIAIJCUSPARSE,MAT_INPLACE_MATRIX,&A);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -240,7 +262,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_MPIAIJCUSPARSE(Mat A)
    the parameter nz (or the array nnz).  By setting these parameters accurately,
    performance during matrix assembly can be increased by more than a factor of 50.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI communicator, set to PETSC_COMM_SELF

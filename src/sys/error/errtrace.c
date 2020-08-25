@@ -33,8 +33,6 @@ $     SETERRQ(comm,number,p,mess)
    currently available PETSc error handlers include PetscTraceBackErrorHandler(),
    PetscAttachDebuggerErrorHandler(), PetscAbortErrorHandler(), and PetscMPIAbortErrorHandler()
 
-   Concepts: error handler^traceback
-   Concepts: traceback^generating
 
 .seealso:  PetscPushErrorHandler(), PetscAttachDebuggerErrorHandler(),
           PetscAbortErrorHandler(), PetscTraceBackErrorHandler()
@@ -64,7 +62,7 @@ PetscErrorCode  PetscErrorPrintfInitialize(void)
   ierr = PetscGetArchType(arch,sizeof(arch));CHKERRQ(ierr);
   ierr = PetscGetHostName(hostname,sizeof(hostname));CHKERRQ(ierr);
   ierr = PetscGetUserName(username,sizeof(username));CHKERRQ(ierr);
-  ierr = PetscGetProgramName(pname,PETSC_MAX_PATH_LEN);CHKERRQ(ierr);
+  ierr = PetscGetProgramName(pname,sizeof(pname));CHKERRQ(ierr);
   ierr = PetscGetDate(date,sizeof(date));CHKERRQ(ierr);
   ierr = PetscGetVersion(version,sizeof(version));CHKERRQ(ierr);
 
@@ -167,8 +165,6 @@ $     SETERRQ(comm,number,n,mess)
    currently available PETSc error handlers include PetscTraceBackErrorHandler(),
    PetscAttachDebuggerErrorHandler(), PetscAbortErrorHandler(), and PetscMPIAbortErrorHandler()
 
-   Concepts: error handler^traceback
-   Concepts: traceback^generating
 
 .seealso:  PetscPushErrorHandler(), PetscAttachDebuggerErrorHandler(),
           PetscAbortErrorHandler()
@@ -197,13 +193,13 @@ PetscErrorCode  PetscTraceBackErrorHandler(MPI_Comm comm,int line,const char *fu
         PetscMallocGetCurrentUsage(&mem);
         PetscMemoryGetCurrentUsage(&rss);
         PetscOptionsGetBool(NULL,NULL,"-malloc_dump",&flg1,NULL);
-        PetscOptionsGetBool(NULL,NULL,"-malloc_log",&flg2,NULL);
-        PetscOptionsHasName(NULL,NULL,"-malloc_log_threshold",&flg3);
-        if (flg2 || flg3) PetscMallocDumpLog(stdout);
+        PetscOptionsGetBool(NULL,NULL,"-malloc_view",&flg2,NULL);
+        PetscOptionsHasName(NULL,NULL,"-malloc_view_threshold",&flg3);
+        if (flg2 || flg3) PetscMallocView(stdout);
         else {
           (*PetscErrorPrintf)("Memory allocated %.0f Memory used by process %.0f\n",mem,rss);
           if (flg1) PetscMallocDump(stdout);
-          else (*PetscErrorPrintf)("Try running with -malloc_dump or -malloc_log for info.\n");
+          else (*PetscErrorPrintf)("Try running with -malloc_dump or -malloc_view for info.\n");
         }
       } else {
         const char *text;
@@ -211,7 +207,7 @@ PetscErrorCode  PetscTraceBackErrorHandler(MPI_Comm comm,int line,const char *fu
         if (text) (*PetscErrorPrintf)("%s\n",text);
       }
       if (mess) (*PetscErrorPrintf)("%s\n",mess);
-      (*PetscErrorPrintf)("See http://www.mcs.anl.gov/petsc/documentation/faq.html for trouble shooting.\n");
+      (*PetscErrorPrintf)("See https://www.mcs.anl.gov/petsc/documentation/faq.html for trouble shooting.\n");
       (*PetscErrorPrintf)("%s\n",version);
       if (PetscErrorPrintfInitializeCalled) (*PetscErrorPrintf)("%s on a %s named %s by %s %s\n",pname,arch,hostname,username,date);
       (*PetscErrorPrintf)("Configure options %s\n",petscconfigureoptions);

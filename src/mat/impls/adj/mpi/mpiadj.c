@@ -10,10 +10,11 @@
  * */
 static PetscErrorCode MatCreateSubMatrix_MPIAdj_data(Mat adj,IS irows, IS icols, PetscInt **sadj_xadj,PetscInt **sadj_adjncy,PetscInt **sadj_values)
 {
-  PetscInt           nlrows_is,icols_n,i,j,nroots,nleaves,owner,rlocalindex,*ncols_send,*ncols_recv;
+  PetscInt           nlrows_is,icols_n,i,j,nroots,nleaves,rlocalindex,*ncols_send,*ncols_recv;
   PetscInt           nlrows_mat,*adjncy_recv,Ncols_recv,Ncols_send,*xadj_recv,*values_recv;
   PetscInt          *ncols_recv_offsets,loc,rnclos,*sadjncy,*sxadj,*svalues;
   const PetscInt    *irows_indices,*icols_indices,*xadj, *adjncy;
+  PetscMPIInt        owner;
   Mat_MPIAdj        *a = (Mat_MPIAdj*)adj->data;
   PetscLayout        rmap;
   MPI_Comm           comm;
@@ -27,7 +28,7 @@ static PetscErrorCode MatCreateSubMatrix_MPIAdj_data(Mat adj,IS irows, IS icols,
   ierr = MatGetLayouts(adj,&rmap,NULL);CHKERRQ(ierr);
   ierr = ISGetLocalSize(irows,&nlrows_is);CHKERRQ(ierr);
   ierr = ISGetIndices(irows,&irows_indices);CHKERRQ(ierr);
-  ierr = PetscCalloc1(nlrows_is,&iremote);CHKERRQ(ierr);
+  ierr = PetscMalloc1(nlrows_is,&iremote);CHKERRQ(ierr);
   /* construct sf graph*/
   nleaves = nlrows_is;
   for (i=0; i<nlrows_is; i++){
@@ -151,9 +152,9 @@ static PetscErrorCode MatCreateSubMatrices_MPIAdj_Private(Mat mat,PetscInt n,con
     ierr = ISGetLocalSize(icol[i],&icol_n);CHKERRQ(ierr);
     nindx = nindx>(irow_n+icol_n)? nindx:(irow_n+icol_n);
   }
-  ierr = PetscCalloc1(nindx,&indices);CHKERRQ(ierr);
+  ierr = PetscMalloc1(nindx,&indices);CHKERRQ(ierr);
   /* construct a submat */
-  for(i=0; i<n; i++){
+  for (i=0; i<n; i++){
     if (subcomm){
       ierr = PetscObjectGetComm((PetscObject)irow[i],&scomm_row);CHKERRQ(ierr);
       ierr = PetscObjectGetComm((PetscObject)icol[i],&scomm_col);CHKERRQ(ierr);
@@ -170,20 +171,18 @@ static PetscErrorCode MatCreateSubMatrices_MPIAdj_Private(Mat mat,PetscInt n,con
     ierr = ISGetLocalSize(irow[i],&irow_n);CHKERRQ(ierr);
     ierr = ISGetLocalSize(icol[i],&icol_n);CHKERRQ(ierr);
     ierr = ISGetIndices(irow[i],&irow_indices);CHKERRQ(ierr);
-    ierr = PetscMemcpy(indices,irow_indices,sizeof(PetscInt)*irow_n);CHKERRQ(ierr);
+    ierr = PetscArraycpy(indices,irow_indices,irow_n);CHKERRQ(ierr);
     ierr = ISRestoreIndices(irow[i],&irow_indices);CHKERRQ(ierr);
     ierr = ISGetIndices(icol[i],&icol_indices);CHKERRQ(ierr);
-    ierr = PetscMemcpy(indices+irow_n,icol_indices,sizeof(PetscInt)*icol_n);CHKERRQ(ierr);
+    ierr = PetscArraycpy(indices+irow_n,icol_indices,icol_n);CHKERRQ(ierr);
     ierr = ISRestoreIndices(icol[i],&icol_indices);CHKERRQ(ierr);
     nindx = irow_n+icol_n;
     ierr = PetscSortRemoveDupsInt(&nindx,indices);CHKERRQ(ierr);
     /* renumber columns */
-    for(j=0; j<irow_n; j++){
-      for(k=sxadj[j]; k<sxadj[j+1]; k++){
+    for (j=0; j<irow_n; j++){
+      for (k=sxadj[j]; k<sxadj[j+1]; k++){
         ierr = PetscFindInt(sadjncy[k],nindx,indices,&loc);CHKERRQ(ierr);
-#if defined(PETSC_USE_DEBUG)
         if (loc<0) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"can not find col %D",sadjncy[k]);
-#endif
         sadjncy[k] = loc;
       }
     }
@@ -195,9 +194,9 @@ static PetscErrorCode MatCreateSubMatrices_MPIAdj_Private(Mat mat,PetscInt n,con
        ierr = PetscObjectGetComm((PetscObject)sadj,&scomm_mat);CHKERRQ(ierr);
        ierr = MPI_Comm_compare(scomm_row,scomm_mat,&issame);CHKERRQ(ierr);
        if (issame != MPI_IDENT) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"submatrix  must have the same comm as the col index set\n");
-       ierr = PetscMemcpy(sa->i,sxadj,sizeof(PetscInt)*(irow_n+1));CHKERRQ(ierr);
-       ierr = PetscMemcpy(sa->j,sadjncy,sizeof(PetscInt)*sxadj[irow_n]);CHKERRQ(ierr);
-       if (svalues){ierr = PetscMemcpy(sa->values,svalues,sizeof(PetscInt)*sxadj[irow_n]);CHKERRQ(ierr);}
+       ierr = PetscArraycpy(sa->i,sxadj,irow_n+1);CHKERRQ(ierr);
+       ierr = PetscArraycpy(sa->j,sadjncy,sxadj[irow_n]);CHKERRQ(ierr);
+       if (svalues){ierr = PetscArraycpy(sa->values,svalues,sxadj[irow_n]);CHKERRQ(ierr);}
        ierr = PetscFree(sxadj);CHKERRQ(ierr);
        ierr = PetscFree(sadjncy);CHKERRQ(ierr);
        if (svalues) {ierr = PetscFree(svalues);CHKERRQ(ierr);}
@@ -367,7 +366,7 @@ static PetscErrorCode MatEqual_MPIAdj(Mat A,Mat B,PetscBool * flg)
   }
 
   /* if the a->i are the same */
-  ierr = PetscMemcmp(a->i,b->i,(A->rmap->n+1)*sizeof(PetscInt),&flag);CHKERRQ(ierr);
+  ierr = PetscArraycmp(a->i,b->i,A->rmap->n+1,&flag);CHKERRQ(ierr);
 
   /* if a->j are the same */
   ierr = PetscMemcmp(a->j,b->j,(a->nz)*sizeof(PetscInt),&flag);CHKERRQ(ierr);
@@ -625,9 +624,6 @@ static PetscErrorCode  MatMPIAdjSetPreallocation_MPIAdj(Mat B,PetscInt *i,PetscI
   Mat_MPIAdj     *b = (Mat_MPIAdj*)B->data;
   PetscBool       useedgeweights;
   PetscErrorCode ierr;
-#if defined(PETSC_USE_DEBUG)
-  PetscInt ii;
-#endif
 
   PetscFunctionBegin;
   ierr = PetscLayoutSetUp(B->rmap);CHKERRQ(ierr);
@@ -636,15 +632,17 @@ static PetscErrorCode  MatMPIAdjSetPreallocation_MPIAdj(Mat B,PetscInt *i,PetscI
   /* Make everybody knows if they are using edge weights or not */
   ierr = MPIU_Allreduce((int*)&useedgeweights,(int*)&b->useedgeweights,1,MPI_INT,MPI_MAX,PetscObjectComm((PetscObject)B));CHKERRQ(ierr);
 
-#if defined(PETSC_USE_DEBUG)
-  if (i[0] != 0) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"First i[] index must be zero, instead it is %D\n",i[0]);
-  for (ii=1; ii<B->rmap->n; ii++) {
-    if (i[ii] < 0 || i[ii] < i[ii-1]) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"i[%D]=%D index is out of range: i[%D]=%D",ii,i[ii],ii-1,i[ii-1]);
+  if (PetscDefined(USE_DEBUG)) {
+    PetscInt ii;
+
+    if (i[0] != 0) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"First i[] index must be zero, instead it is %D\n",i[0]);
+    for (ii=1; ii<B->rmap->n; ii++) {
+      if (i[ii] < 0 || i[ii] < i[ii-1]) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"i[%D]=%D index is out of range: i[%D]=%D",ii,i[ii],ii-1,i[ii-1]);
+    }
+    for (ii=0; ii<i[B->rmap->n]; ii++) {
+      if (j[ii] < 0 || j[ii] >= B->cmap->N) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Column index %D out of range %D\n",ii,j[ii]);
+    }
   }
-  for (ii=0; ii<i[B->rmap->n]; ii++) {
-    if (j[ii] < 0 || j[ii] >= B->cmap->N) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Column index %D out of range %D\n",ii,j[ii]);
-  }
-#endif
   B->preallocated = PETSC_TRUE;
 
   b->j      = j;
@@ -725,7 +723,7 @@ PetscErrorCode  MatMPIAdjToSeq_MPIAdj(Mat A,Mat *B)
   ierr = MPI_Allreduce(&nz,&NZ,1,MPIU_INT,MPI_SUM,PetscObjectComm((PetscObject)A));CHKERRQ(ierr);
 
   ierr = PetscMPIIntCast(nz,&mnz);CHKERRQ(ierr);
-  ierr = PetscCalloc2(size,&allnz,size,&dispnz);CHKERRQ(ierr);
+  ierr = PetscMalloc2(size,&allnz,size,&dispnz);CHKERRQ(ierr);
   ierr = MPI_Allgather(&mnz,1,MPI_INT,allnz,1,MPI_INT,PetscObjectComm((PetscObject)A));CHKERRQ(ierr);
   dispnz[0] = 0; for (i=1; i<size; i++) dispnz[i] = dispnz[i-1]+ allnz[i-1];
   if (adj->values) {
@@ -813,7 +811,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_MPIAdj(Mat B)
 /*@C
    MatMPIAdjToSeq - Converts an parallel MPIAdj matrix to complete MPIAdj on each process (needed by sequential preconditioners)
 
-   Logically Collective on MPI_Comm
+   Logically Collective
 
    Input Parameter:
 .  A - the matrix
@@ -837,7 +835,7 @@ PetscErrorCode  MatMPIAdjToSeq(Mat A,Mat *B)
 /*@C
    MatMPIAdjSetPreallocation - Sets the array used for storing the matrix elements
 
-   Logically Collective on MPI_Comm
+   Logically Collective
 
    Input Parameters:
 +  A - the matrix
@@ -864,7 +862,7 @@ PetscErrorCode  MatMPIAdjSetPreallocation(Mat B,PetscInt *i,PetscInt *j,PetscInt
    The matrix does not have numerical values associated with it, but is
    intended for ordering (to reduce bandwidth etc) and partitioning.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - MPI communicator
@@ -906,10 +904,3 @@ PetscErrorCode  MatCreateMPIAdj(MPI_Comm comm,PetscInt m,PetscInt N,PetscInt *i,
   ierr = MatMPIAdjSetPreallocation(*A,i,j,values);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
-
-
-
-
-
-

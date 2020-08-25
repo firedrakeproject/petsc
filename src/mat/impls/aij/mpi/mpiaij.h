@@ -1,4 +1,3 @@
-
 #if !defined(__MPIAIJ_H)
 #define __MPIAIJ_H
 
@@ -11,11 +10,9 @@ typedef struct { /* used by MatCreateMPIAIJSumSeqAIJ for reusing the merged matr
   PetscMPIInt nsend,nrecv;
   PetscInt    *bi,*bj;    /* i and j array of the local portion of mpi C (matrix product) - rename to ci, cj! */
   PetscInt    *owners_co,*coi,*coj;    /* i and j array of (p->B)^T*A*P - used in the communication */
-  PetscErrorCode (*destroy)(Mat);
-  PetscErrorCode (*duplicate)(Mat,MatDuplicateOption,Mat*);
 } Mat_Merge_SeqsToMPI;
 
-typedef struct { /* used by MatPtAP_MPIAIJ_MPIAIJ() and MatMatMult_MPIAIJ_MPIAIJ() */
+typedef struct { /* used by MatPtAPXXX_MPIAIJ_MPIAIJ() and MatMatMultXXX_MPIAIJ_MPIAIJ() */
   PetscInt               *startsj_s,*startsj_r;    /* used by MatGetBrowsOfAoCols_MPIAIJ */
   PetscScalar            *bufa;                    /* used by MatGetBrowsOfAoCols_MPIAIJ */
   Mat                     P_loc,P_oth;             /* partial B_seq -- intend to replace B_seq */
@@ -26,14 +23,12 @@ typedef struct { /* used by MatPtAP_MPIAIJ_MPIAIJ() and MatMatMult_MPIAIJ_MPIAIJ
   Mat                     A_loc;                   /* used by MatTransposeMatMult(), contains api and apj */
   ISLocalToGlobalMapping  ltog;                    /* mapping from local column indices to global column indices for A_loc */
   Mat                     Pt;                      /* used by MatTransposeMatMult(), Pt = P^T */
-  PetscBool               freestruct;              /* flag for MatFreeIntermediateDataStructures() */
   Mat                     Rd,Ro,AP_loc,C_loc,C_oth;
   PetscInt                algType;                 /* implementation algorithm */
+  PetscSF                 sf;                      /* use it to communicate remote part of C */
+  PetscInt                *c_othi,*c_rmti;
 
   Mat_Merge_SeqsToMPI *merge;
-  PetscErrorCode (*destroy)(Mat);
-  PetscErrorCode (*duplicate)(Mat,MatDuplicateOption,Mat*);
-  PetscErrorCode (*view)(Mat,PetscViewer);
 } Mat_APMPI;
 
 typedef struct {
@@ -71,13 +66,7 @@ typedef struct {
   /* Used by MatDistribute_MPIAIJ() to allow reuse of previous matrix allocation  and nonzero pattern */
   PetscInt *ld;                    /* number of entries per row left of diagona block */
 
-  /* Used by MatMatMult() and MatPtAP() */
-  Mat_APMPI *ap;
-
-  /* used by MatMatMatMult() */
-  Mat_MatMatMatMult *matmatmatmult;
-
-  /* Used by MPICUSP and MPICUSPARSE classes */
+  /* Used by MPICUSPARSE classes */
   void * spptr;
 
 } Mat_MPIAIJ;
@@ -107,53 +96,57 @@ PETSC_INTERN PetscErrorCode MatGetMultiProcBlock_MPIAIJ(Mat,MPI_Comm,MatReuse,Ma
 PETSC_INTERN PetscErrorCode MatLoad_MPIAIJ(Mat,PetscViewer);
 PETSC_INTERN PetscErrorCode MatLoad_MPIAIJ_Binary(Mat,PetscViewer);
 PETSC_INTERN PetscErrorCode MatCreateColmap_MPIAIJ_Private(Mat);
-PETSC_INTERN PetscErrorCode MatMatMult_MPIDense_MPIAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMult_MPIAIJ_MPIAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ_nonscalable(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ_seqMPI(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ(Mat,Mat,PetscReal,Mat*);
+
+PETSC_INTERN PetscErrorCode MatProductSetFromOptions_MPIAIJ(Mat);
+PETSC_INTERN PetscErrorCode MatProductSymbolic_AB_MPIAIJ_MPIAIJ(Mat);
+
+PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_MPIAIJ_MPIAIJ(Mat);
+
+PETSC_INTERN PetscErrorCode MatProductSymbolic_RARt_MPIAIJ_MPIAIJ(Mat);
+PETSC_INTERN PetscErrorCode MatProductNumeric_RARt_MPIAIJ_MPIAIJ(Mat);
+
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ_nonscalable(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ_seqMPI(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatMatMultNumeric_MPIAIJ_MPIAIJ(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatMatMultNumeric_MPIAIJ_MPIAIJ_nonscalable(Mat,Mat,Mat);
 
-PETSC_INTERN PetscErrorCode MatMatMatMult_MPIAIJ_MPIAIJ_MPIAIJ(Mat,Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatMatMatMultSymbolic_MPIAIJ_MPIAIJ_MPIAIJ(Mat,Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatMatMatMultSymbolic_MPIAIJ_MPIAIJ_MPIAIJ(Mat,Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatMatMatMultNumeric_MPIAIJ_MPIAIJ_MPIAIJ(Mat,Mat,Mat,Mat);
 
-PETSC_INTERN PetscErrorCode MatPtAP_MPIAIJ_MPIAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIAIJ(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIAIJ(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIAIJ(Mat,Mat,Mat);
 
-PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIAIJ_scalable(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIAIJ_scalable(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIAIJ_allatonce(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIAIJ_allatonce_merged(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIAIJ_scalable(Mat,Mat,Mat);
-PETSC_INTERN PetscErrorCode MatFreeIntermediateDataStructures_MPIAIJ_AP(Mat);
-PETSC_INTERN PetscErrorCode MatFreeIntermediateDataStructures_MPIAIJ_BC(Mat);
+PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIAIJ_allatonce(Mat,Mat,Mat);
+PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIAIJ_allatonce_merged(Mat,Mat,Mat);
 
 #if defined(PETSC_HAVE_HYPRE)
-PETSC_INTERN PetscErrorCode MatPtAPSymbolic_AIJ_AIJ_wHYPRE(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_AIJ_AIJ_wHYPRE(Mat,Mat,PetscReal,Mat);
+#endif
+#if defined(PETSC_HAVE_SCALAPACK)
+PETSC_INTERN PetscErrorCode MatConvert_AIJ_ScaLAPACK(Mat,MatType,MatReuse,Mat*);
 #endif
 
-PETSC_INTERN PetscErrorCode MatDestroy_MPIAIJ_PtAP(Mat);
 PETSC_INTERN PetscErrorCode MatDestroy_MPIAIJ(Mat);
-
-PETSC_INTERN PetscErrorCode MatRARt_MPIAIJ_MPIAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatDestroy_MPIAIJ_PtAP(void*);
+PETSC_INTERN PetscErrorCode MatDestroy_MPIAIJ_MatMatMult(void*);
 
 PETSC_INTERN PetscErrorCode MatGetBrowsOfAoCols_MPIAIJ(Mat,Mat,MatReuse,PetscInt**,PetscInt**,MatScalar**,Mat*);
 PETSC_INTERN PetscErrorCode MatSetValues_MPIAIJ(Mat,PetscInt,const PetscInt[],PetscInt,const PetscInt[],const PetscScalar [],InsertMode);
 PETSC_INTERN PetscErrorCode MatSetValues_MPIAIJ_CopyFromCSRFormat(Mat,const PetscInt[],const PetscInt[],const PetscScalar[]);
 PETSC_INTERN PetscErrorCode MatSetValues_MPIAIJ_CopyFromCSRFormat_Symbolic(Mat,const PetscInt[],const PetscInt[]);
-PETSC_INTERN PetscErrorCode MatDestroy_MPIAIJ_MatMatMult(Mat);
-PETSC_INTERN PetscErrorCode PetscContainerDestroy_Mat_MatMatMultMPI(void*);
 PETSC_INTERN PetscErrorCode MatSetOption_MPIAIJ(Mat,MatOption,PetscBool);
 
-PETSC_INTERN PetscErrorCode MatTransposeMatMult_MPIAIJ_MPIAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_MPIAIJ_MPIAIJ_nonscalable(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_MPIAIJ_MPIAIJ(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_MPIAIJ_MPIAIJ_nonscalable(Mat,Mat,PetscReal,Mat);
+PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_MPIAIJ_MPIAIJ(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_MPIAIJ_MPIAIJ(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_MPIAIJ_MPIAIJ_nonscalable(Mat,Mat,Mat);
 PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_MPIAIJ_MPIAIJ_matmatmult(Mat,Mat,Mat);
-PETSC_INTERN PetscErrorCode MatTransposeMatMult_MPIAIJ_MPIDense(Mat,Mat,MatReuse,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_MPIAIJ_MPIDense(Mat,Mat,PetscReal,Mat*);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_MPIAIJ_MPIDense(Mat,Mat,Mat);
+PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_MPIAIJ_MPIDense(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatGetSeqNonzeroStructure_MPIAIJ(Mat,Mat*);
 
 PETSC_INTERN PetscErrorCode MatSetFromOptions_MPIAIJ(PetscOptionItems*,Mat);
@@ -176,8 +169,8 @@ PETSC_INTERN PetscErrorCode MatSetSeqMats_MPIAIJ(Mat,IS,IS,IS,MatStructure,Mat,M
 /* compute apa = A[i,:]*P = Ad[i,:]*P_loc + Ao*[i,:]*P_oth using sparse axpy */
 #define AProw_scalable(i,ad,ao,p_loc,p_oth,api,apj,apa) \
 {\
-  PetscInt    _anz,_pnz,_j,_k,*_ai,*_aj,_row,*_pi,*_pj,_nextp,*_apJ;      \
-  PetscScalar *_aa,_valtmp,*_pa;                             \
+  PetscInt    _anz,_pnz,_j,_k,*_ai,*_aj,_row,*_pi,*_pj,_nextp,*_apJ;\
+  PetscScalar *_aa,_valtmp,*_pa;\
   _apJ = apj + api[i];\
   /* diagonal portion of A */\
   _ai  = ad->i;\
@@ -186,47 +179,49 @@ PETSC_INTERN PetscErrorCode MatSetSeqMats_MPIAIJ(Mat,IS,IS,IS,MatStructure,Mat,M
   _aa  = ad->a + _ai[i];\
   for (_j=0; _j<_anz; _j++) {\
     _row = _aj[_j]; \
-    _pi  = p_loc->i;                                 \
-    _pnz = _pi[_row+1] - _pi[_row];         \
+    _pi  = p_loc->i;                             \
+    _pnz = _pi[_row+1] - _pi[_row];              \
     _pj  = p_loc->j + _pi[_row];                 \
     _pa  = p_loc->a + _pi[_row];                 \
     /* perform sparse axpy */                    \
     _valtmp = _aa[_j];                           \
     _nextp  = 0; \
     for (_k=0; _nextp<_pnz; _k++) {                    \
-      if (_apJ[_k] == _pj[_nextp]) { /* column of AP == column of P */   \
-        apa[_k] += _valtmp*_pa[_nextp++];                                \
+      if (_apJ[_k] == _pj[_nextp]) { /* column of AP == column of P */\
+        apa[_k] += _valtmp*_pa[_nextp++];                             \
       } \
     }                                           \
     (void)PetscLogFlops(2.0*_pnz);              \
   }                                             \
   /* off-diagonal portion of A */               \
-  _ai  = ao->i;\
-  _anz = _ai[i+1] - _ai[i];                     \
-  _aj  = ao->j + _ai[i];                         \
-  _aa  = ao->a + _ai[i];                         \
-  for (_j=0; _j<_anz; _j++) {                      \
-    _row = _aj[_j];    \
-    _pi  = p_oth->i;                         \
-    _pnz = _pi[_row+1] - _pi[_row];          \
-    _pj  = p_oth->j + _pi[_row];                  \
-    _pa  = p_oth->a + _pi[_row];                  \
-    /* perform sparse axpy */                     \
-    _valtmp = _aa[_j];                             \
-    _nextp  = 0; \
-    for (_k=0; _nextp<_pnz; _k++) {                     \
-      if (_apJ[_k] == _pj[_nextp]) { /* column of AP == column of P */\
-        apa[_k] += _valtmp*_pa[_nextp++];                       \
-      }                                                     \
-    }                                            \
-    (void)PetscLogFlops(2.0*_pnz);               \
-  } \
+  if (p_oth){ \
+    _ai  = ao->i;\
+    _anz = _ai[i+1] - _ai[i];                   \
+    _aj  = ao->j + _ai[i];                      \
+    _aa  = ao->a + _ai[i];                      \
+    for (_j=0; _j<_anz; _j++) {                 \
+      _row = _aj[_j];    \
+      _pi  = p_oth->i;                         \
+      _pnz = _pi[_row+1] - _pi[_row];          \
+      _pj  = p_oth->j + _pi[_row];             \
+      _pa  = p_oth->a + _pi[_row];             \
+      /* perform sparse axpy */                \
+      _valtmp = _aa[_j];                       \
+      _nextp  = 0; \
+      for (_k=0; _nextp<_pnz; _k++) {          \
+        if (_apJ[_k] == _pj[_nextp]) { /* column of AP == column of P */\
+          apa[_k] += _valtmp*_pa[_nextp++];    \
+        }                                      \
+      }                                        \
+      (void)PetscLogFlops(2.0*_pnz);           \
+    } \
+  }\
 }
 
 #define AProw_nonscalable(i,ad,ao,p_loc,p_oth,apa) \
 {\
-  PetscInt    _anz,_pnz,_j,_k,*_ai,*_aj,_row,*_pi,*_pj;      \
-  PetscScalar *_aa,_valtmp,*_pa;                             \
+  PetscInt    _anz,_pnz,_j,_k,*_ai,*_aj,_row,*_pi,*_pj;\
+  PetscScalar *_aa,_valtmp,*_pa;                       \
   /* diagonal portion of A */\
   _ai  = ad->i;\
   _anz = _ai[i+1] - _ai[i];\
@@ -234,35 +229,37 @@ PETSC_INTERN PetscErrorCode MatSetSeqMats_MPIAIJ(Mat,IS,IS,IS,MatStructure,Mat,M
   _aa  = ad->a + _ai[i];\
   for (_j=0; _j<_anz; _j++) {\
     _row = _aj[_j]; \
-    _pi  = p_loc->i;                                 \
+    _pi  = p_loc->i;                        \
     _pnz = _pi[_row+1] - _pi[_row];         \
-    _pj  = p_loc->j + _pi[_row];                 \
-    _pa  = p_loc->a + _pi[_row];                 \
-    /* perform dense axpy */                    \
-    _valtmp = _aa[_j];                           \
-    for (_k=0; _k<_pnz; _k++) {                    \
-      apa[_pj[_k]] += _valtmp*_pa[_k];               \
-    }                                           \
-    (void)PetscLogFlops(2.0*_pnz);              \
-  }                                             \
-  /* off-diagonal portion of A */               \
-  _ai  = ao->i;\
-  _anz = _ai[i+1] - _ai[i];                     \
-  _aj  = ao->j + _ai[i];                         \
-  _aa  = ao->a + _ai[i];                         \
-  for (_j=0; _j<_anz; _j++) {                      \
-    _row = _aj[_j];    \
-    _pi  = p_oth->i;                         \
-    _pnz = _pi[_row+1] - _pi[_row];          \
-    _pj  = p_oth->j + _pi[_row];                  \
-    _pa  = p_oth->a + _pi[_row];                  \
-    /* perform dense axpy */                     \
-    _valtmp = _aa[_j];                             \
-    for (_k=0; _k<_pnz; _k++) {                     \
-      apa[_pj[_k]] += _valtmp*_pa[_k];                \
-    }                                            \
-    (void)PetscLogFlops(2.0*_pnz);               \
-  } \
+    _pj  = p_loc->j + _pi[_row];            \
+    _pa  = p_loc->a + _pi[_row];            \
+    /* perform dense axpy */                \
+    _valtmp = _aa[_j];                      \
+    for (_k=0; _k<_pnz; _k++) {             \
+      apa[_pj[_k]] += _valtmp*_pa[_k];      \
+    }                                       \
+    (void)PetscLogFlops(2.0*_pnz);          \
+  }                                         \
+  /* off-diagonal portion of A */           \
+  if (p_oth){ \
+    _ai  = ao->i;\
+    _anz = _ai[i+1] - _ai[i];               \
+    _aj  = ao->j + _ai[i];                  \
+    _aa  = ao->a + _ai[i];                  \
+    for (_j=0; _j<_anz; _j++) {             \
+      _row = _aj[_j];    \
+      _pi  = p_oth->i;                      \
+      _pnz = _pi[_row+1] - _pi[_row];       \
+      _pj  = p_oth->j + _pi[_row];          \
+      _pa  = p_oth->a + _pi[_row];          \
+      /* perform dense axpy */              \
+      _valtmp = _aa[_j];                    \
+      for (_k=0; _k<_pnz; _k++) {           \
+        apa[_pj[_k]] += _valtmp*_pa[_k];    \
+      }                                     \
+      (void)PetscLogFlops(2.0*_pnz);        \
+    }                                       \
+  }\
 }
 
 #endif

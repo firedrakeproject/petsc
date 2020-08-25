@@ -215,13 +215,12 @@ static PetscErrorCode TSInterpolate_Sundials(TS ts,PetscReal t,Vec X)
   /* get the vector size */
   ierr = VecGetSize(X,&glosize);CHKERRQ(ierr);
   ierr = VecGetLocalSize(X,&locsize);CHKERRQ(ierr);
-
-  /* allocate the memory for N_Vec y */
-  y = N_VNew_Parallel(cvode->comm_sundials,locsize,glosize);
-  if (!y) SETERRQ(PETSC_COMM_SELF,1,"Interpolated y is not allocated");
-
   ierr = VecGetArray(X,&x_data);CHKERRQ(ierr);
-  N_VSetArrayPointer((realtype*)x_data,y);
+
+  /* Initialize N_Vec y with x_data */
+  y = N_VMake_Parallel(cvode->comm_sundials,locsize,glosize,(realtype*)x_data);
+  if (!y) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Interpolated y is not allocated");
+
   ierr = CVodeGetDky(cvode->mem,t,0,y);CHKERRQ(ierr);
   ierr = VecRestoreArray(X,&x_data);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -283,7 +282,7 @@ PetscErrorCode TSSetUp_Sundials(TS ts)
 
   /* allocate the memory for N_Vec y */
   cvode->y = N_VNew_Parallel(cvode->comm_sundials,locsize,glosize);
-  if (!cvode->y) SETERRQ(PETSC_COMM_SELF,1,"cvode->y is not allocated");
+  if (!cvode->y) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"cvode->y is not allocated");
 
   /* initialize N_Vec y: copy ts->vec_sol to cvode->y */
   ierr   = VecGetArray(ts->vec_sol,&parray);CHKERRQ(ierr);
@@ -301,8 +300,8 @@ PetscErrorCode TSSetUp_Sundials(TS ts)
     allocated with zero space arrays because the actual array space is provided
     by Sundials and set using VecPlaceArray().
   */
-  ierr = VecCreateMPIWithArray(PetscObjectComm((PetscObject)ts),1,locsize,PETSC_DECIDE,0,&cvode->w1);CHKERRQ(ierr);
-  ierr = VecCreateMPIWithArray(PetscObjectComm((PetscObject)ts),1,locsize,PETSC_DECIDE,0,&cvode->w2);CHKERRQ(ierr);
+  ierr = VecCreateMPIWithArray(PetscObjectComm((PetscObject)ts),1,locsize,PETSC_DECIDE,NULL,&cvode->w1);CHKERRQ(ierr);
+  ierr = VecCreateMPIWithArray(PetscObjectComm((PetscObject)ts),1,locsize,PETSC_DECIDE,NULL,&cvode->w2);CHKERRQ(ierr);
   ierr = PetscLogObjectParent((PetscObject)ts,(PetscObject)cvode->w1);CHKERRQ(ierr);
   ierr = PetscLogObjectParent((PetscObject)ts,(PetscObject)cvode->w2);CHKERRQ(ierr);
 
@@ -341,6 +340,12 @@ PetscErrorCode TSSetUp_Sundials(TS ts)
   flag = CVodeSStolerances(mem,cvode->reltol,cvode->abstol);
   if (flag) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"CVodeSStolerances() fails, flag %d",flag);
 
+  /* Specify max order of BDF / ADAMS method */
+  if (cvode->maxord != PETSC_DEFAULT) {
+    flag = CVodeSetMaxOrd(mem,cvode->maxord);
+    if (flag) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"CVodeSetMaxOrd() fails, flag %d",flag);
+  }
+
   /* Specify max num of steps to be taken by cvode in its attempt to reach the next output time */
   flag = CVodeSetMaxNumSteps(mem,ts->max_steps);
   if (flag) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"CVodeSetMaxNumSteps() fails, flag %d",flag);
@@ -369,9 +374,9 @@ PetscErrorCode TSSetUp_Sundials(TS ts)
 }
 
 /* type of CVODE linear multistep method */
-const char *const TSSundialsLmmTypes[] = {"","ADAMS","BDF","TSSundialsLmmType","SUNDIALS_",0};
+const char *const TSSundialsLmmTypes[] = {"","ADAMS","BDF","TSSundialsLmmType","SUNDIALS_",NULL};
 /* type of G-S orthogonalization used by CVODE linear solver */
-const char *const TSSundialsGramSchmidtTypes[] = {"","MODIFIED","CLASSICAL","TSSundialsGramSchmidtType","SUNDIALS_",0};
+const char *const TSSundialsGramSchmidtTypes[] = {"","MODIFIED","CLASSICAL","TSSundialsGramSchmidtType","SUNDIALS_",NULL};
 
 PetscErrorCode TSSetFromOptions_Sundials(PetscOptionItems *PetscOptionsObject,TS ts)
 {
@@ -396,6 +401,7 @@ PetscErrorCode TSSetFromOptions_Sundials(PetscOptionItems *PetscOptionsObject,TS
   ierr = PetscOptionsReal("-ts_sundials_mindt","Minimum step size","TSSundialsSetMinTimeStep",cvode->mindt,&cvode->mindt,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-ts_sundials_maxdt","Maximum step size","TSSundialsSetMaxTimeStep",cvode->maxdt,&cvode->maxdt,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-ts_sundials_linear_tolerance","Convergence tolerance for linear solve","TSSundialsSetLinearTolerance",cvode->linear_tol,&cvode->linear_tol,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsInt("-ts_sundials_maxord","Max Order for BDF/Adams method","TSSundialsSetMaxOrd",cvode->maxord,&cvode->maxord,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-ts_sundials_maxl","Max dimension of the Krylov subspace","TSSundialsSetMaxl",cvode->maxl,&cvode->maxl,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-ts_sundials_monitor_steps","Monitor SUNDIALS internal steps","TSSundialsMonitorInternalSteps",cvode->monitorstep,&cvode->monitorstep,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsTail();CHKERRQ(ierr);
@@ -426,16 +432,17 @@ PetscErrorCode TSView_Sundials(TS ts,PetscViewer viewer)
   if (iascii) {
     ierr = PetscViewerASCIIPrintf(viewer,"Sundials integrater does not use SNES!\n");CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"Sundials integrater type %s\n",type);CHKERRQ(ierr);
-    ierr = PetscViewerASCIIPrintf(viewer,"Sundials abs tol %g rel tol %g\n",cvode->abstol,cvode->reltol);CHKERRQ(ierr);
-    ierr = PetscViewerASCIIPrintf(viewer,"Sundials linear solver tolerance factor %g\n",cvode->linear_tol);CHKERRQ(ierr);
+    ierr = PetscViewerASCIIPrintf(viewer,"Sundials maxord %D\n",cvode->maxord);CHKERRQ(ierr);
+    ierr = PetscViewerASCIIPrintf(viewer,"Sundials abs tol %g rel tol %g\n",(double)cvode->abstol,(double)cvode->reltol);CHKERRQ(ierr);
+    ierr = PetscViewerASCIIPrintf(viewer,"Sundials linear solver tolerance factor %g\n",(double)cvode->linear_tol);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"Sundials max dimension of Krylov subspace %D\n",cvode->maxl);CHKERRQ(ierr);
     if (cvode->gtype == SUNDIALS_MODIFIED_GS) {
       ierr = PetscViewerASCIIPrintf(viewer,"Sundials using modified Gram-Schmidt for orthogonalization in GMRES\n");CHKERRQ(ierr);
     } else {
       ierr = PetscViewerASCIIPrintf(viewer,"Sundials using unmodified (classical) Gram-Schmidt for orthogonalization in GMRES\n");CHKERRQ(ierr);
     }
-    if (cvode->mindt > 0) {ierr = PetscViewerASCIIPrintf(viewer,"Sundials minimum time step %g\n",cvode->mindt);CHKERRQ(ierr);}
-    if (cvode->maxdt > 0) {ierr = PetscViewerASCIIPrintf(viewer,"Sundials maximum time step %g\n",cvode->maxdt);CHKERRQ(ierr);}
+    if (cvode->mindt > 0) {ierr = PetscViewerASCIIPrintf(viewer,"Sundials minimum time step %g\n",(double)cvode->mindt);CHKERRQ(ierr);}
+    if (cvode->maxdt > 0) {ierr = PetscViewerASCIIPrintf(viewer,"Sundials maximum time step %g\n",(double)cvode->maxdt);CHKERRQ(ierr);}
 
     /* Outputs from CVODE, CVSPILS */
     ierr = CVodeGetTolScaleFactor(cvode->mem,&tolsfac);CHKERRQ(ierr);
@@ -587,8 +594,6 @@ PetscErrorCode  TSSundialsMonitorInternalSteps_Sundials(TS ts,PetscBool s)
    Notes:
     These return the number since the creation of the TS object
 
-.keywords: non-linear iterations, linear iterations
-
 .seealso: TSSundialsSetType(), TSSundialsSetMaxl(),
           TSSundialsSetLinearTolerance(), TSSundialsSetGramSchmidtType(), TSSundialsSetTolerance(),
           TSSundialsGetIterations(), TSSundialsSetType(),
@@ -615,8 +620,6 @@ PetscErrorCode  TSSundialsGetIterations(TS ts,int *nonlin,int *lin)
 
    Level: intermediate
 
-.keywords: Adams, backward differentiation formula
-
 .seealso: TSSundialsGetIterations(),  TSSundialsSetMaxl(),
           TSSundialsSetLinearTolerance(), TSSundialsSetGramSchmidtType(), TSSundialsSetTolerance(),
           TSSundialsGetIterations(), TSSundialsSetType(),
@@ -633,6 +636,34 @@ PetscErrorCode  TSSundialsSetType(TS ts,TSSundialsLmmType type)
 }
 
 /*@
+   TSSundialsSetMaxord - Sets the maximum order for BDF/Adams method used by SUNDIALS.
+
+   Logically Collective on TS
+
+   Input parameters:
++    ts      - the time-step context
+-    maxord  - maximum order of BDF / Adams method
+
+   Level: advanced
+
+.seealso: TSSundialsGetIterations(), TSSundialsSetType(),
+          TSSundialsSetLinearTolerance(), TSSundialsSetGramSchmidtType(), TSSundialsSetTolerance(),
+          TSSundialsGetIterations(), TSSundialsSetType(),
+          TSSundialsSetLinearTolerance(), TSSundialsSetTolerance(), TSSundialsGetPC(),
+          TSSetExactFinalTime()
+
+@*/
+PetscErrorCode  TSSundialsSetMaxord(TS ts,PetscInt maxord)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidLogicalCollectiveInt(ts,maxord,2);
+  ierr = PetscTryMethod(ts,"TSSundialsSetMaxOrd_C",(TS,PetscInt),(ts,maxord));CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@
    TSSundialsSetMaxl - Sets the dimension of the Krylov space used by
        GMRES in the linear solver in SUNDIALS. SUNDIALS DOES NOT use restarted GMRES so
        this is the maximum number of GMRES steps that will be used.
@@ -644,8 +675,6 @@ PetscErrorCode  TSSundialsSetType(TS ts,TSSundialsLmmType type)
 -    maxl - number of direction vectors (the dimension of Krylov subspace).
 
    Level: advanced
-
-.keywords: GMRES
 
 .seealso: TSSundialsGetIterations(), TSSundialsSetType(),
           TSSundialsSetLinearTolerance(), TSSundialsSetGramSchmidtType(), TSSundialsSetTolerance(),
@@ -677,8 +706,6 @@ PetscErrorCode  TSSundialsSetMaxl(TS ts,PetscInt maxl)
 
    Level: advanced
 
-.keywords: GMRES, linear convergence tolerance, SUNDIALS
-
 .seealso: TSSundialsGetIterations(), TSSundialsSetType(), TSSundialsSetMaxl(),
           TSSundialsSetGramSchmidtType(), TSSundialsSetTolerance(),
           TSSundialsGetIterations(), TSSundialsSetType(),
@@ -707,8 +734,6 @@ PetscErrorCode  TSSundialsSetLinearTolerance(TS ts,double tol)
 -    type - either SUNDIALS_MODIFIED_GS or SUNDIALS_CLASSICAL_GS
 
    Level: advanced
-
-.keywords: Sundials, orthogonalization
 
 .seealso: TSSundialsGetIterations(), TSSundialsSetType(), TSSundialsSetMaxl(),
           TSSundialsSetLinearTolerance(),  TSSundialsSetTolerance(),
@@ -741,8 +766,6 @@ PetscErrorCode  TSSundialsSetGramSchmidtType(TS ts,TSSundialsGramSchmidtType typ
     these regulate the size of the error for a SINGLE timestep.
 
    Level: intermediate
-
-.keywords: Sundials, tolerance
 
 .seealso: TSSundialsGetIterations(), TSSundialsSetType(), TSSundialsSetGMRESMaxl(),
           TSSundialsSetLinearTolerance(), TSSundialsSetGramSchmidtType(),
@@ -860,7 +883,7 @@ PetscErrorCode  TSSundialsMonitorInternalSteps(TS ts,PetscBool ft)
 .    -ts_sundials_gramschmidt_type <modified, classical> - type of orthogonalization inside GMRES
 .    -ts_sundials_atol <tol> - Absolute tolerance for convergence
 .    -ts_sundials_rtol <tol> - Relative tolerance for convergence
-.    -ts_sundials_linear_tolerance <tol> - 
+.    -ts_sundials_linear_tolerance <tol> -
 .    -ts_sundials_maxl <maxl> - Max dimension of the Krylov subspace
 -    -ts_sundials_monitor_steps - Monitor SUNDIALS internal steps
 
@@ -899,6 +922,7 @@ PETSC_EXTERN PetscErrorCode TSCreate_Sundials(TS ts)
   cvode->cvode_type  = SUNDIALS_BDF;
   cvode->gtype       = SUNDIALS_CLASSICAL_GS;
   cvode->maxl        = 5;
+  cvode->maxord      = PETSC_DEFAULT;
   cvode->linear_tol  = .05;
   cvode->monitorstep = PETSC_TRUE;
 

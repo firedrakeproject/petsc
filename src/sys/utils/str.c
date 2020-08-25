@@ -1,4 +1,3 @@
-
 /*
     We define the string operations here. The reason we just do not use
   the standard string routines in the PETSc code is that on some machines
@@ -6,21 +5,18 @@
 
 */
 #include <petscsys.h>                   /*I  "petscsys.h"   I*/
-#if defined(PETSC_HAVE_STRING_H)
-#include <string.h>             /* strstr */
-#endif
 #if defined(PETSC_HAVE_STRINGS_H)
 #  include <strings.h>          /* strcasecmp */
 #endif
 
 /*@C
-   PetscStrToArray - Separates a string by a charactor (for example ' ' or '\n') and creates an array of strings
+   PetscStrToArray - Separates a string by a character (for example ' ' or '\n') and creates an array of strings
 
    Not Collective
 
    Input Parameters:
 +  s - pointer to string
--  sp - separator charactor
+-  sp - separator character
 
    Output Parameter:
 +   argc - the number of entries in the array
@@ -85,7 +81,7 @@ PetscErrorCode  PetscStrToArray(const char s[],char sp,int *argc,char ***args)
     }
   }
   free(lens);
-  (*args)[*argc] = 0;
+  (*args)[*argc] = NULL;
 
   *argc = 0;
   for (i=0; i<n; i++) {
@@ -108,8 +104,6 @@ PetscErrorCode  PetscStrToArray(const char s[],char sp,int *argc,char ***args)
 -  args - the array of arguments
 
    Level: intermediate
-
-   Concepts: command line arguments
 
    Notes:
     This may be called before PetscInitialize() or after PetscFinalize()
@@ -148,8 +142,6 @@ PetscErrorCode  PetscStrToArrayDestroy(int argc,char **args)
 
    Not for use in Fortran
 
-  Concepts: string length
-
 @*/
 PetscErrorCode  PetscStrlen(const char s[],size_t *len)
 {
@@ -176,15 +168,18 @@ PetscErrorCode  PetscStrlen(const char s[],size_t *len)
       Null string returns a new null string
 
       Not for use in Fortran
+      
+      Warning: If t has previously been allocated then that memory is lost, you may need to PetscFree() 
+      the array before calling this routine.
 
-  Concepts: string copy
+.seealso: PetscStrArrayallocpy(), PetscStrcpy(), PetscStrNArrayallocpy()
 
 @*/
 PetscErrorCode  PetscStrallocpy(const char s[],char *t[])
 {
   PetscErrorCode ierr;
   size_t         len;
-  char           *tmp = 0;
+  char           *tmp = NULL;
 
   PetscFunctionBegin;
   if (s) {
@@ -212,9 +207,10 @@ PetscErrorCode  PetscStrallocpy(const char s[],char *t[])
    Note:
       Not for use in Fortran
 
-  Concepts: string copy
-
-.seealso: PetscStrallocpy() PetscStrArrayDestroy()
+      Warning: If t has previously been allocated then that memory is lost, you may need to PetscStrArrayDestroy() 
+      the array before calling this routine.
+      
+.seealso: PetscStrallocpy(), PetscStrArrayDestroy(), PetscStrNArrayallocpy()
 
 @*/
 PetscErrorCode  PetscStrArrayallocpy(const char *const *list,char ***t)
@@ -241,8 +237,6 @@ PetscErrorCode  PetscStrArrayallocpy(const char *const *list,char ***t)
 .   list - array of strings
 
    Level: intermediate
-
-   Concepts: command line arguments
 
    Notes:
     Not for use in Fortran
@@ -282,9 +276,7 @@ PetscErrorCode PetscStrArrayDestroy(char ***list)
    Note:
       Not for use in Fortran
 
-  Concepts: string copy
-
-.seealso: PetscStrallocpy() PetscStrArrayDestroy()
+.seealso: PetscStrallocpy(), PetscStrArrayallocpy(), PetscStrNArrayDestroy()
 
 @*/
 PetscErrorCode  PetscStrNArrayallocpy(PetscInt n,const char *const *list,char ***t)
@@ -348,8 +340,8 @@ PetscErrorCode PetscStrNArrayDestroy(PetscInt n,char ***list)
      Null string returns a string starting with zero
 
      Not for use in Fortran
-
-  Concepts: string copy
+     
+     It is recommended you use PetscStrncpy() instead of this routine
 
 .seealso: PetscStrncpy(), PetscStrcat(), PetscStrlcat()
 
@@ -385,8 +377,6 @@ PetscErrorCode  PetscStrcpy(char s[],const char t[])
      copied and the final location of s is set to NULL. This is different then the behavior of 
      strncpy() which leaves s non-terminated if there is not room for the entire string.
 
-  Concepts: string copy
-
   Developers Note: Should this be PetscStrlcpy() to reflect its behavior which is like strlcpy() not strncpy()
 
 .seealso: PetscStrcpy(), PetscStrcat(), PetscStrlcat()
@@ -421,8 +411,8 @@ PetscErrorCode  PetscStrncpy(char s[],const char t[],size_t n)
 
    Notes:
     Not for use in Fortran
-
-  Concepts: string copy
+    
+    It is recommended you use PetscStrlcat() instead of this routine
 
 .seealso: PetscStrcpy(), PetscStrncpy(), PetscStrlcat()
 
@@ -454,8 +444,6 @@ PetscErrorCode  PetscStrcat(char s[],const char t[])
   original allocated space, not the length of the left-over space. This is
   similar to the BSD system call strlcat().
 
-  Concepts: string copy
-
 .seealso: PetscStrcpy(), PetscStrncpy(), PetscStrcat()
 
 @*/
@@ -473,10 +461,6 @@ PetscErrorCode  PetscStrlcat(char s[],const char t[],size_t n)
   PetscFunctionReturn(0);
 }
 
-/*
-   Only to be used with PetscCheck__FUNCT__()!
-
-*/
 void  PetscStrcmpNoError(const char a[],const char b[],PetscBool  *flg)
 {
   int c;
@@ -828,10 +812,10 @@ PetscErrorCode  PetscStrbeginswith(const char a[],const char b[],PetscBool *flg)
 
    Input Parameters:
 +  a - pointer to string
--  bs - strings to endwith (last entry must be null)
+-  bs - strings to end with (last entry must be NULL)
 
    Output Parameter:
-.  cnt - the index of the string it ends with or 1+the last possible index
+.  cnt - the index of the string it ends with or the index of NULL
 
    Notes:
     Not for use in Fortran
@@ -874,7 +858,7 @@ PetscErrorCode  PetscStrendswithwhich(const char a[],const char *const *bs,Petsc
 @*/
 PetscErrorCode  PetscStrrstr(const char a[],const char b[],char *tmp[])
 {
-  const char *stmp = a, *ltmp = 0;
+  const char *stmp = a, *ltmp = NULL;
 
   PetscFunctionBegin;
   while (stmp) {
@@ -949,7 +933,7 @@ PetscErrorCode  PetscTokenFind(PetscToken a,char *result[])
 
   PetscFunctionBegin;
   *result = a->current;
-  if (ptr && !*ptr) {*result = 0;PetscFunctionReturn(0);}
+  if (ptr && !*ptr) {*result = NULL; PetscFunctionReturn(0);}
   token = a->token;
   if (ptr && (*ptr == '"')) {token = '"';(*result)++;ptr++;}
   while (ptr) {
@@ -960,7 +944,7 @@ PetscErrorCode  PetscTokenFind(PetscToken a,char *result[])
       break;
     }
     if (!*ptr) {
-      a->current = 0;
+      a->current = NULL;
       break;
     }
     ptr++;
@@ -1120,9 +1104,10 @@ PetscErrorCode  PetscStrreplace(MPI_Comm comm,const char aa[],char b[],size_t le
   int            i = 0;
   size_t         l,l1,l2,l3;
   char           *work,*par,*epar,env[1024],*tfree,*a = (char*)aa;
-  const char     *s[] = {"${PETSC_ARCH}","${PETSC_DIR}","${PETSC_LIB_DIR}","${DISPLAY}","${HOMEDIRECTORY}","${WORKINGDIRECTORY}","${USERNAME}","${HOSTNAME}",0};
-  char           *r[] = {0,0,0,0,0,0,0,0,0};
+  const char     *s[] = {"${PETSC_ARCH}","${PETSC_DIR}","${PETSC_LIB_DIR}","${DISPLAY}","${HOMEDIRECTORY}","${WORKINGDIRECTORY}","${USERNAME}","${HOSTNAME}",NULL};
+  char           *r[] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
   PetscBool      flag;
+  static size_t  DISPLAY_LENGTH = 265,USER_LENGTH = 256, HOST_LENGTH = 256;
 
   PetscFunctionBegin;
   if (!a || !b) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_NULL,"a and b strings must be nonnull");
@@ -1135,19 +1120,19 @@ PetscErrorCode  PetscStrreplace(MPI_Comm comm,const char aa[],char b[],size_t le
   ierr = PetscStrallocpy(PETSC_ARCH,&r[0]);CHKERRQ(ierr);
   ierr = PetscStrallocpy(PETSC_DIR,&r[1]);CHKERRQ(ierr);
   ierr = PetscStrallocpy(PETSC_LIB_DIR,&r[2]);CHKERRQ(ierr);
-  ierr = PetscMalloc1(256,&r[3]);CHKERRQ(ierr);
+  ierr = PetscMalloc1(DISPLAY_LENGTH,&r[3]);CHKERRQ(ierr);
   ierr = PetscMalloc1(PETSC_MAX_PATH_LEN,&r[4]);CHKERRQ(ierr);
   ierr = PetscMalloc1(PETSC_MAX_PATH_LEN,&r[5]);CHKERRQ(ierr);
-  ierr = PetscMalloc1(256,&r[6]);CHKERRQ(ierr);
-  ierr = PetscMalloc1(256,&r[7]);CHKERRQ(ierr);
-  ierr = PetscGetDisplay(r[3],256);CHKERRQ(ierr);
+  ierr = PetscMalloc1(USER_LENGTH,&r[6]);CHKERRQ(ierr);
+  ierr = PetscMalloc1(HOST_LENGTH,&r[7]);CHKERRQ(ierr);
+  ierr = PetscGetDisplay(r[3],DISPLAY_LENGTH);CHKERRQ(ierr);
   ierr = PetscGetHomeDirectory(r[4],PETSC_MAX_PATH_LEN);CHKERRQ(ierr);
   ierr = PetscGetWorkingDirectory(r[5],PETSC_MAX_PATH_LEN);CHKERRQ(ierr);
-  ierr = PetscGetUserName(r[6],256);CHKERRQ(ierr);
-  ierr = PetscGetHostName(r[7],256);CHKERRQ(ierr);
+  ierr = PetscGetUserName(r[6],USER_LENGTH);CHKERRQ(ierr);
+  ierr = PetscGetHostName(r[7],HOST_LENGTH);CHKERRQ(ierr);
 
   /* replace that are in environment */
-  ierr = PetscOptionsGetenv(comm,"PETSC_LIB_DIR",env,1024,&flag);CHKERRQ(ierr);
+  ierr = PetscOptionsGetenv(comm,"PETSC_LIB_DIR",env,sizeof(env),&flag);CHKERRQ(ierr);
   if (flag) {
     ierr = PetscFree(r[2]);CHKERRQ(ierr);
     ierr = PetscStrallocpy(env,&r[2]);CHKERRQ(ierr);
@@ -1166,9 +1151,9 @@ PetscErrorCode  PetscStrreplace(MPI_Comm comm,const char aa[],char b[],size_t le
       ierr = PetscStrlen(r[i],&l2);CHKERRQ(ierr);
       ierr = PetscStrlen(par,&l3);CHKERRQ(ierr);
       if (l1 + l2 + l3 >= len) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"b len is not long enough to hold new values");
-      ierr = PetscStrcpy(work,b);CHKERRQ(ierr);
-      ierr = PetscStrcat(work,r[i]);CHKERRQ(ierr);
-      ierr = PetscStrcat(work,par);CHKERRQ(ierr);
+      ierr = PetscStrncpy(work,b,len);CHKERRQ(ierr);
+      ierr = PetscStrlcat(work,r[i],len);CHKERRQ(ierr);
+      ierr = PetscStrlcat(work,par,len);CHKERRQ(ierr);
       ierr = PetscStrncpy(b,work,len);CHKERRQ(ierr);
       ierr = PetscStrstr(b,s[i],&par);CHKERRQ(ierr);
     }
@@ -1186,15 +1171,15 @@ PetscErrorCode  PetscStrreplace(MPI_Comm comm,const char aa[],char b[],size_t le
   while (par) {
     *par  = 0;
     par  += 2;
-    ierr  = PetscStrcpy(work,b);CHKERRQ(ierr);
+    ierr  = PetscStrncpy(work,b,len);CHKERRQ(ierr);
     ierr  = PetscStrstr(par,"}",&epar);CHKERRQ(ierr);
     *epar = 0;
     epar += 1;
-    ierr  = PetscOptionsGetenv(comm,par,env,256,&flag);CHKERRQ(ierr);
+    ierr  = PetscOptionsGetenv(comm,par,env,sizeof(env),&flag);CHKERRQ(ierr);
     if (!flag) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Substitution string ${%s} not found as environmental variable",par);
-    ierr = PetscStrcat(work,env);CHKERRQ(ierr);
-    ierr = PetscStrcat(work,epar);CHKERRQ(ierr);
-    ierr = PetscStrcpy(b,work);CHKERRQ(ierr);
+    ierr = PetscStrlcat(work,env,len);CHKERRQ(ierr);
+    ierr = PetscStrlcat(work,epar,len);CHKERRQ(ierr);
+    ierr = PetscStrncpy(b,work,len);CHKERRQ(ierr);
     ierr = PetscStrstr(b,"${",&par);CHKERRQ(ierr);
   }
   ierr = PetscFree(work);CHKERRQ(ierr);

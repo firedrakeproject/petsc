@@ -2,7 +2,7 @@
 #include <../src/vec/vec/impls/node/vecnodeimpl.h>   /*I  "petscvec.h"   I*/
 #include <../src/vec/vec/impls/mpi/pvecimpl.h>   /*I  "petscvec.h"   I*/
 
-#if defined(PETSC_HAVE_MPI_WIN_CREATE_FEATURE)
+#if defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY)
 
 PetscErrorCode VecSetValues_Node(Vec xin,PetscInt ni,const PetscInt ix[],const PetscScalar y[],InsertMode addv)
 {
@@ -349,7 +349,7 @@ PETSC_EXTERN PetscErrorCode VecCreate_Node(Vec v)
     ierr = MPI_Comm_split_type(PetscObjectComm((PetscObject)v),MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,&shmcomm);CHKERRQ(ierr);
     ierr = MPIU_Win_allocate_shared((n+1)*sizeof(PetscScalar),sizeof(PetscScalar),MPI_INFO_NULL,shmcomm,&s->array,&win);CHKERRQ(ierr);
     ierr               = PetscLogObjectMemory((PetscObject)v,(n+1)*sizeof(PetscScalar));CHKERRQ(ierr);
-    ierr               = PetscMemzero(s->array,(n+1)*sizeof(PetscScalar));CHKERRQ(ierr);
+    ierr               = PetscArrayzero(s->array,n+1);CHKERRQ(ierr);
     s->array++;    /* create initial space for object state counter */
 
     ierr = MPI_Comm_size(shmcomm,&msize);CHKERRQ(ierr);

@@ -64,8 +64,6 @@ $     VecGhostRestoreLocalForm(x,&xlocal);
 
     Level: advanced
 
-   Concepts: vectors^ghost point access
-
 .seealso: VecCreateGhost(), VecGhostRestoreLocalForm(), VecCreateGhostWithArray()
 
 @*/
@@ -108,8 +106,6 @@ PetscErrorCode  VecGhostGetLocalForm(Vec g,Vec *l)
 .   flg - PETSC_TRUE if local vector is local form
 
     Level: advanced
-
-   Concepts: vectors^ghost point access
 
 .seealso: VecCreateGhost(), VecGhostRestoreLocalForm(), VecCreateGhostWithArray(), VecGhostGetLocalForm()
 
@@ -174,7 +170,7 @@ PetscErrorCode  VecGhostRestoreLocalForm(Vec g,Vec *l)
 
    Input Parameters:
 +  g - the vector (obtained with VecCreateGhost() or VecDuplicate())
-.  insertmode - one of ADD_VALUES or INSERT_VALUES
+.  insertmode - one of ADD_VALUES, MAX_VALUES, MIN_VALUES or INSERT_VALUES
 -  scattermode - one of SCATTER_FORWARD or SCATTER_REVERSE
 
    Notes:
@@ -238,7 +234,7 @@ PetscErrorCode  VecGhostUpdateBegin(Vec g,InsertMode insertmode,ScatterMode scat
 
    Input Parameters:
 +  g - the vector (obtained with VecCreateGhost() or VecDuplicate())
-.  insertmode - one of ADD_VALUES or INSERT_VALUES
+.  insertmode - one of ADD_VALUES, MAX_VALUES, MIN_VALUES or INSERT_VALUES
 -  scattermode - one of SCATTER_FORWARD or SCATTER_REVERSE
 
    Notes:

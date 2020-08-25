@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import glob, os, re
+import glob, os, re, stat
 import optparse
 import inspect
 
@@ -75,25 +75,28 @@ def summarize_results(directory,make,ntime,etime):
 
   if failstr.strip():
       fail_targets=(
-          re.sub('(?<=[0-9]_\w)_.*','',
           re.sub('cmd-','',
-          re.sub('diff-','',failstr+' ')))
+          re.sub('diff-','',failstr+' '))
           )
       # Strip off characters from subtests
       fail_list=[]
       for failure in fail_targets.split():
-        if failure.count('-')>1:
-            fail_list.append('-'.join(failure.split('-')[:-1]))
-        else:
-            fail_list.append(failure)
+         fail_list.append(failure.split('+')[0])
       fail_list=list(set(fail_list))
       fail_targets=' '.join(fail_list)
+
+      # create simple little script
+      sfile=os.path.join(os.path.dirname(os.path.abspath(os.curdir)),'echofailures.sh')
+      with open(sfile,'w') as f:
+          f.write('echo '+fail_targets.strip())
+      st = os.stat(sfile)
+      os.chmod(sfile, st.st_mode | stat.S_IEXEC)
 
       #Make the message nice
       makefile="gmakefile.test" if inInstallDir() else "gmakefile"
 
       print("#\n# To rerun failed tests: ")
-      print("#     "+make+" -f "+makefile+" test search='" + fail_targets.strip()+"'")
+      print("#     "+make+" -f "+makefile+" test test-fail=1")
 
   if ntime>0:
       print("#\n# Timing summary (actual test time / total CPU time): ")
@@ -108,7 +111,10 @@ def summarize_results(directory,make,ntime,etime):
   os.chdir(startdir)
   return
   
-def generate_xml(directory):
+def get_test_data(directory):
+    """
+    Create dictionary structure with test data
+    """
     startdir= os.getcwd()
     try:
         os.chdir(directory)
@@ -139,6 +145,7 @@ def generate_xml(directory):
         if not os.path.exists(probdir):
             probfolder = probfolder.split('_')[0]
             probdir = os.path.join('..', prob_subdir, 'examples', testtype, probfolder)
+        probfullpath=os.path.normpath(os.path.join(directory,probdir))
         # assemble the final full folder path for problem outputs and read the files
         try:
             with open('%s/diff-%s.out'%(probdir, probfolder),'r') as probdiff:
@@ -179,30 +186,79 @@ def generate_xml(directory):
             'skipped':False,
             'diff':difflines,
             'stdout':stdoutlines,
-            'stderr':stderrlines
+            'stderr':stderrlines,
+            'probdir':probfullpath,
+            'fullname':fname
         }
         # process the *.counts file and increment problem status trackers
-        if len(testdata[pkgname]['problems'][probname]['stderr'])>0:
-            testdata[pkgname]['errors'] += 1
         with open(cfile, 'r') as f:
             for line in f:
                 l = line.split()
-                if l[0] == 'failed':
-                    testdata[pkgname]['problems'][probname][l[0]] = True
-                    testdata[pkgname][l[0]] += 1
-                elif l[0] == 'time':
+                if l[0] == 'time':
                     if len(l)==1: continue
                     testdata[pkgname]['problems'][probname][l[0]] = float(l[1])
                     testdata[pkgname][l[0]] += float(l[1])
-                elif l[0] == 'skip':
-                    testdata[pkgname]['problems'][probname][l[0]] = True
-                    testdata[pkgname][l[0]] += 1
-                elif l[0] not in testdata[pkgname].keys():
-                    continue
+                elif l[0] in testdata[pkgname].keys():
+                    # This block includes total, success, failed, skip, todo
+                    num_int=int(l[1])
+                    testdata[pkgname][l[0]] += num_int
+                    if l[0] in ['failed']:
+                        # If non-zero error code and non-zero stderr, something wrong
+                        if len(testdata[pkgname]['problems'][probname]['stderr'])>0:
+                            if not num_int: num_int=1
+                        if num_int:
+                            testdata[pkgname]['errors'] += 1
+                            testdata[pkgname]['problems'][probname][l[0]] = True
+                    if l[0] in ['skip'] and num_int:
+                        testdata[pkgname]['problems'][probname][l[0]] = True
                 else:
-                    testdata[pkgname][l[0]] += 1
-    # at this point we have the complete test results in dictionary structures
-    # we can now write this information into a jUnit formatted XLM file
+                    continue
+    os.chdir(startdir)  # Keep function in good state
+    return testdata
+
+def show_fail(testdata):
+    """ Show the failures and commands to run them
+    """
+    for pkg in testdata.keys():
+        testsuite = testdata[pkg]
+        for prob in testsuite['problems'].keys():
+            p = testsuite['problems'][prob]
+            cdbase='cd '+p['probdir']+' && '
+            if p['skipped']:
+                # if we got here, the TAP output shows a skipped test
+                pass
+            elif len(p['stderr'])>0:
+                # if we got here, the test crashed with an error
+                # we show the stderr output under <error>
+                shbase=os.path.join(p['probdir'], p['fullname'])
+                shfile=shbase+".sh"
+                if not os.path.exists(shfile):
+                    shfile=glob.glob(shbase+"*")[0]
+                with open(shfile, 'r') as sh:
+                    cmd = sh.read()
+                print(p['fullname']+': '+cdbase+cmd.split('>')[0])
+            elif len(p['diff'])>0:
+                # if we got here, the test output did not match the stored output file
+                # we show the diff between new output and old output under <failure>
+                shbase=os.path.join(p['probdir'], 'diff-'+p['fullname'])
+                shfile=shbase+".sh"
+                if not os.path.exists(shfile):
+                    shfile=glob.glob(shbase+"*")[0]
+                with open(shfile, 'r') as sh:
+                    cmd = sh.read()
+                print(p['fullname']+': '+cdbase+cmd.split('>')[0])
+                pass
+    return
+
+def generate_xml(testdata,directory):
+    """ write testdata information into a jUnit formatted XLM file
+    """
+    startdir= os.getcwd()
+    try:
+        os.chdir(directory)
+    except OSError:
+        print('# No tests run')
+        return
     junit = open('../testresults.xml', 'w')
     junit.write('<?xml version="1.0" ?>\n')
     junit.write('<testsuites>\n')
@@ -217,11 +273,17 @@ def generate_xml(directory):
             if p['skipped']:
                 # if we got here, the TAP output shows a skipped test
                 junit.write('      <skipped/>\n')
-            elif len(p['stderr'])>0:
+            elif p['failed']:
                 # if we got here, the test crashed with an error
                 # we show the stderr output under <error>
                 junit.write('      <error type="crash">\n')
                 junit.write("<![CDATA[\n") # CDATA is necessary to preserve whitespace
+                # many times error messages also go to stdout so we print both
+                junit.write("stdout:\n")
+                if len(p['stdout'])>0:
+                    for line in p['stdout']:
+                        junit.write("%s\n"%line.rstrip())
+                junit.write("\nstderr:\n")
                 for line in p['stderr']:
                     junit.write("%s\n"%line.rstrip())
                 junit.write("]]>")
@@ -235,19 +297,6 @@ def generate_xml(directory):
                     junit.write("%s\n"%line.rstrip())
                 junit.write("]]>")
                 junit.write('      </failure>\n')
-            elif len(p['stdout'])>0:
-                # if we got here, the test succeeded so we just show the stdout 
-                # for manual sanity-checks
-                junit.write('      <system-out>\n')
-                junit.write("<![CDATA[\n") # CDATA is necessary to preserve whitespace
-                count = 0
-                for line in p['stdout']:
-                    junit.write("%s\n"%line.rstrip())
-                    count += 1
-                    if count >= 1024: 
-                        break
-                junit.write("]]>")
-                junit.write('      </system-out>\n')
             junit.write('    </testcase>\n')
         junit.write('  </testsuite>\n')
     junit.write('</testsuites>')
@@ -270,16 +319,24 @@ def main():
     parser.add_option('-t', '--time', dest='time',
                       help='-t n: Report on the n number expensive jobs',
                       default=0)
+    parser.add_option('-f', '--fail', dest='show_fail', action="store_true", 
+                      help='Show the failed tests and how to run them')
     options, args = parser.parse_args()
 
     # Process arguments
     if len(args) > 0:
       parser.print_usage()
       return
-
-    summarize_results(options.directory,options.make,int(options.time),options.elapsed_time)
     
-    generate_xml(options.directory)
+
+    if not options.show_fail:
+      summarize_results(options.directory,options.make,int(options.time),options.elapsed_time)
+    testresults=get_test_data(options.directory)
+
+    if options.show_fail:
+      show_fail(testresults)
+    else:
+      generate_xml(testresults, options.directory)
 
 if __name__ == "__main__":
         main()

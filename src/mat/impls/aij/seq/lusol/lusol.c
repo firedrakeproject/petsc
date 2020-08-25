@@ -22,27 +22,27 @@
 /*
     Dummy symbols that the MINOS files mi25bfac.f and mi15blas.f may require
 */
-PETSC_EXTERN void PETSC_STDCALL M1PAGE()
+PETSC_EXTERN void M1PAGE()
 {
   ;
 }
-PETSC_EXTERN void PETSC_STDCALL M5SETX()
-{
-  ;
-}
-
-PETSC_EXTERN void PETSC_STDCALL M6RDEL()
+PETSC_EXTERN void M5SETX()
 {
   ;
 }
 
-PETSC_EXTERN void PETSC_STDCALL LU1FAC(int *m, int *n, int *nnz, int *size, int *luparm,
+PETSC_EXTERN void M6RDEL()
+{
+  ;
+}
+
+PETSC_EXTERN void LU1FAC(int *m, int *n, int *nnz, int *size, int *luparm,
                                  double *parmlu, double *data, int *indc, int *indr,
                                  int *rowperm, int *colperm, int *collen, int *rowlen,
                                  int *colstart, int *rowstart, int *rploc, int *cploc,
                                  int *rpinv, int *cpinv, double *w, int *inform);
 
-PETSC_EXTERN void PETSC_STDCALL LU6SOL(int *mode, int *m, int *n, double *rhs, double *x,
+PETSC_EXTERN void LU6SOL(int *mode, int *m, int *n, double *rhs, double *x,
                                  int *size, int *luparm, double *parmlu, double *data,
                                  int *indc, int *indr, int *rowperm, int *colperm,
                                  int *collen, int *rowlen, int *colstart, int *rowstart,
@@ -102,7 +102,7 @@ typedef struct  {
  *                        maxrow = maxcol - 1.
  *
  *
- *  Output parameters
+ *  Output parameters:
  *
  *  luparm(9) = inform   Return code from last call to any LU routine.
  *  luparm(10) = nsing    No. of singularities marked in the
@@ -156,7 +156,7 @@ typedef struct  {
  *                        all the remaining rows and columns.
  *
  *
- *  Output parameters
+ *  Output parameters:
  *
  *  parmlu(9) = amax     Maximum element in  A.
  *  parmlu(10) = elmax    Maximum multiplier in current  L.
@@ -243,7 +243,7 @@ PetscErrorCode MatLUFactorNumeric_LUSOL(Mat F,Mat A,const MatFactorInfo *info)
   int            factorizations;
 
   PetscFunctionBegin;
-  ierr = MatGetSize(A,&m,&n);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = MatGetSize(A,&m,&n);CHKERRQ(ierr);
   a    = (Mat_SeqAIJ*)A->data;
 
   if (m != lusol->n) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"factorization struct inconsistent");

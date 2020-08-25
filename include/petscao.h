@@ -3,16 +3,14 @@
   ordering (the ordering that is "natural" for the application) and
   the parallel ordering that PETSc uses.
 */
-#if !defined(__PETSCAO_H)
-#define __PETSCAO_H
+#if !defined(PETSCAO_H)
+#define PETSCAO_H
 #include <petscis.h>
 
 /*S
      AO - Abstract PETSc object that manages mapping between different global numbering
 
    Level: intermediate
-
-  Concepts: global numbering
 
 .seealso:  AOCreateBasic(), AOCreateBasicIS(), AOPetscToApplication(), AOView(), AOApplicationToPetsc()
 S*/
@@ -49,7 +47,7 @@ PETSC_EXTERN PetscErrorCode AOCreateMapping(MPI_Comm,PetscInt,const PetscInt[],c
 PETSC_EXTERN PetscErrorCode AOCreateMappingIS(IS,IS,AO*);
 
 PETSC_EXTERN PetscErrorCode AOView(AO,PetscViewer);
-PETSC_STATIC_INLINE PetscErrorCode AOViewFromOptions(AO A,PetscObject obj,const char name[]) {return PetscObjectViewFromOptions((PetscObject)A,obj,name);}
+PETSC_EXTERN PetscErrorCode AOViewFromOptions(AO,PetscObject,const char[]);
 PETSC_EXTERN PetscErrorCode AODestroy(AO*);
 
 /* Dynamic creation and loading functions */

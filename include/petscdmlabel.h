@@ -1,13 +1,11 @@
-#if !defined(__PETSCDMLABEL_H)
-#define __PETSCDMLABEL_H
+#if !defined(PETSCDMLABEL_H)
+#define PETSCDMLABEL_H
 #include <petscis.h>
 
 /*S
   DMLabel - Object which encapsulates a subset of the mesh from this DM
 
   Level: developer
-
-  Concepts: grids, grid refinement
 
 .seealso:  DM, DMPlexCreate(), DMPlexCreateLabel()
 S*/
@@ -34,6 +32,7 @@ PETSC_EXTERN PetscErrorCode DMLabelHasStratum(DMLabel, PetscInt, PetscBool *);
 PETSC_EXTERN PetscErrorCode DMLabelGetStratumSize(DMLabel, PetscInt, PetscInt *);
 PETSC_EXTERN PetscErrorCode DMLabelGetStratumIS(DMLabel, PetscInt, IS *);
 PETSC_EXTERN PetscErrorCode DMLabelSetStratumIS(DMLabel, PetscInt, IS);
+PETSC_EXTERN PetscErrorCode DMLabelSetStratumBounds(DMLabel, PetscInt, PetscInt, PetscInt);
 PETSC_EXTERN PetscErrorCode DMLabelClearStratum(DMLabel, PetscInt);
 
 PETSC_EXTERN PetscErrorCode DMLabelComputeIndex(DMLabel);

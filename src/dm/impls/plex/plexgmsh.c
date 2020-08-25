@@ -3,15 +3,15 @@
 #include <petsc/private/hashmapi.h>
 
 typedef struct {
-  PetscViewer    viewer;
-  int            fileFormat;
-  int            dataSize;
-  PetscBool      binary;
-  PetscBool      byteSwap;
-  size_t         wlen;
-  void           *wbuf;
-  size_t         slen;
-  void           *sbuf;
+  PetscViewer viewer;
+  int         fileFormat;
+  int         dataSize;
+  PetscBool   binary;
+  PetscBool   byteSwap;
+  size_t      wlen;
+  void        *wbuf;
+  size_t      slen;
+  void        *sbuf;
 } GmshFile;
 
 static PetscErrorCode GmshBufferGet(GmshFile *gmsh, size_t count, size_t eltsize, void *buf)
@@ -270,7 +270,7 @@ static PetscErrorCode DMPlexCreateGmsh_ReadElements_v22(GmshFile* gmsh, PETSC_UN
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscViewerRead(viewer, line, 1, NULL, PETSC_STRING);CHKERRQ(ierr);;
+  ierr = PetscViewerRead(viewer, line, 1, NULL, PETSC_STRING);CHKERRQ(ierr);
   snum = sscanf(line, "%d", &num);
   if (snum != 1) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "File is not a valid Gmsh file");
   ierr = PetscMalloc1(num, &elements);CHKERRQ(ierr);
@@ -326,6 +326,21 @@ static PetscErrorCode DMPlexCreateGmsh_ReadElements_v22(GmshFile* gmsh, PETSC_UN
       numNodes = 3;
       numNodesIgnore = 3;
       break;
+    case 10: /* 9-node 2nd order quadrangle */
+      dim = 2;
+      numNodes = 4;
+      numNodesIgnore = 5;
+      break;
+    case 11: /* 10-node 2nd order tetrahedron */
+      dim  = 3;
+      numNodes = 4;
+      numNodesIgnore = 6;
+      break;
+    case 12: /* 27-node 2nd order hexhedron */
+      dim  = 3;
+      numNodes = 8;
+      numNodesIgnore = 19;
+      break;
     case 13: /* 18-node 2nd wedge */
       dim = 3;
       numNodes = 6;
@@ -336,9 +351,6 @@ static PetscErrorCode DMPlexCreateGmsh_ReadElements_v22(GmshFile* gmsh, PETSC_UN
       numNodes = 1;
       break;
     case 7: /* 5-node pyramid */
-    case 10: /* 9-node 2nd order quadrangle */
-    case 11: /* 10-node 2nd order tetrahedron */
-    case 12: /* 27-node 2nd order hexhedron */
     case 14: /* 14-node 2nd order pyramid */
     default:
       SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unsupported Gmsh element type %d", cellType);
@@ -457,7 +469,6 @@ static PetscErrorCode DMPlexCreateGmsh_ReadNodes_v40(GmshFile *gmsh, int shift, 
   long           block, node, v, numEntityBlocks, numTotalNodes, numNodes;
   int            info[3], nid;
   double         *coordinates;
-  char           *cbuf;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -473,28 +484,27 @@ static PetscErrorCode DMPlexCreateGmsh_ReadNodes_v40(GmshFile *gmsh, int shift, 
     ierr = PetscViewerRead(viewer, &numNodes, 1, NULL, PETSC_LONG);CHKERRQ(ierr);
     if (byteSwap) {ierr = PetscByteSwap(&numNodes, PETSC_LONG, 1);CHKERRQ(ierr);}
     if (gmsh->binary) {
-      int nbytes = sizeof(int) + 3*sizeof(double);
+      size_t nbytes = sizeof(int) + 3*sizeof(double);
+      char   *cbuf = NULL; /* dummy value to prevent warning from compiler about possible unitilized value */
       ierr = GmshBufferGet(gmsh, numNodes, nbytes, &cbuf);CHKERRQ(ierr);
       ierr = PetscViewerRead(viewer, cbuf, numNodes*nbytes, NULL, PETSC_CHAR);CHKERRQ(ierr);
       for (node = 0; node < numNodes; ++node, ++v) {
-        char *cnid = cbuf + node*nbytes, *cxyz = cnid + sizeof(int);
+        char   *cnid = cbuf + node*nbytes, *cxyz = cnid + sizeof(int);
         double *xyz = coordinates + v*3;
-#if !defined(PETSC_WORDS_BIGENDIAN)
-        ierr = PetscByteSwap(cnid, PETSC_ENUM, 1);CHKERRQ(ierr);
-        ierr = PetscByteSwap(cxyz, PETSC_DOUBLE, 3);CHKERRQ(ierr);
-#endif
+        if (!PetscBinaryBigEndian()) {ierr = PetscByteSwap(cnid, PETSC_ENUM, 1);CHKERRQ(ierr);}
+        if (!PetscBinaryBigEndian()) {ierr = PetscByteSwap(cxyz, PETSC_DOUBLE, 3);CHKERRQ(ierr);}
         ierr = PetscMemcpy(&nid, cnid, sizeof(int));CHKERRQ(ierr);
         ierr = PetscMemcpy(xyz, cxyz, 3*sizeof(double));CHKERRQ(ierr);
         if (byteSwap) {ierr = PetscByteSwap(&nid, PETSC_ENUM, 1);CHKERRQ(ierr);}
         if (byteSwap) {ierr = PetscByteSwap(xyz, PETSC_DOUBLE, 3);CHKERRQ(ierr);}
-        if (nid != v+shift) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unexpected node number %d should be %d", nid, v+shift);
+        if ((long)nid != v+shift) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unexpected node number %d should be %ld", nid, v+shift);
       }
     } else {
       for (node = 0; node < numNodes; ++node, ++v) {
         double *xyz = coordinates + v*3;
         ierr = PetscViewerRead(viewer, &nid, 1, NULL, PETSC_ENUM);CHKERRQ(ierr);
         if (byteSwap) {ierr = PetscByteSwap(&nid, PETSC_ENUM, 1);CHKERRQ(ierr);}
-        if (nid != v+shift) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unexpected node number %d should be %d", nid, v+shift);
+        if ((long)nid != v+shift) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unexpected node number %d should be %ld", nid, v+shift);
         ierr = PetscViewerRead(viewer, xyz, 3, NULL, PETSC_DOUBLE);CHKERRQ(ierr);
         if (byteSwap) {ierr = PetscByteSwap(xyz, PETSC_DOUBLE, 3);CHKERRQ(ierr);}
       }
@@ -621,7 +631,7 @@ static PetscErrorCode DMPlexCreateGmsh_ReadPeriodic_v40(GmshFile *gmsh, int shif
     if (fileFormat == 22 || !binary) {
       ierr = PetscViewerRead(viewer, line, 1, NULL, PETSC_STRING);CHKERRQ(ierr);
       snum = sscanf(line, "%ld", &nNodes);
-      if (snum != 1) { /* discard tranformation and try again */
+      if (snum != 1) { /* discard transformation and try again */
         ierr = PetscViewerRead(viewer, line, -PETSC_MAX_PATH_LEN, NULL, PETSC_STRING);CHKERRQ(ierr);
         ierr = PetscViewerRead(viewer, line, 1, NULL, PETSC_STRING);CHKERRQ(ierr);
         snum = sscanf(line, "%ld", &nNodes);
@@ -630,7 +640,7 @@ static PetscErrorCode DMPlexCreateGmsh_ReadPeriodic_v40(GmshFile *gmsh, int shif
     } else {
       ierr = PetscViewerRead(viewer, &nNodes, 1, NULL, PETSC_LONG);CHKERRQ(ierr);
       if (byteSwap) {ierr = PetscByteSwap(&nNodes, PETSC_LONG, 1);CHKERRQ(ierr);}
-      if (nNodes == -1) { /* discard tranformation and try again */
+      if (nNodes == -1) { /* discard transformation and try again */
         ierr = PetscViewerRead(viewer, affine, 16, NULL, PETSC_DOUBLE);CHKERRQ(ierr);
         ierr = PetscViewerRead(viewer, &nNodes, 1, NULL, PETSC_LONG);CHKERRQ(ierr);
         if (byteSwap) {ierr = PetscByteSwap(&nNodes, PETSC_LONG, 1);CHKERRQ(ierr);}
@@ -930,6 +940,38 @@ static PetscErrorCode DMPlexCreateGmsh_ReadPhysicalNames(GmshFile *gmsh)
   PetscFunctionReturn(0);
 }
 
+
+PETSC_STATIC_INLINE DMPolytopeType DMPolytopeTypeFromGmsh(PetscInt ctGmsh)
+{
+  switch (ctGmsh) {
+    case 15:
+      return DM_POLYTOPE_POINT;
+    case 1:
+    case 8:
+      return DM_POLYTOPE_SEGMENT;
+    case 2:
+    case 9:
+      return DM_POLYTOPE_TRIANGLE;
+    case 3:
+    case 10:
+      return DM_POLYTOPE_QUADRILATERAL;
+    case 4:
+    case 11:
+      return DM_POLYTOPE_TETRAHEDRON;
+    case 5:
+    case 12:
+      return DM_POLYTOPE_HEXAHEDRON;
+    case 6:
+    case 13:
+      return DM_POLYTOPE_TRI_PRISM;
+    case 7:
+    case 14:
+      return DM_POLYTOPE_UNKNOWN; /* Pyramid */
+    default:
+      return DM_POLYTOPE_UNKNOWN;
+  }
+}
+
 /*@C
   DMPlexCreateGmshFromFile - Create a DMPlex mesh from a Gmsh file
 
@@ -962,7 +1004,7 @@ PetscErrorCode DMPlexCreateGmshFromFile(MPI_Comm comm, const char filename[], Pe
     int         snum;
     float       version;
 
-    ierr = PetscMemzero(gmsh,sizeof(GmshFile));CHKERRQ(ierr);
+    ierr = PetscArrayzero(gmsh,1);CHKERRQ(ierr);
     ierr = PetscViewerCreate(PETSC_COMM_SELF, &gmsh->viewer);CHKERRQ(ierr);
     ierr = PetscViewerSetType(gmsh->viewer, PETSCVIEWERASCII);CHKERRQ(ierr);
     ierr = PetscViewerFileSetMode(gmsh->viewer, FILE_MODE_READ);CHKERRQ(ierr);
@@ -994,7 +1036,7 @@ PetscErrorCode DMPlexCreateGmshFromFile(MPI_Comm comm, const char filename[], Pe
 /*@
   DMPlexCreateGmsh - Create a DMPlex mesh from a Gmsh file viewer
 
-  Collective on comm
+  Collective
 
   Input Parameters:
 + comm  - The MPI communicator
@@ -1008,7 +1050,6 @@ PetscErrorCode DMPlexCreateGmshFromFile(MPI_Comm comm, const char filename[], Pe
 
   Level: beginner
 
-.keywords: mesh,Gmsh
 .seealso: DMPLEX, DMCreate()
 @*/
 PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool interpolate, DM *dm)
@@ -1021,21 +1062,26 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
   Vec            coordinates;
   PetscBT        periodicV = NULL, periodicC = NULL;
   PetscScalar   *coords;
-  PetscInt       dim = 0, embedDim = -1, coordSize, c, v, d, cell, *periodicMap = NULL, *periodicMapI = NULL, *hybridMap = NULL, cMax = PETSC_DETERMINE;
+  PetscInt       dim = 0, embedDim = -1, coordSize, c, v, d, cell, *periodicMap = NULL, *periodicMapI = NULL, *hybridMap = NULL;
   PetscInt       numVertices = 0, numCells = 0, trueNumCells = 0;
   int            i, shift = 1;
   PetscMPIInt    rank;
-  PetscBool      binary, zerobase = PETSC_FALSE, periodic = PETSC_FALSE, usemarker = PETSC_FALSE;
-  PetscBool      enable_hybrid = PETSC_FALSE;
+  PetscBool      binary, zerobase = PETSC_FALSE, usemarker = PETSC_FALSE;
+  PetscBool      enable_hybrid = interpolate, periodic = PETSC_TRUE;
+  PetscBool      hasTetra = PETSC_FALSE;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(((PetscObject) viewer)->options,((PetscObject) viewer)->prefix, "-dm_plex_gmsh_hybrid", &enable_hybrid, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(((PetscObject) viewer)->options,((PetscObject) viewer)->prefix, "-dm_plex_gmsh_periodic", &periodic, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(((PetscObject) viewer)->options,((PetscObject) viewer)->prefix, "-dm_plex_gmsh_use_marker", &usemarker, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(((PetscObject) viewer)->options,((PetscObject) viewer)->prefix, "-dm_plex_gmsh_zero_base", &zerobase, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetInt(((PetscObject) viewer)->options,((PetscObject) viewer)->prefix, "-dm_plex_gmsh_spacedim", &embedDim, NULL);CHKERRQ(ierr);
+  ierr = PetscObjectOptionsBegin((PetscObject)viewer);CHKERRQ(ierr);
+  ierr = PetscOptionsHead(PetscOptionsObject,"DMPlex Gmsh options");CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-dm_plex_gmsh_hybrid", "Generate hybrid cell bounds", "DMPlexCreateGmsh", enable_hybrid, &enable_hybrid, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-dm_plex_gmsh_periodic","Read Gmsh periodic section", "DMPlexCreateGmsh", periodic, &periodic, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-dm_plex_gmsh_use_marker", "Generate marker label", "DMPlexCreateGmsh", usemarker, &usemarker, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-dm_plex_gmsh_zero_base", "Read Gmsh file with zero base indices", "DMPlexCreateGmsh", zerobase, &zerobase, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBoundedInt("-dm_plex_gmsh_spacedim", "Embedding space dimension", "DMPlexCreateGmsh", embedDim, &embedDim, NULL,PETSC_DECIDE);CHKERRQ(ierr);
+  ierr = PetscOptionsTail();CHKERRQ(ierr);
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
   if (zerobase) shift = 0;
 
   ierr = DMCreate(comm, dm);CHKERRQ(ierr);
@@ -1055,7 +1101,7 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
     char      line[PETSC_MAX_PATH_LEN];
     PetscBool match;
 
-    ierr = PetscMemzero(gmsh,sizeof(GmshFile));CHKERRQ(ierr);
+    ierr = PetscArrayzero(gmsh,1);CHKERRQ(ierr);
     gmsh->viewer = viewer;
     gmsh->binary = binary;
 
@@ -1097,7 +1143,7 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
     ierr = GmshReadEndSection(gmsh, "$EndNodes", line);CHKERRQ(ierr);
 
     /* Read elements */
-    ierr = GmshReadSection(gmsh, line);CHKERRQ(ierr);;
+    ierr = GmshReadSection(gmsh, line);CHKERRQ(ierr);
     ierr = GmshExpect(gmsh, "$Elements", line);CHKERRQ(ierr);
     switch (gmsh->fileFormat) {
     case 41: ierr = DMPlexCreateGmsh_ReadElements_v41(gmsh, shift, entities, &numCells, &gmsh_elem);CHKERRQ(ierr); break;
@@ -1108,13 +1154,16 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
 
     /* OPTIONAL Read periodic section */
     if (periodic) {
+      ierr = GmshReadSection(gmsh, line);CHKERRQ(ierr);
+      ierr = GmshMatch(gmsh, "$Periodic", line, &periodic);CHKERRQ(ierr);
+    }
+    if (periodic) {
       PetscInt pVert, *periodicMapT, *aux;
 
       ierr = PetscMalloc1(numVertices, &periodicMapT);CHKERRQ(ierr);
       ierr = PetscBTCreate(numVertices, &periodicV);CHKERRQ(ierr);
       for (i = 0; i < numVertices; i++) periodicMapT[i] = i;
 
-      ierr = GmshReadSection(gmsh, line);CHKERRQ(ierr);
       ierr = GmshExpect(gmsh, "$Periodic", line);CHKERRQ(ierr);
       switch (gmsh->fileFormat) {
       case 41: ierr = DMPlexCreateGmsh_ReadPeriodic_v41(gmsh, shift, periodicMapT, periodicV);CHKERRQ(ierr); break;
@@ -1160,14 +1209,19 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
   }
 
   if (!rank) {
-    PetscBool hybrid = PETSC_FALSE;
+    PetscBool hybrid   = PETSC_FALSE;
+    PetscInt  cellType = -1;
 
     for (trueNumCells = 0, c = 0; c < numCells; ++c) {
-      int on = -1;
-      if (gmsh_elem[c].dim > dim) {dim = gmsh_elem[c].dim; trueNumCells = 0;}
-      if (gmsh_elem[c].dim == dim) {hybrid = (trueNumCells ? (on != gmsh_elem[c].cellType ? on = gmsh_elem[c].cellType,PETSC_TRUE : hybrid) : (on = gmsh_elem[c].cellType, PETSC_FALSE) ); trueNumCells++;}
+      if (gmsh_elem[c].dim > dim) {dim = gmsh_elem[c].dim; trueNumCells = 0; hybrid = PETSC_FALSE; cellType = -1;}
+      if (gmsh_elem[c].dim < dim) continue;
+      if (cellType == -1) cellType = gmsh_elem[c].cellType;
+      /* different cell type indicate an hybrid mesh in PLEX */
+      if (cellType != gmsh_elem[c].cellType) hybrid = PETSC_TRUE;
       /* wedges always indicate an hybrid mesh in PLEX */
-      if (on == 6 || on == 13) hybrid = PETSC_TRUE;
+      if (cellType == 6 || cellType == 13) hybrid = PETSC_TRUE;
+      if (cellType == 4 || cellType == 11) hasTetra = PETSC_TRUE;
+      trueNumCells++;
     }
     /* Renumber cells for hybrid grids */
     if (hybrid && enable_hybrid) {
@@ -1201,7 +1255,7 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
           SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_SUP, "Unsupported cell types %d and %d",n1, n2);
         }
         break;
-      case 3:
+      case 3: /* quadrilateral */
       case 10:
         switch (n2) {
         case 0: /* single type mesh */
@@ -1230,12 +1284,25 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
           SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_SUP, "Unsupported cell types %d and %d",n1, n2);
         }
         break;
-      case 6:
+      case 5: /* hexahedra */
+      case 12:
+        switch (n2) {
+        case 0: /* single type mesh */
+        case 6: /* wedges */
+        case 13:
+          break;
+        default:
+          SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_SUP, "Unsupported cell types %d and %d",n1, n2);
+        }
+        break;
+      case 6: /* wedge */
       case 13:
         switch (n2) {
         case 0: /* single type mesh */
-        case 4: /* swap since we list simplices first */
+        case 4: /* tetrahedra: swap since we list simplices first */
         case 11:
+        case 5: /* hexahedra */
+        case 12:
           tn  = hc1;
           hc1 = hc2;
           hc2 = tn;
@@ -1251,7 +1318,6 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
       default:
         SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_SUP, "Unsupported cell types %d and %d",n1, n2);
       }
-      cMax = hc1;
       ierr = PetscMalloc1(trueNumCells, &hybridMap);CHKERRQ(ierr);
       for (cell = 0; cell < hc1; cell++) hybridMap[hybridCells1[cell]] = cell;
       for (cell = 0; cell < hc2; cell++) hybridMap[hybridCells2[cell]] = cell + hc1;
@@ -1262,61 +1328,41 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
   }
 
   /* Allocate the cell-vertex mesh */
+  /*   We do not want this label automatically computed, instead we compute it here */
+  ierr = DMCreateLabel(*dm, "celltype");CHKERRQ(ierr);
   ierr = DMPlexSetChart(*dm, 0, trueNumCells+numVertices);CHKERRQ(ierr);
   for (cell = 0, c = 0; c < numCells; ++c) {
     if (gmsh_elem[c].dim == dim) {
-      ierr = DMPlexSetConeSize(*dm, hybridMap ? hybridMap[cell] : cell, gmsh_elem[c].numNodes);CHKERRQ(ierr);
+      PetscInt       ucell = hybridMap ? hybridMap[cell] : cell;
+      DMPolytopeType ctype = DMPolytopeTypeFromGmsh(gmsh_elem[c].cellType);
+      if (hybridMap && hasTetra && ctype == DM_POLYTOPE_TRI_PRISM) ctype = DM_POLYTOPE_TRI_PRISM_TENSOR;
+      ierr = DMPlexSetConeSize(*dm, ucell, gmsh_elem[c].numNodes);CHKERRQ(ierr);
+      ierr = DMPlexSetCellType(*dm, ucell, ctype);CHKERRQ(ierr);
       cell++;
     }
   }
+  for (v = trueNumCells; v < trueNumCells+numVertices; ++v) {
+    ierr = DMPlexSetCellType(*dm, v, DM_POLYTOPE_POINT);CHKERRQ(ierr);
+  }
   ierr = DMSetUp(*dm);CHKERRQ(ierr);
+
   /* Add cell-vertex connections */
   for (cell = 0, c = 0; c < numCells; ++c) {
     if (gmsh_elem[c].dim == dim) {
       PetscInt pcone[8], corner;
+      PetscInt ucell = hybridMap ? hybridMap[cell] : cell;
       for (corner = 0; corner < gmsh_elem[c].numNodes; ++corner) {
         const PetscInt cc = gmsh_elem[c].nodes[corner] - shift;
         pcone[corner] = (periodicMap ? periodicMap[cc] : cc) + trueNumCells;
       }
-      if (dim == 3) {
-        /* Tetrahedra are inverted */
-        if (gmsh_elem[c].cellType == 4) {
-          PetscInt tmp = pcone[0];
-          pcone[0] = pcone[1];
-          pcone[1] = tmp;
-        }
-        /* Hexahedra are inverted */
-        if (gmsh_elem[c].cellType == 5) {
-          PetscInt tmp = pcone[1];
-          pcone[1] = pcone[3];
-          pcone[3] = tmp;
-        }
-        /* Prisms are inverted */
-        if (gmsh_elem[c].cellType == 6) {
-          PetscInt tmp;
-
-          tmp      = pcone[1];
-          pcone[1] = pcone[2];
-          pcone[2] = tmp;
-          tmp      = pcone[4];
-          pcone[4] = pcone[5];
-          pcone[5] = tmp;
-        }
-      } else if (dim == 2 && hybridMap && hybridMap[cell] >= cMax) { /* hybrid cells */
-        /* quads are input to PLEX as prisms */
-        if (gmsh_elem[c].cellType == 3) {
-          PetscInt tmp = pcone[2];
-          pcone[2] = pcone[3];
-          pcone[3] = tmp;
-        }
-      }
-      ierr = DMPlexSetCone(*dm, hybridMap ? hybridMap[cell] : cell, pcone);CHKERRQ(ierr);
+      ierr = DMPlexReorderCell(*dm, ucell, pcone);CHKERRQ(ierr);
+      ierr = DMPlexSetCone(*dm, ucell, pcone);CHKERRQ(ierr);
       cell++;
     }
   }
+
   ierr = MPI_Bcast(&dim, 1, MPIU_INT, 0, comm);CHKERRQ(ierr);
   ierr = DMSetDimension(*dm, dim);CHKERRQ(ierr);
-  ierr = DMPlexSetHybridBounds(*dm, cMax, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_DETERMINE);CHKERRQ(ierr);
   ierr = DMPlexSymmetrize(*dm);CHKERRQ(ierr);
   ierr = DMPlexStratify(*dm);CHKERRQ(ierr);
   if (interpolate) {
@@ -1408,8 +1454,7 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
     ierr = PetscBTCreate(trueNumCells, &periodicC);CHKERRQ(ierr);
     for (cell = 0, c = 0; c < numCells; ++c) {
       if (gmsh_elem[c].dim == dim) {
-        PetscInt  corner;
-        PetscBool pc = PETSC_FALSE;
+        PetscInt  corner, pc = PETSC_FALSE;
         for (corner = 0; corner < gmsh_elem[c].numNodes; ++corner) {
           pc = (PetscBool)(pc || PetscBTLookup(periodicV, gmsh_elem[c].nodes[corner] - shift));
         }
@@ -1436,52 +1481,18 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
     PetscInt off;
 
     for (cell = 0, c = 0; c < numCells; ++c) {
-      PetscInt pcone[8], corner;
       if (gmsh_elem[c].dim == dim) {
+        PetscInt pcone[8], corner;
         PetscInt ucell = hybridMap ? hybridMap[cell] : cell;
         if (PetscUnlikely(PetscBTLookup(periodicC, ucell))) {
           for (corner = 0; corner < gmsh_elem[c].numNodes; ++corner) {
             pcone[corner] = gmsh_elem[c].nodes[corner] - shift;
           }
-          if (dim == 3) {
-            /* Tetrahedra are inverted */
-            if (gmsh_elem[c].cellType == 4) {
-              PetscInt tmp = pcone[0];
-              pcone[0] = pcone[1];
-              pcone[1] = tmp;
-            }
-            /* Hexahedra are inverted */
-            if (gmsh_elem[c].cellType == 5) {
-              PetscInt tmp = pcone[1];
-              pcone[1] = pcone[3];
-              pcone[3] = tmp;
-            }
-            /* Prisms are inverted */
-            if (gmsh_elem[c].cellType == 6) {
-              PetscInt tmp;
-
-              tmp      = pcone[1];
-              pcone[1] = pcone[2];
-              pcone[2] = tmp;
-              tmp      = pcone[4];
-              pcone[4] = pcone[5];
-              pcone[5] = tmp;
-            }
-          } else if (dim == 2 && hybridMap && hybridMap[cell] >= cMax) { /* hybrid cells */
-            /* quads are input to PLEX as prisms */
-            if (gmsh_elem[c].cellType == 3) {
-              PetscInt tmp = pcone[2];
-              pcone[2] = pcone[3];
-              pcone[3] = tmp;
-            }
-          }
+          ierr = DMPlexReorderCell(*dm, ucell, pcone);CHKERRQ(ierr);
           ierr = PetscSectionGetOffset(coordSection, ucell, &off);CHKERRQ(ierr);
-          for (corner = 0; corner < gmsh_elem[c].numNodes; ++corner) {
-            v = pcone[corner];
-            for (d = 0; d < embedDim; ++d) {
+          for (corner = 0; corner < gmsh_elem[c].numNodes; ++corner)
+            for (v = pcone[corner], d = 0; d < embedDim; ++d)
               coords[off++] = (PetscReal) coordsIn[v*3+d];
-            }
-          }
         }
         cell++;
       }
@@ -1501,6 +1512,9 @@ PetscErrorCode DMPlexCreateGmsh(MPI_Comm comm, PetscViewer viewer, PetscBool int
   }
   ierr = VecRestoreArray(coordinates, &coords);CHKERRQ(ierr);
   ierr = DMSetCoordinatesLocal(*dm, coordinates);CHKERRQ(ierr);
+
+  periodic = periodicMap ? PETSC_TRUE : PETSC_FALSE;
+  ierr = MPI_Bcast(&periodic, 1, MPIU_BOOL, 0, comm);CHKERRQ(ierr);
   ierr = DMSetPeriodicity(*dm, periodic, NULL, NULL, NULL);CHKERRQ(ierr);
 
   ierr = PetscFree(coordsIn);CHKERRQ(ierr);

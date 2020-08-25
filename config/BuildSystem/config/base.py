@@ -222,10 +222,14 @@ class Configure(script.Script):
 
   def getExecutable(self, names, path = [], getFullPath = 0, useDefaultPath = 0, resultName = '', setMakeMacro = 1):
     '''Search for an executable in the list names
-       - Each name in the list is tried for each entry in the path
+       - Each name in the list is tried for each entry in the path until a name is located, then it stops
        - If found, the path is stored in the variable "name", or "resultName" if given
        - By default, a make macro "resultName" will hold the path'''
     found = 0
+    if isinstance(names,str) and names.startswith('/'):
+      path = os.path.dirname(names)
+      names = os.path.basename(names)
+
     if isinstance(names, str):
       names = [names]
     if isinstance(path, str):
@@ -287,6 +291,26 @@ class Configure(script.Script):
         setattr(self, varName, name+options)
       if setMakeMacro:
         self.addMakeMacro(varName.upper(), getattr(self, varName))
+    else:
+      def logPrintFilesInPath(path):
+        for d in path:
+          try:
+            self.logWrite('      '+str(os.listdir(d))+'\n')
+          except OSError as e:
+            self.logWrite('      Warning accessing '+d+' gives errors: '+str(e)+'\n')
+        return
+      self.logWrite('  Unable to find programs '+str(names)+' providing listing of each search directory to help debug\n')
+      self.logWrite('    Path provided in Python program\n')
+      logPrintFilesInPath(path)
+      if useDefaultPath:
+        if os.environ['PATH'].split(os.path.pathsep):
+          self.logWrite('    Path provided by default path\n')
+          logPrintFilesInPath(os.environ['PATH'].split(os.path.pathsep))
+      dirs = self.argDB['with-executables-search-path']
+      if not isinstance(dirs, list): dirs = [dirs]
+      if dirs:
+        self.logWrite('    Path provided by --with-executables-search-path\n')
+        logPrintFilesInPath(dirs)
     return found
 
   def getExecutables(self, names, path = '', getFullPath = 0, useDefaultPath = 0, resultName = ''):
@@ -452,6 +476,7 @@ class Configure(script.Script):
     command = self.getPreprocessorCmd()
     if self.compilerDefines: self.framework.outputHeader(self.compilerDefines)
     self.framework.outputCHeader(self.compilerFixes)
+    self.logWrite('Preprocessing source:\n'+self.getCode(codeStr))
     f = open(self.compilerSource, 'w')
     f.write(self.getCode(codeStr))
     f.close()
@@ -463,24 +488,25 @@ class Configure(script.Script):
 
   def outputPreprocess(self, codeStr):
     '''Return the contents of stdout when preprocessing "codeStr"'''
-    self.logWrite('Source:\n'+self.getCode(codeStr))
     return self.preprocess(codeStr)[0]
 
   def checkPreprocess(self, codeStr, timeout = 600.0):
     '''Return True if no error occurred
        - An error is signaled by a nonzero return code, or output on stderr'''
     (out, err, ret) = self.preprocess(codeStr, timeout = timeout)
-    #pgi dumps filename on stderr - but returns 0 errorcode'
-    if err =='conftest.c:': err = ''
     err = self.framework.filterPreprocessOutput(err, self.log)
     return not ret and not len(err)
 
   # Should be static
   def getPreprocessorFlagsName(self, language):
-    if language in ['C', 'Cxx', 'FC']:
+    if language == 'C':
       flagsArg = 'CPPFLAGS'
     elif language == 'CUDA':
       flagsArg = 'CUDAPPFLAGS'
+    elif language == 'Cxx':
+      flagsArg = 'CXXPPFLAGS'
+    elif language == 'FC':
+      flagsArg = 'FPPFLAGS'
     else:
       raise RuntimeError('Unknown language: '+language)
     return flagsArg
@@ -522,8 +548,7 @@ class Configure(script.Script):
     output = self.filterCompileOutput(output+'\n'+error)
     return not (returnCode or len(output))
 
-  # Should be static
-  def getCompilerFlagsName(self, language, compilerOnly = 0):
+  def getCompilerFlagsName(language, compilerOnly = 0):
     if language == 'C':
       flagsArg = 'CFLAGS'
     elif language == 'CUDA':
@@ -538,6 +563,7 @@ class Configure(script.Script):
     else:
       raise RuntimeError('Unknown language: '+language)
     return flagsArg
+  getCompilerFlagsName = staticmethod(getCompilerFlagsName)
 
   def getCompilerFlagsArg(self, compilerOnly = 0):
     '''Return the name of the argument which holds the compiler flags for the current language'''
@@ -592,19 +618,19 @@ class Configure(script.Script):
     output = self.filterLinkOutput(output)
     return not (returnCode or len(output))
 
-  # Should be static
-  def getLinkerFlagsName(self, language):
+  def getLinkerFlagsName(language):
     if language in ['C', 'CUDA', 'Cxx', 'FC']:
       flagsArg = 'LDFLAGS'
     else:
       raise RuntimeError('Unknown language: '+language)
     return flagsArg
+  getLinkerFlagsName = staticmethod(getLinkerFlagsName)
 
   def getLinkerFlagsArg(self):
     '''Return the name of the argument which holds the linker flags for the current language'''
     return self.getLinkerFlagsName(self.language[-1])
 
-  def outputRun(self, includes, body, cleanup = 1, defaultOutputArg = '', executor = None,linkLanguage=None):
+  def outputRun(self, includes, body, cleanup = 1, defaultOutputArg = '', executor = None,linkLanguage=None, timeout = 60, threads = 1):
     if not self.checkLink(includes, body, cleanup = 0, linkLanguage=linkLanguage): return ('', 1)
     self.logWrite('Testing executable '+self.linkerObj+' to see if it can be run\n')
     if not os.path.isfile(self.linkerObj):
@@ -618,9 +644,9 @@ class Configure(script.Script):
         if defaultOutputArg in self.argDB:
           return (self.argDB[defaultOutputArg], 0)
         else:
-          raise ConfigureSetupError('Must give a default value for '+defaultOutputArg+' since executables cannot be run')
+          raise ConfigureSetupError('Must give a default value for '+defaultOutputArg+' since generated executables cannot be run with the --with-batch option')
       else:
-        raise ConfigureSetupError('Running executables on this system is not supported')
+        raise ConfigureSetupError('Generated executables cannot be run with the --with-batch option')
     cleanup = cleanup and self.framework.doCleanup
     if executor:
       command = executor+' '+self.linkerObj
@@ -631,9 +657,11 @@ class Configure(script.Script):
     status  = 1
     self.logWrite('Executing: '+command+'\n')
     try:
-      (output, error, status) = Configure.executeShellCommand(command, log = self.log)
+      (output, error, status) = Configure.executeShellCommand(command, log = self.log, timeout = timeout, threads = threads)
     except RuntimeError as e:
       self.logWrite('ERROR while running executable: '+str(e)+'\n')
+      if str(e).find('Runaway process exceeded time limit') > -1:
+        raise RuntimeError('Runaway process exceeded time limit')
     if os.path.isfile(self.compilerObj):
       try:
         os.remove(self.compilerObj)
@@ -647,8 +675,8 @@ class Configure(script.Script):
         self.logWrite('ERROR while removing executable file: '+str(e)+'\n')
     return (output+error, status)
 
-  def checkRun(self, includes = '', body = '', cleanup = 1, defaultArg = '', executor = None, linkLanguage=None):
-    (output, returnCode) = self.outputRun(includes, body, cleanup, defaultArg, executor,linkLanguage=linkLanguage)
+  def checkRun(self, includes = '', body = '', cleanup = 1, defaultArg = '', executor = None, linkLanguage=None, timeout = 60, threads = 1):
+    (output, returnCode) = self.outputRun(includes, body, cleanup, defaultArg, executor,linkLanguage=linkLanguage, timeout = timeout, threads = threads)
     return not returnCode
 
   def splitLibs(self,libArgs):

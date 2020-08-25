@@ -1,8 +1,8 @@
 !
 !  Include file for Fortran use of the SNES package in PETSc
 !
-#if !defined (__PETSCSNESDEF_H)
-#define __PETSCSNESDEF_H
+#if !defined (PETSCSNESDEF_H)
+#define PETSCSNESDEF_H
 
 #include "petsc/finclude/petscksp.h"
 
@@ -50,11 +50,12 @@
 ! SNESLineSearchType
 !
 
-#define SNESLINESEARCHBASIC 'basic'
-#define SNESLINESEARCHBT    'bt'
-#define SNESLINESEARCHL2    'l2'
-#define SNESLINESEARCHCP    'cp'
-#define SNESLINESEARCHSHELL 'shell'
+#define SNESLINESEARCHBASIC     'basic'
+#define SNESLINESEARCHBT        'bt'
+#define SNESLINESEARCHL2        'l2'
+#define SNESLINESEARCHCP        'cp'
+#define SNESLINESEARCHSHELL     'shell'
+#define SNESLINESEARCHNCGLINEAR 'ncglinear'
 
 !
 ! SNESLineSearchOrder
@@ -68,9 +69,10 @@
 !
 !  SNESMSType
 !
-#define SNESMSEULER     'euler'
 #define SNESMSM62       'm62'
+#define SNESMSEULER     'euler'
 #define SNESMSJAMESON83 'jameson83'
+#define SNESMSVLTP11    'vltp11'
 #define SNESMSVLTP21    'vltp21'
 #define SNESMSVLTP31    'vltp31'
 #define SNESMSVLTP41    'vltp41'

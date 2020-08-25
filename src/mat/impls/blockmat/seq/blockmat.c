@@ -14,8 +14,6 @@ typedef struct {
   Vec left,right,middle,workb;                 /* dummy vectors to perform local parts of product */
 } Mat_BlockMat;
 
-extern PetscErrorCode  MatBlockMatSetPreallocation(Mat,PetscInt,PetscInt,const PetscInt*);
-
 static PetscErrorCode MatSOR_BlockMat_Symmetric(Mat A,Vec bb,PetscReal omega,MatSORType flag,PetscReal fshift,PetscInt its,PetscInt lits,Vec xx)
 {
   Mat_BlockMat      *a = (Mat_BlockMat*)A->data;
@@ -234,9 +232,7 @@ static PetscErrorCode MatSetValues_BlockMat(Mat A,PetscInt m,const PetscInt im[]
     row  = im[k];
     brow = row/bs;
     if (row < 0) continue;
-#if defined(PETSC_USE_DEBUG)
-    if (row >= A->rmap->N) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Row too large: row %D max %D",row,A->rmap->N-1);
-#endif
+    if (PetscUnlikelyDebug(row >= A->rmap->N)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Row too large: row %D max %D",row,A->rmap->N-1);
     rp   = aj + ai[brow];
     ap   = aa + ai[brow];
     rmax = imax[brow];
@@ -245,9 +241,7 @@ static PetscErrorCode MatSetValues_BlockMat(Mat A,PetscInt m,const PetscInt im[]
     high = nrow;
     for (l=0; l<n; l++) { /* loop over added columns */
       if (in[l] < 0) continue;
-#if defined(PETSC_USE_DEBUG)
-      if (in[l] >= A->cmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Column too large: col %D max %D",in[l],A->cmap->n-1);
-#endif
+      if (PetscUnlikelyDebug(in[l] >= A->cmap->n)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Column too large: col %D max %D",in[l],A->cmap->n-1);
       col = in[l]; bcol = col/bs;
       if (A->symmetric && brow > bcol) continue;
       ridx = row % bs; cidx = col % bs;
@@ -319,7 +313,7 @@ static PetscErrorCode MatLoad_BlockMat(Mat newmat, PetscViewer viewer)
   a    = (Mat_SeqAIJ*) tmpA->data;
   mbs  = m/bs;
   ierr = PetscMalloc3(mbs,&lens,bs,&ii,bs,&ilens);CHKERRQ(ierr);
-  ierr = PetscMemzero(lens,mbs*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArrayzero(lens,mbs);CHKERRQ(ierr);
 
   for (i=0; i<mbs; i++) {
     for (j=0; j<bs; j++) {
@@ -374,7 +368,7 @@ static PetscErrorCode MatLoad_BlockMat(Mat newmat, PetscViewer viewer)
     while (PETSC_TRUE) {  /* loops over blocks in block row */
       notdone = PETSC_FALSE;
       nextcol = 1000000000;
-      ierr    = PetscMemzero(llens,bs*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr    = PetscArrayzero(llens,bs);CHKERRQ(ierr);
       for (j=0; j<bs; j++) { /* loop over rows in block */
         while ((ilens[j] > 0 && ii[j][0]/bs <= currentcol)) { /* loop over columns in row */
           ii[j]++;
@@ -686,9 +680,7 @@ static PetscErrorCode MatAssemblyEnd_BlockMat(Mat A,MatAssemblyType mode)
   }
   a->nz = ai[m];
   for (i=0; i<a->nz; i++) {
-#if defined(PETSC_USE_DEBUG)
-    if (!aa[i]) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Null matrix at location %D column %D nz %D",i,aj[i],a->nz);
-#endif
+    if (PetscUnlikelyDebug(!aa[i])) SETERRQ3(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Null matrix at location %D column %D nz %D",i,aj[i],a->nz);
     ierr = MatAssemblyBegin(aa[i],MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
     ierr = MatAssemblyEnd(aa[i],MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   }
@@ -868,7 +860,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_BlockMat,
    (or the array nnz).  By setting these parameters accurately, performance
    during matrix assembly can be increased by more than a factor of 50.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  B - The matrix
@@ -991,7 +983,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_BlockMat(Mat A)
 /*@C
    MatCreateBlockMat - Creates a new matrix in which each block contains a uniform-size sequential Mat object
 
-  Collective on MPI_Comm
+  Collective
 
    Input Parameters:
 +  comm - MPI communicator
@@ -1012,8 +1004,6 @@ PETSC_EXTERN PetscErrorCode MatCreate_BlockMat(Mat A)
    have the same size and be sequential.  The local and global sizes must be compatible with this decomposition.
 
    For matrices containing parallel submatrices and variable block sizes, see MATNEST.
-
-.keywords: matrix, bmat, create
 
 .seealso: MATBLOCKMAT, MatCreateNest()
 @*/

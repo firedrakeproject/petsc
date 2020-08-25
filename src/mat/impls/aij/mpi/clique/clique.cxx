@@ -34,7 +34,7 @@ PetscErrorCode MatView_SparseElemental(Mat A,PetscViewer viewer)
       ierr = PetscViewerASCIIUseTabs(viewer,PETSC_FALSE);CHKERRQ(ierr);
       ierr = PetscViewerASCIIUseTabs(viewer,PETSC_TRUE);CHKERRQ(ierr);
       ierr = PetscPrintf(PetscObjectComm((PetscObject)viewer),"SparseElemental matrix\n");CHKERRQ(ierr);
-      ierr = MatComputeExplicitOperator(A,&Aaij);CHKERRQ(ierr);
+      ierr = MatComputeOperator(A,MATAIJ,&Aaij);CHKERRQ(ierr);
       ierr = MatView(Aaij,viewer);CHKERRQ(ierr);
       ierr = MatDestroy(&Aaij);CHKERRQ(ierr);
     }
@@ -96,8 +96,6 @@ PetscErrorCode MatFactorGetSolverType_SparseElemental(Mat A,MatSolverType *type)
   *type = MATSOLVERSPARSEELEMENTAL;
   PetscFunctionReturn(0);
 }
-
-extern PetscErrorCode PetscElementalInitializePackage(void);
 
 static PetscErrorCode MatGetFactor_aij_sparseelemental(Mat A,MatFactorType ftype,Mat *F)
 {

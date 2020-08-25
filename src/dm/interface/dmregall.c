@@ -36,7 +36,6 @@ PETSC_EXTERN PetscErrorCode DMCreate_Stag(DM);
 
   Level: advanced
 
-.keywords: DM, register, all
 .seealso:  DMRegister(), DMRegisterDestroy()
 @*/
 PetscErrorCode  DMRegisterAll(void)
@@ -47,70 +46,33 @@ PetscErrorCode  DMRegisterAll(void)
   if (DMRegisterAllCalled) PetscFunctionReturn(0);
   DMRegisterAllCalled = PETSC_TRUE;
 
-  ierr = DMRegister(DMDA,         DMCreate_DA);CHKERRQ(ierr);
-  ierr = DMRegister(DMCOMPOSITE,  DMCreate_Composite);CHKERRQ(ierr);
-  ierr = DMRegister(DMSLICED,     DMCreate_Sliced);CHKERRQ(ierr);
-  ierr = DMRegister(DMSHELL,      DMCreate_Shell);CHKERRQ(ierr);
-  ierr = DMRegister(DMREDUNDANT,  DMCreate_Redundant);CHKERRQ(ierr);
-  ierr = DMRegister(DMPLEX,       DMCreate_Plex);CHKERRQ(ierr);
-  ierr = DMRegister(DMPATCH,      DMCreate_Patch);CHKERRQ(ierr);
-  ierr = DMRegister(DMSWARM,      DMCreate_Swarm);CHKERRQ(ierr);
+  ierr = DMRegister(DMDA,       DMCreate_DA);CHKERRQ(ierr);
+  ierr = DMRegister(DMCOMPOSITE,DMCreate_Composite);CHKERRQ(ierr);
+  ierr = DMRegister(DMSLICED,   DMCreate_Sliced);CHKERRQ(ierr);
+  ierr = DMRegister(DMSHELL,    DMCreate_Shell);CHKERRQ(ierr);
+  ierr = DMRegister(DMREDUNDANT,DMCreate_Redundant);CHKERRQ(ierr);
+  ierr = DMRegister(DMPLEX,     DMCreate_Plex);CHKERRQ(ierr);
+  ierr = DMRegister(DMPATCH,    DMCreate_Patch);CHKERRQ(ierr);
+  ierr = DMRegister(DMSWARM,    DMCreate_Swarm);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_MOAB)
-  ierr = DMRegister(DMMOAB,       DMCreate_Moab);CHKERRQ(ierr);
+  ierr = DMRegister(DMMOAB,     DMCreate_Moab);CHKERRQ(ierr);
 #endif
-  ierr = DMRegister(DMNETWORK,    DMCreate_Network);CHKERRQ(ierr);
-  ierr = DMRegister(DMFOREST,     DMCreate_Forest);CHKERRQ(ierr);
+  ierr = DMRegister(DMNETWORK,  DMCreate_Network);CHKERRQ(ierr);
+  ierr = DMRegister(DMFOREST,   DMCreate_Forest);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_P4EST)
-  ierr = DMRegister(DMP4EST,      DMCreate_p4est);CHKERRQ(ierr);
-  ierr = DMRegister(DMP8EST,      DMCreate_p8est);CHKERRQ(ierr);
+  ierr = DMRegister(DMP4EST,    DMCreate_p4est);CHKERRQ(ierr);
+  ierr = DMRegister(DMP8EST,    DMCreate_p8est);CHKERRQ(ierr);
 #endif
-  ierr = DMRegister(DMPRODUCT,    DMCreate_Product);CHKERRQ(ierr);
-  ierr = DMRegister(DMSTAG,       DMCreate_Stag);CHKERRQ(ierr);
+  ierr = DMRegister(DMPRODUCT,  DMCreate_Product);CHKERRQ(ierr);
+  ierr = DMRegister(DMSTAG,     DMCreate_Stag);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate_Chaco(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate_ParMetis(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate_PTScotch(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate_Shell(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate_Simple(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate_Gather(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate_MatPartitioning(PetscPartitioner);
-
-/*@C
-  PetscPartitionerRegisterAll - Registers all of the PetscPartitioner components in the DM package.
-
-  Not Collective
-
-  Input parameter:
-. path - The dynamic library path
-
-  Level: advanced
-
-.keywords: PetscPartitioner, register, all
-.seealso:  PetscPartitionerRegister(), PetscPartitionerRegisterDestroy()
-@*/
-PetscErrorCode PetscPartitionerRegisterAll(void)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  if (PetscPartitionerRegisterAllCalled) PetscFunctionReturn(0);
-  PetscPartitionerRegisterAllCalled = PETSC_TRUE;
-
-  ierr = PetscPartitionerRegister(PETSCPARTITIONERCHACO,    PetscPartitionerCreate_Chaco);CHKERRQ(ierr);
-  ierr = PetscPartitionerRegister(PETSCPARTITIONERPARMETIS, PetscPartitionerCreate_ParMetis);CHKERRQ(ierr);
-  ierr = PetscPartitionerRegister(PETSCPARTITIONERPTSCOTCH, PetscPartitionerCreate_PTScotch);CHKERRQ(ierr);
-  ierr = PetscPartitionerRegister(PETSCPARTITIONERSHELL,    PetscPartitionerCreate_Shell);CHKERRQ(ierr);
-  ierr = PetscPartitionerRegister(PETSCPARTITIONERSIMPLE,   PetscPartitionerCreate_Simple);CHKERRQ(ierr);
-  ierr = PetscPartitionerRegister(PETSCPARTITIONERGATHER,   PetscPartitionerCreate_Gather);CHKERRQ(ierr);
-  ierr = PetscPartitionerRegister(PETSCPARTITIONERMATPARTITIONING, PetscPartitionerCreate_MatPartitioning);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
 #include <petscfe.h>     /*I  "petscfe.h"  I*/
 
 PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Polynomial(PetscSpace);
 PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Tensor(PetscSpace);
+PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Sum(PetscSpace);
 PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Point(PetscSpace);
 PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Subspace(PetscSpace);
 
@@ -124,7 +86,6 @@ PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Subspace(PetscSpace);
 
   Level: advanced
 
-.keywords: PetscSpace, register, all
 .seealso:  PetscSpaceRegister(), PetscSpaceRegisterDestroy()
 @*/
 PetscErrorCode PetscSpaceRegisterAll(void)
@@ -137,13 +98,16 @@ PetscErrorCode PetscSpaceRegisterAll(void)
 
   ierr = PetscSpaceRegister(PETSCSPACEPOLYNOMIAL, PetscSpaceCreate_Polynomial);CHKERRQ(ierr);
   ierr = PetscSpaceRegister(PETSCSPACETENSOR,     PetscSpaceCreate_Tensor);CHKERRQ(ierr);
+  ierr = PetscSpaceRegister(PETSCSPACESUM,        PetscSpaceCreate_Sum);CHKERRQ(ierr);
   ierr = PetscSpaceRegister(PETSCSPACEPOINT,      PetscSpaceCreate_Point);CHKERRQ(ierr);
   ierr = PetscSpaceRegister(PETSCSPACESUBSPACE,   PetscSpaceCreate_Subspace);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PETSC_EXTERN PetscErrorCode PetscDualSpaceCreate_Lagrange(PetscDualSpace);
+PETSC_EXTERN PetscErrorCode PetscDualSpaceCreate_Lagrange_BDM(PetscDualSpace);
 PETSC_EXTERN PetscErrorCode PetscDualSpaceCreate_Simple(PetscDualSpace);
+PETSC_EXTERN PetscErrorCode PetscDualSpaceCreate_Refined(PetscDualSpace);
 
 /*@C
   PetscDualSpaceRegisterAll - Registers all of the PetscDualSpace components in the PetscFE package.
@@ -155,7 +119,6 @@ PETSC_EXTERN PetscErrorCode PetscDualSpaceCreate_Simple(PetscDualSpace);
 
   Level: advanced
 
-.keywords: PetscDualSpace, register, all
 .seealso:  PetscDualSpaceRegister(), PetscDualSpaceRegisterDestroy()
 @*/
 PetscErrorCode PetscDualSpaceRegisterAll(void)
@@ -167,7 +130,9 @@ PetscErrorCode PetscDualSpaceRegisterAll(void)
   PetscDualSpaceRegisterAllCalled = PETSC_TRUE;
 
   ierr = PetscDualSpaceRegister(PETSCDUALSPACELAGRANGE, PetscDualSpaceCreate_Lagrange);CHKERRQ(ierr);
+  ierr = PetscDualSpaceRegister(PETSCDUALSPACEBDM,      PetscDualSpaceCreate_Lagrange);CHKERRQ(ierr);
   ierr = PetscDualSpaceRegister(PETSCDUALSPACESIMPLE,   PetscDualSpaceCreate_Simple);CHKERRQ(ierr);
+  ierr = PetscDualSpaceRegister(PETSCDUALSPACEREFINED,  PetscDualSpaceCreate_Refined);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -188,7 +153,6 @@ PETSC_EXTERN PetscErrorCode PetscFECreate_OpenCL(PetscFE);
 
   Level: advanced
 
-.keywords: PetscFE, register, all
 .seealso:  PetscFERegister(), PetscFERegisterDestroy()
 @*/
 PetscErrorCode PetscFERegisterAll(void)
@@ -227,7 +191,6 @@ PETSC_EXTERN PetscErrorCode PetscLimiterCreate_MC(PetscLimiter);
 
   Level: advanced
 
-.keywords: PetscLimiter, register, all
 .seealso:  PetscLimiterRegister(), PetscLimiterRegisterDestroy()
 @*/
 PetscErrorCode PetscLimiterRegisterAll(void)
@@ -262,7 +225,6 @@ PETSC_EXTERN PetscErrorCode PetscFVCreate_LeastSquares(PetscFV);
 
   Level: advanced
 
-.keywords: PetscFV, register, all
 .seealso:  PetscFVRegister(), PetscFVRegisterDestroy()
 @*/
 PetscErrorCode PetscFVRegisterAll(void)
@@ -291,7 +253,6 @@ PETSC_EXTERN PetscErrorCode PetscDSCreate_Basic(PetscDS);
 
   Level: advanced
 
-.keywords: PetscDS, register, all
 .seealso:  PetscDSRegister(), PetscDSRegisterDestroy()
 @*/
 PetscErrorCode PetscDSRegisterAll(void)

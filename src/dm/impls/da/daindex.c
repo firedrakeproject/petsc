@@ -52,11 +52,11 @@ PetscErrorCode DMDAGetNatural_Private(DM da,PetscInt *outNlocal,IS *isnatural)
 /*@C
    DMDASetAOType - Sets the type of application ordering for a distributed array.
 
-   Collective on DMDA
+   Collective on da
 
    Input Parameter:
-.  da - the distributed array
-.  aotype - type of AO
++  da - the distributed array
+-  aotype - type of AO
 
    Output Parameters:
 
@@ -65,9 +65,7 @@ PetscErrorCode DMDAGetNatural_Private(DM da,PetscInt *outNlocal,IS *isnatural)
    Notes:
    It will generate and error if an AO has already been obtained with a call to DMDAGetAO and the user sets a different AOType
 
-.keywords: distributed array, get, global, indices, local-to-global
-
-.seealso: DMDACreate2d(), DMDAGetAO(), DMDAGetGhostCorners(), DMDAGetCorners(), DMDALocalToGlocal()
+.seealso: DMDACreate2d(), DMDAGetAO(), DMDAGetGhostCorners(), DMDAGetCorners(), DMLocalToGlobal()
           DMGlobalToLocalBegin(), DMGlobalToLocalEnd(), DMLocalToLocalBegin(), DMLocalToLocalEnd(), DMDAGetGlobalIndices(), DMDAGetOwnershipRanges(),
           AO, AOPetscToApplication(), AOApplicationToPetsc()
 @*/
@@ -97,7 +95,7 @@ PetscErrorCode  DMDASetAOType(DM da,AOType aotype)
 /*@
    DMDAGetAO - Gets the application ordering context for a distributed array.
 
-   Collective on DMDA
+   Collective on da
 
    Input Parameter:
 .  da - the distributed array
@@ -116,9 +114,7 @@ PetscErrorCode  DMDASetAOType(DM da,AOType aotype)
 
    Do NOT call AODestroy() on the ao returned by this function.
 
-.keywords: distributed array, get, global, indices, local-to-global
-
-.seealso: DMDACreate2d(), DMDASetAOType(), DMDAGetGhostCorners(), DMDAGetCorners(), DMDALocalToGlocal()
+.seealso: DMDACreate2d(), DMDASetAOType(), DMDAGetGhostCorners(), DMDAGetCorners(), DMLocalToGlobal()
           DMGlobalToLocalBegin(), DMGlobalToLocalEnd(), DMLocalToLocalBegin(), DMLocalToLocalEnd(),  DMDAGetOwnershipRanges(),
           AO, AOPetscToApplication(), AOApplicationToPetsc()
 @*/

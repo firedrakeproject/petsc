@@ -6,7 +6,7 @@ PetscLogEvent PETSC_Barrier;
 
 static int hash(const char *str)
 {
-  int c,hash = 5381;
+  unsigned int c,hash = 5381;
 
   while ((c = *str++)) hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
   return hash;
@@ -31,7 +31,7 @@ PetscErrorCode PetscAllreduceBarrierCheck(MPI_Comm comm,PetscMPIInt ctn,int line
   return 0;
 }
 
-/*@
+/*@C
     PetscBarrier - Blocks until this routine is executed by all
                    processors owning the object obj.
 
@@ -46,9 +46,7 @@ PetscErrorCode PetscAllreduceBarrierCheck(MPI_Comm comm,PetscMPIInt ctn,int line
 
   Fortran Usage:
     You may pass PETSC_NULL_VEC or any other PETSc null object, such as PETSC_NULL_MAT, to indicate the barrier should be
-    across MPI_COMM_WORLD.
-
-   Concepts: barrier
+    across MPI_COMM_WORLD. You can also pass in any PETSc object, Vec, Mat, etc
 
 @*/
 PetscErrorCode  PetscBarrier(PetscObject obj)

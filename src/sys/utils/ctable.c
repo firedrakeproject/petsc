@@ -79,7 +79,6 @@ PetscErrorCode  PetscTableCreate(const PetscInt n,PetscInt maxkey,PetscTable *rt
 PetscErrorCode  PetscTableCreateCopy(const PetscTable intable,PetscTable *rta)
 {
   PetscErrorCode ierr;
-  PetscInt       i;
   PetscTable     ta;
 
   PetscFunctionBegin;
@@ -87,12 +86,13 @@ PetscErrorCode  PetscTableCreateCopy(const PetscTable intable,PetscTable *rta)
   ta->tablesize = intable->tablesize;
   ierr          = PetscMalloc1(ta->tablesize,&ta->keytable);CHKERRQ(ierr);
   ierr          = PetscMalloc1(ta->tablesize,&ta->table);CHKERRQ(ierr);
-  for (i = 0; i < ta->tablesize; i++) {
-    ta->keytable[i] = intable->keytable[i];
-    ta->table[i]    = intable->table[i];
-#if defined(PETSC_USE_DEBUG)
-    if (ta->keytable[i] < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_COR,"ta->keytable[i] < 0");
-#endif
+  ierr          = PetscMemcpy(ta->keytable,intable->keytable,ta->tablesize*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr          = PetscMemcpy(ta->table,intable->table,ta->tablesize*sizeof(PetscInt));CHKERRQ(ierr);
+  if (PetscDefined(USE_DEBUG)) {
+    PetscInt i;
+    for (i = 0; i < ta->tablesize; i++) {
+      if (ta->keytable[i] < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_COR,"ta->keytable[i] < 0");
+    }
   }
   ta->head   = 0;
   ta->count  = intable->count;
@@ -184,7 +184,7 @@ PetscErrorCode  PetscTableRemoveAll(PetscTable ta)
   if (ta->count) {
     ta->count = 0;
 
-    ierr = PetscMemzero(ta->keytable,ta->tablesize*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArrayzero(ta->keytable,ta->tablesize);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
@@ -236,7 +236,7 @@ PetscErrorCode  PetscTableGetNext(PetscTable ta,PetscTablePosition *rPosition,Pe
   do {
     pos++;  idex++;
     if (idex >= ta->tablesize) {
-      pos = 0; /* end of list */
+      pos = NULL; /* end of list */
       break;
     } else if (ta->keytable[idex]) {
       pos = ta->table + idex;

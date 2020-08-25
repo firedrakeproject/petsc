@@ -10,7 +10,6 @@ static PetscBool  VecScatterPackageInitialized = PETSC_FALSE;
 
   Level: developer
 
-.keywords: Petsc, destroy, package
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode VecScatterFinalizePackage(void)
@@ -30,9 +29,8 @@ PetscErrorCode VecScatterFinalizePackage(void)
 
   Level: developer
 
-  Developers Note: this does not seem to get called directly when useing dynamic libraries.
+  Developers Note: this does not seem to get called directly when using dynamic libraries.
 
-.keywords: Vec, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode VecScatterInitializePackage(void)
@@ -48,11 +46,12 @@ PetscErrorCode VecScatterInitializePackage(void)
   ierr = PetscClassIdRegister("Vec Scatter",&VEC_SCATTER_CLASSID);CHKERRQ(ierr);
   /* Register Constructors */
   ierr = VecScatterRegisterAll();CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("vecscatter",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(VEC_SCATTER_CLASSID);CHKERRQ(ierr);}
+  /* Process Info */
+  {
+    PetscClassId  classids[1];
+
+    classids[0] = VEC_SCATTER_CLASSID;
+    ierr = PetscInfoProcessClass("vecscatter", 1, classids);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
@@ -73,7 +72,6 @@ PetscErrorCode VecScatterInitializePackage(void)
 
   Level: advanced
 
-.keywords: Vec, register, all
 .seealso:  VecScatterRegister(), VecScatterRegisterDestroy(), VecScatterRegister()
 @*/
 PetscErrorCode VecScatterRegisterAll(void)
@@ -87,7 +85,7 @@ PetscErrorCode VecScatterRegisterAll(void)
   ierr = VecScatterRegister(VECSCATTERSEQ,        VecScatterCreate_Seq);CHKERRQ(ierr);
   ierr = VecScatterRegister(VECSCATTERMPI1,       VecScatterCreate_MPI1);CHKERRQ(ierr);
   ierr = VecScatterRegister(VECSCATTERSF,         VecScatterCreate_SF);CHKERRQ(ierr);
-#if defined(PETSC_HAVE_MPI_WIN_CREATE_FEATURE)
+#if defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY)
   ierr = VecScatterRegister(VECSCATTERMPI3,       VecScatterCreate_MPI3);CHKERRQ(ierr);
   ierr = VecScatterRegister(VECSCATTERMPI3NODE,   VecScatterCreate_MPI3Node);CHKERRQ(ierr);
 #endif

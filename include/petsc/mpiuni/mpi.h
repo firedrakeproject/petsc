@@ -89,16 +89,10 @@
     configurations for ssh/rsh/daemons etc..]. This should not be a
     reason to avoid these packages for sequential use.
 
-    Instructions for building standalone MPIUNI [for eg: linux/gcc+gfortran]:
-    - extract include/mpiuni/mpi.h,mpif.f, src/sys/mpiuni/mpi.c from PETSc
-    - remove reference to petscconf.h from mpi.h
-    - gcc -c mpi.c -DPETSC_HAVE_STDLIB_H -DPETSC_HAVE_FORTRAN_UNDERSCORE
-    - ar cr libmpiuni.a mpi.o
-
 */
 
-#if !defined(__MPIUNI_H)
-#define __MPIUNI_H
+#if !defined(MPIUNI_H)
+#define MPIUNI_H
 
 /* Required by abort() in mpi.c & for win64 */
 #include <petscconf.h>
@@ -135,14 +129,8 @@
 extern "C" {
 #endif
 
-/* MPI_Aint has to be an signed integral type large enough to hold a pointer */
-#if PETSC_SIZEOF_INT == PETSC_SIZEOF_VOID_P
-typedef int MPI_Aint;
-#elif PETSC_SIZEOF_LONG == PETSC_SIZEOF_VOID_P
-typedef long MPI_Aint;
-#else
+/* MPI_Aint has to be a signed integral type large enough to hold a pointer */
 typedef ptrdiff_t MPI_Aint;
-#endif
 
 /* old 32bit MS compiler does not support long long */
 #if defined(PETSC_SIZEOF_LONG_LONG)
@@ -291,6 +279,7 @@ typedef int MPI_Errhandler;
 #define MPI_ERRHANDLER_NULL  0
 #define MPI_ERRORS_RETURN    0
 #define MPI_ERRORS_ARE_FATAL 0
+#define MPI_ERR_LASTCODE     0x3fffffff
 typedef void (MPI_Handler_function)(MPI_Comm *, int *, ...);
 
 /*
@@ -528,6 +517,12 @@ typedef int MPI_Fint;
 #define MPI_Comm_group(comm,group) \
      (MPIUNI_ARG(comm),\
       *group = 1,\
+      MPI_SUCCESS)
+#define MPI_Group_excl(group,n,ranks,newgroup) \
+     (MPIUNI_ARG(group),\
+      MPIUNI_ARG(n),\
+      MPIUNI_ARG(ranks),\
+      MPIUNI_ARG(newgroup),\
       MPI_SUCCESS)
 #define MPI_Group_incl(group,n,ranks,newgroup) \
      (MPIUNI_ARG(group),\
@@ -844,14 +839,9 @@ typedef int MPI_Fint;
       MPIUNI_ARG(comm),\
       MPI_SUCCESS)
 #define MPI_Reduce_scatter(sendbuf,recvbuf,recvcounts,datatype,op,comm) \
-     (MPIUNI_ARG(sendbuf),\
-      MPIUNI_ARG(recvbuf),\
-      MPIUNI_ARG(recvcounts),\
-      MPIUNI_ARG(datatype),\
-      MPIUNI_ARG(op),\
+     (MPIUNI_ARG(op),\
       MPIUNI_ARG(comm),\
-      MPIUni_Abort(MPI_COMM_WORLD,0))
-
+      MPIUNI_Memcpy(recvbuf,sendbuf,(*recvcounts)*MPI_sizeof(datatype)))
 #define MPI_Op_create(function,commute,op) \
      (MPIUNI_ARG(function),\
       MPIUNI_ARG(commute),\
@@ -871,7 +861,7 @@ typedef int MPI_Fint;
 #define MPI_Group_translate_ranks(group1,n,ranks1,group2,ranks2) \
      (MPIUNI_ARG(group1),\
       MPIUNI_ARG(group2),\
-      MPIUNI_Memcpy((ranks2),(ranks1),(n)*sizeof(int)))
+      MPIUNI_Memcpy((ranks2),(ranks1),(n)*MPI_sizeof(MPI_INT)))
 #define MPI_Group_compare(group1,group2,result) \
     (MPIUNI_ARG(group1),\
      MPIUNI_ARG(group2),\
@@ -880,7 +870,6 @@ typedef int MPI_Fint;
 #define MPI_Group_union(group1,group2,newgroup) MPI_SUCCESS
 #define MPI_Group_intersection(group1,group2,newgroup) MPI_SUCCESS
 #define MPI_Group_difference(group1,group2,newgroup) MPI_SUCCESS
-#define MPI_Group_excl(group,n,ranks,newgroup) MPI_SUCCESS
 #define MPI_Group_range_incl(group,n,ranges,newgroup) MPI_SUCCESS
 #define MPI_Group_range_excl(group,n,ranges,newgroup) MPI_SUCCESS
 #define MPI_Group_free(group) \
@@ -930,7 +919,7 @@ typedef int MPI_Fint;
 #define MPI_Graph_map(comm,a,b,c,d) MPIUni_Abort(MPI_COMM_WORLD,0)
 
 #define MPI_Get_processor_name(name,result_len)                         \
-     (*(result_len) = 9,MPIUNI_Memcpy(name,"localhost",10*sizeof(char)))
+     (*(result_len) = 9,MPIUNI_Memcpy(name,"localhost",10*MPI_sizeof(MPI_CHAR)))
 #define MPI_Errhandler_create(function,errhandler) \
      (MPIUNI_ARG(function),\
       *(errhandler) = MPI_ERRORS_RETURN,\
@@ -949,7 +938,7 @@ typedef int MPI_Fint;
 #define MPI_Error_string(errorcode,string,result_len) \
      (MPIUNI_ARG(errorcode),\
       *(result_len) = 9,\
-      MPIUNI_Memcpy(string,"MPI error",10*sizeof(char)))
+      MPIUNI_Memcpy(string,"MPI error",10*MPI_sizeof(MPI_CHAR)))
 #define MPI_Error_class(errorcode,errorclass) \
      (*(errorclass) = errorcode, MPI_SUCCESS)
 #define MPI_Wtick() 1.0
@@ -1003,6 +992,42 @@ typedef int MPI_Offset;
    MPIUNI_ARG(status),\
    MPIUni_Abort(MPI_COMM_WORLD,0))
 
+#define MPI_File_write_at(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_File_read_at(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_File_write_at_all(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_File_read_at_all(mpi_fh,off,buf,count,datatype,status) \
+  (MPIUNI_ARG(mpi_fh),\
+   MPIUNI_ARG(off),\
+   MPIUNI_ARG(buf),\
+   MPIUNI_ARG(count),\
+   MPIUNI_ARG(datatype),\
+   MPIUNI_ARG(status),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
   /* called from PetscInitialize() - so return success */
 #define MPI_Register_datarep(name,read_conv_fn,write_conv_fn,extent_fn,state) \
   (MPIUNI_ARG(name),\
@@ -1026,6 +1051,14 @@ typedef int MPI_Offset;
   (MPIUNI_ARG(oldtype),\
    MPIUNI_ARG(lb),\
    MPIUNI_ARG(extent),\
+   MPIUNI_ARG(newtype),\
+   MPIUni_Abort(MPI_COMM_WORLD,0))
+
+#define MPI_Type_create_indexed_block(count,blocklength,array_of_displacements,oldtype,newtype) \
+  (MPIUNI_ARG(count),\
+   MPIUNI_ARG(blocklength),\
+   MPIUNI_ARG(array_of_displacements),\
+   MPIUNI_ARG(oldtype),\
    MPIUNI_ARG(newtype),\
    MPIUni_Abort(MPI_COMM_WORLD,0))
 

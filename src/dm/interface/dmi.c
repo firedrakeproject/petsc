@@ -60,7 +60,7 @@ PetscErrorCode DMCreateLocalVector_Section_Private(DM dm,Vec *vec)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = DMGetSection(dm, &section);CHKERRQ(ierr);
+  ierr = DMGetLocalSection(dm, &section);CHKERRQ(ierr);
   ierr = PetscSectionGetChart(section, &pStart, &pEnd);CHKERRQ(ierr);
   for (p = pStart; p < pEnd; ++p) {
     PetscInt dof;
@@ -100,7 +100,7 @@ PetscErrorCode DMCreateLocalVector_Section_Private(DM dm,Vec *vec)
 
   Level: intermediate
 
-.seealso DMCreateSubDM(), DMGetSection(), DMPlexSetMigrationSF(), DMView()
+.seealso DMCreateSubDM(), DMGetLocalSection(), DMPlexSetMigrationSF(), DMView()
 @*/
 PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm)
 {
@@ -111,7 +111,7 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
 
   PetscFunctionBegin;
   if (!numFields) PetscFunctionReturn(0);
-  ierr = DMGetSection(dm, &section);CHKERRQ(ierr);
+  ierr = DMGetLocalSection(dm, &section);CHKERRQ(ierr);
   ierr = DMGetGlobalSection(dm, &sectionGlobal);CHKERRQ(ierr);
   if (!section) SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must set default section for DM before splitting fields");
   if (!sectionGlobal) SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must set default global section for DM before splitting fields");
@@ -193,7 +193,7 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
     PetscInt     f, nf = 0;
 
     ierr = PetscSectionCreateSubsection(section, numFields, fields, &subsection);CHKERRQ(ierr);
-    ierr = DMSetSection(*subdm, subsection);CHKERRQ(ierr);
+    ierr = DMSetLocalSection(*subdm, subsection);CHKERRQ(ierr);
     ierr = PetscSectionDestroy(&subsection);CHKERRQ(ierr);
     for (f = 0; f < numFields; ++f) {
       (*subdm)->nullspaceConstructors[f] = dm->nullspaceConstructors[fields[f]];
@@ -229,9 +229,56 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
         ierr = PetscObjectQuery(disc, "pmat", &pmat);CHKERRQ(ierr);
         if (pmat) {ierr = PetscObjectCompose((PetscObject) *is, "pmat", pmat);CHKERRQ(ierr);}
       }
-      ierr = PetscDSCopyConstants(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
-      ierr = PetscDSCopyBoundary(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
-      ierr = PetscDSSelectEquations(dm->probs[0].ds, numFields, fields, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+      /* Check if DSes record their DM fields */
+      if (dm->probs[0].fields) {
+        PetscInt d, e;
+
+        for (d = 0, e = 0; d < dm->Nds && e < (*subdm)->Nds; ++d) {
+          const PetscInt  Nf = dm->probs[d].ds->Nf;
+          const PetscInt *fld;
+          PetscInt        f, g;
+
+          ierr = ISGetIndices(dm->probs[d].fields, &fld);CHKERRQ(ierr);
+          for (f = 0; f < Nf; ++f) {
+            for (g = 0; g < numFields; ++g) if (fld[f] == fields[g]) break;
+            if (g < numFields) break;
+          }
+          ierr = ISRestoreIndices(dm->probs[d].fields, &fld);CHKERRQ(ierr);
+          if (f == Nf) continue;
+          ierr = PetscDSCopyConstants(dm->probs[d].ds, (*subdm)->probs[e].ds);CHKERRQ(ierr);
+          ierr = PetscDSCopyBoundary(dm->probs[d].ds, (*subdm)->probs[e].ds);CHKERRQ(ierr);
+          /* Translate DM fields to DS fields */
+          {
+            IS              infields, dsfields;
+            const PetscInt *fld, *ofld;
+            PetscInt       *fidx;
+            PetscInt        onf, nf, f, g;
+
+            ierr = ISCreateGeneral(PETSC_COMM_SELF, numFields, fields, PETSC_USE_POINTER, &infields);CHKERRQ(ierr);
+            ierr = ISIntersect(infields, dm->probs[d].fields, &dsfields);CHKERRQ(ierr);
+            ierr = ISDestroy(&infields);CHKERRQ(ierr);
+            ierr = ISGetLocalSize(dsfields, &nf);CHKERRQ(ierr);
+            if (!nf) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "DS cannot be supported on 0 fields");
+            ierr = ISGetIndices(dsfields, &fld);CHKERRQ(ierr);
+            ierr = ISGetLocalSize(dm->probs[d].fields, &onf);CHKERRQ(ierr);
+            ierr = ISGetIndices(dm->probs[d].fields, &ofld);CHKERRQ(ierr);
+            ierr = PetscMalloc1(nf, &fidx);CHKERRQ(ierr);
+            for (f = 0, g = 0; f < onf && g < nf; ++f) {
+              if (ofld[f] == fld[g]) fidx[g++] = f;
+            }
+            ierr = ISRestoreIndices(dm->probs[d].fields, &ofld);CHKERRQ(ierr);
+            ierr = ISRestoreIndices(dsfields, &fld);CHKERRQ(ierr);
+            ierr = ISDestroy(&dsfields);CHKERRQ(ierr);
+            ierr = PetscDSSelectEquations(dm->probs[0].ds, nf, fidx, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+            ierr = PetscFree(fidx);CHKERRQ(ierr);
+          }
+          ++e;
+        }
+      } else {
+        ierr = PetscDSCopyConstants(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+        ierr = PetscDSCopyBoundary(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+        ierr = PetscDSSelectEquations(dm->probs[0].ds, numFields, fields, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+      }
     }
     if (dm->coarseMesh) {
       ierr = DMCreateSubDM(dm->coarseMesh, numFields, fields, NULL, &(*subdm)->coarseMesh);CHKERRQ(ierr);
@@ -258,7 +305,7 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
 
   Level: intermediate
 
-.seealso DMCreateSuperDM(), DMGetSection(), DMPlexSetMigrationSF(), DMView()
+.seealso DMCreateSuperDM(), DMGetLocalSection(), DMPlexSetMigrationSF(), DMView()
 @*/
 PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *superdm)
 {
@@ -273,7 +320,7 @@ PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *super
   /* Pull out local and global sections */
   ierr = PetscMalloc3(len, &Nfs, len, &sections, len, &sectionGlobals);CHKERRQ(ierr);
   for (i = 0 ; i < len; ++i) {
-    ierr = DMGetSection(dms[i], &sections[i]);CHKERRQ(ierr);
+    ierr = DMGetLocalSection(dms[i], &sections[i]);CHKERRQ(ierr);
     ierr = DMGetGlobalSection(dms[i], &sectionGlobals[i]);CHKERRQ(ierr);
     if (!sections[i]) SETERRQ(comm, PETSC_ERR_ARG_WRONG, "Must set default section for DM before splitting fields");
     if (!sectionGlobals[i]) SETERRQ(comm, PETSC_ERR_ARG_WRONG, "Must set default global section for DM before splitting fields");
@@ -282,14 +329,14 @@ PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *super
   }
   /* Create the supersection */
   ierr = PetscSectionCreateSupersection(sections, len, &supersection);CHKERRQ(ierr);
-  ierr = DMSetSection(*superdm, supersection);CHKERRQ(ierr);
+  ierr = DMSetLocalSection(*superdm, supersection);CHKERRQ(ierr);
   /* Create ISes */
   if (is) {
     PetscSection supersectionGlobal;
     PetscInt     bs = -1, startf = 0;
 
     ierr = PetscMalloc1(len, is);CHKERRQ(ierr);
-    ierr = DMGetDefaultGlobalSection(*superdm, &supersectionGlobal);CHKERRQ(ierr);
+    ierr = DMGetGlobalSection(*superdm, &supersectionGlobal);CHKERRQ(ierr);
     for (i = 0 ; i < len; startf += Nfs[i], ++i) {
       PetscInt *subIndices;
       PetscInt  subSize, subOff, pStart, pEnd, p, start, end, dummy;

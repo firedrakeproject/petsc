@@ -175,7 +175,7 @@ static PetscErrorCode PCSetUp_Composite(PC pc)
 
   PetscFunctionBegin;
   if (!jac->work1) {
-    ierr = MatCreateVecs(pc->pmat,&jac->work1,0);CHKERRQ(ierr);
+    ierr = MatCreateVecs(pc->pmat,&jac->work1,NULL);CHKERRQ(ierr);
   }
   ierr = PCGetDM(pc,&dm);CHKERRQ(ierr);
   while (next) {
@@ -309,7 +309,7 @@ static PetscErrorCode  PCCompositeSetType_Composite(PC pc,PCCompositeType type)
   } else if (type ==  PC_COMPOSITE_SPECIAL) {
     pc->ops->apply          = PCApply_Composite_Special;
     pc->ops->applytranspose = NULL;
-  } else SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_ARG_WRONG,"Unkown composite preconditioner type");
+  } else SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_ARG_WRONG,"Unknown composite preconditioner type");
   jac->type = type;
   PetscFunctionReturn(0);
 }
@@ -334,7 +334,7 @@ static PetscErrorCode  PCCompositeAddPC_Composite(PC pc,PCType type)
 
   PetscFunctionBegin;
   ierr        = PetscNewLog(pc,&ilink);CHKERRQ(ierr);
-  ilink->next = 0;
+  ilink->next = NULL;
   ierr        = PCCreate(PetscObjectComm((PetscObject)pc),&ilink->pc);CHKERRQ(ierr);
   ierr        = PetscObjectIncrementTabLevel((PetscObject)ilink->pc,(PetscObject)pc,1);CHKERRQ(ierr);
   ierr        = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilink->pc);CHKERRQ(ierr);
@@ -410,7 +410,6 @@ static PetscErrorCode  PCCompositeGetPC_Composite(PC pc,PetscInt n,PC *subpc)
 
    Level: Developer
 
-.keywords: PC, set, type, composite preconditioner, additive, multiplicative
 @*/
 PetscErrorCode  PCCompositeSetType(PC pc,PCCompositeType type)
 {
@@ -439,7 +438,6 @@ PetscErrorCode  PCCompositeSetType(PC pc,PCCompositeType type)
 
    Level: Developer
 
-.keywords: PC, set, type, composite preconditioner, additive, multiplicative
 @*/
 PetscErrorCode  PCCompositeGetType(PC pc,PCCompositeType *type)
 {
@@ -463,7 +461,6 @@ PetscErrorCode  PCCompositeGetType(PC pc,PCCompositeType *type)
 
    Level: Developer
 
-.keywords: PC, set, type, composite preconditioner, additive, multiplicative
 @*/
 PetscErrorCode  PCCompositeSpecialSetAlpha(PC pc,PetscScalar alpha)
 {
@@ -487,7 +484,6 @@ PetscErrorCode  PCCompositeSpecialSetAlpha(PC pc,PetscScalar alpha)
 
    Level: Developer
 
-.keywords: PC, composite preconditioner, add
 @*/
 PetscErrorCode  PCCompositeAddPC(PC pc,PCType type)
 {
@@ -511,8 +507,6 @@ PetscErrorCode  PCCompositeAddPC(PC pc,PCType type)
 .  num - the number of sub pcs
 
    Level: Developer
-
-.keywords: PC, get, composite preconditioner, sub preconditioner
 
 .seealso: PCCompositeGetPC()
 @*/
@@ -545,8 +539,6 @@ PetscErrorCode  PCCompositeGetNumberPC(PC pc,PetscInt *num)
     To use a different operator to construct one of the inner preconditioners first call PCCompositeGetPC(), then 
             call PCSetOperators() on that PC.
 
-.keywords: PC, get, composite preconditioner, sub preconditioner
-
 .seealso: PCCompositeAddPC(), PCCompositeGetNumberPC(), PCSetOperators()
 @*/
 PetscErrorCode  PCCompositeGetPC(PC pc,PetscInt n,PC *subpc)
@@ -571,8 +563,6 @@ PetscErrorCode  PCCompositeGetPC(PC pc,PetscInt n,PC *subpc)
 -  -pc_composite_pcs - <pc0,pc1,...> list of PCs to compose
 
    Level: intermediate
-
-   Concepts: composing solvers
 
    Notes:
     To use a Krylov method inside the composite preconditioner, set the PCType of one or more
@@ -604,13 +594,13 @@ PETSC_EXTERN PetscErrorCode PCCreate_Composite(PC pc)
   pc->ops->destroy         = PCDestroy_Composite;
   pc->ops->setfromoptions  = PCSetFromOptions_Composite;
   pc->ops->view            = PCView_Composite;
-  pc->ops->applyrichardson = 0;
+  pc->ops->applyrichardson = NULL;
 
   pc->data   = (void*)jac;
   jac->type  = PC_COMPOSITE_ADDITIVE;
-  jac->work1 = 0;
-  jac->work2 = 0;
-  jac->head  = 0;
+  jac->work1 = NULL;
+  jac->work2 = NULL;
+  jac->head  = NULL;
 
   ierr = PetscObjectComposeFunction((PetscObject)pc,"PCCompositeSetType_C",PCCompositeSetType_Composite);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)pc,"PCCompositeGetType_C",PCCompositeGetType_Composite);CHKERRQ(ierr);

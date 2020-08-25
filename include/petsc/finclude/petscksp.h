@@ -2,8 +2,8 @@
 !
 !  Include file for Fortran use of the KSP package in PETSc
 !
-#if !defined (__PETSCKSPDEF_H)
-#define __PETSCKSPDEF_H
+#if !defined (PETSCKSPDEF_H)
+#define PETSCKSPDEF_H
 
 #include "petsc/finclude/petscpc.h"
 
@@ -18,17 +18,27 @@
 #define KSPNormType PetscEnum
 #define KSPGMRESCGSRefinementType PetscEnum
 #define MatSchurComplementAinvType PetscEnum
+#define MatLMVMSymBroydenScaleType PetscEnum
+#define KSPHPDDMType PetscEnum
+
 !
 !  Various Krylov subspace methods
 !
 #define KSPRICHARDSON 'richardson'
 #define KSPCHEBYSHEV 'chebyshev'
 #define KSPCG 'cg'
+#define KSPGROPPCG 'groppcg'
+#define KSPPIPECG 'pipecg'
+#define KSPPIPECGRR 'pipecgrr'
+#define KSPPIPELCG 'pipelcg'
 #define KSPCGNE 'cgne'
+#define KSPNASH 'nash'
 #define KSPSTCG 'stcg'
 #define KSPGLTR 'gltr'
 #define KSPFCG 'fcg'
+#define KSPPIPEFCG 'pipefcg'
 #define KSPGMRES 'gmres'
+#define KSPPIPEFGMRES 'pipefgmres'
 #define KSPFGMRES 'fgmres'
 #define KSPLGMRES 'lgmres'
 #define KSPDGMRES 'dgmres'
@@ -39,9 +49,11 @@
 #define KSPFBCGS  'fbcgs'
 #define KSPFBCGSR 'fbcgsr'
 #define KSPBCGSL 'bcgsl'
+#define KSPPIPEBCGS 'pipebcgs'
 #define KSPCGS 'cgs'
 #define KSPTFQMR 'tfqmr'
 #define KSPCR 'cr'
+#define KSPPIPECR 'pipecr'
 #define KSPLSQR 'lsqr'
 #define KSPPREONLY 'preonly'
 #define KSPQCG 'qcg'
@@ -51,9 +63,11 @@
 #define KSPLCD 'lcd'
 #define KSPPYTHON 'python'
 #define KSPGCR 'gcr'
+#define KSPPIPEGCR 'pipegcr'
 #define KSPTSIRM 'tsirm'
 #define KSPCGLS 'cgls'
 #define KSPFETIDP 'fetidp'
+#define KSPHPDDM 'hpddm'
 !
 !  Various Initial guesses for Krylov subspace methods
 !

@@ -8,7 +8,6 @@ static PetscBool PetscRandomPackageInitialized = PETSC_FALSE;
 
   Level: developer
 
-.keywords: Petsc, destroy, package, mathematica
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode  PetscRandomFinalizePackage(void)
@@ -29,7 +28,6 @@ PetscErrorCode  PetscRandomFinalizePackage(void)
 
   Level: developer
 
-.keywords: PetscRandom, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  PetscRandomInitializePackage(void)
@@ -45,11 +43,12 @@ PetscErrorCode  PetscRandomInitializePackage(void)
   ierr = PetscClassIdRegister("PetscRandom",&PETSC_RANDOM_CLASSID);CHKERRQ(ierr);
   /* Register Constructors */
   ierr = PetscRandomRegisterAll();CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("random",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(PETSC_RANDOM_CLASSID);CHKERRQ(ierr);}
+  /* Process Info */
+  {
+    PetscClassId  classids[1];
+
+    classids[0] = PETSC_RANDOM_CLASSID;
+    ierr = PetscInfoProcessClass("random", 1, classids);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);

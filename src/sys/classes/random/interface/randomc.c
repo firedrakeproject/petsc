@@ -38,7 +38,7 @@ PetscErrorCode  PetscRandomDestroy(PetscRandom *r)
   PetscFunctionBegin;
   if (!*r) PetscFunctionReturn(0);
   PetscValidHeaderSpecific(*r,PETSC_RANDOM_CLASSID,1);
-  if (--((PetscObject)(*r))->refct > 0) {*r = 0; PetscFunctionReturn(0);}
+  if (--((PetscObject)(*r))->refct > 0) {*r = NULL; PetscFunctionReturn(0);}
   if ((*r)->ops->destroy) {
     ierr = (*(*r)->ops->destroy)(*r);CHKERRQ(ierr);
   }
@@ -59,8 +59,6 @@ PetscErrorCode  PetscRandomDestroy(PetscRandom *r)
 .  seed - The random seed
 
    Level: intermediate
-
-   Concepts: random numbers^seed
 
 .seealso: PetscRandomCreate(), PetscRandomSetSeed(), PetscRandomSeed()
 @*/
@@ -93,8 +91,6 @@ PetscErrorCode  PetscRandomGetSeed(PetscRandom r,unsigned long *seed)
       PetscRandomSeed(r) without a call to PetscRandomSetSeed() re-initializes
         the seed. The random numbers generated will be the same as before.
 
-   Concepts: random numbers^seed
-
 .seealso: PetscRandomCreate(), PetscRandomGetSeed(), PetscRandomSeed()
 @*/
 PetscErrorCode  PetscRandomSetSeed(PetscRandom r,unsigned long seed)
@@ -119,7 +115,6 @@ PetscErrorCode  PetscRandomSetSeed(PetscRandom r,unsigned long seed)
 
   Level: intermediate
 
-.keywords: PetscRandom, set, options, database, type
 .seealso: PetscRandomSetFromOptions(), PetscRandomSetType()
 */
 static PetscErrorCode PetscRandomSetTypeFromOptions_Private(PetscOptionItems *PetscOptionsObject,PetscRandom rnd)
@@ -165,7 +160,6 @@ static PetscErrorCode PetscRandomSetTypeFromOptions_Private(PetscOptionItems *Pe
 
   Level: beginner
 
-.keywords: PetscRandom, set, options, database
 .seealso: PetscRandomCreate(), PetscRandomSetType()
 @*/
 PetscErrorCode  PetscRandomSetFromOptions(PetscRandom rnd)
@@ -211,6 +205,30 @@ PetscErrorCode  PetscRandomSetFromOptions(PetscRandom rnd)
 #if defined(PETSC_HAVE_SAWS)
 #include <petscviewersaws.h>
 #endif
+
+/*@C
+   PetscRandomViewFromOptions - View from Options
+
+   Collective on PetscRandom
+
+   Input Parameters:
++  A - the  random number generator context
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  PetscRandom, PetscRandomView, PetscObjectViewFromOptions(), PetscRandomCreate()
+@*/
+PetscErrorCode  PetscRandomViewFromOptions(PetscRandom A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,PETSC_RANDOM_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 /*@C
    PetscRandomView - Views a random number generator object.
 
@@ -286,7 +304,7 @@ PetscErrorCode  PetscRandomView(PetscRandom rnd,PetscViewer viewer)
    PetscRandomCreate - Creates a context for generating random numbers,
    and initializes the random-number generator.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 .  comm - MPI communicator
@@ -318,8 +336,6 @@ PetscErrorCode  PetscRandomView(PetscRandom rnd,PetscViewer viewer)
       PetscRandomGetValueReal(r,&value2);
       PetscRandomDestroy(&r);
 .ve
-
-   Concepts: random numbers^creating
 
 .seealso: PetscRandomSetType(), PetscRandomGetValue(), PetscRandomGetValueReal(), PetscRandomSetInterval(),
           PetscRandomDestroy(), VecSetRandom(), PetscRandomType
@@ -366,8 +382,6 @@ PetscErrorCode  PetscRandomCreate(MPI_Comm comm,PetscRandom *r)
 
       PetscRandomSeed(r) without a call to PetscRandomSetSeed() re-initializes
         the seed. The random numbers generated will be the same as before.
-
-   Concepts: random numbers^seed
 
 .seealso: PetscRandomCreate(), PetscRandomGetSeed(), PetscRandomSetSeed()
 @*/

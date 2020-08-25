@@ -2,7 +2,7 @@
 #include <../src/mat/impls/aij/seq/aij.h>
 #include <petsc/private/isimpl.h>
 #include <petsc/private/vecimpl.h>
-#include <petscviewerhdf5.h>
+#include <petsclayouthdf5.h>
 
 #if defined(PETSC_HAVE_HDF5)
 PetscErrorCode MatLoad_AIJ_HDF5(Mat mat, PetscViewer viewer)
@@ -12,9 +12,11 @@ PetscErrorCode MatLoad_AIJ_HDF5(Mat mat, PetscViewer viewer)
   PetscInt        *i = NULL;
   const PetscInt  *j = NULL;
   const PetscScalar *a = NULL;
-  const char      *a_name = NULL, *i_name = NULL, *j_name = NULL, *mat_name = NULL, *c_name = NULL;
+  char            *a_name = NULL, *i_name = NULL, *j_name = NULL, *c_name = NULL;
+  const char      *mat_name = NULL;
   PetscInt        p, m, M, N;
   PetscInt        bs = mat->rmap->bs;
+  PetscInt        *range;
   PetscBool       flg;
   IS              is_i = NULL, is_j = NULL;
   Vec             vec_a = NULL;
@@ -39,7 +41,19 @@ PetscErrorCode MatLoad_AIJ_HDF5(Mat mat, PetscViewer viewer)
   ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
   ierr = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
   ierr = PetscObjectGetName((PetscObject)mat,&mat_name);CHKERRQ(ierr);
-  ierr = PetscViewerHDF5GetAIJNames(viewer,&i_name,&j_name,&a_name,&c_name);CHKERRQ(ierr);
+  if (format==PETSC_VIEWER_HDF5_MAT) {
+    ierr = PetscStrallocpy("jc",&i_name);CHKERRQ(ierr);
+    ierr = PetscStrallocpy("ir",&j_name);CHKERRQ(ierr);
+    ierr = PetscStrallocpy("data",&a_name);CHKERRQ(ierr);
+    ierr = PetscStrallocpy("MATLAB_sparse",&c_name);CHKERRQ(ierr);
+  } else {
+    /* TODO Once corresponding MatView is implemented, change the names to i,j,a */
+    /* TODO Maybe there could be both namings in the file, using "symbolic link" features of HDF5. */
+    ierr = PetscStrallocpy("jc",&i_name);CHKERRQ(ierr);
+    ierr = PetscStrallocpy("ir",&j_name);CHKERRQ(ierr);
+    ierr = PetscStrallocpy("data",&a_name);CHKERRQ(ierr);
+    ierr = PetscStrallocpy("MATLAB_sparse",&c_name);CHKERRQ(ierr);
+  }
 
   ierr = PetscOptionsBegin(comm,NULL,"Options for loading matrix from HDF5","Mat");CHKERRQ(ierr);
   ierr = PetscOptionsInt("-matload_block_size","Set the blocksize used to store the matrix","MatLoad",bs,&bs,&flg);CHKERRQ(ierr);
@@ -83,25 +97,24 @@ PetscErrorCode MatLoad_AIJ_HDF5(Mat mat, PetscViewer viewer)
   ierr = PetscLayoutSetSize(is_i->map,M);CHKERRQ(ierr);
   ierr = ISLoad(is_i,viewer);CHKERRQ(ierr);
   ierr = ISGetIndices(is_i,&i_glob);CHKERRQ(ierr);
-  ierr = PetscMemcpy(i,i_glob,m*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArraycpy(i,i_glob,m);CHKERRQ(ierr);
 
   /* Reset m and M to the matrix sizes */
   m = mat->rmap->n;
   M--;
 
   /* Create PetscLayout for j and a vectors; construct ranges first */
-  ierr = PetscLayoutCreate(comm,&jmap);CHKERRQ(ierr);
-  ierr = PetscCalloc1(size+1, &jmap->range);CHKERRQ(ierr);
-  ierr = MPI_Allgather(&i[0], 1, MPIU_INT, jmap->range, 1, MPIU_INT, comm);CHKERRQ(ierr);
+  ierr = PetscMalloc1(size+1, &range);CHKERRQ(ierr);
+  ierr = MPI_Allgather(i, 1, MPIU_INT, range, 1, MPIU_INT, comm);CHKERRQ(ierr);
   /* Last rank has global number of nonzeros (= length of j and a arrays) in i[m] (last i entry) so broadcast it */
-  jmap->range[size] = i[m];
-  ierr = MPI_Bcast(&jmap->range[size], 1, MPIU_INT, size-1, comm);CHKERRQ(ierr);
+  range[size] = i[m];
+  ierr = MPI_Bcast(&range[size], 1, MPIU_INT, size-1, comm);CHKERRQ(ierr);
   for (p=size-1; p>0; p--) {
-    if (!jmap->range[p]) jmap->range[p] = jmap->range[p+1]; /* for ranks with 0 rows, take the value from the next processor */
+    if (!range[p]) range[p] = range[p+1]; /* for ranks with 0 rows, take the value from the next processor */
   }
-  i[m] = jmap->range[rank+1]; /* i[m] (last i entry) is equal to next rank's offset */
+  i[m] = range[rank+1]; /* i[m] (last i entry) is equal to next rank's offset */
   /* Deduce rstart, rend, n and N from the ranges */
-  ierr = PetscLayoutSetUp(jmap);CHKERRQ(ierr);
+  ierr = PetscLayoutCreateFromRanges(comm,range,PETSC_OWN_POINTER,1,&jmap);CHKERRQ(ierr);
 
   /* Convert global to local indexing of rows */
   for (p=1; p<m+1; ++p) i[p] -= i[0];
@@ -138,6 +151,10 @@ PetscErrorCode MatLoad_AIJ_HDF5(Mat mat, PetscViewer viewer)
   }
 
   ierr = PetscViewerHDF5PopGroup(viewer);CHKERRQ(ierr);
+  ierr = PetscFree(i_name);CHKERRQ(ierr);
+  ierr = PetscFree(j_name);CHKERRQ(ierr);
+  ierr = PetscFree(a_name);CHKERRQ(ierr);
+  ierr = PetscFree(c_name);CHKERRQ(ierr);
   ierr = PetscLayoutDestroy(&jmap);CHKERRQ(ierr);
   ierr = PetscFree(i);CHKERRQ(ierr);
   ierr = ISRestoreIndices(is_i,&i_glob);CHKERRQ(ierr);

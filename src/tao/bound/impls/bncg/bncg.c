@@ -107,7 +107,7 @@ static PetscErrorCode TaoSolve_BNCG(Tao tao)
     ierr = TaoComputeObjectiveAndGradient(tao, tao->solution, &cg->f, cg->unprojected_gradient);CHKERRQ(ierr);
   }
   ierr = VecNorm(cg->unprojected_gradient,NORM_2,&gnorm);CHKERRQ(ierr);
-  if (PetscIsInfOrNanReal(cg->f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+  if (PetscIsInfOrNanReal(cg->f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
 
   /* Estimate the active set and compute the projected gradient */
   ierr = TaoBNCGEstimateActiveSet(tao, cg->as_type);CHKERRQ(ierr);
@@ -130,7 +130,7 @@ static PetscErrorCode TaoSolve_BNCG(Tao tao)
 
   ierr = VecFischer(tao->solution, cg->unprojected_gradient, tao->XL, tao->XU, cg->W);CHKERRQ(ierr);
   ierr = VecNorm(cg->W, NORM_2, &resnorm);CHKERRQ(ierr);
-  if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+  if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
   ierr = TaoLogConvergenceHistory(tao, cg->f, resnorm, 0.0, tao->ksp_its);CHKERRQ(ierr);
   ierr = TaoMonitor(tao, tao->niter, cg->f, resnorm, 0.0, step);CHKERRQ(ierr);
   ierr = (*tao->ops->convergencetest)(tao,tao->cnvP);CHKERRQ(ierr);
@@ -357,46 +357,47 @@ PetscErrorCode TaoBNCGComputeScalarScaling(PetscReal yty, PetscReal yts, PetscRe
   TAOBNCG - Bound-constrained Nonlinear Conjugate Gradient method.
 
   Options Database Keys:
-    + -tao_bncg_recycle - enable recycling the latest calculated gradient vector in subsequent TaoSolve() calls (currently disabled)
-    . -tao_bncg_eta <r> - restart tolerance
-    . -tao_bncg_type <taocg_type> - cg formula
-    . -tao_bncg_as_type <none,bertsekas> - active set estimation method
-    . -tao_bncg_as_tol <r> - tolerance used in Bertsekas active-set estimation
-    . -tao_bncg_as_step <r> - trial step length used in Bertsekas active-set estimation
-    . -tao_bncg_eps <r> - cutoff used for determining whether or not we restart based on steplength each iteration, as well as determining whether or not we continue using the last stepdirection. Defaults to machine precision.
-    . -tao_bncg_theta <r> - convex combination parameter for the Broyden method
-    . -tao_bncg_hz_eta <r> - cutoff tolerance for the beta term in the HZ, DK methods
-    . -tao_bncg_dk_eta <r> - cutoff tolerance for the beta term in the HZ, DK methods
-    . -tao_bncg_xi <r> - Multiplicative constant of the gamma term in the KD method
-    . -tao_bncg_hz_theta <r> - Multiplicative constant of the theta term for the HZ method
-    . -tao_bncg_bfgs_scale <r> - Scaling parameter of the bfgs contribution to the scalar Broyden method
-    . -tao_bncg_dfp_scale <r> - Scaling parameter of the dfp contribution to the scalar Broyden method
-    . -tao_bncg_diag_scaling <b> - Whether or not to use diagonal initialization/preconditioning for the CG methods. Default True.
-    . -tao_bncg_dynamic_restart <b> - use dynamic restart strategy in the HZ, DK, KD methods
-    . -tao_bncg_unscaled_restart <b> - whether or not to scale the gradient when doing gradient descent restarts
-    . -tao_bncg_zeta <r> - Scaling parameter in the KD method
-    . -tao_bncg_delta_min <r> - Minimum bound for rescaling during restarted gradient descent steps
-    . -tao_bncg_delta_max <r> - Maximum bound for rescaling during restarted gradient descent steps
-    . -tao_bncg_min_quad <i> - Number of quadratic-like steps in a row necessary to do a dynamic restart
-    . -tao_bncg_min_restart_num <i> - This number, x, makes sure there is a gradient descent step every x*n iterations, where n is the dimension of the problem
-    . -tao_bncg_spaced_restart <b> - whether or not to do gradient descent steps every x*n iterations
-    . -tao_bncg_no_scaling <b> - If true, eliminates all scaling, including defaults.
-    - -tao_bncg_neg_xi <b> - Whether or not to use negative xi in the KD method under certain conditions
++ -tao_bncg_recycle - enable recycling the latest calculated gradient vector in subsequent TaoSolve() calls (currently disabled)
+. -tao_bncg_eta <r> - restart tolerance
+. -tao_bncg_type <taocg_type> - cg formula
+. -tao_bncg_as_type <none,bertsekas> - active set estimation method
+. -tao_bncg_as_tol <r> - tolerance used in Bertsekas active-set estimation
+. -tao_bncg_as_step <r> - trial step length used in Bertsekas active-set estimation
+. -tao_bncg_eps <r> - cutoff used for determining whether or not we restart based on steplength each iteration, as well as determining whether or not we continue using the last stepdirection. Defaults to machine precision.
+. -tao_bncg_theta <r> - convex combination parameter for the Broyden method
+. -tao_bncg_hz_eta <r> - cutoff tolerance for the beta term in the HZ, DK methods
+. -tao_bncg_dk_eta <r> - cutoff tolerance for the beta term in the HZ, DK methods
+. -tao_bncg_xi <r> - Multiplicative constant of the gamma term in the KD method
+. -tao_bncg_hz_theta <r> - Multiplicative constant of the theta term for the HZ method
+. -tao_bncg_bfgs_scale <r> - Scaling parameter of the bfgs contribution to the scalar Broyden method
+. -tao_bncg_dfp_scale <r> - Scaling parameter of the dfp contribution to the scalar Broyden method
+. -tao_bncg_diag_scaling <b> - Whether or not to use diagonal initialization/preconditioning for the CG methods. Default True.
+. -tao_bncg_dynamic_restart <b> - use dynamic restart strategy in the HZ, DK, KD methods
+. -tao_bncg_unscaled_restart <b> - whether or not to scale the gradient when doing gradient descent restarts
+. -tao_bncg_zeta <r> - Scaling parameter in the KD method
+. -tao_bncg_delta_min <r> - Minimum bound for rescaling during restarted gradient descent steps
+. -tao_bncg_delta_max <r> - Maximum bound for rescaling during restarted gradient descent steps
+. -tao_bncg_min_quad <i> - Number of quadratic-like steps in a row necessary to do a dynamic restart
+. -tao_bncg_min_restart_num <i> - This number, x, makes sure there is a gradient descent step every x*n iterations, where n is the dimension of the problem
+. -tao_bncg_spaced_restart <b> - whether or not to do gradient descent steps every x*n iterations
+. -tao_bncg_no_scaling <b> - If true, eliminates all scaling, including defaults.
+- -tao_bncg_neg_xi <b> - Whether or not to use negative xi in the KD method under certain conditions
 
   Notes:
     CG formulas are:
-    + "gd" - Gradient Descent
-    . "fr" - Fletcher-Reeves
-    . "pr" - Polak-Ribiere-Polyak
-    . "prp" - Polak-Ribiere-Plus
-    . "hs" - Hestenes-Steifel
-    . "dy" - Dai-Yuan
-    . "ssml_bfgs" - Self-Scaling Memoryless BFGS
-    . "ssml_dfp"  - Self-Scaling Memoryless DFP
-    . "ssml_brdn" - Self-Scaling Memoryless Broyden
-    . "hz" - Hager-Zhang (CG_DESCENT 5.3)
-    . "dk" - Dai-Kou (2013)
-    - "kd" - Kou-Dai (2015)
++ "gd" - Gradient Descent
+. "fr" - Fletcher-Reeves
+. "pr" - Polak-Ribiere-Polyak
+. "prp" - Polak-Ribiere-Plus
+. "hs" - Hestenes-Steifel
+. "dy" - Dai-Yuan
+. "ssml_bfgs" - Self-Scaling Memoryless BFGS
+. "ssml_dfp"  - Self-Scaling Memoryless DFP
+. "ssml_brdn" - Self-Scaling Memoryless Broyden
+. "hz" - Hager-Zhang (CG_DESCENT 5.3)
+. "dk" - Dai-Kou (2013)
+- "kd" - Kou-Dai (2015)
+
   Level: beginner
 M*/
 
@@ -433,7 +434,7 @@ PETSC_EXTERN PetscErrorCode TaoCreate_BNCG(Tao tao)
   ierr = MatCreate(PetscObjectComm((PetscObject)tao), &cg->B);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)cg->B, (PetscObject)tao, 1);CHKERRQ(ierr);
   ierr = MatSetOptionsPrefix(cg->B, "tao_bncg_");CHKERRQ(ierr);
-  ierr = MatSetType(cg->B, MATLMVMDIAGBRDN);CHKERRQ(ierr);
+  ierr = MatSetType(cg->B, MATLMVMDIAGBROYDEN);CHKERRQ(ierr);
 
   cg->pc = NULL;
 
@@ -1048,7 +1049,7 @@ PETSC_INTERN PetscErrorCode TaoBNCGConductIteration(Tao tao, PetscReal gnorm)
     /* Standard convergence test */
     ierr = VecFischer(tao->solution, cg->unprojected_gradient, tao->XL, tao->XU, cg->W);CHKERRQ(ierr);
     ierr = VecNorm(cg->W, NORM_2, &resnorm);CHKERRQ(ierr);
-    if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+    if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
     ierr = TaoLogConvergenceHistory(tao, cg->f, resnorm, 0.0, tao->ksp_its);CHKERRQ(ierr);
     ierr = TaoMonitor(tao, tao->niter, cg->f, resnorm, 0.0, step);CHKERRQ(ierr);
     ierr = (*tao->ops->convergencetest)(tao,tao->cnvP);CHKERRQ(ierr);

@@ -8,7 +8,7 @@
    If you never  call VecSetType() or VecSetFromOptions() it will generate an
    error when you try to use the vector.
 
-  Collective on MPI_Comm
+  Collective
 
   Input Parameter:
 . comm - The communicator for the vector object
@@ -18,7 +18,6 @@
 
   Level: beginner
 
-.keywords: vector, create
 .seealso: VecSetType(), VecSetSizes(), VecCreateMPIWithArray(), VecCreateMPI(), VecDuplicate(),
           VecDuplicateVecs(), VecCreateGhost(), VecCreateSeq(), VecPlaceArray()
 @*/
@@ -37,6 +36,10 @@ PetscErrorCode  VecCreate(MPI_Comm comm, Vec *vec)
   ierr            = PetscLayoutCreate(comm,&v->map);CHKERRQ(ierr);
   v->array_gotten = PETSC_FALSE;
   v->petscnative  = PETSC_FALSE;
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
+  v->minimum_bytes_pinned_memory = 0;
+  v->pinned_memory = PETSC_FALSE;
+#endif
 
   *vec = v;
   PetscFunctionReturn(0);

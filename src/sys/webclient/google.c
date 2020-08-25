@@ -6,7 +6,7 @@
 /*
    These variables identify the code as a PETSc application to Google.
 
-   See -   http://stackoverflow.com/questions/4616553/using-oauth-in-free-open-source-software
+   See -   https://stackoverflow.com/questions/4616553/using-oauth-in-free-open-source-software
    Users can get their own application IDs - https://code.google.com/p/google-apps-manager/wiki/GettingAnOAuthConsoleKey
 
 */
@@ -54,7 +54,7 @@ PetscErrorCode PetscGoogleDriveRefresh(MPI_Comm comm,const char refresh_token[],
     if (!refresh_token) {
       PetscBool set;
       ierr = PetscMalloc1(512,&refreshtoken);CHKERRQ(ierr);
-      ierr = PetscOptionsGetString(NULL,NULL,"-google_refresh_token",refreshtoken,512,&set);CHKERRQ(ierr);
+      ierr = PetscOptionsGetString(NULL,NULL,"-google_refresh_token",refreshtoken,sizeof(refreshtoken),&set);CHKERRQ(ierr);
       if (!set) {
         ierr = PetscGoogleDriveAuthorize(comm,access_token,refreshtoken,512*sizeof(char));CHKERRQ(ierr);
         ierr = PetscFree(refreshtoken);CHKERRQ(ierr);
@@ -197,7 +197,7 @@ PetscErrorCode PetscGoogleDriveUpload(MPI_Comm comm,const char access_token[],co
    Notes:
     This call requires stdout and stdin access from process 0 on the MPI communicator
 
-   You can run src/sys/webclient/examples/tutorials/googleobtainrefreshtoken to get a refresh token and then in the future pass it to
+   You can run src/sys/webclient/tutorials/googleobtainrefreshtoken to get a refresh token and then in the future pass it to
    PETSc programs with -google_refresh_token XXX
 
    Level: intermediate

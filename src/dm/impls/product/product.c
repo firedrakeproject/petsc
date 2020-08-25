@@ -8,9 +8,7 @@ static PetscErrorCode DMDestroy_Product(DM dm)
 
   PetscFunctionBeginUser;
   for (d=0; d<DMPRODUCT_MAX_DIM; ++d) {
-    if (product->dm[d]) {
-      ierr = DMDestroy(&product->dm[d]);CHKERRQ(ierr);
-    }
+    ierr = DMDestroy(&product->dm[d]);CHKERRQ(ierr);
   }
   ierr = PetscFree(product);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -25,7 +23,7 @@ static PetscErrorCode DMDestroy_Product(DM dm)
   Level: advanced
 
 .seealso: DM, DMSTAG, DMProductGetDM(), DMProductSetDimensionIndex(), DMProductSetDM(), DMStagSetUniformCoordinatesProduct(),
-          DMStagGet1dCoordinateArraysDOFRead()
+          DMStagGetProductCoordinateArrays(), DMStagGetProductCoordinateArraysRead()
 M*/
 
 PETSC_EXTERN PetscErrorCode DMCreate_Product(DM dm)
@@ -38,7 +36,6 @@ PETSC_EXTERN PetscErrorCode DMCreate_Product(DM dm)
   PetscValidPointer(dm,1);
   ierr = PetscNewLog(dm,&product);CHKERRQ(ierr);
   dm->data = product;
-  ierr = PetscObjectChangeTypeName((PetscObject)dm,DMPRODUCT);CHKERRQ(ierr);
 
   for (d=0; d<DMPRODUCT_MAX_DIM; ++d) product->dm[d]  = NULL;
   for (d=0; d<DMPRODUCT_MAX_DIM; ++d) product->dim[d] = -1;

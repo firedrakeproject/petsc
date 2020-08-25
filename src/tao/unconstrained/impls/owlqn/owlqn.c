@@ -71,14 +71,10 @@ static PetscErrorCode TaoSolve_OWLQN(Tao tao)
 
   /* Check convergence criteria */
   ierr = TaoComputeObjectiveAndGradient(tao, tao->solution, &f, tao->gradient);CHKERRQ(ierr);
-
   ierr = VecCopy(tao->gradient, lmP->GV);CHKERRQ(ierr);
-
   ierr = ComputePseudoGrad_OWLQN(tao->solution,lmP->GV,lmP->lambda);CHKERRQ(ierr);
-
   ierr = VecNorm(lmP->GV,NORM_2,&gnorm);CHKERRQ(ierr);
-
-  if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+  if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
 
   tao->reason = TAO_CONTINUE_ITERATING;
   ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
@@ -331,11 +327,11 @@ PETSC_EXTERN PetscErrorCode TaoCreate_OWLQN(Tao tao)
   tao->ops->destroy = TaoDestroy_OWLQN;
 
   ierr = PetscNewLog(tao,&lmP);CHKERRQ(ierr);
-  lmP->D = 0;
-  lmP->M = 0;
-  lmP->GV = 0;
-  lmP->Xold = 0;
-  lmP->Gold = 0;
+  lmP->D = NULL;
+  lmP->M = NULL;
+  lmP->GV = NULL;
+  lmP->Xold = NULL;
+  lmP->Gold = NULL;
   lmP->lambda = 1.0;
 
   tao->data = (void*)lmP;

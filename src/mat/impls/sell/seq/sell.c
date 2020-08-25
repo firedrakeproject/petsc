@@ -39,7 +39,7 @@
  (or the array nnz).  By setting these parameters accurately, performance
  during matrix assembly can be increased significantly.
 
- Collective on MPI_Comm
+ Collective
 
  Input Parameters:
  +  B - The matrix
@@ -136,7 +136,7 @@ PetscErrorCode MatSeqSELLSetPreallocation_SeqSELL(Mat B,PetscInt maxallocrow,con
           b->sliidx[i] = PetscMax(b->sliidx[i],rlen[8*(i-1)+j]);
         }
         maxallocrow = PetscMax(b->sliidx[i],maxallocrow);
-        b->sliidx[i] = b->sliidx[i-1] + 8*b->sliidx[i];
+        ierr = PetscIntSumError(b->sliidx[i-1],8*b->sliidx[i],&b->sliidx[i]);CHKERRQ(ierr);
       }
       /* last slice */
       b->sliidx[totalslices] = 0;
@@ -831,7 +831,7 @@ PetscErrorCode MatZeroEntries_SeqSELL(Mat A)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscMemzero(a->val,(a->sliidx[a->totalslices])*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArrayzero(a->val,a->sliidx[a->totalslices]);CHKERRQ(ierr);
   ierr = MatSeqSELLInvalidateDiagonal(A);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -862,8 +862,6 @@ PetscErrorCode MatDestroy_SeqSELL(Mat A)
   ierr = PetscObjectChangeTypeName((PetscObject)A,0);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatStoreValues_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatRetrieveValues_C",NULL);CHKERRQ(ierr);
-#if defined(PETSC_HAVE_ELEMENTAL)
-#endif
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatSeqSELLSetPreallocation_C",NULL);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -896,6 +894,7 @@ PetscErrorCode MatSetOption_SeqSELL(Mat A,MatOption op,PetscBool flg)
   case MAT_NEW_DIAGONALS:
   case MAT_IGNORE_OFF_PROC_ENTRIES:
   case MAT_USE_HASH_TABLE:
+  case MAT_SORTED_FULL:
     ierr = PetscInfo1(A,"Option %s ignored\n",MatOptions[op]);CHKERRQ(ierr);
     break;
   case MAT_SPD:
@@ -961,8 +960,14 @@ PetscErrorCode MatDiagonalScale_SeqSELL(Mat A,Vec ll,Vec rr)
     if (m != A->rmap->n) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Left scaling vector wrong length");
     ierr = VecGetArrayRead(ll,&l);CHKERRQ(ierr);
     for (i=0; i<a->totalslices; i++) { /* loop over slices */
-      for (j=a->sliidx[i],row=0; j<a->sliidx[i+1]; j++,row=((row+1)&0x07)) {
-        a->val[j] *= l[8*i+row];
+      if (i == a->totalslices-1 && (A->rmap->n & 0x07)) { /* if last slice has padding rows */
+        for (j=a->sliidx[i],row=0; j<a->sliidx[i+1]; j++,row=((row+1)&0x07)) {
+          if (row < (A->rmap->n & 0x07)) a->val[j] *= l[8*i+row];
+        }
+      } else {
+        for (j=a->sliidx[i],row=0; j<a->sliidx[i+1]; j++,row=((row+1)&0x07)) {
+          a->val[j] *= l[8*i+row];
+        }
       }
     }
     ierr = VecRestoreArrayRead(ll,&l);CHKERRQ(ierr);
@@ -973,8 +978,14 @@ PetscErrorCode MatDiagonalScale_SeqSELL(Mat A,Vec ll,Vec rr)
     if (n != A->cmap->n) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Right scaling vector wrong length");
     ierr = VecGetArrayRead(rr,&r);CHKERRQ(ierr);
     for (i=0; i<a->totalslices; i++) { /* loop over slices */
-      for (j=a->sliidx[i]; j<a->sliidx[i+1]; j++) {
-        a->val[j] *= r[a->colidx[j]];
+      if (i == a->totalslices-1 && (A->rmap->n & 0x07)) { /* if last slice has padding rows */
+        for (j=a->sliidx[i],row=0; j<a->sliidx[i+1]; j++,row=((row+1)&0x07)) {
+          if (row < (A->rmap->n & 0x07)) a->val[j] *= r[a->colidx[j]];
+        }
+      } else {
+        for (j=a->sliidx[i]; j<a->sliidx[i+1]; j++) {
+          a->val[j] *= r[a->colidx[j]];
+        }
       }
     }
     ierr = VecRestoreArrayRead(rr,&r);CHKERRQ(ierr);
@@ -997,18 +1008,14 @@ PetscErrorCode MatGetValues_SeqSELL(Mat A,PetscInt m,const PetscInt im[],PetscIn
   for (k=0; k<m; k++) { /* loop over requested rows */
     row = im[k];
     if (row<0) continue;
-#if defined(PETSC_USE_DEBUG)
-    if (row >= A->rmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Row too large: row %D max %D",row,A->rmap->n-1);
-#endif
+    if (PetscUnlikelyDebug(row >= A->rmap->n)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Row too large: row %D max %D",row,A->rmap->n-1);
     shift = a->sliidx[row>>3]+(row&0x07); /* starting index of the row */
     cp = a->colidx+shift; /* pointer to the row */
     vp = a->val+shift; /* pointer to the row */
     for (l=0; l<n; l++) { /* loop over requested columns */
       col = in[l];
       if (col<0) continue;
-#if defined(PETSC_USE_DEBUG)
-      if (col >= A->cmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Column too large: row %D max %D",col,A->cmap->n-1);
-#endif
+      if (PetscUnlikelyDebug(col >= A->cmap->n)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Column too large: row %D max %D",col,A->cmap->n-1);
       high = a->rlen[row]; low = 0; /* assume unsorted */
       while (high-low > 5) {
         t = (low+high)/2;
@@ -1438,11 +1445,11 @@ PetscErrorCode MatGetInfo_SeqSELL(Mat A,MatInfoType flag,MatInfo *info)
 
   PetscFunctionBegin;
   info->block_size   = 1.0;
-  info->nz_allocated = (double)a->maxallocmat;
-  info->nz_used      = (double)a->sliidx[a->totalslices]; /* include padding zeros */
-  info->nz_unneeded  = (double)(a->maxallocmat-a->sliidx[a->totalslices]);
-  info->assemblies   = (double)A->num_ass;
-  info->mallocs      = (double)A->info.mallocs;
+  info->nz_allocated = a->maxallocmat;
+  info->nz_used      = a->sliidx[a->totalslices]; /* include padding zeros */
+  info->nz_unneeded  = (a->maxallocmat-a->sliidx[a->totalslices]);
+  info->assemblies   = A->num_ass;
+  info->mallocs      = A->info.mallocs;
   info->memory       = ((PetscObject)A)->mem;
   if (A->factortype) {
     info->fill_ratio_given  = A->info.fill_ratio_given;
@@ -1468,9 +1475,7 @@ PetscErrorCode MatSetValues_SeqSELL(Mat A,PetscInt m,const PetscInt im[],PetscIn
   for (k=0; k<m; k++) { /* loop over added rows */
     row = im[k];
     if (row < 0) continue;
-#if defined(PETSC_USE_DEBUG)
-    if (row >= A->rmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Row too large: row %D max %D",row,A->rmap->n-1);
-#endif
+    if (PetscUnlikelyDebug(row >= A->rmap->n)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Row too large: row %D max %D",row,A->rmap->n-1);
     shift = a->sliidx[row>>3]+(row&0x07); /* starting index of the row */
     cp    = a->colidx+shift; /* pointer to the row */
     vp    = a->val+shift; /* pointer to the row */
@@ -1481,9 +1486,7 @@ PetscErrorCode MatSetValues_SeqSELL(Mat A,PetscInt m,const PetscInt im[],PetscIn
     for (l=0; l<n; l++) { /* loop over added columns */
       col = in[l];
       if (col<0) continue;
-#if defined(PETSC_USE_DEBUG)
-      if (col >= A->cmap->n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Col too large: row %D max %D",col,A->cmap->n-1);
-#endif
+      if (PetscUnlikelyDebug(col >= A->cmap->n)) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Col too large: row %D max %D",col,A->cmap->n-1);
       if (a->roworiented) {
         value = v[l+k*n];
       } else {
@@ -1543,7 +1546,7 @@ PetscErrorCode MatCopy_SeqSELL(Mat A,Mat B,MatStructure str)
     Mat_SeqSELL *b=(Mat_SeqSELL*)B->data;
 
     if (a->sliidx[a->totalslices] != b->sliidx[b->totalslices]) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"Number of nonzeros in two matrices are different");
-    ierr = PetscMemcpy(b->val,a->val,a->sliidx[a->totalslices]*sizeof(PetscScalar));CHKERRQ(ierr);
+    ierr = PetscArraycpy(b->val,a->val,a->sliidx[a->totalslices]);CHKERRQ(ierr);
   } else {
     ierr = MatCopy_Basic(A,B,str);CHKERRQ(ierr);
   }
@@ -1893,7 +1896,7 @@ PetscErrorCode MatStoreValues_SeqSELL(Mat mat)
   }
 
   /* copy values over */
-  ierr = PetscMemcpy(a->saved_values,a->val,a->sliidx[a->totalslices]*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(a->saved_values,a->val,a->sliidx[a->totalslices]);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1905,8 +1908,7 @@ PetscErrorCode MatRetrieveValues_SeqSELL(Mat mat)
   PetscFunctionBegin;
   if (!a->nonew) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE);first");
   if (!a->saved_values) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ORDER,"Must call MatStoreValues(A);first");
-  /* copy values over */
-  ierr = PetscMemcpy(a->val,a->saved_values,a->sliidx[a->totalslices]*sizeof(PetscScalar));CHKERRQ(ierr);
+  ierr = PetscArraycpy(a->val,a->saved_values,a->sliidx[a->totalslices]);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -2017,11 +2019,11 @@ PetscErrorCode MatDuplicateNoCreate_SeqSELL(Mat C,Mat A,MatDuplicateOption cpval
     c->singlemalloc = PETSC_TRUE;
 
     if (m > 0) {
-      ierr = PetscMemcpy(c->colidx,a->colidx,(a->maxallocmat)*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr = PetscArraycpy(c->colidx,a->colidx,a->maxallocmat);CHKERRQ(ierr);
       if (cpvalues == MAT_COPY_VALUES) {
-        ierr = PetscMemcpy(c->val,a->val,a->maxallocmat*sizeof(PetscScalar));CHKERRQ(ierr);
+        ierr = PetscArraycpy(c->val,a->val,a->maxallocmat);CHKERRQ(ierr);
       } else {
-        ierr = PetscMemzero(c->val,a->maxallocmat*sizeof(PetscScalar));CHKERRQ(ierr);
+        ierr = PetscArrayzero(c->val,a->maxallocmat);CHKERRQ(ierr);
       }
     }
   }
@@ -2076,21 +2078,21 @@ PetscErrorCode MatDuplicate_SeqSELL(Mat A,MatDuplicateOption cpvalues,Mat *B)
 /*@C
  MatCreateSeqSELL - Creates a sparse matrix in SELL format.
 
- Collective on MPI_Comm
+ Collective
 
  Input Parameters:
- +  comm - MPI communicator, set to PETSC_COMM_SELF
- .  m - number of rows
- .  n - number of columns
- .  rlenmax - maximum number of nonzeros in a row
- -  rlen - array containing the number of nonzeros in the various rows
++  comm - MPI communicator, set to PETSC_COMM_SELF
+.  m - number of rows
+.  n - number of columns
+.  rlenmax - maximum number of nonzeros in a row
+-  rlen - array containing the number of nonzeros in the various rows
  (possibly different for each row) or NULL
 
  Output Parameter:
- .  A - the matrix
+.  A - the matrix
 
  It is recommended that one use the MatCreate(), MatSetType() and/or MatSetFromOptions(),
- MatXXXXSetPreallocation() paradgm instead of this routine directly.
+ MatXXXXSetPreallocation() paradigm instead of this routine directly.
  [MatXXXXSetPreallocation() is, for example, MatSeqSELLSetPreallocation]
 
  Notes:
@@ -2103,7 +2105,7 @@ PetscErrorCode MatDuplicate_SeqSELL(Mat A,MatDuplicateOption cpvalues,Mat *B)
 
  Level: intermediate
 
- .seealso: MatCreate(), MatCreateSELL(), MatSetValues(), MatCreateSeqSELLWithArrays()
+ .seealso: MatCreate(), MatCreateSELL(), MatSetValues()
 
  @*/
 PetscErrorCode MatCreateSeqSELL(MPI_Comm comm,PetscInt m,PetscInt n,PetscInt maxallocrow,const PetscInt rlen[],Mat *A)
@@ -2131,10 +2133,10 @@ PetscErrorCode MatEqual_SeqSELL(Mat A,Mat B,PetscBool * flg)
     PetscFunctionReturn(0);
   }
   /* if the a->colidx are the same */
-  ierr = PetscMemcmp(a->colidx,b->colidx,a->sliidx[totalslices]*sizeof(PetscInt),flg);CHKERRQ(ierr);
+  ierr = PetscArraycmp(a->colidx,b->colidx,a->sliidx[totalslices],flg);CHKERRQ(ierr);
   if (!*flg) PetscFunctionReturn(0);
   /* if a->val are the same */
-  ierr = PetscMemcmp(a->val,b->val,a->sliidx[totalslices]*sizeof(PetscScalar),flg);CHKERRQ(ierr);
+  ierr = PetscArraycmp(a->val,b->val,a->sliidx[totalslices],flg);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

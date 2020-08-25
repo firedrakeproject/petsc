@@ -29,8 +29,6 @@ PetscFunctionList MatList = 0;
 
   Level: intermediate
 
-.keywords: Mat, MatType, set, method
-
 .seealso: PCSetType(), VecSetType(), MatCreate(), MatType, Mat
 @*/
 PetscErrorCode  MatSetType(Mat mat, MatType matype)
@@ -57,7 +55,7 @@ PetscErrorCode  MatSetType(Mat mat, MatType matype)
   ierr = PetscObjectTypeCompare((PetscObject)mat,matype,&sametype);CHKERRQ(ierr);
   if (sametype) PetscFunctionReturn(0);
 
-  ierr =  PetscFunctionListFind(MatList,matype,&r);CHKERRQ(ierr);
+  ierr = PetscFunctionListFind(MatList,matype,&r);CHKERRQ(ierr);
   if (!r) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_UNKNOWN_TYPE,"Unknown Mat type given: %s",matype);
 
   if (mat->assembled && ((PetscObject)mat)->type_name) {
@@ -66,7 +64,8 @@ PetscErrorCode  MatSetType(Mat mat, MatType matype)
   if (subclass) {
     ierr = MatConvert(mat,matype,MAT_INPLACE_MATRIX,&mat);CHKERRQ(ierr);
     PetscFunctionReturn(0);
-  } if (mat->ops->destroy) {
+  }
+  if (mat->ops->destroy) {
     /* free the old data structure if it existed */
     ierr = (*mat->ops->destroy)(mat);CHKERRQ(ierr);
     mat->ops->destroy = NULL;
@@ -74,23 +73,16 @@ PetscErrorCode  MatSetType(Mat mat, MatType matype)
     /* should these null spaces be removed? */
     ierr = MatNullSpaceDestroy(&mat->nullsp);CHKERRQ(ierr);
     ierr = MatNullSpaceDestroy(&mat->nearnullsp);CHKERRQ(ierr);
-    mat->preallocated = PETSC_FALSE;
-    mat->assembled = PETSC_FALSE;
-    mat->was_assembled = PETSC_FALSE;
-
-    /*
-     Increment, rather than reset these: the object is logically the same, so its logging and
-     state is inherited.  Furthermore, resetting makes it possible for the same state to be
-     obtained with a different structure, confusing the PC.
-    */
-    ++mat->nonzerostate;
-    ierr = PetscObjectStateIncrease((PetscObject)mat);CHKERRQ(ierr);
   }
   mat->preallocated  = PETSC_FALSE;
   mat->assembled     = PETSC_FALSE;
   mat->was_assembled = PETSC_FALSE;
 
-  /* increase the state so that any code holding the current state knows the matrix has been changed */
+  /*
+   Increment, rather than reset these: the object is logically the same, so its logging and
+   state is inherited.  Furthermore, resetting makes it possible for the same state to be
+   obtained with a different structure, confusing the PC.
+  */
   mat->nonzerostate++;
   ierr = PetscObjectStateIncrease((PetscObject)mat);CHKERRQ(ierr);
 
@@ -112,8 +104,6 @@ PetscErrorCode  MatSetType(Mat mat, MatType matype)
 
    Level: intermediate
 
-.keywords: Mat, MatType, get, method, name
-
 .seealso: MatSetType()
 @*/
 PetscErrorCode  MatGetType(Mat mat,MatType *type)
@@ -125,6 +115,56 @@ PetscErrorCode  MatGetType(Mat mat,MatType *type)
   PetscFunctionReturn(0);
 }
 
+/*@C
+   MatGetVecType - Gets the vector type used by the matrix object.
+
+   Not Collective
+
+   Input Parameter:
+.  mat - the matrix
+
+   Output Parameter:
+.  name - name of vector type
+
+   Level: intermediate
+
+.seealso: MatSetVecType()
+@*/
+PetscErrorCode MatGetVecType(Mat mat,VecType *vtype)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(mat,MAT_CLASSID,1);
+  PetscValidPointer(vtype,2);
+  *vtype = mat->defaultvectype;
+  PetscFunctionReturn(0);
+}
+
+/*@C
+   MatSetVecType - Set the vector type to be used for a matrix object
+
+   Collective on Mat
+
+   Input Parameters:
++  mat   - the matrix object
+-  vtype - vector type
+
+   Notes:
+     This is rarely needed in practice since each matrix object internally sets the proper vector type.
+
+  Level: intermediate
+
+.seealso: VecSetType(), MatGetVecType()
+@*/
+PetscErrorCode MatSetVecType(Mat mat,VecType vtype)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(mat,MAT_CLASSID,1);
+  ierr = PetscFree(mat->defaultvectype);CHKERRQ(ierr);
+  ierr = PetscStrallocpy(vtype,&mat->defaultvectype);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
 
 /*@C
   MatRegister -  - Adds a new matrix type
@@ -149,8 +189,6 @@ $     MatSetType(Mat,"my_mat")
 $     -mat_type my_mat
 
    Level: advanced
-
-.keywords: Mat, register
 
 .seealso: MatRegisterAll()
 
@@ -210,10 +248,3 @@ PetscErrorCode  MatRegisterRootName(const char rname[],const char sname[],const 
   }
   PetscFunctionReturn(0);
 }
-
-
-
-
-
-
-

@@ -20,6 +20,7 @@ struct _KSPOps {
                                                           calculates the residual in a
                                                           user-provided area.  */
   PetscErrorCode (*solve)(KSP);                        /* actual solver */
+  PetscErrorCode (*matsolve)(KSP,Mat,Mat);             /* multiple dense RHS solver */
   PetscErrorCode (*setup)(KSP);
   PetscErrorCode (*setfromoptions)(PetscOptionItems*,KSP);
   PetscErrorCode (*publishoptions)(KSP);
@@ -94,7 +95,7 @@ struct _p_KSP {
                                       the solution and rhs, these are
                                       never touched by the code, only
                                       passed back to the user */
-  PetscReal     *res_hist;            /* If !0 stores residual at iterations*/
+  PetscReal     *res_hist;            /* If !0 stores residual at iterations */
   PetscReal     *res_hist_alloc;      /* If !0 means user did not provide buffer, needs deallocation */
   PetscInt      res_hist_len;         /* current size of residual history array */
   PetscInt      res_hist_max;         /* actual amount of data in residual_history */
@@ -166,8 +167,9 @@ typedef struct { /* dummy data structure used in KSPMonitorDynamicTolerance() */
 } KSPDynTolCtx;
 
 typedef struct {
-  PetscBool  initialrtol;    /* default relative residual decrease is computing from initial residual, not rhs */
-  PetscBool  mininitialrtol; /* default relative residual decrease is computing from min of initial residual and rhs */
+  PetscBool  initialrtol;    /* default relative residual decrease is computed from initial residual, not rhs */
+  PetscBool  mininitialrtol; /* default relative residual decrease is computed from min of initial residual and rhs */
+  PetscBool  convmaxits;     /* if true, the convergence test returns KSP_CONVERGED_ITS if the maximum number of iterations is reached */
   Vec        work;
 } KSPConvergedDefaultCtx;
 
@@ -338,6 +340,8 @@ PETSC_EXTERN PetscLogEvent KSP_Solve_FS_4;
 PETSC_EXTERN PetscLogEvent KSP_Solve_FS_S;
 PETSC_EXTERN PetscLogEvent KSP_Solve_FS_L;
 PETSC_EXTERN PetscLogEvent KSP_Solve_FS_U;
+PETSC_EXTERN PetscLogEvent KSP_SolveTranspose;
+PETSC_EXTERN PetscLogEvent KSP_MatSolve;
 
 PETSC_INTERN PetscErrorCode MatGetSchurComplement_Basic(Mat,IS,IS,IS,IS,MatReuse,Mat*,MatSchurComplementAinvType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode PCPreSolveChangeRHS(PC,PetscBool*);
@@ -346,7 +350,7 @@ PETSC_INTERN PetscErrorCode PCPreSolveChangeRHS(PC,PetscBool*);
    KSPCheckDot - Checks if the result of a dot product used by the corresponding KSP contains Inf or NaN. These indicate that the previous 
       application of the preconditioner generated an error
 
-   Collective on KSP
+   Collective on ksp
 
    Input Parameter:
 .  ksp - the linear solver (KSP) context.
@@ -359,11 +363,9 @@ PETSC_INTERN PetscErrorCode PCPreSolveChangeRHS(PC,PetscBool*);
    Developer Note:
    this is used to manage returning from KSP solvers whose preconditioners have failed in some way
 
-.keywords: KSP, PC, divergence, convergence
-
 .seealso: KSPCreate(), KSPSetType(), KSP, KSPCheckNorm(), KSPCheckSolve()
 M*/
-#define KSPCheckDot(ksp,beta)           \
+#define KSPCheckDot(ksp,beta) do { \
   if (PetscIsInfOrNanScalar(beta)) { \
     if (ksp->errorifnotconverged) SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_NOT_CONVERGED,"KSPSolve has not converged due to Nan or Inf inner product");\
     else {\
@@ -381,13 +383,13 @@ M*/
       }\
       PetscFunctionReturn(0);\
     }\
-  }
+  } } while (0)
 
 /*MC
    KSPCheckNorm - Checks if the result of a norm used by the corresponding KSP contains Inf or NaN. These indicate that the previous
       application of the preconditioner generated an error
 
-   Collective on KSP
+   Collective on ksp
 
    Input Parameter:
 .  ksp - the linear solver (KSP) context.
@@ -400,11 +402,9 @@ M*/
    Developer Note:
    this is used to manage returning from KSP solvers whose preconditioners have failed in some way
 
-.keywords: KSP, PC, divergence, convergence
-
 .seealso: KSPCreate(), KSPSetType(), KSP, KSPCheckDot(), KSPCheckSolve()
 M*/
-#define KSPCheckNorm(ksp,beta)           \
+#define KSPCheckNorm(ksp,beta) do { \
   if (PetscIsInfOrNanReal(beta)) { \
     if (ksp->errorifnotconverged) SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_NOT_CONVERGED,"KSPSolve has not converged due to Nan or Inf norm");\
     else {\
@@ -422,6 +422,6 @@ M*/
       }\
       PetscFunctionReturn(0);\
     }\
-  }
+  } } while (0)
 
 #endif

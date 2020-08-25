@@ -26,6 +26,7 @@ static PetscErrorCode DMCreateMatrix_Redundant(DM dm,Mat *J)
 
   ierr = DMGetLocalToGlobalMapping(dm,&ltog);CHKERRQ(ierr);
   ierr = MatSetLocalToGlobalMapping(*J,ltog,ltog);CHKERRQ(ierr);
+  ierr = MatSetDM(*J,dm);CHKERRQ(ierr);
 
   ierr = PetscMalloc2(red->N,&cols,red->N,&vals);CHKERRQ(ierr);
   for (i=0; i<red->N; i++) {
@@ -128,7 +129,7 @@ static PetscErrorCode DMLocalToGlobalBegin_Redundant(DM dm,Vec l,InsertMode imod
 #endif
   } break;
   case INSERT_VALUES:
-    ierr = PetscMemcpy(gv,lv,red->n*sizeof(PetscScalar));CHKERRQ(ierr);
+    ierr = PetscArraycpy(gv,lv,red->n);CHKERRQ(ierr);
     break;
   default: SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"InsertMode not supported");
   }
@@ -155,7 +156,7 @@ static PetscErrorCode DMGlobalToLocalBegin_Redundant(DM dm,Vec g,InsertMode imod
   ierr = VecGetArray(l,&lv);CHKERRQ(ierr);
   switch (imode) {
   case INSERT_VALUES:
-    if (red->n) {ierr = PetscMemcpy(lv,gv,red->n*sizeof(PetscScalar));CHKERRQ(ierr);}
+    if (red->n) {ierr = PetscArraycpy(lv,gv,red->n);CHKERRQ(ierr);}
     ierr = MPI_Bcast(lv,red->N,MPIU_SCALAR,red->rank,PetscObjectComm((PetscObject)dm));CHKERRQ(ierr);
     break;
   default: SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"InsertMode not supported");
@@ -173,14 +174,7 @@ static PetscErrorCode DMGlobalToLocalEnd_Redundant(DM dm,Vec g,InsertMode imode,
 
 static PetscErrorCode DMSetUp_Redundant(DM dm)
 {
-  PetscErrorCode ierr;
-  DM_Redundant   *red = (DM_Redundant*)dm->data;
-  PetscInt       i,*globals;
-
   PetscFunctionBegin;
-  ierr = PetscMalloc1(red->N,&globals);CHKERRQ(ierr);
-  for (i=0; i<red->N; i++) globals[i] = i;
-  ierr = ISLocalToGlobalMappingCreate(PETSC_COMM_SELF,1,red->N,globals,PETSC_OWN_POINTER,&dm->ltogmap);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -283,7 +277,7 @@ static PetscErrorCode DMCreateInterpolation_Redundant(DM dmc,DM dmf,Mat *P,Vec *
 /*@
     DMRedundantSetSize - Sets the size of a densely coupled redundant object
 
-    Collective on DM
+    Collective on dm
 
     Input Parameter:
 +   dm - redundant DM
@@ -313,7 +307,7 @@ PetscErrorCode DMRedundantSetSize(DM dm,PetscMPIInt rank,PetscInt N)
     Not Collective
 
     Input Parameter:
-+   dm - redundant DM
+.   dm - redundant DM
 
     Output Parameters:
 +   rank - rank of process to own redundant degrees of freedom (or NULL)
@@ -339,12 +333,19 @@ static PetscErrorCode DMRedundantSetSize_Redundant(DM dm,PetscMPIInt rank,PetscI
   DM_Redundant   *red = (DM_Redundant*)dm->data;
   PetscErrorCode ierr;
   PetscMPIInt    myrank;
+  PetscInt       i,*globals;
 
   PetscFunctionBegin;
   ierr      = MPI_Comm_rank(PetscObjectComm((PetscObject)dm),&myrank);CHKERRQ(ierr);
   red->rank = rank;
   red->N    = N;
   red->n    = (myrank == rank) ? N : 0;
+
+  /* mapping is setup here */
+  ierr = PetscMalloc1(red->N,&globals);CHKERRQ(ierr);
+  for (i=0; i<red->N; i++) globals[i] = i;
+  ierr = ISLocalToGlobalMappingDestroy(&dm->ltogmap);CHKERRQ(ierr);
+  ierr = ISLocalToGlobalMappingCreate(PetscObjectComm((PetscObject)dm),1,red->N,globals,PETSC_OWN_POINTER,&dm->ltogmap);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -387,8 +388,6 @@ PETSC_EXTERN PetscErrorCode DMCreate_Redundant(DM dm)
   ierr     = PetscNewLog(dm,&red);CHKERRQ(ierr);
   dm->data = red;
 
-  ierr = PetscObjectChangeTypeName((PetscObject)dm,DMREDUNDANT);CHKERRQ(ierr);
-
   dm->ops->setup               = DMSetUp_Redundant;
   dm->ops->view                = DMView_Redundant;
   dm->ops->createglobalvector  = DMCreateGlobalVector_Redundant;
@@ -413,7 +412,7 @@ PETSC_EXTERN PetscErrorCode DMCreate_Redundant(DM dm)
 /*@C
     DMRedundantCreate - Creates a DM object, used to manage data for dense globally coupled variables
 
-    Collective on MPI_Comm
+    Collective
 
     Input Parameter:
 +   comm - the processors that will share the global vector

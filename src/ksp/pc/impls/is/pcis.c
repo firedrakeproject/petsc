@@ -168,7 +168,7 @@ PetscErrorCode  PCISSetUp(PC pc, PetscBool computematrices, PetscBool computesol
     ierr = PetscBTCreate(pcis->n,&bt);CHKERRQ(ierr);
     for (i=0;i<pcis->n_neigh;i++)
       for (j=0;j<pcis->n_shared[i];j++) {
-          ierr = PetscBTSet(bt,pcis->shared[i][j]);CHKERRQ(ierr);
+        ierr = PetscBTSet(bt,pcis->shared[i][j]);CHKERRQ(ierr);
       }
 
     /* Creating local and global index sets for interior and inteface nodes. */
@@ -215,7 +215,7 @@ PetscErrorCode  PCISSetUp(PC pc, PetscBool computematrices, PetscBool computesol
     ierr = VecSetType(pcis->vec1_B,((PetscObject)pcis->vec1_N)->type_name);CHKERRQ(ierr);
     ierr = VecDuplicate(pcis->vec1_B,&pcis->vec2_B);CHKERRQ(ierr);
     ierr = VecDuplicate(pcis->vec1_B,&pcis->vec3_B);CHKERRQ(ierr);
-    ierr = MatCreateVecs(pc->pmat,&pcis->vec1_global,0);CHKERRQ(ierr);
+    ierr = MatCreateVecs(pc->pmat,&pcis->vec1_global,NULL);CHKERRQ(ierr);
     ierr = PetscMalloc1(pcis->n,&pcis->work_N);CHKERRQ(ierr);
     /* scaling vector */
     if (!pcis->D) { /* it can happen that the user passed in a scaling vector via PCISSetSubdomainDiagonalScaling */

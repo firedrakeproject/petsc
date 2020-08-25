@@ -4,7 +4,7 @@
 static PetscErrorCode PCSetUp_ICC(PC pc)
 {
   PC_ICC                 *icc = (PC_ICC*)pc->data;
-  IS                     perm,cperm;
+  IS                     perm = NULL,cperm = NULL;
   PetscErrorCode         ierr;
   MatInfo                info;
   MatSolverType          stype;
@@ -12,17 +12,26 @@ static PetscErrorCode PCSetUp_ICC(PC pc)
 
   PetscFunctionBegin;
   pc->failedreason = PC_NOERROR;
-  ierr = MatGetOrdering(pc->pmat, ((PC_Factor*)icc)->ordering,&perm,&cperm);CHKERRQ(ierr);
 
   ierr = MatSetErrorIfFailure(pc->pmat,pc->erroriffailure);CHKERRQ(ierr);
   if (!pc->setupcalled) {
     if (!((PC_Factor*)icc)->fact) {
+      PetscBool useordering;
       ierr = MatGetFactor(pc->pmat,((PC_Factor*)icc)->solvertype,MAT_FACTOR_ICC,&((PC_Factor*)icc)->fact);CHKERRQ(ierr);
+      ierr = MatFactorGetUseOrdering(((PC_Factor*)icc)->fact,&useordering);CHKERRQ(ierr);
+      if (useordering) {
+        ierr = MatGetOrdering(pc->pmat, ((PC_Factor*)icc)->ordering,&perm,&cperm);CHKERRQ(ierr);
+      }
     }
     ierr = MatICCFactorSymbolic(((PC_Factor*)icc)->fact,pc->pmat,perm,&((PC_Factor*)icc)->info);CHKERRQ(ierr);
   } else if (pc->flag != SAME_NONZERO_PATTERN) {
+    PetscBool useordering;
     ierr = MatDestroy(&((PC_Factor*)icc)->fact);CHKERRQ(ierr);
     ierr = MatGetFactor(pc->pmat,((PC_Factor*)icc)->solvertype,MAT_FACTOR_ICC,&((PC_Factor*)icc)->fact);CHKERRQ(ierr);
+    ierr = MatFactorGetUseOrdering(((PC_Factor*)icc)->fact,&useordering);CHKERRQ(ierr);
+    if (useordering) {
+      ierr = MatGetOrdering(pc->pmat, ((PC_Factor*)icc)->ordering,&perm,&cperm);CHKERRQ(ierr);
+    }
     ierr = MatICCFactorSymbolic(((PC_Factor*)icc)->fact,pc->pmat,perm,&((PC_Factor*)icc)->info);CHKERRQ(ierr);
   }
   ierr                = MatGetInfo(((PC_Factor*)icc)->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
@@ -85,6 +94,16 @@ static PetscErrorCode PCApply_ICC(PC pc,Vec x,Vec y)
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode PCMatApply_ICC(PC pc,Mat X,Mat Y)
+{
+  PC_ICC         *icc = (PC_ICC*)pc->data;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = MatMatSolve(((PC_Factor*)icc)->fact,X,Y);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode PCApplySymmetricLeft_ICC(PC pc,Vec x,Vec y)
 {
   PetscErrorCode ierr;
@@ -130,15 +149,6 @@ static PetscErrorCode PCSetFromOptions_ICC(PetscOptionItems *PetscOptionsObject,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCView_ICC(PC pc,PetscViewer viewer)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = PCView_Factor(pc,viewer);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
 extern PetscErrorCode  PCFactorSetDropTolerance_ILU(PC,PetscReal,PetscReal,PetscInt);
 
 /*MC
@@ -152,8 +162,6 @@ extern PetscErrorCode  PCFactorSetDropTolerance_ILU(PC,PetscReal,PetscReal,Petsc
 -  -pc_factor_mat_ordering_type <natural,nd,1wd,rcm,qmd> - set the row/column ordering of the factored matrix
 
    Level: beginner
-
-  Concepts: incomplete Cholesky factorization
 
    Notes:
     Only implemented for some matrix formats. Not implemented in parallel.
@@ -195,12 +203,13 @@ PETSC_EXTERN PetscErrorCode PCCreate_ICC(PC pc)
   ((PC_Factor*)icc)->info.shifttype = (PetscReal) MAT_SHIFT_POSITIVE_DEFINITE;
 
   pc->ops->apply               = PCApply_ICC;
+  pc->ops->matapply            = PCMatApply_ICC;
   pc->ops->applytranspose      = PCApply_ICC;
   pc->ops->setup               = PCSetUp_ICC;
   pc->ops->reset               = PCReset_ICC;
   pc->ops->destroy             = PCDestroy_ICC;
   pc->ops->setfromoptions      = PCSetFromOptions_ICC;
-  pc->ops->view                = PCView_ICC;
+  pc->ops->view                = PCView_Factor;
   pc->ops->applysymmetricleft  = PCApplySymmetricLeft_ICC;
   pc->ops->applysymmetricright = PCApplySymmetricRight_ICC;
   PetscFunctionReturn(0);

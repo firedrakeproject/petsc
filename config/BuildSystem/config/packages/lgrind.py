@@ -6,6 +6,7 @@ class Configure(config.package.Package):
     self.download     = ['http://ftp.mcs.anl.gov/pub/petsc/externalpackages/lgrind-dev.tar.gz']
     self.linkedbypetsc     = 0
     self.useddirectly      = 0
+    self.executablename    = 'lgrind'
     #
     #  lgrind is currently not used by PETSc
     #
@@ -28,9 +29,9 @@ class Configure(config.package.Package):
         self.logPrintBox('Batch build that could not generate lgrind, you may not be able to build all documentation')
         return
       raise RuntimeError('Error running make on lgrind: '+str(e))
-    output,err,ret  = config.package.Package.executeShellCommand('cp -f '+os.path.join(self.packageDir,'source','lgrind')+' '+os.path.join(self.confDir,'bin'), timeout=25, log = self.log)
-    output,err,ret  = config.package.Package.executeShellCommand('cp -f '+os.path.join(self.packageDir,'lgrind.sty')+' '+os.path.join(self.confDir,'share'), timeout=25, log = self.log)
-    output,err,ret  = config.package.Package.executeShellCommand('cp -f '+os.path.join(self.packageDir,'lgrindef')+' '+os.path.join(self.confDir,'share'), timeout=25, log = self.log)
+    output,err,ret  = config.package.Package.executeShellCommand('cp -f '+os.path.join(self.packageDir,'source','lgrind')+' '+os.path.join(self.confDir,'bin'), timeout=60, log = self.log)
+    output,err,ret  = config.package.Package.executeShellCommand('cp -f '+os.path.join(self.packageDir,'lgrind.sty')+' '+os.path.join(self.confDir,'share'), timeout=60, log = self.log)
+    output,err,ret  = config.package.Package.executeShellCommand('cp -f '+os.path.join(self.packageDir,'lgrindef')+' '+os.path.join(self.confDir,'share'), timeout=60, log = self.log)
     return self.confDir
 
   def configure(self):

@@ -3,6 +3,7 @@
   <head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8">
     <link href="../../style.css" rel="stylesheet" type="text/css">
+    <link rel="icon" href="../../images/PETSc_RGB-logo.png" type="image/png" sizes="16x16">
     <title>PETSc: Documentation: Changes: 3.4</title>
   </head>
   <body>
@@ -34,6 +35,8 @@
               <a href="index.html">Changes</a>
               <ul>
                 <li><a href="dev.html">dev</a></li>
+                <li><a href="313.html">3.13</a></li>
+                <li><a href="312.html">3.12</a></li>
                 <li><a href="311.html">3.11</a></li>
                 <li><a href="310.html">3.10</a></li>
                 <li><a href="39.html">3.9</a></li>
@@ -73,12 +76,14 @@
             <li><a href="../faq.html">FAQ</a></li>
             <li><a href="../license.html">License</a></li>
             <li><a href="../linearsolvertable.html">Linear Solver Table</a></li>
+            <li><a href="../nonlinearsolvertable.html">Nonlinear Solver Table</a></li>
+	    <li><a href="../taosolvertable.html">TAO Solver Table</a></li>
           </ul>
         </li>
         <li><a href="../../publications/index.html">Applications/Publications</a></li>
         <li><a href="../../miscellaneous/index.html">Miscellaneous</a></li>
         <li><a href="../../miscellaneous/external.html">External Software</a></li>
-        <li><a href="../../developers/index.html">Developers Site</a></li>
+        <li><a href="https://docs.petsc.org/en/latest/developers/index.html">Developers Site</a></li>
       </ul>
     </div>
 
@@ -143,7 +148,7 @@
       <h4>IS:</h4>
       <ul>
         <li>
-          PetscSection was moved to IS and has become a PetscObject, thus reference counting works as usual, with functions like DMSetDefaultSection() taking a reference to the PetscSection.
+          PetscSection was moved to IS and has become a PetscObject, thus reference counting works as usual, with functions like DMSetLocalSection() taking a reference to the PetscSection.
           The caller is thus obliged to release their reference using PetscSectionDestroy().
         </li>
       </ul>
@@ -218,11 +223,11 @@
       <ul>
         <li>
           Option <tt>-ts_monitor_solution</tt> changed to <tt>-ts_monitor_draw_solution</tt>.
-          See <a href="http://www.mcs.anl.gov/petsc-master/docs/manualpages/TS/TSSetFromOptions.html">TSSetFromOptions</a> for additional monitoring options.
+          See <a href="https://www.mcs.anl.gov/petsc/petsc-master/docs/manualpages/TS/TSSetFromOptions.html">TSSetFromOptions</a> for additional monitoring options.
         </li>
         <li>
           TSSetExactFinalTime() now takes an enum instead of PetscBool, which includes a new feature <tt>TS_EXACTFINALTIME_MATCHSTEP</tt> that adjusts time step sizes to match an exact final time.
-          See <a href="http://www.mcs.anl.gov/petsc-master/docs/manualpages/TS/TSExactFinalTimeOption.html">TSExactFinalTimeOption</a>.
+          See <a href="https://www.mcs.anl.gov/petsc-master/docs/manualpages/TS/TSExactFinalTimeOption.html">TSExactFinalTimeOption</a>.
         </li>
       </ul>
       <h4>DM/DA:</h4>

@@ -1,5 +1,21 @@
 #include <petsc/private/petscfeimpl.h> /*I "petscfe.h" I*/
 
+/*@C
+  PetscFEGeomCreate - Create a PetscFEGeom object to manage geometry for a group of cells
+
+  Input Parameters:
++ quad     - A PetscQuadrature determining the tabulation
+. numCells - The number of cells in the group
+. dimEmbed - The coordinate dimension
+- faceData - Flag to construct geometry data for the faces
+
+  Output Parameter:
+. geom     - The PetscFEGeom object
+
+  Level: beginner
+
+.seealso: PetscFEGeomDestroy(), PetscFEGeomComplete()
+@*/
 PetscErrorCode PetscFEGeomCreate(PetscQuadrature quad, PetscInt numCells, PetscInt dimEmbed, PetscBool faceData, PetscFEGeom **geom)
 {
   PetscFEGeom     *g;
@@ -18,13 +34,26 @@ PetscErrorCode PetscFEGeomCreate(PetscQuadrature quad, PetscInt numCells, PetscI
   N = numCells * Nq;
   ierr = PetscCalloc3(N * dimEmbed, &g->v, N * dimEmbed * dimEmbed, &g->J, N, &g->detJ);CHKERRQ(ierr);
   if (faceData) {
-    ierr = PetscCalloc4(numCells, &g->face, N * dimEmbed, &g->n, N * dimEmbed * dimEmbed, &(g->suppInvJ[0]), N * dimEmbed * dimEmbed, &(g->suppInvJ[1]));CHKERRQ(ierr);
+    ierr = PetscCalloc2(numCells, &g->face, N * dimEmbed, &g->n);CHKERRQ(ierr);
+    ierr = PetscCalloc6(N * dimEmbed * dimEmbed, &(g->suppJ[0]),    N * dimEmbed * dimEmbed, &(g->suppJ[1]),
+                        N * dimEmbed * dimEmbed, &(g->suppInvJ[0]), N * dimEmbed * dimEmbed, &(g->suppInvJ[1]),
+                        N,                       &(g->suppDetJ[0]), N,                       &(g->suppDetJ[1]));CHKERRQ(ierr);
   }
   ierr = PetscCalloc1(N * dimEmbed * dimEmbed, &g->invJ);CHKERRQ(ierr);
   *geom = g;
   PetscFunctionReturn(0);
 }
 
+/*@C
+  PetscFEGeomDestroy - Destroy a PetscFEGeom object
+
+  Input Parameter:
+. geom - PetscFEGeom object
+
+  Level: beginner
+
+.seealso: PetscFEGeomCreate()
+@*/
 PetscErrorCode PetscFEGeomDestroy(PetscFEGeom **geom)
 {
   PetscErrorCode ierr;
@@ -33,11 +62,27 @@ PetscErrorCode PetscFEGeomDestroy(PetscFEGeom **geom)
   if (!*geom) PetscFunctionReturn(0);
   ierr = PetscFree3((*geom)->v,(*geom)->J,(*geom)->detJ);CHKERRQ(ierr);
   ierr = PetscFree((*geom)->invJ);CHKERRQ(ierr);
-  ierr = PetscFree4((*geom)->face,(*geom)->n,(*geom)->suppInvJ[0],(*geom)->suppInvJ[1]);CHKERRQ(ierr);
+  ierr = PetscFree2((*geom)->face,(*geom)->n);CHKERRQ(ierr);
+  ierr = PetscFree6((*geom)->suppJ[0],(*geom)->suppJ[1],(*geom)->suppInvJ[0],(*geom)->suppInvJ[1],(*geom)->suppDetJ[0],(*geom)->suppDetJ[1]);CHKERRQ(ierr);
   ierr = PetscFree(*geom);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
+/*@C
+  PetscFEGeomGetChunk - Get a chunk of cells in the group as a PetscFEGeom
+
+  Input Parameters:
++ geom   - PetscFEGeom object
+. cStart - The first cell in the chunk
+- cEnd   - The first cell not in the chunk
+
+  Output Parameter:
+. chunkGeom - The chunk of cells
+
+  Level: intermediate
+
+.seealso: PetscFEGeomRestoreChunk(), PetscFEGeomCreate()
+@*/
 PetscErrorCode PetscFEGeomGetChunk(PetscFEGeom *geom, PetscInt cStart, PetscInt cEnd, PetscFEGeom **chunkGeom)
 {
   PetscInt       Nq;
@@ -63,12 +108,29 @@ PetscErrorCode PetscFEGeomGetChunk(PetscFEGeom *geom, PetscInt cStart, PetscInt 
   (*chunkGeom)->detJ = &geom->detJ[Nq*cStart];
   (*chunkGeom)->n = geom->n ? &geom->n[Nq*dE*cStart] : NULL;
   (*chunkGeom)->face = geom->face ? &geom->face[cStart] : NULL;
+  (*chunkGeom)->suppJ[0]    = geom->suppJ[0]    ? &geom->suppJ[0][Nq*dE*dE*cStart]    : NULL;
+  (*chunkGeom)->suppJ[1]    = geom->suppJ[1]    ? &geom->suppJ[1][Nq*dE*dE*cStart]    : NULL;
   (*chunkGeom)->suppInvJ[0] = geom->suppInvJ[0] ? &geom->suppInvJ[0][Nq*dE*dE*cStart] : NULL;
   (*chunkGeom)->suppInvJ[1] = geom->suppInvJ[1] ? &geom->suppInvJ[1][Nq*dE*dE*cStart] : NULL;
+  (*chunkGeom)->suppDetJ[0] = geom->suppDetJ[0] ? &geom->suppDetJ[0][Nq*cStart]       : NULL;
+  (*chunkGeom)->suppDetJ[1] = geom->suppDetJ[1] ? &geom->suppDetJ[1][Nq*cStart]       : NULL;
   (*chunkGeom)->isAffine = geom->isAffine;
   PetscFunctionReturn(0);
 }
 
+/*@C
+  PetscFEGeomRestoreChunk - Restore the chunk
+
+  Input Parameters:
++ geom      - PetscFEGeom object
+. cStart    - The first cell in the chunk
+. cEnd      - The first cell not in the chunk
+- chunkGeom - The chunk of cells
+
+  Level: intermediate
+
+.seealso: PetscFEGeomGetChunk(), PetscFEGeomCreate()
+@*/
 PetscErrorCode PetscFEGeomRestoreChunk(PetscFEGeom *geom, PetscInt cStart, PetscInt cEnd, PetscFEGeom **chunkGeom)
 {
   PetscErrorCode ierr;
@@ -78,6 +140,16 @@ PetscErrorCode PetscFEGeomRestoreChunk(PetscFEGeom *geom, PetscInt cStart, Petsc
   PetscFunctionReturn(0);
 }
 
+/*@
+  PetscFEGeomComplete - Calculate derived quntites from base geometry specification
+
+  Input Parameter:
+. geom - PetscFEGeom object
+
+  Level: intermediate
+
+.seealso: PetscFEGeomCreate()
+@*/
 PetscErrorCode PetscFEGeomComplete(PetscFEGeom *geom)
 {
   PetscInt i, j, N, dE;
@@ -114,4 +186,3 @@ PetscErrorCode PetscFEGeomComplete(PetscFEGeom *geom)
   }
   PetscFunctionReturn(0);
 }
-

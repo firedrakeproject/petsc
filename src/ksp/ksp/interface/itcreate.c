@@ -1,4 +1,3 @@
-
 /*
      The basic KSP routines, Create, View etc. are here.
 */
@@ -8,18 +7,18 @@
 PetscClassId  KSP_CLASSID;
 PetscClassId  DMKSP_CLASSID;
 PetscClassId  KSPGUESS_CLASSID;
-PetscLogEvent KSP_GMRESOrthogonalization, KSP_SetUp, KSP_Solve;
+PetscLogEvent KSP_GMRESOrthogonalization, KSP_SetUp, KSP_Solve, KSP_SolveTranspose, KSP_MatSolve;
 
 /*
    Contains the list of registered KSP routines
 */
-PetscFunctionList KSPList              = 0;
+PetscFunctionList KSPList              = NULL;
 PetscBool         KSPRegisterAllCalled = PETSC_FALSE;
 
 /*@C
   KSPLoad - Loads a KSP that has been stored in binary  with KSPView().
 
-  Collective on PetscViewer
+  Collective on viewer
 
   Input Parameters:
 + newdm - the newly loaded KSP, this needs to have been created with KSPCreate() or
@@ -75,7 +74,7 @@ PetscErrorCode  KSPLoad(KSP newdm, PetscViewer viewer)
 /*@C
    KSPView - Prints the KSP data structure.
 
-   Collective on KSP
+   Collective on ksp
 
    Input Parameters:
 +  ksp - the Krylov space context
@@ -97,14 +96,12 @@ PetscErrorCode  KSPLoad(KSP newdm, PetscViewer viewer)
 
    Level: beginner
 
-.keywords: KSP, view
-
 .seealso: PCView(), PetscViewerASCIIOpen()
 @*/
 PetscErrorCode  KSPView(KSP ksp,PetscViewer viewer)
 {
   PetscErrorCode ierr;
-  PetscBool      iascii,isbinary,isdraw;
+  PetscBool      iascii,isbinary,isdraw,isstring;
 #if defined(PETSC_HAVE_SAWS)
   PetscBool      issaws;
 #endif
@@ -120,6 +117,7 @@ PetscErrorCode  KSPView(KSP ksp,PetscViewer viewer)
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII,&iascii);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERBINARY,&isbinary);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERDRAW,&isdraw);CHKERRQ(ierr);
+  ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERSTRING,&isstring);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_SAWS)
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERSAWS,&issaws);CHKERRQ(ierr);
 #endif
@@ -160,13 +158,18 @@ PetscErrorCode  KSPView(KSP ksp,PetscViewer viewer)
     ierr = PetscObjectGetComm((PetscObject)ksp,&comm);CHKERRQ(ierr);
     ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
     if (!rank) {
-      ierr = PetscViewerBinaryWrite(viewer,&classid,1,PETSC_INT,PETSC_FALSE);CHKERRQ(ierr);
+      ierr = PetscViewerBinaryWrite(viewer,&classid,1,PETSC_INT);CHKERRQ(ierr);
       ierr = PetscStrncpy(type,((PetscObject)ksp)->type_name,256);CHKERRQ(ierr);
-      ierr = PetscViewerBinaryWrite(viewer,type,256,PETSC_CHAR,PETSC_FALSE);CHKERRQ(ierr);
+      ierr = PetscViewerBinaryWrite(viewer,type,256,PETSC_CHAR);CHKERRQ(ierr);
     }
     if (ksp->ops->view) {
       ierr = (*ksp->ops->view)(ksp,viewer);CHKERRQ(ierr);
     }
+  } else if (isstring) {
+    const char *type;
+    ierr = KSPGetType(ksp,&type);CHKERRQ(ierr);
+    ierr = PetscViewerStringSPrintf(viewer," KSPType: %-7.7s",type);CHKERRQ(ierr);
+    if (ksp->ops->view) {ierr = (*ksp->ops->view)(ksp,viewer);CHKERRQ(ierr);}
   } else if (isdraw) {
     PetscDraw draw;
     char      str[36];
@@ -208,8 +211,7 @@ PetscErrorCode  KSPView(KSP ksp,PetscViewer viewer)
   } else if (ksp->ops->view) {
     ierr = (*ksp->ops->view)(ksp,viewer);CHKERRQ(ierr);
   }
-  if (!ksp->skippcsetfromoptions) {
-    if (!ksp->pc) {ierr = KSPGetPC(ksp,&ksp->pc);CHKERRQ(ierr);}
+  if (ksp->pc) {
     ierr = PCView(ksp->pc,viewer);CHKERRQ(ierr);
   }
   if (isdraw) {
@@ -220,11 +222,33 @@ PetscErrorCode  KSPView(KSP ksp,PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
+/*@C
+   KSPViewFromOptions - View from Options
+
+   Collective on KSP
+
+   Input Parameters:
++  A - Krylov solver context
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  KSP, KSPView, PetscObjectViewFromOptions(), KSPCreate()
+@*/
+PetscErrorCode  KSPViewFromOptions(KSP A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,KSP_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
 
 /*@
    KSPSetNormType - Sets the norm that is used for convergence testing.
 
-   Logically Collective on KSP
+   Logically Collective on ksp
 
    Input Parameter:
 +  ksp - Krylov solver context
@@ -254,8 +278,6 @@ $   KSP_NORM_NATURAL - supported  by KSPCG, KSPCR, KSPCGNE, KSPCGS
 
    Level: advanced
 
-.keywords: KSP, create, context, norms
-
 .seealso: KSPSetUp(), KSPSolve(), KSPDestroy(), KSPConvergedSkip(), KSPSetCheckNormIteration(), KSPSetPCSide(), KSPGetPCSide(), KSPNormType
 @*/
 PetscErrorCode  KSPSetNormType(KSP ksp,KSPNormType normtype)
@@ -271,7 +293,7 @@ PetscErrorCode  KSPSetNormType(KSP ksp,KSPNormType normtype)
    KSPSetCheckNormIteration - Sets the first iteration at which the norm of the residual will be
      computed and used in the convergence test.
 
-   Logically Collective on KSP
+   Logically Collective on ksp
 
    Input Parameter:
 +  ksp - Krylov solver context
@@ -285,8 +307,6 @@ PetscErrorCode  KSPSetNormType(KSP ksp,KSPNormType normtype)
    On steps where the norm is not computed, the previous norm is still in the variable, so if you run with, for example,
     -ksp_monitor the residual norm will appear to be unchanged for several iterations (though it is not really unchanged).
    Level: advanced
-
-.keywords: KSP, create, context, norms
 
 .seealso: KSPSetUp(), KSPSolve(), KSPDestroy(), KSPConvergedSkip(), KSPSetNormType()
 @*/
@@ -305,7 +325,7 @@ PetscErrorCode  KSPSetCheckNormIteration(KSP ksp,PetscInt it)
    one additional iteration.
 
 
-   Logically Collective on KSP
+   Logically Collective on ksp
 
    Input Parameter:
 +  ksp - Krylov solver context
@@ -321,8 +341,6 @@ PetscErrorCode  KSPSetCheckNormIteration(KSP ksp,PetscInt it)
 
    If you lag the norm and run with, for example, -ksp_monitor, the residual norm reported will be the lagged one.
    Level: advanced
-
-.keywords: KSP, create, context, norms
 
 .seealso: KSPSetUp(), KSPSolve(), KSPDestroy(), KSPConvergedSkip(), KSPSetNormType(), KSPSetCheckNormIteration()
 @*/
@@ -414,8 +432,6 @@ PetscErrorCode KSPSetUpNorms_Private(KSP ksp,PetscBool errorifnotsupported,KSPNo
 
    Level: advanced
 
-.keywords: KSP, create, context, norms
-
 .seealso: KSPNormType, KSPSetNormType(), KSPConvergedSkip()
 @*/
 PetscErrorCode  KSPGetNormType(KSP ksp, KSPNormType *normtype)
@@ -438,7 +454,7 @@ PetscErrorCode  KSPGetNormType(KSP ksp, KSPNormType *normtype)
    KSPSetOperators - Sets the matrix associated with the linear system
    and a (possibly) different one associated with the preconditioner.
 
-   Collective on KSP and Mat
+   Collective on ksp
 
    Input Parameters:
 +  ksp - the KSP context
@@ -497,8 +513,6 @@ $           set size, type, etc of mat and pmat
     Thus, why should YOU have to create the Mat and attach it to the SNES/KSP/PC, when
     it can be created for you?
 
-.keywords: KSP, set, operators, matrix, preconditioner, linear system
-
 .seealso: KSPSolve(), KSPGetPC(), PCGetOperators(), PCSetOperators(), KSPGetOperators(), KSPSetComputeOperators(), KSPSetComputeInitialGuess(), KSPSetComputeRHS()
 @*/
 PetscErrorCode  KSPSetOperators(KSP ksp,Mat Amat,Mat Pmat)
@@ -521,7 +535,7 @@ PetscErrorCode  KSPSetOperators(KSP ksp,Mat Amat,Mat Pmat)
    KSPGetOperators - Gets the matrix associated with the linear system
    and a (possibly) different one associated with the preconditioner.
 
-   Collective on KSP and Mat
+   Collective on ksp
 
    Input Parameter:
 .  ksp - the KSP context
@@ -534,8 +548,6 @@ PetscErrorCode  KSPSetOperators(KSP ksp,Mat Amat,Mat Pmat)
 
    Notes:
     DOES NOT increase the reference counts of the matrix, so you should NOT destroy them.
-
-.keywords: KSP, set, get, operators, matrix, preconditioner, linear system
 
 .seealso: KSPSolve(), KSPGetPC(), PCGetOperators(), PCSetOperators(), KSPSetOperators(), KSPGetOperatorsSet()
 @*/
@@ -565,8 +577,6 @@ PetscErrorCode  KSPGetOperators(KSP ksp,Mat *Amat,Mat *Pmat)
 
    Level: intermediate
 
-.keywords: KSP, get, operators, matrix, linear system
-
 .seealso: PCSetOperators(), KSPGetOperators(), KSPSetOperators(), PCGetOperators(), PCGetOperatorsSet()
 @*/
 PetscErrorCode  KSPGetOperatorsSet(KSP ksp,PetscBool  *mat,PetscBool  *pmat)
@@ -583,7 +593,7 @@ PetscErrorCode  KSPGetOperatorsSet(KSP ksp,PetscBool  *mat,PetscBool  *pmat)
 /*@C
    KSPSetPreSolve - Sets a function that is called before every KSPSolve() is started
 
-   Logically Collective on KSP
+   Logically Collective on ksp
 
    Input Parameters:
 +   ksp - the solver object
@@ -600,8 +610,6 @@ $  func(KSP ksp,Vec rhs,Vec x,void *ctx)
 
    Level: developer
 
-.keywords: KSP, create, context
-
 .seealso: KSPSetUp(), KSPSolve(), KSPDestroy(), KSP, KSPSetPostSolve()
 @*/
 PetscErrorCode  KSPSetPreSolve(KSP ksp,PetscErrorCode (*presolve)(KSP,Vec,Vec,void*),void *prectx)
@@ -616,7 +624,7 @@ PetscErrorCode  KSPSetPreSolve(KSP ksp,PetscErrorCode (*presolve)(KSP,Vec,Vec,vo
 /*@C
    KSPSetPostSolve - Sets a function that is called after every KSPSolve() completes (whether it converges or not)
 
-   Logically Collective on KSP
+   Logically Collective on ksp
 
    Input Parameters:
 +   ksp - the solver object
@@ -633,8 +641,6 @@ $  func(KSP ksp,Vec rhs,Vec x,void *ctx)
 .  x - the solution vector
 -  ctx - optional user-provided context
 
-.keywords: KSP, create, context
-
 .seealso: KSPSetUp(), KSPSolve(), KSPDestroy(), KSP, KSPSetPreSolve()
 @*/
 PetscErrorCode  KSPSetPostSolve(KSP ksp,PetscErrorCode (*postsolve)(KSP,Vec,Vec,void*),void *postctx)
@@ -649,7 +655,7 @@ PetscErrorCode  KSPSetPostSolve(KSP ksp,PetscErrorCode (*postsolve)(KSP,Vec,Vec,
 /*@
    KSPCreate - Creates the default KSP context.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - MPI communicator
@@ -663,8 +669,6 @@ PetscErrorCode  KSPSetPostSolve(KSP ksp,PetscErrorCode (*postsolve)(KSP,Vec,Vec,
 
    Level: beginner
 
-.keywords: KSP, create, context
-
 .seealso: KSPSetUp(), KSPSolve(), KSPDestroy(), KSP
 @*/
 PetscErrorCode  KSPCreate(MPI_Comm comm,KSP *inksp)
@@ -675,7 +679,7 @@ PetscErrorCode  KSPCreate(MPI_Comm comm,KSP *inksp)
 
   PetscFunctionBegin;
   PetscValidPointer(inksp,2);
-  *inksp = 0;
+  *inksp = NULL;
   ierr = KSPInitializePackage();CHKERRQ(ierr);
 
   ierr = PetscHeaderCreate(ksp,KSP_CLASSID,"KSP","Krylov Method","KSP",comm,KSPDestroy,KSPView);CHKERRQ(ierr);
@@ -709,12 +713,12 @@ PetscErrorCode  KSPCreate(MPI_Comm comm,KSP *inksp)
   ksp->ops->buildsolution = KSPBuildSolutionDefault;
   ksp->ops->buildresidual = KSPBuildResidualDefault;
 
-  ksp->vec_sol    = 0;
-  ksp->vec_rhs    = 0;
-  ksp->pc         = 0;
-  ksp->data       = 0;
+  ksp->vec_sol    = NULL;
+  ksp->vec_rhs    = NULL;
+  ksp->pc         = NULL;
+  ksp->data       = NULL;
   ksp->nwork      = 0;
-  ksp->work       = 0;
+  ksp->work       = NULL;
   ksp->reason     = KSP_CONVERGED_ITERATING;
   ksp->setupstage = KSP_SETUP_NEW;
 
@@ -727,7 +731,7 @@ PetscErrorCode  KSPCreate(MPI_Comm comm,KSP *inksp)
 /*@C
    KSPSetType - Builds KSP for a particular solver.
 
-   Logically Collective on KSP
+   Logically Collective on ksp
 
    Input Parameters:
 +  ksp      - the Krylov space context
@@ -758,8 +762,6 @@ PetscErrorCode  KSPCreate(MPI_Comm comm,KSP *inksp)
   Developer Note: KSPRegister() is used to add Krylov types to KSPList from which they
   are accessed by KSPSetType().
 
-.keywords: KSP, set, method
-
 .seealso: PCSetType(), KSPType, KSPRegister(), KSPCreate()
 
 @*/
@@ -767,7 +769,6 @@ PetscErrorCode  KSPSetType(KSP ksp, KSPType type)
 {
   PetscErrorCode ierr,(*r)(KSP);
   PetscBool      match;
-  void           *ctx;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp,KSP_CLASSID,1);
@@ -776,7 +777,7 @@ PetscErrorCode  KSPSetType(KSP ksp, KSPType type)
   ierr = PetscObjectTypeCompare((PetscObject)ksp,type,&match);CHKERRQ(ierr);
   if (match) PetscFunctionReturn(0);
 
-  ierr =  PetscFunctionListFind(KSPList,type,&r);CHKERRQ(ierr);
+  ierr = PetscFunctionListFind(KSPList,type,&r);CHKERRQ(ierr);
   if (!r) SETERRQ1(PetscObjectComm((PetscObject)ksp),PETSC_ERR_ARG_UNKNOWN_TYPE,"Unable to find requested KSP type %s",type);
   /* Destroy the previous private KSP context */
   if (ksp->ops->destroy) {
@@ -785,15 +786,14 @@ PetscErrorCode  KSPSetType(KSP ksp, KSPType type)
   }
   /* Reinitialize function pointers in KSPOps structure */
   ierr                    = PetscMemzero(ksp->ops,sizeof(struct _KSPOps));CHKERRQ(ierr);
-  ierr                    = KSPConvergedDefaultCreate(&ctx);CHKERRQ(ierr);
-  ierr                    = KSPSetConvergenceTest(ksp,KSPConvergedDefault,ctx,KSPConvergedDefaultDestroy);CHKERRQ(ierr);
   ksp->ops->buildsolution = KSPBuildSolutionDefault;
   ksp->ops->buildresidual = KSPBuildResidualDefault;
   ierr                    = KSPNormSupportTableReset_Private(ksp);CHKERRQ(ierr);
+  ksp->setupnewmatrix     = PETSC_FALSE; // restore default (setup not called in case of new matrix)
   /* Call the KSPCreate_XXX routine for this particular Krylov solver */
   ksp->setupstage = KSP_SETUP_NEW;
-  ierr            = PetscObjectChangeTypeName((PetscObject)ksp,type);CHKERRQ(ierr);
   ierr            = (*r)(ksp);CHKERRQ(ierr);
+  ierr            = PetscObjectChangeTypeName((PetscObject)ksp,type);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -809,8 +809,6 @@ PetscErrorCode  KSPSetType(KSP ksp, KSPType type)
 .  name - name of KSP method
 
    Level: intermediate
-
-.keywords: KSP, get, method, name
 
 .seealso: KSPSetType()
 @*/
@@ -847,10 +845,7 @@ $     -ksp_type my_solver
 
    Level: advanced
 
-.keywords: KSP, register
-
-.seealso: KSPRegisterAll(), KSPRegisterDestroy()
-
+.seealso: KSPRegisterAll()
 @*/
 PetscErrorCode  KSPRegister(const char sname[],PetscErrorCode (*function)(KSP))
 {

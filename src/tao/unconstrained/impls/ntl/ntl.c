@@ -59,12 +59,10 @@ static PetscErrorCode TaoSolve_NTL(Tao tao)
   }
 
   ierr = KSPGetType(tao->ksp,&ksp_type);CHKERRQ(ierr);
-  ierr = PetscStrcmp(ksp_type,KSPCGNASH,&is_nash);CHKERRQ(ierr);
-  ierr = PetscStrcmp(ksp_type,KSPCGSTCG,&is_stcg);CHKERRQ(ierr);
-  ierr = PetscStrcmp(ksp_type,KSPCGGLTR,&is_gltr);CHKERRQ(ierr);
-  if (!is_nash && !is_stcg && !is_gltr) {
-    SETERRQ(PETSC_COMM_SELF,1,"TAO_NTR requires nash, stcg, or gltr for the KSP");
-  }
+  ierr = PetscStrcmp(ksp_type,KSPNASH,&is_nash);CHKERRQ(ierr);
+  ierr = PetscStrcmp(ksp_type,KSPSTCG,&is_stcg);CHKERRQ(ierr);
+  ierr = PetscStrcmp(ksp_type,KSPGLTR,&is_gltr);CHKERRQ(ierr);
+  if (!is_nash && !is_stcg && !is_gltr) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_SUP,"TAO_NTR requires nash, stcg, or gltr for the KSP");
 
   /* Initialize the radius and modify if it is too large or small */
   tao->trust = tao->trust0;
@@ -91,7 +89,7 @@ static PetscErrorCode TaoSolve_NTL(Tao tao)
   /* Check convergence criteria */
   ierr = TaoComputeObjectiveAndGradient(tao, tao->solution, &f, tao->gradient);CHKERRQ(ierr);
   ierr = VecNorm(tao->gradient, NORM_2, &gnorm);CHKERRQ(ierr);
-  if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
   needH = 1;
 
   tao->reason = TAO_CONTINUE_ITERATING;
@@ -148,7 +146,7 @@ static PetscErrorCode TaoSolve_NTL(Tao tao)
           tau_min = PetscMin(tau_1, tau_2);
           tau_max = PetscMax(tau_1, tau_2);
 
-          if (PetscAbsScalar(kappa - 1.0) <= tl->mu1_i) {
+          if (PetscAbsScalar(kappa - (PetscReal)1.0) <= tl->mu1_i) {
             /* Great agreement */
             max_radius = PetscMax(max_radius, tao->trust);
 
@@ -163,7 +161,7 @@ static PetscErrorCode TaoSolve_NTL(Tao tao)
             } else {
               tau = tau_max;
             }
-          } else if (PetscAbsScalar(kappa - 1.0) <= tl->mu2_i) {
+          } else if (PetscAbsScalar(kappa - (PetscReal)1.0) <= tl->mu2_i) {
             /* Good agreement */
             max_radius = PetscMax(max_radius, tao->trust);
 
@@ -200,7 +198,7 @@ static PetscErrorCode TaoSolve_NTL(Tao tao)
         ierr = TaoComputeGradient(tao, tao->solution, tao->gradient);CHKERRQ(ierr);
 
         ierr = VecNorm(tao->gradient, NORM_2, &gnorm);CHKERRQ(ierr);
-        if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+        if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
         needH = 1;
 
         ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
@@ -279,7 +277,7 @@ static PetscErrorCode TaoSolve_NTL(Tao tao)
         tao->ksp_tot_its+=its;
         ierr = KSPCGGetNormD(tao->ksp, &norm_d);CHKERRQ(ierr);
 
-        if (norm_d == 0.0) SETERRQ(PETSC_COMM_SELF,1, "Initial direction zero");
+        if (norm_d == 0.0) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_PLIB, "Initial direction zero");
       }
     }
 
@@ -602,7 +600,7 @@ static PetscErrorCode TaoSolve_NTL(Tao tao)
 
     /* Check for converged */
     ierr = VecNorm(tao->gradient, NORM_2, &gnorm);CHKERRQ(ierr);
-    if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PETSC_COMM_SELF,1,"User provided compute function generated Not-a-Number");
+    if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER,"User provided compute function generated Not-a-Number");
     needH = 1;
 
     ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
@@ -624,8 +622,8 @@ static PetscErrorCode TaoSetUp_NTL(Tao tao)
   if (!tl->W) { ierr = VecDuplicate(tao->solution, &tl->W);CHKERRQ(ierr);}
   if (!tl->Xold) { ierr = VecDuplicate(tao->solution, &tl->Xold);CHKERRQ(ierr);}
   if (!tl->Gold) { ierr = VecDuplicate(tao->solution, &tl->Gold);CHKERRQ(ierr);}
-  tl->bfgs_pre = 0;
-  tl->M = 0;
+  tl->bfgs_pre = NULL;
+  tl->M = NULL;
   PetscFunctionReturn(0);
 }
 
@@ -736,7 +734,7 @@ static PetscErrorCode TaoView_NTL(Tao tao, PetscViewer viewer)
 . -tao_ntl_gamma2_i - gamma2 interpolation init factor
 . -tao_ntl_gamma3_i - gamma3 interpolation init factor
 . -tao_ntl_gamma4_i - gamma4 interpolation init factor
-. -tao_ntl_theta_i - thetha1 interpolation init factor
+. -tao_ntl_theta_i - theta1 interpolation init factor
 . -tao_ntl_eta1 - eta1 reduction update factor
 . -tao_ntl_eta2 - eta2 reduction update factor
 . -tao_ntl_eta3 - eta3 reduction update factor
@@ -839,6 +837,6 @@ PETSC_EXTERN PetscErrorCode TaoCreate_NTL(Tao tao)
   ierr = PetscObjectIncrementTabLevel((PetscObject)tao->ksp,(PetscObject)tao,1);CHKERRQ(ierr);
   ierr = KSPSetOptionsPrefix(tao->ksp,tao->hdr.prefix);CHKERRQ(ierr);
   ierr = KSPAppendOptionsPrefix(tao->ksp,"tao_ntl_");CHKERRQ(ierr);
-  ierr = KSPSetType(tao->ksp,KSPCGSTCG);CHKERRQ(ierr);
+  ierr = KSPSetType(tao->ksp,KSPSTCG);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

@@ -353,9 +353,11 @@ static PetscErrorCode  SNESLineSearchApply_BT(SNESLineSearch linesearch)
   }
 
   /* postcheck */
+  /* update Y to lambda*Y so that W is consistent with  X - lambda*Y */
+  ierr = VecScale(Y,lambda);CHKERRQ(ierr);
   ierr = SNESLineSearchPostCheck(linesearch,X,Y,W,&changed_y,&changed_w);CHKERRQ(ierr);
   if (changed_y) {
-    ierr = VecWAXPY(W,-lambda,Y,X);CHKERRQ(ierr);
+    ierr = VecWAXPY(W,-1.0,Y,X);CHKERRQ(ierr);
     if (linesearch->ops->viproject) {
       ierr = (*linesearch->ops->viproject)(snes, W);CHKERRQ(ierr);
     }
@@ -433,13 +435,13 @@ static PetscErrorCode SNESLineSearchSetFromOptions_BT(PetscOptionItems *PetscOpt
    and the fit is reattempted at most max_it times or until lambda is below minlambda.
 
    Options Database Keys:
-+  -snes_linesearch_alpha<1e-4> - slope descent parameter
-.  -snes_linesearch_damping<1.0> - initial step length
++  -snes_linesearch_alpha <1e\-4> - slope descent parameter
+.  -snes_linesearch_damping <1.0> - initial step length
 .  -snes_linesearch_maxstep <length> - if the length the initial step is larger than this then the
                                        step is scaled back to be of this length at the beginning of the line search
-.  -snes_linesearch_max_it<40> - maximum number of shrinking step
-.  -snes_linesearch_minlambda<1e-12> - minimum step length allowed
--  -snes_linesearch_order<cubic,quadratic> - order of the approximation
+.  -snes_linesearch_max_it <40> - maximum number of shrinking step
+.  -snes_linesearch_minlambda <1e\-12> - minimum step length allowed
+-  -snes_linesearch_order <cubic,quadratic> - order of the approximation
 
    Level: advanced
 
@@ -447,7 +449,7 @@ static PetscErrorCode SNESLineSearchSetFromOptions_BT(PetscOptionItems *PetscOpt
    This line search is taken from "Numerical Methods for Unconstrained
    Optimization and Nonlinear Equations" by Dennis and Schnabel, page 325.
 
-.keywords: SNES, SNESLineSearch, damping
+   This line search will always produce a step that is less than or equal to, in length, the full step size.
 
 .seealso: SNESLineSearchCreate(), SNESLineSearchSetType()
 M*/

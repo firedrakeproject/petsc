@@ -175,7 +175,7 @@ static PetscErrorCode PCSetUp_Eisenstat(PC pc)
   }
   if (!eis->usediag) PetscFunctionReturn(0);
   if (!pc->setupcalled) {
-    ierr = MatCreateVecs(pc->pmat,&eis->diag,0);CHKERRQ(ierr);
+    ierr = MatCreateVecs(pc->pmat,&eis->diag,NULL);CHKERRQ(ierr);
     ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)eis->diag);CHKERRQ(ierr);
   }
   ierr = MatGetDiagonal(pc->pmat,eis->diag);CHKERRQ(ierr);
@@ -246,8 +246,6 @@ $    -pc_type  sor  -pc_sor_symmetric
 
    Level: intermediate
 
-.keywords: PC, Eisenstat, set, SOR, SSOR, relaxation, omega
-
 .seealso: PCSORSetOmega()
 @*/
 PetscErrorCode  PCEisenstatSetOmega(PC pc,PetscReal omega)
@@ -278,10 +276,8 @@ PetscErrorCode  PCEisenstatSetOmega(PC pc,PetscReal omega)
    Level: intermediate
 
    Note:
-     If you use the KPSSetDiagonalScaling() or -ksp_diagonal_scale option then you will
+     If you use the KSPSetDiagonalScaling() or -ksp_diagonal_scale option then you will
    likley want to use this routine since it will save you some unneeded flops.
-
-.keywords: PC, Eisenstat, use, diagonal, scaling, SSOR
 
 .seealso: PCEisenstatSetOmega()
 @*/
@@ -322,8 +318,6 @@ $    -pc_type  sor  -pc_sor_symmetric
 
    Level: intermediate
 
-.keywords: PC, Eisenstat, set, SOR, SSOR, relaxation, omega
-
 .seealso: PCSORGetOmega(), PCEisenstatSetOmega()
 @*/
 PetscErrorCode  PCEisenstatGetOmega(PC pc,PetscReal *omega)
@@ -355,10 +349,8 @@ PetscErrorCode  PCEisenstatGetOmega(PC pc,PetscReal *omega)
    Level: intermediate
 
    Note:
-     If you use the KPSSetDiagonalScaling() or -ksp_diagonal_scale option then you will
+     If you use the KSPSetDiagonalScaling() or -ksp_diagonal_scale option then you will
    likley want to use this routine since it will save you some unneeded flops.
-
-.keywords: PC, Eisenstat, use, diagonal, scaling, SSOR
 
 .seealso: PCEisenstatGetOmega()
 @*/
@@ -391,8 +383,6 @@ static PetscErrorCode PCPreSolveChangeRHS_Eisenstat(PC pc, PetscBool* change)
 
    Level: beginner
 
-  Concepts: SOR, preconditioners, Gauss-Seidel, Eisenstat's trick
-
    Notes:
     Only implemented for the SeqAIJ matrix format.
           Not a true parallel SOR, in parallel this implementation corresponds to block
@@ -413,7 +403,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_Eisenstat(PC pc)
   pc->ops->apply           = PCApply_Eisenstat;
   pc->ops->presolve        = PCPreSolve_Eisenstat;
   pc->ops->postsolve       = PCPostSolve_Eisenstat;
-  pc->ops->applyrichardson = 0;
+  pc->ops->applyrichardson = NULL;
   pc->ops->setfromoptions  = PCSetFromOptions_Eisenstat;
   pc->ops->destroy         = PCDestroy_Eisenstat;
   pc->ops->reset           = PCReset_Eisenstat;
@@ -422,9 +412,9 @@ PETSC_EXTERN PetscErrorCode PCCreate_Eisenstat(PC pc)
 
   pc->data     = (void*)eis;
   eis->omega   = 1.0;
-  eis->b[0]    = 0;
-  eis->b[1]    = 0;
-  eis->diag    = 0;
+  eis->b[0]    = NULL;
+  eis->b[1]    = NULL;
+  eis->diag    = NULL;
   eis->usediag = PETSC_TRUE;
 
   ierr = PetscObjectComposeFunction((PetscObject)pc,"PCEisenstatSetOmega_C",PCEisenstatSetOmega_Eisenstat);CHKERRQ(ierr);

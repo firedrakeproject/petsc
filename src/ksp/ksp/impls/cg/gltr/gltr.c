@@ -9,9 +9,9 @@
 static const char *DType_Table[64] = {"preconditioned", "unpreconditioned"};
 
 /*@
-    KSPCGGLTRGetMinEig - Get minimum eigenvalue.
+    KSPGLTRGetMinEig - Get minimum eigenvalue.
 
-    Collective on KSP
+    Collective on ksp
 
     Input Parameters:
 +   ksp   - the iterative context
@@ -19,20 +19,19 @@ static const char *DType_Table[64] = {"preconditioned", "unpreconditioned"};
 
     Level: advanced
 
-.keywords: KSP, GLTR, get, minimum eigenvalue
 @*/
-PetscErrorCode  KSPCGGLTRGetMinEig(KSP ksp, PetscReal *e_min)
+PetscErrorCode  KSPGLTRGetMinEig(KSP ksp, PetscReal *e_min)
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  ierr = PetscUseMethod(ksp,"KSPCGGLTRGetMinEig_C",(KSP,PetscReal*),(ksp,e_min));CHKERRQ(ierr);
+  ierr = PetscUseMethod(ksp,"KSPGLTRGetMinEig_C",(KSP,PetscReal*),(ksp,e_min));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 /*@
-    KSPCGGLTRGetLambda - Get multiplier on trust-region constraint.
+    KSPGLTRGetLambda - Get multiplier on trust-region constraint.
 
     Not Collective
 
@@ -42,15 +41,14 @@ PetscErrorCode  KSPCGGLTRGetMinEig(KSP ksp, PetscReal *e_min)
 
     Level: advanced
 
-.keywords: KSP, GLTR, get, multiplier
 @*/
-PetscErrorCode  KSPCGGLTRGetLambda(KSP ksp, PetscReal *lambda)
+PetscErrorCode  KSPGLTRGetLambda(KSP ksp, PetscReal *lambda)
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  ierr = PetscUseMethod(ksp,"KSPCGGLTRGetLambda_C",(KSP,PetscReal*),(ksp,lambda));CHKERRQ(ierr);
+  ierr = PetscUseMethod(ksp,"KSPGLTRGetLambda_C",(KSP,PetscReal*),(ksp,lambda));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -79,9 +77,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
   PetscBLASInt t_size = 0, l_size = 0, il, iu, info;
   PetscBLASInt nrhs, nldb;
 
-#if !defined(PETSC_MISSING_LAPACK_STEBZ)
-  PetscBLASInt e_valus, e_splts;
-#endif
+  PetscBLASInt e_valus=0, e_splts;
   PetscBool diagonalscale;
 
   PetscFunctionBegin;
@@ -833,9 +829,6 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
   il = 1;
   iu = 1;
 
-#if defined(PETSC_MISSING_LAPACK_STEBZ)
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"STEBZ - Lapack routine is unavailable.");
-#else
   PetscStackCallBLAS("LAPACKstebz",LAPACKstebz_("I", "E", &t_size, &vl, &vu, &il, &iu, &cg->eigen_tol,cg->diag, cg->offd + 1, &e_valus, &e_splts, e_valu,e_iblk, e_splt, e_rwrk, e_iwrk, &info));
 
   if ((0 != info) || (1 != e_valus)) {
@@ -858,7 +851,6 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
 
   pert = cg->init_pert;
   if (e_valu[0] < 0.0) cg->lambda = pert - e_valu[0];
-#endif
 
   while (1) {
     for (i = 0; i < t_size; ++i) {
@@ -866,16 +858,12 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
       t_offd[i] = cg->offd[i];
     }
 
-#if defined(PETSC_MISSING_LAPACK_PTTRF)
-    SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"PTTRF - Lapack routine is unavailable.");
-#else
     PetscStackCallBLAS("LAPACKpttrf",LAPACKpttrf_(&t_size, t_diag, t_offd + 1, &info));
 
     if (0 == info) break;
 
     pert      += pert;
     cg->lambda = cg->lambda * (1.0 + pert) + pert;
-#endif
   }
 
   /***************************************************************************/
@@ -888,11 +876,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
   t_soln[0] = -cg->norm_r[0];
   for (i = 1; i < t_size; ++i) t_soln[i] = 0.0;
 
-#if defined(PETSC_MISSING_LAPACK_PTTRS)
-  SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"PTTRS - Lapack routine is unavailable.");
-#else
   PetscStackCallBLAS("LAPACKpttrs",LAPACKpttrs_(&t_size, &nrhs, t_diag, t_offd + 1, t_soln, &nldb, &info));
-#endif
 
   if (0 != info) {
     /*************************************************************************/
@@ -926,11 +910,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
       /* minimum eigenvalue and move along this direction to the boundary.   */
       /***********************************************************************/
 
-#if defined(PETSC_MISSING_LAPACK_STEIN)
-      SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"STEIN - Lapack routine is unavailable.");
-#else
       PetscStackCallBLAS("LAPACKstein",LAPACKstein_(&t_size, cg->diag, cg->offd + 1, &e_valus, e_valu,e_iblk, e_splt, e_vect, &nldb,e_rwrk, e_iwrk, e_iwrk + t_size, &info));
-#endif
 
       if (0 != info) {
         /*********************************************************************/
@@ -1029,13 +1009,9 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
       /* Compute the update.                                                 */
       /***********************************************************************/
 
-      PetscMemcpy(e_rwrk, t_soln, sizeof(PetscReal)*t_size);
+      ierr = PetscArraycpy(e_rwrk, t_soln, t_size);CHKERRQ(ierr);
 
-#if defined(PETSC_MISSING_LAPACK_PTTRS)
-      SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"PTTRS - Lapack routine is unavailable.");
-#else
       PetscStackCallBLAS("LAPACKpttrs",LAPACKpttrs_(&t_size, &nrhs, t_diag, t_offd + 1, e_rwrk, &nldb, &info));
-#endif
 
       if (0 != info) {
         /*********************************************************************/
@@ -1066,11 +1042,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
         t_offd[j] = cg->offd[j];
       }
 
-#if defined(PETSC_MISSING_LAPACK_PTTRF)
-      SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"PTTRF - Lapack routine is unavailable.");
-#else
       PetscStackCallBLAS("LAPACKpttrf",LAPACKpttrf_(&t_size, t_diag, t_offd + 1, &info));
-#endif
 
       if (0 != info) {
         /*********************************************************************/
@@ -1090,11 +1062,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
       t_soln[0] = -cg->norm_r[0];
       for (j = 1; j < t_size; ++j) t_soln[j] = 0.0;
 
-#if defined(PETSC_MISSING_LAPACK_PTTRS)
-      SETERRQ(PetscObjectComm((PetscObject)ksp),PETSC_ERR_SUP,"PTTRS - Lapack routine is unavailable.");
-#else
       PetscStackCallBLAS("LAPACKpttrs",LAPACKpttrs_(&t_size, &nrhs, t_diag, t_offd + 1, t_soln, &nldb, &info));
-#endif
 
       if (0 != info) {
         /*********************************************************************/
@@ -1239,11 +1207,11 @@ static PetscErrorCode KSPCGSetUp_GLTR(KSP ksp)
 
   ierr = KSPSetWorkVecs(ksp, 3);CHKERRQ(ierr);
   if (cg->diag) {
-    ierr = PetscMemzero(cg->diag, max_its*sizeof(PetscReal));CHKERRQ(ierr);
-    ierr = PetscMemzero(cg->offd, max_its*sizeof(PetscReal));CHKERRQ(ierr);
-    ierr = PetscMemzero(cg->alpha, max_its*sizeof(PetscReal));CHKERRQ(ierr);
-    ierr = PetscMemzero(cg->beta, max_its*sizeof(PetscReal));CHKERRQ(ierr);
-    ierr = PetscMemzero(cg->norm_r, max_its*sizeof(PetscReal));CHKERRQ(ierr);
+    ierr = PetscArrayzero(cg->diag, max_its);CHKERRQ(ierr);
+    ierr = PetscArrayzero(cg->offd, max_its);CHKERRQ(ierr);
+    ierr = PetscArrayzero(cg->alpha, max_its);CHKERRQ(ierr);
+    ierr = PetscArrayzero(cg->beta, max_its);CHKERRQ(ierr);
+    ierr = PetscArrayzero(cg->norm_r, max_its);CHKERRQ(ierr);
   } else {
     ierr = PetscCalloc5(max_its,&cg->diag,max_its,&cg->offd,max_its,&cg->alpha,max_its,&cg->beta,max_its,&cg->norm_r);CHKERRQ(ierr);
     ierr = PetscLogObjectMemory((PetscObject)ksp, 5*max_its*sizeof(PetscReal));CHKERRQ(ierr);
@@ -1273,8 +1241,8 @@ static PetscErrorCode KSPCGDestroy_GLTR(KSP ksp)
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGSetRadius_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGetNormD_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGetObjFcn_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGLTRGetMinEig_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGLTRGetLambda_C",NULL);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPGLTRGetMinEig_C",NULL);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPGLTRGetLambda_C",NULL);CHKERRQ(ierr);
 
   /***************************************************************************/
   /* Destroy KSP object.                                                     */
@@ -1310,7 +1278,7 @@ static PetscErrorCode  KSPCGGetObjFcn_GLTR(KSP ksp, PetscReal *o_fcn)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode  KSPCGGLTRGetMinEig_GLTR(KSP ksp, PetscReal *e_min)
+static PetscErrorCode  KSPGLTRGetMinEig_GLTR(KSP ksp, PetscReal *e_min)
 {
   KSPCG_GLTR *cg = (KSPCG_GLTR*)ksp->data;
 
@@ -1319,7 +1287,7 @@ static PetscErrorCode  KSPCGGLTRGetMinEig_GLTR(KSP ksp, PetscReal *e_min)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode  KSPCGGLTRGetLambda_GLTR(KSP ksp, PetscReal *lambda)
+static PetscErrorCode  KSPGLTRGetLambda_GLTR(KSP ksp, PetscReal *lambda)
 {
   KSPCG_GLTR *cg = (KSPCG_GLTR*)ksp->data;
 
@@ -1352,7 +1320,7 @@ static PetscErrorCode KSPCGSetFromOptions_GLTR(PetscOptionItems *PetscOptionsObj
 }
 
 /*MC
-     KSPCGGLTR -   Code to run conjugate gradient method subject to a constraint
+     KSPGLTR -   Code to run conjugate gradient method subject to a constraint
          on the solution norm. This is used in Trust Region methods for
          nonlinear equations, SNESNEWTONTR
 
@@ -1392,10 +1360,10 @@ $  other KSP converged/diverged reasons
 
    Level: developer
 
-.seealso:  KSPCreate(), KSPSetType(), KSPType (for list of available types), KSP, KSPCGSetRadius(), KSPCGGetNormD(), KSPCGGetObjFcn(), KSPCGGLTRGetMinEig(), KSPCGGLTRGetLambda()
+.seealso:  KSPCreate(), KSPSetType(), KSPType (for list of available types), KSP, KSPCGSetRadius(), KSPCGGetNormD(), KSPCGGetObjFcn(), KSPGLTRGetMinEig(), KSPGLTRGetLambda()
 M*/
 
-PETSC_EXTERN PetscErrorCode KSPCreate_CGGLTR(KSP ksp)
+PETSC_EXTERN PetscErrorCode KSPCreate_GLTR(KSP ksp)
 {
   PetscErrorCode ierr;
   KSPCG_GLTR       *cg;
@@ -1419,6 +1387,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_CGGLTR(KSP ksp)
   ierr      = KSPSetSupportedNorm(ksp,KSP_NORM_UNPRECONDITIONED,PC_LEFT,3);CHKERRQ(ierr);
   ierr      = KSPSetSupportedNorm(ksp,KSP_NORM_PRECONDITIONED,PC_LEFT,2);CHKERRQ(ierr);
   ierr      = KSPSetSupportedNorm(ksp,KSP_NORM_NATURAL,PC_LEFT,2);CHKERRQ(ierr);
+  ierr      = KSPSetSupportedNorm(ksp,KSP_NORM_NONE,PC_LEFT,1);CHKERRQ(ierr);
 
   /***************************************************************************/
   /* Sets the functions that are associated with this data structure         */
@@ -1431,12 +1400,12 @@ PETSC_EXTERN PetscErrorCode KSPCreate_CGGLTR(KSP ksp)
   ksp->ops->setfromoptions = KSPCGSetFromOptions_GLTR;
   ksp->ops->buildsolution  = KSPBuildSolutionDefault;
   ksp->ops->buildresidual  = KSPBuildResidualDefault;
-  ksp->ops->view           = 0;
+  ksp->ops->view           = NULL;
 
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGSetRadius_C",KSPCGSetRadius_GLTR);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGetNormD_C", KSPCGGetNormD_GLTR);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGetObjFcn_C",KSPCGGetObjFcn_GLTR);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGLTRGetMinEig_C",KSPCGGLTRGetMinEig_GLTR);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGLTRGetLambda_C",KSPCGGLTRGetLambda_GLTR);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPGLTRGetMinEig_C",KSPGLTRGetMinEig_GLTR);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPGLTRGetLambda_C",KSPGLTRGetLambda_GLTR);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

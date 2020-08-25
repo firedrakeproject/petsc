@@ -4,7 +4,7 @@
 /*@C
    SNESVISetComputeVariableBounds - Sets a function that is called to compute the variable bounds
 
-   Input parameter
+   Input parameter:
 +  snes - the SNES context
 -  compute - computes the bounds
 
@@ -45,7 +45,7 @@ PetscErrorCode  SNESVIMonitorResidual(SNES snes,PetscInt its,PetscReal fgnorm,vo
   PetscViewer    viewer = (PetscViewer) dummy;
 
   PetscFunctionBegin;
-  ierr = SNESGetFunction(snes,&F,0,0);CHKERRQ(ierr);
+  ierr = SNESGetFunction(snes,&F,NULL,NULL);CHKERRQ(ierr);
   ierr = SNESGetSolution(snes,&X);CHKERRQ(ierr);
   ierr = SNESVIGetActiveSetIS(snes,X,F,&isactive);CHKERRQ(ierr);
   ierr = VecDuplicate(F,&Finactive);CHKERRQ(ierr);
@@ -254,12 +254,12 @@ PetscErrorCode SNESVIProjectOntoBounds(SNES snes,Vec X)
 /*
    SNESVIGetActiveSetIndices - Gets the global indices for the active set variables
 
-   Input parameter
+   Input parameter:
 .  snes - the SNES context
 .  X    - the snes solution vector
 .  F    - the nonlinear function vector
 
-   Output parameter
+   Output parameter:
 .  ISact - active set index set
  */
 PetscErrorCode SNESVIGetActiveSetIS(SNES snes,Vec X,Vec F,IS *ISact)
@@ -316,7 +316,7 @@ PetscErrorCode SNESVIComputeInactiveSetFnorm(SNES snes,Vec F,Vec X, PetscReal *f
   PetscErrorCode    ierr;
   const PetscScalar *x,*xl,*xu,*f;
   PetscInt          i,n;
-  PetscReal         rnorm,zerotolerance = snes->vizerotolerance;;
+  PetscReal         rnorm,zerotolerance = snes->vizerotolerance;
 
   PetscFunctionBegin;
   ierr  = VecGetLocalSize(X,&n);CHKERRQ(ierr);
@@ -438,9 +438,9 @@ PetscErrorCode SNESDestroy_VI(SNES snes)
    SNESVISetVariableBounds - Sets the lower and upper bounds for the solution vector. xl <= x <= xu.
 
    Input Parameters:
-.  snes - the SNES context.
++  snes - the SNES context.
 .  xl   - lower bound.
-.  xu   - upper bound.
+-  xu   - upper bound.
 
    Notes:
    If this routine is not called then the lower and upper bounds are set to
@@ -505,7 +505,6 @@ PetscErrorCode SNESSetFromOptions_VI(PetscOptionItems *PetscOptionsObject,SNES s
 {
   PetscErrorCode ierr;
   PetscBool      flg = PETSC_FALSE;
-  SNESLineSearch linesearch;
 
   PetscFunctionBegin;
   ierr = PetscOptionsHead(PetscOptionsObject,"SNES VI options");CHKERRQ(ierr);
@@ -518,11 +517,6 @@ PetscErrorCode SNESSetFromOptions_VI(PetscOptionItems *PetscOptionsObject,SNES s
   ierr = PetscOptionsBool("-snes_vi_monitor_residual","Monitor residual all non-active variables; using zero for active constraints","SNESMonitorVIResidual",flg,&flg,NULL);CHKERRQ(ierr);
   if (flg) {
     ierr = SNESMonitorSet(snes,SNESVIMonitorResidual,PETSC_VIEWER_DRAW_(PetscObjectComm((PetscObject)snes)),NULL);CHKERRQ(ierr);
-  }
-  if (!snes->linesearch) {
-    ierr = SNESGetLineSearch(snes, &linesearch);CHKERRQ(ierr);
-    ierr = SNESLineSearchSetType(linesearch, SNESLINESEARCHBT);CHKERRQ(ierr);
-    ierr = SNESLineSearchBTSetAlpha(linesearch, 0.0);CHKERRQ(ierr);
   }
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   PetscFunctionReturn(0);

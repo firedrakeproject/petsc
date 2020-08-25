@@ -1,4 +1,3 @@
-
 /*
      Provides utility routines for manipulating any type of PETSc object.
 */
@@ -13,7 +12,7 @@ PETSC_INTERN PetscBool   PetscObjectsLog;
 #endif
 
 #if defined(PETSC_USE_LOG)
-PetscObject *PetscObjects      = 0;
+PetscObject *PetscObjects      = NULL;
 PetscInt    PetscObjectsCounts = 0, PetscObjectsMaxCounts = 0;
 PetscBool   PetscObjectsLog    = PETSC_FALSE;
 #endif
@@ -44,15 +43,15 @@ PetscErrorCode  PetscHeaderCreate_Private(PetscObject h,PetscClassId classid,con
   h->class_name            = (char*)class_name;
   h->description           = (char*)descr;
   h->mansec                = (char*)mansec;
-  h->prefix                = 0;
+  h->prefix                = NULL;
   h->refct                 = 1;
 #if defined(PETSC_HAVE_SAWS)
   h->amsmem                = PETSC_FALSE;
 #endif
   h->id                    = idcnt++;
   h->parentid              = 0;
-  h->qlist                 = 0;
-  h->olist                 = 0;
+  h->qlist                 = NULL;
+  h->olist                 = NULL;
   h->bops->destroy         = destroy;
   h->bops->view            = view;
   h->bops->getcomm         = PetscObjectGetComm_Petsc;
@@ -76,9 +75,8 @@ PetscErrorCode  PetscHeaderCreate_Private(PetscObject h,PetscClassId classid,con
     /* Need to increase the space for storing PETSc objects */
     if (!PetscObjectsMaxCounts) newPetscObjectsMaxCounts = 100;
     else                        newPetscObjectsMaxCounts = 2*PetscObjectsMaxCounts;
-    ierr = PetscMalloc1(newPetscObjectsMaxCounts,&newPetscObjects);CHKERRQ(ierr);
-    ierr = PetscMemcpy(newPetscObjects,PetscObjects,PetscObjectsMaxCounts*sizeof(PetscObject));CHKERRQ(ierr);
-    ierr = PetscMemzero(newPetscObjects+PetscObjectsMaxCounts,(newPetscObjectsMaxCounts - PetscObjectsMaxCounts)*sizeof(PetscObject));CHKERRQ(ierr);
+    ierr = PetscCalloc1(newPetscObjectsMaxCounts,&newPetscObjects);CHKERRQ(ierr);
+    ierr = PetscArraycpy(newPetscObjects,PetscObjects,PetscObjectsMaxCounts);CHKERRQ(ierr);
     ierr = PetscFree(PetscObjects);CHKERRQ(ierr);
 
     PetscObjects                        = newPetscObjects;
@@ -113,8 +111,8 @@ PetscErrorCode  PetscHeaderDestroy_Private(PetscObject h)
   if (h->python_destroy) {
     void           *python_context = h->python_context;
     PetscErrorCode (*python_destroy)(void*) = h->python_destroy;
-    h->python_context = 0;
-    h->python_destroy = 0;
+    h->python_context = NULL;
+    h->python_destroy = NULL;
 
     ierr = (*python_destroy)(python_context);CHKERRQ(ierr);
   }
@@ -138,7 +136,7 @@ PetscErrorCode  PetscHeaderDestroy_Private(PetscObject h)
     /* Record object removal from list of all objects */
     for (i=0; i<PetscObjectsMaxCounts; i++) {
       if (PetscObjects[i] == h) {
-        PetscObjects[i] = 0;
+        PetscObjects[i] = NULL;
         PetscObjectsCounts--;
         break;
       }
@@ -279,8 +277,6 @@ PetscErrorCode PetscObjectGetFortranCallback(PetscObject obj,PetscFortranCallbac
 
    Level: advanced
 
-   Concepts: options database^printing
-
 @*/
 PetscErrorCode  PetscObjectsDump(FILE *fd,PetscBool all)
 {
@@ -300,7 +296,7 @@ PetscErrorCode  PetscObjectsDump(FILE *fd,PetscBool all)
         ierr = PetscObjectName(h);CHKERRQ(ierr);
         {
 #if defined(PETSC_USE_DEBUG)
-        PetscStack *stack = 0;
+        PetscStack *stack = NULL;
         char       *create,*rclass;
 
         /* if the PETSc function the user calls is not a create then this object was NOT directly created by them */
@@ -351,8 +347,6 @@ PetscErrorCode  PetscObjectsDump(FILE *fd,PetscBool all)
 
    Level: advanced
 
-   Concepts: options database^printing
-
 @*/
 PetscErrorCode  PetscObjectsView(PetscViewer viewer)
 {
@@ -381,8 +375,6 @@ PetscErrorCode  PetscObjectsView(PetscViewer viewer)
 .   obj - the object or null if there is no object
 
    Level: advanced
-
-   Concepts: options database^printing
 
 @*/
 PetscErrorCode  PetscObjectsGetObject(const char *name,PetscObject *obj,char **classname)
@@ -722,10 +714,8 @@ PetscErrorCode PetscObjectQueryFunction_Petsc(PetscObject obj,const char name[],
    PetscContainerCreate() for info on how to create an object from a
    user-provided pointer that may then be composed with PETSc objects.
 
-   Concepts: objects^composing
-   Concepts: composing objects
 
-.seealso: PetscObjectQuery(), PetscContainerCreate()
+.seealso: PetscObjectQuery(), PetscContainerCreate(), PetscObjectComposeFunction(), PetscObjectQueryFunction()
 @*/
 PetscErrorCode  PetscObjectCompose(PetscObject obj,const char name[],PetscObject ptr)
 {
@@ -757,12 +747,8 @@ PetscErrorCode  PetscObjectCompose(PetscObject obj,const char name[],PetscObject
 
    The reference count of neither object is increased in this call
 
-   Concepts: objects^composing
-   Concepts: composing objects
-   Concepts: objects^querying
-   Concepts: querying objects
 
-.seealso: PetscObjectCompose()
+.seealso: PetscObjectCompose(), PetscObjectComposeFunction(), PetscObjectQueryFunction()
 @*/
 PetscErrorCode  PetscObjectQuery(PetscObject obj,const char name[],PetscObject *ptr)
 {
@@ -800,13 +786,7 @@ PetscErrorCode  PetscObjectQuery(PetscObject obj,const char name[],PetscObject *
    PetscObjectComposeFunction() can be used with any PETSc object (such as
    Mat, Vec, KSP, SNES, etc.) or any user-provided object.
 
-   Concepts: objects^composing functions
-   Concepts: composing functions
-   Concepts: functions^querying
-   Concepts: objects^querying
-   Concepts: querying objects
-
-.seealso: PetscObjectQueryFunction(), PetscContainerCreate()
+.seealso: PetscObjectQueryFunction(), PetscContainerCreate() PetscObjectCompose(), PetscObjectQuery()
 M*/
 
 PetscErrorCode  PetscObjectComposeFunction_Private(PetscObject obj,const char name[],void (*fptr)(void))
@@ -839,13 +819,7 @@ PetscErrorCode  PetscObjectComposeFunction_Private(PetscObject obj,const char na
 
    Level: advanced
 
-   Concepts: objects^composing functions
-   Concepts: composing functions
-   Concepts: functions^querying
-   Concepts: objects^querying
-   Concepts: querying objects
-
-.seealso: PetscObjectComposeFunction(), PetscFunctionListFind()
+.seealso: PetscObjectComposeFunction(), PetscFunctionListFind(), PetscObjectCompose(), PetscObjectQuery()
 M*/
 PETSC_EXTERN PetscErrorCode PetscObjectQueryFunction_Private(PetscObject obj,const char name[],void (**ptr)(void))
 {
@@ -953,7 +927,7 @@ PetscErrorCode  PetscContainerDestroy(PetscContainer *obj)
   PetscFunctionBegin;
   if (!*obj) PetscFunctionReturn(0);
   PetscValidHeaderSpecific(*obj,PETSC_CONTAINER_CLASSID,1);
-  if (--((PetscObject)(*obj))->refct > 0) {*obj = 0; PetscFunctionReturn(0);}
+  if (--((PetscObject)(*obj))->refct > 0) {*obj = NULL; PetscFunctionReturn(0);}
   if ((*obj)->userdestroy) { ierr = (*(*obj)->userdestroy)((*obj)->ptr);CHKERRQ(ierr); }
   ierr = PetscHeaderDestroy(obj);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -991,7 +965,7 @@ PetscClassId PETSC_CONTAINER_CLASSID;
    through a pointer) with the PetscObjectCompose() function to a PetscObject.
    The data item itself is attached by a call to PetscContainerSetPointer().
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 .  comm - MPI communicator that shares the object
@@ -1001,7 +975,7 @@ PetscClassId PETSC_CONTAINER_CLASSID;
 
    Level: advanced
 
-.seealso: PetscContainerDestroy(), PetscContainerSetPointer(), PetscContainerGetPointer()
+.seealso: PetscContainerDestroy(), PetscContainerSetPointer(), PetscContainerGetPointer(), PetscObjectCompose(), PetscObjectQuery()
 @*/
 PetscErrorCode  PetscContainerCreate(MPI_Comm comm,PetscContainer *container)
 {
@@ -1031,7 +1005,6 @@ PetscErrorCode  PetscContainerCreate(MPI_Comm comm,PetscContainer *container)
 
    Level: beginner
 
-.keywords: set, options, database
 .seealso: PetscObjectSetOptionsPrefix(), PetscObjectGetOptionsPrefix()
 @*/
 PetscErrorCode  PetscObjectSetFromOptions(PetscObject obj)
@@ -1054,7 +1027,6 @@ PetscErrorCode  PetscObjectSetFromOptions(PetscObject obj)
 
    Level: advanced
 
-.keywords: setup
 .seealso: PetscObjectDestroy()
 @*/
 PetscErrorCode  PetscObjectSetUp(PetscObject obj)

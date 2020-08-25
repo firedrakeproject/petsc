@@ -13,7 +13,7 @@ PetscMPIInt Petsc_Viewer_Stdout_keyval = MPI_KEYVAL_INVALID;
    PetscViewerASCIIGetStdout - Creates a ASCII PetscViewer shared by all processors
                     in a communicator. Error returning version of PETSC_VIEWER_STDOUT_()
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - the MPI communicator to share the PetscViewer
@@ -37,7 +37,7 @@ PetscErrorCode  PetscViewerASCIIGetStdout(MPI_Comm comm,PetscViewer *viewer)
   ierr = PetscSpinlockLock(&PetscViewerASCIISpinLockStdout);CHKERRQ(ierr);
   ierr = PetscCommDuplicate(comm,&ncomm,NULL);CHKERRQ(ierr);
   if (Petsc_Viewer_Stdout_keyval == MPI_KEYVAL_INVALID) {
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Viewer_Stdout_keyval,0);CHKERRQ(ierr);
+    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Viewer_Stdout_keyval,NULL);CHKERRQ(ierr);
   }
   ierr = MPI_Comm_get_attr(ncomm,Petsc_Viewer_Stdout_keyval,(void**)viewer,(PetscMPIInt*)&flg);CHKERRQ(ierr);
   if (!flg) { /* PetscViewer not yet created */
@@ -54,7 +54,7 @@ PetscErrorCode  PetscViewerASCIIGetStdout(MPI_Comm comm,PetscViewer *viewer)
    PETSC_VIEWER_STDOUT_ - Creates a ASCII PetscViewer shared by all processors
                     in a communicator.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - the MPI communicator to share the PetscViewer
@@ -77,7 +77,7 @@ PetscViewer  PETSC_VIEWER_STDOUT_(MPI_Comm comm)
 
   PetscFunctionBegin;
   ierr = PetscViewerASCIIGetStdout(comm,&viewer);
-  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_STDOUT_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," "); PetscFunctionReturn(0);}
+  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_STDOUT_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," "); PetscFunctionReturn(NULL);}
   PetscFunctionReturn(viewer);
 }
 
@@ -93,7 +93,7 @@ PetscMPIInt Petsc_Viewer_Stderr_keyval = MPI_KEYVAL_INVALID;
    PetscViewerASCIIGetStderr - Creates a ASCII PetscViewer shared by all processors
                     in a communicator. Error returning version of PETSC_VIEWER_STDERR_()
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - the MPI communicator to share the PetscViewer
@@ -117,7 +117,7 @@ PetscErrorCode  PetscViewerASCIIGetStderr(MPI_Comm comm,PetscViewer *viewer)
   ierr = PetscSpinlockLock(&PetscViewerASCIISpinLockStderr);CHKERRQ(ierr);
   ierr = PetscCommDuplicate(comm,&ncomm,NULL);CHKERRQ(ierr);
   if (Petsc_Viewer_Stderr_keyval == MPI_KEYVAL_INVALID) {
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Viewer_Stderr_keyval,0);CHKERRQ(ierr);
+    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Viewer_Stderr_keyval,NULL);CHKERRQ(ierr);
   }
   ierr = MPI_Comm_get_attr(ncomm,Petsc_Viewer_Stderr_keyval,(void**)viewer,(PetscMPIInt*)&flg);CHKERRQ(ierr);
   if (!flg) { /* PetscViewer not yet created */
@@ -134,7 +134,7 @@ PetscErrorCode  PetscViewerASCIIGetStderr(MPI_Comm comm,PetscViewer *viewer)
    PETSC_VIEWER_STDERR_ - Creates a ASCII PetscViewer shared by all processors
                     in a communicator.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - the MPI communicator to share the PetscViewer
@@ -156,7 +156,7 @@ PetscViewer  PETSC_VIEWER_STDERR_(MPI_Comm comm)
 
   PetscFunctionBegin;
   ierr = PetscViewerASCIIGetStderr(comm,&viewer);
-  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_STDERR_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," "); PetscFunctionReturn(0);}
+  if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_STDERR_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," "); PetscFunctionReturn(NULL);}
   PetscFunctionReturn(viewer);
 }
 
@@ -174,14 +174,14 @@ PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelViewer(MPI_Comm comm,PetscMPIInt keyval
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = PetscInfo1(0,"Removing viewer data attribute in an MPI_Comm %ld\n",(long)comm);CHKERRMPI(ierr);
+  ierr = PetscInfo1(NULL,"Removing viewer data attribute in an MPI_Comm %ld\n",(long)comm);CHKERRMPI(ierr);
   PetscFunctionReturn(MPI_SUCCESS);
 }
 
 /*@C
    PetscViewerASCIIOpen - Opens an ASCII file for writing as a PetscViewer.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - the communicator
@@ -210,12 +210,6 @@ $     PetscViewerFileSetName(lab,name);
      PetscViewerASCIIOpen(PETSC_COMM_WORLD,"mat.output",&viewer);
      MatView(matrix,viewer);
 .ve
-
-  Concepts: PetscViewerASCII^creating
-  Concepts: printf
-  Concepts: printing
-  Concepts: accessing remote file
-  Concepts: remote file
 
 .seealso: MatView(), VecView(), PetscViewerDestroy(), PetscViewerBinaryOpen(), PetscViewerASCIIRead()
           PetscViewerASCIIGetPointer(), PetscViewerPushFormat(), PETSC_VIEWER_STDOUT_, PETSC_VIEWER_STDERR_,
@@ -290,7 +284,7 @@ PetscErrorCode  PetscViewerASCIIOpen(MPI_Comm comm,const char name[],PetscViewer
 /*@C
    PetscViewerASCIIOpenWithFILE - Given an open file creates an ASCII viewer that prints to it.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - the communicator
@@ -307,12 +301,6 @@ PetscErrorCode  PetscViewerASCIIOpen(MPI_Comm comm,const char name[],PetscViewer
    If a multiprocessor communicator is used (such as PETSC_COMM_WORLD),
    then only the first processor in the group uses the file.  All other
    processors send their data to the first processor to print.
-
-  Concepts: PetscViewerASCII^creating
-  Concepts: printf
-  Concepts: printing
-  Concepts: accessing remote file
-  Concepts: remote file
 
 .seealso: MatView(), VecView(), PetscViewerDestroy(), PetscViewerBinaryOpen(),
           PetscViewerASCIIGetPointer(), PetscViewerPushFormat(), PETSC_VIEWER_STDOUT_, PETSC_VIEWER_STDERR_,

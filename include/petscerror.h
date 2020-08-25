@@ -1,14 +1,14 @@
 /*
     Contains all error handling interfaces for PETSc.
 */
-#if !defined(__PETSCERROR_H)
-#define __PETSCERROR_H
+#if !defined(PETSCERROR_H)
+#define PETSCERROR_H
 
 /*
      These are the generic error codes. These error codes are used
      many different places in the PETSc source code. The string versions are
      at src/sys/error/err.c any changes here must also be made there
-     These are also define in include/petsc/finclude/petscerror.h any CHANGES here
+     These are also define in src/sys/f90-mod/petscerror.h any CHANGES here
      must be also made there.
 
 */
@@ -57,9 +57,10 @@
 #define PETSC_ERR_FLOP_COUNT       90
 #define PETSC_ERR_NOT_CONVERGED    91  /* solver did not converge */
 #define PETSC_ERR_MISSING_FACTOR   92  /* MatGetFactor() failed */
-#define PETSC_ERR_OPT_OVERWRITE    93  /* attempted to over wrote options which should not be changed */
-
-#define PETSC_ERR_MAX_VALUE        94  /* this is always the one more than the largest error code */
+#define PETSC_ERR_OPT_OVERWRITE    93  /* attempted to over write options which should not be changed */
+#define PETSC_ERR_WRONG_MPI_SIZE   94  /* example/application run with number of MPI ranks it does not support */
+#define PETSC_ERR_USER_INPUT       95  /* missing or incorrect user input */
+#define PETSC_ERR_MAX_VALUE        96  /* this is always the one more than the largest error code */
 
 #define PetscStringizeArg(a) #a
 #define PetscStringize(a) PetscStringizeArg(a)
@@ -72,7 +73,7 @@
    #include <petscsys.h>
    PetscErrorCode SETERRQ(MPI_Comm comm,PetscErrorCode ierr,char *message)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, use PETSC_COMM_SELF unless you know all ranks of another communicator will detect the error
@@ -88,7 +89,9 @@
 
     Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
+   Fortran Notes:
+      SETERRQ() may be called from Fortran subroutines but SETERRA() must be called from the 
+      Fortran main program.
 
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2(), SETERRQ3()
 M*/
@@ -101,7 +104,7 @@ M*/
    #include <petscsys.h>
    PetscErrorCode SETERRMPI(MPI_Comm comm,PetscErrorCode ierr,char *message)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, use PETSC_COMM_SELF unless you know all ranks of another communicator will detect the error
@@ -114,8 +117,6 @@ M*/
     This macro is FOR USE IN MPI CALLBACK FUNCTIONS ONLY, such as those passed to MPI_Comm_create_keyval(). It always returns the error code PETSC_MPI_ERROR_CODE
     which is registered with MPI_Add_error_code() when PETSc is initialized.
 
-   Concepts: error^setting condition
-
 .seealso: SETERRQ(), CHKERRQ(), CHKERRMPI(), PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2(), SETERRQ3()
 M*/
 #define SETERRMPI(comm,ierr,s) return (PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s),PETSC_MPI_ERROR_CODE)
@@ -127,7 +128,7 @@ M*/
    #include <petscsys.h>
    PetscErrorCode SETERRQ1(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -142,8 +143,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ(), SETERRQ2(), SETERRQ3()
 M*/
 #define SETERRQ1(comm,ierr,s,a1) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1)
@@ -155,7 +154,7 @@ M*/
    #include <petscsys.h>
    PetscErrorCode SETERRQ2(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -171,8 +170,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ3()
 M*/
 #define SETERRQ2(comm,ierr,s,a1,a2) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2)
@@ -184,7 +181,7 @@ M*/
    #include <petscsys.h>
    PetscErrorCode SETERRQ3(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -203,8 +200,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
 #define SETERRQ3(comm,ierr,s,a1,a2,a3) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2,a3)
@@ -214,9 +209,9 @@ M*/
 
    Synopsis:
    #include <petscsys.h>
-   PetscErrorCode SETERRQ4(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3)
+   PetscErrorCode SETERRQ4(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3,arg4)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -236,8 +231,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
 #define SETERRQ4(comm,ierr,s,a1,a2,a3,a4) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2,a3,a4)
@@ -247,9 +240,9 @@ M*/
 
    Synopsis:
    #include <petscsys.h>
-   PetscErrorCode SETERRQ5(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3)
+   PetscErrorCode SETERRQ5(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3,arg4,arg5)
 
-   Collective on MPI_COmm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -270,8 +263,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
 #define SETERRQ5(comm,ierr,s,a1,a2,a3,a4,a5) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2,a3,a4,a5)
@@ -281,9 +272,9 @@ M*/
 
    Synopsis:
    #include <petscsys.h>
-   PetscErrorCode SETERRQ6(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3)
+   PetscErrorCode SETERRQ6(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3,arg4,arg5,arg6)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -305,8 +296,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
 #define SETERRQ6(comm,ierr,s,a1,a2,a3,a4,a5,a6) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2,a3,a4,a5,a6)
@@ -316,9 +305,9 @@ M*/
 
    Synopsis:
    #include <petscsys.h>
-   PetscErrorCode SETERRQ7(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3)
+   PetscErrorCode SETERRQ7(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3,arg4,arg5,arg6,arg7)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -341,8 +330,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
 #define SETERRQ7(comm,ierr,s,a1,a2,a3,a4,a5,a6,a7) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2,a3,a4,a5,a6,a7)
@@ -352,9 +339,9 @@ M*/
 
    Synopsis:
    #include <petscsys.h>
-   PetscErrorCode SETERRQ8(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3)
+   PetscErrorCode SETERRQ8(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -378,8 +365,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
 #define SETERRQ8(comm,ierr,s,a1,a2,a3,a4,a5,a6,a7,a8) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2,a3,a4,a5,a6,a7,a8)
@@ -389,9 +374,9 @@ M*/
 
    Synopsis:
    #include <petscsys.h>
-   PetscErrorCode SETERRQ9(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3)
+   PetscErrorCode SETERRQ9(MPI_Comm comm,PetscErrorCode ierr,char *formatmessage,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -416,8 +401,6 @@ M*/
 
    Experienced users can set the error handler with PetscPushErrorHandler().
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
 #define SETERRQ9(comm,ierr,s,a1,a2,a3,a4,a5,a6,a7,a8,a9) return PetscError(comm,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_INITIAL,s,a1,a2,a3,a4,a5,a6,a7,a8,a9)
@@ -429,7 +412,7 @@ M*/
    #include <petscsys.h>
    PetscErrorCode SETERRABORT(MPI_Comm comm,PetscErrorCode ierr,char *message)
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameters:
 +  comm - A communicator, so that the error can be collective
@@ -440,8 +423,6 @@ M*/
 
    Notes:
     This function just calls MPI_Abort().
-
-   Concepts: error^setting condition
 
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), CHKERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2()
 M*/
@@ -477,15 +458,47 @@ M*/
     where you may pass back a NULL to indicate an error. You can also call CHKERRABORT(comm,n) to have
     MPI_Abort() returned immediately.
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), SETERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2(), SETERRQ2()
 M*/
-#define CHKERRQ(ierr)          do {if (PetscUnlikely(ierr)) return PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_REPEAT," ");} while (0)
-#define CHKERRV(ierr)          do {if (PetscUnlikely(ierr)) {ierr = PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_REPEAT," ");return;}} while(0)
-#define CHKERRABORT(comm,ierr) do {if (PetscUnlikely(ierr)) {PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_REPEAT," ");MPI_Abort(comm,ierr);}} while (0)
-#define CHKERRCONTINUE(ierr)   do {if (PetscUnlikely(ierr)) {PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_REPEAT," ");}} while (0)
+#define CHKERRQ(ierr)          do {PetscErrorCode ierr__ = (ierr); if (PetscUnlikely(ierr__)) return PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr__,PETSC_ERROR_REPEAT," ");} while (0)
+#define CHKERRV(ierr)          do {PetscErrorCode ierr__ = (ierr); if (PetscUnlikely(ierr__)) {PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr__,PETSC_ERROR_REPEAT," ");return;}} while(0)
+#define CHKERRABORT(comm,ierr) do {PetscErrorCode ierr__ = (ierr); if (PetscUnlikely(ierr__)) {PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr__,PETSC_ERROR_REPEAT," ");MPI_Abort(comm,ierr);}} while (0)
+#define CHKERRCONTINUE(ierr)   do {PetscErrorCode ierr__ = (ierr); if (PetscUnlikely(ierr__)) {PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr__,PETSC_ERROR_REPEAT," ");}} while (0)
 
+PETSC_EXTERN PetscErrorCode PetscAbortFindSourceFile_Private(const char*,PetscInt*);
+
+/*MC
+   PETSCABORT - Call MPI_Abort with an informative error code
+
+   Synopsis:
+   #include <petscsys.h>
+   PETSCABORT(MPI_Comm comm, PetscErrorCode ierr)
+
+   Collective
+
+   Input Parameters:
++  comm - A communicator, so that the error can be collective
+-  ierr - nonzero error code, see the list of standard error codes in include/petscerror.h
+
+   Level: beginner
+
+   Notes: We pass MPI_Abort() an error code of format XX_YYYY_ZZZ, where XX, YYYY are an index and line number of the file
+   where PETSCABORT is called, respectively. ZZZ is the PETSc error code.
+
+   If XX is zero, this means that the call was made in the routine main().
+   If XX is one, that means 1) the file is not in PETSc (it may be in users code); OR 2) the file is in PETSc but PetscAbortSourceFiles[]
+     is out of date. PETSc developers have to update it.
+   Otherwise, look up the value of XX in the table PetscAbortSourceFiles[] in src/sys/error/err.c to map XX back to the source file where the PETSCABORT() was called.
+
+M*/
+#define PETSCABORT(comm,ierr)  \
+   do {                                                               \
+      PetscInt       idx = 0;                                         \
+      PetscMPIInt    errcode;                                         \
+      PetscAbortFindSourceFile_Private(__FILE__,&idx);                \
+      errcode = (PetscMPIInt)(idx*10000000 + __LINE__*1000 + ierr);   \
+      MPI_Abort(comm,errcode);                                        \
+   } while (0)
 
 /*MC
    CHKERRMPI - Checks error code, if non-zero it calls the error handler and then returns
@@ -504,8 +517,6 @@ M*/
    Notes:
     This macro is FOR USE IN MPI CALLBACK FUNCTIONS ONLY, such as those passed to MPI_Comm_create_keyval(). It always returns the error code PETSC_MPI_ERROR_CODE
     which is registered with MPI_Add_error_code() when PETSc is initialized.
-
-   Concepts: error^setting condition
 
 .seealso: CHKERRQ(), PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), SETERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2(), SETERRQ2()
 M*/
@@ -533,17 +544,15 @@ M*/
     You can use CHKERRV() which returns without an error code (bad idea since the error is ignored)
     or CHKERRABORT(comm,n) to have MPI_Abort() returned immediately.
 
-   Concepts: error^setting condition
-
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), SETERRQ(), CHKERRQ(), CHKMEMQ
 M*/
 #define CHKERRXX(ierr)  do {if (PetscUnlikely(ierr)) {PetscError(PETSC_COMM_SELF,__LINE__,PETSC_FUNCTION_NAME,__FILE__,ierr,PETSC_ERROR_IN_CXX,0);}} while(0)
 
 #endif
 
-#define CHKERRCUDA(err)   do {if (PetscUnlikely(err)) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"CUDA error %d",err);} while(0)
-#define CHKERRCUBLAS(err) do {if (PetscUnlikely(err)) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"CUBLAS error %d",err);} while(0)
-
+#if defined(PETSC_HAVE_CUDA)
+#define CHKERRCUSOLVER(err) do {if (PetscUnlikely(err)) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_LIB,"CUSOLVER error %d",err);} while(0)
+#endif
 /*MC
    CHKMEMQ - Checks the memory for corruption, calls error handler if any is detected
 
@@ -556,18 +565,16 @@ M*/
   Level: beginner
 
    Notes:
-    We highly recommend using valgrind http://www.mcs.anl.gov/petsc/documentation/faq.html#valgrind for finding memory problems. This is useful
+    We highly recommend using valgrind https://www.mcs.anl.gov/petsc/documentation/faq.html#valgrind for finding memory problems. This is useful
     on systems that do not have valgrind, but much much less useful.
 
-    Must run with the option -malloc_debug to enable this option
+    Must run with the option -malloc_debug (-malloc_test in debug mode; or if PetscMallocSetDebug() called) to enable this option
 
     Once the error handler is called the calling function is then returned from with the given error code.
 
     By defaults prints location where memory that is corrupted was allocated.
 
     Use CHKMEMA for functions that return void
-
-   Concepts: memory corruption
 
 .seealso: PetscTraceBackErrorHandler(), PetscPushErrorHandler(), PetscError(), SETERRQ(), CHKMEMQ, SETERRQ1(), SETERRQ2(), SETERRQ3(),
           PetscMallocValidate()
@@ -610,7 +617,8 @@ PETSC_EXTERN PetscErrorCode PetscSignalHandlerDefault(int,void*);
 PETSC_EXTERN PetscErrorCode PetscPushSignalHandler(PetscErrorCode (*)(int,void *),void*);
 PETSC_EXTERN PetscErrorCode PetscPopSignalHandler(void);
 PETSC_EXTERN PetscErrorCode PetscCheckPointerSetIntensity(PetscInt);
-PETSC_EXTERN void PetscSignalSegvCheckPointer(void);
+PETSC_EXTERN void PetscSignalSegvCheckPointerOrMpi(void);
+PETSC_DEPRECATED_FUNCTION("Use PetscSignalSegvCheckPointerOrMpi() (since version 3.13)") PETSC_STATIC_INLINE void PetscSignalSegvCheckPointer(void) {PetscSignalSegvCheckPointerOrMpi();}
 
 /*MC
     PetscErrorPrintf - Prints error messages.
@@ -646,8 +654,6 @@ $     PetscErrorPrintf = PetscErrorPrintfDefault; to turn it back on or you can 
     Fortran Note:
     This routine is not supported in Fortran.
 
-    Concepts: error messages^printing
-    Concepts: printing^error messages
 
 .seealso: PetscFPrintf(), PetscSynchronizedPrintf(), PetscHelpPrintf(), PetscPrintf(), PetscPushErrorHandler(), PetscVFPrintf(), PetscHelpPrintf()
 M*/
@@ -657,6 +663,7 @@ typedef enum {PETSC_FP_TRAP_OFF=0,PETSC_FP_TRAP_ON=1} PetscFPTrap;
 PETSC_EXTERN PetscErrorCode PetscSetFPTrap(PetscFPTrap);
 PETSC_EXTERN PetscErrorCode PetscFPTrapPush(PetscFPTrap);
 PETSC_EXTERN PetscErrorCode PetscFPTrapPop(void);
+PETSC_EXTERN PetscErrorCode PetscDetermineInitialFPTrap(void);
 
 /*
       Allows the code to build a stack frame as it runs
@@ -726,8 +733,8 @@ PETSC_STATIC_INLINE PetscBool PetscStackActive(void)
     PetscStackSAWsTakeAccess();                                          \
     if (petscstack && petscstack->currentsize > 0) {                  \
       petscstack->currentsize--;                                       \
-      petscstack->function[petscstack->currentsize]  = 0;             \
-      petscstack->file[petscstack->currentsize]      = 0;             \
+      petscstack->function[petscstack->currentsize]  = NULL;             \
+      petscstack->file[petscstack->currentsize]      = NULL;             \
       petscstack->line[petscstack->currentsize]      = 0;             \
       petscstack->petscroutine[petscstack->currentsize] = PETSC_FALSE;\
     }                                                                   \
@@ -763,7 +770,6 @@ PETSC_STATIC_INLINE PetscBool PetscStackActive(void)
 
 .seealso: PetscFunctionReturn(), PetscFunctionBeginHot(), PetscFunctionBeginUser()
 
-.keywords: traceback, error handling
 M*/
 #define PetscFunctionBegin do {                                        \
     PetscStackPushNoCheck(PETSC_FUNCTION_NAME,PETSC_TRUE,PETSC_FALSE); \
@@ -794,7 +800,6 @@ M*/
 
 .seealso: PetscFunctionBegin, PetscFunctionReturn()
 
-.keywords: traceback, error handling
 M*/
 #define PetscFunctionBeginHot do {                                     \
     PetscStackPushNoCheck(PETSC_FUNCTION_NAME,PETSC_TRUE,PETSC_TRUE);  \
@@ -829,7 +834,6 @@ M*/
 
 .seealso: PetscFunctionReturn(), PetscFunctionBegin, PetscFunctionBeginHot
 
-.keywords: traceback, error handling
 M*/
 #define PetscFunctionBeginUser                                          \
   do {                                                                  \
@@ -874,7 +878,6 @@ M*/
 
 .seealso: PetscFunctionBegin()
 
-.keywords: traceback, error handling
 M*/
 #define PetscFunctionReturn(a) \
   do {                                                                \

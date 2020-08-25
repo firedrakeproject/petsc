@@ -6,19 +6,25 @@ extraLogs = []
 petsc_arch = ''
 
 # Use en_US as language so that BuildSystem parses compiler messages in english
-if 'LC_LOCAL' in os.environ and os.environ['LC_LOCAL'] != '' and os.environ['LC_LOCAL'] != 'en_US' and os.environ['LC_LOCAL']!= 'en_US.UTF-8': os.environ['LC_LOCAL'] = 'en_US.UTF-8'
-if 'LANG' in os.environ and os.environ['LANG'] != '' and os.environ['LANG'] != 'en_US' and os.environ['LANG'] != 'en_US.UTF-8': os.environ['LANG'] = 'en_US.UTF-8'
+def fixLang(lang):
+  if lang in os.environ and os.environ[lang] != '':
+    lv = os.environ[lang]
+    enc = ''
+    try: lv,enc = lv.split('.')
+    except: pass
+    if lv not in ['en_US','C']: lv = 'en_US'
+    if enc: lv = lv+'.'+enc
+    os.environ[lang] = lv
 
-if sys.version_info < (2,6):
-  print('************************************************************************')
-  print('*      Python version 2.6+ or 3.4+ is required to run ./configure      *')
-  print('*         Try: "python2.7 ./configure" or "python3 ./configure"        *')
-  print('************************************************************************')
-  sys.exit(4)
+fixLang('LC_LOCAL')
+fixLang('LANG')
+
 
 def check_for_option_mistakes(opts):
   for opt in opts[1:]:
     name = opt.split('=')[0]
+    if name.find(' ') >= 0:
+      raise ValueError('The option "'+name+'" has a space character in the name - this is likely incorrect usage.');
     if name.find('_') >= 0:
       exception = False
       for exc in ['mkl_sparse', 'mkl_sparse_optimize', 'mkl_cpardiso', 'mkl_pardiso', 'superlu_dist', 'PETSC_ARCH', 'PETSC_DIR', 'CXX_CXXFLAGS', 'LD_SHARED', 'CC_LINKER_FLAGS', 'CXX_LINKER_FLAGS', 'FC_LINKER_FLAGS', 'AR_FLAGS', 'C_VERSION', 'CXX_VERSION', 'FC_VERSION', 'size_t', 'MPI_Comm','MPI_Fint','int64_t']:
@@ -30,6 +36,9 @@ def check_for_option_mistakes(opts):
       optval = opt.split('=')[1]
       if optval == 'ifneeded':
         raise ValueError('The option '+opt+' should probably be '+opt.replace('ifneeded', '1'));
+    for exc in ['mkl_sparse', 'mkl_sparse_optimize', 'mkl_cpardiso', 'mkl_pardiso', 'superlu_dist']:
+      if name.find(exc.replace('_','-')) > -1:
+        raise ValueError('The option '+opt+' should be '+opt.replace(exc.replace('_','-'),exc));
   return
 
 def check_for_unsupported_combinations(opts):
@@ -43,6 +52,7 @@ def check_for_option_changed(opts):
             ('c-blas-lapack','f2cblaslapack'),
             ('cholmod','suitesparse'),
             ('umfpack','suitesparse'),
+            ('matlabengine','matlab-engine'),            
             ('f-blas-lapack','fblaslapack'),
             ('with-cuda-arch',
              'CUDAFLAGS=-arch'),
@@ -131,30 +141,11 @@ def chkenable():
         if tail == '1': tail = '0'
         sys.argv[l] = head.replace('without-','with-')+'='+tail
 
-def argsAddDownload(value,deps = [],options = []):
-  # Adds --download-value to args if the command line DOES NOT already has --with-value or --download-value in it
-  # this is to prevent introducing conflicting arguments to ones that already exist
-  for opt in sys.argv[1:]:
-    optname = opt.split('=')[0].strip('-')
-    if optname in ['download-'+value,'with-'+value,'with-'+value+'-dir','with-'+value+'-include','with-'+value+'-lib']: return
-  sys.argv.append('--download-'+value)
-  for i in deps:
-    argsAddDownload(i)
-  for i in options:
-    sys.argv.append(i)
-
 def chksynonyms():
   #replace common configure options with ones that PETSc BuildSystem recognizes
-  downloadxsdk = 0
-  downloadideas = 0
+  simplereplacements = {'F77' : 'FC', 'F90' : 'FC'}
   for l in range(0,len(sys.argv)):
     name = sys.argv[l]
-
-    if name.find('download-xsdk=') >= 0 or name.endswith('download-xsdk'):
-      downloadxsdk = 1
-
-    if name.find('download-ideas=') >= 0 or name.endswith('download-ideas'):
-      downloadideas = 1
 
     if name.find('with-blas-lapack') >= 0:
       sys.argv[l] = name.replace('with-blas-lapack','with-blaslapack')
@@ -187,31 +178,15 @@ def chksynonyms():
       if tail.find('quad')>=0:
         sys.argv[l]='--with-precision=__float128'
 
-  if downloadideas:
-    downloadxsdk = 1
-    argsAddDownload('alquimia')
-    # mstk currently cannot build a shared library
-    argsAddDownload('mstk',[],['--download-mstk-shared=0'])
-    argsAddDownload('ascem-io')
-    argsAddDownload('unittestcpp')
+    for i,j in simplereplacements.items():
+      if name.find(i+'=') >= 0:
+        sys.argv[l] = name.replace(i+'=',j+'=')
+      elif name.find('with-'+i.lower()+'=') >= 0:
+        sys.argv[l] = name.replace(i.lower()+'=',j.lower()+'=')
 
-  if downloadxsdk:
-    # Common external libraries
-    argsAddDownload('pflotran')
-    argsAddDownload('hdf5',['zlib'])
-    argsAddDownload('netcdf')
-    argsAddDownload('metis')
-
-    argsAddDownload('superlu_dist',['parmetis'])
-
-    argsAddDownload('hypre')
-
-    argsAddDownload('trilinos',['boost','xsdktrilinos'],['--with-cxx-dialect=C++11'])
-
-
-def chkwinf90():
+def chkwincompilerusinglink():
   for arg in sys.argv:
-    if (arg.find('win32fe') >= 0 and (arg.find('f90') >=0 or arg.find('ifort') >=0)):
+    if (arg.find('win32fe') >= 0 and (arg.find('f90') >=0 or arg.find('ifort') >=0 or arg.find('icl') >=0)):
       return 1
   return 0
 
@@ -226,12 +201,12 @@ def chkdosfiles():
   return
 
 def chkcygwinlink():
-  if os.path.exists('/usr/bin/cygcheck.exe') and os.path.exists('/usr/bin/link.exe') and chkwinf90():
+  if os.path.exists('/usr/bin/cygcheck.exe') and os.path.exists('/usr/bin/link.exe') and chkwincompilerusinglink():
       if '--ignore-cygwin-link' in sys.argv: return 0
       print('===============================================================================')
-      print(' *** Cygwin /usr/bin/link detected! Compiles with CVF/Intel f90 can break!  **')
+      print(' *** Cygwin /usr/bin/link detected! Compiles with Intel icl/ifort can break!  **')
       print(' *** To workarround do: "mv /usr/bin/link.exe /usr/bin/link-cygwin.exe"     **')
-      print(' *** Or to ignore this check, use configure option: --ignore-cygwin-link    **')
+      print(' *** Or to ignore this check, use configure option: --ignore-cygwin-link. But compiles can fail. **')
       print('===============================================================================')
       sys.exit(3)
   return 0
@@ -274,6 +249,17 @@ def chkcygwinpython():
 ===============================================================================''')
   return 0
 
+def chkcygwinwindowscompilers():
+  '''Adds win32fe for Microsoft/Intel compilers'''
+  if os.path.exists('/usr/bin/cygcheck.exe'):
+    for l in range(1,len(sys.argv)):
+      option = sys.argv[l]
+      for i in ['cl','icl','ifort']:
+        if option.startswith(i):
+          sys.argv[l] = 'win32fe '+option
+          break
+  return 0
+
 def chkrhl9():
   if os.path.exists('/etc/redhat-release'):
     try:
@@ -291,6 +277,44 @@ def chkrhl9():
    ****** Disabling thread usage for this run of ./configure *********
 ===============================================================================''')
   return 0
+
+def chktmpnoexec():
+  if not hasattr(os,'ST_NOEXEC'): return # novermin
+  if 'TMPDIR' in os.environ: tmpDir = os.environ['TMPDIR']
+  else: tmpDir = '/tmp'
+  if os.statvfs(tmpDir).f_flag & os.ST_NOEXEC: # novermin
+    if os.statvfs(os.path.abspath('.')).f_flag & os.ST_NOEXEC: # novermin
+      print('************************************************************************')
+      print('* TMPDIR '+tmpDir+' has noexec attribute. Same with '+os.path.abspath('.')+' where petsc is built.')
+      print('* Suggest building PETSc in a location without this restriction!')
+      print('* Alternatively, set env variable TMPDIR to a location that is not restricted to run binaries.')
+      print('************************************************************************')
+      sys.exit(4)
+    else:
+      newTmp = os.path.abspath('tmp-petsc')
+      print('************************************************************************')
+      print('* TMPDIR '+tmpDir+' has noexec attribute. Using '+newTmp+' instead.')
+      print('************************************************************************')
+      if not os.path.isdir(newTmp): os.mkdir(os.path.abspath(newTmp))
+      os.environ['TMPDIR'] = newTmp
+  return
+
+def check_cray_modules():
+  import script
+  '''For Cray systems check if the cc, CC, ftn compiler suite modules have been set'''
+  cray = os.getenv('CRAY_SITE_LIST_DIR')
+  if not cray: return
+  cray = os.getenv('CRAYPE_DIR')
+  if not cray:
+   print('************************************************************************')
+   print('* You are on a Cray system but no programming environments have been loaded')
+   print('* Perhaps you need:')
+   print('*       module load intel ; module load PrgEnv-intel')
+   print('*   or  module load PrgEnv-cray')
+   print('*   or  module load PrgEnv-gnu')
+   print('* See https://www.mcs.anl.gov/petsc/documentation/installation.html#doemachines')
+   print('************************************************************************')
+   sys.exit(4)
 
 def check_broken_configure_log_links():
   '''Sometime symlinks can get broken if the original files are deleted. Delete such broken links'''
@@ -313,9 +337,11 @@ def move_configure_log(framework):
 
     # Just in case - confdir is not created
     lib_dir = os.path.join(petsc_arch,'lib')
+    petsc_dir = os.path.join(petsc_arch,'lib','petsc')
     conf_dir = os.path.join(petsc_arch,'lib','petsc','conf')
     if not os.path.isdir(petsc_arch): os.mkdir(petsc_arch)
     if not os.path.isdir(lib_dir): os.mkdir(lib_dir)
+    if not os.path.isdir(petsc_dir): os.mkdir(petsc_dir)
     if not os.path.isdir(conf_dir): os.mkdir(conf_dir)
 
     curr_bkp  = curr_file + '.bkp'
@@ -391,6 +417,16 @@ def petsc_configure(configure_options):
   chkcygwinpython()
   chkcygwinlink()
   chkdosfiles()
+  chkcygwinwindowscompilers()
+  chktmpnoexec()
+
+  for l in range(1,len(sys.argv)):
+    if sys.argv[l].startswith('--with-fc=') and sys.argv[l].endswith('nagfor'):
+      # need a way to save this value and later CC so that petscnagfor may use them
+      name = sys.argv[l].split('=')[1]
+      sys.argv[l] = '--with-fc='+os.path.join(os.path.abspath('.'),'lib','petsc','bin','petscnagfor')
+      break
+
 
   # Should be run from the toplevel
   configDir = os.path.abspath('config')
@@ -402,7 +438,12 @@ def petsc_configure(configure_options):
   import config.base
   import config.framework
   import pickle
+  import traceback
 
+  # Check Cray without modules
+  check_cray_modules()
+
+  tbo = None
   framework = None
   try:
     framework = config.framework.Framework(['--configModules=PETSc.Configure','--optionsModule=config.compilerOptions']+sys.argv[1:], loadArgDB = 0)
@@ -423,6 +464,7 @@ def petsc_configure(configure_options):
       pass
     return 0
   except (RuntimeError, config.base.ConfigureSetupError) as e:
+    tbo = sys.exc_info()[2]
     emsg = str(e)
     if not emsg.endswith('\n'): emsg = emsg+'\n'
     msg ='*******************************************************************************\n'\
@@ -431,39 +473,46 @@ def petsc_configure(configure_options):
     +emsg+'*******************************************************************************\n'
     se = ''
   except (TypeError, ValueError) as e:
+    # this exception is automatically deleted by Python so we need to save it to print below
+    tbo = sys.exc_info()[2]
     emsg = str(e)
     if not emsg.endswith('\n'): emsg = emsg+'\n'
     msg ='*******************************************************************************\n'\
-    +'                ERROR in COMMAND LINE ARGUMENT to ./configure \n' \
+    +'    TypeError or ValueError possibly related to ERROR in COMMAND LINE ARGUMENT while running ./configure \n' \
     +'-------------------------------------------------------------------------------\n'  \
     +emsg+'*******************************************************************************\n'
     se = ''
   except ImportError as e :
+    # this exception is automatically deleted by Python so we need to save it to print below
+    tbo = sys.exc_info()[2]
     emsg = str(e)
     if not emsg.endswith('\n'): emsg = emsg+'\n'
     msg ='*******************************************************************************\n'\
-    +'                     UNABLE to FIND MODULE for ./configure \n' \
+    +'                     ImportError while runing ./configure \n' \
     +'-------------------------------------------------------------------------------\n'  \
     +emsg+'*******************************************************************************\n'
     se = ''
   except OSError as e :
+    tbo = sys.exc_info()[2]
     emsg = str(e)
     if not emsg.endswith('\n'): emsg = emsg+'\n'
     msg ='*******************************************************************************\n'\
-    +'                    UNABLE to EXECUTE BINARIES for ./configure \n' \
+    +'                    OSError while running ./configure \n' \
     +'-------------------------------------------------------------------------------\n'  \
     +emsg+'*******************************************************************************\n'
     se = ''
   except SystemExit as e:
+    tbo = sys.exc_info()[2]
     if e.code is None or e.code == 0:
       return
-    if e.code is 10:
+    if e.code == 10:
       sys.exit(10)
     msg ='*******************************************************************************\n'\
     +'         CONFIGURATION FAILURE  (Please send configure.log to petsc-maint@mcs.anl.gov)\n' \
     +'*******************************************************************************\n'
     se  = str(e)
   except Exception as e:
+    tbo = sys.exc_info()[2]
     msg ='*******************************************************************************\n'\
     +'        CONFIGURATION CRASH  (Please send configure.log to petsc-maint@mcs.anl.gov)\n' \
     +'*******************************************************************************\n'
@@ -482,20 +531,22 @@ def petsc_configure(configure_options):
           framework.outputCHeader(framework.log)
       except Exception as e:
         framework.log.write('Problem writing headers to log: '+str(e))
-      import traceback
       try:
         framework.log.write(msg+se)
-        traceback.print_tb(sys.exc_info()[2], file = framework.log)
+        traceback.print_tb(tbo, file = framework.log)
         print_final_timestamp(framework)
         if hasattr(framework,'log'): framework.log.close()
         move_configure_log(framework)
-      except:
-        pass
+      except Exception as e:
+        print('Error printing error message from exception or printing the traceback:'+str(e))
+        traceback.print_tb(sys.exc_info()[2])
       sys.exit(1)
+    else:
+      print(se)
+      traceback.print_tb(tbo)
   else:
     print(se)
-    import traceback
-    traceback.print_tb(sys.exc_info()[2])
+    traceback.print_tb(tbo)
   if hasattr(framework,'log'): framework.log.close()
 
 if __name__ == '__main__':

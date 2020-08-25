@@ -62,20 +62,11 @@ static PetscErrorCode PCSetFromOptions_ILU(PetscOptionItems *PetscOptionsObject,
   ierr = PetscOptionsName("-pc_factor_nonzeros_along_diagonal","Reorder to remove zeros from diagonal","PCFactorReorderForNonzeroDiagonal",&flg);CHKERRQ(ierr);
   if (flg) {
     tol  = PETSC_DECIDE;
-    ierr = PetscOptionsReal("-pc_factor_nonzeros_along_diagonal","Reorder to remove zeros from diagonal","PCFactorReorderForNonzeroDiagonal",ilu->nonzerosalongdiagonaltol,&tol,0);CHKERRQ(ierr);
+    ierr = PetscOptionsReal("-pc_factor_nonzeros_along_diagonal","Reorder to remove zeros from diagonal","PCFactorReorderForNonzeroDiagonal",ilu->nonzerosalongdiagonaltol,&tol,NULL);CHKERRQ(ierr);
     ierr = PCFactorReorderForNonzeroDiagonal(pc,tol);CHKERRQ(ierr);
   }
 
   ierr = PetscOptionsTail();CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode PCView_ILU(PC pc,PetscViewer viewer)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = PCView_Factor(pc,viewer);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -108,6 +99,7 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
 
       /* In-place factorization only makes sense with the natural ordering,
          so we only need to get the ordering once, even if nonzero structure changes */
+      /* Should not get the ordering if the factorization routine does not use it, but do not yet have access to the factor matrix */
       ierr = MatGetOrdering(pc->pmat,((PC_Factor*)ilu)->ordering,&ilu->row,&ilu->col);CHKERRQ(ierr);
       if (ilu->row) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->row);CHKERRQ(ierr);}
       if (ilu->col) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->col);CHKERRQ(ierr);}
@@ -118,7 +110,7 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
     ((PC_Factor*)ilu)->info.fill          = 1.0;
     ((PC_Factor*)ilu)->info.diagonal_fill = 0.0;
 
-    ierr = MatILUFactor(pc->pmat,ilu->row,ilu->col,&((PC_Factor*)ilu)->info);CHKERRQ(ierr);CHKERRQ(ierr);
+    ierr = MatILUFactor(pc->pmat,ilu->row,ilu->col,&((PC_Factor*)ilu)->info);CHKERRQ(ierr);
     ierr = MatFactorGetError(pc->pmat,&err);CHKERRQ(ierr);
     if (err) { /* Factor() fails */
       pc->failedreason = (PCFailedReason)err;
@@ -131,41 +123,47 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
   } else {
     if (!pc->setupcalled) {
       /* first time in so compute reordering and symbolic factorization */
-      ierr = MatGetOrdering(pc->pmat,((PC_Factor*)ilu)->ordering,&ilu->row,&ilu->col);CHKERRQ(ierr);
-      if (ilu->row) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->row);CHKERRQ(ierr);}
-      if (ilu->col) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->col);CHKERRQ(ierr);}
-      /*  Remove zeros along diagonal?     */
-      if (ilu->nonzerosalongdiagonal) {
-        ierr = MatReorderForNonzeroDiagonal(pc->pmat,ilu->nonzerosalongdiagonaltol,ilu->row,ilu->col);CHKERRQ(ierr);
-      }
+      PetscBool useordering;
       if (!((PC_Factor*)ilu)->fact) {
         ierr = MatGetFactor(pc->pmat,((PC_Factor*)ilu)->solvertype,MAT_FACTOR_ILU,&((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
+        ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
       }
-      ierr = MatILUFactorSymbolic(((PC_Factor*)ilu)->fact,pc->pmat,ilu->row,ilu->col,&((PC_Factor*)ilu)->info);CHKERRQ(ierr);
-      ierr = MatGetInfo(((PC_Factor*)ilu)->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
-      ilu->hdr.actualfill = info.fill_ratio_needed;
-
-      ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
-    } else if (pc->flag != SAME_NONZERO_PATTERN) {
-      if (!ilu->hdr.reuseordering) {
-        /* compute a new ordering for the ILU */
-        ierr = ISDestroy(&ilu->row);CHKERRQ(ierr);
-        ierr = ISDestroy(&ilu->col);CHKERRQ(ierr);
+      ierr = MatFactorGetUseOrdering(((PC_Factor*)ilu)->fact,&useordering);CHKERRQ(ierr);
+      if (useordering) {
         ierr = MatGetOrdering(pc->pmat,((PC_Factor*)ilu)->ordering,&ilu->row,&ilu->col);CHKERRQ(ierr);
-        if (ilu->row) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->row);CHKERRQ(ierr);}
-        if (ilu->col) {ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->col);CHKERRQ(ierr);}
+        ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->row);CHKERRQ(ierr);
+        ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->col);CHKERRQ(ierr);
         /*  Remove zeros along diagonal?     */
         if (ilu->nonzerosalongdiagonal) {
           ierr = MatReorderForNonzeroDiagonal(pc->pmat,ilu->nonzerosalongdiagonaltol,ilu->row,ilu->col);CHKERRQ(ierr);
         }
       }
-      ierr = MatDestroy(&((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
-      ierr = MatGetFactor(pc->pmat,((PC_Factor*)ilu)->solvertype,MAT_FACTOR_ILU,&((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
       ierr = MatILUFactorSymbolic(((PC_Factor*)ilu)->fact,pc->pmat,ilu->row,ilu->col,&((PC_Factor*)ilu)->info);CHKERRQ(ierr);
       ierr = MatGetInfo(((PC_Factor*)ilu)->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
       ilu->hdr.actualfill = info.fill_ratio_needed;
-
-      ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
+    } else if (pc->flag != SAME_NONZERO_PATTERN) {
+      if (!ilu->hdr.reuseordering) {
+        PetscBool useordering;
+        ierr = MatDestroy(&((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
+        ierr = MatGetFactor(pc->pmat,((PC_Factor*)ilu)->solvertype,MAT_FACTOR_ILU,&((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
+        ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)((PC_Factor*)ilu)->fact);CHKERRQ(ierr);
+        ierr = MatFactorGetUseOrdering(((PC_Factor*)ilu)->fact,&useordering);CHKERRQ(ierr);
+        if (useordering) {
+          /* compute a new ordering for the ILU */
+          ierr = ISDestroy(&ilu->row);CHKERRQ(ierr);
+          ierr = ISDestroy(&ilu->col);CHKERRQ(ierr);
+          ierr = MatGetOrdering(pc->pmat,((PC_Factor*)ilu)->ordering,&ilu->row,&ilu->col);CHKERRQ(ierr);
+          ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->row);CHKERRQ(ierr);
+          ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)ilu->col);CHKERRQ(ierr);
+          /*  Remove zeros along diagonal?     */
+          if (ilu->nonzerosalongdiagonal) {
+            ierr = MatReorderForNonzeroDiagonal(pc->pmat,ilu->nonzerosalongdiagonaltol,ilu->row,ilu->col);CHKERRQ(ierr);
+          }
+        }
+      }
+      ierr = MatILUFactorSymbolic(((PC_Factor*)ilu)->fact,pc->pmat,ilu->row,ilu->col,&((PC_Factor*)ilu)->info);CHKERRQ(ierr);
+      ierr = MatGetInfo(((PC_Factor*)ilu)->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
+      ilu->hdr.actualfill = info.fill_ratio_needed;
     }
     ierr = MatFactorGetError(((PC_Factor*)ilu)->fact,&err);CHKERRQ(ierr);
     if (err) { /* FactorSymbolic() fails */
@@ -209,6 +207,16 @@ static PetscErrorCode PCApply_ILU(PC pc,Vec x,Vec y)
 
   PetscFunctionBegin;
   ierr = MatSolve(((PC_Factor*)ilu)->fact,x,y);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode PCMatApply_ILU(PC pc,Mat X,Mat Y)
+{
+  PC_ILU         *ilu = (PC_ILU*)pc->data;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = MatMatSolve(((PC_Factor*)ilu)->fact,X,Y);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -261,8 +269,6 @@ static PetscErrorCode PCApplySymmetricRight_ILU(PC pc,Vec x,Vec y)
 
    Level: beginner
 
-  Concepts: incomplete factorization
-
    Notes:
     Only implemented for some matrix formats. (for parallel see PCHYPRE for hypre's ILU)
 
@@ -271,7 +277,7 @@ static PetscErrorCode PCApplySymmetricRight_ILU(PC pc,Vec x,Vec y)
           The "symmetric" application of this preconditioner is not actually symmetric since L is not transpose(U)
           even when the matrix is not symmetric since the U stores the diagonals of the factorization.
 
-          If you are using MATSEQAIJCUSPARSE matrices (or MATMPIAIJCUSPARESE matrices with block Jacobi), factorization 
+          If you are using MATSEQAIJCUSPARSE matrices (or MATMPIAIJCUSPARSE matrices with block Jacobi), factorization 
           is never done on the GPU).
 
    References:
@@ -305,8 +311,8 @@ PETSC_EXTERN PetscErrorCode PCCreate_ILU(PC pc)
   ((PC_Factor*)ilu)->factortype         = MAT_FACTOR_ILU;
   ((PC_Factor*)ilu)->info.levels        = 0.;
   ((PC_Factor*)ilu)->info.fill          = 1.0;
-  ilu->col                              = 0;
-  ilu->row                              = 0;
+  ilu->col                              = NULL;
+  ilu->row                              = NULL;
   ierr                                  = PetscStrallocpy(MATORDERINGNATURAL,(char**)&((PC_Factor*)ilu)->ordering);CHKERRQ(ierr);
   ((PC_Factor*)ilu)->info.dt            = PETSC_DEFAULT;
   ((PC_Factor*)ilu)->info.dtcount       = PETSC_DEFAULT;
@@ -315,13 +321,14 @@ PETSC_EXTERN PetscErrorCode PCCreate_ILU(PC pc)
   pc->ops->reset               = PCReset_ILU;
   pc->ops->destroy             = PCDestroy_ILU;
   pc->ops->apply               = PCApply_ILU;
+  pc->ops->matapply            = PCMatApply_ILU;
   pc->ops->applytranspose      = PCApplyTranspose_ILU;
   pc->ops->setup               = PCSetUp_ILU;
   pc->ops->setfromoptions      = PCSetFromOptions_ILU;
-  pc->ops->view                = PCView_ILU;
+  pc->ops->view                = PCView_Factor;
   pc->ops->applysymmetricleft  = PCApplySymmetricLeft_ILU;
   pc->ops->applysymmetricright = PCApplySymmetricRight_ILU;
-  pc->ops->applyrichardson     = 0;
+  pc->ops->applyrichardson     = NULL;
   ierr = PetscObjectComposeFunction((PetscObject)pc,"PCFactorSetDropTolerance_C",PCFactorSetDropTolerance_ILU);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)pc,"PCFactorReorderForNonzeroDiagonal_C",PCFactorReorderForNonzeroDiagonal_ILU);CHKERRQ(ierr);
   PetscFunctionReturn(0);

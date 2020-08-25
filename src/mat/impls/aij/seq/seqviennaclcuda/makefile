@@ -1,3 +1,4 @@
+-include ../../../../../../petscdir.mk
 #requirespackage 'PETSC_HAVE_VIENNACL'
 #requiresdefine 'PETSC_HAVE_CUDA'
 
@@ -7,7 +8,7 @@ CFLAGS    =
 FFLAGS    =
 SOURCECU  = aijviennaclcuda.cu
 SOURCEF   =
-SOURCEH   = viennaclmatimpl.h
+SOURCEH   =
 LIBBASE   = libpetscmat
 DIRS      =
 MANSEC    = Mat

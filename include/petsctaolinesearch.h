@@ -1,5 +1,5 @@
-#ifndef __TAOLINESEARCH_H
-#define __TAOLINESEARCH_H
+#ifndef PETSCTAOLINESEARCH_H
+#define PETSCTAOLINESEARCH_H
 #include <petscvec.h>
 
 typedef struct _p_TaoLineSearch* TaoLineSearch;
@@ -37,7 +37,7 @@ PETSC_EXTERN PetscErrorCode TaoLineSearchSetUp(TaoLineSearch);
 PETSC_EXTERN PetscErrorCode TaoLineSearchDestroy(TaoLineSearch*);
 PETSC_EXTERN PetscErrorCode TaoLineSearchMonitor(TaoLineSearch,PetscInt,PetscReal,PetscReal);
 PETSC_EXTERN PetscErrorCode TaoLineSearchView(TaoLineSearch,PetscViewer);
-PETSC_STATIC_INLINE PetscErrorCode TaoLineSearchViewFromOptions(TaoLineSearch A,PetscObject obj,const char name[]) {return PetscObjectViewFromOptions((PetscObject)A,obj,name);}
+PETSC_EXTERN PetscErrorCode TaoLineSearchViewFromOptions(TaoLineSearch,PetscObject,const char[]);
 
 PETSC_EXTERN PetscErrorCode TaoLineSearchSetOptionsPrefix(TaoLineSearch,const char prefix[]);
 PETSC_EXTERN PetscErrorCode TaoLineSearchReset(TaoLineSearch);

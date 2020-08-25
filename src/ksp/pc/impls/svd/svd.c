@@ -34,9 +34,6 @@ typedef enum {READ=1, WRITE=2, READ_WRITE=3} AccessMode;
 */
 static PetscErrorCode PCSetUp_SVD(PC pc)
 {
-#if defined(PETSC_MISSING_LAPACK_GESVD)
-  SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"GESVD - Lapack routine is unavailable\nNot able to provide singular value estimates.");
-#else
   PC_SVD         *jac = (PC_SVD*)pc->data;
   PetscErrorCode ierr;
   PetscScalar    *a,*u,*v,*d,*work;
@@ -48,7 +45,8 @@ static PetscErrorCode PCSetUp_SVD(PC pc)
   ierr = MatDestroy(&jac->A);CHKERRQ(ierr);
   ierr = MPI_Comm_size(((PetscObject)pc->pmat)->comm,&size);CHKERRQ(ierr);
   if (size > 1) {
-    Mat          redmat;
+    Mat redmat;
+
     ierr = MatCreateRedundantMatrix(pc->pmat,size,PETSC_COMM_SELF,MAT_INITIAL_MATRIX,&redmat);CHKERRQ(ierr);
     ierr = MatConvert(redmat,MATSEQDENSE,MAT_INITIAL_MATRIX,&jac->A);CHKERRQ(ierr);
     ierr = MatDestroy(&redmat);CHKERRQ(ierr);
@@ -144,7 +142,6 @@ static PetscErrorCode PCSetUp_SVD(PC pc)
 #endif
   ierr = PetscFree(work);CHKERRQ(ierr);
   PetscFunctionReturn(0);
-#endif
 }
 
 static PetscErrorCode PCSVDGetVec(PC pc,PCSide side,AccessMode amode,Vec x,Vec *xred)
@@ -359,13 +356,12 @@ static PetscErrorCode PCView_SVD(PC pc,PetscViewer viewer)
 
    Level: advanced
 
-  Concepts: SVD
-
   Options Database:
--  -pc_svd_zero_sing <rtol> Singular values smaller than this are treated as zero
-+  -pc_svd_monitor  Print information on the extreme singular values of the operator
++  -pc_svd_zero_sing <rtol> Singular values smaller than this are treated as zero
+-  -pc_svd_monitor  Print information on the extreme singular values of the operator
 
-  Developer Note: This implementation automatically creates a redundant copy of the
+  Developer Note:
+  This implementation automatically creates a redundant copy of the
    matrix on each process and uses a sequential SVD solve. Why does it do this instead
    of using the composable PCREDUNDANT object?
 
@@ -400,7 +396,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_SVD(PC pc)
   pc->ops->destroy         = PCDestroy_SVD;
   pc->ops->setfromoptions  = PCSetFromOptions_SVD;
   pc->ops->view            = PCView_SVD;
-  pc->ops->applyrichardson = 0;
+  pc->ops->applyrichardson = NULL;
   PetscFunctionReturn(0);
 }
 

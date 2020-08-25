@@ -2,8 +2,8 @@
      PetscViewers are objects where other objects can be looked at or stored.
 */
 
-#if !defined(__PETSCVIEWER_H)
-#define __PETSCVIEWER_H
+#if !defined(PETSCVIEWER_H)
+#define PETSCVIEWER_H
 
 #include <petscsys.h>
 #include <petscviewertypes.h>
@@ -33,6 +33,7 @@ typedef const char* PetscViewerType;
 #define PETSCVIEWERGLVIS        "glvis"
 #define PETSCVIEWERADIOS        "adios"
 #define PETSCVIEWERADIOS2       "adios2"
+#define PETSCVIEWEREXODUSII     "exodusii"
 
 PETSC_EXTERN PetscFunctionList PetscViewerList;
 PETSC_EXTERN PetscErrorCode PetscViewerInitializePackage(void);
@@ -96,7 +97,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerRestoreSubViewer(PetscViewer,MPI_Comm,Pet
 
 PETSC_EXTERN PetscErrorCode PetscViewerSetUp(PetscViewer);
 PETSC_EXTERN PetscErrorCode PetscViewerView(PetscViewer,PetscViewer);
-PETSC_STATIC_INLINE PetscErrorCode PetscViewerViewFromOptions(PetscViewer A,PetscObject obj,const char name[]) {return PetscObjectViewFromOptions((PetscObject)A,obj,name);}
+PETSC_EXTERN PetscErrorCode PetscViewerViewFromOptions(PetscViewer,PetscObject,const char[]);
 
 PETSC_EXTERN PetscErrorCode PetscViewerSetOptionsPrefix(PetscViewer,const char[]);
 PETSC_EXTERN PetscErrorCode PetscViewerAppendOptionsPrefix(PetscViewer,const char[]);
@@ -135,6 +136,7 @@ typedef enum {
   PETSC_VIEWER_ASCII_LATEX,
   PETSC_VIEWER_ASCII_XML,
   PETSC_VIEWER_ASCII_GLVIS,
+  PETSC_VIEWER_ASCII_CSV,
   PETSC_VIEWER_DRAW_BASIC,
   PETSC_VIEWER_DRAW_LG,
   PETSC_VIEWER_DRAW_LG_XRANGE,
@@ -154,7 +156,7 @@ typedef enum {
   } PetscViewerFormat;
 PETSC_EXTERN const char *const PetscViewerFormats[];
 
-PETSC_EXTERN PETSC_DEPRECATED("Use PetscViewerPushFormat()/PetscViewerPopFormat()") PetscErrorCode PetscViewerSetFormat(PetscViewer,PetscViewerFormat);
+PETSC_EXTERN PETSC_DEPRECATED_FUNCTION("Use PetscViewerPushFormat()/PetscViewerPopFormat()") PetscErrorCode PetscViewerSetFormat(PetscViewer,PetscViewerFormat);
 PETSC_EXTERN PetscErrorCode PetscViewerPushFormat(PetscViewer,PetscViewerFormat);
 PETSC_EXTERN PetscErrorCode PetscViewerPopFormat(PetscViewer);
 PETSC_EXTERN PetscErrorCode PetscViewerGetFormat(PetscViewer,PetscViewerFormat*);
@@ -164,7 +166,7 @@ PETSC_EXTERN PetscErrorCode PetscOptionsPushGetViewerOff(PetscBool);
 PETSC_EXTERN PetscErrorCode PetscOptionsPopGetViewerOff(void);
 PETSC_EXTERN PetscErrorCode PetscOptionsGetViewerOff(PetscBool*);
 PETSC_EXTERN PetscErrorCode PetscOptionsGetViewer(MPI_Comm,PetscOptions,const char[],const char[],PetscViewer*,PetscViewerFormat*,PetscBool*);
-#define PetscOptionsViewer(a,b,c,d,e,f) PetscOptionsViewer_Private(PetscOptionsObject,a,b,c,d,e,f);
+#define PetscOptionsViewer(a,b,c,d,e,f) PetscOptionsViewer_Private(PetscOptionsObject,a,b,c,d,e,f)
 PETSC_EXTERN PetscErrorCode PetscOptionsViewer_Private(PetscOptionItems*,const char[],const char[],const char[],PetscViewer*,PetscViewerFormat *,PetscBool *);
 
 typedef struct {PetscViewer viewer;PetscViewerFormat format;} PetscViewerAndFormat;
@@ -194,9 +196,13 @@ PETSC_EXTERN PetscErrorCode PetscViewerASCIIRead(PetscViewer,void *,PetscInt,Pet
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryGetDescriptor(PetscViewer,int*);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryGetInfoPointer(PetscViewer,FILE **);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryRead(PetscViewer,void*,PetscInt,PetscInt*,PetscDataType);
-PETSC_EXTERN PetscErrorCode PetscViewerBinaryWrite(PetscViewer,void*,PetscInt,PetscDataType,PetscBool );
+PETSC_EXTERN PetscErrorCode PetscViewerBinaryWrite(PetscViewer,const void*,PetscInt,PetscDataType);
+PETSC_EXTERN PetscErrorCode PetscViewerBinaryReadAll(PetscViewer,void*,PetscInt,PetscInt,PetscInt,PetscDataType);
+PETSC_EXTERN PetscErrorCode PetscViewerBinaryWriteAll(PetscViewer,const void*,PetscInt,PetscInt,PetscInt,PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscViewerStringSPrintf(PetscViewer,const char[],...);
-PETSC_EXTERN PetscErrorCode PetscViewerStringSetString(PetscViewer,char[],PetscInt);
+PETSC_EXTERN PetscErrorCode PetscViewerStringSetString(PetscViewer,char[],size_t);
+PETSC_EXTERN PetscErrorCode PetscViewerStringGetStringRead(PetscViewer,const char*[],size_t*);
+PETSC_EXTERN PetscErrorCode PetscViewerStringSetOwnString(PetscViewer);
 PETSC_EXTERN PetscErrorCode PetscViewerDrawClear(PetscViewer);
 PETSC_EXTERN PetscErrorCode PetscViewerDrawSetHold(PetscViewer,PetscBool);
 PETSC_EXTERN PetscErrorCode PetscViewerDrawGetHold(PetscViewer,PetscBool*);
@@ -240,8 +246,8 @@ PETSC_EXTERN PetscErrorCode PetscViewerSiloGetMeshName(PetscViewer, char **);
 PETSC_EXTERN PetscErrorCode PetscViewerSiloSetMeshName(PetscViewer, const char []);
 PETSC_EXTERN PetscErrorCode PetscViewerSiloClearMeshName(PetscViewer);
 
-typedef enum {PETSC_VTK_POINT_FIELD, PETSC_VTK_POINT_VECTOR_FIELD, PETSC_VTK_CELL_FIELD, PETSC_VTK_CELL_VECTOR_FIELD} PetscViewerVTKFieldType;
-PETSC_EXTERN PetscErrorCode PetscViewerVTKAddField(PetscViewer,PetscObject,PetscErrorCode (*PetscViewerVTKWriteFunction)(PetscObject,PetscViewer),PetscViewerVTKFieldType,PetscBool,PetscObject);
+typedef enum {PETSC_VTK_INVALID, PETSC_VTK_POINT_FIELD, PETSC_VTK_POINT_VECTOR_FIELD, PETSC_VTK_CELL_FIELD, PETSC_VTK_CELL_VECTOR_FIELD} PetscViewerVTKFieldType;
+PETSC_EXTERN PetscErrorCode PetscViewerVTKAddField(PetscViewer,PetscObject,PetscErrorCode (*PetscViewerVTKWriteFunction)(PetscObject,PetscViewer),PetscInt,PetscViewerVTKFieldType,PetscBool,PetscObject);
 PETSC_EXTERN PetscErrorCode PetscViewerVTKGetDM(PetscViewer,PetscObject*);
 PETSC_EXTERN PetscErrorCode PetscViewerVTKOpen(MPI_Comm,const char[],PetscFileMode,PetscViewer*);
 
@@ -258,6 +264,7 @@ PETSC_EXTERN PetscViewer    PETSC_VIEWER_BINARY_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_MATLAB_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_HDF5_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_GLVIS_(MPI_Comm);
+PETSC_EXTERN PetscViewer    PETSC_VIEWER_EXODUSII_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_MATHEMATICA_WORLD_PRIVATE;
 
 /*MC
@@ -367,8 +374,6 @@ PETSC_EXTERN PetscErrorCode PetscObjectViewSAWs(PetscObject,PetscViewer);
      PetscViewers - Abstract collection of PetscViewers. It is just an expandable array of viewers.
 
    Level: intermediate
-
-  Concepts: viewing
 
 .seealso:  PetscViewerCreate(), PetscViewerSetType(), PetscViewerType, PetscViewer, PetscViewersCreate(),
            PetscViewersGetViewer()

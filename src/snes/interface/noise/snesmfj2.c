@@ -164,8 +164,8 @@ PetscErrorCode SNESMatrixFreeMult2_Private(Mat mat,Vec a,Vec y)
    the Jacobian argument for the routine SNESSetJacobian().
 
    Input Parameters:
-.  snes - the SNES context
-.  x - vector where SNES solution is to be stored.
++  snes - the SNES context
+-  x - vector where SNES solution is to be stored.
 
    Output Parameter:
 .  J - the matrix-free matrix
@@ -202,8 +202,6 @@ $  -snes_mf_compute_err
 $  -snes_mf_freq_err <freq>
 $  -snes_mf_jorge
 
-.keywords: SNES, default, matrix-free, create, matrix
-
 .seealso: MatDestroy(), MatMFFDSetFunctionError()
 @*/
 PetscErrorCode  SNESDefaultMatrixFreeCreate2(SNES snes,Vec x,Mat *J)
@@ -217,7 +215,7 @@ PetscErrorCode  SNESDefaultMatrixFreeCreate2(SNES snes,Vec x,Mat *J)
 
   PetscFunctionBegin;
   ierr                    = PetscNewLog(snes,&mfctx);CHKERRQ(ierr);
-  mfctx->sp               = 0;
+  mfctx->sp               = NULL;
   mfctx->snes             = snes;
   mfctx->error_rel        = PETSC_SQRT_MACHINE_EPSILON;
   mfctx->umin             = 1.e-6;
@@ -242,7 +240,7 @@ PetscErrorCode  SNESDefaultMatrixFreeCreate2(SNES snes,Vec x,Mat *J)
   if (mfctx->compute_err) mfctx->need_err = PETSC_TRUE;
   if (mfctx->jorge || mfctx->compute_err) {
     ierr = SNESDiffParameterCreate_More(snes,x,&mfctx->data);CHKERRQ(ierr);
-  } else mfctx->data = 0;
+  } else mfctx->data = NULL;
 
   ierr = PetscOptionsHasHelp(((PetscObject)snes)->options,&flg);CHKERRQ(ierr);
   ierr = PetscStrncpy(p,"-",sizeof(p));CHKERRQ(ierr);
@@ -298,8 +296,6 @@ $
    Notes:
    If the user sets the parameter h directly, then this value will be used
    instead of the default computation indicated above.
-
-.keywords: SNES, matrix-free, parameters
 
 .seealso: MatCreateSNESMF()
 @*/

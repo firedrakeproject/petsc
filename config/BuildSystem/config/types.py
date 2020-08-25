@@ -15,7 +15,6 @@ class Configure(config.base.Configure):
 
   def setupHelp(self, help):
     import nargs
-    help.addArgument('Types', '-known-endian=<big or little>', nargs.Arg(None, None, 'Are bytes stored in big or little endian?'))
     help.addArgument('Visibility', '-with-visibility=<bool>', nargs.ArgBool(None, 1, 'Use compiler visibility flags to limit symbol visibility'))
     return
 
@@ -30,11 +29,9 @@ class Configure(config.base.Configure):
     self.log.write('Checking for type: '+typeName+'\n')
     include = '''
 #include <sys/types.h>
-#if STDC_HEADERS
 #include <stdlib.h>
 #include <stddef.h>
 %s
-#endif
     ''' % ('\n'.join(['#include<%s>' % inc for inc in includes]))
     found = self.checkCompile(include,typeName+' a;')
     if not found and defaultType:
@@ -43,10 +40,10 @@ class Configure(config.base.Configure):
       self.log.write(typeName+' found\n')
     return found
 
-  def check_siginfo_t(self):
-    '''Checks if siginfo_t exists in signal.h. This check is for windows, and C89 check.'''
-    if self.check('siginfo_t', includes = ['signal.h']):
-      self.addDefine('HAVE_SIGINFO_T',1)
+  def check_struct_sigaction(self):
+    '''Checks if "struct sigaction" exists in signal.h. This check is for C89 check.'''
+    if self.check('struct sigaction', includes = ['signal.h']):
+      self.addDefine('HAVE_STRUCT_SIGACTION',1)
     return
 
   def check__int64(self):
@@ -82,27 +79,6 @@ class Configure(config.base.Configure):
       self.addDefine('gid_t', 'int')
     return
 
-  def checkSignal(self):
-    '''Checks the return type of signal() and defines RETSIGTYPE to that type name'''
-    includes = '''
-#include <sys/types.h>
-#include <signal.h>
-#ifdef signal
-#undef signal
-#endif
-#ifdef __cplusplus
-extern "C" void (*signal (int, void(*)(int)))(int);
-#else
-void (*signal())();
-#endif
-    '''
-    if self.checkCompile(includes, ''):
-      returnType = 'void'
-    else:
-      returnType = 'int'
-    self.addDefine('RETSIGTYPE', returnType)
-    return
-
   def checkC99Complex(self):
     '''Check for complex numbers in in C99 std
        Note that since PETSc source code uses _Complex we test specifically for that, not complex'''
@@ -122,28 +98,6 @@ void (*signal())();
     if self.checkLink(includes, body):
       self.addDefine('HAVE_CXX_COMPLEX', 1)
       self.cxx_complex = 1
-    self.popLanguage()
-    return
-
-  def checkFortranStar(self):
-    '''Checks whether integer*4, etc. is handled in Fortran, and if not defines MISSING_FORTRANSTAR'''
-    self.pushLanguage('FC')
-    body = '        integer*4 i\n        real*8 d\n'
-    if not self.checkCompile('', body):
-      self.addDefine('MISSING_FORTRANSTAR', 1)
-    self.popLanguage()
-    return
-
-# reverse of the above - but more standard thing to do for F90 compilers
-  def checkFortranKind(self):
-    '''Checks whether selected_int_kind etc work USE_FORTRANKIND'''
-    self.pushLanguage('FC')
-    body = '''
-        integer(kind=selected_int_kind(10)) i
-        real(kind=selected_real_kind(10)) d
-'''
-    if self.checkCompile('', body):
-      self.addDefine('USE_FORTRANKIND', 1)
     self.popLanguage()
     return
 
@@ -203,70 +157,15 @@ void (*signal())();
       self.addDefine('const', '')
     return
 
-  def checkEndian(self):
-    '''If the machine is big endian, defines WORDS_BIGENDIAN'''
-    if 'known-endian' in self.argDB:
-      endian = self.argDB['known-endian']
-    else:
-      # See if sys/param.h defines the BYTE_ORDER macro
-      includes = '#include <sys/types.h>\n#ifdef HAVE_SYS_PARAM_H\n  #include <sys/param.h>\n#endif\n'
-      body     = '''
-#if !BYTE_ORDER || !BIG_ENDIAN || !LITTLE_ENDIAN
-  bogus endian macros
-#endif
-      '''
-      if self.checkCompile(includes, body):
-        # It does, so check whether it is defined to BIG_ENDIAN or not
-        body = '''
-#if BYTE_ORDER != BIG_ENDIAN
-  not big endian
-#endif
-        '''
-        if self.checkCompile(includes, body):
-          endian = 'big'
-        else:
-          endian = 'little'
-      else:
-        if not self.argDB['with-batch']:
-          body = '''
-          /* Are we little or big endian?  From Harbison&Steele. */
-          union
-          {
-            long l;
-            char c[sizeof(long)];
-          } u;
-          u.l = 1;
-          exit(u.c[sizeof(long) - 1] == 1);
-          '''
-          self.pushLanguage('C')
-          if self.checkRun('#include <stdlib.h>\n', body, defaultArg = 'isLittleEndian'):
-            endian = 'little'
-          else:
-            endian = 'big'
-          self.popLanguage()
-        else:
-          self.framework.addBatchBody(['{',
-                                       '  union {long l; char c[sizeof(long)];} u;',
-                                       '  u.l = 1;',
-                                       '  fprintf(output, " \'--known-endian=%s\',\\n", (u.c[sizeof(long) - 1] == 1) ? "big" : "little");',
-                                       '}'])
-          # Dummy value
-          endian = 'little'
-    if endian == 'big':
-      self.addDefine('WORDS_BIGENDIAN', 1)
-    return
-
-  def checkSizeof(self, typeName, otherInclude = None):
+  def checkSizeof(self, typeName, typeSizes, otherInclude = None, lang='C', save=True, codeBegin=''):
     '''Determines the size of type "typeName", and defines SIZEOF_"typeName" to be the size'''
-    self.log.write('Checking for size of type: '+typeName+'\n')
-    filename = 'conftestval'
+    self.log.write('Checking for size of type: ' + typeName + '\n')
+    typename = typeName.replace(' ', '-').replace('*', 'p')
     includes = '''
 #include <sys/types.h>
-#if STDC_HEADERS
 #include <stdlib.h>
 #include <stdio.h>
-#include <stddef.h>
-#endif\n'''
+#include <stddef.h>'''
     mpiFix = '''
 #define MPICH_IGNORE_CXX_SEEK
 #define MPICH_SKIP_MPICXX 1
@@ -274,84 +173,23 @@ void (*signal())();
     if otherInclude:
       if otherInclude == 'mpi.h':
         includes += mpiFix
-      includes += '#include <'+otherInclude+'>\n'
-    body     = 'FILE *f = fopen("'+filename+'", "w");\n\nif (!f) exit(1);\nfprintf(f, "%lu\\n", (unsigned long)sizeof('+typeName+'));\n'
-    typename = typeName.replace(' ', '-').replace('*', 'p')
-    if not 'known-sizeof-'+typename in self.argDB:
-      if not self.argDB['with-batch']:
-        self.pushLanguage('C')
-        if self.checkRun(includes, body) and os.path.exists(filename):
-          f    = open(filename)
-          size = int(f.read())
-          f.close()
-          os.remove(filename)
-        elif not typename == 'long-long':
-          msg = 'Cannot run executable to determine size of '+typeName+'. If this machine uses a batch system \nto submit jobs you will need to configure using ./configure with the additional option  --with-batch.\n Otherwise there is problem with the compilers. Can you compile and run code with your C/C++ (and maybe Fortran) compilers?\n'
-          raise RuntimeError(msg)
-        else:
-          self.log.write('Compiler does not support long long\n')
-          size = 0
-        self.popLanguage()
-      else:
-        self.framework.addBatchInclude(['#include <stdlib.h>', '#include <stdio.h>', '#include <sys/types.h>'])
-        if otherInclude:
-          if otherInclude == 'mpi.h':
-            self.framework.addBatchInclude(mpiFix)
-          self.framework.addBatchInclude('#include <'+otherInclude+'>')
-        self.framework.addBatchBody('fprintf(output, "  \'--known-sizeof-'+typename+'=%d\',\\n", (int)sizeof('+typeName+'));')
-        # dummy value
-        size = 4
-    else:
-      size = self.argDB['known-sizeof-'+typename]
-    self.sizes['known-sizeof-'+typename] = int(size)
-    self.addDefine('SIZEOF_'+typeName.replace(' ', '_').replace('*', 'p').upper(), size)
+      includes += '#include <' + otherInclude + '>\n'
+    size = None
+    checkName = typeName
+    if typeName == 'enum':
+      checkName = 'enum{ENUM_DUMMY}'
+    with self.Language(lang):
+      for s in typeSizes:
+        body = 'char assert_sizeof[(sizeof({0})=={1})*2-1];'.format(checkName, s)
+        if self.checkCompile(includes, body, codeBegin=codeBegin, codeEnd='\n'):
+          size = s
+          break
+    if size is None:
+      raise RuntimeError('Unable to determine size of {0} not found'.format(typeName))
+    if save:
+      self.sizes[typename] = size
+      self.addDefine('SIZEOF_'+typename.replace('-', '_').upper(), str(size))
     return size
-
-  def checkBitsPerByte(self):
-    '''Determine the nubmer of bits per byte and define BITS_PER_BYTE'''
-    filename = 'conftestval'
-    includes = '''
-#if STDC_HEADERS
-#include <stdlib.h>
-#include <stdio.h>
-#endif\n'''
-    body     = 'FILE *f = fopen("'+filename+'", "w");\n'+'''
-    char val[2];
-    int i = 0;
-
-    if (!f) exit(1);
-    val[0]=\'\\1\';
-    val[1]=\'\\0\';
-    while(val[0]) {val[0] <<= 1; i++;}
-    fprintf(f, "%d\\n", i);\n
-    '''
-    if 'known-bits-per-byte' in self.argDB:
-      bits = self.argDB['known-bits-per-byte']
-    elif not self.argDB['with-batch']:
-      if self.checkRun(includes, body) and os.path.exists(filename):
-        f    = open(filename)
-        bits = int(f.read())
-        f.close()
-        os.remove(filename)
-      else:
-         msg = 'Cannot run executable to determine bits per bit. If this machine uses a batch system \nto submit jobs you will need to configure using ./configure with the additional option  --with-batch.\n Otherwise there is problem with the compilers. Can you compile and run code with your C/C++ (and maybe Fortran) compilers?\n'
-         raise RuntimeError(msg)
-    else:
-      self.framework.addBatchBody(['{',
-                                   '  int i = 0;',
-                                   '  char val[2];',
-                                   '  val[0]=\'\\1\';',
-                                   '  val[1]=\'\\0\';',
-                                   '  while(val[0]) {val[0] <<= 1; i++;}',
-                                   '  fprintf(output, "  \'--known-bits-per-byte=%d\',\\n", i);',
-                                   '}'])
-      # dummy value
-      bits = 8
-
-    self.bits_per_byte = int(bits)
-    self.addDefine('BITS_PER_BYTE', bits)
-    return
-
 
   def checkVisibility(self):
     if not self.argDB['with-shared-libraries']:
@@ -375,26 +213,60 @@ void (*signal())();
     else:
       self.log.write('User turned off visibility attributes')
 
+  def checkMaxPathLen(self):
+    import re
+    HASHLINESPACE = ' *(?:\n#.*\n *)*'
+    self.log.write('Determining PETSC_MAX_PATH_LEN\n')
+    include = ''
+    if self.headers.haveHeader('sys/param.h'):
+      include = (include + '\n#include <sys/param.h>')
+    if self.headers.haveHeader('sys/types.h'):
+      include = (include + '\n#include <sys/types.h>')
+    length = include + '''
+#if defined(MAXPATHLEN)
+#  define PETSC_MAX_PATH_LEN MAXPATHLEN
+#elif defined(MAX_PATH)
+#  define PETSC_MAX_PATH_LEN MAX_PATH
+#elif defined(_MAX_PATH)
+#  define PETSC_MAX_PATH_LEN _MAX_PATH
+#else
+#  define PETSC_MAX_PATH_LEN 4096
+#endif
+int petsc_max_path_len = PETSC_MAX_PATH_LEN;
+'''
+    MaxPathLength = 'unknown'
+    if self.checkCompile(length):
+      buf = self.outputPreprocess(length)
+      try:
+        MaxPathLength = re.compile('\nint petsc_max_path_len ='+HASHLINESPACE+'([0-9]+)'+HASHLINESPACE+';').search(buf).group(1)
+      except:
+        raise RuntimeError('Unable to determine PETSC_MAX_PATH_LEN')
+    if MaxPathLength == 'unknown' or not MaxPathLength.isdigit():
+      raise RuntimeError('Unable to determine PETSC_MAX_PATH_LEN')
+    else:
+      self.addDefine('MAX_PATH_LEN',MaxPathLength)
+
 
   def configure(self):
-    self.executeTest(self.check_siginfo_t)
+    self.executeTest(self.check_struct_sigaction)
     self.executeTest(self.check__int64)
     self.executeTest(self.checkSizeTypes)
     self.executeTest(self.checkFileTypes)
     self.executeTest(self.checkIntegerTypes)
     self.executeTest(self.checkPID)
     self.executeTest(self.checkUID)
-    self.executeTest(self.checkSignal)
     self.executeTest(self.checkC99Complex)
     if hasattr(self.compilers, 'CXX'):
       self.executeTest(self.checkCxxComplex)
-    if hasattr(self.compilers, 'FC'):
-      #self.executeTest(self.checkFortranStar)
-      self.executeTest(self.checkFortranKind)
     self.executeTest(self.checkConst)
-    self.executeTest(self.checkEndian)
-    for t in ['char','void *', 'short', 'int', 'long', 'long long', 'float', 'double', 'size_t']:
-      self.executeTest(self.checkSizeof, t)
-    self.executeTest(self.checkBitsPerByte)
+    for t, sizes in {'void *': (8, 4),
+                     'short': (2, 4, 8),
+                     'int': (4, 8, 2),
+                     'long': (8, 4),
+                     'long long': (8,),
+                     'enum': (4, 8),
+                     'size_t': (8, 4)}.items():
+      self.executeTest(self.checkSizeof, args=[t, sizes])
     self.executeTest(self.checkVisibility)
+    self.executeTest(self.checkMaxPathLen)
     return

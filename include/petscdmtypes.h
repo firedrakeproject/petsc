@@ -1,12 +1,10 @@
-#if !defined(_PETSCDMTYPES_H)
-#define _PETSCDMTYPES_H
+#if !defined(PETSCDMTYPES_H)
+#define PETSCDMTYPES_H
 
 /*S
      DM - Abstract PETSc object that manages an abstract grid object and its interactions with the algebraic solvers
 
    Level: intermediate
-
-  Concepts: grids, grid refinement
 
    Notes:
     The DMDACreate() based object and the DMCompositeCreate() based object are examples of DMs
@@ -22,7 +20,7 @@ typedef struct _p_DM* DM;
 
   A boundary may be of type DM_BOUNDARY_NONE (no ghost nodes), DM_BOUNDARY_GHOSTED (ghost vertices/cells
   exist but aren't filled; you can put values into them and then apply a stencil that uses those ghost locations),
-  DM_BOUNDARY_MIRROR (the ghost value is the same as the value 1 grid point in; that is, the 0th grid point in the real mesh acts like a mirror to define the ghost point value; 
+  DM_BOUNDARY_MIRROR (the ghost value is the same as the value 1 grid point in; that is, the 0th grid point in the real mesh acts like a mirror to define the ghost point value;
   not yet implemented for 3d), DM_BOUNDARY_PERIODIC (ghost vertices/cells filled by the opposite
   edge of the domain), or DM_BOUNDARY_TWIST (like periodic, only glued backwards like a Mobius strip).
 
@@ -36,8 +34,8 @@ typedef struct _p_DM* DM;
     Should DM_BOUNDARY_MIRROR have the same meaning with DMDA_Q0, that is a staggered grid? In that case should the ghost point have the same value
   as the 0th grid point where the physical boundary serves as the mirror?
 
-  References: 
-  http://scicomp.stackexchange.com/questions/5355/writing-the-poisson-equation-finite-difference-matrix-with-neumann-boundary-cond
+  References:
+  https://scicomp.stackexchange.com/questions/5355/writing-the-poisson-equation-finite-difference-matrix-with-neumann-boundary-cond
 
 .seealso: DMDASetBoundaryType(), DMDACreate1d(), DMDACreate2d(), DMDACreate3d(), DMDACreate()
 E*/
@@ -111,16 +109,44 @@ typedef enum {DM_ADAPTATION_NONE, DM_ADAPTATION_REFINE, DM_ADAPTATION_LABEL, DM_
 E*/
 typedef enum {DM_ADAPT_DETERMINE = PETSC_DETERMINE, DM_ADAPT_KEEP = 0, DM_ADAPT_REFINE, DM_ADAPT_COARSEN, DM_ADAPT_COARSEN_LAST, DM_ADAPT_RESERVED_COUNT} DMAdaptFlag;
 
-/*S
-  PetscPartitioner - PETSc object that manages a graph partitioner
+/*E
+  DMDirection - Indicates a coordinate direction
 
-  Level: intermediate
+  Level: beginner
 
-  Concepts: partition, mesh
+.seealso: DMDAGetRay(), DMDAGetProcessorSubset(), DMPlexShearGeometry()
+E*/
+typedef enum {DM_X, DM_Y, DM_Z} DMDirection;
 
-.seealso: PetscPartitionerCreate(), PetscPartitionerSetType(), PetscPartitionerType
-S*/
-typedef struct _p_PetscPartitioner *PetscPartitioner;
+/*E
+DMEnclosureType - The type of enclosure relation between one DM and another
+
+Level: beginner
+
+For example, one DM dmA may be the boundary of another dmB, in which case it would be labeled DM_ENC_SUBMESH. If
+the situation is reversed, and dmA has boundary dmB, it would be labeled DM_ENC_SUPERMESH. Likewise, if dmA was
+a subregion of dmB, it would be labeled DM_ENC_SUBMESH. If no relation can be determined, DM_ENC_NONE is used.
+If a relation is not yet known, then DM_ENC_UNKNOWN is used.
+
+.seealso: DMGetEnclosureRelation()
+E*/
+typedef enum {DM_ENC_EQUALITY, DM_ENC_SUPERMESH, DM_ENC_SUBMESH, DM_ENC_NONE, DM_ENC_UNKNOWN} DMEnclosureType;
+
+/*E
+  DMPolytopeType - This describes the polytope represented by each cell.
+
+  Level: beginner
+
+  While most operations only need the topology information in the Plex, we must sometimes have the
+  user specify a polytope. For instance, when interpolating from a cell-vertex mesh, the type of
+  polytope can be ambiguous. Also, Plex allows different symmetries of prism cell with the same
+  constituent points. Normally these types are autoamtically inferred and the user does not specify
+  them.
+
+.seealso: DMPlexComputeCellTypes()
+E*/
+typedef enum {DM_POLYTOPE_POINT, DM_POLYTOPE_SEGMENT, DM_POLYTOPE_POINT_PRISM_TENSOR, DM_POLYTOPE_TRIANGLE, DM_POLYTOPE_QUADRILATERAL, DM_POLYTOPE_SEG_PRISM_TENSOR, DM_POLYTOPE_TETRAHEDRON, DM_POLYTOPE_HEXAHEDRON, DM_POLYTOPE_TRI_PRISM, DM_POLYTOPE_TRI_PRISM_TENSOR, DM_POLYTOPE_QUAD_PRISM_TENSOR, DM_POLYTOPE_FV_GHOST, DM_POLYTOPE_INTERIOR_GHOST, DM_POLYTOPE_UNKNOWN, DM_NUM_POLYTOPES} DMPolytopeType;
+PETSC_EXTERN const char *const DMPolytopeTypes[];
 
 /*E
   PetscUnit - The seven fundamental SI units

@@ -9,7 +9,6 @@ static PetscBool AOPackageInitialized = PETSC_FALSE;
 
   Level: developer
 
-.keywords: AO, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  AOFinalizePackage(void)
@@ -30,7 +29,6 @@ PetscErrorCode  AOFinalizePackage(void)
 
   Level: developer
 
-.keywords: AO, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  AOInitializePackage(void)
@@ -49,11 +47,12 @@ PetscErrorCode  AOInitializePackage(void)
   /* Register Events */
   ierr = PetscLogEventRegister("AOPetscToApplication", AO_CLASSID,&AO_PetscToApplication);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("AOApplicationToPetsc", AO_CLASSID,&AO_ApplicationToPetsc);CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("ao",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(AO_CLASSID);CHKERRQ(ierr);}
+  /* Process Info */
+  {
+    PetscClassId  classids[1];
+
+    classids[0] = AO_CLASSID;
+    ierr = PetscInfoProcessClass("ao", 1, classids);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);

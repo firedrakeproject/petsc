@@ -3,11 +3,12 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.download          = ['https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.0.1.tar.gz',
-                              'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/mpi4py-3.0.1.tar.gz']
+    self.download          = ['https://bitbucket.org/mpi4py/mpi4py/downloads/mpi4py-3.0.3.tar.gz',
+                              'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/mpi4py-3.0.3.tar.gz']
     self.functions         = []
     self.includes          = []
     self.useddirectly      = 0
+    self.builtafterpetsc   = 1
     return
 
   def setupDependencies(self, framework):
@@ -29,7 +30,7 @@ class Configure(config.package.Package):
     self.logResetRemoveDirectory()
     archflags = ""
     if self.setCompilers.isDarwin(self.log):
-      if self.types.sizes['known-sizeof-void-p'] == 4:
+      if self.types.sizes['void-p'] == 4:
         archflags = "ARCHFLAGS=\'-arch i386\' "
       else:
         archflags = "ARCHFLAGS=\'-arch x86_64\' "
@@ -54,7 +55,7 @@ class Configure(config.package.Package):
                           '@echo "====================================="',\
                           '@echo "To use mpi4py, add '+os.path.join(self.installdir.dir,'lib')+' to PYTHONPATH"',\
                           '@echo "====================================="'])
-    if self.framework.argDB['prefix']:
+    if self.framework.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
       self.addMakeRule('mpi4py-build','mpi4pybuild')
       self.addMakeRule('mpi4py-install','mpi4pyinstall')
     else:

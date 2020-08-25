@@ -45,7 +45,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
   /* Test the initial point for convergence */
   ierr = VecFischer(tao->solution, bnk->unprojected_gradient, tao->XL, tao->XU, bnk->W);CHKERRQ(ierr);
   ierr = VecNorm(bnk->W, NORM_2, &resnorm);CHKERRQ(ierr);
-  if (PetscIsInfOrNanReal(bnk->f) || PetscIsInfOrNanReal(resnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+  if (PetscIsInfOrNanReal(bnk->f) || PetscIsInfOrNanReal(resnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
   ierr = TaoLogConvergenceHistory(tao,bnk->f,resnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
   ierr = TaoMonitor(tao,tao->niter,bnk->f,resnorm,0.0,1.0);CHKERRQ(ierr);
   ierr = (*tao->ops->convergencetest)(tao,tao->cnvP);CHKERRQ(ierr);
@@ -135,7 +135,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
           ierr = VecAXPY(bnk->W, -1.0, bnk->Xold);CHKERRQ(ierr);
           /* Compute the objective at the trial */
           ierr = TaoComputeObjective(tao, tao->solution, &ftrial);CHKERRQ(ierr);
-          if (PetscIsInfOrNanReal(bnk->f)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+          if (PetscIsInfOrNanReal(bnk->f)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
           ierr = VecCopy(bnk->Xold, tao->solution);CHKERRQ(ierr);
           if (PetscIsInfOrNanReal(ftrial)) {
             tau = bnk->gamma1_i;
@@ -172,7 +172,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
             tau_min = PetscMin(tau_1, tau_2);
             tau_max = PetscMax(tau_1, tau_2);
 
-            if (PetscAbsScalar(kappa - 1.0) <= bnk->mu1_i) {
+            if (PetscAbsScalar(kappa - (PetscReal)1.0) <= bnk->mu1_i) {
               /*  Great agreement */
               max_radius = PetscMax(max_radius, tao->trust);
 
@@ -183,7 +183,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
               } else {
                 tau = tau_max;
               }
-            } else if (PetscAbsScalar(kappa - 1.0) <= bnk->mu2_i) {
+            } else if (PetscAbsScalar(kappa - (PetscReal)1.0) <= bnk->mu2_i) {
               /*  Good agreement */
               max_radius = PetscMax(max_radius, tao->trust);
 
@@ -232,7 +232,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
           /* Test the new step for convergence */
           ierr = VecFischer(tao->solution, bnk->unprojected_gradient, tao->XL, tao->XU, bnk->W);CHKERRQ(ierr);
           ierr = VecNorm(bnk->W, NORM_2, &resnorm);CHKERRQ(ierr);
-          if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PETSC_COMM_SELF,1, "User provided compute function generated Inf or NaN");
+          if (PetscIsInfOrNanReal(resnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
           ierr = TaoLogConvergenceHistory(tao,bnk->f,resnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
           ierr = TaoMonitor(tao,tao->niter,bnk->f,resnorm,0.0,1.0);CHKERRQ(ierr);
           ierr = (*tao->ops->convergencetest)(tao,tao->cnvP);CHKERRQ(ierr);
@@ -343,7 +343,7 @@ PetscErrorCode TaoBNKEstimateActiveSet(Tao tao, PetscInt asType)
         ierr = MatGetDiagonal(tao->hessian, bnk->Xwork);CHKERRQ(ierr);
         ierr = VecAbs(bnk->Xwork);CHKERRQ(ierr);
         ierr = VecMedian(bnk->Diag_min, bnk->Xwork, bnk->Diag_max, bnk->Xwork);CHKERRQ(ierr);
-        ierr = VecReciprocal(bnk->Xwork);CHKERRQ(ierr);CHKERRQ(ierr);
+        ierr = VecReciprocal(bnk->Xwork);CHKERRQ(ierr);
         ierr = VecPointwiseMult(bnk->W, bnk->Xwork, bnk->unprojected_gradient);CHKERRQ(ierr);
       } else {
         /* If the Hessian or its diagonal does not exist, we will simply use gradient step */
@@ -503,7 +503,7 @@ PetscErrorCode TaoBNKComputeStep(Tao tao, PetscBool shift, KSPConvergedReason *k
         tao->ksp_tot_its+=kspits;
         ierr = KSPCGGetNormD(tao->ksp,&bnk->dnorm);CHKERRQ(ierr);
 
-        if (bnk->dnorm == 0.0) SETERRQ(PETSC_COMM_SELF,1, "Initial direction zero");
+        if (bnk->dnorm == 0.0) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_PLIB, "Initial direction zero");
       }
     }
   } else {
@@ -612,7 +612,7 @@ PetscErrorCode TaoBNKSafeguardStep(Tao tao, KSPConvergedReason ksp_reason, Petsc
         /* Initialize the perturbation */
         bnk->pert = PetscMin(bnk->imax, PetscMax(bnk->imin, bnk->imfac * bnk->gnorm));
         if (bnk->is_gltr) {
-          ierr = KSPCGGLTRGetMinEig(tao->ksp,&e_min);CHKERRQ(ierr);
+          ierr = KSPGLTRGetMinEig(tao->ksp,&e_min);CHKERRQ(ierr);
           bnk->pert = PetscMax(bnk->pert, -e_min);
         }
       } else {
@@ -671,7 +671,7 @@ PetscErrorCode TaoBNKSafeguardStep(Tao tao, KSPConvergedReason ksp_reason, Petsc
           /* Initialize the perturbation */
           bnk->pert = PetscMin(bnk->imax, PetscMax(bnk->imin, bnk->imfac * bnk->gnorm));
           if (bnk->is_gltr) {
-            ierr = KSPCGGLTRGetMinEig(tao->ksp, &e_min);CHKERRQ(ierr);
+            ierr = KSPGLTRGetMinEig(tao->ksp, &e_min);CHKERRQ(ierr);
             bnk->pert = PetscMax(bnk->pert, -e_min);
           }
         } else {
@@ -755,7 +755,7 @@ PetscErrorCode TaoBNKPerformLineSearch(Tao tao, PetscInt *stepType, PetscReal *s
         /* Initialize the perturbation */
         bnk->pert = PetscMin(bnk->imax, PetscMax(bnk->imin, bnk->imfac * bnk->gnorm));
         if (bnk->is_gltr) {
-          ierr = KSPCGGLTRGetMinEig(tao->ksp,&e_min);CHKERRQ(ierr);
+          ierr = KSPGLTRGetMinEig(tao->ksp,&e_min);CHKERRQ(ierr);
           bnk->pert = PetscMax(bnk->pert, -e_min);
         }
       } else {
@@ -1096,18 +1096,18 @@ PetscErrorCode TaoSetUp_BNK(Tao tao)
       ierr = PetscObjectReference((PetscObject)(tao->monitorcontext[i]));CHKERRQ(ierr);
     }
   }
-  bnk->X_inactive = 0;
-  bnk->G_inactive = 0;
-  bnk->inactive_work = 0;
-  bnk->active_work = 0;
-  bnk->inactive_idx = 0;
-  bnk->active_idx = 0;
-  bnk->active_lower = 0;
-  bnk->active_upper = 0;
-  bnk->active_fixed = 0;
-  bnk->M = 0;
-  bnk->H_inactive = 0;
-  bnk->Hpre_inactive = 0;
+  bnk->X_inactive = NULL;
+  bnk->G_inactive = NULL;
+  bnk->inactive_work = NULL;
+  bnk->active_work = NULL;
+  bnk->inactive_idx = NULL;
+  bnk->active_idx = NULL;
+  bnk->active_lower = NULL;
+  bnk->active_upper = NULL;
+  bnk->active_fixed = NULL;
+  bnk->M = NULL;
+  bnk->H_inactive = NULL;
+  bnk->Hpre_inactive = NULL;
   PetscFunctionReturn(0);
 }
 
@@ -1152,9 +1152,9 @@ PetscErrorCode TaoSetFromOptions_BNK(PetscOptionItems *PetscOptionsObject,Tao ta
 
   PetscFunctionBegin;
   ierr = PetscOptionsHead(PetscOptionsObject,"Newton-Krylov method for bound constrained optimization");CHKERRQ(ierr);
-  ierr = PetscOptionsEList("-tao_bnk_init_type", "radius initialization type", "", BNK_INIT, BNK_INIT_TYPES, BNK_INIT[bnk->init_type], &bnk->init_type, 0);CHKERRQ(ierr);
-  ierr = PetscOptionsEList("-tao_bnk_update_type", "radius update type", "", BNK_UPDATE, BNK_UPDATE_TYPES, BNK_UPDATE[bnk->update_type], &bnk->update_type, 0);CHKERRQ(ierr);
-  ierr = PetscOptionsEList("-tao_bnk_as_type", "active set estimation method", "", BNK_AS, BNK_AS_TYPES, BNK_AS[bnk->as_type], &bnk->as_type, 0);CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-tao_bnk_init_type", "radius initialization type", "", BNK_INIT, BNK_INIT_TYPES, BNK_INIT[bnk->init_type], &bnk->init_type, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-tao_bnk_update_type", "radius update type", "", BNK_UPDATE, BNK_UPDATE_TYPES, BNK_UPDATE[bnk->update_type], &bnk->update_type, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-tao_bnk_as_type", "active set estimation method", "", BNK_AS, BNK_AS_TYPES, BNK_AS[bnk->as_type], &bnk->as_type, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bnk_sval", "(developer) Hessian perturbation starting value", "", bnk->sval, &bnk->sval,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bnk_imin", "(developer) minimum initial Hessian perturbation", "", bnk->imin, &bnk->imin,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bnk_imax", "(developer) maximum initial Hessian perturbation", "", bnk->imax, &bnk->imax,NULL);CHKERRQ(ierr);
@@ -1208,9 +1208,9 @@ PetscErrorCode TaoSetFromOptions_BNK(PetscOptionItems *PetscOptionsObject,Tao ta
   ierr = TaoLineSearchSetFromOptions(tao->linesearch);CHKERRQ(ierr);
   ierr = KSPSetFromOptions(tao->ksp);CHKERRQ(ierr);
   ierr = KSPGetType(tao->ksp,&ksp_type);CHKERRQ(ierr);
-  ierr = PetscStrcmp(ksp_type,KSPCGNASH,&bnk->is_nash);CHKERRQ(ierr);
-  ierr = PetscStrcmp(ksp_type,KSPCGSTCG,&bnk->is_stcg);CHKERRQ(ierr);
-  ierr = PetscStrcmp(ksp_type,KSPCGGLTR,&bnk->is_gltr);CHKERRQ(ierr);
+  ierr = PetscStrcmp(ksp_type,KSPNASH,&bnk->is_nash);CHKERRQ(ierr);
+  ierr = PetscStrcmp(ksp_type,KSPSTCG,&bnk->is_stcg);CHKERRQ(ierr);
+  ierr = PetscStrcmp(ksp_type,KSPGLTR,&bnk->is_gltr);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1407,13 +1407,13 @@ PetscErrorCode TaoCreate_BNK(Tao tao)
   bnk->as_step = 1.0e-3;
   bnk->dmin = 1.0e-6;
   bnk->dmax = 1.0e6;
-  
-  bnk->M               = 0;
-  bnk->bfgs_pre        = 0;
+
+  bnk->M               = NULL;
+  bnk->bfgs_pre        = NULL;
   bnk->init_type       = BNK_INIT_INTERPOLATION;
   bnk->update_type     = BNK_UPDATE_REDUCTION;
   bnk->as_type         = BNK_AS_BERTSEKAS;
-  
+
   /* Create the embedded BNCG solver */
   ierr = TaoCreate(PetscObjectComm((PetscObject)tao), &bnk->bncg);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)bnk->bncg, (PetscObject)tao, 1);CHKERRQ(ierr);
@@ -1431,7 +1431,7 @@ PetscErrorCode TaoCreate_BNK(Tao tao)
   ierr = KSPCreate(((PetscObject)tao)->comm,&tao->ksp);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)tao->ksp, (PetscObject)tao, 1);CHKERRQ(ierr);
   ierr = KSPSetOptionsPrefix(tao->ksp,"tao_bnk_");CHKERRQ(ierr);
-  ierr = KSPSetType(tao->ksp,KSPCGSTCG);CHKERRQ(ierr);
+  ierr = KSPSetType(tao->ksp,KSPSTCG);CHKERRQ(ierr);
   ierr = KSPGetPC(tao->ksp, &pc);CHKERRQ(ierr);
   ierr = PCSetType(pc, PCLMVM);CHKERRQ(ierr);
   PetscFunctionReturn(0);

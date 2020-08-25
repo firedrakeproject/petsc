@@ -49,7 +49,6 @@ PetscBool         PetscDSRegisterAllCalled = PETSC_FALSE;
 
    Not available from Fortran
 
-.keywords: PetscDS, register
 .seealso: PetscDSRegisterAll(), PetscDSRegisterDestroy()
 
 @*/
@@ -65,7 +64,7 @@ PetscErrorCode PetscDSRegister(const char sname[], PetscErrorCode (*function)(Pe
 /*@C
   PetscDSSetType - Builds a particular PetscDS
 
-  Collective on PetscDS
+  Collective on prob
 
   Input Parameters:
 + prob - The PetscDS object
@@ -78,7 +77,6 @@ PetscErrorCode PetscDSRegister(const char sname[], PetscErrorCode (*function)(Pe
 
    Not available from Fortran
 
-.keywords: PetscDS, set, type
 .seealso: PetscDSGetType(), PetscDSCreate()
 @*/
 PetscErrorCode PetscDSSetType(PetscDS prob, PetscDSType name)
@@ -120,7 +118,6 @@ PetscErrorCode PetscDSSetType(PetscDS prob, PetscDSType name)
 
    Not available from Fortran
 
-.keywords: PetscDS, get, type, name
 .seealso: PetscDSSetType(), PetscDSCreate()
 @*/
 PetscErrorCode PetscDSGetType(PetscDS prob, PetscDSType *name)
@@ -227,9 +224,32 @@ static PetscErrorCode PetscDSView_Ascii(PetscDS prob, PetscViewer viewer)
 }
 
 /*@C
+   PetscDSViewFromOptions - View from Options
+
+   Collective on PetscDS
+
+   Input Parameters:
++  A - the PetscDS object
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  PetscDS, PetscDSView, PetscObjectViewFromOptions(), PetscDSCreate()
+@*/
+PetscErrorCode  PetscDSViewFromOptions(PetscDS A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,PETSCDS_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
   PetscDSView - Views a PetscDS
 
-  Collective on PetscDS
+  Collective on prob
 
   Input Parameter:
 + prob - the PetscDS object to view
@@ -257,7 +277,7 @@ PetscErrorCode PetscDSView(PetscDS prob, PetscViewer v)
 /*@
   PetscDSSetFromOptions - sets parameters in a PetscDS from the options database
 
-  Collective on PetscDS
+  Collective on prob
 
   Input Parameter:
 . prob - the PetscDS object to set options for
@@ -303,7 +323,7 @@ PetscErrorCode PetscDSSetFromOptions(PetscDS prob)
       b->numids = len;
       ierr = PetscFree(b->ids);CHKERRQ(ierr);
       ierr = PetscMalloc1(len, &b->ids);CHKERRQ(ierr);
-      ierr = PetscMemcpy(b->ids, ids, len*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr = PetscArraycpy(b->ids, ids, len);CHKERRQ(ierr);
     }
     len = 1024;
     ierr = PetscSNPrintf(optname, sizeof(optname), "-bc_%s_comp", b->name);CHKERRQ(ierr);
@@ -313,7 +333,7 @@ PetscErrorCode PetscDSSetFromOptions(PetscDS prob)
       b->numcomps = len;
       ierr = PetscFree(b->comps);CHKERRQ(ierr);
       ierr = PetscMalloc1(len, &b->comps);CHKERRQ(ierr);
-      ierr = PetscMemcpy(b->comps, ids, len*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr = PetscArraycpy(b->comps, ids, len);CHKERRQ(ierr);
     }
   }
   ierr = PetscOptionsFList("-petscds_type", "Discrete System", "PetscDSSetType", PetscDSList, defaultType, name, 256, &flg);CHKERRQ(ierr);
@@ -334,7 +354,7 @@ PetscErrorCode PetscDSSetFromOptions(PetscDS prob)
 /*@C
   PetscDSSetUp - Construct data structures for the PetscDS
 
-  Collective on PetscDS
+  Collective on prob
 
   Input Parameter:
 . prob - the PetscDS object to setup
@@ -346,7 +366,7 @@ PetscErrorCode PetscDSSetFromOptions(PetscDS prob)
 PetscErrorCode PetscDSSetUp(PetscDS prob)
 {
   const PetscInt Nf = prob->Nf;
-  PetscInt       dim, dimEmbed, work, NcMax = 0, NqMax = 0, NsMax = 1, f;
+  PetscInt       dim, dimEmbed, NbMax = 0, NcMax = 0, NqMax = 0, NsMax = 1, f;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -358,51 +378,58 @@ PetscErrorCode PetscDSSetUp(PetscDS prob)
   prob->totDim = prob->totComp = 0;
   ierr = PetscMalloc2(Nf,&prob->Nc,Nf,&prob->Nb);CHKERRQ(ierr);
   ierr = PetscCalloc2(Nf+1,&prob->off,Nf+1,&prob->offDer);CHKERRQ(ierr);
-  ierr = PetscMalloc4(Nf,&prob->basis,Nf,&prob->basisDer,Nf,&prob->basisFace,Nf,&prob->basisDerFace);CHKERRQ(ierr);
+  ierr = PetscMalloc2(Nf,&prob->T,Nf,&prob->Tf);CHKERRQ(ierr);
   for (f = 0; f < Nf; ++f) {
     PetscObject     obj;
     PetscClassId    id;
-    PetscQuadrature q;
+    PetscQuadrature q = NULL;
     PetscInt        Nq = 0, Nb, Nc;
 
     ierr = PetscDSGetDiscretization(prob, f, &obj);CHKERRQ(ierr);
-    ierr = PetscObjectGetClassId(obj, &id);CHKERRQ(ierr);
-    if (id == PETSCFE_CLASSID)      {
-      PetscFE fe = (PetscFE) obj;
+    if (!obj) {
+      /* Empty mesh */
+      Nb = Nc = 0;
+      prob->T[f] = prob->Tf[f] = NULL;
+    } else {
+      ierr = PetscObjectGetClassId(obj, &id);CHKERRQ(ierr);
+      if (id == PETSCFE_CLASSID)      {
+        PetscFE fe = (PetscFE) obj;
 
-      ierr = PetscFEGetQuadrature(fe, &q);CHKERRQ(ierr);
-      ierr = PetscFEGetDimension(fe, &Nb);CHKERRQ(ierr);
-      ierr = PetscFEGetNumComponents(fe, &Nc);CHKERRQ(ierr);
-      ierr = PetscFEGetDefaultTabulation(fe, &prob->basis[f], &prob->basisDer[f], NULL);CHKERRQ(ierr);
-      ierr = PetscFEGetFaceTabulation(fe, &prob->basisFace[f], &prob->basisDerFace[f], NULL);CHKERRQ(ierr);
-    } else if (id == PETSCFV_CLASSID) {
-      PetscFV fv = (PetscFV) obj;
+        ierr = PetscFEGetQuadrature(fe, &q);CHKERRQ(ierr);
+        ierr = PetscFEGetDimension(fe, &Nb);CHKERRQ(ierr);
+        ierr = PetscFEGetNumComponents(fe, &Nc);CHKERRQ(ierr);
+        ierr = PetscFEGetCellTabulation(fe, &prob->T[f]);CHKERRQ(ierr);
+        ierr = PetscFEGetFaceTabulation(fe, &prob->Tf[f]);CHKERRQ(ierr);
+      } else if (id == PETSCFV_CLASSID) {
+        PetscFV fv = (PetscFV) obj;
 
-      ierr = PetscFVGetQuadrature(fv, &q);CHKERRQ(ierr);
-      ierr = PetscFVGetNumComponents(fv, &Nc);CHKERRQ(ierr);
-      Nb   = Nc;
-      ierr = PetscFVGetDefaultTabulation(fv, &prob->basis[f], &prob->basisDer[f], NULL);CHKERRQ(ierr);
-      /* TODO: should PetscFV also have face tabulation? Otherwise there will be a null pointer in prob->basisFace */
-    } else SETERRQ1(PetscObjectComm((PetscObject) prob), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %d", f);
+        ierr = PetscFVGetQuadrature(fv, &q);CHKERRQ(ierr);
+        ierr = PetscFVGetNumComponents(fv, &Nc);CHKERRQ(ierr);
+        Nb   = Nc;
+        ierr = PetscFVGetCellTabulation(fv, &prob->T[f]);CHKERRQ(ierr);
+        /* TODO: should PetscFV also have face tabulation? Otherwise there will be a null pointer in prob->basisFace */
+      } else SETERRQ1(PetscObjectComm((PetscObject) prob), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %d", f);
+    }
     prob->Nc[f]       = Nc;
     prob->Nb[f]       = Nb;
     prob->off[f+1]    = Nc     + prob->off[f];
     prob->offDer[f+1] = Nc*dim + prob->offDer[f];
     if (q) {ierr = PetscQuadratureGetData(q, NULL, NULL, &Nq, NULL, NULL);CHKERRQ(ierr);}
     NqMax          = PetscMax(NqMax, Nq);
+    NbMax          = PetscMax(NbMax, Nb);
     NcMax          = PetscMax(NcMax, Nc);
     prob->totDim  += Nb;
     prob->totComp += Nc;
     /* There are two faces for all fields but the cohesive field on a hybrid cell */
     if (prob->isHybrid && (f < Nf-1)) prob->totDim += Nb;
   }
-  work = PetscMax(prob->totComp*dim, PetscSqr(NcMax*dim));
   /* Allocate works space */
   if (prob->isHybrid) NsMax = 2;
-  ierr = PetscMalloc5(NsMax*prob->totComp,&prob->u,NsMax*prob->totComp,&prob->u_t,NsMax*prob->totComp*dimEmbed,&prob->u_x,dimEmbed,&prob->x,work,&prob->refSpaceDer);CHKERRQ(ierr);
-  ierr = PetscMalloc6(NsMax*NqMax*NcMax,&prob->f0,NsMax*NqMax*NcMax*dim,&prob->f1,
-                      NsMax*NsMax*NqMax*NcMax*NcMax,&prob->g0,NsMax*NsMax*NqMax*NcMax*NcMax*dim,&prob->g1,
-                      NsMax*NsMax*NqMax*NcMax*NcMax*dim,&prob->g2,NsMax*NsMax*NqMax*NcMax*NcMax*dim*dim,&prob->g3);CHKERRQ(ierr);
+  ierr = PetscMalloc3(NsMax*prob->totComp,&prob->u,NsMax*prob->totComp,&prob->u_t,NsMax*prob->totComp*dimEmbed,&prob->u_x);CHKERRQ(ierr);
+  ierr = PetscMalloc5(dimEmbed,&prob->x,NbMax*NcMax,&prob->basisReal,NbMax*NcMax*dimEmbed,&prob->basisDerReal,NbMax*NcMax,&prob->testReal,NbMax*NcMax*dimEmbed,&prob->testDerReal);CHKERRQ(ierr);
+  ierr = PetscMalloc6(NsMax*NqMax*NcMax,&prob->f0,NsMax*NqMax*NcMax*dimEmbed,&prob->f1,
+                      NsMax*NsMax*NqMax*NcMax*NcMax,&prob->g0,NsMax*NsMax*NqMax*NcMax*NcMax*dimEmbed,&prob->g1,
+                      NsMax*NsMax*NqMax*NcMax*NcMax*dimEmbed,&prob->g2,NsMax*NsMax*NqMax*NcMax*NcMax*dimEmbed*dimEmbed,&prob->g3);CHKERRQ(ierr);
   if (prob->ops->setup) {ierr = (*prob->ops->setup)(prob);CHKERRQ(ierr);}
   prob->setup = PETSC_TRUE;
   PetscFunctionReturn(0);
@@ -415,8 +442,9 @@ static PetscErrorCode PetscDSDestroyStructs_Static(PetscDS prob)
   PetscFunctionBegin;
   ierr = PetscFree2(prob->Nc,prob->Nb);CHKERRQ(ierr);
   ierr = PetscFree2(prob->off,prob->offDer);CHKERRQ(ierr);
-  ierr = PetscFree4(prob->basis,prob->basisDer,prob->basisFace,prob->basisDerFace);CHKERRQ(ierr);
-  ierr = PetscFree5(prob->u,prob->u_t,prob->u_x,prob->x,prob->refSpaceDer);CHKERRQ(ierr);
+  ierr = PetscFree2(prob->T,prob->Tf);CHKERRQ(ierr);
+  ierr = PetscFree3(prob->u,prob->u_t,prob->u_x);CHKERRQ(ierr);
+  ierr = PetscFree5(prob->x,prob->basisReal, prob->basisDerReal,prob->testReal,prob->testDerReal);CHKERRQ(ierr);
   ierr = PetscFree6(prob->f0,prob->f1,prob->g0,prob->g1,prob->g2,prob->g3);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -428,9 +456,10 @@ static PetscErrorCode PetscDSEnlarge_Static(PetscDS prob, PetscInt NfNew)
   PetscPointFunc   *tmpobj, *tmpf, *tmpup;
   PetscPointJac    *tmpg, *tmpgp, *tmpgt;
   PetscBdPointFunc *tmpfbd;
-  PetscBdPointJac  *tmpgbd;
+  PetscBdPointJac  *tmpgbd, *tmpgpbd;
   PetscRiemannFunc *tmpr;
   PetscSimplePointFunc *tmpexactSol;
+  void                **tmpexactCtx;
   void            **tmpctx;
   PetscInt          Nf = prob->Nf, f;
   PetscErrorCode    ierr;
@@ -473,24 +502,30 @@ static PetscErrorCode PetscDSEnlarge_Static(PetscDS prob, PetscInt NfNew)
   prob->r   = tmpr;
   prob->update = tmpup;
   prob->ctx = tmpctx;
-  ierr = PetscCalloc3(NfNew*2, &tmpfbd, NfNew*NfNew*4, &tmpgbd, NfNew, &tmpexactSol);CHKERRQ(ierr);
+  ierr = PetscCalloc5(NfNew*2, &tmpfbd, NfNew*NfNew*4, &tmpgbd, NfNew*NfNew*4, &tmpgpbd, NfNew, &tmpexactSol, NfNew, &tmpexactCtx);CHKERRQ(ierr);
   for (f = 0; f < Nf*2; ++f) tmpfbd[f] = prob->fBd[f];
   for (f = 0; f < Nf*Nf*4; ++f) tmpgbd[f] = prob->gBd[f];
+  for (f = 0; f < Nf*Nf*4; ++f) tmpgpbd[f] = prob->gpBd[f];
   for (f = 0; f < Nf; ++f) tmpexactSol[f] = prob->exactSol[f];
+  for (f = 0; f < Nf; ++f) tmpexactCtx[f] = prob->exactCtx[f];
   for (f = Nf*2; f < NfNew*2; ++f) tmpfbd[f] = NULL;
   for (f = Nf*Nf*4; f < NfNew*NfNew*4; ++f) tmpgbd[f] = NULL;
+  for (f = Nf*Nf*4; f < NfNew*NfNew*4; ++f) tmpgpbd[f] = NULL;
   for (f = Nf; f < NfNew; ++f) tmpexactSol[f] = NULL;
-  ierr = PetscFree3(prob->fBd, prob->gBd, prob->exactSol);CHKERRQ(ierr);
+  for (f = Nf; f < NfNew; ++f) tmpexactCtx[f] = NULL;
+  ierr = PetscFree5(prob->fBd, prob->gBd, prob->gpBd, prob->exactSol, prob->exactCtx);CHKERRQ(ierr);
   prob->fBd = tmpfbd;
   prob->gBd = tmpgbd;
+  prob->gpBd = tmpgpbd;
   prob->exactSol = tmpexactSol;
+  prob->exactCtx = tmpexactCtx;
   PetscFunctionReturn(0);
 }
 
 /*@
   PetscDSDestroy - Destroys a PetscDS object
 
-  Collective on PetscDS
+  Collective on prob
 
   Input Parameter:
 . prob - the PetscDS object to destroy
@@ -525,7 +560,7 @@ PetscErrorCode PetscDSDestroy(PetscDS *prob)
   ierr = PetscFree2((*prob)->disc, (*prob)->implicit);CHKERRQ(ierr);
   ierr = PetscFree7((*prob)->obj,(*prob)->f,(*prob)->g,(*prob)->gp,(*prob)->gt,(*prob)->r,(*prob)->ctx);CHKERRQ(ierr);
   ierr = PetscFree((*prob)->update);CHKERRQ(ierr);
-  ierr = PetscFree3((*prob)->fBd,(*prob)->gBd,(*prob)->exactSol);CHKERRQ(ierr);
+  ierr = PetscFree5((*prob)->fBd,(*prob)->gBd,(*prob)->gpBd,(*prob)->exactSol,(*prob)->exactCtx);CHKERRQ(ierr);
   if ((*prob)->ops->destroy) {ierr = (*(*prob)->ops->destroy)(*prob);CHKERRQ(ierr);}
   next = (*prob)->boundary;
   while (next) {
@@ -546,7 +581,7 @@ PetscErrorCode PetscDSDestroy(PetscDS *prob)
 /*@
   PetscDSCreate - Creates an empty PetscDS object. The type can then be set with PetscDSSetType().
 
-  Collective on MPI_Comm
+  Collective
 
   Input Parameter:
 . comm - The communicator for the PetscDS object
@@ -633,10 +668,12 @@ PetscErrorCode PetscDSGetSpatialDimension(PetscDS prob, PetscInt *dim)
     PetscClassId id;
 
     ierr = PetscDSGetDiscretization(prob, 0, &obj);CHKERRQ(ierr);
-    ierr = PetscObjectGetClassId(obj, &id);CHKERRQ(ierr);
-    if (id == PETSCFE_CLASSID)      {ierr = PetscFEGetSpatialDimension((PetscFE) obj, dim);CHKERRQ(ierr);}
-    else if (id == PETSCFV_CLASSID) {ierr = PetscFVGetSpatialDimension((PetscFV) obj, dim);CHKERRQ(ierr);}
-    else SETERRQ1(PetscObjectComm((PetscObject) prob), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %d", 0);
+    if (obj) {
+      ierr = PetscObjectGetClassId(obj, &id);CHKERRQ(ierr);
+      if (id == PETSCFE_CLASSID)      {ierr = PetscFEGetSpatialDimension((PetscFE) obj, dim);CHKERRQ(ierr);}
+      else if (id == PETSCFV_CLASSID) {ierr = PetscFVGetSpatialDimension((PetscFV) obj, dim);CHKERRQ(ierr);}
+      else SETERRQ1(PetscObjectComm((PetscObject) prob), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %d", 0);
+    }
   }
   PetscFunctionReturn(0);
 }
@@ -669,7 +706,7 @@ PetscErrorCode PetscDSGetCoordinateDimension(PetscDS prob, PetscInt *dimEmbed)
 /*@
   PetscDSSetCoordinateDimension - Set the coordinate dimension of the DS, meaning the dimension of the space into which the discretiaztions are embedded
 
-  Logically collective on DS
+  Logically collective on prob
 
   Input Parameters:
 + prob - The PetscDS object
@@ -833,13 +870,13 @@ PetscErrorCode PetscDSSetDiscretization(PetscDS prob, PetscInt f, PetscObject di
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
-  PetscValidPointer(disc, 3);
+  if (disc) PetscValidPointer(disc, 3);
   if (f < 0) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %d must be non-negative", f);
   ierr = PetscDSEnlarge_Static(prob, f+1);CHKERRQ(ierr);
   ierr = PetscObjectDereference(prob->disc[f]);CHKERRQ(ierr);
   prob->disc[f] = disc;
   ierr = PetscObjectReference(disc);CHKERRQ(ierr);
-  {
+  if (disc) {
     PetscClassId id;
 
     ierr = PetscObjectGetClassId(disc, &id);CHKERRQ(ierr);
@@ -871,6 +908,38 @@ PetscErrorCode PetscDSAddDiscretization(PetscDS prob, PetscObject disc)
 
   PetscFunctionBegin;
   ierr = PetscDSSetDiscretization(prob, prob->Nf, disc);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@
+  PetscDSGetQuadrature - Returns the quadrature, which must agree for all fields in the DS
+
+  Not collective
+
+  Input Parameter:
+. prob - The PetscDS object
+
+  Output Parameter:
+. q - The quadrature object
+
+Level: intermediate
+
+.seealso: PetscDSSetImplicit(), PetscDSSetDiscretization(), PetscDSAddDiscretization(), PetscDSGetNumFields(), PetscDSCreate()
+@*/
+PetscErrorCode PetscDSGetQuadrature(PetscDS prob, PetscQuadrature *q)
+{
+  PetscObject    obj;
+  PetscClassId   id;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  *q = NULL;
+  if (!prob->Nf) PetscFunctionReturn(0);
+  ierr = PetscDSGetDiscretization(prob, 0, &obj);CHKERRQ(ierr);
+  ierr = PetscObjectGetClassId(obj, &id);CHKERRQ(ierr);
+  if      (id == PETSCFE_CLASSID) {ierr = PetscFEGetQuadrature((PetscFE) obj, q);CHKERRQ(ierr);}
+  else if (id == PETSCFV_CLASSID) {ierr = PetscFVGetQuadrature((PetscFV) obj, q);CHKERRQ(ierr);}
+  else SETERRQ1(PetscObjectComm((PetscObject) prob), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %d", 0);
   PetscFunctionReturn(0);
 }
 
@@ -1787,7 +1856,7 @@ PetscErrorCode PetscDSSetRiemannSolver(PetscDS prob, PetscInt f,
 - f    - The field number
 
   Output Parameters:
-+ update - update function
+. update - update function
 
   Note: The calling sequence for the callback update is given by:
 
@@ -2036,6 +2105,38 @@ PetscErrorCode PetscDSSetBdResidual(PetscDS prob, PetscInt f,
   PetscFunctionReturn(0);
 }
 
+/*@
+  PetscDSHasBdJacobian - Signals that boundary Jacobian functions have been set
+
+  Not collective
+
+  Input Parameter:
+. prob - The PetscDS
+
+  Output Parameter:
+. hasBdJac - flag that pointwise function for the boundary Jacobian has been set
+
+  Level: intermediate
+
+.seealso: PetscDSHasJacobian(), PetscDSSetBdJacobian(), PetscDSGetBdJacobian()
+@*/
+PetscErrorCode PetscDSHasBdJacobian(PetscDS prob, PetscBool *hasBdJac)
+{
+  PetscInt f, g, h;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
+  *hasBdJac = PETSC_FALSE;
+  for (f = 0; f < prob->Nf; ++f) {
+    for (g = 0; g < prob->Nf; ++g) {
+      for (h = 0; h < 4; ++h) {
+        if (prob->gBd[(f*prob->Nf + g)*4+h]) *hasBdJac = PETSC_TRUE;
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
 /*@C
   PetscDSGetBdJacobian - Get the pointwise boundary Jacobian function for given test and basis field
 
@@ -2201,6 +2302,209 @@ PetscErrorCode PetscDSSetBdJacobian(PetscDS prob, PetscInt f, PetscInt g,
   PetscFunctionReturn(0);
 }
 
+/*@
+  PetscDSHasBdJacobianPreconditioner - Signals that boundary Jacobian preconditioner functions have been set
+
+  Not collective
+
+  Input Parameter:
+. prob - The PetscDS
+
+  Output Parameter:
+. hasBdJac - flag that pointwise function for the boundary Jacobian preconditioner has been set
+
+  Level: intermediate
+
+.seealso: PetscDSHasJacobian(), PetscDSSetBdJacobian(), PetscDSGetBdJacobian()
+@*/
+PetscErrorCode PetscDSHasBdJacobianPreconditioner(PetscDS prob, PetscBool *hasBdJacPre)
+{
+  PetscInt f, g, h;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
+  *hasBdJacPre = PETSC_FALSE;
+  for (f = 0; f < prob->Nf; ++f) {
+    for (g = 0; g < prob->Nf; ++g) {
+      for (h = 0; h < 4; ++h) {
+        if (prob->gpBd[(f*prob->Nf + g)*4+h]) *hasBdJacPre = PETSC_TRUE;
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  PetscDSGetBdJacobianPreconditioner - Get the pointwise boundary Jacobian preconditioner function for given test and basis field
+
+  Not collective
+
+  Input Parameters:
++ prob - The PetscDS
+. f    - The test field number
+- g    - The field number
+
+  Output Parameters:
++ g0 - integrand for the test and basis function term
+. g1 - integrand for the test function and basis function gradient term
+. g2 - integrand for the test function gradient and basis function term
+- g3 - integrand for the test function gradient and basis function gradient term
+
+  Note: We are using a first order FEM model for the weak form:
+
+  \int_\Gamma \phi {\vec g}_0(u, u_t, \nabla u, x, t) \cdot \hat n \psi + \phi {\vec g}_1(u, u_t, \nabla u, x, t) \cdot \hat n \nabla \psi + \nabla\phi \cdot {\vec g}_2(u, u_t, \nabla u, x, t) \cdot \hat n \psi + \nabla\phi \cdot {\overleftrightarrow g}_3(u, u_t, \nabla u, x, t) \cdot \hat n \cdot \nabla \psi
+
+The calling sequence for the callbacks g0, g1, g2 and g3 is given by:
+
+$ g0(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+$    const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+$    const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+$    PetscReal t, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g0[])
+
++ dim - the spatial dimension
+. Nf - the number of fields
+. NfAux - the number of auxiliary fields
+. uOff - the offset into u[] and u_t[] for each field
+. uOff_x - the offset into u_x[] for each field
+. u - each field evaluated at the current point
+. u_t - the time derivative of each field evaluated at the current point
+. u_x - the gradient of each field evaluated at the current point
+. aOff - the offset into a[] and a_t[] for each auxiliary field
+. aOff_x - the offset into a_x[] for each auxiliary field
+. a - each auxiliary field evaluated at the current point
+. a_t - the time derivative of each auxiliary field evaluated at the current point
+. a_x - the gradient of auxiliary each field evaluated at the current point
+. t - current time
+. u_tShift - the multiplier a for dF/dU_t
+. x - coordinates of the current point
+. n - normal at the current point
+. numConstants - number of constant parameters
+. constants - constant parameters
+- g0 - output values at the current point
+
+  This is not yet available in Fortran.
+
+  Level: intermediate
+
+.seealso: PetscDSSetBdJacobianPreconditioner()
+@*/
+PetscErrorCode PetscDSGetBdJacobianPreconditioner(PetscDS prob, PetscInt f, PetscInt g,
+                                                  void (**g0)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                              const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                              const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                              PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g0[]),
+                                                  void (**g1)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                              const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                              const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                              PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g1[]),
+                                                  void (**g2)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                              const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                              const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                              PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g2[]),
+                                                  void (**g3)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                              const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                              const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                              PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g3[]))
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
+  if ((f < 0) || (f >= prob->Nf)) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %d must be in [0, %d)", f, prob->Nf);
+  if ((g < 0) || (g >= prob->Nf)) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %d must be in [0, %d)", g, prob->Nf);
+  if (g0) {PetscValidPointer(g0, 4); *g0 = prob->gpBd[(f*prob->Nf + g)*4+0];}
+  if (g1) {PetscValidPointer(g1, 5); *g1 = prob->gpBd[(f*prob->Nf + g)*4+1];}
+  if (g2) {PetscValidPointer(g2, 6); *g2 = prob->gpBd[(f*prob->Nf + g)*4+2];}
+  if (g3) {PetscValidPointer(g3, 7); *g3 = prob->gpBd[(f*prob->Nf + g)*4+3];}
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  PetscDSSetBdJacobianPreconditioner - Set the pointwise boundary Jacobian preconditioner function for given test and basis field
+
+  Not collective
+
+  Input Parameters:
++ prob - The PetscDS
+. f    - The test field number
+. g    - The field number
+. g0 - integrand for the test and basis function term
+. g1 - integrand for the test function and basis function gradient term
+. g2 - integrand for the test function gradient and basis function term
+- g3 - integrand for the test function gradient and basis function gradient term
+
+  Note: We are using a first order FEM model for the weak form:
+
+  \int_\Gamma \phi {\vec g}_0(u, u_t, \nabla u, x, t) \cdot \hat n \psi + \phi {\vec g}_1(u, u_t, \nabla u, x, t) \cdot \hat n \nabla \psi + \nabla\phi \cdot {\vec g}_2(u, u_t, \nabla u, x, t) \cdot \hat n \psi + \nabla\phi \cdot {\overleftrightarrow g}_3(u, u_t, \nabla u, x, t) \cdot \hat n \cdot \nabla \psi
+
+The calling sequence for the callbacks g0, g1, g2 and g3 is given by:
+
+$ g0(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+$    const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+$    const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+$    PetscReal t, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g0[])
+
++ dim - the spatial dimension
+. Nf - the number of fields
+. NfAux - the number of auxiliary fields
+. uOff - the offset into u[] and u_t[] for each field
+. uOff_x - the offset into u_x[] for each field
+. u - each field evaluated at the current point
+. u_t - the time derivative of each field evaluated at the current point
+. u_x - the gradient of each field evaluated at the current point
+. aOff - the offset into a[] and a_t[] for each auxiliary field
+. aOff_x - the offset into a_x[] for each auxiliary field
+. a - each auxiliary field evaluated at the current point
+. a_t - the time derivative of each auxiliary field evaluated at the current point
+. a_x - the gradient of auxiliary each field evaluated at the current point
+. t - current time
+. u_tShift - the multiplier a for dF/dU_t
+. x - coordinates of the current point
+. n - normal at the current point
+. numConstants - number of constant parameters
+. constants - constant parameters
+- g0 - output values at the current point
+
+  This is not yet available in Fortran.
+
+  Level: intermediate
+
+.seealso: PetscDSGetBdJacobianPreconditioner()
+@*/
+PetscErrorCode PetscDSSetBdJacobianPreconditioner(PetscDS prob, PetscInt f, PetscInt g,
+                                                  void (*g0)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                             const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                             const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                             PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g0[]),
+                                                  void (*g1)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                             const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                             const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                             PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g1[]),
+                                                  void (*g2)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                             const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                             const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                             PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g2[]),
+                                                  void (*g3)(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                                                             const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                                                             const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                                                             PetscReal t, PetscReal u_tShift, const PetscReal x[], const PetscReal n[], PetscInt numConstants, const PetscScalar constants[], PetscScalar g3[]))
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
+  if (g0) PetscValidFunction(g0, 4);
+  if (g1) PetscValidFunction(g1, 5);
+  if (g2) PetscValidFunction(g2, 6);
+  if (g3) PetscValidFunction(g3, 7);
+  if (f < 0) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %d must be non-negative", f);
+  if (g < 0) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %d must be non-negative", g);
+  ierr = PetscDSEnlarge_Static(prob, PetscMax(f, g)+1);CHKERRQ(ierr);
+  prob->gpBd[(f*prob->Nf + g)*4+0] = g0;
+  prob->gpBd[(f*prob->Nf + g)*4+1] = g1;
+  prob->gpBd[(f*prob->Nf + g)*4+2] = g2;
+  prob->gpBd[(f*prob->Nf + g)*4+3] = g3;
+  PetscFunctionReturn(0);
+}
+
 /*@C
   PetscDSGetExactSolution - Get the pointwise exact solution function for a given test field
 
@@ -2211,7 +2515,8 @@ PetscErrorCode PetscDSSetBdJacobian(PetscDS prob, PetscInt f, PetscInt g,
 - f    - The test field number
 
   Output Parameter:
-. exactSol - exact solution for the test field
++ exactSol - exact solution for the test field
+- exactCtx - exact solution context
 
   Note: The calling sequence for the solution functions is given by:
 
@@ -2228,12 +2533,13 @@ $ sol(PetscInt dim, PetscReal t, const PetscReal x[], PetscInt Nc, PetscScalar u
 
 .seealso: PetscDSSetExactSolution()
 @*/
-PetscErrorCode PetscDSGetExactSolution(PetscDS prob, PetscInt f, PetscErrorCode (**sol)(PetscInt dim, PetscReal t, const PetscReal x[], PetscInt Nc, PetscScalar u[], void *ctx))
+PetscErrorCode PetscDSGetExactSolution(PetscDS prob, PetscInt f, PetscErrorCode (**sol)(PetscInt dim, PetscReal t, const PetscReal x[], PetscInt Nc, PetscScalar u[], void *ctx), void **ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
   if ((f < 0) || (f >= prob->Nf)) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %d must be in [0, %d)", f, prob->Nf);
   if (sol) {PetscValidPointer(sol, 3); *sol = prob->exactSol[f];}
+  if (ctx) {PetscValidPointer(ctx, 4); *ctx = prob->exactCtx[f];}
   PetscFunctionReturn(0);
 }
 
@@ -2245,7 +2551,8 @@ PetscErrorCode PetscDSGetExactSolution(PetscDS prob, PetscInt f, PetscErrorCode 
   Input Parameters:
 + prob - The PetscDS
 . f    - The test field number
-- sol  - solution function for the test fields
+. sol  - solution function for the test fields
+- ctx  - solution context or NULL
 
   Note: The calling sequence for solution functions is given by:
 
@@ -2262,7 +2569,7 @@ $ sol(PetscInt dim, PetscReal t, const PetscReal x[], PetscInt Nc, PetscScalar u
 
 .seealso: PetscDSGetExactSolution()
 @*/
-PetscErrorCode PetscDSSetExactSolution(PetscDS prob, PetscInt f, PetscErrorCode (*sol)(PetscInt dim, PetscReal t, const PetscReal x[], PetscInt Nc, PetscScalar u[], void *ctx))
+PetscErrorCode PetscDSSetExactSolution(PetscDS prob, PetscInt f, PetscErrorCode (*sol)(PetscInt dim, PetscReal t, const PetscReal x[], PetscInt Nc, PetscScalar u[], void *ctx), void *ctx)
 {
   PetscErrorCode ierr;
 
@@ -2271,6 +2578,7 @@ PetscErrorCode PetscDSSetExactSolution(PetscDS prob, PetscInt f, PetscErrorCode 
   if (f < 0) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %d must be non-negative", f);
   ierr = PetscDSEnlarge_Static(prob, f+1);CHKERRQ(ierr);
   if (sol) {PetscValidFunction(sol, 3); prob->exactSol[f] = sol;}
+  if (ctx) {PetscValidFunction(ctx, 4); prob->exactCtx[f] = ctx;}
   PetscFunctionReturn(0);
 }
 
@@ -2330,7 +2638,7 @@ PetscErrorCode PetscDSSetConstants(PetscDS prob, PetscInt numConstants, PetscSca
   }
   if (prob->numConstants) {
     PetscValidPointer(constants, 3);
-    ierr = PetscMemcpy(prob->constants, constants, prob->numConstants * sizeof(PetscScalar));CHKERRQ(ierr);
+    ierr = PetscArraycpy(prob->constants, constants, prob->numConstants);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
@@ -2428,7 +2736,7 @@ PetscErrorCode PetscDSGetFieldOffset(PetscDS prob, PetscInt f, PetscInt *off)
 }
 
 /*@
-  PetscDSGetDimensions - Returns the size of the approximation space for each field on an evaluation point 
+  PetscDSGetDimensions - Returns the size of the approximation space for each field on an evaluation point
 
   Not collective
 
@@ -2563,23 +2871,22 @@ PetscErrorCode PetscDSGetComponentDerivativeOffsets(PetscDS prob, PetscInt *offs
   Input Parameter:
 . prob - The PetscDS object
 
-  Output Parameters:
-+ basis - The basis function tabulation at quadrature points
-- basisDer - The basis function derivative tabulation at quadrature points
+  Output Parameter:
+. T - The basis function and derivatives tabulation at quadrature points for each field
 
   Level: intermediate
 
 .seealso: PetscDSCreate()
 @*/
-PetscErrorCode PetscDSGetTabulation(PetscDS prob, PetscReal ***basis, PetscReal ***basisDer)
+PetscErrorCode PetscDSGetTabulation(PetscDS prob, PetscTabulation *T[])
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
+  PetscValidPointer(T, 2);
   ierr = PetscDSSetUp(prob);CHKERRQ(ierr);
-  if (basis)    {PetscValidPointer(basis, 2);    *basis    = prob->basis;}
-  if (basisDer) {PetscValidPointer(basisDer, 3); *basisDer = prob->basisDer;}
+  *T = prob->T;
   PetscFunctionReturn(0);
 }
 
@@ -2591,23 +2898,22 @@ PetscErrorCode PetscDSGetTabulation(PetscDS prob, PetscReal ***basis, PetscReal 
   Input Parameter:
 . prob - The PetscDS object
 
-  Output Parameters:
-+ basisFace - The basis function tabulation at quadrature points
-- basisDerFace - The basis function derivative tabulation at quadrature points
+  Output Parameter:
+. Tf - The basis function and derviative tabulation on each local face at quadrature points for each and field
 
   Level: intermediate
 
 .seealso: PetscDSGetTabulation(), PetscDSCreate()
 @*/
-PetscErrorCode PetscDSGetFaceTabulation(PetscDS prob, PetscReal ***basis, PetscReal ***basisDer)
+PetscErrorCode PetscDSGetFaceTabulation(PetscDS prob, PetscTabulation *Tf[])
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
+  PetscValidPointer(Tf, 2);
   ierr = PetscDSSetUp(prob);CHKERRQ(ierr);
-  if (basis)    {PetscValidPointer(basis, 2);    *basis    = prob->basisFace;}
-  if (basisDer) {PetscValidPointer(basisDer, 3); *basisDer = prob->basisDerFace;}
+  *Tf = prob->Tf;
   PetscFunctionReturn(0);
 }
 
@@ -2640,20 +2946,25 @@ PetscErrorCode PetscDSGetWeakFormArrays(PetscDS prob, PetscScalar **f0, PetscSca
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscDSGetRefCoordArrays(PetscDS prob, PetscReal **x, PetscScalar **refSpaceDer)
+PetscErrorCode PetscDSGetWorkspace(PetscDS prob, PetscReal **x, PetscScalar **basisReal, PetscScalar **basisDerReal, PetscScalar **testReal, PetscScalar **testDerReal)
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
   ierr = PetscDSSetUp(prob);CHKERRQ(ierr);
-  if (x)           {PetscValidPointer(x, 2);           *x           = prob->x;}
-  if (refSpaceDer) {PetscValidPointer(refSpaceDer, 3); *refSpaceDer = prob->refSpaceDer;}
+  if (x)            {PetscValidPointer(x, 2);            *x            = prob->x;}
+  if (basisReal)    {PetscValidPointer(basisReal, 3);    *basisReal    = prob->basisReal;}
+  if (basisDerReal) {PetscValidPointer(basisDerReal, 4); *basisDerReal = prob->basisDerReal;}
+  if (testReal)     {PetscValidPointer(testReal, 5);     *testReal     = prob->testReal;}
+  if (testDerReal)  {PetscValidPointer(testDerReal, 6);  *testDerReal  = prob->testDerReal;}
   PetscFunctionReturn(0);
 }
 
 /*@C
   PetscDSAddBoundary - Add a boundary condition to the model
+
+  Collective on ds
 
   Input Parameters:
 + ds          - The PetscDS object
@@ -2683,13 +2994,17 @@ PetscErrorCode PetscDSAddBoundary(PetscDS ds, DMBoundaryConditionType type, cons
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ds, PETSCDS_CLASSID, 1);
+  PetscValidLogicalCollectiveEnum(ds, type, 2);
+  PetscValidLogicalCollectiveInt(ds, field, 5);
+  PetscValidLogicalCollectiveInt(ds, numcomps, 6);
+  PetscValidLogicalCollectiveInt(ds, numids, 9);
   ierr = PetscNew(&b);CHKERRQ(ierr);
   ierr = PetscStrallocpy(name, (char **) &b->name);CHKERRQ(ierr);
   ierr = PetscStrallocpy(labelname, (char **) &b->labelname);CHKERRQ(ierr);
   ierr = PetscMalloc1(numcomps, &b->comps);CHKERRQ(ierr);
-  if (numcomps) {ierr = PetscMemcpy(b->comps, comps, numcomps*sizeof(PetscInt));CHKERRQ(ierr);}
+  if (numcomps) {ierr = PetscArraycpy(b->comps, comps, numcomps);CHKERRQ(ierr);}
   ierr = PetscMalloc1(numids, &b->ids);CHKERRQ(ierr);
-  if (numids) {ierr = PetscMemcpy(b->ids, ids, numids*sizeof(PetscInt));CHKERRQ(ierr);}
+  if (numids) {ierr = PetscArraycpy(b->ids, ids, numids);CHKERRQ(ierr);}
   b->type            = type;
   b->field           = field;
   b->numcomps        = numcomps;
@@ -2750,13 +3065,13 @@ PetscErrorCode PetscDSUpdateBoundary(PetscDS ds, PetscInt bd, DMBoundaryConditio
     b->numcomps = numcomps;
     ierr = PetscFree(b->comps);CHKERRQ(ierr);
     ierr = PetscMalloc1(numcomps, &b->comps);CHKERRQ(ierr);
-    if (numcomps) {ierr = PetscMemcpy(b->comps, comps, numcomps*sizeof(PetscInt));CHKERRQ(ierr);}
+    if (numcomps) {ierr = PetscArraycpy(b->comps, comps, numcomps);CHKERRQ(ierr);}
   }
   if (numids >= 0 && numids != b->numids) {
     b->numids = numids;
     ierr = PetscFree(b->ids);CHKERRQ(ierr);
     ierr = PetscMalloc1(numids, &b->ids);CHKERRQ(ierr);
-    if (numids) {ierr = PetscMemcpy(b->ids, ids, numids*sizeof(PetscInt));CHKERRQ(ierr);}
+    if (numids) {ierr = PetscArraycpy(b->ids, ids, numids);CHKERRQ(ierr);}
   }
   b->type = type;
   if (field >= 0) {b->field  = field;}
@@ -2915,10 +3230,10 @@ PetscErrorCode PetscDSCopyBoundary(PetscDS probA, PetscDS probB)
     ierr = PetscNew(&bNew);CHKERRQ(ierr);
     bNew->numcomps = b->numcomps;
     ierr = PetscMalloc1(bNew->numcomps, &bNew->comps);CHKERRQ(ierr);
-    ierr = PetscMemcpy(bNew->comps, b->comps, bNew->numcomps*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArraycpy(bNew->comps, b->comps, bNew->numcomps);CHKERRQ(ierr);
     bNew->numids = b->numids;
     ierr = PetscMalloc1(bNew->numids, &bNew->ids);CHKERRQ(ierr);
-    ierr = PetscMemcpy(bNew->ids, b->ids, bNew->numids*sizeof(PetscInt));CHKERRQ(ierr);
+    ierr = PetscArraycpy(bNew->ids, b->ids, bNew->numids);CHKERRQ(ierr);
     ierr = PetscStrallocpy(b->labelname,(char **) &(bNew->labelname));CHKERRQ(ierr);
     ierr = PetscStrallocpy(b->name,(char **) &(bNew->name));CHKERRQ(ierr);
     bNew->ctx   = b->ctx;
@@ -2968,7 +3283,7 @@ PetscErrorCode PetscDSSelectEquations(PetscDS prob, PetscInt numFields, const Pe
     PetscBdPointFunc f0Bd, f1Bd;
     PetscRiemannFunc r;
 
-    if (f >= Nf) SETERRQ2(PetscObjectComm((PetscObject) prob), PETSC_ERR_ARG_SIZ, "Field %D must be in [0, %D)", f, Nf);
+    if (f >= Nf) continue;
     ierr = PetscDSGetObjective(prob, f, &obj);CHKERRQ(ierr);
     ierr = PetscDSGetResidual(prob, f, &f0, &f1);CHKERRQ(ierr);
     ierr = PetscDSGetBdResidual(prob, f, &f0Bd, &f1Bd);CHKERRQ(ierr);
@@ -2983,7 +3298,7 @@ PetscErrorCode PetscDSSelectEquations(PetscDS prob, PetscInt numFields, const Pe
       PetscPointJac   g0p, g1p, g2p, g3p;
       PetscBdPointJac g0Bd, g1Bd, g2Bd, g3Bd;
 
-      if (g >= Nf) SETERRQ2(PetscObjectComm((PetscObject) prob), PETSC_ERR_ARG_SIZ, "Field %D must be in [0, %D)", g, Nf);
+      if (g >= Nf) continue;
       ierr = PetscDSGetJacobian(prob, f, g, &g0, &g1, &g2, &g3);CHKERRQ(ierr);
       ierr = PetscDSGetJacobianPreconditioner(prob, f, g, &g0p, &g1p, &g2p, &g3p);CHKERRQ(ierr);
       ierr = PetscDSGetBdJacobian(prob, f, g, &g0Bd, &g1Bd, &g2Bd, &g3Bd);CHKERRQ(ierr);
@@ -3085,6 +3400,28 @@ PetscErrorCode PetscDSGetHeightSubspace(PetscDS prob, PetscInt height, PetscDS *
     }
   }
   *subprob = prob->subprobs[height-1];
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PetscDSGetDiscType_Internal(PetscDS ds, PetscInt f, PetscDiscType *disctype)
+{
+  PetscObject    obj;
+  PetscClassId   id;
+  PetscInt       Nf;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ds, PETSCDS_CLASSID, 1);
+  PetscValidPointer(disctype, 3);
+  *disctype = PETSC_DISC_NONE;
+  ierr = PetscDSGetNumFields(ds, &Nf);CHKERRQ(ierr);
+  if (f >= Nf) SETERRQ2(PetscObjectComm((PetscObject) ds), PETSC_ERR_ARG_SIZ, "Field %D must be in [0, %D)", f, Nf);
+  ierr = PetscDSGetDiscretization(ds, f, &obj);CHKERRQ(ierr);
+  if (obj) {
+    ierr = PetscObjectGetClassId(obj, &id);CHKERRQ(ierr);
+    if (id == PETSCFE_CLASSID) *disctype = PETSC_DISC_FE;
+    else                       *disctype = PETSC_DISC_FV;
+  }
   PetscFunctionReturn(0);
 }
 

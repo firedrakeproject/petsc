@@ -1,19 +1,10 @@
 #requiresdefine   'PETSC_HAVE_FORTRAN'
-#requiresdefine   'PETSC_USING_F90'
 #
-#   Makes Fortran module functions from *.h90 files in include/petsc/finclude
-#
-ALL: buildmod
-speciallib: buildmod
-specialfastlib: buildmodfast
-SPECIALLIB     = yes
-SPECIALFASTLIB = yes
-
 
 CFLAGS	   =
 FFLAGS	   =
 SOURCEC	   =
-SOURCEF	   = petsctaomod.F
+SOURCEF90  = petsctaomod.F90
 SOURCEH	   = petsctao.h petsctao.h90
 LIBBASE	   = libpetsctao
 MANSEC	   = Tao

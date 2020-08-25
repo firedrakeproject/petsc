@@ -24,13 +24,13 @@ PetscBool         VecRegisterAllCalled = PETSC_FALSE;
 
   Level: intermediate
 
-.keywords: vector, set, type
 .seealso: VecGetType(), VecCreate()
 @*/
 PetscErrorCode VecSetType(Vec vec, VecType method)
 {
   PetscErrorCode (*r)(Vec);
   PetscBool      match;
+  PetscMPIInt    size;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -38,6 +38,31 @@ PetscErrorCode VecSetType(Vec vec, VecType method)
   ierr = PetscObjectTypeCompare((PetscObject) vec, method, &match);CHKERRQ(ierr);
   if (match) PetscFunctionReturn(0);
 
+  /* Return if asked for VECSTANDARD and Vec is already VECSEQ on 1 process or VECMPI on more.
+     Otherwise, we free the Vec array in the call to destroy below and never reallocate it,
+     since the VecType will be the same and VecSetType(v,VECSEQ) will return when called from VecCreate_Standard */
+  ierr = MPI_Comm_size(PetscObjectComm((PetscObject)vec),&size);CHKERRQ(ierr);
+  ierr = PetscStrcmp(method,VECSTANDARD,&match);CHKERRQ(ierr);
+  if (match) {
+
+    ierr = PetscObjectTypeCompare((PetscObject) vec, size > 1 ? VECMPI : VECSEQ, &match);CHKERRQ(ierr);
+    if (match) PetscFunctionReturn(0);
+  }
+  /* same reasons for VECCUDA and VECVIENNACL */
+#if defined(PETSC_HAVE_CUDA)
+  ierr = PetscStrcmp(method,VECCUDA,&match);CHKERRQ(ierr);
+  if (match) {
+    ierr = PetscObjectTypeCompare((PetscObject) vec, size > 1 ? VECMPICUDA : VECSEQCUDA, &match);CHKERRQ(ierr);
+    if (match) PetscFunctionReturn(0);
+  }
+#endif
+#if defined(PETSC_HAVE_VIENNACL)
+  ierr = PetscStrcmp(method,VECVIENNACL,&match);CHKERRQ(ierr);
+  if (match) {
+    ierr = PetscObjectTypeCompare((PetscObject) vec, size > 1 ? VECMPIVIENNACL : VECSEQVIENNACL, &match);CHKERRQ(ierr);
+    if (match) PetscFunctionReturn(0);
+  }
+#endif
   ierr = PetscFunctionListFind(VecList,method,&r);CHKERRQ(ierr);
   if (!r) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_UNKNOWN_TYPE, "Unknown vector type: %s", method);
   if (vec->ops->destroy) {
@@ -66,7 +91,6 @@ PetscErrorCode VecSetType(Vec vec, VecType method)
 
   Level: intermediate
 
-.keywords: vector, get, type, name
 .seealso: VecSetType(), VecCreate()
 @*/
 PetscErrorCode VecGetType(Vec vec, VecType *type)
@@ -112,8 +136,6 @@ PetscErrorCode VecGetType(Vec vec, VecType *type)
 .ve
 
   Level: advanced
-
-.keywords: Vec, register
 
 .seealso: VecRegisterAll(), VecRegisterDestroy()
 @*/

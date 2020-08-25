@@ -1,8 +1,8 @@
 /*
   Interface to the PETSc graphics
 */
-#if !defined(__PETSCDRAW_H)
-#define __PETSCDRAW_H
+#if !defined(PETSCDRAW_H)
+#define PETSCDRAW_H
 #include <petscsys.h>
 #include <petscdrawtypes.h>
 
@@ -22,7 +22,7 @@ PETSC_EXTERN PetscErrorCode PetscDrawSetSave(PetscDraw,const char[]);
 PETSC_EXTERN PetscErrorCode PetscDrawSetSaveMovie(PetscDraw,const char[]);
 PETSC_EXTERN PetscErrorCode PetscDrawSetSaveFinalImage(PetscDraw,const char[]);
 PETSC_EXTERN PetscErrorCode PetscDrawView(PetscDraw,PetscViewer);
-PETSC_STATIC_INLINE PetscErrorCode PetscDrawViewFromOptions(PetscDraw A,PetscObject obj,const char name[]) {return PetscObjectViewFromOptions((PetscObject)A,obj,name);}
+PETSC_EXTERN PetscErrorCode PetscDrawViewFromOptions(PetscDraw,PetscObject,const char[]);
 
 /*
    Number of basic colors in the draw routines, the others are used
@@ -214,8 +214,6 @@ PETSC_EXTERN PetscErrorCode PetscDrawZoom(PetscDraw,PetscErrorCode (*)(PetscDraw
      PetscDrawViewPorts - Subwindows in a PetscDraw object
 
    Level: intermediate
-
-  Concepts: graphics
 
 .seealso:  PetscDrawViewPortsCreate(), PetscDrawViewPortsSet()
 S*/

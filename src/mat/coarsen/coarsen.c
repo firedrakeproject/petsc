@@ -28,8 +28,6 @@ $     MatCoarsenSetType(agg,"my_agg")
    or at runtime via the option
 $     -mat_coarsen_type my_agg
 
-.keywords: matrix, coarsen, register
-
 .seealso: MatCoarsenRegisterDestroy(), MatCoarsenRegisterAll()
 @*/
 PetscErrorCode  MatCoarsenRegister(const char sname[],PetscErrorCode (*function)(MatCoarsen))
@@ -57,8 +55,6 @@ PetscErrorCode  MatCoarsenRegister(const char sname[],PetscErrorCode (*function)
    Level: advanced
 
    Not Collective
-
-.keywords: Coarsen, get, method, name, type
 
 .seealso: MatCoarsenCreate(), MatCoarsenType, MatCoarsenSetType()
 @*/
@@ -93,8 +89,6 @@ $    -mat_coarsen_view
 
    The user can define additional coarsens; see MatCoarsenRegister().
 
-.keywords: matrix, get, coarsen
-
 .seealso:  MatCoarsenRegister(), MatCoarsenCreate(),
            MatCoarsenDestroy(), MatCoarsenSetAdjacency(), ISCoarsenToNumbering(),
            ISCoarsenCount(), MatCoarsenGetData()
@@ -118,15 +112,13 @@ PetscErrorCode  MatCoarsenApply(MatCoarsen coarser)
 /*@
    MatCoarsenSetAdjacency - Sets the adjacency graph (matrix) of the thing to be coarsened.
 
-   Collective on MatCoarsen and Mat
+   Collective on MatCoarsen
 
    Input Parameters:
 +  agg - the coarsen context
 -  adj - the adjacency matrix
 
    Level: advanced
-
-.keywords: Coarsen, adjacency
 
 .seealso: MatCoarsenCreate(), MatCoarsenApply()
 @*/
@@ -140,17 +132,14 @@ PetscErrorCode  MatCoarsenSetAdjacency(MatCoarsen agg, Mat adj)
 }
 
 /*@
-   MatCoarsenSetStrictAggs - WHAT IS THIS?
+   MatCoarsenSetStrictAggs - Set whether to keep strict (non overlapping) aggregates in the linked list of aggregates for a coarsen context
 
    Logically Collective on MatCoarsen
 
    Input Parameters:
 +  agg - the coarsen context
--  str - the adjacency matrix
-
+-  str - PETSC_TRUE keep strict aggregates, PETSC_FALSE allow overlap
    Level: advanced
-
-.keywords: Coarsen, adjacency
 
 .seealso: MatCoarsenCreate()
 @*/
@@ -171,8 +160,6 @@ PetscErrorCode MatCoarsenSetStrictAggs(MatCoarsen agg, PetscBool str)
 .  agg - the coarsen context
 
    Level: advanced
-
-.keywords: Coarsen, destroy, context
 
 .seealso: MatCoarsenCreate()
 @*/
@@ -200,7 +187,7 @@ PetscErrorCode  MatCoarsenDestroy(MatCoarsen *agg)
 /*@
    MatCoarsenCreate - Creates a coarsen context.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .   comm - MPI communicator
@@ -209,8 +196,6 @@ PetscErrorCode  MatCoarsenDestroy(MatCoarsen *agg)
 .  newcrs - location to put the context
 
    Level: advanced
-
-.keywords: Coarsen, create, context
 
 .seealso: MatCoarsenSetType(), MatCoarsenApply(), MatCoarsenDestroy(),
           MatCoarsenSetAdjacency(), MatCoarsenGetData()
@@ -232,13 +217,36 @@ PetscErrorCode  MatCoarsenCreate(MPI_Comm comm, MatCoarsen *newcrs)
 }
 
 /*@C
+   MatCoarsenViewFromOptions - View from Options
+
+   Collective on MatCoarsen
+
+   Input Parameters:
++  A - the coarsen context
+.  obj - Optional object
+-  name - command line option
+
+   Level: intermediate
+.seealso:  MatCoarsen, MatCoarsenView, PetscObjectViewFromOptions(), MatCoarsenCreate()
+@*/
+PetscErrorCode  MatCoarsenViewFromOptions(MatCoarsen A,PetscObject obj,const char name[])
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,MAT_COARSEN_CLASSID,1);
+  ierr = PetscObjectViewFromOptions((PetscObject)A,obj,name);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
    MatCoarsenView - Prints the coarsen data structure.
 
    Collective on MatCoarsen
 
    Input Parameters:
-.  agg - the coarsen context
-.  viewer - optional visualization context
++  agg - the coarsen context
+-  viewer - optional visualization context
 
    Level: advanced
 
@@ -252,8 +260,6 @@ PetscErrorCode  MatCoarsenCreate(MPI_Comm comm, MatCoarsen *newcrs)
 
    The user can open alternative visualization contexts with
 .     PetscViewerASCIIOpen() - output to a specified file
-
-.keywords: Coarsen, view
 
 .seealso: PetscViewerASCIIOpen()
 @*/
@@ -295,8 +301,6 @@ $      Use -help for a list of available methods
 $      (for instance, mis)
 
    Level: advanced
-
-.keywords: coarsen, set, method, type
 
 .seealso: MatCoarsenCreate(), MatCoarsenApply(), MatCoarsenType, MatCoarsenGetType()
 
@@ -349,8 +353,6 @@ PetscErrorCode  MatCoarsenSetType(MatCoarsen coarser, MatCoarsenType type)
    Notes:
       The IS weights is freed by PETSc, so user has given this to us
 
-.keywords: Coarsen
-
 .seealso: MatCoarsenCreate(), MatCoarsenSetType()
 @*/
 PetscErrorCode MatCoarsenSetGreedyOrdering(MatCoarsen coarser, const IS perm)
@@ -373,8 +375,6 @@ PetscErrorCode MatCoarsenSetGreedyOrdering(MatCoarsen coarser, const IS perm)
 .  llist - linked list of aggregates
 
    Level: advanced
-
-.keywords: Coarsen
 
 .seealso: MatCoarsenCreate(), MatCoarsenSetType()
 @*/
@@ -404,7 +404,6 @@ $      (for instance, mis)
 
    Level: advanced
 
-.keywords: coarsen, set, method, type
 @*/
 PetscErrorCode MatCoarsenSetFromOptions(MatCoarsen coarser)
 {

@@ -96,10 +96,7 @@ PetscErrorCode MatDestroy_SeqMAIJ(Mat A)
   ierr = MatDestroy(&b->AIJ);CHKERRQ(ierr);
   ierr = PetscFree(A->data);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatConvert_seqmaij_seqaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatPtAP_seqaij_seqmaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatPtAP_seqaijperm_seqmaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatPtAP_seqaijmkl_seqmaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatPtAP_is_seqmaij_C",NULL);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)A,"MatProductSetFromOptions_seqaij_seqmaij_C",NULL);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -147,8 +144,7 @@ PetscErrorCode MatDestroy_MPIMAIJ(Mat A)
   ierr = VecDestroy(&b->w);CHKERRQ(ierr);
   ierr = PetscFree(A->data);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatConvert_mpimaij_mpiaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatPtAP_mpiaij_mpimaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)A,"MatPtAP_is_mpimaij_C",NULL);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)A,"MatProductSetFromOptions_mpiaij_mpimaij_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectChangeTypeName((PetscObject)A,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -159,10 +155,10 @@ PetscErrorCode MatDestroy_MPIMAIJ(Mat A)
   The matrix type is based on MATSEQAIJ for sequential matrices, and MATMPIAIJ for distributed matrices.
 
   Operations provided:
-. MatMult
++ MatMult
 . MatMultTranspose
 . MatMultAdd
-. MatMultTransposeAdd
+- MatMultTransposeAdd
 
   Level: advanced
 
@@ -2864,7 +2860,75 @@ PetscErrorCode MatMultTransposeAdd_MPIMAIJ_dof(Mat A,Vec xx,Vec yy,Vec zz)
 }
 
 /* ----------------------------------------------------------------*/
-PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A,Mat PP,PetscReal fill,Mat *C)
+PetscErrorCode MatProductSetFromOptions_SeqAIJ_SeqMAIJ(Mat C)
+{
+  Mat_Product    *product = C->product;
+
+  PetscFunctionBegin;
+  if (product->type == MATPRODUCT_PtAP) {
+    C->ops->productsymbolic = MatProductSymbolic_PtAP_SeqAIJ_SeqMAIJ;
+  } else SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"Mat Product type %s is not supported for SeqAIJ and SeqMAIJ matrices",MatProductTypes[product->type]);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MatProductSetFromOptions_MPIAIJ_MPIMAIJ(Mat C)
+{
+  PetscErrorCode ierr;
+  Mat_Product    *product = C->product;
+  PetscBool      flg = PETSC_FALSE;
+  Mat            A=product->A,P=product->B;
+  PetscInt       alg=1; /* set default algorithm */
+#if !defined(PETSC_HAVE_HYPRE)
+  const char     *algTypes[4] = {"scalable","nonscalable","allatonce","allatonce_merged"};
+  PetscInt       nalg=4;
+#else
+  const char     *algTypes[5] = {"scalable","nonscalable","allatonce","allatonce_merged","hypre"};
+  PetscInt       nalg=5;
+#endif
+
+  PetscFunctionBegin;
+  if (product->type != MATPRODUCT_PtAP) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"Mat Product type %s is not supported for MPIAIJ and MPIMAIJ matrices",MatProductTypes[product->type]);
+
+  /* PtAP */
+  /* Check matrix local sizes */
+  if (A->rmap->rstart != P->rmap->rstart || A->rmap->rend != P->rmap->rend) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Matrix local dimensions are incompatible, Arow (%D, %D) != Prow (%D,%D)",A->rmap->rstart,A->rmap->rend,P->rmap->rstart,P->rmap->rend);
+  if (A->cmap->rstart != P->rmap->rstart || A->cmap->rend != P->rmap->rend) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Matrix local dimensions are incompatible, Acol (%D, %D) != Prow (%D,%D)",A->cmap->rstart,A->cmap->rend,P->rmap->rstart,P->rmap->rend);
+
+  /* Set the default algorithm */
+  ierr = PetscStrcmp(C->product->alg,"default",&flg);CHKERRQ(ierr);
+  if (flg) {
+    ierr = MatProductSetAlgorithm(C,(MatProductAlgorithm)algTypes[alg]);CHKERRQ(ierr);
+  }
+
+  /* Get runtime option */
+  ierr = PetscOptionsBegin(PetscObjectComm((PetscObject)C),((PetscObject)C)->prefix,"MatProduct_PtAP","Mat");CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-matproduct_ptap_via","Algorithmic approach","MatPtAP",algTypes,nalg,algTypes[alg],&alg,&flg);CHKERRQ(ierr);
+  if (flg) {
+    ierr = MatProductSetAlgorithm(C,(MatProductAlgorithm)algTypes[alg]);CHKERRQ(ierr);
+  }
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
+
+  ierr = PetscStrcmp(C->product->alg,"allatonce",&flg);CHKERRQ(ierr);
+  if (flg) {
+    C->ops->productsymbolic = MatProductSymbolic_PtAP_MPIAIJ_MPIMAIJ;
+    PetscFunctionReturn(0);
+  }
+
+  ierr = PetscStrcmp(C->product->alg,"allatonce_merged",&flg);CHKERRQ(ierr);
+  if (flg) {
+    C->ops->productsymbolic = MatProductSymbolic_PtAP_MPIAIJ_MPIMAIJ;
+    PetscFunctionReturn(0);
+  }
+
+  /* Convert P from MAIJ to AIJ matrix since implementation not available for MAIJ */
+  ierr = PetscInfo((PetscObject)A,"Converting from MAIJ to AIJ matrix since implementation not available for MAIJ\n");CHKERRQ(ierr);
+  ierr = MatConvert(P,MATMPIAIJ,MAT_INPLACE_MATRIX,&P);CHKERRQ(ierr);
+  ierr = MatProductSetFromOptions(C);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/* ----------------------------------------------------------------*/
+PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A,Mat PP,PetscReal fill,Mat C)
 {
   PetscErrorCode     ierr;
   PetscFreeSpaceList free_space=NULL,current_space=NULL;
@@ -2890,8 +2954,8 @@ PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A,Mat PP,PetscReal fill,Mat *C
 
   /* Work arrays for rows of P^T*A */
   ierr = PetscMalloc4(an,&ptadenserow,an,&ptasparserow,cn,&denserow,cn,&sparserow);CHKERRQ(ierr);
-  ierr = PetscMemzero(ptadenserow,an*sizeof(PetscInt));CHKERRQ(ierr);
-  ierr = PetscMemzero(denserow,cn*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscArrayzero(ptadenserow,an);CHKERRQ(ierr);
+  ierr = PetscArrayzero(denserow,cn);CHKERRQ(ierr);
 
   /* Set initial free space to be nnz(A) scaled by aspect ratio of P. */
   /* This should be reasonable if sparsity of PtAP is similar to that of A. */
@@ -2950,7 +3014,7 @@ PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A,Mat PP,PetscReal fill,Mat *C
       }
 
       /* Copy data into free space, and zero out denserows */
-      ierr = PetscMemcpy(current_space->array,sparserow,cnzi*sizeof(PetscInt));CHKERRQ(ierr);
+      ierr = PetscArraycpy(current_space->array,sparserow,cnzi);CHKERRQ(ierr);
 
       current_space->array           += cnzi;
       current_space->local_used      += cnzi;
@@ -2975,17 +3039,18 @@ PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A,Mat PP,PetscReal fill,Mat *C
   ierr = PetscCalloc1(ci[cn]+1,&ca);CHKERRQ(ierr);
 
   /* put together the new matrix */
-  ierr = MatCreateSeqAIJWithArrays(PetscObjectComm((PetscObject)A),cn,cn,ci,cj,ca,C);CHKERRQ(ierr);
-  ierr = MatSetBlockSize(*C,pp->dof);CHKERRQ(ierr);
+  ierr = MatSetSeqAIJWithArrays_private(PetscObjectComm((PetscObject)A),cn,cn,ci,cj,ca,NULL,C);CHKERRQ(ierr);
+  ierr = MatSetBlockSize(C,pp->dof);CHKERRQ(ierr);
 
   /* MatCreateSeqAIJWithArrays flags matrix so PETSc doesn't free the user's arrays. */
   /* Since these are PETSc arrays, change flags to free them as necessary. */
-  c          = (Mat_SeqAIJ*)((*C)->data);
+  c          = (Mat_SeqAIJ*)(C->data);
   c->free_a  = PETSC_TRUE;
   c->free_ij = PETSC_TRUE;
   c->nonew   = 0;
 
-  (*C)->ops->ptapnumeric = MatPtAPNumeric_SeqAIJ_SeqMAIJ;
+  C->ops->ptapnumeric    = MatPtAPNumeric_SeqAIJ_SeqMAIJ;
+  C->ops->productnumeric = MatProductNumeric_PtAP;
 
   /* Clean up. */
   ierr = MatRestoreSymbolicTranspose_SeqAIJ(P,&pti,&ptj);CHKERRQ(ierr);
@@ -3013,7 +3078,7 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqMAIJ(Mat A,Mat PP,Mat C)
   ierr = PetscCalloc3(cn,&apa,cn,&apj,cn,&apjdense);CHKERRQ(ierr);
 
   /* Clear old values in C */
-  ierr = PetscMemzero(ca,ci[cm]*sizeof(MatScalar));CHKERRQ(ierr);
+  ierr = PetscArrayzero(ca,ci[cm]);CHKERRQ(ierr);
 
   for (i=0; i<am; i++) {
     /* Form sparse row of A*P */
@@ -3078,53 +3143,107 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqMAIJ(Mat A,Mat PP,Mat C)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatPtAP_SeqAIJ_SeqMAIJ(Mat A,Mat P,MatReuse scall,PetscReal fill,Mat *C)
+PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqMAIJ(Mat C)
 {
-  PetscErrorCode ierr;
+  PetscErrorCode      ierr;
+  Mat_Product         *product = C->product;
+  Mat                 A=product->A,P=product->B;
 
   PetscFunctionBegin;
-  if (scall == MAT_INITIAL_MATRIX) {
-    ierr = PetscLogEventBegin(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
-    ierr = MatPtAPSymbolic_SeqAIJ_SeqMAIJ(A,P,fill,C);CHKERRQ(ierr);
-    ierr = PetscLogEventEnd(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
-  }
-  ierr = PetscLogEventBegin(MAT_PtAPNumeric,A,P,0,0);CHKERRQ(ierr);
-  ierr = MatPtAPNumeric_SeqAIJ_SeqMAIJ(A,P,*C);CHKERRQ(ierr);
-  ierr = PetscLogEventEnd(MAT_PtAPNumeric,A,P,0,0);CHKERRQ(ierr);
+  ierr = MatPtAPSymbolic_SeqAIJ_SeqMAIJ(A,P,product->fill,C);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ(Mat A,Mat PP,PetscReal fill,Mat *C)
 {
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
-  /* MatPtAPSymbolic_MPIAIJ_MPIMAIJ() is not implemented yet. Convert PP to mpiaij format */
-  ierr = MatConvert(PP,MATMPIAIJ,MAT_INPLACE_MATRIX,&PP);CHKERRQ(ierr);
-  ierr =(*PP->ops->ptapsymbolic)(A,PP,fill,C);CHKERRQ(ierr);
+  SETERRQ(PetscObjectComm((PetscObject)A),PETSC_ERR_SUP,"MatPtAPSymbolic is not implemented for MPIMAIJ matrix yet");
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ(Mat A,Mat PP,Mat C)
 {
   PetscFunctionBegin;
-  SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"MatPtAPNumeric is not implemented for MPIMAIJ matrix yet");
+  SETERRQ(PetscObjectComm((PetscObject)A),PETSC_ERR_SUP,"MatPtAPNumeric is not implemented for MPIMAIJ matrix yet");
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatPtAP_MPIAIJ_MPIMAIJ(Mat A,Mat P,MatReuse scall,PetscReal fill,Mat *C)
+PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIXAIJ_allatonce(Mat,Mat,PetscInt,Mat);
+
+PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce(Mat A,Mat P,Mat C)
 {
-  PetscErrorCode ierr;
+  Mat_MPIMAIJ     *maij = (Mat_MPIMAIJ*)P->data;
+  PetscErrorCode  ierr;
 
   PetscFunctionBegin;
-  if (scall == MAT_INITIAL_MATRIX) {
-    ierr = PetscLogEventBegin(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
-    ierr = MatPtAPSymbolic_MPIAIJ_MPIMAIJ(A,P,fill,C);CHKERRQ(ierr);
-    ierr = PetscLogEventEnd(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
+
+  ierr = MatPtAPNumeric_MPIAIJ_MPIXAIJ_allatonce(A,maij->A,maij->dof,C);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIXAIJ_allatonce(Mat,Mat,PetscInt,PetscReal,Mat);
+
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce(Mat A,Mat P,PetscReal fill,Mat C)
+{
+  Mat_MPIMAIJ     *maij = (Mat_MPIMAIJ*)P->data;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  ierr = MatPtAPSymbolic_MPIAIJ_MPIXAIJ_allatonce(A,maij->A,maij->dof,fill,C);CHKERRQ(ierr);
+  C->ops->ptapnumeric = MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIXAIJ_allatonce_merged(Mat,Mat,PetscInt,Mat);
+
+PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce_merged(Mat A,Mat P,Mat C)
+{
+  Mat_MPIMAIJ     *maij = (Mat_MPIMAIJ*)P->data;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+
+  ierr = MatPtAPNumeric_MPIAIJ_MPIXAIJ_allatonce_merged(A,maij->A,maij->dof,C);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIXAIJ_allatonce_merged(Mat,Mat,PetscInt,PetscReal,Mat);
+
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce_merged(Mat A,Mat P,PetscReal fill,Mat C)
+{
+  Mat_MPIMAIJ     *maij = (Mat_MPIMAIJ*)P->data;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+
+  ierr = MatPtAPSymbolic_MPIAIJ_MPIXAIJ_allatonce_merged(A,maij->A,maij->dof,fill,C);CHKERRQ(ierr);
+  C->ops->ptapnumeric = MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce_merged;
+  PetscFunctionReturn(0);
+}
+
+PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_MPIAIJ_MPIMAIJ(Mat C)
+{
+  PetscErrorCode      ierr;
+  Mat_Product         *product = C->product;
+  Mat                 A=product->A,P=product->B;
+  PetscBool           flg;
+
+  PetscFunctionBegin;
+  ierr = PetscStrcmp(product->alg,"allatonce",&flg);CHKERRQ(ierr);
+  if (flg) {
+    ierr = MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce(A,P,product->fill,C);CHKERRQ(ierr);
+    C->ops->productnumeric = MatProductNumeric_PtAP;
+    PetscFunctionReturn(0);
   }
-  ierr = PetscLogEventBegin(MAT_PtAPNumeric,A,P,0,0);CHKERRQ(ierr);
-  ierr = ((*C)->ops->ptapnumeric)(A,P,*C);CHKERRQ(ierr);
-  ierr = PetscLogEventEnd(MAT_PtAPNumeric,A,P,0,0);CHKERRQ(ierr);
+
+  ierr = PetscStrcmp(product->alg,"allatonce_merged",&flg);CHKERRQ(ierr);
+  if (flg) {
+    ierr = MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce_merged(A,P,product->fill,C);CHKERRQ(ierr);
+    C->ops->productnumeric = MatProductNumeric_PtAP;
+    PetscFunctionReturn(0);
+  }
+
+  SETERRQ(PetscObjectComm((PetscObject)C),PETSC_ERR_SUP,"Mat Product Algorithm is not supported");
   PetscFunctionReturn(0);
 }
 
@@ -3145,7 +3264,10 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqMAIJ_SeqAIJ(Mat A, MatType newtype,Mat
     nmax = PetscMax(nmax,aij->ilen[i]);
     for (j=0; j<dof; j++) ilen[dof*i+j] = aij->ilen[i];
   }
-  ierr = MatCreateSeqAIJ(PETSC_COMM_SELF,dof*m,dof*n,0,ilen,&B);CHKERRQ(ierr);
+  ierr = MatCreate(PETSC_COMM_SELF,&B);CHKERRQ(ierr);
+  ierr = MatSetSizes(B,dof*m,dof*n,dof*m,dof*n);CHKERRQ(ierr);
+  ierr = MatSetType(B,newtype);CHKERRQ(ierr);
+  ierr = MatSeqAIJSetPreallocation(B,0,ilen);CHKERRQ(ierr);
   ierr = PetscFree(ilen);CHKERRQ(ierr);
   ierr = PetscMalloc1(nmax,&icols);CHKERRQ(ierr);
   ii   = 0;
@@ -3196,7 +3318,10 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIMAIJ_MPIAIJ(Mat A, MatType newtype,Mat
       onz[dof*i+j] = OAIJ->ilen[i];
     }
   }
-  ierr = MatCreateAIJ(PetscObjectComm((PetscObject)A),A->rmap->n,A->cmap->n,A->rmap->N,A->cmap->N,0,dnz,0,onz,&B);CHKERRQ(ierr);
+  ierr = MatCreate(PetscObjectComm((PetscObject)A),&B);CHKERRQ(ierr);
+  ierr = MatSetSizes(B,A->rmap->n,A->cmap->n,A->rmap->N,A->cmap->N);CHKERRQ(ierr);
+  ierr = MatSetType(B,newtype);CHKERRQ(ierr);
+  ierr = MatMPIAIJSetPreallocation(B,0,dnz,0,onz);CHKERRQ(ierr);
   ierr = MatSetBlockSize(B,dof);CHKERRQ(ierr);
   ierr = PetscFree2(dnz,onz);CHKERRQ(ierr);
 
@@ -3265,9 +3390,6 @@ PetscErrorCode MatCreateSubMatrices_MAIJ(Mat mat,PetscInt n,const IS irow[],cons
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatPtAP_IS_XAIJ(Mat,Mat,MatReuse,PetscReal,Mat*);
-
-
 /* ---------------------------------------------------------------------------------- */
 /*@
   MatCreateMAIJ - Creates a matrix type providing restriction and interpolation
@@ -3301,13 +3423,20 @@ PetscErrorCode  MatCreateMAIJ(Mat A,PetscInt dof,Mat *maij)
   PetscMPIInt    size;
   PetscInt       n;
   Mat            B;
+#if defined(PETSC_HAVE_CUDA)
+  /* hack to prevent conversion to AIJ format for CUDA when used inside a parallel MAIJ */
+  PetscBool      convert = dof < 0 ? PETSC_FALSE : PETSC_TRUE;
+#endif
 
   PetscFunctionBegin;
+  dof  = PetscAbs(dof);
   ierr = PetscObjectReference((PetscObject)A);CHKERRQ(ierr);
 
   if (dof == 1) *maij = A;
   else {
     ierr = MatCreate(PetscObjectComm((PetscObject)A),&B);CHKERRQ(ierr);
+    /* propagate vec type */
+    ierr = MatSetVecType(B,A->defaultvectype);CHKERRQ(ierr);
     ierr = MatSetSizes(B,dof*A->rmap->n,dof*A->cmap->n,dof*A->rmap->N,dof*A->cmap->N);CHKERRQ(ierr);
     ierr = PetscLayoutSetBlockSize(B->rmap,dof);CHKERRQ(ierr);
     ierr = PetscLayoutSetBlockSize(B->cmap,dof);CHKERRQ(ierr);
@@ -3325,6 +3454,7 @@ PetscErrorCode  MatCreateMAIJ(Mat A,PetscInt dof,Mat *maij)
       B->ops->setup   = NULL;
       B->ops->destroy = MatDestroy_SeqMAIJ;
       B->ops->view    = MatView_SeqMAIJ;
+
       b               = (Mat_SeqMAIJ*)B->data;
       b->dof          = dof;
       b->AIJ          = A;
@@ -3395,11 +3525,11 @@ PetscErrorCode  MatCreateMAIJ(Mat A,PetscInt dof,Mat *maij)
         B->ops->multtranspose    = MatMultTranspose_SeqMAIJ_N;
         B->ops->multtransposeadd = MatMultTransposeAdd_SeqMAIJ_N;
       }
+#if defined(PETSC_HAVE_CUDA)
+      ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_seqmaij_seqaijcusparse_C",MatConvert_SeqMAIJ_SeqAIJ);CHKERRQ(ierr);
+#endif
       ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_seqmaij_seqaij_C",MatConvert_SeqMAIJ_SeqAIJ);CHKERRQ(ierr);
-      ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_seqaij_seqmaij_C",MatPtAP_SeqAIJ_SeqMAIJ);CHKERRQ(ierr);
-      ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_seqaijperm_seqmaij_C",MatPtAP_SeqAIJ_SeqMAIJ);CHKERRQ(ierr);
-      ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_seqaijmkl_seqmaij_C",MatPtAP_SeqAIJ_SeqMAIJ);CHKERRQ(ierr);
-      ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_is_seqmaij_C",MatPtAP_IS_XAIJ);CHKERRQ(ierr);
+      ierr = PetscObjectComposeFunction((PetscObject)B,"MatProductSetFromOptions_seqaij_seqmaij_C",MatProductSetFromOptions_SeqAIJ_SeqMAIJ);CHKERRQ(ierr);
     } else {
       Mat_MPIAIJ  *mpiaij = (Mat_MPIAIJ*)A->data;
       Mat_MPIMAIJ *b;
@@ -3408,16 +3538,16 @@ PetscErrorCode  MatCreateMAIJ(Mat A,PetscInt dof,Mat *maij)
 
       ierr = MatSetType(B,MATMPIMAIJ);CHKERRQ(ierr);
 
-      B->ops->setup   = NULL;
-      B->ops->destroy = MatDestroy_MPIMAIJ;
-      B->ops->view    = MatView_MPIMAIJ;
+      B->ops->setup            = NULL;
+      B->ops->destroy          = MatDestroy_MPIMAIJ;
+      B->ops->view             = MatView_MPIMAIJ;
 
       b      = (Mat_MPIMAIJ*)B->data;
       b->dof = dof;
       b->A   = A;
 
-      ierr = MatCreateMAIJ(mpiaij->A,dof,&b->AIJ);CHKERRQ(ierr);
-      ierr = MatCreateMAIJ(mpiaij->B,dof,&b->OAIJ);CHKERRQ(ierr);
+      ierr = MatCreateMAIJ(mpiaij->A,-dof,&b->AIJ);CHKERRQ(ierr);
+      ierr = MatCreateMAIJ(mpiaij->B,-dof,&b->OAIJ);CHKERRQ(ierr);
 
       ierr = VecGetSize(mpiaij->lvec,&n);CHKERRQ(ierr);
       ierr = VecCreate(PETSC_COMM_SELF,&b->w);CHKERRQ(ierr);
@@ -3444,13 +3574,28 @@ PetscErrorCode  MatCreateMAIJ(Mat A,PetscInt dof,Mat *maij)
       B->ops->multadd          = MatMultAdd_MPIMAIJ_dof;
       B->ops->multtransposeadd = MatMultTransposeAdd_MPIMAIJ_dof;
 
+#if defined(PETSC_HAVE_CUDA)
+      ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_mpimaij_mpiaijcusparse_C",MatConvert_MPIMAIJ_MPIAIJ);CHKERRQ(ierr);
+#endif
       ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_mpimaij_mpiaij_C",MatConvert_MPIMAIJ_MPIAIJ);CHKERRQ(ierr);
-      ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_mpiaij_mpimaij_C",MatPtAP_MPIAIJ_MPIMAIJ);CHKERRQ(ierr);
-      ierr = PetscObjectComposeFunction((PetscObject)B,"MatPtAP_is_mpimaij_C",MatPtAP_IS_XAIJ);CHKERRQ(ierr);
+      ierr = PetscObjectComposeFunction((PetscObject)B,"MatProductSetFromOptions_mpiaij_mpimaij_C",MatProductSetFromOptions_MPIAIJ_MPIMAIJ);CHKERRQ(ierr);
     }
     B->ops->createsubmatrix   = MatCreateSubMatrix_MAIJ;
     B->ops->createsubmatrices = MatCreateSubMatrices_MAIJ;
+    ierr  = MatSetFromOptions(B);CHKERRQ(ierr);
     ierr  = MatSetUp(B);CHKERRQ(ierr);
+#if defined(PETSC_HAVE_CUDA)
+    /* temporary until we have CUDA implementation of MAIJ */
+    {
+      PetscBool flg;
+      if (convert) {
+        ierr = PetscObjectTypeCompareAny((PetscObject)A,&flg,MATSEQAIJCUSPARSE,MATMPIAIJCUSPARSE,MATAIJCUSPARSE,"");CHKERRQ(ierr);
+        if (flg) {
+          ierr = MatConvert(B,((PetscObject)A)->type_name,MAT_INPLACE_MATRIX,&B);CHKERRQ(ierr);
+        }
+      }
+    }
+#endif
     *maij = B;
     ierr  = MatViewFromOptions(B,NULL,"-mat_view");CHKERRQ(ierr);
   }

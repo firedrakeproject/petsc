@@ -2,18 +2,24 @@
    Implementation of DMStag, defining dimension-independent functions in the
    DM API. stag1d.c, stag2d.c, and stag3d.c may include dimension-specific
    implementations of DM API functions, and other files here contain additional
-   DMStag-specific API functions (and internal functions).
+   DMStag-specific API functions, as well as internal functions.
 */
 #include <petsc/private/dmstagimpl.h>
 #include <petscsf.h>
 
-/*MC
-  DMSTAG = "stag"
+static PetscErrorCode DMClone_Stag(DM dm,DM *newdm)
+{
+  PetscErrorCode ierr;
 
-  Level: intermediate
-
-.seealso: DMType, DMCreate(), DMSetType()
-M*/
+  PetscFunctionBegin;
+  /* Destroy the DM created by generic logic in DMClone() */
+  if (*newdm) {
+    ierr = DMDestroy(newdm);CHKERRQ(ierr);
+  }
+  ierr = DMStagDuplicateWithoutSetup(dm,PetscObjectComm((PetscObject)dm),newdm);CHKERRQ(ierr);
+  ierr = DMSetUp(*newdm);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
 
 static PetscErrorCode DMDestroy_Stag(DM dm)
 {
@@ -24,14 +30,13 @@ static PetscErrorCode DMDestroy_Stag(DM dm)
   PetscFunctionBegin;
   stag = (DM_Stag*)dm->data;
   for (i=0; i<DMSTAG_MAX_DIM; ++i) {
-    if (stag->l[i]) {
-      ierr = PetscFree(stag->l[i]);CHKERRQ(ierr);
-    }
+    ierr = PetscFree(stag->l[i]);CHKERRQ(ierr);
   }
-  if (stag->gton)            {ierr = VecScatterDestroy(&stag->gton);CHKERRQ(ierr);}
-  if (stag->gtol)            {ierr = VecScatterDestroy(&stag->gtol);CHKERRQ(ierr);}
-  if (stag->neighbors)       {ierr = PetscFree(stag->neighbors);CHKERRQ(ierr);}
-  if (stag->locationOffsets) {ierr = PetscFree(stag->locationOffsets);CHKERRQ(ierr);}
+  ierr = VecScatterDestroy(&stag->gtol);CHKERRQ(ierr);
+  ierr = VecScatterDestroy(&stag->ltog_injective);CHKERRQ(ierr);
+  ierr = PetscFree(stag->neighbors);CHKERRQ(ierr);
+  ierr = PetscFree(stag->locationOffsets);CHKERRQ(ierr);
+  ierr = PetscFree(stag->coordinateDMType);CHKERRQ(ierr);
   ierr = PetscFree(stag);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -64,10 +69,10 @@ static PetscErrorCode DMCreateLocalVector_Stag(DM dm,Vec *vec)
 static PetscErrorCode DMCreateMatrix_Stag(DM dm,Mat *mat)
 {
   PetscErrorCode         ierr;
-  const DM_Stag * const  stag = (DM_Stag*)dm->data;
   MatType                matType;
   PetscBool              isaij,isshell;
-  PetscInt               width,nNeighbors,dim;
+  PetscInt               entries,width,nNeighbors,dim,dof[DMSTAG_MAX_STRATA],stencilWidth;
+  DMStagStencilType      stencilType;
   ISLocalToGlobalMapping ltogmap;
 
   PetscFunctionBegin;
@@ -75,24 +80,28 @@ static PetscErrorCode DMCreateMatrix_Stag(DM dm,Mat *mat)
   ierr = DMGetMatType(dm,&matType);CHKERRQ(ierr);
   ierr = PetscStrcmp(matType,MATAIJ,&isaij);CHKERRQ(ierr);
   ierr = PetscStrcmp(matType,MATSHELL,&isshell);CHKERRQ(ierr);
+  ierr = DMStagGetEntries(dm,&entries);CHKERRQ(ierr);
+  ierr = DMStagGetDOF(dm,&dof[0],&dof[1],&dof[2],&dof[3]);CHKERRQ(ierr);
+  ierr = DMStagGetStencilWidth(dm,&stencilWidth);CHKERRQ(ierr);
+  ierr = DMStagGetStencilType(dm,&stencilType);CHKERRQ(ierr);
 
   if (isaij) {
     /* This implementation gives a very dense stencil, which is likely unsuitable for
        real applications. */
-    switch (stag->stencilType) {
+    switch (stencilType) {
       case DMSTAG_STENCIL_NONE:
         nNeighbors = 1;
         break;
       case DMSTAG_STENCIL_STAR:
         switch (dim) {
           case 1 :
-            nNeighbors = 2*stag->stencilWidth + 1;
+            nNeighbors = 2*stencilWidth + 1;
             break;
           case 2 :
-            nNeighbors = 4*stag->stencilWidth + 3;
+            nNeighbors = 4*stencilWidth + 3;
             break;
           case 3 :
-            nNeighbors = 6*stag->stencilWidth + 5;
+            nNeighbors = 6*stencilWidth + 5;
             break;
           default : SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Unsupported dimension %d",dim);
         }
@@ -100,24 +109,24 @@ static PetscErrorCode DMCreateMatrix_Stag(DM dm,Mat *mat)
       case DMSTAG_STENCIL_BOX:
         switch (dim) {
           case 1 :
-            nNeighbors = (2*stag->stencilWidth + 1);
+            nNeighbors = (2*stencilWidth + 1);
             break;
           case 2 :
-            nNeighbors = (2*stag->stencilWidth + 1) * (2*stag->stencilWidth + 1);
+            nNeighbors = (2*stencilWidth + 1) * (2*stencilWidth + 1);
             break;
           case 3 :
-            nNeighbors = (2*stag->stencilWidth + 1) * (2*stag->stencilWidth + 1) * (2*stag->stencilWidth + 1);
+            nNeighbors = (2*stencilWidth + 1) * (2*stencilWidth + 1) * (2*stencilWidth + 1);
             break;
           default : SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Unsupported dimension %d",dim);
         }
         break;
       default : SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Unsupported stencil");
     }
-    width = (stag->dof[0] + stag->dof[1] + stag->dof[2] + stag->dof[3]) * nNeighbors;
-    ierr = MatCreateAIJ(PETSC_COMM_WORLD,stag->entries,stag->entries,PETSC_DETERMINE,PETSC_DETERMINE,width,NULL,width,NULL,mat);CHKERRQ(ierr);
+    width = (dof[0] + dof[1] + dof[2] + dof[3]) * nNeighbors;
+    ierr = MatCreateAIJ(PETSC_COMM_WORLD,entries,entries,PETSC_DETERMINE,PETSC_DETERMINE,width,NULL,width,NULL,mat);CHKERRQ(ierr);
   } else if (isshell) {
     ierr = MatCreate(PetscObjectComm((PetscObject)dm),mat);CHKERRQ(ierr);
-    ierr = MatSetSizes(*mat,stag->entries,stag->entries,PETSC_DETERMINE,PETSC_DETERMINE);CHKERRQ(ierr);
+    ierr = MatSetSizes(*mat,entries,entries,PETSC_DETERMINE,PETSC_DETERMINE);CHKERRQ(ierr);
     ierr = MatSetType(*mat,MATSHELL);CHKERRQ(ierr);
     ierr = MatSetUp(*mat);CHKERRQ(ierr);
   } else SETERRQ1(PETSC_COMM_WORLD,PETSC_ERR_SUP,"Not implemented for Mattype %s",matType);
@@ -219,17 +228,16 @@ static PetscErrorCode DMLocalToGlobalBegin_Stag(DM dm,Vec l,InsertMode mode,Vec 
 {
   PetscErrorCode  ierr;
   DM_Stag * const stag = (DM_Stag*)dm->data;
-  PetscInt        dim,d;
 
   PetscFunctionBegin;
   if (mode == ADD_VALUES) {
     ierr = VecScatterBegin(stag->gtol,l,g,mode,SCATTER_REVERSE);CHKERRQ(ierr);
   } else if (mode == INSERT_VALUES) {
-    ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
-    for (d=0; d<dim; ++d) {
-      if (stag->nRanks[d] == 1 && stag->stencilWidth > 0 && stag->boundaryType[d] != DM_BOUNDARY_GHOSTED && stag->boundaryType[d] != DM_BOUNDARY_NONE) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Local to Global scattering with INSERT_VALUES is not supported for single rank in a direction with boundary conditions (e.g. periodic) inducing a non-injective local->global map. Either change the boundary conditions, use a stencil width of zero, or use more than one rank in the relevant direction (e.g. -stag_ranks_x 2)");
+    if (stag->ltog_injective) {
+      ierr = VecScatterBegin(stag->ltog_injective,l,g,mode,SCATTER_FORWARD);CHKERRQ(ierr);
+    } else {
+      ierr = VecScatterBegin(stag->gtol,l,g,mode,SCATTER_REVERSE_LOCAL);CHKERRQ(ierr);
     }
-    ierr = VecScatterBegin(stag->gtol,l,g,mode,SCATTER_REVERSE_LOCAL);CHKERRQ(ierr);
   } else SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Unsupported InsertMode");
   PetscFunctionReturn(0);
 }
@@ -243,7 +251,11 @@ static PetscErrorCode DMLocalToGlobalEnd_Stag(DM dm,Vec l,InsertMode mode,Vec g)
   if (mode == ADD_VALUES) {
     ierr = VecScatterEnd(stag->gtol,l,g,mode,SCATTER_REVERSE);CHKERRQ(ierr);
   } else if (mode == INSERT_VALUES) {
-    ierr = VecScatterEnd(stag->gtol,l,g,mode,SCATTER_REVERSE_LOCAL);CHKERRQ(ierr);
+    if (stag->ltog_injective) {
+      ierr = VecScatterEnd(stag->ltog_injective,l,g,mode,SCATTER_FORWARD);CHKERRQ(ierr);
+    } else {
+      ierr = VecScatterEnd(stag->gtol,l,g,mode,SCATTER_REVERSE_LOCAL);CHKERRQ(ierr);
+    }
   } else SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Unsupported InsertMode");
   PetscFunctionReturn(0);
 }
@@ -419,11 +431,14 @@ static PetscErrorCode DMSetFromOptions_Stag(PetscOptionItems *PetscOptionsObject
 }
 
 /*MC
-  DMSTAG = "stag" - A DM object, similar to DMDA, representing a "staggered grid" or a structured cell complex.
+  DMSTAG = "stag" - A DM object representing a "staggered grid" or a structured cell complex.
+
+  This implementation parallels the DMDA implementation in many ways, but allows degrees of freedom
+  to be associated with all "strata" in a logically-rectangular grid: vertices, edges, faces, and elements.
 
   Level: beginner
 
-.seealso: DM, DMPRODUCT, DMDA, DMPLEX, DMStagCreate1d(), DMStagCreate2d(), DMStagCreate3d()
+.seealso: DM, DMPRODUCT, DMDA, DMPLEX, DMStagCreate1d(), DMStagCreate2d(), DMStagCreate3d(), DMType, DMCreate(), DMSetType()
 M*/
 
 PETSC_EXTERN PetscErrorCode DMCreate_Stag(DM dm)
@@ -436,10 +451,9 @@ PETSC_EXTERN PetscErrorCode DMCreate_Stag(DM dm)
   PetscValidPointer(dm,1);
   ierr = PetscNewLog(dm,&stag);CHKERRQ(ierr);
   dm->data = stag;
-  ierr = PetscObjectChangeTypeName((PetscObject)dm,DMSTAG);CHKERRQ(ierr);
 
-  stag->gton                                          = NULL;
   stag->gtol                                          = NULL;
+  stag->ltog_injective                                = NULL;
   for (i=0; i<DMSTAG_MAX_STRATA; ++i) stag->dof[i]    = 0;
   for (i=0; i<DMSTAG_MAX_DIM;    ++i) stag->l[i]      = NULL;
   stag->stencilType                                   = DMSTAG_STENCIL_NONE;
@@ -448,6 +462,7 @@ PETSC_EXTERN PetscErrorCode DMCreate_Stag(DM dm)
   stag->coordinateDMType                              = NULL;
 
   ierr = DMGetDimension(dm,&dim);CHKERRQ(ierr);
+  if (dim != 1 && dim != 2 && dim != 3) SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_WRONGSTATE,"DMSetDimension() must be called to set a dimension with value 1, 2, or 3");
 
   ierr = PetscMemzero(dm->ops,sizeof(*(dm->ops)));CHKERRQ(ierr);
   dm->ops->createcoordinatedm  = DMCreateCoordinateDM_Stag;
@@ -468,6 +483,7 @@ PETSC_EXTERN PetscErrorCode DMCreate_Stag(DM dm)
     case 3: dm->ops->setup     = DMSetUp_Stag_3d; break;
     default : SETERRQ1(PetscObjectComm((PetscObject)dm),PETSC_ERR_ARG_OUTOFRANGE,"Unsupported dimension %d",dim);
   }
+  dm->ops->clone               = DMClone_Stag;
   dm->ops->view                = DMView_Stag;
   dm->ops->getcompatibility    = DMGetCompatibility_Stag;
   PetscFunctionReturn(0);

@@ -25,8 +25,6 @@ $     MatColoringSetType(part,"my_color")
    or at runtime via the option
 $     -mat_coloring_type my_color
 
-.keywords: matrix, Coloring, register
-
 .seealso: MatColoringRegisterDestroy(), MatColoringRegisterAll()
 @*/
 PetscErrorCode  MatColoringRegister(const char sname[],PetscErrorCode (*function)(MatColoring))
@@ -61,14 +59,15 @@ PetscErrorCode  MatColoringRegister(const char sname[],PetscErrorCode (*function
    Level: beginner
 
    Notes:
-    A distance one coloring is useful, for example, multi-color SOR. A distance two coloring is for the finite difference computation of Jacobians 
+    A distance one coloring is useful, for example, multi-color SOR. A distance two coloring is for the finite difference computation of Jacobians
           (see MatFDColoringCreate()).
+
+       Coloring of matrices can be computed directly from the sparse matrix nonzero structure via the MatColoring object or from the mesh from which the
+       matrix comes from with DMCreateColoring(). In general using the mesh produces a more optimal coloring (fewer colors).
 
           Some coloring types only support distance two colorings
 
-.keywords: Coloring, Matrix
-
-.seealso: MatColoring, MatColoringApply(), MatFDColoringCreate()
+.seealso: MatColoring, MatColoringApply(), MatFDColoringCreate(), DMCreateColoring()
 @*/
 PetscErrorCode MatColoringCreate(Mat m,MatColoring *mcptr)
 {
@@ -107,8 +106,6 @@ PetscErrorCode MatColoringCreate(Mat m,MatColoring *mcptr)
 
    Level: beginner
 
-.keywords: Coloring, destroy
-
 .seealso: MatColoringCreate(), MatColoringApply()
 @*/
 PetscErrorCode MatColoringDestroy(MatColoring *mc)
@@ -140,8 +137,6 @@ PetscErrorCode MatColoringDestroy(MatColoring *mc)
     Possible types include the sequential types MATCOLORINGLF,
    MATCOLORINGSL, and MATCOLORINGID from the MINPACK package as well
    as a parallel MATCOLORINGMIS algorithm.
-
-.keywords: Coloring, type
 
 .seealso: MatColoringCreate(), MatColoringApply()
 @*/
@@ -184,12 +179,12 @@ PetscErrorCode MatColoringSetType(MatColoring mc,MatColoringType type)
 .   -mat_coloring_maxcolors - the maximum number of relevant colors, all nodes not in a color are in maxcolors+1
 .   -mat_coloring_distance - compute a distance 1,2,... coloring.
 .   -mat_coloring_view - print information about the coloring and the produced index sets
+.   -snes_fd_color - instruct SNES to using coloring and then MatFDColoring to compute the Jacobians
+-   -snes_fd_color_use_mat - instruct SNES to color the matrix directly instead of the DM from which the matrix comes (the default)
 
    Level: beginner
 
-.keywords: Coloring, Matrix
-
-.seealso: MatColoring, MatColoringApply()
+.seealso: MatColoring, MatColoringApply(), MatColoringSetDistance(), SNESComputeJacobianDefaultColor()
 @*/
 PetscErrorCode MatColoringSetFromOptions(MatColoring mc)
 {
@@ -234,9 +229,9 @@ PetscErrorCode MatColoringSetFromOptions(MatColoring mc)
 
    Logically Collective on MatColoring
 
-   Input Parameter:
-.  mc - the MatColoring context
-.  dist - the distance the coloring should compute
+   Input Parameters:
++  mc - the MatColoring context
+-  dist - the distance the coloring should compute
 
    Level: beginner
 
@@ -246,8 +241,6 @@ PetscErrorCode MatColoringSetFromOptions(MatColoring mc)
    of the same color are.  Distance-1 colorings are the classical
    coloring, where no two vertices of the same color are adjacent.
    distance-2 colorings are useful for the computation of Jacobians.
-
-.keywords: Coloring, distance, Jacobian
 
 .seealso: MatColoringGetDistance(), MatColoringApply()
 @*/
@@ -267,12 +260,10 @@ PetscErrorCode MatColoringSetDistance(MatColoring mc,PetscInt dist)
    Input Parameter:
 .  mc - the MatColoring context
 
-   Output Paramter:
+   Output Parameter:
 .  dist - the current distance being used for the coloring.
 
    Level: beginner
-
-.keywords: Coloring, distance
 
 .seealso: MatColoringSetDistance(), MatColoringApply()
 @*/
@@ -302,8 +293,6 @@ PetscErrorCode MatColoringGetDistance(MatColoring mc,PetscInt *dist)
    not in a color are set to have color maxcolors+1, which is not
    a valid color as they may be adjacent.
 
-.keywords: Coloring
-
 .seealso: MatColoringGetMaxColors(), MatColoringApply()
 @*/
 PetscErrorCode MatColoringSetMaxColors(MatColoring mc,PetscInt maxcolors)
@@ -322,12 +311,10 @@ PetscErrorCode MatColoringSetMaxColors(MatColoring mc,PetscInt maxcolors)
    Input Parameter:
 .  mc - the MatColoring context
 
-   Output Paramter:
+   Output Parameter:
 .  maxcolors - the current maximum number of colors to produce
 
    Level: beginner
-
-.keywords: Coloring
 
 .seealso: MatColoringSetMaxColors(), MatColoringApply()
 @*/
@@ -353,8 +340,6 @@ PetscErrorCode MatColoringGetMaxColors(MatColoring mc,PetscInt *maxcolors)
 .  coloring - the ISColoring instance containing the coloring
 
    Level: beginner
-
-.keywords: Coloring, Apply
 
 .seealso: MatColoring, MatColoringCreate()
 @*/
@@ -386,7 +371,7 @@ PetscErrorCode MatColoringApply(MatColoring mc,ISColoring *coloring)
     ierr = PetscViewerPushFormat(viewer,format);CHKERRQ(ierr);
     ierr = MatColoringView(mc,viewer);CHKERRQ(ierr);
     ierr = MatGetSize(mc->mat,NULL,&nc);CHKERRQ(ierr);
-    ierr = ISColoringGetIS(*coloring,&ncolors,NULL);CHKERRQ(ierr);
+    ierr = ISColoringGetIS(*coloring,PETSC_USE_POINTER,&ncolors,NULL);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  Number of colors %d\n",ncolors);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  Number of total columns %d\n",nc);CHKERRQ(ierr);
     if (nc <= 1000) {ierr = ISColoringView(*coloring,viewer);CHKERRQ(ierr);}
@@ -406,8 +391,6 @@ PetscErrorCode MatColoringApply(MatColoring mc,ISColoring *coloring)
 +  viewer - the Viewer context
 
    Level: beginner
-
-.keywords: Coloring, view
 
 .seealso: MatColoring, MatColoringApply()
 @*/
@@ -447,8 +430,6 @@ PetscErrorCode MatColoringView(MatColoring mc,PetscViewer viewer)
 +  wt - the weight type
 
    Level: beginner
-
-.keywords: Coloring, view
 
 .seealso: MatColoring, MatColoringWeightType
 @*/

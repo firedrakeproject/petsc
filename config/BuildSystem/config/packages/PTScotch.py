@@ -3,22 +3,29 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.gitcommit       = '6.0.6-p1'
-    self.download        = ['git://https://bitbucket.org/petsc/pkg-scotch.git',
-                            'https://bitbucket.org/petsc/pkg-scotch/get/'+self.gitcommit+'.tar.gz']
+    self.version          = '6.0.9'
+    self.versionname      = 'SCOTCH_VERSION.SCOTCH_RELEASE.SCOTCH_PATCHLEVEL'
+    self.gitcommit        = 'v'+self.version
+    self.download         = ['git://https://gitlab.inria.fr/scotch/scotch.git',
+                             'https://gitlab.inria.fr/scotch/scotch/-/archive/'+self.gitcommit+'/scotch-'+self.gitcommit+'.tar.gz',
+                             'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/scotch-'+self.gitcommit+'.tar.gz']
     self.downloaddirnames = ['scotch','petsc-pkg-scotch']
-    self.liblist         = [['libptesmumps.a','libptscotchparmetis.a','libptscotch.a','libptscotcherr.a','libesmumps.a','libscotch.a','libscotcherr.a']]
-    self.functions       = ['SCOTCH_archBuild']
-    self.functionsDefine = ['SCOTCH_ParMETIS_V3_NodeND']
-    self.includes        = ['ptscotch.h']
-    self.hastests        = 1
+    self.liblist          = [['libptesmumps.a','libptscotchparmetis.a','libptscotch.a','libptscotcherr.a','libesmumps.a','libscotch.a','libscotcherr.a']]
+    self.functions        = ['SCOTCH_archBuild']
+    self.functionsDefine  = ['SCOTCH_ParMETIS_V3_NodeND']
+    self.includes         = ['ptscotch.h']
+    self.hastests         = 1
     return
 
   def setupDependencies(self, framework):
     config.package.Package.setupDependencies(self, framework)
     self.mpi            = framework.require('config.packages.MPI',self)
     self.mathlib        = framework.require('config.packages.mathlib',self)
-    self.deps           = [self.mpi, self.mathlib]
+    self.pthread        = framework.require('config.packages.pthread',self)
+    self.zlib           = framework.require('config.packages.zlib',self)
+    self.regex          = framework.require('config.packages.regex',self)
+    self.deps           = [self.mpi,self.mathlib,self.regex]
+    self.odeps          = [self.pthread,self.zlib]
     return
 
   def Install(self):
@@ -49,19 +56,21 @@ class Configure(config.package.Package):
 
     # Building cflags/ldflags
     self.cflags = self.removeWarningFlags(self.setCompilers.getCompilerFlags())+' '+self.headers.toString(self.mpi.include)
-    ldflags = self.libraries.toString(self.mpi.lib)
-    if self.libraries.add('-lz','gzwrite'):
+    functions = self.framework.require('config.functions', self)
+    if not functions.haveFunction('FORK') and not functions.haveFunction('_PIPE'):
+      raise RuntimeError('Error building PTScotch: no pipe function')
+    ldflags = self.libraries.toString(self.dlib)
+    if self.zlib.found:
       self.cflags = self.cflags + ' -DCOMMON_FILE_COMPRESS_GZ'
-      ldflags += ' -lz'
-    # OSX does not have pthread_barrier_destroy - so check for that
-    if self.libraries.add('-lpthread','pthread_barrier_destroy'):
+    # OSX does not have pthread_barrier_destroy
+    if self.pthread.found and self.pthread.pthread_barrier:
       self.cflags = self.cflags + ' -DCOMMON_PTHREAD'
-      ldflags += ' -lpthread'
-    if self.libraries.add('-lm','sin'): ldflags += ' -lm'
+    if functions.haveFunction('_PIPE'):
+      self.cflags = self.cflags + ' -D\'pipe(pfds)=_pipe(pfds,1024,0x8000)\''
     if self.libraries.add('-lrt','timer_create'): ldflags += ' -lrt'
     self.cflags = self.cflags + ' -DCOMMON_RANDOM_FIXED_SEED'
     # do not use -DSCOTCH_PTHREAD because requires MPI built for threads.
-    self.cflags = self.cflags + ' -DSCOTCH_RENAME -Drestrict="" '
+    self.cflags = self.cflags + ' -DSCOTCH_RENAME -Drestrict="'+self.compilers.cRestrict+'"'
     # this is needed on the Mac, because common2.c includes common.h which DOES NOT include mpi.h because
     # SCOTCH_PTSCOTCH is NOT defined above Mac does not know what clock_gettime() is!
     if self.setCompilers.isDarwin(self.log):
@@ -75,7 +84,7 @@ class Configure(config.package.Package):
 
     g.write('CFLAGS	= '+self.cflags+'\n')
     if self.argDB['with-batch']:
-      g.write('CCDFLAGS = '+self.checkNoOptFlag()+'\n')
+      g.write('CCDFLAGS = '+self.cflags+' '+self.checkNoOptFlag()+'\n')
     g.write('LDFLAGS	= '+ldflags+'\n')
     g.write('CP         = '+self.programs.cp+'\n')
     g.write('LEX	= '+self.programs.flex+'\n')
@@ -107,7 +116,7 @@ class Configure(config.package.Package):
       includeDir = os.path.join(self.installDir, self.includedir)
       self.logPrintBox('Installing PTScotch; this may take several minutes')
       self.installDirProvider.printSudoPasswordMessage()
-      output,err,ret = config.package.Package.executeShellCommand(self.installSudo+'mkdir -p '+os.path.join(self.installDir,includeDir)+' && '+self.installSudo+'mkdir -p '+os.path.join(self.installDir,self.libdir)+' && cd '+self.packageDir+' && '+self.installSudo+'cp -f lib/*.a '+libDir+'/. && '+self.installSudo+' cp -f include/*.h '+includeDir+'/.', timeout=2500, log = self.log)
+      output,err,ret = config.package.Package.executeShellCommand(self.installSudo+'mkdir -p '+os.path.join(self.installDir,includeDir)+' && '+self.installSudo+'mkdir -p '+os.path.join(self.installDir,self.libdir)+' && cd '+self.packageDir+' && '+self.installSudo+'cp -f lib/*.a '+libDir+'/. && '+self.installSudo+' cp -f include/*.h '+includeDir+'/.', timeout=60, log = self.log)
       self.postInstall(output+err,os.path.join('src','Makefile.inc'))
     return self.installDir
 

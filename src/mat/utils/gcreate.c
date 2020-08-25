@@ -22,7 +22,9 @@ PETSC_INTERN PetscErrorCode MatShift_Basic(Mat Y,PetscScalar a)
   ierr = MatSetOption(Y,MAT_NO_OFF_PROC_ENTRIES,PETSC_TRUE);CHKERRQ(ierr);
   ierr = MatGetOwnershipRange(Y,&start,&end);CHKERRQ(ierr);
   for (i=start; i<end; i++) {
-    ierr = MatSetValues(Y,1,&i,1,&i,&alpha,ADD_VALUES);CHKERRQ(ierr);
+    if (i < Y->cmap->N) {
+      ierr = MatSetValues(Y,1,&i,1,&i,&alpha,ADD_VALUES);CHKERRQ(ierr);
+    }
   }
   ierr = MatAssemblyBegin(Y,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(Y,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -39,7 +41,7 @@ PETSC_INTERN PetscErrorCode MatShift_Basic(Mat Y,PetscScalar a)
    call MatSetType() or MatSetFromOptions() it will generate an
    error when you try to use the matrix.
 
-   Collective on MPI_Comm
+   Collective
 
    Input Parameter:
 .  comm - MPI communicator
@@ -59,15 +61,7 @@ PETSC_INTERN PetscErrorCode MatShift_Basic(Mat Y,PetscScalar a)
    See the manpages for particular formats (e.g., MatCreateSeqAIJ())
    for additional format-specific options.
 
-   Notes:
-
    Level: beginner
-
-   User manual sections:
-+   sec_matcreate
--   chapter_matrices
-
-.keywords: matrix, create
 
 .seealso: MatCreateSeqAIJ(), MatCreateAIJ(),
           MatCreateSeqDense(), MatCreateDense(),
@@ -107,8 +101,6 @@ PetscErrorCode  MatCreate(MPI_Comm comm,Mat *A)
 -  flg - PETSC_TRUE indicates you want the error generated
 
    Level: advanced
-
-.keywords: Mat, set, initial guess, nonzero
 
 .seealso: PCSetErrorIfFailure()
 @*/
@@ -157,10 +149,10 @@ PetscErrorCode  MatSetSizes(Mat A, PetscInt m, PetscInt n, PetscInt M, PetscInt 
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A,MAT_CLASSID,1);
-  if (M > 0) PetscValidLogicalCollectiveInt(A,M,4);
-  if (N > 0) PetscValidLogicalCollectiveInt(A,N,5);
-  if (M > 0 && m > M) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"Local column size %D cannot be larger than global column size %D",m,M);
-  if (N > 0 && n > N) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"Local row size %D cannot be larger than global row size %D",n,N);
+  PetscValidLogicalCollectiveInt(A,M,4);
+  PetscValidLogicalCollectiveInt(A,N,5);
+  if (M > 0 && m > M) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"Local row size %D cannot be larger than global row size %D",m,M);
+  if (N > 0 && n > N) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_INCOMP,"Local column size %D cannot be larger than global column size %D",n,N);
   if ((A->rmap->n >= 0 && A->rmap->N >= 0) && (A->rmap->n != m || (M > 0 && A->rmap->N != M))) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot change/reset row sizes to %D local %D global after previously setting them to %D local %D global",m,M,A->rmap->n,A->rmap->N);
   if ((A->cmap->n >= 0 && A->cmap->N >= 0) && (A->cmap->n != n || (N > 0 && A->cmap->N != N))) SETERRQ4(PETSC_COMM_SELF,PETSC_ERR_SUP,"Cannot change/reset column sizes to %D local %D global after previously setting them to %D local %D global",n,N,A->cmap->n,A->cmap->N);
   A->rmap->n = m;
@@ -195,8 +187,6 @@ PetscErrorCode  MatSetSizes(Mat A, PetscInt m, PetscInt n, PetscInt M, PetscInt 
    for additional format-specific options.
 
    Level: beginner
-
-.keywords: matrix, create
 
 .seealso: MatCreateSeqAIJ((), MatCreateAIJ(),
           MatCreateSeqDense(), MatCreateDense(),
@@ -262,10 +252,10 @@ PetscErrorCode  MatSetFromOptions(Mat B)
    Input Arguments:
 +  A - matrix being preallocated
 .  bs - block size
-.  dnnz - number of nonzero blocks per block row of diagonal part of parallel matrix
-.  onnz - number of nonzero blocks per block row of off-diagonal part of parallel matrix
-.  dnnzu - number of nonzero blocks per block row of upper-triangular part of diagonal part of parallel matrix
--  onnzu - number of nonzero blocks per block row of upper-triangular part of off-diagonal part of parallel matrix
+.  dnnz - number of nonzero column blocks per block row of diagonal part of parallel matrix
+.  onnz - number of nonzero column blocks per block row of off-diagonal part of parallel matrix
+.  dnnzu - number of nonzero column blocks per block row of upper-triangular part of diagonal part of parallel matrix
+-  onnzu - number of nonzero column blocks per block row of upper-triangular part of off-diagonal part of parallel matrix
 
    Level: beginner
 
@@ -275,15 +265,19 @@ PetscErrorCode  MatSetFromOptions(Mat B)
 PetscErrorCode MatXAIJSetPreallocation(Mat A,PetscInt bs,const PetscInt dnnz[],const PetscInt onnz[],const PetscInt dnnzu[],const PetscInt onnzu[])
 {
   PetscErrorCode ierr;
+  PetscInt       cbs;
   void           (*aij)(void);
   void           (*is)(void);
   void           (*hyp)(void) = NULL;
 
   PetscFunctionBegin;
-  ierr = MatSetBlockSize(A,bs);CHKERRQ(ierr);
-  ierr = MatGetBlockSize(A,&bs);CHKERRQ(ierr);
+  if (bs != PETSC_DECIDE) { /* don't mess with an already set block size */
+    ierr = MatSetBlockSize(A,bs);CHKERRQ(ierr);
+  }
   ierr = PetscLayoutSetUp(A->rmap);CHKERRQ(ierr);
   ierr = PetscLayoutSetUp(A->cmap);CHKERRQ(ierr);
+  ierr = MatGetBlockSizes(A,&bs,&cbs);CHKERRQ(ierr);
+  /* these routines assumes bs == cbs, this should be checked somehow */
   ierr = MatSeqBAIJSetPreallocation(A,bs,0,dnnz);CHKERRQ(ierr);
   ierr = MatMPIBAIJSetPreallocation(A,bs,0,dnnz,0,onnz);CHKERRQ(ierr);
   ierr = MatSeqSBAIJSetPreallocation(A,bs,0,dnnzu);CHKERRQ(ierr);
@@ -301,20 +295,20 @@ PetscErrorCode MatXAIJSetPreallocation(Mat A,PetscInt bs,const PetscInt dnnz[],c
     ierr = PetscObjectQueryFunction((PetscObject)A,"MatSeqAIJSetPreallocation_C",&aij);CHKERRQ(ierr);
   }
   if (aij || is || hyp) {
-    if (bs == 1) {
+    if (bs == cbs && bs == 1) {
       ierr = MatSeqAIJSetPreallocation(A,0,dnnz);CHKERRQ(ierr);
       ierr = MatMPIAIJSetPreallocation(A,0,dnnz,0,onnz);CHKERRQ(ierr);
       ierr = MatISSetPreallocation(A,0,dnnz,0,onnz);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_HYPRE)
       ierr = MatHYPRESetPreallocation(A,0,dnnz,0,onnz);CHKERRQ(ierr);
 #endif
-    } else {                    /* Convert block-row precallocation to scalar-row */
+    } else { /* Convert block-row precallocation to scalar-row */
       PetscInt i,m,*sdnnz,*sonnz;
       ierr = MatGetLocalSize(A,&m,NULL);CHKERRQ(ierr);
       ierr = PetscMalloc2((!!dnnz)*m,&sdnnz,(!!onnz)*m,&sonnz);CHKERRQ(ierr);
       for (i=0; i<m; i++) {
-        if (dnnz) sdnnz[i] = dnnz[i/bs] * bs;
-        if (onnz) sonnz[i] = onnz[i/bs] * bs;
+        if (dnnz) sdnnz[i] = dnnz[i/bs] * cbs;
+        if (onnz) sonnz[i] = onnz[i/bs] * cbs;
       }
       ierr = MatSeqAIJSetPreallocation(A,0,dnnz ? sdnnz : NULL);CHKERRQ(ierr);
       ierr = MatMPIAIJSetPreallocation(A,0,dnnz ? sdnnz : NULL,0,onnz ? sonnz : NULL);CHKERRQ(ierr);
@@ -339,15 +333,22 @@ PetscErrorCode MatHeaderMerge(Mat A,Mat *C)
   PetscInt       refct;
   PetscOps       Abops;
   struct _MatOps Aops;
-  char           *mtype,*mname;
+  char           *mtype,*mname,*mprefix;
+  Mat_Product    *product;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,MAT_CLASSID,1);
+  PetscValidHeaderSpecific(*C,MAT_CLASSID,2);
+  if (A == *C) PetscFunctionReturn(0);
+  PetscCheckSameComm(A,1,*C,2);
   /* save the parts of A we need */
   Abops = ((PetscObject)A)->bops[0];
   Aops  = A->ops[0];
   refct = ((PetscObject)A)->refct;
   mtype = ((PetscObject)A)->type_name;
   mname = ((PetscObject)A)->name;
+  mprefix = ((PetscObject)A)->prefix;
+  product = A->product;
 
   /* zero these so the destroy below does not free them */
   ((PetscObject)A)->type_name = 0;
@@ -371,6 +372,8 @@ PetscErrorCode MatHeaderMerge(Mat A,Mat *C)
   ((PetscObject)A)->refct     = refct;
   ((PetscObject)A)->type_name = mtype;
   ((PetscObject)A)->name      = mname;
+  ((PetscObject)A)->prefix    = mprefix;
+  A->product                  = product;
 
   /* since these two are copied into A we do not want them destroyed in C */
   ((PetscObject)*C)->qlist = 0;
@@ -412,6 +415,38 @@ PETSC_EXTERN PetscErrorCode MatHeaderReplace(Mat A,Mat *C)
   ((PetscObject)A)->state = state + 1;
 
   ((PetscObject)*C)->refct = 1;
+  ierr = MatShellSetOperation(*C,MATOP_DESTROY,(void(*)(void))NULL);CHKERRQ(ierr);
   ierr = MatDestroy(C);CHKERRQ(ierr);
   PetscFunctionReturn(0);
+}
+
+/*@
+     MatBindToCPU - marks a matrix to temporarily stay on the CPU and perform computations on the CPU
+
+   Input Parameters:
++   A - the matrix
+-   flg - bind to the CPU if value of PETSC_TRUE
+
+   Level: intermediate
+@*/
+PetscErrorCode MatBindToCPU(Mat A,PetscBool flg)
+{
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,MAT_CLASSID,1);
+  PetscValidLogicalCollectiveBool(A,flg,2);
+  if (A->boundtocpu == flg) PetscFunctionReturn(0);
+  A->boundtocpu = flg;
+  if (A->ops->bindtocpu) {
+    ierr = (*A->ops->bindtocpu)(A,flg);CHKERRQ(ierr);
+  }
+  PetscFunctionReturn(0);
+#else
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,MAT_CLASSID,1);
+  PetscValidLogicalCollectiveBool(A,flg,2);
+  PetscFunctionReturn(0);
+#endif
 }

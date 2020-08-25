@@ -10,85 +10,61 @@
 #include <petsctime.h>
 
 #if defined(PETSC_HAVE_HYPRE)
-PETSC_INTERN PetscErrorCode MatPtAPSymbolic_AIJ_AIJ_wHYPRE(Mat,Mat,PetscReal,Mat*);
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_AIJ_AIJ_wHYPRE(Mat,Mat,PetscReal,Mat);
 #endif
 
-PETSC_INTERN PetscErrorCode MatPtAP_SeqAIJ_SeqAIJ(Mat A,Mat P,MatReuse scall,PetscReal fill,Mat *C)
+PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqAIJ(Mat C)
 {
   PetscErrorCode      ierr;
-#if !defined(PETSC_HAVE_HYPRE)
-  const char          *algTypes[2] = {"scalable","rap"};
-  PetscInt            nalg = 2;
-#else
-  const char          *algTypes[3] = {"scalable","rap","hypre"};
-  PetscInt            nalg = 3;
-#endif
-  PetscInt            alg = 1; /* set default algorithm */
+  Mat_Product         *product = C->product;
+  Mat                 A=product->A,P=product->B;
+  MatProductAlgorithm alg=product->alg;
+  PetscReal           fill=product->fill;
+  PetscBool           flg;
   Mat                 Pt;
-  Mat_MatTransMatMult *atb;
-  Mat_SeqAIJ          *c;
 
   PetscFunctionBegin;
-  if (scall == MAT_INITIAL_MATRIX) {
-    /*
-     Alg 'scalable' determines which implementations to be used:
-       "rap":      Pt = P^T and C = Pt*A*P
-       "scalable": do outer product and two sparse axpy in MatPtAPNumeric() - might slow, does not store structure of A*P.
-       "hypre":    use boomerAMGBuildCoarseOperator.
-     */
-    ierr = PetscOptionsBegin(PetscObjectComm((PetscObject)A),((PetscObject)A)->prefix,"MatPtAP","Mat");CHKERRQ(ierr);
-    ierr = PetscOptionsEList("-matptap_via","Algorithmic approach","MatPtAP",algTypes,nalg,algTypes[0],&alg,NULL);CHKERRQ(ierr);
-    ierr = PetscOptionsEnd();CHKERRQ(ierr);
-    switch (alg) {
-    case 1:
-      ierr = PetscNew(&atb);CHKERRQ(ierr);
-      ierr = MatTranspose_SeqAIJ(P,MAT_INITIAL_MATRIX,&Pt);CHKERRQ(ierr);
-      ierr = MatMatMatMult(Pt,A,P,MAT_INITIAL_MATRIX,fill,C);CHKERRQ(ierr);
-
-      c                      = (Mat_SeqAIJ*)(*C)->data;
-      c->atb                 = atb;
-      atb->At                = Pt;
-      atb->destroy           = (*C)->ops->destroy;
-      (*C)->ops->destroy     = MatDestroy_SeqAIJ_MatTransMatMult;
-      (*C)->ops->ptapnumeric = MatPtAPNumeric_SeqAIJ_SeqAIJ;
-      PetscFunctionReturn(0);
-      break;
-#if defined(PETSC_HAVE_HYPRE)
-    case 2:
-      ierr = PetscLogEventBegin(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
-      ierr = MatPtAPSymbolic_AIJ_AIJ_wHYPRE(A,P,fill,C);CHKERRQ(ierr);
-      ierr = PetscLogEventEnd(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
-      break;
-#endif
-    default:
-      ierr = PetscLogEventBegin(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
-      ierr = MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(A,P,fill,C);CHKERRQ(ierr);
-      ierr = PetscLogEventEnd(MAT_PtAPSymbolic,A,P,0,0);CHKERRQ(ierr);
-      break;
-    }
+  /* "scalable" */
+  ierr = PetscStrcmp(alg,"scalable",&flg);CHKERRQ(ierr);
+  if (flg) {
+    ierr = MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(A,P,fill,C);CHKERRQ(ierr);
+    C->ops->productnumeric = MatProductNumeric_PtAP;
+    PetscFunctionReturn(0);
   }
-  ierr = PetscLogEventBegin(MAT_PtAPNumeric,A,P,0,0);CHKERRQ(ierr);
-  ierr = (*(*C)->ops->ptapnumeric)(A,P,*C);CHKERRQ(ierr);
-  ierr = PetscLogEventEnd(MAT_PtAPNumeric,A,P,0,0);CHKERRQ(ierr);
+
+  /* "rap" */
+  ierr = PetscStrcmp(alg,"rap",&flg);CHKERRQ(ierr);
+  if (flg) {
+    Mat_MatTransMatMult *atb;
+
+    ierr = PetscNew(&atb);CHKERRQ(ierr);
+    ierr = MatTranspose_SeqAIJ(P,MAT_INITIAL_MATRIX,&Pt);CHKERRQ(ierr);
+    ierr = MatMatMatMultSymbolic_SeqAIJ_SeqAIJ_SeqAIJ(Pt,A,P,fill,C);CHKERRQ(ierr);
+
+    atb->At                = Pt;
+    atb->data              = C->product->data;
+    atb->destroy           = C->product->destroy;
+    C->product->data       = atb;
+    C->product->destroy    = MatDestroy_SeqAIJ_MatTransMatMult;
+    C->ops->ptapnumeric    = MatPtAPNumeric_SeqAIJ_SeqAIJ;
+    C->ops->productnumeric = MatProductNumeric_PtAP;
+    PetscFunctionReturn(0);
+  }
+
+  /* hypre */
+#if defined(PETSC_HAVE_HYPRE)
+  ierr = PetscStrcmp(alg,"hypre",&flg);CHKERRQ(ierr);
+  if (flg) {
+    ierr = MatPtAPSymbolic_AIJ_AIJ_wHYPRE(A,P,fill,C);CHKERRQ(ierr);
+    PetscFunctionReturn(0);
+  }
+#endif
+
+  SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"MatProductType is not supported");
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_SeqAIJ_PtAP(Mat A)
-{
-  PetscErrorCode ierr;
-  Mat_SeqAIJ     *a  = (Mat_SeqAIJ*)A->data;
-  Mat_AP         *ap = a->ap;
-
-  PetscFunctionBegin;
-  ierr = PetscFree(ap->apa);CHKERRQ(ierr);
-  ierr = PetscFree(ap->api);CHKERRQ(ierr);
-  ierr = PetscFree(ap->apj);CHKERRQ(ierr);
-  ierr = (ap->destroy)(A);CHKERRQ(ierr);
-  ierr = PetscFree(ap);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(Mat A,Mat P,PetscReal fill,Mat *C)
+PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(Mat A,Mat P,PetscReal fill,Mat C)
 {
   PetscErrorCode     ierr;
   PetscFreeSpaceList free_space=NULL,current_space=NULL;
@@ -181,34 +157,35 @@ PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(Mat A,Mat P,PetscReal fi
   ierr = PetscCalloc1(ci[pn]+1,&ca);CHKERRQ(ierr);
 
   /* put together the new matrix */
-  ierr = MatCreateSeqAIJWithArrays(PetscObjectComm((PetscObject)A),pn,pn,ci,cj,ca,C);CHKERRQ(ierr);
-  ierr = MatSetBlockSizes(*C,PetscAbs(P->cmap->bs),PetscAbs(P->cmap->bs));CHKERRQ(ierr);
+  ierr = MatSetSeqAIJWithArrays_private(PetscObjectComm((PetscObject)A),pn,pn,ci,cj,ca,((PetscObject)A)->type_name,C);CHKERRQ(ierr);
+  ierr = MatSetBlockSizes(C,PetscAbs(P->cmap->bs),PetscAbs(P->cmap->bs));CHKERRQ(ierr);
 
   /* MatCreateSeqAIJWithArrays flags matrix so PETSc doesn't free the user's arrays. */
   /* Since these are PETSc arrays, change flags to free them as necessary. */
-  c          = (Mat_SeqAIJ*)((*C)->data);
+  c          = (Mat_SeqAIJ*)((C)->data);
   c->free_a  = PETSC_TRUE;
   c->free_ij = PETSC_TRUE;
   c->nonew   = 0;
-  (*C)->ops->ptapnumeric = MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy;
+
+  C->ops->ptapnumeric = MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy;
 
   /* set MatInfo */
   afill = (PetscReal)ci[pn]/(ai[am]+pi[pm] + 1.e-5);
   if (afill < 1.0) afill = 1.0;
   c->maxnz                     = ci[pn];
   c->nz                        = ci[pn];
-  (*C)->info.mallocs           = nspacedouble;
-  (*C)->info.fill_ratio_given  = fill;
-  (*C)->info.fill_ratio_needed = afill;
+  C->info.mallocs           = nspacedouble;
+  C->info.fill_ratio_given  = fill;
+  C->info.fill_ratio_needed = afill;
 
   /* Clean up. */
   ierr = MatRestoreSymbolicTranspose_SeqAIJ(P,&pti,&ptj);CHKERRQ(ierr);
 #if defined(PETSC_USE_INFO)
   if (ci[pn] != 0) {
-    ierr = PetscInfo3((*C),"Reallocs %D; Fill ratio: given %g needed %g.\n",nspacedouble,(double)fill,(double)afill);CHKERRQ(ierr);
-    ierr = PetscInfo1((*C),"Use MatPtAP(A,P,MatReuse,%g,&C) for best performance.\n",(double)afill);CHKERRQ(ierr);
+    ierr = PetscInfo3(C,"Reallocs %D; Fill ratio: given %g needed %g.\n",nspacedouble,(double)fill,(double)afill);CHKERRQ(ierr);
+    ierr = PetscInfo1(C,"Use MatPtAP(A,P,MatReuse,%g,&C) for best performance.\n",(double)afill);CHKERRQ(ierr);
   } else {
-    ierr = PetscInfo((*C),"Empty matrix product\n");CHKERRQ(ierr);
+    ierr = PetscInfo(C,"Empty matrix product\n");CHKERRQ(ierr);
   }
 #endif
   PetscFunctionReturn(0);
@@ -228,12 +205,11 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy(Mat A,Mat P,Mat C)
 
   PetscFunctionBegin;
   /* Allocate temporary array for storage of one row of A*P (cn: non-scalable) */
-  ierr = PetscMalloc3(cn,&apa,cn,&apjdense,cn,&apj);CHKERRQ(ierr);
-  ierr = PetscMemzero(apa,cn*sizeof(MatScalar));CHKERRQ(ierr);
-  ierr = PetscMemzero(apjdense,cn*sizeof(PetscInt));CHKERRQ(ierr);
+  ierr = PetscCalloc2(cn,&apa,cn,&apjdense);CHKERRQ(ierr);
+  ierr = PetscMalloc1(cn,&apj);CHKERRQ(ierr);
 
   /* Clear old values in C */
-  ierr = PetscMemzero(ca,ci[cm]*sizeof(MatScalar));CHKERRQ(ierr);
+  ierr = PetscArrayzero(ca,ci[cm]);CHKERRQ(ierr);
 
   for (i=0; i<am; i++) {
     /* Form sparse row of A*P */
@@ -268,9 +244,7 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy(Mat A,Mat P,Mat C)
       caj    = ca + ci[crow];
       /* Perform sparse axpy operation.  Note cjj includes apj. */
       for (k=0; nextap<apnzj; k++) {
-#if defined(PETSC_USE_DEBUG)
-        if (k >= ci[crow+1] - ci[crow]) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_PLIB,"k too large k %d, crow %d",k,crow);
-#endif
+        if (PetscUnlikelyDebug(k >= ci[crow+1] - ci[crow])) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_PLIB,"k too large k %d, crow %d",k,crow);
         if (cjj[k]==apj[nextap]) {
           caj[k] += (*pA)*apa[apj[nextap++]];
         }
@@ -290,19 +264,25 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy(Mat A,Mat P,Mat C)
   ierr = MatAssemblyBegin(C,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd(C,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
-  ierr = PetscFree3(apa,apjdense,apj);CHKERRQ(ierr);
+  ierr = PetscFree2(apa,apjdense);CHKERRQ(ierr);
+  ierr = PetscFree(apj);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ(Mat A,Mat P,Mat C)
 {
   PetscErrorCode      ierr;
-  Mat_SeqAIJ          *c = (Mat_SeqAIJ*)C->data;
-  Mat_MatTransMatMult *atb = c->atb;
-  Mat                 Pt = atb->At;
+  Mat_MatTransMatMult *atb;
 
   PetscFunctionBegin;
-  ierr = MatTranspose_SeqAIJ(P,MAT_REUSE_MATRIX,&Pt);CHKERRQ(ierr);
-  ierr = (C->ops->matmatmultnumeric)(Pt,A,P,C);CHKERRQ(ierr);
+  MatCheckProduct(C,3);
+  atb  = (Mat_MatTransMatMult*)C->product->data;
+  if (!atb) SETERRQ(PetscObjectComm((PetscObject)C),PETSC_ERR_PLIB,"Missing data structure");
+  ierr = MatTranspose_SeqAIJ(P,MAT_REUSE_MATRIX,&atb->At);CHKERRQ(ierr);
+  if (!C->ops->matmultnumeric) SETERRQ(PetscObjectComm((PetscObject)C),PETSC_ERR_PLIB,"Missing numeric operation");
+  /* when using rap, MatMatMatMultSymbolic used a different data */
+  if (atb->data) C->product->data = atb->data;
+  ierr = (*C->ops->matmatmultnumeric)(atb->At,A,P,C);CHKERRQ(ierr);
+  C->product->data = atb;
   PetscFunctionReturn(0);
 }

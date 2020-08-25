@@ -3,6 +3,7 @@
 */
 
 #define PETSC_SKIP_SPINLOCK
+#define PETSC_SKIP_CXX_COMPLEX_FIX
 
 #include <petscconf.h>
 #include <petsc/private/vecimpl.h>          /*I "petscvec.h" I*/
@@ -16,10 +17,10 @@ PetscErrorCode VecScatterCUDAIndicesCreate_StoS(PetscInt n,PetscInt toFirst,Pets
   PetscCUDAIndices           cci;
   VecScatterCUDAIndices_StoS stos_scatter;
   cudaError_t                err;
-  cudaStream_t               stream;
   PetscInt                   *intVecGPU;
   int                        device;
   cudaDeviceProp             props;
+  PetscErrorCode             ierr;
 
   PetscFunctionBegin;
   cci = new struct _p_PetscCUDAIndices;
@@ -34,6 +35,7 @@ PetscErrorCode VecScatterCUDAIndicesCreate_StoS(PetscInt n,PetscInt toFirst,Pets
       /* allocate GPU memory for the to-slots */
       err = cudaMalloc((void **)&intVecGPU,n*sizeof(PetscInt));CHKERRCUDA(err);
       err = cudaMemcpy(intVecGPU,fslots,n*sizeof(PetscInt),cudaMemcpyHostToDevice);CHKERRCUDA(err);
+      ierr = PetscLogCpuToGpu(n*sizeof(PetscInt));CHKERRQ(ierr);
 
       /* assign the pointer to the struct */
       stos_scatter->fslots = intVecGPU;
@@ -54,6 +56,7 @@ PetscErrorCode VecScatterCUDAIndicesCreate_StoS(PetscInt n,PetscInt toFirst,Pets
       /* allocate GPU memory for the to-slots */
       err = cudaMalloc((void **)&intVecGPU,n*sizeof(PetscInt));CHKERRCUDA(err);
       err = cudaMemcpy(intVecGPU,tslots,n*sizeof(PetscInt),cudaMemcpyHostToDevice);CHKERRCUDA(err);
+      ierr = PetscLogCpuToGpu(n*sizeof(PetscInt));CHKERRQ(ierr);
 
       /* assign the pointer to the struct */
       stos_scatter->tslots = intVecGPU;
@@ -65,9 +68,12 @@ PetscErrorCode VecScatterCUDAIndicesCreate_StoS(PetscInt n,PetscInt toFirst,Pets
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Must provide tslots or toStep.");
   }
 
-  /* allocate the stream variable */
-  err = cudaStreamCreate(&stream);CHKERRCUDA(err);
-  stos_scatter->stream = stream;
+  /* Scatter uses default stream as well.
+     Note: Here we have used a separate stream earlier.
+           However, without proper synchronization with the default stream, one will inevitably run into data races.
+           Please keep that in mind when trying to reintroduce streams for scatters.
+           Ultimately, it's better to have correct code/results at 90 percent of peak performance than to have incorrect code/results at 99 percent of peak performance. */
+  stos_scatter->stream = 0;
 
   /* the number of indices */
   stos_scatter->n = n;
@@ -269,7 +275,7 @@ PetscErrorCode VecScatterCUDA_StoS(Vec x,Vec y,PetscCUDAIndices ci,InsertMode ad
   ierr = VecCUDAAllocateCheck(x);CHKERRQ(ierr);
   ierr = VecCUDAAllocateCheck(y);CHKERRQ(ierr);
   ierr = VecCUDAGetArrayRead(x,&xarray);CHKERRQ(ierr);
-  ierr = VecCUDAGetArrayReadWrite(y,&yarray);CHKERRQ(ierr);
+  ierr = VecCUDAGetArray(y,&yarray);CHKERRQ(ierr);
   if (stos_scatter->n) {
     if (addv == INSERT_VALUES)
       VecScatterCUDA_StoS_Dispatcher(xarray,yarray,ci,mode,Insert());
@@ -282,6 +288,6 @@ PetscErrorCode VecScatterCUDA_StoS(Vec x,Vec y,PetscCUDAIndices ci,InsertMode ad
     err = cudaStreamSynchronize(stos_scatter->stream);CHKERRCUDA(err);
   }
   ierr = VecCUDARestoreArrayRead(x,&xarray);CHKERRQ(ierr);
-  ierr = VecCUDARestoreArrayReadWrite(y,&yarray);CHKERRQ(ierr);
+  ierr = VecCUDARestoreArray(y,&yarray);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

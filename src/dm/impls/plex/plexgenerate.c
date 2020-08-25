@@ -1,32 +1,10 @@
 #include <petsc/private/dmpleximpl.h>   /*I      "petscdmplex.h"   I*/
 
-PetscErrorCode DMPlexInvertCell_Internal(PetscInt dim, PetscInt numCorners, PetscInt cone[])
-{
-  int tmpc;
-
-  PetscFunctionBegin;
-  if (dim != 3) PetscFunctionReturn(0);
-  switch (numCorners) {
-  case 4:
-    tmpc    = cone[0];
-    cone[0] = cone[1];
-    cone[1] = tmpc;
-    break;
-  case 8:
-    tmpc    = cone[1];
-    cone[1] = cone[3];
-    cone[3] = tmpc;
-    break;
-  default: break;
-  }
-  PetscFunctionReturn(0);
-}
-
 /*@C
-  DMPlexInvertCell - This flips tetrahedron and hexahedron orientation since Plex stores them internally with outward normals. Other cells are left untouched.
+  DMPlexInvertCell - Flips cell orientations since Plex stores some of them internally with outward normals.
 
   Input Parameters:
-+ numCorners - The number of vertices in a cell
++ cellType - The cell type
 - cone - The incoming cone
 
   Output Parameter:
@@ -36,25 +14,58 @@ PetscErrorCode DMPlexInvertCell_Internal(PetscInt dim, PetscInt numCorners, Pets
 
 .seealso: DMPlexGenerate()
 @*/
-PetscErrorCode DMPlexInvertCell(PetscInt dim, PetscInt numCorners, int cone[])
+PetscErrorCode DMPlexInvertCell(DMPolytopeType cellType, PetscInt cone[])
 {
-  int tmpc;
+#define SWAPCONE(cone,i,j)  \
+  do {                      \
+    PetscInt _cone_tmp;     \
+    _cone_tmp = (cone)[i];  \
+    (cone)[i] = (cone)[j];  \
+    (cone)[j] = _cone_tmp;  \
+  } while (0)
 
   PetscFunctionBegin;
-  if (dim != 3) PetscFunctionReturn(0);
-  switch (numCorners) {
-  case 4:
-    tmpc    = cone[0];
-    cone[0] = cone[1];
-    cone[1] = tmpc;
-    break;
-  case 8:
-    tmpc    = cone[1];
-    cone[1] = cone[3];
-    cone[3] = tmpc;
-    break;
+  switch (cellType) {
+  case DM_POLYTOPE_POINT:              break;
+  case DM_POLYTOPE_SEGMENT:            break;
+  case DM_POLYTOPE_POINT_PRISM_TENSOR: break;
+  case DM_POLYTOPE_TRIANGLE:           break;
+  case DM_POLYTOPE_QUADRILATERAL:      break;
+  case DM_POLYTOPE_SEG_PRISM_TENSOR:   SWAPCONE(cone,2,3); break;
+  case DM_POLYTOPE_TETRAHEDRON:        SWAPCONE(cone,0,1); break;
+  case DM_POLYTOPE_HEXAHEDRON:         SWAPCONE(cone,1,3); break;
+  case DM_POLYTOPE_TRI_PRISM:          SWAPCONE(cone,1,2); break;
+  case DM_POLYTOPE_TRI_PRISM_TENSOR:   break;
+  case DM_POLYTOPE_QUAD_PRISM_TENSOR:  break;
   default: break;
   }
+  PetscFunctionReturn(0);
+#undef SWAPCONE
+}
+
+/*@C
+  DMPlexReorderCell - Flips cell orientations since Plex stores some of them internally with outward normals.
+
+  Input Parameters:
++ dm - The DMPlex object
+. cell - The cell
+- cone - The incoming cone
+
+  Output Parameter:
+. cone - The reordered cone (in-place)
+
+  Level: developer
+
+.seealso: DMPlexGenerate()
+@*/
+PetscErrorCode DMPlexReorderCell(DM dm, PetscInt cell, PetscInt cone[])
+{
+  DMPolytopeType cellType;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = DMPlexGetCellType(dm, cell, &cellType);CHKERRQ(ierr);
+  ierr = DMPlexInvertCell(cellType, cone);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -70,7 +81,6 @@ PetscErrorCode DMPlexInvertCell(PetscInt dim, PetscInt numCorners, int cone[])
 
   Level: developer
 
-.keywords: mesh, points
 .seealso: DMPlexTetgenSetOptions(), DMPlexGenerate()
 @*/
 PetscErrorCode DMPlexTriangleSetOptions(DM dm, const char *opts)
@@ -97,7 +107,6 @@ PetscErrorCode DMPlexTriangleSetOptions(DM dm, const char *opts)
 
   Level: developer
 
-.keywords: mesh, points
 .seealso: DMPlexTriangleSetOptions(), DMPlexGenerate()
 @*/
 PetscErrorCode DMPlexTetgenSetOptions(DM dm, const char *opts)
@@ -139,9 +148,12 @@ struct _n_PetscFunctionList {
   Output Parameter:
 . mesh - The DMPlex object
 
+  Options Database:
++  -dm_plex_generate <name> - package to generate mesh, for example, triangle, ctetgen or tetgen
+-  -dm_plex_generator <name> - package to generate mesh, for example, triangle, ctetgen or tetgen (deprecated)
+
   Level: intermediate
 
-.keywords: mesh, elements
 .seealso: DMPlexCreate(), DMRefine()
 @*/
 PetscErrorCode DMPlexGenerate(DM boundary, const char name[], PetscBool interpolate, DM *mesh)
@@ -151,13 +163,18 @@ PetscErrorCode DMPlexGenerate(DM boundary, const char name[], PetscBool interpol
   PetscBool         flg;
   PetscErrorCode    ierr;
   PetscFunctionList fl;
+  const char*       suggestions;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(boundary, DM_CLASSID, 1);
   PetscValidLogicalCollectiveBool(boundary, interpolate, 2);
   ierr = DMGetDimension(boundary, &dim);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(((PetscObject) boundary)->options,((PetscObject) boundary)->prefix, "-dm_plex_generator", genname, 1024, &flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(((PetscObject) boundary)->options,((PetscObject) boundary)->prefix, "-dm_plex_generator", genname, sizeof(genname), &flg);CHKERRQ(ierr);
   if (flg) name = genname;
+  else {
+    ierr = PetscOptionsGetString(((PetscObject) boundary)->options,((PetscObject) boundary)->prefix, "-dm_plex_generate", genname, sizeof(genname), &flg);CHKERRQ(ierr);
+    if (flg) name = genname;
+  }
 
   fl = DMPlexGenerateList;
   if (name) {
@@ -169,7 +186,7 @@ PetscErrorCode DMPlexGenerate(DM boundary, const char name[], PetscBool interpol
       }
       fl = fl->next;
     }
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Grid generator %g not registered",name);
+    SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Grid generator %s not registered; you may need to add --download-%s to your ./configure options",name,name);
   } else {
     while (fl) {
       if (boundary->dim == fl->dim) {
@@ -178,7 +195,10 @@ PetscErrorCode DMPlexGenerate(DM boundary, const char name[], PetscBool interpol
       }
       fl = fl->next;
     }
-    SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"No grid generator of dimension %D registered",boundary->dim);
+    suggestions = "";
+    if (boundary->dim+1 == 2) suggestions = " You may need to add --download-triangle to your ./configure options";
+    else if (boundary->dim+1 == 3) suggestions = " You may need to add --download-ctetgen or --download-tetgen in your ./configure options";
+    SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"No grid generator of dimension %D registered%s",boundary->dim+1,suggestions);
   }
   PetscFunctionReturn(0);
 }
@@ -208,8 +228,6 @@ $     DMPlexGenerate(dm,"my_generator",...)
 $     -dm_plex_generator my_generator
 
    Level: advanced
-
-.keywords: DMPlexGenerate, register
 
 .seealso: DMPlexGenerateRegisterAll(), DMPlexGenerate(), DMPlexGenerateRegisterDestroy()
 

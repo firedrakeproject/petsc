@@ -10,7 +10,7 @@ PetscBool PCRegisterAllCalled = PETSC_FALSE;
 /*
    Contains the list of registered KSP routines
 */
-PetscFunctionList PCList = 0;
+PetscFunctionList PCList = NULL;
 
 /*@C
    PCSetType - Builds PC for a particular preconditioner type
@@ -48,8 +48,6 @@ PetscFunctionList PCList = 0;
   Developer Note: PCRegister() is used to add preconditioner types to PCList from which they
   are accessed by PCSetType().
 
-.keywords: PC, set, method, type
-
 .seealso: KSPSetType(), PCType, PCRegister(), PCCreate(), KSPGetPC()
 
 @*/
@@ -69,16 +67,16 @@ PetscErrorCode  PCSetType(PC pc,PCType type)
   if (!r) SETERRQ1(PetscObjectComm((PetscObject)pc),PETSC_ERR_ARG_UNKNOWN_TYPE,"Unable to find requested PC type %s",type);
   /* Destroy the previous private PC context */
   if (pc->ops->destroy) {
-    ierr             =  (*pc->ops->destroy)(pc);CHKERRQ(ierr);
+    ierr             = (*pc->ops->destroy)(pc);CHKERRQ(ierr);
     pc->ops->destroy = NULL;
-    pc->data         = 0;
+    pc->data         = NULL;
   }
   ierr = PetscFunctionListDestroy(&((PetscObject)pc)->qlist);CHKERRQ(ierr);
   /* Reinitialize function pointers in PCOps structure */
   ierr = PetscMemzero(pc->ops,sizeof(struct _PCOps));CHKERRQ(ierr);
   /* XXX Is this OK?? */
-  pc->modifysubmatrices  = 0;
-  pc->modifysubmatricesP = 0;
+  pc->modifysubmatrices  = NULL;
+  pc->modifysubmatricesP = NULL;
   /* Call the PCCreate_XXX routine for this particular preconditioner */
   pc->setupcalled = 0;
 
@@ -100,8 +98,6 @@ PetscErrorCode  PCSetType(PC pc,PCType type)
 .  type - name of preconditioner method
 
    Level: intermediate
-
-.keywords: PC, get, method, name, type
 
 .seealso: PCSetType()
 
@@ -131,8 +127,6 @@ extern PetscErrorCode PCGetDefaultType_Private(PC,const char*[]);
 .   -pc_use_amat true,false see PCSetUseAmat()
 
    Level: developer
-
-.keywords: PC, set, from, options, database
 
 .seealso: PCSetUseAmat()
 
@@ -191,7 +185,7 @@ PetscErrorCode  PCSetFromOptions(PC pc)
    Level: intermediate
 
    Developer Notes:
-    The routines KSP/SNES/TSSetDM() require the dm to be non-NULL, but this one can be NULL since all it does is 
+    The routines KSP/SNES/TSSetDM() require the dm to be non-NULL, but this one can be NULL since all it does is
     replace the current DM
 
 .seealso: PCGetDM(), KSPSetDM(), KSPGetDM()
@@ -243,8 +237,6 @@ PetscErrorCode  PCGetDM(PC pc,DM *dm)
 
    Level: intermediate
 
-.keywords: PC, set, application, context
-
 .seealso: PCGetApplicationContext()
 @*/
 PetscErrorCode  PCSetApplicationContext(PC pc,void *usrP)
@@ -267,8 +259,6 @@ PetscErrorCode  PCSetApplicationContext(PC pc,void *usrP)
 .  usrP - user context
 
    Level: intermediate
-
-.keywords: PC, get, application, context
 
 .seealso: PCSetApplicationContext()
 @*/

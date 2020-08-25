@@ -3,10 +3,12 @@
 #include <petsc/private/isimpl.h>
 #include <petscpf.h>
 #include <petscsf.h>
+#include <petscsection.h>
 #include <petscao.h>
 
 static PetscBool         ISPackageInitialized = PETSC_FALSE;
 extern PetscFunctionList ISLocalToGlobalMappingList;
+const char       *ISInfos[] = {"SORTED", "UNIQUE", "PERMUTATION", "INTERVAL", "IDENTITY", "ISInfo", "IS_",0};
 
 /*@C
   ISFinalizePackage - This function destroys everything in the IS package. It is
@@ -14,7 +16,6 @@ extern PetscFunctionList ISLocalToGlobalMappingList;
 
   Level: developer
 
-.keywords: Petsc, destroy, package
 .seealso: PetscFinalize()
 @*/
 PetscErrorCode  ISFinalizePackage(void)
@@ -38,7 +39,6 @@ PetscErrorCode  ISFinalizePackage(void)
 
   Level: developer
 
-.keywords: Vec, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  ISInitializePackage(void)
@@ -58,15 +58,19 @@ PetscErrorCode  ISInitializePackage(void)
   /* Register Constructors */
   ierr = ISRegisterAll();CHKERRQ(ierr);
   ierr = ISLocalToGlobalMappingRegisterAll();CHKERRQ(ierr);
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("is",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(IS_CLASSID);CHKERRQ(ierr);}
-    if (pkg) {ierr = PetscInfoDeactivateClass(IS_LTOGM_CLASSID);CHKERRQ(ierr);}
-    ierr = PetscStrInList("section",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(PETSC_SECTION_CLASSID);CHKERRQ(ierr);}
-    if (pkg) {ierr = PetscInfoDeactivateClass(PETSC_SECTION_SYM_CLASSID);CHKERRQ(ierr);}
+  /* Register Events */
+  ierr = PetscLogEventRegister("ISView",IS_CLASSID,&IS_View);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("ISLoad",IS_CLASSID,&IS_Load);CHKERRQ(ierr);
+  /* Process Info */
+  {
+    PetscClassId  classids[4];
+
+    classids[0] = IS_CLASSID;
+    classids[1] = IS_LTOGM_CLASSID;
+    classids[2] = PETSC_SECTION_CLASSID;
+    classids[3] = PETSC_SECTION_SYM_CLASSID;
+    ierr = PetscInfoProcessClass("is", 2, classids);CHKERRQ(ierr);
+    ierr = PetscInfoProcessClass("section", 2, &classids[2]);CHKERRQ(ierr);
   }
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
@@ -100,7 +104,7 @@ static void MPIAPI MPIU_MaxIndex_Local(void *in,void *out,PetscMPIInt *cnt,MPI_D
   PetscFunctionBegin;
   if (*datatype != MPIU_REAL) {
     (*PetscErrorPrintf)("Can only handle MPIU_REAL data types");
-    MPI_Abort(MPI_COMM_SELF,1);
+    PETSCABORT(MPI_COMM_SELF,PETSC_ERR_ARG_WRONG);
   }
   if (xin[0] > xout[0]) {
     xout[0] = xin[0];
@@ -118,7 +122,7 @@ static void MPIAPI MPIU_MinIndex_Local(void *in,void *out,PetscMPIInt *cnt,MPI_D
   PetscFunctionBegin;
   if (*datatype != MPIU_REAL) {
     (*PetscErrorPrintf)("Can only handle MPIU_REAL data types");
-    MPI_Abort(MPI_COMM_SELF,1);
+    PETSCABORT(MPI_COMM_SELF,PETSC_ERR_ARG_WRONG);
   }
   if (xin[0] < xout[0]) {
     xout[0] = xin[0];
@@ -143,7 +147,6 @@ static PetscBool  VecPackageInitialized = PETSC_FALSE;
 
   Level: developer
 
-.keywords: Vec, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  VecInitializePackage(void)
@@ -156,6 +159,8 @@ PetscErrorCode  VecInitializePackage(void)
   PetscFunctionBegin;
   if (VecPackageInitialized) PetscFunctionReturn(0);
   VecPackageInitialized = PETSC_TRUE;
+  /* Initialize subpackage */
+  ierr = VecScatterInitializePackage();CHKERRQ(ierr);
   /* Register Classes */
   ierr = PetscClassIdRegister("Vector",&VEC_CLASSID);CHKERRQ(ierr);
   /* Register Constructors */
@@ -194,14 +199,14 @@ PetscErrorCode  VecInitializePackage(void)
   ierr = PetscLogEventRegister("VecReduceEnd",     VEC_CLASSID,&VEC_ReduceEnd);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("VecNormalize",     VEC_CLASSID,&VEC_Normalize);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_VIENNACL)
-  ierr = PetscLogEventRegister("VecViennaCLCopyTo",   VEC_CLASSID,&VEC_ViennaCLCopyToGPU);CHKERRQ(ierr);
-  ierr = PetscLogEventRegister("VecViennaCLCopyFrom", VEC_CLASSID,&VEC_ViennaCLCopyFromGPU);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("VecVCLCopyTo",     VEC_CLASSID,&VEC_ViennaCLCopyToGPU);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("VecVCLCopyFrom",   VEC_CLASSID,&VEC_ViennaCLCopyFromGPU);CHKERRQ(ierr);
 #endif
 #if defined(PETSC_HAVE_CUDA)
-  ierr = PetscLogEventRegister("VecCUDACopyTo",     VEC_CLASSID,&VEC_CUDACopyToGPU);CHKERRQ(ierr);
-  ierr = PetscLogEventRegister("VecCUDACopyFrom",   VEC_CLASSID,&VEC_CUDACopyFromGPU);CHKERRQ(ierr);
-  ierr = PetscLogEventRegister("VecCopyToSome",     VEC_CLASSID,&VEC_CUDACopyToGPUSome);CHKERRQ(ierr);
-  ierr = PetscLogEventRegister("VecCopyFromSome",   VEC_CLASSID,&VEC_CUDACopyFromGPUSome);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("VecCUDACopyTo",    VEC_CLASSID,&VEC_CUDACopyToGPU);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("VecCUDACopyFrom",  VEC_CLASSID,&VEC_CUDACopyFromGPU);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("VecCopyToSome",    VEC_CLASSID,&VEC_CUDACopyToGPUSome);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("VecCopyFromSome",  VEC_CLASSID,&VEC_CUDACopyFromGPUSome);CHKERRQ(ierr);
 #endif
 
   /* Mark non-collective events */
@@ -218,15 +223,13 @@ PetscErrorCode  VecInitializePackage(void)
 #endif
   /* Turn off high traffic events by default */
   ierr = PetscLogEventSetActiveAll(VEC_SetValues, PETSC_FALSE);CHKERRQ(ierr);
+  /* Process Info */
+  {
+    PetscClassId  classids[1];
 
-  /* Process info exclusions */
-  ierr = PetscOptionsGetString(NULL,NULL,"-info_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
-  if (opt) {
-    ierr = PetscStrInList("vec",logList,',',&pkg);CHKERRQ(ierr);
-    if (pkg) {ierr = PetscInfoDeactivateClass(VEC_CLASSID);CHKERRQ(ierr);}
-    if (pkg) {ierr = PetscInfoDeactivateClass(VEC_SCATTER_CLASSID);CHKERRQ(ierr);}
+    classids[0] = VEC_CLASSID;
+    ierr = PetscInfoProcessClass("vec", 1, classids);CHKERRQ(ierr);
   }
-
   /* Process summary exclusions */
   ierr = PetscOptionsGetString(NULL,NULL,"-log_exclude",logList,sizeof(logList),&opt);CHKERRQ(ierr);
   if (opt) {
@@ -258,7 +261,6 @@ PetscErrorCode  VecInitializePackage(void)
 
   Level: developer
 
-.keywords: Vec, initialize, package
 .seealso: PetscInitialize()
 @*/
 PetscErrorCode  VecFinalizePackage(void)

@@ -4,14 +4,14 @@
 /*@C
    KSPGMRESSetOrthogonalization - Sets the orthogonalization routine used by GMRES and FGMRES.
 
-   Logically Collective on KSP
+   Logically Collective on ksp
 
    Input Parameters:
 +  ksp - iterative context obtained from KSPCreate
 -  fcn - orthogonalization function
 
    Calling Sequence of function:
-$   errorcode = int fcn(KSP ksp,int it);
+$   errorcode = PetscErrorCode fcn(KSP ksp,PetscInt it);
 $   it is one minus the number of GMRES iterations since last restart;
 $    i.e. the size of Krylov space minus one
 
@@ -30,8 +30,6 @@ $    i.e. the size of Krylov space minus one
 -  -ksp_gmres_modifiedgramschmidt - Activates KSPGMRESModifiedGramSchmidtOrthogonalization()
 
    Level: intermediate
-
-.keywords: KSP, GMRES, set, orthogonalization, Gram-Schmidt, iterative refinement
 
 .seealso: KSPGMRESSetRestart(), KSPGMRESSetPreAllocateVectors(), KSPGMRESSetCGSRefinementType(), KSPGMRESSetOrthogonalization(),
           KSPGMRESModifiedGramSchmidtOrthogonalization(), KSPGMRESClassicalGramSchmidtOrthogonalization(), KSPGMRESGetCGSRefinementType()
@@ -58,7 +56,7 @@ PetscErrorCode  KSPGMRESSetOrthogonalization(KSP ksp,PetscErrorCode (*fcn)(KSP,P
 .  fcn - orthogonalization function
 
    Calling Sequence of function:
-$   errorcode = int fcn(KSP ksp,int it);
+$   errorcode = PetscErrorCode fcn(KSP ksp,PetscInt it);
 $   it is one minus the number of GMRES iterations since last restart;
 $    i.e. the size of Krylov space minus one
 
@@ -77,8 +75,6 @@ $    i.e. the size of Krylov space minus one
 -  -ksp_gmres_modifiedgramschmidt - Activates KSPGMRESModifiedGramSchmidtOrthogonalization()
 
    Level: intermediate
-
-.keywords: KSP, GMRES, set, orthogonalization, Gram-Schmidt, iterative refinement
 
 .seealso: KSPGMRESSetRestart(), KSPGMRESSetPreAllocateVectors(), KSPGMRESSetCGSRefinementType(), KSPGMRESSetOrthogonalization(),
           KSPGMRESModifiedGramSchmidtOrthogonalization(), KSPGMRESClassicalGramSchmidtOrthogonalization(), KSPGMRESGetCGSRefinementType()

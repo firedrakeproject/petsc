@@ -303,6 +303,14 @@ static PetscErrorCode TaoLineSearchApply_OWArmijo(TaoLineSearch ls, Vec x, Petsc
   PetscFunctionReturn(0);
 }
 
+/*MC 
+   TAOLINESEARCHOWARMIJO - Special line-search type for the Orthant-Wise Limited Quasi-Newton (TAOOWLQN) algorithm. 
+   Should not be used with any other algorithm.
+
+   Level: developer
+
+.keywords: Tao, linesearch
+M*/
 PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_OWArmijo(TaoLineSearch ls)
 {
   TaoLineSearch_OWARMIJO *armP;
@@ -323,9 +331,9 @@ PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_OWArmijo(TaoLineSearch ls)
   armP->nondescending=PETSC_FALSE;
   ls->data = (void*)armP;
   ls->initstep=0.1;
-  ls->ops->setup=0;
-  ls->ops->reset=0;
-  ls->ops->apply=TaoLineSearchApply_OWArmijo;
+  ls->ops->setup = NULL;
+  ls->ops->reset = NULL;
+  ls->ops->apply = TaoLineSearchApply_OWArmijo;
   ls->ops->view = TaoLineSearchView_OWArmijo;
   ls->ops->destroy = TaoLineSearchDestroy_OWArmijo;
   ls->ops->setfromoptions = TaoLineSearchSetFromOptions_OWArmijo;

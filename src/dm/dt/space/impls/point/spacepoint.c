@@ -1,7 +1,7 @@
 #include <petsc/private/petscfeimpl.h> /*I "petscfe.h" I*/
 #include <petsc/private/dtimpl.h> /*I "petscdt.h" I*/
 
-PetscErrorCode PetscSpacePointView_Ascii(PetscSpace sp, PetscViewer viewer)
+static PetscErrorCode PetscSpacePointView_Ascii(PetscSpace sp, PetscViewer viewer)
 {
   PetscSpace_Point *pt = (PetscSpace_Point *) sp->data;
   PetscViewerFormat format;
@@ -20,7 +20,7 @@ PetscErrorCode PetscSpacePointView_Ascii(PetscSpace sp, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSpaceView_Point(PetscSpace sp, PetscViewer viewer)
+static PetscErrorCode PetscSpaceView_Point(PetscSpace sp, PetscViewer viewer)
 {
   PetscBool      iascii;
   PetscErrorCode ierr;
@@ -33,7 +33,7 @@ PetscErrorCode PetscSpaceView_Point(PetscSpace sp, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSpaceSetUp_Point(PetscSpace sp)
+static PetscErrorCode PetscSpaceSetUp_Point(PetscSpace sp)
 {
   PetscSpace_Point *pt = (PetscSpace_Point *) sp->data;
   PetscErrorCode    ierr;
@@ -41,12 +41,12 @@ PetscErrorCode PetscSpaceSetUp_Point(PetscSpace sp)
   PetscFunctionBegin;
   if (!pt->quad->points && sp->degree >= 0) {
     ierr = PetscQuadratureDestroy(&pt->quad);CHKERRQ(ierr);
-    ierr = PetscDTGaussJacobiQuadrature(sp->Nv, sp->Nc, PetscMax(sp->degree + 1, 1), -1.0, 1.0, &pt->quad);CHKERRQ(ierr);
+    ierr = PetscDTStroudConicalQuadrature(sp->Nv, sp->Nc, PetscMax(sp->degree + 1, 1), -1.0, 1.0, &pt->quad);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSpaceDestroy_Point(PetscSpace sp)
+static PetscErrorCode PetscSpaceDestroy_Point(PetscSpace sp)
 {
   PetscSpace_Point *pt = (PetscSpace_Point *) sp->data;
   PetscErrorCode    ierr;
@@ -57,7 +57,7 @@ PetscErrorCode PetscSpaceDestroy_Point(PetscSpace sp)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSpaceGetDimension_Point(PetscSpace sp, PetscInt *dim)
+static PetscErrorCode PetscSpaceGetDimension_Point(PetscSpace sp, PetscInt *dim)
 {
   PetscSpace_Point *pt = (PetscSpace_Point *) sp->data;
 
@@ -66,7 +66,7 @@ PetscErrorCode PetscSpaceGetDimension_Point(PetscSpace sp, PetscInt *dim)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSpaceEvaluate_Point(PetscSpace sp, PetscInt npoints, const PetscReal points[], PetscReal B[], PetscReal D[], PetscReal H[])
+static PetscErrorCode PetscSpaceEvaluate_Point(PetscSpace sp, PetscInt npoints, const PetscReal points[], PetscReal B[], PetscReal D[], PetscReal H[])
 {
   PetscSpace_Point *pt  = (PetscSpace_Point *) sp->data;
   PetscInt          dim = sp->Nv, pdim = pt->quad->numPoints, d, p, i, c;
@@ -74,7 +74,7 @@ PetscErrorCode PetscSpaceEvaluate_Point(PetscSpace sp, PetscInt npoints, const P
 
   PetscFunctionBegin;
   if (npoints != pt->quad->numPoints) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_SUP, "Cannot evaluate Point space on %d points != %d size", npoints, pt->quad->numPoints);
-  ierr = PetscMemzero(B, npoints*pdim * sizeof(PetscReal));CHKERRQ(ierr);
+  ierr = PetscArrayzero(B, npoints*pdim);CHKERRQ(ierr);
   for (p = 0; p < npoints; ++p) {
     for (i = 0; i < pdim; ++i) {
       for (d = 0; d < dim; ++d) {
@@ -91,12 +91,12 @@ PetscErrorCode PetscSpaceEvaluate_Point(PetscSpace sp, PetscInt npoints, const P
       }
     }
   }
-  if (D) {ierr = PetscMemzero(D, npoints*pdim*dim * sizeof(PetscReal));CHKERRQ(ierr);}
-  if (H) {ierr = PetscMemzero(H, npoints*pdim*dim*dim * sizeof(PetscReal));CHKERRQ(ierr);}
+  if (D) {ierr = PetscArrayzero(D, npoints*pdim*dim);CHKERRQ(ierr);}
+  if (H) {ierr = PetscArrayzero(H, npoints*pdim*dim*dim);CHKERRQ(ierr);}
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSpaceInitialize_Point(PetscSpace sp)
+static PetscErrorCode PetscSpaceInitialize_Point(PetscSpace sp)
 {
   PetscFunctionBegin;
   sp->ops->setfromoptions = NULL;
@@ -146,7 +146,6 @@ PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Point(PetscSpace sp)
 
   Level: intermediate
 
-.keywords: PetscSpacePoint
 .seealso: PetscSpaceCreate(), PetscSpaceSetType()
 @*/
 PetscErrorCode PetscSpacePointSetPoints(PetscSpace sp, PetscQuadrature q)
@@ -175,7 +174,6 @@ PetscErrorCode PetscSpacePointSetPoints(PetscSpace sp, PetscQuadrature q)
 
   Level: intermediate
 
-.keywords: PetscSpacePoint
 .seealso: PetscSpaceCreate(), PetscSpaceSetType()
 @*/
 PetscErrorCode PetscSpacePointGetPoints(PetscSpace sp, PetscQuadrature *q)
@@ -188,4 +186,3 @@ PetscErrorCode PetscSpacePointGetPoints(PetscSpace sp, PetscQuadrature *q)
   *q = pt->quad;
   PetscFunctionReturn(0);
 }
-

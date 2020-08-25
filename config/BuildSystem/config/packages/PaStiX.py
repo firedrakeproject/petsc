@@ -3,8 +3,10 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.download         = ['https://gforge.inria.fr/frs/download.php/file/36212/pastix_5.2.3.tar.bz2',
-                             'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/pastix_5.2.3.tar.bz2']
+    self.version          = '5.2.3'
+    self.versionname      = 'PASTIX_MAJOR_VERSION.PASTIX_MEDIUM_VERSION.PASTIX_MINOR_VERSION'
+    # 'https://gforge.inria.fr/frs/download.php/file/36212/pastix_'+self.version+'.tar.bz2',
+    self.download         = ['http://ftp.mcs.anl.gov/pub/petsc/externalpackages/pastix_'+self.version+'.tar.bz2']
     self.liblist          = [['libpastix.a'],
                             ['libpastix.a','libpthread.a','librt.a']]
     self.functions        = ['pastix']
@@ -23,7 +25,12 @@ class Configure(config.package.Package):
     self.indexTypes     = framework.require('PETSc.options.indexTypes', self)
     self.scotch         = framework.require('config.packages.PTScotch',self)
     self.mpi            = framework.require('config.packages.MPI',self)
-    self.deps           = [self.mpi,self.blasLapack, self.scotch]
+    self.pthread        = framework.require('config.packages.pthread',self)
+    # PaStiX.py does not absolutely require hwloc, but it performs better with it and can fail (in ways not easily tested) without it
+    # https://gforge.inria.fr/forum/forum.php?thread_id=32824&forum_id=599&group_id=186
+    # https://solverstack.gitlabpages.inria.fr/pastix/Bindings.html
+    self.hwloc          = framework.require('config.packages.hwloc',self)
+    self.deps           = [self.mpi, self.blasLapack, self.scotch, self.pthread, self.hwloc]
     return
 
   def Install(self):
@@ -136,6 +143,8 @@ class Configure(config.package.Package):
     g.write('# Uncomment the following line if your MPI doesn\'t support MPI_Datatype correctly\n')
     g.write('#CCPASTIX   := $(CCPASTIX) -DNO_MPI_TYPE\n')
     g.write('\n')
+    g.write('CCPASTIX   := $(CCPASTIX) -DWITH_HWLOC '+self.headers.toString(self.hwloc.include)+'\n')
+    g.write('EXTRALIB   := $(EXTRALIB) '+self.libraries.toString(self.hwloc.dlib)+'\n')
     g.write('###################################################################\n')
     g.write('#                          Options                                #\n')
     g.write('###################################################################\n')

@@ -3,6 +3,7 @@
   <head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8">
     <link href="../style.css" rel="stylesheet" type="text/css">
+    <link rel="icon" href="../images/PETSc_RGB-logo.png" type="image/png" sizes="16x16">
     <title>PETSc: Summary of Sparse Linear Solvers Available from PETSc</title>
   </head>
   <body>
@@ -36,12 +37,14 @@
             <li><a href="faq.html">FAQ</a></li>
             <li><a href="license.html">License</a></li>
             <li><span class="current">Linear Solver Table</span></li>
+            <li><a href="nonlinearsolvertable.html">Nonlinear Solver Table</a></li>
+	    <li><a href="taosolvertable.html">TAO Solver Table</a></li>
           </ul>
         </li>
         <li><a href="../publications/index.html">Applications/Publications</a></li>
         <li><a href="../miscellaneous/index.html">Miscellaneous</a></li>
         <li><a href="../miscellaneous/external.html">External Software</a></li>
-        <li><a href="../developers/index.html">Developers Site</a></li>
+        <li><a href="https://docs.petsc.org/en/latest/developers/index.html">Developers Site</a></li>
       </ul>
     </div>
 
@@ -66,7 +69,7 @@
             <th></th>
             <th></th>
             <th>Algorithm</th>
-            <th><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatType.html">Matrix types</a></th>
+            <th><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatType.html">Matrix types</a></th>
             <th>External Package<a href="#external">*</a></th>
             <th>Parallel</th>
             <th>Complex</th>
@@ -87,7 +90,7 @@
               <p>
                 <a name="relax">**</a> A "block Jacobi" style SOR with lits local
                 smoothing followed by update of ghost points from other processors, see
-                <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatSOR.html">MatSOR()</a>
+                <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MatSOR.html">MatSOR()</a>
               </p>
 
               <p><a name="pbrelax">***</a> Use PCType of PCSOR</p>
@@ -100,12 +103,12 @@
           <tr>
             <td>Preconditioners</td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCJACOBI.html">Jacobi</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCJACOBI.html">Jacobi</a></td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATDENSE.html">dense</a>
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATDENSE.html">dense</a>
             </td>
             <td>---</td>
             <td>X</td>
@@ -115,9 +118,9 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCPBJACOBI.html">point block Jacobi</a></td>
-            <td>baij, bs = 2,3,4,5</td>
-            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCPBJACOBI.html">point block Jacobi</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATKAIJ.html">kaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATMPISELL.html">mpisell</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATIS.html">is</a></td>
+            <td>---</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -125,12 +128,12 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCSOR.html">SOR</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCSOR.html">SOR</a></td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQDENSE.html">seqdense</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQSBAIJ.html">seqsbaij</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATMPIAIJ.html">mpiaij</a>
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQDENSE.html">seqdense</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQSBAIJ.html">seqsbaij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATMPIAIJ.html">mpiaij</a>
               <a href="#relax">**</a>
             </td>
             <td>---</td>
@@ -143,10 +146,10 @@
             <td></td>
             <td>point block SOR<a href="#pbrelax">***</a></td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQBAIJ.html">seqbaij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQBAIJ.html">seqbaij</a>,
               bs = 2,3,4,5
             </td>
-            <td></td>
+            <td>---</td>
             <td></td>
             <td>X</td>
           </tr>
@@ -154,8 +157,8 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCBJACOBI.html">block Jacobi</a></td>
-            <td>aij,baij,sbaij</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCBJACOBI.html">block Jacobi</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a></td>
             <td>---</td>
             <td>X</td>
             <td>X</td>
@@ -164,8 +167,18 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCASM.html">additive Schwarz</a></td>
-            <td>aij,baij,sbaij</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCASM.html">additive Schwarz</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a></td>
+            <td>---</td>
+            <td>X</td>
+            <td>X</td>
+          </tr>
+
+          <tr>
+            <td></td>
+            <td></td>
+            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCDEFLATION.html">deflation</a></td>
+            <td></td>
             <td>---</td>
             <td>X</td>
             <td>X</td>
@@ -174,8 +187,8 @@
           <tr>
             <td></td>
             <td>Incomplete factorizations</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCILU.html">ILU(k)</a></td>
-            <td>seqaij,seqbaij</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCILU.html">ILU(k)</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQBAIJ.html">seqbaij</a></td>
             <td>---</td>
             <td></td>
             <td>X</td>
@@ -184,8 +197,8 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCICC.html">ICC(k)</a></td>
-            <td>seqaij,seqbaij</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCICC.html">ICC(k)</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQBAIJ.html">seqbaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQSBAIJ.html">seqsbaij</a></td>
             <td>---</td>
             <td></td>
             <td>X</td>
@@ -195,8 +208,20 @@
             <td></td>
             <td></td>
             <td>ILU dt</td>
-            <td>aij</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCHYPRE.html">pilut/hypre</a> (LLNL) Deprecated. Use euclid/hypre instead</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
+            </td>
+<td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERSUPERLU.html">SuperLU Sequential ILU solver</a> (LBNL).
+            </td>
+            <td> </td>
+            <td>X</td>
+          </tr>
+
+          <tr>
+            <td></td>
+            <td></td>
+            <td> </td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCHYPRE.html">pilut/hypre</a> (LLNL) Deprecated. Use euclid/hypre instead</td>
             <td>X</td>
             <td></td>
           </tr>
@@ -204,7 +229,7 @@
           <tr>
             <td></td>
             <td>Matrix-free</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCSHELL.html">infrastructure</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCSHELL.html">infrastructure</a></td>
             <td></td>
             <td></td>
             <td>X</td>
@@ -214,7 +239,7 @@
           <tr>
             <td></td>
             <td>Multigrid</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCMG.html">infrastructure</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCMG.html">infrastructure</a></td>
             <td></td>
             <td></td>
             <td>X</td>
@@ -224,7 +249,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCMG.html">geometric (DMDA for structured grid)</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCMG.html">geometric (DMDA for structured grid)</a></td>
             <td></td>
             <td></td>
             <td>X</td>
@@ -234,9 +259,9 @@
 	  <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCGAMG.html">smoothed aggregation</a></td>
-            <td>aij</td>
-            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCGAMG.html">smoothed aggregation</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td>---</td>
             <td align="center">X</td>
             <td align="center">X</td>
           </tr>
@@ -246,9 +271,9 @@
             <td></td>
             <td>structured geometric</td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/DM/MATHYPRESTRUCT.html">hyprestruct</a>
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/DMDA/MATHYPRESTRUCT.html">hyprestruct</a>
 	    </td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCPFMG.html">PFMG from hypre</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCPFMG.html">PFMG from hypre</a></td>
             <td>X</td>
             <td></td>
           </tr>
@@ -257,8 +282,8 @@
             <td></td>
             <td></td>
             <td>classical algebraic</td>
-            <td>aij</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCHYPRE.html">BoomerAMG/hypre</a> (LLNL)</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCHYPRE.html">BoomerAMG/hypre</a> (LLNL)</td>
             <td>X</td>
             <td></td>
           </tr>
@@ -267,22 +292,32 @@
             <td></td>
             <td></td>
             <td></td>
-            <td>aij</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCML.html">ML/Trilinos</a> (SNL)</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCML.html">ML/Trilinos</a> (SNL)</td>
             <td>X</td>
             <td></td>
+          </tr>
+
+          <tr>
+            <td></td>
+            <td></td>
+            <td>domain decomposition-based</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATIS.html">is</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCHPDDM.html">HPDDM</a> (CNRS)</td>
+            <td>X</td>
+            <td>X</td>
           </tr>
 
 	  <tr>
             <td></td>
             <td>Physics-based splitting</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCFIELDSPLIT.html">relaxation and Schur-complement</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCFIELDSPLIT.html">relaxation and Schur-complement</a></td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>,
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATNEST.html">nest</a>
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a>,
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATNEST.html">nest</a>
             </td>
-            <td></td>
+            <td>---</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -290,11 +325,11 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCLSC.html">least squares commutator</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCLSC.html">least squares commutator</a></td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/MatCreateSchurComplement.html">schurcomplement</a>
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/MatCreateSchurComplement.html">schurcomplement</a>
 	    </td>
-            <td></td>
+            <td>---</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -303,8 +338,8 @@
             <td></td>
             <td>Approximate inverses</td>
             <td></td>
-            <td>aij</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCHYPRE.html">Parasails/hypre</a> (LLNL)</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCHYPRE.html">Parasails/hypre</a> (LLNL)</td>
             <td>X</td>
             <td></td>
           </tr>
@@ -313,8 +348,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td>aij</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCSPAI.html">SPAI</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCSPAI.html">SPAI</a></td>
             <td>X</td>
             <td></td>
           </tr>
@@ -322,9 +357,9 @@
           <tr>
             <td></td>
             <td>Substructuring</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCNN.html">balancing Neumann-Neumann</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCNN.html">balancing Neumann-Neumann</a></td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATIS.html">is</a>
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATIS.html">is</a>
 	    </td>
             <td>---</td>
             <td>X</td>
@@ -334,9 +369,9 @@
 	  <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCBDDC.html">BDDC</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCBDDC.html">BDDC</a></td>
             <td>
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATIS.html">is</a>
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATIS.html">is</a>
 	    </td>
             <td>---</td>
             <td>X</td>
@@ -346,8 +381,8 @@
           <tr>
             <td>Direct solvers</td>
             <td>LU</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCLU.html">LU</a></td>
-            <td>seqaij,seqbaij</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCLU.html">LU</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQBAIJ.html">seqbaij</a></td>
             <td>---</td>
             <td></td>
             <td>X</td>
@@ -356,9 +391,9 @@
           <tr>
             <td></td>
             <td></td>
-            <td>LU</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMATLAB.html">MATLAB</a></td>
+            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMATLAB.html">MATLAB</a></td>
             <td></td>
             <td>X</td>
           </tr>
@@ -367,8 +402,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERPASTIX.html">PaStiX (INRIA)</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERPASTIX.html">PaStiX</a> (Inria)</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -377,11 +412,11 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
             <td>
-              SuperLU (BNL)
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERSUPERLU.html">SuperLU Sequential LU solver</a> /
-              <a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERSUPERLU_DIST.html">SuperLU_DIST Parallel LU solver</a>
+              SuperLU (LBNL)
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERSUPERLU.html">SuperLU Sequential LU solver</a> /
+              <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERSUPERLU_DIST.html">SuperLU_DIST Parallel LU solver</a>
             </td>
             <td>X</td>
             <td>X</td>
@@ -391,8 +426,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMUMPS.html">MUMPS</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATBAIJ.html">baij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMUMPS.html">MUMPS</a> (CERFACS, CNRS, ENS Lyon, INP Toulouse, Inria, Mumps Technologies, University of Bordeaux)</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -401,8 +436,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERESSL.html">ESSL</a> (IBM)</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERESSL.html">ESSL</a> (IBM)</td>
             <td></td>
             <td></td>
           </tr>
@@ -411,8 +446,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERUMFPACK.html">UMFPACK</a>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERUMFPACK.html">UMFPACK</a>
               Part of <a href="http://faculty.cse.tamu.edu/davis/suitesparse.html">SuiteSparse</a></td>
             <td></td>
             <td>X</td>
@@ -422,8 +457,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERKLU.html">KLU</a>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERKLU.html">KLU</a>
                Part of <a href="http://faculty.cse.tamu.edu/davis/suitesparse.html">SuiteSparse</a></td>
             <td></td>
             <td>X</td>
@@ -433,8 +468,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERLUSOL.html">LUSOL</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERLUSOL.html">LUSOL</a></td>
             <td></td>
             <td></td>
           </tr>
@@ -443,7 +478,28 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATDENSE.html">dense</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQBAIJ.html">seqbaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMKL_PARDISO.html">MKL Pardiso</a> (Intel)</td>
+            <td></td>
+            <td>X</td>
+          </tr>
+
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATMPIAIJ.html">mpiaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATMPIBAIJ.html">mpibaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMKL_CPARDISO.html">MKL CPardiso</a> (Intel)</td>
+            <td>X</td>
+            <td>X</td>
+          </tr>
+
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATDENSE.html">dense</a></td>
+            <td><a href="https://github.com/elemental/Elemental">Elemental</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -451,8 +507,8 @@
           <tr>
             <td></td>
             <td>Cholesky</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCCHOLESKY.html">Cholesky</a></td>
-            <td>seqaij,seqsbaij</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/PC/PCCHOLESKY.html">Cholesky</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQSBAIJ.html">seqsbaij</a></td>
             <td>---</td>
             <td></td>
             <td>X</td>
@@ -462,8 +518,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERPASTIX.html">PaStiX (INRIA)</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERPASTIX.html">PaStiX</a> (Inria)</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -472,8 +528,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMUMPS.html">MUMPS</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSBAIJ.html">sbaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMUMPS.html">MUMPS</a> (CERFACS, CNRS, ENS Lyon, INP Toulouse, Inria, Mumps Technologies, University of Bordeaux)</td>
             <td>X</td>
             <td>X</td>
           </tr>
@@ -482,8 +538,8 @@
             <td></td>
             <td></td>
             <td></td>
-            <td>seqaij, seqsbaij</td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERCHOLMOD.html">CHOLMOD</a>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQAIJ.html">seqaij</a>, <a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQSBAIJ.html">seqsbaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERCHOLMOD.html">CHOLMOD</a>
                    Part of <a href="http://faculty.cse.tamu.edu/davis/suitesparse.html">SuiteSparse</a></td>
             <td></td>
             <td>X</td>
@@ -493,9 +549,29 @@
             <td></td>
             <td></td>
             <td></td>
-            <td>dense</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATDENSE.html">dense</a></td>
+            <td><a href="https://github.com/elemental/Elemental">Elemental</td>
             <td>X</td>
             <td>X</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSEQSBAIJ.html">seqsbaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMKL_PARDISO.html">MKL Pardiso</a> (Intel)</td>
+            <td></td>
+            <td></td>
+          </tr>
+
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATMPISBAIJ.html">mpisbaij</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATSOLVERMKL_CPARDISO.html">MKL CPardiso</a> (Intel)</td>
+            <td>X</td>
+            <td></td>
           </tr>
 
           <tr>
@@ -512,7 +588,7 @@
             <td></td>
             <td>XXt and XYt</td>
             <td></td>
-            <td>aij</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/Mat/MATAIJ.html">aij</a></td>
             <td>---</td>
             <td>X</td>
             <td></td>
@@ -521,7 +597,7 @@
           <tr>
             <td>Krylov methods</td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPRICHARDSON.html">Richardson</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPRICHARDSON.html">Richardson</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -531,7 +607,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCHEBYSHEV.html">Chebyshev</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCHEBYSHEV.html">Chebyshev</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -541,7 +617,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCG.html">conjugate gradients</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCG.html">conjugate gradients</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -551,7 +627,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPGMRES.html">GMRES</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPGMRES.html">GMRES</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -561,7 +637,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPBCGS.html">Bi-CG-stab</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPBCGS.html">bi-CG-stab</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -571,7 +647,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPTFQMR.html">transpose free QMR</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPTFQMR.html">transpose free QMR</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -581,7 +657,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCR.html">conjugate residuals</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCR.html">conjugate residuals</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -591,7 +667,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCGS.html">conjugate gradient squared</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCGS.html">conjugate gradient squared</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -601,7 +677,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPBICG.html">bi-conjugate gradient</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPBICG.html">bi-conjugate gradient</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -611,7 +687,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPMINRES.html">MINRES</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPMINRES.html">MINRES</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -621,7 +697,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPFGMRES.html">flexible GMRES</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPFGMRES.html">flexible GMRES</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -631,7 +707,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPLSQR.html">LSQR</a>(supports rectangular matrices)</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPLSQR.html">LSQR</a> (supports rectangular matrices)</td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -641,7 +717,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCGLS.html">CG for least squares</a>(supports rectangular matrices)</td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCGLS.html">CG for least squares</a> (supports rectangular matrices)</td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -651,7 +727,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPSYMMLQ.html">SYMMLQ</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPSYMMLQ.html">SYMMLQ</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -661,7 +737,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPLGMRES.html">LGMRES</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPLGMRES.html">LGMRES</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -671,7 +747,7 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPGCR.html">GCR</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPGCR.html">GCR</a></td>
             <td></td>
             <td>---</td>
             <td>X</td>
@@ -681,9 +757,19 @@
           <tr>
             <td></td>
             <td></td>
-            <td><a href="http://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCGNE.html">Conjugate gradient on the normal equations</a></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPCGNE.html">conjugate gradient on the normal equations</a></td>
             <td></td>
             <td>---</td>
+            <td>X</td>
+            <td>X</td>
+          </tr>
+
+          <tr>
+            <td></td>
+            <td></td>
+            <td>GCR with inner orthogonalization and deflated restarting</td>
+            <td></td>
+            <td><a href="https://www.mcs.anl.gov/petsc/petsc-current/docs/manualpages/KSP/KSPHPDDM.html">HPDDM</a> (CNRS)</td>
             <td>X</td>
             <td>X</td>
           </tr>

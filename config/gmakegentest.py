@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+import pickle
 import os,shutil, string, re
 import sys
 import logging, time
 import types
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-from cmakegen import Mistakes, stripsplit, AUTODIRS, SKIPDIRS
 from collections import defaultdict
 from gmakegen import *
 
@@ -74,16 +74,27 @@ def install_files(source, destdir):
   else:
     shutil.copyfile(source, os.path.join(destdir, os.path.basename(source)))
 
+def nameSpace(srcfile,srcdir):
+  """
+  Because the scripts have a non-unique naming, the pretty-printing
+  needs to convey the srcdir and srcfile.  There are two ways of doing this.
+  """
+  if srcfile.startswith('run'): srcfile=re.sub('^run','',srcfile)
+  prefix=srcdir.replace("/","_")+"-"
+  nameString=prefix+srcfile
+  return nameString
+
 class generateExamples(Petsc):
   """
     gmakegen.py has basic structure for finding the files, writing out
       the dependencies, etc.
   """
-  def __init__(self,petsc_dir=None, petsc_arch=None, pkg_dir=None, pkg_arch=None, pkg_name=None, pkg_pkgs=None, testdir='tests', verbose=False, single_ex=False, srcdir=None):
+  def __init__(self,petsc_dir=None, petsc_arch=None, pkg_dir=None, pkg_arch=None, pkg_name=None, pkg_pkgs=None, testdir='tests', verbose=False, single_ex=False, srcdir=None, check=False):
     super(generateExamples, self).__init__(petsc_dir=petsc_dir, petsc_arch=petsc_arch, pkg_dir=pkg_dir, pkg_arch=pkg_arch, pkg_name=pkg_name, pkg_pkgs=pkg_pkgs, verbose=verbose)
 
     self.single_ex=single_ex
     self.srcdir=srcdir
+    self.check_output=check
 
     # Set locations to handle movement
     self.inInstallDir=self.getInInstallDir(thisscriptdir)
@@ -106,7 +117,6 @@ class generateExamples(Petsc):
 
     self.testroot_dir=os.path.abspath(testdir)
 
-    self.ptNaming=True
     self.verbose=verbose
     # Whether to write out a useful debugging
     self.summarize=True if verbose else False
@@ -163,21 +173,6 @@ class generateExamples(Petsc):
     else:
       return False
 
-  def nameSpace(self,srcfile,srcdir):
-    """
-    Because the scripts have a non-unique naming, the pretty-printing
-    needs to convey the srcdir and srcfile.  There are two ways of doing this.
-    """
-    if self.ptNaming:
-      if srcfile.startswith('run'): srcfile=re.sub('^run','',srcfile)
-      cdir=srcdir
-      prefix=cdir.replace('/examples/','_').replace("/","_")+"-"
-      nameString=prefix+srcfile
-    else:
-      #nameString=srcdir+": "+srcfile
-      nameString=srcfile
-    return nameString
-
   def getLanguage(self,srcfile):
     """
     Based on the source, determine associated language as found in gmakegen.LANGS
@@ -194,6 +189,23 @@ class generateExamples(Petsc):
     #if not langReq: print("ERROR: ", srcext, srcfile)
     return langReq
 
+  def _getAltList(self,output_file,srcdir):
+    ''' Calculate AltList based on output file-- see
+       src/snes/tutorials/output/ex22*.out
+    '''
+    altlist=[output_file]
+    basefile,ext = os.path.splitext(output_file)
+    for i in range(1,9):
+      altroot=basefile+"_alt"
+      if i > 1: altroot=altroot+"_"+str(i)
+      af=altroot+".out"
+      srcaf=os.path.join(srcdir,af)
+      fullaf=os.path.join(self.petsc_dir,srcaf)
+      if os.path.isfile(fullaf): altlist.append(srcaf)
+
+    return altlist
+
+
   def _getLoopVars(self,inDict,testname, isSubtest=False):
     """
     Given: 'args: -bs {{1 2 3 4 5}} -pc_type {{cholesky sor}} -ksp_monitor'
@@ -206,7 +218,7 @@ class generateExamples(Petsc):
     subst should be passed in instead of inDict
     """
     loopVars={}; newargs=[]
-    lsuffix='_'
+    lsuffix='+'
     argregex = re.compile(' (?=-[a-zA-Z])')
     from testparse import parseLoopArgs
     for key in inDict:
@@ -228,10 +240,10 @@ class generateExamples(Petsc):
           loopVars[akey][keyvar]=[keyvar,lvars]
           if akey=='nsize':
             if len(lvars.split()) > 1:
-              lsuffix += akey +'-${' + keyvar + '}'
+              lsuffix += akey +'-${i' + keyvar + '}'
           else:
-            inDict[akey] += ' -'+keyvar+' ${' + keyvar + '}'
-            lsuffix+=keyvar+'-${' + keyvar + '}_'
+            inDict[akey] += ' -'+keyvar+' ${i' + keyvar + '}'
+            lsuffix+=keyvar+'-${i' + keyvar + '}_'
         else:
           if key=='args':
             newargs.append(varset.strip())
@@ -240,16 +252,16 @@ class generateExamples(Petsc):
 
     # For subtests, args are always substituted in (not top level)
     if isSubtest:
-      inDict['subargs'] += " ".join(newargs)
+      inDict['subargs'] += " "+" ".join(newargs)
       inDict['args']=''
       if 'label_suffix' in inDict:
-        inDict['label_suffix']+=lsuffix.rstrip('_')
+        inDict['label_suffix']+=lsuffix.rstrip('+').rstrip('_')
       else:
-        inDict['label_suffix']=lsuffix.rstrip('_')
+        inDict['label_suffix']=lsuffix.rstrip('+').rstrip('_')
     else:
       if loopVars:
         inDict['args'] = ' '.join(newargs)
-        inDict['label_suffix']=lsuffix.rstrip('_')
+        inDict['label_suffix']=lsuffix.rstrip('+').rstrip('_')
     return loopVars
 
   def getArgLabel(self,testDict):
@@ -343,8 +355,13 @@ class generateExamples(Petsc):
 
     # Now do other variables
     subst['execname']=testDict['execname']
+    subst['error']=''
     if 'filter' in testDict:
-      subst['filter']="'"+testDict['filter']+"'"   # Quotes are tricky - overwrite
+      if testDict['filter'].startswith("Error:"):
+        subst['error']="Error"
+        subst['filter']=testDict['filter'].lstrip("Error:")
+      else:
+        subst['filter']=testDict['filter']
 
     # Others
     subst['subargs']=''  # Default.  For variables override
@@ -379,31 +396,14 @@ class generateExamples(Petsc):
     subst['wpetsc_dir']=self.conf['wPETSC_DIR']
 
     # Output file is special because of subtests override
-    defroot=(re.sub("run","",testname) if testname.startswith("run") else testname)
-    if not "_" in defroot: defroot=defroot+"_1"
-    subst['defroot']=defroot
-    subst['label']=self.nameSpace(defroot,self.srcrelpath(subst['srcdir']))
-    subst['redirect_file']=defroot+".tmp"
+    defroot = testparse.getDefaultOutputFileRoot(testname)
     if 'output_file' not in testDict:
       subst['output_file']="output/"+defroot+".out"
+    subst['redirect_file']=defroot+".tmp"
+    subst['label']=nameSpace(defroot,self.srcrelpath(subst['srcdir']))
+
     # Add in the full path here.
     subst['output_file']=os.path.join(subst['srcdir'],subst['output_file'])
-    if not os.path.isfile(os.path.join(self.petsc_dir,subst['output_file'])):
-      if not subst['TODO']:
-        print("Warning: "+subst['output_file']+" not found.")
-    # Worry about alt files here -- see
-    #   src/snes/examples/tutorials/output/ex22*.out
-    altlist=[subst['output_file']]
-    basefile,ext = os.path.splitext(subst['output_file'])
-    for i in range(1,9):
-      altroot=basefile+"_alt"
-      if i > 1: altroot=altroot+"_"+str(i)
-      af=altroot+".out"
-      srcaf=os.path.join(subst['srcdir'],af)
-      fullaf=os.path.join(self.petsc_dir,srcaf)
-      if os.path.isfile(fullaf): altlist.append(srcaf)
-    if len(altlist)>1: subst['altfiles']=altlist
-    #if len(altlist)>1: print("Found alt files: ",altlist)
 
     subst['regexes']={}
     for subkey in subst:
@@ -423,10 +423,10 @@ class generateExamples(Petsc):
       if subkey=='regexes': continue
       if not isinstance(subst[subkey],str): continue
       if subkey.upper() not in Str: continue
-      Str=subst['regexes'][subkey].sub(subst[subkey],Str)
+      Str=subst['regexes'][subkey].sub(lambda x: subst[subkey],Str)
     return Str
 
-  def getCmds(self,subst,i):
+  def getCmds(self,subst,i, debug=False):
     """
       Generate bash script using template found next to this file.
       This file is read in at constructor time to avoid file I/O
@@ -444,27 +444,33 @@ class generateExamples(Petsc):
 
     cmdLines+=cmdindnt+'if test $res = 0; then\n'
     diffindnt=self.indent*(nindnt+1)
-    if not subst['filter_output']:
-      if 'altfiles' not in subst:
-        cmd=diffindnt+self._substVars(subst,example_template.difftest)
-      else:
-        # Have to do it by hand a bit because of variable number of alt files
-        rf=subst['redirect_file']
-        cmd=diffindnt+example_template.difftest.split('@')[0]
-        for i in range(len(subst['altfiles'])):
-          af=subst['altfiles'][i]
-          cmd+=af+' '+rf
-          if i!=len(subst['altfiles'])-1:
-            cmd+=' > diff-${testname}-'+str(i)+'.out 2> diff-${testname}-'+str(i)+'.out'
-            cmd+=' || ${diff_exe} '
-          else:
-            cmd+='" diff-${testname}.out diff-${testname}.out diff-${label}'
-            cmd+=subst['label_suffix']+' ""'  # Quotes are painful
+
+    # Do some checks on existence of output_file and alt files
+    if not os.path.isfile(os.path.join(self.petsc_dir,subst['output_file'])):
+      if not subst['TODO']:
+        print("Warning: "+subst['output_file']+" not found.")
+    altlist=self._getAltList(subst['output_file'], subst['srcdir'])
+
+    # altlist always has output_file
+    if len(altlist)==1:
+      cmd=diffindnt+self._substVars(subst,example_template.difftest)
     else:
-      cmd=diffindnt+self._substVars(subst,example_template.filterdifftest)
+      if debug: print("Found alt files: ",altlist)
+      # Have to do it by hand a bit because of variable number of alt files
+      rf=subst['redirect_file']
+      cmd=diffindnt+example_template.difftest.split('@')[0]
+      for i in range(len(altlist)):
+        af=altlist[i]
+        cmd+=af+' '+rf
+        if i!=len(altlist)-1:
+          cmd+=' > diff-${testname}-'+str(i)+'.out 2> diff-${testname}-'+str(i)+'.out'
+          cmd+=' || ${diff_exe} '
+        else:
+          cmd+='" diff-${testname}.out diff-${testname}.out diff-${label}'
+          cmd+=subst['label_suffix']+' ""'  # Quotes are painful
     cmdLines+=cmd+"\n"
     cmdLines+=cmdindnt+'else\n'
-    cmdLines+=diffindnt+'printf "ok ${label} # SKIP Command failed so no diff\\n"\n'
+    cmdLines+=diffindnt+'petsc_report_tapoutput "" ${label} "SKIP Command failed so no diff"\n'
     cmdLines+=cmdindnt+'fi\n'
     return cmdLines
 
@@ -506,7 +512,6 @@ class generateExamples(Petsc):
     outstr=''; indnt=self.indent
 
     for key in loopVars:
-      if key in usedVars: continue         # Do not duplicate setting vars
       for var in loopVars[key]['varlist']:
         varval=loopVars[key][var]
         outstr += "{0}_in=${{{0}:-{1}}}\n".format(*varval)
@@ -515,7 +520,7 @@ class generateExamples(Petsc):
     for key in loopVars:
       for var in loopVars[key]['varlist']:
         varval=loopVars[key][var]
-        outstr += indnt * i + "for {0} in ${{{0}_in}}; do\n".format(*varval)
+        outstr += indnt * i + "for i{0} in ${{{0}_in}}; do\n".format(*varval)
         i = i + 1
     return (outstr,i)
 
@@ -537,72 +542,73 @@ class generateExamples(Petsc):
     rpath=self.srcrelpath(root)
     runscript_dir=os.path.join(self.testroot_dir,rpath)
     if not os.path.isdir(runscript_dir): os.makedirs(runscript_dir)
-    fh=open(os.path.join(runscript_dir,testname+".sh"),"w")
+    with open(os.path.join(runscript_dir,testname+".sh"),"w") as fh:
 
-    # Get variables to go into shell scripts.  last time testDict used
-    subst=self.getSubstVars(testDict,rpath,testname)
-    loopVars = self._getLoopVars(subst,testname)  # Alters subst as well
-    if 'subtests' in testDict:
-      # The subtests inherit inDict, so we don't need top-level loops.
-      loopVars = {}
+      # Get variables to go into shell scripts.  last time testDict used
+      subst=self.getSubstVars(testDict,rpath,testname)
+      loopVars = self._getLoopVars(subst,testname)  # Alters subst as well
+      if 'subtests' in testDict:
+        # The subtests inherit inDict, so we don't need top-level loops.
+        loopVars = {}
 
-    #Handle runfiles
-    for lfile in subst.get('localrunfiles','').split():
-      install_files(os.path.join(root, lfile),
-                    os.path.join(runscript_dir, os.path.dirname(lfile)))
-    # Check subtests for local runfiles
-    for stest in subst.get("subtests",[]):
-      for lfile in testDict[stest].get('localrunfiles','').split():
+      #Handle runfiles
+      for lfile in subst.get('localrunfiles','').split():
         install_files(os.path.join(root, lfile),
                       os.path.join(runscript_dir, os.path.dirname(lfile)))
+      # Check subtests for local runfiles
+      for stest in subst.get("subtests",[]):
+        for lfile in testDict[stest].get('localrunfiles','').split():
+          install_files(os.path.join(root, lfile),
+                        os.path.join(runscript_dir, os.path.dirname(lfile)))
 
-    # Now substitute the key variables into the header and footer
-    header=self._substVars(subst,example_template.header)
-    # The header is done twice to enable @...@ in header
-    header=self._substVars(subst,header)
-    footer=re.sub('@TESTROOT@',subst['testroot'],example_template.footer)
+      # Now substitute the key variables into the header and footer
+      header=self._substVars(subst,example_template.header)
+      # The header is done twice to enable @...@ in header
+      header=self._substVars(subst,header)
+      footer=re.sub('@TESTROOT@',subst['testroot'],example_template.footer)
 
-    # Start writing the file
-    fh.write(header+"\n")
+      # Start writing the file
+      fh.write(header+"\n")
 
-    # If there is a TODO or a SKIP then we do it before writing out the
-    # rest of the command (which is useful for working on the test)
-    # SKIP and TODO can be for the source file or for the runs
-    self._writeTodoSkip(fh,'todo',[s for s in [srcDict.get('TODO',''), testDict.get('TODO','')] if s],footer)
-    self._writeTodoSkip(fh,'skip',srcDict.get('SKIP',[]) + testDict.get('SKIP',[]),footer)
+      # If there is a TODO or a SKIP then we do it before writing out the
+      # rest of the command (which is useful for working on the test)
+      # SKIP and TODO can be for the source file or for the runs
+      self._writeTodoSkip(fh,'todo',[s for s in [srcDict.get('TODO',''), testDict.get('TODO','')] if s],footer)
+      self._writeTodoSkip(fh,'skip',srcDict.get('SKIP',[]) + testDict.get('SKIP',[]),footer)
 
-    j=0  # for indentation
+      j=0  # for indentation
 
-    if loopVars:
-      (loopHead,j) = self.getLoopVarsHead(loopVars,j)
-      if (loopHead): fh.write(loopHead+"\n")
+      if loopVars:
+        (loopHead,j) = self.getLoopVarsHead(loopVars,j)
+        if (loopHead): fh.write(loopHead+"\n")
 
-    # Subtests are special
-    allLoopVars=list(loopVars.keys())
-    if 'subtests' in testDict:
-      substP=subst   # Subtests can inherit args but be careful
-      k=0  # for label suffixes
-      for stest in testDict["subtests"]:
-        subst=substP.copy()
-        subst.update(testDict[stest])
-        subst['label_suffix']='-'+string.ascii_letters[k]; k+=1
-        sLoopVars = self._getLoopVars(subst,testname,isSubtest=True)
-        if sLoopVars:
-          (sLoopHead,j) = self.getLoopVarsHead(sLoopVars,j,allLoopVars)
-          allLoopVars+=list(sLoopVars.keys())
-          fh.write(sLoopHead+"\n")
+      # Subtests are special
+      allLoopVars=list(loopVars.keys())
+      if 'subtests' in testDict:
+        substP=subst   # Subtests can inherit args but be careful
+        k=0  # for label suffixes
+        for stest in testDict["subtests"]:
+          subst=substP.copy()
+          subst.update(testDict[stest])
+          subst['label_suffix']='+'+string.ascii_letters[k]; k+=1
+          sLoopVars = self._getLoopVars(subst,testname,isSubtest=True)
+          if sLoopVars:
+            (sLoopHead,j) = self.getLoopVarsHead(sLoopVars,j,allLoopVars)
+            allLoopVars+=list(sLoopVars.keys())
+            fh.write(sLoopHead+"\n")
+          fh.write(self.getCmds(subst,j)+"\n")
+          if sLoopVars:
+            (sLoopFoot,j) = self.getLoopVarsFoot(sLoopVars,j)
+            fh.write(sLoopFoot+"\n")
+      else:
         fh.write(self.getCmds(subst,j)+"\n")
-        if sLoopVars:
-          (sLoopFoot,j) = self.getLoopVarsFoot(sLoopVars,j)
-          fh.write(sLoopFoot+"\n")
-    else:
-      fh.write(self.getCmds(subst,j)+"\n")
 
-    if loopVars:
-      (loopFoot,j) = self.getLoopVarsFoot(loopVars,j)
-      fh.write(loopFoot+"\n")
+      if loopVars:
+        (loopFoot,j) = self.getLoopVarsFoot(loopVars,j)
+        fh.write(loopFoot+"\n")
 
-    fh.write(footer+"\n")
+      fh.write(footer+"\n")
+
     os.chmod(os.path.join(runscript_dir,testname+".sh"),0o755)
     #if '10_9' in testname: sys.exit()
     return
@@ -623,7 +629,7 @@ class generateExamples(Petsc):
     isBuilt=self._isBuilt(exfile,srcDict)
     for test in srcDict:
       if test in self.buildkeys: continue
-      if debug: print(self.nameSpace(exfile,root), test)
+      if debug: print(nameSpace(exfile,root), test)
       srcDict[test]['execname']=execname   # Convenience in generating scripts
       isRun=self._isRun(srcDict[test])
       self.genRunScript(test,root,isRun,srcDict)
@@ -685,7 +691,7 @@ class generateExamples(Petsc):
         for stest in testDict['subtests']:
           if 'requires' in testDict[stest]:
             testDict['requires']+=" "+testDict[stest]['requires']
-          if testDict.get('nsize', '1') != '1':
+          if testDict[stest].get('nsize', '1') != '1':
             testDict['SKIP'].append("Parallel test with serial build")
             break
 
@@ -756,9 +762,9 @@ class generateExamples(Petsc):
             continue
 
         # Rest should be packages that we can just get from conf
-        if requirement == "complex":
-          petscconfvar="PETSC_USE_COMPLEX"
-          pkgconfvar="PETSC_USE_COMPLEX"
+        if requirement in ["complex","debug"]:
+          petscconfvar="PETSC_USE_"+requirement.upper()
+          pkgconfvar=self.pkg_name.upper()+"_USE_"+requirement.upper()
         else:
           petscconfvar="PETSC_HAVE_"+requirement.upper()
           pkgconfvar=self.pkg_name.upper()+'_HAVE_'+requirement.upper()
@@ -784,6 +790,29 @@ class generateExamples(Petsc):
             continue
     return testDict['SKIP'] == []
 
+  def  checkOutput(self,exfile,root,srcDict):
+    """
+     Check and make sure the output files are in the output director
+    """
+    debug=False
+    rpath=self.srcrelpath(root)
+    for test in srcDict:
+      if test in self.buildkeys: continue
+      if debug: print(rpath, exfile, test)
+      if 'output_file' in srcDict[test]:
+        output_file=srcDict[test]['output_file']
+      else:
+        defroot = testparse.getDefaultOutputFileRoot(test)
+        if 'TODO' in srcDict[test]: continue
+        output_file="output/"+defroot+".out"
+
+      fullout=os.path.join(root,output_file)
+      if debug: print("---> ",fullout)
+      if not os.path.exists(fullout):
+        self.missing_files.append(fullout)
+
+    return
+
   def genPetscTests_summarize(self,dataDict):
     """
     Required method to state what happened
@@ -791,35 +820,31 @@ class generateExamples(Petsc):
     if not self.summarize: return
     indent="   "
     fhname=os.path.join(self.testroot_dir,'GenPetscTests_summarize.txt')
-    fh=open(fhname,"w")
-    for root in dataDict:
-      relroot=self.srcrelpath(root)
-      pkg=relroot.split("/")[1]
-      fh.write(relroot+"\n")
-      allSrcs=[]
-      for lang in LANGS: allSrcs+=self.sources[pkg][lang]['srcs']
-      for exfile in dataDict[root]:
-        # Basic  information
-        rfile=os.path.join(relroot,exfile)
-        builtStatus=(" Is built" if rfile in allSrcs else " Is NOT built")
-        fh.write(indent+exfile+indent*4+builtStatus+"\n")
-
-        for test in dataDict[root][exfile]:
-          if test in self.buildkeys: continue
-          line=indent*2+test
-          fh.write(line+"\n")
-          # Looks nice to have the keys in order
-          #for key in dataDict[root][exfile][test]:
-          for key in "isrun abstracted nsize args requires script".split():
-            if key not in dataDict[root][exfile][test]: continue
-            line=indent*3+key+": "+str(dataDict[root][exfile][test][key])
+    with open(fhname, "w") as fh:
+      for root in dataDict:
+        relroot=self.srcrelpath(root)
+        pkg=relroot.split("/")[1]
+        fh.write(relroot+"\n")
+        allSrcs=[]
+        for lang in LANGS: allSrcs+=self.sources[pkg][lang]['srcs']
+        for exfile in dataDict[root]:
+          # Basic  information
+          rfile=os.path.join(relroot,exfile)
+          builtStatus=(" Is built" if rfile in allSrcs else " Is NOT built")
+          fh.write(indent+exfile+indent*4+builtStatus+"\n")
+          for test in dataDict[root][exfile]:
+            if test in self.buildkeys: continue
+            line=indent*2+test
             fh.write(line+"\n")
+            # Looks nice to have the keys in order
+            #for key in dataDict[root][exfile][test]:
+            for key in "isrun abstracted nsize args requires script".split():
+              if key not in dataDict[root][exfile][test]: continue
+              line=indent*3+key+": "+str(dataDict[root][exfile][test][key])
+              fh.write(line+"\n")
+            fh.write("\n")
           fh.write("\n")
         fh.write("\n")
-      fh.write("\n")
-    #fh.write("\nClass Sources\n"+str(self.sources)+"\n")
-    #fh.write("\nClass Tests\n"+str(self.tests)+"\n")
-    fh.close()
     return
 
   def genPetscTests(self,root,dirs,files,dataDict):
@@ -851,7 +876,10 @@ class generateExamples(Petsc):
       if self.verbose: print('   --> '+fullex)
       dataDict[root].update(testparse.parseTestFile(fullex,0))
       if exfile in dataDict[root]:
-        self.genScriptsAndInfo(exfile,root,dataDict[root][exfile])
+        if not self.check_output:
+          self.genScriptsAndInfo(exfile,root,dataDict[root][exfile])
+        else:
+          self.checkOutput(exfile,root,dataDict[root][exfile])
 
     return
 
@@ -859,16 +887,28 @@ class generateExamples(Petsc):
     """
     Walk a directory tree, starting from 'top'
     """
+    if self.check_output:
+      print("Checking for missing output files")
+      self.missing_files=[]
+
     # Goal of action is to fill this dictionary
     dataDict={}
     for root, dirs, files in os.walk(top, topdown=True):
       dirs.sort()
       files.sort()
-      if not "examples" in root: continue
+      if "/tests" not in root and "/tutorials" not in root: continue
       if "dSYM" in root: continue
       if os.path.basename(root.rstrip("/")) == 'output': continue
       if self.verbose: print(root)
       self.genPetscTests(root,dirs,files,dataDict)
+
+    # If checking output, report results
+    if self.check_output:
+      if self.missing_files:
+        for file in set(self.missing_files):  # set uniqifies
+          print(file)
+        sys.exit(1)
+
     # Now summarize this dictionary
     if self.verbose: self.genPetscTests_summarize(dataDict)
     return dataDict
@@ -921,61 +961,69 @@ class generateExamples(Petsc):
     compileExecsFirst=False
 
     # Open file
-    fd = open(output, 'w')
+    with open(output, 'w') as fd:
+      # Write out the sources
+      gendeps = self.gen_gnumake(fd)
 
-    # Write out the sources
-    gendeps = self.gen_gnumake(fd)
+      # Write out the tests and execname targets
+      fd.write("\n#Tests and executables\n")    # Delimiter
 
-    # Write out the tests and execname targets
-    fd.write("\n#Tests and executables\n")    # Delimiter
+      for pkg in self.pkg_pkgs:
+        # These grab the ones that are built
+        for lang in LANGS:
+          testdeps=[]
+          for ftest in self.tests[pkg][lang]:
+            test=os.path.basename(ftest)
+            basedir=os.path.dirname(ftest)
+            testdeps.append(nameSpace(test,basedir))
+          fd.write("test-"+pkg+"."+lang+" := "+' '.join(testdeps)+"\n")
+          fd.write('test-%s.%s : $(test-%s.%s)\n' % (pkg, lang, pkg, lang))
 
-    for pkg in self.pkg_pkgs:
-      # These grab the ones that are built
-      for lang in LANGS:
-        testdeps=[]
-        for ftest in self.tests[pkg][lang]:
-          test=os.path.basename(ftest)
-          basedir=os.path.dirname(ftest)
-          testdeps.append(self.nameSpace(test,basedir))
-        fd.write("test-"+pkg+"."+lang+" := "+' '.join(testdeps)+"\n")
-        fd.write('test-%s.%s : $(test-%s.%s)\n' % (pkg, lang, pkg, lang))
+          # test targets
+          for ftest in self.tests[pkg][lang]:
+            test=os.path.basename(ftest)
+            basedir=os.path.dirname(ftest)
+            testdir="${TESTDIR}/"+basedir+"/"
+            nmtest=nameSpace(test,basedir)
+            rundir=os.path.join(testdir,test)
+            script=test+".sh"
 
-        # test targets
-        for ftest in self.tests[pkg][lang]:
-          test=os.path.basename(ftest)
-          basedir=os.path.dirname(ftest)
-          testdir="${TESTDIR}/"+basedir+"/"
-          nmtest=self.nameSpace(test,basedir)
-          rundir=os.path.join(testdir,test)
-          script=test+".sh"
+            # Deps
+            exfile=self.tests[pkg][lang][ftest]['exfile']
+            fullex=os.path.join(self.srcdir,exfile)
+            localexec=self.tests[pkg][lang][ftest]['exec']
+            execname=os.path.join(testdir,localexec)
+            fullscript=os.path.join(testdir,script)
+            tmpfile=os.path.join(testdir,test,test+".tmp")
 
-          # Deps
-          exfile=self.tests[pkg][lang][ftest]['exfile']
-          fullex=os.path.join(self.srcdir,exfile)
-          localexec=self.tests[pkg][lang][ftest]['exec']
-          execname=os.path.join(testdir,localexec)
-          fullscript=os.path.join(testdir,script)
-          tmpfile=os.path.join(testdir,test,test+".tmp")
+            # *.counts depends on the script and either executable (will
+            # be run) or the example source file (SKIP or TODO)
+            fd.write('%s.counts : %s %s'
+                % (os.path.join('$(TESTDIR)/counts', nmtest),
+                   fullscript,
+                   execname if exfile in self.sources[pkg][lang]['srcs'] else fullex)
+                )
+            if exfile in self.sources[pkg][lang]:
+              for dep in self.sources[pkg][lang][exfile]:
+                fd.write(' %s' % os.path.join('$(TESTDIR)',dep))
+            fd.write('\n')
 
-          # *.counts depends on the script and either executable (will
-          # be run) or the example source file (SKIP or TODO)
-          fd.write('%s.counts : %s %s'
-              % (os.path.join('$(TESTDIR)/counts', nmtest),
-                 fullscript,
-                 execname if exfile in self.sources[pkg][lang]['srcs'] else fullex)
-              )
-          if exfile in self.sources[pkg][lang]:
-            for dep in self.sources[pkg][lang][exfile]:
-              fd.write(' %s' % os.path.join('$(TESTDIR)',dep))
-          fd.write('\n')
+            # Now write the args:
+            fd.write(nmtest+"_ARGS := '"+self.tests[pkg][lang][ftest]['argLabel']+"'\n")
 
-          # Now write the args:
-          fd.write(nmtest+"_ARGS := '"+self.tests[pkg][lang][ftest]['argLabel']+"'\n")
-
-    fd.close()
     return
 
-def main(petsc_dir=None, petsc_arch=None, pkg_dir=None, pkg_arch=None, pkg_name=None, pkg_pkgs=None, verbose=False, single_ex=False, srcdir=None, testdir=None):
+  def write_db(self, dataDict, testdir):
+    """
+     Write out the dataDict into a pickle file
+    """
+    with open(os.path.join(testdir,'datatest.pkl'), 'wb') as fd:
+      pickle.dump(dataDict,fd)
+    return
+
+def main(petsc_dir=None, petsc_arch=None, pkg_dir=None, pkg_arch=None,
+         pkg_name=None, pkg_pkgs=None, verbose=False, single_ex=False,
+         srcdir=None, testdir=None, check=False):
     # Allow petsc_arch to have both petsc_dir and petsc_arch for convenience
     testdir=os.path.normpath(testdir)
     if petsc_arch:
@@ -987,9 +1035,11 @@ def main(petsc_dir=None, petsc_arch=None, pkg_dir=None, pkg_arch=None, pkg_name=
     pEx=generateExamples(petsc_dir=petsc_dir, petsc_arch=petsc_arch,
                          pkg_dir=pkg_dir, pkg_arch=pkg_arch, pkg_name=pkg_name, pkg_pkgs=pkg_pkgs,
                          verbose=verbose, single_ex=single_ex, srcdir=srcdir,
-                         testdir=testdir)
+                         testdir=testdir,check=check)
     dataDict=pEx.walktree(os.path.join(pEx.srcdir))
-    pEx.write_gnumake(dataDict, output)
+    if not pEx.check_output:
+        pEx.write_gnumake(dataDict, output)
+        pEx.write_db(dataDict, testdir)
 
 if __name__ == '__main__':
     import optparse
@@ -1000,6 +1050,8 @@ if __name__ == '__main__':
     parser.add_option('--srcdir', help='Set location of sources different from PETSC_DIR/src', default=None)
     parser.add_option('-s', '--single_executable', dest='single_executable', action="store_false", help='Whether there should be single executable per src subdir.  Default is false')
     parser.add_option('-t', '--testdir', dest='testdir',  help='Test directory [$PETSC_ARCH/tests]')
+    parser.add_option('-c', '--check-output', dest='check_output', action="store_true",
+                      help='Check whether output files are in output director')
     parser.add_option('--pkg-dir', help='Set the directory of the package (different from PETSc) you want to generate the makefile rules for', default=None)
     parser.add_option('--pkg-name', help='Set the name of the package you want to generate the makefile rules for', default=None)
     parser.add_option('--pkg-arch', help='Set the package arch name you want to generate the makefile rules for', default=None)
@@ -1017,4 +1069,4 @@ if __name__ == '__main__':
          pkg_dir=opts.pkg_dir,pkg_arch=opts.pkg_arch,pkg_name=opts.pkg_name,pkg_pkgs=opts.pkg_pkgs,
          verbose=opts.verbose,
          single_ex=opts.single_executable, srcdir=opts.srcdir,
-         testdir=opts.testdir)
+         testdir=opts.testdir, check=opts.check_output)

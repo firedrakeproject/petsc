@@ -44,12 +44,12 @@ def modifyfile(filename):
 </html>
 '''
 
-    #fix http://www.mcs.anl.gov/petsc/petsc-current/docs/
-    w = re.compile(r'http://www.mcs.anl.gov/petsc/petsc-current/docs/')
+    #fix https://www.mcs.anl.gov/petsc/petsc-current/docs/
+    w = re.compile(r'https://www.mcs.anl.gov/petsc/petsc-current/docs/')
     outbuf = w.sub('',outbuf)
 
-    #fix  http://www.mcs.anl.gov/petsc/petsc-current/include/ (for petscversion.h)
-    w = re.compile(r'http://www.mcs.anl.gov/petsc/petsc-current/include/')
+    #fix  https://www.mcs.anl.gov/petsc/petsc-current/include/ (for petscversion.h)
+    w = re.compile(r'https://www.mcs.anl.gov/petsc/petsc-current/include/')
     outbuf = w.sub('',outbuf)
 
     # Now overwrite the original file
@@ -131,6 +131,8 @@ def main():
         'changes/39.html',
         'changes/310.html',
         'changes/311.html',
+        'changes/312.html',
+        'changes/313.html',
         'changes/dev.html',
         'changes/index.html',
         'installation.html']

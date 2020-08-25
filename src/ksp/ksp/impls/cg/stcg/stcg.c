@@ -595,7 +595,7 @@ static PetscErrorCode KSPCGSetFromOptions_STCG(PetscOptionItems *PetscOptionsObj
 }
 
 /*MC
-     KSPCGSTCG -   Code to run conjugate gradient method subject to a constraint
+     KSPSTCG -   Code to run conjugate gradient method subject to a constraint
          on the solution norm. This is used in Trust Region methods for
          nonlinear equations, SNESNEWTONTR
 
@@ -638,7 +638,7 @@ $  other KSP converged/diverged reasons
 .seealso:  KSPCreate(), KSPCGSetType(), KSPType (for list of available types), KSP, KSPCGSetRadius(), KSPCGGetNormD(), KSPCGGetObjFcn()
 M*/
 
-PETSC_EXTERN PetscErrorCode KSPCreate_CGSTCG(KSP ksp)
+PETSC_EXTERN PetscErrorCode KSPCreate_STCG(KSP ksp)
 {
   PetscErrorCode ierr;
   KSPCG_STCG     *cg;
@@ -653,6 +653,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_CGSTCG(KSP ksp)
   ierr       = KSPSetSupportedNorm(ksp,KSP_NORM_UNPRECONDITIONED,PC_LEFT,3);CHKERRQ(ierr);
   ierr       = KSPSetSupportedNorm(ksp,KSP_NORM_PRECONDITIONED,PC_LEFT,2);CHKERRQ(ierr);
   ierr       = KSPSetSupportedNorm(ksp,KSP_NORM_NATURAL,PC_LEFT,2);CHKERRQ(ierr);
+  ierr       = KSPSetSupportedNorm(ksp,KSP_NORM_NONE,PC_LEFT,1);CHKERRQ(ierr);
 
   /***************************************************************************/
   /* Sets the functions that are associated with this data structure         */
@@ -665,7 +666,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_CGSTCG(KSP ksp)
   ksp->ops->setfromoptions = KSPCGSetFromOptions_STCG;
   ksp->ops->buildsolution  = KSPBuildSolutionDefault;
   ksp->ops->buildresidual  = KSPBuildResidualDefault;
-  ksp->ops->view           = 0;
+  ksp->ops->view           = NULL;
 
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGSetRadius_C",KSPCGSetRadius_STCG);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPCGGetNormD_C",KSPCGGetNormD_STCG);CHKERRQ(ierr);

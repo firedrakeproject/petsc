@@ -310,11 +310,11 @@ PetscErrorCode SetupProblem(DM dm, AppCtx *user)
   /* Setup Boundary Conditions */
   ierr = PetscBagGetData(user->bag, (void **) &ctx);CHKERRQ(ierr);
   id   = 3;
-  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "top wall",    "marker", 0, 0, NULL, (void (*)(void)) wall_velocity, 1, &id, ctx);CHKERRQ(ierr);
+  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "top wall",    "marker", 0, 0, NULL, (void (*)(void)) wall_velocity, NULL, 1, &id, ctx);CHKERRQ(ierr);
   id   = 1;
-  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "bottom wall", "marker", 0, 0, NULL, (void (*)(void)) wall_velocity, 1, &id, ctx);CHKERRQ(ierr);
+  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "bottom wall", "marker", 0, 0, NULL, (void (*)(void)) wall_velocity, NULL, 1, &id, ctx);CHKERRQ(ierr);
   id   = 2;
-  ierr = DMAddBoundary(dm, DM_BC_NATURAL,   "right wall",  "marker", 0, 0, NULL, (void (*)(void)) NULL,          1, &id, ctx);CHKERRQ(ierr);
+  ierr = DMAddBoundary(dm, DM_BC_NATURAL,   "right wall",  "marker", 0, 0, NULL, (void (*)(void)) NULL,          NULL, 1, &id, ctx);CHKERRQ(ierr);
   /* Setup exact solution */
   user->exactFuncs[0] = quadratic_u;
   user->exactFuncs[1] = linear_p;
@@ -394,7 +394,7 @@ int main(int argc, char **argv)
     ierr = PetscObjectSetName((PetscObject) u, "Exact Solution");CHKERRQ(ierr);
     ierr = VecViewFromOptions(u, NULL, "-exact_vec_view");CHKERRQ(ierr);
   }
-  ierr = DMSNESCheckFromOptions(snes, u, NULL, NULL);CHKERRQ(ierr);
+  ierr = DMSNESCheckFromOptions(snes, u);CHKERRQ(ierr);
   ierr = VecSet(u, 0.0);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) u, "Solution");CHKERRQ(ierr);
   ierr = SNESSolve(snes, NULL, u);CHKERRQ(ierr);

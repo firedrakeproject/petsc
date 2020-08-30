@@ -3,9 +3,9 @@
 
 #define H(i,j)  qn->dXdFmat[i*qn->m + j]
 
-const char *const SNESQNScaleTypes[] =        {"DEFAULT","NONE","SCALAR","DIAGONAL","JACOBIAN","SNESQNScaleType","SNES_QN_SCALING_",0};
-const char *const SNESQNRestartTypes[] =      {"DEFAULT","NONE","POWELL","PERIODIC","SNESQNRestartType","SNES_QN_RESTART_",0};
-const char *const SNESQNTypes[] =             {"LBFGS","BROYDEN","BADBROYDEN","SNESQNType","SNES_QN_",0};
+const char *const SNESQNScaleTypes[] =        {"DEFAULT","NONE","SCALAR","DIAGONAL","JACOBIAN","SNESQNScaleType","SNES_QN_SCALING_",NULL};
+const char *const SNESQNRestartTypes[] =      {"DEFAULT","NONE","POWELL","PERIODIC","SNESQNRestartType","SNES_QN_RESTART_",NULL};
+const char *const SNESQNTypes[] =             {"LBFGS","BROYDEN","BADBROYDEN","SNESQNType","SNES_QN_",NULL};
 
 typedef struct {
   Mat               B;                    /* Quasi-Newton approximation Matrix (MATLMVM) */
@@ -435,7 +435,7 @@ PetscErrorCode SNESQNSetRestartType(SNES snes, SNESQNRestartType rtype)
     SNESQNScaleTypes:
 +   SNES_QN_SCALE_NONE - don't scale the problem
 .   SNES_QN_SCALE_SCALAR - use shanno scaling
-.   SNES_QN_SCALE_DIAGONAL - scale with a diagonalized BFGS formula (see Gilbert and Lemarechal 1989), available 
+.   SNES_QN_SCALE_DIAGONAL - scale with a diagonalized BFGS formula (see Gilbert and Lemarechal 1989), available
 -   SNES_QN_SCALE_JACOBIAN - scale by solving a linear system coming from the Jacobian you provided with SNESSetJacobian() computed at the first iteration
                              of QN and at ever restart.
 
@@ -546,10 +546,10 @@ PetscErrorCode SNESQNSetType_QN(SNES snes, SNESQNType qtype)
 .   4. -   Peter R. Brune, Matthew G. Knepley, Barry F. Smith, and Xuemin Tu, "Composing Scalable Nonlinear Algebraic Solvers",
        SIAM Review, 57(4), 2015
 .   5. -   Griewank, Andreas. "Broyden updating, the good and the bad!." Doc. Math (2012): 301-315.
-.   6. -   Gilbert, Jean Charles, and Claude Lemaréchal. "Some numerical experiments with variable-storage quasi-Newton algorithms." 
+.   6. -   Gilbert, Jean Charles, and Claude Lemar{\'e}chal. "Some numerical experiments with variable-storage quasi-Newton algorithms."
       Mathematical programming 45.1-3 (1989): 407-435.
--   7. -   Dener A., Munson T. "Accelerating Limited-Memory Quasi-Newton Convergence for Large-Scale Optimization" 
-      Computational Science – ICCS 2019. ICCS 2019. Lecture Notes in Computer Science, vol 11538. Springer, Cham
+-   7. -   Dener A., Munson T. "Accelerating Limited-Memory Quasi-Newton Convergence for Large-Scale Optimization"
+      Computational Science - ICCS 2019. ICCS 2019. Lecture Notes in Computer Science, vol 11538. Springer, Cham
 
       Level: beginner
 

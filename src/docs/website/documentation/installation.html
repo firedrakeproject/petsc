@@ -38,6 +38,7 @@
             <li><a href="license.html">License</a></li>
             <li><a href="linearsolvertable.html">Linear Solver Table</a></li>
             <li><a href="nonlinearsolvertable.html">Nonlinear Solver Table</a></li>
+	    <li><a href="taosolvertable.html">TAO Solver Table</a></li>
           </ul>
         </li>
         <li><a href="../publications/index.html">Applications/Publications</a></li>
@@ -126,11 +127,13 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
         <li><a href="#mpi">MPI problems / I don't want MPI</a></li>
         <li><a href="#windows">Microsoft Windows installation</a></li>
         <li><a href="#root">Installing PETSc in system directories where sudo or root privileges are required / For package managers</a></li>
-        <li><a href="#pkgconfig">PETSc ./configure automatically generates Pkgconfig and module files for each install</a></li>
-        <li><a href="#SP">Installing on machine requiring cross compiler or a job scheduler, such as IBM SP or IBM Blue Gene</a></li>
+        <li><a href="#module">Installing on machines that use modules</a></li>
+        <li><a href="#cross">Installing on machine requiring cross compiler or a job scheduler</a></li>
         <li><a href="#usingtau">Installing with TAU instrumentation package</a></li>
         <li><a href="#CUDA">Installing PETSc to use NVIDIA GPUs (aka CUDA)</a></li>
-        <li><a href="#OpenCL">Installing PETSc to use GPUs and accelerators via OpenCL (NVIDIA, AMD, Intel MIC)</a></li>
+        <li><a href="#Kokkos">Installing PETSc with Kokkos</a></li>
+        <li><a href="#OpenCL">Installing PETSc to use GPUs and accelerators via OpenCL (NVIDIA, AMD, and Intel)</a></li>
+        <li><a href="#pkgconfig">PETSc ./configure automatically generates Pkgconfig and module files for each install</a></li>
         <li><a href="#doemachines">Installing on large scale DOE systems</a></li>
         <li><a href="#iosandroid">Installing PETSc on an iOS or Android platform</a></li>
       </ul>
@@ -576,9 +579,10 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
 
         <ul>
           <li> <h4> Intel MKL</h4>
-            Intel provides blas/lapack via  <a href="https://software.intel.com/en-us/mkl">MKL</a> library.
+            Intel provides blas/lapack via  the <a href="https://software.intel.com/en-us/mkl">MKL</a> library.
             It usually works from GNU/Intel compilers on Linux and MS/Intel compilers on Windows.
-            One can specify it to PETSc configure with for eg: <code>--with-blaslapack-dir=/soft/com/packages/intel/13/079/mkl</code>
+            One can specify it to PETSc configure with for eg: <code>--with-blaslapack-dir=$MKLROOT</code> or, for example,
+            <code>--with-blaslapack-dir=/soft/com/packages/intel/13/079/mkl</code>
             <br>
             If the above option does not work - one could determine the correct library list for your compilers using
             <a href="https://software.intel.com/sites/products/mkl/">Intel MKL Link Line Advisor</a>
@@ -716,7 +720,7 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
             Are you sure you want to use Microsoft Windows? We recommend using Linux
             if possible [and minimize troubleshooting Microsoft windows related issues].
             
-        <h3>Installation With GNU gcc/g++/gfortran compilers:</h3>
+        <h4>Installation With GNU gcc/g++/gfortran compilers:</h4>
         
         The following configurations are much like regular Linux systems. Our regular [Linux] instructions
         should work with them. Most externalpackages will also work. The configure option --download-mpich should work
@@ -751,7 +755,7 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
          </ul>
 
 
-        <h3>Installation With Microsoft/Intel Windows Compilers:</h3>
+        <h4>Installation With Microsoft/Intel Windows Compilers:</h4>
         <p>
           Microsoft Windows does not provide the same unix shell enviornment
           as the other OSes. Also the default Microsoft/Intel compilers behave
@@ -908,11 +912,11 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
           <code>${PETSC_DIR}/lib/petsc/bin/win32/win32fe</code> without any options.
         </p>
 
-        <h3>Using MinGW with Microsoft/Intel Windows Compilers:</h3>
+        <h4>Using MinGW with Microsoft/Intel Windows Compilers:</h4>
         Users report that it is possible to build to build PETSc using MinGW and link against them using the Microsoft/Intel Windows Compilers.
         We have no experience with this, nor knowledge on how it can be accomplished. Let us know your experience.
 
-         <h3>Notes on using other systems besides Cygwin to compile with Microsoft and Intel compilers</h3>
+        <h4>Notes on using other systems besides Cygwin to compile with Microsoft and Intel compilers</h4>
         For any alternate system, we would have to redo win32fe functionality for that system. This includes
 
          <ul>
@@ -1010,7 +1014,7 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
       <div>
         <h3><a name="pkgconfig">PETSc ./configure automatically generates Pkgconfig and module files for each install</a></h3>
 
-       These can be found in ${PETSC_DIR}/${PETSC_ARCH}/lib/pkgconfig/PETSc.pc and ${PETSC_DIR}/${PETSC_ARCH}/lib/modules/${PETSC_VERSION}-${PETSC_ARCH}.
+       These can be found in ${PETSC_DIR}/${PETSC_ARCH}/lib/pkgconfig/petsc.pc and ${PETSC_DIR}/${PETSC_ARCH}/lib/modules/${PETSC_VERSION}-${PETSC_ARCH}.
         The module file may need to be edited for your particular system. Note that if --prefix is used then $PETSC_ARCH is not included in the above directories
         nor is -${PETSC_ARCH} included in the module file name.
 
@@ -1040,8 +1044,30 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
 
       <hr>
 
+      <div id="module">
+        <h3><a name="module">Installing on machines that use the module command:</a></h3>
+
+        <p>
+          On systems where you can use modules to load packages such as HDF5, the locations of the include files and libraries are known
+          by the compiler. Hence you simply load the appropriate module for the package and run <code>./configure</code> with the option <code>--with-package</code>.
+          For example.
+           <ul>
+          <li>
+            module load hdf5
+          </li>
+          <li>
+            ./configure --with-hdf5 
+          </li>
+        </p>
+
+
+        <a href="#" target="_top">Return to Installation Instructions</a>
+      </div> <!-- #module -->
+
+      <hr>
+
       <div id="cross">
-        <h3><a name="SP">Installing on machine requiring cross compiler or a job scheduler (Batch systems):</a></h3>
+        <h3><a name="cross">Installing on machine requiring cross compiler or a job scheduler (Batch systems):</a></h3>
 
         <p>
           On systems where you need to use a job scheduler or batch submission to run jobs
@@ -1113,10 +1139,28 @@ that use Fortran (for example, MUMPS requires Fortran) you can use --with-fc=0 f
           CUDA build of PETSc currently works on Mac OS X, Linux, Microsoft Windows.
         </p>
 
+        <p>
+        Examples that use CUDA have the suffix .cu; see see src/snes/tutorials/ex47.cu
+        </p>
+
         <a href="#" target="_top">Return to Installation Instructions</a>
       </div> <!-- #CUDA -->
 
       <hr>
+      <h3><a name="Kokkos">Installing PETSc with Kokkos</a></h3>
+
+       <p>
+       In most cases you need only pass the configure option --download-kokkos and one of --with-cuda --with-openmp --with-pthread (or nothing to use sequential Kokkos)
+       </p>
+
+       <p>
+          Examples that use Kokkos have the suffix .kokkos.cxx; see src/snes/tutorials/ex3k.kokkos.cxx
+      </p>
+
+        <a href="#" target="_top">Return to Installation Instructions</a>
+    </div>
+
+    <hr>
 
       <div>
         <h3><a name="OpenCL">Installing PETSc to use GPUs and accelerators via OpenCL (NVIDIA, AMD, Intel MIC)</a></h3>

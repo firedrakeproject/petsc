@@ -42,7 +42,7 @@ PetscErrorCode TSSetRHSJacobianP(TS ts,Mat Amat,PetscErrorCode (*func)(TS,PetscR
 
   ts->rhsjacobianp    = func;
   ts->rhsjacobianpctx = ctx;
-  if(Amat) {
+  if (Amat) {
     ierr = PetscObjectReference((PetscObject)Amat);CHKERRQ(ierr);
     ierr = MatDestroy(&ts->Jacprhs);CHKERRQ(ierr);
     ts->Jacprhs = Amat;
@@ -150,7 +150,7 @@ PetscErrorCode TSSetIJacobianP(TS ts,Mat Amat,PetscErrorCode (*func)(TS,PetscRea
 
   ts->ijacobianp    = func;
   ts->ijacobianpctx = ctx;
-  if(Amat) {
+  if (Amat) {
     ierr = PetscObjectReference((PetscObject)Amat);CHKERRQ(ierr);
     ierr = MatDestroy(&ts->Jacp);CHKERRQ(ierr);
     ts->Jacp = Amat;
@@ -377,7 +377,7 @@ PetscErrorCode TSComputeDRDUFunction(TS ts,PetscReal t,Vec U,Vec *DRDU)
   PetscValidHeaderSpecific(U,VEC_CLASSID,3);
 
   PetscStackPush("TS user DRDU function for sensitivity analysis");
-  ierr = (*ts->drdufunction)(ts,t,U,DRDU,ts->costintegrandctx); CHKERRQ(ierr);
+  ierr = (*ts->drdufunction)(ts,t,U,DRDU,ts->costintegrandctx);CHKERRQ(ierr);
   PetscStackPop;
   PetscFunctionReturn(0);
 }
@@ -398,7 +398,7 @@ PetscErrorCode TSComputeDRDPFunction(TS ts,PetscReal t,Vec U,Vec *DRDP)
   PetscValidHeaderSpecific(U,VEC_CLASSID,3);
 
   PetscStackPush("TS user DRDP function for sensitivity analysis");
-  ierr = (*ts->drdpfunction)(ts,t,U,DRDP,ts->costintegrandctx); CHKERRQ(ierr);
+  ierr = (*ts->drdpfunction)(ts,t,U,DRDP,ts->costintegrandctx);CHKERRQ(ierr);
   PetscStackPop;
   PetscFunctionReturn(0);
 }
@@ -1144,7 +1144,7 @@ PetscErrorCode TSAdjointSetRHSJacobian(TS ts,Mat Amat,PetscErrorCode (*func)(TS,
 
   ts->rhsjacobianp    = func;
   ts->rhsjacobianpctx = ctx;
-  if(Amat) {
+  if (Amat) {
     ierr = PetscObjectReference((PetscObject)Amat);CHKERRQ(ierr);
     ierr = MatDestroy(&ts->Jacp);CHKERRQ(ierr);
     ts->Jacp = Amat;
@@ -1168,7 +1168,7 @@ PetscErrorCode TSAdjointComputeRHSJacobian(TS ts,PetscReal t,Vec U,Mat Amat)
   PetscValidPointer(Amat,4);
 
   PetscStackPush("TS user JacobianP function for sensitivity analysis");
-  ierr = (*ts->rhsjacobianp)(ts,t,U,Amat,ts->rhsjacobianpctx); CHKERRQ(ierr);
+  ierr = (*ts->rhsjacobianp)(ts,t,U,Amat,ts->rhsjacobianpctx);CHKERRQ(ierr);
   PetscStackPop;
   PetscFunctionReturn(0);
 }
@@ -1188,7 +1188,7 @@ PetscErrorCode TSAdjointComputeDRDYFunction(TS ts,PetscReal t,Vec U,Vec *DRDU)
   PetscValidHeaderSpecific(U,VEC_CLASSID,3);
 
   PetscStackPush("TS user DRDY function for sensitivity analysis");
-  ierr = (*ts->drdufunction)(ts,t,U,DRDU,ts->costintegrandctx); CHKERRQ(ierr);
+  ierr = (*ts->drdufunction)(ts,t,U,DRDU,ts->costintegrandctx);CHKERRQ(ierr);
   PetscStackPop;
   PetscFunctionReturn(0);
 }
@@ -1208,7 +1208,7 @@ PetscErrorCode TSAdjointComputeDRDPFunction(TS ts,PetscReal t,Vec U,Vec *DRDP)
   PetscValidHeaderSpecific(U,VEC_CLASSID,3);
 
   PetscStackPush("TS user DRDP function for sensitivity analysis");
-  ierr = (*ts->drdpfunction)(ts,t,U,DRDP,ts->costintegrandctx); CHKERRQ(ierr);
+  ierr = (*ts->drdpfunction)(ts,t,U,DRDP,ts->costintegrandctx);CHKERRQ(ierr);
   PetscStackPop;
   PetscFunctionReturn(0);
 }
@@ -1471,7 +1471,7 @@ PetscErrorCode TSAdjointSetFromOptions(PetscOptionItems *PetscOptionsObject,TS t
     PetscInt         howoften = 1;
 
     ierr = PetscOptionsInt("-ts_adjoint_monitor_draw_sensi","Monitor adjoint sensitivities (lambda only) graphically","TSAdjointMonitorDrawSensi",howoften,&howoften,NULL);CHKERRQ(ierr);
-    ierr = TSMonitorDrawCtxCreate(PetscObjectComm((PetscObject)ts),0,0,PETSC_DECIDE,PETSC_DECIDE,300,300,howoften,&ctx);CHKERRQ(ierr);
+    ierr = TSMonitorDrawCtxCreate(PetscObjectComm((PetscObject)ts),NULL,NULL,PETSC_DECIDE,PETSC_DECIDE,300,300,howoften,&ctx);CHKERRQ(ierr);
     ierr = TSAdjointMonitorSet(ts,TSAdjointMonitorDrawSensi,ctx,(PetscErrorCode (*)(void**))TSMonitorDrawCtxDestroy);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
@@ -1498,6 +1498,7 @@ PetscErrorCode TSAdjointStep(TS ts)
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
   ierr = TSGetDM(ts,&dm);CHKERRQ(ierr);
   ierr = TSAdjointSetUp(ts);CHKERRQ(ierr);
+  ts->steps--; /* must decrease the step index before the adjoint step is taken. */
 
   ts->reason = TS_CONVERGED_ITERATING;
   ts->ptime_prev = ts->ptime;
@@ -1505,7 +1506,7 @@ PetscErrorCode TSAdjointStep(TS ts)
   ierr = PetscLogEventBegin(TS_AdjointStep,ts,0,0,0);CHKERRQ(ierr);
   ierr = (*ts->ops->adjointstep)(ts);CHKERRQ(ierr);
   ierr = PetscLogEventEnd(TS_AdjointStep,ts,0,0,0);CHKERRQ(ierr);
-  ts->adjoint_steps++; ts->steps--;
+  ts->adjoint_steps++;
 
   if (ts->reason < 0) {
     if (ts->errorifstepfailed) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_NOT_CONVERGED,"TSAdjointStep has failed due to %s",TSConvergedReasons[ts->reason]);
@@ -1537,6 +1538,7 @@ PetscErrorCode TSAdjointStep(TS ts)
 @*/
 PetscErrorCode TSAdjointSolve(TS ts)
 {
+  static PetscBool cite = PETSC_FALSE;
 #if defined(TSADJOINT_STAGE)
   PetscLogStage  adjoint_stage;
 #endif
@@ -1544,6 +1546,13 @@ PetscErrorCode TSAdjointSolve(TS ts)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  ierr = PetscCitationsRegister("@article{tsadjointpaper,\n"
+                                "  title         = {{PETSc TSAdjoint: a discrete adjoint ODE solver for first-order and second-order sensitivity analysis}},\n"
+                                "  author        = {Zhang, Hong and Constantinescu, Emil M.  and Smith, Barry F.},\n"
+                                "  journal       = {arXiv e-preprints},\n"
+                                "  eprint        = {1912.07696},\n"
+                                "  archivePrefix = {arXiv},\n"
+                                "  year          = {2019}\n}\n",&cite);CHKERRQ(ierr);
 #if defined(TSADJOINT_STAGE)
   ierr = PetscLogStageRegister("TSAdjoint",&adjoint_stage);CHKERRQ(ierr);
   ierr = PetscLogStagePush(adjoint_stage);CHKERRQ(ierr);

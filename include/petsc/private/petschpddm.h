@@ -7,15 +7,17 @@ PETSC_EXTERN PetscLogEvent PC_HPDDM_Strc;
 PETSC_EXTERN PetscLogEvent PC_HPDDM_PtAP;
 PETSC_EXTERN PetscLogEvent PC_HPDDM_PtBP;
 PETSC_EXTERN PetscLogEvent PC_HPDDM_Next;
+PETSC_INTERN PetscErrorCode HPDDMLoadDL_Private(PetscBool*);
 
 namespace HPDDM {
   template<class K> class Schwarz;       /* forward definitions of two needed HPDDM classes */
-  struct PETScOperator;
+  class PETScOperator;
 }
 
 struct PC_HPDDM_Level {
   VecScatter                  scatter;   /* scattering from PETSc nonoverlapping numbering to HPDDM overlapping */
   Vec                         *v[2];     /* working vectors */
+  Mat                         V;         /* working matrix */
   KSP                         ksp;       /* KSP coupling the action of pc and P */
   PC                          pc;        /* inner fine-level PC, acting like a multigrid smoother */
   HPDDM::Schwarz<PetscScalar> *P;        /* coarse-level HPDDM solver */
@@ -39,10 +41,10 @@ struct PC_HPDDM {
 
 struct KSP_HPDDM {
   HPDDM::PETScOperator *op;
-  PetscReal            rcntl[2];
-  int                  icntl[1];
-  unsigned short       scntl[3];
-  char                 cntl [6];
+  PetscReal            rcntl[1];
+  int                  icntl[2];
+  unsigned short       scntl[2];
+  char                 cntl [5];
 };
 
 #define PETSC_HPDDM_MAXLEVELS 10

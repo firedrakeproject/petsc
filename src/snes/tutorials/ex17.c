@@ -441,31 +441,31 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
     PetscInt cmp;
 
     id   = dim == 3 ? 5 : 2;
-    ierr = DMAddBoundary(dm,   DM_BC_NATURAL,   "right",  "marker", 0, 0, NULL, (void (*)(void)) zero, 1, &id, user);CHKERRQ(ierr);
+    ierr = DMAddBoundary(dm,   DM_BC_NATURAL,   "right",  "marker", 0, 0, NULL, (void (*)(void)) zero, NULL, 1, &id, user);CHKERRQ(ierr);
     id   = dim == 3 ? 6 : 4;
     cmp  = 0;
-    ierr = DMAddBoundary(dm,   DM_BC_ESSENTIAL, "left",   "marker", 0, 1, &cmp, (void (*)(void)) zero, 1, &id, user);CHKERRQ(ierr);
+    ierr = DMAddBoundary(dm,   DM_BC_ESSENTIAL, "left",   "marker", 0, 1, &cmp, (void (*)(void)) zero, NULL, 1, &id, user);CHKERRQ(ierr);
     cmp  = dim == 3 ? 2 : 1;
     id   = dim == 3 ? 1 : 1;
-    ierr = DMAddBoundary(dm,   DM_BC_ESSENTIAL, "bottom", "marker", 0, 1, &cmp, (void (*)(void)) zero, 1, &id, user);CHKERRQ(ierr);
+    ierr = DMAddBoundary(dm,   DM_BC_ESSENTIAL, "bottom", "marker", 0, 1, &cmp, (void (*)(void)) zero, NULL, 1, &id, user);CHKERRQ(ierr);
     if (dim == 3) {
       cmp  = 1;
       id   = 3;
-      ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "front",  "marker", 0, 1, &cmp, (void (*)(void)) zero, 1, &id, user);CHKERRQ(ierr);
+      ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "front",  "marker", 0, 1, &cmp, (void (*)(void)) zero, NULL, 1, &id, user);CHKERRQ(ierr);
     }
   } else {
     id = 1;
-    ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", "marker", 0, 0, NULL, (void (*)(void)) exact, 1, &id, user);CHKERRQ(ierr);
+    ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", "marker", 0, 0, NULL, (void (*)(void)) exact, NULL, 1, &id, user);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateElasticityNullSpace(DM dm, PetscInt dummy, MatNullSpace *nullspace)
+static PetscErrorCode CreateElasticityNullSpace(DM dm, PetscInt origField, PetscInt field, MatNullSpace *nullspace)
 {
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = DMPlexCreateRigidBody(dm, nullspace);CHKERRQ(ierr);
+  ierr = DMPlexCreateRigidBody(dm, origField, nullspace);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -518,7 +518,7 @@ int main(int argc, char **argv)
   ierr = PetscObjectSetName((PetscObject) u, "displacement");CHKERRQ(ierr);
   ierr = DMPlexSetSNESLocalFEM(dm, &user, &user, &user);CHKERRQ(ierr);
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
-  ierr = DMSNESCheckFromOptions(snes, u, NULL, NULL);CHKERRQ(ierr);
+  ierr = DMSNESCheckFromOptions(snes, u);CHKERRQ(ierr);
   ierr = SNESSolve(snes, NULL, u);CHKERRQ(ierr);
   ierr = SNESGetSolution(snes, &u);CHKERRQ(ierr);
   ierr = VecViewFromOptions(u, NULL, "-displacement_view");CHKERRQ(ierr);

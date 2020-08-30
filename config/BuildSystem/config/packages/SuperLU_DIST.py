@@ -9,7 +9,6 @@ class Configure(config.package.CMakePackage):
     self.versionname      = 'SUPERLU_DIST_MAJOR_VERSION.SUPERLU_DIST_MINOR_VERSION.SUPERLU_DIST_PATCH_VERSION'
     self.gitcommit        = 'v'+self.version
     self.download         = ['git://https://github.com/xiaoyeli/superlu_dist','https://github.com/xiaoyeli/superlu_dist/archive/'+self.gitcommit+'.tar.gz']
-    self.downloaddirnames = ['SuperLU_DIST','superlu_dist']
     self.functions        = ['set_default_options_dist']
     self.includes         = ['superlu_ddefs.h']
     self.liblist          = [['libsuperlu_dist.a']]
@@ -18,7 +17,6 @@ class Configure(config.package.CMakePackage):
     self.downloadonWindows= 1
     self.hastests         = 1
     self.hastestsdatafiles= 1
-    self.requirec99flag   = 1 # SuperLU_Dist uses C99 features
     self.precisions       = ['double']
     self.cxx              = 1
     self.requirescxx11    = 1
@@ -47,7 +45,7 @@ class Configure(config.package.CMakePackage):
       # SuperLU_DIST CMake doesn't know about GPU builds
       for place,item in enumerate(args):
         if item.find('CMAKE_C_FLAGS') >= 0:
-          args[place]=item[:-1]+' -DGPU_ACC '+self.headers.toString(self.cuda.include)+'"'
+          args[place]=item[:-1]+' -DGPU_ACC '+self.headers.toString(self.cuda.include)+' -DDEBUGlevel=0 -DPRNTlevel=0"'
     args.append('-DUSE_XSDK_DEFAULTS=YES')
     args.append('-DTPL_BLAS_LIBRARIES="'+self.libraries.toString(self.blasLapack.dlib)+'"')
     args.append('-DTPL_LAPACK_LIBRARIES="'+self.libraries.toString(self.blasLapack.dlib)+'"')

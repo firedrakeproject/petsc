@@ -1,5 +1,5 @@
 static char help[] = "Benchmark for MatMatMult() of AIJ matrices using different 2d finite-difference stencils.\n\n";
- 
+
 #include <petscmat.h>
 
 /* Converts 3d grid coordinates (i,j,k) for a grid of size m \times n to global indexing. Pass k = 0 for a 2d grid. */
@@ -22,7 +22,7 @@ int main(int argc,char **argv)
   ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,NULL,"-o",&o,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsHasName(NULL,NULL,"-result_view",&mat_view);CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,NULL,"-stencil",stencil,PETSC_MAX_PATH_LEN,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,NULL,"-stencil",stencil,sizeof(stencil),NULL);CHKERRQ(ierr);
 
   /* Create a aij matrix A */
   M    = N = m*n*o;
@@ -57,13 +57,13 @@ int main(int argc,char **argv)
     for (Ii=Istart; Ii<Iend; Ii++) {
       v = -1.0; k = Ii / (m*n); j = (Ii - k * m * n) / m; i = (Ii - k * m * n - j * m);
       if (i>0)            {J = global_index(i-1,j,  k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
-      if (i>0   && j>0)   {J = global_index(i-1,j-1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
-      if (         j>0)   {J = global_index(i,  j-1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
+      if (i>0 && j>0)   {J = global_index(i-1,j-1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
+      if (j>0)            {J = global_index(i,  j-1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
       if (i<m-1 && j>0)   {J = global_index(i+1,j-1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
       if (i<m-1)          {J = global_index(i+1,j,  k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
       if (i<m-1 && j<n-1) {J = global_index(i+1,j+1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
       if (j<n-1)          {J = global_index(i,  j+1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
-      if (i>0   && j<n-1) {J = global_index(i-1,j+1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
+      if (i>0 && j<n-1) {J = global_index(i-1,j+1,k,m,n); ierr = MatSetValues(A,1,&Ii,1,&J,&v,INSERT_VALUES);CHKERRQ(ierr);}
       v = 8.0; ierr = MatSetValues(A,1,&Ii,1,&Ii,&v,INSERT_VALUES);CHKERRQ(ierr);
     }
   }

@@ -366,11 +366,11 @@ PetscErrorCode DMPlexCreateTwoSidedProcessSF(DM dm, PetscSF sfPoint, PetscSectio
   for (l = 0; l < numLeaves; ++l) {PetscBTSet(neighbors, remotePoints[l].rank);}
   /* Calculate edges */
   PetscBTClear(neighbors, rank);
-  for(proc = 0, numNeighbors = 0; proc < size; ++proc) {if (PetscBTLookup(neighbors, proc)) ++numNeighbors;}
+  for (proc = 0, numNeighbors = 0; proc < size; ++proc) {if (PetscBTLookup(neighbors, proc)) ++numNeighbors;}
   ierr = PetscMalloc1(numNeighbors, &ranksNew);CHKERRQ(ierr);
   ierr = PetscMalloc1(numNeighbors, &localPointsNew);CHKERRQ(ierr);
   ierr = PetscMalloc1(numNeighbors, &remotePointsNew);CHKERRQ(ierr);
-  for(proc = 0, n = 0; proc < size; ++proc) {
+  for (proc = 0, n = 0; proc < size; ++proc) {
     if (PetscBTLookup(neighbors, proc)) {
       ranksNew[n]              = proc;
       localPointsNew[n]        = proc;
@@ -741,7 +741,9 @@ PetscErrorCode DMPlexStratifyMigrationSF(DM dm, PetscSF sf, PetscSF *migrationSF
   {
     PetscInt depths[4], dims[4], shift = 0, i, c;
 
-    /* Cells (depth), Vertices (0), Faces (depth-1), Edges (1) */
+    /* Cells (depth), Vertices (0), Faces (depth-1), Edges (1)
+         Consider DM_POLYTOPE_FV_GHOST and DM_POLYTOPE_INTERIOR_GHOST as cells
+     */
     depths[0] = depth; depths[1] = 0; depths[2] = depth-1; depths[3] = 1;
     dims[0]   = dim;   dims[1]   = 0; dims[2]   = dim-1;   dims[3]   = 1;
     for (i = 0; i <= depth; ++i) {
@@ -749,7 +751,7 @@ PetscErrorCode DMPlexStratifyMigrationSF(DM dm, PetscSF sf, PetscSF *migrationSF
       const PetscInt dim = dims[i];
 
       for (c = 0; c < DM_NUM_POLYTOPES; ++c) {
-        if (DMPolytopeTypeGetDim((DMPolytopeType) c) != dim && !(i == 0 && c == DM_POLYTOPE_FV_GHOST)) continue;
+        if (DMPolytopeTypeGetDim((DMPolytopeType) c) != dim && !(i == 0 && (c == DM_POLYTOPE_FV_GHOST || c == DM_POLYTOPE_INTERIOR_GHOST))) continue;
         ctShift[c] = shift;
         shift     += ctRecv[c];
       }
@@ -759,7 +761,7 @@ PetscErrorCode DMPlexStratifyMigrationSF(DM dm, PetscSF sf, PetscSF *migrationSF
     for (c = 0; c < DM_NUM_POLYTOPES; ++c) {
       const PetscInt ctDim = DMPolytopeTypeGetDim((DMPolytopeType) c);
 
-      if ((ctDim < 0 || ctDim > dim) && c != DM_POLYTOPE_FV_GHOST) {
+      if ((ctDim < 0 || ctDim > dim) && (c != DM_POLYTOPE_FV_GHOST && c != DM_POLYTOPE_INTERIOR_GHOST)) {
         ctShift[c] = shift;
         shift     += ctRecv[c];
       }
@@ -1329,7 +1331,7 @@ typedef struct {
 } Petsc3Int;
 
 /* MaxLoc, but carry a third piece of information around */
-static void MaxLocCarry(void *in_, void *inout_, PetscMPIInt *len_, MPI_Datatype *dtype)
+static void MPIAPI MaxLocCarry(void *in_, void *inout_, PetscMPIInt *len_, MPI_Datatype *dtype)
 {
   Petsc3Int *a = (Petsc3Int *)inout_;
   Petsc3Int *b = (Petsc3Int *)in_;

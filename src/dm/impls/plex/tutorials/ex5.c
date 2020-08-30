@@ -29,7 +29,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   ierr = PetscOptionsBool("-compare", "Compare the meshes using DMPlexEqual()", "ex5.c", options->compare, &options->compare, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-distribute", "Distribute the mesh", "ex5.c", options->distribute, &options->distribute, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-interpolate", "Generate intermediate mesh elements", "ex5.c", options->interpolate, &options->interpolate, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-filename", "The mesh file", "ex5.c", options->filename, options->filename, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-filename", "The mesh file", "ex5.c", options->filename, options->filename, sizeof(options->filename), NULL);CHKERRQ(ierr);
   ierr = PetscOptionsEnum("-format", "Format to write and read", "ex5.c", PetscViewerFormats, (PetscEnum)options->format, (PetscEnum*)&options->format, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-second_write_read", "Write and read for the 2nd time", "ex5.c", options->second_write_read, &options->second_write_read, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsEnd();
@@ -131,7 +131,7 @@ int main(int argc, char **argv)
     nsize: 2
     args: -filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/Rect-tri3.exo -dm_view ascii::ascii_info_detail
     args: -petscpartitioner_type parmetis
-    args: -format hdf5_petsc -new_dm_view ascii::ascii_info_detail 
+    args: -format hdf5_petsc -new_dm_view ascii::ascii_info_detail
   testset:
     requires: exodusii
     args: -filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/blockcylinder-50.exo

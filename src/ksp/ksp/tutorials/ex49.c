@@ -5,13 +5,13 @@ Options: \n"
 "\
      -mx : number of elements in x-direction \n\
      -my : number of elements in y-direction \n\
-     -c_str : indicates the structure of the coefficients to use. \n"
+     -c_str : structure of the coefficients to use. \n"
 "\
-          -c_str 0 => Setup for an isotropic material with constant coefficients. \n\
+          -c_str 0 => isotropic material with constant coefficients. \n\
                          Parameters: \n\
                              -iso_E  : Youngs modulus \n\
                              -iso_nu : Poisson ratio \n\
-          -c_str 1 => Setup for a step function in the material properties in x. \n\
+          -c_str 1 => step function in the material properties in x. \n\
                          Parameters: \n\
                               -step_E0  : Youngs modulus to the left of the step \n\
                               -step_nu0 : Poisson ratio to the left of the step \n\
@@ -19,7 +19,7 @@ Options: \n"
                               -step_n1  : Poisson ratio to the right of the step \n\
                               -step_xc  : x coordinate of the step \n"
 "\
-          -c_str 2 => Setup for a checkerboard material with alternating properties. \n\
+          -c_str 2 => checkerboard material with alternating properties. \n\
                       Repeats the following pattern throughout the domain. For example with 4 materials specified, we would heve \n\
                       -------------------------\n\
                       |  D  |  A  |  B  |  C  |\n\
@@ -35,7 +35,7 @@ Options: \n"
                               -brick_E    : a comma separated list of Young's modulii \n\
                               -brick_nu   : a comma separated list of Poisson ratios  \n\
                               -brick_span : the number of elements in x and y each brick will span \n\
-          -c_str 3 => Setup for a sponge-like material with alternating properties. \n\
+          -c_str 3 => sponge-like material with alternating properties. \n\
                       Repeats the following pattern throughout the domain \n"
 "\
                       -----------------------------\n\
@@ -1358,7 +1358,7 @@ static PetscErrorCode DMDABCApplySymmetricCompression(DM elas_da,Mat A,Vec f,IS 
    test:
       nsize: 4
       suffix: bddc_subdomainjump
-      args: -mx 40 -my 40 -elas_ksp_monitor_short -no_view -c_str 2 -brick_E 1,1000 -brick_nu 0.4,0.2 -brick_span 20  -elas_ksp_type cg -elas_pc_type bddc -elas_pc_bddc_monolithic -dm_mat_type is -elas_pc_is_use_stiffness_scaling -elas_ksp_norm_type natural 
+      args: -mx 40 -my 40 -elas_ksp_monitor_short -no_view -c_str 2 -brick_E 1,1000 -brick_nu 0.4,0.2 -brick_span 20  -elas_ksp_type cg -elas_pc_type bddc -elas_pc_bddc_monolithic -dm_mat_type is -elas_pc_is_use_stiffness_scaling -elas_ksp_norm_type natural
 
    test:
       nsize: 9

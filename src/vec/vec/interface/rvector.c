@@ -5,7 +5,7 @@
 #include <petsc/private/vecimpl.h>       /*I  "petscvec.h"   I*/
 #if defined(PETSC_HAVE_CUDA)
 #include <../src/vec/vec/impls/dvecimpl.h>
-#include <../src/vec/vec/impls/seq/seqcuda/cudavecimpl.h>
+#include <petsc/private/cudavecimpl.h>
 #endif
 static PetscInt VecGetSubVectorSavedStateId = -1;
 
@@ -33,10 +33,10 @@ PETSC_EXTERN PetscErrorCode VecValidValues(Vec vec,PetscInt argnum,PetscBool beg
     }
     ierr = VecRestoreArrayRead(vec,&x);CHKERRQ(ierr);
   }
-  PetscFunctionReturn(0);
 #else
-  return 0;
+  PetscFunctionBegin;
 #endif
+  PetscFunctionReturn(0);
 }
 
 /*@
@@ -1285,6 +1285,8 @@ PetscErrorCode  VecGetSubVector(Vec X,IS is,Vec *Y)
         ierr = VecPlaceArray(Z,(PetscScalar*)x+start);CHKERRQ(ierr);
         ierr = VecRestoreArray(X,&x);CHKERRQ(ierr);
       }
+      Z->ops->placearray = NULL;
+      Z->ops->replacearray = NULL;
     } else { /* Have to create a scatter and do a copy */
       VecScatter scatter;
       PetscInt   n,N;
@@ -2339,7 +2341,7 @@ PETSC_EXTERN PetscErrorCode VecCUDARestoreArrayWrite(Vec v, PetscScalar **a)
 .seealso: VecPlaceArray(), VecGetArray(), VecRestoreArray(), VecReplaceArray(), VecResetArray(), VecCUDAResetArray(), VecCUDAReplaceArray()
 
 @*/
-PetscErrorCode VecCUDAPlaceArray(Vec vin,PetscScalar *a)
+PetscErrorCode VecCUDAPlaceArray(Vec vin,const PetscScalar a[])
 {
   PetscErrorCode ierr;
 
@@ -2349,7 +2351,7 @@ PetscErrorCode VecCUDAPlaceArray(Vec vin,PetscScalar *a)
   ierr = VecCUDACopyToGPU(vin);CHKERRQ(ierr);
   if (((Vec_Seq*)vin->data)->unplacedarray) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"VecCUDAPlaceArray()/VecPlaceArray() was already called on this vector, without a call to VecCUDAResetArray()/VecResetArray()");
   ((Vec_Seq*)vin->data)->unplacedarray  = (PetscScalar *) ((Vec_CUDA*)vin->spptr)->GPUarray; /* save previous GPU array so reset can bring it back */
-  ((Vec_CUDA*)vin->spptr)->GPUarray = a;
+  ((Vec_CUDA*)vin->spptr)->GPUarray = (PetscScalar*)a;
   vin->offloadmask = PETSC_OFFLOAD_GPU;
 #endif
   ierr = PetscObjectStateIncrease((PetscObject)vin);CHKERRQ(ierr);
@@ -2381,7 +2383,7 @@ PetscErrorCode VecCUDAPlaceArray(Vec vin,PetscScalar *a)
 .seealso: VecGetArray(), VecRestoreArray(), VecPlaceArray(), VecResetArray(), VecCUDAResetArray(), VecCUDAPlaceArray(), VecReplaceArray()
 
 @*/
-PetscErrorCode VecCUDAReplaceArray(Vec vin,PetscScalar *a)
+PetscErrorCode VecCUDAReplaceArray(Vec vin,const PetscScalar a[])
 {
 #if defined(PETSC_HAVE_CUDA)
   cudaError_t err;
@@ -2392,7 +2394,7 @@ PetscErrorCode VecCUDAReplaceArray(Vec vin,PetscScalar *a)
   PetscCheckTypeNames(vin,VECSEQCUDA,VECMPICUDA);
 #if defined(PETSC_HAVE_CUDA)
   err = cudaFree(((Vec_CUDA*)vin->spptr)->GPUarray);CHKERRCUDA(err);
-  ((Vec_CUDA*)vin->spptr)->GPUarray = a;
+  ((Vec_CUDA*)vin->spptr)->GPUarray = (PetscScalar*)a;
   vin->offloadmask = PETSC_OFFLOAD_GPU;
 #endif
   ierr = PetscObjectStateIncrease((PetscObject)vin);CHKERRQ(ierr);

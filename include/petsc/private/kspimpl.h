@@ -20,6 +20,7 @@ struct _KSPOps {
                                                           calculates the residual in a
                                                           user-provided area.  */
   PetscErrorCode (*solve)(KSP);                        /* actual solver */
+  PetscErrorCode (*matsolve)(KSP,Mat,Mat);             /* multiple dense RHS solver */
   PetscErrorCode (*setup)(KSP);
   PetscErrorCode (*setfromoptions)(PetscOptionItems*,KSP);
   PetscErrorCode (*publishoptions)(KSP);
@@ -94,7 +95,7 @@ struct _p_KSP {
                                       the solution and rhs, these are
                                       never touched by the code, only
                                       passed back to the user */
-  PetscReal     *res_hist;            /* If !0 stores residual at iterations*/
+  PetscReal     *res_hist;            /* If !0 stores residual at iterations */
   PetscReal     *res_hist_alloc;      /* If !0 means user did not provide buffer, needs deallocation */
   PetscInt      res_hist_len;         /* current size of residual history array */
   PetscInt      res_hist_max;         /* actual amount of data in residual_history */
@@ -166,8 +167,9 @@ typedef struct { /* dummy data structure used in KSPMonitorDynamicTolerance() */
 } KSPDynTolCtx;
 
 typedef struct {
-  PetscBool  initialrtol;    /* default relative residual decrease is computing from initial residual, not rhs */
-  PetscBool  mininitialrtol; /* default relative residual decrease is computing from min of initial residual and rhs */
+  PetscBool  initialrtol;    /* default relative residual decrease is computed from initial residual, not rhs */
+  PetscBool  mininitialrtol; /* default relative residual decrease is computed from min of initial residual and rhs */
+  PetscBool  convmaxits;     /* if true, the convergence test returns KSP_CONVERGED_ITS if the maximum number of iterations is reached */
   Vec        work;
 } KSPConvergedDefaultCtx;
 
@@ -339,12 +341,13 @@ PETSC_EXTERN PetscLogEvent KSP_Solve_FS_S;
 PETSC_EXTERN PetscLogEvent KSP_Solve_FS_L;
 PETSC_EXTERN PetscLogEvent KSP_Solve_FS_U;
 PETSC_EXTERN PetscLogEvent KSP_SolveTranspose;
+PETSC_EXTERN PetscLogEvent KSP_MatSolve;
 
 PETSC_INTERN PetscErrorCode MatGetSchurComplement_Basic(Mat,IS,IS,IS,IS,MatReuse,Mat*,MatSchurComplementAinvType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode PCPreSolveChangeRHS(PC,PetscBool*);
 
 /*MC
-   KSPCheckDot - Checks if the result of a dot product used by the corresponding KSP contains Inf or NaN. These indicate that the previous 
+   KSPCheckDot - Checks if the result of a dot product used by the corresponding KSP contains Inf or NaN. These indicate that the previous
       application of the preconditioner generated an error
 
    Collective on ksp
@@ -368,11 +371,12 @@ M*/
     else {\
       PetscErrorCode ierr;\
       PCFailedReason pcreason;\
-      PetscInt       sendbuf,pcreason_max; \
-      ierr = PCGetFailedReason(ksp->pc,&pcreason);CHKERRQ(ierr);\
+      PetscInt       sendbuf,recvbuf; \
+      ierr = PCGetFailedReasonRank(ksp->pc,&pcreason);CHKERRQ(ierr);\
       sendbuf = (PetscInt)pcreason; \
-      ierr = MPI_Allreduce(&sendbuf,&pcreason_max,1,MPIU_INT,MPI_MAX,PetscObjectComm((PetscObject)ksp));CHKERRQ(ierr); \
-      if (pcreason_max) {\
+      ierr = MPI_Allreduce(&sendbuf,&recvbuf,1,MPIU_INT,MPI_MAX,PetscObjectComm((PetscObject)ksp));CHKERRQ(ierr); \
+      if (recvbuf) {                                                           \
+        ierr = PCSetFailedReason(ksp->pc,(PCFailedReason)recvbuf);CHKERRQ(ierr); \
         ksp->reason = KSP_DIVERGED_PC_FAILED;\
         ierr        = VecSetInf(ksp->vec_sol);CHKERRQ(ierr);\
       } else {\
@@ -407,14 +411,16 @@ M*/
     else {\
       PetscErrorCode ierr;\
       PCFailedReason pcreason;\
-      PetscInt       sendbuf,pcreason_max; \
-      ierr = PCGetFailedReason(ksp->pc,&pcreason);CHKERRQ(ierr);\
+      PetscInt       sendbuf,recvbuf; \
+      ierr = PCGetFailedReasonRank(ksp->pc,&pcreason);CHKERRQ(ierr);\
       sendbuf = (PetscInt)pcreason; \
-      ierr = MPI_Allreduce(&sendbuf,&pcreason_max,1,MPIU_INT,MPI_MAX,PetscObjectComm((PetscObject)ksp));CHKERRQ(ierr); \
-      if (pcreason_max) {\
-        ksp->reason = KSP_DIVERGED_PC_FAILED;\
+      ierr = MPI_Allreduce(&sendbuf,&recvbuf,1,MPIU_INT,MPI_MAX,PetscObjectComm((PetscObject)ksp));CHKERRQ(ierr); \
+      if (recvbuf) {                                                           \
+        ierr = PCSetFailedReason(ksp->pc,(PCFailedReason)recvbuf);CHKERRQ(ierr); \
+        ksp->reason = KSP_DIVERGED_PC_FAILED;                         \
         ierr        = VecSetInf(ksp->vec_sol);CHKERRQ(ierr);\
       } else {\
+        ierr = PCSetFailedReason(ksp->pc,PC_NOERROR);CHKERRQ(ierr); \
         ksp->reason = KSP_DIVERGED_NANORINF;\
       }\
       PetscFunctionReturn(0);\

@@ -40,8 +40,8 @@ PetscErrorCode _DMLocatePoints_DMDARegular_IS(DM dm,Vec pos,IS *iscell)
     coorx = PetscRealPart(coor[2*p]);
     coory = PetscRealPart(coor[2*p+1]);
 
-    mi = (PetscInt)( (coorx - (-1.0))/dx );
-    mj = (PetscInt)( (coory - (-1.0))/dy );
+    mi = (PetscInt)( (coorx - (-1.0))/dx);
+    mj = (PetscInt)( (coory - (-1.0))/dy);
 
     cellidx[p] = DMLOCATEPOINT_POINT_NOT_FOUND;
 
@@ -219,7 +219,7 @@ PetscErrorCode ex3_1(void)
   dt = 0.1;
   for (tk=1; tk<20; tk++) {
     char prefix[PETSC_MAX_PATH_LEN];
-    PetscPrintf(PETSC_COMM_WORLD,"Step %D \n",tk);
+    ierr = PetscPrintf(PETSC_COMM_WORLD,"Step %D \n",tk);CHKERRQ(ierr);
     /* push points */
     ierr = DMSwarmGetLocalSize(dms,&nlocal);CHKERRQ(ierr);
     ierr = DMSwarmGetField(dms,DMSwarmPICField_coor,&bs,NULL,(void**)&array);CHKERRQ(ierr);

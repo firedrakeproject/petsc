@@ -6,6 +6,7 @@ TIMEOUT=60
 
 if test "$PWD"!=`dirname $0`; then
   cd `dirname $0`
+  abspath_scriptdir=$PWD
 fi
 if test -d "${rundir}" && test -n "${rundir}"; then
   rm -f ${rundir}/*.tmp ${rundir}/*.err ${rundir}/*.out
@@ -30,7 +31,8 @@ Usage: $0 [options]
 
 OPTIONS
   -a <args> ......... Override default arguments
-  -c <cleanup> ...... Cleanup (remove generated files)
+  -c ................ Cleanup (remove generated files)
+  -C ................ Compile
   -d ................ Launch in debugger
   -e <args> ......... Add extra arguments to default
   -f ................ force attempt to run test that would otherwise be skipped
@@ -56,15 +58,17 @@ EOF
 output_fmt="interactive"
 verbose=false
 cleanup=false
+compile=false
 debugger=false
 printcmd=false
 force=false
 diff_flags=""
-while getopts "a:cde:fhjJ:mMn:o:pt:vV" arg
+while getopts "a:cCde:fhjJ:mMn:o:pt:vV" arg
 do
   case $arg in
     a ) args="$OPTARG"       ;;  
     c ) cleanup=true         ;;  
+    C ) compile=true         ;;  
     d ) debugger=true        ;;  
     e ) extra_args="$OPTARG" ;;  
     f ) force=true           ;;
@@ -242,12 +246,18 @@ function petsc_testend() {
 }
 
 function petsc_mpiexec_valgrind() {
-  mpiexec=$1;shift
+  _mpiexec=$1;shift
   npopt=$1;shift
   np=$1;shift
 
   valgrind="valgrind -q --tool=memcheck --leak-check=yes --num-callers=20 --track-origins=yes --suppressions=$petsc_bindir/maint/petsc-val.supp --error-exitcode=10"
 
-  $mpiexec $npopt $np $valgrind $*
+  $_mpiexec $npopt $np $valgrind "$@"
 }
 export LC_ALL=C
+
+if $compile; then
+    curexec=`basename ${exec}`
+    (cd $petsc_dir && make -f gmakefile.test ${abspath_scriptdir}/${curexec})
+fi
+

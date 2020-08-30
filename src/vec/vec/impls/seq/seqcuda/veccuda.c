@@ -11,7 +11,7 @@
 #include <petscconf.h>
 #include <petsc/private/vecimpl.h>          /*I <petscvec.h> I*/
 #include <../src/vec/vec/impls/dvecimpl.h>
-#include <../src/vec/vec/impls/seq/seqcuda/cudavecimpl.h>
+#include <petsc/private/cudavecimpl.h>
 
 /*
     Allocates space for the vector array on the Host if it does not exist.
@@ -204,10 +204,24 @@ PetscErrorCode VecPlaceArray_SeqCUDA(Vec vin,const PetscScalar *a)
 PetscErrorCode VecReplaceArray_SeqCUDA(Vec vin,const PetscScalar *a)
 {
   PetscErrorCode ierr;
+  Vec_Seq        *vs = (Vec_Seq*)vin->data;
 
   PetscFunctionBegin;
-  ierr = VecCUDACopyFromGPU(vin);CHKERRQ(ierr);
-  ierr = VecReplaceArray_Seq(vin,a);CHKERRQ(ierr);
+  if (vs->array != vs->array_allocated) {
+    /* make sure the users array has the latest values */
+    ierr = VecCUDACopyFromGPU(vin);CHKERRQ(ierr);
+  }
+  if (vs->array_allocated) {
+    if (vin->pinned_memory) {
+      ierr = PetscMallocSetCUDAHost();CHKERRQ(ierr);
+    }
+    ierr = PetscFree(vs->array_allocated);CHKERRQ(ierr);
+    if (vin->pinned_memory) {
+      ierr = PetscMallocResetCUDAHost();CHKERRQ(ierr);
+    }
+  }
+  vin->pinned_memory = PETSC_FALSE;
+  vs->array_allocated = vs->array = (PetscScalar*)a;
   vin->offloadmask = PETSC_OFFLOAD_CPU;
   PetscFunctionReturn(0);
 }
@@ -261,6 +275,7 @@ PetscErrorCode VecCreate_SeqCUDA(Vec V)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  ierr = PetscCUDAInitializeCheck();CHKERRQ(ierr);
   ierr = PetscLayoutSetUp(V->map);CHKERRQ(ierr);
   ierr = VecCUDAAllocateCheck(V);CHKERRQ(ierr);
   ierr = VecCreate_SeqCUDA_Private(V,((Vec_CUDA*)V->spptr)->GPUarray_allocated);CHKERRQ(ierr);
@@ -309,12 +324,14 @@ PetscErrorCode  VecCreateSeqCUDAWithArray(MPI_Comm comm,PetscInt bs,PetscInt n,c
   PetscMPIInt    size;
 
   PetscFunctionBegin;
+  ierr = PetscCUDAInitializeCheck();CHKERRQ(ierr);
   ierr = VecCreate(comm,V);CHKERRQ(ierr);
   ierr = VecSetSizes(*V,n,n);CHKERRQ(ierr);
   ierr = VecSetBlockSize(*V,bs);CHKERRQ(ierr);
   ierr = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
   if (size > 1) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Cannot create VECSEQ on more than one process");
   ierr = VecCreate_SeqCUDA_Private(*V,array);CHKERRQ(ierr);
+  (*V)->offloadmask = PETSC_OFFLOAD_GPU;
   PetscFunctionReturn(0);
 }
 
@@ -363,7 +380,7 @@ PetscErrorCode VecBindToCPU_SeqCUDA(Vec V,PetscBool pin)
     V->ops->waxpy                  = VecWAXPY_Seq;
     V->ops->dotnorm2               = NULL;
     V->ops->placearray             = VecPlaceArray_Seq;
-    V->ops->replacearray           = VecReplaceArray_Seq;
+    V->ops->replacearray           = VecReplaceArray_SeqCUDA;
     V->ops->resetarray             = VecResetArray_Seq;
     V->ops->duplicate              = VecDuplicate_Seq;
     V->ops->conjugate              = VecConjugate_Seq;
@@ -446,6 +463,5 @@ PetscErrorCode VecCreate_SeqCUDA_Private(Vec V,const PetscScalar *array)
     veccuda = (Vec_CUDA*)V->spptr;
     veccuda->GPUarray = (PetscScalar*)array;
   }
-
   PetscFunctionReturn(0);
 }

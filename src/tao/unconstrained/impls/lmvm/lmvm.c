@@ -24,7 +24,7 @@ static PetscErrorCode TaoSolve_LMVM(Tao tao)
   ierr = TaoGradientNorm(tao, tao->gradient,NORM_2,&gnorm);CHKERRQ(ierr);
 
   if (PetscIsInfOrNanReal(f) || PetscIsInfOrNanReal(gnorm)) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
-  
+
   tao->reason = TAO_CONTINUE_ITERATING;
   ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
   ierr = TaoMonitor(tao,tao->niter,f,gnorm,0.0,step);CHKERRQ(ierr);
@@ -35,7 +35,7 @@ static PetscErrorCode TaoSolve_LMVM(Tao tao)
   if (!lmP->recycle) {
     lmP->bfgs = 0;
     lmP->grad = 0;
-    ierr = MatLMVMReset(lmP->M, PETSC_FALSE); CHKERRQ(ierr);
+    ierr = MatLMVMReset(lmP->M, PETSC_FALSE);CHKERRQ(ierr);
   }
 
   /*  Have not converged; continue with Newton method */
@@ -44,15 +44,15 @@ static PetscErrorCode TaoSolve_LMVM(Tao tao)
     if (tao->ops->update) {
       ierr = (*tao->ops->update)(tao, tao->niter, tao->user_update);CHKERRQ(ierr);
     }
-    
+
     /*  Compute direction */
     if (lmP->H0) {
       ierr = MatLMVMSetJ0(lmP->M, lmP->H0);CHKERRQ(ierr);
       stepType = LMVM_STEP_BFGS;
-    } 
+    }
     ierr = MatLMVMUpdate(lmP->M,tao->solution,tao->gradient);CHKERRQ(ierr);
     ierr = MatSolve(lmP->M, tao->gradient, lmP->D);CHKERRQ(ierr);
-    ierr = MatLMVMGetUpdateCount(lmP->M, &nupdates); CHKERRQ(ierr);
+    ierr = MatLMVMGetUpdateCount(lmP->M, &nupdates);CHKERRQ(ierr);
     if (nupdates > 0) stepType = LMVM_STEP_BFGS;
 
     /*  Check for success (descent direction) */
@@ -65,7 +65,7 @@ static PetscErrorCode TaoSolve_LMVM(Tao tao)
 
          Use steepest descent direction (scaled)
       */
-    
+
       ierr = MatLMVMReset(lmP->M, PETSC_FALSE);CHKERRQ(ierr);
       ierr = MatLMVMClearJ0(lmP->M);CHKERRQ(ierr);
       ierr = MatLMVMUpdate(lmP->M, tao->solution, tao->gradient);CHKERRQ(ierr);
@@ -131,7 +131,7 @@ static PetscErrorCode TaoSolve_LMVM(Tao tao)
       /*  Compute new gradient norm */
       ierr = TaoGradientNorm(tao, tao->gradient,NORM_2,&gnorm);CHKERRQ(ierr);
     }
-    
+
     /* Check convergence */
     tao->niter++;
     ierr = TaoLogConvergenceHistory(tao,f,gnorm,0.0,tao->ksp_its);CHKERRQ(ierr);
@@ -240,7 +240,7 @@ static PetscErrorCode TaoView_LMVM(Tao tao, PetscViewer viewer)
   using an approximation Bk in place of Hk, where Bk is composed using
   the BFGS update formula. A More-Thuente line search is then used
   to computed the steplength in the dk direction
-     
+
   Options Database Keys:
 +   -tao_lmvm_recycle - enable recycling LMVM updates between TaoSolve() calls
 -   -tao_lmvm_no_scale - (developer) disables diagonal Broyden scaling on the LMVM approximation
@@ -262,10 +262,10 @@ PETSC_EXTERN PetscErrorCode TaoCreate_LMVM(Tao tao)
   tao->ops->destroy = TaoDestroy_LMVM;
 
   ierr = PetscNewLog(tao,&lmP);CHKERRQ(ierr);
-  lmP->D = 0;
-  lmP->M = 0;
-  lmP->Xold = 0;
-  lmP->Gold = 0;
+  lmP->D = NULL;
+  lmP->M = NULL;
+  lmP->Xold = NULL;
+  lmP->Gold = NULL;
   lmP->H0   = NULL;
   lmP->recycle = PETSC_FALSE;
 
@@ -279,7 +279,7 @@ PETSC_EXTERN PetscErrorCode TaoCreate_LMVM(Tao tao)
   ierr = TaoLineSearchSetType(tao->linesearch,morethuente_type);CHKERRQ(ierr);
   ierr = TaoLineSearchUseTaoRoutines(tao->linesearch,tao);CHKERRQ(ierr);
   ierr = TaoLineSearchSetOptionsPrefix(tao->linesearch,tao->hdr.prefix);CHKERRQ(ierr);
-  
+
   ierr = KSPInitializePackage();CHKERRQ(ierr);
   ierr = MatCreate(((PetscObject)tao)->comm, &lmP->M);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)lmP->M, (PetscObject)tao, 1);CHKERRQ(ierr);

@@ -15,12 +15,6 @@ PETSC_EXTERN PetscErrorCode PetscVFPrintfDefault(FILE*,const char[],va_list);
 PETSC_EXTERN PetscErrorCode PetscVFPrintfSetClosure(int (^)(const char*));
 #endif
 
-
-#if defined(PETSC_HAVE_CUDA)
-#include <cuda.h>
-#include <cublas_v2.h>
-#endif
-
 /*
    All major PETSc data structures have a common core; this is defined
    below by PETSCHEADER.
@@ -184,13 +178,10 @@ PETSC_EXTERN PetscErrorCode PetscObjectGetFortranCallback(PetscObject,PetscFortr
 
 PETSC_INTERN PetscErrorCode PetscCitationsInitialize(void);
 PETSC_INTERN PetscErrorCode PetscFreeMPIResources(void);
-
+PETSC_INTERN PetscErrorCode PetscOptionsHasHelpIntro_Internal(PetscOptions,PetscBool*);
 
 
 PETSC_EXTERN PetscBool PetscCheckPointer(const void*,PetscDataType);
-#if defined(PETSC_HAVE_CUDA)
-PETSC_EXTERN PetscBool PetscCheckMpiGpuAwareness(void);
-#endif
 /*
     Macros to test if a PETSc object is valid and if pointers are valid
 */
@@ -287,7 +278,7 @@ PETSC_EXTERN PetscBool PetscCheckMpiGpuAwareness(void);
     for (_i_ = 1; _i_ < (n); _i_++)         \
       if ((idx)[_i_] < (idx)[_i_ - 1])      \
         { (sorted) = PETSC_FALSE; break; }  \
-  } while(0)
+  } while (0)
 
 #if !defined(PETSC_USE_DEBUG)
 
@@ -435,7 +426,7 @@ PETSC_EXTERN PetscBool PetscCheckMpiGpuAwareness(void);
   0; do { PetscErrorCode (*_7_f)B, _7_ierr; \
     _7_ierr = PetscObjectQueryFunction((PetscObject)(obj),A,&_7_f);CHKERRQ(_7_ierr); \
     if (_7_f) {_7_ierr = (*_7_f)C;CHKERRQ(_7_ierr);} \
-  } while(0)
+  } while (0)
 
 /*
    PetscUseMethod - Queries an object for a method, if it exists then calls it, otherwise generates an error.
@@ -450,7 +441,7 @@ PETSC_EXTERN PetscBool PetscCheckMpiGpuAwareness(void);
     _7_ierr = PetscObjectQueryFunction((PetscObject)(obj),A,&_7_f);CHKERRQ(_7_ierr); \
     if (_7_f) {_7_ierr = (*_7_f)C;CHKERRQ(_7_ierr);} \
     else SETERRQ1(PetscObjectComm((PetscObject)(obj)),PETSC_ERR_SUP,"Cannot locate function %s in object",A); \
-  } while(0)
+  } while (0)
 
 /*MC
    PetscObjectStateIncrease - Increases the state of any PetscObject
@@ -744,7 +735,7 @@ M*/
 M*/
 #if defined(PETSC_USE_COMPLEX)
 #define PetscObjectComposedDataGetScalar(obj,id,data,flag)                              \
-  ((((obj)->scalarcomposedstate && ((obj)->scalarcomposedstate[id] == (obj)->state) ) ? \
+  ((((obj)->scalarcomposedstate && ((obj)->scalarcomposedstate[id] == (obj)->state)) ? \
    (data = (obj)->scalarcomposeddata[id],flag = PETSC_TRUE) : (flag = PETSC_FALSE)),0)
 #else
 #define PetscObjectComposedDataGetScalar(obj,id,data,flag)                             \
@@ -943,6 +934,25 @@ PETSC_EXTERN PetscBool     use_gpu_aware_mpi;
 
 #if defined(PETSC_HAVE_ADIOS)
 PETSC_EXTERN int64_t Petsc_adios_group;
+#endif
+
+#if defined(PETSC_HAVE_KOKKOS)
+PETSC_INTERN PetscBool      PetscBeganKokkos;
+PETSC_INTERN PetscErrorCode PetscKokkosInitialize_Private(void); /* C bindings for the Kokkos C++ routines */
+PETSC_INTERN PetscErrorCode PetscKokkosIsInitialized_Private(PetscBool*);
+PETSC_INTERN PetscErrorCode PetscKokkosFinalize_Private(void);
+#endif
+
+#if defined(PETSC_HAVE_CUDA)
+PETSC_EXTERN PetscBool      PetscCUDAInitialized;  /* Has petsc initialized CUDA? One can use this flag to guard CUDA calls. */
+PETSC_EXTERN PetscErrorCode PetscCUDAInitializeCheck(void);  /* Check if CUDA is initialized and init CUDA if not yet. */
+PETSC_EXTERN PetscBool      PetscMPICUDAAwarenessCheck(void);
+#endif
+
+#if defined(PETSC_HAVE_HIP)
+PETSC_EXTERN PetscBool      PetscHIPInitialized;
+PETSC_EXTERN PetscErrorCode PetscHIPInitializeCheck(void);
+PETSC_EXTERN PetscBool      PetscMPIHIPAwarenessCheck(void);
 #endif
 
 #endif /* PETSCIMPL_H */

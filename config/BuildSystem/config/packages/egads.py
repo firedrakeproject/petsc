@@ -4,15 +4,17 @@ import os
 class Configure(config.package.GNUPackage):
   def __init__(self, framework):
     config.package.GNUPackage.__init__(self, framework)
-    self.gitcommit         = '09fe8f0fe689bea60354eb3e9977fd8452c05573'
+    self.gitcommit         = '11501e852fd2b647c0788bc12f7a42ce9e427934'
     self.download          = ['git://https://github.com/bldenton/EGADSlite.git']
-    self.functions         = []
-    self.includes          = []
+    self.functions         = ['EG_open']
+    self.includes          = ['egads.h']
     self.hastests          = 1
     return
 
   def setupDependencies(self, framework):
     config.package.GNUPackage.setupDependencies(self, framework)
+    self.pthread = self.framework.require('config.packages.pthread',self)
+    self.deps    = [self.pthread]
     return
 
   def createMakefile(self):
@@ -28,11 +30,11 @@ SRCDIR     = src
 LIBBASE    = libegadslite
 LIBNAME    = ${LIBBASE}.${AR_LIB_SUFFIX}
 LIBSRC.h   = $(INCDIR)/egads.h $(INCDIR)/egadsErrors.h $(INCDIR)/egadsInternals.h $(INCDIR)/egadsTris.h \
-             $(INCDIR)/egadsTypes.h $(INCDIR)/emp.h $(INCDIR)/liteClasses.h
+             $(INCDIR)/egadsTypes.h $(INCDIR)/emp.h $(INCDIR)/liteClasses.h $(INCDIR)/regQuads.h
 LIBSRC.c   = $(SRCDIR)/liteAttrs.c $(SRCDIR)/liteBase.c $(SRCDIR)/liteGeom.c $(SRCDIR)/liteImport.c \
              $(SRCDIR)/liteMemory.c $(SRCDIR)/liteTopo.c $(SRCDIR)/egadsTess.c $(SRCDIR)/egadsTris.c \
              $(SRCDIR)/egadsQuads.c $(SRCDIR)/egadsTessInp.c $(SRCDIR)/egadsRobust.c \
-			 		 	 $(SRCDIR)/emp.c $(SRCDIR)/evaluate.c $(SRCDIR)/rational.c
+			 		 	 $(SRCDIR)/emp.c $(SRCDIR)/evaluate.c $(SRCDIR)/rational.c $(SRCDIR)/regQuads.c
 LIBSRC.o   = $(LIBSRC.c:%.c=%.o)
 
 lib : $(LIBNAME) ;

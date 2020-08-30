@@ -189,14 +189,14 @@ PetscErrorCode  PCFactorSetMatSolverType_Factor(PC pc,MatSolverType stype)
   PC_Factor      *lu = (PC_Factor*)pc->data;
 
   PetscFunctionBegin;
-  if (lu->fact) { 
+  if (lu->fact) {
     MatSolverType ltype;
     PetscBool     flg;
     ierr = MatFactorGetSolverType(lu->fact,&ltype);CHKERRQ(ierr);
     ierr = PetscStrcmp(stype,ltype,&flg);CHKERRQ(ierr);
     if (!flg) SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_ARG_WRONGSTATE,"Cannot change solver matrix package after PC has been setup or used");
-  } 
- 
+  }
+
   ierr = PetscFree(lu->solvertype);CHKERRQ(ierr);
   ierr = PetscStrallocpy(stype,&lu->solvertype);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -243,9 +243,9 @@ PetscErrorCode  PCSetFromOptions_Factor(PetscOptionItems *PetscOptionsObject,PC 
   if (flg) {
     ierr = PCFactorSetShiftType(pc,(MatFactorShiftType)etmp);CHKERRQ(ierr);
   }
-  ierr = PetscOptionsReal("-pc_factor_shift_amount","Shift added to diagonal","PCFactorSetShiftAmount",((PC_Factor*)factor)->info.shiftamount,&((PC_Factor*)factor)->info.shiftamount,0);CHKERRQ(ierr);
+  ierr = PetscOptionsReal("-pc_factor_shift_amount","Shift added to diagonal","PCFactorSetShiftAmount",((PC_Factor*)factor)->info.shiftamount,&((PC_Factor*)factor)->info.shiftamount,NULL);CHKERRQ(ierr);
 
-  ierr = PetscOptionsReal("-pc_factor_zeropivot","Pivot is considered zero if less than","PCFactorSetZeroPivot",((PC_Factor*)factor)->info.zeropivot,&((PC_Factor*)factor)->info.zeropivot,0);CHKERRQ(ierr);
+  ierr = PetscOptionsReal("-pc_factor_zeropivot","Pivot is considered zero if less than","PCFactorSetZeroPivot",((PC_Factor*)factor)->info.zeropivot,&((PC_Factor*)factor)->info.zeropivot,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-pc_factor_column_pivot","Column pivot tolerance (used only for some factorization)","PCFactorSetColumnPivot",((PC_Factor*)factor)->info.dtcol,&((PC_Factor*)factor)->info.dtcol,&flg);CHKERRQ(ierr);
 
   ierr = PetscOptionsBool("-pc_factor_pivot_in_blocks","Pivot inside matrix dense blocks for BAIJ and SBAIJ","PCFactorSetPivotInBlocks",((PC_Factor*)factor)->info.pivotinblocks ? PETSC_TRUE : PETSC_FALSE,&flg,&set);CHKERRQ(ierr);
@@ -263,14 +263,14 @@ PetscErrorCode  PCSetFromOptions_Factor(PetscOptionItems *PetscOptionsObject,PC 
   }
 
   ierr = MatGetOrderingList(&ordlist);CHKERRQ(ierr);
-  ierr = PetscOptionsFList("-pc_factor_mat_ordering_type","Reordering to reduce nonzeros in factored matrix","PCFactorSetMatOrderingType",ordlist,((PC_Factor*)factor)->ordering,tname,256,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsFList("-pc_factor_mat_ordering_type","Reordering to reduce nonzeros in factored matrix","PCFactorSetMatOrderingType",ordlist,((PC_Factor*)factor)->ordering,tname,sizeof(tname),&flg);CHKERRQ(ierr);
   if (flg) {
     ierr = PCFactorSetMatOrderingType(pc,tname);CHKERRQ(ierr);
   }
 
   /* maybe should have MatGetSolverTypes(Mat,&list) like the ordering list */
   ierr = PetscOptionsDeprecated("-pc_factor_mat_solver_package","-pc_factor_mat_solver_type","3.9",NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-pc_factor_mat_solver_type","Specific direct solver to use","MatGetFactor",((PC_Factor*)factor)->solvertype,solvertype,64,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-pc_factor_mat_solver_type","Specific direct solver to use","MatGetFactor",((PC_Factor*)factor)->solvertype,solvertype,sizeof(solvertype),&flg);CHKERRQ(ierr);
   if (flg) {
     ierr = PCFactorSetMatSolverType(pc,solvertype);CHKERRQ(ierr);
   }
@@ -325,10 +325,14 @@ PetscErrorCode PCView_Factor(PC pc,PetscViewer viewer)
     } else {
       ordering = factor->ordering;
     }
-    ierr = PetscViewerASCIIPrintf(viewer,"  matrix ordering: %s\n",ordering);CHKERRQ(ierr);
-
-    if (factor->fact) {
-      MatInfo info;
+    if (!factor->fact) {
+      ierr = PetscViewerASCIIPrintf(viewer,"  matrix ordering: %s (may be overridden during setup)\n",ordering);CHKERRQ(ierr);
+    } else {
+      PetscBool useordering;
+      MatInfo   info;
+      ierr = MatFactorGetUseOrdering(factor->fact,&useordering);CHKERRQ(ierr);
+      if (!useordering) ordering = "external";
+      ierr = PetscViewerASCIIPrintf(viewer,"  matrix ordering: %s\n",ordering);CHKERRQ(ierr);
       ierr = MatGetInfo(factor->fact,MAT_LOCAL,&info);CHKERRQ(ierr);
       ierr = PetscViewerASCIIPrintf(viewer,"  factor fill ratio given %g, needed %g\n",(double)info.fill_ratio_given,(double)info.fill_ratio_needed);CHKERRQ(ierr);
       ierr = PetscViewerASCIIPrintf(viewer,"    Factored matrix follows:\n");CHKERRQ(ierr);

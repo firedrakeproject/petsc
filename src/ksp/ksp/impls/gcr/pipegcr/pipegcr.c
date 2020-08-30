@@ -39,7 +39,7 @@ static PetscErrorCode KSPAllocateVectors_PIPEGCR(KSP ksp, PetscInt nvecsneeded, 
   pipegcr = (KSP_PIPEGCR*)ksp->data;
 
   /* Allocate enough new vectors to add chunksize new vectors, reach nvecsneedtotal, or to reach mmax+1, whichever is smallest */
-  if(pipegcr->nvecs < PetscMin(pipegcr->mmax+1,nvecsneeded)){
+  if (pipegcr->nvecs < PetscMin(pipegcr->mmax+1,nvecsneeded)){
     nvecsprev = pipegcr->nvecs;
     nnewvecs = PetscMin(PetscMax(nvecsneeded-pipegcr->nvecs,chunksize),pipegcr->mmax+1-pipegcr->nvecs);
     ierr = KSPCreateVecs(ksp,nnewvecs,&pipegcr->ppvecs[pipegcr->nchunks],0,NULL);CHKERRQ(ierr);
@@ -53,7 +53,7 @@ static PetscErrorCode KSPAllocateVectors_PIPEGCR(KSP ksp, PetscInt nvecsneeded, 
       ierr = PetscLogObjectParents((PetscObject)ksp,nnewvecs,pipegcr->ptvecs[pipegcr->nchunks]);CHKERRQ(ierr);
     }
     pipegcr->nvecs += nnewvecs;
-    for(i=0;i<nnewvecs;i++){
+    for (i=0;i<nnewvecs;i++){
       pipegcr->qvecs[nvecsprev+i] = pipegcr->pqvecs[pipegcr->nchunks][i];
       pipegcr->pvecs[nvecsprev+i] = pipegcr->ppvecs[pipegcr->nchunks][i];
       pipegcr->svecs[nvecsprev+i] = pipegcr->psvecs[pipegcr->nchunks][i];
@@ -138,7 +138,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = VecAXPY(x,+alpha,p);CHKERRQ(ierr);
     ierr = VecAXPY(r,-alpha,s);CHKERRQ(ierr);
     ierr = VecAXPY(z,-alpha,q);CHKERRQ(ierr);
-    if(pipegcr->unroll_w){
+    if (pipegcr->unroll_w){
       ierr = VecAXPY(w,-alpha,t);CHKERRQ(ierr);
     } else {
       ierr = KSP_MatMult(ksp,A,z,w);CHKERRQ(ierr);
@@ -177,7 +177,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     }
 
     /* Pick old p,s,q,zeta in a way suitable for VecMDot */
-    for(k=PetscMax(0,i-mi),j=0;k<i;j++,k++){
+    for (k=PetscMax(0,i-mi),j=0;k<i;j++,k++){
       kdx = k % (pipegcr->mmax+1);
       pipegcr->pold[j] = pipegcr->pvecs[kdx];
       pipegcr->sold[j] = pipegcr->svecs[kdx];
@@ -200,7 +200,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = VecWAXPY(n,-1.0,r,w);CHKERRQ(ierr);              /* m = u + B(w-r): (a) ntmp = w-r              */
     ierr = KSP_PCApply(ksp,n,m);CHKERRQ(ierr);              /* m = u + B(w-r): (b) mtmp = B(ntmp) = B(w-r) */
     ierr = VecAXPY(m,1.0,z);CHKERRQ(ierr);                  /* m = u + B(w-r): (c) m = z + mtmp            */
-    if(pipegcr->unroll_w){
+    if (pipegcr->unroll_w){
       ierr = KSP_MatMult(ksp,A,m,n);CHKERRQ(ierr);          /* n = Am                                      */
     }
 
@@ -234,12 +234,12 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = PetscObjectSAWsGrantAccess((PetscObject)ksp);CHKERRQ(ierr);
     KSPLogResidualHistory(ksp,rnorm);CHKERRQ(ierr);
     ierr = KSPMonitor(ksp,ksp->its,rnorm);CHKERRQ(ierr);
-    ierr = (*ksp->converged)(ksp,ksp->its+1,rnorm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
-    if (ksp->reason) break;
+    ierr = (*ksp->converged)(ksp,ksp->its,rnorm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
+    if (ksp->reason) PetscFunctionReturn(0);
 
     /* compute new eta and scale beta */
     *eta = 0.;
-    for(k=PetscMax(0,i-mi),j=0;k<i;j++,k++){
+    for (k=PetscMax(0,i-mi),j=0;k<i;j++,k++){
       kdx = k % (pipegcr->mmax+1);
       betas[j] /= -etas[kdx];                               /* betak  /= etak */
       *eta -= ((PetscReal)(PetscAbsScalar(betas[j])*PetscAbsScalar(betas[j]))) * etas[kdx];
@@ -248,7 +248,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     *eta += delta;                                          /* etai    = delta -betaik^2 * etak */
 
     /* check breakdown of eta = (s,s) */
-    if(*eta < 0.) {
+    if (*eta < 0.) {
       pipegcr->norm_breakdown = PETSC_TRUE;
       ierr = PetscInfo1(ksp,"Restart due to square root breakdown at it = \n",ksp->its);CHKERRQ(ierr);
       break;
@@ -260,7 +260,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = VecCopy(z,p);CHKERRQ(ierr);
     ierr = VecCopy(w,s);CHKERRQ(ierr);
     ierr = VecCopy(m,q);CHKERRQ(ierr);
-    if(pipegcr->unroll_w){
+    if (pipegcr->unroll_w) {
       ierr = VecCopy(n,t);CHKERRQ(ierr);
       ierr = VecMAXPY(t,j,betas,pipegcr->told);CHKERRQ(ierr); /* ti <- n  - sum_k beta_k t_k */
     }
@@ -269,6 +269,7 @@ static PetscErrorCode KSPSolve_PIPEGCR_cycle(KSP ksp)
     ierr = VecMAXPY(q,j,betas,pipegcr->qold);CHKERRQ(ierr); /* qi <- m  - sum_k beta_k q_k */
 
   } while (ksp->its < ksp->max_it);
+  if (ksp->its >= ksp->max_it) ksp->reason = KSP_DIVERGED_ITS;
   PetscFunctionReturn(0);
 }
 
@@ -339,7 +340,7 @@ static PetscErrorCode KSPSolve_PIPEGCR(KSP ksp)
 
   do {
     ierr = KSPSolve_PIPEGCR_cycle(ksp);CHKERRQ(ierr);
-    if (ksp->reason) break;
+    if (ksp->reason) PetscFunctionReturn(0);
     if (pipegcr->norm_breakdown) {
       pipegcr->n_restarts++;
       pipegcr->norm_breakdown = PETSC_FALSE;
@@ -361,12 +362,12 @@ static PetscErrorCode KSPView_PIPEGCR(KSP ksp, PetscViewer viewer)
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII, &isascii);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERSTRING,&isstring);CHKERRQ(ierr);
 
-  if(pipegcr->truncstrat == KSP_FCD_TRUNC_TYPE_STANDARD){
+  if (pipegcr->truncstrat == KSP_FCD_TRUNC_TYPE_STANDARD){
     truncstr = "Using standard truncation strategy";
-  } else if(pipegcr->truncstrat == KSP_FCD_TRUNC_TYPE_NOTAY){
+  } else if (pipegcr->truncstrat == KSP_FCD_TRUNC_TYPE_NOTAY){
     truncstr = "Using Notay's truncation strategy";
   } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Undefined FCD truncation strategy");
-  
+
 
   if (isascii) {
     ierr = PetscViewerASCIIPrintf(viewer,"  max previous directions = %D\n",pipegcr->mmax);CHKERRQ(ierr);
@@ -374,7 +375,7 @@ static PetscErrorCode KSPView_PIPEGCR(KSP ksp, PetscViewer viewer)
     ierr = PetscViewerASCIIPrintf(viewer,"  %s\n",truncstr);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  w unrolling = %D \n", pipegcr->unroll_w);CHKERRQ(ierr);
     ierr = PetscViewerASCIIPrintf(viewer,"  restarts performed = %D \n", pipegcr->n_restarts);CHKERRQ(ierr);
-  } else if (isstring) { 
+  } else if (isstring) {
     ierr = PetscViewerStringSPrintf(viewer, "max previous directions = %D, preallocated %D directions, %s truncation strategy", pipegcr->mmax,pipegcr->nprealloc,truncstr);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
@@ -405,9 +406,9 @@ static PetscErrorCode KSPSetUp_PIPEGCR(KSP ksp)
     ierr = PetscMalloc3(pipegcr->mmax+1,&(pipegcr->tvecs),pipegcr->mmax+1,&(pipegcr->ptvecs),pipegcr->mmax+2,&(pipegcr->told));CHKERRQ(ierr);
   }
   ierr = PetscMalloc4(pipegcr->mmax+2,&(pipegcr->pold),pipegcr->mmax+2,&(pipegcr->sold),pipegcr->mmax+2,&(pipegcr->qold),pipegcr->mmax+2,&(pipegcr->chunksizes));CHKERRQ(ierr);
-  ierr = PetscMalloc3(pipegcr->mmax+2,&(pipegcr->dots),pipegcr->mmax+1,&(pipegcr->etas),pipegcr->mmax+2,&(pipegcr->redux));CHKERRQ(ierr); 
+  ierr = PetscMalloc3(pipegcr->mmax+2,&(pipegcr->dots),pipegcr->mmax+1,&(pipegcr->etas),pipegcr->mmax+2,&(pipegcr->redux));CHKERRQ(ierr);
   /* If the requested number of preallocated vectors is greater than mmax reduce nprealloc */
-  if(pipegcr->nprealloc > pipegcr->mmax+1){
+  if (pipegcr->nprealloc > pipegcr->mmax+1){
     ierr = PetscInfo2(NULL,"Requested nprealloc=%d is greater than m_max+1=%d. Resetting nprealloc = m_max+1.\n",pipegcr->nprealloc, pipegcr->mmax+1);CHKERRQ(ierr);
   }
 
@@ -423,7 +424,7 @@ static PetscErrorCode KSPSetUp_PIPEGCR(KSP ksp)
     (pipegcr->mmax + 2) *     sizeof(Vec*) +        /* redux */
     (pipegcr->mmax + 2) *     sizeof(PetscScalar) + /* dots */
     (pipegcr->mmax + 1) *     sizeof(PetscReal)     /* etas */
-  );CHKERRQ(ierr);
+);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -449,8 +450,8 @@ static PetscErrorCode KSPDestroy_PIPEGCR(KSP ksp)
   VecDestroyVecs(ksp->nwork,&ksp->work); /* Destroy "standard" work vecs */
 
   /* Destroy vectors for old directions and the arrays that manage pointers to them */
-  if(pipegcr->nvecs){
-    for(i=0;i<pipegcr->nchunks;i++){
+  if (pipegcr->nvecs){
+    for (i=0;i<pipegcr->nchunks;i++){
       ierr = VecDestroyVecs(pipegcr->chunksizes[i],&pipegcr->ppvecs[i]);CHKERRQ(ierr);
       ierr = VecDestroyVecs(pipegcr->chunksizes[i],&pipegcr->psvecs[i]);CHKERRQ(ierr);
       ierr = VecDestroyVecs(pipegcr->chunksizes[i],&pipegcr->pqvecs[i]);CHKERRQ(ierr);

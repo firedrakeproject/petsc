@@ -271,7 +271,8 @@ PetscErrorCode KSPReset_GMRES(KSP ksp)
 
   PetscFunctionBegin;
   /* Free the Hessenberg matrices */
-  ierr = PetscFree6(gmres->hh_origin,gmres->hes_origin,gmres->rs_origin,gmres->cc_origin,gmres->ss_origin,gmres->hes_ritz);CHKERRQ(ierr);
+  ierr = PetscFree5(gmres->hh_origin,gmres->hes_origin,gmres->rs_origin,gmres->cc_origin,gmres->ss_origin);CHKERRQ(ierr);
+  ierr = PetscFree(gmres->hes_ritz);CHKERRQ(ierr);
 
   /* free work vectors */
   ierr = PetscFree(gmres->vecs);CHKERRQ(ierr);
@@ -291,10 +292,9 @@ PetscErrorCode KSPReset_GMRES(KSP ksp)
   ierr = PetscFree(gmres->Dsvd);CHKERRQ(ierr);
   ierr = PetscFree(gmres->orthogwork);CHKERRQ(ierr);
 
-  gmres->sol_temp       = 0;
   gmres->vv_allocated   = 0;
   gmres->vecs_allocated = 0;
-  gmres->sol_temp       = 0;
+  gmres->sol_temp       = NULL;
   PetscFunctionReturn(0);
 }
 
@@ -899,12 +899,12 @@ PETSC_EXTERN PetscErrorCode KSPCreate_GMRES(KSP ksp)
   gmres->q_preallocate  = 0;
   gmres->delta_allocate = GMRES_DELTA_DIRECTIONS;
   gmres->orthog         = KSPGMRESClassicalGramSchmidtOrthogonalization;
-  gmres->nrs            = 0;
-  gmres->sol_temp       = 0;
+  gmres->nrs            = NULL;
+  gmres->sol_temp       = NULL;
   gmres->max_k          = GMRES_DEFAULT_MAXK;
-  gmres->Rsvd           = 0;
+  gmres->Rsvd           = NULL;
   gmres->cgstype        = KSP_GMRES_CGS_REFINE_NEVER;
-  gmres->orthogwork     = 0;
+  gmres->orthogwork     = NULL;
   PetscFunctionReturn(0);
 }
 

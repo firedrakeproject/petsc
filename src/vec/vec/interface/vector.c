@@ -388,7 +388,7 @@ PetscErrorCode  VecDestroy(Vec *v)
   PetscFunctionBegin;
   if (!*v) PetscFunctionReturn(0);
   PetscValidHeaderSpecific((*v),VEC_CLASSID,1);
-  if (--((PetscObject)(*v))->refct > 0) {*v = 0; PetscFunctionReturn(0);}
+  if (--((PetscObject)(*v))->refct > 0) {*v = NULL; PetscFunctionReturn(0);}
 
   ierr = PetscObjectSAWsViewOff((PetscObject)*v);CHKERRQ(ierr);
   /* destroy the internal part */
@@ -661,8 +661,7 @@ PetscErrorCode  VecGetSize(Vec x,PetscInt *size)
 
 /*@
    VecGetLocalSize - Returns the number of elements of the vector stored
-   in local memory. This routine may be implementation dependent, so use
-   with care.
+   in local memory.
 
    Not Collective
 
@@ -1203,11 +1202,6 @@ PetscErrorCode  VecSetRandom(Vec x,PetscRandom rctx)
 
   Level: beginner
 
-  Developer Note: This routine does not need to exist since the exact functionality is obtained with
-     VecSet(vec,0);  I guess someone added it to mirror the functionality of MatZeroEntries() but Mat is nothing
-     like a Vec (one is an operator and one is an element of a vector space, yeah yeah dual blah blah blah) so
-     this routine should not exist.
-
 .seealso: VecCreate(),  VecSetOptionsPrefix(), VecSet(), VecSetValues()
 @*/
 PetscErrorCode  VecZeroEntries(Vec vec)
@@ -1328,7 +1322,7 @@ PetscErrorCode  VecSetSizes(Vec v, PetscInt n, PetscInt N)
   v->map->N = N;
   if (v->ops->create) {
     ierr = (*v->ops->create)(v);CHKERRQ(ierr);
-    v->ops->create = 0;
+    v->ops->create = NULL;
   }
   PetscFunctionReturn(0);
 }
@@ -1357,7 +1351,6 @@ PetscErrorCode  VecSetBlockSize(Vec v,PetscInt bs)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(v,VEC_CLASSID,1);
-  if (bs < 0 || bs == v->map->bs) PetscFunctionReturn(0);
   PetscValidLogicalCollectiveInt(v,bs,2);
   ierr = PetscLayoutSetBlockSize(v->map,bs);CHKERRQ(ierr);
   v->bstash.bs = bs; /* use the same blocksize for the vec's block-stash */

@@ -554,7 +554,7 @@ PETSC_EXTERN PetscErrorCode DMTSSetForcingFunction(DM,TSForcingFunction,void*);
 PETSC_EXTERN PetscErrorCode DMTSGetForcingFunction(DM,TSForcingFunction*,void**);
 PETSC_EXTERN PetscErrorCode DMTSGetMinRadius(DM,PetscReal*);
 PETSC_EXTERN PetscErrorCode DMTSSetMinRadius(DM,PetscReal);
-PETSC_EXTERN PetscErrorCode DMTSCheckFromOptions(TS, Vec, PetscErrorCode (**)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **);
+PETSC_EXTERN PetscErrorCode DMTSCheckFromOptions(TS, Vec);
 
 PETSC_EXTERN PetscErrorCode DMTSSetIFunctionLocal(DM,PetscErrorCode (*)(DM,PetscReal,Vec,Vec,Vec,void*),void*);
 PETSC_EXTERN PetscErrorCode DMTSSetIJacobianLocal(DM,PetscErrorCode (*)(DM,PetscReal,Vec,Vec,PetscReal,Mat,Mat,void*),void*);
@@ -988,7 +988,7 @@ PETSC_EXTERN PetscErrorCode TSSundialsGetIterations(TS,PetscInt *,PetscInt *);
 PETSC_EXTERN PetscErrorCode TSSundialsSetGramSchmidtType(TS,TSSundialsGramSchmidtType);
 PETSC_EXTERN PetscErrorCode TSSundialsSetGMRESRestart(TS,PetscInt);
 PETSC_EXTERN PetscErrorCode TSSundialsSetLinearTolerance(TS,PetscReal);
-PETSC_EXTERN PetscErrorCode TSSundialsMonitorInternalSteps(TS,PetscBool );
+PETSC_EXTERN PetscErrorCode TSSundialsMonitorInternalSteps(TS,PetscBool);
 PETSC_EXTERN PetscErrorCode TSSundialsGetParameters(TS,PetscInt *,long*[],double*[]);
 PETSC_EXTERN PetscErrorCode TSSundialsSetMaxl(TS,PetscInt);
 PETSC_EXTERN PetscErrorCode TSSundialsSetMaxord(TS,PetscInt);
@@ -1022,5 +1022,5 @@ PETSC_EXTERN PetscErrorCode TSComputeInitialCondition(TS, Vec);
 PETSC_EXTERN PetscErrorCode TSGetComputeExactError(TS, PetscErrorCode (**)(TS, Vec, Vec));
 PETSC_EXTERN PetscErrorCode TSSetComputeExactError(TS, PetscErrorCode (*)(TS, Vec, Vec));
 PETSC_EXTERN PetscErrorCode TSComputeExactError(TS, Vec, Vec);
-PETSC_EXTERN PetscErrorCode PetscConvEstUseTS(PetscConvEst);
+PETSC_EXTERN PetscErrorCode PetscConvEstUseTS(PetscConvEst, PetscBool);
 #endif

@@ -45,7 +45,6 @@ typedef struct {
   Mat                  Bt_den;       /* dense matrix of B^T */
   Mat                  ABt_den;      /* dense matrix of A*B^T */
   PetscBool            usecoloring;
-  PetscErrorCode (*destroy)(Mat);
 } Mat_MatMatTransMult;
 
 typedef struct { /* used by MatTransposeMatMult() */
@@ -53,13 +52,14 @@ typedef struct { /* used by MatTransposeMatMult() */
   Mat          mA;           /* maij matrix of A */
   Vec          bt,ct;        /* vectors to hold locally transposed arrays of B and C */
   PetscBool    updateAt;     /* flg to avoid recomputing At in MatProductNumeric_AtB_SeqAIJ_SeqAIJ() */
-  PetscErrorCode (*destroy)(Mat);
+  /* used by PtAP */
+  void           *data;
+  PetscErrorCode (*destroy)(void*);
 } Mat_MatTransMatMult;
 
 typedef struct {
   PetscInt    *api,*apj;       /* symbolic structure of A*P */
   PetscScalar *apa;            /* temporary array for storing one row of A*P */
-  PetscErrorCode (*destroy)(Mat);
 } Mat_AP;
 
 typedef struct {
@@ -68,12 +68,13 @@ typedef struct {
   Mat                  RARt;  /* dense matrix of R*A*R^T */
   Mat                  ARt;   /* A*R^T used for the case -matrart_color_art */
   MatScalar            *work; /* work array to store columns of A*R^T used in MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqDense() */
-  PetscErrorCode (*destroy)(Mat);
+  /* free intermediate products needed for PtAP */
+  void                 *data;
+  PetscErrorCode       (*destroy)(void*);
 } Mat_RARt;
 
 typedef struct {
   Mat BC;               /* temp matrix for storing B*C */
-  PetscErrorCode (*destroy)(Mat);
 } Mat_MatMatMatMult;
 
 /*
@@ -121,15 +122,6 @@ typedef struct {
   PetscBool   ibdiagvalid;                    /* inverses of block diagonals are valid. */
   PetscBool   diagonaldense;                  /* all entries along the diagonal have been set; i.e. no missing diagonal terms */
   PetscScalar fshift,omega;                   /* last used omega and fshift */
-
-  ISColoring  coloring;                       /* set with MatADSetColoring() used by MatADSetValues() */
-
-  PetscScalar         *matmult_abdense;    /* used by MatMatMult() */
-  Mat_AP              *ap;                 /* used by MatPtAP() */
-  Mat_MatMatMatMult   *matmatmatmult;      /* used by MatMatMatMult() */
-  Mat_RARt            *rart;               /* used by MatRARt() */
-  Mat_MatMatTransMult *abt;                /* used by MatMatTransposeMult() */
-  Mat_MatTransMatMult *atb;                /* used by MatTransposeMatMult() */
 } Mat_SeqAIJ;
 
 /*
@@ -156,7 +148,7 @@ PETSC_STATIC_INLINE PetscErrorCode MatSeqXAIJFreeAIJ(Mat AA,MatScalar **a,PetscI
   if (NROW >= RMAX) { \
     Mat_SeqAIJ *Ain = (Mat_SeqAIJ*)Amat->data; \
     /* there is no extra room in row, therefore enlarge */ \
-    PetscInt CHUNKSIZE = 15,new_nz = AI[AM] + CHUNKSIZE,len,*new_i=0,*new_j=0; \
+    PetscInt CHUNKSIZE = 15,new_nz = AI[AM] + CHUNKSIZE,len,*new_i=NULL,*new_j=NULL; \
     datatype *new_a; \
  \
     if (NONEW == -2) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"New nonzero at (%D,%D) caused a malloc\nUse MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE) to turn off this check",ROW,COL); \
@@ -189,7 +181,7 @@ PETSC_STATIC_INLINE PetscErrorCode MatSeqXAIJFreeAIJ(Mat AA,MatScalar **a,PetscI
   if (NROW >= RMAX) { \
     Mat_SeqAIJ *Ain = (Mat_SeqAIJ*)Amat->data; \
     /* there is no extra room in row, therefore enlarge */ \
-    PetscInt CHUNKSIZE = 15,new_nz = AI[AM] + CHUNKSIZE,len,*new_i=0,*new_j=0; \
+    PetscInt CHUNKSIZE = 15,new_nz = AI[AM] + CHUNKSIZE,len,*new_i=NULL,*new_j=NULL; \
  \
     if (NONEW == -2) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"New nonzero at (%D,%D) caused a malloc\nUse MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE) to turn off this check",ROW,COL); \
     /* malloc new storage space */ \
@@ -318,10 +310,7 @@ PETSC_INTERN PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_colorrart(Mat,Mat,Mat);
 
 PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_SeqAIJ_SeqAIJ(Mat,Mat,Mat);
-PETSC_INTERN PetscErrorCode MatDestroy_SeqAIJ_MatTransMatMult(Mat);
-
-PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqDense(Mat,Mat,PetscReal,Mat);
-PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_SeqAIJ_SeqDense(Mat,Mat,Mat);
+PETSC_INTERN PetscErrorCode MatDestroy_SeqAIJ_MatTransMatMult(void*);
 
 PETSC_INTERN PetscErrorCode MatMatTransposeMultSymbolic_SeqAIJ_SeqAIJ(Mat,Mat,PetscReal,Mat);
 PETSC_INTERN PetscErrorCode MatMatTransposeMultNumeric_SeqAIJ_SeqAIJ(Mat,Mat,Mat);
@@ -366,6 +355,9 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqBAIJ(Mat,MatType,MatReuse,Mat*)
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqDense(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJCRL(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_Elemental(Mat,MatType,MatReuse,Mat*);
+#if defined(PETSC_HAVE_SCALAPACK)
+PETSC_INTERN PetscErrorCode MatConvert_AIJ_ScaLAPACK(Mat,MatType,MatReuse,Mat*);
+#endif
 PETSC_INTERN PetscErrorCode MatConvert_AIJ_HYPRE(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJPERM(Mat,MatType,MatReuse,Mat*);
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJSELL(Mat,MatType,MatReuse,Mat*);
@@ -388,7 +380,7 @@ PETSC_INTERN PetscErrorCode MatDestroySubMatrices_Dummy(PetscInt, Mat*[]);
 PETSC_INTERN PetscErrorCode MatCreateSubMatrix_SeqAIJ(Mat,IS,IS,PetscInt,MatReuse,Mat*);
 
 PETSC_INTERN PetscErrorCode MatSeqAIJCompactOutExtraColumns_SeqAIJ(Mat,ISLocalToGlobalMapping*);
-PETSC_INTERN PetscErrorCode MatSetSeqAIJWithArrays_private(MPI_Comm,PetscInt,PetscInt,PetscInt[],PetscInt[],PetscScalar[],Mat);
+PETSC_INTERN PetscErrorCode MatSetSeqAIJWithArrays_private(MPI_Comm,PetscInt,PetscInt,PetscInt[],PetscInt[],PetscScalar[],MatType,Mat);
 
 /*
     PetscSparseDenseMinusDot - The inner kernel of triangular solves and Gauss-Siedel smoothing. \sum_i xv[i] * r[xi[i]] for CSR storage
@@ -537,7 +529,7 @@ PETSC_STATIC_INLINE void PetscSparseDensePlusDot_AVX512_Private(PetscScalar *sum
   }
   if (n>2) *sum += _mm512_reduce_add_pd(vec_y);
 /*
-  for(j=0;j<(n&0x07);j++) *sum += aa[j]*x[aj[j]];
+  for (j=0;j<(n&0x07);j++) *sum += aa[j]*x[aj[j]];
 */
 }
 #endif

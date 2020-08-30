@@ -38,7 +38,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   ierr = PetscOptionsBool("-monitor", "Flag to use the TS monitor", "ex4.c", options->monitor, &options->monitor, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-error", "Flag to print the error", "ex4.c", options->error, &options->error, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-simplex", "The flag for simplices or tensor cells", "ex4.c", options->simplex, &options->simplex, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-mesh", "Name of the mesh filename if any", "ex4.c", options->filename, options->filename, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-mesh", "Name of the mesh filename if any", "ex4.c", options->filename, options->filename, sizeof(options->filename), NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-particles_per_cell", "Number of particles per cell", "ex4.c", options->particlesPerCell, &options->particlesPerCell, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
 
@@ -202,7 +202,7 @@ static PetscErrorCode RHSFunction1(TS ts, PetscReal t, Vec V, Vec Xres, void *ct
   ierr = VecGetArray(Xres, &xres);CHKERRQ(ierr);
   ierr = VecGetArrayRead(V, &v);CHKERRQ(ierr);
   for (p = 0; p < Np; ++p) {
-     for(d = 0; d < dim; ++d) {
+     for (d = 0; d < dim; ++d) {
        xres[p*dim+d] = v[p*dim+d];
      }
   }
@@ -254,7 +254,7 @@ static PetscErrorCode RHSFunctionParticles(TS ts, PetscReal t , Vec U, Vec R, vo
   Np  /= 2*dim;
   ierr = VecGetArrayRead(U, &u);CHKERRQ(ierr);
   ierr = VecGetArray(R, &r);CHKERRQ(ierr);
-  for( p = 0; p < Np; ++p) {
+  for (p = 0; p < Np; ++p) {
     const PetscScalar rsqr = DMPlex_NormD_Internal(dim, &u[p*2*dim]);
 
     for (d = 0; d < dim; ++d) {

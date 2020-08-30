@@ -42,17 +42,17 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   ierr = PetscOptionsRangeInt("-dim", "The topological mesh dimension", FILENAME, options->dim, &options->dim, NULL,1,3);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-simplex", "Use simplices if true, otherwise hexes", FILENAME, options->simplex, &options->simplex, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-interpolate", "Interpolate the mesh", FILENAME, options->interpolate, &options->interpolate, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-filename", "The mesh file", FILENAME, options->filename, options->filename, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-filename", "The mesh file", FILENAME, options->filename, options->filename, sizeof(options->filename), NULL);CHKERRQ(ierr);
   options->faces[0] = 1; options->faces[1] = 1; options->faces[2] = 1;
   dim = options->dim;
   ierr = PetscOptionsIntArray("-faces", "Number of faces per dimension", FILENAME, options->faces, &dim, NULL);CHKERRQ(ierr);
   if (dim) options->dim = dim;
-  ierr = PetscStrncpy(options->partitioning,MATPARTITIONINGPARMETIS,64);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-partitioning","The mat partitioning type to test","None",options->partitioning, options->partitioning,64,NULL);CHKERRQ(ierr);
+  ierr = PetscStrncpy(options->partitioning,MATPARTITIONINGPARMETIS,sizeof(options->partitioning));CHKERRQ(ierr);
+  ierr = PetscOptionsString("-partitioning","The mat partitioning type to test","None",options->partitioning, options->partitioning,sizeof(options->partitioning),NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-repartition", "Partition again after the first partition?", FILENAME, repartition, &repartition, NULL);CHKERRQ(ierr);
   if (repartition) {
     ierr = PetscStrncpy(options->repartitioning,MATPARTITIONINGPARMETIS,64);CHKERRQ(ierr);
-    ierr = PetscOptionsString("-repartitioning","The mat partitioning type to test (second partitioning)","None", options->repartitioning, options->repartitioning,64,NULL);CHKERRQ(ierr);
+    ierr = PetscOptionsString("-repartitioning","The mat partitioning type to test (second partitioning)","None", options->repartitioning, options->repartitioning,sizeof(options->repartitioning),NULL);CHKERRQ(ierr);
   } else {
     options->repartitioning[0] = '\0';
   }
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
   /* compare the two ISs */
   if (user.compare_is) {
     ierr = ISEqualUnsorted(is1g, is2g, &flg);CHKERRQ(ierr);
-    if (!flg) PetscPrintf(comm, "ISs are not equal with type %s with size %d.\n",user.partitioning,size);
+    if (!flg) {ierr = PetscPrintf(comm, "ISs are not equal with type %s with size %d.\n",user.partitioning,size);CHKERRQ(ierr);}
   }
   ierr = ISDestroy(&is1g);CHKERRQ(ierr);
   ierr = ISDestroy(&is2g);CHKERRQ(ierr);
@@ -165,7 +165,7 @@ int main(int argc, char **argv)
   ierr = PetscSectionViewFromOptions(s2, NULL, "-seq_s2_view");CHKERRQ(ierr);
   if (user.compare_is) {
     ierr = PetscSectionCompare(s1, s2, &flg);CHKERRQ(ierr);
-    if (!flg) PetscPrintf(comm, "PetscSections are not equal with %s with size %d.\n",user.partitioning,size);
+    if (!flg) {ierr = PetscPrintf(comm, "PetscSections are not equal with %s with size %d.\n",user.partitioning,size);CHKERRQ(ierr);}
   }
 
   /* distribute both DMs */
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
   /* compare the two distributed DMs */
   if (user.compare_dm) {
     ierr = DMPlexEqual(dmdist1, dmdist2, &flg);CHKERRQ(ierr);
-    if (!flg) PetscPrintf(comm, "Distributed DMs are not equal %s with size %d.\n",user.partitioning,size);
+    if (!flg) {ierr = PetscPrintf(comm, "Distributed DMs are not equal %s with size %d.\n",user.partitioning,size);CHKERRQ(ierr);}
   }
 
   /* if repartitioning is disabled, then quit */
@@ -235,7 +235,7 @@ int main(int argc, char **argv)
   ierr = ISViewFromOptions(is2g, NULL, "-dist_is2_view");CHKERRQ(ierr);
   if (user.compare_is) {
     ierr = ISEqualUnsorted(is1g, is2g, &flg);CHKERRQ(ierr);
-    if (!flg) PetscPrintf(comm, "Distributed ISs are not equal, with %s with size %d.\n",user.repartitioning,size);
+    if (!flg) {ierr = PetscPrintf(comm, "Distributed ISs are not equal, with %s with size %d.\n",user.repartitioning,size);CHKERRQ(ierr);}
   }
   ierr = ISDestroy(&is1g);CHKERRQ(ierr);
   ierr = ISDestroy(&is2g);CHKERRQ(ierr);
@@ -245,7 +245,7 @@ int main(int argc, char **argv)
   ierr = PetscSectionViewFromOptions(s2, NULL, "-dist_s2_view");CHKERRQ(ierr);
   if (user.compare_is) {
     ierr = PetscSectionCompare(s1, s2, &flg);CHKERRQ(ierr);
-    if (!flg) PetscPrintf(comm, "Distributed PetscSections are not equal, with %s with size %d.\n",user.repartitioning,size);
+    if (!flg) {ierr = PetscPrintf(comm, "Distributed PetscSections are not equal, with %s with size %d.\n",user.repartitioning,size);CHKERRQ(ierr);}
   }
 
   /* redistribute both distributed DMs */
@@ -257,7 +257,7 @@ int main(int argc, char **argv)
   /* compare the two distributed DMs */
   if (!user.interpolate) {
     ierr = DMPlexEqual(dm1, dm2, &flg);CHKERRQ(ierr);
-    if (!flg) PetscPrintf(comm, "Redistributed DMs are not equal, with %s with size %d.\n",user.repartitioning,size);
+    if (!flg) {ierr = PetscPrintf(comm, "Redistributed DMs are not equal, with %s with size %d.\n",user.repartitioning,size);CHKERRQ(ierr);}
   }
 
   /* cleanup */

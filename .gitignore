@@ -189,3 +189,7 @@ src/docs/tao_tex/manual/*.out
 src/docs/tao_tex/manual/*.toc
 src/docs/tao_tex/manual/*.dvi
 /docs/
+**/f90module*.f90
+compile_commands.json
+.clangd/
+sphinx_docs_env

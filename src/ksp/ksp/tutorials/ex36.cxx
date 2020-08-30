@@ -61,7 +61,7 @@ Usage:
     mpiexec -n $NP ./ex36 -problem 2 -n 80 -nu 0.01 -rho 0.005 -io -ksp_monitor -pc_type gamg
     mpiexec -n $NP ./ex36 -problem 2 -n 160 -bc neumann -nu 0.005 -rho 0.01 -io
     mpiexec -n $NP ./ex36 -problem 2 -n 320 -bc neumann -nu 0.001 -rho 1 -io
-  
+
   Or with an external mesh file representing [0, 1]^3,
 
     mpiexec -n $NP ./ex36 -problem 2 -file ./external_mesh.h5m -levels 1 -pc_type gamg
@@ -117,8 +117,7 @@ int main(int argc, char **argv)
   /* Create the DM object from either a mesh file or from in-memory structured grid */
   if (user.use_extfile) {
     ierr = DMMoabLoadFromFile(PETSC_COMM_WORLD, user.dim, 1, user.filename, "", &dm);CHKERRQ(ierr);
-  }
-  else {
+  } else {
     ierr = DMMoabCreateBoxMesh(PETSC_COMM_WORLD, user.dim, user.usetet, NULL, user.n, 1, &dm);CHKERRQ(ierr);
   }
   ierr = DMSetFromOptions(dm);CHKERRQ(ierr);
@@ -133,13 +132,12 @@ int main(int argc, char **argv)
   ierr = KSPSetComputeRHS(ksp, ComputeRHS_MOAB, &user);CHKERRQ(ierr);
   ierr = KSPSetComputeOperators(ksp, ComputeMatrix_MOAB, &user);CHKERRQ(ierr);
 
-  if (user.nlevels)
-  {
-    KSPGetPC(ksp, &pc);
+  if (user.nlevels) {
+    ierr = KSPGetPC(ksp, &pc);CHKERRQ(ierr);
     ierr = PetscMalloc(sizeof(DM) * (user.nlevels + 1), &dmhierarchy);
     for (k = 0; k <= user.nlevels; k++) dmhierarchy[k] = NULL;
 
-    PetscPrintf(PETSC_COMM_WORLD, "Number of mesh hierarchy levels: %d\n", user.nlevels);
+    ierr = PetscPrintf(PETSC_COMM_WORLD, "Number of mesh hierarchy levels: %d\n", user.nlevels);CHKERRQ(ierr);
     ierr = DMMoabGenerateHierarchy(dm, user.nlevels, PETSC_NULL);CHKERRQ(ierr);
 
     // coarsest grid = 0
@@ -148,8 +146,7 @@ int main(int argc, char **argv)
     PetscBool usehierarchy = PETSC_FALSE;
     if (usehierarchy) {
       ierr = DMRefineHierarchy(dm, user.nlevels, &dmhierarchy[1]);CHKERRQ(ierr);
-    }
-    else {
+    } else {
       for (k = 1; k <= user.nlevels; k++) {
         ierr = DMRefine(dmhierarchy[k - 1], MPI_COMM_NULL, &dmhierarchy[k]);CHKERRQ(ierr);
       }
@@ -176,8 +173,7 @@ int main(int argc, char **argv)
       ierr = DMDestroy(&dmhierarchy[k]);CHKERRQ(ierr);
     }
     ierr = PetscFree(dmhierarchy);CHKERRQ(ierr);
-  }
-  else {
+  } else {
     dmref = dm;
     PetscObjectReference((PetscObject)dm);
   }
@@ -223,30 +219,17 @@ int main(int argc, char **argv)
 PetscReal ComputeDiffusionCoefficient(PetscReal coords[3], UserContext* user)
 {
   if (user->problem == 2) {
-    if ((coords[0] > 1.0 / 3.0) && (coords[0] < 2.0 / 3.0) &&
-        (coords[1] > 1.0 / 3.0) && (coords[1] < 2.0 / 3.0) &&
-        (coords[2] > 1.0 / 3.0) && (coords[2] < 2.0 / 3.0))
-    {
-      return user->rho;
-    }
-    else
-      return 1.0;
-  }
-  else return 1.0; /* problem = 1 */
+    if ((coords[0] > 1.0 / 3.0) && (coords[0] < 2.0 / 3.0) && (coords[1] > 1.0 / 3.0) && (coords[1] < 2.0 / 3.0) && (coords[2] > 1.0 / 3.0) && (coords[2] < 2.0 / 3.0)) return user->rho;
+    else  return 1.0;
+  } else return 1.0; /* problem = 1 */
 }
 
 
 PetscReal ComputeReactionCoefficient(PetscReal coords[3], UserContext* user)
 {
   if (user->problem == 2) {
-    if ((coords[0] > 1.0 / 3.0) && (coords[0] < 2.0 / 3.0) &&
-        (coords[1] > 1.0 / 3.0) && (coords[1] < 2.0 / 3.0) &&
-        (coords[2] > 1.0 / 3.0) && (coords[2] < 2.0 / 3.0))
-    {
-      return 10.0;
-    }
-    else
-      return 0.0;
+    if ((coords[0] > 1.0 / 3.0) && (coords[0] < 2.0 / 3.0) && (coords[1] > 1.0 / 3.0) && (coords[1] < 2.0 / 3.0) && (coords[2] > 1.0 / 3.0) && (coords[2] < 2.0 / 3.0)) return 10.0;
+    else return 0.0;
   }
   else return 5.0; /* problem = 1 */
 }
@@ -259,9 +242,7 @@ double ExactSolution(PetscReal coords[3], UserContext* user)
     const PetscScalar yy = (coords[1] - user->xyzref[1]) * (coords[1] - user->xyzref[1]);
     const PetscScalar zz = (coords[2] - user->xyzref[2]) * (coords[2] - user->xyzref[2]);
     return PetscExpScalar(-(xx + yy + zz) / user->nu);
-  }
-  else
-    return sin(PETSC_PI * coords[0]) * sin(PETSC_PI * coords[1]) * sin(PETSC_PI * coords[2]);
+  } else return sin(PETSC_PI * coords[0]) * sin(PETSC_PI * coords[1]) * sin(PETSC_PI * coords[2]);
 }
 
 
@@ -276,10 +257,9 @@ double ForcingFunction(PetscReal coords[3], UserContext* user)
 {
   const PetscReal exact = ExactSolution(coords, user);
   if (user->problem == 2) {
-    const PetscReal duxyz = ( (coords[0] - user->xyzref[0]) + (coords[1] - user->xyzref[1]) + (coords[2] - user->xyzref[2]) );
+    const PetscReal duxyz = ( (coords[0] - user->xyzref[0]) + (coords[1] - user->xyzref[1]) + (coords[2] - user->xyzref[2]));
     return (4.0 / user->nu * duxyz * duxyz - 6.0) * exact / user->nu;
-  }
-  else {
+  } else {
     const PetscReal reac = ComputeReactionCoefficient(coords, user);
     return (3.0 * PETSC_PI * PETSC_PI + reac) * exact;
   }
@@ -411,9 +391,9 @@ PetscErrorCode ComputeMatrix_MOAB(KSP ksp, Mat J, Mat jac, void *ctx)
   ierr = DMMoabGetLocalElements(dm, &elocal);CHKERRQ(ierr);
   ierr = DMMoabGetSize(dm, &nglobale, &nglobalv);CHKERRQ(ierr);
   ierr = DMMoabGetHierarchyLevel(dm, &hlevel);CHKERRQ(ierr);
-  PetscPrintf(PETSC_COMM_WORLD, "ComputeMatrix: Level = %d, N(elements) = %d, N(vertices) = %d \n", hlevel, nglobale, nglobalv);
+  ierr = PetscPrintf(PETSC_COMM_WORLD, "ComputeMatrix: Level = %d, N(elements) = %d, N(vertices) = %d \n", hlevel, nglobale, nglobalv);CHKERRQ(ierr);
 
-  ierr = DMMoabFEMCreateQuadratureDefault ( user->dim, user->VPERE, &quadratureObj );CHKERRQ(ierr);
+  ierr = DMMoabFEMCreateQuadratureDefault ( user->dim, user->VPERE, &quadratureObj);CHKERRQ(ierr);
   ierr = PetscQuadratureGetData(quadratureObj, NULL, &nc, &npoints, NULL, NULL);CHKERRQ(ierr);
   ierr = PetscMalloc6(user->VPERE * npoints, &phi, user->VPERE * npoints, &dphi[0], user->VPERE * npoints, &dphi[1], user->VPERE * npoints, &dphi[2], npoints * 3, &phypts, npoints, &jxw);CHKERRQ(ierr);
 
@@ -451,9 +431,8 @@ PetscErrorCode ComputeMatrix_MOAB(KSP ksp, Mat J, Mat jac, void *ctx)
         for (j = 0; j < nconn; ++j) {
           array[i * nconn + j] += jxw[q] * ( rho * ( dphi[0][offset + i] * dphi[0][offset + j] +
                                                      dphi[1][offset + i] * dphi[1][offset + j] +
-                                                     dphi[2][offset + i] * dphi[2][offset + j] )
-                                             + alpha * ( phi[offset + i] * phi[offset + j] )
-                                            );
+                                                     dphi[2][offset + i] * dphi[2][offset + j])
+                                             + alpha * ( phi[offset + i] * phi[offset + j]));
         }
       }
     }
@@ -540,8 +519,7 @@ PetscErrorCode ComputeDiscreteL2Error(KSP ksp, Vec err, UserContext *user)
     /* compute the discrete L2 error against the exact solution */
     const PetscScalar lerr = (ExactSolution(vpos, user) - x[dof_index]);
     l2err += lerr * lerr;
-    if (linferr < fabs(lerr))
-      linferr = fabs(lerr);
+    if (linferr < fabs(lerr)) linferr = fabs(lerr);
 
     if (err) {
       /* set the discrete L2 error against the exact solution */
@@ -604,7 +582,7 @@ PetscErrorCode InitializeOptions(UserContext* user)
   ierr = PetscOptionsBool("-tet", "Use tetrahedra to discretize the domain", "ex36.cxx", user->usetet, &user->usetet, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-error", "Compute the discrete L_2 and L_inf errors of the solution", "ex36.cxx", user->error, &user->error, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsEList("-bc", "Type of boundary condition", "ex36.cxx", bcTypes, 2, bcTypes[0], &bc, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-file", "The mesh file for the problem", "ex36.cxx", "", user->filename, PETSC_MAX_PATH_LEN, &user->use_extfile);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-file", "The mesh file for the problem", "ex36.cxx", "", user->filename, sizeof(user->filename), &user->use_extfile);CHKERRQ(ierr);
   ierr = PetscOptionsEnd();
 
   if (user->problem < 1 || user->problem > 2) user->problem = 1;

@@ -205,7 +205,7 @@ static PetscErrorCode PCView_BDDC(PC pc,PetscViewer viewer)
 
     /* compute interface size */
     ierr = VecSet(pcis->vec1_B,1.0);CHKERRQ(ierr);
-    ierr = MatCreateVecs(pc->pmat,&counter,0);CHKERRQ(ierr);
+    ierr = MatCreateVecs(pc->pmat,&counter,NULL);CHKERRQ(ierr);
     ierr = VecSet(counter,0.0);CHKERRQ(ierr);
     ierr = VecScatterBegin(pcis->global_to_B,pcis->vec1_B,counter,INSERT_VALUES,SCATTER_REVERSE);CHKERRQ(ierr);
     ierr = VecScatterEnd(pcis->global_to_B,pcis->vec1_B,counter,INSERT_VALUES,SCATTER_REVERSE);CHKERRQ(ierr);
@@ -1142,7 +1142,7 @@ static PetscErrorCode PCBDDCSetLocalAdjacencyGraph_BDDC(PC pc, PetscInt nvtxs,co
 @*/
 PetscErrorCode PCBDDCSetLocalAdjacencyGraph(PC pc,PetscInt nvtxs,const PetscInt xadj[],const PetscInt adjncy[], PetscCopyMode copymode)
 {
-  void (*f)(void) = 0;
+  void (*f)(void) = NULL;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -1419,7 +1419,7 @@ static PetscErrorCode PCPreSolve_BDDC(PC pc, KSP ksp, Vec rhs, Vec x)
   }
 
   /* remove the computed solution or the initial guess from the rhs */
-  if (pcbddc->rhs_change || (ksp && pcbddc->ksp_guess_nonzero) ) {
+  if (pcbddc->rhs_change || (ksp && pcbddc->ksp_guess_nonzero)) {
     /* save the original rhs */
     if (save_rhs) {
       ierr = VecSwap(rhs,pcbddc->original_rhs);CHKERRQ(ierr);
@@ -2944,9 +2944,8 @@ PetscErrorCode PCBDDCCreateFETIDPOperators(PC pc, PetscBool fully_redundant, con
    Adaptive selection of primal constraints [4] is supported for SPD systems with high-contrast in the coefficients if MUMPS or MKL_PARDISO are present. Future versions of the code will also consider using PASTIX.
 
    An experimental interface to the FETI-DP method is available. FETI-DP operators could be created using PCBDDCCreateFETIDPOperators(). A stand-alone class for the FETI-DP method will be provided in the next releases.
-   Deluxe scaling is not supported yet for FETI-DP.
 
-   Options Database Keys (some of them, run with -h for a complete list):
+   Options Database Keys (some of them, run with -help for a complete list):
 
 +    -pc_bddc_use_vertices <true> - use or not vertices in primal space
 .    -pc_bddc_use_edges <true> - use or not edges in primal space
@@ -3041,9 +3040,9 @@ PETSC_EXTERN PetscErrorCode PCCreate_BDDC(PC pc)
   pc->ops->destroy             = PCDestroy_BDDC;
   pc->ops->setfromoptions      = PCSetFromOptions_BDDC;
   pc->ops->view                = PCView_BDDC;
-  pc->ops->applyrichardson     = 0;
-  pc->ops->applysymmetricleft  = 0;
-  pc->ops->applysymmetricright = 0;
+  pc->ops->applyrichardson     = NULL;
+  pc->ops->applysymmetricleft  = NULL;
+  pc->ops->applysymmetricright = NULL;
   pc->ops->presolve            = PCPreSolve_BDDC;
   pc->ops->postsolve           = PCPostSolve_BDDC;
   pc->ops->reset               = PCReset_BDDC;

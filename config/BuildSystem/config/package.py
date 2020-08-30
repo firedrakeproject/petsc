@@ -83,7 +83,6 @@ class Package(config.base.Configure):
     self.requires32bitintblas   = 1  # 1 means that the package will not work with 64 bit integer BLAS/LAPACK
     self.skippackagewithoptions = 0  # packages like fblaslapack and MPICH do not support --with-package* options so do not print them in help
     self.alternativedownload    = [] # Used by, for example mpi.py to print useful error messages, which does not support --download-mpi but one can use --download-mpich
-    self.requirec99flag         = 0  # package must be compiled with C99 flags
     self.usesopenmp             = 'no'  # yes, no, unknow package is built to use OpenMP
 
     # Outside coupling
@@ -143,7 +142,7 @@ class Package(config.base.Configure):
       self.petscdir        = FakePETScDir()
     # All packages depend on make
     self.make          = framework.require('config.packages.make',self)
-    if not self.isMPI and not self.package in ['make','cuda']:
+    if not self.isMPI and not self.package in ['make','cuda','thrust']:
       # force MPI to be the first package configured since all other packages
       # may depend on its compilers defined here
       self.mpi         = framework.require('config.packages.MPI',self)
@@ -169,6 +168,7 @@ class Package(config.base.Configure):
     name:         The module name (usually the filename)
     package:      The lowercase name
     PACKAGE:      The uppercase name
+    pkgname:      The name of pkg-config (.pc) file
     downloadname:     Name for download option (usually name)
     downloaddirnames: names for downloaded directory (first part of string) (usually downloadname)
     '''
@@ -179,8 +179,8 @@ class Package(config.base.Configure):
       self.name           = 'DEBUGGING'
     self.PACKAGE          = self.name.upper()
     self.package          = self.name.lower()
+    self.pkgname          = self.package
     self.downloadname     = self.name
-    self.pkgname          = self.name
     self.downloaddirnames = [self.downloadname];
     return
 
@@ -257,7 +257,7 @@ class Package(config.base.Configure):
   def removeWarningFlags(self,flags):
     outflags = []
     for flag in flags.split():
-      if not flag in ['-Wall','-Wwrite-strings','-Wno-strict-aliasing','-Wno-unknown-pragmas','-Wno-unused-variable','-Wno-unused-dummy-argument','-fvisibility=hidden','-std=c89','-pedantic']:
+      if not flag in ['-Werror','-Wall','-Wwrite-strings','-Wno-strict-aliasing','-Wno-unknown-pragmas','-Wno-unused-variable','-Wno-unused-dummy-argument','-fvisibility=hidden','-std=c89','-pedantic','--coverage','-MFree','-fdefault-integer-8']:
         outflags.append(flag)
     return ' '.join(outflags)
 
@@ -325,7 +325,7 @@ class Package(config.base.Configure):
   def getInstallDir(self):
     '''Returns --prefix (or the value computed from --package-prefix-hash) if provided otherwise $PETSC_DIR/$PETSC_ARCH'''
     '''Special case for packages such as sowing that are have self.publicInstall == 0 it always locates them in $PETSC_DIR/$PETSC_ARCH'''
-    '''Special special case if --package-prefix-hash then even self.publicInstall == 0 are installed in the prefix location'''
+    '''Special case if --package-prefix-hash then even self.publicInstall == 0 are installed in the prefix location'''
     self.confDir    = self.installDirProvider.confDir  # private install location; $PETSC_DIR/$PETSC_ARCH for PETSc
     self.packageDir = self.getDir()
     if not self.packageDir: self.packageDir = self.downLoad()
@@ -638,7 +638,7 @@ class Package(config.base.Configure):
   def matchExcludeDir(self,dir):
     '''Check is the dir matches something in the excluded directory list'''
     for exdir in self.excludedDirs:
-      if dir.startswith(exdir):
+      if dir.lower().startswith(exdir.lower()):
         return 1
     return 0
 
@@ -718,7 +718,7 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
       Dir.append(hgpkg)
     for d in pkgdirs:
       for j in self.downloaddirnames:
-        if d.startswith(j) and os.path.isdir(os.path.join(packages, d)) and not self.matchExcludeDir(d):
+        if d.lower().startswith(j.lower()) and os.path.isdir(os.path.join(packages, d)) and not self.matchExcludeDir(d):
           Dir.append(d)
 
     if len(Dir) > 1:
@@ -1086,6 +1086,8 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
   def configure(self):
     if hasattr(self, 'download_solaris') and config.setCompilers.Configure.isSolaris(self.log):
       self.download = self.download_solaris
+    if hasattr(self, 'download_darwin') and config.setCompilers.Configure.isDarwin(self.log):
+      self.download = self.download_darwin
     if self.download and self.argDB['download-'+self.downloadname.lower()] and (not self.framework.batchBodies or self.installwithbatch):
       self.argDB['with-'+self.package] = 1
       downloadPackageVal = self.argDB['download-'+self.downloadname.lower()]
@@ -1161,6 +1163,7 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
 
   def rmArgsStartsWith(self,args,rejectstarts):
     rejects = []
+    if not isinstance(rejectstarts, list): rejectstarts = [rejectstarts]
     for i in rejectstarts:
       rejects.extend([arg for arg in args if arg.startswith(i)])
     return self.rmArgs(args,rejects)
@@ -1390,7 +1393,7 @@ Brief overview of how BuildSystem\'s configuration of packages works.
                 downLoad():
                   ...
                   download and unpack the source to self.packageDir,
-          Install():
+            Install():
             /* This must be implemented by a package subclass */
 
     Install:
@@ -1545,17 +1548,17 @@ class GNUPackage(Package):
           args.append('F90="'+self.setCompilers.cross_fc+'"')
         else:
           args.append('F90="'+fc+'"')
-        args.append('F90FLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','').replace('-fdefault-integer-8','')+'"')
+        args.append('F90FLAGS="'+self.removeWarningFlags(self.getCompilerFlags())+'"')
       else:
         args.append('--disable-f90')
-      args.append('FFLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','').replace('-fdefault-integer-8','')+'"')
+      args.append('FFLAGS="'+self.removeWarningFlags(self.getCompilerFlags())+'"')
       if not self.installwithbatch and hasattr(self.setCompilers,'cross_fc'):
         args.append('FC="'+self.setCompilers.cross_fc+'"')
         args.append('F77="'+self.setCompilers.cross_fc+'"')
       else:
         args.append('FC="'+fc+'"')
         args.append('F77="'+fc+'"')
-      args.append('FCFLAGS="'+self.removeWarningFlags(self.getCompilerFlags()).replace('-Mfree','').replace('-fdefault-integer-8','')+'"')
+      args.append('FCFLAGS="'+self.removeWarningFlags(self.getCompilerFlags())+'"')
       self.popLanguage()
     else:
       args.append('--disable-fortran')
@@ -1673,10 +1676,6 @@ class CMakePackage(Package):
     ranlib = shlex.split(self.setCompilers.RANLIB)[0]
     args.append('-DCMAKE_RANLIB='+ranlib)
     cflags = self.removeWarningFlags(self.setCompilers.getCompilerFlags())
-    if self.requirec99flag:
-      if (self.compilers.c99flag == None):
-        raise RuntimeError('Requires c99 compiler. Configure cold not determine compatible compiler flag. Perhaps you can specify via CFLAG')
-      cflags += ' '+self.compilers.c99flag
     args.append('-DCMAKE_C_FLAGS:STRING="'+cflags+'"')
     args.append('-DCMAKE_C_FLAGS_DEBUG:STRING="'+cflags+'"')
     args.append('-DCMAKE_C_FLAGS_RELEASE:STRING="'+cflags+'"')
@@ -1709,7 +1708,7 @@ class CMakePackage(Package):
   def Install(self):
     import os
     args = self.formCMakeConfigureArgs()
-    if self.download and self.argDB['download-'+self.downloadname.lower()+'-cmake-arguments']:
+    if self.download and 'download-'+self.downloadname.lower()+'-cmake-arguments' in self.framework.clArgDB:
        args.append(self.argDB['download-'+self.downloadname.lower()+'-cmake-arguments'])
     args = ' '.join(args)
     conffile = os.path.join(self.packageDir,self.package+'.petscconf')

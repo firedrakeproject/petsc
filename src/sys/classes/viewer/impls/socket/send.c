@@ -159,7 +159,7 @@ PetscErrorCode  PetscOpenSocket(const char hostname[],int portnum,int *t)
   PetscFunctionReturn(0);
 }
 
-#define MAXHOSTNAME 100
+
 /*@C
    PetscSocketEstablish - starts a listener on a socket
 
@@ -176,6 +176,7 @@ PetscErrorCode  PetscOpenSocket(const char hostname[],int portnum,int *t)
 @*/
 PETSC_INTERN PetscErrorCode PetscSocketEstablish(int portnum,int *ss)
 {
+  static size_t      MAXHOSTNAME = 100;
   char               myname[MAXHOSTNAME+1];
   int                s;
   PetscErrorCode     ierr;
@@ -183,7 +184,7 @@ PETSC_INTERN PetscErrorCode PetscSocketEstablish(int portnum,int *ss)
   struct hostent     *hp;
 
   PetscFunctionBegin;
-  ierr = PetscGetHostName(myname,MAXHOSTNAME);CHKERRQ(ierr);
+  ierr = PetscGetHostName(myname,sizeof(myname));CHKERRQ(ierr);
 
   ierr = PetscMemzero(&sa,sizeof(struct sockaddr_in));CHKERRQ(ierr);
 
@@ -332,10 +333,10 @@ static PetscErrorCode PetscViewerSetFromOptions_Socket(PetscOptionItems *PetscOp
   } else def = PETSCSOCKETDEFAULTPORT;
   ierr = PetscOptionsInt("-viewer_socket_port","Port number to use for socket","PetscViewerSocketSetConnection",def,NULL,NULL);CHKERRQ(ierr);
 
-  ierr = PetscOptionsString("-viewer_socket_machine","Machine to use for socket","PetscViewerSocketSetConnection",sdef,NULL,0,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetenv(PetscObjectComm((PetscObject)v),"PETSC_VIEWER_SOCKET_MACHINE",sdef,256,&tflg);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-viewer_socket_machine","Machine to use for socket","PetscViewerSocketSetConnection",sdef,NULL,sizeof(sdef),NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetenv(PetscObjectComm((PetscObject)v),"PETSC_VIEWER_SOCKET_MACHINE",sdef,sizeof(sdef),&tflg);CHKERRQ(ierr);
   if (!tflg) {
-    ierr = PetscGetHostName(sdef,256);CHKERRQ(ierr);
+    ierr = PetscGetHostName(sdef,sizeof(sdef));CHKERRQ(ierr);
   }
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -436,12 +437,12 @@ PetscErrorCode  PetscViewerSocketSetConnection(PetscViewer v,const char machine[
     } else port = PETSCSOCKETDEFAULTPORT;
   }
   if (!machine) {
-    ierr = PetscOptionsGetenv(PetscObjectComm((PetscObject)v),"PETSC_VIEWER_SOCKET_MACHINE",mach,256,&tflg);CHKERRQ(ierr);
+    ierr = PetscOptionsGetenv(PetscObjectComm((PetscObject)v),"PETSC_VIEWER_SOCKET_MACHINE",mach,sizeof(mach),&tflg);CHKERRQ(ierr);
     if (!tflg) {
-      ierr = PetscGetHostName(mach,256);CHKERRQ(ierr);
+      ierr = PetscGetHostName(mach,sizeof(mach));CHKERRQ(ierr);
     }
   } else {
-    ierr = PetscStrncpy(mach,machine,256);CHKERRQ(ierr);
+    ierr = PetscStrncpy(mach,machine,sizeof(mach));CHKERRQ(ierr);
   }
 
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)v),&rank);CHKERRQ(ierr);
@@ -500,7 +501,7 @@ $       XXXView(XXX object,PETSC_VIEWER_SOCKET_(comm));
      Connects to a waiting socket and stays connected until PetscViewerDestroy() is called.
 
      Use this for communicating with an interactive MATLAB session, see PETSC_VIEWER_MATLAB_() for writing output to a
-     .mat file. Use PetscMatlabEngineCreate() or PETSC_MATLAB_ENGINE_(), PETSC_MATLAB_ENGINE_SELF, or PETSC_MATLAB_ENGINE_WORLD 
+     .mat file. Use PetscMatlabEngineCreate() or PETSC_MATLAB_ENGINE_(), PETSC_MATLAB_ENGINE_SELF, or PETSC_MATLAB_ENGINE_WORLD
      for communicating with a MATLAB Engine
 
 .seealso: PETSC_VIEWER_SOCKET_WORLD, PETSC_VIEWER_SOCKET_SELF, PetscViewerSocketOpen(), PetscViewerCreate(),
@@ -534,4 +535,3 @@ PetscViewer  PETSC_VIEWER_SOCKET_(MPI_Comm comm)
   if (ierr) {PetscError(PETSC_COMM_SELF,__LINE__,"PETSC_VIEWER_SOCKET_",__FILE__,PETSC_ERR_PLIB,PETSC_ERROR_INITIAL," ");PetscFunctionReturn(NULL);}
   PetscFunctionReturn(viewer);
 }
-

@@ -371,7 +371,7 @@ PetscErrorCode FormFunctionLocal(DMDALocalInfo *info,Field **x,Field **f,void *p
 }
 
 /*
-    Performs sweeps of point block nonlinear Gauss-Seidel on all the local grid points 
+    Performs sweeps of point block nonlinear Gauss-Seidel on all the local grid points
 */
 PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, void *ctx)
 {
@@ -1034,7 +1034,7 @@ PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, void *ctx)
    test:
       suffix: umfpack
       requires: suitesparse
-      args: -da_refine 2 -pc_type lu -pc_factor_mat_solver_type umfpack -snes_view -snes_monitor_short -ksp_monitor_short
+      args: -da_refine 2 -pc_type lu -pc_factor_mat_solver_type umfpack -snes_view -snes_monitor_short -ksp_monitor_short -pc_factor_mat_ordering_type external
 
    test:
       suffix: tut_1

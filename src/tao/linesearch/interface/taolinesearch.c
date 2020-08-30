@@ -152,17 +152,17 @@ PetscErrorCode TaoLineSearchCreate(MPI_Comm comm, TaoLineSearch *newls)
   ls->ngeval=0;
   ls->nfgeval=0;
 
-  ls->ops->computeobjective=0;
-  ls->ops->computegradient=0;
-  ls->ops->computeobjectiveandgradient=0;
-  ls->ops->computeobjectiveandgts=0;
-  ls->ops->setup=0;
-  ls->ops->apply=0;
-  ls->ops->view=0;
-  ls->ops->setfromoptions=0;
-  ls->ops->reset=0;
-  ls->ops->destroy=0;
-  ls->ops->monitor=0;
+  ls->ops->computeobjective = NULL;
+  ls->ops->computegradient = NULL;
+  ls->ops->computeobjectiveandgradient = NULL;
+  ls->ops->computeobjectiveandgts = NULL;
+  ls->ops->setup = NULL;
+  ls->ops->apply = NULL;
+  ls->ops->view = NULL;
+  ls->ops->setfromoptions = NULL;
+  ls->ops->reset = NULL;
+  ls->ops->destroy = NULL;
+  ls->ops->monitor = NULL;
   ls->usemonitor=PETSC_FALSE;
   ls->setupcalled=PETSC_FALSE;
   ls->usetaoroutines=PETSC_FALSE;
@@ -279,7 +279,7 @@ PetscErrorCode TaoLineSearchDestroy(TaoLineSearch *ls)
   PetscFunctionBegin;
   if (!*ls) PetscFunctionReturn(0);
   PetscValidHeaderSpecific(*ls,TAOLINESEARCH_CLASSID,1);
-  if (--((PetscObject)*ls)->refct > 0) {*ls=0; PetscFunctionReturn(0);}
+  if (--((PetscObject)*ls)->refct > 0) {*ls = NULL; PetscFunctionReturn(0);}
   ierr = VecDestroy(&(*ls)->stepdirection);CHKERRQ(ierr);
   ierr = VecDestroy(&(*ls)->start_x);CHKERRQ(ierr);
   if ((*ls)->ops->destroy) {
@@ -308,7 +308,7 @@ PetscErrorCode TaoLineSearchDestroy(TaoLineSearch *ls)
 + x - new solution
 . f - objective function value at x
 . g - gradient vector at x
-. steplength - scalar multiplier of s used ( x = x0 + steplength * x )
+. steplength - scalar multiplier of s used ( x = x0 + steplength * x)
 - reason - reason why the line-search stopped
 
   reason will be set to one of:
@@ -423,19 +423,17 @@ PetscErrorCode TaoLineSearchApply(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, 
 
    Input Parameters:
 +  ls - the TaoLineSearch context
--  type - a known method
+-  type - the TaoLineSearchType selection
 
   Available methods include:
-+ more-thuente
-. gpcg
-- unit - Do not perform any line search
-
++  more-thuente - line search with a cubic model enforcing the strong Wolfe/curvature condition
+.  armijo - simple backtracking line search enforcing only the sufficient decrease condition
+-  unit - do not perform a line search and always accept unit step length
 
   Options Database Keys:
-.   -tao_ls_type - select which method TAO should use
+.  -tao_ls_type <more-thuente, armijo, unit> - select which method TAO should use at runtime
 
   Level: beginner
-
 
 .seealso: TaoLineSearchCreate(), TaoLineSearchGetType(), TaoLineSearchApply()
 
@@ -472,11 +470,11 @@ PetscErrorCode TaoLineSearchSetType(TaoLineSearch ls, TaoLineSearchType type)
   ls->nfeval=0;
   ls->ngeval=0;
   ls->nfgeval=0;
-  ls->ops->setup=0;
-  ls->ops->apply=0;
-  ls->ops->view=0;
-  ls->ops->setfromoptions=0;
-  ls->ops->destroy=0;
+  ls->ops->setup = NULL;
+  ls->ops->apply = NULL;
+  ls->ops->view = NULL;
+  ls->ops->setfromoptions = NULL;
+  ls->ops->destroy = NULL;
   ls->setupcalled = PETSC_FALSE;
   ierr = (*r)(ls);CHKERRQ(ierr);
   ierr = PetscObjectChangeTypeName((PetscObject)ls, type);CHKERRQ(ierr);
@@ -485,7 +483,7 @@ PetscErrorCode TaoLineSearchSetType(TaoLineSearch ls, TaoLineSearchType type)
 
 /*@C
   TaoLineSearchMonitor - Monitor the line search steps. This routine will otuput the
-  iteration number, step length, and function value before calling the implementation 
+  iteration number, step length, and function value before calling the implementation
   specific monitor.
 
    Input Parameters:
@@ -571,7 +569,7 @@ PetscErrorCode TaoLineSearchSetFromOptions(TaoLineSearch ls)
   ierr = PetscOptionsReal("-tao_ls_rtol","relative tol for acceptable step","",ls->rtol,&ls->rtol,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_ls_stepmin","lower bound for step","",ls->stepmin,&ls->stepmin,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_ls_stepmax","upper bound for step","",ls->stepmax,&ls->stepmax,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-tao_ls_monitor","enable the basic monitor","TaoLineSearchSetMonitor","stdout",monfilename,PETSC_MAX_PATH_LEN,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-tao_ls_monitor","enable the basic monitor","TaoLineSearchSetMonitor","stdout",monfilename,sizeof(monfilename),&flg);CHKERRQ(ierr);
   if (flg) {
     ierr = PetscViewerASCIIOpen(PetscObjectComm((PetscObject)ls),monfilename,&monviewer);CHKERRQ(ierr);
     ls->viewer = monviewer;

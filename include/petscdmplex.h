@@ -5,6 +5,7 @@
 #define PETSCDMPLEX_H
 
 #include <petscsection.h>
+#include <petscpartitioner.h>
 #include <petscdm.h>
 #include <petscdmplextypes.h>
 #include <petscdt.h>
@@ -13,48 +14,19 @@
 #include <petscsftypes.h>
 #include <petscdmfield.h>
 
-PETSC_EXTERN PetscClassId PETSCPARTITIONER_CLASSID;
-
-/*J
-  PetscPartitionerType - String with the name of a PETSc graph partitioner
-
-  Level: beginner
-
-.seealso: PetscPartitionerSetType(), PetscPartitioner
-J*/
-typedef const char *PetscPartitionerType;
-#define PETSCPARTITIONERCHACO    "chaco"
-#define PETSCPARTITIONERPARMETIS "parmetis"
-#define PETSCPARTITIONERPTSCOTCH "ptscotch"
-#define PETSCPARTITIONERSHELL    "shell"
-#define PETSCPARTITIONERSIMPLE   "simple"
-#define PETSCPARTITIONERGATHER   "gather"
-#define PETSCPARTITIONERMATPARTITIONING "matpartitioning"
-
-PETSC_EXTERN PetscFunctionList PetscPartitionerList;
-PETSC_EXTERN PetscErrorCode PetscPartitionerCreate(MPI_Comm, PetscPartitioner *);
-PETSC_EXTERN PetscErrorCode PetscPartitionerDestroy(PetscPartitioner *);
-PETSC_EXTERN PetscErrorCode PetscPartitionerSetType(PetscPartitioner, PetscPartitionerType);
-PETSC_EXTERN PetscErrorCode PetscPartitionerGetType(PetscPartitioner, PetscPartitionerType *);
-PETSC_EXTERN PetscErrorCode PetscPartitionerSetUp(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerSetFromOptions(PetscPartitioner);
-PETSC_EXTERN PetscErrorCode PetscPartitionerViewFromOptions(PetscPartitioner,PetscObject,const char[]);
-PETSC_EXTERN PetscErrorCode PetscPartitionerView(PetscPartitioner, PetscViewer);
-PETSC_EXTERN PetscErrorCode PetscPartitionerRegister(const char [], PetscErrorCode (*)(PetscPartitioner));
-PETSC_EXTERN PetscErrorCode PetscPartitionerRegisterDestroy(void);
-PETSC_EXTERN PetscErrorCode PetscPartitionerPartition(PetscPartitioner, PetscInt, PetscInt, PetscInt[], PetscInt[], PetscSection, PetscSection, PetscSection, IS*);
-
 PETSC_EXTERN PetscErrorCode PetscPartitionerDMPlexPartition(PetscPartitioner, DM, PetscSection, PetscSection, IS *);
 
-PETSC_EXTERN PetscErrorCode PetscPartitionerShellSetPartition(PetscPartitioner, PetscInt, const PetscInt[], const PetscInt[]);
-PETSC_EXTERN PetscErrorCode PetscPartitionerShellSetRandom(PetscPartitioner, PetscBool);
-PETSC_EXTERN PetscErrorCode PetscPartitionerShellGetRandom(PetscPartitioner, PetscBool *);
-
-PETSC_EXTERN PetscErrorCode PetscPartitionerMatPartitioningGetMatPartitioning(PetscPartitioner part, MatPartitioning *mp);
+PETSC_EXTERN PetscErrorCode DMPlexBuildFromCellList(DM, PetscInt, PetscInt, PetscInt, const PetscInt[]);
+PETSC_EXTERN PetscErrorCode DMPlexBuildFromCellListParallel(DM, PetscInt, PetscInt, PetscInt, PetscInt, const PetscInt[], PetscSF *);
+PETSC_EXTERN PetscErrorCode DMPlexBuildCoordinatesFromCellList(DM, PetscInt, const PetscReal[]);
+PETSC_EXTERN PetscErrorCode DMPlexBuildCoordinatesFromCellListParallel(DM, PetscInt, PetscSF, const PetscReal[]);
 
 PETSC_EXTERN PetscErrorCode DMPlexCreate(MPI_Comm, DM*);
-PETSC_EXTERN PetscErrorCode DMPlexCreateFromCellList(MPI_Comm, PetscInt, PetscInt, PetscInt, PetscInt, PetscBool, const int[], PetscInt, const double[], DM*);
-PETSC_EXTERN PetscErrorCode DMPlexCreateFromCellListParallel(MPI_Comm, PetscInt, PetscInt, PetscInt, PetscInt, PetscBool, const int[], PetscInt, const PetscReal[], PetscSF *, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexCreateCohesiveSubmesh(DM, PetscBool, const char [], PetscInt, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexCreateFromCellListPetsc(MPI_Comm, PetscInt, PetscInt, PetscInt, PetscInt, PetscBool, const PetscInt[], PetscInt, const PetscReal[], DM*);
+PETSC_EXTERN PETSC_DEPRECATED_FUNCTION("Use DMPlexCreateFromCellListPetsc() (since version 3.14)") PetscErrorCode DMPlexCreateFromCellList(MPI_Comm, PetscInt, PetscInt, PetscInt, PetscInt, PetscBool, const int[], PetscInt, const double[], DM*);
+PETSC_EXTERN PetscErrorCode DMPlexCreateFromCellListParallelPetsc(MPI_Comm, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscBool, const PetscInt[], PetscInt, const PetscReal[], PetscSF *, DM *);
+PETSC_EXTERN PETSC_DEPRECATED_FUNCTION("Use DMPlexCreateFromCellListParallelPetsc() (since version 3.14)") PetscErrorCode DMPlexCreateFromCellListParallel(MPI_Comm, PetscInt, PetscInt, PetscInt, PetscInt, PetscBool, const int[], PetscInt, const PetscReal[], PetscSF *, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateFromDAG(DM, PetscInt, const PetscInt [], const PetscInt [], const PetscInt [], const PetscInt [], const PetscScalar []);
 PETSC_EXTERN PetscErrorCode DMPlexCreateReferenceCell(MPI_Comm, PetscInt, PetscBool, DM*);
 PETSC_EXTERN PetscErrorCode DMPlexCreateReferenceCellByType(MPI_Comm, DMPolytopeType, DM *);
@@ -177,11 +149,12 @@ PETSC_EXTERN PetscErrorCode DMPlexCreateDoublet(MPI_Comm, PetscInt, PetscBool, P
 PETSC_EXTERN PetscErrorCode DMPlexCreateSquareBoundary(DM, const PetscReal [], const PetscReal [], const PetscInt []);
 PETSC_EXTERN PetscErrorCode DMPlexCreateCubeBoundary(DM, const PetscReal [], const PetscReal [], const PetscInt []);
 PETSC_EXTERN PetscErrorCode DMPlexCreateBoxMesh(MPI_Comm, PetscInt, PetscBool, const PetscInt[], const PetscReal[], const PetscReal[], const DMBoundaryType[], PetscBool, DM *);
-PETSC_EXTERN PetscErrorCode DMPlexCreateSphereMesh(MPI_Comm, PetscInt, PetscBool, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexCreateSphereMesh(MPI_Comm, PetscInt, PetscBool, PetscReal, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexCreateBallMesh(MPI_Comm, PetscInt, PetscReal, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateHexCylinderMesh(MPI_Comm, PetscInt, DMBoundaryType, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateWedgeCylinderMesh(MPI_Comm, PetscInt, PetscBool, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateWedgeBoxMesh(MPI_Comm, const PetscInt[], const PetscReal[], const PetscReal[], const DMBoundaryType[], PetscBool, PetscBool, DM *);
-PETSC_EXTERN PetscErrorCode DMPlexExtrude(DM, PetscInt, PetscReal, PetscBool, PetscBool, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexExtrude(DM, PetscInt, PetscReal, PetscBool, const PetscReal[], PetscBool, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateConeSection(DM, PetscSection *);
 
 PETSC_EXTERN PetscErrorCode DMPlexCheckSymmetry(DM);
@@ -191,6 +164,7 @@ PETSC_EXTERN PetscErrorCode DMPlexCheckGeometry(DM);
 PETSC_EXTERN PetscErrorCode DMPlexCheckPointSF(DM);
 PETSC_EXTERN PetscErrorCode DMPlexCheckInterfaceCones(DM);
 PETSC_EXTERN PetscErrorCode DMPlexCheckCellShape(DM, PetscBool, PetscReal);
+PETSC_EXTERN PetscErrorCode DMPlexComputeOrthogonalQuality(DM, PetscFV, PetscReal, Vec *, DMLabel *);
 
 PETSC_EXTERN PetscErrorCode DMPlexTriangleSetOptions(DM, const char *);
 PETSC_EXTERN PetscErrorCode DMPlexTetgenSetOptions(DM, const char *);
@@ -329,9 +303,12 @@ PETSC_EXTERN PetscErrorCode DMPlexGetDataFVM(DM, PetscFV, Vec *, Vec *, DM *);
 
 /* FEM Support */
 PETSC_EXTERN PetscErrorCode DMPlexComputeGeometryFEM(DM, Vec *);
+PETSC_EXTERN PetscErrorCode DMPlexGetGeometryFVM(DM,Vec*,Vec*,PetscReal*);
+PETSC_EXTERN PetscErrorCode DMPlexGetGradientDM(DM,PetscFV,DM*);
 PETSC_EXTERN PetscErrorCode DMPlexInsertBoundaryValues(DM, PetscBool, Vec, PetscReal, Vec, Vec, Vec);
+PETSC_EXTERN PetscErrorCode DMPlexInsertTimeDerivativeBoundaryValues(DM, PetscBool, Vec, PetscReal, Vec, Vec, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexInsertBoundaryValuesEssential(DM, PetscReal, PetscInt, PetscInt, const PetscInt[], DMLabel, PetscInt, const PetscInt[],
-                                                                PetscErrorCode (*)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void *, Vec );
+                                                                PetscErrorCode (*)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void *, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexInsertBoundaryValuesEssentialField(DM, PetscReal, Vec, PetscInt, PetscInt, const PetscInt[], DMLabel, PetscInt, const PetscInt [],
                                                                      void (*)(PetscInt, PetscInt, PetscInt,
                                                                               const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
@@ -368,8 +345,9 @@ PETSC_EXTERN PetscErrorCode DMPlexVecGetClosure(DM, PetscSection, Vec, PetscInt,
 PETSC_EXTERN PetscErrorCode DMPlexVecRestoreClosure(DM, PetscSection, Vec, PetscInt, PetscInt *, PetscScalar *[]);
 PETSC_EXTERN PetscErrorCode DMPlexVecSetClosure(DM, PetscSection, Vec, PetscInt, const PetscScalar[], InsertMode);
 PETSC_EXTERN PetscErrorCode DMPlexMatSetClosure(DM, PetscSection, PetscSection, Mat, PetscInt, const PetscScalar[], InsertMode);
-PETSC_EXTERN PetscErrorCode DMPlexGetClosureIndices(DM, PetscSection, PetscSection, PetscInt, PetscInt *, PetscInt **, PetscInt *);
-PETSC_EXTERN PetscErrorCode DMPlexRestoreClosureIndices(DM, PetscSection, PetscSection, PetscInt, PetscInt *, PetscInt **,PetscInt *);
+PETSC_EXTERN PetscErrorCode DMPlexMatSetClosureGeneral(DM, PetscSection, PetscSection, DM, PetscSection, PetscSection, Mat, PetscInt, const PetscScalar[], InsertMode);
+PETSC_EXTERN PetscErrorCode DMPlexGetClosureIndices(DM, PetscSection, PetscSection, PetscInt, PetscBool, PetscInt *, PetscInt *[], PetscInt *, PetscScalar *[]);
+PETSC_EXTERN PetscErrorCode DMPlexRestoreClosureIndices(DM, PetscSection, PetscSection, PetscInt, PetscBool, PetscInt *, PetscInt *[], PetscInt *, PetscScalar *[]);
 PETSC_EXTERN PetscErrorCode DMPlexMatSetClosureRefined(DM, PetscSection, PetscSection, DM, PetscSection, PetscSection, Mat, PetscInt, const PetscScalar[], InsertMode);
 PETSC_EXTERN PetscErrorCode DMPlexMatGetClosureIndicesRefined(DM, PetscSection, PetscSection, DM, PetscSection, PetscSection, PetscInt, PetscInt[], PetscInt[]);
 PETSC_EXTERN PetscErrorCode DMPlexCreateClosureIndex(DM, PetscSection);
@@ -404,6 +382,8 @@ typedef struct {
 PETSC_EXTERN PetscErrorCode DMPlexInsertBoundaryValuesFEM(DM, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexSetMaxProjectionHeight(DM, PetscInt);
 PETSC_EXTERN PetscErrorCode DMPlexGetMaxProjectionHeight(DM, PetscInt*);
+PETSC_EXTERN PetscErrorCode DMPlexGetActivePoint(DM, PetscInt*);
+PETSC_EXTERN PetscErrorCode DMPlexSetActivePoint(DM, PetscInt);
 PETSC_EXTERN PetscErrorCode DMPlexProjectFieldLocal(DM, Vec,
                                                     void (**)(PetscInt, PetscInt, PetscInt,
                                                               const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
@@ -420,14 +400,14 @@ PETSC_EXTERN PetscErrorCode DMPlexComputeBdIntegral(DM, Vec, DMLabel, PetscInt, 
                                                              const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                              PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]),
                                                     PetscScalar *, void *);
-PETSC_EXTERN PetscErrorCode DMPlexComputeInterpolatorNested(DM, DM, Mat, void *);
+PETSC_EXTERN PetscErrorCode DMPlexComputeInterpolatorNested(DM, DM, PetscBool, Mat, void *);
 PETSC_EXTERN PetscErrorCode DMPlexComputeInterpolatorGeneral(DM, DM, Mat, void *);
 PETSC_EXTERN PetscErrorCode DMPlexComputeGradientClementInterpolant(DM, Vec, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexComputeInjectorFEM(DM, DM, VecScatter *, void *);
 PETSC_EXTERN PetscErrorCode DMPlexComputeMassMatrixNested(DM, DM, Mat, void *);
 PETSC_EXTERN PetscErrorCode DMPlexComputeMassMatrixGeneral(DM, DM, Mat, void *);
 
-PETSC_EXTERN PetscErrorCode DMPlexCreateRigidBody(DM, MatNullSpace *);
+PETSC_EXTERN PetscErrorCode DMPlexCreateRigidBody(DM, PetscInt, MatNullSpace *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateRigidBodies(DM, PetscInt, DMLabel, const PetscInt[], const PetscInt[], MatNullSpace *);
 
 PETSC_EXTERN PetscErrorCode DMPlexSetSNESLocalFEM(DM,void *,void *,void *);
@@ -488,4 +468,5 @@ PETSC_EXTERN PetscErrorCode DMPlexCellRefinerRefine(DMPlexCellRefiner, DMPolytop
 PETSC_EXTERN PetscErrorCode DMPlexCellRefinerGetAffineTransforms(DMPlexCellRefiner, DMPolytopeType, PetscInt *, PetscReal *[], PetscReal *[], PetscReal *[]);
 PETSC_EXTERN PetscErrorCode DMPlexCellRefinerGetAffineFaceTransforms(DMPlexCellRefiner, DMPolytopeType, PetscInt *, PetscReal *[], PetscReal *[], PetscReal *[], PetscReal *[]);
 PETSC_EXTERN PetscErrorCode DMPlexRefineUniform(DM, DMPlexCellRefiner, DM *);
+
 #endif

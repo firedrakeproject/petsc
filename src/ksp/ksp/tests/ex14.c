@@ -188,7 +188,7 @@ int main(int argc,char **argv)
   ierr = ComputeFunction(&user,X,F);CHKERRQ(ierr);   /* Compute F(X)    */
   ierr = VecNorm(F,NORM_2,&fnorm);CHKERRQ(ierr);     /* fnorm = || F || */
   ttol = fnorm*rtol;
-  if (!no_output) PetscPrintf(comm,"Initial function norm = %g\n",(double)fnorm);
+  if (!no_output) {ierr = PetscPrintf(comm,"Initial function norm = %g\n",(double)fnorm);CHKERRQ(ierr);}
 
   /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
      Solve nonlinear system with a user-defined method
@@ -209,7 +209,7 @@ int main(int argc,char **argv)
   for (i=0; i<max_nonlin_its; i++) {
 
     /*
-        Compute the Jacobian matrix.  
+        Compute the Jacobian matrix.
      */
     ierr = ComputeJacobian(&user,X,J);CHKERRQ(ierr);
 
@@ -426,7 +426,7 @@ PetscErrorCode ComputeFunction(AppCtx *user,Vec X,Vec F)
    Notes:
    Due to grid point reordering with DMDAs, we must always work
    with the local grid points, and then transform them to the new
-   global numbering with the "ltog" mapping 
+   global numbering with the "ltog" mapping
    We cannot work directly with the global numbers for the original
    uniprocessor grid!
 */

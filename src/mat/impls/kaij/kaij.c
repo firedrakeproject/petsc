@@ -328,7 +328,7 @@ PetscErrorCode MatKAIJSetAIJ(Mat A,Mat B)
 .  q - the number of columns in S
 -  S - the S matrix, in form of a scalar array in column-major format
 
-   Notes: The dimensions p and q must match those of the transformation matrix T associated with the KAIJ matrix. 
+   Notes: The dimensions p and q must match those of the transformation matrix T associated with the KAIJ matrix.
    The S matrix is copied, so the user can destroy this array.
 
    Level: Advanced
@@ -353,6 +353,47 @@ PetscErrorCode MatKAIJSetS(Mat A,PetscInt p,PetscInt q,const PetscScalar S[])
 }
 
 /*@C
+   MatKAIJGetScaledIdentity - Check if both S and T are scaled identities.
+
+   Logically Collective.
+
+   Input Parameter:
+.  A - the KAIJ matrix
+
+  Output Parameter:
+.  identity - the Boolean value
+
+   Level: Advanced
+
+.seealso: MatKAIJGetS(), MatKAIJGetT()
+@*/
+PetscErrorCode MatKAIJGetScaledIdentity(Mat A,PetscBool* identity)
+{
+  Mat_SeqKAIJ *a = (Mat_SeqKAIJ*)A->data;
+  PetscInt    i,j;
+
+  PetscFunctionBegin;
+  if (a->p != a->q) {
+    *identity = PETSC_FALSE;
+    PetscFunctionReturn(0);
+  } else *identity = PETSC_TRUE;
+  if (!a->isTI || a->S) {
+    for (i=0; i<a->p && *identity; i++) {
+      for (j=0; j<a->p && *identity; j++) {
+        if (i != j) {
+          if (a->S && PetscAbsScalar(a->S[i+j*a->p]) > PETSC_SMALL) *identity = PETSC_FALSE;
+          if (a->T && PetscAbsScalar(a->T[i+j*a->p]) > PETSC_SMALL) *identity = PETSC_FALSE;
+        } else {
+          if (a->S && PetscAbsScalar(a->S[i*(a->p+1)]-a->S[0]) > PETSC_SMALL) *identity = PETSC_FALSE;
+          if (a->T && PetscAbsScalar(a->T[i*(a->p+1)]-a->T[0]) > PETSC_SMALL) *identity = PETSC_FALSE;
+        }
+      }
+    }
+  }
+  PetscFunctionReturn(0);
+}
+
+/*@C
    MatKAIJSetT - Set the transformation matrix T associated with the KAIJ matrix
 
    Logically Collective; the entire T is stored independently on all processes.
@@ -363,7 +404,7 @@ PetscErrorCode MatKAIJSetS(Mat A,PetscInt p,PetscInt q,const PetscScalar S[])
 .  q - the number of columns in S
 -  T - the T matrix, in form of a scalar array in column-major format
 
-   Notes: The dimensions p and q must match those of the shift matrix S associated with the KAIJ matrix. 
+   Notes: The dimensions p and q must match those of the shift matrix S associated with the KAIJ matrix.
    The T matrix is copied, so the user can destroy this array.
 
    Level: Advanced
@@ -465,7 +506,7 @@ PetscErrorCode MatSetUp_KAIJ(Mat A)
         }
       }
     } else T = a->T;
-    ierr = MatCreateKAIJ(mpiaij->A,a->p,a->q,a->S,T,&a->AIJ);CHKERRQ(ierr); 
+    ierr = MatCreateKAIJ(mpiaij->A,a->p,a->q,a->S,T,&a->AIJ);CHKERRQ(ierr);
     ierr = MatCreateKAIJ(mpiaij->B,a->p,a->q,NULL,T,&a->OAIJ);CHKERRQ(ierr);
     if (a->isTI) {
       ierr = PetscFree(T);CHKERRQ(ierr);
@@ -599,7 +640,7 @@ PetscErrorCode MatMultAdd_SeqKAIJ(Mat A,Vec xx,Vec yy,Vec zz)
 
   PetscFunctionBegin;
   if (!yy) {
-    ierr = VecSet(zz,0.0);CHKERRQ(ierr); 
+    ierr = VecSet(zz,0.0);CHKERRQ(ierr);
   } else {
     ierr = VecCopy(yy,zz);CHKERRQ(ierr);
   }
@@ -622,7 +663,7 @@ PetscErrorCode MatMultAdd_SeqKAIJ(Mat A,Vec xx,Vec yy,Vec zz)
         }
       }
     }
-    ierr = PetscLogFlops((a->nz)*3*p);CHKERRQ(ierr);
+    ierr = PetscLogFlops(3.0*(a->nz)*p);CHKERRQ(ierr);
   } else if (t) {
     for (i=0; i<m; i++) {
       jrow = ii[i];
@@ -640,7 +681,7 @@ PetscErrorCode MatMultAdd_SeqKAIJ(Mat A,Vec xx,Vec yy,Vec zz)
      * and also that T part is hoisted outside this loop (in exchange for temporary storage) as (A \otimes I) (I \otimes T),
      * so that this multiply doesn't have to be redone for each matrix entry, but just once per column. The latter
      * transformation is much less likely to be applied, but we nonetheless count the minimum flops required. */
-    ierr = PetscLogFlops((2.0*p*q-p)*m+2*p*a->nz);CHKERRQ(ierr);
+    ierr = PetscLogFlops((2.0*p*q-p)*m+2.0*p*a->nz);CHKERRQ(ierr);
   }
   if (s) {
     for (i=0; i<m; i++) {
@@ -654,7 +695,7 @@ PetscErrorCode MatMultAdd_SeqKAIJ(Mat A,Vec xx,Vec yy,Vec zz)
         }
       }
     }
-    ierr = PetscLogFlops(m*2*p*q);CHKERRQ(ierr);
+    ierr = PetscLogFlops(2.0*m*p*q);CHKERRQ(ierr);
   }
 
   ierr = VecRestoreArrayRead(xx,&x);CHKERRQ(ierr);
@@ -929,7 +970,7 @@ PetscErrorCode MatSOR_SeqKAIJ(Mat A,Vec bb,PetscReal omega,MatSORType flag,Petsc
       if (xb == b) {
         for (i=m-1; i>=0; i--) {
           ierr = PetscMemcpy(w,b+i2,bs*sizeof(PetscScalar));CHKERRQ(ierr);
-  
+
           v  = aa + ai[i];
           vi = aj + ai[i];
           nz = diag[i] - ai[i];
@@ -1124,7 +1165,7 @@ PetscErrorCode MatGetRow_SeqKAIJ(Mat A,PetscInt row,PetscInt *ncols,PetscInt **c
     }
     if (S) {
       for (j=0; j<q; j++) {
-        idx[c*q+j] = r*q+j; 
+        idx[c*q+j] = r*q+j;
         v[c*q+j]  += S[s+j*p];
       }
     }
@@ -1154,7 +1195,7 @@ PetscErrorCode MatGetRow_MPIKAIJ(Mat A,PetscInt row,PetscInt *ncols,PetscInt **c
   PetscBool       diag    = PETSC_FALSE;
   PetscErrorCode  ierr;
   const PetscInt  rstart=A->rmap->rstart,rend=A->rmap->rend,p=b->p,q=b->q,*garray;
-  PetscInt        nz,*idx,ncolsaij,ncolsoaij,*colsaij,*colsoaij,r,s,c,i,j,lrow;
+  PetscInt        nz,*idx,ncolsaij = 0,ncolsoaij = 0,*colsaij,*colsoaij,r,s,c,i,j,lrow;
   PetscScalar     *v,*vals,*ovals,*S=b->S,*T=b->T;
 
   PetscFunctionBegin;
@@ -1228,7 +1269,7 @@ PetscErrorCode MatGetRow_MPIKAIJ(Mat A,PetscInt row,PetscInt *ncols,PetscInt **c
     }
     if (S) {
       for (j=0; j<q; j++) {
-        idx[c*q+j] = (r+rstart/p)*q+j; 
+        idx[c*q+j] = (r+rstart/p)*q+j;
         v[c*q+j]  += S[s+j*p];
       }
     }
@@ -1273,9 +1314,9 @@ PetscErrorCode  MatCreateSubMatrix_KAIJ(Mat mat,IS isrow,IS iscol,MatReuse cll,M
     A is an AIJ  (n \times n) matrix
     I is the identity matrix
   The resulting matrix is (np \times nq)
-  
+
   S and T are always stored independently on all processes as PetscScalar arrays in column-major format.
-  
+
   Collective
 
   Input Parameters:
@@ -1325,7 +1366,7 @@ PetscErrorCode  MatCreateKAIJ(Mat A,PetscInt p,PetscInt q,const PetscScalar S[],
     A is an AIJ  (n \times n) matrix,
     and I is the identity matrix.
   The resulting matrix is (np \times nq).
-  
+
   S and T are always stored independently on all processes as PetscScalar arrays in column-major format.
 
   Notes:
@@ -1351,7 +1392,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_KAIJ(Mat A)
 
   A->ops->setup = MatSetUp_KAIJ;
 
-  b->w    = 0;
+  b->w    = NULL;
   ierr    = MPI_Comm_size(PetscObjectComm((PetscObject)A),&size);CHKERRQ(ierr);
   if (size == 1) {
     ierr = PetscObjectChangeTypeName((PetscObject)A,MATSEQKAIJ);CHKERRQ(ierr);

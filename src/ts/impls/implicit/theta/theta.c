@@ -9,7 +9,7 @@
 typedef struct {
   /* context for time stepping */
   PetscReal    stage_time;
-  Vec          X0,X,Xdot;                /* Storage for stages and time derivative */
+  Vec          X0,X,Xdot;                /* Storage for stage solution, u^n + dt a_{11} k_1, and time derivative u^{n+1}_t */
   Vec          affine;                   /* Affine vector needed for residual at beginning of step in endpoint formulation */
   PetscReal    Theta;
   PetscReal    shift;                    /* Shift parameter for SNES Jacobian, used by forward, TLM and adjoint */
@@ -309,6 +309,7 @@ static PetscErrorCode TSAdjointStepBEuler_Private(TS ts)
   }
 
   /* Build LHS for first-order adjoint */
+  th->shift = 1./adjoint_time_step;
   ierr = TSComputeSNESJacobian(ts,th->X,J,Jpre);CHKERRQ(ierr);
   ierr = KSPSetOperators(ksp,J,Jpre);CHKERRQ(ierr);
 
@@ -518,7 +519,7 @@ static PetscErrorCode TSAdjointStep_Theta(TS ts)
   }
 
   /* Update sensitivities, and evaluate integrals if there is any */
-  if(th->endpoint) { /* two-stage Theta methods with th->Theta!=1, th->Theta==1 leads to BEuler */
+  if (th->endpoint) { /* two-stage Theta methods with th->Theta!=1, th->Theta==1 leads to BEuler */
     th->shift      = 1./((th->Theta-1.)*adjoint_time_step);
     th->stage_time = adjoint_ptime;
     ierr           = TSComputeSNESJacobian(ts,th->X0,J,Jpre);CHKERRQ(ierr);
@@ -572,6 +573,13 @@ static PetscErrorCode TSAdjointStep_Theta(TS ts)
       for (nadj=0; nadj<ts->numcost; nadj++) {
         ierr = MatMultTranspose(ts->Jacp,VecsDeltaLam[nadj],VecsDeltaMu[nadj]);CHKERRQ(ierr);
         ierr = VecAXPY(ts->vecs_sensip[nadj],-adjoint_time_step*th->Theta,VecsDeltaMu[nadj]);CHKERRQ(ierr);
+        if (quadJp) {
+          ierr = MatDenseGetColumn(quadJp,nadj,&xarr);CHKERRQ(ierr);
+          ierr = VecPlaceArray(ts->vec_drdp_col,xarr);CHKERRQ(ierr);
+          ierr = VecAXPY(ts->vecs_sensip[nadj],adjoint_time_step*th->Theta,ts->vec_drdp_col);CHKERRQ(ierr);
+          ierr = VecResetArray(ts->vec_drdp_col);CHKERRQ(ierr);
+          ierr = MatDenseRestoreColumn(quadJp,&xarr);CHKERRQ(ierr);
+        }
       }
       if (ts->vecs_sensi2p) { /* second-order */
         /* Get w1 at t_{n+1} from TLM matrix */
@@ -605,6 +613,13 @@ static PetscErrorCode TSAdjointStep_Theta(TS ts)
       for (nadj=0; nadj<ts->numcost; nadj++) {
         ierr = MatMultTranspose(ts->Jacp,VecsDeltaLam[nadj],VecsDeltaMu[nadj]);CHKERRQ(ierr);
         ierr = VecAXPY(ts->vecs_sensip[nadj],-adjoint_time_step*(1.0-th->Theta),VecsDeltaMu[nadj]);CHKERRQ(ierr);
+        if (quadJp) {
+          ierr = MatDenseGetColumn(quadJp,nadj,&xarr);CHKERRQ(ierr);
+          ierr = VecPlaceArray(ts->vec_drdp_col,xarr);CHKERRQ(ierr);
+          ierr = VecAXPY(ts->vecs_sensip[nadj],adjoint_time_step*(1.0-th->Theta),ts->vec_drdp_col);CHKERRQ(ierr);
+          ierr = VecResetArray(ts->vec_drdp_col);CHKERRQ(ierr);
+          ierr = MatDenseRestoreColumn(quadJp,&xarr);CHKERRQ(ierr);
+        }
         if (ts->vecs_sensi2p) { /* second-order */
           /* Get w1 at t_n from TLM matrix */
           ierr = MatDenseGetColumn(th->MatFwdSensip0,0,&xarr);CHKERRQ(ierr);
@@ -925,6 +940,10 @@ static PetscErrorCode TSDestroy_Theta(TS ts)
 /*
   This defines the nonlinear equation that is to be solved with SNES
   G(U) = F[t0+Theta*dt, U, (U-U0)*shift] = 0
+
+  Note that U here is the stage argument. This means that U = U_{n+1} only if endpoint = true,
+  otherwise U = theta U_{n+1} + (1 - theta) U0, which for the case of implicit midpoint is
+  U = (U_{n+1} + U0)/2
 */
 static PetscErrorCode SNESTSFormFunction_Theta(SNES snes,Vec x,Vec y,TS ts)
 {

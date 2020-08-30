@@ -124,7 +124,7 @@ class generateExamples(Petsc):
     # For help in setting the requirements
     self.precision_types="single double __float128 int32".split()
     self.integer_types="int32 int64 long32 long64".split()
-    self.languages="fortran cuda cxx cpp".split()    # Always requires C so do not list
+    self.languages="fortran cuda hip sycl cxx cpp".split()    # Always requires C so do not list
 
     # Things that are not test
     self.buildkeys=testparse.buildkeys
@@ -179,15 +179,33 @@ class generateExamples(Petsc):
     Can we just return srcext[1:\] now?
     """
     langReq=None
-    srcext=os.path.splitext(srcfile)[-1]
+    srcext = getlangext(srcfile)
     if srcext in ".F90".split(): langReq="F90"
     if srcext in ".F".split(): langReq="F"
     if srcext in ".cxx".split(): langReq="cxx"
+    if srcext in ".kokkos.cxx".split(): langReq="kokkos_cxx"
     if srcext in ".cpp".split(): langReq="cpp"
     if srcext == ".cu": langReq="cu"
     if srcext == ".c": langReq="c"
     #if not langReq: print("ERROR: ", srcext, srcfile)
     return langReq
+
+  def _getAltList(self,output_file,srcdir):
+    ''' Calculate AltList based on output file-- see
+       src/snes/tutorials/output/ex22*.out
+    '''
+    altlist=[output_file]
+    basefile = getlangsplit(output_file)
+    for i in range(1,9):
+      altroot=basefile+"_alt"
+      if i > 1: altroot=altroot+"_"+str(i)
+      af=altroot+".out"
+      srcaf=os.path.join(srcdir,af)
+      fullaf=os.path.join(self.petsc_dir,srcaf)
+      if os.path.isfile(fullaf): altlist.append(srcaf)
+
+    return altlist
+
 
   def _getLoopVars(self,inDict,testname, isSubtest=False):
     """
@@ -223,10 +241,10 @@ class generateExamples(Petsc):
           loopVars[akey][keyvar]=[keyvar,lvars]
           if akey=='nsize':
             if len(lvars.split()) > 1:
-              lsuffix += akey +'-${' + keyvar + '}'
+              lsuffix += akey +'-${i' + keyvar + '}'
           else:
-            inDict[akey] += ' -'+keyvar+' ${' + keyvar + '}'
-            lsuffix+=keyvar+'-${' + keyvar + '}_'
+            inDict[akey] += ' -'+keyvar+' ${i' + keyvar + '}'
+            lsuffix+=keyvar+'-${i' + keyvar + '}_'
         else:
           if key=='args':
             newargs.append(varset.strip())
@@ -286,12 +304,12 @@ class generateExamples(Petsc):
     if 'depends' in srcDict:
       depSrcList=srcDict['depends'].split()
       for depSrc in depSrcList:
-        depObj=os.path.splitext(depSrc)[0]+".o"
+        depObj = getlangsplit(depSrc)+'.o'
         self.sources[pkg][lang][relpfile].append(os.path.join(rpath,depObj))
 
     # In gmakefile, ${TESTDIR} var specifies the object compilation
     testsdir=rpath+"/"
-    objfile="${TESTDIR}/"+testsdir+os.path.splitext(exfile)[0]+".o"
+    objfile="${TESTDIR}/"+testsdir+getlangsplit(exfile)+'.o'
     self.objects[pkg].append(objfile)
     return
 
@@ -319,7 +337,7 @@ class generateExamples(Petsc):
     if self.single_ex:
       execname=rpath.split("/")[1]+"-ex"
     else:
-      execname=os.path.splitext(exfile)[0]
+      execname=getlangsplit(exfile)
     return execname
 
   def getSubstVars(self,testDict,rpath,testname):
@@ -387,22 +405,6 @@ class generateExamples(Petsc):
 
     # Add in the full path here.
     subst['output_file']=os.path.join(subst['srcdir'],subst['output_file'])
-    if not os.path.isfile(os.path.join(self.petsc_dir,subst['output_file'])):
-      if not subst['TODO']:
-        print("Warning: "+subst['output_file']+" not found.")
-    # Worry about alt files here -- see
-    #   src/snes/tutorials/output/ex22*.out
-    altlist=[subst['output_file']]
-    basefile,ext = os.path.splitext(subst['output_file'])
-    for i in range(1,9):
-      altroot=basefile+"_alt"
-      if i > 1: altroot=altroot+"_"+str(i)
-      af=altroot+".out"
-      srcaf=os.path.join(subst['srcdir'],af)
-      fullaf=os.path.join(self.petsc_dir,srcaf)
-      if os.path.isfile(fullaf): altlist.append(srcaf)
-    if len(altlist)>1: subst['altfiles']=altlist
-    #if len(altlist)>1: print("Found alt files: ",altlist)
 
     subst['regexes']={}
     for subkey in subst:
@@ -425,7 +427,7 @@ class generateExamples(Petsc):
       Str=subst['regexes'][subkey].sub(lambda x: subst[subkey],Str)
     return Str
 
-  def getCmds(self,subst,i):
+  def getCmds(self,subst,i, debug=False):
     """
       Generate bash script using template found next to this file.
       This file is read in at constructor time to avoid file I/O
@@ -443,16 +445,25 @@ class generateExamples(Petsc):
 
     cmdLines+=cmdindnt+'if test $res = 0; then\n'
     diffindnt=self.indent*(nindnt+1)
-    if 'altfiles' not in subst:
+
+    # Do some checks on existence of output_file and alt files
+    if not os.path.isfile(os.path.join(self.petsc_dir,subst['output_file'])):
+      if not subst['TODO']:
+        print("Warning: "+subst['output_file']+" not found.")
+    altlist=self._getAltList(subst['output_file'], subst['srcdir'])
+
+    # altlist always has output_file
+    if len(altlist)==1:
       cmd=diffindnt+self._substVars(subst,example_template.difftest)
     else:
+      if debug: print("Found alt files: ",altlist)
       # Have to do it by hand a bit because of variable number of alt files
       rf=subst['redirect_file']
       cmd=diffindnt+example_template.difftest.split('@')[0]
-      for i in range(len(subst['altfiles'])):
-        af=subst['altfiles'][i]
+      for i in range(len(altlist)):
+        af=altlist[i]
         cmd+=af+' '+rf
-        if i!=len(subst['altfiles'])-1:
+        if i!=len(altlist)-1:
           cmd+=' > diff-${testname}-'+str(i)+'.out 2> diff-${testname}-'+str(i)+'.out'
           cmd+=' || ${diff_exe} '
         else:
@@ -502,7 +513,6 @@ class generateExamples(Petsc):
     outstr=''; indnt=self.indent
 
     for key in loopVars:
-      if key in usedVars: continue         # Do not duplicate setting vars
       for var in loopVars[key]['varlist']:
         varval=loopVars[key][var]
         outstr += "{0}_in=${{{0}:-{1}}}\n".format(*varval)
@@ -511,7 +521,7 @@ class generateExamples(Petsc):
     for key in loopVars:
       for var in loopVars[key]['varlist']:
         varval=loopVars[key][var]
-        outstr += indnt * i + "for {0} in ${{{0}_in}}; do\n".format(*varval)
+        outstr += indnt * i + "for i{0} in ${{{0}_in}}; do\n".format(*varval)
         i = i + 1
     return (outstr,i)
 
@@ -645,6 +655,12 @@ class generateExamples(Petsc):
         srcDict["SKIP"].append("Fortran f90freeform required for this test")
     if lang=="cu" and 'PETSC_HAVE_CUDA' not in self.conf:
       srcDict["SKIP"].append("CUDA required for this test")
+    if lang=="hip" and 'PETSC_HAVE_HIP' not in self.conf:
+      srcDict["SKIP"].append("HIP required for this test")
+    if lang=="sycl" and 'PETSC_HAVE_SYCL' not in self.conf:
+      srcDict["SKIP"].append("SYCL required for this test")
+    if lang=="kokkos_cxx" and 'PETSC_HAVE_KOKKOS' not in self.conf:
+      srcDict["SKIP"].append("KOKKOS required for this test")
     if lang=="cxx" and 'PETSC_HAVE_CXX' not in self.conf:
       srcDict["SKIP"].append("C++ required for this test")
     if lang=="cpp" and 'PETSC_HAVE_CXX' not in self.conf:
@@ -783,7 +799,7 @@ class generateExamples(Petsc):
 
   def  checkOutput(self,exfile,root,srcDict):
     """
-     Check and make sure the output files are in the output director
+     Check and make sure the output files are in the output directory
     """
     debug=False
     rpath=self.srcrelpath(root)
@@ -859,7 +875,7 @@ class generateExamples(Petsc):
       if exfile.startswith("#"): continue
       if exfile.endswith("~"): continue
       # Only parse source files
-      ext=os.path.splitext(exfile)[-1].lstrip('.')
+      ext=getlangext(exfile).lstrip('.').replace('.','_')
       if ext not in LANGS: continue
 
       # Convenience
@@ -889,6 +905,7 @@ class generateExamples(Petsc):
       files.sort()
       if "/tests" not in root and "/tutorials" not in root: continue
       if "dSYM" in root: continue
+      if "tutorials"+os.sep+"build" in root: continue
       if os.path.basename(root.rstrip("/")) == 'output': continue
       if self.verbose: print(root)
       self.genPetscTests(root,dirs,files,dataDict)
@@ -911,7 +928,7 @@ class generateExamples(Petsc):
     def write(stem, srcs):
       for lang in LANGS:
         if srcs[lang]['srcs']:
-          fd.write('%(stem)s.%(lang)s := %(srcs)s\n' % dict(stem=stem, lang=lang, srcs=' '.join(srcs[lang]['srcs'])))
+          fd.write('%(stem)s.%(lang)s := %(srcs)s\n' % dict(stem=stem, lang=lang.replace('_','.'), srcs=' '.join(srcs[lang]['srcs'])))
     for pkg in self.pkg_pkgs:
         srcs = self.gen_pkg(pkg)
         write('testsrcs-' + pkg, srcs)
@@ -919,8 +936,8 @@ class generateExamples(Petsc):
         for lang in LANGS:
             for exfile in srcs[lang]['srcs']:
                 if exfile in srcs[lang]:
-                    ex='$(TESTDIR)/'+os.path.splitext(exfile)[0]
-                    exfo='$(TESTDIR)/'+os.path.splitext(exfile)[0]+'.o'
+                    ex='$(TESTDIR)/'+getlangsplit(exfile)
+                    exfo=ex+'.o'
                     deps = [os.path.join('$(TESTDIR)', dep) for dep in srcs[lang][exfile]]
                     if deps:
                         # The executable literally depends on the object file because it is linked
@@ -967,8 +984,8 @@ class generateExamples(Petsc):
             test=os.path.basename(ftest)
             basedir=os.path.dirname(ftest)
             testdeps.append(nameSpace(test,basedir))
-          fd.write("test-"+pkg+"."+lang+" := "+' '.join(testdeps)+"\n")
-          fd.write('test-%s.%s : $(test-%s.%s)\n' % (pkg, lang, pkg, lang))
+          fd.write("test-"+pkg+"."+lang.replace('_','.')+" := "+' '.join(testdeps)+"\n")
+          fd.write('test-%s.%s : $(test-%s.%s)\n' % (pkg, lang.replace('_','.'), pkg, lang.replace('_','.')))
 
           # test targets
           for ftest in self.tests[pkg][lang]:

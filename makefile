@@ -45,7 +45,7 @@ all:
 	@echo "Finishing make run at `date +'%a, %d %b %Y %H:%M:%S %z'`" >> ${PETSC_ARCH}/lib/petsc/conf/make.log
 	@if test -s ${PETSC_ARCH}/lib/petsc/conf/error.log; then exit 1; fi
 
-all-local: info libs matlabbin mpi4py-build petsc4py-build libmesh-build mfem-build slepc-build hpddm-build amrex-build
+all-local: info libs matlabbin mpi4py-build petsc4py-build libmesh-build mfem-build slepc-build hpddm-build amrex-build bamg-build
 
 #
 # Prints information about the system and version of PETSc being compiled
@@ -120,6 +120,7 @@ info:
 	-@echo "------------------------------------------"
 	-@echo "Using mpiexec: ${MPIEXEC}"
 	-@echo "------------------------------------------"
+	-@echo "Using MAKE: $(MAKE)"
 	-@echo "Using MAKEFLAGS: -j$(MAKE_NP) -l$(MAKE_LOAD) $(MAKEFLAGS)"
 	-@echo "=========================================="
 
@@ -149,6 +150,9 @@ check_build:
 	+@cd src/snes/tutorials >/dev/null; ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH}  PETSC_DIR=${PETSC_DIR} testex19
 	+@if [ "${HYPRE_LIB}" != "" ] && [ "${PETSC_WITH_BATCH}" = "" ] &&  [ "${PETSC_SCALAR}" = "real" ]; then \
           cd src/snes/tutorials >/dev/null; ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH}  PETSC_DIR=${PETSC_DIR} DIFF=${PETSC_DIR}/lib/petsc/bin/petscdiff runex19_hypre; \
+         fi;
+	+@if [ "${KOKKOS_LIB}" != "" ] && [ "${PETSC_WITH_BATCH}" = "" ] &&  [ "${PETSC_SCALAR}" = "real" ] && [ "${PETSC_PRECISION}" = "double" ]; then \
+          cd src/snes/tutorials >/dev/null; ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH}  PETSC_DIR=${PETSC_DIR} DIFF=${PETSC_DIR}/lib/petsc/bin/petscdiff runex3_kokkos; \
          fi;
 	+@if [ "${MUMPS_LIB}" != "" ] && [ "${PETSC_WITH_BATCH}" = "" ]; then \
           cd src/snes/tutorials >/dev/null; ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH}  PETSC_DIR=${PETSC_DIR}  DIFF=${PETSC_DIR}/lib/petsc/bin/petscdiff runex19_fieldsplit_mumps; \
@@ -184,6 +188,10 @@ check_build:
 	+@egrep "^#define PETSC_HAVE_FORTRAN 1" ${PETSCCONF_H} | tee .ftn.log > /dev/null; \
          if test -s .ftn.log; then \
           cd src/snes/tutorials >/dev/null; ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH}  PETSC_DIR=${PETSC_DIR} testex5f; \
+         fi; ${RM} .ftn.log;
+	+@egrep "^#define PETSC_HAVE_MATLAB_ENGINE 1" ${PETSCCONF_H} | tee .ftn.log > /dev/null; \
+         if test -s .ftn.log; then \
+          cd src/vec/vec/tutorials >/dev/null; ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH}  PETSC_DIR=${PETSC_DIR} testex31; \
          fi; ${RM} .ftn.log;
 	+@cd src/snes/tutorials >/dev/null; ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH}  PETSC_DIR=${PETSC_DIR} clean-legacy
 	-@echo "Completed test examples"
@@ -276,7 +284,7 @@ reconfigure:
 #
 install:
 	@${PYTHON} ./config/install.py -destDir=${DESTDIR}
-	+${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} mpi4py-install petsc4py-install libmesh-install mfem-install slepc-install hpddm-install amrex-install
+	+${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} mpi4py-install petsc4py-install libmesh-install mfem-install slepc-install hpddm-install amrex-install bamg-install
 
 mpistreams:
 	+@cd src/benchmarks/streams; ${OMAKE_SELF} PATH="${PETSC_DIR}/${PETSC_ARCH}/lib:${PATH}" PETSC_DIR=${PETSC_DIR} PETSC_ARCH=${PETSC_ARCH} mpistreams
@@ -306,9 +314,9 @@ alletags:
 	-@${PYTHON} lib/petsc/bin/maint/generateetags.py
 	-@find config -type f -name "*.py" |grep -v SCCS | xargs etags -o TAGS_PYTHON
 
-# obtain gtags from http://www.gnu.org/s/global/
+# obtain gtags from https://www.gnu.org/software/global/
 allgtags:
-	-@find ${PETSC_DIR}/include ${PETSC_DIR}/src -regex '\(.*makefile\|.*\.\(cc\|hh\|cpp\|C\|hpp\|c\|h\|cu\|m\)$$\)' | grep -v ftn-auto  | gtags -f -
+	-@find ${PETSC_DIR}/include ${PETSC_DIR}/src -regex '\(.*makefile\|.*\.\(cc\|hh\|cpp\|cxx\|C\|hpp\|c\|h\|cu\|m\)$$\)' | grep -v ftn-auto  | gtags -f -
 
 allfortranstubs:
 	-@${RM} -rf ${PETSC_ARCH}/include/petsc/finclude/ftn-auto/*-tmpdir
@@ -351,7 +359,7 @@ alldoc1: chk_loc chk_concepts_dir allcite allmanpages allmanexamples
 
 # Builds .html versions of the source
 # html overwrites some stuff created by update-docs - hence this is done later.
-alldoc2: chk_loc
+alldoc2: chk_loc allcite
 	-${OMAKE_SELF} ACTION=html PETSC_DIR=${PETSC_DIR} alltree LOC=${LOC}
 	-${PYTHON} lib/petsc/bin/maint/update-docs.py ${PETSC_DIR} ${LOC}
 #
@@ -394,6 +402,28 @@ docsetdate: chk_petscdir
           -exec perl -pi -e 's^(<head>)^$$1 <link rel="canonical" href="http://www.mcs.anl.gov/petsc/petsc-current/{}" />^i' {} \; ; \
         echo "Done fixing version number, date, canonical URL info"
 
+# Build the Sphinx HTML documentation.  This uses Python's venv, which should
+# behave similarly to what happens on e.g. ReadTheDocs. You may prefer to use
+# your own Python environment and directly build the Sphinx docs by using
+# the makefile in ${PETSC_SPHINX_ROOT}, paying attention to the requirements.txt
+# there.
+PETSC_SPHINX_ROOT=src/docs/sphinx_docs
+PETSC_SPHINX_ENV=sphinx_docs_env
+
+sphinx-docs-html:
+	@${PYTHON} -c 'import sys; sys.exit(sys.version_info[:2] < (3,3))' || \
+    (printf 'Working Python 3.3 or later is required to build the Sphinx docs in a virtual environment\nTry e.g.\n  make sphinx-docs-html PYTHON=python3\n' && false)
+	@if [ ! -d  "${PETSC_SPHINX_ENV}" ]; then \
+        ${PYTHON} -m venv ${PETSC_SPHINX_ENV}; \
+        . ${PETSC_SPHINX_ENV}/bin/activate; \
+        pip install -r src/docs/sphinx_docs/requirements.txt; \
+      fi
+	@. ${PETSC_SPHINX_ENV}/bin/activate && ${OMAKE} -C ${PETSC_SPHINX_ROOT} html
+
+sphinx-docs-clean:
+	${OMAKE} -C ${PETSC_SPHINX_ROOT} clean
+	${RM} -rf ${PETSC_SPHINX_ENV}
+
 alldocclean: deletemanualpages allcleanhtml
 
 # Deletes man pages (HTML version)
@@ -411,6 +441,10 @@ allcleanhtml:
 chk_concepts_dir: chk_loc
 	@if [ ! -d "${LOC}/docs/manualpages/concepts" ]; then \
 	  echo Making directory ${LOC}/docs/manualpages/concepts for library; ${MKDIR} ${LOC}/docs/manualpages/concepts; fi
+
+# Builds simple html versions of the source without links into the $PETSC_ARCH/obj directory, used by make mergecov
+srchtml: 
+	-${OMAKE_SELF} ACTION=simplehtml PETSC_DIR=${PETSC_DIR} alltree_src
 
 ###########################################################
 # targets to build distribution and update docs
@@ -451,10 +485,10 @@ update-web:
 #  See script for details
 #
 gcov:
-	-@$(PYTHON) ${PETSC_DIR}/lib/petsc/bin/maint/gcov.py --run_gcov --petsc_arch ${PETSC_ARCH}
+	@$(PYTHON) ${PETSC_DIR}/lib/petsc/bin/maint/gcov.py --run_gcov --petsc_arch ${PETSC_ARCH}
 
 mergegcov:
-	-@$(PYTHON) ${PETSC_DIR}/lib/petsc/bin/maint/gcov.py --merge_gcov --loc=${LOC} --petsc_arch ${PETSC_ARCH}
+	@$(PYTHON) ${PETSC_DIR}/lib/petsc/bin/maint/gcov.py --merge_gcov  --petsc_arch ${PETSC_ARCH}
 
 
 ########################

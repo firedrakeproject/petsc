@@ -24,7 +24,7 @@ static PetscErrorCode SNESTR_KSPConverged_Private(KSP ksp,PetscInt n,PetscReal r
     ierr = PetscInfo2(snes,"Default or user provided convergence test KSP iterations=%D, rnorm=%g\n",n,(double)rnorm);CHKERRQ(ierr);
   }
   /* Determine norm of solution */
-  ierr = KSPBuildSolution(ksp,0,&x);CHKERRQ(ierr);
+  ierr = KSPBuildSolution(ksp,NULL,&x);CHKERRQ(ierr);
   ierr = VecNorm(x,NORM_2,&nrm);CHKERRQ(ierr);
   if (nrm >= neP->delta) {
     ierr    = PetscInfo2(snes,"Ending linear iteration early, delta=%g, length=%g\n",(double)neP->delta,(double)nrm);CHKERRQ(ierr);
@@ -68,7 +68,7 @@ static PetscErrorCode SNESTR_Converged_Private(SNES snes,PetscInt it,PetscReal x
 }
 
 /*@C
-   SNESNewtonTRSetPreCheck - Sets a user function that is called before the search step has been determined. 
+   SNESNewtonTRSetPreCheck - Sets a user function that is called before the search step has been determined.
        Allows the user a chance to change or override the decision of the line search routine.
 
    Logically Collective on snes
@@ -123,7 +123,7 @@ PetscErrorCode  SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES,
 }
 
 /*@C
-   SNESNewtonTRSetPostCheck - Sets a user function that is called after the search step has been determined but before the next 
+   SNESNewtonTRSetPostCheck - Sets a user function that is called after the search step has been determined but before the next
        function evaluation. Allows the user a chance to change or override the decision of the line search routine
 
    Logically Collective on snes
@@ -179,7 +179,7 @@ PetscErrorCode  SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES
 }
 
 /*@C
-   SNESNewtonTRPreCheck - Called before the step has been determined in SNESNEWTONTR 
+   SNESNewtonTRPreCheck - Called before the step has been determined in SNESNEWTONTR
 
    Logically Collective on snes
 
@@ -541,4 +541,3 @@ PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONTR(SNES snes)
   neP->ttol   = 0.0;
   PetscFunctionReturn(0);
 }
-

@@ -174,7 +174,7 @@ static PetscErrorCode DMFieldEvaluateFE_DS(DMField field, IS pointIS, PetscQuadr
       ierr = DMPlexVecRestoreClosure(dm,section,dsfield->vec,c,&closureSize,&elem);CHKERRQ(ierr);
     }
     ierr = PetscTabulationDestroy(&T);CHKERRQ(ierr);
-  } else {SETERRQ(PetscObjectComm((PetscObject)field),PETSC_ERR_SUP,"Not implemented");}
+  } else SETERRQ(PetscObjectComm((PetscObject)field),PETSC_ERR_SUP,"Not implemented");
   if (!isStride) {
     ierr = ISRestoreIndices(pointIS,&points);CHKERRQ(ierr);
   }
@@ -748,7 +748,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
       PetscInt        point = points[p];
       PetscInt        numSupp, numChildren;
 
-      ierr = DMPlexGetTreeChildren(dm, point, &numChildren, NULL); CHKERRQ(ierr);
+      ierr = DMPlexGetTreeChildren(dm, point, &numChildren, NULL);CHKERRQ(ierr);
       if (numChildren) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Face data not valid for facets with children");
       ierr = DMPlexGetSupportSize(dm, point,&numSupp);CHKERRQ(ierr);
       if (numSupp > 2) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Point %D has %D support, expected at most 2\n", point, numSupp);
@@ -811,7 +811,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
     ierr = PetscObjectGetClassId(cellDisc,&cellId);CHKERRQ(ierr);
     if (faceId != PETSCFE_CLASSID || cellId != PETSCFE_CLASSID) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Not supported\n");
     ierr = PetscFEGetDualSpace((PetscFE)cellDisc, &dsp);CHKERRQ(ierr);
-    ierr = PetscDualSpaceGetDM(dsp, &K); CHKERRQ(ierr);
+    ierr = PetscDualSpaceGetDM(dsp, &K);CHKERRQ(ierr);
     ierr = DMPlexGetHeightStratum(K, 1, &eStart, NULL);CHKERRQ(ierr);
     ierr = DMPlexGetCellType(K, eStart, &ct);CHKERRQ(ierr);
     ierr = DMPlexGetConeSize(K,0,&coneSize);CHKERRQ(ierr);
@@ -819,7 +819,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
     ierr = PetscMalloc2(numFaces, &co, coneSize, &counts);CHKERRQ(ierr);
     ierr = PetscMalloc1(dE*Nq, &cellPoints);CHKERRQ(ierr);
     ierr = PetscMalloc1(Nq, &dummyWeights);CHKERRQ(ierr);
-    ierr = PetscQuadratureCreate(PetscObjectComm((PetscObject)field), &cellQuad);CHKERRQ(ierr);
+    ierr = PetscQuadratureCreate(PETSC_COMM_SELF, &cellQuad);CHKERRQ(ierr);
     ierr = PetscQuadratureSetData(cellQuad, dE, 1, Nq, cellPoints, dummyWeights);CHKERRQ(ierr);
     minOrient = PETSC_MAX_INT;
     maxOrient = PETSC_MIN_INT;
@@ -828,7 +828,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
       PetscInt        numSupp, numChildren;
       const PetscInt *supp;
 
-      ierr = DMPlexGetTreeChildren(dm, point, &numChildren, NULL); CHKERRQ(ierr);
+      ierr = DMPlexGetTreeChildren(dm, point, &numChildren, NULL);CHKERRQ(ierr);
       if (numChildren) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Face data not valid for facets with children");
       ierr = DMPlexGetSupportSize(dm, point,&numSupp);CHKERRQ(ierr);
       if (numSupp > 2) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Point %D has %D support, expected at most 2\n", point, numSupp);
@@ -1080,14 +1080,14 @@ PetscErrorCode DMFieldCreateDS(DM dm, PetscInt fieldNum, Vec vec,DMField *field)
     }
     ierr = MPI_Allreduce(&localConeSize,&coneSize,1,MPIU_INT,MPI_MAX,comm);CHKERRQ(ierr);
     isSimplex = (coneSize == (dim + 1)) ? PETSC_TRUE : PETSC_FALSE;
-    ierr = PetscSpaceCreate(comm, &P);CHKERRQ(ierr);
+    ierr = PetscSpaceCreate(PETSC_COMM_SELF, &P);CHKERRQ(ierr);
     ierr = PetscSpaceSetType(P,PETSCSPACEPOLYNOMIAL);CHKERRQ(ierr);
     ierr = PetscSpaceSetDegree(P, 1, PETSC_DETERMINE);CHKERRQ(ierr);
     ierr = PetscSpaceSetNumComponents(P, numComponents);CHKERRQ(ierr);
     ierr = PetscSpaceSetNumVariables(P, dim);CHKERRQ(ierr);
     ierr = PetscSpacePolynomialSetTensor(P, isSimplex ? PETSC_FALSE : PETSC_TRUE);CHKERRQ(ierr);
     ierr = PetscSpaceSetUp(P);CHKERRQ(ierr);
-    ierr = PetscDualSpaceCreate(comm, &Q);CHKERRQ(ierr);
+    ierr = PetscDualSpaceCreate(PETSC_COMM_SELF, &Q);CHKERRQ(ierr);
     ierr = PetscDualSpaceSetType(Q,PETSCDUALSPACELAGRANGE);CHKERRQ(ierr);
     ierr = PetscDualSpaceCreateReferenceCell(Q, dim, isSimplex, &K);CHKERRQ(ierr);
     ierr = PetscDualSpaceSetDM(Q, K);CHKERRQ(ierr);
@@ -1096,7 +1096,7 @@ PetscErrorCode DMFieldCreateDS(DM dm, PetscInt fieldNum, Vec vec,DMField *field)
     ierr = PetscDualSpaceSetOrder(Q, 1);CHKERRQ(ierr);
     ierr = PetscDualSpaceLagrangeSetTensor(Q, isSimplex ? PETSC_FALSE : PETSC_TRUE);CHKERRQ(ierr);
     ierr = PetscDualSpaceSetUp(Q);CHKERRQ(ierr);
-    ierr = PetscFECreate(comm, &fe);CHKERRQ(ierr);
+    ierr = PetscFECreate(PETSC_COMM_SELF, &fe);CHKERRQ(ierr);
     ierr = PetscFESetType(fe,PETSCFEBASIC);CHKERRQ(ierr);
     ierr = PetscFESetBasisSpace(fe, P);CHKERRQ(ierr);
     ierr = PetscFESetDualSpace(fe, Q);CHKERRQ(ierr);
@@ -1125,7 +1125,7 @@ PetscErrorCode DMFieldCreateDS(DM dm, PetscInt fieldNum, Vec vec,DMField *field)
     PetscFE fe = (PetscFE) disc;
 
     ierr = PetscFEGetNumComponents(fe,&numComponents);CHKERRQ(ierr);
-  } else {SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Not implemented");}
+  } else SETERRQ(PetscObjectComm((PetscObject)dm),PETSC_ERR_SUP,"Not implemented");
   ierr = DMFieldCreate(dm,numComponents,DMFIELD_VERTEX,&b);CHKERRQ(ierr);
   ierr = DMFieldSetType(b,DMFIELDDS);CHKERRQ(ierr);
   dsfield = (DMField_DS *) b->data;

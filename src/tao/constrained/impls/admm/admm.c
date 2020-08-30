@@ -585,7 +585,7 @@ static PetscErrorCode TaoSetUp_ADMM(Tao tao)
   /* If Jacobian is given as NULL, it means Jacobian is identity matrix with size of solution vector */
   if (!am->JB) {
     am->zJI   = PETSC_TRUE;
-    ierr      = MatCreateShell(PETSC_COMM_WORLD,n,n,PETSC_DETERMINE,PETSC_DETERMINE,NULL,&am->JB);CHKERRQ(ierr);
+    ierr      = MatCreateShell(PetscObjectComm((PetscObject)tao),n,n,PETSC_DETERMINE,PETSC_DETERMINE,NULL,&am->JB);CHKERRQ(ierr);
     ierr      = MatShellSetOperation(am->JB,MATOP_MULT,(void (*)(void))JacobianIdentityB);CHKERRQ(ierr);
     ierr      = MatShellSetOperation(am->JB,MATOP_MULT_TRANSPOSE,(void (*)(void))JacobianIdentityB);CHKERRQ(ierr);
     ierr      = MatShellSetOperation(am->JB,MATOP_TRANSPOSE_MAT_MULT,(void (*)(void))JacobianIdentityB);CHKERRQ(ierr);
@@ -593,7 +593,7 @@ static PetscErrorCode TaoSetUp_ADMM(Tao tao)
   }
   if (!am->JA) {
     am->xJI   = PETSC_TRUE;
-    ierr      = MatCreateShell(PETSC_COMM_WORLD,n,n,PETSC_DETERMINE,PETSC_DETERMINE,NULL,&am->JA);CHKERRQ(ierr);
+    ierr      = MatCreateShell(PetscObjectComm((PetscObject)tao),n,n,PETSC_DETERMINE,PETSC_DETERMINE,NULL,&am->JA);CHKERRQ(ierr);
     ierr      = MatShellSetOperation(am->JA,MATOP_MULT,(void (*)(void))JacobianIdentity);CHKERRQ(ierr);
     ierr      = MatShellSetOperation(am->JA,MATOP_MULT_TRANSPOSE,(void (*)(void))JacobianIdentity);CHKERRQ(ierr);
     ierr      = MatShellSetOperation(am->JA,MATOP_TRANSPOSE_MAT_MULT,(void (*)(void))JacobianIdentity);CHKERRQ(ierr);
@@ -755,14 +755,14 @@ static PetscErrorCode TaoDestroy_ADMM(Tao tao)
 
   Level: beginner
 
-.seealso: TaoADMMSetMisfitHessianChangeStatus(), TaoADMMSetRegHessianChangeStatus(), TaoADMMGetSpectralPenalty(), 
+.seealso: TaoADMMSetMisfitHessianChangeStatus(), TaoADMMSetRegHessianChangeStatus(), TaoADMMGetSpectralPenalty(),
           TaoADMMGetMisfitSubsolver(), TaoADMMGetRegularizationSubsolver(), TaoADMMSetConstraintVectorRHS(),
           TaoADMMSetMinimumSpectralPenalty(), TaoADMMSetRegularizerCoefficient(),
           TaoADMMSetRegularizerConstraintJacobian(), TaoADMMSetMisfitConstraintJacobian(),
           TaoADMMSetMisfitObjectiveAndGradientRoutine(), TaoADMMSetMisfitHessianRoutine(),
           TaoADMMSetRegularizerObjectiveAndGradientRoutine(), TaoADMMSetRegularizerHessianRoutine(),
           TaoGetADMMParentTao(), TaoADMMGetDualVector(), TaoADMMSetRegularizerType(),
-          TaoADMMGetRegularizerType(), TaoADMMSetUpdateType(), TaoADMMGetUpdateType()  
+          TaoADMMGetRegularizerType(), TaoADMMSetUpdateType(), TaoADMMGetUpdateType()
 M*/
 
 PETSC_EXTERN PetscErrorCode TaoCreate_ADMM(Tao tao)
@@ -795,11 +795,11 @@ PETSC_EXTERN PetscErrorCode TaoCreate_ADMM(Tao tao)
   am->const_norm      = 0;
   am->resnorm         = 0;
   am->dualres         = 0;
-  am->ops->regobjgrad = 0;
-  am->ops->reghess    = 0;
+  am->ops->regobjgrad = NULL;
+  am->ops->reghess    = NULL;
   am->gamma           = 1;
-  am->regobjgradP     = 0;
-  am->reghessP        = 0;
+  am->regobjgradP     = NULL;
+  am->reghessP        = NULL;
   am->gatol_admm      = 1e-8;
   am->catol_admm      = 0;
   am->Hxchange        = PETSC_TRUE;
@@ -831,11 +831,11 @@ PETSC_EXTERN PetscErrorCode TaoCreate_ADMM(Tao tao)
   Collective on Tao
 
   Input Parameters:
-+  tao - the Tao solver context. 
++  tao - the Tao solver context.
 -  b - the Hessian matrix change status boolean, PETSC_FALSE  when the Hessian matrix does not change, TRUE otherwise.
 
   Level: advanced
-  
+
 .seealso: TAOADMM
 
 @*/
@@ -850,7 +850,7 @@ PetscErrorCode TaoADMMSetMisfitHessianChangeStatus(Tao tao, PetscBool b)
 
 /*@
   TaoADMMSetRegHessianChangeStatus - Set boolean that determines whether Hessian matrix of regularization subsolver changes with respect to input vector.
-  
+
 
   Collective on Tao
 
@@ -859,7 +859,7 @@ PetscErrorCode TaoADMMSetMisfitHessianChangeStatus(Tao tao, PetscBool b)
 -  b - the Hessian matrix change status boolean, PETSC_FALSE when the Hessian matrix does not change, TRUE otherwise.
 
   Level: advanced
-  
+
 .seealso: TAOADMM
 
 @*/
@@ -883,7 +883,7 @@ PetscErrorCode TaoADMMSetRegHessianChangeStatus(Tao tao, PetscBool b)
 
   Level: advanced
 
-.seealso: TaoADMMSetMinimumSpectralPenalty(), TAOADMM  
+.seealso: TaoADMMSetMinimumSpectralPenalty(), TAOADMM
 @*/
 PetscErrorCode TaoADMMSetSpectralPenalty(Tao tao, PetscReal mu)
 {
@@ -932,7 +932,7 @@ PetscErrorCode TaoADMMGetSpectralPenalty(Tao tao, PetscReal *mu)
 .  misfit - the Tao subsolver context
 
   Level: advanced
-  
+
 .seealso: TAOADMM
 
 @*/
@@ -957,7 +957,7 @@ PetscErrorCode TaoADMMGetMisfitSubsolver(Tao tao, Tao *misfit)
 .  reg - the Tao subsolver context
 
   Level: advanced
-  
+
 .seealso: TAOADMM
 
 @*/
@@ -980,7 +980,7 @@ PetscErrorCode TaoADMMGetRegularizationSubsolver(Tao tao, Tao *reg)
 - c - RHS vector
 
   Level: advanced
-  
+
 .seealso: TAOADMM
 
 @*/
@@ -1004,7 +1004,7 @@ PetscErrorCode TaoADMMSetConstraintVectorRHS(Tao tao, Vec c)
 
   Level: advanced
 
-.seealso: TaoADMMGetSpectralPenalty(), TAOADMM  
+.seealso: TaoADMMGetSpectralPenalty(), TAOADMM
 @*/
 PetscErrorCode TaoADMMSetMinimumSpectralPenalty(Tao tao, PetscReal mu)
 {
@@ -1174,7 +1174,7 @@ PetscErrorCode TaoADMMSetMisfitObjectiveAndGradientRoutine(Tao tao, PetscErrorCo
    - ctx - user context for the misfit Hessian
 
    Level: advanced
-   
+
 .seealso: TAOADMM
 
 @*/
@@ -1223,7 +1223,7 @@ PetscErrorCode TaoADMMSetMisfitHessianRoutine(Tao tao, Mat H, Mat Hpre, PetscErr
    - ctx - user context for the regularizer
 
    Level: advanced
-   
+
 .seealso: TAOADMM
 
 @*/
@@ -1252,7 +1252,7 @@ PetscErrorCode TaoADMMSetRegularizerObjectiveAndGradientRoutine(Tao tao, PetscEr
    - ctx - user context for the regularizer Hessian
 
    Level: advanced
-   
+
 .seealso: TAOADMM
 
 @*/
@@ -1302,7 +1302,7 @@ PetscErrorCode TaoADMMSetRegularizerHessianRoutine(Tao tao, Mat H, Mat Hpre, Pet
    . admm_tao - the parent Tao context
 
    Level: advanced
-   
+
 .seealso: TAOADMM
 
 @*/
@@ -1328,7 +1328,7 @@ PetscErrorCode TaoGetADMMParentTao(Tao tao, Tao *admm_tao)
   . Y - the current solution
 
   Level: intermediate
-  
+
 .seealso: TAOADMM
 
 @*/
@@ -1445,4 +1445,3 @@ PetscErrorCode TaoADMMGetUpdateType(Tao tao, TaoADMMUpdateType *type)
   ierr = PetscUseMethod(tao,"TaoADMMGetUpdateType_C",(Tao,TaoADMMUpdateType*),(tao,type));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-

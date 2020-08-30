@@ -103,9 +103,9 @@ static PetscErrorCode TaoSetFromOptions_BQNK(PetscOptionItems *PetscOptionsObjec
 
   PetscFunctionBegin;
   ierr = PetscOptionsHead(PetscOptionsObject,"Quasi-Newton-Krylov method for bound constrained optimization");CHKERRQ(ierr);
-  ierr = PetscOptionsEList("-tao_bqnk_init_type", "radius initialization type", "", BQNK_INIT, BQNK_INIT_TYPES, BQNK_INIT[bnk->init_type], &bnk->init_type, 0);CHKERRQ(ierr);
-  ierr = PetscOptionsEList("-tao_bqnk_update_type", "radius update type", "", BNK_UPDATE, BNK_UPDATE_TYPES, BNK_UPDATE[bnk->update_type], &bnk->update_type, 0);CHKERRQ(ierr);
-  ierr = PetscOptionsEList("-tao_bqnk_as_type", "active set estimation method", "", BNK_AS, BNK_AS_TYPES, BNK_AS[bnk->as_type], &bnk->as_type, 0);CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-tao_bqnk_init_type", "radius initialization type", "", BQNK_INIT, BQNK_INIT_TYPES, BQNK_INIT[bnk->init_type], &bnk->init_type, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-tao_bqnk_update_type", "radius update type", "", BNK_UPDATE, BNK_UPDATE_TYPES, BNK_UPDATE[bnk->update_type], &bnk->update_type, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsEList("-tao_bqnk_as_type", "active set estimation method", "", BNK_AS, BNK_AS_TYPES, BNK_AS[bnk->as_type], &bnk->as_type, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bqnk_sval", "(developer) Hessian perturbation starting value", "", bnk->sval, &bnk->sval,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bqnk_imin", "(developer) minimum initial Hessian perturbation", "", bnk->imin, &bnk->imin,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_bqnk_imax", "(developer) maximum initial Hessian perturbation", "", bnk->imax, &bnk->imax,NULL);CHKERRQ(ierr);
@@ -184,7 +184,7 @@ static PetscErrorCode TaoDestroy_BQNK(Tao tao)
   TAO_BNK        *bnk = (TAO_BNK*)tao->data;
   TAO_BQNK       *bqnk = (TAO_BQNK*)bnk->ctx;
   PetscErrorCode ierr;
-  
+
   PetscFunctionBegin;
   ierr = MatDestroy(&bnk->Hpre_inactive);CHKERRQ(ierr);
   ierr = MatDestroy(&bnk->H_inactive);CHKERRQ(ierr);
@@ -199,7 +199,7 @@ PETSC_INTERN PetscErrorCode TaoCreate_BQNK(Tao tao)
   TAO_BNK        *bnk;
   TAO_BQNK       *bqnk;
   PetscErrorCode ierr;
-  
+
   PetscFunctionBegin;
   ierr = TaoCreate_BNK(tao);CHKERRQ(ierr);
   ierr = KSPSetOptionsPrefix(tao->ksp, "tao_bqnk_");CHKERRQ(ierr);
@@ -207,16 +207,16 @@ PETSC_INTERN PetscErrorCode TaoCreate_BQNK(Tao tao)
   tao->ops->destroy = TaoDestroy_BQNK;
   tao->ops->view = TaoView_BQNK;
   tao->ops->setup = TaoSetUp_BQNK;
-  
+
   bnk = (TAO_BNK *)tao->data;
   bnk->computehessian = TaoBQNKComputeHessian;
   bnk->computestep = TaoBQNKComputeStep;
   bnk->init_type = BNK_INIT_DIRECTION;
-  
+
   ierr = PetscNewLog(tao,&bqnk);CHKERRQ(ierr);
   bnk->ctx = (void*)bqnk;
   bqnk->is_spd = PETSC_TRUE;
-  
+
   ierr = MatCreate(PetscObjectComm((PetscObject)tao), &bqnk->B);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)bqnk->B, (PetscObject)tao, 1);CHKERRQ(ierr);
   ierr = MatSetOptionsPrefix(bqnk->B, "tao_bqnk_");CHKERRQ(ierr);
@@ -230,7 +230,7 @@ PetscErrorCode TaoGetLMVMMatrix(Tao tao, Mat *B)
   TAO_BQNK       *bqnk = (TAO_BQNK*)bnk->ctx;
   PetscErrorCode ierr;
   PetscBool      is_bqnls, is_bqnkls, is_bqnktr, is_bqnktl;
-  
+
   PetscFunctionBegin;
   ierr = PetscObjectTypeCompare((PetscObject)tao, TAOBQNLS, &is_bqnls);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)tao, TAOBQNKLS, &is_bqnkls);CHKERRQ(ierr);

@@ -3,15 +3,18 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.gitcommit         = 'v2.1.0-p1'
+    self.gitcommit        = 'v2.1.0-p2'  # modification to avoid calling zdotc, zladiv on MacOS
     self.download         = ['git://https://bitbucket.org/petsc/pkg-scalapack','https://bitbucket.org/petsc/pkg-scalapack/get/'+self.gitcommit+'.tar.gz']
     self.downloaddirnames = ['petsc-pkg-scalapack','scalapack']
     self.includes         = []
-    self.liblist          = [['libscalapack.a']]
+    self.liblist          = [['libscalapack.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_intelmpi_lp64.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_mpich_lp64.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_sgimpt_lp64.a'],
+                             ['libmkl_scalapack_lp64.a','libmkl_blacs_openmpi_lp64.a']]
     self.functions        = ['pssytrd']
     self.functionsFortran = 1
     self.fc               = 1
-    self.useddirectly     = 0 # PETSc does not use ScaLAPACK, it is only used by MUMPS
     self.precisions       = ['single','double']
     self.downloadonWindows= 1
     return
@@ -42,10 +45,12 @@ class Configure(config.package.Package):
     g.write('CDEFS        = '+fdef+'\n')
     self.setCompilers.pushLanguage('FC')
     g.write('FC           = '+self.setCompilers.getCompiler()+'\n')
+    extra_fcflags = ''
     if config.setCompilers.Configure.isNAG(self.setCompilers.getLinker(), self.log):
-      g.write('FCFLAGS      =  -dusty -dcfuns '+self.setCompilers.getCompilerFlags().replace('-Wall','').replace('-Wshadow','').replace('-Mfree','')+'\n')
-    else:
-      g.write('FCFLAGS      = '+self.setCompilers.getCompilerFlags().replace('-Wall','').replace('-Wshadow','').replace('-Mfree','')+'\n')
+      extra_fcflags = '-dusty -dcfuns '
+    elif config.setCompilers.Configure.isGfortran100plus(self.setCompilers.getCompiler(), self.log):
+      extra_fcflags = '-fallow-argument-mismatch '
+    g.write('FCFLAGS      = '+extra_fcflags+self.removeWarningFlags(self.setCompilers.getCompilerFlags())+'\n')
     g.write('FCLOADER     = '+self.setCompilers.getLinker()+'\n')
     g.write('FCLOADFLAGS  = '+self.setCompilers.getLinkerFlags()+'\n')
     self.setCompilers.popLanguage()
@@ -78,3 +83,8 @@ class Configure(config.package.Package):
         raise RuntimeError('Error running make on SCALAPACK')
       self.postInstall(output,'SLmake.inc')
     return self.installDir
+
+def getSearchDirectories(self):
+  '''Generate list of possible locations of Scalapack'''
+  yield ''
+  if os.getenv('MKLROOT'): yield os.getenv('MKLROOT')

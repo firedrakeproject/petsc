@@ -107,6 +107,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     self.createChildren()
     # Create argDB for user specified options only
     self.clArgDB = dict([(nargs.Arg.parseArgument(arg)[0], arg) for arg in self.clArgs])
+    self.defineDict = {}
     return
 
   def __getstate__(self):
@@ -405,13 +406,14 @@ class Framework(config.base.Configure, script.LanguageProcessor):
 
   def filterPreprocessOutput(self,output, log = None):
     if log is None: log = self.log
-    log.write("Preprocess stderr before filtering:"+output+":\n")
+    log.write("Preprocess stderr before filtering:\n"+output+":\n")
     # Another PGI license warning, multiline so have to discard all
     if output.find('your evaluation license will expire') > -1 and output.lower().find('error') == -1:
       output = ''
     lines = output.splitlines()
     # Intel
     lines = [s for s in lines if s.find("icc: command line remark #10148: option '-i-dynamic' not supported") < 0]
+    lines = [s for s in lines if s.find("[: unexpected operator") < 0]  # Deals with error in mpiicc and mpiicpc wrappers from some versions of Intel MPI.
     # IBM:
     lines = [s for s in lines if not s.startswith('cc_r:')]
     # PGI: Ignore warning about temporary license
@@ -421,8 +423,14 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     lines = [s for s in lines if s.find('INFO: linux target') < 0]
     # Lahey/Fujitsu
     lines = [s for s in lines if s.find('Encountered 0 errors') < 0]
-    output = reduce(lambda s, t: s+t, lines, '')
-    log.write("Preprocess stderr after filtering:"+output+":\n")
+    # Cray GPU system at Nersc
+    lines = [s for s in lines if s.find('No supported cpu target is set, CRAY_CPU_TARGET=x86-64 will be used.') < 0]
+    lines = [s for s in lines if s.find('Load a valid targeting module or set CRAY_CPU_TARGET') < 0]
+    # pgi dumps filename on stderr - but returns 0 errorcode'
+    lines = [s for s in lines if lines != 'conftest.c:']
+    if lines: output = reduce(lambda s, t: s+t, lines, '\n')
+    else: output = ''
+    log.write("Preprocess stderr after filtering:\n"+output+":\n")
     return output
 
   def filterCompileOutput(self, output):
@@ -437,6 +445,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     elif self.argDB['ignoreCompileOutput']:
       output = ''
     elif output:
+      log.write("Compiler stderr before filtering:\n"+output+":\n")
       lines = output.splitlines()
       if self.argDB['ignoreWarnings']:
         # EXCEPT warnings that those bastards say we want
@@ -463,7 +472,14 @@ class Framework(config.base.Configure, script.LanguageProcessor):
       lines = [s for s in lines if s.find('Successful compile:') < 0]
       # Lahey/Fujitsu
       lines = [s for s in lines if s.find('Encountered 0 errors') < 0]
-      output = reduce(lambda s, t: s+t, lines, '')
+      # Cray GPU system at Nersc
+      lines = [s for s in lines if s.find('No supported cpu target is set, CRAY_CPU_TARGET=x86-64 will be used.') < 0]
+      lines = [s for s in lines if s.find('Load a valid targeting module or set CRAY_CPU_TARGET') < 0]
+      # pgi dumps filename on stderr - but returns 0 errorcode'
+      lines = [s for s in lines if lines != 'conftest.c:']
+      if lines: output = reduce(lambda s, t: s+t, lines, '\n')
+      else: output = ''
+      log.write("Compiler stderr after filtering:\n"+output+":\n")
     return output
 
   def filterLinkOutput(self, output):
@@ -471,9 +487,10 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     elif self.argDB['ignoreLinkOutput']:
       output = ''
     elif output:
-      hasIbmCrap = output.find('in statically linked applications requires at runtime the shared libraries from the glibc version used for linking') >= 0
+      log.write("Linker stderr before filtering:\n"+output+":\n")
+      hasIbmstuff = output.find('in statically linked applications requires at runtime the shared libraries from the glibc version used for linking') >= 0
       lines = output.splitlines()
-      if self.argDB['ignoreWarnings'] and not hasIbmCrap:
+      if self.argDB['ignoreWarnings'] and not hasIbmstuff:
         lines = [s for s in lines if not self.warningRE.search(s)]
       # PGI: Ignore warning about temporary license
       lines = [s for s in lines if s.find('license.dat') < 0]
@@ -482,7 +499,14 @@ class Framework(config.base.Configure, script.LanguageProcessor):
       lines = [s for s in lines if s.find('INFO: linux target') < 0]
       # Lahey/Fujitsu
       lines = [s for s in lines if s.find('Encountered 0 errors') < 0]
-      output = reduce(lambda s, t: s+t, lines, '')
+      # Cray GPU system at Nersc
+      lines = [s for s in lines if s.find('No supported cpu target is set, CRAY_CPU_TARGET=x86-64 will be used.') < 0]
+      lines = [s for s in lines if s.find('Load a valid targeting module or set CRAY_CPU_TARGET') < 0]
+      # pgi dumps filename on stderr - but returns 0 errorcode'
+      lines = [s for s in lines if lines != 'conftest.c:']
+      if lines: output = reduce(lambda s, t: s+t, lines, '\n')
+      else: output = ''
+      log.write("Linker stderr after filtering:\n"+output+":\n")
     return output
 
   ###############################################
@@ -620,16 +644,13 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     self.actions.addArgument('Framework', 'RDict update', 'Substitutions were stored in RDict with parent '+str(argDB.parentDirectory))
     return
 
-  def outputDefine(self, f, name, value = None, comment = ''):
+  def outputDefine(self, f, name, value = None):
     '''Define "name" to "value" in the configuration header'''
     # we need to keep the libraries in this list and simply not print them at the end
     # because libraries.havelib() is used to find library in this list we had to list the libraries in the
     # list even though we don't need them in petscconf.h
     # two packages have LIB in there name so we have to include them here
     if (name.startswith('PETSC_HAVE_LIB') and not name in ['PETSC_HAVE_LIBPNG','PETSC_HAVE_LIBJPEG']) or (name.startswith('PETSC_HAVE_') and name.endswith('LIB')): return
-    if comment:
-      for line in comment.split('\n'):
-        if line: f.write('/* '+line+' */\n')
     if value:
       f.write('#define '+name+' '+str(value)+'\n')
     else:
@@ -677,27 +698,24 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     if prefix:         prefix = prefix+'_'
     return prefix+name
 
-  def outputDefines(self, f, child, prefix = None):
+  def processDefines(self, child, prefix = None):
     '''If the child contains a dictionary named "defines", the entries are output as defines in the config header.
     The prefix to each define is calculated as follows:
     - If the prefix argument is given, this is used, otherwise
     - If the child contains "headerPrefix", this is used, otherwise
     - If the module containing the child class is not "__main__", this is used, otherwise
     - No prefix is used
-    If the child contains a dictionary named "help", then a help string will be added before the define
     '''
     if not hasattr(child, 'defines') or not isinstance(child.defines, dict): return
-    if hasattr(child, 'help') and isinstance(child.help, dict):
-      help = child.help
-    else:
-      help = {}
-    for pair in sorted(child.defines.items()):
+    for pair in child.defines.items():
       if not pair[1]: continue
-      if pair[0] in help:
-        self.outputDefine(f, self.getFullDefineName(child, pair[0], prefix), pair[1], help[pair[0]])
-      else:
-        self.outputDefine(f, self.getFullDefineName(child, pair[0], prefix), pair[1])
+      item = (self.getFullDefineName(child, pair[0], prefix), pair[1])
+      self.defineDict.update({item[0] : item})
     return
+
+  def outputDefines(self, f):
+    for item in sorted(self.defineDict):
+      self.outputDefine(f, *self.defineDict[item])
 
   def outputPkgVersion(self, f, child):
     '''If the child contains a tuple named "version_tuple", the entries are output in the config package header.'''
@@ -808,9 +826,10 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     f.write('#define '+guard+'\n\n')
     if hasattr(self, 'headerTop'):
       f.write(str(self.headerTop)+'\n')
-    self.outputDefines(f, self, prefix)
+    self.processDefines(self, prefix)
     for child in self.childGraph.vertices:
-      self.outputDefines(f, child, prefix)
+      self.processDefines(child, prefix)
+    self.outputDefines(f)
     if hasattr(self, 'headerBottom'):
       f.write(str(self.headerBottom)+'\n')
     f.write('#endif\n')
@@ -1165,7 +1184,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
       # note, only classes derived from package.py have this attribute
       if hasattr(child,'deps'):
         found = 0
-        if child.lookforbydefault: found = 1
+        if child.required or child.lookforbydefault: found = 1
         if 'download-'+child.package in self.framework.clArgDB and self.argDB['download-'+child.package]: found = 1
         if 'with-'+child.package in self.framework.clArgDB and self.argDB['with-'+child.package]: found = 1
         if 'with-'+child.package+'-lib' in self.framework.clArgDB and self.argDB['with-'+child.package+'-lib']: found = 1
@@ -1174,7 +1193,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
         msg = ''
         for dep in child.deps:
           found = 0
-          if dep.lookforbydefault: found = 1
+          if dep.required or dep.lookforbydefault: found = 1
           if 'download-'+dep.package in self.framework.clArgDB and self.argDB['download-'+dep.package]: found = 1
           if 'with-'+dep.package in self.framework.clArgDB and self.argDB['with-'+dep.package]: found = 1
           if 'with-'+dep.package+'-lib' in self.framework.clArgDB and self.argDB['with-'+dep.package+'-lib']: found = 1

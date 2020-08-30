@@ -528,7 +528,7 @@ static PetscErrorCode TestFEJacobian(DM dm, AppCtx *user)
     ierr = DMCreateMatrix(dm,&E);CHKERRQ(ierr);
     ierr = DMGetLocalVector(dm,&local);CHKERRQ(ierr);
     ierr = DMPlexSNESComputeJacobianFEM(dm,local,E,E,NULL);CHKERRQ(ierr);
-    ierr = DMPlexCreateRigidBody(dm,&sp);CHKERRQ(ierr);
+    ierr = DMPlexCreateRigidBody(dm,0,&sp);CHKERRQ(ierr);
     ierr = MatNullSpaceGetVecs(sp,&hasConst,&n,&vecs);CHKERRQ(ierr);
     if (n) {ierr = VecDuplicate(vecs[0],&res);CHKERRQ(ierr);}
     ierr = DMCreateLocalVector(dm,&localX);CHKERRQ(ierr);
@@ -626,10 +626,10 @@ static PetscErrorCode TestFVGrad(DM dm, AppCtx *user)
   ierr = DMCreateDS(dmfv);CHKERRQ(ierr);
   ierr = DMPlexGetReferenceTree(dm,&refTree);CHKERRQ(ierr);
   if (refTree) {ierr = DMCopyDisc(dmfv,refTree);CHKERRQ(ierr);}
-  ierr = DMPlexSNESGetGradientDM(dmfv, fv, &dmgrad);CHKERRQ(ierr);
+  ierr = DMPlexGetGradientDM(dmfv, fv, &dmgrad);CHKERRQ(ierr);
   ierr = DMPlexGetHeightStratum(dmfv,0,&cStart,&cEnd);CHKERRQ(ierr);
   nvecs = user->dim * (user->dim+1) / 2;
-  ierr = DMPlexSNESGetGeometryFVM(dmfv,NULL,&cellgeom,NULL);CHKERRQ(ierr);
+  ierr = DMPlexGetGeometryFVM(dmfv,NULL,&cellgeom,NULL);CHKERRQ(ierr);
   ierr = VecGetDM(cellgeom,&dmCell);CHKERRQ(ierr);
   ierr = VecGetArrayRead(cellgeom,&cgeom);CHKERRQ(ierr);
   ierr = DMGetGlobalVector(dmgrad,&grad);CHKERRQ(ierr);

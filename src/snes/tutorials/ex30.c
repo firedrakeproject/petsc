@@ -248,11 +248,11 @@ PetscErrorCode UpdateSolution(SNES snes, AppCtx *user, PetscInt *nits)
 
   /* Olivine diffusion creep */
   if (param->ivisc >= VISC_DIFN && !param->stop_solve) {
-    if (!q) PetscPrintf(PETSC_COMM_WORLD,"Computing Variable Viscosity Solution\n");
+    if (!q) {ierr = PetscPrintf(PETSC_COMM_WORLD,"Computing Variable Viscosity Solution\n");CHKERRQ(ierr);}
 
     /* continuation method on viscosity cutoff */
     for (param->continuation=0.0;; param->continuation+=cont_incr) {
-      if (!q) PetscPrintf(PETSC_COMM_WORLD," Continuation parameter = %g\n", (double)param->continuation);
+      if (!q) {ierr = PetscPrintf(PETSC_COMM_WORLD," Continuation parameter = %g\n", (double)param->continuation);CHKERRQ(ierr);}
 
       /* solve the non-linear system */
       ierr   = VecCopy(user->Xguess,user->x);CHKERRQ(ierr);
@@ -260,7 +260,7 @@ PetscErrorCode UpdateSolution(SNES snes, AppCtx *user, PetscInt *nits)
       ierr   = SNESGetConvergedReason(snes,&reason);CHKERRQ(ierr);
       ierr   = SNESGetIterationNumber(snes,&its);CHKERRQ(ierr);
       *nits += its;
-      if (!q) PetscPrintf(PETSC_COMM_WORLD," SNES iterations: %D, Cumulative: %D\n", its, *nits);
+      if (!q) {ierr = PetscPrintf(PETSC_COMM_WORLD," SNES iterations: %D, Cumulative: %D\n", its, *nits);CHKERRQ(ierr);}
       if (param->stop_solve) goto done;
 
       if (reason<0) {
@@ -388,7 +388,7 @@ PETSC_STATIC_INLINE PetscScalar CalcSecInv(Field **x, PetscInt i, PetscInt j, Pe
     wN = x[j][i].w; wS = x[j-1][i].w;
     wE = WInterp(x,i,j-1);
     if (i==j) {
-      uN = param->cb; wW = param->sb; 
+      uN = param->cb; wW = param->sb;
     } else {
       uN = UInterp(x,i-1,j); wW = WInterp(x,i-1,j-1);
     }
@@ -862,7 +862,7 @@ PetscErrorCode SetParams(Parameter *param, GridInfo *grid)
 
   ierr = PetscOptionsHasName(NULL,NULL,"-quiet",&(param->quiet));CHKERRQ(ierr);
   ierr = PetscOptionsHasName(NULL,NULL,"-test",&(param->param_test));CHKERRQ(ierr);
-  ierr = PetscOptionsGetString(NULL,NULL,"-file",param->filename,PETSC_MAX_PATH_LEN,&(param->output_to_file));CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,NULL,"-file",param->filename,sizeof(param->filename),&(param->output_to_file));CHKERRQ(ierr);
 
   /* advection */
   param->adv_scheme = ADVECT_FROMM;       /* advection scheme: 0=finite vol, 1=Fromm */

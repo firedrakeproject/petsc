@@ -138,7 +138,7 @@ static PetscErrorCode CreateSpectralPlanes(DM dm, PetscInt numPlanes, const Pets
 
       ierr = PetscSectionGetOffset(coordSection, v, &off);CHKERRQ(ierr);
       if (PetscAbsReal(planeCoord[p] - PetscRealPart(coords[off+planeDir[p]])) < PETSC_SMALL) {
-	ierr = DMLabelSetValue(label, v, 1);CHKERRQ(ierr);
+        ierr = DMLabelSetValue(label, v, 1);CHKERRQ(ierr);
       }
     }
   }
@@ -213,7 +213,7 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
   ierr = PetscDSSetResidual(prob, 0, f0_trig_u, f1_u);CHKERRQ(ierr);
   ierr = PetscDSSetJacobian(prob, 0, 0, NULL, NULL, NULL, g3_uu);CHKERRQ(ierr);
   ierr = PetscDSSetExactSolution(prob, 0, trig_u, user);CHKERRQ(ierr);
-  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", "marker", 0, 0, NULL, (void (*)(void)) trig_u, 1, &id, user);CHKERRQ(ierr);
+  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", "marker", 0, 0, NULL, (void (*)(void)) trig_u, NULL, 1, &id, user);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -228,7 +228,7 @@ static PetscErrorCode SetupAdjointProblem(DM dm, AppCtx *user)
   ierr = PetscDSSetResidual(prob, 0, f0_unity_u, f1_u);CHKERRQ(ierr);
   ierr = PetscDSSetJacobian(prob, 0, 0, NULL, NULL, NULL, g3_uu);CHKERRQ(ierr);
   ierr = PetscDSSetObjective(prob, 0, obj_error_u);CHKERRQ(ierr);
-  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", "marker", 0, 0, NULL, (void (*)(void)) zero, 1, &id, user);CHKERRQ(ierr);
+  ierr = DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", "marker", 0, 0, NULL, (void (*)(void)) zero, NULL, 1, &id, user);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -560,6 +560,16 @@ int main(int argc, char **argv)
     args: -potential_petscspace_degree 1 -cells 2,2 -dm_refine_hierarchy 2 -convest_num_refine 2 -snes_convergence_estimate \
           -ksp_rtol 5e-10 -pc_type mg -pc_mg_type full \
             -mg_levels_ksp_max_it 2 \
+            -mg_levels_esteig_ksp_type cg \
+            -mg_levels_esteig_ksp_max_it 10 \
+            -mg_levels_ksp_chebyshev_esteig 0,0.05,0,1.05 \
+            -mg_levels_pc_type jacobi
+  test:
+    suffix: 2d_p1_gmg_vcycle_adapt
+    requires: triangle bamg
+    args: -potential_petscspace_degree 1 -cells 2,2 -dm_refine_hierarchy 2 -convest_num_refine 2 -snes_convergence_estimate \
+          -ksp_rtol 5e-10 -pc_type mg -pc_mg_galerkin -pc_mg_adapt_interp -pc_mg_adapt_interp_coarse_space harmonic -pc_mg_adapt_interp_n 8 \
+            -mg_levels_ksp_max_it 1 \
             -mg_levels_esteig_ksp_type cg \
             -mg_levels_esteig_ksp_max_it 10 \
             -mg_levels_ksp_chebyshev_esteig 0,0.05,0,1.05 \

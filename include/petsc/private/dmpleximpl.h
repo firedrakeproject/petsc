@@ -38,77 +38,9 @@ PETSC_EXTERN PetscLogEvent DMPLEX_IntegralFEM;
 PETSC_EXTERN PetscLogEvent DMPLEX_CreateGmsh;
 PETSC_EXTERN PetscLogEvent DMPLEX_RebalanceSharedPoints;
 PETSC_EXTERN PetscLogEvent DMPLEX_CreateFromFile;
-PETSC_EXTERN PetscLogEvent DMPLEX_CreateFromCellList;
-PETSC_EXTERN PetscLogEvent DMPLEX_CreateFromCellList_Coordinates;
-
-PETSC_EXTERN PetscBool      PetscPartitionerRegisterAllCalled;
-PETSC_EXTERN PetscErrorCode PetscPartitionerRegisterAll(void);
-
-typedef struct _PetscPartitionerOps *PetscPartitionerOps;
-struct _PetscPartitionerOps {
-  PetscErrorCode (*setfromoptions)(PetscOptionItems*,PetscPartitioner);
-  PetscErrorCode (*setup)(PetscPartitioner);
-  PetscErrorCode (*view)(PetscPartitioner,PetscViewer);
-  PetscErrorCode (*destroy)(PetscPartitioner);
-  PetscErrorCode (*partition)(PetscPartitioner, PetscInt, PetscInt, PetscInt[], PetscInt[], PetscSection, PetscSection, PetscSection, IS *);
-};
-
-struct _p_PetscPartitioner {
-  PETSCHEADER(struct _PetscPartitionerOps);
-  void        *data;            /* Implementation object */
-  PetscInt    height;           /* Height of points to partition into non-overlapping subsets */
-  PetscInt    edgeCut;          /* The number of edge cut by the partition */
-  PetscReal   balance;          /* The maximum partition size divided by the minimum size */
-  PetscViewer viewer;
-  PetscViewer viewerGraph;
-  PetscBool   viewGraph;
-  PetscBool   noGraph;          /* if true, the partitioner does not need the connectivity graph, only the number of local vertices */
-  PetscBool   usevwgt;          /* if true, the partitioner looks at the local section vertSection to weight the vertices of the graph */
-};
-
-typedef struct {
-  PetscInt dummy;
-} PetscPartitioner_Chaco;
-
-typedef struct {
-  MPI_Comm  pcomm;
-  PetscInt  ptype;
-  PetscReal imbalanceRatio;
-  PetscInt  debugFlag;
-  PetscInt  randomSeed;
-} PetscPartitioner_ParMetis;
-
-typedef struct {
-  MPI_Comm  pcomm;
-  PetscInt  strategy;
-  PetscReal imbalance;
-} PetscPartitioner_PTScotch;
-
-static const char *const
-PTScotchStrategyList[] = {
-  "DEFAULT",
-  "QUALITY",
-  "SPEED",
-  "BALANCE",
-  "SAFETY",
-  "SCALABILITY",
-  "RECURSIVE",
-  "REMAP"
-};
-
-typedef struct {
-  PetscSection section;   /* Sizes for each partition */
-  IS           partition; /* Points in each partition */
-  PetscBool    random;    /* Flag for a random partition */
-} PetscPartitioner_Shell;
-
-typedef struct {
-  PetscInt dummy;
-} PetscPartitioner_Simple;
-
-typedef struct {
-  PetscInt dummy;
-} PetscPartitioner_Gather;
+PETSC_EXTERN PetscLogEvent DMPLEX_BuildFromCellList;
+PETSC_EXTERN PetscLogEvent DMPLEX_BuildCoordinatesFromCellList;
+PETSC_EXTERN PetscLogEvent DMPLEX_LocatePoints;
 
 typedef struct _DMPlexCellRefinerOps *DMPlexCellRefinerOps;
 struct _DMPlexCellRefinerOps {
@@ -118,20 +50,24 @@ struct _DMPlexCellRefinerOps {
   PetscErrorCode (*getaffinefacetransforms)(DMPlexCellRefiner, DMPolytopeType, PetscInt *, PetscReal *[], PetscReal *[], PetscReal *[], PetscReal *[]);
   PetscErrorCode (*getcellvertices)(DMPlexCellRefiner, DMPolytopeType, PetscInt *, PetscReal *[]);
   PetscErrorCode (*getsubcellvertices)(DMPlexCellRefiner, DMPolytopeType, DMPolytopeType, PetscInt, PetscInt *, PetscInt *[]);
+  PetscErrorCode (*mapcoords)(DMPlexCellRefiner, DMPolytopeType, DMPolytopeType, PetscInt, PetscInt, PetscInt, const PetscScalar[], PetscScalar[]);
+  PetscErrorCode (*setup)(DMPlexCellRefiner);
+  PetscErrorCode (*destroy)(DMPlexCellRefiner);
 };
 
 struct _p_DMPlexCellRefiner {
   PETSCHEADER(struct _DMPlexCellRefinerOps);
-  DM        dm;         /* The original DM */
-  PetscBool setupcalled;
+  DM                    dm;          /* The original DM */
+  PetscBool             setupcalled;
   DMPlexCellRefinerType type;
-  PetscInt *ctOrder;    /* [i] = ct: An array with cell types in depth order */
-  PetscInt *ctOrderInv; /* [ct] = i: An array with the ordinal numbers for each cell type */
-  PetscInt *ctStart;    /* The number for the first cell of each polytope type in the original mesh, indexed by cell type */
-  PetscInt *ctStartNew; /* The number for the first cell of each polytope type in the new mesh, indexed by cell type */
-  PetscInt *offset;     /* [ct][ctNew]: The offset in the new point numbering of a point of type ctNew produced from an old point of type ct */
-  PetscFE      *coordFE; /* Finite element for each cell type, used for localized coordinate interpolation */
-  PetscFEGeom **refGeom; /* Geometry of the reference cell for each cell type */
+  PetscInt              *ctOrder;    /* [i] = ct: An array with cell types in depth order */
+  PetscInt              *ctOrderInv; /* [ct] = i: An array with the ordinal numbers for each cell type */
+  PetscInt              *ctStart;    /* The number for the first cell of each polytope type in the original mesh, indexed by cell type */
+  PetscInt              *ctStartNew; /* The number for the first cell of each polytope type in the new mesh, indexed by cell type */
+  PetscInt              *offset;     /* [ct][ctNew]: The offset in the new point numbering of a point of type ctNew produced from an old point of type ct */
+  PetscFE               *coordFE;    /* Finite element for each cell type, used for localized coordinate interpolation */
+  PetscFEGeom           **refGeom;   /* Geometry of the reference cell for each cell type */
+  void                  *data;       /* refiner private data */
 };
 
 /* Utility struct to store the contents of a Fluent file in memory */
@@ -235,6 +171,7 @@ typedef struct {
 
   /* Projection */
   PetscInt             maxProjectionHeight; /* maximum height of cells used in DMPlexProject functions */
+  PetscInt             activePoint;         /* current active point in iteration */
 
   /* Output */
   PetscInt             vtkCellHeight;            /* The height of cells for output, default is 0 */
@@ -244,6 +181,10 @@ typedef struct {
   PetscReal            minradius;         /* Minimum distance from cell centroid to face */
   PetscBool            useHashLocation;   /* Use grid hashing for point location */
   PetscGridHash        lbox;              /* Local box for searching */
+  void               (*coordFunc)(PetscInt, PetscInt, PetscInt, /* Function used to remap newly introduced vertices */
+                                  const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                  const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                  PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]);
 
   /* Neighbors */
   PetscMPIInt*         neighbors;
@@ -275,6 +216,7 @@ PETSC_EXTERN PetscErrorCode DMPlexView_HDF5(DM, PetscViewer);
 PETSC_EXTERN PetscErrorCode DMPlexLoad_HDF5(DM, PetscViewer);
 #endif
 
+PETSC_INTERN PetscErrorCode DMPlexVecGetClosureAtDepth_Internal(DM, PetscSection, Vec, PetscInt, PetscInt, PetscInt *, PetscScalar *[]);
 PETSC_INTERN PetscErrorCode DMPlexClosurePoints_Private(DM,PetscInt,const PetscInt[],IS*);
 PETSC_INTERN PetscErrorCode DMSetFromOptions_NonRefinement_Plex(PetscOptionItems *, DM);
 PETSC_INTERN PetscErrorCode DMCoarsen_Plex(DM, MPI_Comm, DM *);
@@ -284,6 +226,7 @@ PETSC_INTERN PetscErrorCode DMRefineHierarchy_Plex(DM, PetscInt, DM []);
 PETSC_INTERN PetscErrorCode DMAdaptLabel_Plex(DM, DMLabel, DM *);
 PETSC_INTERN PetscErrorCode DMAdaptMetric_Plex(DM, Vec, DMLabel, DM *);
 PETSC_INTERN PetscErrorCode DMPlexInsertBoundaryValues_Plex(DM, PetscBool, Vec, PetscReal, Vec, Vec, Vec);
+PETSC_INTERN PetscErrorCode DMPlexInsertTimeDerivativeBoundaryValues_Plex(DM, PetscBool, Vec, PetscReal, Vec, Vec, Vec);
 PETSC_INTERN PetscErrorCode DMProjectFunctionLocal_Plex(DM,PetscReal,PetscErrorCode(**)(PetscInt,PetscReal,const PetscReal[],PetscInt,PetscScalar *,void *),void **,InsertMode,Vec);
 PETSC_INTERN PetscErrorCode DMProjectFunctionLabelLocal_Plex(DM,PetscReal,DMLabel,PetscInt,const PetscInt[],PetscInt,const PetscInt[],PetscErrorCode(**)(PetscInt,PetscReal,const PetscReal[],PetscInt,PetscScalar *,void *),void **,InsertMode,Vec);
 PETSC_INTERN PetscErrorCode DMProjectFieldLocal_Plex(DM,PetscReal,Vec,void (**)(PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],const PetscInt[],const PetscInt[],const PetscScalar[],const PetscScalar[],const PetscScalar[],PetscReal,const PetscReal[],PetscInt,const PetscScalar[],PetscScalar[]),InsertMode,Vec);
@@ -294,10 +237,6 @@ PETSC_INTERN PetscErrorCode DMComputeL2GradientDiff_Plex(DM,PetscReal,PetscError
 PETSC_INTERN PetscErrorCode DMComputeL2FieldDiff_Plex(DM,PetscReal,PetscErrorCode(**)(PetscInt,PetscReal,const PetscReal[],PetscInt,PetscScalar *,void *),void **,Vec,PetscReal *);
 PETSC_INTERN PetscErrorCode DMLocatePoints_Plex(DM, Vec, DMPointLocationType, PetscSF);
 
-PETSC_INTERN PetscErrorCode DMPlexBuildFromCellList_Internal(DM, PetscInt, PetscInt, PetscInt, PetscInt, const int[], PetscBool);
-PETSC_INTERN PetscErrorCode DMPlexBuildFromCellList_Parallel_Internal(DM, PetscInt, PetscInt, PetscInt, PetscInt, const int[], PetscBool, PetscSF *);
-PETSC_INTERN PetscErrorCode DMPlexBuildCoordinates_Internal(DM, PetscInt, PetscInt, PetscInt, const double[]);
-PETSC_INTERN PetscErrorCode DMPlexBuildCoordinates_Parallel_Internal(DM, PetscInt, PetscInt, PetscInt, PetscSF, const PetscReal[]);
 PETSC_INTERN PetscErrorCode DMPlexLoadLabels_HDF5_Internal(DM, PetscViewer);
 PETSC_INTERN PetscErrorCode DMPlexView_HDF5_Internal(DM, PetscViewer);
 PETSC_INTERN PetscErrorCode DMPlexLoad_HDF5_Internal(DM, PetscViewer);
@@ -320,7 +259,7 @@ PETSC_INTERN PetscErrorCode DMPlexRestoreRawFaces_Internal(DM,DMPolytopeType,con
 PETSC_INTERN PetscErrorCode CellRefinerInCellTest_Internal(DMPolytopeType, const PetscReal[], PetscBool *);
 PETSC_INTERN PetscErrorCode DMPlexComputeCellType_Internal(DM, PetscInt, PetscInt, DMPolytopeType *);
 PETSC_INTERN PetscErrorCode DMPlexCreateCellTypeOrder_Internal(DMPolytopeType, PetscInt *[], PetscInt *[]);
-PETSC_INTERN PetscErrorCode DMPlexVecSetFieldClosure_Internal(DM, PetscSection, Vec, PetscBool[], PetscInt, PetscInt, const PetscInt[], const PetscScalar[], InsertMode);
+PETSC_INTERN PetscErrorCode DMPlexVecSetFieldClosure_Internal(DM, PetscSection, Vec, PetscBool[], PetscInt, PetscInt, const PetscInt[], DMLabel, PetscInt, const PetscScalar[], InsertMode);
 PETSC_INTERN PetscErrorCode DMPlexProjectConstraints_Internal(DM, Vec, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexCreateReferenceTree_SetTree(DM, PetscSection, PetscInt[], PetscInt[]);
 PETSC_EXTERN PetscErrorCode DMPlexCreateReferenceTree_Union(DM,DM,const char *,DM*);
@@ -374,7 +313,9 @@ PETSC_STATIC_INLINE PetscInt DihedralSwap(PetscInt N, PetscInt a, PetscInt b)
 }
 
 PETSC_EXTERN PetscErrorCode DMPlexComputeResidual_Internal(DM, IS , PetscReal, Vec, Vec, PetscReal, Vec, void *);
+PETSC_EXTERN PetscErrorCode DMPlexComputeResidual_Hybrid_Internal(DM, IS , PetscReal, Vec, Vec, PetscReal, Vec, void *);
 PETSC_EXTERN PetscErrorCode DMPlexComputeJacobian_Internal(DM, IS, PetscReal, PetscReal, Vec, Vec, Mat, Mat, void *);
+PETSC_EXTERN PetscErrorCode DMPlexComputeJacobian_Hybrid_Internal(DM, IS, PetscReal, PetscReal, Vec, Vec, Mat, Mat, void *);
 PETSC_EXTERN PetscErrorCode DMPlexReconstructGradients_Internal(DM, PetscFV, PetscInt, PetscInt, Vec, Vec, Vec, Vec);
 
 /* Matvec with A in row-major storage, x and y can be aliased */
@@ -428,6 +369,20 @@ PETSC_STATIC_INLINE void DMPlex_Mult3DReal_Internal(const PetscReal A[], PetscIn
   y[ldx]   = A[3]*z[0] + A[4]*z[1] + A[5]*z[2];
   y[ldx*2] = A[6]*z[0] + A[7]*z[1] + A[8]*z[2];
   (void)PetscLogFlops(15.0);
+}
+PETSC_STATIC_INLINE void DMPlex_MultTransposeReal_Internal(const PetscReal A[], PetscInt m, PetscInt n, PetscInt ldx, const PetscScalar x[], PetscScalar y[])
+{
+  PetscScalar z[3];
+  PetscInt    i, j;
+  for (i = 0; i < m; ++i) z[i] = x[i*ldx];
+  for (j = 0; j < n; ++j) {
+    const PetscInt l = j*ldx;
+    y[l] = 0;
+    for (i = 0; i < m; ++i) {
+      y[l] += A[j*n+i]*z[i];
+    }
+  }
+  (void)PetscLogFlops(2*m*n);
 }
 PETSC_STATIC_INLINE void DMPlex_MultTranspose2DReal_Internal(const PetscReal A[], PetscInt ldx, const PetscScalar x[], PetscScalar y[])
 {

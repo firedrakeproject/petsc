@@ -38,10 +38,10 @@ int main (int argc, char** argv)
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRQ(ierr);
   if (size > 2) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_SUP,"This example is for <=2 procs");
 
-  ierr = PetscOptionsGetString(NULL,NULL,"-f0",file[0],PETSC_MAX_PATH_LEN,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,NULL,"-f0",file[0],sizeof(file[0]),&flg);CHKERRQ(ierr);
   if (!flg) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must indicate dof indices file for rank 0 with -f0 option");
   if (size == 2) {
-    ierr = PetscOptionsGetString(NULL,NULL,"-f1",file[1],PETSC_MAX_PATH_LEN,&flg);CHKERRQ(ierr);
+    ierr = PetscOptionsGetString(NULL,NULL,"-f1",file[1],sizeof(file[1]),&flg);CHKERRQ(ierr);
     if (!flg) SETERRQ(PETSC_COMM_WORLD,PETSC_ERR_USER,"Must indicate dof indices file for rank 1 with -f1 option");
   }
 
@@ -134,14 +134,14 @@ int main (int argc, char** argv)
   ierr = MatSetBlockSize(mat, 1);CHKERRQ(ierr);
   ierr = MatSetType(mat, MATAIJ);CHKERRQ(ierr); // Automatically chooses seqaij or mpiaij
   ierr = MatSeqAIJSetPreallocation(mat, 0, &n_nz[0]);CHKERRQ(ierr);
-  ierr = MatMPIAIJSetPreallocation(mat, 0, &n_nz[0], 0, &n_oz[0]); CHKERRQ(ierr);
+  ierr = MatMPIAIJSetPreallocation(mat, 0, &n_nz[0], 0, &n_oz[0]);CHKERRQ(ierr);
   ierr = MatSetOption(mat, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE);CHKERRQ(ierr);
 
   // Local "element" loop
   for (unsigned int k = 0; k < elem_dof_indices[rank].size(); k++) {
     std::vector<PetscInt>& dof_indices = elem_dof_indices[rank][k];
-    // DenseMatrix< Number >  zero_mat( dof_indices.size(), dof_indices.size() );
-    // B.add_matrix( zero_mat, dof_indices );
+    // DenseMatrix< Number >  zero_mat( dof_indices.size(), dof_indices.size());
+    // B.add_matrix( zero_mat, dof_indices);
     std::vector<PetscScalar> ones(dof_indices.size() * dof_indices.size(), 1.);
     ierr = MatSetValues(mat, dof_indices.size(), &dof_indices[0], dof_indices.size(), &dof_indices[0], &ones[0], ADD_VALUES);CHKERRQ(ierr);
   }

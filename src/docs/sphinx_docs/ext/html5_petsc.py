@@ -16,11 +16,13 @@ from sphinx.application import Sphinx
 def setup(app: Sphinx) -> None:
     _check_version(app)
     app.set_translator('html', HTML5PETScTranslator, override=True)
+    app.set_translator('dirhtml', HTML5PETScTranslator, override=True)
 
-    # Also set the translator for ReadTheDocs's custom builder
+    # Also set the translator for ReadTheDocs's custom builders
     # This is dangerous, since they could change the name and silently
     # deactivate our translator
     app.set_translator('readthedocs', HTML5PETScTranslator, override=True)
+    app.set_translator('readthedocsdirhtml', HTML5PETScTranslator, override=True)
 
 
 def _check_version(app: Sphinx) -> None:
@@ -193,6 +195,7 @@ def _generate_htmlmap_stash() -> str:
         docs_destination = os.path.join(os.getcwd(),'_build')
         allcite = ['make', 'allcite', 'PETSC_DIR=' + petsc_dir,
                    'PETSC_ARCH=' + petsc_arch, 'LOC=' + docs_destination]
+        print(__file__,': performing a minimal PETSc configuration, with PETSC_ARCH=', petsc_arch)
         subprocess.run(allcite, cwd=petsc_dir).check_returncode()
     return htmlmap_stash_filename
 

@@ -888,7 +888,7 @@ PetscErrorCode PCBDDCGraphSetUp(PCBDDCGraph graph, PetscInt custom_minimal_size,
     /* allocate space for mirrors */
     ierr = PetscMalloc2(graph->nvtxs,&graph->mirrors,graph->nvtxs,&graph->mirrors_set);CHKERRQ(ierr);
     ierr = PetscArrayzero(graph->mirrors,graph->nvtxs);CHKERRQ(ierr);
-    graph->mirrors_set[0] = 0;
+    graph->mirrors_set[0] = NULL;
 
     k=0;
     for (i=0;i<n_shared[0];i++) {
@@ -915,7 +915,7 @@ PetscErrorCode PCBDDCGraphSetUp(PCBDDCGraph graph, PetscInt custom_minimal_size,
       if (graph->mirrors[i] > 0) {
         ierr = PetscFindInt(graph->mirrors_set[i][0],graph->nvtxs,global_indices,&k);CHKERRQ(ierr);
         j = global_indices[k];
-        while ( k > 0 && global_indices[k-1] == j) k--;
+        while (k > 0 && global_indices[k-1] == j) k--;
         for (j=0;j<graph->mirrors[i];j++) {
           graph->mirrors_set[i][j]=local_indices[k+j];
         }
@@ -1292,11 +1292,11 @@ PetscErrorCode PCBDDCGraphInit(PCBDDCGraph graph, ISLocalToGlobalMapping l2gmap,
   ierr = PetscArrayzero(graph->special_dof,graph->nvtxs);CHKERRQ(ierr);
   /* zeroes first pointer to neighbour set */
   if (graph->nvtxs) {
-    graph->neighbours_set[0] = 0;
+    graph->neighbours_set[0] = NULL;
   }
   /* zeroes workspace for values of ncc */
-  graph->subset_ncc = 0;
-  graph->subset_ref_node = 0;
+  graph->subset_ncc = NULL;
+  graph->subset_ref_node = NULL;
   /* maxcount for cc */
   graph->maxcount = maxcount;
   PetscFunctionReturn(0);

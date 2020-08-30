@@ -8,9 +8,9 @@
 
 PetscBool PCRegisterAllCalled = PETSC_FALSE;
 /*
-   Contains the list of registered KSP routines
+   Contains the list of registered PC routines
 */
-PetscFunctionList PCList = 0;
+PetscFunctionList PCList = NULL;
 
 /*@C
    PCSetType - Builds PC for a particular preconditioner type
@@ -69,14 +69,14 @@ PetscErrorCode  PCSetType(PC pc,PCType type)
   if (pc->ops->destroy) {
     ierr             = (*pc->ops->destroy)(pc);CHKERRQ(ierr);
     pc->ops->destroy = NULL;
-    pc->data         = 0;
+    pc->data         = NULL;
   }
   ierr = PetscFunctionListDestroy(&((PetscObject)pc)->qlist);CHKERRQ(ierr);
   /* Reinitialize function pointers in PCOps structure */
   ierr = PetscMemzero(pc->ops,sizeof(struct _PCOps));CHKERRQ(ierr);
   /* XXX Is this OK?? */
-  pc->modifysubmatrices  = 0;
-  pc->modifysubmatricesP = 0;
+  pc->modifysubmatrices  = NULL;
+  pc->modifysubmatricesP = NULL;
   /* Call the PCCreate_XXX routine for this particular preconditioner */
   pc->setupcalled = 0;
 
@@ -269,4 +269,3 @@ PetscErrorCode  PCGetApplicationContext(PC pc,void *usrP)
   *(void**)usrP = pc->user;
   PetscFunctionReturn(0);
 }
-

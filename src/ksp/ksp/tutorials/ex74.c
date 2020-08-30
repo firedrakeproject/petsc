@@ -1,6 +1,5 @@
-static char help[] = "\
-Solves the constant-coefficient 1D Heat equation with an Implicit   \n\
-Runge-Kutta method using MatKAIJ.                                   \n\
+static char help[] = "Solves the constant-coefficient 1D heat equation \n\
+with an Implicit Runge-Kutta method using MatKAIJ.                  \n\
                                                                     \n\
     du      d^2 u                                                   \n\
     --  = a ----- ; 0 <= x <= 1;                                    \n\
@@ -133,7 +132,7 @@ int main(int argc, char **argv)
   ierr = VecSetFromOptions(u);CHKERRQ(ierr);
   ierr = VecDuplicate(u,&uex);CHKERRQ(ierr);
   /* initial solution */
-  ierr = ExactSolution(u  ,&ctxt,0.0);CHKERRQ(ierr);                 
+  ierr = ExactSolution(u  ,&ctxt,0.0);CHKERRQ(ierr);
   /* exact   solution */
   ierr = ExactSolution(uex,&ctxt,ctxt.dt*ctxt.niter);CHKERRQ(ierr);
 
@@ -184,7 +183,7 @@ int main(int argc, char **argv)
   ierr = MatSetSizes(Identity,matie-matis,matie-matis,ctxt.imax,ctxt.imax);CHKERRQ(ierr);
   ierr = MatSetUp(Identity);CHKERRQ(ierr);
   for (i=matis; i<matie; i++) {
-    ierr= MatSetValues(Identity,1,&i,1,&i,&one,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(Identity,1,&i,1,&i,&one,INSERT_VALUES);CHKERRQ(ierr);
   }
   ierr = MatAssemblyBegin(Identity,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd  (Identity,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -243,16 +242,16 @@ int main(int argc, char **argv)
   ierr = PetscPrintf(PETSC_COMM_WORLD,"Number of time steps: %D (%D Krylov iterations)\n",ctxt.niter,total_its);CHKERRQ(ierr);
 
   /* Free up memory */
-  ierr = KSPDestroy(&ksp);      CHKERRQ(ierr);
-  ierr = MatDestroy(&TA);       CHKERRQ(ierr);
-  ierr = MatDestroy(&SC);       CHKERRQ(ierr);
-  ierr = MatDestroy(&R);        CHKERRQ(ierr);
-  ierr = MatDestroy(&J);        CHKERRQ(ierr);
-  ierr = MatDestroy(&Identity); CHKERRQ(ierr);
-  ierr = PetscFree3(A,b,c);     CHKERRQ(ierr);
-  ierr = PetscFree2(At,B);      CHKERRQ(ierr);
-  ierr = VecDestroy(&uex);      CHKERRQ(ierr);
-  ierr = VecDestroy(&u);        CHKERRQ(ierr);
+  ierr = KSPDestroy(&ksp);CHKERRQ(ierr);
+  ierr = MatDestroy(&TA);CHKERRQ(ierr);
+  ierr = MatDestroy(&SC);CHKERRQ(ierr);
+  ierr = MatDestroy(&R);CHKERRQ(ierr);
+  ierr = MatDestroy(&J);CHKERRQ(ierr);
+  ierr = MatDestroy(&Identity);CHKERRQ(ierr);
+  ierr = PetscFree3(A,b,c);CHKERRQ(ierr);
+  ierr = PetscFree2(At,B);CHKERRQ(ierr);
+  ierr = VecDestroy(&uex);CHKERRQ(ierr);
+  ierr = VecDestroy(&u);CHKERRQ(ierr);
   ierr = PetscFunctionListDestroy(&IRKList);CHKERRQ(ierr);
 
   ierr = PetscFinalize();
@@ -271,7 +270,7 @@ PetscErrorCode ExactSolution(Vec u,void *c,PetscReal t)
   dx = (ctxt->xmax - ctxt->xmin)/((PetscReal) ctxt->imax);
   ierr = VecGetOwnershipRange(u,&is,&ie);CHKERRQ(ierr);
   ierr = VecGetArray(u,&uarr);CHKERRQ(ierr);
-  for(i=is; i<ie; i++) {
+  for (i=is; i<ie; i++) {
     x          = i * dx;
     switch (ctxt->physics_type) {
     case PHYSICS_DIFFUSION:
@@ -369,7 +368,7 @@ static PetscErrorCode Assemble_AdvDiff(MPI_Comm comm,UserContext *user,Mat *J)
       col[1] = i;
       col[2] = i+1;
     }
-    ierr= MatSetValues(*J,1,&i,3,col,values,INSERT_VALUES);CHKERRQ(ierr);
+    ierr = MatSetValues(*J,1,&i,3,col,values,INSERT_VALUES);CHKERRQ(ierr);
   }
   ierr = MatAssemblyBegin(*J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
   ierr = MatAssemblyEnd  (*J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -377,15 +376,39 @@ static PetscErrorCode Assemble_AdvDiff(MPI_Comm comm,UserContext *user,Mat *J)
 }
 
 /*TEST
- test:
+ testset:
    suffix: 1
-   args: -a 0.1 -dt .125 -niter 5 -imax 40 -ksp_monitor_short -pc_type pbjacobi -ksp_atol 1e-6 -irk_type gauss -irk_nstages 2
+   args: -a 0.1 -dt .125 -niter 5 -imax 40 -ksp_monitor_short -pc_type pbjacobi -irk_type gauss -irk_nstages 2
+   test:
+     args: -ksp_atol 1e-6
+   test:
+     requires: hpddm !single
+     suffix: hpddm
+     output_file: output/ex74_1.out
+     args: -ksp_atol 1e-6 -ksp_type hpddm
+   test:
+     requires: hpddm
+     suffix: hpddm_gcrodr
+     output_file: output/ex74_1_hpddm.out
+     args: -ksp_atol 1e-4 -ksp_view_final_residual -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_hpddm_recycle 2
  test:
    suffix: 2
    args: -a 0.1 -dt .125 -niter 5 -imax 40 -ksp_monitor_short -pc_type pbjacobi -ksp_atol 1e-6 -irk_type gauss -irk_nstages 4 -ksp_gmres_restart 100
- test:
+ testset:
    suffix: 3
    requires: !single
    args: -a 1 -dt .33 -niter 3 -imax 40 -ksp_monitor_short -pc_type pbjacobi -ksp_atol 1e-6 -irk_type gauss -irk_nstages 4 -ksp_gmres_restart 100 -physics_type advection
+   test:
+     args:
+   test:
+     requires: hpddm
+     suffix: hpddm
+     output_file: output/ex74_3.out
+     args: -ksp_type hpddm
+   test:
+     requires: hpddm
+     suffix: hpddm_gcrodr
+     output_file: output/ex74_3_hpddm.out
+     args: -ksp_view_final_residual -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_hpddm_recycle 5
 
 TEST*/

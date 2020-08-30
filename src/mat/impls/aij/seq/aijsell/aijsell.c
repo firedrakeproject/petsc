@@ -38,8 +38,6 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJSELL_SeqAIJ(Mat A,MatType type,MatR
   B->ops->sor              = MatSOR_SeqAIJ;
 
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_seqaijsell_seqaij_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultSymbolic_seqdense_seqaijsell_C",NULL);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultNumeric_seqdense_seqaijsell_C",NULL);CHKERRQ(ierr);
 
   if (reuse == MAT_INITIAL_MATRIX) aijsell = (Mat_SeqAIJSELL*)B->spptr;
 
@@ -62,7 +60,7 @@ PetscErrorCode MatDestroy_SeqAIJSELL(Mat A)
 
   PetscFunctionBegin;
 
-  /* If MatHeaderMerge() was used, then this SeqAIJSELL matrix will not have an 
+  /* If MatHeaderMerge() was used, then this SeqAIJSELL matrix will not have an
    * spptr pointer. */
   if (aijsell) {
     /* Clean up everything in the Mat_SeqAIJSELL data structure, then free A->spptr. */
@@ -143,7 +141,7 @@ PetscErrorCode MatAssemblyEnd_SeqAIJSELL(Mat A, MatAssemblyType mode)
   a->inode.use = PETSC_FALSE;
 
   /* Since a MATSEQAIJSELL matrix is really just a MATSEQAIJ with some
-   * extra information and some different methods, call the AssemblyEnd 
+   * extra information and some different methods, call the AssemblyEnd
    * routine for a MATSEQAIJ.
    * I'm not sure if this is the best way to do this, but it avoids
    * a lot of code duplication. */
@@ -244,7 +242,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJSELL(Mat A,MatType type,MatR
    * As noted elsewhere, I wonder if it might make sense and be feasible to use some of the inode routines. */
   b->inode.use = PETSC_FALSE;
 
-  /* Set function pointers for methods that we inherit from AIJ but override. 
+  /* Set function pointers for methods that we inherit from AIJ but override.
    * We also parse some command line options below, since those determine some of the methods we point to. */
   B->ops->duplicate        = MatDuplicate_SeqAIJSELL;
   B->ops->assemblyend      = MatAssemblyEnd_SeqAIJSELL;
@@ -270,8 +268,6 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJSELL(Mat A,MatType type,MatR
   B->ops->sor              = MatSOR_SeqAIJSELL;
 
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatConvert_seqaijsell_seqaij_C",MatConvert_SeqAIJSELL_SeqAIJ);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultSymbolic_seqdense_seqaijsell_C",MatMatMultSymbolic_SeqDense_SeqAIJ);CHKERRQ(ierr);
-  ierr = PetscObjectComposeFunction((PetscObject)B,"MatMatMultNumeric_seqdense_seqaijsell_C",MatMatMultNumeric_SeqDense_SeqAIJ);CHKERRQ(ierr);
 
   ierr    = PetscObjectChangeTypeName((PetscObject)B,MATSEQAIJSELL);CHKERRQ(ierr);
   *newmat = B;

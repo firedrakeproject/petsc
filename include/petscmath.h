@@ -654,7 +654,7 @@ M*/
    Not Collective
 
    Input Parameter:
-+  x - value to use if within interval (a,b)
++  x - value to use if within interval [a,b]
 .  a - lower end of interval
 -  b - upper end of interval
 
@@ -763,6 +763,7 @@ M*/
 #define PETSC_MAX_INT            9223372036854775807L
 #define PETSC_MIN_INT            (-PETSC_MAX_INT - 1)
 #endif
+#define PETSC_MAX_UINT16         65535
 
 #if defined(PETSC_USE_REAL_SINGLE)
 #  define PETSC_MAX_REAL                3.40282346638528860e+38F
@@ -827,6 +828,17 @@ PETSC_EXTERN MPI_Datatype MPIU_2INT PetscAttrMPITypeTagLayoutCompatible(struct p
 PETSC_STATIC_INLINE PetscInt PetscPowInt(PetscInt base,PetscInt power)
 {
   PetscInt result = 1;
+  while (power) {
+    if (power & 1) result *= base;
+    power >>= 1;
+    base *= base;
+  }
+  return result;
+}
+
+PETSC_STATIC_INLINE PetscInt64 PetscPowInt64(PetscInt base,PetscInt power)
+{
+  PetscInt64 result = 1;
   while (power) {
     if (power & 1) result *= base;
     power >>= 1;

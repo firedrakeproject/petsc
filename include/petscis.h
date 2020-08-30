@@ -213,7 +213,9 @@ $                         with DMDA and if you call MatFDColoringSetFunction() w
 E*/
 typedef enum {IS_COLORING_GLOBAL,IS_COLORING_LOCAL} ISColoringType;
 PETSC_EXTERN const char *const ISColoringTypes[];
-typedef unsigned PETSC_IS_COLOR_VALUE_TYPE ISColoringValue;
+typedef unsigned PETSC_IS_COLORING_VALUE_TYPE ISColoringValue;
+#define IS_COLORING_MAX PETSC_IS_COLORING_MAX
+#define MPIU_COLORING_VALUE PETSC_MPIU_IS_COLORING_VALUE_TYPE
 PETSC_EXTERN PetscErrorCode ISAllGatherColors(MPI_Comm,PetscInt,ISColoringValue*,PetscInt*,ISColoringValue*[]);
 
 PETSC_EXTERN PetscErrorCode ISColoringCreate(MPI_Comm,PetscInt,PetscInt,const ISColoringValue[],PetscCopyMode,ISColoring*);
@@ -348,6 +350,7 @@ PETSC_EXTERN PetscErrorCode PetscLayoutCompare(PetscLayout,PetscLayout,PetscBool
 PETSC_EXTERN PetscErrorCode PetscLayoutSetISLocalToGlobalMapping(PetscLayout,ISLocalToGlobalMapping);
 PETSC_EXTERN PetscErrorCode PetscLayoutMapLocal(PetscLayout,PetscInt,const PetscInt[],PetscInt*,PetscInt**,PetscInt**);
 PETSC_EXTERN PetscErrorCode PetscSFSetGraphLayout(PetscSF,PetscLayout,PetscInt,const PetscInt*,PetscCopyMode,const PetscInt*);
+PETSC_EXTERN PetscErrorCode PetscLayoutsCreateSF(PetscLayout,PetscLayout,PetscSF*);
 
 PETSC_EXTERN PetscErrorCode PetscParallelSortInt(PetscLayout, PetscLayout, PetscInt*, PetscInt*);
 

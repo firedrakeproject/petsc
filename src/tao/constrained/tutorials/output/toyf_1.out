@@ -19,7 +19,7 @@ Tao Object: 1 MPI processes
     type: lu
       out-of-place factorization
       tolerance for zero pivot 2.22045e-14
-      matrix ordering: nd
+      matrix ordering: external
       factor fill ratio given 0., needed 0.
         Factored matrix follows:
           Mat Object: 1 MPI processes
@@ -27,7 +27,6 @@ Tao Object: 1 MPI processes
             rows=15, cols=15
             package used to perform factorization: superlu
             total: nonzeros=0, allocated nonzeros=0
-            total number of mallocs used during MatSetValues calls=0
               SuperLU run parameters:
                 Equil: NO
                 ColPerm: 3

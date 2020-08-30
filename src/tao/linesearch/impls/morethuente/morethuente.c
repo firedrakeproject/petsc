@@ -36,7 +36,7 @@ static PetscErrorCode TaoLineSearchMonitor_MT(TaoLineSearch ls)
 {
   TaoLineSearch_MT *mt = (TaoLineSearch_MT*)ls->data;
   PetscErrorCode   ierr;
-  
+
   PetscFunctionBegin;
   ierr = PetscViewerASCIIPrintf(ls->viewer, "stx: %g, fx: %g, dgx: %g\n", (double)mt->stx, (double)mt->fx, (double)mt->dgx);CHKERRQ(ierr);
   ierr = PetscViewerASCIIPrintf(ls->viewer, "sty: %g, fy: %g, dgy: %g\n", (double)mt->sty, (double)mt->fy, (double)mt->dgy);CHKERRQ(ierr);
@@ -62,7 +62,7 @@ static PetscErrorCode TaoLineSearchApply_MT(TaoLineSearch ls, Vec x, PetscReal *
   PetscValidScalarPointer(f,3);
   PetscValidHeaderSpecific(g,VEC_CLASSID,4);
   PetscValidHeaderSpecific(s,VEC_CLASSID,5);
-  
+
   ierr = TaoLineSearchMonitor(ls, 0, *f, 0.0);CHKERRQ(ierr);
 
   /* comm,type,size checks are done in interface TaoLineSearchApply */
@@ -173,7 +173,7 @@ static PetscErrorCode TaoLineSearchApply_MT(TaoLineSearch ls, Vec x, PetscReal *
         ierr = VecDot(g,s,&dg);CHKERRQ(ierr);
       }
     }
-    
+
     /* update bracketing parameters in the MT context for printouts in monitor */
     mt->stx = stx;
     mt->fx = fx;
@@ -292,8 +292,8 @@ static PetscErrorCode TaoLineSearchApply_MT(TaoLineSearch ls, Vec x, PetscReal *
   PetscFunctionReturn(0);
 }
 
-/*MC 
-   TAOLINESEARCHMT - Line-search type with cubic interpolation that satisfies both the sufficient decrease and 
+/*MC
+   TAOLINESEARCHMT - Line-search type with cubic interpolation that satisfies both the sufficient decrease and
    curvature conditions. This method can take step lengths greater than 1.
 
    More-Thuente line-search can be selected with "-tao_ls_type more-thuente".
@@ -320,12 +320,12 @@ PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_MT(TaoLineSearch ls)
   ctx->infoc=1;
   ls->data = (void*)ctx;
   ls->initstep = 1.0;
-  ls->ops->setup=0;
-  ls->ops->reset=0;
-  ls->ops->apply=TaoLineSearchApply_MT;
-  ls->ops->destroy=TaoLineSearchDestroy_MT;
-  ls->ops->setfromoptions=TaoLineSearchSetFromOptions_MT;
-  ls->ops->monitor=TaoLineSearchMonitor_MT;
+  ls->ops->setup = NULL;
+  ls->ops->reset = NULL;
+  ls->ops->apply = TaoLineSearchApply_MT;
+  ls->ops->destroy = TaoLineSearchDestroy_MT;
+  ls->ops->setfromoptions = TaoLineSearchSetFromOptions_MT;
+  ls->ops->monitor = TaoLineSearchMonitor_MT;
   PetscFunctionReturn(0);
 }
 

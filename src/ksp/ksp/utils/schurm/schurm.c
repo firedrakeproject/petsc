@@ -1,6 +1,6 @@
 #include <../src/ksp/ksp/utils/schurm/schurm.h> /*I "petscksp.h" I*/
 
-const char *const MatSchurComplementAinvTypes[] = {"DIAG","LUMP","BLOCKDIAG","MatSchurComplementAinvType","MAT_SCHUR_COMPLEMENT_AINV_",0};
+const char *const MatSchurComplementAinvTypes[] = {"DIAG","LUMP","BLOCKDIAG","MatSchurComplementAinvType","MAT_SCHUR_COMPLEMENT_AINV_",NULL};
 
 PetscErrorCode MatCreateVecs_SchurComplement(Mat N,Vec *right,Vec *left)
 {
@@ -168,7 +168,7 @@ PetscErrorCode MatDestroy_SchurComplement(Mat N)
    Notes:
     The Schur complement is NOT actually formed! Rather, this
           object performs the matrix-vector product by using formula S = A11 - A10 A^{-1} A01
-	  for Schur complement S and a KSP solver to approximate the action of A^{-1}.
+          for Schur complement S and a KSP solver to approximate the action of A^{-1}.
 
           All four matrices must have the same MPI communicator.
 
@@ -215,7 +215,7 @@ PetscErrorCode  MatCreateSchurComplement(Mat A00,Mat Ap00,Mat A01,Mat A10,Mat A1
    Notes:
     The Schur complement is NOT actually formed! Rather, this
           object performs the matrix-vector product by using formula S = A11 - A10 A^{-1} A01
-	  for Schur complement S and a KSP solver to approximate the action of A^{-1}.
+          for Schur complement S and a KSP solver to approximate the action of A^{-1}.
 
           All four matrices must have the same MPI communicator.
 
@@ -529,7 +529,7 @@ PetscErrorCode MatSchurComplementComputeExplicitOperator(Mat M, Mat *S)
 PetscErrorCode MatGetSchurComplement_Basic(Mat mat,IS isrow0,IS iscol0,IS isrow1,IS iscol1,MatReuse mreuse,Mat *newmat,MatSchurComplementAinvType ainvtype, MatReuse preuse,Mat *newpmat)
 {
   PetscErrorCode ierr;
-  Mat            A=0,Ap=0,B=0,C=0,D=0;
+  Mat            A=NULL,Ap=NULL,B=NULL,C=NULL,D=NULL;
   MatReuse       reuse;
 
   PetscFunctionBegin;

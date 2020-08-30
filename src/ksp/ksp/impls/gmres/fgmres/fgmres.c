@@ -556,9 +556,9 @@ PetscErrorCode KSPSetFromOptions_FGMRES(PetscOptionItems *PetscOptionsObject,KSP
   ierr = KSPSetFromOptions_GMRES(PetscOptionsObject,ksp);CHKERRQ(ierr);
   ierr = PetscOptionsHead(PetscOptionsObject,"KSP flexible GMRES Options");CHKERRQ(ierr);
   ierr = PetscOptionsBoolGroupBegin("-ksp_fgmres_modifypcnochange","do not vary the preconditioner","KSPFGMRESSetModifyPC",&flg);CHKERRQ(ierr);
-  if (flg) {ierr = KSPFGMRESSetModifyPC(ksp,KSPFGMRESModifyPCNoChange,0,0);CHKERRQ(ierr);}
+  if (flg) {ierr = KSPFGMRESSetModifyPC(ksp,KSPFGMRESModifyPCNoChange,NULL,NULL);CHKERRQ(ierr);}
   ierr = PetscOptionsBoolGroupEnd("-ksp_fgmres_modifypcksp","vary the KSP based preconditioner","KSPFGMRESSetModifyPC",&flg);CHKERRQ(ierr);
-  if (flg) {ierr = KSPFGMRESSetModifyPC(ksp,KSPFGMRESModifyPCKSP,0,0);CHKERRQ(ierr);}
+  if (flg) {ierr = KSPFGMRESSetModifyPC(ksp,KSPFGMRESModifyPCKSP,NULL,NULL);CHKERRQ(ierr);}
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -585,7 +585,7 @@ PetscErrorCode KSPReset_FGMRES(KSP ksp)
 
   PetscFunctionBegin;
   ierr = PetscFree (fgmres->prevecs);CHKERRQ(ierr);
-  if(fgmres->nwork_alloc>0){
+  if (fgmres->nwork_alloc>0){
     i=0;
     /* In the first allocation we allocated VEC_OFFSET fewer vectors in prevecs */
     ierr = VecDestroyVecs(fgmres->mwork_alloc[i]-VEC_OFFSET,&fgmres->prevecs_user_work[i]);CHKERRQ(ierr);
@@ -703,11 +703,11 @@ PETSC_EXTERN PetscErrorCode KSPCreate_FGMRES(KSP ksp)
   fgmres->q_preallocate  = 0;
   fgmres->delta_allocate = FGMRES_DELTA_DIRECTIONS;
   fgmres->orthog         = KSPGMRESClassicalGramSchmidtOrthogonalization;
-  fgmres->nrs            = 0;
-  fgmres->sol_temp       = 0;
+  fgmres->nrs            = NULL;
+  fgmres->sol_temp       = NULL;
   fgmres->max_k          = FGMRES_DEFAULT_MAXK;
-  fgmres->Rsvd           = 0;
-  fgmres->orthogwork     = 0;
+  fgmres->Rsvd           = NULL;
+  fgmres->orthogwork     = NULL;
   fgmres->modifypc       = KSPFGMRESModifyPCNoChange;
   fgmres->modifyctx      = NULL;
   fgmres->modifydestroy  = NULL;

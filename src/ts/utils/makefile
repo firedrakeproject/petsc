@@ -8,7 +8,7 @@ SOURCEF  =
 SOURCEH  =
 LIBBASE  = libpetscts
 MANSEC   = TS
-DIRS     =
+DIRS     = dmplexlandau
 EDIRS    =
 LOCDIR   = src/ts/utils/
 

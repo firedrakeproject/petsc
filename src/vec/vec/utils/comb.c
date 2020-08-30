@@ -311,7 +311,7 @@ PetscErrorCode PetscSplitReductionGet(MPI_Comm comm,PetscSplitReduction **sr)
        the older version you will get a warning message about the next line;
        it is only a warning message and should do no harm.
     */
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_DelReduction,&Petsc_Reduction_keyval,0);CHKERRQ(ierr);
+    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_DelReduction,&Petsc_Reduction_keyval,NULL);CHKERRQ(ierr);
   }
   ierr = MPI_Comm_get_attr(comm,Petsc_Reduction_keyval,(void**)sr,&flag);CHKERRQ(ierr);
   if (!flag) {  /* doesn't exist yet so create it and put it in */
@@ -530,7 +530,7 @@ PetscErrorCode  VecNormBegin(Vec x,NormType ntype,PetscReal *result)
    VecNormEnd - Ends a split phase norm computation.
 
    Input Parameters:
-+  x - the first vector 
++  x - the first vector
 .  ntype - norm type, one of NORM_1, NORM_2, NORM_MAX, NORM_1_AND_2
 -  result - where the result will go
 
@@ -551,7 +551,7 @@ PetscErrorCode  VecNormEnd(Vec x,NormType ntype,PetscReal *result)
   MPI_Comm            comm;
 
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(x,VEC_CLASSID,1);  
+  PetscValidHeaderSpecific(x,VEC_CLASSID,1);
   ierr = PetscObjectGetComm((PetscObject)x,&comm);CHKERRQ(ierr);
   ierr = PetscSplitReductionGet(comm,&sr);CHKERRQ(ierr);
   ierr = PetscSplitReductionEnd(sr);CHKERRQ(ierr);

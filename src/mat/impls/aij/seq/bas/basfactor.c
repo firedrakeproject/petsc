@@ -71,9 +71,9 @@ PetscErrorCode MatICCFactorSymbolic_SeqAIJ_Bas(Mat fact,Mat A,IS perm,const MatF
 
   b->j    = uj;
   b->i    = ui;
-  b->diag = 0;
-  b->ilen = 0;
-  b->imax = 0;
+  b->diag = NULL;
+  b->ilen = NULL;
+  b->imax = NULL;
   b->row  = perm;
   b->col  = perm;
 
@@ -201,8 +201,9 @@ PETSC_INTERN PetscErrorCode MatGetFactor_seqaij_bas(Mat A,MatFactorType ftype,Ma
      ierr = PetscObjectComposeFunction((PetscObject)*B,"MatFactorGetSolverType_C",MatFactorGetSolverType_seqaij_bas);CHKERRQ(ierr);
   } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Factor type not supported");
   (*B)->factortype = ftype;
-  
+
   ierr = PetscFree((*B)->solvertype);CHKERRQ(ierr);
   ierr = PetscStrallocpy(MATSOLVERBAS,&(*B)->solvertype);CHKERRQ(ierr);
+  (*B)->useordering = PETSC_TRUE;
   PetscFunctionReturn(0);
 }

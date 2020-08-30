@@ -4,16 +4,17 @@
 #define BRGN_REGULARIZATION_L2PROX  1
 #define BRGN_REGULARIZATION_L2PURE  2
 #define BRGN_REGULARIZATION_L1DICT  3
-#define BRGN_REGULARIZATION_TYPES   4
+#define BRGN_REGULARIZATION_LM      4
+#define BRGN_REGULARIZATION_TYPES   5
 
-static const char *BRGN_REGULARIZATION_TABLE[64] = {"user","l2prox","l2pure","l1dict"};
+static const char *BRGN_REGULARIZATION_TABLE[64] = {"user","l2prox","l2pure","l1dict","lm"};
 
 static PetscErrorCode GNHessianProd(Mat H,Vec in,Vec out)
 {
   TAO_BRGN              *gn;
   PetscErrorCode        ierr;
-  
-  PetscFunctionBegin;    
+
+  PetscFunctionBegin;
   ierr = MatShellGetContext(H,&gn);CHKERRQ(ierr);
   ierr = MatMult(gn->subsolver->ls_jac,in,gn->r_work);CHKERRQ(ierr);
   ierr = MatMultTranspose(gn->subsolver->ls_jac,gn->r_work,out);CHKERRQ(ierr);
@@ -43,7 +44,41 @@ static PetscErrorCode GNHessianProd(Mat H,Vec in,Vec out)
     }
     ierr = VecAXPY(out,gn->lambda,gn->x_work);CHKERRQ(ierr);
     break;
+  case BRGN_REGULARIZATION_LM:
+    ierr = VecPointwiseMult(gn->x_work,gn->damping,in);CHKERRQ(ierr);
+    ierr = VecAXPY(out,1,gn->x_work);CHKERRQ(ierr);
+    break;
   }
+  PetscFunctionReturn(0);
+}
+static PetscErrorCode ComputeDamping(TAO_BRGN *gn)
+{
+  const PetscScalar *diag_ary;
+  PetscScalar       *damping_ary;
+  PetscInt          i,n;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  /* update damping */
+  ierr = VecGetArray(gn->damping,&damping_ary);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(gn->diag,&diag_ary);CHKERRQ(ierr);
+  ierr = VecGetLocalSize(gn->damping,&n);CHKERRQ(ierr);
+  for (i=0; i<n; i++) {
+    damping_ary[i] = PetscClipInterval(diag_ary[i],PETSC_SQRT_MACHINE_EPSILON,PetscSqrtReal(PETSC_MAX_REAL));
+  }
+  ierr = VecScale(gn->damping,gn->lambda);CHKERRQ(ierr);
+  ierr = VecRestoreArray(gn->damping,&damping_ary);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(gn->diag,&diag_ary);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode TaoBRGNGetDampingVector(Tao tao,Vec *d)
+{
+  TAO_BRGN *gn = (TAO_BRGN *)tao->data;
+
+  PetscFunctionBegin;
+  if (gn->reg_type != BRGN_REGULARIZATION_LM) SETERRQ(PetscObjectComm((PetscObject)tao),PETSC_ERR_SUP,"Damping vector is only available if regularization type is lm.");
+  *d = gn->damping;
   PetscFunctionReturn(0);
 }
 
@@ -54,7 +89,7 @@ static PetscErrorCode GNObjectiveGradientEval(Tao tao,Vec X,PetscReal *fcn,Vec G
   PetscScalar           yESum;
   PetscErrorCode        ierr;
   PetscReal             f_reg;
-  
+
   PetscFunctionBegin;
   /* compute objective *fcn*/
   /* compute first term 0.5*||ls_res||_2^2 */
@@ -80,7 +115,7 @@ static PetscErrorCode GNObjectiveGradientEval(Tao tao,Vec X,PetscReal *fcn,Vec G
     break;
   case BRGN_REGULARIZATION_L2PROX:
     /* compute f = f + lambda*0.5*(xk - xkm1)'*(xk - xkm1) */
-    ierr = VecAXPBYPCZ(gn->x_work,1.0,-1.0,0.0,X,gn->x_old);CHKERRQ(ierr); 
+    ierr = VecAXPBYPCZ(gn->x_work,1.0,-1.0,0.0,X,gn->x_old);CHKERRQ(ierr);
     ierr = VecDot(gn->x_work,gn->x_work,&f_reg);CHKERRQ(ierr);
     *fcn += gn->lambda*0.5*f_reg;
     /* compute G = G + lambda*(xk - xkm1) */
@@ -95,11 +130,11 @@ static PetscErrorCode GNObjectiveGradientEval(Tao tao,Vec X,PetscReal *fcn,Vec G
     }
     ierr = VecPointwiseMult(gn->y_work,gn->y,gn->y);CHKERRQ(ierr);
     ierr = VecShift(gn->y_work,gn->epsilon*gn->epsilon);CHKERRQ(ierr);
-    ierr = VecSqrtAbs(gn->y_work);CHKERRQ(ierr);  /* gn->y_work = sqrt(y.^2+epsilon^2) */ 
+    ierr = VecSqrtAbs(gn->y_work);CHKERRQ(ierr);  /* gn->y_work = sqrt(y.^2+epsilon^2) */
     ierr = VecSum(gn->y_work,&yESum);CHKERRQ(ierr);
     ierr = VecGetSize(gn->y,&K);CHKERRQ(ierr);
     *fcn += gn->lambda*(yESum - K*gn->epsilon);
-    /* compute G = G + lambda*D'*(y./sqrt(y.^2+epsilon^2)),where y = D*x */  
+    /* compute G = G + lambda*D'*(y./sqrt(y.^2+epsilon^2)),where y = D*x */
     ierr = VecPointwiseDivide(gn->y_work,gn->y,gn->y_work);CHKERRQ(ierr); /* reuse y_work = y./sqrt(y.^2+epsilon^2) */
     if (gn->D) {
       ierr = MatMultTranspose(gn->D,gn->y_work,gn->x_work);CHKERRQ(ierr);
@@ -113,10 +148,12 @@ static PetscErrorCode GNObjectiveGradientEval(Tao tao,Vec X,PetscReal *fcn,Vec G
 }
 
 static PetscErrorCode GNComputeHessian(Tao tao,Vec X,Mat H,Mat Hpre,void *ptr)
-{ 
-  TAO_BRGN              *gn = (TAO_BRGN *)ptr;
+{
+  TAO_BRGN       *gn = (TAO_BRGN *)ptr;
+  PetscInt       i,n,cstart,cend;
+  PetscScalar    *cnorms,*diag_ary;
   PetscErrorCode ierr;
-  
+
   PetscFunctionBegin;
   ierr = TaoComputeResidualJacobian(tao,X,tao->ls_jac,tao->ls_jac_pre);CHKERRQ(ierr);
 
@@ -129,7 +166,7 @@ static PetscErrorCode GNComputeHessian(Tao tao,Vec X,Mat H,Mat Hpre,void *ptr)
   case BRGN_REGULARIZATION_L2PROX:
     break;
   case BRGN_REGULARIZATION_L1DICT:
-    /* calculate and store diagonal matrix as a vector: diag = epsilon^2 ./ sqrt(x.^2+epsilon^2).^3* --> diag = epsilon^2 ./ sqrt(y.^2+epsilon^2).^3,where y = D*x */  
+    /* calculate and store diagonal matrix as a vector: diag = epsilon^2 ./ sqrt(x.^2+epsilon^2).^3* --> diag = epsilon^2 ./ sqrt(y.^2+epsilon^2).^3,where y = D*x */
     if (gn->D) {
       ierr = MatMult(gn->D,X,gn->y);CHKERRQ(ierr);/* y = D*x */
     } else {
@@ -138,10 +175,24 @@ static PetscErrorCode GNComputeHessian(Tao tao,Vec X,Mat H,Mat Hpre,void *ptr)
     ierr = VecPointwiseMult(gn->y_work,gn->y,gn->y);CHKERRQ(ierr);
     ierr = VecShift(gn->y_work,gn->epsilon*gn->epsilon);CHKERRQ(ierr);
     ierr = VecCopy(gn->y_work,gn->diag);CHKERRQ(ierr);                  /* gn->diag = y.^2+epsilon^2 */
-    ierr = VecSqrtAbs(gn->y_work);CHKERRQ(ierr);                        /* gn->y_work = sqrt(y.^2+epsilon^2) */ 
+    ierr = VecSqrtAbs(gn->y_work);CHKERRQ(ierr);                        /* gn->y_work = sqrt(y.^2+epsilon^2) */
     ierr = VecPointwiseMult(gn->diag,gn->y_work,gn->diag);CHKERRQ(ierr);/* gn->diag = sqrt(y.^2+epsilon^2).^3 */
     ierr = VecReciprocal(gn->diag);CHKERRQ(ierr);
     ierr = VecScale(gn->diag,gn->epsilon*gn->epsilon);CHKERRQ(ierr);
+    break;
+  case BRGN_REGULARIZATION_LM:
+    /* compute diagonal of J^T J */
+    ierr = MatGetSize(gn->parent->ls_jac,NULL,&n);CHKERRQ(ierr);
+    ierr = PetscMalloc1(n,&cnorms);CHKERRQ(ierr);
+    ierr = MatGetColumnNorms(gn->parent->ls_jac,NORM_2,cnorms);CHKERRQ(ierr);
+    ierr = MatGetOwnershipRangeColumn(gn->parent->ls_jac,&cstart,&cend);CHKERRQ(ierr);
+    ierr = VecGetArray(gn->diag,&diag_ary);CHKERRQ(ierr);
+    for (i = 0; i < cend-cstart; i++) {
+      diag_ary[i] = cnorms[cstart+i] * cnorms[cstart+i];
+    }
+    ierr = VecRestoreArray(gn->diag,&diag_ary);CHKERRQ(ierr);
+    ierr = PetscFree(cnorms);CHKERRQ(ierr);
+    ierr = ComputeDamping(gn);CHKERRQ(ierr);
     break;
   }
   PetscFunctionReturn(0);
@@ -151,7 +202,7 @@ static PetscErrorCode GNHookFunction(Tao tao,PetscInt iter, void *ctx)
 {
   TAO_BRGN              *gn = (TAO_BRGN *)ctx;
   PetscErrorCode        ierr;
-  
+
   PetscFunctionBegin;
   /* Update basic tao information from the subsolver */
   gn->parent->nfuncs = tao->nfuncs;
@@ -161,6 +212,7 @@ static PetscErrorCode GNHookFunction(Tao tao,PetscInt iter, void *ctx)
   gn->parent->niter = tao->niter;
   gn->parent->ksp_its = tao->ksp_its;
   gn->parent->ksp_tot_its = tao->ksp_tot_its;
+  gn->parent->fc = tao->fc;
   ierr = TaoGetConvergedReason(tao,&gn->parent->reason);CHKERRQ(ierr);
   /* Update the solution vectors */
   if (iter == 0) {
@@ -171,6 +223,20 @@ static PetscErrorCode GNHookFunction(Tao tao,PetscInt iter, void *ctx)
   }
   /* Update the gradient */
   ierr = VecCopy(tao->gradient,gn->parent->gradient);CHKERRQ(ierr);
+
+  /* Update damping parameter for LM */
+  if (gn->reg_type == BRGN_REGULARIZATION_LM) {
+    if (iter > 0) {
+      if (gn->fc_old > tao->fc) {
+        gn->lambda = gn->lambda * gn->downhill_lambda_change;
+      } else {
+        /* uphill step */
+        gn->lambda = gn->lambda * gn->uphill_lambda_change;
+      }
+    }
+    gn->fc_old = tao->fc;
+  }
+
   /* Call general purpose update function */
   if (gn->parent->ops->update) {
     ierr = (*gn->parent->ops->update)(gn->parent,gn->parent->niter,gn->parent->user_update);CHKERRQ(ierr);
@@ -203,14 +269,22 @@ static PetscErrorCode TaoSolve_BRGN(Tao tao)
 static PetscErrorCode TaoSetFromOptions_BRGN(PetscOptionItems *PetscOptionsObject,Tao tao)
 {
   TAO_BRGN              *gn = (TAO_BRGN *)tao->data;
+  TaoLineSearch         ls;
   PetscErrorCode        ierr;
 
   PetscFunctionBegin;
   ierr = PetscOptionsHead(PetscOptionsObject,"least-squares problems with regularizer: ||f(x)||^2 + lambda*g(x), g(x) = ||xk-xkm1||^2 or ||Dx||_1 or user defined function.");CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_brgn_regularizer_weight","regularizer weight (default 1e-4)","",gn->lambda,&gn->lambda,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-tao_brgn_l1_smooth_epsilon","L1-norm smooth approximation parameter: ||x||_1 = sum(sqrt(x.^2+epsilon^2)-epsilon) (default 1e-6)","",gn->epsilon,&gn->epsilon,NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsReal("-tao_brgn_lm_downhill_lambda_change","Factor to decrease trust region by on downhill steps","",gn->downhill_lambda_change,&gn->downhill_lambda_change,NULL);
+  ierr = PetscOptionsReal("-tao_brgn_lm_uphill_lambda_change","Factor to increase trust region by on uphill steps","",gn->uphill_lambda_change,&gn->uphill_lambda_change,NULL);
   ierr = PetscOptionsEList("-tao_brgn_regularization_type","regularization type", "",BRGN_REGULARIZATION_TABLE,BRGN_REGULARIZATION_TYPES,BRGN_REGULARIZATION_TABLE[gn->reg_type],&gn->reg_type,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsTail();CHKERRQ(ierr);
+  /* set unit line search direction as the default when using the lm regularizer */
+  if (gn->reg_type == BRGN_REGULARIZATION_LM) {
+    ierr = TaoGetLineSearch(gn->subsolver,&ls);CHKERRQ(ierr);
+    ierr = TaoLineSearchSetType(ls,TAOLINESEARCHUNIT);CHKERRQ(ierr);
+  }
   ierr = TaoSetFromOptions(gn->subsolver);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -253,14 +327,14 @@ static PetscErrorCode TaoSetUp_BRGN(Tao tao)
     ierr = VecDuplicate(tao->solution,&gn->x_old);CHKERRQ(ierr);
     ierr = VecSet(gn->x_old,0.0);CHKERRQ(ierr);
   }
-    
+
   if (BRGN_REGULARIZATION_L1DICT == gn->reg_type) {
     if (gn->D) {
       ierr = MatGetSize(gn->D,&K,&N);CHKERRQ(ierr); /* Shell matrices still must have sizes defined. K = N for identity matrix, K=N-1 or N for gradient matrix */
     } else {
       ierr = VecGetSize(tao->solution,&K);CHKERRQ(ierr); /* If user does not setup dict matrix, use identiy matrix, K=N */
     }
-    if (!gn->y) {    
+    if (!gn->y) {
       ierr = VecCreate(PETSC_COMM_SELF,&gn->y);CHKERRQ(ierr);
       ierr = VecSetSizes(gn->y,PETSC_DECIDE,K);CHKERRQ(ierr);
       ierr = VecSetFromOptions(gn->y);CHKERRQ(ierr);
@@ -273,6 +347,14 @@ static PetscErrorCode TaoSetUp_BRGN(Tao tao)
     if (!gn->diag) {
       ierr = VecDuplicate(gn->y,&gn->diag);CHKERRQ(ierr);
       ierr = VecSet(gn->diag,0.0);CHKERRQ(ierr);
+    }
+  }
+  if (BRGN_REGULARIZATION_LM == gn->reg_type) {
+    if (!gn->diag) {
+      ierr = MatCreateVecs(gn->parent->ls_jac,&gn->diag,NULL);CHKERRQ(ierr);
+    }
+    if (!gn->damping) {
+      ierr = MatCreateVecs(gn->parent->ls_jac,&gn->damping,NULL);CHKERRQ(ierr);
     }
   }
 
@@ -323,6 +405,8 @@ static PetscErrorCode TaoDestroy_BRGN(Tao tao)
     ierr = VecDestroy(&gn->y);CHKERRQ(ierr);
     ierr = VecDestroy(&gn->y_work);CHKERRQ(ierr);
   }
+  ierr = VecDestroy(&gn->damping);CHKERRQ(ierr);
+  ierr = VecDestroy(&gn->diag);CHKERRQ(ierr);
   ierr = MatDestroy(&gn->H);CHKERRQ(ierr);
   ierr = MatDestroy(&gn->D);CHKERRQ(ierr);
   ierr = MatDestroy(&gn->Hreg);CHKERRQ(ierr);
@@ -333,16 +417,18 @@ static PetscErrorCode TaoDestroy_BRGN(Tao tao)
 }
 
 /*MC
-  TAOBRGN - Bounded Regularized Gauss-Newton method for solving nonlinear least-squares 
-            problems with bound constraints. This algorithm is a thin wrapper around TAOBNTL 
-            that constructs the Gauss-Newton problem with the user-provided least-squares 
-            residual and Jacobian. The algorithm offers an L2-norm ("l2pure"), L2-norm proximal point ("l2prox") 
-            regularizer, and L1-norm dictionary regularizer ("l1dict"), where we approximate the 
+  TAOBRGN - Bounded Regularized Gauss-Newton method for solving nonlinear least-squares
+            problems with bound constraints. This algorithm is a thin wrapper around TAOBNTL
+            that constructs the Gauss-Newton problem with the user-provided least-squares
+            residual and Jacobian. The algorithm offers an L2-norm ("l2pure"), L2-norm proximal point ("l2prox")
+            regularizer, and L1-norm dictionary regularizer ("l1dict"), where we approximate the
             L1-norm ||x||_1 by sum_i(sqrt(x_i^2+epsilon^2)-epsilon) with a small positive number epsilon.
+            Also offered is the "lm" regularizer which uses a scaled diagonal of J^T J.
+            With the "lm" regularizer, BRGN is a Levenberg-Marquardt optimizer.
             The user can also provide own regularization function.
 
   Options Database Keys:
-+ -tao_brgn_regularization_type - regularization type ("user", "l2prox", "l2pure", "l1dict") (default "l2prox")
++ -tao_brgn_regularization_type - regularization type ("user", "l2prox", "l2pure", "l1dict", "lm") (default "l2prox")
 . -tao_brgn_regularizer_weight  - regularizer weight (default 1e-4)
 - -tao_brgn_l1_smooth_epsilon   - L1-norm smooth approximation parameter: ||x||_1 = sum(sqrt(x.^2+epsilon^2)-epsilon) (default 1e-6)
 
@@ -352,25 +438,27 @@ PETSC_EXTERN PetscErrorCode TaoCreate_BRGN(Tao tao)
 {
   TAO_BRGN       *gn;
   PetscErrorCode ierr;
-  
+
   PetscFunctionBegin;
   ierr = PetscNewLog(tao,&gn);CHKERRQ(ierr);
-  
+
   tao->ops->destroy = TaoDestroy_BRGN;
   tao->ops->setup = TaoSetUp_BRGN;
   tao->ops->setfromoptions = TaoSetFromOptions_BRGN;
   tao->ops->view = TaoView_BRGN;
   tao->ops->solve = TaoSolve_BRGN;
-  
+
   tao->data = (void*)gn;
   gn->reg_type = BRGN_REGULARIZATION_L2PROX;
   gn->lambda = 1e-4;
   gn->epsilon = 1e-6;
+  gn->downhill_lambda_change = 1./5.;
+  gn->uphill_lambda_change = 1.5;
   gn->parent = tao;
-  
+
   ierr = MatCreate(PetscObjectComm((PetscObject)tao),&gn->H);CHKERRQ(ierr);
   ierr = MatSetOptionsPrefix(gn->H,"tao_brgn_hessian_");CHKERRQ(ierr);
-  
+
   ierr = TaoCreate(PetscObjectComm((PetscObject)tao),&gn->subsolver);CHKERRQ(ierr);
   ierr = TaoSetType(gn->subsolver,TAOBNLS);CHKERRQ(ierr);
   ierr = TaoSetOptionsPrefix(gn->subsolver,"tao_brgn_subsolver_");CHKERRQ(ierr);
@@ -383,7 +471,7 @@ PETSC_EXTERN PetscErrorCode TaoCreate_BRGN(Tao tao)
   Collective on Tao
 
   Level: advanced
-  
+
   Input Parameters:
 +  tao - the Tao solver context
 -  subsolver - the Tao sub-solver context
@@ -391,7 +479,7 @@ PETSC_EXTERN PetscErrorCode TaoCreate_BRGN(Tao tao)
 PetscErrorCode TaoBRGNGetSubsolver(Tao tao,Tao *subsolver)
 {
   TAO_BRGN       *gn = (TAO_BRGN *)tao->data;
-  
+
   PetscFunctionBegin;
   *subsolver = gn->subsolver;
   PetscFunctionReturn(0);
@@ -401,7 +489,7 @@ PetscErrorCode TaoBRGNGetSubsolver(Tao tao,Tao *subsolver)
   TaoBRGNSetRegularizerWeight - Set the regularizer weight for the Gauss-Newton least-squares algorithm
 
   Collective on Tao
-  
+
   Input Parameters:
 +  tao - the Tao solver context
 -  lambda - L1-norm regularizer weight
@@ -411,7 +499,7 @@ PetscErrorCode TaoBRGNGetSubsolver(Tao tao,Tao *subsolver)
 PetscErrorCode TaoBRGNSetRegularizerWeight(Tao tao,PetscReal lambda)
 {
   TAO_BRGN       *gn = (TAO_BRGN *)tao->data;
-  
+
   /* Initialize lambda here */
 
   PetscFunctionBegin;
@@ -423,7 +511,7 @@ PetscErrorCode TaoBRGNSetRegularizerWeight(Tao tao,PetscReal lambda)
   TaoBRGNSetL1SmoothEpsilon - Set the L1-norm smooth approximation parameter for L1-regularized least-squares algorithm
 
   Collective on Tao
-  
+
   Input Parameters:
 +  tao - the Tao solver context
 -  epsilon - L1-norm smooth approximation parameter
@@ -433,7 +521,7 @@ PetscErrorCode TaoBRGNSetRegularizerWeight(Tao tao,PetscReal lambda)
 PetscErrorCode TaoBRGNSetL1SmoothEpsilon(Tao tao,PetscReal epsilon)
 {
   TAO_BRGN       *gn = (TAO_BRGN *)tao->data;
-  
+
   /* Initialize epsilon here */
 
   PetscFunctionBegin;
@@ -450,7 +538,7 @@ PetscErrorCode TaoBRGNSetL1SmoothEpsilon(Tao tao,PetscReal epsilon)
 
     Level: advanced
 @*/
-PetscErrorCode TaoBRGNSetDictionaryMatrix(Tao tao,Mat dict)  
+PetscErrorCode TaoBRGNSetDictionaryMatrix(Tao tao,Mat dict)
 {
   TAO_BRGN       *gn = (TAO_BRGN *)tao->data;
   PetscErrorCode ierr;
@@ -467,7 +555,7 @@ PetscErrorCode TaoBRGNSetDictionaryMatrix(Tao tao,Mat dict)
 }
 
 /*@C
-   TaoBRGNSetRegularizerObjectiveAndGradientRoutine - Sets the user-defined regularizer call-back 
+   TaoBRGNSetRegularizerObjectiveAndGradientRoutine - Sets the user-defined regularizer call-back
    function into the algorithm.
 
    Input Parameters:
@@ -493,7 +581,7 @@ PetscErrorCode TaoBRGNSetRegularizerObjectiveAndGradientRoutine(Tao tao,PetscErr
 }
 
 /*@C
-   TaoBRGNSetRegularizerHessianRoutine - Sets the user-defined regularizer call-back 
+   TaoBRGNSetRegularizerHessianRoutine - Sets the user-defined regularizer call-back
    function into the algorithm.
 
    Input Parameters:
@@ -528,4 +616,3 @@ PetscErrorCode TaoBRGNSetRegularizerHessianRoutine(Tao tao,Mat Hreg,PetscErrorCo
   }
   PetscFunctionReturn(0);
 }
-

@@ -9,7 +9,7 @@ PetscBool MatRegisterAllCalled = PETSC_FALSE;
 /*
    Contains the list of registered Mat routines
 */
-PetscFunctionList MatList = 0;
+PetscFunctionList MatList = NULL;
 
 /*@C
    MatSetType - Builds matrix object for a particular matrix type
@@ -64,7 +64,8 @@ PetscErrorCode  MatSetType(Mat mat, MatType matype)
   if (subclass) {
     ierr = MatConvert(mat,matype,MAT_INPLACE_MATRIX,&mat);CHKERRQ(ierr);
     PetscFunctionReturn(0);
-  } if (mat->ops->destroy) {
+  }
+  if (mat->ops->destroy) {
     /* free the old data structure if it existed */
     ierr = (*mat->ops->destroy)(mat);CHKERRQ(ierr);
     mat->ops->destroy = NULL;
@@ -72,23 +73,16 @@ PetscErrorCode  MatSetType(Mat mat, MatType matype)
     /* should these null spaces be removed? */
     ierr = MatNullSpaceDestroy(&mat->nullsp);CHKERRQ(ierr);
     ierr = MatNullSpaceDestroy(&mat->nearnullsp);CHKERRQ(ierr);
-    mat->preallocated = PETSC_FALSE;
-    mat->assembled = PETSC_FALSE;
-    mat->was_assembled = PETSC_FALSE;
-
-    /*
-     Increment, rather than reset these: the object is logically the same, so its logging and
-     state is inherited.  Furthermore, resetting makes it possible for the same state to be
-     obtained with a different structure, confusing the PC.
-    */
-    ++mat->nonzerostate;
-    ierr = PetscObjectStateIncrease((PetscObject)mat);CHKERRQ(ierr);
   }
   mat->preallocated  = PETSC_FALSE;
   mat->assembled     = PETSC_FALSE;
   mat->was_assembled = PETSC_FALSE;
 
-  /* increase the state so that any code holding the current state knows the matrix has been changed */
+  /*
+   Increment, rather than reset these: the object is logically the same, so its logging and
+   state is inherited.  Furthermore, resetting makes it possible for the same state to be
+   obtained with a different structure, confusing the PC.
+  */
   mat->nonzerostate++;
   ierr = PetscObjectStateIncrease((PetscObject)mat);CHKERRQ(ierr);
 
@@ -121,6 +115,56 @@ PetscErrorCode  MatGetType(Mat mat,MatType *type)
   PetscFunctionReturn(0);
 }
 
+/*@C
+   MatGetVecType - Gets the vector type used by the matrix object.
+
+   Not Collective
+
+   Input Parameter:
+.  mat - the matrix
+
+   Output Parameter:
+.  name - name of vector type
+
+   Level: intermediate
+
+.seealso: MatSetVecType()
+@*/
+PetscErrorCode MatGetVecType(Mat mat,VecType *vtype)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(mat,MAT_CLASSID,1);
+  PetscValidPointer(vtype,2);
+  *vtype = mat->defaultvectype;
+  PetscFunctionReturn(0);
+}
+
+/*@C
+   MatSetVecType - Set the vector type to be used for a matrix object
+
+   Collective on Mat
+
+   Input Parameters:
++  mat   - the matrix object
+-  vtype - vector type
+
+   Notes:
+     This is rarely needed in practice since each matrix object internally sets the proper vector type.
+
+  Level: intermediate
+
+.seealso: VecSetType(), MatGetVecType()
+@*/
+PetscErrorCode MatSetVecType(Mat mat,VecType vtype)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(mat,MAT_CLASSID,1);
+  ierr = PetscFree(mat->defaultvectype);CHKERRQ(ierr);
+  ierr = PetscStrallocpy(vtype,&mat->defaultvectype);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
 
 /*@C
   MatRegister -  - Adds a new matrix type
@@ -161,7 +205,7 @@ PetscErrorCode  MatRegister(const char sname[],PetscErrorCode (*function)(Mat))
   PetscFunctionReturn(0);
 }
 
-MatRootName MatRootNameList = 0;
+MatRootName MatRootNameList = NULL;
 
 /*@C
       MatRegisterRootName - Registers a name that can be used for either a sequential or its corresponding parallel matrix type. MatSetType()
@@ -204,10 +248,3 @@ PetscErrorCode  MatRegisterRootName(const char rname[],const char sname[],const 
   }
   PetscFunctionReturn(0);
 }
-
-
-
-
-
-
-

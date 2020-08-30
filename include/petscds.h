@@ -21,6 +21,8 @@ J*/
 typedef const char *PetscDSType;
 #define PETSCDSBASIC "basic"
 
+typedef enum {PETSC_DISC_NONE, PETSC_DISC_FE, PETSC_DISC_FV} PetscDiscType;
+
 typedef void (*PetscPointFunc)(PetscInt, PetscInt, PetscInt,
                                const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
@@ -74,6 +76,7 @@ PETSC_EXTERN PetscErrorCode PetscDSGetComponentDerivativeOffsets(PetscDS, PetscI
 PETSC_EXTERN PetscErrorCode PetscDSGetDiscretization(PetscDS, PetscInt, PetscObject *);
 PETSC_EXTERN PetscErrorCode PetscDSSetDiscretization(PetscDS, PetscInt, PetscObject);
 PETSC_EXTERN PetscErrorCode PetscDSAddDiscretization(PetscDS, PetscObject);
+PETSC_EXTERN PetscErrorCode PetscDSGetQuadrature(PetscDS, PetscQuadrature*);
 PETSC_EXTERN PetscErrorCode PetscDSGetImplicit(PetscDS, PetscInt, PetscBool*);
 PETSC_EXTERN PetscErrorCode PetscDSSetImplicit(PetscDS, PetscInt, PetscBool);
 PETSC_EXTERN PetscErrorCode PetscDSGetAdjacency(PetscDS, PetscInt, PetscBool*, PetscBool*);
@@ -248,6 +251,7 @@ PETSC_EXTERN PetscErrorCode PetscDSSetBdResidual(PetscDS, PetscInt,
                                                           const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                           const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                           PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]));
+PETSC_EXTERN PetscErrorCode PetscDSHasBdJacobian(PetscDS, PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscDSGetBdJacobian(PetscDS, PetscInt, PetscInt,
                                                  void (**)(PetscInt, PetscInt, PetscInt,
                                                            const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
@@ -282,8 +286,45 @@ PETSC_EXTERN PetscErrorCode PetscDSSetBdJacobian(PetscDS, PetscInt, PetscInt,
                                                           const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                           const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                           PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]));
+PETSC_EXTERN PetscErrorCode PetscDSHasBdJacobianPreconditioner(PetscDS, PetscBool *);
+PETSC_EXTERN PetscErrorCode PetscDSGetBdJacobianPreconditioner(PetscDS, PetscInt, PetscInt,
+                                                               void (**)(PetscInt, PetscInt, PetscInt,
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]),
+                                                               void (**)(PetscInt, PetscInt, PetscInt,
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]),
+                                                               void (**)(PetscInt, PetscInt, PetscInt,
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]),
+                                                               void (**)(PetscInt, PetscInt, PetscInt,
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                         PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]));
+PETSC_EXTERN PetscErrorCode PetscDSSetBdJacobianPreconditioner(PetscDS, PetscInt, PetscInt,
+                                                               void (*)(PetscInt, PetscInt, PetscInt,
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]),
+                                                               void (*)(PetscInt, PetscInt, PetscInt,
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]),
+                                                               void (*)(PetscInt, PetscInt, PetscInt,
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]),
+                                                               void (*)(PetscInt, PetscInt, PetscInt,
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                                                        PetscReal, PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]));
 PETSC_EXTERN PetscErrorCode PetscDSGetExactSolution(PetscDS, PetscInt, PetscErrorCode (**)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar[], void *), void **);
 PETSC_EXTERN PetscErrorCode PetscDSSetExactSolution(PetscDS, PetscInt, PetscErrorCode (*)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar[], void *), void *);
+PETSC_EXTERN PetscErrorCode PetscDSGetExactSolutionTimeDerivative(PetscDS, PetscInt, PetscErrorCode (**)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar[], void *), void **);
+PETSC_EXTERN PetscErrorCode PetscDSSetExactSolutionTimeDerivative(PetscDS, PetscInt, PetscErrorCode (*)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar[], void *), void *);
 PETSC_EXTERN PetscErrorCode PetscDSGetTabulation(PetscDS, PetscTabulation *[]);
 PETSC_EXTERN PetscErrorCode PetscDSGetFaceTabulation(PetscDS, PetscTabulation *[]);
 PETSC_EXTERN PetscErrorCode PetscDSGetEvaluationArrays(PetscDS, PetscScalar **, PetscScalar **, PetscScalar **);
@@ -291,11 +332,12 @@ PETSC_EXTERN PetscErrorCode PetscDSGetWeakFormArrays(PetscDS, PetscScalar **, Pe
 PETSC_EXTERN PetscErrorCode PetscDSGetWorkspace(PetscDS, PetscReal **, PetscScalar **, PetscScalar **, PetscScalar **, PetscScalar **);
 PETSC_EXTERN PetscErrorCode PetscDSCopyConstants(PetscDS, PetscDS);
 PETSC_EXTERN PetscErrorCode PetscDSCopyEquations(PetscDS, PetscDS);
+PETSC_EXTERN PetscErrorCode PetscDSSelectDiscretizations(PetscDS, PetscInt, const PetscInt[], PetscDS);
 PETSC_EXTERN PetscErrorCode PetscDSSelectEquations(PetscDS, PetscInt, const PetscInt[], PetscDS);
-PETSC_EXTERN PetscErrorCode PetscDSAddBoundary(PetscDS, DMBoundaryConditionType, const char[], const char[], PetscInt, PetscInt, const PetscInt *, void (*)(void), PetscInt, const PetscInt *, void *);
-PETSC_EXTERN PetscErrorCode PetscDSUpdateBoundary(PetscDS, PetscInt, DMBoundaryConditionType, const char[], const char[], PetscInt, PetscInt, const PetscInt *, void (*)(void), PetscInt, const PetscInt *, void *);
+PETSC_EXTERN PetscErrorCode PetscDSAddBoundary(PetscDS, DMBoundaryConditionType, const char[], const char[], PetscInt, PetscInt, const PetscInt *, void (*)(void), void (*)(void), PetscInt, const PetscInt *, void *);
+PETSC_EXTERN PetscErrorCode PetscDSUpdateBoundary(PetscDS, PetscInt, DMBoundaryConditionType, const char[], const char[], PetscInt, PetscInt, const PetscInt *, void (*)(void), void (*)(void), PetscInt, const PetscInt *, void *);
 PETSC_EXTERN PetscErrorCode PetscDSGetNumBoundary(PetscDS, PetscInt *);
-PETSC_EXTERN PetscErrorCode PetscDSGetBoundary(PetscDS, PetscInt, DMBoundaryConditionType *, const char **, const char **, PetscInt *, PetscInt *, const PetscInt **, void (**)(void), PetscInt *, const PetscInt **, void **);
+PETSC_EXTERN PetscErrorCode PetscDSGetBoundary(PetscDS, PetscInt, DMBoundaryConditionType *, const char **, const char **, PetscInt *, PetscInt *, const PetscInt **, void (**)(void), void (**)(void), PetscInt *, const PetscInt **, void **);
 PETSC_EXTERN PetscErrorCode PetscDSCopyBoundary(PetscDS, PetscDS);
 
 #endif

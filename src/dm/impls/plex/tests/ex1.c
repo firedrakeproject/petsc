@@ -28,6 +28,7 @@ typedef struct {
   PetscInt      overlap;                         /* The cell overlap to use during partitioning */
   PetscReal     extrude_thickness;               /* Thickness of extrusion */
   PetscInt      extrude_layers;                  /* Layers to be extruded */
+  PetscBool     extrude_hfirst;                  /* New numbering: height first? */
   PetscBool     testp4est[2];
   PetscBool     redistribute;
   PetscBool     final_ref;                       /* Run refinement at the end */
@@ -63,8 +64,9 @@ PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   options->extfilename[0]    = '\0';
   options->testPartition     = PETSC_FALSE;
   options->overlap           = 0;
-  options->extrude_layers    = 2;
+  options->extrude_layers    = 0;
   options->extrude_thickness = 0.1;
+  options->extrude_hfirst    = PETSC_TRUE;
   options->testp4est[0]      = PETSC_FALSE;
   options->testp4est[1]      = PETSC_FALSE;
   options->redistribute      = PETSC_FALSE;
@@ -97,10 +99,12 @@ PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   ierr = PetscOptionsEList("-z_periodicity", "The z-boundary periodicity", "ex1.c", DMBoundaryTypes, 5, DMBoundaryTypes[options->periodicity[2]], &bd, NULL);CHKERRQ(ierr);
   options->periodicity[2] = (DMBoundaryType) bd;
   ierr = PetscOptionsString("-filename", "The mesh file", "ex1.c", options->filename, options->filename, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-bd_filename", "The mesh boundary file", "ex1.c", options->bdfilename, options->bdfilename, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsString("-ext_filename", "The 2D mesh file to be extruded", "ex1.c", options->extfilename, options->extfilename, PETSC_MAX_PATH_LEN, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-bd_filename", "The mesh boundary file", "ex1.c", options->bdfilename, options->bdfilename, sizeof(options->bdfilename), NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsString("-ext_filename", "The 2D mesh file to be extruded", "ex1.c", options->extfilename, options->extfilename, sizeof(options->extfilename), &flg);CHKERRQ(ierr);
+  if (flg) options->extrude_layers = 2;
   ierr = PetscOptionsBoundedInt("-ext_layers", "The number of layers to extrude", "ex1.c", options->extrude_layers, &options->extrude_layers, NULL,0);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-ext_thickness", "The thickness of the layer to be extruded", "ex1.c", options->extrude_thickness, &options->extrude_thickness, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-ext_hfirst", "Order the cells in the height first", "ex1.c", options->extrude_hfirst, &options->extrude_hfirst, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-test_partition", "Use a fixed partition for testing", "ex1.c", options->testPartition, &options->testPartition, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBoundedInt("-overlap", "The cell overlap for partitioning", "ex1.c", options->overlap, &options->overlap, NULL,0);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-test_p4est_seq", "Test p4est with sequential base DM", "ex1.c", options->testp4est[0], &options->testp4est[0], NULL);CHKERRQ(ierr);
@@ -116,20 +120,6 @@ PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   ierr = PetscLogStageRegister("MeshRefine",     &options->stages[STAGE_REFINE]);CHKERRQ(ierr);
   ierr = PetscLogStageRegister("MeshOverlap",    &options->stages[STAGE_OVERLAP]);CHKERRQ(ierr);
   PetscFunctionReturn(0);
-}
-
-/* Overload time to be the sphere radius */
-static void snapToSphere(PetscInt dim, PetscInt Nf, PetscInt NfAux,
-                         const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
-                         const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
-                         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar f0[])
-{
-  PetscReal norm2 = 0.0, fac;
-  PetscInt  n = uOff[1] - uOff[0], d;
-
-  for (d = 0; d < n; ++d) norm2 += PetscSqr(PetscRealPart(u[d]));
-  fac = t/PetscSqrtReal(norm2);
-  for (d = 0; d < n; ++d) f0[d] = u[d]*fac;
 }
 
 PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
@@ -185,7 +175,7 @@ PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
     DM edm;
 
     ierr = DMPlexCreateFromFile(comm, extfilename, interpolate, &edm);CHKERRQ(ierr);
-    ierr = DMPlexExtrude(edm, user->extrude_layers, user->extrude_thickness, PETSC_TRUE, interpolate, dm);CHKERRQ(ierr);
+    ierr = DMPlexExtrude(edm, user->extrude_layers, user->extrude_thickness, user->extrude_hfirst, NULL, interpolate, dm);CHKERRQ(ierr);
     ierr = DMDestroy(&edm);CHKERRQ(ierr);
   } else {
     switch (user->domainShape) {
@@ -207,44 +197,20 @@ PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
       }
       break;
     case SPHERE:
-      ierr = DMPlexCreateSphereMesh(comm, dim, cellSimplex, dm);CHKERRQ(ierr);
+      ierr = DMPlexCreateSphereMesh(comm, dim, cellSimplex, 1.0, dm);CHKERRQ(ierr);
       break;
     case BALL:
-      {
-        DM       sdm;
-        PetscInt Nr = 0, r;
-
-        ierr = DMPlexCreateSphereMesh(comm, dim-1, cellSimplex, &sdm);CHKERRQ(ierr);
-        {
-          DM       cdm;
-          PetscFE  fe;
-          PetscInt dim, dE;
-
-          ierr = DMGetCoordinateDM(sdm, &cdm);CHKERRQ(ierr);
-          ierr = DMGetDimension(sdm, &dim);CHKERRQ(ierr);
-          ierr = DMGetCoordinateDim(sdm, &dE);CHKERRQ(ierr);
-          ierr = PetscFECreateLagrange(PETSC_COMM_SELF, dim, dE, PETSC_TRUE, 1, -1, &fe);CHKERRQ(ierr);
-          ierr = DMSetField(cdm, 0, NULL, (PetscObject) fe);CHKERRQ(ierr);
-          ierr = PetscFEDestroy(&fe);CHKERRQ(ierr);
-          ierr = DMCreateDS(cdm);CHKERRQ(ierr);
-        }
-        ierr = PetscOptionsGetInt(NULL, "bd_", "-dm_refine", &Nr, NULL);CHKERRQ(ierr);
-        for (r = 0; r < Nr; ++r) {
-          DM rdm, cdm, rcdm;
-          ierr = DMRefine(sdm, PETSC_COMM_WORLD, &rdm);CHKERRQ(ierr);
-          ierr = DMGetCoordinateDM(sdm, &cdm);CHKERRQ(ierr);
-          ierr = DMGetCoordinateDM(rdm, &rcdm);CHKERRQ(ierr);
-          ierr = DMCopyDisc(cdm, rcdm);CHKERRQ(ierr);
-          ierr = DMPlexRemapGeometry(rdm, 1.0, snapToSphere);CHKERRQ(ierr);
-          ierr = DMDestroy(&sdm);CHKERRQ(ierr);
-          sdm  = rdm;
-        }
-        ierr = DMPlexGenerate(sdm, NULL, interpolate, dm);CHKERRQ(ierr);
-        ierr = DMDestroy(&sdm);CHKERRQ(ierr);
-      }
+      ierr = DMPlexCreateBallMesh(comm, dim, 1.0, dm);CHKERRQ(ierr);
       break;
     default: SETERRQ1(comm, PETSC_ERR_ARG_WRONG, "Unknown domain shape %D", user->domainShape);
     }
+  }
+  if (!extlen && user->extrude_layers > 0) {
+    DM edm;
+
+    ierr = DMPlexExtrude(*dm, user->extrude_layers, user->extrude_thickness, user->extrude_hfirst, NULL, interpolate, &edm);CHKERRQ(ierr);
+    ierr = DMDestroy(dm);CHKERRQ(ierr);
+    *dm  = edm;
   }
   ierr = DMLocalizeCoordinates(*dm);CHKERRQ(ierr); /* needed for periodic */
   ierr = DMViewFromOptions(*dm,NULL,"-init_dm_view");CHKERRQ(ierr);
@@ -1075,4 +1041,60 @@ int main(int argc, char **argv)
   test:
     suffix: glvis_3d_hyb_s2t
     args: -dim 3 -filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/hybrid_3d_cube.msh -interpolate -dm_view glvis: -viewer_glvis_dm_plex_enable_boundary -petscpartitioner_type simple -dm_refine 1 -dm_plex_cell_refiner tobox -dm_plex_check_all
+
+  test:
+    suffix: ref_alfeld2d_0
+    requires: triangle
+    args: -dim 2 -domain_shape box -cell_simplex 1 -domain_box_sizes 5 -dm_view -interpolate -dm_plex_check_all -dm_refine 1 -dm_plex_cell_refiner alfeld2d -final_diagnostics
+  test:
+    suffix: ref_alfeld3d_0
+    requires: ctetgen
+    args: -dim 3 -domain_shape box -cell_simplex 1 -domain_box_sizes 5 -dm_view -interpolate -dm_plex_check_all -dm_refine 1 -dm_plex_cell_refiner alfeld3d -final_diagnostics
+
+  # Boundary layer refiners
+  test:
+    suffix: ref_bl_1
+    args: -dim 1 -domain_shape box -cell_simplex 0 -domain_box_sizes 5 -dm_view -interpolate -dm_plex_check_all 0 -dm_refine 1 -dm_plex_cell_refiner boundarylayer -ext_layers 2 -final_diagnostics -dm_plex_refine_boundarylayer_splits 3 -ext_hfirst {{0 1}}
+  test:
+    suffix: ref_bl_2_tri
+    requires: triangle
+    args: -dim 2 -domain_shape box -cell_simplex 1 -domain_box_sizes 5 -dm_view -interpolate -dm_plex_check_all 0 -dm_refine 1 -dm_plex_cell_refiner boundarylayer -ext_layers 3 -final_diagnostics -dm_plex_refine_boundarylayer_splits 4 -ext_hfirst {{0 1}}
+  test:
+    suffix: ref_bl_3_quad
+    args: -dim 2 -domain_shape box -cell_simplex 0 -domain_box_sizes 5 -dm_view -interpolate -dm_plex_check_all 0 -dm_refine 1 -dm_plex_cell_refiner boundarylayer -ext_layers 3 -final_diagnostics -dm_plex_refine_boundarylayer_splits 4 -ext_hfirst {{0 1}}
+  test:
+    suffix: ref_bl_spheresurface_extruded
+    nsize : 4
+    args: -ext_layers 3 -ext_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/surfacesphere_bin.msh -dm_plex_gmsh_spacedim 3 -dm_plex_check_all -dm_view -interpolate -petscpartitioner_type simple -ext_hfirst {{0 1}separate output} -final_diagnostics -dm_refine 1 -dm_plex_cell_refiner boundarylayer -dm_plex_refine_boundarylayer_splits 2
+  test:
+    suffix: ref_bl_3d_hyb
+    nsize : 4
+    args: -filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/hybrid_3d_cube.msh -dm_plex_check_all -dm_view -interpolate -petscpartitioner_type simple -final_diagnostics -dm_refine 1 -dm_plex_cell_refiner boundarylayer -dm_plex_refine_boundarylayer_splits 4 -dm_plex_refine_boundarylayer_progression 3.1
+
+  test:
+    suffix: sphere_0
+    args: -dim 2 -domain_shape sphere -dm_plex_check_all -dm_view ::ascii_info_detail
+
+  test:
+    suffix: sphere_1
+    args: -dim 2 -domain_shape sphere -dm_plex_check_all -dm_refine 2 -dm_view
+
+  test:
+    suffix: sphere_2
+    args: -dim 2 -cell_simplex 0 -domain_shape sphere -dm_plex_check_all -dm_view ::ascii_info_detail
+
+  test:
+    suffix: sphere_3
+    args: -dim 2 -cell_simplex 0 -domain_shape sphere -dm_plex_check_all -dm_refine 2 -dm_view
+
+  test:
+    suffix: ball_0
+    requires: ctetgen
+    args: -dim 3 -domain_shape ball -dm_plex_check_all -dm_view
+
+  test:
+    suffix: ball_1
+    requires: ctetgen
+    args: -dim 3 -domain_shape ball -bd_dm_refine 2 -dm_plex_check_all -dm_view
+
 TEST*/

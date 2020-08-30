@@ -20,7 +20,7 @@ static int setupConnection(MLENV *env, MLINK *link, const char *linkhost, LinkMo
   /* Link host */
   argv[2] = "-linkhost";
   if (!linkhost) {
-    ierr    = PetscGetHostName(hostname, 255);CHKERRQ(ierr);
+    ierr    = PetscGetHostName(hostname, sizeof(hostname));CHKERRQ(ierr);
     argv[3] = hostname;
   } else argv[3] = (char*) linkhost;
 
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
   MLINK link;
   int   ierr;
 
-  ierr = PetscInitialize(&argc, &argv, NULL, help);if (ierr) return(ierr);
+  ierr = PetscInitialize(&argc, &argv, NULL, help);if (ierr) return ierr;
   ierr = setupConnection(&env, &link, "192.168.119.1", MATHEMATICA_LINK_CONNECT);CHKERRQ(ierr);
   ierr = processPackets(link);CHKERRQ(ierr);
   ierr = cleanupConnection(env, link);CHKERRQ(ierr);

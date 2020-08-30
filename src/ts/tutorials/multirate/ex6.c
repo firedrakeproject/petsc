@@ -325,7 +325,7 @@ PetscErrorCode FVRHSFunction_2WaySplit(TS ts,PetscReal time,Vec X,Vec F,void *vc
     if (dt > 0.5/ctx->cfl_idt) {
       if (1) {
         ierr = PetscPrintf(ctx->comm,"Stability constraint exceeded at t=%g, dt %g > %g\n",(double)tnow,(double)dt,(double)(0.5/ctx->cfl_idt));CHKERRQ(ierr);
-      } else SETERRQ2(PETSC_COMM_SELF,1,"Stability constraint exceeded, %g > %g",(double)dt,(double)(ctx->cfl/ctx->cfl_idt));
+      } else SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_UNKNOWN_TYPE,"Stability constraint exceeded, %g > %g",(double)dt,(double)(ctx->cfl/ctx->cfl_idt));
     }
   }
   PetscFunctionReturn(0);
@@ -912,8 +912,8 @@ int main(int argc,char *argv[])
       ierr = PetscViewerDestroy(&fd);CHKERRQ(ierr);
       ierr = VecGetArrayRead(X,&ptr_X);CHKERRQ(ierr);
       ierr = VecGetArrayRead(XR,&ptr_XR);CHKERRQ(ierr);
-      for(i=xs;i<xs+xm;i++) {
-        if(i < ctx.sf || i > ctx.fs-1)
+      for (i=xs;i<xs+xm;i++) {
+        if (i < ctx.sf || i > ctx.fs-1)
           for (k=0; k<dof; k++) nrm1 = nrm1 + hs*PetscAbs(ptr_X[i*dof+k]-ptr_XR[i*dof+k]);
         else
           for (k=0; k<dof; k++) nrm1 = nrm1 + hf*PetscAbs(ptr_X[i*dof+k]-ptr_XR[i*dof+k]);
@@ -971,7 +971,7 @@ int main(int argc,char *argv[])
 /*TEST
 
     build:
-      requires: !complex c99
+      requires: !complex
       depends: finitevolume1d.c
 
     test:

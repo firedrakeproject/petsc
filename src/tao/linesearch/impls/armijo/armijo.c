@@ -154,7 +154,7 @@ static PetscErrorCode TaoLineSearchApply_Armijo(TaoLineSearch ls, Vec x, PetscRe
      the historical array and populate it with the initial function
      values. */
   if (!armP->memory) {
-    ierr = PetscMalloc1(armP->memorySize, &armP->memory );CHKERRQ(ierr);
+    ierr = PetscMalloc1(armP->memorySize, &armP->memory);CHKERRQ(ierr);
   }
 
   if (!armP->memorySetup) {
@@ -284,8 +284,8 @@ static PetscErrorCode TaoLineSearchApply_Armijo(TaoLineSearch ls, Vec x, PetscRe
   PetscFunctionReturn(0);
 }
 
-/*MC 
-   TAOLINESEARCHARMIJO - Backtracking line-search that satisfies only the (nonmonotone) Armijo condition 
+/*MC
+   TAOLINESEARCHARMIJO - Backtracking line-search that satisfies only the (nonmonotone) Armijo condition
    (i.e., sufficient decrease).
 
    Armijo line-search type can be selected with "-tao_ls_type armijo".
@@ -316,12 +316,11 @@ PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_Armijo(TaoLineSearch ls)
   armP->nondescending=PETSC_FALSE;
   ls->data = (void*)armP;
   ls->initstep=1.0;
-  ls->ops->setup=0;
-  ls->ops->apply=TaoLineSearchApply_Armijo;
+  ls->ops->setup = NULL;
+  ls->ops->apply = TaoLineSearchApply_Armijo;
   ls->ops->view = TaoLineSearchView_Armijo;
   ls->ops->destroy = TaoLineSearchDestroy_Armijo;
   ls->ops->reset = TaoLineSearchReset_Armijo;
   ls->ops->setfromoptions = TaoLineSearchSetFromOptions_Armijo;
   PetscFunctionReturn(0);
 }
-

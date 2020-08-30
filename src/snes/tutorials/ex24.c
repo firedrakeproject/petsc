@@ -298,14 +298,14 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
     case SOL_LINEAR:
       ierr = PetscDSSetResidual(prob, 1, f0_linear_u, NULL);CHKERRQ(ierr);
       ierr = PetscDSSetBdResidual(prob, 0, f0_bd_linear_q, NULL);CHKERRQ(ierr);
-      ierr = DMAddBoundary(dm, DM_BC_NATURAL, "Dirichlet Bd Integral", "marker", 0, 0, NULL, (void (*)(void)) NULL, 1, &id, user);CHKERRQ(ierr);
+      ierr = DMAddBoundary(dm, DM_BC_NATURAL, "Dirichlet Bd Integral", "marker", 0, 0, NULL, (void (*)(void)) NULL, NULL, 1, &id, user);CHKERRQ(ierr);
       ierr = PetscDSSetExactSolution(prob, 0, linear_q, user);CHKERRQ(ierr);
       ierr = PetscDSSetExactSolution(prob, 1, linear_u, user);CHKERRQ(ierr);
       break;
     case SOL_QUADRATIC:
       ierr = PetscDSSetResidual(prob, 1, f0_quadratic_u, NULL);CHKERRQ(ierr);
       ierr = PetscDSSetBdResidual(prob, 0, f0_bd_quadratic_q, NULL);CHKERRQ(ierr);
-      ierr = DMAddBoundary(dm, DM_BC_NATURAL, "Dirichlet Bd Integral", "marker", 0, 0, NULL, (void (*)(void)) NULL, 1, &id, user);CHKERRQ(ierr);
+      ierr = DMAddBoundary(dm, DM_BC_NATURAL, "Dirichlet Bd Integral", "marker", 0, 0, NULL, (void (*)(void)) NULL, NULL, 1, &id, user);CHKERRQ(ierr);
       ierr = PetscDSSetExactSolution(prob, 0, quadratic_q, user);CHKERRQ(ierr);
       ierr = PetscDSSetExactSolution(prob, 1, quadratic_u, user);CHKERRQ(ierr);
       break;
@@ -368,7 +368,7 @@ int main(int argc, char **argv)
   ierr = PetscObjectSetName((PetscObject) u, "potential");CHKERRQ(ierr);
   ierr = DMPlexSetSNESLocalFEM(dm, &user, &user, &user);CHKERRQ(ierr);
   ierr = SNESSetFromOptions(snes);CHKERRQ(ierr);
-  ierr = DMSNESCheckFromOptions(snes, u, NULL, NULL);CHKERRQ(ierr);
+  ierr = DMSNESCheckFromOptions(snes, u);CHKERRQ(ierr);
   ierr = SNESSolve(snes, NULL, u);CHKERRQ(ierr);
   ierr = SNESGetSolution(snes, &u);CHKERRQ(ierr);
   ierr = VecViewFromOptions(u, NULL, "-potential_view");CHKERRQ(ierr);

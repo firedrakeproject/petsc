@@ -90,10 +90,14 @@ PETSC_EXTERN PetscErrorCode KSPSetUp(KSP);
 PETSC_EXTERN PetscErrorCode KSPSetUpOnBlocks(KSP);
 PETSC_EXTERN PetscErrorCode KSPSolve(KSP,Vec,Vec);
 PETSC_EXTERN PetscErrorCode KSPSolveTranspose(KSP,Vec,Vec);
+PETSC_EXTERN PetscErrorCode KSPMatSolve(KSP,Mat,Mat);
+PETSC_EXTERN PetscErrorCode KSPSetMatSolveBlockSize(KSP,PetscInt);
+PETSC_EXTERN PetscErrorCode KSPGetMatSolveBlockSize(KSP,PetscInt*);
 PETSC_EXTERN PetscErrorCode KSPReset(KSP);
 PETSC_EXTERN PetscErrorCode KSPResetViewers(KSP);
 PETSC_EXTERN PetscErrorCode KSPDestroy(KSP*);
 PETSC_EXTERN PetscErrorCode KSPSetReusePreconditioner(KSP,PetscBool);
+PETSC_EXTERN PetscErrorCode KSPGetReusePreconditioner(KSP,PetscBool*);
 PETSC_EXTERN PetscErrorCode KSPSetSkipPCSetFromOptions(KSP,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPCheckSolve(KSP,PC,Vec);
 
@@ -133,7 +137,7 @@ PETSC_EXTERN PetscErrorCode KSPMonitorSet(KSP,PetscErrorCode (*)(KSP,PetscInt,Pe
 PETSC_EXTERN PetscErrorCode KSPMonitorCancel(KSP);
 PETSC_EXTERN PetscErrorCode KSPGetMonitorContext(KSP,void**);
 PETSC_EXTERN PetscErrorCode KSPGetResidualHistory(KSP,PetscReal*[],PetscInt*);
-PETSC_EXTERN PetscErrorCode KSPSetResidualHistory(KSP,PetscReal[],PetscInt,PetscBool );
+PETSC_EXTERN PetscErrorCode KSPSetResidualHistory(KSP,PetscReal[],PetscInt,PetscBool);
 
 PETSC_EXTERN PetscErrorCode KSPBuildSolutionDefault(KSP,Vec,Vec*);
 PETSC_EXTERN PetscErrorCode KSPBuildResidualDefault(KSP,Vec,Vec,Vec*);
@@ -153,12 +157,20 @@ PETSC_EXTERN PetscErrorCode PCMGGetSmootherUp(PC,PetscInt,KSP*);
 PETSC_EXTERN PetscErrorCode PCMGGetCoarseSolve(PC,KSP*);
 PETSC_EXTERN PetscErrorCode PCGalerkinGetKSP(PC,KSP*);
 PETSC_EXTERN PetscErrorCode PCDeflationGetCoarseKSP(PC,KSP*);
+/*
+  PCMGCoarseList contains the list of coarse space constructor currently registered
+  These are added with PCMGRegisterCoarseSpaceConstructor()
+*/
+PETSC_EXTERN PetscFunctionList PCMGCoarseList;
+PETSC_EXTERN PetscErrorCode PCMGRegisterCoarseSpaceConstructor(const char[], PetscErrorCode (*)(PC, PetscInt, DM, KSP, PetscInt, const Vec[], Vec **));
+PETSC_EXTERN PetscErrorCode PCMGGetCoarseSpaceConstructor(const char[], PetscErrorCode (**)(PC, PetscInt, DM, KSP, PetscInt, const Vec[], Vec **));
+
 
 PETSC_EXTERN PetscErrorCode KSPBuildSolution(KSP,Vec,Vec*);
 PETSC_EXTERN PetscErrorCode KSPBuildResidual(KSP,Vec,Vec,Vec*);
 
 PETSC_EXTERN PetscErrorCode KSPRichardsonSetScale(KSP,PetscReal);
-PETSC_EXTERN PetscErrorCode KSPRichardsonSetSelfScale(KSP,PetscBool );
+PETSC_EXTERN PetscErrorCode KSPRichardsonSetSelfScale(KSP,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPChebyshevSetEigenvalues(KSP,PetscReal,PetscReal);
 PETSC_EXTERN PetscErrorCode KSPChebyshevEstEigSet(KSP,PetscReal,PetscReal,PetscReal,PetscReal);
 PETSC_EXTERN PetscErrorCode KSPChebyshevEstEigSetUseNoisy(KSP,PetscBool);
@@ -231,6 +243,37 @@ PETSC_EXTERN PetscErrorCode KSPFETIDPSetPressureOperator(KSP,Mat);
 
 PETSC_EXTERN PetscErrorCode KSPHPDDMSetDeflationSpace(KSP,Mat);
 PETSC_EXTERN PetscErrorCode KSPHPDDMGetDeflationSpace(KSP,Mat*);
+PETSC_DEPRECATED_FUNCTION("Use KSPMatSolve() (since version 3.14)") PETSC_STATIC_INLINE PetscErrorCode KSPHPDDMMatSolve(KSP ksp, Mat B, Mat X) { return KSPMatSolve(ksp, B, X); }
+/*E
+    KSPHPDDMType - Type of Krylov method used by KSPHPDDM
+
+    Level: intermediate
+
+    Values:
++   KSP_HPDDM_TYPE_GMRES (default)
+.   KSP_HPDDM_TYPE_BGMRES
+.   KSP_HPDDM_TYPE_CG
+.   KSP_HPDDM_TYPE_BCG
+.   KSP_HPDDM_TYPE_GCRODR
+.   KSP_HPDDM_TYPE_BGCRODR
+.   KSP_HPDDM_TYPE_BFBCG
+-   KSP_HPDDM_TYPE_PREONLY
+
+.seealso: KSPHPDDM, KSPHPDDMSetType()
+E*/
+typedef enum {
+  KSP_HPDDM_TYPE_GMRES = 0,
+  KSP_HPDDM_TYPE_BGMRES = 1,
+  KSP_HPDDM_TYPE_CG = 2,
+  KSP_HPDDM_TYPE_BCG = 3,
+  KSP_HPDDM_TYPE_GCRODR = 4,
+  KSP_HPDDM_TYPE_BGCRODR = 5,
+  KSP_HPDDM_TYPE_BFBCG = 6,
+  KSP_HPDDM_TYPE_PREONLY = 7
+} KSPHPDDMType;
+PETSC_EXTERN const char *const KSPHPDDMTypes[];
+PETSC_EXTERN PetscErrorCode KSPHPDDMSetType(KSP,KSPHPDDMType);
+PETSC_EXTERN PetscErrorCode KSPHPDDMGetType(KSP,KSPHPDDMType*);
 
 /*E
     KSPGMRESCGSRefinementType - How the classical (unmodified) Gram-Schmidt is performed.
@@ -297,7 +340,7 @@ PETSC_EXTERN PetscErrorCode KSPQCGGetQuadratic(KSP,PetscReal*);
 PETSC_EXTERN PetscErrorCode KSPQCGGetTrialStepNorm(KSP,PetscReal*);
 
 PETSC_EXTERN PetscErrorCode KSPBCGSLSetXRes(KSP,PetscReal);
-PETSC_EXTERN PetscErrorCode KSPBCGSLSetPol(KSP,PetscBool );
+PETSC_EXTERN PetscErrorCode KSPBCGSLSetPol(KSP,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPBCGSLSetEll(KSP,PetscInt);
 PETSC_EXTERN PetscErrorCode KSPBCGSLSetUsePseudoinverse(KSP,PetscBool);
 
@@ -331,16 +374,19 @@ PETSC_EXTERN PetscErrorCode KSPSetOptionsPrefix(KSP,const char[]);
 PETSC_EXTERN PetscErrorCode KSPAppendOptionsPrefix(KSP,const char[]);
 PETSC_EXTERN PetscErrorCode KSPGetOptionsPrefix(KSP,const char*[]);
 
-PETSC_EXTERN PetscErrorCode KSPSetDiagonalScale(KSP,PetscBool );
+PETSC_EXTERN PetscErrorCode KSPSetDiagonalScale(KSP,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPGetDiagonalScale(KSP,PetscBool*);
-PETSC_EXTERN PetscErrorCode KSPSetDiagonalScaleFix(KSP,PetscBool );
+PETSC_EXTERN PetscErrorCode KSPSetDiagonalScaleFix(KSP,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPGetDiagonalScaleFix(KSP,PetscBool*);
 
 PETSC_EXTERN PetscErrorCode KSPView(KSP,PetscViewer);
 PETSC_EXTERN PetscErrorCode KSPLoad(KSP,PetscViewer);
 PETSC_EXTERN PetscErrorCode KSPViewFromOptions(KSP,PetscObject,const char[]);
-PETSC_EXTERN PetscErrorCode KSPReasonView(KSP,PetscViewer);
-PETSC_EXTERN PetscErrorCode KSPReasonViewFromOptions(KSP);
+PETSC_EXTERN PetscErrorCode KSPConvergedReasonView(KSP,PetscViewer);
+PETSC_EXTERN PetscErrorCode KSPConvergedReasonViewFromOptions(KSP);
+
+PETSC_DEPRECATED_FUNCTION("Use KSPConvergedReasonView() (since version 3.14)") PETSC_STATIC_INLINE PetscErrorCode KSPReasonView(KSP ksp,PetscViewer v) {return KSPConvergedReasonView(ksp,v);}
+PETSC_DEPRECATED_FUNCTION("Use KSPConvergedReasonViewFromOptions() (since version 3.14)") PETSC_STATIC_INLINE PetscErrorCode KSPReasonViewFromOptions(KSP ksp) {return KSPConvergedReasonViewFromOptions(ksp);}
 
 #define KSP_FILE_CLASSID 1211223
 
@@ -432,7 +478,7 @@ PETSC_EXTERN PetscErrorCode KSPSetLagNorm(KSP,PetscBool);
       The string versions of these are KSPConvergedReasons; if you change
       any of the values here also change them that array of names.
 
-.seealso: KSPSolve(), KSPGetConvergedReason(), KSPSetTolerances()
+.seealso: KSPSolve(), KSPGetConvergedReason(), KSPSetTolerances(), KSPConvergedReasonView()
 E*/
 typedef enum {/* converged */
               KSP_CONVERGED_RTOL_NORMAL        =  1,
@@ -528,8 +574,9 @@ M*/
 
 /*MC
      KSP_DIVERGED_BREAKDOWN - A breakdown in the Krylov method was detected so the
-          method could not continue to enlarge the Krylov space. Could be due to a singlular matrix or
-          preconditioner.
+          method could not continue to enlarge the Krylov space. Could be due to a singular matrix or
+          preconditioner. In KSPHPDDM, this is also returned when some search directions within a block
+          are colinear.
 
    Level: beginner
 
@@ -573,7 +620,7 @@ M*/
 M*/
 
 /*MC
-     KSP_DIVERGED_PC_FAILED - It was not possible to build or use the requested preconditioner. This is usually due to a 
+     KSP_DIVERGED_PC_FAILED - It was not possible to build or use the requested preconditioner. This is usually due to a
      zero pivot in a factorization. It can also result from a failure in a subpreconditioner inside a nested preconditioner
      such as PCFIELDSPLIT.
 
@@ -607,6 +654,7 @@ PETSC_EXTERN PetscErrorCode KSPConvergedDefaultDestroy(void*);
 PETSC_EXTERN PetscErrorCode KSPConvergedDefaultCreate(void**);
 PETSC_EXTERN PetscErrorCode KSPConvergedDefaultSetUIRNorm(KSP);
 PETSC_EXTERN PetscErrorCode KSPConvergedDefaultSetUMIRNorm(KSP);
+PETSC_EXTERN PetscErrorCode KSPConvergedDefaultSetConvergedMaxits(KSP,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPConvergedSkip(KSP,PetscInt,PetscReal,KSPConvergedReason*,void*);
 PETSC_EXTERN PetscErrorCode KSPGetConvergedReason(KSP,KSPConvergedReason*);
 
@@ -637,7 +685,7 @@ typedef enum {KSP_CG_SYMMETRIC=0,KSP_CG_HERMITIAN=1} KSPCGType;
 PETSC_EXTERN const char *const KSPCGTypes[];
 
 PETSC_EXTERN PetscErrorCode KSPCGSetType(KSP,KSPCGType);
-PETSC_EXTERN PetscErrorCode KSPCGUseSingleReduction(KSP,PetscBool );
+PETSC_EXTERN PetscErrorCode KSPCGUseSingleReduction(KSP,PetscBool);
 
 PETSC_EXTERN PetscErrorCode KSPCGSetRadius(KSP,PetscReal);
 PETSC_EXTERN PetscErrorCode KSPCGGetNormD(KSP,PetscReal*);
@@ -759,7 +807,7 @@ PETSC_EXTERN PetscErrorCode MatLMVMSymBroydenSetDelta(Mat, PetscScalar);
 PETSC_EXTERN PetscErrorCode MatLMVMSymBroydenSetScaleType(Mat, MatLMVMSymBroydenScaleType);
 
 PETSC_EXTERN PetscErrorCode KSPSetDM(KSP,DM);
-PETSC_EXTERN PetscErrorCode KSPSetDMActive(KSP,PetscBool );
+PETSC_EXTERN PetscErrorCode KSPSetDMActive(KSP,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPGetDM(KSP,DM*);
 PETSC_EXTERN PetscErrorCode KSPSetApplicationContext(KSP,void*);
 PETSC_EXTERN PetscErrorCode KSPGetApplicationContext(KSP,void*);
@@ -779,4 +827,8 @@ PETSC_EXTERN PetscErrorCode DMProjectField(DM, PetscReal, Vec,
                                                      const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                      const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                      PetscReal, const PetscReal [], PetscInt, const PetscScalar[], PetscScalar []), InsertMode, Vec);
+
+
+PETSC_EXTERN PetscErrorCode DMAdaptInterpolator(DM, DM, Mat, KSP, PetscInt, Vec[], Vec[], Mat *, void *);
+PETSC_EXTERN PetscErrorCode DMCheckInterpolator(DM, Mat, PetscInt, Vec[], Vec[], PetscReal);
 #endif

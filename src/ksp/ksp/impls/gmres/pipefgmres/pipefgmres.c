@@ -135,12 +135,15 @@ static PetscErrorCode KSPPIPEFGMRESCycle(PetscInt *itcount,KSP ksp)
      the initial residual norm */
   *RS(0) = res_norm;
 
-  ksp->rnorm = res_norm;
-  ierr       = KSPLogResidualHistory(ksp,res_norm);CHKERRQ(ierr);
-  ierr       = KSPMonitor(ksp,ksp->its,res_norm);CHKERRQ(ierr);
+  ierr = PetscObjectSAWsTakeAccess((PetscObject)ksp);CHKERRQ(ierr);
+  if (ksp->normtype != KSP_NORM_NONE) ksp->rnorm = res_norm;
+  else ksp->rnorm = 0;
+  ierr = PetscObjectSAWsGrantAccess((PetscObject)ksp);CHKERRQ(ierr);
+  ierr = KSPLogResidualHistory(ksp,ksp->rnorm);CHKERRQ(ierr);
+  ierr = KSPMonitor(ksp,ksp->its,ksp->rnorm);CHKERRQ(ierr);
 
   /* check for the convergence - maybe the current guess is good enough */
-  ierr = (*ksp->converged)(ksp,ksp->its,res_norm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
+  ierr = (*ksp->converged)(ksp,ksp->its,ksp->rnorm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
   if (ksp->reason) {
     if (itcount) *itcount = 0;
     PetscFunctionReturn(0);
@@ -179,7 +182,7 @@ static PetscErrorCode KSPPIPEFGMRESCycle(PetscInt *itcount,KSP ksp)
        coefficients we use in the orthogonalization process,because of the shift */
 
     /* Do some local twiddling to allow for a single reduction */
-    for(i=0;i<loc_it+1;i++){
+    for (i=0;i<loc_it+1;i++){
       redux[i] = VEC_VV(i);
     }
     redux[loc_it+1] = ZVEC(loc_it);
@@ -230,7 +233,7 @@ static PetscErrorCode KSPPIPEFGMRESCycle(PetscInt *itcount,KSP ksp)
 
     /* Compute the norm of the un-normalized new direction using the rearranged formula
        Note that these are shifted ("barred") quantities */
-    for(k=0;k<=loc_it;k++) tt -= ((PetscReal)(PetscAbsScalar(lhh[k]) * PetscAbsScalar(lhh[k])));
+    for (k=0;k<=loc_it;k++) tt -= ((PetscReal)(PetscAbsScalar(lhh[k]) * PetscAbsScalar(lhh[k])));
     /* On AVX512 this is accumulating roundoff errors for eg: tt=-2.22045e-16 */
     if ((tt < 0.0) && tt > -PETSC_SMALL) tt = 0.0 ;
     if (tt < 0.0) {
@@ -306,10 +309,11 @@ static PetscErrorCode KSPPIPEFGMRESCycle(PetscInt *itcount,KSP ksp)
 
     ierr = PetscObjectSAWsTakeAccess((PetscObject)ksp);CHKERRQ(ierr);
     ksp->its++;
-    ksp->rnorm = res_norm;
-    ierr       = PetscObjectSAWsGrantAccess((PetscObject)ksp);CHKERRQ(ierr);
+    if (ksp->normtype != KSP_NORM_NONE) ksp->rnorm = res_norm;
+    else ksp->rnorm = 0;
+    ierr = PetscObjectSAWsGrantAccess((PetscObject)ksp);CHKERRQ(ierr);
 
-    ierr = (*ksp->converged)(ksp,ksp->its,res_norm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
+    ierr = (*ksp->converged)(ksp,ksp->its,ksp->rnorm,&ksp->reason,ksp->cnvP);CHKERRQ(ierr);
 
     /* Catch error in happy breakdown and signal convergence and break from loop */
     if (hapend) {
@@ -323,12 +327,12 @@ static PetscErrorCode KSPPIPEFGMRESCycle(PetscInt *itcount,KSP ksp)
     }
   }
   /* END OF ITERATION LOOP */
-  ierr = KSPLogResidualHistory(ksp,res_norm);CHKERRQ(ierr);
+  ierr = KSPLogResidualHistory(ksp,ksp->rnorm);CHKERRQ(ierr);
 
   /*
      Monitor if we know that we will not return for a restart */
   if (loc_it && (ksp->reason || ksp->its >= ksp->max_it)) {
-    ierr = KSPMonitor(ksp,ksp->its,res_norm);CHKERRQ(ierr);
+    ierr = KSPMonitor(ksp,ksp->its,ksp->rnorm);CHKERRQ(ierr);
   }
 
   if (itcount) *itcount = loc_it;
@@ -713,6 +717,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_PIPEFGMRES(KSP ksp)
   ksp->ops->computeeigenvalues           = KSPComputeEigenvalues_GMRES;
 
   ierr = KSPSetSupportedNorm(ksp,KSP_NORM_UNPRECONDITIONED,PC_RIGHT,3);CHKERRQ(ierr);
+  ierr = KSPSetSupportedNorm(ksp,KSP_NORM_NONE,PC_RIGHT,1);CHKERRQ(ierr);
 
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPGMRESSetPreAllocateVectors_C",KSPGMRESSetPreAllocateVectors_GMRES);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)ksp,"KSPGMRESSetRestart_C",KSPGMRESSetRestart_GMRES);CHKERRQ(ierr);
@@ -722,12 +727,12 @@ PETSC_EXTERN PetscErrorCode KSPCreate_PIPEFGMRES(KSP ksp)
   pipefgmres->haptol         = 1.0e-30;
   pipefgmres->q_preallocate  = 0;
   pipefgmres->delta_allocate = PIPEFGMRES_DELTA_DIRECTIONS;
-  pipefgmres->orthog         = 0;
-  pipefgmres->nrs            = 0;
-  pipefgmres->sol_temp       = 0;
+  pipefgmres->orthog         = NULL;
+  pipefgmres->nrs            = NULL;
+  pipefgmres->sol_temp       = NULL;
   pipefgmres->max_k          = PIPEFGMRES_DEFAULT_MAXK;
-  pipefgmres->Rsvd           = 0;
-  pipefgmres->orthogwork     = 0;
+  pipefgmres->Rsvd           = NULL;
+  pipefgmres->orthogwork     = NULL;
   pipefgmres->cgstype        = KSP_GMRES_CGS_REFINE_NEVER;
   pipefgmres->shift          = 1.0;
   PetscFunctionReturn(0);

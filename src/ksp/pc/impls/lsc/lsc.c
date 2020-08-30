@@ -138,7 +138,11 @@ static PetscErrorCode PCView_LSC(PC pc,PetscViewer viewer)
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII,&iascii);CHKERRQ(ierr);
   if (iascii) {
     ierr = PetscViewerASCIIPushTab(viewer);CHKERRQ(ierr);
-    ierr = KSPView(jac->kspL,viewer);CHKERRQ(ierr);
+    if (jac->kspL) {
+      ierr = KSPView(jac->kspL,viewer);CHKERRQ(ierr);
+    } else {
+      ierr = PetscViewerASCIIPrintf(viewer,"PCLSC KSP object not yet created, hence cannot display");CHKERRQ(ierr);
+    }
     ierr = PetscViewerASCIIPopTab(viewer);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
@@ -216,12 +220,12 @@ PETSC_EXTERN PetscErrorCode PCCreate_LSC(PC pc)
   pc->data = (void*)lsc;
 
   pc->ops->apply           = PCApply_LSC;
-  pc->ops->applytranspose  = 0;
+  pc->ops->applytranspose  = NULL;
   pc->ops->setup           = PCSetUp_LSC;
   pc->ops->reset           = PCReset_LSC;
   pc->ops->destroy         = PCDestroy_LSC;
   pc->ops->setfromoptions  = PCSetFromOptions_LSC;
   pc->ops->view            = PCView_LSC;
-  pc->ops->applyrichardson = 0;
+  pc->ops->applyrichardson = NULL;
   PetscFunctionReturn(0);
 }

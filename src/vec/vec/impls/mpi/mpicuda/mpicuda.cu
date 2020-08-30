@@ -7,7 +7,7 @@
 
 #include <petscconf.h>
 #include <../src/vec/vec/impls/mpi/pvecimpl.h>   /*I  "petscvec.h"   I*/
-#include <../src/vec/vec/impls/seq/seqcuda/cudavecimpl.h>
+#include <petsc/private/cudavecimpl.h>
 
 /*MC
    VECCUDA - VECCUDA = "cuda" - A VECSEQCUDA on a single-process communicator, and VECMPICUDA otherwise.
@@ -194,6 +194,7 @@ PetscErrorCode VecCreate_MPICUDA(Vec vv)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  ierr = PetscCUDAInitializeCheck();CHKERRQ(ierr);
   ierr = PetscLayoutSetUp(vv->map);CHKERRQ(ierr);
   ierr = VecCUDAAllocateCheck(vv);CHKERRQ(ierr);
   ierr = VecCreate_MPICUDA_Private(vv,PETSC_FALSE,0,((Vec_CUDA*)vv->spptr)->GPUarray_allocated);CHKERRQ(ierr);
@@ -258,6 +259,7 @@ PetscErrorCode  VecCreateMPICUDAWithArray(MPI_Comm comm,PetscInt bs,PetscInt n,P
 
   PetscFunctionBegin;
   if (n == PETSC_DECIDE) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Must set local size of vector");
+  ierr = PetscCUDAInitializeCheck();CHKERRQ(ierr);
   ierr = PetscSplitOwnership(comm,&n,&N);CHKERRQ(ierr);
   ierr = VecCreate(comm,vv);CHKERRQ(ierr);
   ierr = VecSetSizes(*vv,n,N);CHKERRQ(ierr);
@@ -293,7 +295,7 @@ PetscErrorCode VecBindToCPU_MPICUDA(Vec V,PetscBool pin)
     V->ops->pointwisemult          = VecPointwiseMult_Seq;
     V->ops->setrandom              = VecSetRandom_Seq;
     V->ops->placearray             = VecPlaceArray_Seq;
-    V->ops->replacearray           = VecReplaceArray_Seq;
+    V->ops->replacearray           = VecReplaceArray_SeqCUDA;
     V->ops->resetarray             = VecResetArray_Seq;
     V->ops->dot_local              = VecDot_Seq;
     V->ops->tdot_local             = VecTDot_Seq;
@@ -385,6 +387,5 @@ PetscErrorCode VecCreate_MPICUDA_Private(Vec vv,PetscBool alloc,PetscInt nghost,
     veccuda = (Vec_CUDA*)vv->spptr;
     veccuda->GPUarray = (PetscScalar*)array;
   }
-
   PetscFunctionReturn(0);
 }

@@ -678,12 +678,13 @@ PETSC_EXTERN PetscErrorCode PetscDrawCreate_X(PetscDraw draw)
   PetscBool      set,dvirtual = PETSC_FALSE,doublebuffer = PETSC_TRUE,has_display;
   PetscInt       xywh[4],osize = 4,nsizes=2;
   PetscReal      sizes[2] = {.3,.3};
+  static size_t  DISPLAY_LENGTH = 265;
 
   PetscFunctionBegin;
   /* get the display variable */
   if (!draw->display) {
-    ierr = PetscMalloc1(256,&draw->display);CHKERRQ(ierr);
-    ierr = PetscGetDisplay(draw->display,256);CHKERRQ(ierr);
+    ierr = PetscMalloc1(DISPLAY_LENGTH,&draw->display);CHKERRQ(ierr);
+    ierr = PetscGetDisplay(draw->display,DISPLAY_LENGTH);CHKERRQ(ierr);
   }
 
   /* initialize the display size */
@@ -779,7 +780,7 @@ PETSC_EXTERN PetscErrorCode PetscDrawCreate_X(PetscDraw draw)
       ybottom    = 0;
     }
 
-  } /* endif(!dvirtual) */
+  } /* endif (!dvirtual) */
 
   ierr = MPI_Comm_rank(PetscObjectComm((PetscObject)draw),&rank);CHKERRQ(ierr);
   if (!rank && (w <= 0 || h <= 0)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Negative window width or height");

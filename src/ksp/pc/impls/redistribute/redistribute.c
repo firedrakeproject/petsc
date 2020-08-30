@@ -334,14 +334,14 @@ PETSC_EXTERN PetscErrorCode PCCreate_Redistribute(PC pc)
   pc->data = (void*)red;
 
   pc->ops->apply          = PCApply_Redistribute;
-  pc->ops->applytranspose = 0;
+  pc->ops->applytranspose = NULL;
   pc->ops->setup          = PCSetUp_Redistribute;
   pc->ops->destroy        = PCDestroy_Redistribute;
   pc->ops->setfromoptions = PCSetFromOptions_Redistribute;
   pc->ops->view           = PCView_Redistribute;
 
   ierr = KSPCreate(PetscObjectComm((PetscObject)pc),&red->ksp);CHKERRQ(ierr);
-  ierr = KSPSetErrorIfNotConverged(red->ksp,pc->erroriffailure);CHKERRQ(ierr); 
+  ierr = KSPSetErrorIfNotConverged(red->ksp,pc->erroriffailure);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)red->ksp,(PetscObject)pc,1);CHKERRQ(ierr);
   ierr = PetscLogObjectParent((PetscObject)pc,(PetscObject)red->ksp);CHKERRQ(ierr);
   ierr = PCGetOptionsPrefix(pc,&prefix);CHKERRQ(ierr);

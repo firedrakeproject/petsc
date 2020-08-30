@@ -1,421 +1,254 @@
-static char help[] = "Tests for submesh creation\n\n";
-
-/* TODO
-*/
+static char help[] = "Tests DMPlex Gmsh reader.\n\n";
 
 #include <petscdmplex.h>
-#include <petscsf.h>
 
-/* Submesh of a four-element mesh
+#if !defined(PETSC_GMSH_EXE)
+#define PETSC_GMSH_EXE "gmsh"
+#endif
 
-Check if it does:
+#include <petscds.h>
 
-* transfer ownership when necessary
-* remove redundant points that are in the halo in the original mesh, but not in the submesh
-* treat disconnected submesh
-
-
-Global numbering:
-
-           6--16---7---17--11--22--12--23--13
-           |       |       |       |       |
-          18   0   19   1  24  2   25   3  26
-           |       |       |       |       |
-           4--14---5---15--8---20--9---21--10
-
-* all subpoints = {...} defined below are given in the global numbering
-
-
-Use two processes throughout
-
-testNum 0: Various submeshes of different dimensions on PETSC_COMM_WORLD
-testNum 1: Cell submesh on rank 0
-testNum 2: Cell submesh on rank 0 with partition overlap=0
-
-
-                            dm                                        subdm
-                         -------                                    ---------
-testNum 0:
-=========
-
-
-overlap 0:
----------
-
-subdim 2: subpoints = {0, 1}
-
-
-           5--10---6---11-(7)                           5--10---6---11--7
-           |       |       |                            |       |       |
-rank 0:   12   0   13  1  (14)                    -->  12   0   13  1   14
-           |       |       |                            |       |       |
-           2---8---3---9--(4)                           2---8---3---9---4
-
-
-                           5--10---6---11---7
-                           |       |        |
-rank 1:                   12   0   13   1   14    -->   None
-                           |       |        |
-                           2---8---3----9---4
-
-
-subdim 1: subpoints = {16, 17}
-
-
-           5--10---6---11-(7)                           2---0---3---1---4
-           |       |       |                            
-rank 0:   12   0   13  1  (14)                    --> 
-           |       |       |                          
-           2---8---3---9--(4)                         
-
-
-                           5--10---6---11---7
-                           |       |        |
-rank 1:                   12   0   13   1   14    -->   None
-                           |       |        |
-                           2---8---3----9---4
-
-
-subdim 0: subpoints = {6, 7, 11}
-
-
-           5--10---6---11-(7)                           0       1
-           |       |       |                            
-rank 0:   12   0   13  1  (14)                    --> 
-           |       |       |                          
-           2---8---3---9--(4)                         
-
-
-                           5--10---6---11---7                           0
-                           |       |        |
-rank 1:                   12   0   13   1   14    -->
-                           |       |        |
-                           2---8---3----9---4
-
-
-overlap 1:
----------
-
-subdim 2: subpoints = {0, 1, 3}
-
-
-           5--13---6--14--(9)-(18)(10)                  4--10---5---11--7
-           |       |       |       |                    |       |       |
-rank 0:   15   0   16  1  (19) (2)(20)            -->  12   0   13  1   14
-           |       |       |       |                    |       |       |
-           3--11---4--12--(7)-(17)(8)                   2---8---3---9---6
-
-
-                 (10)-(19)-6--13---7---14--8                                      3---6---4
-                   |       |       |       |                                      |       |
-rank 1:          (20) (2)  15  0   16  1   17     -->                             7   0   8
-                   |       |       |       |                                      |       |
-                  (9)-(18)-3--11---4---12--5                                      1 --5---2
-
-
-
-subdim 1: subpoints = {16, 17, 23}
-
-
-           5--13---6--14--(9)-(18)(10)                  2---0---3---1---4
-           |       |       |       |                 
-rank 0:   15   0   16  1  (19) (2)(20)            -->
-           |       |       |       |                 
-           3--11---4--12--(7)-(17)(8)                
-
-
-                 (10)-(19)-6--13---7---14--8                                      1---0---2
-                   |       |       |       |         
-rank 1:          (20) (2)  15  0   16  1   17     -->
-                   |       |       |       |         
-                  (9)-(18)-3--11---4---12--5         
-
-
-suddim 0: subpoints = {6, 7, 11, 13}
-
-
-           5--13---6--14--(9)-(18)(10)                  0       1
-           |       |       |       |                 
-rank 0:   15   0   16  1  (19) (2)(20)            -->
-           |       |       |       |                 
-           3--11---4--12--(7)-(17)(8)                
-
-
-                 (10)-(19)-6--13---7---14--8                            0                 1
-                   |       |       |       |         
-rank 1:          (20) (2)  15  0   16  1   17     -->
-                   |       |       |       |         
-                  (9)-(18)-3--11---4---12--5         
-
-
-testNum 1: overlap = 1 in submesh
-=========
-
-overlap 1:
----------
-
-subdim 2: subpoints = {0, 1, 2}
-
-
-           5--13---6--14--(9)-(18)(10)                  5---13--6---14--9--18--10
-           |       |       |       |                    |       |       |       |
-rank 0:   15   0   16  1  (19) (2)(20)            -->  15   0   16  1   19  2  20
-           |       |       |       |                    |       |       |       |
-           3--11---4--12--(7)-(17)(8)                   3---11--4---12--7---17--8
-
-
-                 (10)-(19)-6--13---7---14--8
-                   |       |       |       |
-rank 1:          (20) (2)  15  0   16  1   17     -->   subdm is not created
-                   |       |       |       |
-                  (9)-(18)-3--11---4---12--5
-
-
-testNum 2: overlap = 0 in submesh (create submesh only with owned cells)
-=========
-
-overlap 1:
----------
-
-subdim 2: subpoints = {0, 1, 2}
-
-
-           5--13---6--14--(9)-(18)(10)                  4--10---5---11--7
-           |       |       |       |                    |       |       |
-rank 0:   15   0   16  1  (19) (2)(20)            -->  12   0   13  1   14
-           |       |       |       |                    |       |       |
-           3--11---4--12--(7)-(17)(8)                   2---8---3---9---6
-
-
-                 (10)-(19)-6--13---7---14--8
-                   |       |       |       |
-rank 1:          (20) (2)  15  0   16  1   17     -->   subdm is not created
-                   |       |       |       |
-                  (9)-(18)-3--11---4---12--5
-
-*/
-
-typedef struct {
-  PetscInt  testNum;                      /* Test # */
-  PetscInt  subdim;                       /* Indicates the mesh to create */
-  PetscInt  overlap;                      /* The partition overlap */
-} AppCtx;
-
-PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
+static void one(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+                const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+                const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+                PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar value[])
 {
+  value[0] = (PetscReal)1;
+}
+
+static PetscErrorCode CreateFE(DM dm)
+{
+  DM             cdm;
+  PetscSpace     P;
+  PetscDualSpace Q;
+  DM             K;
+  PetscFE        fe;
+  DMPolytopeType ptype;
+
+  PetscInt       dim,k;
+  PetscBool      isSimplex;
+
+  PetscDS        ds;
   PetscErrorCode ierr;
 
-  PetscFunctionBegin;
-  options->testNum = 0;
-  options->subdim  = 2;
-  options->overlap = 0;
+  PetscFunctionBeginUser;
+  ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
+  ierr = DMGetField(cdm, 0, NULL, (PetscObject*) &fe);
+  ierr = PetscFEGetBasisSpace(fe, &P);CHKERRQ(ierr);
+  ierr = PetscFEGetDualSpace(fe, &Q);CHKERRQ(ierr);
+  ierr = PetscDualSpaceGetDM(Q,&K);CHKERRQ(ierr);
+  ierr = DMGetDimension(K,&dim);CHKERRQ(ierr);
+  ierr = PetscSpaceGetDegree(P, &k, NULL);CHKERRQ(ierr);
+  ierr = DMPlexGetCellType(K, 0, &ptype);CHKERRQ(ierr);
+  switch (ptype) {
+  case DM_POLYTOPE_QUADRILATERAL:
+  case DM_POLYTOPE_HEXAHEDRON:
+    isSimplex = PETSC_FALSE; break;
+  default:
+    isSimplex = PETSC_TRUE; break;
+  }
 
-  ierr = PetscOptionsBegin(comm, "", "Meshing Interpolation Test Options", "DMPLEX");CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-test_num", "The test #", "ex99.c", options->testNum, &options->testNum, NULL,0);CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-subdim", "The mesh to create", "ex99.c", options->subdim, &options->subdim, NULL,0);CHKERRQ(ierr);
-  ierr = PetscOptionsBoundedInt("-overlap", "The partition overlap", "ex99.c", options->overlap, &options->overlap, NULL,0);CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();
+  ierr = PetscFECreateLagrange(PETSC_COMM_SELF, dim, 1, isSimplex, k, PETSC_DETERMINE, &fe);CHKERRQ(ierr);
+  ierr = PetscFESetName(fe, "scalar");CHKERRQ(ierr);
+  ierr = DMAddField(dm, NULL, (PetscObject) fe);CHKERRQ(ierr);
+  ierr = PetscFEDestroy(&fe);CHKERRQ(ierr);
+  ierr = DMCreateDS(dm);CHKERRQ(ierr);
+
+  ierr = DMGetDS(dm, &ds);CHKERRQ(ierr);
+  ierr = PetscDSSetObjective(ds, 0, one);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode CheckIntegral(DM dm, PetscReal integral, PetscReal tol)
+{
+  Vec            u;
+  PetscReal      rval;
+  PetscScalar    result;
+  PetscErrorCode ierr;
+
+  PetscFunctionBeginUser;
+  ierr = DMGetGlobalVector(dm, &u);CHKERRQ(ierr);
+  ierr = DMPlexComputeIntegralFEM(dm, u, &result, NULL);CHKERRQ(ierr);
+  ierr = DMRestoreGlobalVector(dm, &u);CHKERRQ(ierr);
+  rval = PetscRealPart(result);
+  if (integral > 0 && PetscAbsReal(integral - rval) > tol) {
+    ierr = PetscPrintf(PetscObjectComm((PetscObject) dm), "Calculated value %g != %g actual value (error %g > %g tol)\n",
+                       (double) rval, (double) integral, (double) PetscAbsReal(integral - rval), (double) tol);CHKERRQ(ierr);
+  }
   PetscFunctionReturn(0);
 }
 
 int main(int argc, char **argv)
 {
-  DM               dm, subdm;
-  DMLabel          filter;
-  PetscInt         height;
-  const PetscInt   filterValue = 1;
-  MPI_Comm         comm;
-  AppCtx           user;
-  PetscMPIInt      size, rank;
-  PetscErrorCode   ierr;
+  DM                dm;
+  const char *const mshlist[] = {"seg", "tri", "qua", "tet", "wed", "hex",
+                                 "B2tri", "B2qua", "B3tet", "B3hex"};
+  const char *const fmtlist[] = {"msh22", "msh40", "msh41"};
+  PetscInt          msh = 5;
+  PetscInt          fmt = 2;
+  PetscBool         bin = PETSC_TRUE;
+  PetscInt          dim = 3;
+  PetscInt          order = 2;
 
-  ierr = PetscInitialize(&argc, &argv, NULL, help); if (ierr) return ierr;
-  comm = PETSC_COMM_WORLD;
-  ierr = ProcessOptions(comm, &user);CHKERRQ(ierr);
-  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
-  if (size != 2) {
-    ierr = PetscPrintf(comm, "This example is specifically designed for size == 2.\n");CHKERRQ(ierr);
-    ierr = PetscFinalize();
-    return ierr;
-  }
-  ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
-  ierr = DMLabelCreate(PETSC_COMM_SELF, "filter", &filter);CHKERRQ(ierr);
+  const char        cmdtemplate[] = "%s -format %s %s -%d -order %d %s -o %s";
+  char              gmsh[PETSC_MAX_PATH_LEN] = PETSC_GMSH_EXE;
+  char              tag[PETSC_MAX_PATH_LEN], path[PETSC_MAX_PATH_LEN];
+  char              geo[PETSC_MAX_PATH_LEN], geodir[PETSC_MAX_PATH_LEN] = ".";
+  char              out[PETSC_MAX_PATH_LEN], outdir[PETSC_MAX_PATH_LEN] = ".";
+  char              cmd[PETSC_MAX_PATH_LEN*4];
+  PetscBool         set,flg;
+  FILE              *fp;
+  PetscErrorCode    ierr;
 
-  /* Create parallel dm */
-  const PetscInt faces[2] = {4,1};
-  DM             pdm;
-  PetscSF        sf;
-  ierr = DMPlexCreateBoxMesh(comm, 2, PETSC_FALSE, faces, NULL, NULL, NULL, PETSC_TRUE, &dm);CHKERRQ(ierr);
-  ierr = DMPlexDistribute(dm, user.overlap, &sf, &pdm);CHKERRQ(ierr);
-  if (pdm) {
-    ierr = DMDestroy(&dm);CHKERRQ(ierr);
-    dm = pdm;
-  }
-  if (sf) {
-    ierr = PetscSFDestroy(&sf);CHKERRQ(ierr);
-  }
+  ierr = PetscInitialize(&argc, &argv, NULL, help);if (ierr) return ierr;
 
-  /* Define height */
-  height = 2 - user.subdim;
+  ierr = PetscStrncpy(geodir, "${PETSC_DIR}/share/petsc/datafiles/meshes", sizeof(geodir));CHKERRQ(ierr);
+  ierr = PetscOptionsGetenv(PETSC_COMM_SELF, "GMSH", path, sizeof(path), &set);CHKERRQ(ierr);
+  if (set) {ierr = PetscStrncpy(gmsh, path, sizeof(gmsh));CHKERRQ(ierr);}
+  ierr = PetscOptionsGetString(NULL, NULL, "-gmsh", gmsh, sizeof(gmsh), NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, NULL, "-dir", geodir, sizeof(geodir), NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL, NULL, "-out", outdir, sizeof(outdir), NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetEList(NULL, NULL, "-msh", mshlist, (int)(sizeof(mshlist)/sizeof(mshlist[0])), &msh, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetEList(NULL, NULL, "-fmt", fmtlist, (int)(sizeof(fmtlist)/sizeof(fmtlist[0])), &fmt, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL, NULL, "-bin", &bin, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL, NULL, "-dim", &dim, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetInt(NULL, NULL, "-order", &order, NULL);CHKERRQ(ierr);
+  if (fmt == 1) bin = PETSC_FALSE; /* Recent Gmsh releases cannot generate msh40+binary format*/
 
-  /* Create filter label */
-  switch (user.testNum) {
-    case 0:
-      switch (user.subdim) {
-        case 2:
-        {
-          switch (user.overlap) {
-            case 0:
-              if (rank==0) {
-                DMLabelSetValue(filter, 0, filterValue);
-                DMLabelSetValue(filter, 1, filterValue);
-              }
-              break;
-            case 1:
-              if (rank==0) {
-                DMLabelSetValue(filter, 0, filterValue);
-                DMLabelSetValue(filter, 1, filterValue);
-              } else if (rank==1) {
-                DMLabelSetValue(filter, 2, filterValue);
-                DMLabelSetValue(filter, 1, filterValue);
-              }
-              break;
-          }
-          break;
-        }
-        case 1:
-        {
-          switch (user.overlap) {
-            case 0:
-              if (rank==0) {
-                DMLabelSetValue(filter, 10, filterValue);
-                DMLabelSetValue(filter, 11, filterValue);
-              }
-              break;
-            case 1:
-              if (rank==0) {
-                DMLabelSetValue(filter, 13, filterValue);
-                DMLabelSetValue(filter, 14, filterValue);
-              } else if (rank==1) {
-                DMLabelSetValue(filter, 19, filterValue);
-                DMLabelSetValue(filter, 14, filterValue);
-              }
-              break;
-          }
-          break;
-        }
-        case 0:
-        {
-          switch (user.overlap) {
-            case 0:
-              if (rank==0) {
-                DMLabelSetValue(filter, 5, filterValue);
-                DMLabelSetValue(filter, 6, filterValue);
-                DMLabelSetValue(filter, 7, filterValue);
-              } else if (rank==1) {
-                DMLabelSetValue(filter, 5, filterValue);
-              }
-              break;
-            case 1:
-              if (rank==0) {
-                DMLabelSetValue(filter, 5, filterValue);
-                DMLabelSetValue(filter, 6, filterValue);
-                DMLabelSetValue(filter, 9, filterValue);
-              } else if (rank==1) {
-                DMLabelSetValue(filter, 6, filterValue);
-                DMLabelSetValue(filter, 8, filterValue);
-              }
-              break;
-          }
-          break;
-        }
-      }
-      break;
-    case 1:
-    case 2:
-      if (rank==0) {
-        DMLabelSetValue(filter, 0, filterValue);
-        DMLabelSetValue(filter, 1, filterValue);
-        DMLabelSetValue(filter, 2, filterValue);
-      }
-      break;
-  }
-  ierr = PetscObjectSetName((PetscObject) dm, "Example_DM");CHKERRQ(ierr);
-  ierr = DMViewFromOptions(dm, NULL, "-dm_view");CHKERRQ(ierr);
-  switch (user.testNum) {
-    case 0:
-      ierr = DMPlexCreateSubmesh(dm, DMPLEX_SUBMESH_CLOSURE, filter, filterValue, height, PETSC_FALSE, PETSC_FALSE, PETSC_FALSE, NULL, NULL, PETSC_FALSE, &subdm);CHKERRQ(ierr);
-      ierr = PetscObjectSetName((PetscObject) subdm, "Example_SubDM");CHKERRQ(ierr);
-      ierr = DMViewFromOptions(subdm, NULL, "-dm_view");CHKERRQ(ierr);
-      ierr = DMDestroy(&subdm);CHKERRQ(ierr);
-      break;
-    case 1:
-    /* Submesh only on rank == 0 */
-      if (rank == 0) {
-        ierr = DMPlexCreateSubmesh(dm, DMPLEX_SUBMESH_CLOSURE, filter, filterValue, height, PETSC_FALSE, PETSC_FALSE, PETSC_FALSE, NULL, NULL, PETSC_TRUE, &subdm);CHKERRQ(ierr);
-        ierr = PetscObjectSetName((PetscObject) subdm, "Example_SubDM_Local");CHKERRQ(ierr);
-        ierr = DMViewFromOptions(subdm, NULL, "-dm_view");CHKERRQ(ierr);
-        ierr = DMDestroy(&subdm);CHKERRQ(ierr);
-      }
-      break;
-    case 2:
-    /* Submesh only on rank == 0. Use different adjacency overlap */
-    {
-      /* Create new parent dm with overlap = 0 */
-      DM dmCopy;
-      ierr = DMClone(dm, &dmCopy);CHKERRQ(ierr);
-      ierr = DMPlexSetOverlap(dmCopy, 0);CHKERRQ(ierr);
-      if (rank == 0) {
-        ierr = DMPlexCreateSubmesh(dmCopy, DMPLEX_SUBMESH_CLOSURE, filter, filterValue, height, PETSC_FALSE, PETSC_FALSE, PETSC_FALSE, NULL, NULL, PETSC_TRUE, &subdm);CHKERRQ(ierr);
-        ierr = PetscObjectSetName((PetscObject) subdm, "Example_SubDM_Local");CHKERRQ(ierr);
-        ierr = DMViewFromOptions(subdm, NULL, "-dm_view");CHKERRQ(ierr);
-        ierr = DMDestroy(&subdm);CHKERRQ(ierr);
-      }
-      ierr = DMDestroy(&dmCopy);CHKERRQ(ierr);
-      break;
+  { /* This test requires Gmsh >= 4.2.0 */
+    int inum = 0, major = 0, minor = 0, micro = 0;
+    ierr = PetscSNPrintf(cmd, sizeof(cmd), "%s -info", gmsh);CHKERRQ(ierr);
+    ierr = PetscPOpen(PETSC_COMM_SELF, NULL, cmd, "r", &fp);CHKERRQ(ierr);
+    if (fp) {inum = fscanf(fp, "Version : %d.%d.%d", &major, &minor, &micro);}
+    ierr = PetscPClose(PETSC_COMM_SELF, fp);CHKERRQ(ierr);
+    if (inum != 3 || major < 4 || (major == 4 && minor < 2)) {
+      ierr = PetscPrintf(PETSC_COMM_SELF, "Gmsh>=4.2.0 not available\n");CHKERRQ(ierr); goto finish;
     }
   }
-  ierr = DMLabelDestroy(&filter);CHKERRQ(ierr);
+
+  ierr = PetscSNPrintf(tag, sizeof(tag), "%s-%d-%d-%s%s", mshlist[msh], (int)dim, (int)order, fmtlist[fmt], bin?"-bin":"");CHKERRQ(ierr);
+  ierr = PetscSNPrintf(geo, sizeof(geo), "%s/gmsh-%s.geo", geodir, mshlist[msh]);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(out, sizeof(out), "%s/mesh-%s.msh", outdir, tag);CHKERRQ(ierr);
+  ierr = PetscStrreplace(PETSC_COMM_SELF, geo, path, sizeof(path));CHKERRQ(ierr);
+  ierr = PetscFixFilename(path, geo);CHKERRQ(ierr);
+  ierr = PetscStrreplace(PETSC_COMM_SELF, out, path, sizeof(path));CHKERRQ(ierr);
+  ierr = PetscFixFilename(path, out);CHKERRQ(ierr);
+  ierr = PetscTestFile(geo, 'r', &flg);CHKERRQ(ierr);
+  if (!flg) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_USER_INPUT, "File not found: %s", geo);
+
+  ierr = PetscSNPrintf(cmd, sizeof(cmd), cmdtemplate, gmsh, fmtlist[fmt], bin?"-bin":"", (int)dim, (int)order, geo, out);CHKERRQ(ierr);
+  ierr = PetscPOpen(PETSC_COMM_SELF, NULL, cmd, "r", &fp);CHKERRQ(ierr);
+  ierr = PetscPClose(PETSC_COMM_SELF, fp);CHKERRQ(ierr);
+
+  ierr = DMPlexCreateFromFile(PETSC_COMM_SELF, out, PETSC_TRUE, &dm);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(tag, sizeof(tag), "mesh-%s", mshlist[msh]);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject)dm, tag);CHKERRQ(ierr);
+  ierr = DMViewFromOptions(dm, NULL, "-dm_view");CHKERRQ(ierr);
+  ierr = DMSetFromOptions(dm);CHKERRQ(ierr);
+  {
+    PetscBool check;
+    PetscReal integral = 0, tol = (PetscReal)1.0e-4;
+    ierr = PetscOptionsGetReal(NULL, NULL, "-integral", &integral, &check);CHKERRQ(ierr);
+    ierr = PetscOptionsGetReal(NULL, NULL, "-tol", &tol, NULL);CHKERRQ(ierr);
+    if (check) {
+      ierr = CreateFE(dm);CHKERRQ(ierr);
+      ierr = CheckIntegral(dm, integral, tol);CHKERRQ(ierr);
+    }
+  }
   ierr = DMDestroy(&dm);CHKERRQ(ierr);
 
+finish:
   ierr = PetscFinalize();
   return ierr;
 }
 
 /*TEST
 
-  # Four cell tests
+  build:
+    requires: define(PETSC_HAVE_POPEN)
+
   test:
-    suffix: 0
-    nsize: 2
-    args: -test_num 0 -subdim 2 -overlap 0 -dm_view ascii::ascii_info_detail
-  test:
-    suffix: 1
-    nsize: 2
-    args: -test_num 0 -subdim 1 -overlap 0 -dm_view ascii::ascii_info_detail
-  test:
-    suffix: 2
-    nsize: 2
-    args: -test_num 0 -subdim 0 -overlap 0 -dm_view ascii::ascii_info_detail
-  test:
-    suffix: 3
-    nsize: 2
-    args: -test_num 0 -subdim 2 -overlap 1 -dm_view ascii::ascii_info_detail
-  test:
-    suffix: 4
-    nsize: 2
-    args: -test_num 0 -subdim 1 -overlap 1 -dm_view ascii::ascii_info_detail
-  test:
-    suffix: 5
-    nsize: 2
-    args: -test_num 0 -subdim 0 -overlap 1 -dm_view ascii::ascii_info_detail
-  test:
-    suffix: 6
-    nsize: 2
-    args: -test_num 1 -subdim 2 -overlap 1 -dm_view ascii::ascii_info_detail
-  test:
-    suffix: 7
-    nsize: 2
-    args: -test_num 2 -subdim 2 -overlap 1 -dm_view ascii::ascii_info_detail
+    requires: define(PETSC_GMSH_EXE)
+    args: -dir ${wPETSC_DIR}/share/petsc/datafiles/meshes
+    args: -msh {{seg tri qua tet wed hex}separate_output}
+    args: -order {{1 2 3 7}}
+    args: -fmt {{msh22 msh40 msh41}} -bin {{0 1}}
+    args: -dm_view ::ascii_info_detail
+    args: -dm_plex_check_all
+    args: -dm_plex_gmsh_highorder false
+
+
+  testset:
+    suffix: B2 # 2D ball
+    requires: define(PETSC_GMSH_EXE)
+    args: -dir ${wPETSC_DIR}/share/petsc/datafiles/meshes
+    args: -msh {{B2tri B2qua}}
+    args: -dim 2 -integral 3.141592653589793 # pi
+    args: -order {{2 3 4 5 6 7 8 9}} -tol 0.05
+
+  testset:
+    suffix: B2_bnd # 2D ball boundary
+    requires: define(PETSC_GMSH_EXE)
+    args: -dir ${wPETSC_DIR}/share/petsc/datafiles/meshes
+    args: -dm_plex_gmsh_spacedim 2
+    args: -msh {{B2tri B2qua}}
+    args: -dim 1 -integral 6.283185307179586 # 2*pi
+    args: -order {{2 3 4 5 6 7 8 9}} -tol 0.05
+
+
+  testset:
+    suffix: B3 # 3D ball
+    requires: define(PETSC_GMSH_EXE)
+    args: -dir ${wPETSC_DIR}/share/petsc/datafiles/meshes
+    args: -msh {{B3tet B3hex}}
+    args: -dim 3 -integral 4.1887902047863905 # 4/3*pi
+    args: -order {{2 3 4 5}} -tol 0.20
+
+  testset:
+    suffix: B3_bnd # 3D ball boundary
+    requires: define(PETSC_GMSH_EXE)
+    args: -dir ${wPETSC_DIR}/share/petsc/datafiles/meshes
+    args: -dm_plex_gmsh_spacedim 3
+    args: -msh {{B3tet B3hex}}
+    args: -dim 2 -integral 12.566370614359172 # 4*pi
+    args: -order {{2 3 4 5 6 7 8 9}} -tol 0.25
+
+
+  testset:
+    suffix: B_lin # linear discretizations
+    requires: define(PETSC_GMSH_EXE)
+    args: -dir ${wPETSC_DIR}/share/petsc/datafiles/meshes
+    args: -dm_plex_gmsh_highorder true
+    args: -dm_plex_gmsh_project true
+    args: -dm_plex_gmsh_project_petscspace_degree {{1 2 3}separate_output}
+    args: -dm_plex_gmsh_fe_view
+    args: -dm_plex_gmsh_project_fe_view
+    args: -order 1 -tol 1e-4
+    test:
+      suffix: dim-1
+      args: -dm_plex_gmsh_spacedim 2
+      args: -msh {{B2tri B2qua}separate_output}
+      args: -dim 1 -integral 5.656854249492381 # 4*sqrt(2)
+    test:
+      suffix: dim-2
+      args: -dm_plex_gmsh_spacedim 2
+      args: -msh {{B2tri B2qua}separate_output}
+      args: -dim 2 -integral 2.000000000000000 # 2
+    test:
+      suffix: dim-2_msh-B3tet
+      args: -dm_plex_gmsh_spacedim 3
+      args: -msh B3tet -dim 2 -integral 9.914478
+    test:
+      suffix: dim-2_msh-B3hex
+      args: -dm_plex_gmsh_spacedim 3
+      args: -msh B3hex -dim 2 -integral 8.000000
+    test:
+      suffix: dim-3_msh-B3tet
+      args: -dm_plex_gmsh_spacedim 3
+      args: -msh B3tet -dim 3 -integral 2.666649
+    test:
+      suffix: dim-3_msh-B3hex
+      args: -dm_plex_gmsh_spacedim 3
+      args: -msh B3hex -dim 3 -integral 1.539600
 
 TEST*/

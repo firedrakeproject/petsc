@@ -173,9 +173,9 @@ PetscErrorCode MatCholeskyFactorSymbolic_SeqSBAIJ_MSR(Mat F,Mat A,IS perm,const 
   ierr    = PetscMalloc1((iu[mbs]+1)*bs2,&b->a);CHKERRQ(ierr);
   b->j    = ju;
   b->i    = iu;
-  b->diag = 0;
-  b->ilen = 0;
-  b->imax = 0;
+  b->diag = NULL;
+  b->ilen = NULL;
+  b->imax = NULL;
   b->row  = perm;
 
   b->pivotinblocks = PETSC_FALSE; /* need to get from MatFactorInfo */
@@ -336,8 +336,8 @@ PetscErrorCode MatCholeskyFactorSymbolic_SeqSBAIJ(Mat fact,Mat A,IS perm,const M
   b->i         = ui;
   b->diag      = udiag;
   b->free_diag = PETSC_TRUE;
-  b->ilen      = 0;
-  b->imax      = 0;
+  b->ilen      = NULL;
+  b->imax      = NULL;
   b->row       = perm;
   b->icol      = perm;
 
@@ -512,9 +512,9 @@ PetscErrorCode MatCholeskyFactorSymbolic_SeqSBAIJ_inplace(Mat fact,Mat A,IS perm
 
   b->j    = uj;
   b->i    = ui;
-  b->diag = 0;
-  b->ilen = 0;
-  b->imax = 0;
+  b->diag = NULL;
+  b->ilen = NULL;
+  b->imax = NULL;
   b->row  = perm;
 
   b->pivotinblocks = PETSC_FALSE; /* need to get from MatFactorInfo */
@@ -1422,6 +1422,7 @@ PetscErrorCode MatCholeskyFactorNumeric_SeqSBAIJ_1_NaturalOrdering(Mat B,Mat A,c
   B->ops->solve          = MatSolve_SeqSBAIJ_1_NaturalOrdering;
   B->ops->solves         = MatSolves_SeqSBAIJ_1;
   B->ops->solvetranspose = MatSolve_SeqSBAIJ_1_NaturalOrdering;
+  B->ops->matsolve       = MatMatSolve_SeqSBAIJ_1_NaturalOrdering;
   B->ops->forwardsolve   = MatForwardSolve_SeqSBAIJ_1_NaturalOrdering;
   B->ops->backwardsolve  = MatBackwardSolve_SeqSBAIJ_1_NaturalOrdering;
 

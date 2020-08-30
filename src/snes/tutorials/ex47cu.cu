@@ -28,7 +28,7 @@ int main(int argc,char **argv)
   PetscBool      flg;
 
   ierr = PetscInitialize(&argc,&argv,(char*)0,help);if (ierr) return ierr;
-  ierr = PetscOptionsGetString(NULL,NULL,"-dm_vec_type",typeName,256,&flg);CHKERRQ(ierr);
+  ierr = PetscOptionsGetString(NULL,NULL,"-dm_vec_type",typeName,sizeof(typeName),&flg);CHKERRQ(ierr);
   if (flg) {
     ierr = PetscStrstr(typeName,"cuda",&tmp);CHKERRQ(ierr);
     if (tmp) useCUDA = PETSC_TRUE;
@@ -38,7 +38,6 @@ int main(int argc,char **argv)
   ierr = DMSetFromOptions(da);CHKERRQ(ierr);
   ierr = DMSetUp(da);CHKERRQ(ierr);
   ierr = DMCreateGlobalVector(da,&x); VecDuplicate(x,&f);CHKERRQ(ierr);
-  ierr = DMSetMatType(da,MATAIJ);CHKERRQ(ierr);
   ierr = DMCreateMatrix(da,&J);CHKERRQ(ierr);
 
   ierr = SNESCreate(PETSC_COMM_WORLD,&snes);CHKERRQ(ierr);
@@ -145,8 +144,6 @@ PetscErrorCode ComputeFunction(SNES snes,Vec x,Vec f,void *ctx)
     ierr = DMDAVecRestoreArray(da,f,&ff);CHKERRQ(ierr);
   }
   ierr = DMRestoreLocalVector(da,&xlocal);CHKERRQ(ierr);
-  //  VecView(x,0);printf("f\n");
-  //  VecView(f,0);
   return 0;
 
 }
@@ -160,7 +157,8 @@ PetscErrorCode ComputeJacobian(SNES snes,Vec x,Mat J,Mat B,void *ctx)
 
   ierr = DMDAGetInfo(da,PETSC_IGNORE,&Mx,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE);CHKERRQ(ierr);
   hx   = 1.0/(PetscReal)(Mx-1);
-  ierr = DMGetLocalVector(da,&xlocal);DMGlobalToLocalBegin(da,x,INSERT_VALUES,xlocal);CHKERRQ(ierr);
+  ierr = DMGetLocalVector(da,&xlocal);CHKERRQ(ierr);
+  ierr = DMGlobalToLocalBegin(da,x,INSERT_VALUES,xlocal);CHKERRQ(ierr);
   ierr = DMGlobalToLocalEnd(da,x,INSERT_VALUES,xlocal);CHKERRQ(ierr);
   ierr = DMDAVecGetArray(da,xlocal,&xx);CHKERRQ(ierr);
   ierr = DMDAGetCorners(da,&xs,NULL,NULL,&xm,NULL,NULL);CHKERRQ(ierr);
@@ -174,10 +172,10 @@ PetscErrorCode ComputeJacobian(SNES snes,Vec x,Mat J,Mat B,void *ctx)
       ierr = MatSetValue(J,i,i+1,-1.0/hx,INSERT_VALUES);CHKERRQ(ierr);
     }
   }
-  ierr  = MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr  = MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-  ierr  = DMDAVecRestoreArray(da,xlocal,&xx);CHKERRQ(ierr);
-  ierr  = DMRestoreLocalVector(da,&xlocal);CHKERRQ(ierr);
+  ierr = MatAssemblyBegin(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = MatAssemblyEnd(J,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArray(da,xlocal,&xx);CHKERRQ(ierr);
+  ierr = DMRestoreLocalVector(da,&xlocal);CHKERRQ(ierr);
   return 0;
 }
 
@@ -188,7 +186,14 @@ PetscErrorCode ComputeJacobian(SNES snes,Vec x,Mat J,Mat B,void *ctx)
    build:
       requires: cuda
 
-   test:
-      args: -snes_monitor_short -dm_vec_type cuda
+   testset:
+      args: -snes_monitor_short -dm_mat_type aijcusparse -dm_vec_type cuda
+      output_file: output/ex47cu_1.out
+      test:
+        suffix: 1
+        nsize:  1
+      test:
+        suffix: 2
+        nsize:  2
 
 TEST*/

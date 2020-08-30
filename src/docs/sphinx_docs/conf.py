@@ -47,11 +47,13 @@ with open(os.path.join('..', '..', '..', 'include', 'petscversion.h'),'r') as ve
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
-extensions.append('sphinx.ext.graphviz')
-extensions.append('sphinx.ext.mathjax')
-extensions.append('sphinxcontrib.bibtex')
-extensions.append('html5_petsc')          # Overrides HTML5Translator
+extensions = [
+    'sphinx.ext.graphviz',
+    'sphinxcontrib.bibtex',
+    'sphinxcontrib.katex',
+    'sphinxcontrib.rsvgconverter',
+    'html5_petsc',  # Overrides HTML5Translator
+]
 
 master_doc = 'index'
 # Add any paths that contain templates here, relative to this directory.
@@ -74,6 +76,9 @@ html_theme = 'sphinxdoc'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_logo = os.path.join('..','website','images','PETSc-TAO_RGB.svg')
+html_favicon = os.path.join('..','website','images','PETSc_RGB-logo.png')
 
 # -- General Config Options ---------------------------------------------------
 

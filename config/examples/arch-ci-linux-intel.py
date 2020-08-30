@@ -18,7 +18,6 @@ if __name__ == '__main__':
     'CXXOPTFLAGS=-g -O',
     '--with-blaslapack-dir='+os.environ['MKLROOT'],
     '--with-mkl_pardiso-dir='+os.environ['MKLROOT'],
-    '--with-mkl_sparse_optimize=0',
     '--download-mpich=1',
     '--download-triangle=1',
     '--download-ctetgen=1',
@@ -27,5 +26,6 @@ if __name__ == '__main__':
     '--download-zlib=1',
     '--download-codipack=1',
     '--download-adblaslapack=1',
+    '--download-kokkos',
   ]
   configure.petsc_configure(configure_options)

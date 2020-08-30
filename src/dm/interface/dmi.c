@@ -190,7 +190,7 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
   if (subdm) {
     PetscSection subsection;
     PetscBool    haveNull = PETSC_FALSE;
-    PetscInt     f, nf = 0;
+    PetscInt     f, nf = 0, of = 0;
 
     ierr = PetscSectionCreateSubsection(section, numFields, fields, &subsection);CHKERRQ(ierr);
     ierr = DMSetLocalSection(*subdm, subsection);CHKERRQ(ierr);
@@ -200,14 +200,8 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
       if ((*subdm)->nullspaceConstructors[f]) {
         haveNull = PETSC_TRUE;
         nf       = f;
+        of       = fields[f];
       }
-    }
-    if (haveNull && is) {
-      MatNullSpace nullSpace;
-
-      ierr = (*(*subdm)->nullspaceConstructors[nf])(*subdm, nf, &nullSpace);CHKERRQ(ierr);
-      ierr = PetscObjectCompose((PetscObject) *is, "nullspace", (PetscObject) nullSpace);CHKERRQ(ierr);
-      ierr = MatNullSpaceDestroy(&nullSpace);CHKERRQ(ierr);
     }
     if (dm->probs) {
       ierr = DMSetNumFields(*subdm, numFields);CHKERRQ(ierr);
@@ -229,35 +223,65 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
         ierr = PetscObjectQuery(disc, "pmat", &pmat);CHKERRQ(ierr);
         if (pmat) {ierr = PetscObjectCompose((PetscObject) *is, "pmat", pmat);CHKERRQ(ierr);}
       }
-      ierr = PetscDSCopyConstants(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
-      ierr = PetscDSCopyBoundary(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
-      /* Translate DM fields to DS fields */
+      /* Check if DSes record their DM fields */
       if (dm->probs[0].fields) {
-        IS              infields, dsfields;
-        const PetscInt *fld, *ofld;
-        PetscInt       *fidx;
-        PetscInt        onf, nf, f, g;
+        PetscInt d, e;
 
-        ierr = ISCreateGeneral(PETSC_COMM_SELF, numFields, fields, PETSC_USE_POINTER, &infields);CHKERRQ(ierr);
-        ierr = ISIntersect(infields, dm->probs[0].fields, &dsfields);CHKERRQ(ierr);
-        ierr = ISDestroy(&infields);CHKERRQ(ierr);
-        ierr = ISGetLocalSize(dsfields, &nf);CHKERRQ(ierr);
-        if (!nf) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "DS cannot be supported on 0 fields");
-        ierr = ISGetIndices(dsfields, &fld);CHKERRQ(ierr);
-        ierr = ISGetLocalSize(dm->probs[0].fields, &onf);CHKERRQ(ierr);
-        ierr = ISGetIndices(dm->probs[0].fields, &ofld);CHKERRQ(ierr);
-        ierr = PetscMalloc1(nf, &fidx);CHKERRQ(ierr);
-        for (f = 0, g = 0; f < onf && g < nf; ++f) {
-          if (ofld[f] == fld[g]) fidx[g++] = f;
+        for (d = 0, e = 0; d < dm->Nds && e < (*subdm)->Nds; ++d) {
+          const PetscInt  Nf = dm->probs[d].ds->Nf;
+          const PetscInt *fld;
+          PetscInt        f, g;
+
+          ierr = ISGetIndices(dm->probs[d].fields, &fld);CHKERRQ(ierr);
+          for (f = 0; f < Nf; ++f) {
+            for (g = 0; g < numFields; ++g) if (fld[f] == fields[g]) break;
+            if (g < numFields) break;
+          }
+          ierr = ISRestoreIndices(dm->probs[d].fields, &fld);CHKERRQ(ierr);
+          if (f == Nf) continue;
+          ierr = PetscDSCopyConstants(dm->probs[d].ds, (*subdm)->probs[e].ds);CHKERRQ(ierr);
+          ierr = PetscDSCopyBoundary(dm->probs[d].ds, (*subdm)->probs[e].ds);CHKERRQ(ierr);
+          /* Translate DM fields to DS fields */
+          {
+            IS              infields, dsfields;
+            const PetscInt *fld, *ofld;
+            PetscInt       *fidx;
+            PetscInt        onf, nf, f, g;
+
+            ierr = ISCreateGeneral(PETSC_COMM_SELF, numFields, fields, PETSC_USE_POINTER, &infields);CHKERRQ(ierr);
+            ierr = ISIntersect(infields, dm->probs[d].fields, &dsfields);CHKERRQ(ierr);
+            ierr = ISDestroy(&infields);CHKERRQ(ierr);
+            ierr = ISGetLocalSize(dsfields, &nf);CHKERRQ(ierr);
+            if (!nf) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "DS cannot be supported on 0 fields");
+            ierr = ISGetIndices(dsfields, &fld);CHKERRQ(ierr);
+            ierr = ISGetLocalSize(dm->probs[d].fields, &onf);CHKERRQ(ierr);
+            ierr = ISGetIndices(dm->probs[d].fields, &ofld);CHKERRQ(ierr);
+            ierr = PetscMalloc1(nf, &fidx);CHKERRQ(ierr);
+            for (f = 0, g = 0; f < onf && g < nf; ++f) {
+              if (ofld[f] == fld[g]) fidx[g++] = f;
+            }
+            ierr = ISRestoreIndices(dm->probs[d].fields, &ofld);CHKERRQ(ierr);
+            ierr = ISRestoreIndices(dsfields, &fld);CHKERRQ(ierr);
+            ierr = ISDestroy(&dsfields);CHKERRQ(ierr);
+            ierr = PetscDSSelectDiscretizations(dm->probs[0].ds, nf, fidx, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+            ierr = PetscDSSelectEquations(dm->probs[0].ds, nf, fidx, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+            ierr = PetscFree(fidx);CHKERRQ(ierr);
+          }
+          ++e;
         }
-        ierr = ISRestoreIndices(dm->probs[0].fields, &ofld);CHKERRQ(ierr);
-        ierr = ISRestoreIndices(dsfields, &fld);CHKERRQ(ierr);
-        ierr = ISDestroy(&dsfields);CHKERRQ(ierr);
-        ierr = PetscDSSelectEquations(dm->probs[0].ds, nf, fidx, (*subdm)->probs[0].ds);CHKERRQ(ierr);
-        ierr = PetscFree(fidx);CHKERRQ(ierr);
       } else {
+        ierr = PetscDSCopyConstants(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+        ierr = PetscDSCopyBoundary(dm->probs[0].ds, (*subdm)->probs[0].ds);CHKERRQ(ierr);
+        ierr = PetscDSSelectDiscretizations(dm->probs[0].ds, numFields, fields, (*subdm)->probs[0].ds);CHKERRQ(ierr);
         ierr = PetscDSSelectEquations(dm->probs[0].ds, numFields, fields, (*subdm)->probs[0].ds);CHKERRQ(ierr);
       }
+    }
+    if (haveNull && is) {
+      MatNullSpace nullSpace;
+
+      ierr = (*(*subdm)->nullspaceConstructors[nf])(*subdm, of, nf, &nullSpace);CHKERRQ(ierr);
+      ierr = PetscObjectCompose((PetscObject) *is, "nullspace", (PetscObject) nullSpace);CHKERRQ(ierr);
+      ierr = MatNullSpaceDestroy(&nullSpace);CHKERRQ(ierr);
     }
     if (dm->coarseMesh) {
       ierr = DMCreateSubDM(dm->coarseMesh, numFields, fields, NULL, &(*subdm)->coarseMesh);CHKERRQ(ierr);
@@ -290,7 +314,7 @@ PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *super
 {
   MPI_Comm       comm;
   PetscSection   supersection, *sections, *sectionGlobals;
-  PetscInt      *Nfs, Nf = 0, f, supf, nullf = -1, i;
+  PetscInt      *Nfs, Nf = 0, f, supf, oldf = -1, nullf = -1, i;
   PetscBool      haveNull = PETSC_FALSE;
   PetscErrorCode ierr;
 
@@ -371,6 +395,7 @@ PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *super
       if ((*superdm)->nullspaceConstructors[supf]) {
         haveNull = PETSC_TRUE;
         nullf    = supf;
+        oldf     = f;
       }
     }
   }
@@ -378,7 +403,7 @@ PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *super
   if (haveNull && is) {
     MatNullSpace nullSpace;
 
-    ierr = (*(*superdm)->nullspaceConstructors[nullf])(*superdm, nullf, &nullSpace);CHKERRQ(ierr);
+    ierr = (*(*superdm)->nullspaceConstructors[nullf])(*superdm, oldf, nullf, &nullSpace);CHKERRQ(ierr);
     ierr = PetscObjectCompose((PetscObject) (*is)[nullf], "nullspace", (PetscObject) nullSpace);CHKERRQ(ierr);
     ierr = MatNullSpaceDestroy(&nullSpace);CHKERRQ(ierr);
   }

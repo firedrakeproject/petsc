@@ -75,9 +75,15 @@ class Configure(config.package.Package):
                           '@echo "====================================="',\
                           '@echo "To use petsc4py, add '+os.path.join(self.installDir,'lib')+' to PYTHONPATH"',\
                           '@echo "====================================="'])
-    self.addMakeRule('petsc4pytest','', \
-                       ['@echo "*** Testing petsc4py ***"',\
+    if self.mpi.usingMPIUni:
+      self.addMakeRule('petsc4pytest','', \
+                       ['@echo "*** Testing petsc4py sequentially ***"',\
                         '@PYTHONPATH='+os.path.join(self.installDir,'lib')+':${PYTHONPATH} '+self.python.pyexe+' '+os.path.join(self.packageDir,'test','runtests.py'+' --verbose'),\
+                        '@echo "====================================="'])
+    else:
+      self.addMakeRule('petsc4pytest','', \
+                       ['@echo "*** Testing petsc4py parallelly ***"',\
+                        '@PYTHONPATH='+os.path.join(self.installDir,'lib')+':${PYTHONPATH} ${MPIEXEC} -n 4 '+self.python.pyexe+' '+os.path.join(self.packageDir,'test','runtests.py'+' --verbose'),\
                         '@echo "====================================="'])
     if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
       self.addMakeRule('petsc4py-build','')

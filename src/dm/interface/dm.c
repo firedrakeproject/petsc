@@ -9771,3 +9771,61 @@ PetscErrorCode DMCopyAuxiliaryVec(DM dm, DM dmNew)
   ierr = PetscHMapAuxDuplicate(dm->auxData, &dmNew->auxData);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
+
+PetscErrorCode DMPolytopeMatchOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt, PetscBool *found)
+{
+  const PetscInt cS = DMPolytopeTypeGetConeSize(ct);
+  const PetscInt nO = DMPolytopeTypeGetNumArrangments(ct)/2;
+  PetscInt       o, c;
+
+  PetscFunctionBegin;
+  if (!nO) {*ornt = 0; *found = PETSC_TRUE; PetscFunctionReturn(0);}
+  for (o = -nO; o < nO; ++o) {
+    const PetscInt *arr = DMPolytopeTypeGetArrangment(ct, o);
+
+    for (c = 0; c < cS; ++c) if (sourceCone[arr[c*2]] != targetCone[c]) break;
+    if (c == cS) {*ornt = o; break;}
+  }
+  *found = o == nO ? PETSC_FALSE : PETSC_TRUE;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode DMPolytopeGetOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt)
+{
+  PetscBool      found;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = DMPolytopeMatchOrientation(ct, sourceCone, targetCone, ornt, &found);CHKERRQ(ierr);
+  if (!found) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Could not find orientation for %s", DMPolytopeTypes[ct]);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode DMPolytopeMatchVertexOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt, PetscBool *found)
+{
+  const PetscInt cS = DMPolytopeTypeGetNumVertices(ct);
+  const PetscInt nO = DMPolytopeTypeGetNumArrangments(ct)/2;
+  PetscInt       o, c;
+
+  PetscFunctionBegin;
+  if (!nO) {*ornt = 0; *found = PETSC_TRUE; PetscFunctionReturn(0);}
+  for (o = -nO; o < nO; ++o) {
+    const PetscInt *arr = DMPolytopeTypeGetVertexArrangment(ct, o);
+
+    for (c = 0; c < cS; ++c) if (sourceCone[arr[c]] != targetCone[c]) break;
+    if (c == cS) {*ornt = o; break;}
+  }
+  *found = o == nO ? PETSC_FALSE : PETSC_TRUE;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode DMPolytopeGetVertexOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt)
+{
+  PetscBool      found;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = DMPolytopeMatchVertexOrientation(ct, sourceCone, targetCone, ornt, &found);CHKERRQ(ierr);
+  if (!found) SETERRQ1(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Could not find orientation for %s", DMPolytopeTypes[ct]);
+  PetscFunctionReturn(0);
+}

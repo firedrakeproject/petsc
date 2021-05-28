@@ -94,6 +94,7 @@ PETSC_EXTERN PetscErrorCode DMRefineHookAdd(DM,PetscErrorCode (*)(DM,DM,void*),P
 PETSC_EXTERN PetscErrorCode DMRefineHookRemove(DM,PetscErrorCode (*)(DM,DM,void*),PetscErrorCode (*)(DM,Mat,DM,void*),void*);
 PETSC_EXTERN PetscErrorCode DMRestrict(DM,Mat,Vec,Mat,DM);
 PETSC_EXTERN PetscErrorCode DMInterpolate(DM,Mat,DM);
+PETSC_EXTERN PetscErrorCode DMInterpolateSolution(DM,DM,Mat,Vec,Vec);
 PETSC_EXTERN PetscErrorCode DMSetFromOptions(DM);
 PETSC_EXTERN PetscErrorCode DMViewFromOptions(DM,PetscObject,const char[]);
 
@@ -242,6 +243,8 @@ PETSC_EXTERN PetscErrorCode DMSetNumFields(DM, PetscInt);
 PETSC_EXTERN PetscErrorCode DMGetField(DM, PetscInt, DMLabel *, PetscObject *);
 PETSC_EXTERN PetscErrorCode DMSetField(DM, PetscInt, DMLabel, PetscObject);
 PETSC_EXTERN PetscErrorCode DMAddField(DM, DMLabel, PetscObject);
+PETSC_EXTERN PetscErrorCode DMSetFieldAvoidTensor(DM, PetscInt, PetscBool);
+PETSC_EXTERN PetscErrorCode DMGetFieldAvoidTensor(DM, PetscInt, PetscBool *);
 PETSC_EXTERN PetscErrorCode DMClearFields(DM);
 PETSC_EXTERN PetscErrorCode DMCopyFields(DM, DM);
 PETSC_EXTERN PetscErrorCode DMGetAdjacency(DM, PetscInt, PetscBool *, PetscBool *);
@@ -298,7 +301,7 @@ PETSC_EXTERN PetscErrorCode DMInterpolationGetDim(DMInterpolationInfo, PetscInt 
 PETSC_EXTERN PetscErrorCode DMInterpolationSetDof(DMInterpolationInfo, PetscInt);
 PETSC_EXTERN PetscErrorCode DMInterpolationGetDof(DMInterpolationInfo, PetscInt *);
 PETSC_EXTERN PetscErrorCode DMInterpolationAddPoints(DMInterpolationInfo, PetscInt, PetscReal[]);
-PETSC_EXTERN PetscErrorCode DMInterpolationSetUp(DMInterpolationInfo, DM, PetscBool);
+PETSC_EXTERN PetscErrorCode DMInterpolationSetUp(DMInterpolationInfo, DM, PetscBool, PetscBool);
 PETSC_EXTERN PetscErrorCode DMInterpolationGetCoordinates(DMInterpolationInfo, Vec *);
 PETSC_EXTERN PetscErrorCode DMInterpolationGetVector(DMInterpolationInfo, Vec *);
 PETSC_EXTERN PetscErrorCode DMInterpolationRestoreVector(DMInterpolationInfo, Vec *);
@@ -344,6 +347,7 @@ PETSC_EXTERN PetscErrorCode DMProjectBdFieldLabelLocal(DM,PetscReal,DMLabel,Pets
 PETSC_EXTERN PetscErrorCode DMComputeL2Diff(DM,PetscReal,PetscErrorCode(**)(PetscInt,PetscReal,const PetscReal[],PetscInt,PetscScalar *,void *),void **,Vec,PetscReal *);
 PETSC_EXTERN PetscErrorCode DMComputeL2GradientDiff(DM, PetscReal, PetscErrorCode (**)(PetscInt, PetscReal, const PetscReal [], const PetscReal [], PetscInt, PetscScalar *, void *), void **, Vec, const PetscReal [], PetscReal *);
 PETSC_EXTERN PetscErrorCode DMComputeL2FieldDiff(DM,PetscReal,PetscErrorCode(**)(PetscInt,PetscReal,const PetscReal[],PetscInt,PetscScalar *,void *),void **,Vec,PetscReal *);
+PETSC_EXTERN PetscErrorCode DMComputeError(DM, Vec, PetscReal[], Vec *);
 PETSC_EXTERN PetscErrorCode DMHasBasisTransform(DM,PetscBool*);
 PETSC_EXTERN PetscErrorCode DMCopyTransform(DM, DM);
 
@@ -370,6 +374,7 @@ PETSC_STATIC_INLINE PetscInt DMPolytopeTypeGetDim(DMPolytopeType ct) {
     case DM_POLYTOPE_TRI_PRISM:
     case DM_POLYTOPE_TRI_PRISM_TENSOR:
     case DM_POLYTOPE_QUAD_PRISM_TENSOR:
+    case DM_POLYTOPE_PYRAMID:
       return 3;
     default: return -1;
   }
@@ -389,6 +394,7 @@ PETSC_STATIC_INLINE PetscInt DMPolytopeTypeGetConeSize(DMPolytopeType ct)
     case DM_POLYTOPE_TRI_PRISM:          return 5;
     case DM_POLYTOPE_TRI_PRISM_TENSOR:   return 5;
     case DM_POLYTOPE_QUAD_PRISM_TENSOR:  return 6;
+    case DM_POLYTOPE_PYRAMID:            return 5;
     default: return -1;
   }
 }
@@ -407,6 +413,7 @@ PETSC_STATIC_INLINE PetscInt DMPolytopeTypeGetNumVertices(DMPolytopeType ct)
     case DM_POLYTOPE_TRI_PRISM:          return 6;
     case DM_POLYTOPE_TRI_PRISM_TENSOR:   return 6;
     case DM_POLYTOPE_QUAD_PRISM_TENSOR:  return 8;
+    case DM_POLYTOPE_PYRAMID:            return 5;
     default: return -1;
   }
 }

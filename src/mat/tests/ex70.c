@@ -542,7 +542,7 @@ int main(int argc,char **args)
   if (testproj) {
     ierr = MatPtAPMultEqual(T2,B,PtAP,10,&flg);CHKERRQ(ierr);
     if (!flg) {
-      ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with PtAP\n");CHKERRQ(ierr);
+      ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with PtAP (MATSHELL)\n");CHKERRQ(ierr);
     }
     if (testshellops) { /* projections fail if the product operations are not specified */
       ierr = MatPtAP(T2,B,MAT_INITIAL_MATRIX,PETSC_DEFAULT,&T);CHKERRQ(ierr);
@@ -551,7 +551,7 @@ int main(int argc,char **args)
       if (!flg) {
         Mat TE;
 
-        ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with PtAP (user defined)\n");CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with PtAP (MATSHELL user defined)\n");CHKERRQ(ierr);
         ierr = MatComputeOperator(T,MATDENSE,&TE);CHKERRQ(ierr);
         ierr = MatView(TE,NULL);CHKERRQ(ierr);
         ierr = MatView(PtAP,NULL);CHKERRQ(ierr);
@@ -564,7 +564,7 @@ int main(int argc,char **args)
     if (RARt) {
       ierr = MatRARtMultEqual(T2,R,RARt,10,&flg);CHKERRQ(ierr);
       if (!flg) {
-        ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with RARt\n");CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with RARt (MATSHELL)\n");CHKERRQ(ierr);
       }
     }
     if (testshellops) {
@@ -574,7 +574,7 @@ int main(int argc,char **args)
       if (!flg) {
         Mat TE;
 
-        ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with RARt (user defined)\n");CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_WORLD,"Error with RARt (MATSHELL user defined)\n");CHKERRQ(ierr);
         ierr = MatComputeOperator(T,MATDENSE,&TE);CHKERRQ(ierr);
         ierr = MatView(TE,NULL);CHKERRQ(ierr);
         if (RARt) {
@@ -703,6 +703,41 @@ int main(int argc,char **args)
     ierr = CheckLocal(B,X,aB,aX);CHKERRQ(ierr);
     ierr = MatDestroy(&AB);CHKERRQ(ierr);
   }
+
+  /* Test by Pierre Jolivet */
+  {
+    Mat C,D,D2,AtA;
+    ierr = MatCreateNormal(A,&AtA);CHKERRQ(ierr);
+    ierr = MatDuplicate(X,MAT_DO_NOT_COPY_VALUES,&C);CHKERRQ(ierr);
+    ierr = MatDuplicate(B,MAT_DO_NOT_COPY_VALUES,&D);CHKERRQ(ierr);
+    ierr = MatDuplicate(B,MAT_DO_NOT_COPY_VALUES,&D2);CHKERRQ(ierr);
+    ierr = MatSetRandom(B,NULL);CHKERRQ(ierr);
+    ierr = MatSetRandom(C,NULL);CHKERRQ(ierr);
+    ierr = MatSetRandom(D,NULL);CHKERRQ(ierr);
+    ierr = MatSetRandom(D2,NULL);CHKERRQ(ierr);
+    ierr = MatProductCreateWithMat(A,B,NULL,C);CHKERRQ(ierr);
+    ierr = MatProductSetType(C,MATPRODUCT_AB);CHKERRQ(ierr);
+    ierr = MatProductSetFromOptions(C);CHKERRQ(ierr);
+    ierr = MatProductSymbolic(C);CHKERRQ(ierr);
+    ierr = MatProductCreateWithMat(A,C,NULL,D);CHKERRQ(ierr);
+    ierr = MatProductSetType(D, MATPRODUCT_AtB);CHKERRQ(ierr);
+    ierr = MatProductSetFromOptions(D);CHKERRQ(ierr);
+    ierr = MatProductSymbolic(D);CHKERRQ(ierr);
+    ierr = MatProductNumeric(C);CHKERRQ(ierr);
+    ierr = MatProductNumeric(D);CHKERRQ(ierr);
+    ierr = MatMatMultEqual(AtA,B,D,10,&flg);CHKERRQ(ierr);
+    if (!flg) {
+      ierr = MatMatMult(AtA,C,MAT_INITIAL_MATRIX,PETSC_DEFAULT,&T);CHKERRQ(ierr);
+      ierr = MatAXPY(T,-1.0,D,SAME_NONZERO_PATTERN);CHKERRQ(ierr);
+      ierr = MatView(T,NULL);CHKERRQ(ierr);
+      ierr = MatDestroy(&T);CHKERRQ(ierr);
+    }
+    ierr = MatDestroy(&C);CHKERRQ(ierr);
+    ierr = MatDestroy(&D);CHKERRQ(ierr);
+    ierr = MatDestroy(&D2);CHKERRQ(ierr);
+    ierr = MatDestroy(&AtA);CHKERRQ(ierr);
+  }
+
   ierr = MatDestroy(&X);CHKERRQ(ierr);
   ierr = MatDestroy(&Bt);CHKERRQ(ierr);
   ierr = MatDestroy(&B);CHKERRQ(ierr);

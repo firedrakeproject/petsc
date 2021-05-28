@@ -14,23 +14,23 @@ class Configure(config.package.CMakePackage):
     self.functions        = ['']
     self.functionsCxx     = [1,'namespace Kokkos {void initialize(int&,char*[]);}','int one = 1;char* args[1];Kokkos::initialize(one,args);']
     self.cxx              = 1
-    self.requirescxx11    = 1
     self.downloadonWindows= 0
     self.hastests         = 1
     self.requiresrpath    = 1
     self.precisions       = ['double']
+    self.kokkos_cxxdialect = 'C++14' # requirement for which compiler is used to compile Kokkos
     return
 
   def __str__(self):
-    output  = config.package.Package.__str__(self)
+    output  = config.package.CMakePackage.__str__(self)
     if hasattr(self,'system'): output += '  Backend: '+self.system+'\n'
     return output
 
   def setupHelp(self, help):
     import nargs
-    config.package.Package.setupHelp(self, help)
-    help.addArgument('Kokkos', '-with-kokkos-cuda-arch', nargs.ArgString(None, 0, 'One of KEPLER30, KEPLER32, KEPLER35, KEPLER37, MAXWELL50, MAXWELL52, MAXWELL53, PASCAL60, PASCAL61, VOLTA70, VOLTA72, TURING75, AMPERE80, use nvidia-smi'))
-    help.addArgument('Kokkos', '-with-kokkos-hip-arch',  nargs.ArgString(None, 0, 'One of VEGA900, VEGA906, VEGA908'))
+    config.package.CMakePackage.setupHelp(self, help)
+    help.addArgument('KOKKOS', '-with-kokkos-cuda-arch', nargs.ArgString(None, 0, 'One of KEPLER30, KEPLER32, KEPLER35, KEPLER37, MAXWELL50, MAXWELL52, MAXWELL53, PASCAL60, PASCAL61, VOLTA70, VOLTA72, TURING75, AMPERE80, use nvidia-smi'))
+    help.addArgument('KOKKOS', '-with-kokkos-hip-arch',  nargs.ArgString(None, 0, 'One of VEGA900, VEGA906, VEGA908'))
     return
 
   def setupDependencies(self, framework):
@@ -69,14 +69,13 @@ class Configure(config.package.CMakePackage):
   def formCMakeConfigureArgs(self):
     args = config.package.CMakePackage.formCMakeConfigureArgs(self)
     args.append('-DUSE_XSDK_DEFAULTS=YES')
-    if self.compilerFlags.debugging:
-      args.append('-DCMAKE_BUILD_TYPE=DEBUG')
-    else:
-      args.append('-DCMAKE_BUILD_TYPE=RELEASE')
+    if not self.compilerFlags.debugging:
       args.append('-DXSDK_ENABLE_DEBUG=NO')
 
-    # Trilinos cmake does not set this variable (as it should) so cmake install does not properly reset the -id and rpath of --prefix installed Trilinos libraries
-    args.append('-DCMAKE_INSTALL_NAME_DIR:STRING="'+os.path.join(self.installDir,self.libdir)+'"')
+    if self.checkSharedLibrariesEnabled():
+      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
+      args.append('-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON')
+    args.append('-DCMAKE_CXX_STANDARD=' + self.compilers.cxxdialect[-2:])
 
     if self.mpi.found:
       args.append('-DKokkos_ENABLE_MPI=ON')
@@ -102,6 +101,7 @@ class Configure(config.package.CMakePackage):
       self.system = 'PThread'
 
     if self.cuda.found:
+      lang = 'cuda'
       args.append('-DKokkos_ENABLE_CUDA=ON')
       self.system = 'CUDA'
       self.pushLanguage('CUDA')
@@ -125,27 +125,46 @@ class Configure(config.package.CMakePackage):
       if nvccpath:
          os.environ['PATH'] = path+':'+nvccpath
     elif self.hip.found:
+      lang = 'hip'
       self.system = 'HIP'
       args.append('-DKokkos_ENABLE_HIP=ON')
-      self.pushLanguage('HIP')
-      petscHipcc = self.getCompiler()
-      hipFlags = self.getCompilerFlags()
-      self.popLanguage()
+      with self.Language('HIP'):
+        petscHipc = self.getCompiler()
+        hipFlags = self.updatePackageCFlags(self.getCompilerFlags())
       args.append('-DKOKKOS_HIP_OPTIONS="'+hipFlags.replace(' ',';')+'"')
-      self.getExecutable(petscHipcc,getFullPath=1,resultName='systemHipcc')
-      if not hasattr(self,'systemHipcc'):
+      self.getExecutable(petscHipc,getFullPath=1,resultName='systemHipc')
+      if not hasattr(self,'systemHipc'):
         raise RuntimeError('HIP error: could not find path of hipcc')
       args = self.rmArgsStartsWith(args,'-DCMAKE_CXX_COMPILER=')
-      args.append('-DCMAKE_CXX_COMPILER='+self.systemHipcc)
+      args.append('-DCMAKE_CXX_COMPILER='+self.systemHipc)
+      args = self.rmArgsStartsWith(args, '-DCMAKE_CXX_FLAGS')
+      args.append('-DCMAKE_CXX_FLAGS="' + hipFlags + '"')
       if not 'with-kokkos-hip-arch' in self.framework.clArgDB:
         raise RuntimeError('You must set -with-kokkos-hip-arch=VEGA900, VEGA906, VEGA908 etc.')
       args.append('-DKokkos_ARCH_'+self.argDB['with-kokkos-hip-arch']+'=ON')
       args.append('-DKokkos_ENABLE_HIP_RELOCATABLE_DEVICE_CODE=OFF')
+    else:
+      lang = 'cxx'
+
+    # set -DCMAKE_CXX_STANDARD=
+    if not hasattr(self.compilers,lang+'dialect'):
+      raise RuntimeError('Could not determine C++ dialect for the '+lang.upper()+' Compiler')
+    else:
+      langdialect = getattr(self.compilers,lang+'dialect')
+      if langdialect < self.kokkos_cxxdialect:
+        raise RuntimeError('Kokkos requires '+self.kokkos_cxxdialect+' but the '+lang.upper()+ 'compiler only supports '+langdialect)
+      else:
+        args = self.rmArgsStartsWith(args,'-DCMAKE_CXX_STANDARD=')
+        args.append('-DCMAKE_CXX_STANDARD="' + langdialect.split("C++",1)[1] + '"') # e.g., extract 14 from C++14
+
     return args
 
   def configureLibrary(self):
     import os
-    config.package.Package.configureLibrary(self)
+    config.package.CMakePackage.configureLibrary(self)
     if self.cuda.found:
-      self.addMakeMacro('KOKKOS_BIN',os.path.join(self.installDir,'bin'))
+      self.addMakeMacro('KOKKOS_BIN',os.path.join(self.directory,'bin'))
+      self.addMakeMacro('KOKKOS_USE_CUDA_COMPILER',1) # use the CUDA compiler to compile PETSc Kokkos code
+    elif self.hip.found:
+      self.addMakeMacro('KOKKOS_USE_HIP_COMPILER',1)  # use the HIP compiler to compile PETSc Kokkos code
 

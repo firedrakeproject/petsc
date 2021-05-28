@@ -8,7 +8,7 @@ class CompilerOptions(config.base.Configure):
     import config.setCompilers
 
     if language == 'C':
-      if compiler.endswith('mpicc') or compiler.endswith('mpiicc') :
+      if [s for s in ['mpicc','mpiicc'] if os.path.basename(compiler).find(s)>=0]:
         try:
           output   = self.executeShellCommand(compiler + ' -show', log = self.log)[0]
           self.framework.addMakeMacro('MPICC_SHOW',output.strip().replace('\n','\\\\n'))
@@ -60,6 +60,7 @@ class CompilerOptions(config.base.Configure):
       # Windows Intel
       elif compiler.find('win32fe icl') >= 0:
         if bopt == '':
+          flags.extend(['-Qstd=c99'])
           if self.argDB['with-shared-libraries']:
             flags.extend(['-MD'])
           else:
@@ -97,7 +98,7 @@ class CompilerOptions(config.base.Configure):
   def getCxxFlags(self, compiler, bopt):
     import config.setCompilers
 
-    if compiler.endswith('mpiCC') or compiler.endswith('mpicxx') or compiler.endswith('mpiicxx') or compiler.endswith('mpiicpc'):
+    if [s for s in ['mpiCC','mpicxx','mpiicxx','mpiicpc'] if os.path.basename(compiler).find(s)>=0]:
       try:
         output   = self.executeShellCommand(compiler+' -show', log = self.log)[0]
         self.framework.addMakeMacro('MPICXX_SHOW',output.strip().replace('\n','\\\\n'))
@@ -111,8 +112,12 @@ class CompilerOptions(config.base.Configure):
     if config.setCompilers.Configure.isGNU(compiler, self.log) or config.setCompilers.Configure.isClang(compiler, self.log):
       if bopt == '':
         flags.extend(['-Wall', '-Wwrite-strings', '-Wno-strict-aliasing','-Wno-unknown-pragmas'])
-        # skip -fstack-protector for brew gcc - as this gives SEGV
-        if not (config.setCompilers.Configure.isDarwin(self.log) and config.setCompilers.Configure.isGNU(compiler, self.log)):
+        if not any([
+            # skip -fstack-protector for brew gcc - as this gives SEGV
+            config.setCompilers.Configure.isDarwin(self.log) and config.setCompilers.Configure.isGNU(compiler, self.log),
+            # hipcc for ROCm-4.0 crashes on some source files with -fstack-protector
+            config.setCompilers.Configure.isHIP(compiler, self.log),
+        ]):
           flags.extend(['-fstack-protector'])
         if config.setCompilers.Configure.isDarwinCatalina(self.log) and config.setCompilers.Configure.isClang(compiler, self.log):
           flags.extend(['-fno-stack-check'])
@@ -191,7 +196,7 @@ class CompilerOptions(config.base.Configure):
 
   def getFortranFlags(self, compiler, bopt):
 
-    if compiler.endswith('mpif77') or compiler.endswith('mpif90') or compiler.endswith('mpifort') or compiler.endswith('mpiifort'):
+    if [s for s in ['mpif77','mpif90','mpifort','mpiifort'] if os.path.basename(compiler).find(s)>=0]:
       try:
         output   = self.executeShellCommand(compiler+' -show', log = self.log)[0]
         self.framework.addMakeMacro('MPIFC_SHOW',output.strip().replace('\n','\\\\n'))
@@ -221,6 +226,7 @@ class CompilerOptions(config.base.Configure):
     else:
       # Portland Group Fortran 90
       if config.setCompilers.Configure.isPGI(compiler, self.log):
+        self.framework.addDefine('PETSC_HAVE_PGF90_COMPILER','1')
         if bopt == '':
           flags.append('-Mfree')
         elif bopt == 'O':

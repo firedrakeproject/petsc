@@ -27,13 +27,13 @@ configure_options = [
   '--download-hdf5',
   '--with-zlib=1',
   '--download-elemental=1',
-  #'--download-sundials=1',
+  #'--download-sundials2=1',
   #'--download-hypre=1',
   #'--download-suitesparse=1',
   #'--download-chaco=1',
   #'--download-spai=1',
   '--download-p4est=1',
-
+  '--with-mpi-f90module-visibility=0',
   ]
 
 if __name__ == '__main__':

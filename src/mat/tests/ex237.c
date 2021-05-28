@@ -9,7 +9,7 @@ static char help[] = "Mini-app to benchmark matrix--matrix multiplication\n\n";
 
 #include <petsc.h>
 
-#if defined(PETSC_HAVE_MKL)
+#if defined(PETSC_HAVE_MKL) && defined(PETSC_HAVE_MKL_SPARSE_OPTIMIZE)
 #include <mkl.h>
 #define PetscStackCallMKLSparse(func, args) do {               \
     sparse_status_t __ierr;                                    \
@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 
   ierr = PetscInitialize(&argc, &argv, NULL, help);if (ierr) return ierr;
   if (ierr) return ierr;
-  ierr = MPI_Comm_size(PETSC_COMM_WORLD, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_size(PETSC_COMM_WORLD, &size);CHKERRMPI(ierr);
   if (size != 1) SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_WRONG_MPI_SIZE, "This is a uniprocessor example only");
   ierr = PetscOptionsGetString(NULL, NULL, "-f", file, PETSC_MAX_PATH_LEN, &flg);CHKERRQ(ierr);
   if (!flg) SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "Must indicate binary file with the -f option");
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
       ierr = MatCreate(PETSC_COMM_WORLD, &B);CHKERRQ(ierr);
       ierr = MatSetType(B, MATSEQBAIJ);CHKERRQ(ierr);
       ierr = MatSetSizes(B, bs[j] * An, bs[j] * An, PETSC_DECIDE, PETSC_DECIDE);CHKERRQ(ierr);
-      ierr = PetscMalloc1(Ai[An] * bs[j] * bs[j],&val);CHKERRQ(ierr);
+      ierr = PetscMalloc1(Ai[An] * bs[j] * bs[j], &val);CHKERRQ(ierr);
       for (i = 0; i < Ai[An]; ++i)
         for (k = 0; k < bs[j] * bs[j]; ++k)
           val[i * bs[j] * bs[j] + k] = Aa[i] * ptr[k];
@@ -121,7 +121,7 @@ int main(int argc, char** argv)
       char        *tmp;
       PetscInt    *ia_ptr, *ja_ptr, k;
       PetscScalar *a_ptr;
-#if defined(PETSC_HAVE_MKL)
+#if defined(PETSC_HAVE_MKL) && defined(PETSC_HAVE_MKL_SPARSE_OPTIMIZE)
       struct matrix_descr descr;
       sparse_matrix_t     spr;
       descr.type = SPARSE_MATRIX_TYPE_GENERAL;
@@ -161,8 +161,8 @@ int main(int argc, char** argv)
         ierr = PetscObjectTypeCompare((PetscObject)A, MATSEQAIJ, &flg);CHKERRQ(ierr);
         ierr = MatGetRowIJ(A, 0, PETSC_FALSE, flg ? PETSC_FALSE : PETSC_TRUE, &An, &Ai, &Aj, &done);CHKERRQ(ierr);
         if (!done) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Inconsistent sizes");
-        ierr = PetscMalloc1(An + 1,&ia_ptr);CHKERRQ(ierr);
-        ierr = PetscMalloc1(Ai[An],&ja_ptr);CHKERRQ(ierr);
+        ierr = PetscMalloc1(An + 1, &ia_ptr);CHKERRQ(ierr);
+        ierr = PetscMalloc1(Ai[An], &ja_ptr);CHKERRQ(ierr);
         if (flg) { /* SeqAIJ */
           for (k = 0; k < An + 1; ++k) ia_ptr[k] = Ai[k];
           for (k = 0; k < Ai[An]; ++k) ja_ptr[k] = Aj[k];
@@ -182,7 +182,7 @@ int main(int argc, char** argv)
               for (k = 0; k < Ai[An]; ++k) ja_ptr[k] = Aj[k] + 1; /* Fortran indexing to maximize cases covered by _mm routines */
               ierr = MatSeqSBAIJGetArray(A, &a_ptr);CHKERRQ(ierr);
               PetscStackCallMKLSparse(mkl_sparse_d_create_bsr, (&spr, SPARSE_INDEX_BASE_ONE, SPARSE_LAYOUT_COLUMN_MAJOR, An, An, bs[j], ia_ptr, ia_ptr + 1, ja_ptr, a_ptr));
-#if defined(PETSC_HAVE_MKL)
+#if defined(PETSC_HAVE_MKL) && defined(PETSC_HAVE_MKL_SPARSE_OPTIMIZE)
               descr.type = SPARSE_MATRIX_TYPE_SYMMETRIC;
               descr.mode = SPARSE_FILL_MODE_UPPER;
               descr.diag = SPARSE_DIAG_NON_UNIT;

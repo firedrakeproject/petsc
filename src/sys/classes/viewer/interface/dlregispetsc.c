@@ -19,7 +19,7 @@ PetscErrorCode  PetscSysFinalizePackage(void)
 
   PetscFunctionBegin;
   if (Petsc_Seq_keyval != MPI_KEYVAL_INVALID) {
-    ierr = MPI_Comm_free_keyval(&Petsc_Seq_keyval);CHKERRQ(ierr);
+    ierr = MPI_Comm_free_keyval(&Petsc_Seq_keyval);CHKERRMPI(ierr);
   }
   PetscSysPackageInitialized = PETSC_FALSE;
   PetscFunctionReturn(0);
@@ -79,13 +79,10 @@ PETSC_EXTERN PetscErrorCode PetscDLLibraryRegister_petscsnes(void);
 PETSC_EXTERN PetscErrorCode PetscDLLibraryRegister_petscts(void);
 #endif
 
-#if defined(PETSC_USE_SINGLE_LIBRARY)
-#else
-#endif
 /*
   PetscDLLibraryRegister - This function is called when the dynamic library it is in is opened.
 
-  This one registers all the draw and PetscViewer objects.
+  This one registers all the system level objects.
 
  */
 #if defined(PETSC_USE_SINGLE_LIBRARY)

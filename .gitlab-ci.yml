@@ -24,6 +24,7 @@ variables:
 #
 
 .test:
+  interruptible: true
   only:
     refs:
 #     Set with CI/CD Shedules - New Schedule
@@ -61,6 +62,7 @@ check-ci-settings:
     - echo ${CONFIG_OPTS}
   script:
     - printf "PATH:$PATH\n"
+    - printf "PYTHONPATH:$PYTHONPATH\n"
     - printf "PETSC_OPTIONS:$PETSC_OPTIONS\n"
     - if [ ! -z ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME+x} ]; then printf "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME\n" ;fi
     - ${PYTHON} ./configure --with-debugging=0 COPTFLAGS='-O -march=native' CXXOPTFLAGS='-O -march=native' FOPTFLAGS='-O -march=native' ${CONFIG_OPTS}
@@ -152,6 +154,7 @@ check-py-vermin:
   extends: .test
   script:
     - printf "PATH:$PATH\n"
+    - printf "PYTHONPATH:$PYTHONPATH\n"
     - printf "PETSC_OPTIONS:$PETSC_OPTIONS\n"
     - if [ ! -z ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME+x} ]; then printf "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME\n" ;fi
     - printf "./config/examples/${TEST_ARCH}.py\n"
@@ -272,7 +275,7 @@ check-py-vermin:
 #
 # The tags variable used in the tests below connects the particular test with the runners
 # listed on the left hand side of https://gitlab.com/petsc/petsc/-/settings/ci_cd.
-# For example the test linux-gcc-complex-opt  any runner that has the tag 'name:pj02'
+# For example the test linux-sycl-double  any runner that has the tag 'name:pj01'
 # (in a blue box beneath it)
 #
 
@@ -296,7 +299,7 @@ freebsd-c-single-opt:
 
 linux-cuda-double:
   extends:
-    - .stage-2
+    - .stage-3
     - .linux_test
   tags:
     - gpu:nvidia, os:linux, name:p1
@@ -321,14 +324,14 @@ linux-gcc-pkgs-opt:
   variables:
     TEST_ARCH: arch-ci-linux-gcc-pkgs-opt
 
-linux-gcc-complex-opt:
+linux-gcc-complex-opt-32bit:
   extends:
     - .stage-2
     - .linux_test
   tags:
     - linux-stage2
   variables:
-    TEST_ARCH: arch-ci-linux-gcc-complex-opt
+    TEST_ARCH: arch-ci-linux-gcc-complex-opt-32bit
 
 mswin-uni:
   extends:
@@ -389,15 +392,15 @@ freebsd-pkgs-opt:
   variables:
     TEST_ARCH: arch-ci-freebsd-pkgs-opt
 
-linux-hiphcc-double:
+linux-hip-double:
   extends:
     - .stage-3
     - .linux_test
   tags:
-    - os:linux, name:frog
+    - gpu:amd, os:linux, name:hip-txcorp
   variables:
+    PATH: /opt/rh/devtoolset-7/root/usr/bin:/opt/rocm/bin:/opt/rocm/llvm/bin:/usr/sbin:/usr/bin:/sbin:/bin
     TEST_ARCH: arch-ci-linux-hip-double
-    DISABLE_TESTS: 1
 
 linux-sycl-double:
   extends:
@@ -446,7 +449,7 @@ linux-cuda11-complex:
 
 linux-cuda-double-64idx:
   extends:
-    - .stage-3
+    - .stage-2
     - .linux_test
   tags:
     - gpu:nvidia, os:linux, name:p1
@@ -485,17 +488,6 @@ linux-viennacl:
     TEST_ARCH: arch-ci-linux-viennacl
     MAKE_CXXFLAGS: -Werror -Wno-ignored-attributes
     TEST_OPTS: -j1 query=requires queryval=viennacl
-
-linux-viennacl-cuda:
-  extends:
-    - .stage-3
-    - .linux_test
-  tags:
-    - gpu:nvidia, os:linux
-  variables:
-    PETSC_OPTIONS: -check_pointer_intensity 0 -error_output_stdout -nox -nox_warning -malloc_dump -use_gpu_aware_mpi 0
-    TEST_ARCH: arch-ci-linux-viennacl-cuda
-    MAKE_CXXFLAGS: -Werror -Wno-ignored-attributes -Wno-parentheses
 
 linux-without-fc:
   extends:
@@ -653,6 +645,7 @@ linux-pgi:
     - gce-nfs, linux-mcpu
   variables:
     TEST_ARCH: arch-ci-linux-pgi
+    LOAD_MODULES: hpc_sdk/20.9
 
 linux-nagfor:
   extends:
@@ -892,6 +885,44 @@ analyze-pipeline:
     paths:
     - arch-ci-analyze-pipeline/*
     expire_in: 4 days
+
+.docs-review-base:
+  extends: .test
+  image: python:3.9
+  only:
+    variables:
+      - $CI_MERGE_REQUEST_LABELS =~ /^doc|,doc/
+  before_script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends librsvg2-bin
+    - apt-get install -y flex
+    - pip install -r src/docs/sphinx_docs/requirements.txt
+  script:
+    - cd src/docs/sphinx_docs && sphinx-build -T -E -b html -D language=en -j auto . ../../../public
+  artifacts:
+    paths:
+      - public
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: https://$CI_PROJECT_NAMESPACE.gitlab.io/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
+
+docs-only-review:
+  stage: .pre
+  extends: .docs-review-base
+  only:
+    variables:
+      - $CI_MERGE_REQUEST_LABELS =~ /(^|,)docs-only($|,)/
+
+docs-review:
+  stage: stage-2
+  extends: .docs-review-base
+  only:
+    variables:
+      - $CI_MERGE_REQUEST_LABELS =~ /(^|,)docs($|,)/
+  except:
+    variables:
+      - $CI_MERGE_REQUEST_LABELS =~ /(^|,)docs-only($|,)/
+
 #
 #
 # The following tests are experimental; more tests by users at other sites may be added below this.  Experimental test

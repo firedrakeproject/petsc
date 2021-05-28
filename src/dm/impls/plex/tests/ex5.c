@@ -337,7 +337,7 @@ static PetscErrorCode CreateSimplex_2D(MPI_Comm comm, PetscInt testNum, DM *dm)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
   if (!rank) {
     switch (testNum) {
     case 0:
@@ -397,7 +397,7 @@ static PetscErrorCode CreateSimplex_3D(MPI_Comm comm, AppCtx *user, DM dm)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
   if (!rank) {
     switch (testNum) {
     case 0:
@@ -458,7 +458,7 @@ static PetscErrorCode CreateQuad_2D(MPI_Comm comm, PetscInt testNum, DM *dm)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
   if (!rank) {
     switch (testNum) {
     case 0:
@@ -527,7 +527,7 @@ static PetscErrorCode CreateHex_3D(MPI_Comm comm, PetscInt testNum, DM *dm)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
   if (!rank) {
     switch (testNum) {
     case 0:
@@ -668,8 +668,8 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_rank(comm, &rank);CHKERRQ(ierr);
-  ierr = MPI_Comm_size(comm, &size);CHKERRQ(ierr);
+  ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
+  ierr = MPI_Comm_size(comm, &size);CHKERRMPI(ierr);
   ierr = DMCreate(comm, dm);CHKERRQ(ierr);
   ierr = DMSetType(*dm, DMPLEX);CHKERRQ(ierr);
   ierr = DMSetDimension(*dm, dim);CHKERRQ(ierr);
@@ -929,14 +929,15 @@ static void g0_bd_lu(PetscInt dim, PetscInt Nf, PetscInt NfAux,
 
 static PetscErrorCode TestAssembly(DM dm, AppCtx *user)
 {
-  Mat            J;
-  Vec            locX, locF;
-  PetscDS        probh;
-  DMLabel        fault, material;
-  IS             cohesiveCells;
+  Mat              J;
+  Vec              locX, locF;
+  PetscDS          probh;
+  DMLabel          fault, material;
+  IS               cohesiveCells;
+  PetscHashFormKey keys[3];
   PetscErrorCode (*initialGuess[2])(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar u[], void *ctx);
-  PetscInt       dim, Nf, cMax, cEnd, id;
-  PetscErrorCode ierr;
+  PetscInt         dim, Nf, cMax, cEnd, id;
+  PetscErrorCode   ierr;
 
   PetscFunctionBegin;
   ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
@@ -974,8 +975,17 @@ static PetscErrorCode TestAssembly(DM dm, AppCtx *user)
   ierr = PetscDSSetBdJacobian(probh, 0, 1, g0_bd_ul, NULL, NULL, NULL);CHKERRQ(ierr);
   if (Nf > 1) {ierr = PetscDSSetBdJacobian(probh, 1, 0, g0_bd_lu, NULL, NULL, NULL);CHKERRQ(ierr);}
 
+  keys[0].label = material;
+  keys[0].value = 1;
+  keys[0].field = 0;
+  keys[1].label = material;
+  keys[1].value = 2;
+  keys[1].field = 0;
+  keys[2].label = fault;
+  keys[2].value = 1;
+  keys[2].field = 0;
   ierr = VecSet(locF, 0.);CHKERRQ(ierr);
-  ierr = DMPlexComputeResidual_Hybrid_Internal(dm, cohesiveCells, 0.0, locX, NULL, 0.0, locF, user);CHKERRQ(ierr);
+  ierr = DMPlexComputeResidual_Hybrid_Internal(dm, keys, cohesiveCells, 0.0, locX, NULL, 0.0, locF, user);CHKERRQ(ierr);
   ierr = VecViewFromOptions(locF, NULL, "-local_residual_view");CHKERRQ(ierr);
   ierr = MatZeroEntries(J);CHKERRQ(ierr);
   ierr = DMPlexComputeJacobian_Hybrid_Internal(dm, cohesiveCells, 0.0, 0.0, locX, NULL, J, J, user);CHKERRQ(ierr);

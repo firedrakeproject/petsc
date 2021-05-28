@@ -74,7 +74,6 @@ typedef const char* MatType;
 #define MATSBAIJ           "sbaij"
 #define MATSEQSBAIJ        "seqsbaij"
 #define MATMPISBAIJ        "mpisbaij"
-#define MATDAAD            "daad"
 #define MATMFFD            "mffd"
 #define MATNORMAL          "normal"
 #define MATNORMALHERMITIAN "normalh"
@@ -118,7 +117,7 @@ typedef const char* MatType;
 
    Level: beginner
 
-   Notes:  MATSOLVERUMFPACK, MATSOLVERCHOLMOD, MATSOLVERKLU form the SuiteSparse package for which you can use --download-suitesparse
+   Notes:  MATSOLVERUMFPACK, MATSOLVERCHOLMOD, MATSOLVERKLU, MATSOLVERSPQR form the SuiteSparse package for which you can use --download-suitesparse
 
 .seealso: MatGetFactor(), PCFactorSetMatSolverType(), PCFactorGetMatSolverType()
 J*/
@@ -143,6 +142,8 @@ typedef const char* MatSolverType;
 #define MATSOLVERBAS              "bas"
 #define MATSOLVERCUSPARSE         "cusparse"
 #define MATSOLVERCUDA             "cuda"
+#define MATSOLVERKOKKOS           "kokkos"
+#define MATSOLVERKOKKOSDEVICE     "kokkosdevice"
 
 /*E
     MatFactorType - indicates what type of factorization is requested
@@ -153,7 +154,7 @@ typedef const char* MatSolverType;
 
 .seealso: MatSolverType, MatGetFactor(), MatGetFactorAvailable(), MatSolverTypeRegister()
 E*/
-typedef enum {MAT_FACTOR_NONE, MAT_FACTOR_LU, MAT_FACTOR_CHOLESKY, MAT_FACTOR_ILU, MAT_FACTOR_ICC,MAT_FACTOR_ILUDT} MatFactorType;
+typedef enum {MAT_FACTOR_NONE, MAT_FACTOR_LU, MAT_FACTOR_CHOLESKY, MAT_FACTOR_ILU, MAT_FACTOR_ICC, MAT_FACTOR_ILUDT, MAT_FACTOR_QR, MAT_FACTOR_NUM_TYPES} MatFactorType;
 PETSC_EXTERN const char *const MatFactorTypes[];
 
 PETSC_EXTERN PetscErrorCode MatGetFactor(Mat,MatSolverType,MatFactorType,Mat*);
@@ -266,11 +267,12 @@ PETSC_EXTERN PetscFunctionList MatPartitioningList;
 
     Level: beginner
 
-   Any additions/changes here MUST also be made in include/petsc/finclude/petscmat.h
+   Any additions/changes here MUST also be made in src/mat/f90-mod/petscmat.h
 
 .seealso: MatCopy(), MatAXPY()
 E*/
-typedef enum {DIFFERENT_NONZERO_PATTERN,SUBSET_NONZERO_PATTERN,SAME_NONZERO_PATTERN} MatStructure;
+typedef enum {DIFFERENT_NONZERO_PATTERN,SUBSET_NONZERO_PATTERN,SAME_NONZERO_PATTERN,UNKNOWN_NONZERO_PATTERN} MatStructure;
+PETSC_EXTERN const char *const MatStructures[];
 
 #if defined PETSC_HAVE_MKL_SPARSE
 PETSC_EXTERN PetscErrorCode MatCreateSeqAIJMKL(MPI_Comm,PetscInt,PetscInt,PetscInt,const PetscInt[],Mat*);
@@ -288,7 +290,7 @@ PETSC_EXTERN PetscErrorCode MatCreateSeqDense(MPI_Comm,PetscInt,PetscInt,PetscSc
 PETSC_EXTERN PetscErrorCode MatCreateDense(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscScalar[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateSeqAIJ(MPI_Comm,PetscInt,PetscInt,PetscInt,const PetscInt[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateAIJ(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],PetscInt,const PetscInt[],Mat*);
-PETSC_EXTERN PetscErrorCode MatCreateMPIAIJWithArrays(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[],Mat *);
+PETSC_EXTERN PetscErrorCode MatCreateMPIAIJWithArrays(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[],Mat*);
 PETSC_EXTERN PetscErrorCode MatUpdateMPIAIJWithArrays(Mat,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[]);
 PETSC_EXTERN PetscErrorCode MatCreateMPIAIJWithSplitArrays(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscInt[],PetscInt[],PetscScalar[],PetscInt[],PetscInt[],PetscScalar[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateMPIAIJWithSeqAIJ(MPI_Comm,Mat,Mat,const PetscInt[],Mat*);
@@ -296,6 +298,9 @@ PETSC_EXTERN PetscErrorCode MatCreateMPIAIJWithSeqAIJ(MPI_Comm,Mat,Mat,const Pet
 PETSC_EXTERN PetscErrorCode MatCreateSeqBAIJ(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateBAIJ(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],PetscInt,const PetscInt[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateMPIBAIJWithArrays(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[],Mat*);
+
+PETSC_EXTERN PetscErrorCode MatSetPreallocationCOO(Mat,PetscInt,const PetscInt[],const PetscInt[]);
+PETSC_EXTERN PetscErrorCode MatSetValuesCOO(Mat,const PetscScalar[],InsertMode);
 
 PETSC_EXTERN PetscErrorCode MatCreateMPIAdj(MPI_Comm,PetscInt,PetscInt,PetscInt[],PetscInt[],PetscInt[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateSeqSBAIJ(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],Mat*);
@@ -429,7 +434,7 @@ typedef enum {MAT_OPTION_MIN = -3,
               MAT_ROW_ORIENTED = -1,
               MAT_SYMMETRIC = 1,
               MAT_STRUCTURALLY_SYMMETRIC = 2,
-              MAT_NEW_DIAGONALS = 3,
+              MAT_FORCE_DIAGONAL_ENTRIES = 3,
               MAT_IGNORE_OFF_PROC_ENTRIES = 4,
               MAT_USE_HASH_TABLE = 5,
               MAT_KEEP_NONZERO_PATTERN = 6,
@@ -450,7 +455,8 @@ typedef enum {MAT_OPTION_MIN = -3,
               MAT_SUBMAT_SINGLEIS = 21,
               MAT_STRUCTURE_ONLY = 22,
               MAT_SORTED_FULL = 23,
-              MAT_OPTION_MAX = 24} MatOption;
+              MAT_FORM_EXPLICIT_TRANSPOSE = 24,
+              MAT_OPTION_MAX = 25} MatOption;
 
 PETSC_EXTERN const char *const *MatOptions;
 PETSC_EXTERN PetscErrorCode MatSetOption(Mat,MatOption,PetscBool);
@@ -657,6 +663,7 @@ PETSC_EXTERN PetscErrorCode MatCreateMPIAIJSumSeqAIJSymbolic(MPI_Comm,Mat,PetscI
 PETSC_EXTERN PetscErrorCode MatCreateMPIAIJSumSeqAIJNumeric(Mat,Mat);
 PETSC_EXTERN PetscErrorCode MatMPIAIJGetLocalMat(Mat,MatReuse,Mat*);
 PETSC_EXTERN PetscErrorCode MatMPIAIJGetLocalMatCondensed(Mat,MatReuse,IS*,IS*,Mat*);
+PETSC_EXTERN PetscErrorCode MatMPIAIJGetLocalMatMerge(Mat,MatReuse,IS*,Mat*);
 PETSC_EXTERN PetscErrorCode MatGetBrowsOfAcols(Mat,Mat,MatReuse,IS*,IS*,Mat*);
 PETSC_EXTERN PetscErrorCode MatGetGhosts(Mat, PetscInt *,const PetscInt *[]);
 
@@ -699,6 +706,9 @@ PETSC_EXTERN PetscErrorCode MatStashGetInfo(Mat,PetscInt*,PetscInt*,PetscInt*,Pe
 PETSC_EXTERN PetscErrorCode MatInterpolate(Mat,Vec,Vec);
 PETSC_EXTERN PetscErrorCode MatInterpolateAdd(Mat,Vec,Vec,Vec);
 PETSC_EXTERN PetscErrorCode MatRestrict(Mat,Vec,Vec);
+PETSC_EXTERN PetscErrorCode MatMatInterpolate(Mat,Mat,Mat*);
+PETSC_EXTERN PetscErrorCode MatMatInterpolateAdd(Mat,Mat,Mat,Mat*);
+PETSC_EXTERN PetscErrorCode MatMatRestrict(Mat,Mat,Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateVecs(Mat,Vec*,Vec*);
 PETSC_DEPRECATED_FUNCTION("Use MatCreateVecs() (since version 3.6)") PETSC_STATIC_INLINE PetscErrorCode MatGetVecs(Mat mat,Vec *x,Vec *y) {return MatCreateVecs(mat,x,y);}
 PETSC_EXTERN PetscErrorCode MatCreateRedundantMatrix(Mat,PetscInt,MPI_Comm,MatReuse,Mat*);
@@ -773,8 +783,8 @@ do { \
   PetscErrorCode _4_ierr; PetscInt __nrows = (nrows),__ncols = (ncols),__rstart,__start,__end; \
   _4_ierr = PetscCalloc2((size_t)__nrows,&dnz,(size_t)__nrows,&onz);CHKERRQ(_4_ierr); \
   __start = 0; __end = __start;                                         \
-  _4_ierr = MPI_Scan(&__ncols,&__end,1,MPIU_INT,MPI_SUM,comm);CHKERRQ(_4_ierr); __start = __end - __ncols;\
-  _4_ierr = MPI_Scan(&__nrows,&__rstart,1,MPIU_INT,MPI_SUM,comm);CHKERRQ(_4_ierr); __rstart = __rstart - __nrows; \
+  _4_ierr = MPI_Scan(&__ncols,&__end,1,MPIU_INT,MPI_SUM,comm);CHKERRMPI(_4_ierr); __start = __end - __ncols;\
+  _4_ierr = MPI_Scan(&__nrows,&__rstart,1,MPIU_INT,MPI_SUM,comm);CHKERRMPI(_4_ierr); __rstart = __rstart - __nrows; \
   do { } while (0)
 
 /*MC
@@ -1121,8 +1131,6 @@ PETSC_EXTERN PetscErrorCode MatBlockMatSetPreallocation(Mat,PetscInt,PetscInt,co
 PETSC_EXTERN PetscErrorCode MatStoreValues(Mat);
 PETSC_EXTERN PetscErrorCode MatRetrieveValues(Mat);
 
-PETSC_EXTERN PetscErrorCode MatDAADSetCtx(Mat,void*);
-
 PETSC_EXTERN PetscErrorCode MatFindNonzeroRows(Mat,IS*);
 PETSC_EXTERN PetscErrorCode MatFindZeroRows(Mat,IS*);
 /*
@@ -1231,6 +1239,9 @@ PETSC_EXTERN PetscErrorCode MatILUFactorSymbolic(Mat,Mat,IS,IS,const MatFactorIn
 PETSC_EXTERN PetscErrorCode MatICCFactorSymbolic(Mat,Mat,IS,const MatFactorInfo*);
 PETSC_EXTERN PetscErrorCode MatICCFactor(Mat,IS,const MatFactorInfo*);
 PETSC_EXTERN PetscErrorCode MatLUFactorNumeric(Mat,Mat,const MatFactorInfo*);
+PETSC_EXTERN PetscErrorCode MatQRFactor(Mat,IS,const MatFactorInfo*);
+PETSC_EXTERN PetscErrorCode MatQRFactorSymbolic(Mat,Mat,IS,const MatFactorInfo*);
+PETSC_EXTERN PetscErrorCode MatQRFactorNumeric(Mat,Mat,const MatFactorInfo*);
 PETSC_EXTERN PetscErrorCode MatGetInertia(Mat,PetscInt*,PetscInt*,PetscInt*);
 PETSC_EXTERN PetscErrorCode MatSolve(Mat,Vec,Vec);
 PETSC_EXTERN PetscErrorCode MatForwardSolve(Mat,Vec,Vec);
@@ -1719,7 +1730,6 @@ PETSC_EXTERN PetscErrorCode MatNullSpaceCreateRigidBody(Vec,MatNullSpace*);
 PETSC_EXTERN PetscErrorCode MatReorderingSeqSBAIJ(Mat,IS);
 PETSC_EXTERN PetscErrorCode MatMPISBAIJSetHashTableFactor(Mat,PetscReal);
 PETSC_EXTERN PetscErrorCode MatSeqSBAIJSetColumnIndices(Mat,PetscInt *);
-PETSC_EXTERN PetscErrorCode MatSeqBAIJInvertBlockDiagonal(Mat);
 
 PETSC_EXTERN PetscErrorCode MatCreateMAIJ(Mat,PetscInt,Mat*);
 PETSC_EXTERN PetscErrorCode MatMAIJRedimension(Mat,PetscInt,Mat*);
@@ -1881,6 +1891,14 @@ PETSC_EXTERN PetscErrorCode MatSTRUMPACKSetHSSLeafSize(Mat,PetscInt);
 PETSC_EXTERN PetscErrorCode MatBindToCPU(Mat,PetscBool);
 PETSC_DEPRECATED_FUNCTION("Use MatBindToCPU (since v3.13)") PETSC_STATIC_INLINE PetscErrorCode MatPinToCPU(Mat A,PetscBool flg) {return MatBindToCPU(A,flg);}
 
+typedef struct _p_SplitCSRMat PetscSplitCSRDataStructure;
+
+#ifdef PETSC_HAVE_KOKKOS_KERNELS
+PETSC_EXTERN PetscErrorCode MatKokkosGetDeviceMatWrite(Mat,PetscSplitCSRDataStructure**);
+PETSC_EXTERN PetscErrorCode MatSeqAIJKokkosSetDeviceMat(Mat, PetscSplitCSRDataStructure *);
+PETSC_EXTERN PetscErrorCode MatSeqAIJKokkosGetDeviceMat(Mat, PetscSplitCSRDataStructure **);
+#endif
+
 #ifdef PETSC_HAVE_CUDA
 /*E
     MatCUSPARSEStorageFormat - indicates the storage format for CUSPARSE (GPU)
@@ -1924,9 +1942,7 @@ typedef enum {MAT_CUSPARSE_MULT_DIAG, MAT_CUSPARSE_MULT_OFFDIAG, MAT_CUSPARSE_MU
 PETSC_EXTERN PetscErrorCode MatCreateSeqAIJCUSPARSE(MPI_Comm,PetscInt,PetscInt,PetscInt,const PetscInt[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCreateAIJCUSPARSE(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscInt,const PetscInt[],PetscInt,const PetscInt[],Mat*);
 PETSC_EXTERN PetscErrorCode MatCUSPARSESetFormat(Mat,MatCUSPARSEFormatOperation,MatCUSPARSEStorageFormat);
-PETSC_EXTERN PetscErrorCode MatSeqAIJCUSPARSESetGenerateTranspose(Mat,PetscBool);
 
-typedef struct _p_SplitCSRMat PetscSplitCSRDataStructure;
 PETSC_EXTERN PetscErrorCode MatCUSPARSEGetDeviceMatWrite(Mat,PetscSplitCSRDataStructure**);
 
 PETSC_EXTERN PetscErrorCode MatCreateDenseCUDA(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscScalar[],Mat*);
@@ -1984,4 +2000,5 @@ PETSC_EXTERN PetscErrorCode MatPreallocatorPreallocate(Mat,PetscBool,Mat);
 
 PETSC_INTERN PetscErrorCode MatHeaderMerge(Mat,Mat*);
 PETSC_EXTERN PetscErrorCode MatHeaderReplace(Mat,Mat*);
+
 #endif

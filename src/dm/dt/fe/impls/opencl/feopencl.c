@@ -102,7 +102,7 @@ static PetscErrorCode PetscFEOpenCLGenerateIntegrationCode(PetscFE fem, char **s
   }
   ierr = PetscSNPrintfCount(string_tail, end_of_buffer - string_tail, "};\n", &count);CHKSTRINGERROR("Message to short");
   /* Basis Functions */
-  ierr = PetscFEGetCellTabulation(fem, &T);CHKERRQ(ierr);
+  ierr = PetscFEGetCellTabulation(fem, 1, &T);CHKERRQ(ierr);
   ierr = PetscSNPrintfCount(string_tail, end_of_buffer - string_tail,
 "  /* Nodal basis function evaluations\n"
 "    - basis component is fastest varying, the basis function, then point */\n"
@@ -488,9 +488,9 @@ static PetscErrorCode PetscFEOpenCLCalculateGrid(PetscFE fem, PetscInt N, PetscI
   *y = 1;
   for (*x = (size_t) (PetscSqrtReal(Nblocks) + 0.5); *x > 0; --*x) {
     *y = Nblocks / *x;
-    if (*x * *y == Nblocks) break;
+    if (*x * *y == (size_t)Nblocks) break;
   }
-  if (*x * *y != Nblocks) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Could not find partition for %d with block size %d", N, blockSize);
+  if (*x * *y != (size_t)Nblocks) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Could not find partition for %D with block size %D", N, blockSize);
   PetscFunctionReturn(0);
 }
 
@@ -513,7 +513,7 @@ static PetscErrorCode PetscFEOpenCLLogResidual(PetscFE fem, PetscLogDouble time,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEIntegrateResidual_OpenCL(PetscDS prob, PetscInt field, PetscInt Ne, PetscFEGeom *cgeom,
+static PetscErrorCode PetscFEIntegrateResidual_OpenCL(PetscDS prob, PetscHashFormKey key, PetscInt Ne, PetscFEGeom *cgeom,
                                                       const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS probAux, const PetscScalar coefficientsAux[], PetscReal t, PetscScalar elemVec[])
 {
   /* Nbc = batchSize */
@@ -532,6 +532,7 @@ static PetscErrorCode PetscFEIntegrateResidual_OpenCL(PetscDS prob, PetscInt fie
   PetscInt          N_bl;   /* The number of blocks */
   PetscInt          N_bc;   /* The batch size, N_bl*N_q*N_b */
   PetscInt          N_cb;   /* The number of batches */
+  const PetscInt    field = key.field;
   PetscInt          numFlops, f0Flops = 0, f1Flops = 0;
   PetscBool         useAux      = probAux ? PETSC_TRUE : PETSC_FALSE;
   PetscBool         useField    = PETSC_FALSE;
@@ -573,7 +574,7 @@ static PetscErrorCode PetscFEIntegrateResidual_OpenCL(PetscDS prob, PetscInt fie
   if (N_bc*N_comp != N_t) SETERRQ3(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Number of threads %d should be %d * %d", N_t, N_bc, N_comp);
   /* Calculate layout */
   if (Ne % (N_cb*N_bc)) { /* Remainder cells */
-    ierr = PetscFEIntegrateResidual_Basic(prob, field, Ne, cgeom, coefficients, coefficients_t, probAux, coefficientsAux, t, elemVec);CHKERRQ(ierr);
+    ierr = PetscFEIntegrateResidual_Basic(prob, key, Ne, cgeom, coefficients, coefficients_t, probAux, coefficientsAux, t, elemVec);CHKERRQ(ierr);
     PetscFunctionReturn(0);
   }
   ierr = PetscFEOpenCLCalculateGrid(fem, Ne, N_cb*N_bc, &x, &y, &z);CHKERRQ(ierr);
@@ -772,8 +773,8 @@ static PetscErrorCode PetscFEIntegrateResidual_OpenCL(PetscDS prob, PetscInt fie
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode PetscFESetUp_Basic(PetscFE);
-PETSC_EXTERN PetscErrorCode PetscFECreateTabulation_Basic(PetscFE, PetscInt, const PetscReal [], PetscInt, PetscTabulation);
+PETSC_INTERN PetscErrorCode PetscFESetUp_Basic(PetscFE);
+PETSC_INTERN PetscErrorCode PetscFECreateTabulation_Basic(PetscFE, PetscInt, const PetscReal [], PetscInt, PetscTabulation);
 
 static PetscErrorCode PetscFEInitialize_OpenCL(PetscFE fem)
 {

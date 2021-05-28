@@ -6,7 +6,7 @@ const char       *MatOptions_Shifted[] = {"UNUSED_NONZERO_LOCATION_ERR",
                                   "NOT_A_VALID_OPTION",
                                   "SYMMETRIC",
                                   "STRUCTURALLY_SYMMETRIC",
-                                  "NEW_DIAGONALS",
+                                  "FORCE_DIAGONAL_ENTRIES",
                                   "IGNORE_OFF_PROC_ENTRIES",
                                   "USE_HASH_TABLE",
                                   "KEEP_NONZERO_PATTERN",
@@ -23,13 +23,15 @@ const char       *MatOptions_Shifted[] = {"UNUSED_NONZERO_LOCATION_ERR",
                                   "NO_OFF_PROC_ENTRIES",
                                   "NEW_NONZERO_LOCATIONS",
                                   "NEW_NONZERO_ALLOCATION_ERR",
-                                  "MAT_SUBSET_OFF_PROC_ENTRIES",
-                                  "MAT_SUBMAT_SINGLEIS",
-                                  "MAT_STRUCTURE_ONLY",
-                                  "MAT_SORTED_FULL",
+                                  "SUBSET_OFF_PROC_ENTRIES",
+                                  "SUBMAT_SINGLEIS",
+                                  "STRUCTURE_ONLY",
+                                  "SORTED_FULL",
+                                  "FORM_EXPLICIT_TRANSPOSE",
                                   "MatOption","MAT_",NULL};
 const char *const* MatOptions = MatOptions_Shifted+2;
 const char *const MatFactorShiftTypes[] = {"NONE","NONZERO","POSITIVE_DEFINITE","INBLOCKS","MatFactorShiftType","PC_FACTOR_",NULL};
+const char *const MatStructures[] = {"different nonzero pattern","subset nonzero pattern","same nonzero pattern","unknown nonzero pattern","MatStructure","MAT_STRUCTURE_",NULL};
 const char *const MatFactorShiftTypesDetail[] = {NULL,"diagonal shift to prevent zero pivot","Manteuffel shift","diagonal shift on blocks to prevent zero pivot"};
 const char *const MPPTScotchStrategyTypes[] = {"DEFAULT","QUALITY","SPEED","BALANCE","SAFETY","SCALABILITY","MPPTScotchStrategyType","MP_PTSCOTCH_",NULL};
 const char *const MPChacoGlobalTypes[] = {"","MULTILEVEL","SPECTRAL","","LINEAR","RANDOM","SCATTERED","MPChacoGlobalType","MP_CHACO_",NULL};
@@ -85,6 +87,9 @@ PETSC_EXTERN PetscErrorCode MatSolverTypeRegister_MUMPS(void);
 #endif
 #if defined(PETSC_HAVE_CUDA)
 PETSC_EXTERN PetscErrorCode MatSolverTypeRegister_CUSPARSE(void);
+#endif
+#if defined(PETSC_HAVE_KOKKOS_KERNELS)
+PETSC_EXTERN PetscErrorCode MatSolverTypeRegister_KOKKOS(void);
 #endif
 #if defined(PETSC_HAVE_VIENNACL)
 PETSC_EXTERN PetscErrorCode MatSolverTypeRegister_ViennaCL(void);
@@ -265,6 +270,8 @@ PetscErrorCode  MatInitializePackage(void)
   ierr = PetscLogEventRegister("MatGetSymTrans",MAT_CLASSID,&MAT_Getsymtranspose);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MatGetSymTransR",MAT_CLASSID,&MAT_Getsymtransreduced);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MatCUSPARSCopyTo",MAT_CLASSID,&MAT_CUSPARSECopyToGPU);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("MatCUSPARSCopyFr",MAT_CLASSID,&MAT_CUSPARSECopyFromGPU);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("MatCUSPARSSolAnl",MAT_CLASSID,&MAT_CUSPARSESolveAnalysis);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MatCUSPARSGenT",MAT_CLASSID,&MAT_CUSPARSEGenerateTranspose);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MatVCLCopyTo",  MAT_CLASSID,&MAT_ViennaCLCopyToGPU);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MatDenseCopyTo",MAT_CLASSID,&MAT_DenseCopyToGPU);CHKERRQ(ierr);
@@ -277,6 +284,9 @@ PetscErrorCode  MatInitializePackage(void)
   ierr = PetscLogEventRegister("MatColoringIS",MAT_COLORING_CLASSID,&MATCOLORING_ISCreate);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MatColoringSetUp",MAT_COLORING_CLASSID,&MATCOLORING_SetUp);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("MatColoringWeights",MAT_COLORING_CLASSID,&MATCOLORING_Weights);CHKERRQ(ierr);
+
+  ierr = PetscLogEventRegister("MatSetPreallCOO",MAT_CLASSID,&MAT_PreallCOO);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("MatSetValuesCOO",MAT_CLASSID,&MAT_SetVCOO);CHKERRQ(ierr);
 
   /* Mark non-collective events */
   ierr = PetscLogEventSetCollective(MAT_SetValues,      PETSC_FALSE);CHKERRQ(ierr);
@@ -359,6 +369,7 @@ PetscErrorCode  MatInitializePackage(void)
   ierr = MatSolverTypeRegister(MATSOLVERPETSC, MATSEQDENSE,      MAT_FACTOR_LU,MatGetFactor_seqdense_petsc);CHKERRQ(ierr);
   ierr = MatSolverTypeRegister(MATSOLVERPETSC, MATSEQDENSE,      MAT_FACTOR_ILU,MatGetFactor_seqdense_petsc);CHKERRQ(ierr);
   ierr = MatSolverTypeRegister(MATSOLVERPETSC, MATSEQDENSE,      MAT_FACTOR_CHOLESKY,MatGetFactor_seqdense_petsc);CHKERRQ(ierr);
+  ierr = MatSolverTypeRegister(MATSOLVERPETSC, MATSEQDENSE,      MAT_FACTOR_QR,MatGetFactor_seqdense_petsc);CHKERRQ(ierr);
 #if defined(PETSC_HAVE_CUDA)
   ierr = MatSolverTypeRegister(MATSOLVERCUDA, MATSEQDENSE,       MAT_FACTOR_LU,MatGetFactor_seqdense_cuda);CHKERRQ(ierr);
   ierr = MatSolverTypeRegister(MATSOLVERCUDA, MATSEQDENSE,       MAT_FACTOR_CHOLESKY,MatGetFactor_seqdense_cuda);CHKERRQ(ierr);
@@ -377,6 +388,9 @@ PetscErrorCode  MatInitializePackage(void)
 #endif
 #if defined(PETSC_HAVE_CUDA)
   ierr = MatSolverTypeRegister_CUSPARSE();CHKERRQ(ierr);
+#endif
+#if defined(PETSC_HAVE_KOKKOS_KERNELS)
+  ierr = MatSolverTypeRegister_KOKKOS();CHKERRQ(ierr);
 #endif
 #if defined(PETSC_HAVE_VIENNACL)
   ierr = MatSolverTypeRegister_ViennaCL();CHKERRQ(ierr);

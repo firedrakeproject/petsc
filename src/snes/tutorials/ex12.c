@@ -889,8 +889,8 @@ static PetscErrorCode SetupDiscretization(DM dm, AppCtx *user)
 
 #include "petsc/private/petscimpl.h"
 
-/*@C
-  KSPMonitorError - Outputs the error at each iteration of an iterative solver.
+/*
+  MonitorError - Outputs the error at each iteration of an iterative solver.
 
   Collective on KSP
 
@@ -902,9 +902,9 @@ static PetscErrorCode SetupDiscretization(DM dm, AppCtx *user)
 
   Level: intermediate
 
-.seealso: KSPMonitorSet(), KSPMonitorTrueResidualNorm(), KSPMonitorDefault()
-@*/
-static PetscErrorCode KSPMonitorError(KSP ksp, PetscInt its, PetscReal rnorm, void *ctx)
+.seealso: KSPMonitorSet(), KSPMonitorTrueResidual(), KSPMonitorResidual()
+*/
+static PetscErrorCode MonitorError(KSP ksp, PetscInt its, PetscReal rnorm, void *ctx)
 {
   AppCtx        *user = (AppCtx *) ctx;
   DM             dm;
@@ -1129,7 +1129,7 @@ int main(int argc, char **argv)
         ierr = PCMGGetLevels(pc, &numLevels);CHKERRQ(ierr);
         for (l = 0; l < numLevels; ++l) {
           ierr = PCMGGetSmootherDown(pc, l, &ksp);CHKERRQ(ierr);
-          ierr = KSPMonitorSet(ksp, KSPMonitorError, &user, NULL);CHKERRQ(ierr);
+          ierr = KSPMonitorSet(ksp, MonitorError, &user, NULL);CHKERRQ(ierr);
         }
       }
     }
@@ -1598,25 +1598,10 @@ int main(int argc, char **argv)
 
   # Full solve simplex: Convergence
   test:
-    suffix: tet_conv_p1_r0
+    suffix: 3d_p1_conv
     requires: ctetgen
-    args: -run_type full -dim 3 -dm_refine 0 -bc_type dirichlet -interpolate 1 -petscspace_degree 1 -dm_view -snes_converged_reason ::ascii_info_detail -pc_type lu -cells 1,1,1
-  test:
-    suffix: tet_conv_p1_r2
-    requires: ctetgen
-    args: -run_type full -dim 3 -dm_refine 2 -bc_type dirichlet -interpolate 1 -petscspace_degree 1 -dm_view -snes_converged_reason ::ascii_info_detail -pc_type lu -cells 1,1,1
-  test:
-    suffix: tet_conv_p1_r3
-    requires: ctetgen
-    args: -run_type full -dim 3 -dm_refine 3 -bc_type dirichlet -interpolate 1 -petscspace_degree 1 -dm_view -snes_converged_reason ::ascii_info_detail -pc_type lu -cells 1,1,1
-  test:
-    suffix: tet_conv_p2_r0
-    requires: ctetgen
-    args: -run_type full -dim 3 -dm_refine 0 -bc_type dirichlet -interpolate 1 -petscspace_degree 2 -dm_view -snes_converged_reason ::ascii_info_detail -pc_type lu -cells 1,1,1
-  test:
-    suffix: tet_conv_p2_r2
-    requires: ctetgen
-    args: -run_type full -dim 3 -dm_refine 2 -bc_type dirichlet -interpolate 1 -petscspace_degree 2 -dm_view -snes_converged_reason ::ascii_info_detail -pc_type lu -cells 1,1,1
+    args: -run_type full -dim 3 -cells 1,1,1 -dm_refine 1 -bc_type dirichlet -interpolate 1 -petscspace_degree 1 \
+      -snes_convergence_estimate -convest_num_refine 1 -pc_type lu
 
   # Full solve simplex: PCBDDC
   test:
@@ -1942,7 +1927,7 @@ int main(int argc, char **argv)
   # PCHPDDM tests
   testset:
     nsize: 4
-    requires: hpddm slepc !single
+    requires: hpddm slepc !single define(PETSC_HAVE_DYNAMIC_LIBRARIES) define(PETSC_USE_SHARED_LIBRARIES)
     args: -run_type test -run_test_check_ksp -quiet -petscspace_degree 1 -interpolate 1 -petscpartitioner_type simple -bc_type none -simplex 0 -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 2 -pc_hpddm_coarse_p 1 -pc_hpddm_coarse_pc_type svd -ksp_rtol 1.e-10 -pc_hpddm_levels_1_st_pc_factor_shift_type INBLOCKS -ksp_converged_reason
     test:
       suffix: quad_singular_hpddm
@@ -1957,7 +1942,7 @@ int main(int argc, char **argv)
       args: -dm_plex_convert_type p4est -dm_forest_minimum_refinement 1 -dm_forest_initial_refinement 1 -dm_forest_maximum_refinement 3 -dm_p4est_refine_pattern hash
   testset:
     nsize: 4
-    requires: hpddm slepc triangle !single
+    requires: hpddm slepc triangle !single define(PETSC_HAVE_DYNAMIC_LIBRARIES) define(PETSC_USE_SHARED_LIBRARIES)
     args: -run_type full -petscpartitioner_type simple -dm_refine 2 -bc_type dirichlet -interpolate 1 -petscspace_degree 2 -ksp_type gmres -ksp_gmres_restart 100 -pc_type hpddm -snes_monitor_short -ksp_monitor_short -snes_converged_reason ::ascii_info_detail -ksp_converged_reason -snes_view -show_solution 0 -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 4 -pc_hpddm_coarse_p 2 -pc_hpddm_coarse_pc_type redundant -ksp_rtol 1.e-1
     test:
       args: -pc_hpddm_coarse_mat_type baij -options_left no
@@ -1967,7 +1952,7 @@ int main(int argc, char **argv)
       suffix: tri_hpddm_reuse
   testset:
     nsize: 4
-    requires: hpddm slepc !single
+    requires: hpddm slepc !single define(PETSC_HAVE_DYNAMIC_LIBRARIES) define(PETSC_USE_SHARED_LIBRARIES)
     args: -run_type full -petscpartitioner_type simple -cells 7,5 -dm_refine 2 -simplex 0 -bc_type dirichlet -interpolate 1 -petscspace_degree 2 -ksp_type gmres -ksp_gmres_restart 100 -pc_type hpddm -snes_monitor_short -ksp_monitor_short -snes_converged_reason ::ascii_info_detail -ksp_converged_reason -snes_view -show_solution 0 -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 4 -pc_hpddm_coarse_p 2 -pc_hpddm_coarse_pc_type redundant -ksp_rtol 1.e-1
     test:
       args: -pc_hpddm_coarse_mat_type baij -options_left no
@@ -1977,7 +1962,7 @@ int main(int argc, char **argv)
       suffix: quad_hpddm_reuse
   testset:
     nsize: 4
-    requires: hpddm slepc !single
+    requires: hpddm slepc !single define(PETSC_HAVE_DYNAMIC_LIBRARIES) define(PETSC_USE_SHARED_LIBRARIES)
     args: -run_type full -petscpartitioner_type simple -cells 7,5 -dm_refine 2 -simplex 0 -bc_type dirichlet -interpolate 1 -petscspace_degree 1 -ksp_type gmres -ksp_gmres_restart 100 -pc_type hpddm -snes_monitor_short -ksp_monitor_short -snes_converged_reason ::ascii_info_detail -ksp_converged_reason -snes_view -show_solution 0 -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_threshold 0.1 -pc_hpddm_coarse_p 2 -pc_hpddm_coarse_pc_type redundant -ksp_rtol 1.e-1
     test:
       args: -pc_hpddm_coarse_mat_type baij -options_left no
@@ -1987,13 +1972,15 @@ int main(int argc, char **argv)
       suffix: quad_hpddm_reuse_threshold
   testset:
     nsize: 4
-    requires: hpddm slepc parmetis !single
+    requires: hpddm slepc parmetis !single define(PETSC_HAVE_DYNAMIC_LIBRARIES) define(PETSC_USE_SHARED_LIBRARIES)
     filter: sed -e "s/linear solver iterations=17/linear solver iterations=16/g"
     args: -run_type full -petscpartitioner_type parmetis -dm_refine 3 -bc_type dirichlet -interpolate 1 -petscspace_degree 1 -ksp_type gmres -ksp_gmres_restart 100 -pc_type hpddm -snes_monitor_short -snes_converged_reason ::ascii_info_detail -snes_view -show_solution 0 -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type icc -pc_hpddm_levels_1_eps_nev 20 -pc_hpddm_coarse_p 2 -pc_hpddm_coarse_pc_type redundant -ksp_rtol 1.e-10 -f ${PETSC_DIR}/share/petsc/datafiles/meshes/square_periodic.msh -pc_hpddm_levels_1_sub_pc_factor_levels 3 -variable_coefficient circle -dm_plex_gmsh_periodic 0
     test:
       args: -pc_hpddm_coarse_mat_type baij -options_left no
+      filter: grep -v "      total: nonzeros=" | grep -v "      rows=" | sed -e "s/total number of linear solver iterations=1[5-7]/total number of linear solver iterations=16/g"
       suffix: tri_parmetis_hpddm_baij
     test:
+      filter: grep -v "      total: nonzeros=" | grep -v "      rows=" | sed -e "s/total number of linear solver iterations=1[5-7]/total number of linear solver iterations=16/g"
       requires: !complex
       suffix: tri_parmetis_hpddm
 

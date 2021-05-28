@@ -171,6 +171,16 @@ class Configure(config.base.Configure):
         with self.setCompilers.Language('FC'):
           fd.write('fcompiler='+self.setCompilers.getCompiler()+'\n')
           fd.write('fflags_extra='+self.setCompilers.getCompilerFlags().strip()+'\n')
+      if hasattr(self.compilers, 'CUDAC'):
+        with self.setCompilers.Language('CUDA'):
+          fd.write('cudacompiler='+self.setCompilers.getCompiler()+'\n')
+          fd.write('cudaflags_extra='+self.setCompilers.getCompilerFlags().strip()+'\n')
+          p = self.framework.require('config.packages.cuda')
+          fd.write('cudalib='+self.libraries.toStringNoDupes(p.lib)+'\n')
+          fd.write('cudainclude='+self.headers.toStringNoDupes(p.include)+'\n')
+          if hasattr(self.setCompilers,'CUDA_CXX'):
+            fd.write('cuda_cxx='+self.setCompilers.CUDA_CXX+'\n')
+            fd.write('cuda_cxxflags='+self.setCompilers.CUDA_CXXFLAGS+'\n')
 
       fd.write('\n')
       fd.write('Name: PETSc\n')
@@ -332,9 +342,9 @@ prepend-path PATH "%s"
       self.addMakeMacro('CUDAC_FLAGS',self.setCompilers.getCompilerFlags())
       self.setCompilers.popLanguage()
 
-    if hasattr(self.compilers, 'HIPCC'):
+    if hasattr(self.compilers, 'HIPC'):
       self.setCompilers.pushLanguage('HIP')
-      self.addMakeMacro('HIPCC_FLAGS',self.setCompilers.getCompilerFlags())
+      self.addMakeMacro('HIPC_FLAGS',self.setCompilers.getCompilerFlags())
       self.setCompilers.popLanguage()
 
     if hasattr(self.compilers, 'SYCLCXX'):
@@ -569,6 +579,13 @@ prepend-path PATH "%s"
     else:
       self.addDefine('Prefetch(a,b,c)', ' ')
     self.popLanguage()
+
+  def delGenFiles(self):
+    '''Delete generated files'''
+    delfile = os.path.join(self.arch.arch,'lib','petsc','conf','files')
+    try:
+      os.unlink(delfile)
+    except: pass
 
   def configureAtoll(self):
     '''Checks if atoll exists'''
@@ -954,6 +971,7 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
     self.Dump()
     self.dumpConfigInfo()
     self.dumpMachineInfo()
+    self.delGenFiles()
     # need to save the current state of BuildSystem so that postProcess() packages can read it in and perhaps run make install
     self.framework.storeSubstitutions(self.framework.argDB)
     self.framework.argDB['configureCache'] = pickle.dumps(self.framework)

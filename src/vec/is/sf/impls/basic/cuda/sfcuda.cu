@@ -184,7 +184,7 @@ template<typename Type> struct Maxloc {
 
   PETSc notes:
 
-  It may be useful in PetscSFFetchAndOp with op = MPIU_REPLACE.
+  It may be useful in PetscSFFetchAndOp with op = MPI_REPLACE.
 
   VecScatter with multiple entries scattered to the same location using INSERT_VALUES does not need
   atomic insertion, since it does not need the old value. A 32-bit or 64-bit store instruction should
@@ -193,11 +193,9 @@ template<typename Type> struct Maxloc {
   With bs>1 and a unit > 64 bits, the current element-wise atomic approach can not guarantee the whole
   insertion is atomic. Hope no user codes rely on that.
 */
-__device__ static double atomicExch(double* address,double val) {return __longlong_as_double(atomicExch((unsigned long long int*)address,__double_as_longlong(val)));}
+__device__ static double atomicExch(double* address,double val) {return __longlong_as_double(atomicExch((ullint*)address,__double_as_longlong(val)));}
 
-#if defined(PETSC_USE_64BIT_INDICES)
-__device__ static PetscInt atomicExch(PetscInt* address,PetscInt val) {return (PetscInt)(atomicExch((unsigned long long int*)address,(unsigned long long int)val));}
-#endif
+__device__ static llint atomicExch(llint* address,llint val) {return (llint)(atomicExch((ullint*)address,(ullint)val));}
 
 template<typename Type> struct AtomicInsert {__device__ Type operator() (Type& x,Type y) const {return atomicExch(&x,y);}};
 
@@ -249,10 +247,7 @@ template<> struct AtomicInsert<PetscComplex> {
   the entire __half2 is not guaranteed to be atomic as a single 32-bit access.
   The 16-bit __half floating-point version of atomicAdd() is only supported by devices of compute capability 7.x and higher.
 */
-
-#if defined(PETSC_USE_64BIT_INDICES)
-__device__ static PetscInt atomicAdd(PetscInt* address,PetscInt val) {return (PetscInt)atomicAdd((unsigned long long int*)address,(unsigned long long int)val);}
-#endif
+__device__ static llint atomicAdd(llint* address,llint val) {return (llint)atomicAdd((ullint*)address,(ullint)val);}
 
 template<typename Type> struct AtomicAdd {__device__ Type operator() (Type& x,Type y) const {return atomicAdd(&x,y);}};
 
@@ -261,9 +256,9 @@ template<> struct AtomicAdd<double> {
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 600)
     return atomicAdd(&x,y);
 #else
-    double                 *address = &x, val = y;
-    unsigned long long int *address_as_ull = (unsigned long long int*)address;
-    unsigned long long int old = *address_as_ull, assumed;
+    double *address = &x, val = y;
+    ullint *address_as_ull = (ullint*)address;
+    ullint old = *address_as_ull, assumed;
     do {
       assumed = old;
       old     = atomicCAS(address_as_ull, assumed, __double_as_longlong(val + __longlong_as_double(assumed)));
@@ -313,8 +308,8 @@ template<> struct AtomicAdd<PetscComplex> {
 #if defined(PETSC_USE_REAL_DOUBLE)
 __device__ static double atomicMult(double* address, double val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
     /* Other threads can access and modify value of *address_as_ull after the read above and before the write below */
@@ -346,18 +341,16 @@ __device__ static int atomicMult(int* address,int val)
   return (int)old;
 }
 
-#if defined(PETSC_USE_64BIT_INDICES)
-__device__ static int atomicMult(PetscInt* address,PetscInt val)
+__device__ static llint atomicMult(llint* address,llint val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
-    old     = atomicCAS(address_as_ull, assumed, (unsigned long long int)(val*(PetscInt)assumed));
+    old     = atomicCAS(address_as_ull, assumed, (ullint)(val*(llint)assumed));
   } while (assumed != old);
-  return (PetscInt)old;
+  return (llint)old;
 }
-#endif
 
 template<typename Type> struct AtomicMult {__device__ Type operator() (Type& x,Type y) const {return atomicMult(&x,y);}};
 
@@ -382,8 +375,8 @@ template<typename Type> struct AtomicMult {__device__ Type operator() (Type& x,T
 #if defined(PETSC_USE_REAL_DOUBLE)
 __device__ static double atomicMin(double* address, double val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
     old     = atomicCAS(address_as_ull, assumed, __double_as_longlong(PetscMin(val,__longlong_as_double(assumed))));
@@ -393,8 +386,8 @@ __device__ static double atomicMin(double* address, double val)
 
 __device__ static double atomicMax(double* address, double val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed  = old;
     old = atomicCAS(address_as_ull, assumed, __double_as_longlong(PetscMax(val,__longlong_as_double(assumed))));
@@ -433,27 +426,27 @@ __device__ static float atomicMax(float* address,float val)
 
   So we add extra conditions defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 320)
 */
-#if defined(PETSC_USE_64BIT_INDICES) && defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 320)
-__device__ static PetscInt atomicMin(PetscInt* address,PetscInt val)
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 320)
+__device__ static llint atomicMin(llint* address,llint val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
-    old     = atomicCAS(address_as_ull, assumed, (unsigned long long int)(PetscMin(val,(PetscInt)assumed)));
+    old     = atomicCAS(address_as_ull, assumed, (ullint)(PetscMin(val,(llint)assumed)));
   } while (assumed != old);
-  return (PetscInt)old;
+  return (llint)old;
 }
 
-__device__ static PetscInt atomicMax(PetscInt* address,PetscInt val)
+__device__ static llint atomicMax(llint* address,llint val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
-    old     = atomicCAS(address_as_ull, assumed, (unsigned long long int)(PetscMax(val,(PetscInt)assumed)));
+    old     = atomicCAS(address_as_ull, assumed, (ullint)(PetscMax(val,(llint)assumed)));
   } while (assumed != old);
-  return (PetscInt)old;
+  return (llint)old;
 }
 #endif
 
@@ -479,47 +472,38 @@ template<typename Type> struct AtomicMax {__device__ Type operator() (Type& x,Ty
   atomicOr() and atomicXor are similar.
 */
 
-#if defined(PETSC_USE_64BIT_INDICES)
-#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 320) /* Why 320? see comments at atomicMin(PetscInt* address,PetscInt val) */
-__device__ static PetscInt atomicAnd(PetscInt* address,PetscInt val)
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 320) /* Why 320? see comments at atomicMin() above */
+__device__ static llint atomicAnd(llint* address,llint val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
-    old     = atomicCAS(address_as_ull, assumed, (unsigned long long int)(val & (PetscInt)assumed));
+    old     = atomicCAS(address_as_ull, assumed, (ullint)(val & (llint)assumed));
   } while (assumed != old);
-  return (PetscInt)old;
+  return (llint)old;
 }
-__device__ static PetscInt atomicOr(PetscInt* address,PetscInt val)
+__device__ static llint atomicOr(llint* address,llint val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
-    old     = atomicCAS(address_as_ull, assumed, (unsigned long long int)(val | (PetscInt)assumed));
+    old     = atomicCAS(address_as_ull, assumed, (ullint)(val | (llint)assumed));
   } while (assumed != old);
-  return (PetscInt)old;
+  return (llint)old;
 }
 
-__device__ static PetscInt atomicXor(PetscInt* address,PetscInt val)
+__device__ static llint atomicXor(llint* address,llint val)
 {
-  unsigned long long int *address_as_ull = (unsigned long long int*)(address);
-  unsigned long long int old = *address_as_ull, assumed;
+  ullint *address_as_ull = (ullint*)(address);
+  ullint old = *address_as_ull, assumed;
   do {
     assumed = old;
-    old     = atomicCAS(address_as_ull, assumed, (unsigned long long int)(val ^ (PetscInt)assumed));
+    old     = atomicCAS(address_as_ull, assumed, (ullint)(val ^ (llint)assumed));
   } while (assumed != old);
-  return (PetscInt)old;
+  return (llint)old;
 }
-#else
-/*
- See also comments at atomicMin(PetscInt* address,PetscInt val)
-__device__ static PetscInt atomicAnd(PetscInt* address,PetscInt val) {return (PetscInt)atomicAnd((unsigned long long int*)address,(unsigned long long int)val);}
-__device__ static PetscInt atomicOr (PetscInt* address,PetscInt val) {return (PetscInt)atomicOr ((unsigned long long int*)address,(unsigned long long int)val);}
-__device__ static PetscInt atomicXor(PetscInt* address,PetscInt val) {return (PetscInt)atomicXor((unsigned long long int*)address,(unsigned long long int)val);}
-*/
-#endif
 #endif
 
 template<typename Type> struct AtomicBAND {__device__ Type operator() (Type& x,Type y) const {return atomicAnd(&x,y);}};
@@ -554,12 +538,12 @@ struct AtomicLogical<Type,Op,4> {
 template<typename Type,class Op>
 struct AtomicLogical<Type,Op,8> {
   __device__ Type operator()(Type& x,Type y) const {
-    unsigned long long int *address_as_ull = (unsigned long long int*)(&x);
-    unsigned long long int old = *address_as_ull, assumed;
+    ullint *address_as_ull = (ullint*)(&x);
+    ullint old = *address_as_ull, assumed;
     Op op;
     do {
       assumed = old;
-      old     = atomicCAS(address_as_ull, assumed, (unsigned long long int)(op((Type)assumed,y)));
+      old     = atomicCAS(address_as_ull, assumed, (ullint)(op((Type)assumed,y)));
     } while (assumed != old);
     return (Type)old;
   }
@@ -587,9 +571,36 @@ static PetscErrorCode Pack(PetscSFLink link,PetscInt count,PetscInt start,PetscS
 
   PetscFunctionBegin;
   if (!count) PetscFunctionReturn(0);
-  nblocks = PetscMin(nblocks,link->maxResidentThreadsPerGPU/nthreads);
-  d_Pack<Type,BS,EQ><<<nblocks,nthreads,0,link->stream>>>(link->bs,count,start,iarray,idx,(const Type*)data,(Type*)buf);
-  cerr = cudaGetLastError();CHKERRCUDA(cerr);
+  if (!opt && !idx) { /* It is a 'CUDA data to nvshmem buf' memory copy */
+    cerr = cudaMemcpyAsync(buf,(char*)data+start*link->unitbytes,count*link->unitbytes,cudaMemcpyDeviceToDevice,link->stream);CHKERRCUDA(cerr);
+  } else {
+    nblocks = PetscMin(nblocks,link->maxResidentThreadsPerGPU/nthreads);
+    d_Pack<Type,BS,EQ><<<nblocks,nthreads,0,link->stream>>>(link->bs,count,start,iarray,idx,(const Type*)data,(Type*)buf);
+    cerr = cudaGetLastError();CHKERRCUDA(cerr);
+  }
+  PetscFunctionReturn(0);
+}
+
+/* To specialize UnpackAndOp for the cudaMemcpyAsync() below. Usually if this is a contiguous memcpy, we use root/leafdirect and do
+   not need UnpackAndOp. Only with nvshmem, we need this 'nvshmem buf to CUDA data' memory copy
+*/
+template<typename Type,PetscInt BS,PetscInt EQ>
+static PetscErrorCode Unpack(PetscSFLink link,PetscInt count,PetscInt start,PetscSFPackOpt opt,const PetscInt *idx,void *data,const void *buf)
+{
+  cudaError_t        cerr;
+  PetscInt           nthreads=256;
+  PetscInt           nblocks=(count+nthreads-1)/nthreads;
+  const PetscInt     *iarray=opt ? opt->array : NULL;
+
+  PetscFunctionBegin;
+  if (!count) PetscFunctionReturn(0);
+  if (!opt && !idx) { /* It is a 'nvshmem buf to CUDA data' memory copy */
+    cerr = cudaMemcpyAsync((char*)data+start*link->unitbytes,buf,count*link->unitbytes,cudaMemcpyDeviceToDevice,link->stream);CHKERRCUDA(cerr);
+  } else {
+    nblocks = PetscMin(nblocks,link->maxResidentThreadsPerGPU/nthreads);
+    d_UnpackAndOp<Type,Insert<Type>,BS,EQ><<<nblocks,nthreads,0,link->stream>>>(link->bs,count,start,iarray,idx,(Type*)data,(const Type*)buf);
+    cerr = cudaGetLastError();CHKERRCUDA(cerr);
+  }
   PetscFunctionReturn(0);
 }
 
@@ -692,7 +703,7 @@ static void PackInit_RealType(PetscSFLink link)
 {
   /* Pack/unpack for remote communication */
   link->d_Pack              = Pack<Type,BS,EQ>;
-  link->d_UnpackAndInsert   = UnpackAndOp     <Type,Insert<Type>      ,BS,EQ>;
+  link->d_UnpackAndInsert   = Unpack<Type,BS,EQ>;
   link->d_UnpackAndAdd      = UnpackAndOp     <Type,Add<Type>         ,BS,EQ>;
   link->d_UnpackAndMult     = UnpackAndOp     <Type,Mult<Type>        ,BS,EQ>;
   link->d_UnpackAndMin      = UnpackAndOp     <Type,Min<Type>         ,BS,EQ>;
@@ -765,7 +776,7 @@ template<typename Type,PetscInt BS,PetscInt EQ>
 static void PackInit_IntegerType(PetscSFLink link)
 {
   link->d_Pack            = Pack<Type,BS,EQ>;
-  link->d_UnpackAndInsert = UnpackAndOp<Type,Insert<Type>,BS,EQ>;
+  link->d_UnpackAndInsert = Unpack<Type,BS,EQ>;
   link->d_UnpackAndAdd    = UnpackAndOp<Type,Add<Type>   ,BS,EQ>;
   link->d_UnpackAndMult   = UnpackAndOp<Type,Mult<Type>  ,BS,EQ>;
   link->d_UnpackAndMin    = UnpackAndOp<Type,Min<Type>   ,BS,EQ>;
@@ -798,7 +809,7 @@ template<typename Type,PetscInt BS,PetscInt EQ>
 static void PackInit_ComplexType(PetscSFLink link)
 {
   link->d_Pack             = Pack<Type,BS,EQ>;
-  link->d_UnpackAndInsert  = UnpackAndOp<Type,Insert<Type>,BS,EQ>;
+  link->d_UnpackAndInsert  = Unpack<Type,BS,EQ>;
   link->d_UnpackAndAdd     = UnpackAndOp<Type,Add<Type>   ,BS,EQ>;
   link->d_UnpackAndMult    = UnpackAndOp<Type,Mult<Type>  ,BS,EQ>;
   link->d_FetchAndAdd      = FetchAndOp <Type,Add<Type>   ,BS,EQ>;
@@ -827,7 +838,7 @@ template<typename Type>
 static void PackInit_PairType(PetscSFLink link)
 {
   link->d_Pack            = Pack<Type,1,1>;
-  link->d_UnpackAndInsert = UnpackAndOp<Type,Insert<Type>,1,1>;
+  link->d_UnpackAndInsert = Unpack<Type,1,1>;
   link->d_UnpackAndMaxloc = UnpackAndOp<Type,Maxloc<Type>,1,1>;
   link->d_UnpackAndMinloc = UnpackAndOp<Type,Minloc<Type>,1,1>;
 
@@ -841,13 +852,13 @@ template<typename Type,PetscInt BS,PetscInt EQ>
 static void PackInit_DumbType(PetscSFLink link)
 {
   link->d_Pack             = Pack<Type,BS,EQ>;
-  link->d_UnpackAndInsert  = UnpackAndOp<Type,Insert<Type>,BS,EQ>;
+  link->d_UnpackAndInsert  = Unpack<Type,BS,EQ>;
   link->d_ScatterAndInsert = ScatterAndInsert<Type,BS,EQ>;
   /* Atomics for dumb types are not implemented yet */
 }
 
 /* Some device-specific utilities */
-static PetscErrorCode PetscSFLinkSyncDevice_Cuda(PetscSFLink link)
+static PetscErrorCode PetscSFLinkSyncDevice_CUDA(PetscSFLink link)
 {
   cudaError_t cerr;
   PetscFunctionBegin;
@@ -855,7 +866,7 @@ static PetscErrorCode PetscSFLinkSyncDevice_Cuda(PetscSFLink link)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFLinkSyncStream_Cuda(PetscSFLink link)
+static PetscErrorCode PetscSFLinkSyncStream_CUDA(PetscSFLink link)
 {
   cudaError_t cerr;
   PetscFunctionBegin;
@@ -863,48 +874,61 @@ static PetscErrorCode PetscSFLinkSyncStream_Cuda(PetscSFLink link)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFLinkMemcpy_Cuda(PetscSFLink link,PetscMemType dstmtype,void* dst,PetscMemType srcmtype,const void*src,size_t n)
+static PetscErrorCode PetscSFLinkMemcpy_CUDA(PetscSFLink link,PetscMemType dstmtype,void* dst,PetscMemType srcmtype,const void*src,size_t n)
 {
   PetscFunctionBegin;
   enum cudaMemcpyKind kinds[2][2] = {{cudaMemcpyHostToHost,cudaMemcpyHostToDevice},{cudaMemcpyDeviceToHost,cudaMemcpyDeviceToDevice}};
 
   if (n) {
-    if (dstmtype == PETSC_MEMTYPE_HOST && srcmtype == PETSC_MEMTYPE_HOST) { /* Separate HostToHost so that pure-cpu code won't call cuda runtime */
+    if (PetscMemTypeHost(dstmtype) && PetscMemTypeHost(srcmtype)) { /* Separate HostToHost so that pure-cpu code won't call cuda runtime */
       PetscErrorCode ierr = PetscMemcpy(dst,src,n);CHKERRQ(ierr);
-    } else { /* Assume PETSC_MEMTYPE_HOST=0, PETSC_MEMTYPE_DEVICE=1 */
-      cudaError_t err = cudaMemcpyAsync(dst,src,n,kinds[srcmtype][dstmtype],link->stream);CHKERRCUDA(err);
+    } else {
+      int stype = PetscMemTypeDevice(srcmtype) ? 1 : 0;
+      int dtype = PetscMemTypeDevice(dstmtype) ? 1 : 0;
+      cudaError_t cerr = cudaMemcpyAsync(dst,src,n,kinds[stype][dtype],link->stream);CHKERRCUDA(cerr);
     }
   }
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSFMalloc_Cuda(PetscMemType mtype,size_t size,void** ptr)
+PetscErrorCode PetscSFMalloc_CUDA(PetscMemType mtype,size_t size,void** ptr)
 {
   PetscFunctionBegin;
-  if (mtype == PETSC_MEMTYPE_HOST) {PetscErrorCode ierr = PetscMalloc(size,ptr);CHKERRQ(ierr);}
-  else if (mtype == PETSC_MEMTYPE_DEVICE) {cudaError_t err = cudaMalloc(ptr,size);CHKERRCUDA(err);}
-  else SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Wrong PetscMemType %d", (int)mtype);
+  if (PetscMemTypeHost(mtype)) {PetscErrorCode ierr = PetscMalloc(size,ptr);CHKERRQ(ierr);}
+  else if (PetscMemTypeDevice(mtype)) {
+    if (!PetscCUDAInitialized) {PetscErrorCode ierr = PetscCUDAInitializeCheck();CHKERRQ(ierr);}
+    cudaError_t err = cudaMalloc(ptr,size);CHKERRCUDA(err);
+  } else SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Wrong PetscMemType %d", (int)mtype);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSFFree_Cuda(PetscMemType mtype,void* ptr)
+PetscErrorCode PetscSFFree_CUDA(PetscMemType mtype,void* ptr)
 {
   PetscFunctionBegin;
-  if (mtype == PETSC_MEMTYPE_HOST) {PetscErrorCode ierr = PetscFree(ptr);CHKERRQ(ierr);}
-  else if (mtype == PETSC_MEMTYPE_DEVICE) {cudaError_t err = cudaFree(ptr);CHKERRCUDA(err);}
+  if (PetscMemTypeHost(mtype)) {PetscErrorCode ierr = PetscFree(ptr);CHKERRQ(ierr);}
+  else if (PetscMemTypeDevice(mtype)) {cudaError_t err = cudaFree(ptr);CHKERRCUDA(err);}
   else SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Wrong PetscMemType %d",(int)mtype);
   PetscFunctionReturn(0);
 }
 
-/*====================================================================================*/
-/*                Main driver to init MPI datatype on device                          */
-/*====================================================================================*/
+/* Destructor when the link uses MPI for communication on CUDA device */
+static PetscErrorCode PetscSFLinkDestroy_MPI_CUDA(PetscSF sf,PetscSFLink link)
+{
+  cudaError_t    cerr;
+
+  PetscFunctionBegin;
+  for (int i=PETSCSF_LOCAL; i<=PETSCSF_REMOTE; i++) {
+    cerr = cudaFree(link->rootbuf_alloc[i][PETSC_MEMTYPE_DEVICE]);CHKERRCUDA(cerr);
+    cerr = cudaFree(link->leafbuf_alloc[i][PETSC_MEMTYPE_DEVICE]);CHKERRCUDA(cerr);
+  }
+  PetscFunctionReturn(0);
+}
 
 /* Some fields of link are initialized by PetscSFPackSetUp_Host. This routine only does what needed on device */
-PetscErrorCode PetscSFLinkSetUp_Cuda(PetscSF sf,PetscSFLink link,MPI_Datatype unit)
+PetscErrorCode PetscSFLinkSetUp_CUDA(PetscSF sf,PetscSFLink link,MPI_Datatype unit)
 {
   PetscErrorCode ierr;
-  cudaError_t    err;
+  cudaError_t    cerr;
   PetscInt       nSignedChar=0,nUnsignedChar=0,nInt=0,nPetscInt=0,nPetscReal=0;
   PetscBool      is2Int,is2PetscInt;
 #if defined(PETSC_HAVE_COMPLEX)
@@ -934,18 +958,16 @@ PetscErrorCode PetscSFLinkSetUp_Cuda(PetscSF sf,PetscSFLink link,MPI_Datatype un
     else if (nPetscReal == 4) PackInit_RealType<PetscReal,4,1>(link); else if (nPetscReal%4 == 0) PackInit_RealType<PetscReal,4,0>(link);
     else if (nPetscReal == 2) PackInit_RealType<PetscReal,2,1>(link); else if (nPetscReal%2 == 0) PackInit_RealType<PetscReal,2,0>(link);
     else if (nPetscReal == 1) PackInit_RealType<PetscReal,1,1>(link); else if (nPetscReal%1 == 0) PackInit_RealType<PetscReal,1,0>(link);
-  } else if (nPetscInt) {
-    if      (nPetscInt == 8) PackInit_IntegerType<PetscInt,8,1>(link); else if (nPetscInt%8 == 0) PackInit_IntegerType<PetscInt,8,0>(link);
-    else if (nPetscInt == 4) PackInit_IntegerType<PetscInt,4,1>(link); else if (nPetscInt%4 == 0) PackInit_IntegerType<PetscInt,4,0>(link);
-    else if (nPetscInt == 2) PackInit_IntegerType<PetscInt,2,1>(link); else if (nPetscInt%2 == 0) PackInit_IntegerType<PetscInt,2,0>(link);
-    else if (nPetscInt == 1) PackInit_IntegerType<PetscInt,1,1>(link); else if (nPetscInt%1 == 0) PackInit_IntegerType<PetscInt,1,0>(link);
-#if defined(PETSC_USE_64BIT_INDICES)
+  } else if (nPetscInt && sizeof(PetscInt) == sizeof(llint)) {
+    if      (nPetscInt == 8) PackInit_IntegerType<llint,8,1>(link); else if (nPetscInt%8 == 0) PackInit_IntegerType<llint,8,0>(link);
+    else if (nPetscInt == 4) PackInit_IntegerType<llint,4,1>(link); else if (nPetscInt%4 == 0) PackInit_IntegerType<llint,4,0>(link);
+    else if (nPetscInt == 2) PackInit_IntegerType<llint,2,1>(link); else if (nPetscInt%2 == 0) PackInit_IntegerType<llint,2,0>(link);
+    else if (nPetscInt == 1) PackInit_IntegerType<llint,1,1>(link); else if (nPetscInt%1 == 0) PackInit_IntegerType<llint,1,0>(link);
   } else if (nInt) {
     if      (nInt == 8) PackInit_IntegerType<int,8,1>(link); else if (nInt%8 == 0) PackInit_IntegerType<int,8,0>(link);
     else if (nInt == 4) PackInit_IntegerType<int,4,1>(link); else if (nInt%4 == 0) PackInit_IntegerType<int,4,0>(link);
     else if (nInt == 2) PackInit_IntegerType<int,2,1>(link); else if (nInt%2 == 0) PackInit_IntegerType<int,2,0>(link);
     else if (nInt == 1) PackInit_IntegerType<int,1,1>(link); else if (nInt%1 == 0) PackInit_IntegerType<int,1,0>(link);
-#endif
   } else if (nSignedChar) {
     if      (nSignedChar == 8) PackInit_IntegerType<SignedChar,8,1>(link); else if (nSignedChar%8 == 0) PackInit_IntegerType<SignedChar,8,0>(link);
     else if (nSignedChar == 4) PackInit_IntegerType<SignedChar,4,1>(link); else if (nSignedChar%4 == 0) PackInit_IntegerType<SignedChar,4,0>(link);
@@ -965,7 +987,7 @@ PetscErrorCode PetscSFLinkSetUp_Cuda(PetscSF sf,PetscSFLink link,MPI_Datatype un
 #endif
   } else {
     MPI_Aint lb,nbyte;
-    ierr = MPI_Type_get_extent(unit,&lb,&nbyte);CHKERRQ(ierr);
+    ierr = MPI_Type_get_extent(unit,&lb,&nbyte);CHKERRMPI(ierr);
     if (lb != 0) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"Datatype with nonzero lower bound %ld\n",(long)lb);
     if (nbyte % sizeof(int)) { /* If the type size is not multiple of int */
       if      (nbyte == 4) PackInit_DumbType<char,4,1>(link); else if (nbyte%4 == 0) PackInit_DumbType<char,4,0>(link);
@@ -980,19 +1002,20 @@ PetscErrorCode PetscSFLinkSetUp_Cuda(PetscSF sf,PetscSFLink link,MPI_Datatype un
     }
   }
 
-  if (!sf->use_default_stream) {err = cudaStreamCreate(&link->stream);CHKERRCUDA(err);}
   if (!sf->maxResidentThreadsPerGPU) { /* Not initialized */
     int                   device;
     struct cudaDeviceProp props;
-    err = cudaGetDevice(&device);CHKERRCUDA(err);
-    err = cudaGetDeviceProperties(&props,device);CHKERRCUDA(err);
+    cerr = cudaGetDevice(&device);CHKERRCUDA(cerr);
+    cerr = cudaGetDeviceProperties(&props,device);CHKERRCUDA(cerr);
     sf->maxResidentThreadsPerGPU = props.maxThreadsPerMultiProcessor*props.multiProcessorCount;
   }
   link->maxResidentThreadsPerGPU = sf->maxResidentThreadsPerGPU;
 
-  link->d_SyncDevice =  PetscSFLinkSyncDevice_Cuda;
-  link->d_SyncStream =  PetscSFLinkSyncStream_Cuda;
-  link->Memcpy       =  PetscSFLinkMemcpy_Cuda;
-  link->deviceinited = PETSC_TRUE;
+  link->stream             = PetscDefaultCudaStream;
+  link->Destroy            = PetscSFLinkDestroy_MPI_CUDA;
+  link->SyncDevice         = PetscSFLinkSyncDevice_CUDA;
+  link->SyncStream         = PetscSFLinkSyncStream_CUDA;
+  link->Memcpy             = PetscSFLinkMemcpy_CUDA;
+  link->deviceinited       = PETSC_TRUE;
   PetscFunctionReturn(0);
 }

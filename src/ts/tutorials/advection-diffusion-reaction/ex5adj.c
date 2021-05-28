@@ -275,7 +275,7 @@ PetscErrorCode InitialConditions(DM da,Vec U)
     y = j*hy;
     for (i=xs; i<xs+xm; i++) {
       x = i*hx;
-      if ((1.0 <= x) && (x <= 1.5) && (1.0 <= y) && (y <= 1.5)) u[j][i].v = .25*PetscPowReal(PetscSinReal(4.0*PETSC_PI*x),2.0)*PetscPowReal(PetscSinReal(4.0*PETSC_PI*y),2.0);
+      if (PetscGTE(x,1.0) && PetscLTE(x,1.5) && PetscGTE(y,1.0) && PetscLTE(y,1.5)) u[j][i].v = PetscPowReal(PetscSinReal(4.0*PETSC_PI*x),2.0)*PetscPowReal(PetscSinReal(4.0*PETSC_PI*y),2.0)/4.0;
       else u[j][i].v = 0.0;
 
       u[j][i].u = 1.0 - 2.0*u[j][i].v;
@@ -689,4 +689,13 @@ PetscErrorCode IJacobian(TS ts,PetscReal t,Vec U,Vec Udot,PetscReal a,Mat A,Mat 
       args: -ts_max_steps 10 -ts_monitor -ts_adjoint_monitor -ts_trajectory_type memory -ts_trajectory_solution_only 0 -dm_mat_type sell -pc_type jacobi
       output_file: output/ex5adj_sell_6.out
 
+   test:
+      suffix: gamg1
+      args: -pc_type gamg -pc_mg_levels 2 -mg_levels_pc_type jacobi -ksp_monitor_short -ts_max_steps 2 -ts_monitor -ts_adjoint_monitor -ts_trajectory_type memory
+      output_file: output/ex5adj_gamg_1.out
+
+   test:
+      suffix: gamg2
+      args: -pc_type gamg -pc_mg_levels 2 -mg_levels_pc_type jacobi -ksp_monitor_short -ts_max_steps 2 -ts_monitor -ts_adjoint_monitor -ts_trajectory_type memory -ksp_use_explicittranspose
+      output_file: output/ex5adj_gamg_2.out
 TEST*/

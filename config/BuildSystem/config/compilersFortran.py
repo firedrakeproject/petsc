@@ -39,7 +39,7 @@ class Configure(config.base.Configure):
         if not hasattr(self.setCompilers, name):
           raise MissingProcessor(self.dispatchNames[name])
         return getattr(self.setCompilers, name)
-      if name in ['CC_LINKER_FLAGS', 'FC_LINKER_FLAGS', 'CXX_LINKER_FLAGS', 'CUDAC_LINKER_FLAGS', 'HIPCC_LINKER_FLAGS', 'SYCLCXX_LINKER_FLAGS', 'sharedLibraryFlags', 'dynamicLibraryFlags']:
+      if name in ['CC_LINKER_FLAGS', 'FC_LINKER_FLAGS', 'CXX_LINKER_FLAGS', 'CUDAC_LINKER_FLAGS', 'HIPC_LINKER_FLAGS', 'SYCLCXX_LINKER_FLAGS', 'sharedLibraryFlags', 'dynamicLibraryFlags']:
         flags = getattr(self.setCompilers, name)
         if not isinstance(flags, list): flags = [flags]
         return ' '.join(flags)
@@ -367,7 +367,7 @@ class Configure(config.base.Configure):
     return
 
   def checkFortranModuleOutput(self):
-    '''Figures out what flag is used to specify the include path for Fortran modules'''
+    '''Figures out what flag is used to specify the output path for Fortran modules'''
     self.setCompilers.fortranModuleOutputFlag = None
     if not self.fortranIsF90:
       self.logPrint('Not a Fortran90 compiler - hence skipping module include test')

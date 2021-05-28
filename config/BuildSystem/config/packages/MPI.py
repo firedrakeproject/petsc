@@ -65,6 +65,7 @@ class Configure(config.package.Package):
     help.addArgument('MPI', '-with-mpiexec=<prog>',                              nargs.Arg(None, None, 'The utility used to launch MPI jobs. (should support "-n <np>" option)'))
     help.addArgument('MPI', '-with-mpi-compilers=<bool>',                        nargs.ArgBool(None, 1, 'Try to use the MPI compilers, e.g. mpicc'))
     help.addArgument('MPI', '-known-mpi-shared-libraries=<bool>',                nargs.ArgBool(None, None, 'Indicates the MPI libraries are shared (the usual test will be skipped)'))
+    help.addArgument('MPI', '-with-mpi-f90module-visibility=<bool>',             nargs.ArgBool(None, 1, 'Indicates the MPI f90 module is available via petsc module. When disabled, mpi_f08 can be used from user code'))
     return
 
   def setupDependencies(self, framework):
@@ -81,7 +82,7 @@ class Configure(config.package.Package):
   def generateLibList(self, directory):
     if self.setCompilers.usedMPICompilers:
       self.liblist = []
-      self.libdir  = []
+      self.libdir  = ''
     return config.package.Package.generateLibList(self,directory)
 
   # search many obscure locations for MPI
@@ -227,7 +228,7 @@ shared libraries and run with --known-mpi-shared-libraries=1')
     # using mpiexec environmental variables make sure mpiexec matches the MPI libraries and save the variables for testing in PetscInitialize()
     # the variable HAVE_MPIEXEC_ENVIRONMENTAL_VARIABLE is not currently used. PetscInitialize() can check the existence of the environmental variable to
     # determine if the program has been started with the correct mpiexec (will only be set for parallel runs so not clear how to check appropriately)
-    (out, err, ret) = Configure.executeShellCommand(self.mpiexec+' -n 1 printenv', checkCommand = noCheck, timeout = 60, threads = 1, log = self.log)
+    (out, err, ret) = Configure.executeShellCommand(self.mpiexec+' -n 1 printenv', checkCommand = noCheck, timeout = 120, threads = 1, log = self.log)
     if ret:
       self.logWrite('Unable to run '+self.mpiexec+' with option "-n 1 printenv"\nThis could be ok, some MPI implementations such as SGI produce a non-zero status with non-MPI programs\n'+out+err)
     else:
@@ -308,7 +309,7 @@ shared libraries and run with --known-mpi-shared-libraries=1')
                 self.logPrintBox('***** WARNING: mpiexec may not work on your system due to network issues.\n\
 Perhaps you have VPN running whose network settings may not work with mpiexec or your network is misconfigured')
           else:
-            elf.logPrintBox('***** WARNING: mpiexec may not work on your system due to network issues.\n\
+            self.logPrintBox('***** WARNING: mpiexec may not work on your system due to network issues.\n\
 Unable to run hostname to check the network')
           self.logPrintDivider()
 
@@ -322,7 +323,7 @@ Unable to run hostname to check the network')
     includes = '#include <mpi.h>'
     body = 'MPI_Init(0,0);\nMPI_Finalize();\n'
     try:
-      ok = self.checkRun(includes, body, executor = self.mpiexec, timeout = 60, threads = 1)
+      ok = self.checkRun(includes, body, executor = self.mpiexec, timeout = 120, threads = 1)
       if not ok: raise RuntimeError(error_message)
     except RuntimeError as e:
       if str(e).find('Runaway process exceeded time limit') > -1:
@@ -365,6 +366,8 @@ Unable to run hostname to check the network')
     # Even MPI_Win_create is in MPI 2.0, we do this test to supress MPIUNI, which does not support MPI one-sided.
     if self.checkLink('#include <mpi.h>\n', 'int base[100]; MPI_Win win; if (MPI_Win_create(base,100,4,MPI_INFO_NULL,MPI_COMM_WORLD,&win));\n'):
       self.addDefine('HAVE_MPI_WIN_CREATE', 1)
+    if not self.checkLink('#include <mpi.h>\n', 'int ptr[1]; MPI_Win win; if (MPI_Accumulate(ptr,1,MPI_INT,0,0,1,MPI_INT,MPI_REPLACE,win));\n'):
+      raise RuntimeError('PETSc requires MPI_REPLACE (introduced in MPI-2.1 in 2008). Please update or switch to MPI that supports MPI_REPLACE. Let us know at petsc-maint@mcs.anl.gov if this is not possible')
     # flag broken one-sided tests
     if not 'HAVE_MSMPI' in self.defines and not (hasattr(self, 'mpich_numversion') and int(self.mpich_numversion) <= 30004300):
       self.addDefine('HAVE_MPI_ONE_SIDED', 1)
@@ -427,25 +430,11 @@ Unable to run hostname to check the network')
     self.compilers.CPPFLAGS += ' '+self.headers.toString(self.include)
     self.compilers.LIBS = self.libraries.toString(self.lib)+' '+self.compilers.LIBS
     mpitypes = [('MPI_LONG_DOUBLE', 'long-double'), ('MPI_INT64_T', 'int64_t')]
-    if self.getDefaultLanguage() == 'C': mpitypes.extend([('MPI_C_DOUBLE_COMPLEX', 'c-double-complex')])
     for datatype, name in mpitypes:
       includes = '#include <stdlib.h>\n#include <mpi.h>\n'
       body     = 'int size;\nint ierr;\nMPI_Init(0,0);\nierr = MPI_Type_size('+datatype+', &size);\nif(ierr || (size == 0)) exit(1);\nMPI_Finalize();\n'
       if self.checkCompile(includes, body):
-        if 'known-mpi-'+name in self.argDB:
-          if int(self.argDB['known-mpi-'+name]):
-            self.addDefine('HAVE_'+datatype, 1)
-        elif not self.argDB['with-batch']:
-          self.pushLanguage('C')
-          if self.checkRun(includes, body, defaultArg = 'known-mpi-'+name, executor = self.mpiexec):
-            self.addDefine('HAVE_'+datatype, 1)
-          self.popLanguage()
-        else:
-         self.logPrintBox('***** WARNING: Cannot determine if '+datatype+' works on your system\n\
-in batch-mode! Assuming it does work. Run with --known-mpi-'+name+'=0\n\
-if you know it does not work (very unlikely). Run with --known-mpi-'+name+'=1\n\
-to remove this warning message *****')
-         self.addDefine('HAVE_'+datatype, 1)
+        self.addDefine('HAVE_'+datatype, 1)
     self.compilers.CPPFLAGS = oldFlags
     self.compilers.LIBS = oldLibs
     return
@@ -465,7 +454,6 @@ to remove this warning message *****')
     self.framework.addDefine('MPI_Comm_create_errhandler(p_err_fun,p_errhandler)', 'MPI_Errhandler_create((p_err_fun),(p_errhandler))')
     self.framework.addDefine('MPI_Comm_set_errhandler(comm,p_errhandler)', 'MPI_Errhandler_set((comm),(p_errhandler))')
     self.logWrite(self.framework.restoreLog())
-    if self.getDefaultLanguage == 'C': self.addDefine('HAVE_MPI_C_DOUBLE_COMPLEX', 1)
     self.commf2c = 1
     self.commc2f = 1
     self.usingMPIUni = 1
@@ -522,7 +510,7 @@ to remove this warning message *****')
     # check if mpi.mod exists
     if self.fortran.fortranIsF90:
       self.log.write('Checking for mpi.mod\n')
-      if self.libraries.check(self.lib,'', call = '       use mpi\n       integer ierr,rank\n       call mpi_init(ierr)\n       call mpi_comm_rank(MPI_COMM_WORLD,rank,ierr)\n'):
+      if self.libraries.check(self.lib,'', call = '       use mpi\n       integer(kind=selected_int_kind(5)) ierr,rank\n       call mpi_init(ierr)\n       call mpi_comm_rank(MPI_COMM_WORLD,rank,ierr)\n'):
         self.havef90module = 1
         self.addDefine('HAVE_MPI_F90MODULE', 1)
     self.compilers.FPPFLAGS = oldFlags
@@ -635,7 +623,10 @@ to remove this warning message *****')
 
   def findMPIInc(self):
     '''Find MPI include paths from "mpicc -show" and use with CUDAC_FLAGS'''
-    if not hasattr(self.compilers, 'CUDAC'): return
+    needInclude=False
+    if hasattr(self.compilers, 'CUDAC'): needInclude=True
+    if hasattr(self.compilers, 'HIPC'): needInclude=True
+    if not needInclude: return
     import re
     output = ''
     try:
@@ -651,9 +642,14 @@ to remove this warning message *****')
         m = re.match(r'^-I.*$', arg)
         if m:
           self.logPrint('Found include option: '+arg, 4, 'compilers')
-          self.setCompilers.pushLanguage('CUDA')
-          self.setCompilers.addCompilerFlag(arg)
-          self.setCompilers.popLanguage()
+          if hasattr(self.compilers, 'CUDAC'):
+            self.setCompilers.pushLanguage('CUDA')
+            self.setCompilers.addCompilerFlag(arg)
+            self.setCompilers.popLanguage()
+          if hasattr(self.compilers, 'HIPC'):
+            self.setCompilers.pushLanguage('HIP')
+            self.setCompilers.addCompilerFlag(arg)
+            self.setCompilers.popLanguage()
           continue
     except StopIteration:
       pass
@@ -698,6 +694,8 @@ to remove this warning message *****')
     if 'with-'+self.package+'-shared' in self.argDB:
       self.argDB['with-'+self.package] = 1
     config.package.Package.configureLibrary(self)
+    if self.argDB['with-mpi-f90module-visibility']:
+      self.addDefine('HAVE_MPI_F90MODULE_VISIBILITY',1)
     if self.setCompilers.usedMPICompilers:
       if 'with-mpi-include' in self.argDB: raise RuntimeError('Do not use --with-mpi-include when using MPI compiler wrappers')
       if 'with-mpi-lib' in self.argDB: raise RuntimeError('Do not use --with-mpi-lib when using MPI compiler wrappers')

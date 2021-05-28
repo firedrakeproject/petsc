@@ -3,7 +3,7 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.version          = '6.0.9'
+    self.version          = '6.1.0'
     self.versionname      = 'SCOTCH_VERSION.SCOTCH_RELEASE.SCOTCH_PATCHLEVEL'
     self.gitcommit        = 'v'+self.version
     self.download         = ['git://https://gitlab.inria.fr/scotch/scotch.git',
@@ -55,7 +55,7 @@ class Configure(config.package.Package):
     g.write('CCD        = '+self.getCompiler()+'\n')
 
     # Building cflags/ldflags
-    self.cflags = self.updatePackageCFlags(self.getCompilerFlags())+' '+self.headers.toString(self.mpi.include)
+    self.cflags = self.updatePackageCFlags(self.getCompilerFlags())+' '+self.headers.toString(self.dinclude)
     functions = self.framework.require('config.functions', self)
     if not functions.haveFunction('FORK') and not functions.haveFunction('_PIPE'):
       raise RuntimeError('Error building PTScotch: no pipe function')

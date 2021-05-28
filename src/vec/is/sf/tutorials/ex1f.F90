@@ -7,6 +7,7 @@
 
       program main
 #include <petsc/finclude/petscvec.h>
+      use petscmpi  ! or mpi or mpi_f08
       use petscvec
       implicit none
 
@@ -87,8 +88,8 @@
       enddo
 
 !     Broadcast entries from rootdata to leafdata. Computation or other communication can be performed between the begin and end calls.
-      call PetscSFBcastBegin(sf,MPIU_INTEGER,rootdata,leafdata,ierr);CHKERRA(ierr)
-      call PetscSFBcastEnd(sf,MPIU_INTEGER,rootdata,leafdata,ierr);CHKERRA(ierr)
+      call PetscSFBcastBegin(sf,MPIU_INTEGER,rootdata,leafdata,MPI_REPLACE,ierr);CHKERRA(ierr)
+      call PetscSFBcastEnd(sf,MPIU_INTEGER,rootdata,leafdata,MPI_REPLACE,ierr);CHKERRA(ierr)
       call PetscViewerASCIIPrintf(PETSC_VIEWER_STDOUT_WORLD,"## Bcast Rootdata\n",ierr);CHKERRA(ierr)
       call PetscIntView(nrootsalloc,rootdata,PETSC_VIEWER_STDOUT_WORLD,ierr);CHKERRA(ierr)
       call PetscViewerASCIIPrintf(PETSC_VIEWER_STDOUT_WORLD,"## Bcast Leafdata\n",ierr);CHKERRA(ierr)

@@ -45,7 +45,7 @@
       PetscEnum, parameter :: MAT_ROW_ORIENTED = -1
       PetscEnum, parameter :: MAT_SYMMETRIC = 1
       PetscEnum, parameter :: MAT_STRUCTURALLY_SYMMETRIC = 2
-      PetscEnum, parameter :: MAT_NEW_DIAGONALS = 3
+      PetscEnum, parameter :: MAT_FORCE_DIAGONAL_ENTRIES = 3
       PetscEnum, parameter :: MAT_IGNORE_OFF_PROC_ENTRIES = 4
       PetscEnum, parameter :: MAT_USE_HASH_TABLE = 5
       PetscEnum, parameter :: MAT_KEEP_NONZERO_PATTERN = 6
@@ -65,7 +65,9 @@
       PetscEnum, parameter :: MAT_SUBSET_OFF_PROC_ENTRIES = 20
       PetscEnum, parameter :: MAT_SUBMAT_SINGLEIS = 21
       PetscEnum, parameter :: MAT_STRUCTURE_ONLY = 22
-      PetscEnum, parameter :: MAT_OPTION_MAX = 23
+      PetscEnum, parameter :: MAT_SORTED_FULL = 23
+      PetscEnum, parameter :: MAT_FORM_EXPLICIT_TRANSPOSE = 24
+      PetscEnum, parameter :: MAT_OPTION_MAX = 25
 !
 !  MatFactorShiftType
 !
@@ -91,8 +93,9 @@
 !  Flags for MatCopy, MatAXPY
 !
       PetscEnum, parameter :: DIFFERENT_NONZERO_PATTERN = 0
-      PetscEnum, parameter :: SUBSET_NONZERO_PATTERN=1
+      PetscEnum, parameter :: SUBSET_NONZERO_PATTERN = 1
       PetscEnum, parameter :: SAME_NONZERO_PATTERN = 2
+      PetscEnum, parameter :: UNKNOWN_NONZERO_PATTERN = 3
 
 #include "../src/mat/f90-mod/petscmatinfosize.h"
 
@@ -365,7 +368,7 @@
 !DEC$ ATTRIBUTES DLLEXPORT::MAT_ROW_ORIENTED
 !DEC$ ATTRIBUTES DLLEXPORT::MAT_SYMMETRIC
 !DEC$ ATTRIBUTES DLLEXPORT::MAT_STRUCTURALLY_SYMMETRIC
-!DEC$ ATTRIBUTES DLLEXPORT::MAT_NEW_DIAGONALS
+!DEC$ ATTRIBUTES DLLEXPORT::MAT_FORCE_DIAGONAL_ENTRIES
 !DEC$ ATTRIBUTES DLLEXPORT::MAT_IGNORE_OFF_PROC_ENTRIES
 !DEC$ ATTRIBUTES DLLEXPORT::MAT_USE_HASH_TABLE
 !DEC$ ATTRIBUTES DLLEXPORT::MAT_KEEP_NONZERO_PATTERN

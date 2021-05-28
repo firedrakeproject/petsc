@@ -57,7 +57,7 @@ PetscErrorCode  PCInitializePackage(void)
   /* Initialize subpackages */
   ierr = PCGAMGInitializePackage();CHKERRQ(ierr);
   ierr = PCBDDCInitializePackage();CHKERRQ(ierr);
-#if defined(PETSC_HAVE_HPDDM)
+#if defined(PETSC_HAVE_HPDDM) && defined(PETSC_HAVE_DYNAMIC_LIBRARIES) && defined(PETSC_USE_SHARED_LIBRARIES)
   ierr = PCHPDDMInitializePackage();CHKERRQ(ierr);
 #endif
   /* Register Classes */
@@ -139,8 +139,12 @@ PetscErrorCode  KSPFinalizePackage(void)
   PetscFunctionBegin;
   ierr = PetscFunctionListDestroy(&KSPList);CHKERRQ(ierr);
   ierr = PetscFunctionListDestroy(&KSPGuessList);CHKERRQ(ierr);
-  KSPPackageInitialized = PETSC_FALSE;
-  KSPRegisterAllCalled  = PETSC_FALSE;
+  ierr = PetscFunctionListDestroy(&KSPMonitorList);CHKERRQ(ierr);
+  ierr = PetscFunctionListDestroy(&KSPMonitorCreateList);CHKERRQ(ierr);
+  ierr = PetscFunctionListDestroy(&KSPMonitorDestroyList);CHKERRQ(ierr);
+  KSPPackageInitialized       = PETSC_FALSE;
+  KSPRegisterAllCalled        = PETSC_FALSE;
+  KSPMonitorRegisterAllCalled = PETSC_FALSE;
   PetscFunctionReturn(0);
 }
 
@@ -153,7 +157,7 @@ PetscErrorCode  KSPFinalizePackage(void)
 
 .seealso: PetscInitialize()
 @*/
-PetscErrorCode  KSPInitializePackage(void)
+PetscErrorCode KSPInitializePackage(void)
 {
   char           logList[256];
   PetscBool      opt,pkg,cls;
@@ -172,6 +176,8 @@ PetscErrorCode  KSPInitializePackage(void)
   ierr = KSPMatRegisterAll();CHKERRQ(ierr);
   /* Register KSP guesses implementations */
   ierr = KSPGuessRegisterAll();CHKERRQ(ierr);
+  /* Register Monitors */
+  ierr = KSPMonitorRegisterAll();CHKERRQ(ierr);
   /* Register Events */
   ierr = PetscLogEventRegister("KSPSetUp",         KSP_CLASSID,&KSP_SetUp);CHKERRQ(ierr);
   ierr = PetscLogEventRegister("KSPSolve",         KSP_CLASSID,&KSP_Solve);CHKERRQ(ierr);

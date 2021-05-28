@@ -4,7 +4,7 @@
 /* Reuse the type. The difference is some fields (i.e., displs, recvcounts) are not used in Gather, which is not a big deal */
 typedef PetscSF_Allgatherv PetscSF_Gather;
 
-PETSC_INTERN PetscErrorCode PetscSFBcastAndOpBegin_Gather(PetscSF sf,MPI_Datatype unit,PetscMemType rootmtype,const void *rootdata,PetscMemType leafmtype,void *leafdata,MPI_Op op)
+PETSC_INTERN PetscErrorCode PetscSFBcastBegin_Gather(PetscSF sf,MPI_Datatype unit,PetscMemType rootmtype,const void *rootdata,PetscMemType leafmtype,void *leafdata,MPI_Op op)
 {
   PetscErrorCode       ierr;
   PetscSFLink          link;
@@ -16,9 +16,11 @@ PETSC_INTERN PetscErrorCode PetscSFBcastAndOpBegin_Gather(PetscSF sf,MPI_Datatyp
   PetscFunctionBegin;
   ierr = PetscSFLinkCreate(sf,unit,rootmtype,rootdata,leafmtype,leafdata,op,PETSCSF_BCAST,&link);CHKERRQ(ierr);
   ierr = PetscSFLinkPackRootData(sf,link,PETSCSF_REMOTE,rootdata);CHKERRQ(ierr);
+  ierr = PetscSFLinkCopyRootBufferInCaseNotUseGpuAwareMPI(sf,link,PETSC_TRUE/* device2host before sending */);CHKERRQ(ierr);
   ierr = PetscObjectGetComm((PetscObject)sf,&comm);CHKERRQ(ierr);
   ierr = PetscMPIIntCast(sf->nroots,&sendcount);CHKERRQ(ierr);
   ierr = PetscSFLinkGetMPIBuffersAndRequests(sf,link,PETSCSF_ROOT2LEAF,&rootbuf,&leafbuf,&req,NULL);CHKERRQ(ierr);
+  ierr = PetscSFLinkSyncStreamBeforeCallMPI(sf,link,PETSCSF_ROOT2LEAF);CHKERRQ(ierr);
   ierr = MPIU_Igather(rootbuf,sendcount,unit,leafbuf,sendcount,unit,0/*rank 0*/,comm,req);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -35,9 +37,11 @@ static PetscErrorCode PetscSFReduceBegin_Gather(PetscSF sf,MPI_Datatype unit,Pet
   PetscFunctionBegin;
   ierr = PetscSFLinkCreate(sf,unit,rootmtype,rootdata,leafmtype,leafdata,op,PETSCSF_REDUCE,&link);CHKERRQ(ierr);
   ierr = PetscSFLinkPackLeafData(sf,link,PETSCSF_REMOTE,leafdata);CHKERRQ(ierr);
+  ierr = PetscSFLinkCopyLeafBufferInCaseNotUseGpuAwareMPI(sf,link,PETSC_TRUE/* device2host before sending */);CHKERRQ(ierr);
   ierr = PetscObjectGetComm((PetscObject)sf,&comm);CHKERRQ(ierr);
   ierr = PetscMPIIntCast(sf->nroots,&recvcount);CHKERRQ(ierr);
   ierr = PetscSFLinkGetMPIBuffersAndRequests(sf,link,PETSCSF_LEAF2ROOT,&rootbuf,&leafbuf,&req,NULL);CHKERRQ(ierr);
+  ierr = PetscSFLinkSyncStreamBeforeCallMPI(sf,link,PETSCSF_LEAF2ROOT);CHKERRQ(ierr);
   ierr = MPIU_Iscatter(leafbuf,recvcount,unit,rootbuf,recvcount,unit,0/*rank 0*/,comm,req);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -48,7 +52,7 @@ PETSC_INTERN PetscErrorCode PetscSFCreate_Gather(PetscSF sf)
   PetscSF_Gather  *dat = (PetscSF_Gather*)sf->data;
 
   PetscFunctionBegin;
-  sf->ops->BcastAndOpEnd   = PetscSFBcastAndOpEnd_Basic;
+  sf->ops->BcastEnd        = PetscSFBcastEnd_Basic;
   sf->ops->ReduceEnd       = PetscSFReduceEnd_Basic;
 
   /* Inherit from Allgatherv */
@@ -67,7 +71,7 @@ PETSC_INTERN PetscErrorCode PetscSFCreate_Gather(PetscSF sf)
   sf->ops->FetchAndOpBegin = PetscSFFetchAndOpBegin_Gatherv;
 
   /* Gather stuff */
-  sf->ops->BcastAndOpBegin = PetscSFBcastAndOpBegin_Gather;
+  sf->ops->BcastBegin      = PetscSFBcastBegin_Gather;
   sf->ops->ReduceBegin     = PetscSFReduceBegin_Gather;
 
   ierr     = PetscNewLog(sf,&dat);CHKERRQ(ierr);

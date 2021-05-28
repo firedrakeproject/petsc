@@ -5,8 +5,8 @@ CPPFLAGS         =
 FPPFLAGS         =
 LOCDIR		 = src/snes/tutorials/
 MANSEC           = SNES
-EXAMPLESC	 = ex1.c ex2.c ex3.c  ex5.c ex9.c \
-                   ex12.c ex14.c ex15.c ex18.c ex19.c ex21.c ex22.c \
+EXAMPLESC	 = ex1.c ex2.c ex3.c  ex5.c ex6.c ex9.c \
+                   ex12.c ex14.c ex15.c ex17.c ex18.c ex19.c ex21.c ex22.c \
                    ex25.c ex28.c ex30.c ex33.c \
                    ex35.c ex42.c ex46.c ex48.c \
                    ex56.c ex58.c ex59.c \
@@ -98,11 +98,7 @@ runex19_suitesparse:
            else  printf "${PWD}\nPossible problem with ex19 running with suitesparse, diffs above\n=========================================\n"; fi; \
 	   ${RM} -f ex19_1.tmp
 runex3_kokkos: ex3k.PETSc
-ifneq ($(KOKKOS_BIN),)
-	-@${MPIEXEC} -n 1 ./ex3k -view_initial -view_kokkos_configuration false -dm_vec_type cuda -vec_pinned_memory_min 0 -use_gpu_aware_mpi 0 -snes_monitor | grep -v "type:" > ex3k_1.tmp 2>&1
-else
-	-@${MPIEXEC} -n 1 ./ex3k -view_initial -view_kokkos_configuration false -snes_monitor | grep -v "type:"  > ex3k_1.tmp 2>&1
-endif
+	-@${MPIEXEC} -n 2 ./ex3k -view_initial -dm_vec_type kokkos -dm_mat_type aijkokkos -use_gpu_aware_mpi 0 -snes_monitor > ex3k_1.tmp 2>&1
 	-@if (${DIFF} output/ex3k_1.out ex3k_1.tmp) then \
            echo "C/C++ example src/snes/tutorials/ex3k run successfully with kokkos"; \
            else  printf "${PWD}\nPossible problem with ex3k running with kokkos, diffs above\n=========================================\n"; \

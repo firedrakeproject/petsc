@@ -746,22 +746,22 @@ PetscErrorCode PCSetFromOptions_MG(PetscOptionItems *PetscOptionsObject,PC pc)
     }
 
 #if defined(PETSC_USE_LOG)
-    {
-      const char    *sname = "MG Apply";
-      PetscStageLog stageLog;
-      PetscInt      st;
+    /*{*/
+    /*  const char    *sname = "MG Apply";*/
+    /*  PetscStageLog stageLog;*/
+    /*  PetscInt      st;*/
 
-      ierr = PetscLogGetStageLog(&stageLog);CHKERRQ(ierr);
-      for (st = 0; st < stageLog->numStages; ++st) {
-        PetscBool same;
+    /*  ierr = PetscLogGetStageLog(&stageLog);CHKERRQ(ierr);*/
+    /*  for (st = 0; st < stageLog->numStages; ++st) {*/
+    /*    PetscBool same;*/
 
-        ierr = PetscStrcmp(stageLog->stageInfo[st].name, sname, &same);CHKERRQ(ierr);
-        if (same) mg->stageApply = st;
-      }
-      if (!mg->stageApply) {
-        ierr = PetscLogStageRegister(sname, &mg->stageApply);CHKERRQ(ierr);
-      }
-    }
+    /*    ierr = PetscStrcmp(stageLog->stageInfo[st].name, sname, &same);CHKERRQ(ierr);*/
+    /*    if (same) mg->stageApply = st;*/
+    /*  }*/
+    /*  if (!mg->stageApply) {*/
+    /*    ierr = PetscLogStageRegister(sname, &mg->stageApply);CHKERRQ(ierr);*/
+    /*  }*/
+    /*}*/
 #endif
   }
   ierr = PetscOptionsTail();CHKERRQ(ierr);

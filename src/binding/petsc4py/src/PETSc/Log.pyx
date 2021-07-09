@@ -66,6 +66,11 @@ cdef class Log:
         CHKERR( PetscLogFlops(cflops) )
 
     @classmethod
+    def logBytes(cls, nbyte):
+        cdef PetscLogDouble cbytes=nbyte
+        CHKERR( PetscLogBytes(cbytes) )
+
+    @classmethod
     def addFlops(cls, flops):
         cdef PetscLogDouble cflops=flops
         CHKERR( PetscLogFlops(cflops) )
@@ -75,6 +80,12 @@ cdef class Log:
         cdef PetscLogDouble cflops=0
         CHKERR( PetscGetFlops(&cflops) )
         return cflops
+
+    @classmethod
+    def getBytes(cls):
+        cdef PetscLogDouble cbytes=0
+        CHKERR( PetscGetBytes(&cbytes) )
+        return cbytes
 
     @classmethod
     def getTime(cls):
@@ -88,12 +99,12 @@ cdef class Log:
         CHKERR( PetscGetCPUTime(&cputime) )
         return cputime
 
-    @classmethod    
+    @classmethod
     def EventDecorator(cls, name=None, klass=None):
         """Decorate a function with a PETSc event.
 
         If no event name is specified it will default to the name of the function.
-        
+
         Usage:
             @EventDecorator("My Function")
             def myfunc():

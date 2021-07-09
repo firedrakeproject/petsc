@@ -3,7 +3,7 @@ cdef extern from * nogil:
     ctypedef double PetscLogDouble
     ctypedef struct PetscEventPerfInfo:
         int count
-        PetscLogDouble flops, time
+        PetscLogDouble flops, time, bytes
         PetscLogDouble numMessages
         PetscLogDouble messageLength
         PetscLogDouble numReductions
@@ -14,6 +14,8 @@ cdef extern from * nogil:
 
     int PetscLogFlops(PetscLogDouble)
     int PetscGetFlops(PetscLogDouble*)
+    int PetscLogBytes(PetscLogDouble)
+    int PetscGetBytes(PetscLogDouble*)
     int PetscGetCPUTime(PetscLogDouble*)
     int PetscMallocGetCurrentUsage(PetscLogDouble*)
     int PetscMemoryGetCurrentUsage(PetscLogDouble*)

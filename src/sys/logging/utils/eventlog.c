@@ -140,6 +140,9 @@ PetscErrorCode PetscEventPerfInfoClear(PetscEventPerfInfo *eventInfo)
   eventInfo->flops         = 0.0;
   eventInfo->flops2        = 0.0;
   eventInfo->flopsTmp      = 0.0;
+  eventInfo->bytes         = 0.0;
+  eventInfo->bytes2        = 0.0;
+  eventInfo->bytesTmp      = 0.0;
   eventInfo->time          = 0.0;
   eventInfo->time2         = 0.0;
   eventInfo->timeTmp       = 0.0;
@@ -668,6 +671,24 @@ PetscErrorCode PetscLogEventZeroFlops(PetscLogEvent event)
   eventLog->eventInfo[event].flops    = 0.0;
   eventLog->eventInfo[event].flops2   = 0.0;
   eventLog->eventInfo[event].flopsTmp = 0.0;
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode PetscLogEventZeroBytes(PetscLogEvent event)
+{
+  PetscStageLog     stageLog;
+  PetscEventPerfLog eventLog = NULL;
+  int               stage;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  ierr = PetscLogGetStageLog(&stageLog);CHKERRQ(ierr);
+  ierr = PetscStageLogGetCurrent(stageLog,&stage);CHKERRQ(ierr);
+  ierr = PetscStageLogGetEventPerfLog(stageLog,stage,&eventLog);CHKERRQ(ierr);
+
+  eventLog->eventInfo[event].bytes    = 0.0;
+  eventLog->eventInfo[event].bytes2   = 0.0;
+  eventLog->eventInfo[event].bytesTmp = 0.0;
   PetscFunctionReturn(0);
 }
 

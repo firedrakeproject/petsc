@@ -65,6 +65,7 @@ int       petsc_numObjectsDestroyed = 0;
 PetscLogDouble petsc_BaseTime        = 0.0;
 PetscLogDouble petsc_TotalFlops      = 0.0;  /* The number of flops */
 PetscLogDouble petsc_tmp_flops       = 0.0;  /* The incremental number of flops */
+PetscLogDouble petsc_TotalBytes      = 0.0;  /* The number of bytes */
 PetscLogDouble petsc_send_ct         = 0.0;  /* The number of sends */
 PetscLogDouble petsc_recv_ct         = 0.0;  /* The number of receives */
 PetscLogDouble petsc_send_len        = 0.0;  /* The total length of all sent messages */
@@ -2084,12 +2085,37 @@ PetscErrorCode PetscLogViewFromOptions(void)
 
    Level: intermediate
 
-.seealso: PetscTime(), PetscLogFlops()
+.seealso: PetscTime(), PetscLogFlops(), PetscLogBytes(), PetscGetFlops()
 @*/
 PetscErrorCode  PetscGetFlops(PetscLogDouble *flops)
 {
   PetscFunctionBegin;
   *flops = petsc_TotalFlops;
+  PetscFunctionReturn(0);
+}
+
+/*@C
+   PetscGetBytes - Returns the number of bytes moved on this processor
+   since the program began.
+
+   Not Collective
+
+   Output Parameter:
+   bytes - number of bytes moved
+
+   Notes:
+   A global counter logs all PETSc byte counts.  The user can use
+   PetscLogBytes() to increment this counter to include bytes for the
+   application code.
+
+   Level: intermediate
+
+.seealso: PetscTime(), PetscLogFlops(), PetscLogBytes(), PetscGetFlops()
+@*/
+PetscErrorCode  PetscGetBytes(PetscLogDouble *bytes)
+{
+  PetscFunctionBegin;
+  *bytes = petsc_TotalBytes;
   PetscFunctionReturn(0);
 }
 
@@ -2136,7 +2162,40 @@ PetscErrorCode  PetscLogObjectState(PetscObject obj, const char format[], ...)
 
    Level: intermediate
 
-.seealso: PetscLogEventRegister(), PetscLogEventBegin(), PetscLogEventEnd(), PetscGetFlops()
+.seealso: PetscLogEventRegister(), PetscLogEventBegin(), PetscLogEventEnd(), PetscGetFlops(), PetscLogBytes()
+
+M*/
+
+/*MC
+   PetscLogBytes - Adds bytes moved counts to the global counter.
+
+   Synopsis:
+   #include <petsclog.h>
+   PetscErrorCode PetscLogBytes(PetscLogDouble bytes)
+
+   Not Collective
+
+   Input Parameter:
+.  bytes - byte counter
+
+   Usage:
+.vb
+     PetscLogEvent USER_EVENT;
+     PetscLogEventRegister("User event",0,&USER_EVENT);
+     PetscLogEventBegin(USER_EVENT,0,0,0,0);
+        [code segment to monitor]
+        PetscLogBytes(user_bytes)
+     PetscLogEventEnd(USER_EVENT,0,0,0,0);
+.ve
+
+   Notes:
+   A global counter logs all PETSc byte counts.  The user can use
+   PetscLogBytes() to increment this counter to include bytes moved for the
+   application code.
+
+   Level: intermediate
+
+.seealso: PetscLogEventRegister(), PetscLogEventBegin(), PetscLogEventEnd(), PetscGetBytes(), PetscLogFlops()
 
 M*/
 

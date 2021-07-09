@@ -94,6 +94,8 @@ PETSC_EXTERN PetscLogEvent PETSC_LARGEST_EVENT;
 /* Global flop counter */
 PETSC_EXTERN PetscLogDouble petsc_TotalFlops;
 PETSC_EXTERN PetscLogDouble petsc_tmp_flops;
+/* Global byte counter */
+PETSC_EXTERN PetscLogDouble petsc_TotalBytes;
 
 /* We must make the following structures available to access the event
      activation flags in the PetscLogEventBegin/End() macros. These are not part of the PETSc public
@@ -164,6 +166,7 @@ typedef struct {
   int            depth;         /* The nesting depth of the event call */
   int            count;         /* The number of times this event was executed */
   PetscLogDouble flops, flops2, flopsTmp; /* The flops and flops^2 used in this event */
+  PetscLogDouble bytes, bytes2, bytesTmp; /* The bytes and bytes^2 used in this event */
   PetscLogDouble time, time2, timeTmp;    /* The time and time^2 taken for this event */
   PetscLogDouble syncTime;                /* The synchronization barrier time */
   PetscLogDouble dof[8];        /* The number of degrees of freedom associated with this event */
@@ -264,7 +267,7 @@ PETSC_EXTERN PetscErrorCode PetscStageLogGetEventPerfLog(PetscStageLog,int,Petsc
 
    Level: intermediate
 
-.seealso: PetscLogView(), PetscLogGpuFlops()
+.seealso: PetscLogView(), PetscLogGpuFlops(), PetscLogBytes()
 @*/
 
 PETSC_STATIC_INLINE PetscErrorCode PetscLogFlops(PetscLogDouble n)
@@ -274,6 +277,31 @@ PETSC_STATIC_INLINE PetscErrorCode PetscLogFlops(PetscLogDouble n)
   if (n < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Cannot log negative flops");
 #endif
   petsc_TotalFlops += PETSC_FLOPS_PER_OP*n;
+  PetscFunctionReturn(0);
+}
+
+/*@
+       PetscLogBytes - Log how many bytes are moved in a calculation
+
+   Input Paramters:
+    bytes - the number of bytes
+
+   Notes:
+     To limit the chance of integer overflow when multiplying by a constant, represent the constant as a double,
+     not an integer. Use PetscLogBytes(4.0*n) not PetscLogBytes(4*n)
+
+   Level: intermediate
+
+.seealso: PetscLogView(), PetscLogFlops()
+@*/
+
+PETSC_STATIC_INLINE PetscErrorCode PetscLogBytes(PetscLogDouble n)
+{
+  PetscFunctionBegin;
+#if defined(PETSC_USE_DEBUG)
+  if (n < 0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_OUTOFRANGE,"Cannot log negative bytes");
+#endif
+  petsc_TotalBytes += n;
   PetscFunctionReturn(0);
 }
 
@@ -342,6 +370,7 @@ PETSC_EXTERN PetscErrorCode PetscLogGpuTimeEnd(void);
 #endif
 
 PETSC_EXTERN PetscErrorCode PetscGetFlops(PetscLogDouble *);
+PETSC_EXTERN PetscErrorCode PetscGetBytes(PetscLogDouble *);
 
 #if defined (PETSC_HAVE_MPE)
 PETSC_EXTERN PetscErrorCode PetscLogMPEBegin(void);
@@ -621,6 +650,8 @@ PETSC_STATIC_INLINE int PetscMPIParallelComm(MPI_Comm comm)
 
 #define PetscLogFlops(n)                   0
 #define PetscGetFlops(a)                   (*(a) = 0.0,0)
+#define PetscLogBytes(n)                   0
+#define PetscGetBytes(a)                   (*(a) = 0.0,0)
 
 #define PetscLogStageRegister(a,b)         0
 #define PetscLogStagePush(a)               0

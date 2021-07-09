@@ -225,6 +225,7 @@ PetscErrorCode  VecNorm(Vec x,NormType type,PetscReal *val)
     if (flg) PetscFunctionReturn(0);
   }
   ierr = PetscLogEventBegin(VEC_Norm,x,0,0,0);CHKERRQ(ierr);
+  ierr = PetscLogBytes((double)sizeof(PetscScalar)*x->map->n);CHKERRQ(ierr);
   ierr = (*x->ops->norm)(x,type,val);CHKERRQ(ierr);
   ierr = PetscLogEventEnd(VEC_Norm,x,0,0,0);CHKERRQ(ierr);
   if (type!=NORM_1_AND_2) {

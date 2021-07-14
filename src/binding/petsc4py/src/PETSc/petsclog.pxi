@@ -8,6 +8,8 @@ cdef extern from * nogil:
         PetscLogDouble messageLength
         PetscLogDouble numReductions
 
+    ctypedef struct PetscEventRegInfo:
+        char *name
     int PetscLogDefaultBegin()
     int PetscLogAllBegin()
     int PetscLogView(PetscViewer)
@@ -24,6 +26,27 @@ cdef extern from * nogil:
     int PetscTimeSubtract(PetscLogDouble*)
     int PetscTimeAdd(PetscLogDouble*)
 
+    struct _n_PetscEventPerfLog:
+        int numEvents
+        PetscEventPerfInfo* eventInfo
+    ctypedef _n_PetscEventPerfLog* PetscEventPerfLog
+    struct _n_PetscEventRegLog:
+        int numEvents
+        PetscEventRegInfo* eventInfo
+    ctypedef _n_PetscEventRegLog* PetscEventRegLog
+    struct _PetscStageInfo:
+        char *name
+        PetscBool used
+        PetscEventPerfLog eventLog
+    ctypedef _PetscStageInfo PetscStageInfo
+    struct _n_PetscStageLog:
+        int numStages
+        PetscStageInfo* stageInfo
+        PetscEventRegLog eventLog
+
+    ctypedef _n_PetscStageLog* PetscStageLog
+
+    int PetscLogGetStageLog(PetscStageLog*)
     ctypedef int PetscLogStage
     int PetscLogStageRegister(char[],PetscLogStage*)
     int PetscLogStagePush(PetscLogStage)

@@ -545,7 +545,7 @@ static PetscErrorCode PetscPrintXMLGlobalPerformanceElement(PetscViewer viewer, 
 static PetscErrorCode PetscPrintGlobalPerformance(PetscViewer viewer, PetscLogDouble locTotalTime)
 {
   PetscErrorCode  ierr;
-  PetscLogDouble  flops, mem, red, mess;
+  PetscLogDouble  flops, mem, red, mess, bytes;
   const PetscBool print_total_yes   = PETSC_TRUE,
                   print_total_no    = PETSC_FALSE,
                   print_average_no  = PETSC_FALSE,
@@ -572,6 +572,13 @@ static PetscErrorCode PetscPrintGlobalPerformance(PetscViewer viewer, PetscLogDo
   else flops = 0.0;
   ierr = PetscPrintXMLGlobalPerformanceElement(viewer, "mflops", "MFlop/sec", flops/1.0E6, print_average_yes, print_total_yes);CHKERRQ(ierr);
 
+  /*   bytes */
+  ierr = PetscPrintXMLGlobalPerformanceElement(viewer, "mbyte", "MByte", petsc_TotalBytes/1.0E6, print_average_yes, print_total_yes);CHKERRQ(ierr);
+
+  /*   Bytes/sec */
+  if (locTotalTime != 0.0) bytes = petsc_TotalBytes/locTotalTime;
+  else bytes = 0.0;
+  ierr = PetscPrintXMLGlobalPerformanceElement(viewer, "mbytes", "MByte/sec", bytes/1.0E6, print_average_yes, print_total_yes);CHKERRQ(ierr);
   /*   Memory */
   ierr = PetscMallocGetMaximumUsage(&mem);CHKERRQ(ierr);
   if (mem > 0.0) {
@@ -908,6 +915,7 @@ static PetscErrorCode PetscLogNestedTreePrintLine(PetscViewer viewer,PetscEventP
     ierr = PetscPrintXMLNestedLinePerfResults(viewer, "time", time/totalTime*100.0, 0, 0, 1.02);CHKERRQ(ierr);
     ierr = PetscPrintXMLNestedLinePerfResults(viewer, "ncalls", parentCount>0 ? countsPerCall : 0, 0.99, 1.01, 1.02);CHKERRQ(ierr);
     ierr = PetscPrintXMLNestedLinePerfResults(viewer, "mflops", time>=timeMx*0.001 ? 1e-6*perfInfo.flops/time : 0, 0, 0.01, 1.05);CHKERRQ(ierr);
+    ierr = PetscPrintXMLNestedLinePerfResults(viewer, "mbytes", time>=timeMx*0.001 ? 1e-6*perfInfo.bytes/time : 0, 0, 0.01, 1.05);CHKERRQ(ierr);
     ierr = PetscPrintXMLNestedLinePerfResults(viewer, "mbps",time>=timeMx*0.001 ? perfInfo.messageLength/(1024*1024*time) : 0, 0, 0.01, 1.05);CHKERRQ(ierr);
     ierr = PetscPrintXMLNestedLinePerfResults(viewer, "nreductsps", time>=timeMx*0.001 ? perfInfo.numReductions/time : 0, 0, 0.01, 1.05);CHKERRQ(ierr);
   }
@@ -1048,6 +1056,7 @@ static PetscErrorCode PetscLogNestedTreeSetSelfOtherPerfInfo(const PetscNestedEv
     *selfPerfInfo                = *myPerfInfo;
     otherPerfInfo->time          = 0;
     otherPerfInfo->flops         = 0;
+    otherPerfInfo->bytes         = 0;
     otherPerfInfo->numMessages   = 0;
     otherPerfInfo->messageLength = 0;
     otherPerfInfo->numReductions = 0;
@@ -1060,6 +1069,7 @@ static PetscErrorCode PetscLogNestedTreeSetSelfOtherPerfInfo(const PetscNestedEv
 
       selfPerfInfo->time          -= childPerfInfo.time;
       selfPerfInfo->flops         -= childPerfInfo.flops;
+      selfPerfInfo->bytes         -= childPerfInfo.bytes;
       selfPerfInfo->numMessages   -= childPerfInfo.numMessages;
       selfPerfInfo->messageLength -= childPerfInfo.messageLength;
       selfPerfInfo->numReductions -= childPerfInfo.numReductions;
@@ -1068,6 +1078,7 @@ static PetscErrorCode PetscLogNestedTreeSetSelfOtherPerfInfo(const PetscNestedEv
         /* Add them to 'other' if the time is ignored in the output */
         otherPerfInfo->time          += childPerfInfo.time;
         otherPerfInfo->flops         += childPerfInfo.flops;
+        otherPerfInfo->bytes         += childPerfInfo.bytes;
         otherPerfInfo->numMessages   += childPerfInfo.numMessages;
         otherPerfInfo->messageLength += childPerfInfo.messageLength;
         otherPerfInfo->numReductions += childPerfInfo.numReductions;
@@ -1212,6 +1223,7 @@ typedef struct {
   char           *name;
   PetscLogDouble time;
   PetscLogDouble flops;
+  PetscLogDouble bytes;
   PetscLogDouble numMessages;
   PetscLogDouble messageLength;
   PetscLogDouble numReductions;
@@ -1266,6 +1278,7 @@ static PetscErrorCode PetscCalcSelfTime(PetscViewer viewer, PetscSelfTimer **p_s
   for (nst=0; nst<=nstMax; nst++) {
     totaltimes[nst].time          = 0;
     totaltimes[nst].flops         = 0;
+    totaltimes[nst].bytes         = 0;
     totaltimes[nst].numMessages   = 0;
     totaltimes[nst].messageLength = 0;
     totaltimes[nst].numReductions = 0;
@@ -1281,6 +1294,7 @@ static PetscErrorCode PetscCalcSelfTime(PetscViewer viewer, PetscSelfTimer **p_s
       const PetscLogEvent dftEvent = dftEvents[j];
       totaltimes[nstEvent].time          += eventPerfInfo[dftEvent].time;
       totaltimes[nstEvent].flops         += eventPerfInfo[dftEvent].flops;
+      totaltimes[nstEvent].bytes         += eventPerfInfo[dftEvent].bytes;
       totaltimes[nstEvent].numMessages   += eventPerfInfo[dftEvent].numMessages;
       totaltimes[nstEvent].messageLength += eventPerfInfo[dftEvent].messageLength;
       totaltimes[nstEvent].numReductions += eventPerfInfo[dftEvent].numReductions;
@@ -1302,6 +1316,7 @@ static PetscErrorCode PetscCalcSelfTime(PetscViewer viewer, PetscSelfTimer **p_s
         const NestedEventId nstParent = nstEvents[dftParentsSorted[j]];
         selftimes[nstParent].time          -= eventPerfInfo[dftEvent].time;
         selftimes[nstParent].flops         -= eventPerfInfo[dftEvent].flops;
+        selftimes[nstParent].bytes         -= eventPerfInfo[dftEvent].bytes;
         selftimes[nstParent].numMessages   -= eventPerfInfo[dftEvent].numMessages;
         selftimes[nstParent].messageLength -= eventPerfInfo[dftEvent].messageLength;
         selftimes[nstParent].numReductions -= eventPerfInfo[dftEvent].numReductions;
@@ -1363,6 +1378,7 @@ static PetscErrorCode PetscPrintSelfTime(PetscViewer viewer, const PetscSelfTime
 
       selfPerfInfo.time          = selftimes[nstEvent].time ;
       selfPerfInfo.flops         = selftimes[nstEvent].flops;
+      selfPerfInfo.bytes         = selftimes[nstEvent].bytes;
       selfPerfInfo.numMessages   = selftimes[nstEvent].numMessages;
       selfPerfInfo.messageLength = selftimes[nstEvent].messageLength;
       selfPerfInfo.numReductions = selftimes[nstEvent].numReductions;

@@ -140,6 +140,9 @@ PetscErrorCode PetscEventPerfInfoClear(PetscEventPerfInfo *eventInfo)
   eventInfo->flops         = 0.0;
   eventInfo->flops2        = 0.0;
   eventInfo->flopsTmp      = 0.0;
+  eventInfo->bytes         = 0.0;
+  eventInfo->bytes2        = 0.0;
+  eventInfo->bytesTmp      = 0.0;
   eventInfo->time          = 0.0;
   eventInfo->time2         = 0.0;
   eventInfo->timeTmp       = 0.0;
@@ -671,6 +674,24 @@ PetscErrorCode PetscLogEventZeroFlops(PetscLogEvent event)
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode PetscLogEventZeroBytes(PetscLogEvent event)
+{
+  PetscStageLog     stageLog;
+  PetscEventPerfLog eventLog = NULL;
+  int               stage;
+  PetscErrorCode    ierr;
+
+  PetscFunctionBegin;
+  ierr = PetscLogGetStageLog(&stageLog);CHKERRQ(ierr);
+  ierr = PetscStageLogGetCurrent(stageLog,&stage);CHKERRQ(ierr);
+  ierr = PetscStageLogGetEventPerfLog(stageLog,stage,&eventLog);CHKERRQ(ierr);
+
+  eventLog->eventInfo[event].bytes    = 0.0;
+  eventLog->eventInfo[event].bytes2   = 0.0;
+  eventLog->eventInfo[event].bytesTmp = 0.0;
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode PetscLogEventSynchronize(PetscLogEvent event,MPI_Comm comm)
 {
   PetscStageLog     stageLog;
@@ -717,6 +738,7 @@ PetscErrorCode PetscLogEventBeginDefault(PetscLogEvent event,int t,PetscObject o
   eventLog->eventInfo[event].timeTmp = 0.0;
   PetscTimeSubtract(&eventLog->eventInfo[event].timeTmp);
   eventLog->eventInfo[event].flopsTmp       = -petsc_TotalFlops;
+  eventLog->eventInfo[event].bytesTmp       = -petsc_TotalBytes;
   eventLog->eventInfo[event].numMessages   -= petsc_irecv_ct  + petsc_isend_ct  + petsc_recv_ct  + petsc_send_ct;
   eventLog->eventInfo[event].messageLength -= petsc_irecv_len + petsc_isend_len + petsc_recv_len + petsc_send_len;
   eventLog->eventInfo[event].numReductions -= petsc_allreduce_ct + petsc_gather_ct + petsc_scatter_ct;
@@ -763,6 +785,9 @@ PetscErrorCode PetscLogEventEndDefault(PetscLogEvent event,int t,PetscObject o1,
   eventLog->eventInfo[event].flopsTmp      += petsc_TotalFlops;
   eventLog->eventInfo[event].flops         += eventLog->eventInfo[event].flopsTmp;
   eventLog->eventInfo[event].flops2        += eventLog->eventInfo[event].flopsTmp*eventLog->eventInfo[event].flopsTmp;
+  eventLog->eventInfo[event].bytesTmp      += petsc_TotalBytes;
+  eventLog->eventInfo[event].bytes         += eventLog->eventInfo[event].bytesTmp;
+  eventLog->eventInfo[event].bytes2        += eventLog->eventInfo[event].bytesTmp*eventLog->eventInfo[event].bytesTmp;
   eventLog->eventInfo[event].numMessages   += petsc_irecv_ct  + petsc_isend_ct  + petsc_recv_ct  + petsc_send_ct;
   eventLog->eventInfo[event].messageLength += petsc_irecv_len + petsc_isend_len + petsc_recv_len + petsc_send_len;
   eventLog->eventInfo[event].numReductions += petsc_allreduce_ct + petsc_gather_ct + petsc_scatter_ct;
@@ -830,6 +855,7 @@ PetscErrorCode PetscLogEventBeginComplete(PetscLogEvent event,int t,PetscObject 
     if (o3) petsc_actions[petsc_numActions].id3 = o3->id;
     else petsc_actions[petsc_numActions].id3 = -1;
     petsc_actions[petsc_numActions].flops = petsc_TotalFlops;
+    petsc_actions[petsc_numActions].bytes = petsc_TotalBytes;
 
     ierr = PetscMallocGetCurrentUsage(&petsc_actions[petsc_numActions].mem);CHKERRQ(ierr);
     ierr = PetscMallocGetMaximumUsage(&petsc_actions[petsc_numActions].maxmem);CHKERRQ(ierr);
@@ -842,6 +868,7 @@ PetscErrorCode PetscLogEventBeginComplete(PetscLogEvent event,int t,PetscObject 
   eventPerfLog->eventInfo[event].count++;
   eventPerfLog->eventInfo[event].time          -= curTime;
   eventPerfLog->eventInfo[event].flops         -= petsc_TotalFlops;
+  eventPerfLog->eventInfo[event].bytes         -= petsc_TotalBytes;
   eventPerfLog->eventInfo[event].numMessages   -= petsc_irecv_ct  + petsc_isend_ct  + petsc_recv_ct  + petsc_send_ct;
   eventPerfLog->eventInfo[event].messageLength -= petsc_irecv_len + petsc_isend_len + petsc_recv_len + petsc_send_len;
   eventPerfLog->eventInfo[event].numReductions -= petsc_allreduce_ct + petsc_gather_ct + petsc_scatter_ct;
@@ -890,6 +917,7 @@ PetscErrorCode PetscLogEventEndComplete(PetscLogEvent event,int t,PetscObject o1
     if (o3) petsc_actions[petsc_numActions].id3 = o3->id;
     else petsc_actions[petsc_numActions].id3 = -1;
     petsc_actions[petsc_numActions].flops = petsc_TotalFlops;
+    petsc_actions[petsc_numActions].bytes = petsc_TotalBytes;
 
     ierr = PetscMallocGetCurrentUsage(&petsc_actions[petsc_numActions].mem);CHKERRQ(ierr);
     ierr = PetscMallocGetMaximumUsage(&petsc_actions[petsc_numActions].maxmem);CHKERRQ(ierr);
@@ -903,6 +931,7 @@ PetscErrorCode PetscLogEventEndComplete(PetscLogEvent event,int t,PetscObject o1
   eventPerfLog->eventInfo[event].count++;
   eventPerfLog->eventInfo[event].time          += curTime;
   eventPerfLog->eventInfo[event].flops         += petsc_TotalFlops;
+  eventPerfLog->eventInfo[event].bytes         += petsc_TotalBytes;
   eventPerfLog->eventInfo[event].numMessages   += petsc_irecv_ct  + petsc_isend_ct  + petsc_recv_ct  + petsc_send_ct;
   eventPerfLog->eventInfo[event].messageLength += petsc_irecv_len + petsc_isend_len + petsc_recv_len + petsc_send_len;
   eventPerfLog->eventInfo[event].numReductions += petsc_allreduce_ct + petsc_gather_ct + petsc_scatter_ct;

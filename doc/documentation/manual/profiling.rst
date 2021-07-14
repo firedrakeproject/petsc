@@ -385,6 +385,7 @@ steps involved in logging a user-defined portion of code, called an
    PetscLogEventBegin(USER_EVENT,0,0,0,0);
    /* code segment to monitor */
    PetscLogFlops(user_event_flops);
+   PetscLogBytes(user_event_bytes);
    PetscLogEventEnd(USER_EVENT,0,0,0,0);
 
 One must register the event by calling ``PetscLogEventRegister()``,
@@ -425,6 +426,17 @@ segment of code by calling
 between the calls to ``PetscLogEventBegin()`` and
 ``PetscLogEventEnd()``. This value will automatically be added to the
 global flop counter for the entire program.
+
+If the user has an estimate of the data movement for this segment of
+code they can similarly call
+
+::
+
+   PetscLogBytes(number of bytes of data movement);
+
+between the calls to ``PetscLogEventBegin()`` and
+``PetscLogEventEnd()``. This value will be added to the global byte
+counter for the entire program.
 
 .. _sec_profstages:
 

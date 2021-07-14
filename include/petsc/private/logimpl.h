@@ -1,3 +1,6 @@
+#ifndef PETSC_LOGIMPL_H
+#define PETSC_LOGIMPL_H
+
 #include <petsc/private/petscimpl.h>
 #include <petsctime.h>
 
@@ -19,6 +22,7 @@ typedef struct _Action {
   PetscClassId   classid;        /* The event class id */
   PetscLogDouble time;          /* The time of occurence */
   PetscLogDouble flops;         /* The cumlative flops */
+  PetscLogDouble bytes;         /* The cumulative bytes */
   PetscLogDouble mem;           /* The current memory usage */
   PetscLogDouble maxmem;        /* The maximum memory usage */
   int            id1, id2, id3; /* The ids of associated objects */
@@ -129,3 +133,4 @@ PETSC_INTERN PetscErrorCode PetscLogView_Nested(PetscViewer);
 PETSC_INTERN PetscErrorCode PetscLogNestedEnd(void);
 PETSC_INTERN PetscErrorCode PetscLogView_Flamegraph(PetscViewer);
 #endif /* PETSC_USE_LOG */
+#endif /* PETSC_LOGIMPL_H */

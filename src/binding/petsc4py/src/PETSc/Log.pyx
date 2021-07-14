@@ -5,6 +5,30 @@ import functools
 cdef class Log:
 
     @classmethod
+    def getPerfInfoAllStages(cls):
+        cdef PetscStageLog stageLog
+        cdef PetscEventRegLog eventLog
+        cdef PetscStageInfo stageInfo
+        cdef PetscEventPerfInfo perfInfo
+        cdef int stage
+        cdef int event
+        CHKERR( PetscLogGetStageLog(&stageLog) )
+        eventLog = stageLog.eventLog
+        alldata = {}
+        for stage in range(stageLog.numStages):
+            stageInfo = stageLog.stageInfo[stage]
+            if not stageInfo.used:
+                continue
+            stagename = bytes2str(stageInfo.name)
+            stagedata = {}
+            for event in range(stageInfo.eventLog.numEvents):
+                eventname = bytes2str(eventLog.eventInfo[event].name)
+                perfInfo = stageInfo.eventLog.eventInfo[event]
+                stagedata[eventname] = perfInfo.copy()
+            alldata[stagename] = stagedata
+        return alldata
+
+    @classmethod
     def Stage(cls, name):
         if not name: raise ValueError("empty name")
         cdef const char *cname = NULL
@@ -66,6 +90,11 @@ cdef class Log:
         CHKERR( PetscLogFlops(cflops) )
 
     @classmethod
+    def logBytes(cls, nbyte):
+        cdef PetscLogDouble cbytes=nbyte
+        CHKERR( PetscLogBytes(cbytes) )
+
+    @classmethod
     def addFlops(cls, flops):
         cdef PetscLogDouble cflops=flops
         CHKERR( PetscLogFlops(cflops) )
@@ -75,6 +104,12 @@ cdef class Log:
         cdef PetscLogDouble cflops=0
         CHKERR( PetscGetFlops(&cflops) )
         return cflops
+
+    @classmethod
+    def getBytes(cls):
+        cdef PetscLogDouble cbytes=0
+        CHKERR( PetscGetBytes(&cbytes) )
+        return cbytes
 
     @classmethod
     def getTime(cls):
@@ -88,12 +123,12 @@ cdef class Log:
         CHKERR( PetscGetCPUTime(&cputime) )
         return cputime
 
-    @classmethod    
+    @classmethod
     def EventDecorator(cls, name=None, klass=None):
         """Decorate a function with a PETSc event.
 
         If no event name is specified it will default to the name of the function.
-        
+
         Usage:
             @EventDecorator("My Function")
             def myfunc():

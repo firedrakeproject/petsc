@@ -398,7 +398,8 @@ Usage of PETSc Functions and Macros
 
 #. Never use a local variable counter such as ``PetscInt flops = 0;`` to
    accumulate flops and then call ``PetscLogFlops();`` *always* just
-   call ``PetscLogFlops()`` directly when needed.
+   call ``PetscLogFlops()`` directly when needed. Similarly with
+   ``PetscLogBytes()``.
 
 #. Library functions should be declared
    ``PETSC_INTERN`` if they are intended to be visible only within a

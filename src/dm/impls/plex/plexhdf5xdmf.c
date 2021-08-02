@@ -63,14 +63,19 @@ PetscErrorCode DMPlexLoad_HDF5_Xdmf_Internal(DM dm, PetscViewer viewer)
   PetscMPIInt     rank;
   MPI_Comm        comm;
   PetscErrorCode  ierr;
+  const char     *topologydm_name;
   char            topo_path[PETSC_MAX_PATH_LEN]="/viz/topology/cells", topo_name[PETSC_MAX_PATH_LEN];
-  char            geom_path[PETSC_MAX_PATH_LEN]="/geometry/vertices",  geom_name[PETSC_MAX_PATH_LEN];
-  PetscBool       seq = PETSC_FALSE;
+  char            geom_path[PETSC_MAX_PATH_LEN], geom_name[PETSC_MAX_PATH_LEN];
+  PetscBool       seq = PETSC_FALSE, gt;
 
   PetscFunctionBegin;
   ierr = PetscObjectGetComm((PetscObject)dm, &comm);CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
 
+  ierr = PetscObjectGetName((PetscObject)dm, &topologydm_name);CHKERRQ(ierr);
+  ierr = DMPlexHDF5FileVersiongrt_Internal(viewer, "v3.15.3-618", &gt);CHKERRQ(ierr);
+  if (gt) {ierr = PetscSNPrintf(geom_path, PETSC_MAX_PATH_LEN, "topologies/%s/dms/coordinateDM/vecs/coordinates/coordinates", topologydm_name);CHKERRQ(ierr);}
+  else {ierr = PetscSNPrintf(geom_path, PETSC_MAX_PATH_LEN, "/geometry/vertices");CHKERRQ(ierr);}
   ierr = PetscOptionsBegin(PetscObjectComm((PetscObject)dm),((PetscObject)dm)->prefix,"DMPlex HDF5/XDMF Loader Options","PetscViewer");CHKERRQ(ierr);
   ierr = PetscOptionsString("-dm_plex_hdf5_topology_path","HDF5 path of topology dataset",NULL,topo_path,topo_path,sizeof(topo_path),NULL);CHKERRQ(ierr);
   ierr = PetscOptionsString("-dm_plex_hdf5_geometry_path","HDF5 path to geometry dataset",NULL,geom_path,geom_path,sizeof(geom_path),NULL);CHKERRQ(ierr);
@@ -109,10 +114,24 @@ PetscErrorCode DMPlexLoad_HDF5_Xdmf_Internal(DM dm, PetscViewer viewer)
     numVertices = rank == 0 ? numVertices : 0;
     ierr = PetscLayoutSetLocalSize(coordinates->map, numVertices);CHKERRQ(ierr);
   }
+  /* The coordinate Vec is viewed as a special case of Vecs on the DMPlex for version > v3.15.3-618, */
+  /* where Vecs are saved with blockSize = 1 and blockSize is saved separately as attribute.         */
+  if (gt) {
+    ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "blockSize", PETSC_INT, NULL, (void *) &spatialDim);CHKERRQ(ierr);
+    if (!seq) {
+      PetscInt  numDoFs, numVert, numLocalVert = PETSC_DECIDE;
+
+      ierr = PetscViewerHDF5ReadSizes(viewer, geom_name, NULL, &numDoFs);CHKERRQ(ierr);
+      numVert = numDoFs / spatialDim;
+      ierr = PetscSplitOwnership(comm, &numLocalVert, &numVert);CHKERRQ(ierr);
+      ierr = VecSetSizes(coordinates, numLocalVert * spatialDim, PETSC_DECIDE);CHKERRQ(ierr);
+    }
+  }
   ierr = VecLoad(coordinates, viewer);CHKERRQ(ierr);
   ierr = VecGetLocalSize(coordinates, &numVertices);CHKERRQ(ierr);
   ierr = VecGetSize(coordinates, &NVertices);CHKERRQ(ierr);
-  ierr = VecGetBlockSize(coordinates, &spatialDim);CHKERRQ(ierr);
+  if (gt) {ierr = VecSetBlockSize(coordinates, spatialDim);CHKERRQ(ierr);}
+  else {ierr = VecGetBlockSize(coordinates, &spatialDim);CHKERRQ(ierr);}
   ierr = PetscViewerHDF5PopGroup(viewer);CHKERRQ(ierr);
   numVertices /= spatialDim;
   NVertices /= spatialDim;

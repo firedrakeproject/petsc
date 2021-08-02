@@ -340,6 +340,7 @@ PetscErrorCode VecLoad_Plex_HDF5_Native_Internal(Vec v, PetscViewer viewer)
 
 PetscErrorCode DMPlexTopologyView_HDF5_Internal(DM dm, IS globalPointNumbers, PetscViewer viewer)
 {
+  const char     *topologydm_name;
   IS              orderIS, conesIS, cellsIS, orntsIS;
   const PetscInt *gpoint;
   PetscInt       *order, *sizes, *cones, *ornts;
@@ -347,6 +348,7 @@ PetscErrorCode DMPlexTopologyView_HDF5_Internal(DM dm, IS globalPointNumbers, Pe
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
+  ierr = PetscViewerHDF5WriteAttribute(viewer, NULL, "petsc_version_git", PETSC_STRING, PETSC_VERSION_GIT);CHKERRQ(ierr);
   ierr = ISGetIndices(globalPointNumbers, &gpoint);CHKERRQ(ierr);
   ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
   ierr = DMPlexGetChart(dm, &pStart, &pEnd);CHKERRQ(ierr);
@@ -386,12 +388,17 @@ PetscErrorCode DMPlexTopologyView_HDF5_Internal(DM dm, IS globalPointNumbers, Pe
   ierr = PetscObjectSetName((PetscObject) cellsIS, "cells");CHKERRQ(ierr);
   ierr = ISCreateGeneral(PetscObjectComm((PetscObject) dm), cellsSize, ornts, PETSC_OWN_POINTER, &orntsIS);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) orntsIS, "orientation");CHKERRQ(ierr);
-  ierr = PetscViewerHDF5PushGroup(viewer, "/topology");CHKERRQ(ierr);
+  ierr = PetscObjectGetName((PetscObject)dm, &topologydm_name);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5PushGroup(viewer, "topologies");CHKERRQ(ierr);
+  ierr = PetscViewerHDF5PushGroup(viewer, topologydm_name);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5PushGroup(viewer, "topology");CHKERRQ(ierr);
   ierr = ISView(orderIS, viewer);CHKERRQ(ierr);
   ierr = ISView(conesIS, viewer);CHKERRQ(ierr);
   ierr = ISView(cellsIS, viewer);CHKERRQ(ierr);
   ierr = PetscViewerHDF5WriteObjectAttribute(viewer, (PetscObject) cellsIS, "cell_dim", PETSC_INT, (void *) &dim);CHKERRQ(ierr);
   ierr = ISView(orntsIS, viewer);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5PopGroup(viewer);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5PopGroup(viewer);CHKERRQ(ierr);
   ierr = PetscViewerHDF5PopGroup(viewer);CHKERRQ(ierr);
   ierr = ISDestroy(&orderIS);CHKERRQ(ierr);
   ierr = ISDestroy(&conesIS);CHKERRQ(ierr);
@@ -1008,6 +1015,18 @@ PetscErrorCode DMPlexLocalVectorView_HDF5_Internal(DM dm, PetscViewer viewer, DM
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode DMPlexHDF5FileVersiongrt_Internal(PetscViewer viewer, const char *version, PetscBool *gt)
+{
+  char           *fileVersion;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "petsc_version_git", PETSC_STRING , &version, &fileVersion);CHKERRQ(ierr);
+  ierr = PetscStrgrt(fileVersion, version, gt);CHKERRQ(ierr);
+  ierr = PetscFree(fileVersion);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 typedef struct {
   PetscMPIInt rank;
   DM          dm;
@@ -1083,11 +1102,14 @@ PetscErrorCode DMPlexLabelsLoad_HDF5_Internal(DM dm, PetscViewer viewer)
 PetscErrorCode DMPlexTopologyLoad_HDF5_Internal(DM dm, PetscViewer viewer, PetscSF *sf)
 {
   MPI_Comm        comm;
+  const char     *topologydm_name;
   IS              orderIS, conesIS, cellsIS, orntsIS;
   const PetscInt *order, *cones, *cells, *ornts;
   PetscInt       *cone, *ornt;
   PetscInt        dim, N, Np, pEnd, p, q, maxConeSize = 0, c;
   PetscMPIInt     size, rank;
+  char            group[PETSC_MAX_PATH_LEN];
+  PetscBool       gt;
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
@@ -1095,7 +1117,11 @@ PetscErrorCode DMPlexTopologyLoad_HDF5_Internal(DM dm, PetscViewer viewer, Petsc
   ierr = MPI_Comm_size(comm, &size);CHKERRMPI(ierr);
   ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
   /* Read toplogy */
-  ierr = PetscViewerHDF5PushGroup(viewer, "/topology");CHKERRQ(ierr);
+  ierr = PetscObjectGetName((PetscObject)dm, &topologydm_name);CHKERRQ(ierr);
+  ierr = DMPlexHDF5FileVersiongrt_Internal(viewer, "v3.15.3-618", &gt);CHKERRQ(ierr);
+  if (gt) {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "topologies/%s/topology", topologydm_name);CHKERRQ(ierr);}
+  else {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "/topology");CHKERRQ(ierr);}
+  ierr = PetscViewerHDF5PushGroup(viewer, group);CHKERRQ(ierr);
   ierr = ISCreate(comm, &orderIS);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) orderIS, "order");CHKERRQ(ierr);
   ierr = ISCreate(comm, &conesIS);CHKERRQ(ierr);
@@ -1292,7 +1318,7 @@ PetscErrorCode DMPlexSectionLoad_HDF5_Internal(DM dm, PetscViewer viewer, DM sec
   const char    *topologydm_name;
   const char    *sectiondm_name;
   PetscSection   sectionA, sectionB;
-  PetscInt       NX, nX, n, i;
+  PetscInt       nX, n, i;
   PetscSF        sfAB;
   PetscErrorCode ierr;
 
@@ -1304,7 +1330,6 @@ PetscErrorCode DMPlexSectionLoad_HDF5_Internal(DM dm, PetscViewer viewer, DM sec
   ierr = PetscObjectGetName((PetscObject)sectiondm, &sectiondm_name);CHKERRQ(ierr);
   ierr = PetscViewerHDF5PushGroup(viewer, "topologies");CHKERRQ(ierr);
   ierr = PetscViewerHDF5PushGroup(viewer, topologydm_name);CHKERRQ(ierr);
-  ierr = PetscViewerHDF5ReadSizes(viewer, "/topology/order", NULL, &NX);CHKERRQ(ierr);
   ierr = PetscViewerHDF5PushGroup(viewer, "dms");CHKERRQ(ierr);
   ierr = PetscViewerHDF5PushGroup(viewer, sectiondm_name);CHKERRQ(ierr);
   /* A: on-disk points                        */
@@ -1340,7 +1365,8 @@ PetscErrorCode DMPlexSectionLoad_HDF5_Internal(DM dm, PetscViewer viewer, DM sec
     ierr = PetscLayoutSetLocalSize(orderIS->map, n);CHKERRQ(ierr);
     ierr = ISLoad(orderIS, viewer);CHKERRQ(ierr);
     ierr = PetscLayoutCreate(comm, &layout);CHKERRQ(ierr);
-    ierr = PetscLayoutSetSize(layout, NX);CHKERRQ(ierr);
+    ierr = PetscSFGetGraph(sfXB, &nX, NULL, NULL, NULL);CHKERRQ(ierr);
+    ierr = PetscLayoutSetLocalSize(layout, nX);CHKERRQ(ierr);
     ierr = PetscLayoutSetBlockSize(layout, 1);CHKERRQ(ierr);
     ierr = PetscLayoutSetUp(layout);CHKERRQ(ierr);
     ierr = PetscSFCreate(comm, &sfXA);CHKERRQ(ierr);
@@ -1349,7 +1375,6 @@ PetscErrorCode DMPlexSectionLoad_HDF5_Internal(DM dm, PetscViewer viewer, DM sec
     ierr = ISRestoreIndices(orderIS, &gpoints);CHKERRQ(ierr);
     ierr = ISDestroy(&orderIS);CHKERRQ(ierr);
     ierr = PetscLayoutDestroy(&layout);CHKERRQ(ierr);
-    ierr = PetscSFGetGraph(sfXA, &nX, NULL, NULL, NULL);CHKERRQ(ierr);
     ierr = PetscMalloc1(n, &owners);CHKERRQ(ierr);
     ierr = PetscMalloc1(nX, &buffer);CHKERRQ(ierr);
     for (i = 0; i < n; ++i) {owners[i].rank = rank; owners[i].index = i;}

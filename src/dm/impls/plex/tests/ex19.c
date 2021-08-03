@@ -59,7 +59,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user)
 
     ierr = DMPlexCreateBoxMesh(comm, user->dim, PETSC_TRUE, faces, NULL, NULL, NULL, PETSC_TRUE, &user->dm);CHKERRQ(ierr);
   } else {
-    ierr = DMPlexCreateFromFile(comm, user->mshNam, PETSC_TRUE, &user->dm);CHKERRQ(ierr);
+    ierr = DMPlexCreateFromFile(comm, user->mshNam, "ex19_plex", PETSC_TRUE, &user->dm);CHKERRQ(ierr);
     ierr = DMGetDimension(user->dm, &user->dim);CHKERRQ(ierr);
   }
   {

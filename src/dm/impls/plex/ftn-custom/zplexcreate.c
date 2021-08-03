@@ -20,11 +20,14 @@ PETSC_EXTERN void dmplexcreateboxmesh_(MPI_Fint *comm, PetscInt *dim, PetscBool 
   *ierr = DMPlexCreateBoxMesh(MPI_Comm_f2c(*(comm)),*dim,*simplex,faces,lower,upper,periodicity,*interpolate,dm);
 }
 
-PETSC_EXTERN void dmplexcreatefromfile_(MPI_Fint *comm, char* name, PetscBool *interpolate, DM *dm, int *ierr,PETSC_FORTRAN_CHARLEN_T lenN)
+PETSC_EXTERN void dmplexcreatefromfile_(MPI_Fint *comm, char* name, char* pname, PetscBool *interpolate, DM *dm, int *ierr,PETSC_FORTRAN_CHARLEN_T lenN1,PETSC_FORTRAN_CHARLEN_T lenN2)
 {
   char *filename;
+  char *plexname;
 
-  FIXCHAR(name, lenN, filename);
-  *ierr = DMPlexCreateFromFile(MPI_Comm_f2c(*(comm)), filename, *interpolate, dm);if (*ierr) return;
+  FIXCHAR(name, lenN1, filename);
+  FIXCHAR(pname, lenN2, plexname);
+  *ierr = DMPlexCreateFromFile(MPI_Comm_f2c(*(comm)), filename, plexname, *interpolate, dm);if (*ierr) return;
   FREECHAR(name, filename);
+  FREECHAR(pname, plexname);
 }

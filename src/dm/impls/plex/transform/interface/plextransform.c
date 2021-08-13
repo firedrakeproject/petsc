@@ -337,12 +337,14 @@ PetscErrorCode DMPlexTransformView(DMPlexTransform tr, PetscViewer v)
 PetscErrorCode DMPlexTransformSetFromOptions(DMPlexTransform tr)
 {
   char           typeName[1024];
-  const char    *defName = DMPLEXREFINEREGULAR;
+  const char    *defName;
   PetscBool      flg;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tr,DMPLEXTRANSFORM_CLASSID,1);
+  ierr = DMPlexTransformGetType(tr, &defName);CHKERRQ(ierr);
+  if (!defName) defName = DMPLEXREFINEREGULAR;
   ierr = PetscObjectOptionsBegin((PetscObject)tr);CHKERRQ(ierr);
   ierr = PetscOptionsFList("-dm_plex_transform_type", "DMPlexTransform", "DMPlexTransformSetType", DMPlexTransformList, defName, typeName, 1024, &flg);CHKERRQ(ierr);
   if (flg) {ierr = DMPlexTransformSetType(tr, typeName);CHKERRQ(ierr);}

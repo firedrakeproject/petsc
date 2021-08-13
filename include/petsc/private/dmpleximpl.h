@@ -102,6 +102,7 @@ typedef struct {
   PetscInt             maxSupportSize;    /* Cached for fast lookup */
   PetscInt            *supports;          /* Cone for each point */
   PetscBool            refinementUniform; /* Flag for uniform cell refinement */
+  char                *transformType;     /* Type of transform for uniform cell refinement */
   PetscReal            refinementLimit;   /* Maximum volume for refined cell */
   PetscErrorCode     (*refinementFunc)(const PetscReal [], PetscReal *); /* Function giving the maximum volume for refined cell */
   PetscInt             overlap;           /* Overlap of the partitions as passed to DMPlexDistribute() or DMPlexDistributeOverlap() */

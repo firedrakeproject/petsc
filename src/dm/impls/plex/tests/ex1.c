@@ -1,6 +1,7 @@
 static char help[] = "Tests various DMPlex routines to construct, refine and distribute a mesh.\n\n";
 
 #include <petscdmplex.h>
+#include <petscdmplextransform.h>
 #include <petscsf.h>
 
 enum {STAGE_LOAD, STAGE_DISTRIBUTE, STAGE_REFINE, STAGE_OVERLAP};
@@ -89,8 +90,7 @@ PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
     ierr = DMPlexCheckPointSF(*dm);CHKERRQ(ierr);
     ierr = DMPlexCheckInterfaceCones(*dm);CHKERRQ(ierr);
     ierr = DMPlexSetRefinementUniform(*dm, PETSC_TRUE);CHKERRQ(ierr);
-    ierr = PetscObjectSetOptionsPrefix((PetscObject) *dm, "tobox_");CHKERRQ(ierr);
-    ierr = PetscOptionsSetValue(NULL, "-tobox_dm_plex_transform_type", "refine_tobox");CHKERRQ(ierr);
+    ierr = DMPlexSetTransformType(*dm, DMPLEXREFINETOBOX);CHKERRQ(ierr);
     ierr = DMRefine(*dm, PETSC_COMM_WORLD, &dmConv);CHKERRQ(ierr);
     ierr = PetscObjectSetOptionsPrefix((PetscObject) *dm, NULL);CHKERRQ(ierr);
     if (dmConv) {
@@ -152,8 +152,7 @@ PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
 
     ierr = DMViewFromOptions(*dm, NULL, "-dm_tobox_view");CHKERRQ(ierr);
     ierr = DMPlexSetRefinementUniform(*dm, PETSC_TRUE);CHKERRQ(ierr);
-    ierr = PetscObjectSetOptionsPrefix((PetscObject) *dm, "tobox_");CHKERRQ(ierr);
-    ierr = PetscOptionsSetValue(NULL, "-tobox_dm_plex_transform_type", "refine_tobox");CHKERRQ(ierr);
+    ierr = DMPlexSetTransformType(*dm, DMPLEXREFINETOBOX);CHKERRQ(ierr);
     ierr = DMRefine(*dm, PETSC_COMM_WORLD, &dmConv);CHKERRQ(ierr);
     ierr = PetscObjectSetOptionsPrefix((PetscObject) *dm, NULL);CHKERRQ(ierr);
     if (dmConv) {

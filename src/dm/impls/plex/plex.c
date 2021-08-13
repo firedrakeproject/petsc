@@ -2229,6 +2229,7 @@ PetscErrorCode DMDestroy_Plex(DM dm)
   ierr = PetscFree(mesh->facesTmp);CHKERRQ(ierr);
   ierr = PetscFree(mesh->tetgenOpts);CHKERRQ(ierr);
   ierr = PetscFree(mesh->triangleOpts);CHKERRQ(ierr);
+  ierr = PetscFree(mesh->transformType);CHKERRQ(ierr);
   ierr = PetscPartitionerDestroy(&mesh->partitioner);CHKERRQ(ierr);
   ierr = DMLabelDestroy(&mesh->subpointMap);CHKERRQ(ierr);
   ierr = ISDestroy(&mesh->subpointIS);CHKERRQ(ierr);

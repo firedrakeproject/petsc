@@ -49,6 +49,9 @@ PETSC_EXTERN PetscErrorCode DMPlexTransformGetCellVertices(DMPlexTransform, DMPo
 PETSC_EXTERN PetscErrorCode DMPlexTransformGetSubcellVertices(DMPlexTransform, DMPolytopeType, DMPolytopeType, PetscInt, PetscInt *[]);
 PETSC_EXTERN PetscErrorCode DMPlexTransformAdaptLabel(DM, DMLabel, DM *);
 
+PETSC_EXTERN PetscErrorCode DMPlexSetTransformType(DM, DMPlexTransformType);
+PETSC_EXTERN PetscErrorCode DMPlexGetTransformType(DM, DMPlexTransformType*);
+
 PETSC_EXTERN PetscErrorCode DMPlexRefineRegularGetAffineTransforms(DMPlexTransform, DMPolytopeType, PetscInt *, PetscReal *[], PetscReal *[], PetscReal *[]);
 PETSC_EXTERN PetscErrorCode DMPlexRefineRegularGetAffineFaceTransforms(DMPlexTransform, DMPolytopeType, PetscInt *, PetscReal *[], PetscReal *[], PetscReal *[], PetscReal *[]);
 

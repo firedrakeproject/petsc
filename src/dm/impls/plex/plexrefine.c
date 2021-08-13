@@ -105,6 +105,54 @@ PetscErrorCode DMPlexCreateCoarsePointIS(DM dm, IS *fpointIS)
   PetscFunctionReturn(0);
 }
 
+/*@C
+  DMPlexSetTransformType - Set the transform type for uniform refinement
+
+  Input Parameters:
++ dm - The DM
+- type - The transform type for uniform refinement
+
+  Level: developer
+
+.seealso: DMPlexTransformType, DMRefine(), DMPlexGetTransformType(), DMPlexSetRefinementUniform()
+@*/
+PetscErrorCode DMPlexSetTransformType(DM dm, DMPlexTransformType type)
+{
+  DM_Plex        *mesh = (DM_Plex*) dm->data;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
+  if (type) PetscValidCharPointer(type, 2);
+  ierr = PetscFree(mesh->transformType);CHKERRQ(ierr);
+  ierr = PetscStrallocpy(type, &mesh->transformType);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMPlexGetTransformType - Retrieve the transform type for uniform refinement
+
+  Input Parameter:
+. dm - The DM
+
+  Output Parameter:
+. type - The transform type for uniform refinement
+
+  Level: developer
+
+.seealso: DMPlexTransformType, DMRefine(), DMPlexSetTransformType(), DMPlexGetRefinementUniform()
+@*/
+PetscErrorCode DMPlexGetTransformType(DM dm, DMPlexTransformType *type)
+{
+  DM_Plex *mesh = (DM_Plex*) dm->data;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
+  PetscValidPointer(type, 2);
+  *type = mesh->transformType;
+  PetscFunctionReturn(0);
+}
+
 /*@
   DMPlexSetRefinementUniform - Set the flag for uniform refinement
 
@@ -121,7 +169,7 @@ PetscErrorCode DMPlexSetRefinementUniform(DM dm, PetscBool refinementUniform)
   DM_Plex *mesh = (DM_Plex*) dm->data;
 
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
   mesh->refinementUniform = refinementUniform;
   PetscFunctionReturn(0);
 }
@@ -144,7 +192,7 @@ PetscErrorCode DMPlexGetRefinementUniform(DM dm, PetscBool *refinementUniform)
   DM_Plex *mesh = (DM_Plex*) dm->data;
 
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
   PetscValidPointer(refinementUniform,  2);
   *refinementUniform = mesh->refinementUniform;
   PetscFunctionReturn(0);
@@ -258,15 +306,22 @@ PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm)
   ierr = DMPlexGetRefinementUniform(dm, &isUniform);CHKERRQ(ierr);
   ierr = DMViewFromOptions(dm, NULL, "-initref_dm_view");CHKERRQ(ierr);
   if (isUniform) {
-    DMPlexTransform tr;
-    DM              cdm, rcdm;
-    const char     *prefix;
+    DMPlexTransform     tr;
+    DM                  cdm, rcdm;
+    DMPlexTransformType trType;
+    const char         *prefix;
+    PetscOptions       options;
 
     ierr = DMPlexTransformCreate(PetscObjectComm((PetscObject) dm), &tr);CHKERRQ(ierr);
     ierr = DMPlexTransformSetDM(tr, dm);CHKERRQ(ierr);
+    ierr = DMPlexGetTransformType(dm, &trType);CHKERRQ(ierr);
+    if (trType) {ierr = DMPlexTransformSetType(tr, trType);CHKERRQ(ierr);}
     ierr = PetscObjectGetOptionsPrefix((PetscObject) dm, &prefix);CHKERRQ(ierr);
     ierr = PetscObjectSetOptionsPrefix((PetscObject) tr,  prefix);CHKERRQ(ierr);
+    ierr = PetscObjectGetOptions((PetscObject) dm, &options);CHKERRQ(ierr);
+    ierr = PetscObjectSetOptions((PetscObject) tr, options);CHKERRQ(ierr);
     ierr = DMPlexTransformSetFromOptions(tr);CHKERRQ(ierr);
+    ierr = PetscObjectSetOptions((PetscObject) tr, NULL);CHKERRQ(ierr);
     ierr = DMPlexTransformSetUp(tr);CHKERRQ(ierr);
     ierr = PetscObjectViewFromOptions((PetscObject) tr, NULL, "-dm_plex_transform_view");CHKERRQ(ierr);
     ierr = DMPlexTransformApply(tr, dm, rdm);CHKERRQ(ierr);

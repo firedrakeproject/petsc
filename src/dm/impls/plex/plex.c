@@ -254,9 +254,11 @@ static PetscErrorCode VecView_Plex_Local_Draw(Vec v, PetscViewer viewer)
         ierr = DMPlexVecGetClosure(dm, coordSection, coordinates, c, &numCoords, &coords);CHKERRQ(ierr);
         switch (numCoords) {
         case 6:
+        case 12: /* Localized triangle */
           ierr = PetscDrawTriangle(draw, PetscRealPart(coords[0]), PetscRealPart(coords[1]), PetscRealPart(coords[2]), PetscRealPart(coords[3]), PetscRealPart(coords[4]), PetscRealPart(coords[5]), color[0], color[1], color[2]);CHKERRQ(ierr);
           break;
         case 8:
+        case 16: /* Localized quadrilateral */
           ierr = PetscDrawTriangle(draw, PetscRealPart(coords[0]), PetscRealPart(coords[1]), PetscRealPart(coords[2]), PetscRealPart(coords[3]), PetscRealPart(coords[4]), PetscRealPart(coords[5]), color[0], color[1], color[2]);CHKERRQ(ierr);
           ierr = PetscDrawTriangle(draw, PetscRealPart(coords[4]), PetscRealPart(coords[5]), PetscRealPart(coords[6]), PetscRealPart(coords[7]), PetscRealPart(coords[0]), PetscRealPart(coords[1]), color[2], color[3], color[0]);CHKERRQ(ierr);
           break;
@@ -1184,6 +1186,25 @@ static PetscErrorCode DMPlexView_Ascii(DM dm, PetscViewer viewer)
       ierr = PetscViewerASCIIUseTabs(viewer, PETSC_TRUE);CHKERRQ(ierr);
       ierr = ISRestoreIndices(valueIS, &values);CHKERRQ(ierr);
       ierr = ISDestroy(&valueIS);CHKERRQ(ierr);
+    }
+    {
+      char    **labelNames;
+      PetscInt  Nl = numLabels;
+      PetscBool flg;
+
+      ierr = PetscMalloc1(Nl, &labelNames);CHKERRQ(ierr);
+      ierr = PetscOptionsGetStringArray(((PetscObject) dm)->options, ((PetscObject) dm)->prefix, "-dm_plex_view_labels", labelNames, &Nl, &flg);CHKERRQ(ierr);
+      for (l = 0; l < Nl; ++l) {
+        DMLabel label;
+
+        ierr = DMHasLabel(dm, labelNames[l], &flg);CHKERRQ(ierr);
+        if (flg) {
+          ierr = DMGetLabel(dm, labelNames[l], &label);CHKERRQ(ierr);
+          ierr = DMLabelView(label, viewer);CHKERRQ(ierr);
+        }
+        ierr = PetscFree(labelNames[l]);CHKERRQ(ierr);
+      }
+      ierr = PetscFree(labelNames);CHKERRQ(ierr);
     }
     /* If no fields are specified, people do not want to see adjacency */
     if (dm->Nf) {

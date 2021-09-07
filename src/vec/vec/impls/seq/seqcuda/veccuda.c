@@ -210,7 +210,7 @@ PetscErrorCode VecReplaceArray_SeqCUDA(Vec vin,const PetscScalar *a)
 
  Level: intermediate
 
- .seealso: VecCreateMPI(), VecCreate(), VecDuplicate(), VecDuplicateVecs(), VecCreateGhost()
+ .seealso: VecCreateMPICUDA(), VecCreateMPI(), VecCreate(), VecDuplicate(), VecDuplicateVecs(), VecCreateGhost()
  @*/
 PetscErrorCode VecCreateSeqCUDA(MPI_Comm comm,PetscInt n,Vec *v)
 {
@@ -388,7 +388,7 @@ PetscErrorCode VecGetArrayAndMemType_SeqCUDA(Vec v,PetscScalar** a,PetscMemType 
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  if (v->offloadmask & PETSC_OFFLOAD_GPU) { /* Prefer working on GPU when offloadmask is PETSC_OFFLOAD_BOTH */
+  if (v->offloadmask & PETSC_OFFLOAD_GPU) { /* Return device pointer when device has up-to-date data, such as when offloadmask is PETSC_OFFLOAD_BOTH */
     *a = ((Vec_CUDA*)v->spptr)->GPUarray;
     v->offloadmask    = PETSC_OFFLOAD_GPU; /* Change the mask once GPU gets write access, don't wait until restore array */
     if (mtype) *mtype = ((Vec_CUDA*)v->spptr)->nvshmem ? PETSC_MEMTYPE_NVSHMEM : PETSC_MEMTYPE_CUDA;
@@ -456,7 +456,9 @@ PetscErrorCode VecBindToCPU_SeqCUDA(Vec V,PetscBool pin)
     V->ops->getarraywrite          = NULL;
     V->ops->max                    = VecMax_Seq;
     V->ops->min                    = VecMin_Seq;
-
+    V->ops->reciprocal             = VecReciprocal_Default;
+    V->ops->sum                    = NULL;
+    V->ops->shift                  = NULL;
     /* default random number generator */
     ierr = PetscFree(V->defaultrandtype);CHKERRQ(ierr);
     ierr = PetscStrallocpy(PETSCRANDER48,&V->defaultrandtype);CHKERRQ(ierr);
@@ -500,6 +502,9 @@ PetscErrorCode VecBindToCPU_SeqCUDA(Vec V,PetscBool pin)
     V->ops->restorearrayandmemtype = VecRestoreArrayAndMemType_SeqCUDA;
     V->ops->max                    = VecMax_SeqCUDA;
     V->ops->min                    = VecMin_SeqCUDA;
+    V->ops->reciprocal             = VecReciprocal_SeqCUDA;
+    V->ops->sum                    = VecSum_SeqCUDA;
+    V->ops->shift                  = VecShift_SeqCUDA;
 
     /* default random number generator */
     ierr = PetscFree(V->defaultrandtype);CHKERRQ(ierr);

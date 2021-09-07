@@ -1,6 +1,5 @@
 static char help[] = "This example is based on ex1 using MATNEST. \n";
 
-
 /* T
   Concepts: DMNetwork
   Concepts: KSP
@@ -64,6 +63,7 @@ PetscErrorCode read_data(PetscInt *pnnode,PetscInt *pnbranch,Node **pnode,Branch
   Node              *node;
   PetscInt          *edgelist;
 
+  PetscFunctionBeginUser;
   nnode   = 4;
   nbranch = 6;
 
@@ -333,7 +333,6 @@ int main(int argc,char ** argv)
   ierr = PetscFinalize();
   return ierr;
 }
-
 
 /*TEST
 

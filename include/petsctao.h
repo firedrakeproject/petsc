@@ -9,7 +9,6 @@ PetscErrorCode MatDFischer(Mat, Vec, Vec, Vec, Vec, Vec, Vec, Vec, Vec);
 PetscErrorCode MatDSFischer(Mat, Vec, Vec, Vec, Vec, PetscReal, Vec, Vec, Vec, Vec, Vec);
 PETSC_EXTERN PetscErrorCode TaoSoftThreshold(Vec, PetscReal, PetscReal, Vec);
 
-
 /*E
   TaoSubsetType - PetscInt representing the way TAO handles active sets
 
@@ -72,7 +71,6 @@ M*/
 
 .seealso: TaoADMMSetUpdateType(), TAO_ADMM_UPDATE_BASIC, TAO_ADMM_UPDATE_ADAPTIVE
 M*/
-
 
 /*E
      TaoADMMRegularizerType - Determine regularizer routine - either user provided or soft threshold
@@ -252,8 +250,8 @@ PETSC_EXTERN PetscErrorCode TaoSetJacobianInequalityRoutine(Tao,Mat,Mat,PetscErr
 PETSC_EXTERN PetscErrorCode TaoSetJacobianEqualityRoutine(Tao,Mat,Mat,PetscErrorCode(*)(Tao,Vec, Mat, Mat, void*), void*);
 
 PETSC_EXTERN PetscErrorCode TaoShellSetSolve(Tao, PetscErrorCode(*)(Tao));
-PETSC_EXTERN PetscErrorCode TaoShellSetContext(Tao, void*);
-PETSC_EXTERN PetscErrorCode TaoShellGetContext(Tao, void**);
+PETSC_EXTERN PetscErrorCode TaoShellSetContext(Tao,void*);
+PETSC_EXTERN PetscErrorCode TaoShellGetContext(Tao,void*);
 
 PETSC_DEPRECATED_FUNCTION("Use TaoSetResidualRoutine() (since version 3.11)") PETSC_STATIC_INLINE PetscErrorCode TaoSetSeparableObjectiveRoutine(Tao tao, Vec res, PetscErrorCode (*func)(Tao, Vec, Vec, void*),void *ctx) {return TaoSetResidualRoutine(tao, res, func, ctx);}
 PETSC_DEPRECATED_FUNCTION("Use TaoSetResidualWeights() (since version 3.11)") PETSC_STATIC_INLINE PetscErrorCode TaoSetSeparableObjectiveWeights(Tao tao, Vec sigma_v, PetscInt n, PetscInt *rows, PetscInt *cols, PetscReal *vals) {return TaoSetResidualWeights(tao, sigma_v, n, rows, cols, vals);}

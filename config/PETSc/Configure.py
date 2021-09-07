@@ -28,16 +28,16 @@ class Configure(config.base.Configure):
 
   def setupHelp(self, help):
     import nargs
-    help.addArgument('PETSc',  '-prefix=<dir>',                   nargs.Arg(None, '', 'Specifiy location to install PETSc (eg. /usr/local)'))
-    help.addArgument('PETSc',  '-with-prefetch=<bool>',           nargs.ArgBool(None, 1,'Enable checking for prefetch instructions'))
-    help.addArgument('Windows','-with-windows-graphics=<bool>',   nargs.ArgBool(None, 1,'Enable check for Windows Graphics'))
-    help.addArgument('PETSc', '-with-default-arch=<bool>',        nargs.ArgBool(None, 1, 'Allow using the last configured arch without setting PETSC_ARCH'))
-    help.addArgument('PETSc','-with-single-library=<bool>',       nargs.ArgBool(None, 1,'Put all PETSc code into the single -lpetsc library'))
-    help.addArgument('PETSc','-with-fortran-bindings=<bool>',     nargs.ArgBool(None, 1,'Build PETSc fortran bindings in the library and corresponding module files'))
-    help.addArgument('PETSc', '-with-ios=<bool>',              nargs.ArgBool(None, 0, 'Build an iPhone/iPad version of PETSc library'))
-    help.addArgument('PETSc', '-with-xsdk-defaults', nargs.ArgBool(None, 0, 'Set the following as defaults for the xSDK standard: --enable-debug=1, --enable-shared=1, --with-precision=double, --with-index-size=32, locate blas/lapack automatically'))
-    help.addArgument('PETSc', '-with-display=<x11display>',       nargs.Arg(None, '', 'Specifiy DISPLAY env variable for use with matlab test)'))
-    help.addArgument('PETSc', '-with-package-scripts=<pyscripts>',nargs.ArgFileList(None,None,'Specify configure package scripts for user provided packages'))
+    help.addArgument('PETSc',  '-prefix=<dir>',                              nargs.Arg(None, '', 'Specifiy location to install PETSc (eg. /usr/local)'))
+    help.addArgument('PETSc',  '-with-prefetch=<bool>',                      nargs.ArgBool(None, 1,'Enable checking for prefetch instructions'))
+    help.addArgument('Windows','-with-windows-graphics=<bool>',              nargs.ArgBool(None, 1,'Enable check for Windows Graphics'))
+    help.addArgument('PETSc', '-with-default-arch=<bool>',                   nargs.ArgBool(None, 1, 'Allow using the last configured arch without setting PETSC_ARCH'))
+    help.addArgument('PETSc','-with-single-library=<bool>',                  nargs.ArgBool(None, 1,'Put all PETSc code into the single -lpetsc library'))
+    help.addArgument('PETSc','-with-fortran-bindings=<bool>',                nargs.ArgBool(None, 1,'Build PETSc fortran bindings in the library and corresponding module files'))
+    help.addArgument('PETSc', '-with-ios=<bool>',                            nargs.ArgBool(None, 0, 'Build an iPhone/iPad version of PETSc library'))
+    help.addArgument('PETSc', '-with-xsdk-defaults',                         nargs.ArgBool(None, 0, 'Set the following as defaults for the xSDK standard: --enable-debug=1, --enable-shared=1, --with-precision=double, --with-index-size=32, locate blas/lapack automatically'))
+    help.addArgument('PETSc', '-with-display=<x11display>',                  nargs.Arg(None, '', 'Specifiy DISPLAY env variable for use with matlab test)'))
+    help.addArgument('PETSc', '-with-package-scripts=<pyscripts>',           nargs.ArgFileList(None,None,'Specify configure package scripts for user provided packages'))
     return
 
   def registerPythonFile(self,filename,directory):
@@ -213,7 +213,7 @@ class Configure(config.base.Configure):
 
 proc ModulesHelp { } {
     puts stderr "This module sets the path and environment variables for petsc-%s"
-    puts stderr "     see https://www.mcs.anl.gov/petsc/ for more information      "
+    puts stderr "     see https://petsc.org/ for more information      "
     puts stderr ""
 }
 module-whatis "PETSc - Portable, Extensible Toolkit for Scientific Computation"
@@ -249,7 +249,7 @@ prepend-path PATH "%s"
     self.logPrintDivider()
     self.setCompilers.pushLanguage('C')
     compiler = self.setCompilers.getCompiler()
-    if compiler.endswith('mpicc') or compiler.endswith('mpiicc'):
+    if [s for s in ['mpicc','mpiicc'] if os.path.basename(compiler).find(s)>=0]:
       try:
         output   = self.executeShellCommand(compiler + ' -show', log = self.log)[0]
         compiler = output.split(' ')[0]
@@ -345,6 +345,7 @@ prepend-path PATH "%s"
     if hasattr(self.compilers, 'HIPC'):
       self.setCompilers.pushLanguage('HIP')
       self.addMakeMacro('HIPC_FLAGS',self.setCompilers.getCompilerFlags())
+      self.addMakeMacro('HIPPP_FLAGS',self.setCompilers.HIPPPFLAGS)
       self.setCompilers.popLanguage()
 
     if hasattr(self.compilers, 'SYCLCXX'):
@@ -942,6 +943,7 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
       raise RuntimeError('Incorrect option --prefix='+self.framework.argDB['prefix']+' specified. It cannot be same as PETSC_DIR/PETSC_ARCH!')
     self.framework.header          = os.path.join(self.arch.arch,'include','petscconf.h')
     self.framework.cHeader         = os.path.join(self.arch.arch,'include','petscfix.h')
+    self.framework.poisonheader    = os.path.join(self.arch.arch,'include','petscconf_poison.h')
     self.framework.pkgheader       = os.path.join(self.arch.arch,'include','petscpkg_version.h')
     self.framework.makeMacroHeader = os.path.join(self.arch.arch,'lib','petsc','conf','petscvariables')
     self.framework.makeRuleHeader  = os.path.join(self.arch.arch,'lib','petsc','conf','petscrules')

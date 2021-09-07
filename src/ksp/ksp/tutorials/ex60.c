@@ -13,8 +13,6 @@ Accepts an option -diagfunc [1,2,3] to select from different eigenvalue distribu
    Processors: n
 T*/
 
-
-
 /*
   Solve (in parallel) a diagonal linear system.
 
@@ -51,7 +49,7 @@ PetscErrorCode PCApply_Noise(PC pc,Vec xin,Vec xout)
   PetscReal      nrmin, nrmnoise;
 
   PetscFunctionBeginUser;
-  ierr = PCShellGetContext(pc,(void**)&ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&ctx);CHKERRQ(ierr);
 
   /* xout is ||xin|| * ctx->eta*  f, where f is a pseudorandom unit vector
     (Note that this should always be combined additively with another PC) */
@@ -68,7 +66,7 @@ PetscErrorCode PCSetup_Noise(PC pc)
   PCNoise_Ctx    *ctx;
 
   PetscFunctionBeginUser;
-  ierr = PCShellGetContext(pc,(void**)&ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&ctx);CHKERRQ(ierr);
   ierr = PetscRandomCreate(PETSC_COMM_WORLD,&ctx->random);CHKERRQ(ierr);
   ierr = PetscRandomSetInterval(ctx->random,-1.0,1.0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -80,7 +78,7 @@ PetscErrorCode PCDestroy_Noise(PC pc)
   PCNoise_Ctx    *ctx;
 
   PetscFunctionBeginUser;
-  ierr = PCShellGetContext(pc,(void**)&ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&ctx);CHKERRQ(ierr);
   ierr = PetscRandomDestroy(&ctx->random);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -100,7 +98,7 @@ PetscScalar diagFunc2(PetscInt i, PetscInt n)
 PetscScalar diagFunc3(PetscInt i, PetscInt n)
 {
   const PetscScalar kappa = 10.0;
-  if (!i){
+  if (!i) {
     return 1e-2;
   }else{
     return 1. + (kappa*((PetscScalar)(i-1)))/(PetscScalar)(n-2);
@@ -116,7 +114,7 @@ static PetscErrorCode AssembleDiagonalMatrix(Mat A, PetscScalar (*diagfunc)(Pets
   PetscFunctionBeginUser;
   ierr = MatGetSize(A,NULL,&n);CHKERRQ(ierr);
   ierr = MatGetOwnershipRange(A,&rstart,&rend);CHKERRQ(ierr);
-  for (i=rstart;i<rend;++i){
+  for (i=rstart;i<rend;++i) {
     val = diagfunc(i,n);
     ierr = MatSetValues(A,1,&i,1,&i,&val,INSERT_VALUES);CHKERRQ(ierr);
   }
@@ -142,7 +140,7 @@ int main(int argc, char **argv)
   ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetReal(NULL,NULL,"-eta",&eta,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsGetInt(NULL,NULL,"-diagfunc",&dfid,NULL);CHKERRQ(ierr);
-  switch(dfid){
+  switch(dfid) {
     case 1:
       diagfunc = diagFunc1;
       break;
@@ -182,7 +180,7 @@ int main(int argc, char **argv)
   ierr = PCSetType(pc,PCCOMPOSITE);CHKERRQ(ierr); /* default composite with single Identity PC */
   ierr = PCCompositeSetType(pc,PC_COMPOSITE_ADDITIVE);CHKERRQ(ierr);
   ierr = PCCompositeAddPCType(pc,PCNONE);CHKERRQ(ierr);
-  if (eta > 0){
+  if (eta > 0) {
     ierr = PCCompositeAddPCType(pc,PCSHELL);CHKERRQ(ierr);
     ierr = PCCompositeGetPC(pc,1,&pcnoise);CHKERRQ(ierr);
     ctx.eta = eta;
@@ -215,7 +213,6 @@ int main(int argc, char **argv)
   ierr = PetscFinalize();
   return ierr;
 }
-
 
 /*TEST
 

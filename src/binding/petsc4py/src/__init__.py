@@ -21,7 +21,7 @@ communication.
 """
 
 __author__    = 'Lisandro Dalcin'
-__version__   = '3.14.1'
+__version__   = '3.15.3'
 __credits__   = 'PETSc Team <petsc-maint@mcs.anl.gov>'
 
 # --------------------------------------------------------------------
@@ -76,7 +76,10 @@ def get_config():
         stream = StringIO("[petsc]\n"+fp.read())
     parser = ConfigParser()
     parser.optionxform = str
-    parser.readfp(stream, filename)
+    try:
+        parser.read_file(stream, filename)
+    except AttributeError:
+        parser.readfp(stream, filename)
     return dict(parser.items('petsc'))
 
 # --------------------------------------------------------------------

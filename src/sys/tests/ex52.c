@@ -94,7 +94,6 @@ int main(int argc,char **argv)
   ierr = PetscPrintf(PETSC_COMM_SELF,"PetscIntSortSemiOrdered()   with %D integers, %D duplicate(s) per unique value took %g seconds\n",n,d,time1/r);CHKERRQ(ierr);
   ierr = PetscPrintf(PETSC_COMM_SELF,"Speedup of PetscIntSortSemiOrdered() was %g (0:1 = slower, >1 means faster)\n",time/time1);CHKERRQ(ierr);
 
-
   for (i=0; i<n; i++) { /* Init X[] */
     ierr = PetscRandomGetValueReal(rdm,&val);CHKERRQ(ierr);
     X[i] = val*PETSC_MAX_INT;
@@ -152,8 +151,16 @@ int main(int argc,char **argv)
 
 /*TEST
 
-   test:
-      args: -n 1000 -r 10 -d 1
-      # Do not need to output timing results for test
-      filter: grep -vE "per unique value took|Speedup of "
+   testset:
+     filter: grep -vE "per unique value took|Speedup of "
+
+     test:
+       suffix: small
+       args: -n 9 -r 1
+
+     test:
+       suffix: large
+       args: -n 1000 -r 10 -d 1
+       # Do not need to output timing results for test
+
 TEST*/

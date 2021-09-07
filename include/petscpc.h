@@ -118,6 +118,8 @@ PETSC_EXTERN PetscErrorCode PCJacobiSetType(PC,PCJacobiType);
 PETSC_EXTERN PetscErrorCode PCJacobiGetType(PC,PCJacobiType*);
 PETSC_EXTERN PetscErrorCode PCJacobiSetUseAbs(PC,PetscBool);
 PETSC_EXTERN PetscErrorCode PCJacobiGetUseAbs(PC,PetscBool*);
+PETSC_EXTERN PetscErrorCode PCJacobiSetFixDiagonal(PC,PetscBool);
+PETSC_EXTERN PetscErrorCode PCJacobiGetFixDiagonal(PC,PetscBool*);
 PETSC_EXTERN PetscErrorCode PCSORSetSymmetric(PC,MatSORType);
 PETSC_EXTERN PetscErrorCode PCSORGetSymmetric(PC,MatSORType*);
 PETSC_EXTERN PetscErrorCode PCSORSetOmega(PC,PetscReal);
@@ -146,7 +148,7 @@ PETSC_EXTERN PetscErrorCode PCShellSetApplyRichardson(PC,PetscErrorCode (*)(PC,V
 PETSC_EXTERN PetscErrorCode PCShellSetView(PC,PetscErrorCode (*)(PC,PetscViewer));
 PETSC_EXTERN PetscErrorCode PCShellSetDestroy(PC,PetscErrorCode (*)(PC));
 PETSC_EXTERN PetscErrorCode PCShellSetContext(PC,void*);
-PETSC_EXTERN PetscErrorCode PCShellGetContext(PC,void**);
+PETSC_EXTERN PetscErrorCode PCShellGetContext(PC,void*);
 PETSC_EXTERN PetscErrorCode PCShellSetName(PC,const char[]);
 PETSC_EXTERN PetscErrorCode PCShellGetName(PC,const char*[]);
 

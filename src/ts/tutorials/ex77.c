@@ -264,7 +264,6 @@ static void g1_vu(PetscInt dim, PetscInt Nf, PetscInt NfAux,
   }
 }
 
-
 static void g2_vp(PetscInt dim, PetscInt Nf, PetscInt NfAux,
                   const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
                   const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
@@ -355,7 +354,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   n    = 3;
   ierr = PetscOptionsRealArray("-part_upper", "The upper right corner of the particle box", "ex77.c", options->partUpper, &n, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-Npb", "The initial number of particles per box dimension", "ex77.c", options->Npb, &options->Npb, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -382,7 +381,8 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
   PetscErrorCode ierr;
 
   PetscFunctionBeginUser;
-  ierr = DMPlexCreateBoxMesh(comm, 2, PETSC_TRUE, NULL, NULL, NULL, NULL, PETSC_TRUE, dm);CHKERRQ(ierr);
+  ierr = DMCreate(comm, dm);CHKERRQ(ierr);
+  ierr = DMSetType(*dm, DMPLEX);CHKERRQ(ierr);
   ierr = DMSetFromOptions(*dm);CHKERRQ(ierr);
   ierr = DMViewFromOptions(*dm, NULL, "-dm_view");CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -393,13 +393,15 @@ static PetscErrorCode SetupProblem(DM dm, AppCtx *user)
   PetscErrorCode (*exactFuncs[3])(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx);
   PetscErrorCode (*exactFuncs_t[3])(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx);
   PetscDS          prob;
+  DMLabel          label;
   Parameter       *ctx;
   PetscInt         id;
   PetscErrorCode   ierr;
 
   PetscFunctionBeginUser;
+  ierr = DMGetLabel(dm, "marker", &label);CHKERRQ(ierr);
   ierr = DMGetDS(dm, &prob);CHKERRQ(ierr);
-  switch(user->solType){
+  switch(user->solType) {
   case SOL_TRIG_TRIG:
     ierr = PetscDSSetResidual(prob, 0, f0_trig_trig_v, f1_v);CHKERRQ(ierr);
     ierr = PetscDSSetResidual(prob, 2, f0_trig_trig_w, f1_w);CHKERRQ(ierr);
@@ -437,21 +439,21 @@ static PetscErrorCode SetupProblem(DM dm, AppCtx *user)
   /* Setup Boundary Conditions */
   ierr = PetscBagGetData(user->bag, (void **) &ctx);CHKERRQ(ierr);
   id   = 3;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "top wall velocity",    "marker", 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "top wall velocity",    label, 1, &id, 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], ctx, NULL);CHKERRQ(ierr);
   id   = 1;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "bottom wall velocity", "marker", 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "bottom wall velocity", label, 1, &id, 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], ctx, NULL);CHKERRQ(ierr);
   id   = 2;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "right wall velocity",  "marker", 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "right wall velocity",  label, 1, &id, 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], ctx, NULL);CHKERRQ(ierr);
   id   = 4;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "left wall velocity",   "marker", 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "left wall velocity",   label, 1, &id, 0, 0, NULL, (void (*)(void)) exactFuncs[0], (void (*)(void)) exactFuncs_t[0], ctx, NULL);CHKERRQ(ierr);
   id   = 3;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "top wall temp",    "marker", 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "top wall temp",    label, 1, &id, 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], ctx, NULL);CHKERRQ(ierr);
   id   = 1;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "bottom wall temp", "marker", 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "bottom wall temp", label, 1, &id, 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], ctx, NULL);CHKERRQ(ierr);
   id   = 2;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "right wall temp",  "marker", 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "right wall temp",  label, 1, &id, 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], ctx, NULL);CHKERRQ(ierr);
   id   = 4;
-  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "left wall temp",   "marker", 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], 1, &id, ctx);CHKERRQ(ierr);
+  ierr = PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "left wall temp",   label, 1, &id, 2, 0, NULL, (void (*)(void)) exactFuncs[2], (void (*)(void)) exactFuncs_t[2], ctx, NULL);CHKERRQ(ierr);
 
   /*setup exact solution.*/
   ierr = PetscDSSetExactSolution(prob, 0, exactFuncs[0], ctx);CHKERRQ(ierr);
@@ -818,7 +820,7 @@ static PetscErrorCode ComputeParticleError(TS ts, Vec u, Vec e)
 
   PetscFunctionBeginUser;
   ierr = TSGetTime(ts, &time);CHKERRQ(ierr);
-  ierr = TSGetApplicationContext(ts, (void **) &adv);CHKERRQ(ierr);
+  ierr = TSGetApplicationContext(ts, &adv);CHKERRQ(ierr);
   ierr = PetscBagGetData(adv->ctx->bag, (void **) &param);CHKERRQ(ierr);
   ierr = PetscObjectGetComm((PetscObject) ts, &comm);CHKERRQ(ierr);
   ierr = TSGetDM(ts, &sdm);CHKERRQ(ierr);
@@ -981,7 +983,7 @@ int main(int argc, char **argv)
   ierr = TSSetComputeInitialCondition(sts, SetInitialParticleConditions);CHKERRQ(ierr);
   adv.ti = t;
   adv.uf = u;
-  ierr = VecDuplicate(adv.uf, &adv.ui);
+  ierr = VecDuplicate(adv.uf, &adv.ui);CHKERRQ(ierr);
   ierr = VecCopy(u, adv.ui);CHKERRQ(ierr);
   ierr = TSSetRHSFunction(sts, NULL, FreeStreaming, &adv);CHKERRQ(ierr);
   ierr = TSSetPostStep(ts, AdvectParticles);CHKERRQ(ierr);
@@ -991,7 +993,7 @@ int main(int argc, char **argv)
   ierr = DMSwarmCreateGlobalVectorFromField(sdm, DMSwarmPICField_coor, &xtmp);CHKERRQ(ierr);
   ierr = VecCopy(xtmp, adv.x0);CHKERRQ(ierr);
   ierr = DMSwarmDestroyGlobalVectorFromField(sdm, DMSwarmPICField_coor, &xtmp);CHKERRQ(ierr);
-  switch(user.solType){
+  switch(user.solType) {
     case SOL_TRIG_TRIG: adv.exact = trig_trig_x;break;
     default: SETERRQ2(PetscObjectComm((PetscObject) sdm), PETSC_ERR_ARG_WRONG, "Unsupported solution type: %s (%D)", solTypes[PetscMin(user.solType, NUM_SOL_TYPES)], user.solType);
   }

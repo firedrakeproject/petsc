@@ -3,12 +3,12 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.gitcommit              = 'origin/opt_dist_sz'
+    self.gitcommit              = 'Unknown' # opt_dist_sz March 29, 2020
     self.download               = ['git://https://github.com/wajihboukaram/hara']
     self.precisions             = ['single','double']
     self.skippackagewithoptions = 1
     self.cxx                    = 1
-    self.requirescxx11          = 1
+    self.minCxxVersion          = 'c++11'
     self.liblist                = [['libhara.a']]
     self.includes               = ['hara.h']
     self.complex                = 0

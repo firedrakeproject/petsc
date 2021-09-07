@@ -1613,7 +1613,7 @@ PetscErrorCode PCSetUp_BDDC(PC pc)
      Also, BDDC builds its own KSP for the Dirichlet problem */
   rl = pcbddc->recompute_topography;
   if (!pc->setupcalled || pc->flag == DIFFERENT_NONZERO_PATTERN) rl = PETSC_TRUE;
-  ierr = MPIU_Allreduce(&rl,&pcbddc->recompute_topography,1,MPIU_BOOL,MPI_LOR,PetscObjectComm((PetscObject)pc));CHKERRQ(ierr);
+  ierr = MPIU_Allreduce(&rl,&pcbddc->recompute_topography,1,MPIU_BOOL,MPI_LOR,PetscObjectComm((PetscObject)pc));CHKERRMPI(ierr);
   if (pcbddc->recompute_topography) {
     pcbddc->graphanalyzed    = PETSC_FALSE;
     computeconstraintsmatrix = PETSC_TRUE;
@@ -2540,7 +2540,7 @@ static PetscErrorCode PCView_BDDCIPC(PC pc, PetscViewer viewer)
   PetscBool      isascii;
 
   PetscFunctionBegin;
-  ierr = PCShellGetContext(pc,(void **)&bddcipc_ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&bddcipc_ctx);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII,&isascii);CHKERRQ(ierr);
   if (isascii) {
     ierr = PetscViewerASCIIPrintf(viewer,"BDDC interface preconditioner\n");CHKERRQ(ierr);
@@ -2561,7 +2561,7 @@ static PetscErrorCode PCSetUp_BDDCIPC(PC pc)
   PC_IS          *pcis;
 
   PetscFunctionBegin;
-  ierr = PCShellGetContext(pc,(void **)&bddcipc_ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&bddcipc_ctx);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)bddcipc_ctx->bddc,PCBDDC,&isbddc);CHKERRQ(ierr);
   if (!isbddc) SETERRQ1(PetscObjectComm((PetscObject)pc),PETSC_ERR_SUP,"Invalid type %s. Must be of type bddc",((PetscObject)bddcipc_ctx->bddc)->type_name);
   ierr = PCSetUp(bddcipc_ctx->bddc);CHKERRQ(ierr);
@@ -2585,7 +2585,7 @@ static PetscErrorCode PCApply_BDDCIPC(PC pc, Vec r, Vec x)
   VecScatter     tmps;
 
   PetscFunctionBegin;
-  ierr = PCShellGetContext(pc,(void **)&bddcipc_ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&bddcipc_ctx);CHKERRQ(ierr);
   pcis = (PC_IS*)(bddcipc_ctx->bddc->data);
   tmps = pcis->global_to_B;
   pcis->global_to_B = bddcipc_ctx->g2l;
@@ -2604,7 +2604,7 @@ static PetscErrorCode PCApplyTranspose_BDDCIPC(PC pc, Vec r, Vec x)
   VecScatter     tmps;
 
   PetscFunctionBegin;
-  ierr = PCShellGetContext(pc,(void **)&bddcipc_ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&bddcipc_ctx);CHKERRQ(ierr);
   pcis = (PC_IS*)(bddcipc_ctx->bddc->data);
   tmps = pcis->global_to_B;
   pcis->global_to_B = bddcipc_ctx->g2l;
@@ -2621,7 +2621,7 @@ static PetscErrorCode PCDestroy_BDDCIPC(PC pc)
   BDDCIPC_ctx    bddcipc_ctx;
 
   PetscFunctionBegin;
-  ierr = PCShellGetContext(pc,(void **)&bddcipc_ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&bddcipc_ctx);CHKERRQ(ierr);
   ierr = PCDestroy(&bddcipc_ctx->bddc);CHKERRQ(ierr);
   ierr = VecScatterDestroy(&bddcipc_ctx->g2l);CHKERRQ(ierr);
   ierr = PetscFree(bddcipc_ctx);CHKERRQ(ierr);
@@ -3020,7 +3020,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_BDDC(PC pc)
 
   PetscFunctionBegin;
   ierr     = PetscNewLog(pc,&pcbddc);CHKERRQ(ierr);
-  pc->data = (void*)pcbddc;
+  pc->data = pcbddc;
 
   /* create PCIS data structure */
   ierr = PCISCreate(pc);CHKERRQ(ierr);

@@ -325,7 +325,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   ierr = PetscOptionsBool("-cell_simplex", "Use simplices if true, otherwise hexes", "ex5.c", options->cellSimplex, &options->cellSimplex, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-test_partition", "Use a fixed partition for testing", "ex5.c", options->testPartition, &options->testPartition, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBoundedInt("-test_num", "The particular mesh to test", "ex5.c", options->testNum, &options->testNum, NULL,0);CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -648,12 +648,12 @@ static PetscErrorCode CreateDiscretization(DM dm, AppCtx *user)
 
   ierr = PetscFECreateDefault(PETSC_COMM_SELF, dim, dim, user->cellSimplex, "displacement_", PETSC_DETERMINE, &fe);CHKERRQ(ierr);
   ierr = PetscFESetName(fe, "displacement");CHKERRQ(ierr);
-  ierr = DMAddField(dm, NULL, (PetscObject) fe);
+  ierr = DMAddField(dm, NULL, (PetscObject) fe);CHKERRQ(ierr);
   ierr = PetscFEDestroy(&fe);CHKERRQ(ierr);
 
   ierr = PetscFECreateDefault(PETSC_COMM_SELF, dim-1, dim, user->cellSimplex, "faulttraction_", PETSC_DETERMINE, &fe);CHKERRQ(ierr);
   ierr = PetscFESetName(fe, "fault traction");CHKERRQ(ierr);
-  ierr = DMAddField(dm, fault, (PetscObject) fe);
+  ierr = DMAddField(dm, fault, (PetscObject) fe);CHKERRQ(ierr);
   ierr = PetscFEDestroy(&fe);CHKERRQ(ierr);
 
   ierr = DMCreateDS(dm);CHKERRQ(ierr);
@@ -934,7 +934,7 @@ static PetscErrorCode TestAssembly(DM dm, AppCtx *user)
   PetscDS          probh;
   DMLabel          fault, material;
   IS               cohesiveCells;
-  PetscHashFormKey keys[3];
+  PetscFormKey keys[3];
   PetscErrorCode (*initialGuess[2])(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar u[], void *ctx);
   PetscInt         dim, Nf, cMax, cEnd, id;
   PetscErrorCode   ierr;
@@ -988,7 +988,7 @@ static PetscErrorCode TestAssembly(DM dm, AppCtx *user)
   ierr = DMPlexComputeResidual_Hybrid_Internal(dm, keys, cohesiveCells, 0.0, locX, NULL, 0.0, locF, user);CHKERRQ(ierr);
   ierr = VecViewFromOptions(locF, NULL, "-local_residual_view");CHKERRQ(ierr);
   ierr = MatZeroEntries(J);CHKERRQ(ierr);
-  ierr = DMPlexComputeJacobian_Hybrid_Internal(dm, cohesiveCells, 0.0, 0.0, locX, NULL, J, J, user);CHKERRQ(ierr);
+  ierr = DMPlexComputeJacobian_Hybrid_Internal(dm, keys, cohesiveCells, 0.0, 0.0, locX, NULL, J, J, user);CHKERRQ(ierr);
   ierr = MatViewFromOptions(J, NULL, "-local_jacobian_view");CHKERRQ(ierr);
 
   ierr = DMRestoreLocalVector(dm, &locX);CHKERRQ(ierr);
@@ -1018,7 +1018,7 @@ int main(int argc, char **argv)
 /*TEST
   testset:
     args: -orig_dm_plex_check_all -dm_plex_check_all \
-          -displacement_petscspace_degree 1 -faulttraction_petscspace_degree 1 -petscds_view -local_section_view \
+          -displacement_petscspace_degree 1 -faulttraction_petscspace_degree 1 -dm_petscds_view -local_section_view \
           -local_solution_view -local_residual_view -local_jacobian_view
     test:
       suffix: tri_0
@@ -1035,7 +1035,7 @@ int main(int argc, char **argv)
 
   testset:
     args: -orig_dm_plex_check_all -dm_plex_check_all \
-          -displacement_petscspace_degree 1 -faulttraction_petscspace_degree 1 -petscds_view
+          -displacement_petscspace_degree 1 -faulttraction_petscspace_degree 1 -dm_petscds_view
     test:
       suffix: tet_1
       nsize: 2
@@ -1047,7 +1047,7 @@ int main(int argc, char **argv)
 
   testset:
     args: -orig_dm_plex_check_all -dm_plex_check_all \
-          -displacement_petscspace_degree 1 -faulttraction_petscspace_degree 1 -petscds_view
+          -displacement_petscspace_degree 1 -faulttraction_petscspace_degree 1 -dm_petscds_view
     # 2D Quads
     test:
       suffix: quad_0

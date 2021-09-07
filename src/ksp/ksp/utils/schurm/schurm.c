@@ -183,7 +183,6 @@ PetscErrorCode MatDestroy_SchurComplement(Mat N)
     The API that includes MatGetSchurComplement(), MatCreateSchurComplement(), MatSchurComplementGetPmat() should be refactored to
     remove redundancy and be clearer and simplier.
 
-
 .seealso: MatCreateNormal(), MatMult(), MatCreate(), MatSchurComplementGetKSP(), MatSchurComplementUpdateSubMatrices(), MatCreateTranspose(), MatGetSchurComplement(),
           MatSchurComplementGetPmat()
 
@@ -417,7 +416,6 @@ PetscErrorCode  MatSchurComplementUpdateSubMatrices(Mat S,Mat A00,Mat Ap00,Mat A
   PetscFunctionReturn(0);
 }
 
-
 /*@C
   MatSchurComplementGetSubMatrices - Get the individual submatrices in the Schur complement
 
@@ -492,7 +490,7 @@ PetscErrorCode MatSchurComplementComputeExplicitOperator(Mat A, Mat *S)
   if (D) {
     ierr = MatGetLocalSize(D, &m, &n);CHKERRQ(ierr);
     ierr = MatGetSize(D, &M, &N);CHKERRQ(ierr);
-    ierr = MatCreateDense(PetscObjectComm((PetscObject)A), m, n, M, N, NULL, S);
+    ierr = MatCreateDense(PetscObjectComm((PetscObject)A), m, n, M, N, NULL, S);CHKERRQ(ierr);
   }
   ierr = MatMatMult(C, AinvBd, D ? MAT_REUSE_MATRIX : MAT_INITIAL_MATRIX, PETSC_DEFAULT, S);CHKERRQ(ierr);
   ierr = MatDestroy(&AinvBd);CHKERRQ(ierr);

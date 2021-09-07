@@ -121,7 +121,7 @@ static PetscErrorCode PCBDDCReuseSolvers_Solve_Private(PC pc, Vec rhs, Vec sol, 
   PetscErrorCode     ierr;
 
   PetscFunctionBegin;
-  ierr = PCShellGetContext(pc,(void **)&ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&ctx);CHKERRQ(ierr);
   if (full) {
 #if defined(PETSC_HAVE_MUMPS)
     ierr = MatMumpsSetIcntl(ctx->F,26,-1);CHKERRQ(ierr);
@@ -235,7 +235,7 @@ static PetscErrorCode PCBDDCReuseSolvers_View(PC pc, PetscViewer viewer)
   PetscErrorCode     ierr;
 
   PetscFunctionBegin;
-  ierr = PCShellGetContext(pc,(void **)&ctx);CHKERRQ(ierr);
+  ierr = PCShellGetContext(pc,&ctx);CHKERRQ(ierr);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERASCII,&iascii);CHKERRQ(ierr);
   if (iascii) {
     ierr = PetscViewerPushFormat(viewer,PETSC_VIEWER_ASCII_INFO);CHKERRQ(ierr);
@@ -466,7 +466,6 @@ PetscErrorCode PCBDDCSubSchursSetUp(PCBDDCSubSchurs sub_schurs, Mat Ain, Mat Sin
       ierr = PetscViewerPushFormat(matl_dbg_viewer,PETSC_VIEWER_ASCII_MATLAB);CHKERRQ(ierr);
     }
   }
-
 
   /* restrict work on active processes */
   if (sub_schurs->restrict_comm) {

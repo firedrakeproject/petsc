@@ -4,8 +4,6 @@
    Processors: n
 T*/
 
-
-
 /*
 Inhomogeneous Laplacian in 3-D. Modeled by the partial differential equation
 
@@ -134,7 +132,7 @@ int main(int argc, char **argv)
 
   if (user.nlevels) {
     ierr = KSPGetPC(ksp, &pc);CHKERRQ(ierr);
-    ierr = PetscMalloc(sizeof(DM) * (user.nlevels + 1), &dmhierarchy);
+    ierr = PetscMalloc(sizeof(DM) * (user.nlevels + 1), &dmhierarchy);CHKERRQ(ierr);
     for (k = 0; k <= user.nlevels; k++) dmhierarchy[k] = NULL;
 
     ierr = PetscPrintf(PETSC_COMM_WORLD, "Number of mesh hierarchy levels: %d\n", user.nlevels);CHKERRQ(ierr);
@@ -215,7 +213,6 @@ int main(int argc, char **argv)
   return 0;
 }
 
-
 PetscReal ComputeDiffusionCoefficient(PetscReal coords[3], UserContext* user)
 {
   if (user->problem == 2) {
@@ -223,7 +220,6 @@ PetscReal ComputeDiffusionCoefficient(PetscReal coords[3], UserContext* user)
     else  return 1.0;
   } else return 1.0; /* problem = 1 */
 }
-
 
 PetscReal ComputeReactionCoefficient(PetscReal coords[3], UserContext* user)
 {
@@ -233,7 +229,6 @@ PetscReal ComputeReactionCoefficient(PetscReal coords[3], UserContext* user)
   }
   else return 5.0; /* problem = 1 */
 }
-
 
 double ExactSolution(PetscReal coords[3], UserContext* user)
 {
@@ -245,13 +240,11 @@ double ExactSolution(PetscReal coords[3], UserContext* user)
   } else return sin(PETSC_PI * coords[0]) * sin(PETSC_PI * coords[1]) * sin(PETSC_PI * coords[2]);
 }
 
-
 PetscReal exact_solution(PetscReal x, PetscReal y, PetscReal z)
 {
   PetscReal coords[3] = {x, y, z};
   return ExactSolution(coords, 0);
 }
-
 
 double ForcingFunction(PetscReal coords[3], UserContext* user)
 {
@@ -264,7 +257,6 @@ double ForcingFunction(PetscReal coords[3], UserContext* user)
     return (3.0 * PETSC_PI * PETSC_PI + reac) * exact;
   }
 }
-
 
 PetscErrorCode ComputeRHS_MOAB(KSP ksp, Vec b, void *ptr)
 {
@@ -365,7 +357,6 @@ PetscErrorCode ComputeRHS_MOAB(KSP ksp, Vec b, void *ptr)
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode ComputeMatrix_MOAB(KSP ksp, Mat J, Mat jac, void *ctx)
 {
   UserContext       *user = (UserContext*)ctx;
@@ -415,7 +406,7 @@ PetscErrorCode ComputeMatrix_MOAB(KSP ksp, Mat J, Mat jac, void *ctx)
        compute the basis functions and the derivatives wrt x, y and z directions */
     ierr = DMMoabFEMComputeBasis(user->dim, nconn, vpos, quadratureObj, phypts, jxw, phi, dphi);CHKERRQ(ierr);
 
-    ierr = PetscArrayzero(array, nconn * nconn);
+    ierr = PetscArrayzero(array, nconn * nconn);CHKERRQ(ierr);
 
     /* Compute function over the locally owned part of the grid */
     for (q = 0; q < npoints; ++q) {
@@ -476,7 +467,6 @@ PetscErrorCode ComputeMatrix_MOAB(KSP ksp, Mat J, Mat jac, void *ctx)
   ierr = PetscQuadratureDestroy(&quadratureObj);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode ComputeDiscreteL2Error(KSP ksp, Vec err, UserContext *user)
 {
@@ -539,7 +529,6 @@ PetscErrorCode ComputeDiscreteL2Error(KSP ksp, Vec err, UserContext *user)
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode InitializeOptions(UserContext* user)
 {
   const char     *bcTypes[2] = {"dirichlet", "neumann"};
@@ -565,7 +554,7 @@ PetscErrorCode InitializeOptions(UserContext* user)
   user->error  = PETSC_FALSE;
   bc           = (PetscInt)DIRICHLET;
 
-  ierr = PetscOptionsBegin(PETSC_COMM_WORLD, "", "Options for the inhomogeneous Poisson equation", "ex36.cxx");
+  ierr = PetscOptionsBegin(PETSC_COMM_WORLD, "", "Options for the inhomogeneous Poisson equation", "ex36.cxx");CHKERRQ(ierr);
   ierr = PetscOptionsInt("-problem", "The type of problem being solved (controls forcing function)", "ex36.cxx", user->problem, &user->problem, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-n", "The elements in each direction", "ex36.cxx", user->n, &user->n, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-levels", "Number of levels in the multigrid hierarchy", "ex36.cxx", user->nlevels, &user->nlevels, NULL);CHKERRQ(ierr);
@@ -583,14 +572,13 @@ PetscErrorCode InitializeOptions(UserContext* user)
   ierr = PetscOptionsBool("-error", "Compute the discrete L_2 and L_inf errors of the solution", "ex36.cxx", user->error, &user->error, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsEList("-bc", "Type of boundary condition", "ex36.cxx", bcTypes, 2, bcTypes[0], &bc, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsString("-file", "The mesh file for the problem", "ex36.cxx", "", user->filename, sizeof(user->filename), &user->use_extfile);CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
 
   if (user->problem < 1 || user->problem > 2) user->problem = 1;
   user->bcType = (BCType)bc;
   user->VPERE  = (user->usetet ? 4 : 8);
   PetscFunctionReturn(0);
 }
-
 
 /*TEST
 

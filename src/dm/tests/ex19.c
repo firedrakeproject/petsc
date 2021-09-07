@@ -16,7 +16,7 @@ PetscErrorCode doit(DM da,Vec global)
   ierr = DMDAGetInfo(da,0,&M,&N,0,0,0,0,&dof,0,0,0,0,0);CHKERRQ(ierr);
   {
     struct {PetscScalar inside[dof];} **mystruct;
-    ierr = DMDAVecGetArrayRead(da,global,(void*) &mystruct);
+    ierr = DMDAVecGetArrayRead(da,global,(void*) &mystruct);CHKERRQ(ierr);
     for (i=0; i<N; i++) {
       for (j=0; j<M; j++) {
         for (k=0; k<dof; k++) {
@@ -48,7 +48,6 @@ int main(int argc,char **argv)
   ierr = DMCreateLocalVector(da,&local);CHKERRQ(ierr);
 
   ierr = doit(da,global);CHKERRQ(ierr);
-
 
   ierr = VecView(global,0);CHKERRQ(ierr);
 

@@ -6,7 +6,6 @@ static char help[] = "Demonstrates using the PetscBag Object\n\n";
    Processors: n
 T*/
 
-
 #include <petscsys.h>
 #include <petscbag.h>
 #include <petscviewer.h>
@@ -48,7 +47,6 @@ typedef struct {
   char          filename[PETSC_MAX_PATH_LEN];
   YourChoice    which;
 } Parameter;
-
 
 int main(int argc,char **argv)
 {
@@ -99,7 +97,6 @@ int main(int argc,char **argv)
   ierr = PetscBagRegisterReal  (bag,&params->pos.x2,1.9,"x2","y position");CHKERRQ(ierr);
   ierr = PetscBagRegisterEnum  (bag,&params->which, EnumeratedChoices, (PetscEnum)THAT, "choose","Express yourself by choosing among enumerated things");CHKERRQ(ierr);
 
-
   /* This option allows loading user-provided PetscBag */
   ierr = PetscOptionsGetString(NULL,NULL,"-f",filename,sizeof(filename),&flg);CHKERRQ(ierr);
   if (!flg) {
@@ -130,7 +127,6 @@ int main(int argc,char **argv)
   return ierr;
 }
 
-
 /*TEST
 
    test:
@@ -141,7 +137,7 @@ int main(int argc,char **argv)
       suffix: yaml
       requires: !complex
       args: -options_file bag.yml -options_view
-      filter: egrep -v "(options_left|options_view|malloc_dump|malloc_test|saws_port_auto_select|display|check_pointer_intensity|error_output_stdout|nox|vecscatter_mpi1|use_gpu_aware_mpi)"
+      filter: egrep -v "(options_left|options_view|malloc_dump|malloc_test|saws_port_auto_select|display|check_pointer_intensity|error_output_stdout|nox|vecscatter_mpi1|use_gpu_aware_mpi|checkstack)"
       localrunfiles: bag.yml
 
 TEST*/

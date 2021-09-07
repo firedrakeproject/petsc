@@ -122,7 +122,7 @@ PETSC_INTERN PetscErrorCode MatProductNumeric_Nest_Dense(Mat C)
   ierr = MatDenseGetLDA(C,&ldc);CHKERRQ(ierr);
   ierr = MatZeroEntries(C);CHKERRQ(ierr);
   ierr = MatDenseGetArrayRead(B,&barray);CHKERRQ(ierr);
-  ierr = MatDenseGetArrayWrite(C,&carray);CHKERRQ(ierr);
+  ierr = MatDenseGetArray(C,&carray);CHKERRQ(ierr);
   for (i=0; i<nr; i++) {
     ierr = ISGetSize(bA->isglobal.row[i],&M);CHKERRQ(ierr);
     ierr = MatCreateDense(PetscObjectComm((PetscObject)A),contents->dm[i+1]-contents->dm[i],PETSC_DECIDE,M,N,carray+contents->dm[i],&viewC);CHKERRQ(ierr);
@@ -146,7 +146,7 @@ PETSC_INTERN PetscErrorCode MatProductNumeric_Nest_Dense(Mat C)
     }
     ierr = MatDestroy(&viewC);CHKERRQ(ierr);
   }
-  ierr = MatDenseRestoreArrayWrite(C,&carray);CHKERRQ(ierr);
+  ierr = MatDenseRestoreArray(C,&carray);CHKERRQ(ierr);
   ierr = MatDenseRestoreArrayRead(B,&barray);CHKERRQ(ierr);
 
   ierr = MatAssemblyBegin(C,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
@@ -435,9 +435,9 @@ static PetscErrorCode MatDestroy_Nest(Mat A)
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr = MatReset_Nest(A);CHKERRQ(ierr);
   ierr = PetscFree(A->data);CHKERRQ(ierr);
-
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatNestGetSubMat_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatNestSetSubMat_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatNestGetSubMats_C",NULL);CHKERRQ(ierr);
@@ -617,7 +617,6 @@ static PetscErrorCode MatNestFindISRange(Mat A,PetscInt n,const IS list[],IS is,
   }
   PetscFunctionReturn(0);
 }
-
 
 static PetscErrorCode MatNestFillEmptyMat_Private(Mat A,PetscInt i,PetscInt j,Mat *B)
 {
@@ -1611,7 +1610,6 @@ static PetscErrorCode MatNestCreateAggregateL2G_Private(Mat A,PetscInt n,const I
   PetscFunctionReturn(0);
 }
 
-
 /* If an IS was provided, there is nothing Nest needs to do, otherwise Nest will build a strided IS */
 /*
   nprocessors = NP
@@ -2029,7 +2027,7 @@ PETSC_INTERN PetscErrorCode MatAXPY_Dense_Nest(Mat Y,PetscScalar a,Mat X)
         ierr = PetscFree(cols);CHKERRQ(ierr);
       }
       if (D) {
-        ierr = MatDestroy(&D);
+        ierr = MatDestroy(&D);CHKERRQ(ierr);
       }
       ierr = ISRestoreIndices(nest->isglobal.row[i],&bmindices);CHKERRQ(ierr);
     }
@@ -2112,17 +2110,11 @@ PetscErrorCode MatConvert_Nest_AIJ(Mat A,MatType newtype,MatReuse reuse,Mat *new
   ierr = MatGetSize(A,&M,&N);CHKERRQ(ierr);
   ierr = MatGetLocalSize(A,&m,&n);CHKERRQ(ierr);
   ierr = MatGetOwnershipRangeColumn(A,&cstart,&cend);CHKERRQ(ierr);
-  switch (reuse) {
-  case MAT_INITIAL_MATRIX:
-    ierr    = MatCreate(PetscObjectComm((PetscObject)A),&C);CHKERRQ(ierr);
-    ierr    = MatSetType(C,newtype);CHKERRQ(ierr);
-    ierr    = MatSetSizes(C,m,n,M,N);CHKERRQ(ierr);
-    *newmat = C;
-    break;
-  case MAT_REUSE_MATRIX:
-    C = *newmat;
-    break;
-  default: SETERRQ(PetscObjectComm((PetscObject)A),PETSC_ERR_SUP,"MatReuse");
+  if (reuse == MAT_REUSE_MATRIX) C = *newmat;
+  else {
+    ierr = MatCreate(PetscObjectComm((PetscObject)A),&C);CHKERRQ(ierr);
+    ierr = MatSetType(C,newtype);CHKERRQ(ierr);
+    ierr = MatSetSizes(C,m,n,M,N);CHKERRQ(ierr);
   }
   ierr = PetscMalloc1(2*m,&dnnz);CHKERRQ(ierr);
   onnz = dnnz + m;
@@ -2152,7 +2144,7 @@ PetscErrorCode MatConvert_Nest_AIJ(Mat A,MatType newtype,MatReuse reuse,Mat *new
       ierr = PetscMalloc1(bm,&iremote);CHKERRQ(ierr);
       ierr = PetscMalloc1(bm,&sub_dnnz);CHKERRQ(ierr);
       ierr = PetscMalloc1(bm,&sub_onnz);CHKERRQ(ierr);
-      for (k = 0; k < bm; ++k){
+      for (k = 0; k < bm; ++k) {
         sub_dnnz[k] = 0;
         sub_onnz[k] = 0;
       }
@@ -2205,6 +2197,9 @@ PetscErrorCode MatConvert_Nest_AIJ(Mat A,MatType newtype,MatReuse reuse,Mat *new
   ierr = MatMPIAIJSetPreallocation(C,0,dnnz,0,onnz);CHKERRQ(ierr);
   ierr = PetscFree(dnnz);CHKERRQ(ierr);
   ierr = MatAXPY_Dense_Nest(C,1.0,A);CHKERRQ(ierr);
+  if (reuse == MAT_INPLACE_MATRIX) {
+    ierr = MatHeaderReplace(A,&C);CHKERRQ(ierr);
+  } else *newmat = C;
   PetscFunctionReturn(0);
 }
 

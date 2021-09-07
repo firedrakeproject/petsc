@@ -125,6 +125,23 @@ static PetscErrorCode DMPlexGetLineIntersection_2D_Internal(const PetscReal segm
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode DMPlexLocatePoint_Simplex_1D_Internal(DM dm, const PetscScalar point[], PetscInt c, PetscInt *cell)
+{
+  const PetscReal eps = PETSC_SQRT_MACHINE_EPSILON;
+  const PetscReal x   = PetscRealPart(point[0]);
+  PetscReal       v0, J, invJ, detJ;
+  PetscReal       xi;
+  PetscErrorCode  ierr;
+
+  PetscFunctionBegin;
+  ierr = DMPlexComputeCellGeometryFEM(dm, c, NULL, &v0, &J, &invJ, &detJ);CHKERRQ(ierr);
+  xi   = invJ*(x - v0);
+
+  if ((xi >= -eps) && (xi <= 2.+eps)) *cell = c;
+  else *cell = DMLOCATEPOINT_POINT_NOT_FOUND;
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode DMPlexLocatePoint_Simplex_2D_Internal(DM dm, const PetscScalar point[], PetscInt c, PetscInt *cell)
 {
   const PetscInt  embedDim = 2;
@@ -450,6 +467,8 @@ PetscErrorCode DMPlexLocatePoint_Internal(DM dm, PetscInt dim, const PetscScalar
   PetscFunctionBegin;
   ierr = DMPlexGetCellType(dm, cellStart, &ct);CHKERRQ(ierr);
   switch (ct) {
+    case DM_POLYTOPE_SEGMENT:
+    ierr = DMPlexLocatePoint_Simplex_1D_Internal(dm, point, cellStart, cell);CHKERRQ(ierr);break;
     case DM_POLYTOPE_TRIANGLE:
     ierr = DMPlexLocatePoint_Simplex_2D_Internal(dm, point, cellStart, cell);CHKERRQ(ierr);break;
     case DM_POLYTOPE_QUADRILATERAL:
@@ -533,8 +552,8 @@ PetscErrorCode DMPlexComputeGridHash_Internal(DM dm, PetscGridHash *localBox)
   ierr = PetscGridHashSetGrid(lbox, n, NULL);CHKERRQ(ierr);
 #if 0
   /* Could define a custom reduction to merge these */
-  ierr = MPIU_Allreduce(lbox->lower, gbox->lower, 3, MPIU_REAL, MPI_MIN, comm);CHKERRQ(ierr);
-  ierr = MPIU_Allreduce(lbox->upper, gbox->upper, 3, MPIU_REAL, MPI_MAX, comm);CHKERRQ(ierr);
+  ierr = MPIU_Allreduce(lbox->lower, gbox->lower, 3, MPIU_REAL, MPI_MIN, comm);CHKERRMPI(ierr);
+  ierr = MPIU_Allreduce(lbox->upper, gbox->upper, 3, MPIU_REAL, MPI_MAX, comm);CHKERRMPI(ierr);
 #endif
   /* Is there a reason to snap the local bounding box to a division of the global box? */
   /* Should we compute all overlaps of local boxes? We could do this with a rendevouz scheme partitioning the global box */
@@ -1617,6 +1636,12 @@ static PetscErrorCode DMPlexComputeCellGeometryFEM_FE(DM dm, PetscFE fe, PetscIn
     const PetscReal *basisDer = T->T[1];
     PetscReal        detJt;
 
+#if defined(PETSC_USE_DEBUG)
+    if (Nq != T->Np)     SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Np %D != %D", Nq, T->Np);
+    if (pdim != T->Nb)   SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nb %D != %D", pdim, T->Nb);
+    if (dim != T->Nc)    SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nc %D != %D", dim, T->Nc);
+    if (cdim != T->cdim) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "cdim %D != %D", cdim, T->cdim);
+#endif
     if (v) {
       ierr = PetscArrayzero(v, Nq*cdim);CHKERRQ(ierr);
       for (q = 0; q < Nq; ++q) {
@@ -2171,7 +2196,7 @@ PetscErrorCode DMPlexComputeGeometryFVM(DM dm, Vec *cellgeom, Vec *facegeom)
       }
     }
   }
-  ierr = MPIU_Allreduce(&minradius, &gminradius, 1, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)dm));CHKERRQ(ierr);
+  ierr = MPIU_Allreduce(&minradius, &gminradius, 1, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)dm));CHKERRMPI(ierr);
   ierr = DMPlexSetMinRadius(dm, gminradius);CHKERRQ(ierr);
   /* Compute centroids of ghost cells */
   for (c = cEndInterior; c < cEnd; ++c) {
@@ -2265,6 +2290,7 @@ static PetscErrorCode BuildGradientReconstruction_Internal(DM dm, PetscFV fvm, D
   ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
   ierr = DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd);CHKERRQ(ierr);
   ierr = DMPlexGetGhostCellStratum(dm, &cEndInterior, NULL);CHKERRQ(ierr);
+  cEndInterior = cEndInterior < 0 ? cEnd : cEndInterior;
   ierr = DMPlexGetMaxSizes(dm, &maxNumFaces, NULL);CHKERRQ(ierr);
   ierr = PetscFVLeastSquaresSetMaxFaces(fvm, maxNumFaces);CHKERRQ(ierr);
   ierr = DMGetLabel(dm, "ghost", &ghostLabel);CHKERRQ(ierr);

@@ -1,5 +1,4 @@
 #include <petsc/private/petscimpl.h>
-#include <petscvalgrind.h>
 
 #if defined(PETSC_HAVE_CUDA)
   #include <cuda_runtime.h>
@@ -61,7 +60,8 @@ static PetscBool PetscSegvJumpBuf_set;
 
 .seealso: PetscPushSignalHandler()
 @*/
-void PetscSignalSegvCheckPointerOrMpi(void) {
+void PetscSignalSegvCheckPointerOrMpi(void)
+{
   if (PetscSegvJumpBuf_set) longjmp(PetscSegvJumpBuf,1);
 }
 
@@ -182,7 +182,8 @@ PetscBool PetscMPICUPMAwarenessCheck(void)  \
 #endif
 
 #else
-void PetscSignalSegvCheckPointerOrMpi(void) {
+void PetscSignalSegvCheckPointerOrMpi(void)
+{
   return;
 }
 

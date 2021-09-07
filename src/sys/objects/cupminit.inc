@@ -7,6 +7,9 @@ cupmStream_t  PetscDefaultCupmStream = NULL;
 
 static PetscBool PetscNotUseCUPM   = PETSC_FALSE; /* Assert the code will not use this type of devices */
 
+cupmEvent_t petsc_gputimer_begin = NULL; /* The GPU event for begin */
+cupmEvent_t petsc_gputimer_end   = NULL; /* The GPU event for end */
+
 /* Device validation after it is lazily initialized */
 static PetscErrorCode PetscCUPMValidate(void)
 {
@@ -14,15 +17,11 @@ static PetscErrorCode PetscCUPMValidate(void)
 
   PetscFunctionBegin;
   if (use_gpu_aware_mpi) {
-#if defined(PETSC_HAVE_OMPI_MAJOR_VERSION) && defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-    /* Trust OpenMPI's compile time gpu query interface */
-    mpi_gpu_awareness = PETSC_TRUE;
-#else
-    /* For other MPI implementations without gpu query API, we do a GPU MPI call to see if it segfaults.
-      Note that Spectrum MPI sets OMPI_MAJOR_VERSION and is CUDA-aware, but does not have MPIX_CUDA_AWARE_SUPPORT.
+    /* For OpenMPI, we could do a compile time check with "defined(PETSC_HAVE_OMPI_MAJOR_VERSION) && defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT"
+       to see if it is CUDA-aware. However, recent versions of IBM Spectrum MPI (e.g., 10.3.1) on Summit meet above conditions, but one has to use
+       jsrun --smpiargs=-gpu to really enable GPU-aware MPI. So we do the check at runtime with a code that works only with GPU-aware MPI.
     */
     mpi_gpu_awareness = PetscMPICUPMAwarenessCheck();
-#endif
     if (!mpi_gpu_awareness) {
       (*PetscErrorPrintf)("PETSc is configured with GPU support, but your MPI is not GPU-aware. For better performance, please use a GPU-aware MPI.\n");
       (*PetscErrorPrintf)("If you do not care, add option -use_gpu_aware_mpi 0. To not see the message again, add the option to your .petscrc, OR add it to the env var PETSC_OPTIONS.\n");
@@ -94,17 +93,30 @@ PetscErrorCode PetscCUPMInitializeCheck(void)
           if (i < 2) {ierr = PetscSleep(3);CHKERRQ(ierr);}
         }
         if (cerr) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_GPU_RESOURCE,"Unable to initialize the GPU");
+#if defined(PETSC_CUDA_GENERATION)
+        {
+          struct cudaDeviceProp dp;
+          int                   gen;
+          cerr = cudaGetDeviceProperties(&dp,devId);CHKERRCUPM(cerr);
+          gen  = 10*dp.major+dp.minor;
+          if (gen < PETSC_CUDA_GENERATION) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_SUP_SYS,"PETSc compiled for NVIDIA generation %d but hardware is generation %d",PETSC_CUDA_GENERATION,gen);
+        }
+#endif
       } else if (cerr == cupmErrorSetOnActiveProcess) {
         /* It implies user has initialized device runtime outside of petsc. We do nothing to respect the device choice. */
       }
     }
-    ierr = PetscOptionsGetBool(NULL,NULL,"-petsc_default_use_null_stream",&useNull,NULL);
-    if (!useNull) {cerr = cupmStreamCreate(&PetscDefaultCupmStream);CHKERRCUPM(cerr);}
+    if (!PetscDefaultCupmStream) { /* user may have set the default stream already */
+      ierr = PetscOptionsGetBool(NULL,NULL,"-petsc_default_use_null_stream",&useNull,NULL);
+      if (!useNull) {cerr = cupmStreamCreate(&PetscDefaultCupmStream);CHKERRCUPM(cerr);}
+    }
     ierr = PetscCUPMBLASInitializeHandle();CHKERRQ(ierr);
     ierr = PetscCUPMSOLVERDnInitializeHandle();CHKERRQ(ierr);
     PetscCUPMInitialized = PETSC_TRUE;
+    /* Initialize CUDA event timers */
+    cerr = cupmEventCreate(&petsc_gputimer_begin);CHKERRCUPM(cerr);
+    cerr = cupmEventCreate(&petsc_gputimer_end);CHKERRCUPM(cerr);
   }
-
   if (!cupmValdidateChecked) {
     ierr = PetscCUPMValidate();CHKERRQ(ierr);
     cupmValdidateChecked = PETSC_TRUE;
@@ -209,7 +221,11 @@ PetscErrorCode PetscCUPMInitialize(MPI_Comm comm,PetscInt device)
       ierr = PetscCUPMSOLVERDnInitializeHandle();CHKERRQ(ierr);
       PetscCUPMInitialized = PETSC_TRUE;
     }
+    /* Initialize CUDA event timers */
+    cerr = cupmEventCreate(&petsc_gputimer_begin);CHKERRCUPM(cerr);
+    cerr = cupmEventCreate(&petsc_gputimer_end);CHKERRCUPM(cerr);
   }
+  ierr = PetscCUPMInitializeCheck();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

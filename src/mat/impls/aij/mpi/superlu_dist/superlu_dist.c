@@ -54,7 +54,6 @@ typedef struct {
   PetscBool              CleanUpSuperLU_Dist;  /* Flag to clean up (non-global) SuperLU objects during Destroy */
 } Mat_SuperLU_DIST;
 
-
 PetscErrorCode MatSuperluDistGetDiagU_SuperLU_DIST(Mat F,PetscScalar *diagU)
 {
   Mat_SuperLU_DIST *lu = (Mat_SuperLU_DIST*)F->data;
@@ -93,10 +92,10 @@ PETSC_EXTERN PetscMPIInt MPIAPI Petsc_Superlu_dist_keyval_Delete_Fn(MPI_Comm com
 
   PetscFunctionBegin;
   if (keyval != Petsc_Superlu_dist_keyval) SETERRMPI(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"Unexpected keyval");
-  ierr = PetscInfo(NULL,"Removing Petsc_Superlu_dist_keyval attribute from communicator that is being freed\n");
+  ierr = PetscInfo(NULL,"Removing Petsc_Superlu_dist_keyval attribute from communicator that is being freed\n");CHKERRQ(ierr);
   PetscStackCall("SuperLU_DIST:superlu_gridexit",superlu_gridexit(&context->grid));
   ierr = MPI_Comm_free(&context->comm);CHKERRMPI(ierr);
-  ierr = PetscFree(context);
+  ierr = PetscFree(context);CHKERRQ(ierr);
   PetscFunctionReturn(MPI_SUCCESS);
 }
 
@@ -116,7 +115,7 @@ static PetscErrorCode Petsc_Superlu_dist_keyval_free(void)
   PetscMPIInt    Petsc_Superlu_dist_keyval_temp = Petsc_Superlu_dist_keyval;
 
   PetscFunctionBegin;
-  ierr = PetscInfo(NULL,"Freeing Petsc_Superlu_dist_keyval\n");
+  ierr = PetscInfo(NULL,"Freeing Petsc_Superlu_dist_keyval\n");CHKERRQ(ierr);
   ierr = MPI_Comm_free_keyval(&Petsc_Superlu_dist_keyval_temp);CHKERRMPI(ierr);
   PetscFunctionReturn(0);
 }
@@ -580,6 +579,7 @@ static PetscErrorCode MatGetFactor_aij_superlu_dist(Mat A,MatFactorType ftype,Ma
   */
   set_default_options_dist(&options);
 
+  B->trivialsymbolic = PETSC_TRUE;
   if (ftype == MAT_FACTOR_LU) {
     B->factortype = MAT_FACTOR_LU;
     B->ops->lufactorsymbolic = MatLUFactorSymbolic_SuperLU_DIST;

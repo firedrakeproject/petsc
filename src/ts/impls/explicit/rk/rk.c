@@ -138,7 +138,7 @@ M*/
 /*MC
      TSRK7VR - Seventh order robust Verner RK scheme with sixth order embedded method.
 
-     This method has ten stages with the First Same As Last (FSAL) property.
+     This method has ten stages.
 
      Options database:
 .     -ts_rk_type 7vr
@@ -152,7 +152,7 @@ M*/
 /*MC
      TSRK8VR - Eigth order robust Verner RK scheme with seventh order embedded method.
 
-     This method has thirteen stages with the First Same As Last (FSAL) property.
+     This method has thirteen stages.
 
      Options database:
 .     -ts_rk_type 8vr
@@ -1133,7 +1133,6 @@ static PetscErrorCode DMRestrictHook_TSRK(DM fine,Mat restrct,Vec rscale,Mat inj
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
-
 
 static PetscErrorCode DMSubDomainHook_TSRK(DM dm,DM subdm,void *ctx)
 {

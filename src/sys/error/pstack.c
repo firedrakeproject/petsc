@@ -72,8 +72,7 @@ PetscErrorCode PetscStackSAWsViewOff(void)
 
 #  endif
 
-
-PetscErrorCode PetscStackCreate(void)
+PetscErrorCode PetscStackCreate(PetscBool check)
 {
   PetscStack *petscstack_in;
   PetscInt   i;
@@ -83,6 +82,7 @@ PetscErrorCode PetscStackCreate(void)
   petscstack_in              = (PetscStack*)malloc(sizeof(PetscStack));
   petscstack_in->currentsize = 0;
   petscstack_in->hotdepth    = 0;
+  petscstack_in->check       = check;
   for (i=0; i<PETSCSTACKSIZE; i++) {
     petscstack_in->function[i] = NULL;
     petscstack_in->file[i]     = NULL;
@@ -99,23 +99,28 @@ PetscErrorCode PetscStackCreate(void)
   return 0;
 }
 
-
 PetscErrorCode  PetscStackView(FILE *file)
 {
   int        i,j;
 
   if (!file) file = PETSC_STDOUT;
 
-  if (file == PETSC_STDOUT) {
-    (*PetscErrorPrintf)("Note: The EXACT line numbers in the stack are not available,\n");
-    (*PetscErrorPrintf)("      INSTEAD the line number of the start of the function\n");
-    (*PetscErrorPrintf)("      is given.\n");
-    for (i=petscstack->currentsize-1,j=1; i>=0; i--,j++) (*PetscErrorPrintf)("#%d %s() at %s:%d\n",j,petscstack->function[i],petscstack->file[i],petscstack->line[i]);
+  if (petscstack->currentsize <= 1) {
+     if (file == PETSC_STDOUT) {
+       (*PetscErrorPrintf)("No error traceback is available, the problem could be in the main program. \n");
+     } else {
+       fprintf(file,"No error traceback is available, the problem could be in the main program. \n");
+     }
   } else {
-    fprintf(file,"Note: The EXACT line numbers in the stack are not available,\n");
-    fprintf(file,"      INSTEAD the line number of the start of the function\n");
-    fprintf(file,"      is given.\n");
-    for (i=petscstack->currentsize-1,j=1; i>=0; i--,j++) fprintf(file,"[%d] #%d %s() at %s:%d\n",PetscGlobalRank,j,petscstack->function[i],petscstack->file[i],petscstack->line[i]);
+    if (file == PETSC_STDOUT) {
+      (*PetscErrorPrintf)("The EXACT line numbers in the error traceback are not available.\n");
+      (*PetscErrorPrintf)("instead the line number of the start of the function is given.\n");
+      for (i=petscstack->currentsize-1,j=1; i>=0; i--,j++) (*PetscErrorPrintf)("#%d %s() at %s:%d\n",j,petscstack->function[i],petscstack->file[i],petscstack->line[i]);
+    } else {
+      fprintf(file,"The EXACT line numbers in the error traceback are not available.\n");
+      fprintf(file,"Instead the line number of the start of the function is given.\n");
+      for (i=petscstack->currentsize-1,j=1; i>=0; i--,j++) fprintf(file,"[%d] #%d %s() at %s:%d\n",PetscGlobalRank,j,petscstack->function[i],petscstack->file[i],petscstack->line[i]);
+    }
   }
   return 0;
 }
@@ -153,7 +158,7 @@ PetscErrorCode  PetscStackPrint(PetscStack *sint,FILE *fp)
   int i;
 
   if (!sint) return(0);
-  for (i=sint->currentsize-2; i>=0; i--) fprintf(fp,"      [%d]  %s() line %d in %s\n",PetscGlobalRank,sint->function[i],sint->line[i],sint->file[i]);
+  for (i=sint->currentsize-2; i>=0; i--) fprintf(fp,"      [%d]  %s() at %s:%d\n",PetscGlobalRank,sint->function[i],sint->file[i],sint->line[i]);
   return 0;
 }
 

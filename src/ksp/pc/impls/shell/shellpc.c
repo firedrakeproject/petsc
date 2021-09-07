@@ -47,7 +47,7 @@ typedef struct {
 
 .seealso: PCShellSetContext()
 @*/
-PetscErrorCode  PCShellGetContext(PC pc,void **ctx)
+PetscErrorCode  PCShellGetContext(PC pc,void *ctx)
 {
   PetscErrorCode ierr;
   PetscBool      flg;
@@ -56,8 +56,8 @@ PetscErrorCode  PCShellGetContext(PC pc,void **ctx)
   PetscValidHeaderSpecific(pc,PC_CLASSID,1);
   PetscValidPointer(ctx,2);
   ierr = PetscObjectTypeCompare((PetscObject)pc,PCSHELL,&flg);CHKERRQ(ierr);
-  if (!flg) *ctx = NULL;
-  else      *ctx = ((PC_Shell*)(pc->data))->ctx;
+  if (!flg) *(void**)ctx = NULL;
+  else      *(void**)ctx = ((PC_Shell*)(pc->data))->ctx;
   PetscFunctionReturn(0);
 }
 
@@ -75,8 +75,6 @@ PetscErrorCode  PCShellGetContext(PC pc,void **ctx)
    Fortran Notes:
     To use this from Fortran you must write a Fortran interface definition for this
     function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
-
-
 
 .seealso: PCShellGetContext(), PCSHELL
 @*/
@@ -478,7 +476,6 @@ PetscErrorCode  PCShellSetDestroy(PC pc,PetscErrorCode (*destroy)(PC))
   PetscFunctionReturn(0);
 }
 
-
 /*@C
    PCShellSetSetUp - Sets routine to use to "setup" the preconditioner whenever the
    matrix operator is changed.
@@ -512,7 +509,6 @@ PetscErrorCode  PCShellSetSetUp(PC pc,PetscErrorCode (*setup)(PC))
   ierr = PetscTryMethod(pc,"PCShellSetSetUp_C",(PC,PetscErrorCode (*)(PC)),(pc,setup));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*@C
    PCShellSetView - Sets routine to use as viewer of shell preconditioner

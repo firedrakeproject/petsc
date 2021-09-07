@@ -28,7 +28,7 @@ static PetscErrorCode PCHMGExtractSubMatrix_Private(Mat pmat,Mat *submat,MatReus
   if (component>=blocksize) SETERRQ2(comm,PETSC_ERR_ARG_INCOMP,"Component %D should be less than block size %D \n",component,blocksize);
   ierr = MatGetOwnershipRange(pmat,&rstart,&rend);CHKERRQ(ierr);
   if ((rend-rstart)%blocksize != 0) SETERRQ3(comm,PETSC_ERR_ARG_INCOMP,"Block size %D is inconsistent for [%D, %D) \n",blocksize,rstart,rend);
-  ierr = ISCreateStride(comm,(rend-rstart)/blocksize,rstart+component,blocksize,&isrow);
+  ierr = ISCreateStride(comm,(rend-rstart)/blocksize,rstart+component,blocksize,&isrow);CHKERRQ(ierr);
   ierr = MatCreateSubMatrix(pmat,isrow,isrow,reuse,submat);CHKERRQ(ierr);
   ierr = ISDestroy(&isrow);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -158,7 +158,7 @@ PetscErrorCode PCSetUp_HMG(PC pc)
   ierr = PetscObjectSetOptionsPrefix((PetscObject)hmg->innerpc,prefix);CHKERRQ(ierr);
   ierr = PetscObjectAppendOptionsPrefix((PetscObject)hmg->innerpc,"hmg_inner_");CHKERRQ(ierr);
   ierr = PCSetFromOptions(hmg->innerpc);CHKERRQ(ierr);
-  ierr = PCSetUp(hmg->innerpc);
+  ierr = PCSetUp(hmg->innerpc);CHKERRQ(ierr);
 
   /* Obtain interpolations IN PLACE. For BoomerAMG, (I,J,data) is reused to avoid memory overhead */
   ierr = PCGetInterpolations(hmg->innerpc,&num_levels,&interpolations);CHKERRQ(ierr);
@@ -477,7 +477,6 @@ PetscErrorCode PCHMGUseMatMAIJ(PC pc, PetscBool usematmaij)
 .  -pc_hmg_use_subspace_coarsening  <true | false> - Whether or not to use subspace coarsening (that is, coarsen a submatrix).
 .  -hmg_inner_pc_type <hypre, gamg, ...> - What method is used to coarsen matrix
 -  -pc_hmg_use_matmaij <true | false> - Whether or not to use MatMAIJ for multicomponent problems for saving memory
-
 
    Notes:
     For multicomponent problems, we can just coarsen one submatrix associated with one particular component. In this way, the preconditioner setup

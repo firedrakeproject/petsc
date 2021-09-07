@@ -15,7 +15,6 @@ Last Modification:
 ***********************************comm.c*************************************/
 #include <../src/ksp/pc/impls/tfs/tfs.h>
 
-
 /* global program control variables - explicitly exported */
 PetscMPIInt PCTFS_my_id            = 0;
 PetscMPIInt PCTFS_num_nodes        = 1;
@@ -32,7 +31,7 @@ static PetscInt edge_node[sizeof(PetscInt)*32];
 /***********************************comm.c*************************************/
 PetscErrorCode PCTFS_comm_init(void)
 {
-
+  PetscFunctionBegin;
   if (p_init++) PetscFunctionReturn(0);
 
   MPI_Comm_size(MPI_COMM_WORLD,&PCTFS_num_nodes);

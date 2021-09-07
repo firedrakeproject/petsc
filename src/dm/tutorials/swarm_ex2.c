@@ -16,6 +16,7 @@ PetscErrorCode ex2_1(void)
   PetscMPIInt    rank;
   PetscInt       p,bs,nlocal;
 
+  PetscFunctionBegin;
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD,&rank);CHKERRMPI(ierr);
 
   ierr = DMCreate(PETSC_COMM_WORLD,&dms);CHKERRQ(ierr);
@@ -63,7 +64,6 @@ PetscErrorCode ex2_1(void)
   ierr = DMDestroy(&dms);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 int main(int argc,char **argv)
 {

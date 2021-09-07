@@ -192,7 +192,7 @@ PetscErrorCode KSPMonitorSNESResidualDrawLG(KSP ksp, PetscInt n, PetscReal rnorm
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 4);
-  PetscValidHeaderSpecific(lg, PETSC_DRAWLG_CLASSID, 5);
+  PetscValidHeaderSpecific(lg, PETSC_DRAWLG_CLASSID, 4);
   ierr = SNESGetSolution(snes, &snes_solution);CHKERRQ(ierr);
   ierr = VecDuplicate(snes_solution, &work1);CHKERRQ(ierr);
   ierr = VecDuplicate(snes_solution, &work2);CHKERRQ(ierr);
@@ -303,8 +303,6 @@ PetscErrorCode  SNESMonitorDefault(SNES snes,PetscInt its,PetscReal fgnorm,Petsc
   }
   ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
   PetscFunctionReturn(0);
-
-  PetscFunctionReturn(0);
 }
 
 /*@C
@@ -351,9 +349,6 @@ PetscErrorCode  SNESMonitorScaling(SNES snes,PetscInt its,PetscReal fgnorm,Petsc
 
 PetscErrorCode SNESMonitorJacUpdateSpectrum(SNES snes,PetscInt it,PetscReal fnorm,PetscViewerAndFormat *vf)
 {
-#if defined(PETSC_HAVE_ESSL)
-  SETERRQ(PetscObjectComm((PetscObject)snes),PETSC_ERR_SUP,"GEEV - No support for ESSL Lapack Routines");
-#else
   Vec            X;
   Mat            J,dJ,dJdense;
   PetscErrorCode ierr;
@@ -405,7 +400,6 @@ PetscErrorCode SNESMonitorJacUpdateSpectrum(SNES snes,PetscInt it,PetscReal fnor
 #else
   SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Not coded for complex");
 #endif
-#endif
 }
 
 PETSC_INTERN PetscErrorCode  SNESMonitorRange_Private(SNES,PetscInt,PetscReal*);
@@ -428,7 +422,7 @@ PetscErrorCode  SNESMonitorRange_Private(SNES snes,PetscInt it,PetscReal *per)
   for (i=0; i<n; i++) {
     pwork += (PetscAbsScalar(r[i]) > .20*rmax);
   }
-  ierr = MPIU_Allreduce(&pwork,per,1,MPIU_REAL,MPIU_SUM,PetscObjectComm((PetscObject)snes));CHKERRQ(ierr);
+  ierr = MPIU_Allreduce(&pwork,per,1,MPIU_REAL,MPIU_SUM,PetscObjectComm((PetscObject)snes));CHKERRMPI(ierr);
   ierr = VecRestoreArray(resid,&r);CHKERRQ(ierr);
   *per = *per/N;
   PetscFunctionReturn(0);

@@ -15,6 +15,7 @@ configure_options = [
   '--with-clanguage=cxx',
   '--with-debugging=0',
   '--with-visibility=0', # CXXFLAGS disables this option
+  '--debugLevel=4',
 
   #'--prefix=petsc-install', temporarily disable for gitlab-ci
 
@@ -43,6 +44,7 @@ configure_options = [
   '--download-moab=1',
   '--download-saws',
   '--download-revolve=1',
+  '--download-cams=1',
   '--download-ctetgen=1',
   '--download-tetgen=1',
   '--download-mfem=1',
@@ -53,6 +55,9 @@ configure_options = [
   '--download-colpack=1',
   '--download-mmg=1',
   '--download-parmmg=1',
+  '--download-kokkos=1',
+  '--download-kokkos-kernels=1',
+  '--download-htool=1',
   ]
 
 if __name__ == '__main__':

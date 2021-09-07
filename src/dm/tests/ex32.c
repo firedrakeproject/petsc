@@ -26,6 +26,7 @@ static PetscErrorCode TestQ2Q1DA(void)
   Vec            coords,gcoords,gcoords2;
   PetscErrorCode ierr;
 
+  PetscFunctionBeginUser;
   mx   = 7;
   my   = 11;
   mz   = 13;
@@ -71,7 +72,6 @@ int main(int argc,char **argv)
   ierr = PetscFinalize();
   return ierr;
 }
-
 
 /*TEST
 

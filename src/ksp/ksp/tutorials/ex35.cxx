@@ -4,8 +4,6 @@
    Processors: n
 T*/
 
-
-
 /*
 Inhomogeneous Laplacian in 2D. Modeled by the partial differential equation
 
@@ -87,7 +85,6 @@ static char help[] = "\
                       Usage: ./ex35 -problem 2 -n 80 -nu 0.01 -rho 0.005 -io -ksp_monitor -pc_type gamg\n  \
                       Usage: ./ex35 -problem 3 -file input/square_with_hole.h5m -mg\n";
 
-
 /* PETSc includes */
 #include <petscksp.h>
 #include <petscdmmoab.h>
@@ -152,7 +149,7 @@ int main(int argc, char **argv)
   if (user.nlevels)
   {
     ierr = KSPGetPC(ksp, &pc);CHKERRQ(ierr);
-    ierr = PetscMalloc(sizeof(DM) * (user.nlevels + 1), &dmhierarchy);
+    ierr = PetscMalloc(sizeof(DM) * (user.nlevels + 1), &dmhierarchy);CHKERRQ(ierr);
     for (k = 0; k <= user.nlevels; k++) dmhierarchy[k] = NULL;
 
     ierr = PetscPrintf(PETSC_COMM_WORLD, "Number of mesh hierarchy levels: %d\n", user.nlevels);CHKERRQ(ierr);
@@ -275,7 +272,6 @@ PetscScalar ComputeForcingFunction(PetscReal coords[3], UserContext* user)
             (1.0 / user->bounds[1] / user->bounds[1] + 1.0 / user->bounds[3] / user->bounds[3]) * sin(PETSC_PI * coords[0] / user->bounds[1]) * sin(PETSC_PI * coords[1] / user->bounds[3]);
   }
 }
-
 
 #define BCHECKEPS 1e-10
 #define BCHECK(coordxyz,truetrace) ((coordxyz < truetrace+BCHECKEPS && coordxyz > truetrace-BCHECKEPS))
@@ -456,7 +452,7 @@ PetscErrorCode ComputeMatrix(KSP ksp, Mat J, Mat jac, void *ctx)
        2) compute the quadrature points transformed to the physical space */
     ierr = DMMoabFEMComputeBasis(2, nconn, vpos, quadratureObj, phypts, jxw, phi, dphi);CHKERRQ(ierr);
 
-    ierr = PetscArrayzero(array, nconn * nconn);
+    ierr = PetscArrayzero(array, nconn * nconn);CHKERRQ(ierr);
 
     /* Compute function over the locally owned part of the grid */
     for (q = 0; q < npoints; ++q) {
@@ -516,7 +512,6 @@ PetscErrorCode ComputeMatrix(KSP ksp, Mat J, Mat jac, void *ctx)
   ierr = PetscQuadratureDestroy(&quadratureObj);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode ComputeDiscreteL2Error(KSP ksp, Vec err, UserContext *user)
 {
@@ -609,7 +604,7 @@ PetscErrorCode InitializeOptions(UserContext* user)
   user->error  = PETSC_FALSE;
   bc           = (PetscInt)DIRICHLET;
 
-  ierr = PetscOptionsBegin(PETSC_COMM_WORLD, "", "Options for the inhomogeneous Poisson equation", "ex35.cxx");
+  ierr = PetscOptionsBegin(PETSC_COMM_WORLD, "", "Options for the inhomogeneous Poisson equation", "ex35.cxx");CHKERRQ(ierr);
   ierr = PetscOptionsInt("-problem", "The type of problem being solved (controls forcing function)", "ex35.cxx", user->problem, &user->problem, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-n", "The elements in each direction", "ex35.cxx", user->n, &user->n, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-levels", "Number of levels in the multigrid hierarchy", "ex35.cxx", user->nlevels, &user->nlevels, NULL);CHKERRQ(ierr);
@@ -625,7 +620,7 @@ PetscErrorCode InitializeOptions(UserContext* user)
   ierr = PetscOptionsBool("-error", "Compute the discrete L_2 and L_inf errors of the solution", "ex35.cxx", user->error, &user->error, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsEList("-bc", "Type of boundary condition", "ex35.cxx", bcTypes, 2, bcTypes[0], &bc, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsString("-file", "The mesh file for the problem", "ex35.cxx", "", user->filename, sizeof(user->filename), &user->use_extfile);CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
 
   if (user->problem < 1 || user->problem > 3) user->problem = 1;
   user->bcType = (BCType)bc;
@@ -637,7 +632,6 @@ PetscErrorCode InitializeOptions(UserContext* user)
   }
   PetscFunctionReturn(0);
 }
-
 
 /*TEST
 

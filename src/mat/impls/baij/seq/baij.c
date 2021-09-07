@@ -147,9 +147,9 @@ PetscErrorCode MatSOR_SeqBAIJ(Mat A,Vec bb,PetscReal omega,MatSORType flag,Petsc
   its = its*lits;
   if (flag & SOR_EISENSTAT) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"No support yet for Eisenstat");
   if (its <= 0) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"Relaxation requires global its %D and local its %D both positive",its,lits);
-  if (fshift) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Sorry, no support for diagonal shift");
-  if (omega != 1.0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Sorry, no support for non-trivial relaxation factor");
-  if ((flag & SOR_APPLY_UPPER) || (flag & SOR_APPLY_LOWER)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"Sorry, no support for applying upper or lower triangular parts");
+  if (fshift) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"No support for diagonal shift");
+  if (omega != 1.0) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"No support for non-trivial relaxation factor");
+  if ((flag & SOR_APPLY_UPPER) || (flag & SOR_APPLY_LOWER)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"No support for applying upper or lower triangular parts");
 
   if (!a->idiagvalid) {ierr = MatInvertBlockDiagonal(A,NULL);CHKERRQ(ierr);}
 
@@ -889,7 +889,6 @@ PetscErrorCode MatSOR_SeqBAIJ(Mat A,Vec bb,PetscReal omega,MatSORType flag,Petsc
   PetscFunctionReturn(0);
 }
 
-
 /*
     Special version for direct calls from Fortran (Used in PETSc-fun3d)
 */
@@ -1084,7 +1083,6 @@ PetscErrorCode MatMarkDiagonal_SeqBAIJ(Mat A)
   }
   PetscFunctionReturn(0);
 }
-
 
 static PetscErrorCode MatGetRowIJ_SeqBAIJ(Mat A,PetscInt oshift,PetscBool symmetric,PetscBool blockcompressed,PetscInt *nn,const PetscInt *inia[],const PetscInt *inja[],PetscBool  *done)
 {
@@ -1334,6 +1332,7 @@ PetscErrorCode MatRestoreRow_SeqBAIJ(Mat A,PetscInt row,PetscInt *nz,PetscInt **
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
+  if (nz)  *nz = 0;
   if (idx) {ierr = PetscFree(*idx);CHKERRQ(ierr);}
   if (v)   {ierr = PetscFree(*v);CHKERRQ(ierr);}
   PetscFunctionReturn(0);
@@ -1719,7 +1718,6 @@ PetscErrorCode MatView_SeqBAIJ(Mat A,PetscViewer viewer)
   }
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode MatGetValues_SeqBAIJ(Mat A,PetscInt m,const PetscInt im[],PetscInt n,const PetscInt in[],PetscScalar v[])
 {
@@ -2865,13 +2863,13 @@ PetscErrorCode  MatSeqBAIJSetPreallocation_SeqBAIJ(Mat B,PetscInt bs,PetscInt nz
       case 1:
         B->ops->mult    = MatMult_SeqBAIJ_9_AVX2;
         B->ops->multadd = MatMultAdd_SeqBAIJ_9_AVX2;
-        ierr = PetscInfo1((PetscObject)B,"Using AVX2 for MatMult for BAIJ for blocksize %D\n",bs);
+        ierr = PetscInfo1((PetscObject)B,"Using AVX2 for MatMult for BAIJ for blocksize %D\n",bs);CHKERRQ(ierr);
         break;
 #endif
       default:
         B->ops->mult    = MatMult_SeqBAIJ_N;
         B->ops->multadd = MatMultAdd_SeqBAIJ_N;
-        ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);
+        ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);CHKERRQ(ierr);
         break;
       }
       break;
@@ -2888,24 +2886,24 @@ PetscErrorCode  MatSeqBAIJSetPreallocation_SeqBAIJ(Mat B,PetscInt bs,PetscInt nz
       case 1:
         B->ops->mult    = MatMult_SeqBAIJ_12_ver1;
         B->ops->multadd = MatMultAdd_SeqBAIJ_12_ver1;
-        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);
+        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);CHKERRQ(ierr);
         break;
       case 2:
         B->ops->mult    = MatMult_SeqBAIJ_12_ver2;
         B->ops->multadd = MatMultAdd_SeqBAIJ_12_ver2;
-        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);
+        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);CHKERRQ(ierr);
         break;
 #if defined(PETSC_HAVE_IMMINTRIN_H) && defined(__AVX2__) && defined(__FMA__) && defined(PETSC_USE_REAL_DOUBLE) && !defined(PETSC_USE_COMPLEX) && !defined(PETSC_USE_64BIT_INDICES)
       case 3:
         B->ops->mult    = MatMult_SeqBAIJ_12_AVX2;
         B->ops->multadd = MatMultAdd_SeqBAIJ_12_ver1;
-        ierr = PetscInfo1((PetscObject)B,"Using AVX2 for MatMult for BAIJ for blocksize %D\n",bs);
+        ierr = PetscInfo1((PetscObject)B,"Using AVX2 for MatMult for BAIJ for blocksize %D\n",bs);CHKERRQ(ierr);
         break;
 #endif
       default:
         B->ops->mult    = MatMult_SeqBAIJ_N;
         B->ops->multadd = MatMultAdd_SeqBAIJ_N;
-        ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);
+        ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);CHKERRQ(ierr);
         break;
       }
       break;
@@ -2917,23 +2915,23 @@ PetscErrorCode  MatSeqBAIJSetPreallocation_SeqBAIJ(Mat B,PetscInt bs,PetscInt nz
       switch (version) {
       case 1:
         B->ops->mult    = MatMult_SeqBAIJ_15_ver1;
-        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);
+        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);CHKERRQ(ierr);
         break;
       case 2:
         B->ops->mult    = MatMult_SeqBAIJ_15_ver2;
-        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);
+        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);CHKERRQ(ierr);
         break;
       case 3:
         B->ops->mult    = MatMult_SeqBAIJ_15_ver3;
-        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);
+        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);CHKERRQ(ierr);
         break;
       case 4:
         B->ops->mult    = MatMult_SeqBAIJ_15_ver4;
-        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);
+        ierr = PetscInfo2((PetscObject)B,"Using version %D of MatMult for BAIJ for blocksize %D\n",version,bs);CHKERRQ(ierr);
         break;
       default:
         B->ops->mult    = MatMult_SeqBAIJ_N;
-        ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);
+        ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);CHKERRQ(ierr);
         break;
       }
       B->ops->multadd = MatMultAdd_SeqBAIJ_N;
@@ -2942,7 +2940,7 @@ PetscErrorCode  MatSeqBAIJSetPreallocation_SeqBAIJ(Mat B,PetscInt bs,PetscInt nz
     default:
       B->ops->mult    = MatMult_SeqBAIJ_N;
       B->ops->multadd = MatMultAdd_SeqBAIJ_N;
-      ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);
+      ierr = PetscInfo1((PetscObject)B,"Using BLAS for MatMult for BAIJ for blocksize %D\n",bs);CHKERRQ(ierr);
       break;
     }
   }
@@ -3553,7 +3551,6 @@ PetscErrorCode  MatSeqBAIJSetPreallocationCSR(Mat B,PetscInt bs,const PetscInt i
   ierr = PetscTryMethod(B,"MatSeqBAIJSetPreallocationCSR_C",(Mat,PetscInt,const PetscInt[],const PetscInt[],const PetscScalar[]),(B,bs,i,j,v));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*@
      MatCreateSeqBAIJWithArrays - Creates an sequential BAIJ matrix using matrix elements provided by the user.

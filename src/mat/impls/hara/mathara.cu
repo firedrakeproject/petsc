@@ -994,7 +994,7 @@ static PetscErrorCode MatAssemblyEnd_HARA(Mat A, MatAssemblyType asstype)
       n2A  = PetscMax(n2A,PETSC_SMALL);
       niA  = PetscMax(niA,PETSC_SMALL);
       ierr = MatSetOperation(Ae,MATOP_NORM,normfunc);CHKERRQ(ierr);
-      ierr = PetscPrintf(PetscObjectComm((PetscObject)A),"MATHARA construction errors: NORM_1 %g, NORM_INFINITY %g, NORM_2 %g (%g %g %g)\n",(double)n1,(double)ni,(double)n2,(double)(n1/n1A),(double)(ni/niA),(double)(n2/n2A));
+      ierr = PetscPrintf(PetscObjectComm((PetscObject)A),"MATHARA construction errors: NORM_1 %g, NORM_INFINITY %g, NORM_2 %g (%g %g %g)\n",(double)n1,(double)ni,(double)n2,(double)(n1/n1A),(double)(ni/niA),(double)(n2/n2A));CHKERRQ(ierr);
       ierr = MatDestroy(&E);CHKERRQ(ierr);
     }
   }
@@ -1246,7 +1246,6 @@ PetscErrorCode MatHaraSetSamplingMat(Mat A, Mat B, PetscInt bs, PetscReal tol)
   ierr = PetscObjectTypeCompare((PetscObject)A,MATHARA,&ishara);CHKERRQ(ierr);
   if (ishara) {
     Mat_HARA *a = (Mat_HARA*)A->data;
-
 
     if (!a->sampler) a->sampler = new PetscMatrixSampler();
     a->sampler->SetSamplingMat(B);

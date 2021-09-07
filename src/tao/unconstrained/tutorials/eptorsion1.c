@@ -28,7 +28,6 @@
 
 #include <petsctao.h>
 
-
 static  char help[]=
 "Demonstrates use of the TAO package to solve \n\
 unconstrained minimization problems on a single processor.  This example \n\
@@ -485,9 +484,10 @@ PetscErrorCode FormHessian(Tao tao,Vec X,Mat H,Mat Hpre, void *ptr)
 */
 PetscErrorCode MatrixFreeHessian(Tao tao,Vec X,Mat H,Mat PrecH, void *ptr)
 {
-  AppCtx     *user = (AppCtx *) ptr;
+  AppCtx *user = (AppCtx *) ptr;
 
   /* Sets location of vector for use in computing matrix-vector products  of the form H(X)*y  */
+  PetscFunctionBeginUser;
   user->xvec = X;
   PetscFunctionReturn(0);
 }
@@ -614,7 +614,6 @@ PetscErrorCode HessianProduct(void *ptr,Vec svec,Vec y)
   ierr = PetscLogFlops(18.0*nx*ny);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*TEST
 

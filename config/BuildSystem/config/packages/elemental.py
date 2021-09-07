@@ -3,13 +3,14 @@ import config.package
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.gitcommit        = 'origin/petsc/0.87.7'
+    self.gitcommit        = '962cf01ce0ccb5cca6d6bb81e9b1d0b46cac9592' # petsc/0.87.7 on May 31, 2021
     self.download         = ['git://https://github.com/elemental/Elemental']
     self.liblist          = [['libEl.a','libElSuiteSparse.a','libpmrrr.a']]
     self.includes         = ['El.hpp']
     self.precisions       = ['single','double']
     self.cxx              = 1
-    self.requirescxx11    = 1
+    self.minCxxVersion    = 'c++11'
+    self.maxCxxVersion    = 'c++14'
     self.downloadonWindows= 0
     self.hastests         = 1
     self.hastestsdatafiles= 1
@@ -63,6 +64,6 @@ class Configure(config.package.CMakePackage):
 
     self.pushLanguage('Cxx')
     if config.setCompilers.Configure.isSolaris(self.log):
-       raise RuntimeError('Sorry, Elemental does not compile with Oracle/Solaris/Sun compilers')
+       raise RuntimeError('Elemental does not compile with Oracle/Solaris/Sun compilers')
     self.popLanguage()
     return args

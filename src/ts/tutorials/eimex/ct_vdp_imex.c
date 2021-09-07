@@ -42,7 +42,6 @@ static PetscErrorCode RHSFunction(TS,PetscReal,Vec,Vec,void*);
 static PetscErrorCode IFunction(TS,PetscReal,Vec,Vec,Vec,void*);
 static PetscErrorCode IJacobian(TS,PetscReal,Vec,Vec,PetscReal,Mat,Mat,void*);
 
-
 int main(int argc, char **argv)
 {
   TS                ts;
@@ -58,7 +57,7 @@ int main(int argc, char **argv)
 
   ierr = PetscInitialize(&argc,&argv,NULL,help);if (ierr) return ierr;
   /* Initialize user application context */
-  ierr = PetscOptionsBegin(PETSC_COMM_WORLD,NULL,"van der Pol options","");
+  ierr = PetscOptionsBegin(PETSC_COMM_WORLD,NULL,"van der Pol options","");CHKERRQ(ierr);
   user.mu      = 1e0;
   ierr = PetscOptionsReal("-eps","Stiffness controller","",user.mu,&user.mu,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
@@ -166,7 +165,6 @@ int main(int argc, char **argv)
   ierr = PetscFinalize();
   return ierr;
 }
-
 
 static PetscErrorCode RHSFunction(TS ts,PetscReal t,Vec X,Vec F,void *ptr)
 {

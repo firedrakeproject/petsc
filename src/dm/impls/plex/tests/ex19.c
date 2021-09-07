@@ -2,7 +2,7 @@ static char help[] = "Tests mesh adaptation with DMPlex and pragmatic.\n";
 
 #include <petsc/private/dmpleximpl.h>
 
-#include <petscksp.h>
+#include <petscsnes.h>
 
 typedef struct {
   DM        dm;
@@ -42,7 +42,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   ierr = PetscOptionsReal("-hmax", "Max size prescribed by the metric", "ex19.c", options->hmax, &options->hmax, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsReal("-hmin", "Min size prescribed by the metric", "ex19.c", options->hmin, &options->hmin, NULL);CHKERRQ(ierr);
   ierr = PetscOptionsBool("-do_L2", "Test L2 projection", "ex19.c", options->doL2, &options->doL2, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -261,7 +261,7 @@ static PetscErrorCode TestL2Projection(DM dm, DM dma, AppCtx *user)
   ierr = PetscPrintf(PETSC_COMM_WORLD, "Interpolated L2 Error: %g\n", (double) error);CHKERRQ(ierr);
 
   ierr = VecSet(ones, 1.0);CHKERRQ(ierr);
-  ierr = DMPlexComputeJacobianAction(dma, NULL, 0, 0, ua, NULL, ones, massLumped, user);CHKERRQ(ierr);
+  ierr = DMSNESComputeJacobianAction(dma, ua, ones, massLumped, user);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) massLumped, "Lumped mass");CHKERRQ(ierr);
   ierr = VecViewFromOptions(massLumped, NULL, "-mass_vec_view");CHKERRQ(ierr);
   ierr = DMCreateMassMatrix(dm, dma, &mass);CHKERRQ(ierr);
@@ -341,6 +341,9 @@ int main (int argc, char * argv[]) {
 }
 
 /*TEST
+
+  build:
+    requires: pragmatic
 
   test:
     suffix: 0

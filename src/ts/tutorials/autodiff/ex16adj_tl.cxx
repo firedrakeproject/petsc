@@ -102,7 +102,7 @@ static PetscErrorCode RHSJacobian(TS ts,PetscReal t,Vec X,Mat A,Mat B,void *ctx)
   ierr = EvaluateResidual(x_a,mu_a,f_a);CHKERRQ(ierr);
 
   /* Extract derivatives */
-  ierr = PetscMalloc1(user->adctx->n,&J);
+  ierr = PetscMalloc1(user->adctx->n,&J);CHKERRQ(ierr);
   J[0] = (PetscScalar*) f_a[0].getADValue();
   J[1] = (PetscScalar*) f_a[1].getADValue();
 
@@ -304,7 +304,6 @@ int main(int argc,char **argv)
   x_ptr[0] = 0.0;
   ierr = VecRestoreArray(mu[1],&x_ptr);CHKERRQ(ierr);
   ierr = TSSetCostGradients(ts,2,lambda,mu);CHKERRQ(ierr);
-
 
   /*   Set RHS JacobianP */
   ierr = TSSetRHSJacobianP(ts,Jacp,RHSJacobianP,&user);CHKERRQ(ierr);

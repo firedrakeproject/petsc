@@ -4,8 +4,6 @@
    Processors: n
 T*/
 
-
-
 /*
 Laplacian in 3D. Modeled by the partial differential equation
 
@@ -121,7 +119,7 @@ PetscErrorCode ComputeRHS(KSP ksp,Vec b,void *ctx)
   Hy   = 1.0 / (PetscReal)(my);
   Hz   = 1.0 / (PetscReal)(mz);
   ierr = DMDAGetCorners(da,&xs,&ys,&zs,&xm,&ym,&zm);CHKERRQ(ierr);
-  ierr = DMDAVecGetArrayDOF(da, b, &array);CHKERRQ(ierr);
+  ierr = DMDAVecGetArrayDOFWrite(da, b, &array);CHKERRQ(ierr);
   for (k=zs; k<zs+zm; k++) {
     for (j=ys; j<ys+ym; j++) {
       for (i=xs; i<xs+xm; i++) {
@@ -135,7 +133,7 @@ PetscErrorCode ComputeRHS(KSP ksp,Vec b,void *ctx)
       }
     }
   }
-  ierr = DMDAVecRestoreArrayDOF(da, b, &array);CHKERRQ(ierr);
+  ierr = DMDAVecRestoreArrayDOFWrite(da, b, &array);CHKERRQ(ierr);
   ierr = VecAssemblyBegin(b);CHKERRQ(ierr);
   ierr = VecAssemblyEnd(b);CHKERRQ(ierr);
 
@@ -147,7 +145,6 @@ PetscErrorCode ComputeRHS(KSP ksp,Vec b,void *ctx)
   ierr = MatNullSpaceDestroy(&nullspace);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode ComputeMatrix(KSP ksp, Mat J,Mat jac, void *ctx)
 {
@@ -280,8 +277,6 @@ PetscErrorCode ComputeMatrix(KSP ksp, Mat J,Mat jac, void *ctx)
   ierr = MatNullSpaceDestroy(&nullspace);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
-
 
 /*TEST
 

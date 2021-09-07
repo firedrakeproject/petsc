@@ -63,7 +63,6 @@ typedef struct {
   Mat elem_mat;
 } GLLData;
 
-
 static PetscErrorCode BuildCSRGraph(DomainData dd, PetscInt **xadj, PetscInt **adjncy)
 {
   PetscErrorCode ierr;
@@ -73,6 +72,7 @@ static PetscErrorCode BuildCSRGraph(DomainData dd, PetscInt **xadj, PetscInt **a
   PetscBool      internal_node;
 
   /* first count dimension of adjncy */
+  PetscFunctionBeginUser;
   count_adj=0;
   for (k=0; k<dd.zm_l; k++) {
     internal_node = PETSC_TRUE;
@@ -811,7 +811,6 @@ static PetscErrorCode ComputeKSPFETIDP(DomainData dd, KSP ksp_bddc, KSP *ksp_fet
   PetscFunctionReturn(0);
 }
 
-
 static PetscErrorCode ComputeKSPBDDC(DomainData dd,Mat A,KSP *ksp)
 {
   PetscErrorCode ierr;
@@ -1200,6 +1199,5 @@ int main(int argc,char **args)
    test:
      suffix: bddc_fetidp_ml_eqlimit_2
      args: -physical_pc_bddc_coarse_eqs_limit 46
-
 
 TEST*/

@@ -3,7 +3,6 @@
   matrix storage format.
 */
 
-
 #include <../src/mat/impls/aij/seq/aij.h>          /*I "petscmat.h" I*/
 #include <petscblaslapack.h>
 #include <petscbt.h>
@@ -16,7 +15,7 @@ PetscErrorCode MatSeqAIJSetTypeFromOptions(Mat A)
   char                 type[256];
 
   PetscFunctionBegin;
-  ierr = PetscObjectOptionsBegin((PetscObject)A);
+  ierr = PetscObjectOptionsBegin((PetscObject)A);CHKERRQ(ierr);
   ierr = PetscOptionsFList("-mat_seqaij_type","Matrix SeqAIJ type","MatSeqAIJSetType",MatSeqAIJList,"seqaij",type,256,&flg);CHKERRQ(ierr);
   if (flg) {
     ierr = MatSeqAIJSetType(A,type);CHKERRQ(ierr);
@@ -514,7 +513,7 @@ PetscErrorCode MatSetValues_SeqAIJ(Mat A,PetscInt m,const PetscInt im[],PetscInt
       /* shift up all the later entries in this row */
       ierr  = PetscArraymove(rp+i+1,rp+i,N-i+1);CHKERRQ(ierr);
       rp[i] = col;
-      if (!A->structure_only){
+      if (!A->structure_only) {
         ierr  = PetscArraymove(ap+i+1,ap+i,N-i+1);CHKERRQ(ierr);
         ap[i] = value;
       }
@@ -532,7 +531,6 @@ noinsert:;
 #endif
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode MatSetValues_SeqAIJ_SortedFullNoPreallocation(Mat A,PetscInt m,const PetscInt im[],PetscInt n,const PetscInt in[],const PetscScalar v[],InsertMode is)
 {
@@ -665,7 +663,6 @@ PetscErrorCode MatSetValues_SeqAIJ_SortedFull(Mat A,PetscInt m,const PetscInt im
 #endif
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode MatGetValues_SeqAIJ(Mat A,PetscInt m,const PetscInt im[],PetscInt n,const PetscInt in[],PetscScalar v[])
 {
@@ -1341,6 +1338,7 @@ PetscErrorCode MatDestroy_SeqAIJ(Mat A)
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatProductSetFromOptions_is_seqaij_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatProductSetFromOptions_seqdense_seqaij_C",NULL);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)A,"MatProductSetFromOptions_seqaij_seqaij_C",NULL);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)A,"MatSeqAIJKron_C",NULL);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -2148,7 +2146,6 @@ PetscErrorCode MatSOR_SeqAIJ(Mat A,Vec bb,PetscReal omega,MatSORType flag,PetscR
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode MatGetInfo_SeqAIJ(Mat A,MatInfoType flag,MatInfo *info)
 {
   Mat_SeqAIJ *a = (Mat_SeqAIJ*)A->data;
@@ -2341,9 +2338,9 @@ PetscErrorCode MatGetRow_SeqAIJ(Mat A,PetscInt row,PetscInt *nz,PetscInt **idx,P
 PetscErrorCode MatRestoreRow_SeqAIJ(Mat A,PetscInt row,PetscInt *nz,PetscInt **idx,PetscScalar **v)
 {
   PetscFunctionBegin;
-  *nz = 0;
+  if (nz)  *nz = 0;
   if (idx) *idx = NULL;
-  if (v) *v = NULL;
+  if (v)   *v = NULL;
   PetscFunctionReturn(0);
 }
 
@@ -3569,7 +3566,6 @@ PetscErrorCode  MatSetRandomSkipColumnRange_SeqAIJ_Private(Mat x,PetscInt low,Pe
   PetscFunctionReturn(0);
 }
 
-
 /* -------------------------------------------------------------------*/
 static struct _MatOps MatOps_Values = { MatSetValues_SeqAIJ,
                                         MatGetRow_SeqAIJ,
@@ -3740,9 +3736,9 @@ PetscErrorCode  MatSeqAIJSetColumnIndices_SeqAIJ(Mat mat,PetscInt *indices)
 }
 
 /*
- * When a sparse matrix has many zero columns, we should compact them out to save the space
- * This happens in MatPtAPSymbolic_MPIAIJ_MPIAIJ_scalable()
- * */
+ * Given a sparse matrix with global column indices, compact it by using a local column space.
+ * The result matrix helps saving memory in other algorithms, such as MatPtAPSymbolic_MPIAIJ_MPIAIJ_scalable()
+ */
 PetscErrorCode  MatSeqAIJCompactOutExtraColumns_SeqAIJ(Mat mat, ISLocalToGlobalMapping *mapping)
 {
   Mat_SeqAIJ         *aij = (Mat_SeqAIJ*)mat->data;
@@ -3767,7 +3763,7 @@ PetscErrorCode  MatSeqAIJCompactOutExtraColumns_SeqAIJ(Mat mat, ISLocalToGlobalM
     }
   }
   /* form array of columns we need */
-  ierr = PetscMalloc1(ec+1,&garray);CHKERRQ(ierr);
+  ierr = PetscMalloc1(ec,&garray);CHKERRQ(ierr);
   ierr = PetscTableGetHeadPosition(gid1_lid1,&tpos);CHKERRQ(ierr);
   while (tpos) {
     ierr = PetscTableGetNext(gid1_lid1,&tpos,&gid,&lid);CHKERRQ(ierr);
@@ -3950,7 +3946,6 @@ PetscErrorCode  MatRetrieveValues(Mat mat)
   ierr = PetscUseMethod(mat,"MatRetrieveValues_C",(Mat),(mat));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /* --------------------------------------------------------------------------------*/
 /*@C
@@ -4167,7 +4162,6 @@ PetscErrorCode  MatSeqAIJSetPreallocation_SeqAIJ(Mat B,PetscInt nz,const PetscIn
     ierr = PetscArraycpy(b->ipre,b->imax,B->rmap->n);CHKERRQ(ierr);
   }
 
-
   b->nz               = 0;
   b->maxnz            = nz;
   B->info.nz_unneeded = (double)b->maxnz;
@@ -4178,7 +4172,6 @@ PetscErrorCode  MatSeqAIJSetPreallocation_SeqAIJ(Mat B,PetscInt nz,const PetscIn
   B->assembled     = PETSC_FALSE;
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode MatResetPreallocation_SeqAIJ(Mat A)
 {
@@ -4281,6 +4274,95 @@ PetscErrorCode  MatSeqAIJSetPreallocationCSR_SeqAIJ(Mat B,const PetscInt Ii[],co
   ierr = MatAssemblyEnd(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
 
   ierr = MatSetOption(B,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_TRUE);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+/*@
+   MatSeqAIJKron - Computes C, the Kronecker product of A and B.
+
+   Input Parameters:
++  A - left-hand side matrix
+.  B - right-hand side matrix
+-  reuse - either MAT_INITIAL_MATRIX or MAT_REUSE_MATRIX
+
+   Output Parameter:
+.  C - Kronecker product of A and B
+
+   Level: intermediate
+
+   Notes:
+      MAT_REUSE_MATRIX can only be used when the nonzero structure of the product matrix has not changed from that last call to MatSeqAIJKron().
+
+.seealso: MatCreateSeqAIJ(), MATSEQAIJ, MATKAIJ, MatReuse
+@*/
+PetscErrorCode MatSeqAIJKron(Mat A,Mat B,MatReuse reuse,Mat *C)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A,MAT_CLASSID,1);
+  PetscValidType(A,1);
+  PetscValidHeaderSpecific(B,MAT_CLASSID,2);
+  PetscValidType(B,2);
+  PetscValidPointer(C,4);
+  if (reuse == MAT_REUSE_MATRIX) {
+    PetscValidHeaderSpecific(*C,MAT_CLASSID,4);
+    PetscValidType(*C,4);
+  }
+  ierr = PetscTryMethod(A,"MatSeqAIJKron_C",(Mat,Mat,MatReuse,Mat*),(A,B,reuse,C));CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+PetscErrorCode MatSeqAIJKron_SeqAIJ(Mat A,Mat B,MatReuse reuse,Mat *C)
+{
+  Mat            newmat;
+  Mat_SeqAIJ     *a = (Mat_SeqAIJ*)A->data;
+  Mat_SeqAIJ     *b = (Mat_SeqAIJ*)B->data;
+  PetscScalar    *v;
+  PetscInt       *i,*j,m,n,p,q,nnz = 0,am = A->rmap->n,bm = B->rmap->n,an = A->cmap->n, bn = B->cmap->n;
+  PetscBool      flg;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  if (A->factortype) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for factored matrix");
+  if (!A->assembled) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for unassembled matrix");
+  if (B->factortype) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for factored matrix");
+  if (!B->assembled) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Not for unassembled matrix");
+  ierr = PetscObjectTypeCompare((PetscObject)B,MATSEQAIJ,&flg);CHKERRQ(ierr);
+  if (!flg) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"MatType %s",((PetscObject)B)->type_name);
+  if (reuse != MAT_INITIAL_MATRIX && reuse != MAT_REUSE_MATRIX) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_SUP,"MatReuse %d",(int)reuse);
+  if (reuse == MAT_INITIAL_MATRIX) {
+    ierr = PetscMalloc2(am*bm+1,&i,a->i[am]*b->i[bm],&j);CHKERRQ(ierr);
+    ierr = MatCreate(PETSC_COMM_SELF,&newmat);CHKERRQ(ierr);
+    ierr = MatSetSizes(newmat,am*bm,an*bn,am*bm,an*bn);CHKERRQ(ierr);
+    ierr = MatSetType(newmat,MATAIJ);CHKERRQ(ierr);
+    i[0] = 0;
+    for (m = 0; m < am; ++m) {
+      for (p = 0; p < bm; ++p) {
+        i[m*bm + p + 1] = i[m*bm + p] + (a->i[m+1] - a->i[m]) * (b->i[p+1] - b->i[p]);
+        for (n = a->i[m]; n < a->i[m+1]; ++n) {
+          for (q = b->i[p]; q < b->i[p+1]; ++q) {
+            j[nnz++] = a->j[n]*bn + b->j[q];
+          }
+        }
+      }
+    }
+    ierr = MatSeqAIJSetPreallocationCSR(newmat,i,j,NULL);CHKERRQ(ierr);
+    *C = newmat;
+    ierr = PetscFree2(i,j);CHKERRQ(ierr);
+    nnz = 0;
+  }
+  ierr = MatSeqAIJGetArray(*C,&v);CHKERRQ(ierr);
+  for (m = 0; m < am; ++m) {
+    for (p = 0; p < bm; ++p) {
+      for (n = a->i[m]; n < a->i[m+1]; ++n) {
+        for (q = b->i[p]; q < b->i[p+1]; ++q) {
+          v[nnz++] = a->a[n] * b->a[q];
+        }
+      }
+    }
+  }
+  ierr = MatSeqAIJRestoreArray(*C,&v);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -4668,6 +4750,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_SeqAIJ(Mat B)
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatProductSetFromOptions_is_seqaij_C",MatProductSetFromOptions_IS_XAIJ);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatProductSetFromOptions_seqdense_seqaij_C",MatProductSetFromOptions_SeqDense_SeqAIJ);CHKERRQ(ierr);
   ierr = PetscObjectComposeFunction((PetscObject)B,"MatProductSetFromOptions_seqaij_seqaij_C",MatProductSetFromOptions_SeqAIJ);CHKERRQ(ierr);
+  ierr = PetscObjectComposeFunction((PetscObject)B,"MatSeqAIJKron_C",MatSeqAIJKron_SeqAIJ);CHKERRQ(ierr);
   ierr = MatCreate_SeqAIJ_Inode(B);CHKERRQ(ierr);
   ierr = PetscObjectChangeTypeName((PetscObject)B,MATSEQAIJ);CHKERRQ(ierr);
   ierr = MatSeqAIJSetTypeFromOptions(B);CHKERRQ(ierr);  /* this allows changing the matrix subtype to say MATSEQAIJPERM */
@@ -4941,7 +5024,6 @@ $        i =  {0,1,3,6}  [size = nrow+1  = 3+1]
 $        j =  {0,0,2,0,1,2}  [size = 6]; values must be sorted for each row
 $        v =  {1,2,3,4,5,6}  [size = 6]
 
-
 .seealso: MatCreate(), MatCreateAIJ(), MatCreateSeqAIJ(), MatCreateMPIAIJWithArrays(), MatMPIAIJSetPreallocationCSR()
 
 @*/
@@ -5028,7 +5110,6 @@ PetscErrorCode  MatCreateSeqAIJWithArrays(MPI_Comm comm,PetscInt m,PetscInt n,Pe
         j =  {0,0,2,0,1,2}
         v =  {1,2,3,4,5,6}
 
-
 .seealso: MatCreate(), MatCreateAIJ(), MatCreateSeqAIJ(), MatCreateSeqAIJWithArrays(), MatMPIAIJSetPreallocationCSR()
 
 @*/
@@ -5036,7 +5117,6 @@ PetscErrorCode  MatCreateSeqAIJFromTriple(MPI_Comm comm,PetscInt m,PetscInt n,Pe
 {
   PetscErrorCode ierr;
   PetscInt       ii, *nnz, one = 1,row,col;
-
 
   PetscFunctionBegin;
   ierr = PetscCalloc1(m,&nnz);CHKERRQ(ierr);
@@ -5185,7 +5265,6 @@ PetscFunctionList MatSeqAIJList = NULL;
    Options Database Key:
 .  -mat_seqai_type  <method> - for example seqaijcrl
 
-
   Level: intermediate
 
 .seealso: PCSetType(), VecSetType(), MatCreate(), MatType, Mat
@@ -5206,7 +5285,6 @@ PetscErrorCode  MatSeqAIJSetType(Mat mat, MatType matype)
   PetscFunctionReturn(0);
 }
 
-
 /*@C
   MatSeqAIJRegister -  - Adds a new sub-matrix type for sequential AIJ matrices
 
@@ -5219,14 +5297,12 @@ PetscErrorCode  MatSeqAIJSetType(Mat mat, MatType matype)
    Notes:
    MatSeqAIJRegister() may be called multiple times to add several user-defined solvers.
 
-
    Then, your matrix can be chosen with the procedural interface at runtime via the option
 $     -mat_seqaij_type my_mat
 
    Level: advanced
 
 .seealso: MatSeqAIJRegisterAll()
-
 
   Level: advanced
 @*/

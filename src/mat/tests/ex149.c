@@ -26,7 +26,6 @@ int main(int argc,char **args)
   ierr = MPI_Comm_size(PETSC_COMM_WORLD, &size);CHKERRMPI(ierr);
   ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRMPI(ierr);
 
-
   ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rdm);CHKERRQ(ierr);
   ierr = PetscRandomSetFromOptions(rdm);CHKERRQ(ierr);
 
@@ -34,7 +33,7 @@ int main(int argc,char **args)
   ierr = VecSetSizes(input,PETSC_DECIDE,N);CHKERRQ(ierr);
   ierr = VecSetFromOptions(input);CHKERRQ(ierr);
   ierr = VecSetRandom(input,rdm);CHKERRQ(ierr);
-  ierr = VecDuplicate(input,&output);
+  ierr = VecDuplicate(input,&output);CHKERRQ(ierr);
 /*  ierr = VecGetSize(input,&vsize);CHKERRQ(ierr); */
 /*  printf("Size of the input Vector is %d\n",vsize); */
 
@@ -71,9 +70,6 @@ int main(int argc,char **args)
   }
 /*      } */
 
-
-
-
 /* ierr = MatCreateVecs(A,&z,NULL);CHKERRQ(ierr); */
 /*  printf("Vector size from ex148 %d\n",vsize); */
 /*  ierr = PetscObjectSetName((PetscObject) x, "Real space vector");CHKERRQ(ierr); */
@@ -84,6 +80,4 @@ int main(int argc,char **args)
   return ierr;
 
 }
-
-
 

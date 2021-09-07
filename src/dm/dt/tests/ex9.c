@@ -168,7 +168,6 @@ static PetscErrorCode testDerivativesLegendre(PetscInt dim, PetscInt deg, PetscI
     if (PetscAbsReal(diff) > tol) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Jet mismatch between PKD and tensor Legendre bases: error %g at tolerance %g\n", (double) diff, (double) tol);
   }
 
-
   ierr = PetscFree2(degtup,ktup);CHKERRQ(ierr);
   ierr = PetscFree(degrees);CHKERRQ(ierr);
   ierr = PetscFree3(pkd_jet_basis, lgndre_jet, pkd_jet);CHKERRQ(ierr);
@@ -193,7 +192,7 @@ int main(int argc, char **argv)
   ierr = PetscOptionsInt("-dim", "Dimension of the simplex","ex9.c",dim,&dim,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-degree", "The degree of the polynomial space","ex9.c",deg,&deg,NULL);CHKERRQ(ierr);
   ierr = PetscOptionsInt("-k", "The number of derivatives to use in the taylor test","ex9.c",k,&k,NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsEnd();
+  ierr = PetscOptionsEnd();CHKERRQ(ierr);
   ierr = testOrthogonality(dim, deg);CHKERRQ(ierr);
   ierr = testDerivativesLegendre(dim, deg, k);CHKERRQ(ierr);
   ierr = PetscFinalize();

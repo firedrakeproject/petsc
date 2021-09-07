@@ -26,8 +26,6 @@ File Description:
 #define TREE_BUF_SZ 2048;
 #define GS_VEC_SZ   1
 
-
-
 /***********************************gs.c***************************************
 Type: struct gather_scatter_id
 ------------------------------
@@ -148,7 +146,6 @@ static PetscErrorCode PCTFS_gs_gop_vec_local_plus(PCTFS_gs_id *gs, PetscScalar *
 static PetscErrorCode PCTFS_gs_gop_vec_local_in_plus(PCTFS_gs_id *gs, PetscScalar *vals, PetscInt step);
 static PetscErrorCode PCTFS_gs_gop_vec_tree_plus(PCTFS_gs_id *gs, PetscScalar *vals, PetscInt step);
 
-
 static PetscErrorCode PCTFS_gs_gop_local_plus(PCTFS_gs_id *gs, PetscScalar *vals);
 static PetscErrorCode PCTFS_gs_gop_local_in_plus(PCTFS_gs_id *gs, PetscScalar *vals);
 
@@ -192,10 +189,8 @@ PCTFS_gs_id *PCTFS_gs_init(PetscInt *elms, PetscInt nel, PetscInt level)
   MPI_Comm       PCTFS_gs_comm;
   PetscErrorCode ierr;
 
-  PetscFunctionBegin;
   /* ensure that communication package has been initialized */
   PCTFS_comm_init();
-
 
   /* determines if we have enough dynamic/semi-static memory */
   /* checks input, allocs and sets gd_id template            */
@@ -204,7 +199,6 @@ PCTFS_gs_id *PCTFS_gs_init(PetscInt *elms, PetscInt nel, PetscInt level)
   /* only bit mask version up and working for the moment    */
   /* LATER :: get int list version working for sparse pblms */
   ierr = gsi_via_bit_mask(gs);CHKERRABORT(PETSC_COMM_WORLD,ierr);
-
 
   ierr = MPI_Comm_group(MPI_COMM_WORLD,&PCTFS_gs_group);CHKERRABORT(PETSC_COMM_WORLD,ierr);
   ierr = MPI_Comm_create(MPI_COMM_WORLD,PCTFS_gs_group,&PCTFS_gs_comm);CHKERRABORT(PETSC_COMM_WORLD,ierr);
@@ -236,7 +230,6 @@ static PCTFS_gs_id *gsi_check_args(PetscInt *in_elms, PetscInt nel, PetscInt lev
   PetscInt       work[sizeof(oprs)/sizeof(oprs[0])-1];
   PCTFS_gs_id    *gs;
   PetscErrorCode ierr;
-
 
   if (!in_elms) SETERRABORT(PETSC_COMM_WORLD,PETSC_ERR_PLIB,"elms point to nothing!!!\n");
   if (nel<0)    SETERRABORT(PETSC_COMM_WORLD,PETSC_ERR_PLIB,"can't have fewer than 0 elms!!!\n");
@@ -299,7 +292,6 @@ static PCTFS_gs_id *gsi_check_args(PetscInt *in_elms, PetscInt nel, PetscInt lev
   /* how many unique elements? */
   gs->repeats = k;
   gs->nel     = nel-k;
-
 
   /* number of repeats? */
   gs->num_local        = num_local;
@@ -547,7 +539,6 @@ static PetscErrorCode get_ngh_buf(PCTFS_gs_id *gs)
     gs->num_loads = num_loads = negl/per_load + (negl%per_load>0);
   }
 
-
   /* convert buf sizes from #bytes to #ints - 32 bit only! */
   p_mask_size/=sizeof(PetscInt); ngh_buf_size/=sizeof(PetscInt); buf_size/=sizeof(PetscInt);
 
@@ -579,7 +570,6 @@ static PetscErrorCode get_ngh_buf(PCTFS_gs_id *gs)
 
     /* GLOBAL: pass buffer */
     ierr = PCTFS_giop(buf1,buf2,buf_size,&oper);CHKERRQ(ierr);
-
 
     /* unload buffer into ngh_buf */
     ptr2=(elms+i_start);
@@ -689,7 +679,6 @@ static PetscErrorCode set_pairwise(PCTFS_gs_id *gs)
   /* how many processors (nghs) do we have to exchange with? */
   nprs = gs->num_pairs = PCTFS_ct_bits((char*)sh_proc_mask,p_mask_size*sizeof(PetscInt));
 
-
   /* allocate space for PCTFS_gs_gop() info */
   gs->pair_list = msg_list  = (PetscInt*)  malloc(sizeof(PetscInt)*nprs);
   gs->msg_sizes = msg_size  = (PetscInt*)  malloc(sizeof(PetscInt)*nprs);
@@ -758,7 +747,6 @@ static PetscErrorCode set_pairwise(PCTFS_gs_id *gs)
   t1      = GL_MAX;
   PCTFS_giop(&i_start,&offset,1,&t1);
   gs->max_pairs = i_start;
-
 
   /* remap pairwise in tail of gsi_via_bit_mask() */
   gs->msg_total = PCTFS_ivec_sum(gs->msg_sizes,nprs);
@@ -1235,7 +1223,6 @@ static PetscErrorCode PCTFS_gs_gop_vec_tree_plus(PCTFS_gs_id *gs,  PetscScalar *
   /* zero out collection buffer */
   PCTFS_rvec_zero(buf,size);
 
-
   /* copy over my contributions */
   while (*in >= 0) {
     ierr = PetscBLASIntCast(step,&dstep);CHKERRQ(ierr);
@@ -1421,6 +1408,4 @@ static PetscErrorCode PCTFS_gs_gop_tree_plus_hc(PCTFS_gs_id *gs, PetscScalar *va
   while (*in >= 0) *(vals + *in++) = *(buf + *out++);
   PetscFunctionReturn(0);
 }
-
-
 

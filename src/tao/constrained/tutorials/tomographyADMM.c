@@ -45,7 +45,7 @@ static PetscErrorCode TaoShellSolve_SoftThreshold(Tao tao)
   ierr = TaoGetADMMParentTao(tao,&admm_tao);CHKERRQ(ierr);
   ierr = TaoADMMGetMisfitSubsolver(admm_tao, &misfit);CHKERRQ(ierr);
   ierr = TaoADMMGetSpectralPenalty(admm_tao,&mu);CHKERRQ(ierr);
-  ierr = TaoShellGetContext(tao, (void**) &user);CHKERRQ(ierr);
+  ierr = TaoShellGetContext(tao,&user);CHKERRQ(ierr);
 
   lambda = user->lambda;
   work   = user->workN;
@@ -119,7 +119,7 @@ PetscErrorCode RegularizerObjectiveAndGradient2(Tao tao,Vec X,PetscReal *f_reg,V
   ierr   = VecDot(X,X,&temp);CHKERRQ(ierr);
   *f_reg = 0.5*user->lambda*temp;
   /* compute regularizer gradient = lambda*z */
-  ierr = VecCopy(X,G_reg);
+  ierr = VecCopy(X,G_reg);CHKERRQ(ierr);
   ierr = VecScale(G_reg,user->lambda);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -182,7 +182,6 @@ static PetscErrorCode HessianFull(Tao tao, Vec x, Mat H, Mat Hpre, void *ptr)
   PetscFunctionReturn(0);
 }
 /*------------------------------------------------------------*/
-
 
 PetscErrorCode InitializeUserData(AppCtx *user)
 {
@@ -345,7 +344,7 @@ int main(int argc,char **argv)
     ierr = MatScale(user->Hz,user->lambda);CHKERRQ(ierr);
     ierr = TaoADMMSetRegularizerHessianRoutine(tao, user->Hz, user->Hz, HessianMisfit, (void*)user);CHKERRQ(ierr);
     ierr = TaoADMMSetRegHessianChangeStatus(tao,PETSC_TRUE);CHKERRQ(ierr);
-  } else if (user->reg != 3) SETERRQ(PETSC_COMM_WORLD, 1, "Incorrect Reg type"); /* TaoShell case */
+  } else if (user->reg != 3) SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_ARG_UNKNOWN_TYPE, "Incorrect Reg type"); /* TaoShell case */
 
   /* Set type for the misfit solver */
   ierr = TaoADMMGetMisfitSubsolver(tao, &misfit);CHKERRQ(ierr);

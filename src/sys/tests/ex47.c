@@ -33,13 +33,11 @@ int main(int argc,char **argv)
   return ierr;
 }
 
-
-
 /*TEST
 
    testset:
      args: -options_left false
-     filter:  egrep -v "(options_left|options_monitor|malloc_dump|malloc_test|saws_port_auto_select|display|check_pointer_intensity|error_output_stdout|nox|vecscatter_mpi1|use_gpu_aware_mpi)"
+     filter:  egrep -v "(options_left|options_monitor|malloc_dump|malloc_test|saws_port_auto_select|display|check_pointer_intensity|error_output_stdout|nox|vecscatter_mpi1|use_gpu_aware_mpi|checkstack)"
      localrunfiles: petsc.yml
 
      test:
@@ -75,7 +73,6 @@ int main(int argc,char **argv)
         args: -prefix_push p8_ -options_string_yaml "`cat ex47-opt.yml`" -prefix_pop
         args: -prefix_push p9_ -options_file ex47-opt.json -prefix_pop
         localrunfiles: ex47-opt.txt ex47-opt.yml ex47-opt.json
-
 
    testset:
      nsize: {{1 2}}

@@ -130,7 +130,7 @@ int main(int argc,char **args)
   ierr = MatGetLocalSize(A,NULL,&n1);CHKERRQ(ierr);
   ierr = VecGetLocalSize(b,&n2);CHKERRQ(ierr);
   same = (n1 == n2)? PETSC_TRUE : PETSC_FALSE;
-  ierr = MPIU_Allreduce(MPI_IN_PLACE,&same,1,MPIU_BOOL,MPI_LAND,PETSC_COMM_WORLD);CHKERRQ(ierr);
+  ierr = MPIU_Allreduce(MPI_IN_PLACE,&same,1,MPIU_BOOL,MPI_LAND,PETSC_COMM_WORLD);CHKERRMPI(ierr);
 
   if (!same) { /* create a new vector b by padding the old one */
     ierr = VecCreate(PETSC_COMM_WORLD,&b2);CHKERRQ(ierr);
@@ -217,7 +217,7 @@ int main(int argc,char **args)
   ierr = MatGetLocalSize(A,NULL,&n1);CHKERRQ(ierr);
   ierr = VecGetLocalSize(b,&n2);CHKERRQ(ierr);
   same = (n1 == n2)? PETSC_TRUE : PETSC_FALSE;
-  ierr = MPIU_Allreduce(MPI_IN_PLACE,&same,1,MPIU_BOOL,MPI_LAND,PETSC_COMM_WORLD);CHKERRQ(ierr);
+  ierr = MPIU_Allreduce(MPI_IN_PLACE,&same,1,MPIU_BOOL,MPI_LAND,PETSC_COMM_WORLD);CHKERRMPI(ierr);
 
   if (!same) { /* create a new vector b by padding the old one */
     ierr = VecCreate(PETSC_COMM_WORLD,&b2);CHKERRQ(ierr);
@@ -297,5 +297,10 @@ int main(int argc,char **args)
       output_file: output/ex10_2.out
       requires: datafilespath double !complex !define(PETSC_USE_64BIT_INDICES)
       args: -f0 ${DATAFILESPATH}/matrices/medium -f1 ${DATAFILESPATH}/matrices/arco6 -ksp_gmres_classicalgramschmidt -mat_type baij -matload_block_size 3 -pc_type bjacobi -trans
+
+   test:
+      suffix: 3
+      requires: double complex !define(PETSC_USE_64BIT_INDICES)
+      args: -f ${wPETSC_DIR}/share/petsc/datafiles/matrices/nh-complex-int32-float64 -ksp_type bicg
 
 TEST*/

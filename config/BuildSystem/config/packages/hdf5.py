@@ -6,8 +6,8 @@ class Configure(config.package.GNUPackage):
     config.package.GNUPackage.__init__(self, framework)
     self.minversion       = '1.8'
     self.versionname      = 'H5_VERSION'
-    self.download         = ['https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-1.12.0/src/hdf5-1.12.0.tar.bz2',
-                             'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/hdf5-1.12.0.tar.bz2']
+    self.download         = ['https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-1.12.1/src/hdf5-1.12.1.tar.bz2',
+                             'http://ftp.mcs.anl.gov/pub/petsc/externalpackages/hdf5-1.12.1.tar.bz2']
     self.download_solaris = ['https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.6/src/hdf5-1.10.6.tar.bz2']
 # David Moulton reports that HDF5 configure can fail on NERSC systems and this can be worked around by removing the
 #   getpwuid from the test for ac_func in gethostname getpwuid getrusage lstat
@@ -16,15 +16,20 @@ class Configure(config.package.GNUPackage):
     self.liblist          = [['libhdf5_hl.a', 'libhdf5.a']]
     self.complex          = 1
     self.hastests         = 1
-    self.precisions       = ['single','double'];
+    self.precisions       = ['single','double']
     self.installwithbatch = 0
 
   def setupHelp(self, help):
     config.package.GNUPackage.setupHelp(self,help)
     import nargs
-    help.addArgument('HDF5', '-download-hdf5-fortran-bindings', nargs.ArgBool(None, 1, 'Build HDF5 Fortran interface'))
+    # PETSc does not need the Fortran interface.
+    # We currently need it to be disabled by default as HDF5 has bugs in their build process as of hdf5-1.12.0.
+    # Not all dependencies for Fortran bindings are given in the makefiles, hence a parallel build can fail
+    # when it starts a Fortran file before all its needed modules are finished.
+    # Barry has reported this to them and they acknowledged it.
+    help.addArgument('HDF5', '-download-hdf5-fortran-bindings', nargs.ArgBool(None, 0, 'Build HDF5 Fortran interface (PETsc does not need it)'))
     #  Apple using Intel Fortran compiler errors when using shared libraries, ironically when you turn off building shared libraries it builds them correctly
-    help.addArgument('HDF5', '-download-hdf5-shared-libraries', nargs.ArgBool(None, 1, 'Build HDF5 shared libraries '))
+    help.addArgument('HDF5', '-download-hdf5-shared-libraries', nargs.ArgBool(None, 1, 'Build HDF5 shared libraries'))
 
   def setupDependencies(self, framework):
     config.package.GNUPackage.setupDependencies(self, framework)

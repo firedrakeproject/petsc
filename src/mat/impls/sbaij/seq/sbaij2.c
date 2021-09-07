@@ -1156,7 +1156,6 @@ PetscErrorCode MatMultAdd_SeqSBAIJ_N(Mat A,Vec xx,Vec yy,Vec zz)
   }
   work = a->mult_work;
 
-
   for (i=0; i<mbs; i++) {
     n           = ii[1] - ii[0]; ncols = n*bs;
     workt       = work; idx=aj+ii[0];
@@ -1724,19 +1723,19 @@ PetscErrorCode MatMatMultNumeric_SeqSBAIJ_SeqDense(Mat A,Mat B,Mat C)
   ierr = MatDenseGetArray(C,&c);CHKERRQ(ierr);
   switch (bs) {
   case 1:
-    ierr = MatMatMult_SeqSBAIJ_1_Private(A, b, bm, c, cm, cn);
+    ierr = MatMatMult_SeqSBAIJ_1_Private(A, b, bm, c, cm, cn);CHKERRQ(ierr);
     break;
   case 2:
-    ierr = MatMatMult_SeqSBAIJ_2_Private(A, b, bm, c, cm, cn);
+    ierr = MatMatMult_SeqSBAIJ_2_Private(A, b, bm, c, cm, cn);CHKERRQ(ierr);
     break;
   case 3:
-    ierr = MatMatMult_SeqSBAIJ_3_Private(A, b, bm, c, cm, cn);
+    ierr = MatMatMult_SeqSBAIJ_3_Private(A, b, bm, c, cm, cn);CHKERRQ(ierr);
     break;
   case 4:
-    ierr = MatMatMult_SeqSBAIJ_4_Private(A, b, bm, c, cm, cn);
+    ierr = MatMatMult_SeqSBAIJ_4_Private(A, b, bm, c, cm, cn);CHKERRQ(ierr);
     break;
   case 5:
-    ierr = MatMatMult_SeqSBAIJ_5_Private(A, b, bm, c, cm, cn);
+    ierr = MatMatMult_SeqSBAIJ_5_Private(A, b, bm, c, cm, cn);CHKERRQ(ierr);
     break;
   default: /* block sizes larger than 5 by 5 are handled by BLAS */
     ierr = PetscBLASIntCast(bs,&bbs);CHKERRQ(ierr);

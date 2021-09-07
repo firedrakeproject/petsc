@@ -25,7 +25,6 @@ typedef struct {
 
 } DMMoabMeshGeneratorCtx;
 
-
 PetscInt DMMoab_SetTensorElementConnectivity_Private(DMMoabMeshGeneratorCtx& genCtx, PetscInt offset, PetscInt corner, std::vector<PetscInt>& subent_conn, moab::EntityHandle *connectivity)
 {
   switch (genCtx.dim) {
@@ -59,7 +58,6 @@ PetscInt DMMoab_SetTensorElementConnectivity_Private(DMMoabMeshGeneratorCtx& gen
   }
   return subent_conn.size();
 }
-
 
 PetscInt DMMoab_SetSimplexElementConnectivity_Private(DMMoabMeshGeneratorCtx& genCtx, PetscInt subelem, PetscInt offset, PetscInt corner, std::vector<PetscInt>& subent_conn, moab::EntityHandle *connectivity)
 {
@@ -182,7 +180,6 @@ PetscInt DMMoab_SetSimplexElementConnectivity_Private(DMMoabMeshGeneratorCtx& ge
   return subent_conn.size();
 }
 
-
 std::pair<PetscInt, PetscInt> DMMoab_SetElementConnectivity_Private(DMMoabMeshGeneratorCtx& genCtx, PetscInt offset, PetscInt corner, moab::EntityHandle *connectivity)
 {
   PetscInt vcount = 0;
@@ -203,7 +200,6 @@ std::pair<PetscInt, PetscInt> DMMoab_SetElementConnectivity_Private(DMMoabMeshGe
   }
   return std::pair<PetscInt, PetscInt>(vcount * subelem, subelem);
 }
-
 
 PetscErrorCode DMMoab_GenerateVertices_Private(moab::Interface *mbImpl, moab::ReadUtilIface *iface, DMMoabMeshGeneratorCtx& genCtx, PetscInt m, PetscInt n, PetscInt k,
     PetscInt a, PetscInt b, PetscInt c, moab::Tag& global_id_tag, moab::EntityHandle& startv, moab::Range& uverts)
@@ -585,7 +581,7 @@ PetscErrorCode DMMoabCreateBoxMesh(MPI_Comm comm, PetscInt dim, PetscBool useSim
   if (dim > 2) {ierr = PetscOptionsInt("-dmb_processors_z", "Number of processors in z direction", "DMMoabSetNumProcs", genCtx.K, &genCtx.K, &genCtx.usrprocgrid);CHKERRQ(ierr);}
 
   /* Handle DMMoab block refinement */
-  ierr = PetscOptionsInt("-dmb_refine_x", "Number of refinement blocks in x direction", "DMMoabSetRefinement", genCtx.A, &genCtx.A, &genCtx.usrrefgrid);
+  ierr = PetscOptionsInt("-dmb_refine_x", "Number of refinement blocks in x direction", "DMMoabSetRefinement", genCtx.A, &genCtx.A, &genCtx.usrrefgrid);CHKERRQ(ierr);
   if (dim > 1) {ierr = PetscOptionsInt("-dmb_refine_y", "Number of refinement blocks in y direction", "DMMoabSetRefinement", genCtx.B, &genCtx.B, &genCtx.usrrefgrid);CHKERRQ(ierr);}
   if (dim > 2) {ierr = PetscOptionsInt("-dmb_refine_z", "Number of refinement blocks in z direction", "DMMoabSetRefinement", genCtx.C, &genCtx.C, &genCtx.usrrefgrid);CHKERRQ(ierr);}
   PetscOptionsEnd();
@@ -761,7 +757,6 @@ PetscErrorCode DMMoabCreateBoxMesh(MPI_Comm comm, PetscInt dim, PetscBool useSim
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode DMMoab_GetReadOptions_Private(PetscBool by_rank, PetscInt numproc, PetscInt dim, PetscInt nghost, MoabReadMode mode, PetscInt dbglevel, const char* dm_opts, const char* extra_opts, const char** read_opts)
 {
   char           *ropts;
@@ -797,7 +792,6 @@ PetscErrorCode DMMoab_GetReadOptions_Private(PetscBool by_rank, PetscInt numproc
   *read_opts = ropts;
   PetscFunctionReturn(0);
 }
-
 
 /*@C
   DMMoabLoadFromFile - Creates a DM object by loading the mesh from a user specified file.
@@ -891,7 +885,6 @@ PetscErrorCode DMMoabLoadFromFile(MPI_Comm comm, PetscInt dim, PetscInt nghost, 
   ierr = PetscFree(readopts);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*@C
   DMMoabRenumberMeshEntities - Order and number all entities (vertices->elements) to be contiguously ordered

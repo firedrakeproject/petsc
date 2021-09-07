@@ -5,6 +5,7 @@ class PCType(object):
     JACOBI             = S_(PCJACOBI)
     SOR                = S_(PCSOR)
     LU                 = S_(PCLU)
+    QR                 = S_(PCQR)
     SHELL              = S_(PCSHELL)
     BJACOBI            = S_(PCBJACOBI)
     VPBJACOBI          = S_(PCVPBJACOBI)
@@ -335,6 +336,10 @@ cdef class PC(Object):
         cdef PetscKSP *p = NULL
         CHKERR( PCASMGetSubKSP(self.pc, &n, NULL, &p) )
         return [ref_KSP(p[i]) for i from 0 <= i <n]
+
+    def setASMSortIndices(self, dosort):
+        cdef PetscBool cdosort = asBool(dosort)
+        CHKERR( PCASMSetSortIndices(self.pc, cdosort) )
 
     # --- GASM ---
 
@@ -786,6 +791,15 @@ cdef class PC(Object):
             context = None
         self.set_attr("__patch_construction_operator__", context)
         CHKERR( PCPatchSetConstructType(self.pc, typ, PCPatch_UserConstructOperator, <void*>context) )
+
+    # --- HPDDM ---
+
+    def setHPDDMAuxiliaryMat(self, IS uis, Mat uaux):
+        CHKERR( PCHPDDMSetAuxiliaryMat(self.pc, uis.iset, uaux.mat, NULL, <void*>NULL) )
+
+    def setHPDDMHasNeumannMat(self, has):
+        cdef PetscBool phas = has
+        CHKERR( PCHPDDMHasNeumannMat(self.pc, phas) )
 
 # --------------------------------------------------------------------
 

@@ -262,7 +262,7 @@ int main(int argc,char **args)
     ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_MATLAB);CHKERRQ(ierr);
     ierr = MatView(Amat,viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
-    ierr = PetscViewerDestroy(&viewer);
+    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
 
   /* finish KSP/PC setup */
@@ -338,7 +338,6 @@ int main(int argc,char **args)
     ierr = KSPSolve(ksp, bb, xx);CHKERRQ(ierr);
 
     ierr = MaybeLogStagePop();CHKERRQ(ierr);
-
 
     ierr = VecNorm(bb, NORM_2, &norm2);CHKERRQ(ierr);
 
@@ -948,7 +947,6 @@ PetscErrorCode elem_3d_elast_v_25(PetscScalar *dd)
   ierr = PetscArraycpy(dd,DD,576);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*TEST
 

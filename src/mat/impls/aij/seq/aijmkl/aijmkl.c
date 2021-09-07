@@ -192,6 +192,7 @@ static PetscErrorCode MatSeqAIJMKL_setup_structure_from_mkl_handle(MPI_Comm comm
   MatScalar           *aa;
   Mat_SeqAIJMKL       *aijmkl;
 
+  PetscFunctionBegin;
   if (csrA) {
     /* Note: Must pass in &dummy below since MKL can't accept NULL for this output array we don't actually want. */
     stat = mkl_sparse_x_export_csr(csrA,&indexing,&m,&n,&ai,&dummy,&aj,&aa);
@@ -257,6 +258,7 @@ static PetscErrorCode MatSeqAIJMKL_update_from_mkl_handle(Mat A)
   sparse_status_t     stat;
   sparse_index_base_t indexing;
 
+  PetscFunctionBegin;
   /* Exit immediately in case of the MKL matrix handle being NULL; this will be the case for empty matrices (zero rows or columns). */
   if (!aijmkl->csrA) PetscFunctionReturn(0);
 
@@ -296,6 +298,7 @@ PETSC_INTERN PetscErrorCode MatSeqAIJMKL_view_mkl_handle(Mat A,PetscViewer viewe
   sparse_status_t     stat;
   sparse_index_base_t indexing;
 
+  PetscFunctionBegin;
   ierr = PetscViewerASCIIPrintf(viewer,"Contents of MKL sparse matrix handle for MATSEQAIJMKL object:\n");CHKERRQ(ierr);
 
   /* Exit immediately in case of the MKL matrix handle being NULL; this will be the case for empty matrices (zero rows or columns). */
@@ -384,7 +387,6 @@ PetscErrorCode MatMult_SeqAIJMKL(Mat A,Vec xx,Vec yy)
   PetscScalar       beta = 0.0;
   const PetscInt    *aj,*ai;
   char              matdescra[6];
-
 
   /* Variables not in MatMult_SeqAIJ. */
   char transa = 'n';  /* Used to indicate to MKL that we are not computing the transpose product. */
@@ -936,7 +938,7 @@ PetscErrorCode MatPtAPNumeric_SeqAIJMKL_SeqAIJMKL_SymmetricReal(Mat A,Mat P,Mat 
   PetscErrorCode      ierr;
 
   PetscFunctionBegin;
-  ierr = MatIsSymmetricKnown(A,&set,&flag);
+  ierr = MatIsSymmetricKnown(A,&set,&flag);CHKERRQ(ierr);
   if (!set || (set && !flag)) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_PLIB,"MatPtAPNumeric_SeqAIJMKL_SeqAIJMKL_SymmetricReal() called on matrix A not marked as symmetric");
 
   ierr = PetscObjectStateGet((PetscObject)A,&state);CHKERRQ(ierr);
@@ -1165,7 +1167,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJMKL(Mat A,MatType type,MatRe
   ierr = PetscOptionsEnd();CHKERRQ(ierr);
 #if !defined(PETSC_HAVE_MKL_SPARSE_OPTIMIZE)
   if (!aijmkl->no_SpMV2) {
-    ierr = PetscInfo(B,"User requested use of MKL SpMV2 routines, but MKL version does not support mkl_sparse_optimize();  defaulting to non-SpMV2 routines.\n");
+    ierr = PetscInfo(B,"User requested use of MKL SpMV2 routines, but MKL version does not support mkl_sparse_optimize();  defaulting to non-SpMV2 routines.\n");CHKERRQ(ierr);
     aijmkl->no_SpMV2 = PETSC_TRUE;
   }
 #endif

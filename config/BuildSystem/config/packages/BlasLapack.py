@@ -11,6 +11,7 @@ class Configure(config.package.Package):
     self.f2c                 = 0  # indicates either the f2cblaslapack are used or there is no Fortran compiler (and system BLAS/LAPACK is used)
     self.has64bitindices     = 0
     self.mkl                 = 0  # indicates BLAS/LAPACK library used is Intel MKL
+    self.mkl_spblas_h        = 0  # indicates mkl_spblas.h is found
     self.separateBlas        = 1
     self.required            = 1
     self.alternativedownload = 'f2cblaslapack'
@@ -225,6 +226,7 @@ class Configure(config.package.Package):
         yield ('Default compiler locations with gfortran', None, ['liblapack.a', 'libblas.a','libgfortran.a'],'unknown','unknown')
         self.logWrite('Did not detect default BLAS and LAPACK locations so using the value of MKLROOT to search as --with-blas-lapack-dir='+mkl)
         self.argDB['with-blaslapack-dir'] = mkl
+        self.checkingMKLROOTautomatically = 1
 
     if self.argDB['with-64-bit-blas-indices']:
       ILP64 = '_ilp64'
@@ -367,8 +369,11 @@ class Configure(config.package.Package):
       yield ('User specified AMD ACML lib dir', None, [os.path.join(dir,'lib','libacml_mp.a'), os.path.join(dir,'lib','libacml_mv.a')],'32','unknown')
       # BLIS
       yield ('User specified installation root BLIS/LAPACK', os.path.join(dir, 'libblis.a'), os.path.join(dir, 'liblapack.a'), 'unknown', 'unknown')
+      yield ('User specified installation root BLIS/LAPACK', os.path.join(dir,'lib','libblis.a'), os.path.join(dir,'lib','liblapack.a'), 'unknown', 'unknown')
       # Search for OpenBLAS
-      yield ('User specified OpenBLAS', None, os.path.join(dir, 'libopenblas.a'),'unknown','unknown')
+      for libdir in ['lib','']:
+        if os.path.exists(os.path.join(dir,libdir)):
+          yield ('User specified OpenBLAS',None,os.path.join(dir,libdir,'libopenblas.a'),'unknown','unknown')
       # Search for atlas
       yield ('User specified ATLAS Linux installation root', [os.path.join(dir, 'libcblas.a'),os.path.join(dir, 'libf77blas.a'), os.path.join(dir, 'libatlas.a')],  [os.path.join(dir, 'liblapack.a')],'32','no')
       yield ('User specified ATLAS Linux installation root', [os.path.join(dir, 'libf77blas.a'), os.path.join(dir, 'libatlas.a')],  [os.path.join(dir, 'liblapack.a')],'32','no')
@@ -380,8 +385,13 @@ class Configure(config.package.Package):
         yield ('User specified installation root IBM ESSL', None, os.path.join(dir, lib, 'libessl.a'),'32','unknown')
       # Search for liblapack.a and libblas.a after the implementations with more specific name to avoid
       # finding these in /usr/lib despite using -L<blaslapack-dir> while attempting to get a different library.
-      yield ('User specified installation root BLAS/LAPACK', os.path.join(dir, 'libblas.a'),    os.path.join(dir, 'liblapack.a'),'unknown','unknown')
-      raise RuntimeError('You set a value for --with-blaslapack-dir=<dir>, but '+self.argDB['with-blaslapack-dir']+' cannot be used\n')
+      for lib in ['lib64','lib','']:
+        if os.path.exists(os.path.join(dir,libdir)):
+          yield ('User specified installation root BLAS/LAPACK',os.path.join(dir,lib,'libblas.a'),os.path.join(dir,lib,'liblapack.a'),'unknown','unknown')
+      if hasattr(self,'checkingMKROOTautomatically'):
+        raise RuntimeError('Unable to locate working BLAS/LAPACK libraries, even tried libraries in MKLROOT '+self.argDB['with-blaslapack-dir']+'\n')
+      else:
+        raise RuntimeError('You set a value for --with-blaslapack-dir=<dir>, but '+self.argDB['with-blaslapack-dir']+' cannot be used\n')
     if self.defaultPrecision == '__float128':
       raise RuntimeError('__float128 precision requires f2c libraries; suggest --download-f2cblaslapack\n')
 
@@ -553,6 +563,7 @@ class Configure(config.package.Package):
     self.libraries.saveLog()
     if self.libraries.check(self.dlib, 'mkl_set_num_threads'):
       self.mkl = 1
+      self.has_cheaders = 1
       self.addDefine('HAVE_MKL',1)
       '''Set include directory for mkl.h and friends'''
       '''(the include directory is in CPATH if mklvars.sh has been sourced.'''
@@ -561,23 +572,30 @@ class Configure(config.package.Package):
         incl = self.argDB['with-blaslapack-include']
         if not isinstance(incl, list): incl = [incl]
         self.include = incl
-      if not self.checkCompile('#include "mkl_spblas.h"',''):
+      if self.checkCompile('#include "mkl_spblas.h"',''):
+        self.mkl_spblas_h = 1
+        self.logPrint('MKL mkl_spblas.h found in default include path.')
+      else:
         self.logPrint('MKL include path not automatically picked up by compiler. Trying to find mkl_spblas.h...')
         if 'with-blaslapack-dir' in self.argDB:
           pathlist = [os.path.join(self.argDB['with-blaslapack-dir'],'include'),
                       os.path.join(self.argDB['with-blaslapack-dir'],'..','include'),
                       os.path.join(self.argDB['with-blaslapack-dir'],'..','..','include')]
-          found = 0
-          for path in pathlist:
-            if os.path.isdir(path) and self.checkInclude([path], ['mkl_spblas.h']):
-              self.include = [path]
-              found = 1
-              break
+        elif 'with-blaslapack-include' in self.argDB:
+          pathlist = self.include
+        else:
+          pathlist = []
+        for path in pathlist:
+          if os.path.isdir(path) and self.checkInclude([path], ['mkl_spblas.h']):
+            self.include = [path]
+            self.mkl_spblas_h = 1
+            self.logPrint('MKL mkl_spblas.h found at:'+path)
+            break
 
-          if not found:
-            self.logPrint('Unable to find MKL include directory!')
-          else:
-            self.logPrint('MKL include path set to ' + str(self.include))
+        if not self.mkl_spblas_h:
+          self.logPrint('Unable to find MKL include directory!')
+        else:
+          self.logPrint('MKL include path set to ' + str(self.include))
       self.versionname    = 'INTEL_MKL_VERSION'
       self.versioninclude = 'mkl_version.h'
       self.versiontitle   = 'Intel MKL Version'
@@ -590,6 +608,11 @@ class Configure(config.package.Package):
     '''Check for the IBM ESSL library'''
     self.libraries.saveLog()
     if self.libraries.check(self.dlib, 'iessl'):
+      if 'with-blaslapack-include' in self.argDB:
+        incl = self.argDB['with-blaslapack-include']
+        if not isinstance(incl, list): incl = [incl]
+        self.include = incl
+      self.has_cheaders = 1
       self.addDefine('HAVE_ESSL',1)
     self.logWrite(self.libraries.restoreLog())
     return
@@ -624,7 +647,7 @@ class Configure(config.package.Package):
     if self.foundLapack:
       mangleFunc = hasattr(self.compilers, 'FC') and not self.f2c
     routines = ['gelss','gerfs','gges','hgeqz','hseqr','orgqr','ormqr','stebz',
-                'stegr','stein','steqr','sytri','tgsen','trsen','trtrs']
+                'stegr','stein','steqr','sytri','tgsen','trsen','trtrs','geqp3']
     self.libraries.saveLog()
     oldLibs = self.compilers.LIBS
     found, missing = self.libraries.checkClassify(self.lapackLibrary, map(self.mangleBlas,routines), otherLibs = self.getOtherLibs(), fortranMangle = mangleFunc)
@@ -748,7 +771,6 @@ this warning message *****')
         self.addDefine('HAVE_64BIT_BLAS_INDICES', 1)
         self.has64bitindices = 1
         self.log.write('Checking for 64 bit blas indices: program did not return therefore assuming 64 bit blas indices\n')
-    if not self.defaultPrecision == 'single': return
     self.log.write('Checking if sdot() returns a float or a double\n')
     if 'known-sdot-returns-double' in self.argDB:
       if self.argDB['known-sdot-returns-double']:

@@ -14,7 +14,6 @@ class ViewerType(object):
     SAWS        = S_(PETSCVIEWERSAWS)
     GLVIS       = S_(PETSCVIEWERGLVIS)
     ADIOS       = S_(PETSCVIEWERADIOS)
-    ADIOS2      = S_(PETSCVIEWERADIOS2)
     EXODUSII    = S_(PETSCVIEWEREXODUSII)
 
 class ViewerFormat(object):
@@ -376,6 +375,12 @@ cdef class ViewerHDF5(Viewer):
         CHKERR( PetscViewerFileSetMode(self.vwr, cmode) )
         CHKERR( PetscViewerFileSetName(self.vwr, cname) )
         return self
+
+    def pushTimestepping(self):
+        CHKERR( PetscViewerHDF5PushTimestepping(self.vwr) )
+
+    def popTimestepping(self):
+        CHKERR( PetscViewerHDF5PopTimestepping(self.vwr) )
 
     def getTimestep(self):
         cdef PetscInt ctimestep = 0

@@ -91,7 +91,7 @@ PetscErrorCode SNESView_Shell(SNES snes, PetscViewer viewer)
 
 .seealso: SNESCreateShell(), SNESShellSetContext()
 @*/
-PetscErrorCode  SNESShellGetContext(SNES snes,void **ctx)
+PetscErrorCode  SNESShellGetContext(SNES snes,void *ctx)
 {
   PetscErrorCode ierr;
   PetscBool      flg;
@@ -100,8 +100,8 @@ PetscErrorCode  SNESShellGetContext(SNES snes,void **ctx)
   PetscValidHeaderSpecific(snes,SNES_CLASSID,1);
   PetscValidPointer(ctx,2);
   ierr = PetscObjectTypeCompare((PetscObject)snes,SNESSHELL,&flg);CHKERRQ(ierr);
-  if (!flg) *ctx = NULL;
-  else      *ctx = ((SNES_Shell*)(snes->data))->ctx;
+  if (!flg) *(void**)ctx = NULL;
+  else      *(void**)ctx = ((SNES_Shell*)(snes->data))->ctx;
   PetscFunctionReturn(0);
 }
 
@@ -119,7 +119,6 @@ PetscErrorCode  SNESShellGetContext(SNES snes,void **ctx)
    Fortran Notes:
     The context can only be an integer or a PetscObject
       unfortunately it cannot be a Fortran array or derived type.
-
 
 .seealso: SNESCreateShell(), SNESShellGetContext()
 @*/

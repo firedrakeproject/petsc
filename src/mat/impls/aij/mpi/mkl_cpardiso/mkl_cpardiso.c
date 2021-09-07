@@ -429,8 +429,8 @@ PetscErrorCode MatMatSolve_MKL_CPARDISO(Mat A,Mat B,Mat X)
   ierr = MatGetSize(B,NULL,(PetscInt*)&mat_mkl_cpardiso->nrhs);CHKERRQ(ierr);
 
   if (mat_mkl_cpardiso->nrhs > 0) {
-    ierr = MatDenseGetArrayRead(B,&barray);
-    ierr = MatDenseGetArray(X,&xarray);
+    ierr = MatDenseGetArrayRead(B,&barray);CHKERRQ(ierr);
+    ierr = MatDenseGetArray(X,&xarray);CHKERRQ(ierr);
 
     if (barray == xarray) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"B and X cannot share the same memory location");
 
@@ -456,8 +456,8 @@ PetscErrorCode MatMatSolve_MKL_CPARDISO(Mat A,Mat B,Mat X)
       &mat_mkl_cpardiso->comm_mkl_cpardiso,
       (PetscInt*)&mat_mkl_cpardiso->err);
     if (mat_mkl_cpardiso->err < 0) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_LIB,"Error reported by MKL_CPARDISO: err=%d, msg = \"%s\". Please check manual\n",mat_mkl_cpardiso->err,Err_MSG_CPardiso(mat_mkl_cpardiso->err));
-    ierr = MatDenseRestoreArrayRead(B,&barray);
-    ierr = MatDenseRestoreArray(X,&xarray);
+    ierr = MatDenseRestoreArrayRead(B,&barray);CHKERRQ(ierr);
+    ierr = MatDenseRestoreArray(X,&xarray);CHKERRQ(ierr);
 
   }
   mat_mkl_cpardiso->CleanUp = PETSC_TRUE;
@@ -718,7 +718,6 @@ PetscErrorCode MatCholeskyFactorSymbolic_AIJMKL_CPARDISO(Mat F,Mat A,IS perm,con
   PetscFunctionBegin;
   mat_mkl_cpardiso->matstruc = DIFFERENT_NONZERO_PATTERN;
 
-
   /* Set MKL_CPARDISO options from the options database */
   ierr = PetscSetMKL_CPARDISOFromOptions(F,A);CHKERRQ(ierr);
   ierr = (*mat_mkl_cpardiso->ConvertToTriples)(A,MAT_INITIAL_MATRIX,&mat_mkl_cpardiso->nz,&mat_mkl_cpardiso->ia,&mat_mkl_cpardiso->ja,&mat_mkl_cpardiso->a);CHKERRQ(ierr);
@@ -891,10 +890,10 @@ static PetscErrorCode MatGetFactor_mpiaij_mkl_cpardiso(Mat A,MatFactorType ftype
 
   ierr = PetscNewLog(B,&mat_mkl_cpardiso);CHKERRQ(ierr);
 
-  if (isSeqAIJ) mat_mkl_cpardiso->ConvertToTriples = MatCopy_seqaij_seqaij_MKL_CPARDISO;
-  else if (isMPIBAIJ) mat_mkl_cpardiso->ConvertToTriples = MatConvertToTriples_mpibaij_mpibaij_MKL_CPARDISO;
+  if (isSeqAIJ)        mat_mkl_cpardiso->ConvertToTriples = MatCopy_seqaij_seqaij_MKL_CPARDISO;
+  else if (isMPIBAIJ)  mat_mkl_cpardiso->ConvertToTriples = MatConvertToTriples_mpibaij_mpibaij_MKL_CPARDISO;
   else if (isMPISBAIJ) mat_mkl_cpardiso->ConvertToTriples = MatConvertToTriples_mpisbaij_mpisbaij_MKL_CPARDISO;
-  else          mat_mkl_cpardiso->ConvertToTriples = MatConvertToTriples_mpiaij_mpiaij_MKL_CPARDISO;
+  else                 mat_mkl_cpardiso->ConvertToTriples = MatConvertToTriples_mpiaij_mpiaij_MKL_CPARDISO;
 
   if (ftype == MAT_FACTOR_LU) B->ops->lufactorsymbolic = MatLUFactorSymbolic_AIJMKL_CPARDISO;
   else B->ops->choleskyfactorsymbolic = MatCholeskyFactorSymbolic_AIJMKL_CPARDISO;

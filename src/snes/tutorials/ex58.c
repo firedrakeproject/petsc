@@ -39,7 +39,6 @@ The command line options are:\n\
       ./ex58 -pc_type mg -ksp_monitor  -snes_view -pc_mg_galerkin pmat -snes_grid_sequence 3
              -mg_levels_ksp_monitor -snes_vi_monitor -mg_levels_pc_type sor -pc_mg_type full
 
-
 */
 
 typedef struct {
@@ -47,14 +46,13 @@ typedef struct {
   PetscScalar lb,ub;
 } AppCtx;
 
-
 /* -------- User-defined Routines --------- */
 
 extern PetscErrorCode FormBoundaryConditions(SNES,AppCtx**);
 extern PetscErrorCode DestroyBoundaryConditions(AppCtx**);
-extern PetscErrorCode ComputeInitialGuess(SNES, Vec,void*);
-extern PetscErrorCode FormGradient(SNES, Vec, Vec, void*);
-extern PetscErrorCode FormJacobian(SNES, Vec, Mat, Mat, void*);
+extern PetscErrorCode ComputeInitialGuess(SNES,Vec,void*);
+extern PetscErrorCode FormGradient(SNES,Vec,Vec,void*);
+extern PetscErrorCode FormJacobian(SNES,Vec,Mat,Mat,void*);
 extern PetscErrorCode FormBounds(SNES,Vec,Vec);
 
 int main(int argc, char **argv)
@@ -162,7 +160,7 @@ PetscErrorCode FormGradient(SNES snes, Vec X, Vec G, void *ptr)
 
   PetscFunctionBeginUser;
   ierr = SNESGetDM(snes,&da);CHKERRQ(ierr);
-  ierr = SNESGetApplicationContext(snes,(void**)&user);CHKERRQ(ierr);
+  ierr = SNESGetApplicationContext(snes,&user);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,PETSC_IGNORE,&mx,&my,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE);CHKERRQ(ierr);
   hx   = 1.0/(mx+1);hy=1.0/(my+1); hydhx=hy/hx; hxdhy=hx/hy;
 
@@ -291,7 +289,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec X, Mat H, Mat tHPre, void *ptr)
 
   PetscFunctionBeginUser;
   ierr = SNESGetDM(snes,&da);CHKERRQ(ierr);
-  ierr = SNESGetApplicationContext(snes,(void**)&user);CHKERRQ(ierr);
+  ierr = SNESGetApplicationContext(snes,&user);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,PETSC_IGNORE,&mx,&my,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE);CHKERRQ(ierr);
   hx   = 1.0/(mx+1); hy=1.0/(my+1); hydhx=hy/hx; hxdhy=hx/hy;
 
@@ -360,7 +358,6 @@ PetscErrorCode FormJacobian(SNES snes, Vec X, Mat H, Mat tHPre, void *ptr)
       f4 = PetscSqrtScalar(1.0 + d3*d3 + d2*d2);
       f5 = PetscSqrtScalar(1.0 + d2*d2 + d5*d5);
       f6 = PetscSqrtScalar(1.0 + d4*d4 + d6*d6);
-
 
       hl = (-hydhx*(1.0+d7*d7)+d1*d7)/(f1*f1*f1)+
            (-hydhx*(1.0+d4*d4)+d1*d4)/(f2*f2*f2);
@@ -544,7 +541,6 @@ PetscErrorCode DestroyBoundaryConditions(AppCtx **ouser)
   PetscFunctionReturn(0);
 }
 
-
 /* ------------------------------------------------------------------- */
 /*
    ComputeInitialGuess - Calculates the initial guess
@@ -567,7 +563,7 @@ PetscErrorCode ComputeInitialGuess(SNES snes, Vec X,void *dummy)
 
   PetscFunctionBeginUser;
   ierr = SNESGetDM(snes,&da);CHKERRQ(ierr);
-  ierr = SNESGetApplicationContext(snes,(void**)&user);CHKERRQ(ierr);
+  ierr = SNESGetApplicationContext(snes,&user);CHKERRQ(ierr);
 
   ierr = DMDAGetCorners(da,&xs,&ys,NULL,&xm,&ym,NULL);CHKERRQ(ierr);
   ierr = DMDAGetInfo(da,PETSC_IGNORE,&mx,&my,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE,PETSC_IGNORE);CHKERRQ(ierr);
@@ -584,7 +580,6 @@ PetscErrorCode ComputeInitialGuess(SNES snes, Vec X,void *dummy)
   ierr = DMDAVecRestoreArray(da,X,&x);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*TEST
 

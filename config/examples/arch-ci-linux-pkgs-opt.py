@@ -34,6 +34,7 @@ configure_options = [
   '--download-saws',
   '--download-concurrencykit=1',
   '--download-revolve=1',
+  '--download-cams=1',
   '--download-p4est=1',
   '--with-zlib=1',
   '--download-mfem=1',
@@ -46,6 +47,9 @@ configure_options = [
   '--download-bamg=1',
   '--download-mmg=1',
   '--download-parmmg=1',
+  '--download-htool=1',
+  '--download-egads=1',
+  '--download-opencascade=1',
   ]
 
 if __name__ == '__main__':

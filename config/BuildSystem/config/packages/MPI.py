@@ -55,6 +55,7 @@ class Configure(config.package.Package):
     # support MPI-3 non-blocking collectives
     self.support_mpi3_nbc = 0
     self.mpi_pkg_version  = ''
+    self.mpi_pkg          = '' # mpich,mpich2,mpich3,openmpi,intel,intel2,intel3
     self.mpiexec          = None
     self.mpiexecExecutable = None
     return
@@ -72,11 +73,18 @@ class Configure(config.package.Package):
     config.package.Package.setupDependencies(self, framework)
     self.mpich   = framework.require('config.packages.MPICH', self)
     self.openmpi = framework.require('config.packages.OpenMPI', self)
+    self.cuda    = framework.require('config.packages.cuda',self)
+    self.hip     = framework.require('config.packages.hip',self)
+    self.odeps   = [self.cuda,self.hip]
     return
 
   def __str__(self):
     output  = config.package.Package.__str__(self)
-    if output and self.mpiexec: output  += '  Mpiexec: '+self.mpiexec.replace(' -n 1','')+'\n'
+    if self.mpiexec: output  += '  mpiexec: '+self.mpiexec.replace(' -n 1','')+'\n'
+    if self.mpi_pkg: output  += '  Implementation: '+self.mpi_pkg+'\n'
+    if hasattr(self,'includepaths'):
+      output  += '  MPI C++ include paths: '+ self.includepaths+'\n'
+      output += '  MPI C++ libraries: '+ self.libpaths + ' ' + self.mpilibs+'\n'
     return output+self.mpi_pkg_version
 
   def generateLibList(self, directory):
@@ -313,11 +321,10 @@ Perhaps you have VPN running whose network settings may not work with mpiexec or
 Unable to run hostname to check the network')
           self.logPrintDivider()
 
-
     # check that mpiexec runs an MPI program correctly
     error_message = 'Unable to run MPI program with '+self.mpiexec+'\n\
     (1) make sure this is the correct program to run MPI jobs\n\
-    (2) your network may be misconfigured; see https://www.mcs.anl.gov/petsc/documentation/faq.html#mpi-network-misconfigure\n\
+    (2) your network may be misconfigured; see https://petsc.org/release/faq/#mpi-network-misconfigure\n\
     (3) you may have VPN running whose network settings may not play nice with MPI\n'
 
     includes = '#include <mpi.h>'
@@ -342,7 +349,7 @@ Unable to run hostname to check the network')
     if self.checkLink('#include <mpi.h>\n', 'if (MPI_Allreduce(MPI_IN_PLACE,0, 1, MPI_INT, MPI_SUM, MPI_COMM_SELF));\n'):
       self.haveInPlace = 1
       self.addDefine('HAVE_MPI_IN_PLACE', 1)
-    if self.checkLink('#include <mpi.h>\n', 'int count=2; int blocklens[2]={0,1}; MPI_Aint indices[2]={0,1}; MPI_Datatype old_types[2]={0,1}; MPI_Datatype *newtype = 0;\n \
+    if self.checkLink('#include <mpi.h>\n', 'int count=2; int blocklens[2]={0,1}; MPI_Aint indices[2]={0,1}; MPI_Datatype old_types[2]={MPI_INT,MPI_DOUBLE}; MPI_Datatype *newtype = 0;\n \
                                              if (MPI_Type_create_struct(count, blocklens, indices, old_types, newtype));\n'):
       self.haveTypeCreateStruct = 1
     else:
@@ -392,6 +399,12 @@ Unable to run hostname to check the network')
                        if (MPI_Win_shared_query(win,0,&size,&disp_unit,&baseptr));\n'):
         self.addDefine('HAVE_MPI_PROCESS_SHARED_MEMORY', 1)
         self.support_mpi3_shm = 1
+    if self.checkLink('#include <mpi.h>\n',
+                      'MPI_Aint size=128; int disp_unit=8,*baseptr; MPI_Win win;\n\
+                       if (MPI_Win_allocate(size,disp_unit,MPI_INFO_NULL,MPI_COMM_WORLD,&baseptr,&win));\n\
+                       if (MPI_Win_attach(win,baseptr,size));\n\
+                       if (MPI_Win_create_dynamic(MPI_INFO_NULL,MPI_COMM_WORLD,&win));\n'):
+      self.addDefine('HAVE_MPI_FEATURE_DYNAMIC_WINDOW', 1) # Use it to represent a group of MPI3 Win routines
     if self.checkLink('#include <mpi.h>\n',
                       'int send=0,recv,counts[2]={1,1},displs[2]={1,2}; MPI_Request req;\n\
                        if (MPI_Iscatter(&send,1,MPI_INT,&recv,1,MPI_INT,0,MPI_COMM_WORLD,&req));\n \
@@ -577,6 +590,7 @@ Unable to run hostname to check the network')
     if MPI_VER:
       self.compilers.CPPFLAGS = oldFlags
       self.mpi_pkg_version = MPI_VER+'\n'
+      self.mpi_pkg = 'mpich'+mpich_numversion[0]
       return
 
     # IBM Spectrum MPI is derived from OpenMPI, we do not yet have specific tests for it
@@ -601,6 +615,7 @@ Unable to run hostname to check the network')
     if MPI_VER:
       self.compilers.CPPFLAGS = oldFlags
       self.mpi_pkg_version = MPI_VER+'\n'
+      self.mpi_pkg = 'openmpi'
       return
 
     msmpi_test = '#include <mpi.h>\n#define xstr(s) str(s)\n#define str(s) #s\n#if defined(MSMPI_VER)\nchar msmpi_hex[] = xstr(MSMPI_VER);\n#else\n#error not MSMPI\n#endif\n'
@@ -621,20 +636,30 @@ Unable to run hostname to check the network')
 
     return
 
-  def findMPIInc(self):
-    '''Find MPI include paths from "mpicc -show" and use with CUDAC_FLAGS'''
-    needInclude=False
-    if hasattr(self.compilers, 'CUDAC'): needInclude=True
-    if hasattr(self.compilers, 'HIPC'): needInclude=True
-    if not needInclude: return
+  def findMPIIncludeAndLib(self):
+    '''Find MPI include paths and libraries from "mpicc -show" or Cray "cc --cray-print-opts=cflags/libs" and save.'''
+    '''When the underlying C++ compiler used by CUDA or HIP is not the same'''
+    '''as the MPICXX compiler (if any), the includes are needed for for compiling with'''
+    '''the CUDA or HIP compiler or the Kokkos compiler, and the libraries are needed'''
+    '''when the Kokkos compiler wrapper is linking a Kokkos application.'''
+    needed=False
+    if hasattr(self.compilers, 'CUDAC') and self.cuda.found: needed = True
+    if hasattr(self.compilers, 'HIPC') and self.hip.found: needed = True
+    if not needed: return
     import re
-    output = ''
-    try:
-      output   = self.executeShellCommand(self.compilers.CC + ' -show', log = self.log)[0]
-      compiler = output.split(' ')[0]
-    except:
-      pass
-    argIter = iter(output.split())
+
+    cflagsOutput = ''
+    libsOutput   = ''
+    if config.setCompilers.Configure.isCrayPEWrapper(self.setCompilers.CC, self.log):
+      cflagsOutput = self.executeShellCommand(self.compilers.CC + ' --cray-print-opts=cflags', log = self.log)[0]
+      libsOutput   = self.executeShellCommand(self.compilers.CC + ' --cray-print-opts=libs', log = self.log)[0]
+    else:
+      cflagsOutput = self.executeShellCommand(self.compilers.CC + ' -show', log = self.log)[0]
+      libsOutput   = cflagsOutput # same output as -show
+
+    # find include paths
+    self.includepaths = ''
+    argIter = iter(cflagsOutput.split())
     try:
       while 1:
         arg = next(argIter)
@@ -642,17 +667,35 @@ Unable to run hostname to check the network')
         m = re.match(r'^-I.*$', arg)
         if m:
           self.logPrint('Found include option: '+arg, 4, 'compilers')
-          if hasattr(self.compilers, 'CUDAC'):
-            self.setCompilers.pushLanguage('CUDA')
-            self.setCompilers.addCompilerFlag(arg)
-            self.setCompilers.popLanguage()
-          if hasattr(self.compilers, 'HIPC'):
-            self.setCompilers.pushLanguage('HIP')
-            self.setCompilers.addCompilerFlag(arg)
-            self.setCompilers.popLanguage()
+          self.includepaths += arg + ' '
           continue
     except StopIteration:
       pass
+    # find libraries
+    self.libpaths = ''
+    self.mpilibs = ''
+    argIter = iter(libsOutput.split())
+    try:
+      while 1:
+        arg = next(argIter)
+        self.logPrint( 'Checking arg '+arg, 4, 'compilers')
+        m = re.match(r'^-L.*$', arg)
+        if m:
+          self.logPrint('Found -L link option: '+arg, 4, 'compilers')
+          self.libpaths += arg + ' '
+        m = re.match(r'^-Wl.*$', arg)
+        if m:
+          self.logPrint('Found -Wl link option: '+arg, 4, 'compilers')
+          self.libpaths += arg + ' '
+        m = re.match(r'^-l.*$', arg)
+        if m:
+          self.logPrint('Found -l link option: '+arg, 4, 'compilers')
+          # TODO filter out system libraries
+          self.mpilibs += arg + ' '
+    except StopIteration:
+      pass
+    self.addMakeMacro('MPICXX_INCLUDES',self.includepaths)
+    self.addMakeMacro('MPICXX_LIBS',self.libpaths + ' ' + self.mpilibs)
     return
 
   def log_print_mpi_h_line(self,buf):
@@ -715,15 +758,12 @@ You may need to set the environmental variable HWLOC_COMPONENTS to -x86 to preve
     self.executeTest(self.CxxMPICheck)
     self.executeTest(self.FortranMPICheck)
     self.executeTest(self.configureIO) #depends on checkMPIDistro
-    self.executeTest(self.findMPIInc)
+    self.executeTest(self.findMPIIncludeAndLib)
     self.executeTest(self.PetscArchMPICheck)
     funcs = '''MPI_Type_get_envelope  MPI_Type_dup MPI_Init_thread MPI_Iallreduce MPI_Ibarrier MPI_Finalized MPI_Exscan MPI_Reduce_scatter MPI_Reduce_scatter_block'''.split()
     found, missing = self.libraries.checkClassify(self.dlib, funcs)
     for f in found:
       self.addDefine('HAVE_' + f.upper(),1)
-    for f in ['MPIX_Iallreduce', 'MPIX_Ibarrier']: # Unlikely to be found
-      if self.libraries.check(self.dlib, f):
-        self.addDefine('HAVE_' + f.upper(),1)
 
     oldFlags = self.compilers.CPPFLAGS # Disgusting save and restore
     self.compilers.CPPFLAGS += ' '+self.headers.toString(self.include)

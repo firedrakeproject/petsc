@@ -385,7 +385,6 @@ PetscErrorCode PetscFindInt(PetscInt key, PetscInt n, const PetscInt X[], PetscI
 +  n  - number of values in the array
 -  X  - array of integers
 
-
    Output Parameter:
 .  dups - True if the array has dups, otherwise false
 
@@ -742,6 +741,7 @@ PetscErrorCode  PetscMergeIntArray(PetscInt an,const PetscInt aI[], PetscInt bn,
   PetscErrorCode ierr;
   PetscInt       *L_ = *L, ak, bk, k;
 
+  PetscFunctionBegin;
   if (!L_) {
     ierr = PetscMalloc1(an+bn, L);CHKERRQ(ierr);
     L_   = *L;

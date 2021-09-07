@@ -842,7 +842,7 @@ PetscErrorCode TSSetCostGradients(TS ts,PetscInt numcost,Vec *lambda,Vec *mu)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
-  PetscValidPointer(lambda,2);
+  PetscValidPointer(lambda,3);
   ts->vecs_sensi  = lambda;
   ts->vecs_sensip = mu;
   if (ts->numcost && ts->numcost!=numcost) SETERRQ(PetscObjectComm((PetscObject)ts),PETSC_ERR_USER,"The number of cost functions (2rd parameter of TSSetCostIntegrand()) is inconsistent with the one set by TSSetCostIntegrand");
@@ -1052,7 +1052,7 @@ PetscErrorCode TSAdjointSetUp(TS ts)
 
   if (ts->quadraturets) { /* if there is integral in the cost function */
     ierr = VecDuplicate(ts->vecs_sensi[0],&ts->vec_drdu_col);CHKERRQ(ierr);
-    if (ts->vecs_sensip){
+    if (ts->vecs_sensip) {
       ierr = VecDuplicate(ts->vecs_sensip[0],&ts->vec_drdp_col);CHKERRQ(ierr);
     }
   }
@@ -1087,7 +1087,7 @@ PetscErrorCode TSAdjointReset(TS ts)
   }
   if (ts->quadraturets) { /* if there is integral in the cost function */
     ierr = VecDestroy(&ts->vec_drdu_col);CHKERRQ(ierr);
-    if (ts->vecs_sensip){
+    if (ts->vecs_sensip) {
       ierr = VecDestroy(&ts->vec_drdp_col);CHKERRQ(ierr);
     }
   }
@@ -1226,7 +1226,7 @@ PetscErrorCode TSAdjointMonitorSensi(TS ts,PetscInt step,PetscReal ptime,Vec v,P
   PetscViewer    viewer = vf->viewer;
 
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,4);
+  PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,8);
   ierr = PetscViewerPushFormat(viewer,vf->format);CHKERRQ(ierr);
   ierr = VecView(lambda[0],viewer);CHKERRQ(ierr);
   ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
@@ -1378,7 +1378,7 @@ PetscErrorCode TSAdjointMonitorDefault(TS ts,PetscInt step,PetscReal ptime,Vec v
   PetscViewer    viewer = vf->viewer;
 
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,4);
+  PetscValidHeaderSpecific(viewer,PETSC_VIEWER_CLASSID,8);
   ierr = PetscViewerPushFormat(viewer,vf->format);CHKERRQ(ierr);
   ierr = PetscViewerASCIIAddTab(viewer,((PetscObject)ts)->tablevel);CHKERRQ(ierr);
   ierr = PetscViewerASCIIPrintf(viewer,"%D TS dt %g time %g%s",step,(double)ts->time_step,(double)ptime,ts->steprollback ? " (r)\n" : "\n");CHKERRQ(ierr);
@@ -1645,11 +1645,12 @@ PetscErrorCode TSAdjointMonitor(TS ts,PetscInt step,PetscReal ptime,Vec u,PetscI
  @*/
 PetscErrorCode TSAdjointCostIntegral(TS ts)
 {
-    PetscErrorCode ierr;
-    PetscValidHeaderSpecific(ts,TS_CLASSID,1);
-    if (!ts->ops->adjointintegral) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_SUP,"%s does not provide integral evaluation in the adjoint run",((PetscObject)ts)->type_name);
-    ierr = (*ts->ops->adjointintegral)(ts);CHKERRQ(ierr);
-    PetscFunctionReturn(0);
+  PetscFunctionBegin;
+  PetscErrorCode ierr;
+  PetscValidHeaderSpecific(ts,TS_CLASSID,1);
+  if (!ts->ops->adjointintegral) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_SUP,"%s does not provide integral evaluation in the adjoint run",((PetscObject)ts)->type_name);
+  ierr = (*ts->ops->adjointintegral)(ts);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 /* ------------------ Forward (tangent linear) sensitivity  ------------------*/
@@ -1778,6 +1779,7 @@ PetscErrorCode TSForwardGetIntegralGradients(TS ts,PetscInt *numfwdint,Vec **vp)
 PetscErrorCode TSForwardStep(TS ts)
 {
   PetscErrorCode ierr;
+  PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
   if (!ts->ops->forwardstep) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_SUP,"%s does not provide forward sensitivity analysis",((PetscObject)ts)->type_name);
   ierr = PetscLogEventBegin(TS_ForwardStep,ts,0,0,0);CHKERRQ(ierr);
@@ -1865,6 +1867,8 @@ PetscErrorCode TSForwardGetSensitivities(TS ts,PetscInt *nump,Mat *Smat)
 PetscErrorCode TSForwardCostIntegral(TS ts)
 {
   PetscErrorCode ierr;
+
+  PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
   if (!ts->ops->forwardintegral) SETERRQ1(PetscObjectComm((PetscObject)ts),PETSC_ERR_SUP,"%s does not provide integral evaluation in the forward run",((PetscObject)ts)->type_name);
   ierr = (*ts->ops->forwardintegral)(ts);CHKERRQ(ierr);
@@ -1890,6 +1894,7 @@ PetscErrorCode TSForwardSetInitialSensitivities(TS ts,Mat didp)
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
   PetscValidHeaderSpecific(didp,MAT_CLASSID,2);
   if (!ts->mat_sensip) {
@@ -1946,7 +1951,7 @@ PetscErrorCode TSCreateQuadratureTS(TS ts,PetscBool fwd,TS *quadts)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts,TS_CLASSID,1);
-  PetscValidPointer(quadts,2);
+  PetscValidPointer(quadts,3);
   ierr = TSDestroy(&ts->quadraturets);CHKERRQ(ierr);
   ierr = TSCreate(PetscObjectComm((PetscObject)ts),&ts->quadraturets);CHKERRQ(ierr);
   ierr = PetscObjectIncrementTabLevel((PetscObject)ts->quadraturets,(PetscObject)ts,1);CHKERRQ(ierr);

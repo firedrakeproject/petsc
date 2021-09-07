@@ -550,7 +550,7 @@ PetscErrorCode PCSetUp_GAMG(PC pc)
           ierr = PetscLogEventBegin(petsc_gamg_setup_matmat_events[gl][1],0,0,0,0);CHKERRQ(ierr);
           ierr = MatPtAP(dB,mglevels[level+1]->interpolate,reuse,PETSC_DEFAULT,&B);CHKERRQ(ierr);
           ierr = PetscLogEventEnd(petsc_gamg_setup_matmat_events[gl][1],0,0,0,0);CHKERRQ(ierr);
-          mglevels[level]->A = B;
+          if (reuse == MAT_INITIAL_MATRIX) mglevels[level]->A = B;
           ierr = KSPSetOperators(mglevels[level]->smoothd,B,B);CHKERRQ(ierr);
           dB   = B;
         }
@@ -867,7 +867,6 @@ PetscErrorCode PCDestroy_GAMG(PC pc)
 +  pc - the preconditioner context
 -  n - the number of equations
 
-
    Options Database Key:
 .  -pc_gamg_process_eq_limit <limit>
 
@@ -1118,6 +1117,7 @@ PetscErrorCode PCGAMGSetEigenvalues(PC pc, PetscReal emax,PetscReal emin)
   ierr = PetscTryMethod(pc,"PCGAMGSetEigenvalues_C",(PC,PetscReal,PetscReal),(pc,emax,emin));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
+
 static PetscErrorCode PCGAMGSetEigenvalues_GAMG(PC pc,PetscReal emax,PetscReal emin)
 {
   PC_MG          *mg      = (PC_MG*)pc->data;
@@ -1734,7 +1734,6 @@ PetscErrorCode PCSetFromOptions_GAMG(PetscOptionItems *PetscOptionsObject,PC pc)
 .  -pc_mg_distinct_smoothup - configure the up and down (pre and post) smoothers separately, see PCMGSetDistinctSmoothUp()
 .  -pc_mg_type <multiplicative> - (one of) additive multiplicative full kascade
 -  -pc_mg_levels <levels> - Number of levels of multigrid to use.
-
 
   Notes:
     In order to obtain good performance for PCGAMG for vector valued problems you must

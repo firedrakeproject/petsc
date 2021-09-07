@@ -585,7 +585,6 @@ PetscErrorCode PetscSFLinkGetMPIBuffersAndRequests(PetscSF sf,PetscSFLink link,P
   PetscFunctionReturn(0);
 }
 
-
 PetscErrorCode PetscSFLinkGetInUse(PetscSF sf,MPI_Datatype unit,const void *rootdata,const void *leafdata,PetscCopyMode cmode,PetscSFLink *mylink)
 {
   PetscErrorCode    ierr;
@@ -653,7 +652,6 @@ static PetscErrorCode PetscSFLinkMemcpy_Host(PetscSFLink link,PetscMemType dstmt
   if (n) {PetscErrorCode ierr = PetscMemcpy(dst,src,n);CHKERRQ(ierr);}
   PetscFunctionReturn(0);
 }
-
 
 PetscErrorCode PetscSFLinkSetUp_Host(PetscSF sf,PetscSFLink link,MPI_Datatype unit)
 {
@@ -1168,7 +1166,7 @@ PetscErrorCode PetscSFLinkUnpackLeafData(PetscSF sf,PetscSFLink link,PetscSFScop
 
   PetscFunctionBegin;
   ierr = PetscLogEventBegin(PETSCSF_Unpack,sf,0,0,0);CHKERRQ(ierr);
-  if (sf->leafbuflen[scope]) {ierr = PetscSFLinkUnpackLeafData_Private(sf,link,scope,leafdata,op);}
+  if (sf->leafbuflen[scope]) {ierr = PetscSFLinkUnpackLeafData_Private(sf,link,scope,leafdata,op);CHKERRQ(ierr);}
   ierr = PetscLogEventEnd(PETSCSF_Unpack,sf,0,0,0);CHKERRQ(ierr);
   if (scope == PETSCSF_REMOTE) {
     if (link->PostUnpack) {ierr = (*link->PostUnpack)(sf,link,PETSCSF_ROOT2LEAF);CHKERRQ(ierr);}  /* Used by SF nvshmem */
@@ -1214,6 +1212,7 @@ PetscErrorCode PetscSFLinkScatterLocal(PetscSF sf,PetscSFLink link,PetscSFDirect
   char                 *srcbuf = NULL,*dstbuf = NULL;
   PetscBool            dstdups;
 
+  PetscFunctionBegin;
   if (!buflen) PetscFunctionReturn(0);
   if (rootmtype != leafmtype) { /* The cross memory space local scatter is done by pack, copy and unpack */
     if (direction == PETSCSF_ROOT2LEAF) {

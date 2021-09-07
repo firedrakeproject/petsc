@@ -109,7 +109,6 @@ $     val = (x,y) = y^T x,
 
    Level: intermediate
 
-
 .seealso: VecMDot(), VecTDot(), VecNorm(), VecDotBegin(), VecDotEnd(), VecDotRealPart()
 @*/
 PetscErrorCode  VecDot(Vec x,Vec y,PetscScalar *val)
@@ -159,7 +158,6 @@ $    work load inbalance that causes certain processes to arrive much earlier th
 
    Level: intermediate
 
-
 .seealso: VecMDot(), VecTDot(), VecNorm(), VecDotBegin(), VecDotEnd(), VecDot(), VecDotNorm2()
 @*/
 PetscErrorCode  VecDotRealPart(Vec x,Vec y,PetscReal *val)
@@ -203,7 +201,6 @@ $     NORM_INFINITY denotes max_i |x_i|
 $    per-processor memory bandwidth
 $    interprocessor latency
 $    work load inbalance that causes certain processes to arrive much earlier than others
-
 
 .seealso: VecDot(), VecTDot(), VecNorm(), VecDotBegin(), VecDotEnd(), VecNormAvailable(),
           VecNormBegin(), VecNormEnd()
@@ -268,7 +265,6 @@ $    work load inbalance that causes certain processes to arrive much earlier th
  than the BLAS. This should probably only be used when one is using the FORTRAN BLAS routines
  (as opposed to vendor provided) because the FORTRAN BLAS NRM2() routine is very slow.
 
-
 .seealso: VecDot(), VecTDot(), VecNorm(), VecDotBegin(), VecDotEnd(), VecNorm()
           VecNormBegin(), VecNormEnd()
 
@@ -279,7 +275,7 @@ PetscErrorCode  VecNormAvailable(Vec x,NormType type,PetscBool  *available,Petsc
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x,VEC_CLASSID,1);
-  PetscValidRealPointer(val,3);
+  PetscValidRealPointer(val,4);
   PetscValidType(x,1);
 
   *available = PETSC_FALSE;
@@ -302,7 +298,6 @@ PetscErrorCode  VecNormAvailable(Vec x,NormType type,PetscBool  *available,Petsc
 -  val - the vector norm before normalization
 
    Level: intermediate
-
 
 @*/
 PetscErrorCode  VecNormalize(Vec x,PetscReal *val)
@@ -339,11 +334,10 @@ PetscErrorCode  VecNormalize(Vec x,PetscReal *val)
 -  val - the maximum component
 
    Notes:
-   Returns the value PETSC_MIN_REAL and p = -1 if the vector is of length 0.
+   Returns the value PETSC_MIN_REAL and negative p if the vector is of length 0.
 
    Returns the smallest index with the maximum value
    Level: intermediate
-
 
 .seealso: VecNorm(), VecMin()
 @*/
@@ -353,7 +347,7 @@ PetscErrorCode  VecMax(Vec x,PetscInt *p,PetscReal *val)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x,VEC_CLASSID,1);
-  PetscValidScalarPointer(val,3);
+  PetscValidRealPointer(val,3);
   PetscValidType(x,1);
   ierr = PetscLogEventBegin(VEC_Max,x,0,0,0);CHKERRQ(ierr);
   ierr = (*x->ops->max)(x,p,val);CHKERRQ(ierr);
@@ -376,10 +370,9 @@ PetscErrorCode  VecMax(Vec x,PetscInt *p,PetscReal *val)
    Level: intermediate
 
    Notes:
-   Returns the value PETSC_MAX_REAL and p = -1 if the vector is of length 0.
+   Returns the value PETSC_MAX_REAL and negative p if the vector is of length 0.
 
    This returns the smallest index with the minumum value
-
 
 .seealso: VecMax()
 @*/
@@ -389,7 +382,7 @@ PetscErrorCode  VecMin(Vec x,PetscInt *p,PetscReal *val)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x,VEC_CLASSID,1);
-  PetscValidScalarPointer(val,3);
+  PetscValidRealPointer(val,3);
   PetscValidType(x,1);
   ierr = PetscLogEventBegin(VEC_Min,x,0,0,0);CHKERRQ(ierr);
   ierr = (*x->ops->min)(x,p,val);CHKERRQ(ierr);
@@ -458,7 +451,6 @@ PetscErrorCode  VecTDot(Vec x,Vec y,PetscScalar *val)
 $      x[i] = alpha * x[i], for i=1,...,n.
 
    Level: intermediate
-
 
 @*/
 PetscErrorCode  VecScale(Vec x, PetscScalar alpha)
@@ -555,7 +547,6 @@ PetscErrorCode  VecSet(Vec x,PetscScalar alpha)
   PetscFunctionReturn(0);
 }
 
-
 /*@
    VecAXPY - Computes y = alpha x + y.
 
@@ -581,7 +572,6 @@ $    VecWAXPY(w,alpha,x,y)                w = alpha x           +      y
 $    VecAXPBYPCZ(w,alpha,beta,gamma,x,y)  z = alpha x           + beta y + gamma z
 $    VecMAXPY(y,nv,alpha[],x[])           y = sum alpha[i] x[i] +      y
 
-
 .seealso:  VecAYPX(), VecMAXPY(), VecWAXPY(), VecAXPBYPCZ(), VecAXPBY()
 @*/
 PetscErrorCode  VecAXPY(Vec y,PetscScalar alpha,Vec x)
@@ -594,7 +584,7 @@ PetscErrorCode  VecAXPY(Vec y,PetscScalar alpha,Vec x)
   PetscValidType(x,3);
   PetscValidType(y,1);
   PetscCheckSameTypeAndComm(x,3,y,1);
-  VecCheckSameSize(x,1,y,3);
+  VecCheckSameSize(x,3,y,1);
   if (x == y) SETERRQ(PetscObjectComm((PetscObject)x),PETSC_ERR_ARG_IDN,"x and y cannot be the same vector");
   PetscValidLogicalCollectiveScalar(y,alpha,2);
   if (alpha == (PetscScalar)0.0) PetscFunctionReturn(0);
@@ -626,7 +616,6 @@ PetscErrorCode  VecAXPY(Vec y,PetscScalar alpha,Vec x)
    Notes:
     x and y MUST be different vectors
     The implementation is optimized for alpha and/or beta values of 0.0 and 1.0
-
 
 .seealso: VecAYPX(), VecMAXPY(), VecWAXPY(), VecAXPY(), VecAXPBYPCZ()
 @*/
@@ -670,7 +659,6 @@ PetscErrorCode  VecAXPBY(Vec y,PetscScalar alpha,PetscScalar beta,Vec x)
    Notes:
     x, y and z must be different vectors
     The implementation is optimized for alpha of 1.0 and gamma of 1.0 or 0.0
-
 
 .seealso:  VecAYPX(), VecMAXPY(), VecWAXPY(), VecAXPY(), VecAXPBY()
 @*/
@@ -722,7 +710,6 @@ PetscErrorCode  VecAXPBYPCZ(Vec z,PetscScalar alpha,PetscScalar beta,PetscScalar
     x and y MUST be different vectors
     The implementation is optimized for beta of -1.0, 0.0, and 1.0
 
-
 .seealso:  VecMAXPY(), VecWAXPY(), VecAXPY(), VecAXPBYPCZ(), VecAXPBY()
 @*/
 PetscErrorCode  VecAYPX(Vec y,PetscScalar beta,Vec x)
@@ -747,7 +734,6 @@ PetscErrorCode  VecAYPX(Vec y,PetscScalar beta,Vec x)
   PetscFunctionReturn(0);
 }
 
-
 /*@
    VecWAXPY - Computes w = alpha x + y.
 
@@ -765,7 +751,6 @@ PetscErrorCode  VecAYPX(Vec y,PetscScalar beta,Vec x)
    Notes:
     w cannot be either x or y, but x and y can be the same
     The implementation is optimzed for alpha of -1.0, 0.0, and 1.0
-
 
 .seealso: VecAXPY(), VecAYPX(), VecAXPBY(), VecMAXPY(), VecAXPBYPCZ()
 @*/
@@ -795,7 +780,6 @@ PetscErrorCode  VecWAXPY(Vec w,PetscScalar alpha,Vec x,Vec y)
   ierr = PetscObjectStateIncrease((PetscObject)w);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*@C
    VecSetValues - Inserts or adds values into certain locations of a vector.
@@ -952,7 +936,6 @@ PetscErrorCode  VecSetValuesBlocked(Vec x,PetscInt ni,const PetscInt ix[],const 
   PetscFunctionReturn(0);
 }
 
-
 /*@C
    VecSetValuesLocal - Inserts or adds values into certain locations of a vector,
    using a local ordering of the nodes.
@@ -1046,7 +1029,6 @@ PetscErrorCode  VecSetValuesLocal(Vec x,PetscInt ni,const PetscInt ix[],const Pe
 
    VecSetValuesBlockedLocal() uses 0-based indices in Fortran as well as in C.
 
-
 .seealso:  VecAssemblyBegin(), VecAssemblyEnd(), VecSetValues(), VecSetValuesBlocked(),
            VecSetLocalToGlobalMapping()
 @*/
@@ -1101,7 +1083,6 @@ $      val = (x,y) = y^H x,
 
    Level: intermediate
 
-
 .seealso: VecMDot(), VecTDot()
 @*/
 PetscErrorCode  VecMTDot(Vec x,PetscInt nv,const Vec y[],PetscScalar val[])
@@ -1115,9 +1096,9 @@ PetscErrorCode  VecMTDot(Vec x,PetscInt nv,const Vec y[],PetscScalar val[])
   PetscValidPointer(y,3);
   PetscValidHeaderSpecific(*y,VEC_CLASSID,3);
   PetscValidScalarPointer(val,4);
-  PetscValidType(x,2);
+  PetscValidType(x,1);
   PetscValidType(*y,3);
-  PetscCheckSameTypeAndComm(x,2,*y,3);
+  PetscCheckSameTypeAndComm(x,1,*y,3);
   VecCheckSameSize(x,1,*y,3);
 
   ierr = PetscLogEventBegin(VEC_MTDot,x,*y,0,0);CHKERRQ(ierr);
@@ -1150,7 +1131,6 @@ $     val = (x,y) = y^T x,
 
    Level: intermediate
 
-
 .seealso: VecMTDot(), VecDot()
 @*/
 PetscErrorCode  VecMDot(Vec x,PetscInt nv,const Vec y[],PetscScalar val[])
@@ -1165,9 +1145,9 @@ PetscErrorCode  VecMDot(Vec x,PetscInt nv,const Vec y[],PetscScalar val[])
   PetscValidPointer(y,3);
   PetscValidHeaderSpecific(*y,VEC_CLASSID,3);
   PetscValidScalarPointer(val,4);
-  PetscValidType(x,2);
+  PetscValidType(x,1);
   PetscValidType(*y,3);
-  PetscCheckSameTypeAndComm(x,2,*y,3);
+  PetscCheckSameTypeAndComm(x,1,*y,3);
   VecCheckSameSize(x,1,*y,3);
 
   ierr = PetscLogEventBegin(VEC_MDot,x,*y,0,0);CHKERRQ(ierr);
@@ -1269,17 +1249,17 @@ PetscErrorCode VecConcatenate(PetscInt nx, const Vec X[], Vec *Y, IS *x_is[])
 
   if ((*X)->ops->concatenate) {
     /* use the dedicated concatenation function if available */
-    ierr = (*(*X)->ops->concatenate)(nx,X,Y,x_is);
+    ierr = (*(*X)->ops->concatenate)(nx,X,Y,x_is);CHKERRQ(ierr);
   } else {
     /* loop over vectors and start creating IS */
     comm = PetscObjectComm((PetscObject)(*X));
     ierr = VecGetType(*X, &vec_type);CHKERRQ(ierr);
-    ierr = PetscMalloc1(nx, &is_tmp);
+    ierr = PetscMalloc1(nx, &is_tmp);CHKERRQ(ierr);
     for (i=0; i<nx; i++) {
       ierr = VecGetSize(X[i], &Xng);CHKERRQ(ierr);
       ierr = VecGetLocalSize(X[i], &Xnl);CHKERRQ(ierr);
       ierr = VecGetOwnershipRange(X[i], &Xbegin, NULL);CHKERRQ(ierr);
-      ierr = ISCreateStride(comm, Xnl, shift + Xbegin, 1, &is_tmp[i]);
+      ierr = ISCreateStride(comm, Xnl, shift + Xbegin, 1, &is_tmp[i]);CHKERRQ(ierr);
       shift += Xng;
     }
     /* create the concatenated vector */
@@ -1355,11 +1335,11 @@ PetscErrorCode  VecGetSubVector(Vec X,IS is,Vec *Y)
     ierr = ISContiguousLocal(is,gstart,gend,&start,&red[0]);CHKERRQ(ierr);
     /* block size is given by IS if ibs > 1; otherwise, check the vector */
     if (ibs > 1) {
-      ierr = MPIU_Allreduce(MPI_IN_PLACE,red,1,MPIU_BOOL,MPI_LAND,PetscObjectComm((PetscObject)is));CHKERRQ(ierr);
+      ierr = MPIU_Allreduce(MPI_IN_PLACE,red,1,MPIU_BOOL,MPI_LAND,PetscObjectComm((PetscObject)is));CHKERRMPI(ierr);
       bs   = ibs;
     } else {
       if (n%vbs || vbs == 1) red[1] = PETSC_FALSE; /* this process invalidate the collectiveness of block size */
-      ierr = MPIU_Allreduce(MPI_IN_PLACE,red,2,MPIU_BOOL,MPI_LAND,PetscObjectComm((PetscObject)is));CHKERRQ(ierr);
+      ierr = MPIU_Allreduce(MPI_IN_PLACE,red,2,MPIU_BOOL,MPI_LAND,PetscObjectComm((PetscObject)is));CHKERRMPI(ierr);
       if (red[0] && red[1]) bs = vbs; /* all processes have a valid block size and the access will be contiguous */
     }
     if (red[0]) { /* We can do a no-copy implementation */
@@ -2049,9 +2029,10 @@ PetscErrorCode  VecRestoreArrays(const Vec x[],PetscInt n,PetscScalar **a[])
 }
 
 /*@C
-   VecGetArrayAndMemType - Like VecGetArray(), but if this is a GPU vector and it is currently offloaded to GPU,
-   the returned pointer will be a GPU pointer to the GPU memory that contains this processor's portion of the
-   vector data. Otherwise, it functions as VecGetArray().
+   VecGetArrayAndMemType - Like VecGetArray(), but if this is a device vector (e.g., VECCUDA) and the device has up-to-date data,
+   the returned pointer will be a device pointer to the device memory that contains this processor's portion of the vector data.
+   Otherwise, when this is a host vector (e.g., VECMPI), or a device vector with the host having newer data than device,
+   it functions as VecGetArray() and returns a host pointer.
 
    Logically Collective on Vec
 
@@ -2133,7 +2114,6 @@ PetscErrorCode VecRestoreArrayAndMemType(Vec x,PetscScalar **a)
 
    Notes:
    The array must be returned using a matching call to VecRestoreArrayReadAndMemType().
-
 
 .seealso: VecRestoreArrayReadAndMemType(), VecGetArray(), VecRestoreArray(), VecGetArrayPair(), VecRestoreArrayPair(), VecGetArrayAndMemType()
 @*/
@@ -2262,7 +2242,6 @@ PetscErrorCode  VecReplaceArray(Vec vec,const PetscScalar array[])
   PetscFunctionReturn(0);
 }
 
-
 /*@C
    VecCUDAGetArray - Provides access to the CUDA buffer inside a vector.
 
@@ -2280,7 +2259,6 @@ PetscErrorCode  VecReplaceArray(Vec vec,const PetscScalar array[])
    the data on the host will be marked as out of date.  A subsequent
    access of the host data will thus incur a data transfer from the
    device to the host.
-
 
    Input Parameter:
 .  v - the vector
@@ -2423,7 +2401,6 @@ PETSC_EXTERN PetscErrorCode VecCUDARestoreArrayRead(Vec v, const PetscScalar **a
    of the host data with e.g. VecGetArray() incurs a device to host data
    transfer.
 
-
    Input Parameter:
 .  v - the vector
 
@@ -2478,7 +2455,7 @@ PETSC_EXTERN PetscErrorCode VecCUDARestoreArrayWrite(Vec v, PetscScalar **a)
   PetscCheckTypeNames(v,VECSEQCUDA,VECMPICUDA);
  #if defined(PETSC_HAVE_CUDA)
   v->offloadmask = PETSC_OFFLOAD_GPU;
-  a              = NULL;
+  if (a) *a = NULL;
  #endif
   ierr = PetscObjectStateIncrease((PetscObject)v);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -2614,7 +2591,6 @@ PetscErrorCode VecCUDAResetArray(Vec vin)
    the data on the host will be marked as out of date.  A subsequent
    access of the host data will thus incur a data transfer from the
    device to the host.
-
 
    Input Parameter:
 .  v - the vector
@@ -2767,7 +2743,6 @@ PETSC_EXTERN PetscErrorCode VecHIPRestoreArrayRead(Vec v, const PetscScalar **a)
    host data of the vector is marked as out of data.  Subsequent access
    of the host data with e.g. VecGetArray() incurs a device to host data
    transfer.
-
 
    Input Parameter:
 .  v - the vector
@@ -3015,7 +2990,7 @@ M*/
 
     Level: beginner
 
-.seealso:  VecGetArrayF90(), VecGetArray(), VecRestoreArray(), UsingFortran, VecRestoreArrayReadF90()
+.seealso:  VecGetArrayF90(), VecGetArray(), VecRestoreArray(), VecRestoreArrayReadF90()
 
 M*/
 
@@ -3077,7 +3052,7 @@ M*/
 
     Level: beginner
 
-.seealso:  VecRestoreArrayF90(), VecGetArray(), VecRestoreArray(), VecGetArrayReadF90(), UsingFortran
+.seealso:  VecRestoreArrayF90(), VecGetArray(), VecRestoreArray(), VecGetArrayReadF90()
 
 M*/
 
@@ -3115,7 +3090,7 @@ M*/
 
     Level: beginner
 
-.seealso:  VecRestoreArrayReadF90(), VecGetArray(), VecRestoreArray(), VecGetArrayRead(), VecRestoreArrayRead(), VecGetArrayF90(), UsingFortran
+.seealso:  VecRestoreArrayReadF90(), VecGetArray(), VecRestoreArray(), VecGetArrayRead(), VecRestoreArrayRead(), VecGetArrayF90()
 
 M*/
 
@@ -3149,7 +3124,7 @@ M*/
 
     Level: beginner
 
-.seealso:  VecGetArrayReadF90(), VecGetArray(), VecRestoreArray(), VecGetArrayRead(), VecRestoreArrayRead(),UsingFortran, VecRestoreArrayF90()
+.seealso:  VecGetArrayReadF90(), VecGetArray(), VecRestoreArray(), VecGetArrayRead(), VecRestoreArrayRead(), VecRestoreArrayF90()
 
 M*/
 
@@ -3877,7 +3852,7 @@ PetscErrorCode  VecRestoreArray4d(Vec x,PetscInt m,PetscInt n,PetscInt p,PetscIn
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x,VEC_CLASSID,1);
-  PetscValidPointer(a,8);
+  PetscValidPointer(a,10);
   PetscValidType(x,1);
   dummy = (void*)(*a + mstart);
   ierr  = PetscFree(dummy);CHKERRQ(ierr);
@@ -3923,7 +3898,7 @@ PetscErrorCode  VecRestoreArray4dWrite(Vec x,PetscInt m,PetscInt n,PetscInt p,Pe
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x,VEC_CLASSID,1);
-  PetscValidPointer(a,8);
+  PetscValidPointer(a,10);
   PetscValidType(x,1);
   dummy = (void*)(*a + mstart);
   ierr  = PetscFree(dummy);CHKERRQ(ierr);
@@ -4103,7 +4078,6 @@ PetscErrorCode  VecRestoreArray1dRead(Vec x,PetscInt m,PetscInt mstart,PetscScal
   ierr = VecRestoreArrayRead(x,NULL);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /*@C
    VecGetArray3dRead - Returns a pointer to a 3d contiguous array that contains this
@@ -4311,7 +4285,7 @@ PetscErrorCode  VecRestoreArray4dRead(Vec x,PetscInt m,PetscInt n,PetscInt p,Pet
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x,VEC_CLASSID,1);
-  PetscValidPointer(a,8);
+  PetscValidPointer(a,10);
   PetscValidType(x,1);
   dummy = (void*)(*a + mstart);
   ierr  = PetscFree(dummy);CHKERRQ(ierr);
@@ -4407,7 +4381,6 @@ PetscErrorCode VecLockReadPop(Vec x)
     One can call VecLockWriteSet_Private(x,PETSC_TRUE) in the begin phase to lock a vector for exclusive
     access, and call VecLockWriteSet_Private(x,PETSC_FALSE) in the end phase to unlock the vector from exclusive
     access. In this way, one is ensured no other operations can access the vector in between. The code may like
-
 
        VecGetArray(x,&xdata); // begin phase
        VecLockWriteSet_Private(v,PETSC_TRUE);

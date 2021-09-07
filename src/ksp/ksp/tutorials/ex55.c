@@ -32,7 +32,6 @@ int main(int argc,char **args)
                              {6.666666666666667E-02, 0.0000E-00, -2.666666666666667E-01,  2.0000E-01, -3.333333333333333E-01,  0.0000E-00, 5.333333333333333E-01, -2.0000E-01 },
                              {0.0000E-00, -3.333333333333333E-01,  2.0000E-01, -2.666666666666667E-01, 0.0000E-00,  6.666666666666667E-02, -2.0000E-01,  5.333333333333333E-01 } };
 
-
   ierr = PetscInitialize(&argc,&args,(char*)0,help);if (ierr) return ierr;
   comm = PETSC_COMM_WORLD;
   ierr  = MPI_Comm_rank(comm, &mype);CHKERRMPI(ierr);
@@ -213,7 +212,7 @@ int main(int argc,char **args)
     ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_MATLAB);CHKERRQ(ierr);
     ierr = MatView(Amat,viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
-    ierr = PetscViewerDestroy(&viewer);
+    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
 
   /* solve */
@@ -257,7 +256,7 @@ int main(int argc,char **args)
     ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_ASCII_MATLAB);CHKERRQ(ierr);
     ierr = VecView(bb,viewer);CHKERRQ(ierr);
     ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
-    ierr = PetscViewerDestroy(&viewer);
+    ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   }
 
   /* Free work space */
@@ -270,8 +269,6 @@ int main(int argc,char **args)
   ierr = PetscFinalize();
   return ierr;
 }
-
-
 
 /*TEST
 

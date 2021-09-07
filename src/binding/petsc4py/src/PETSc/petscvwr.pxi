@@ -14,7 +14,6 @@ cdef extern from * nogil:
     PetscViewerType PETSCVIEWERSAWS
     PetscViewerType PETSCVIEWERGLVIS
     PetscViewerType PETSCVIEWERADIOS
-    PetscViewerType PETSCVIEWERADIOS2
     PetscViewerType PETSCVIEWEREXODUSII
 
     ctypedef enum PetscViewerFormat:
@@ -114,6 +113,8 @@ cdef extern from * nogil:
     int PetscViewerDrawClear(PetscViewer)
     int PetscViewerDrawSetInfo(PetscViewer,char[],char[],int,int,int,int)
 
+    int PetscViewerHDF5PushTimestepping(PetscViewer)
+    int PetscViewerHDF5PopTimestepping(PetscViewer)
     int PetscViewerHDF5GetTimestep(PetscViewer,PetscInt*)
     int PetscViewerHDF5SetTimestep(PetscViewer,PetscInt)
     int PetscViewerHDF5IncrementTimestep(PetscViewer)

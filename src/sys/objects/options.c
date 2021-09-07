@@ -166,6 +166,7 @@ PetscErrorCode PetscOptionsDestroy(PetscOptions *options)
 {
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   if (!*options) return 0;
   if ((*options)->previous) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONG,"You are destroying an option that has been used with PetscOptionsPush() but does not have a corresponding PetscOptionsPop()");
   ierr = PetscOptionsClear(*options);if (ierr) return ierr;
@@ -407,8 +408,8 @@ static PetscErrorCode PetscOptionsFilename(MPI_Comm comm,const char file[],char 
   char           fname[PETSC_MAX_PATH_LEN+8],path[PETSC_MAX_PATH_LEN+8],*tail;
   PetscErrorCode ierr;
 
-  *yaml = PETSC_FALSE;
   PetscFunctionBegin;
+  *yaml = PETSC_FALSE;
   ierr = PetscStrreplace(comm,file,fname,sizeof(fname));CHKERRQ(ierr);
   ierr = PetscFixFilename(fname,path);CHKERRQ(ierr);
   ierr = PetscStrendswith(path,":yaml",yaml);CHKERRQ(ierr);
@@ -456,7 +457,6 @@ static PetscErrorCode PetscOptionsInsertFilePetsc(MPI_Comm comm,PetscOptions opt
   PetscBool      isdir,alias=PETSC_FALSE,valid;
 
   PetscFunctionBegin;
-
   ierr = PetscMemzero(tokens,sizeof(tokens));CHKERRQ(ierr);
   ierr = MPI_Comm_rank(comm,&rank);CHKERRMPI(ierr);
   if (!rank) {
@@ -567,7 +567,7 @@ destroy:
   counts[0] = acnt;
   counts[1] = cnt;
   err = MPI_Bcast(counts,2,MPI_INT,0,comm);
-  if (err) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_LIB,"Error in first MPI collective call, could be caused by using an incorrect mpiexec or a network problem, it can be caused by having VPN running: see https://www.mcs.anl.gov/petsc/documentation/faq.html");
+  if (err) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_LIB,"Error in first MPI collective call, could be caused by using an incorrect mpiexec or a network problem, it can be caused by having VPN running: see https://petsc.org/release/faq/");
   acnt = counts[0];
   cnt = counts[1];
   if (rank) {
@@ -609,7 +609,6 @@ destroy:
            ".yml" and ".yaml" filename extensions are inserted as YAML options,
            append ":yaml" to filename to force YAML options.
 -   require - if PETSC_TRUE will generate an error if the file does not exist
-
 
   Notes:
    Use  # for lines that are comments and which should be ignored.
@@ -1021,7 +1020,7 @@ PetscErrorCode PetscOptionsPrefixPush(PetscOptions options,const char prefix[])
   PetscBool      valid;
 
   PetscFunctionBegin;
-  PetscValidCharPointer(prefix,1);
+  PetscValidCharPointer(prefix,2);
   options = options ? options : defaultoptions;
   if (options->prefixind >= MAXPREFIXES) SETERRQ1(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Maximum depth of prefix stack %d exceeded, recompile \n src/sys/objects/options.c with larger value for MAXPREFIXES",MAXPREFIXES);
   key[0] = '-'; /* keys must start with '-' */
@@ -1631,8 +1630,8 @@ PetscErrorCode PetscOptionsHasHelpIntro_Internal(PetscOptions options,PetscBool 
 }
 
 /*@C
-   PetscOptionsHasName - Determines whether a certain option is given in the database. This returns true whether the option is a number, string or boolean, even
-                      its value is set to false.
+   PetscOptionsHasName - Determines whether a certain option is given in the database. This returns true whether the option is a number, string or Boolean, even
+                      if its value is set to false.
 
    Not Collective
 
@@ -2257,7 +2256,7 @@ PetscErrorCode PetscOptionsGetBool(PetscOptions options,const char pre[],const c
 
   PetscFunctionBegin;
   PetscValidCharPointer(name,3);
-  if (ivalue) PetscValidIntPointer(ivalue,4);
+  if (ivalue) PetscValidBoolPointer(ivalue,4);
   ierr = PetscOptionsFindPair(options,pre,name,&value,&flag);CHKERRQ(ierr);
   if (flag) {
     if (set) *set = PETSC_TRUE;
@@ -2674,7 +2673,7 @@ PetscErrorCode PetscOptionsGetBoolArray(PetscOptions options,const char pre[],co
 
   PetscFunctionBegin;
   PetscValidCharPointer(name,3);
-  PetscValidIntPointer(dvalue,4);
+  PetscValidBoolPointer(dvalue,4);
   PetscValidIntPointer(nmax,5);
 
   ierr = PetscOptionsFindPair(options,pre,name,&svalue,&flag);CHKERRQ(ierr);
@@ -2953,7 +2952,7 @@ PetscErrorCode PetscOptionsGetScalarArray(PetscOptions options,const char pre[],
 
   PetscFunctionBegin;
   PetscValidCharPointer(name,3);
-  PetscValidRealPointer(dvalue,4);
+  PetscValidScalarPointer(dvalue,4);
   PetscValidIntPointer(nmax,5);
 
   ierr = PetscOptionsFindPair(options,pre,name,&svalue,&flag);CHKERRQ(ierr);

@@ -283,6 +283,10 @@ PETSC_EXTERN PetscLogDouble petsc_ctog_ct;
 PETSC_EXTERN PetscLogDouble petsc_gtoc_ct;
 PETSC_EXTERN PetscLogDouble petsc_ctog_sz;
 PETSC_EXTERN PetscLogDouble petsc_gtoc_sz;
+PETSC_EXTERN PetscLogDouble petsc_ctog_ct_scalar;
+PETSC_EXTERN PetscLogDouble petsc_gtoc_ct_scalar;
+PETSC_EXTERN PetscLogDouble petsc_ctog_sz_scalar;
+PETSC_EXTERN PetscLogDouble petsc_gtoc_sz_scalar;
 PETSC_EXTERN PetscLogDouble petsc_gflops;
 PETSC_EXTERN PetscLogDouble petsc_gtime;
 #if defined(PETSC_USE_DEBUG)
@@ -302,6 +306,22 @@ PETSC_STATIC_INLINE PetscErrorCode PetscLogGpuToCpu(PetscLogDouble size)
   PetscFunctionBegin;
   petsc_gtoc_ct += 1;
   petsc_gtoc_sz += size;
+  PetscFunctionReturn(0);
+}
+
+PETSC_STATIC_INLINE PetscErrorCode PetscLogCpuToGpuScalar(PetscLogDouble size)
+{
+  PetscFunctionBegin;
+  petsc_ctog_ct_scalar += 1;
+  petsc_ctog_sz_scalar += size;
+  PetscFunctionReturn(0);
+}
+
+PETSC_STATIC_INLINE PetscErrorCode PetscLogGpuToCpuScalar(PetscLogDouble size)
+{
+  PetscFunctionBegin;
+  petsc_gtoc_ct_scalar += 1;
+  petsc_gtoc_sz_scalar += size;
   PetscFunctionReturn(0);
 }
 
@@ -330,56 +350,15 @@ PETSC_STATIC_INLINE PetscErrorCode PetscLogGpuFlops(PetscLogDouble n)
   PetscFunctionReturn(0);
 }
 
-/*@
-       PetscLogGpuTimeBegin - Start timer for device
-
-   Level: intermediate
-
-      Notes:
-        The timer is run on the CPU, it is a separate logging of time devoted to GPU computations (including kernel launch times).
-        This timer should NOT include times for data transfers between the GPU and CPU, nor setup actions such as allocating space.
-        The regular logging captures the time for data transfers and any CPU activites during the event
-        It is used to compute the flop rate on the GPU as it is actively engaged in running a kernel.
-
-
-.seealso:  PetscLogView(), PetscLogGpuFlops(), PetscLogGpuTimeEnd()
-@*/
-PETSC_STATIC_INLINE PetscErrorCode PetscLogGpuTimeBegin()
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-#if defined(PETSC_USE_DEBUG)
-  if (petsc_gtime_inuse) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Forgot to call PetscLogGpuTimeEnd()?");
-  petsc_gtime_inuse = PETSC_TRUE;
-#endif
-  ierr = PetscTimeSubtract(&petsc_gtime);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-/*@
-       PetscLogGpuTimeEnd - Stop timer for device
-
-   Level: intermediate
-
-.seealso:  PetscLogView(), PetscLogGpuFlops(), PetscLogGpuTimeBegin()
-@*/
-PETSC_STATIC_INLINE PetscErrorCode PetscLogGpuTimeEnd()
-{
-  PetscErrorCode ierr;
-  PetscFunctionBegin;
-#if defined(PETSC_USE_DEBUG)
-  if (!petsc_gtime_inuse) SETERRQ(PETSC_COMM_SELF,PETSC_ERR_PLIB,"Forgot to call PetscLogGpuTimeBegin()?");
-  petsc_gtime_inuse = PETSC_FALSE;
-#endif
-  ierr = PetscTimeAdd(&petsc_gtime);CHKERRQ(ierr);
-  PetscFunctionReturn(0);
-}
-
 PETSC_STATIC_INLINE PetscErrorCode PetscLogGpuTimeAdd(PetscLogDouble t)
 {
   PetscFunctionBegin;
   petsc_gtime += t;
   PetscFunctionReturn(0);
 }
+
+PETSC_EXTERN PetscErrorCode PetscLogGpuTimeBegin(void);
+PETSC_EXTERN PetscErrorCode PetscLogGpuTimeEnd(void);
 #endif
 
 PETSC_EXTERN PetscErrorCode PetscGetFlops(PetscLogDouble *);
@@ -572,7 +551,7 @@ PETSC_STATIC_INLINE int PetscMPIParallelComm(MPI_Comm comm)
   ((petsc_wait_all_ct++,petsc_sum_of_waits_ct += (PetscLogDouble) (count),0) || MPI_Waitall((count),(array_of_requests),(array_of_statuses)))
 
 #define MPI_Allreduce(sendbuf,recvbuf,count,datatype,op,comm) \
-  ((petsc_allreduce_ct += PetscMPIParallelComm((comm)),0) || MPI_Allreduce((sendbuf),(recvbuf),(count),(datatype),(op),(comm)))
+  (petsc_allreduce_ct += PetscMPIParallelComm((comm)),MPI_Allreduce((sendbuf),(recvbuf),(count),(datatype),(op),(comm)))
 
 #define MPI_Bcast(buffer,count,datatype,root,comm) \
   ((petsc_allreduce_ct += PetscMPIParallelComm((comm)),0) || MPI_Bcast((buffer),(count),(datatype),(root),(comm)))
@@ -653,6 +632,7 @@ PETSC_STATIC_INLINE int PetscMPIParallelComm(MPI_Comm comm)
 
 #define MPI_Start_neighbor_alltoallv(outdegree,indegree,sendbuf,sendcnts,sdispls,sendtype,recvbuf,recvcnts,rdispls,recvtype,comm) \
   (((outdegree) || (indegree)) && MPI_Neighbor_alltoallv((sendbuf),(sendcnts),(sdispls),(sendtype),(recvbuf),(recvcnts),(rdispls),(recvtype),(comm)))
+
 #endif /* !MPIUNI_H && ! PETSC_HAVE_BROKEN_RECURSIVE_MACRO */
 
 #else  /* ---Logging is turned off --------------------------------------------*/
@@ -717,6 +697,8 @@ PETSC_EXTERN PetscErrorCode PetscLogObjectState(PetscObject,const char[],...);
 #if defined(PETSC_HAVE_DEVICE)
 #define PetscLogCpuToGpu(a)                0
 #define PetscLogGpuToCpu(a)                0
+#define PetscLogCpuToGpuScalar(a)          0
+#define PetscLogGpuToCpuScalar(a)          0
 #define PetscLogGpuFlops(a)                0
 #define PetscLogGpuTimeBegin()             0
 #define PetscLogGpuTimeEnd()               0

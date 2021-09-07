@@ -130,6 +130,7 @@ class Logger(args.ArgumentProcessor):
     self.log.close()
 
   def saveLog(self):
+    if self.debugLevel <= 3: return
     import io
     self.logBkp = self.log
     if sys.version_info < (3,):
@@ -138,6 +139,7 @@ class Logger(args.ArgumentProcessor):
       self.log = io.StringIO()
 
   def restoreLog(self):
+    if self.debugLevel <= 3: return
     s = self.log.getvalue()
     self.log.close()
     self.log = self.logBkp
@@ -221,10 +223,10 @@ class Logger(args.ArgumentProcessor):
       self.logPrint('=============================================================================================', debugLevel = debugLevel, debugSection = debugSection)
     return
 
-  def logPrintBox(self,msg, debugLevel = -1, debugSection = 'screen', indent = 1, comm = None):
+  def logPrintBox(self,msg, debugLevel = -1, debugSection = 'screen', indent = 1, comm = None, rmDir = 1):
     self.logClear()
     self.logPrintDivider(debugLevel = debugLevel, debugSection = debugSection)
-    [self.logPrint('      '+line, debugLevel = debugLevel, debugSection = debugSection) for line in msg.split('\n')]
+    [self.logPrint('      '+line, debugLevel = debugLevel, debugSection = debugSection, rmDir = rmDir) for line in msg.split('\n')]
     self.logPrintDivider(debugLevel = debugLevel, debugSection = debugSection)
     self.logPrint('', debugLevel = debugLevel, debugSection = debugSection)
     return
@@ -241,15 +243,16 @@ class Logger(args.ArgumentProcessor):
     RemoveDirectory = backupRemoveDirectory
 
 
-  def logWrite(self, msg, debugLevel = -1, debugSection = None, forceScroll = 0):
+  def logWrite(self, msg, debugLevel = -1, debugSection = None, forceScroll = 0, rmDir = 1):
     '''Write the message to the log streams'''
     '''Generally goes to the file but not the screen'''
+    if not msg: return
     for writeAll, f in enumerate([self.out, self.log]):
       if self.checkWrite(f, debugLevel, debugSection, writeAll):
         if not forceScroll and not writeAll and self.linewidth > 0:
           global RemoveDirectory
           self.logBack()
-          msg = msg.replace(RemoveDirectory,'')
+          if rmDir: msg = msg.replace(RemoveDirectory,'')
           for ms in msg.split('\n'):
             f.write(ms[0:self.linewidth])
             f.write(''.join([' '] * (self.linewidth - len(ms))))
@@ -262,12 +265,12 @@ class Logger(args.ArgumentProcessor):
           f.flush()
     return
 
-  def logPrint(self, msg, debugLevel = -1, debugSection = None, indent = 1, comm = None, forceScroll = 0):
+  def logPrint(self, msg, debugLevel = -1, debugSection = None, indent = 1, comm = None, forceScroll = 0, rmDir = 1):
     '''Write the message to the log streams with proper indentation and a newline'''
     '''Generally goes to the file and the screen'''
     if indent:
       self.logIndent(debugLevel, debugSection, comm)
-    self.logWrite(msg, debugLevel, debugSection, forceScroll = forceScroll)
+    self.logWrite(msg, debugLevel, debugSection, forceScroll = forceScroll, rmDir = rmDir)
     for writeAll, f in enumerate([self.out, self.log]):
       if self.checkWrite(f, debugLevel, debugSection, writeAll):
         if writeAll or self.linewidth < 0:

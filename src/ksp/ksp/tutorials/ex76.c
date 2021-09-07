@@ -57,7 +57,7 @@ int main(int argc,char **args)
   ierr = MatLoad(aux,viewer);CHKERRQ(ierr);
   ierr = PetscViewerDestroy(&viewer);CHKERRQ(ierr);
   flg = PETSC_FALSE;
-  ierr = PetscOptionsGetBool(NULL,NULL,"-pc_hpddm_levels_1_st_share_sub_ksp",&flg,NULL);
+  ierr = PetscOptionsGetBool(NULL,NULL,"-pc_hpddm_levels_1_st_share_sub_ksp",&flg,NULL);CHKERRQ(ierr);
   if (flg) { /* PETSc LU/Cholesky is struggling numerically for bs > 1          */
              /* only set the proper bs for the geneo_share_* tests, 1 otherwise */
     ierr = MatSetBlockSizesFromMats(aux,A,A);CHKERRQ(ierr);
@@ -198,5 +198,19 @@ int main(int argc,char **args)
       filter: sed -e "s/Linear solve converged due to CONVERGED_RTOL iterations 37/Linear solve converged due to CONVERGED_RTOL iterations 25/g"
       nsize: 4
       args: -ksp_converged_reason -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type cholesky -pc_hpddm_levels_1_eps_nev 20 -pc_hpddm_levels_2_p 2 -pc_hpddm_levels_2_mat_type baij -pc_hpddm_levels_2_eps_nev 5 -pc_hpddm_levels_2_sub_pc_type cholesky -pc_hpddm_levels_2_ksp_max_it 10 -pc_hpddm_levels_2_ksp_type hpddm -pc_hpddm_levels_2_ksp_hpddm_type gmres -ksp_type hpddm -ksp_hpddm_variant flexible -pc_hpddm_coarse_mat_type baij -mat_type aij -load_dir ${DATAFILESPATH}/matrices/hpddm/GENEO -rhs 4 -pc_hpddm_coarse_correction {{additive deflated balanced}shared output}
+
+   testset:
+      requires: hpddm slepc datafilespath double !complex !define(PETSC_USE_64BIT_INDICES) define(PETSC_HAVE_DYNAMIC_LIBRARIES) define(PETSC_USE_SHARED_LIBRARIES) mumps define(PETSC_HAVE_OPENMP_SUPPORT)
+      filter: egrep -e "Linear solve" -e "      executing" | sed -e "s/MPI =      1/MPI =      2/g" -e "s/OMP =      1/OMP =      2/g"
+      nsize: 4
+      args: -ksp_converged_reason -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type cholesky -pc_hpddm_levels_1_eps_nev 15 -pc_hpddm_levels_1_st_pc_type cholesky -pc_hpddm_coarse_p {{1 2}shared output} -load_dir ${DATAFILESPATH}/matrices/hpddm/GENEO -pc_hpddm_coarse_pc_factor_mat_solver_type mumps -pc_hpddm_coarse_mat_mumps_icntl_4 2 -pc_hpddm_coarse_mat_mumps_use_omp_threads {{1 2}shared output}
+      test:
+        suffix: geneo_mumps_use_omp_threads_1
+        output_file: output/ex76_geneo_mumps_use_omp_threads.out
+        args: -pc_hpddm_coarse_mat_type {{baij sbaij}shared output}
+      test:
+        suffix: geneo_mumps_use_omp_threads_2
+        output_file: output/ex76_geneo_mumps_use_omp_threads.out
+        args: -pc_hpddm_coarse_mat_type aij -pc_hpddm_levels_1_eps_threshold 0.3 -pc_hpddm_coarse_pc_type cholesky
 
 TEST*/

@@ -28,7 +28,6 @@
    the calling sequence
 $     SETERRQ(comm,number,p,mess)
 
-
 .seealso:  PetscReturnErrorHandler()
  @*/
 PetscErrorCode  PetscIgnoreErrorHandler(MPI_Comm comm,int line,const char *fun,const char *file,PetscErrorCode n,PetscErrorType p,const char *mess,void *ctx)
@@ -176,7 +175,6 @@ PetscErrorCode  PetscTraceBackErrorHandler(MPI_Comm comm,int line,const char *fu
   PetscBool      flg1 = PETSC_FALSE,flg2 = PETSC_FALSE,flg3 = PETSC_FALSE;
   PetscMPIInt    rank = 0;
 
-  PetscFunctionBegin;
   if (comm != PETSC_COMM_SELF) MPI_Comm_rank(comm,&rank);
 
   if (!rank) {
@@ -208,7 +206,7 @@ PetscErrorCode  PetscTraceBackErrorHandler(MPI_Comm comm,int line,const char *fu
         if (text) (*PetscErrorPrintf)("%s\n",text);
       }
       if (mess) (*PetscErrorPrintf)("%s\n",mess);
-      (*PetscErrorPrintf)("See https://www.mcs.anl.gov/petsc/documentation/faq.html for trouble shooting.\n");
+      (*PetscErrorPrintf)("See https://petsc.org/release/faq/ for trouble shooting.\n");
       (*PetscErrorPrintf)("%s\n",version);
       if (PetscErrorPrintfInitializeCalled) (*PetscErrorPrintf)("%s on a %s named %s by %s %s\n",pname,arch,hostname,username,date);
       (*PetscErrorPrintf)("Configure options %s\n",petscconfigureoptions);
@@ -217,6 +215,9 @@ PetscErrorCode  PetscTraceBackErrorHandler(MPI_Comm comm,int line,const char *fu
     (*PetscErrorPrintf)("#%d %s() at %s:%d\n",cnt++,fun,file,line);
     PetscStrncmp(fun,"main",4,&ismain);
     if (ismain) {
+      if ((n <= PETSC_ERR_MIN_VALUE) || (n >= PETSC_ERR_MAX_VALUE)) {
+        (*PetscErrorPrintf)("Reached the main program with an out-of-range error code %d. This should never happen\n",n);
+      }
       PetscOptionsViewError();
       PetscErrorPrintfHilight();
       (*PetscErrorPrintf)("----------------End of Error Message -------send entire error message to petsc-maint@mcs.anl.gov----------\n");
@@ -225,8 +226,7 @@ PetscErrorCode  PetscTraceBackErrorHandler(MPI_Comm comm,int line,const char *fu
   } else {
     /* do not print error messages since process 0 will print them, sleep before aborting so will not accidently kill process 0*/
     PetscSleep(10.0);
-    abort();
+    exit(0);
   }
-  PetscFunctionReturn(n);
+  return n;
 }
-

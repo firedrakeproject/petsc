@@ -143,7 +143,7 @@ PETSC_EXTERN PetscErrorCode KSPGetPC(KSP,PC*);
 PETSC_EXTERN PetscErrorCode KSPMonitor(KSP,PetscInt,PetscReal);
 PETSC_EXTERN PetscErrorCode KSPMonitorSet(KSP,PetscErrorCode (*)(KSP,PetscInt,PetscReal,void*),void*,PetscErrorCode (*)(void**));
 PETSC_EXTERN PetscErrorCode KSPMonitorCancel(KSP);
-PETSC_EXTERN PetscErrorCode KSPGetMonitorContext(KSP,void**);
+PETSC_EXTERN PetscErrorCode KSPGetMonitorContext(KSP,void*);
 PETSC_EXTERN PetscErrorCode KSPGetResidualHistory(KSP,const PetscReal*[],PetscInt*);
 PETSC_EXTERN PetscErrorCode KSPSetResidualHistory(KSP,PetscReal[],PetscInt,PetscBool);
 PETSC_EXTERN PetscErrorCode KSPGetErrorHistory(KSP,const PetscReal*[],PetscInt*);
@@ -174,7 +174,6 @@ PETSC_EXTERN PetscErrorCode PCDeflationGetCoarseKSP(PC,KSP*);
 PETSC_EXTERN PetscFunctionList PCMGCoarseList;
 PETSC_EXTERN PetscErrorCode PCMGRegisterCoarseSpaceConstructor(const char[], PetscErrorCode (*)(PC, PetscInt, DM, KSP, PetscInt, const Vec[], Vec **));
 PETSC_EXTERN PetscErrorCode PCMGGetCoarseSpaceConstructor(const char[], PetscErrorCode (**)(PC, PetscInt, DM, KSP, PetscInt, const Vec[], Vec **));
-
 
 PETSC_EXTERN PetscErrorCode KSPBuildSolution(KSP,Vec,Vec*);
 PETSC_EXTERN PetscErrorCode KSPBuildResidual(KSP,Vec,Vec,Vec*);
@@ -664,7 +663,6 @@ M*/
     Notes:
     Run with -ksp_error_if_not_converged to stop the program when the error is detected and print an error message with details.
 
-
 .seealso:  KSPSolve(), KSPGetConvergedReason(), KSPConvergedReason, KSPSetTolerances()
 
 M*/
@@ -682,7 +680,7 @@ M*/
 PETSC_EXTERN PetscErrorCode KSPSetConvergenceTest(KSP,PetscErrorCode (*)(KSP,PetscInt,PetscReal,KSPConvergedReason*,void*),void*,PetscErrorCode (*)(void*));
 PETSC_EXTERN PetscErrorCode KSPGetConvergenceTest(KSP,PetscErrorCode (**)(KSP,PetscInt,PetscReal,KSPConvergedReason*,void*),void**,PetscErrorCode (**)(void*));
 PETSC_EXTERN PetscErrorCode KSPGetAndClearConvergenceTest(KSP,PetscErrorCode (**)(KSP,PetscInt,PetscReal,KSPConvergedReason*,void*),void**,PetscErrorCode (**)(void*));
-PETSC_EXTERN PetscErrorCode KSPGetConvergenceContext(KSP,void**);
+PETSC_EXTERN PetscErrorCode KSPGetConvergenceContext(KSP,void*);
 PETSC_EXTERN PetscErrorCode KSPConvergedDefault(KSP,PetscInt,PetscReal,KSPConvergedReason*,void*);
 PETSC_EXTERN PetscErrorCode KSPLSQRConvergedDefault(KSP,PetscInt,PetscReal,KSPConvergedReason*,void*);
 PETSC_EXTERN PetscErrorCode KSPConvergedDefaultDestroy(void*);
@@ -860,7 +858,6 @@ PETSC_EXTERN PetscErrorCode DMProjectField(DM, PetscReal, Vec,
                                                      const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                      const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
                                                      PetscReal, const PetscReal [], PetscInt, const PetscScalar[], PetscScalar []), InsertMode, Vec);
-
 
 PETSC_EXTERN PetscErrorCode DMAdaptInterpolator(DM, DM, Mat, KSP, PetscInt, Vec[], Vec[], Mat *, void *);
 PETSC_EXTERN PetscErrorCode DMCheckInterpolator(DM, Mat, PetscInt, Vec[], Vec[], PetscReal);

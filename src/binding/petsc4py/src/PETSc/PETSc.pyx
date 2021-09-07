@@ -128,6 +128,7 @@ include "petscfe.pxi"
 include "petscsct.pxi"
 include "petscsec.pxi"
 include "petscmat.pxi"
+include "petscmatpartitioning.pxi"
 include "petscpc.pxi"
 include "petscksp.pxi"
 include "petscsnes.pxi"
@@ -168,6 +169,7 @@ include "FE.pyx"
 include "Scatter.pyx"
 include "Section.pyx"
 include "Mat.pyx"
+include "MatPartitioning.pyx"
 include "PC.pyx"
 include "KSP.pyx"
 include "SNES.pyx"
@@ -215,7 +217,7 @@ cdef int traceback(MPI_Comm       comm,
     cdef object tbl = tracebacklist
     fun = bytes2str(cfun)
     fnm = bytes2str(cfile)
-    m = "%s() line %d in %s" % (fun, line, fnm)
+    m = "%s() at %s:%d" % (fun, fnm, line)
     tbl.insert(0, m)
     if p != PETSC_ERROR_INITIAL:
         return n
@@ -256,6 +258,10 @@ cdef extern from "stdlib.h" nogil:
     void* malloc(size_t)
     void* realloc (void*,size_t)
     void free(void*)
+
+cdef extern from "stdarg.h" nogil:
+    ctypedef struct va_list:
+        pass
 
 cdef extern from "string.h"  nogil:
     void* memset(void*,int,size_t)
@@ -316,10 +322,15 @@ cdef void finalize() nogil:
     cdef int ierr = 0
     # deallocate command line arguments
     global PyPetsc_Argc; global PyPetsc_Argv;
+    global PetscVFPrintf; global prevfprintf;
     delinitargs(&PyPetsc_Argc, &PyPetsc_Argv)
     # manage PETSc finalization
     if not (<int>PetscInitializeCalled): return
     if (<int>PetscFinalizeCalled): return
+    # stop stdout/stderr redirect
+    if (prevfprintf != NULL):
+        PetscVFPrintf = prevfprintf
+        prevfprintf = NULL
     # deinstall Python error handler
     ierr = PetscPopErrorHandler()
     if ierr != 0:
@@ -331,6 +342,42 @@ cdef void finalize() nogil:
         fprintf(stderr, "PetscFinalize() failed "
                 "[error code: %d]\n", ierr)
     # and we are done, see you later !!
+
+cdef int PetscVFPrintf_PythonStd(FILE *fd, const char formt[], va_list ap):
+    import sys
+    cdef char cstring[8192]
+    cdef size_t stringlen = sizeof(cstring)
+    cdef size_t final_pos
+    if (fd == PETSC_STDOUT) and not (sys.stdout == sys.__stdout__):
+        CHKERR( PetscVSNPrintf(&cstring[0],stringlen,formt,&final_pos,ap))
+        if final_pos > 0 and cstring[final_pos-1] == '\x00':
+            final_pos -= 1
+        ustring = cstring[:final_pos].decode('UTF-8')
+        sys.stdout.write(ustring)
+    elif (fd == PETSC_STDERR) and not (sys.stderr == sys.__stderr__):
+        CHKERR( PetscVSNPrintf(&cstring[0],stringlen,formt,&final_pos,ap))
+        if final_pos > 0 and cstring[final_pos-1] == '\x00':
+            final_pos -= 1
+        ustring = cstring[:final_pos].decode('UTF-8')
+        sys.stderr.write(ustring)
+    else:
+        PetscVFPrintfDefault(fd, formt, ap)
+    return 0
+
+cdef int(*prevfprintf)(FILE*, const char*, va_list)
+prevfprintf = NULL
+
+cdef int _push_vfprintf(int (*vfprintf)(FILE *, const char*, va_list)) except -1:
+    global PetscVFPrintf, prevfprintf
+    assert prevfprintf == NULL
+    prevfprintf = PetscVFPrintf
+    PetscVFPrintf = vfprintf
+
+cdef int _pop_vfprintf() except -1:
+    global PetscVFPrintf, prevfprintf
+    assert prevfprintf != NULL
+    PetscVFPrintf = prevfprintf
+    prevfprintf == NULL
 
 cdef int initialize(object args, object comm) except -1:
     if (<int>PetscInitializeCalled): return 1
@@ -347,6 +394,9 @@ cdef int initialize(object args, object comm) except -1:
     cdef PetscErrorHandlerFunction handler = NULL
     handler = <PetscErrorHandlerFunction>PetscPythonErrorHandler
     CHKERR( PetscPushErrorHandler(handler, NULL) )
+    import sys
+    if (sys.stdout != sys.__stdout__) or (sys.stderr != sys.__stderr__):
+        _push_vfprintf(&PetscVFPrintf_PythonStd)
     # register finalization function
     if Py_AtExit(finalize) < 0:
         PySys_WriteStderr(b"warning: could not register %s with Py_AtExit()",
@@ -354,27 +404,28 @@ cdef int initialize(object args, object comm) except -1:
     return 1 # and we are done, enjoy !!
 
 cdef extern from *:
-    PetscClassId PETSC_OBJECT_CLASSID      "PETSC_OBJECT_CLASSID"
-    PetscClassId PETSC_VIEWER_CLASSID      "PETSC_VIEWER_CLASSID"
-    PetscClassId PETSC_RANDOM_CLASSID      "PETSC_RANDOM_CLASSID"
-    PetscClassId PETSC_IS_CLASSID          "IS_CLASSID"
-    PetscClassId PETSC_LGMAP_CLASSID       "IS_LTOGM_CLASSID"
-    PetscClassId PETSC_SF_CLASSID          "PETSCSF_CLASSID"
-    PetscClassId PETSC_VEC_CLASSID         "VEC_CLASSID"
-    PetscClassId PETSC_SECTION_CLASSID     "PETSC_SECTION_CLASSID"
-    PetscClassId PETSC_MAT_CLASSID         "MAT_CLASSID"
-    PetscClassId PETSC_NULLSPACE_CLASSID   "MAT_NULLSPACE_CLASSID"
-    PetscClassId PETSC_PC_CLASSID          "PC_CLASSID"
-    PetscClassId PETSC_KSP_CLASSID         "KSP_CLASSID"
-    PetscClassId PETSC_SNES_CLASSID        "SNES_CLASSID"
-    PetscClassId PETSC_TS_CLASSID          "TS_CLASSID"
-    PetscClassId PETSC_TAO_CLASSID         "TAO_CLASSID"
-    PetscClassId PETSC_AO_CLASSID          "AO_CLASSID"
-    PetscClassId PETSC_DM_CLASSID          "DM_CLASSID"
-    PetscClassId PETSC_DS_CLASSID          "PETSCDS_CLASSID"
-    PetscClassId PETSC_PARTITIONER_CLASSID "PETSCPARTITIONER_CLASSID"
-    PetscClassId PETSC_FE_CLASSID          "PETSCFE_CLASSID"
-    PetscClassId PETSC_DMLABEL_CLASSID     "DMLABEL_CLASSID"
+    PetscClassId PETSC_OBJECT_CLASSID           "PETSC_OBJECT_CLASSID"
+    PetscClassId PETSC_VIEWER_CLASSID           "PETSC_VIEWER_CLASSID"
+    PetscClassId PETSC_RANDOM_CLASSID           "PETSC_RANDOM_CLASSID"
+    PetscClassId PETSC_IS_CLASSID               "IS_CLASSID"
+    PetscClassId PETSC_LGMAP_CLASSID            "IS_LTOGM_CLASSID"
+    PetscClassId PETSC_SF_CLASSID               "PETSCSF_CLASSID"
+    PetscClassId PETSC_VEC_CLASSID              "VEC_CLASSID"
+    PetscClassId PETSC_SECTION_CLASSID          "PETSC_SECTION_CLASSID"
+    PetscClassId PETSC_MAT_CLASSID              "MAT_CLASSID"
+    PetscClassId PETSC_MAT_PARTITIONING_CLASSID "MAT_PARTITIONING_CLASSID"
+    PetscClassId PETSC_NULLSPACE_CLASSID        "MAT_NULLSPACE_CLASSID"
+    PetscClassId PETSC_PC_CLASSID               "PC_CLASSID"
+    PetscClassId PETSC_KSP_CLASSID              "KSP_CLASSID"
+    PetscClassId PETSC_SNES_CLASSID             "SNES_CLASSID"
+    PetscClassId PETSC_TS_CLASSID               "TS_CLASSID"
+    PetscClassId PETSC_TAO_CLASSID              "TAO_CLASSID"
+    PetscClassId PETSC_AO_CLASSID               "AO_CLASSID"
+    PetscClassId PETSC_DM_CLASSID               "DM_CLASSID"
+    PetscClassId PETSC_DS_CLASSID               "PETSCDS_CLASSID"
+    PetscClassId PETSC_PARTITIONER_CLASSID      "PETSCPARTITIONER_CLASSID"
+    PetscClassId PETSC_FE_CLASSID               "PETSCFE_CLASSID"
+    PetscClassId PETSC_DMLABEL_CLASSID          "DMLABEL_CLASSID"
 
 cdef bint registercalled = 0
 
@@ -404,27 +455,28 @@ cdef int register() except -1:
     import_libpetsc4py()
     CHKERR( PetscPythonRegisterAll() )
     # register Python types
-    PyPetscType_Register(PETSC_OBJECT_CLASSID,      Object)
-    PyPetscType_Register(PETSC_VIEWER_CLASSID,      Viewer)
-    PyPetscType_Register(PETSC_RANDOM_CLASSID,      Random)
-    PyPetscType_Register(PETSC_IS_CLASSID,          IS)
-    PyPetscType_Register(PETSC_LGMAP_CLASSID,       LGMap)
-    PyPetscType_Register(PETSC_SF_CLASSID,          SF)
-    PyPetscType_Register(PETSC_VEC_CLASSID,         Vec)
-    PyPetscType_Register(PETSC_SECTION_CLASSID,     Section)
-    PyPetscType_Register(PETSC_MAT_CLASSID,         Mat)
-    PyPetscType_Register(PETSC_NULLSPACE_CLASSID,   NullSpace)
-    PyPetscType_Register(PETSC_PC_CLASSID,          PC)
-    PyPetscType_Register(PETSC_KSP_CLASSID,         KSP)
-    PyPetscType_Register(PETSC_SNES_CLASSID,        SNES)
-    PyPetscType_Register(PETSC_TS_CLASSID,          TS)
-    PyPetscType_Register(PETSC_TAO_CLASSID,         TAO)
-    PyPetscType_Register(PETSC_PARTITIONER_CLASSID, Partitioner)
-    PyPetscType_Register(PETSC_AO_CLASSID,          AO)
-    PyPetscType_Register(PETSC_DM_CLASSID,          DM)
-    PyPetscType_Register(PETSC_DS_CLASSID,          DS)
-    PyPetscType_Register(PETSC_FE_CLASSID,          FE)
-    PyPetscType_Register(PETSC_DMLABEL_CLASSID,     DMLabel)
+    PyPetscType_Register(PETSC_OBJECT_CLASSID,           Object)
+    PyPetscType_Register(PETSC_VIEWER_CLASSID,           Viewer)
+    PyPetscType_Register(PETSC_RANDOM_CLASSID,           Random)
+    PyPetscType_Register(PETSC_IS_CLASSID,               IS)
+    PyPetscType_Register(PETSC_LGMAP_CLASSID,            LGMap)
+    PyPetscType_Register(PETSC_SF_CLASSID,               SF)
+    PyPetscType_Register(PETSC_VEC_CLASSID,              Vec)
+    PyPetscType_Register(PETSC_SECTION_CLASSID,          Section)
+    PyPetscType_Register(PETSC_MAT_CLASSID,              Mat)
+    PyPetscType_Register(PETSC_MAT_PARTITIONING_CLASSID, MatPartitioning)
+    PyPetscType_Register(PETSC_NULLSPACE_CLASSID,        NullSpace)
+    PyPetscType_Register(PETSC_PC_CLASSID,               PC)
+    PyPetscType_Register(PETSC_KSP_CLASSID,              KSP)
+    PyPetscType_Register(PETSC_SNES_CLASSID,             SNES)
+    PyPetscType_Register(PETSC_TS_CLASSID,               TS)
+    PyPetscType_Register(PETSC_TAO_CLASSID,              TAO)
+    PyPetscType_Register(PETSC_PARTITIONER_CLASSID,      Partitioner)
+    PyPetscType_Register(PETSC_AO_CLASSID,               AO)
+    PyPetscType_Register(PETSC_DM_CLASSID,               DM)
+    PyPetscType_Register(PETSC_DS_CLASSID,               DS)
+    PyPetscType_Register(PETSC_FE_CLASSID,               FE)
+    PyPetscType_Register(PETSC_DMLABEL_CLASSID,          DMLabel)
     return 0 # and we are done, enjoy !!
 
 # --------------------------------------------------------------------
@@ -467,4 +519,13 @@ def _finalize():
     global citations_registry
     citations_registry.clear()
 
+def _push_python_vfprintf():
+    _push_vfprintf(&PetscVFPrintf_PythonStd)
+
+def _pop_python_vfprintf():
+    _pop_vfprintf()
+
+def _stdout_is_stderr():
+    global PETSC_STDOUT, PETSC_STDERR;
+    return PETSC_STDOUT == PETSC_STDERR
 # --------------------------------------------------------------------

@@ -164,6 +164,7 @@ PetscErrorCode SNESVIComputeJacobian(Mat jac, Mat jac_pre,Vec Da, Vec Db)
   PetscErrorCode ierr;
 
   /* Do row scaling  and add diagonal perturbation */
+  PetscFunctionBegin;
   ierr = MatDiagonalScale(jac,Db,NULL);CHKERRQ(ierr);
   ierr = MatDiagonalSet(jac,Da,ADD_VALUES);CHKERRQ(ierr);
   if (jac != jac_pre) { /* If jac and jac_pre are different */
@@ -195,8 +196,6 @@ PetscErrorCode SNESVIComputeMeritFunctionGradient(Mat H, Vec phi, Vec dpsi)
   ierr = MatMultTranspose(H,phi,dpsi);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
-
 
 /*
    SNESSolve_VINEWTONSSLS - Solves the complementarity problem with a semismooth Newton
@@ -436,7 +435,6 @@ static PetscErrorCode SNESSetFromOptions_VINEWTONSSLS(PetscOptionItems *PetscOpt
   ierr = PetscOptionsTail();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
-
 
 /* -------------------------------------------------------------------------- */
 /*MC

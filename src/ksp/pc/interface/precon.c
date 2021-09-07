@@ -84,7 +84,7 @@ PetscErrorCode  PCReset(PC pc)
   PetscFunctionReturn(0);
 }
 
-/*@
+/*@C
    PCDestroy - Destroys PC context that was created with PCCreate().
 
    Collective on PC
@@ -377,7 +377,7 @@ PetscErrorCode  PCCreate(MPI_Comm comm,PC *newpc)
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  PetscValidPointer(newpc,1);
+  PetscValidPointer(newpc,2);
   *newpc = NULL;
   ierr = PCInitializePackage();CHKERRQ(ierr);
 
@@ -429,12 +429,13 @@ PetscErrorCode  PCApply(PC pc,Vec x,Vec y)
   PetscValidHeaderSpecific(y,VEC_CLASSID,3);
   if (x == y) SETERRQ(PetscObjectComm((PetscObject)pc),PETSC_ERR_ARG_IDN,"x and y must be different vectors");
   if (pc->erroriffailure) {ierr = VecValidValues(x,2,PETSC_TRUE);CHKERRQ(ierr);}
-  /* use pmat to check vector sizes since for KSPLQR the pmat may be of a different size than mat */
+  /* use pmat to check vector sizes since for KSPLSQR the pmat may be of a different size than mat */
   ierr = MatGetLocalSize(pc->pmat,&m,&n);CHKERRQ(ierr);
-  ierr = VecGetLocalSize(x,&nv);CHKERRQ(ierr);
-  ierr = VecGetLocalSize(y,&mv);CHKERRQ(ierr);
-  if (mv != m) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Preconditioner number of local rows %D does not equal resulting vector number of rows %D",m,mv);
-  if (nv != n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Preconditioner number of local columns %D does not equal resulting vector number of rows %D",n,nv);
+  ierr = VecGetLocalSize(x,&mv);CHKERRQ(ierr);
+  ierr = VecGetLocalSize(y,&nv);CHKERRQ(ierr);
+  /* check pmat * y = x is feasible */
+  if (mv != m) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Preconditioner number of local rows %D does not equal input vector size %D",m,mv);
+  if (nv != n) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_ARG_SIZ,"Preconditioner number of local columns %D does not equal output vector size %D",n,nv);
   ierr = VecSetErrorIfLocked(y,3);CHKERRQ(ierr);
 
   ierr = PCSetUp(pc);CHKERRQ(ierr);
@@ -468,26 +469,27 @@ PetscErrorCode  PCMatApply(PC pc,Mat X,Mat Y)
 {
   Mat            A;
   Vec            cy, cx;
-  PetscInt       m1, M1, m2, M2, n1, N1, n2, N2;
+  PetscInt       m1, M1, m2, M2, n1, N1, n2, N2, m3, M3, n3, N3;
   PetscBool      match;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
-  PetscValidHeaderSpecific(Y, MAT_CLASSID, 2);
-  PetscValidHeaderSpecific(X, MAT_CLASSID, 3);
-  PetscCheckSameComm(pc, 1, Y, 2);
-  PetscCheckSameComm(pc, 1, X, 3);
+  PetscValidHeaderSpecific(X, MAT_CLASSID, 2);
+  PetscValidHeaderSpecific(Y, MAT_CLASSID, 3);
+  PetscCheckSameComm(pc, 1, X, 2);
+  PetscCheckSameComm(pc, 1, Y, 3);
   if (Y == X) SETERRQ(PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_IDN, "Y and X must be different matrices");
   ierr = PCGetOperators(pc, NULL, &A);CHKERRQ(ierr);
-  ierr = MatGetLocalSize(A, &m1, NULL);CHKERRQ(ierr);
-  ierr = MatGetLocalSize(Y, &m2, &n2);CHKERRQ(ierr);
-  ierr = MatGetSize(A, &M1, NULL);CHKERRQ(ierr);
-  ierr = MatGetSize(X, &M2, &N2);CHKERRQ(ierr);
-  if (m1 != m2 || M1 != M2) SETERRQ4(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Cannot use a block of input vectors with (m2,M2) = (%D,%D) for a preconditioner with (m1,M1) = (%D,%D)", m2, M2, m1, M1);
+  ierr = MatGetLocalSize(A, &m3, &n3);CHKERRQ(ierr);
+  ierr = MatGetLocalSize(X, &m2, &n2);CHKERRQ(ierr);
   ierr = MatGetLocalSize(Y, &m1, &n1);CHKERRQ(ierr);
+  ierr = MatGetSize(A, &M3, &N3);CHKERRQ(ierr);
+  ierr = MatGetSize(X, &M2, &N2);CHKERRQ(ierr);
   ierr = MatGetSize(Y, &M1, &N1);CHKERRQ(ierr);
-  if (m1 != m2 || M1 != M2 || n1 != n2 || N1 != N2) SETERRQ8(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Incompatible block of input vectors (m2,M2)x(n2,N2) = (%D,%D)x(%D,%D) and output vectors (m1,M1)x(n1,N1) = (%D,%D)x(%D,%D)", m2, M2, n2, N2, m1, M1, n1, N1);
+  if (n1 != n2 || N1 != N2) SETERRQ4(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Incompatible number of columns between block of input vectors (n,N) = (%D,%D) and block of output vectors (n,N) = (%D,%D)", n2, N2, n1, N1);
+  if (m2 != m3 || M2 != M3) SETERRQ6(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Incompatible layout between block of input vectors (m,M) = (%D,%D) and Pmat (m,M)x(n,N) = (%D,%D)x(%D,%D)", m2, M2, m3, M3, n3, N3);
+  if (m1 != n3 || M1 != N3) SETERRQ6(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Incompatible layout between block of output vectors (m,M) = (%D,%D) and Pmat (m,M)x(n,N) = (%D,%D)x(%D,%D)", m1, M1, m3, M3, n3, N3);
   ierr = PetscObjectBaseTypeCompareAny((PetscObject)Y, &match, MATSEQDENSE, MATMPIDENSE, "");CHKERRQ(ierr);
   if (!match) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Provided block of output vectors not stored in a dense Mat");
   ierr = PetscObjectBaseTypeCompareAny((PetscObject)X, &match, MATSEQDENSE, MATMPIDENSE, "");CHKERRQ(ierr);
@@ -499,12 +501,12 @@ PetscErrorCode  PCMatApply(PC pc,Mat X,Mat Y)
     ierr = PetscLogEventEnd(PC_MatApply, pc, X, Y, 0);CHKERRQ(ierr);
   } else {
     ierr = PetscInfo1(pc, "PC type %s applying column by column\n", ((PetscObject)pc)->type_name);CHKERRQ(ierr);
-    for (n2 = 0; n2 < N2; ++n2) {
-      ierr = MatDenseGetColumnVecRead(X, n2, &cx);CHKERRQ(ierr);
-      ierr = MatDenseGetColumnVecWrite(Y, n2, &cy);CHKERRQ(ierr);
+    for (n1 = 0; n1 < N1; ++n1) {
+      ierr = MatDenseGetColumnVecRead(X, n1, &cx);CHKERRQ(ierr);
+      ierr = MatDenseGetColumnVecWrite(Y, n1, &cy);CHKERRQ(ierr);
       ierr = PCApply(pc, cx, cy);CHKERRQ(ierr);
-      ierr = MatDenseRestoreColumnVecWrite(Y, n2, &cy);CHKERRQ(ierr);
-      ierr = MatDenseRestoreColumnVecRead(X, n2, &cx);CHKERRQ(ierr);
+      ierr = MatDenseRestoreColumnVecWrite(Y, n1, &cy);CHKERRQ(ierr);
+      ierr = MatDenseRestoreColumnVecRead(X, n1, &cx);CHKERRQ(ierr);
     }
   }
   PetscFunctionReturn(0);
@@ -754,7 +756,6 @@ PetscErrorCode  PCApplyBAorAB(PC pc,PCSide side,Vec x,Vec y,Vec work)
 
    Output Parameter:
 .  y - output vector
-
 
    Notes:
     this routine is used internally so that the same Krylov code can be used to solve A x = b and A' x = b, with a preconditioner
@@ -1306,7 +1307,6 @@ $           set size, type, etc of Amat and Pmat
     you do not need to attach a PC to it (the KSP object manages the PC object for you).
     Thus, why should YOU have to create the Mat and attach it to the SNES/KSP/PC, when
     it can be created for you?
-
 
 .seealso: PCSetOperators(), KSPGetOperators(), KSPSetOperators(), PCGetOperatorsSet()
 @*/

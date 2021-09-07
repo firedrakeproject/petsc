@@ -108,6 +108,13 @@ PetscErrorCode MatMatMultNumeric_MPIAIJ_MPIAIJ_nonscalable(Mat A,Mat P,Mat C)
 
   if (!ptap->P_oth && size>1) SETERRQ(PetscObjectComm((PetscObject)C),PETSC_ERR_ARG_WRONGSTATE,"AP cannot be reused. Do not call MatProductClear()");
 
+  /* flag CPU mask for C */
+#if defined(PETSC_HAVE_DEVICE)
+  if (C->offloadmask != PETSC_OFFLOAD_UNALLOCATED) C->offloadmask = PETSC_OFFLOAD_CPU;
+  if (c->A->offloadmask != PETSC_OFFLOAD_UNALLOCATED) c->A->offloadmask = PETSC_OFFLOAD_CPU;
+  if (c->B->offloadmask != PETSC_OFFLOAD_UNALLOCATED) c->B->offloadmask = PETSC_OFFLOAD_CPU;
+#endif
+
   /* 1) get P_oth = ptap->P_oth  and P_loc = ptap->P_loc */
   /*-----------------------------------------------------*/
   /* update numerical values of P_oth and P_loc */
@@ -403,7 +410,7 @@ static PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIDense(Mat A,Mat B,PetscReal f
 {
   PetscErrorCode  ierr;
   Mat_MPIAIJ      *aij=(Mat_MPIAIJ*)A->data;
-  PetscInt        nz=aij->B->cmap->n,nsends,nrecvs,i,nrows_to,j,blda,clda;
+  PetscInt        nz=aij->B->cmap->n,nsends,nrecvs,i,nrows_to,j,blda,clda,m,M,n,N;
   MPIAIJ_MPIDense *contents;
   VecScatter      ctx=aij->Mvctx;
   PetscInt        Am=A->rmap->n,Bm=B->rmap->n,BN=B->cmap->N,Bbn,Bbn1,bs,nrows_from,numBb;
@@ -421,7 +428,11 @@ static PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIDense(Mat A,Mat B,PetscReal f
   if (!cisdense) {
     ierr = MatSetType(C,((PetscObject)B)->type_name);CHKERRQ(ierr);
   }
-  ierr = MatSetSizes(C,Am,B->cmap->n,A->rmap->N,BN);CHKERRQ(ierr);
+  ierr = MatGetLocalSize(C,&m,&n);CHKERRQ(ierr);
+  ierr = MatGetSize(C,&M,&N);CHKERRQ(ierr);
+  if (m == PETSC_DECIDE || n == PETSC_DECIDE || M == PETSC_DECIDE || N == PETSC_DECIDE) {
+    ierr = MatSetSizes(C,Am,B->cmap->n,A->rmap->N,BN);CHKERRQ(ierr);
+  }
   ierr = MatSetBlockSizesFromMats(C,A,B);CHKERRQ(ierr);
   ierr = MatSetUp(C);CHKERRQ(ierr);
   ierr = MatDenseGetLDA(B,&blda);CHKERRQ(ierr);
@@ -478,7 +489,7 @@ static PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIDense(Mat A,Mat B,PetscReal f
   ierr = PetscMalloc1(Bm+1,&disp);CHKERRQ(ierr);
   for (i=0; i<nsends; i++) {
     nrows_to = sstarts[i+1]-sstarts[i];
-    for (j=0; j<nrows_to; j++){
+    for (j=0; j<nrows_to; j++) {
       disp[j] = sindices[sstarts[i]+j]; /* rowB to be sent */
     }
     ierr = MPI_Type_create_indexed_block(nrows_to,1,(const PetscMPIInt *)disp,MPIU_SCALAR,&type1);CHKERRMPI(ierr);
@@ -656,6 +667,12 @@ PetscErrorCode MatMatMultNumeric_MPIAIJ_MPIAIJ(Mat A,Mat P,Mat C)
   ierr = MPI_Comm_size(comm,&size);CHKERRMPI(ierr);
   if (!ptap->P_oth && size>1) SETERRQ(PetscObjectComm((PetscObject)C),PETSC_ERR_ARG_WRONGSTATE,"AP cannot be reused. Do not call MatProductClear()");
 
+  /* flag CPU mask for C */
+#if defined(PETSC_HAVE_DEVICE)
+  if (C->offloadmask != PETSC_OFFLOAD_UNALLOCATED) C->offloadmask = PETSC_OFFLOAD_CPU;
+  if (c->A->offloadmask != PETSC_OFFLOAD_UNALLOCATED) c->A->offloadmask = PETSC_OFFLOAD_CPU;
+  if (c->B->offloadmask != PETSC_OFFLOAD_UNALLOCATED) c->B->offloadmask = PETSC_OFFLOAD_CPU;
+#endif
   apa_sparse = ptap->apa;
 
   /* 1) get P_oth = ptap->P_oth  and P_loc = ptap->P_loc */
@@ -1056,7 +1073,6 @@ PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ_seqMPI(Mat A, Mat P, PetscReal f
   /* get P_loc by taking all local rows of P */
   ierr = MatMPIAIJGetLocalMat(P,MAT_INITIAL_MATRIX,&ptap->P_loc);CHKERRQ(ierr);
 
-
   p_loc  = (Mat_SeqAIJ*)(ptap->P_loc)->data;
   pi_loc = p_loc->i;
 
@@ -1094,7 +1110,6 @@ PetscErrorCode MatMatMultSymbolic_MPIAIJ_MPIAIJ_seqMPI(Mat A, Mat P, PetscReal f
 
   /* j_temp stores indices of a result row before they are added to the linked list */
   ierr = PetscMalloc1(pN+2,&j_temp);CHKERRQ(ierr);
-
 
   /* Symbolic calc of the A_diag * p_loc_off */
   /* Initial FreeSpace size is fill*(nnz(A)+nnz(P)) */
@@ -2196,7 +2211,7 @@ static PetscErrorCode MatProductSetFromOptions_MPIAIJ_AB(Mat C)
       nz_local = (PetscInt)(Ainfo.nz_allocated + Binfo.nz_allocated);
 
       if (B->cmap->N > product->fill*nz_local) alg_scalable_loc = PETSC_TRUE;
-      ierr = MPIU_Allreduce(&alg_scalable_loc,&alg_scalable,1,MPIU_BOOL,MPI_LOR,comm);CHKERRQ(ierr);
+      ierr = MPIU_Allreduce(&alg_scalable_loc,&alg_scalable,1,MPIU_BOOL,MPI_LOR,comm);CHKERRMPI(ierr);
 
       if (alg_scalable) {
         alg  = 0; /* scalable algorithm would 50% slower than nonscalable algorithm */
@@ -2258,7 +2273,7 @@ static PetscErrorCode MatProductSetFromOptions_MPIAIJ_AtB(Mat C)
     nz_local = (PetscInt)(Ainfo.nz_allocated + Binfo.nz_allocated);
 
     if (B->cmap->N > product->fill*nz_local) alg_scalable_loc = PETSC_TRUE;
-    ierr = MPIU_Allreduce(&alg_scalable_loc,&alg_scalable,1,MPIU_BOOL,MPI_LOR,comm);CHKERRQ(ierr);
+    ierr = MPIU_Allreduce(&alg_scalable_loc,&alg_scalable,1,MPIU_BOOL,MPI_LOR,comm);CHKERRMPI(ierr);
 
     if (alg_scalable) {
       alg  = 0; /* scalable algorithm would 50% slower than nonscalable algorithm */
@@ -2324,7 +2339,7 @@ static PetscErrorCode MatProductSetFromOptions_MPIAIJ_PtAP(Mat C)
       nz_local = (PetscInt)(Ainfo.nz_allocated + Pinfo.nz_allocated);
 
       if (pN > product->fill*nz_local) alg_scalable_loc = PETSC_TRUE;
-      ierr = MPIU_Allreduce(&alg_scalable_loc,&alg_scalable,1,MPIU_BOOL,MPI_LOR,comm);CHKERRQ(ierr);
+      ierr = MPIU_Allreduce(&alg_scalable_loc,&alg_scalable,1,MPIU_BOOL,MPI_LOR,comm);CHKERRMPI(ierr);
 
       if (alg_scalable) {
         alg = 0; /* scalable algorithm would 50% slower than nonscalable algorithm */

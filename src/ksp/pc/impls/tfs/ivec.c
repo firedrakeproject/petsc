@@ -1,5 +1,4 @@
 
-
 /**********************************ivec.c**************************************
 
 Author: Henry M. Tufo III
@@ -20,7 +19,6 @@ Last Modification:
 /* sorting args ivec.c ivec.c ... */
 #define   SORT_OPT     6
 #define   SORT_STACK   50000
-
 
 /* allocate an address and size stack for sorter(s) */
 static void     *offset_stack[2*SORT_STACK];
@@ -512,7 +510,6 @@ PetscInt PCTFS_ivec_linear_search(PetscInt item,  PetscInt *list,  PetscInt n)
 {
   PetscInt tmp = n-1;
 
-  PetscFunctionBegin;
   while (n--) {
     if (*list++ == item) return(tmp-n);
   }
@@ -697,9 +694,4 @@ vfp PCTFS_rvec_fct_addr(PetscInt type)
   /* catch all ... not good if we get here */
   return(NULL);
 }
-
-
-
-
-
 

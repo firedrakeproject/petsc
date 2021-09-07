@@ -243,8 +243,6 @@ PetscErrorCode spbas_mergesort_icols(PetscInt nrows, PetscInt * irow_in, PetscIn
   PetscFunctionReturn(0);
 }
 
-
-
 /*
   spbas_compress_pattern:
      calculate a compressed sparseness pattern for a sparseness pattern
@@ -344,9 +342,9 @@ PetscErrorCode spbas_compress_pattern(PetscInt *irow_in, PetscInt *icol_in, Pets
   ierr = PetscInfo(NULL,"Row patterns have been compressed\n");CHKERRQ(ierr);
   ierr = PetscInfo1(NULL,"         (%g nonzeros per row)\n", (double) ((PetscReal) nnz / (PetscReal) nrows));CHKERRQ(ierr);
 
-  ierr=PetscFree(isort);CHKERRQ(ierr);
-  ierr=PetscFree(used);CHKERRQ(ierr);
-  ierr=PetscFree(ipoint);CHKERRQ(ierr);
+  ierr = PetscFree(isort);CHKERRQ(ierr);
+  ierr = PetscFree(used);CHKERRQ(ierr);
+  ierr = PetscFree(ipoint);CHKERRQ(ierr);
 
   mem_compressed = spbas_memory_requirement(*B);
   *mem_reduction = 100.0 * (PetscReal)(mem_orig-mem_compressed)/ (PetscReal) mem_orig;
@@ -369,20 +367,20 @@ PetscErrorCode spbas_delete(spbas_matrix matrix)
 
   PetscFunctionBegin;
   if (matrix.block_data) {
-    ierr=PetscFree(matrix.alloc_icol);CHKERRQ(ierr);
-    if (matrix.values) {ierr=PetscFree(matrix.alloc_val);CHKERRQ(ierr);}
+    ierr = PetscFree(matrix.alloc_icol);CHKERRQ(ierr);
+    if (matrix.values) {ierr = PetscFree(matrix.alloc_val);CHKERRQ(ierr);}
   } else {
-    for (i=0; i<matrix.nrows; i++) { ierr=PetscFree(matrix.icols[i]);CHKERRQ(ierr);}
+    for (i=0; i<matrix.nrows; i++) { ierr = PetscFree(matrix.icols[i]);CHKERRQ(ierr);}
     ierr = PetscFree(matrix.icols);CHKERRQ(ierr);
     if (matrix.values) {
-      for (i=0; i<matrix.nrows; i++) { ierr=PetscFree(matrix.values[i]);CHKERRQ(ierr);}
+      for (i=0; i<matrix.nrows; i++) { ierr = PetscFree(matrix.values[i]);CHKERRQ(ierr);}
     }
   }
 
-  ierr=PetscFree(matrix.row_nnz);CHKERRQ(ierr);
-  ierr=PetscFree(matrix.icols);CHKERRQ(ierr);
-  if (matrix.col_idx_type == SPBAS_OFFSET_ARRAY) {ierr=PetscFree(matrix.icol0);CHKERRQ(ierr);}
-  ierr=PetscFree(matrix.values);CHKERRQ(ierr);
+  ierr = PetscFree(matrix.row_nnz);CHKERRQ(ierr);
+  ierr = PetscFree(matrix.icols);CHKERRQ(ierr);
+  if (matrix.col_idx_type == SPBAS_OFFSET_ARRAY) {ierr = PetscFree(matrix.icol0);CHKERRQ(ierr);}
+  ierr = PetscFree(matrix.values);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -440,7 +438,6 @@ PetscErrorCode spbas_matrix_to_crs(spbas_matrix matrix_A,MatScalar **val_out, Pe
   }
   PetscFunctionReturn(0);
 }
-
 
 /*
     spbas_transpose
@@ -555,6 +552,7 @@ PetscErrorCode spbas_mergesort(PetscInt nnz, PetscInt *icol, PetscScalar *val)
   PetscScalar    *vhlp2=NULL;
   PetscErrorCode ierr;
 
+  PetscFunctionBegin;
   ierr  = PetscMalloc1(nnz,&ialloc);CHKERRQ(ierr);
   ihlp1 = ialloc;
   ihlp2 = icol;
@@ -564,7 +562,6 @@ PetscErrorCode spbas_mergesort(PetscInt nnz, PetscInt *icol, PetscScalar *val)
     vhlp1 = valloc;
     vhlp2 = val;
   }
-
 
   /* Sorted array chunks are first 1 long, and increase until they are the complete array */
   for (istep=1; istep<nnz; istep*=2) {
@@ -674,7 +671,6 @@ PetscErrorCode spbas_apply_reordering_rows(spbas_matrix *matrix_A, const PetscIn
   PetscFunctionReturn(0);
 }
 
-
 /*
   spbas_apply_reordering_cols:
     apply the given reordering to the columns:  matrix_A(:,perm) = matrix_A;
@@ -751,7 +747,6 @@ PetscErrorCode spbas_pattern_only(PetscInt nrows, PetscInt ncols, PetscInt *ai, 
   PetscFunctionReturn(0);
 }
 
-
 /*
    spbas_mark_row_power:
       Mark the columns in row 'row' which are nonzero in
@@ -788,7 +783,6 @@ PetscErrorCode spbas_mark_row_power(PetscInt *iwork,             /* marker-vecto
   }
   PetscFunctionReturn(0);
 }
-
 
 /*
    spbas_power
@@ -862,8 +856,6 @@ PetscErrorCode spbas_power(spbas_matrix in_matrix,PetscInt power, spbas_matrix *
   *result = retval;
   PetscFunctionReturn(0);
 }
-
-
 
 /*
    spbas_keep_upper:

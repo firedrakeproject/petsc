@@ -115,7 +115,6 @@ PetscErrorCode TaoLineSearchView(TaoLineSearch ls, PetscViewer viewer)
 . gpcg
 - unit - Do not perform any line search
 
-
    Options Database Keys:
 .   -tao_ls_type - select which method TAO should use
 
@@ -856,7 +855,7 @@ PetscErrorCode TaoLineSearchUseTaoRoutines(TaoLineSearch ls, Tao ts)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls,TAOLINESEARCH_CLASSID,1);
-  PetscValidHeaderSpecific(ts,TAO_CLASSID,1);
+  PetscValidHeaderSpecific(ts,TAO_CLASSID,2);
   ls->tao = ts;
   ls->usetaoroutines=PETSC_TRUE;
   PetscFunctionReturn(0);
@@ -948,19 +947,23 @@ PetscErrorCode TaoLineSearchComputeObjectiveAndGradient(TaoLineSearch ls, Vec x,
   PetscCheckSameComm(ls,1,x,2);
   PetscCheckSameComm(ls,1,g,4);
   if (ls->usetaoroutines) {
-      ierr = TaoComputeObjectiveAndGradient(ls->tao,x,f,g);CHKERRQ(ierr);
+    ierr = TaoComputeObjectiveAndGradient(ls->tao,x,f,g);CHKERRQ(ierr);
   } else {
     if (!ls->ops->computeobjective && !ls->ops->computeobjectiveandgradient) SETERRQ(PetscObjectComm((PetscObject)ls),PETSC_ERR_ARG_WRONGSTATE,"Line Search does not have objective function set");
     if (!ls->ops->computegradient  && !ls->ops->computeobjectiveandgradient) SETERRQ(PetscObjectComm((PetscObject)ls),PETSC_ERR_ARG_WRONGSTATE,"Line Search does not have gradient function set");
     ierr = PetscLogEventBegin(TAOLINESEARCH_Eval,ls,0,0,0);CHKERRQ(ierr);
-    PetscStackPush("TaoLineSearch user objective/gradient routine");
     if (ls->ops->computeobjectiveandgradient) {
+      PetscStackPush("TaoLineSearch user objective/gradient routine");
       ierr = (*ls->ops->computeobjectiveandgradient)(ls,x,f,g,ls->userctx_funcgrad);CHKERRQ(ierr);
+      PetscStackPop;
     } else {
+      PetscStackPush("TaoLineSearch user objective routine");
       ierr = (*ls->ops->computeobjective)(ls,x,f,ls->userctx_func);CHKERRQ(ierr);
+      PetscStackPop;
+      PetscStackPush("TaoLineSearch user gradient routine");
       ierr = (*ls->ops->computegradient)(ls,x,g,ls->userctx_grad);CHKERRQ(ierr);
+      PetscStackPop;
     }
-    PetscStackPop;
     ierr = PetscLogEventEnd(TAOLINESEARCH_Eval,ls,0,0,0);CHKERRQ(ierr);
     ierr = PetscInfo1(ls,"TaoLineSearch Function evaluation: %14.12e\n",(double)(*f));CHKERRQ(ierr);
   }
@@ -1298,7 +1301,6 @@ PetscErrorCode TaoLineSearchRegister(const char sname[], PetscErrorCode (*func)(
    TaoLineSearchAppendOptionsPrefix - Appends to the prefix used for searching
    for all TaoLineSearch options in the database.
 
-
    Collective on TaoLineSearch
 
    Input Parameters:
@@ -1308,7 +1310,6 @@ PetscErrorCode TaoLineSearchRegister(const char sname[], PetscErrorCode (*func)(
    Notes:
    A hyphen (-) must NOT be given at the beginning of the prefix name.
    The first character of all runtime options is AUTOMATICALLY the hyphen.
-
 
    Level: advanced
 
@@ -1347,7 +1348,6 @@ PetscErrorCode TaoLineSearchGetOptionsPrefix(TaoLineSearch ls, const char *p[])
 /*@C
    TaoLineSearchSetOptionsPrefix - Sets the prefix used for searching for all
    TaoLineSearch options in the database.
-
 
    Logically Collective on TaoLineSearch
 

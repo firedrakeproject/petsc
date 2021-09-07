@@ -7,8 +7,6 @@ static char help[] = "Illustrates creating an options database.\n\n";
    Processors: n
 T*/
 
-
-
 #include <petscsys.h>
 #include <petscviewer.h>
 int main(int argc,char **argv)
@@ -26,11 +24,10 @@ int main(int argc,char **argv)
   return ierr;
 }
 
-
 /*TEST
 
    test:
      localrunfiles: optionsfile
-     filter: egrep -v "(malloc|nox|display|saws_port|vecscatter|options_left|check_pointer_intensity|cuda_initialize|error_output_stdout|use_gpu_aware_mpi)"
+     filter: egrep -v "(malloc|nox|display|saws_port|vecscatter|options_left|check_pointer_intensity|cuda_initialize|error_output_stdout|use_gpu_aware_mpi|checkstack)"
 
 TEST*/

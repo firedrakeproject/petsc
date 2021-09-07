@@ -107,6 +107,7 @@
 #define MATSEQBAIJMKL      'seqbaijmkl'
 #define MATMPIBAIJMKL      'mpibaijmkl'
 #define MATSHELL           'shell'
+#define MATCENTERING       'centering'
 #define MATDENSE           'dense'
 #define MATSEQDENSE        'seqdense'
 #define MATSEQDENSECUDA    'seqdensecuda'
@@ -152,7 +153,9 @@
 #define MATLMVMSYMBROYDEN  'lmvmsymbroyden'
 #define MATLMVMSYMBADBROYDEN 'lmvmsymbadbroyden'
 #define MATLMVMDIAGBROYDEN 'lmvmdiagbroyden'
+#define MATCONSTANTDIAGONAL 'constantdiagonal'
 #define MATHARA            'hara'
+#define MATHTOOL           'htool'
 
 !
 ! MatMFFDType values
@@ -184,6 +187,7 @@
 #define MATSOLVERCUSPARSE        'cusparse'
 #define MATSOLVERCUDA            'cuda'
 #define MATSOLVERKOKKOS          'kokkos'
+#define MATSOLVERSPQR            'spqr'
 
 !
 ! GPU Storage Formats for CUSPARSE

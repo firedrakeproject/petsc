@@ -555,4 +555,7 @@ PETSC_EXTERN PetscErrorCode DMPlexPointQueueBack(DMPlexPointQueue, PetscInt *);
 PETSC_EXTERN PetscBool      DMPlexPointQueueEmpty(DMPlexPointQueue);
 PETSC_EXTERN PetscErrorCode DMPlexPointQueueEmptyCollective(PetscObject, DMPlexPointQueue, PetscBool *);
 
+/* mesh quality */
+PETSC_EXTERN PetscErrorCode DMPlexGetAspectRatio(DM, Vec *);
+
 #endif

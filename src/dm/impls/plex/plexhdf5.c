@@ -565,6 +565,38 @@ static PetscErrorCode DMPlexWriteTopology_Vertices_HDF5_Static(DM dm, IS globalC
   PetscFunctionReturn(0);
 }
 
+static PetscErrorCode DMPlexCoordinatesView_HDF5_V0_static(DM dm, PetscViewer viewer)
+{
+  DM             cdm;
+  Vec            coordinates, newcoords;
+  PetscReal      lengthScale;
+  PetscInt       m, M, bs;
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+  ierr = DMPlexGetScale(dm, PETSC_UNIT_LENGTH, &lengthScale);CHKERRQ(ierr);
+  ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
+  ierr = DMGetCoordinates(dm, &coordinates);CHKERRQ(ierr);
+  ierr = VecCreate(PetscObjectComm((PetscObject) coordinates), &newcoords);CHKERRQ(ierr);
+  ierr = PetscObjectSetName((PetscObject) newcoords, "vertices");CHKERRQ(ierr);
+  ierr = VecGetSize(coordinates, &M);CHKERRQ(ierr);
+  ierr = VecGetLocalSize(coordinates, &m);CHKERRQ(ierr);
+  ierr = VecSetSizes(newcoords, m, M);CHKERRQ(ierr);
+  ierr = VecGetBlockSize(coordinates, &bs);CHKERRQ(ierr);
+  ierr = VecSetBlockSize(newcoords, bs);CHKERRQ(ierr);
+  ierr = VecSetType(newcoords,VECSTANDARD);CHKERRQ(ierr);
+  ierr = VecCopy(coordinates, newcoords);CHKERRQ(ierr);
+  ierr = VecScale(newcoords, lengthScale);CHKERRQ(ierr);
+  /* Did not use DMGetGlobalVector() in order to bypass default group assignment */
+  ierr = PetscViewerHDF5PushGroup(viewer, "/geometry");CHKERRQ(ierr);
+  ierr = PetscViewerPushFormat(viewer, PETSC_VIEWER_NATIVE);CHKERRQ(ierr);
+  ierr = VecView(newcoords, viewer);CHKERRQ(ierr);
+  ierr = PetscViewerPopFormat(viewer);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5PopGroup(viewer);CHKERRQ(ierr);
+  ierr = VecDestroy(&newcoords);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 PetscErrorCode DMPlexCoordinatesView_HDF5_Internal(DM dm, PetscViewer viewer)
 {
   DM              cdm;
@@ -824,21 +856,23 @@ PetscErrorCode DMPlexLabelsView_HDF5_Internal(DM dm, IS globalPointNumbers, Pets
 /* We only write cells and vertices. Does this screw up parallel reading? */
 PetscErrorCode DMPlexView_HDF5_Internal(DM dm, PetscViewer viewer)
 {
-  IS                    globalPointNumbers;
-  PetscViewerFormat     format;
-  PetscBool             viz_geom=PETSC_FALSE, xdmf_topo=PETSC_FALSE, petsc_topo=PETSC_FALSE;
-  DMPlexStorageVersion  version = DMPLEX_CURRENT_STORAGE_VERSION;
-  PetscErrorCode        ierr;
+  IS                 globalPointNumbers;
+  PetscViewerFormat  format;
+  PetscBool          viz_geom=PETSC_FALSE, xdmf_topo=PETSC_FALSE, petsc_topo=PETSC_FALSE;
+  PetscErrorCode     ierr;
 
   PetscFunctionBegin;
   ierr = DMPlexCreatePointNumbering(dm, &globalPointNumbers);CHKERRQ(ierr);
-  ierr = DMPlexCoordinatesView_HDF5_Internal(dm, viewer);CHKERRQ(ierr);
   ierr = DMPlexLabelsView_HDF5_Internal(dm, globalPointNumbers, viewer);CHKERRQ(ierr);
 
   ierr = PetscViewerHDF5WriteAttribute(viewer, NULL, "petsc_version_git", PETSC_STRING, PETSC_VERSION_GIT);CHKERRQ(ierr);
-  ierr = PetscViewerHDF5WriteAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, (void*)&version);CHKERRQ(ierr);
 
   ierr = PetscViewerGetFormat(viewer, &format);CHKERRQ(ierr);
+  if (format == PETSC_VIEWER_HDF5_XDMF || format == PETSC_VIEWER_HDF5_VIZ) {
+    ierr = DMPlexCoordinatesView_HDF5_V0_static(dm, viewer);CHKERRQ(ierr);
+  } else {
+    ierr = DMPlexCoordinatesView_HDF5_Internal(dm, viewer);CHKERRQ(ierr);
+  }
   switch (format) {
     case PETSC_VIEWER_HDF5_VIZ:
       viz_geom    = PETSC_TRUE;

@@ -486,7 +486,7 @@ PetscErrorCode DMAdaptMetric_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLa
     ierr = PetscOptionsGetRealArray(((PetscObject) dm)->options,((PetscObject) dm)->prefix, "-dm_plex_prescribed_boundary_sizes", bdySizes, &nbBdySizes, &flg2);CHKERRQ(ierr);
 
     if (flg != flg2 || nbBdyLabels != nbBdySizes){
-      printf("DEBUG  flg: %d  flag2: %d \t nbdylabels: %d nbdysizes: %d\n", flg, flg2, nbBdyLabels, nbBdySizes);
+      // printf("DEBUG  flg: %d  flag2: %d \t nbdylabels: %d nbdysizes: %d\n", flg, flg2, nbBdyLabels, nbBdySizes);
       SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP, "-dm_plex_prescribed_boundary_labels and -dm_plex_prescribed_boundary_sizes must be set together and have the same number of items\n");
     }
     
@@ -510,7 +510,7 @@ PetscErrorCode DMAdaptMetric_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLa
     for (int i=0; i<nbBdyLabels; ++i) {
       const PetscInt  label = bdyLabels[i];
       const PetscReal size = bdySizes[i];
-      printf("DEBUG  prescribedBdSizes[%d/%d] = %.2e\n", label, maxBds, size);
+      // printf("DEBUG  prescribedBdSizes[%d/%d] = %.2e\n", label, maxBds, size);
       
       prescribedBdSizes[label] = size;
     }
@@ -591,7 +591,7 @@ PetscErrorCode DMAdaptMetric_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLa
         meanLen /= count;
         for (int i=0; i<dim; ++i) {m[i*(dim+1)] = 1/(meanLen*meanLen);} // set diagonal
         for (int i=0; i<dim; ++i) {m[i*(dim+1)] = 1/(h*h);} // set diagonal
-        printf("DEBUG  HERE WE UPDATED m\n");
+        // printf("DEBUG  HERE WE UPDATED m\n");
         
 
         if (dim == 2) {
@@ -636,14 +636,14 @@ PetscErrorCode DMAdaptMetric_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLa
   pragmatic_set_regions(cellIds);
   pragmatic_set_internal_boundaries();
 /******************/
-  printf("DEBUG  -- metric gradation\n");
+  // printf("DEBUG  -- metric gradation\n");
   if (dim == 2)  { ierr = DMPlexMetricGradation2d_Internal(dm, metric, x, y);CHKERRQ(ierr); }
   else  { ierr = DMPlexMetricGradation3d_Internal(dm, metric, x, y, z);CHKERRQ(ierr); }
   pragmatic_set_metric(metric);
-  printf("DEBUG  -- calling pragmatic\n");
+  // printf("DEBUG  -- calling pragmatic\n");
   pragmatic_adapt(((DM_Plex *) dm->data)->remeshBd ? 1 : 0, 0);
   ierr = PetscFree(l2gv);CHKERRQ(ierr);
-  printf("DEBUG  -- end pragmatic\n");
+  // printf("DEBUG  -- end pragmatic\n");
   /* Read out mesh */
   pragmatic_get_info_mpi(&numVerticesNew, &numCellsNew);
   ierr = PetscMalloc1(numVerticesNew*dim, &coordsNew);CHKERRQ(ierr);

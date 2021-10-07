@@ -856,10 +856,10 @@ PetscErrorCode DMPlexLabelsView_HDF5_Internal(DM dm, IS globalPointNumbers, Pets
 /* We only write cells and vertices. Does this screw up parallel reading? */
 PetscErrorCode DMPlexView_HDF5_Internal(DM dm, PetscViewer viewer)
 {
-  IS                 globalPointNumbers;
-  PetscViewerFormat  format;
-  PetscBool          viz_geom=PETSC_FALSE, xdmf_topo=PETSC_FALSE, petsc_topo=PETSC_FALSE;
-  PetscErrorCode     ierr;
+  IS                globalPointNumbers;
+  PetscViewerFormat format;
+  PetscBool         viz_geom=PETSC_FALSE, xdmf_topo=PETSC_FALSE, petsc_topo=PETSC_FALSE;
+  PetscErrorCode    ierr;
 
   PetscFunctionBegin;
   ierr = DMPlexCreatePointNumbering(dm, &globalPointNumbers);CHKERRQ(ierr);

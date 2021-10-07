@@ -818,7 +818,7 @@ PetscErrorCode DMPlexLabelsView_HDF5_Internal(DM dm, IS globalPointNumbers, Pets
       const char     *iname = "indices";
       char            group[PETSC_MAX_PATH_LEN];
 
-      ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "%D", values[v]);CHKERRQ(ierr);
+      ierr = PetscSNPrintf(group, sizeof(group), "%D", values[v]);CHKERRQ(ierr);
       ierr = PetscViewerHDF5PushGroup(viewer, group);CHKERRQ(ierr);
       ierr = DMLabelGetStratumIS(label, values[v], &stratumIS);CHKERRQ(ierr);
 
@@ -1085,7 +1085,7 @@ static herr_t ReadLabelStratumHDF5_Static(hid_t g_id, const char *name, const H5
   ierr = ISCreate(PetscObjectComm((PetscObject) viewer), &stratumIS);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) stratumIS, "indices");CHKERRQ(ierr);
   ierr = PetscObjectGetName((PetscObject) label, &lname);CHKERRQ(ierr);
-  ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "%s/%s", lname, name);CHKERRQ(ierr);
+  ierr = PetscSNPrintf(group, sizeof(group), "%s/%s", lname, name);CHKERRQ(ierr);
   ierr = PetscViewerHDF5PushGroup(viewer, group);CHKERRQ(ierr);
   {
     /* Force serial load */
@@ -1132,8 +1132,11 @@ PetscErrorCode DMPlexLabelsLoad_HDF5_Internal(DM dm, PetscViewer viewer)
   ctx.viewer = viewer;
   ierr = PetscObjectGetName((PetscObject)dm, &topologydm_name);CHKERRQ(ierr);
   ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, &version, &version);CHKERRQ(ierr);
-  if (version < DMPLEX_STORAGE_VERSION_1) {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "/labels");CHKERRQ(ierr);}
-  else {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "topologies/%s/labels", topologydm_name);CHKERRQ(ierr);}
+  if (version < DMPLEX_STORAGE_VERSION_1) {
+    ierr = PetscStrcpy(group, "/labels");CHKERRQ(ierr);
+  } else {
+    ierr = PetscSNPrintf(group, sizeof(group), "topologies/%s/labels", topologydm_name);CHKERRQ(ierr);
+  }
   ierr = PetscViewerHDF5PushGroup(viewer, group);CHKERRQ(ierr);
   ierr = PetscViewerHDF5HasGroup(viewer, NULL, &hasGroup);CHKERRQ(ierr);
   if (hasGroup) {
@@ -1164,11 +1167,13 @@ PetscErrorCode DMPlexTopologyLoad_HDF5_Internal(DM dm, PetscViewer viewer, Petsc
   ierr = PetscObjectGetComm((PetscObject)dm, &comm);CHKERRQ(ierr);
   ierr = MPI_Comm_size(comm, &size);CHKERRMPI(ierr);
   ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
-  /* Read toplogy */
   ierr = PetscObjectGetName((PetscObject)dm, &topologydm_name);CHKERRQ(ierr);
   ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, &version, &version);CHKERRQ(ierr);
-  if (version < DMPLEX_STORAGE_VERSION_1) {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "/topology");CHKERRQ(ierr);}
-  else {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "topologies/%s/topology", topologydm_name);CHKERRQ(ierr);}
+  if (version < DMPLEX_STORAGE_VERSION_1) {
+    ierr = PetscStrcpy(group, "/topology");CHKERRQ(ierr);
+  } else {
+    ierr = PetscSNPrintf(group, sizeof(group), "topologies/%s/topology", topologydm_name);CHKERRQ(ierr);
+  }
   ierr = PetscViewerHDF5PushGroup(viewer, group);CHKERRQ(ierr);
   ierr = ISCreate(comm, &orderIS);CHKERRQ(ierr);
   ierr = PetscObjectSetName((PetscObject) orderIS, "order");CHKERRQ(ierr);

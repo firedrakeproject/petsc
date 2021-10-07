@@ -4,6 +4,8 @@
 #include <petsc/private/viewerhdf5impl.h>
 #include <petsclayouthdf5.h>
 
+const char *const DMPlexStorageVersions[] = {"0","1","DMPlexStorageVersion","DMPLEX_STORAGE_VERSION_",NULL};
+
 PETSC_EXTERN PetscErrorCode VecView_MPI(Vec, PetscViewer);
 
 #if defined(PETSC_HAVE_HDF5)
@@ -345,7 +347,7 @@ PetscErrorCode DMPlexTopologyView_HDF5_Internal(DM dm, IS globalPointNumbers, Pe
   const PetscInt       *gpoint;
   PetscInt             *order, *sizes, *cones, *ornts;
   PetscInt              dim, pStart, pEnd, p, conesSize = 0, cellsSize = 0, c = 0, s = 0;
-  DMPlexStorageVersion  version = DMPLEX_CURRENT_STORAGE_VERSION;
+  DMPlexStorageVersion  version = DMPLEX_STORAGE_VERSION_STABLE;
   PetscErrorCode        ierr;
 
   PetscFunctionBegin;

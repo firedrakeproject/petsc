@@ -350,7 +350,7 @@ PetscErrorCode DMPlexTopologyView_HDF5_Internal(DM dm, IS globalPointNumbers, Pe
 
   PetscFunctionBegin;
   ierr = PetscViewerHDF5WriteAttribute(viewer, NULL, "petsc_version_git", PETSC_STRING, PETSC_VERSION_GIT);CHKERRQ(ierr);
-  ierr = PetscViewerHDF5WriteAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, (void*)&version);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5WriteAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, &version);CHKERRQ(ierr);
   ierr = ISGetIndices(globalPointNumbers, &gpoint);CHKERRQ(ierr);
   ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
   ierr = DMPlexGetChart(dm, &pStart, &pEnd);CHKERRQ(ierr);
@@ -1135,7 +1135,7 @@ PetscErrorCode DMPlexLabelsLoad_HDF5_Internal(DM dm, PetscViewer viewer)
   ctx.dm     = dm;
   ctx.viewer = viewer;
   ierr = PetscObjectGetName((PetscObject)dm, &topologydm_name);CHKERRQ(ierr);
-  ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, (void*)&version0, (void*)&version);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, &version0, &version);CHKERRQ(ierr);
   if (version < DMPLEX_STORAGE_VERSION_1) {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "/labels");CHKERRQ(ierr);}
   else {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "topologies/%s/labels", topologydm_name);CHKERRQ(ierr);}
   ierr = PetscViewerHDF5PushGroup(viewer, group);CHKERRQ(ierr);
@@ -1165,7 +1165,7 @@ PetscErrorCode DMPlexTopologyLoad_HDF5_Internal(DM dm, PetscViewer viewer, Petsc
   ierr = MPI_Comm_rank(comm, &rank);CHKERRMPI(ierr);
   /* Read toplogy */
   ierr = PetscObjectGetName((PetscObject)dm, &topologydm_name);CHKERRQ(ierr);
-  ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, (void*)&version0, (void*)&version);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, &version0, &version);CHKERRQ(ierr);
   if (version < DMPLEX_STORAGE_VERSION_1) {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "/topology");CHKERRQ(ierr);}
   else {ierr = PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "topologies/%s/topology", topologydm_name);CHKERRQ(ierr);}
   ierr = PetscViewerHDF5PushGroup(viewer, group);CHKERRQ(ierr);
@@ -1308,7 +1308,7 @@ PetscErrorCode DMPlexCoordinatesLoad_HDF5_Internal(DM dm, PetscViewer viewer, Pe
   PetscErrorCode        ierr;
 
   PetscFunctionBegin;
-  ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, (void*)&version0, (void*)&version);CHKERRQ(ierr);
+  ierr = PetscViewerHDF5ReadAttribute(viewer, NULL, "dmplex_storage_version", PETSC_ENUM, &version0, &version);CHKERRQ(ierr);
   /* If the file is old, it not only has different path to the coordinates, but   */
   /* does not contain coordinateDMs, so must fall back to the old implementation. */
   if (version < DMPLEX_STORAGE_VERSION_1) {

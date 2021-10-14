@@ -191,6 +191,7 @@ Level: developer
 @*/
 PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPIInt *first_tag)
 {
+  PetscInt         *cidx;
   PetscCommCounter *counter;
   PetscMPIInt      *maxval,flg;
 
@@ -210,6 +211,11 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
       PetscCall(PetscNew(&counter)); /* all fields of counter are zero'ed */
       counter->tag = *maxval;
       PetscCallMPI(MPI_Comm_set_attr(*comm_out,Petsc_Counter_keyval,counter));
+
+      /* Add an object creation index to the communicator */
+      PetscCall(PetscCalloc(1,&cidx));
+      //~ printf("Set: %i at %p\n", *cidx, cidx);
+      PetscCallMPI(MPI_Comm_set_attr(*comm_out,Petsc_CreationIdx_keyval,cidx));
       PetscCall(PetscInfo(NULL,"Duplicating a communicator %ld %ld max tags = %d\n",(long)comm_in,(long)*comm_out,*maxval));
 
       /* save PETSc communicator inside user communicator, so we can get it next time */
@@ -263,6 +269,8 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
 @*/
 PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
 {
+  void             *get_tmp;
+  PetscInt         *cidx;
   PetscCommCounter *counter;
   PetscMPIInt      flg;
   MPI_Comm         icomm = *comm,ocomm;
@@ -292,6 +300,14 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
         PetscCallMPI(MPI_Comm_delete_attr(ocomm,Petsc_InnerComm_keyval));
       } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"Outer MPI_Comm %ld does not have expected reference to inner comm %ld, problem with corrupted memory",(long int)ocomm,(long int)icomm);
     }
+
+    /* Remove the object creation index on the communicator */
+    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_CreationIdx_keyval,&get_tmp,&flg));
+    if (flg) {
+      cidx = (PetscInt *) get_tmp;
+      //~ printf("Free: %i at %p\n", *cidx, cidx);
+      PetscCall(PetscFree(cidx));
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index, problem with corrupted memory");
 
     PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
     PetscCallMPI(MPI_Comm_free(&icomm));

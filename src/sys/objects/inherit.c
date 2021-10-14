@@ -30,7 +30,10 @@ PETSC_EXTERN PetscErrorCode PetscObjectQueryFunction_Petsc(PetscObject,const cha
 PetscErrorCode  PetscHeaderCreate_Private(PetscObject h,PetscClassId classid,const char class_name[],const char descr[],const char mansec[],
                                           MPI_Comm comm,PetscObjectDestroyFunction destroy,PetscObjectViewFunction view)
 {
+  void            *get_tmp;
   static PetscInt idcnt = 1;
+  PetscInt        *cidx;
+  PetscMPIInt     flg;
 #if defined(PETSC_USE_LOG)
   PetscObject     *newPetscObjects;
   PetscInt         newPetscObjectsMaxCounts,i;
@@ -60,6 +63,15 @@ PetscErrorCode  PetscHeaderCreate_Private(PetscObject h,PetscClassId classid,con
   h->bops->queryfunction   = PetscObjectQueryFunction_Petsc;
 
   PetscCall(PetscCommDuplicate(comm,&h->comm,&h->tag));
+
+  /* Increment and store current object creation index */
+  PetscCallMPI(MPI_Comm_get_attr(h->comm,Petsc_CreationIdx_keyval,&get_tmp,&flg));
+  if (flg) {
+    cidx = (PetscInt *) get_tmp;
+    //~ printf("Get: %i at %p\n", *cidx, cidx);
+    h->cidx = (*cidx)++;
+    PetscCallMPI(MPI_Comm_set_attr(h->comm,Petsc_CreationIdx_keyval,cidx));
+  } else SETERRQ(h->comm,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have an object creation index, problem with corrupted memory");
 
 #if defined(PETSC_USE_LOG)
   /* Keep a record of object created */

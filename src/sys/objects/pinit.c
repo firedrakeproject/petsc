@@ -49,10 +49,11 @@ PetscMPIInt PETSC_MPI_THREAD_REQUIRED = MPI_THREAD_FUNNELED;
 PetscMPIInt PETSC_MPI_THREAD_REQUIRED = 0;
 #endif
 
-PetscMPIInt Petsc_Counter_keyval   = MPI_KEYVAL_INVALID;
-PetscMPIInt Petsc_InnerComm_keyval = MPI_KEYVAL_INVALID;
-PetscMPIInt Petsc_OuterComm_keyval = MPI_KEYVAL_INVALID;
-PetscMPIInt Petsc_ShmComm_keyval   = MPI_KEYVAL_INVALID;
+PetscMPIInt Petsc_Counter_keyval     = MPI_KEYVAL_INVALID;
+PetscMPIInt Petsc_InnerComm_keyval   = MPI_KEYVAL_INVALID;
+PetscMPIInt Petsc_OuterComm_keyval   = MPI_KEYVAL_INVALID;
+PetscMPIInt Petsc_ShmComm_keyval     = MPI_KEYVAL_INVALID;
+PetscMPIInt Petsc_CreationIdx_keyval = MPI_KEYVAL_INVALID;
 
 /*
      Declare and set all the string names of the PETSc enums
@@ -926,6 +927,7 @@ PETSC_INTERN PetscErrorCode PetscInitialize_Common(const char* prog,const char* 
   PetscCallMPI(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_InnerComm_Attr_Delete_Fn,&Petsc_InnerComm_keyval,(void*)0));
   PetscCallMPI(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_OuterComm_Attr_Delete_Fn,&Petsc_OuterComm_keyval,(void*)0));
   PetscCallMPI(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,Petsc_ShmComm_Attr_Delete_Fn,&Petsc_ShmComm_keyval,(void*)0));
+  PetscCallMPI(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_CreationIdx_keyval,(void*)0));
 
 #if defined(PETSC_HAVE_FORTRAN)
   if (ftn) PetscCall(PetscInitFortran_Private(readarguments,file,len));
@@ -1692,6 +1694,7 @@ PetscErrorCode  PetscFinalize(void)
   PetscCallMPI(MPI_Comm_free_keyval(&Petsc_InnerComm_keyval));
   PetscCallMPI(MPI_Comm_free_keyval(&Petsc_OuterComm_keyval));
   PetscCallMPI(MPI_Comm_free_keyval(&Petsc_ShmComm_keyval));
+  PetscCallMPI(MPI_Comm_free_keyval(&Petsc_CreationIdx_keyval));
 
   PetscCall(PetscSpinlockDestroy(&PetscViewerASCIISpinLockOpen));
   PetscCall(PetscSpinlockDestroy(&PetscViewerASCIISpinLockStdout));

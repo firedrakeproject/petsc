@@ -634,6 +634,17 @@ PetscErrorCode DMPlexCoordinatesView_HDF5_Internal(DM dm, PetscViewer viewer)
   PetscErrorCode  ierr;
 
   PetscFunctionBegin;
+  {
+    PetscViewerFormat     format;
+    DMPlexStorageVersion  version;
+
+    ierr = PetscViewerGetFormat(viewer, &format);CHKERRQ(ierr);
+    ierr = DMPlexSetUpStorageVersionWriting_Private(dm, viewer, &version);CHKERRQ(ierr);
+    if (format == PETSC_VIEWER_HDF5_XDMF || format == PETSC_VIEWER_HDF5_VIZ || version < DMPLEX_STORAGE_VERSION_1) {
+      ierr = DMPlexCoordinatesView_HDF5_V0_Private(dm, viewer);CHKERRQ(ierr);
+      PetscFunctionReturn(0);
+    }
+  }
   ierr = DMGetCoordinateDM(dm, &cdm);CHKERRQ(ierr);
   ierr = DMGetCoordinates(dm, &coords);CHKERRQ(ierr);
   ierr = PetscObjectGetName((PetscObject)cdm, &coordinatedm_name);CHKERRQ(ierr);
@@ -883,21 +894,15 @@ PetscErrorCode DMPlexView_HDF5_Internal(DM dm, PetscViewer viewer)
 {
   IS                    globalPointNumbers;
   PetscViewerFormat     format;
-  DMPlexStorageVersion  version;
   PetscBool             viz_geom=PETSC_FALSE, xdmf_topo=PETSC_FALSE, petsc_topo=PETSC_FALSE;
   PetscErrorCode        ierr;
 
   PetscFunctionBegin;
-  ierr = DMPlexSetUpStorageVersionWriting_Private(dm, viewer, &version);CHKERRQ(ierr);
   ierr = DMPlexCreatePointNumbering(dm, &globalPointNumbers);CHKERRQ(ierr);
   ierr = DMPlexLabelsView_HDF5_Internal(dm, globalPointNumbers, viewer);CHKERRQ(ierr);
+  ierr = DMPlexCoordinatesView_HDF5_Internal(dm, viewer);CHKERRQ(ierr);
 
   ierr = PetscViewerGetFormat(viewer, &format);CHKERRQ(ierr);
-  if (format == PETSC_VIEWER_HDF5_XDMF || format == PETSC_VIEWER_HDF5_VIZ || version < DMPLEX_STORAGE_VERSION_1) {
-    ierr = DMPlexCoordinatesView_HDF5_V0_Private(dm, viewer);CHKERRQ(ierr);
-  } else {
-    ierr = DMPlexCoordinatesView_HDF5_Internal(dm, viewer);CHKERRQ(ierr);
-  }
   switch (format) {
     case PETSC_VIEWER_HDF5_VIZ:
       viz_geom    = PETSC_TRUE;

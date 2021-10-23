@@ -263,7 +263,7 @@ int main(int argc, char **argv)
     suffix: 10-v3.16.0-v0
     requires: hdf5 !complex datafilespath
     args: -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_geometry -compare
-    args: -dm_plex_view_hdf5_storage_version {{0 1}} -use_low_level_functions {{0 1}}
+    args: -dm_plex_view_hdf5_storage_version_minor {{0 1}} -use_low_level_functions {{0 1}}
     test:
       suffix: a
       args: -filename ${DATAFILESPATH}/meshes/hdf5-petsc/petsc-v3.16.0/v0/annulus-20.h5

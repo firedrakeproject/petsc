@@ -484,7 +484,7 @@ int main(int argc, char **argv)
     requires: !complex
     nsize: 4
     args: -fname ex12_dump.h5 -shell {{True False}separate output} -dm_view ascii::ascii_info_detail
-    args: -dm_plex_view_hdf5_storage_version 1
+    args: -dm_plex_view_hdf5_storage_version_minor 1
     test:
       suffix: parmetis
       requires: parmetis

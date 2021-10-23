@@ -467,12 +467,18 @@ PETSC_EXTERN PetscErrorCode DMPlexCreateBasisRotation(DM, PetscReal, PetscReal, 
 
 /* storage version */
 typedef enum {
-  DMPLEX_STORAGE_VERSION_INVALID = -1,
-  DMPLEX_STORAGE_VERSION_0 = 0,
-  DMPLEX_STORAGE_VERSION_1 = 1,
-} DMPlexStorageVersion;
-#define DMPLEX_STORAGE_VERSION_STABLE DMPLEX_STORAGE_VERSION_0
-PETSC_EXTERN const char *const DMPlexStorageVersions[];
+  DMPLEX_STORAGE_VERSION_MAJOR_INVALID = -1,
+  DMPLEX_STORAGE_VERSION_MAJOR_0 = 0,
+} DMPlexStorageVersionMajor;
+#define DMPLEX_STORAGE_VERSION_MAJOR_STABLE DMPLEX_STORAGE_VERSION_MAJOR_0
+PETSC_EXTERN const char *const DMPlexStorageVersionsMajor[];
+typedef enum {
+  DMPLEX_STORAGE_VERSION_MINOR_INVALID = -1,
+  DMPLEX_STORAGE_VERSION_MINOR_0 = 0,
+  DMPLEX_STORAGE_VERSION_MINOR_1 = 1,
+} DMPlexStorageVersionMinor;
+#define DMPLEX_STORAGE_VERSION_MINOR_STABLE DMPLEX_STORAGE_VERSION_MINOR_0
+PETSC_EXTERN const char *const DMPlexStorageVersionsMinor[];
 
 PETSC_EXTERN PetscErrorCode DMPlexTopologyView(DM, PetscViewer);
 PETSC_EXTERN PetscErrorCode DMPlexCoordinatesView(DM, PetscViewer);

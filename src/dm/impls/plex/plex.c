@@ -9,7 +9,7 @@
 #include <petscdmplextransform.h>
 
 /* Logging support */
-PetscLogEvent DMPLEX_Interpolate, DMPLEX_Partition, DMPLEX_Distribute, DMPLEX_DistributeCones, DMPLEX_DistributeLabels, DMPLEX_DistributeSF, DMPLEX_DistributeOverlap, DMPLEX_DistributeField, DMPLEX_DistributeData, DMPLEX_Migrate, DMPLEX_InterpolateSF, DMPLEX_GlobalToNaturalBegin, DMPLEX_GlobalToNaturalEnd, DMPLEX_NaturalToGlobalBegin, DMPLEX_NaturalToGlobalEnd, DMPLEX_Stratify, DMPLEX_Symmetrize, DMPLEX_Preallocate, DMPLEX_ResidualFEM, DMPLEX_JacobianFEM, DMPLEX_InterpolatorFEM, DMPLEX_InjectorFEM, DMPLEX_IntegralFEM, DMPLEX_CreateGmsh, DMPLEX_RebalanceSharedPoints, DMPLEX_PartSelf, DMPLEX_PartLabelInvert, DMPLEX_PartLabelCreateSF, DMPLEX_PartStratSF, DMPLEX_CreatePointSF,DMPLEX_LocatePoints;
+PetscLogEvent DMPLEX_Interpolate, DMPLEX_Partition, DMPLEX_Distribute, DMPLEX_DistributeCones, DMPLEX_DistributeLabels, DMPLEX_DistributeSF, DMPLEX_DistributeOverlap, DMPLEX_DistributeField, DMPLEX_DistributeData, DMPLEX_Migrate, DMPLEX_InterpolateSF, DMPLEX_GlobalToNaturalBegin, DMPLEX_GlobalToNaturalEnd, DMPLEX_NaturalToGlobalBegin, DMPLEX_NaturalToGlobalEnd, DMPLEX_Stratify, DMPLEX_Symmetrize, DMPLEX_Preallocate, DMPLEX_ResidualFEM, DMPLEX_JacobianFEM, DMPLEX_InterpolatorFEM, DMPLEX_InjectorFEM, DMPLEX_IntegralFEM, DMPLEX_CreateGmsh, DMPLEX_RebalanceSharedPoints, DMPLEX_PartSelf, DMPLEX_PartLabelInvert, DMPLEX_PartLabelCreateSF, DMPLEX_PartStratSF, DMPLEX_CreatePointSF,DMPLEX_LocatePoints,DMPLEX_TopologyView,DMPLEX_LabelsView,DMPLEX_CoordinatesView,DMPLEX_SectionView,DMPLEX_GlobalVectorView,DMPLEX_LocalVectorView,DMPLEX_TopologyLoad,DMPLEX_LabelsLoad,DMPLEX_CoordinatesLoad,DMPLEX_SectionLoad,DMPLEX_GlobalVectorLoad,DMPLEX_LocalVectorLoad;
 
 PETSC_EXTERN PetscErrorCode VecView_MPI(Vec, PetscViewer);
 
@@ -1651,6 +1651,7 @@ PetscErrorCode DMPlexTopologyView(DM dm, PetscViewer viewer)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_TopologyView,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
@@ -1666,6 +1667,7 @@ PetscErrorCode DMPlexTopologyView(DM dm, PetscViewer viewer)
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_TopologyView,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1691,6 +1693,7 @@ PetscErrorCode DMPlexCoordinatesView(DM dm, PetscViewer viewer)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_CoordinatesView,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
@@ -1702,6 +1705,7 @@ PetscErrorCode DMPlexCoordinatesView(DM dm, PetscViewer viewer)
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_CoordinatesView,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1727,6 +1731,7 @@ PetscErrorCode DMPlexLabelsView(DM dm, PetscViewer viewer)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_LabelsView,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     IS                globalPointNumbering;
@@ -1742,6 +1747,7 @@ PetscErrorCode DMPlexLabelsView(DM dm, PetscViewer viewer)
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_LabelsView,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1774,6 +1780,7 @@ PetscErrorCode DMPlexSectionView(DM dm, PetscViewer viewer, DM sectiondm)
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscValidHeaderSpecific(sectiondm, DM_CLASSID, 3);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERHDF5,&ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_SectionView,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     ierr = DMPlexSectionView_HDF5_Internal(dm, viewer, sectiondm);CHKERRQ(ierr);
@@ -1781,6 +1788,7 @@ PetscErrorCode DMPlexSectionView(DM dm, PetscViewer viewer, DM sectiondm)
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_SectionView,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1847,6 +1855,7 @@ PetscErrorCode DMPlexGlobalVectorView(DM dm, PetscViewer viewer, DM sectiondm, V
     if (m1 != m) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Global vector size (%D) != global section storage size (%D)", m1, m);
   }
   ierr = PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_GlobalVectorView,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     ierr = DMPlexGlobalVectorView_HDF5_Internal(dm, viewer, sectiondm, vec);CHKERRQ(ierr);
@@ -1854,6 +1863,7 @@ PetscErrorCode DMPlexGlobalVectorView(DM dm, PetscViewer viewer, DM sectiondm, V
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_GlobalVectorView,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1919,6 +1929,7 @@ PetscErrorCode DMPlexLocalVectorView(DM dm, PetscViewer viewer, DM sectiondm, Ve
     if (m1 != m) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Local vector size (%D) != local section storage size (%D)", m1, m);
   }
   ierr = PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_LocalVectorView,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     ierr = DMPlexLocalVectorView_HDF5_Internal(dm, viewer, sectiondm, vec);CHKERRQ(ierr);
@@ -1926,6 +1937,7 @@ PetscErrorCode DMPlexLocalVectorView(DM dm, PetscViewer viewer, DM sectiondm, Ve
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_LocalVectorView,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -1980,6 +1992,7 @@ PetscErrorCode DMPlexTopologyLoad(DM dm, PetscViewer viewer, PetscSF *globalToLo
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   if (globalToLocalPointSF) PetscValidPointer(globalToLocalPointSF, 3);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_TopologyLoad,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
@@ -1991,6 +2004,7 @@ PetscErrorCode DMPlexTopologyLoad(DM dm, PetscViewer viewer, PetscSF *globalToLo
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_TopologyLoad,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -2018,6 +2032,7 @@ PetscErrorCode DMPlexCoordinatesLoad(DM dm, PetscViewer viewer, PetscSF globalTo
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscValidHeaderSpecific(globalToLocalPointSF, PETSCSF_CLASSID, 3);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_CoordinatesLoad,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
@@ -2029,6 +2044,7 @@ PetscErrorCode DMPlexCoordinatesLoad(DM dm, PetscViewer viewer, PetscSF globalTo
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_CoordinatesLoad,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -2054,6 +2070,7 @@ PetscErrorCode DMPlexLabelsLoad(DM dm, PetscViewer viewer)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   ierr = PetscObjectTypeCompare((PetscObject) viewer, PETSCVIEWERHDF5, &ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_LabelsLoad,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
@@ -2066,6 +2083,7 @@ PetscErrorCode DMPlexLabelsLoad(DM dm, PetscViewer viewer)
     SETERRQ(PetscObjectComm((PetscObject) dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_LabelsLoad,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -2130,6 +2148,7 @@ PetscErrorCode DMPlexSectionLoad(DM dm, PetscViewer viewer, DM sectiondm, PetscS
   if (globalDofSF) PetscValidPointer(globalDofSF, 5);
   if (localDofSF) PetscValidPointer(localDofSF, 6);
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERHDF5,&ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_SectionLoad,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     ierr = DMPlexSectionLoad_HDF5_Internal(dm, viewer, sectiondm, globalToLocalPointSF, globalDofSF, localDofSF);CHKERRQ(ierr);
@@ -2137,6 +2156,7 @@ PetscErrorCode DMPlexSectionLoad(DM dm, PetscViewer viewer, DM sectiondm, PetscS
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_SectionLoad,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -2201,6 +2221,7 @@ PetscErrorCode DMPlexGlobalVectorLoad(DM dm, PetscViewer viewer, DM sectiondm, P
     if (m1 != m) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Global vector size (%D) != global section storage size (%D)", m1, m);
   }
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERHDF5,&ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_GlobalVectorLoad,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     ierr = DMPlexVecLoad_HDF5_Internal(dm, viewer, sectiondm, sf, vec);CHKERRQ(ierr);
@@ -2208,6 +2229,7 @@ PetscErrorCode DMPlexGlobalVectorLoad(DM dm, PetscViewer viewer, DM sectiondm, P
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_GlobalVectorLoad,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -2272,6 +2294,7 @@ PetscErrorCode DMPlexLocalVectorLoad(DM dm, PetscViewer viewer, DM sectiondm, Pe
     if (m1 != m) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Local vector size (%D) != local section storage size (%D)", m1, m);
   }
   ierr = PetscObjectTypeCompare((PetscObject)viewer,PETSCVIEWERHDF5,&ishdf5);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(DMPLEX_LocalVectorLoad,viewer,0,0,0);CHKERRQ(ierr);
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     ierr = DMPlexVecLoad_HDF5_Internal(dm, viewer, sectiondm, sf, vec);CHKERRQ(ierr);
@@ -2279,6 +2302,7 @@ PetscErrorCode DMPlexLocalVectorLoad(DM dm, PetscViewer viewer, DM sectiondm, Pe
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
   }
+  ierr = PetscLogEventEnd(DMPLEX_LocalVectorLoad,viewer,0,0,0);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 

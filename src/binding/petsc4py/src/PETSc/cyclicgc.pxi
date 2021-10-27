@@ -15,6 +15,9 @@ cdef extern from "Python.h":
        inquiry      tp_clear
     PyTypeObject *Py_TYPE(PyObject *)
 
+cdef extern from "petsc/private/garbagecollector.h" nogil:
+    int PetscGarbageCleanup(MPI_Comm, PetscInt)
+
 cdef int tp_traverse(PyObject *o, visitproc visit, void *arg):
     ## printf("%s.tp_traverse(%p)\n", Py_TYPE(o).tp_name, <void*>o)
     cdef PetscObject p = (<Object>o).obj[0]
@@ -33,5 +36,15 @@ cdef inline void TypeEnableGC(PyTypeObject *t):
     ## printf("%s: enforcing GC support\n", t.tp_name)
     t.tp_traverse = tp_traverse
     t.tp_clear    = tp_clear
+
+def _cleanup(comm=None, blocksize=64):
+    cdef MPI_Comm ccomm, petsc_comm
+    if comm is None:
+        comm = COMM_WORLD
+    ccomm = GetComm(comm, MPI_COMM_NULL)
+    if ccomm == MPI_COMM_NULL:
+        raise ValueError("null communicator")
+    CHKERR( PetscCommDuplicate(ccomm, &petsc_comm, NULL) )
+    CHKERR( PetscGarbageCleanup(petsc_comm, blocksize) )
 
 # --------------------------------------------------------------------

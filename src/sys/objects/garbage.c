@@ -155,7 +155,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
   PetscInt *keys;
   PetscObject *obj;
   PetscHMapObj *garbage;
-  MPI_Comm intracom, intercom;
+  MPI_Comm *intracom, *intercom;
 
   /* If the keyvals aren't yet set up, create them and register finalizer */
   ierr = keyval_create(); CHKERRQ(ierr);
@@ -168,12 +168,14 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
   /* Get the intra- and inter- communicators, if they exist, otherwise set them up */
   ierr = MPI_Comm_rank(comm, &comm_rank); CHKERRMPI(ierr);
   blockrank = comm_rank/blocksize;
+  intracom = NULL;
   ierr = MPI_Comm_get_attr(comm, INTRA, &intracom, &flag); CHKERRMPI(ierr);
   if(!flag){
-    ierr = MPI_Comm_split(comm, blockrank, comm_rank, &intracom);
-    ierr = MPI_Comm_set_attr(comm, INTRA, intracom); CHKERRMPI(ierr);
+    intracom = (MPI_Comm*)malloc(sizeof(MPI_Comm));
+    ierr = MPI_Comm_split(comm, blockrank, comm_rank, intracom);
+    ierr = MPI_Comm_set_attr(comm, INTRA, (void*)intracom); CHKERRMPI(ierr);
   }
-  ierr = MPI_Comm_rank(intracom, &intra_rank); CHKERRMPI(ierr);
+  ierr = MPI_Comm_rank(*intracom, &intra_rank); CHKERRMPI(ierr);
 
   if(intra_rank == 0){
     leader = 0;
@@ -181,13 +183,15 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
     leader = MPI_UNDEFINED;
   }
 
+  intercom = NULL;
   ierr = MPI_Comm_get_attr(comm, INTER, &intercom, &flag); CHKERRMPI(ierr);
   if(!flag){
-    ierr = MPI_Comm_split(comm, leader, comm_rank, &intercom);
-    ierr = MPI_Comm_set_attr(comm, INTER, intercom); CHKERRMPI(ierr);
+    intercom = (MPI_Comm*)malloc(sizeof(MPI_Comm));
+    ierr = MPI_Comm_split(comm, leader, comm_rank, intercom);
+    ierr = MPI_Comm_set_attr(comm, INTER, (void*)intercom); CHKERRMPI(ierr);
   }
-  if(intercom != MPI_COMM_NULL){
-    ierr = MPI_Comm_rank(intercom, &inter_rank); CHKERRMPI(ierr);
+  if(*intercom != MPI_COMM_NULL){
+    ierr = MPI_Comm_rank(*intercom, &inter_rank); CHKERRMPI(ierr);
   }else{
     inter_rank = MPI_UNDEFINED;
   }
@@ -217,7 +221,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
   printf("]\n");
 
   /* Intracom gather and intersect */
-  ierr = gather_intersect(intracom, keys, &entries); CHKERRQ(ierr);
+  ierr = gather_intersect(*intracom, keys, &entries); CHKERRQ(ierr);
   if(intra_rank == 0){
     printf("\tB%iR%i: intersection = [", blockrank, intra_rank);
     for(ii = 0; ii < entries; ii++){
@@ -227,8 +231,8 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
   }
 
   /* Intercom gather and intersect */
-  if(intercom != MPI_COMM_NULL){
-    ierr = gather_intersect(intercom, keys, &entries); CHKERRQ(ierr);
+  if(*intercom != MPI_COMM_NULL){
+    ierr = gather_intersect(*intercom, keys, &entries); CHKERRQ(ierr);
     if(inter_rank == 0){
       printf("\tB%iR%i: intersection2 = [", blockrank, intra_rank);
       for(ii = 0; ii < entries; ii++){
@@ -237,13 +241,13 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
       printf("]\n");
     }
     /* Broadcast across intercom */
-    ierr = MPI_Bcast(&entries, 1, MPI_INT, 0, intercom); CHKERRMPI(ierr);
-    ierr = MPI_Bcast(keys, entries, MPI_INT, 0, intercom); CHKERRMPI(ierr);
+    ierr = MPI_Bcast(&entries, 1, MPI_INT, 0, *intercom); CHKERRMPI(ierr);
+    ierr = MPI_Bcast(keys, entries, MPI_INT, 0, *intercom); CHKERRMPI(ierr);
   }
 
   /* Broadcast across intracom */
-  ierr = MPI_Bcast(&entries, 1, MPI_INT, 0, intracom); CHKERRMPI(ierr);
-  ierr = MPI_Bcast(keys, entries, MPI_INT, 0, intracom); CHKERRMPI(ierr);
+  ierr = MPI_Bcast(&entries, 1, MPI_INT, 0, *intracom); CHKERRMPI(ierr);
+  ierr = MPI_Bcast(keys, entries, MPI_INT, 0, *intracom); CHKERRMPI(ierr);
 
   printf("\tB%iR%i: intersection3 = [", blockrank, intra_rank);
   for(ii = 0; ii < entries; ii++){

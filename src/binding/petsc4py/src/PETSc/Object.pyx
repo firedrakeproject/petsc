@@ -9,8 +9,13 @@ cdef class Object:
         self.obj = &self.oval
 
     def __dealloc__(self):
-        CHKERR( PetscDEALLOC(&self.obj[0]) )
-        self.obj = NULL
+#~         printf("in __dealloc__ method: &self.obj    = %p\n", &self.obj)
+#~         printf("                     : self.obj     = %p\n", self.obj)
+#~         printf("                     : self.obj[0]  = %p\n", self.obj[0])
+#~         printf("                     : &self.obj[0] = %p\n", &self.obj[0])
+        CHKERR( DelayedObjectDestroy(&self.obj[0]) )
+#~         CHKERR( PetscDEALLOC(&self.obj[0]) )
+#~         self.obj = NULL
 
     def __richcmp__(self, other, int op):
         if not isinstance(self,  Object): return NotImplemented
@@ -248,6 +253,10 @@ cdef class Object:
     property handle:
         def __get__(self):
             cdef PetscObject obj = self.obj[0]
+            printf("in handle method     : &self.obj    = %p\n", &self.obj)
+            printf("                     : self.obj     = %p\n", self.obj)
+            printf("                     : self.obj[0]  = %p\n", self.obj[0])
+            printf("                     : &self.obj[0] = %p\n", &self.obj[0])
             return PyLong_FromVoidPtr(<void*>obj)
 
     # --- Fortran support  ---

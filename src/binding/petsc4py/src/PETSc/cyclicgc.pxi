@@ -38,13 +38,12 @@ cdef inline void TypeEnableGC(PyTypeObject *t):
     t.tp_clear    = tp_clear
 
 def _cleanup(comm=None, blocksize=64):
-    cdef MPI_Comm ccomm, petsc_comm
+    cdef MPI_Comm ccomm
     if comm is None:
         comm = COMM_WORLD
     ccomm = GetComm(comm, MPI_COMM_NULL)
     if ccomm == MPI_COMM_NULL:
         raise ValueError("null communicator")
-    CHKERR( PetscCommDuplicate(ccomm, &petsc_comm, NULL) )
-    CHKERR( PetscGarbageCleanup(petsc_comm, blocksize) )
+    CHKERR( PetscGarbageCleanup(ccomm, blocksize) )
 
 # --------------------------------------------------------------------

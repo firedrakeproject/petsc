@@ -59,7 +59,15 @@ cdef inline int PetscDEALLOC(PetscObject* obj) nogil:
     if obj    == NULL: return 0
     if obj[0] == NULL: return 0
     cdef PetscObject tmp
+#~     printf("in PetscDEALLOC fn   : &obj    = %p\n", &obj)
+#~     printf("                     : obj     = %p\n", obj)
+#~     printf("                     : obj[0]  = %p\n", obj[0])
+#~     printf("                     : &obj[0] = %p\n", &obj[0])
     tmp = obj[0]; obj[0] = NULL
+#~     printf("                     : &tmp    = %p\n", &tmp)
+#~     printf("                     : tmp     = %p\n", tmp)
+#~     printf("                     : tmp[0]  = %p\n", tmp[0])
+#~     printf("                     : &tmp[0] = %p\n", &tmp[0])
     if not (<int>PetscInitializeCalled): return 0
     if     (<int>PetscFinalizeCalled):   return 0
     return DelayedObjectDestroy(&tmp)

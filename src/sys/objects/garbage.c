@@ -38,7 +38,7 @@ PetscErrorCode getGarbage(MPI_Comm comm, PetscHMapObj **garbage){
   if(!flag){
     /* No garbage, create one */
     printf("\tCreating garbage\n");
-    *garbage = malloc(sizeof(PetscHMapObj));
+    *garbage =(PetscHMapObj*) malloc(sizeof(PetscHMapObj));
     ierr = PetscHMapObjCreate(*garbage); CHKERRQ(ierr);
     ierr = MPI_Comm_set_attr(comm, GARBAGE, *garbage); CHKERRMPI(ierr);
   }else{;
@@ -48,11 +48,12 @@ PetscErrorCode getGarbage(MPI_Comm comm, PetscHMapObj **garbage){
 }
 
 PetscErrorCode DelayedObjectDestroy(PetscObject *obj){
-    MPI_Comm petsc_comm;
-    PetscErrorCode ierr;
-    PetscHMapObj *garbage;
-    //~ PetscObject obj;
+  MPI_Comm petsc_comm;
+  PetscErrorCode ierr;
+  PetscHMapObj *garbage;
 
+  /* Don't stash NULL pointers */
+  if (*obj != NULL){
     /* Do not use PetscPrintf in here */
     //~ printf("Enter destroy function\n");
     /* If the keyvals aren't yet set up, create them and register finalizer */
@@ -68,10 +69,13 @@ PetscErrorCode DelayedObjectDestroy(PetscObject *obj){
     //~ printf("\t garbage pointer: %p\n", (void *)garbage);
     //~ printf("\t creation index: %i\n", obj->cidx);
     ierr = PetscHMapObjSet(*garbage, (*obj)->cidx, obj); CHKERRQ(ierr);
-    *obj = NULL;
-
-    //~ ierr = PetscPrintf(petsc_comm, "Exit destroy function\n"); CHKERRQ(ierr);
-    PetscFunctionReturn(0);
+    printf("Stashed %p of type *%s on comm %i\n", obj, (*obj)->class_name, (int)petsc_comm);
+    //~ *obj = NULL;
+  } else {
+    printf("Attempt to stash NULL pointer\n");
+  }
+  //~ ierr = PetscPrintf(petsc_comm, "Exit destroy function\n"); CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 void sorted_intersect(int *seta, int *lena, int *setb, int lenb){
@@ -135,7 +139,7 @@ PetscErrorCode gather_intersect(MPI_Comm comm, PetscInt *set, PetscInt *entries)
   ierr = MPI_Gatherv(set, *entries, MPI_INT, recvset, set_sizes, displace, MPI_INT, 0, comm); CHKERRMPI(ierr);
   if(comm_rank == 0){
     for(ii = 1; ii < comm_size; ii++){
-      sorted_intersect(set, entries, &recvset[displace[0]], set_sizes[ii]);
+      sorted_intersect(set, entries, &recvset[displace[ii]], set_sizes[ii]);
     }
   }
 
@@ -160,7 +164,9 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
   /* If the keyvals aren't yet set up, create them and register finalizer */
   ierr = keyval_create(); CHKERRQ(ierr);
 
+  ierr = PetscCommDuplicate(comm, &comm, NULL);
   ierr = PetscPrintf(comm, "Enter cleanup function\n"); CHKERRQ(ierr);
+  printf("Cleaning up on comm: %i\n", (int) comm);
 
   /* Get the garbage hash map */
   ierr = getGarbage(comm, &garbage);
@@ -257,7 +263,14 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
 
   for(ii = 0; ii < entries; ii++){
     ierr = PetscHMapObjGet(*garbage, keys[ii], &obj); CHKERRQ(ierr);
-    ierr = PetscObjectDestroy(obj); CHKERRQ(ierr);
+    printf("Destroying pointer %p\n", obj);
+    if(PetscCheckPointer((void*) obj, PETSC_OBJECT) && (obj != NULL)){
+      printf("Value %p of type %s on comm %i\n", *obj, (*obj)->class_name,(int)comm);
+      ierr = PetscObjectDestroy(obj); CHKERRQ(ierr);
+      *obj = NULL;
+    }else{
+      printf("\tpointer not to valid object\n");
+    }
     ierr = PetscHMapObjDel(*garbage, keys[ii]); CHKERRQ(ierr);
   }
 

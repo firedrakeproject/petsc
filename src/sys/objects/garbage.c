@@ -50,6 +50,7 @@ PetscErrorCode getGarbage(MPI_Comm comm, PetscHMapObj **garbage){
 PetscErrorCode DelayedObjectDestroy(PetscObject *obj){
   MPI_Comm petsc_comm;
   PetscErrorCode ierr;
+  PetscObject *duplicate;
   PetscHMapObj *garbage;
 
   /* Don't stash NULL pointers */
@@ -62,14 +63,19 @@ PetscErrorCode DelayedObjectDestroy(PetscObject *obj){
     //~ obj = (PetscObject) *vec;
     ierr = PetscObjectGetComm(*obj, &petsc_comm); CHKERRQ(ierr);
     //~ printf("A %i\n", (int)petsc_comm);
-    ierr = getGarbage(petsc_comm, &garbage);
+    ierr = getGarbage(petsc_comm, &garbage); CHKERRQ(ierr);
     if(garbage == NULL){
       printf("\tgarbage is null\n");
     }
+
+    /* Duplicate object header so interpreted language can clean up original */
+    ierr = PetscMalloc1(1, &duplicate); CHKERRQ(ierr);
+    ierr = PetscMemcpy(duplicate, obj, sizeof(PetscObject)); CHKERRQ(ierr);
     //~ printf("\t garbage pointer: %p\n", (void *)garbage);
     //~ printf("\t creation index: %i\n", obj->cidx);
-    ierr = PetscHMapObjSet(*garbage, (*obj)->cidx, obj); CHKERRQ(ierr);
-    printf("Stashed %p of type *%s on comm %i\n", obj, (*obj)->class_name, (int)petsc_comm);
+    ierr = PetscHMapObjSet(*garbage, (*duplicate)->cidx, duplicate); CHKERRQ(ierr);
+    printf("Stashed %p of type *%s on comm %i\n", duplicate, (*duplicate)->class_name, (int)petsc_comm);
+    printf("Originally: %p of type *%s\n", obj, (*obj)->class_name);
     //~ *obj = NULL;
   } else {
     printf("Attempt to stash NULL pointer\n");
@@ -267,7 +273,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize){
     if(PetscCheckPointer((void*) obj, PETSC_OBJECT) && (obj != NULL)){
       printf("Value %p of type %s on comm %i\n", *obj, (*obj)->class_name,(int)comm);
       ierr = PetscObjectDestroy(obj); CHKERRQ(ierr);
-      *obj = NULL;
+      ierr = PetscFree(obj); CHKERRQ(ierr);
     }else{
       printf("\tpointer not to valid object\n");
     }

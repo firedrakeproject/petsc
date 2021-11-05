@@ -192,6 +192,7 @@ static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
   hid_t           inttype;    /* int type (H5T_NATIVE_INT or H5T_NATIVE_LLONG) */
   hid_t           file_id, group;
   hsize_t         dim, maxDims[3], dims[3], chunkDims[3], count[3],offset[3];
+  uint64_t        chunksize;
   PetscBool       timestepping;
   PetscInt        bs, N, n, timestep=PETSC_MIN_INT, low;
   const PetscInt *ind;
@@ -219,6 +220,7 @@ static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
    * permit extending dataset).
    */
   dim = 0;
+  chunksize = 1;
   if (timestep >= 0) {
     dims[dim]      = timestep+1;
     maxDims[dim]   = H5S_UNLIMITED;
@@ -231,11 +233,13 @@ static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
 
   maxDims[dim]   = dims[dim];
   chunkDims[dim] = PetscMax(1,dims[dim]);
+  chunksize     *= chunkDims[dim];
   ++dim;
   if (bs >= 1) {
     dims[dim]      = bs;
     maxDims[dim]   = dims[dim];
-    chunkDims[dim] = dims[dim];
+    chunkDims[dim] = PetscMax(1,dims[dim]);
+    chunksize     *= chunkDims[dim];
     ++dim;
   }
   PetscStackCallHDF5Return(filespace,H5Screate_simple,(dim, dims, maxDims));
@@ -246,6 +250,16 @@ static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
   inttype = H5T_NATIVE_INT;
 #endif
 
+  /* hdf5 chunks must be less than 4GB, but memory for the chunk must be available on all processes */
+  if (chunksize*sizeof(PetscInt) > PETSC_HDF5_MAX_CHUNKSIZE/128) {
+    /* Rejig so that chunks are of total size ~300MB */
+    if (bs >= 1) {
+      chunkDims[dim-1] = PetscMin(bs, 1024);
+      chunkDims[dim-2] = PETSC_HDF5_MAX_CHUNKSIZE/(128 * sizeof(PetscInt) * chunkDims[dim-1]);
+    } else {
+      chunkDims[dim-1] = PETSC_HDF5_MAX_CHUNKSIZE/(128 * sizeof(PetscInt));
+    }
+  }
   /* Create the dataset with default properties and close filespace */
   ierr = PetscObjectGetName((PetscObject) is, &isname);CHKERRQ(ierr);
   if (!H5Lexists(group, isname, H5P_DEFAULT)) {

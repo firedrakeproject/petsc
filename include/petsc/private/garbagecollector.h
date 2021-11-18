@@ -11,5 +11,6 @@ PETSC_EXTERN PetscMPIInt INTER;
 PETSC_EXTERN void sorted_intersect(int *seta, int *lena, int *setb, int lenb);
 PETSC_EXTERN PetscErrorCode DelayedObjectDestroy(PetscObject *obj);
 PETSC_EXTERN PetscErrorCode PetscGarbageCleanup(MPI_Comm comm, PetscInt blocksize);
+PETSC_EXTERN PetscErrorCode PetscRecursiveGarbageCleanup(MPI_Comm comm, PetscInt blocksize);
 
 #endif

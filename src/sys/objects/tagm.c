@@ -214,7 +214,6 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
 
       /* Add an object creation index to the communicator */
       PetscCall(PetscCalloc(1,&cidx));
-      //~ printf("Set: %i at %p\n", *cidx, cidx);
       PetscCallMPI(MPI_Comm_set_attr(*comm_out,Petsc_CreationIdx_keyval,cidx));
       PetscCall(PetscInfo(NULL,"Duplicating a communicator %ld %ld max tags = %d\n",(long)comm_in,(long)*comm_out,*maxval));
 
@@ -305,7 +304,6 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_CreationIdx_keyval,&get_tmp,&flg));
     if (flg) {
       cidx = (PetscInt *) get_tmp;
-      //~ printf("Free: %i at %p\n", *cidx, cidx);
       PetscCall(PetscFree(cidx));
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index, problem with corrupted memory");
 

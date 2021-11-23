@@ -9,13 +9,8 @@ cdef class Object:
         self.obj = &self.oval
 
     def __dealloc__(self):
-#~         printf("in __dealloc__ method: &self.obj    = %p\n", &self.obj)
-#~         printf("                     : self.obj     = %p\n", self.obj)
-#~         printf("                     : self.obj[0]  = %p\n", self.obj[0])
-#~         printf("                     : &self.obj[0] = %p\n", &self.obj[0])
         CHKERR( DelayedObjectDestroy(&self.obj[0]) )
-#~         CHKERR( PetscDEALLOC(&self.obj[0]) )
-#~         self.obj = NULL
+        self.obj = NULL
 
     def __richcmp__(self, other, int op):
         if not isinstance(self,  Object): return NotImplemented

@@ -148,8 +148,6 @@ cdef class Vec(Object):
         cdef PetscVec newvec = NULL
         CHKERR( VecCreate(ccomm, &newvec) )
         PetscCLEAR(self.obj); self.vec = newvec
-#~         printf("Vec create pointer1 %p, value %p\n", self.obj, self.obj[0])
-#~         printf("Vec create pointer2 %p, value %p\n", self.obj, self.obj[0])
         return self
 
     def setType(self, vec_type):

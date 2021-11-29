@@ -39,7 +39,7 @@ cdef extern from "custom.h" nogil:
     int PetscObjectGetDeviceId(PetscObject,PetscInt*)
 
 cdef extern from "petsc/private/garbagecollector.h" nogil:
-    int DelayedObjectDestroy(PetscObject*)
+    int PetscObjectDelayedDestroy(PetscObject*)
 
 # --------------------------------------------------------------------
 

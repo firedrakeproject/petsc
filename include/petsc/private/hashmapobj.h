@@ -4,8 +4,8 @@
 #include <petsc/private/hashmap.h>
 
 /*
- * Hash map from PetscInt --> PetscObject *
+ * Hash map from PetscInt --> PetscObject*
  * */
-PETSC_HASH_MAP(HMapObj, PetscInt, PetscObject *, PetscHashInt, PetscHashEqual, NULL)
+PETSC_HASH_MAP(HMapObj,PetscInt,PetscObject*,PetscHashInt,PetscHashEqual,NULL)
 
 #endif /* PETSC_HASHMAPP_H */

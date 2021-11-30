@@ -56,7 +56,34 @@ static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbag
   PetscFunctionReturn(0);
 }
 
-/* Analogue to PetscObjectDestroy for use in managed languages */
+/*@C
+    PetscObjectDelayedDestroy - Adds an object to a data structure for
+    later destruction.
+
+    Not Collective
+
+    Input Parameters:
+.   obj - object to be destroyed
+
+    Notes: Analogue to PetscObjectDestroy for use in managed languages.
+
+    Petsc objects are given a creation index at initialisation based on
+    the communicator it was created on and the order in which it is
+    created. When this function is passed a Petsc object a pointer to
+    the object is stashed on a garbage dictionary (PetscHMapObj), keyed
+    by its creation index.
+
+    Objects stashed on this garbage dictionary can later be destroyed
+    with a call to PetscGarbageCleanup().
+
+    This function is intended for use with managed languages such as
+    Python or Julia, which may no destroy objects in a deterministic
+    order.
+
+    Level: developer
+
+.seealso: PetscGarbageCleanup()
+@*/
 PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
 {
   MPI_Comm       petsc_comm;
@@ -187,7 +214,40 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
   PetscFunctionReturn(0);
 }
 
-/* Implements garbage collection for objects destroyed using DelayedObjectDestroy */
+/*@C
+    PetscGarbageCleanup - Destroys objects placed in the garbage by
+    PetscObjectDelayedDestroy().
+
+    Collective
+
+    Input Parameters:
++   obj       - communicator over which to perform collective cleanup
+-   blocksize - number of MPI ranks to block together for communication
+
+    Notes: Implements a collective garbage collection.
+    A per- MPI communicator garbage dictionary is created to store
+    references to objects destroyed using PetscObjectDelayedDestroy().
+    Objects that appear in this dictionary on all ranks can be destroyed
+    by calling PetscGarbageCleanup().
+
+    This is done as follows:
+    1.  Keys of the garbage dictionary, which correspond to the creation
+        indices of the objects stashed, are sorted.
+    2.  A collective intersection of dictionary keys is performed by all
+        ranks in the communicator.
+    3.  The intersection is broadcast back to all ranks in the
+        communicator.
+    4.  The objects on the dictionary are collectively destroyed in
+        creation index order using a call to PetscObjectDestroy().
+
+    This function is intended for use with managed languages such as
+    Python or Julia, which may no destroy objects in a deterministic
+    order.
+
+    Level: developer
+
+.seealso: PetscObjectDelayedDestroy()
+@*/
 PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
 {
   PetscErrorCode ierr;
@@ -319,8 +379,20 @@ static PetscErrorCode GarbageKeyRecursiveBcast_Private(MPI_Comm comm,PetscInt *s
   PetscFunctionReturn(0);
 }
 
-/* Implements garbage collection for objects destroyed using DelayedObjectDestroy _recursively_
- * Replaces above PetscGarbageCleanup function */
+/*@C
+    PetscRecursiveGarbageCleanup - A recursive implementation of
+    PetscGarbageCleanup
+
+    Collective
+
+    Input Parameters:
++   obj       - communicator over which to perform collective cleanup
+-   blocksize - number of MPI ranks to block together for communication
+
+    Level: developer
+
+.seealso: PetscObjectDelayedDestroy()
+@*/
 PetscErrorCode PetscRecursiveGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
 {
   PetscInt     ii,ierr,entries,offset;

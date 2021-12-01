@@ -62,7 +62,7 @@ cdef inline int PetscDEALLOC(PetscObject* obj) nogil:
     tmp = obj[0]; obj[0] = NULL
     if not (<int>PetscInitializeCalled): return 0
     if     (<int>PetscFinalizeCalled):   return 0
-    return DelayedObjectDestroy(&tmp)
+    return PetscObjectDelayedDestroy(&tmp)
 
 cdef inline int PetscINCSTATE(PetscObject *obj) nogil:
     if obj    == NULL: return 0

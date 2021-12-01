@@ -47,7 +47,7 @@ static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbag
   ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&get_tmp,&flag);CHKERRMPI(ierr);
   if (!flag) {
     /* No garbage,create one */
-    ierr = PetscMalloc1(1,*garbage);CHKERRQ(ierr);
+    ierr = PetscMalloc1(1,garbage);CHKERRQ(ierr);
     ierr = PetscHMapObjCreate(*garbage);CHKERRQ(ierr);
     ierr = MPI_Comm_set_attr(comm,Petsc_Garbage_HMap_keyval,*garbage);CHKERRMPI(ierr);
   } else {

@@ -493,10 +493,16 @@ cdef class DMPlex(DM):
         cdef PetscInt coverlap = asInt(overlap)
         cdef SF sf = SF()
         cdef PetscDM dmOverlap = NULL
-        CHKERR( DMPlexDistributeOverlap(self.dm, coverlap,
-                                        &sf.sf, &dmOverlap) )
-        PetscCLEAR(self.obj); self.dm = dmOverlap
-        return sf
+        CHKERR( DMPlexDistributeOverlap(self.dm, coverlap, &sf.sf, &dmOverlap) )
+        if dmOverlap != NULL:
+            PetscCLEAR(self.obj); self.dm = dmOverlap
+            return sf
+
+    def filter(self, DMLabel cellLabel not None, value):
+        cdef cvalue = asInt(value)
+        cdef DMPlex subdm = DMPlex()
+        CHKERR( DMPlexFilter(self.dm, cellLabel.dmlabel, cvalue, &subdm.dm) )
+        return subdm
 
     def isDistributed(self):
         cdef PetscBool flag = PETSC_FALSE

@@ -107,6 +107,7 @@ cdef extern from * nogil:
     int DMPlexGetOrdering(PetscDM,PetscMatOrderingType,PetscDMLabel,PetscIS*)
     int DMPlexPermute(PetscDM,PetscIS,PetscDM*)
 
+    int DMPlexFilter(PetscDM,PetscDMLabel,PetscInt,PetscDM*)
     #int DMPlexCreateSubmesh(PetscDM,PetscDMLabel,PetscInt,PetscDM*)
     #int DMPlexCreateHybridMesh(PetscDM,PetscDMLabel,PetscDMLabel*,PetscDM*)
     #int DMPlexGetSubpointMap(PetscDM,PetscDMLabel*)

@@ -109,12 +109,12 @@ PetscErrorCode DMAdaptorDestroy(DMAdaptor *adaptor)
 PetscErrorCode DMAdaptorSetFromOptions(DMAdaptor adaptor)
 {
   PetscFunctionBegin;
-  PetscOptionsBegin(PetscObjectComm((PetscObject) adaptor), "", "DM Adaptor Options", "DMAdaptor");
+  PetscCall(PetscOptionsBegin(PetscObjectComm((PetscObject) adaptor), "", "DM Adaptor Options", "DMAdaptor");PetscCall(ierr);
   PetscCall(PetscOptionsBool("-adaptor_monitor", "Monitor the adaptation process", "DMAdaptorMonitor", adaptor->monitor, &adaptor->monitor, NULL));
   PetscCall(PetscOptionsInt("-adaptor_sequence_num", "Number of adaptations to generate an optimal grid", "DMAdaptorSetSequenceLength", adaptor->numSeq, &adaptor->numSeq, NULL));
   PetscCall(PetscOptionsInt("-adaptor_target_num", "Set the target number of vertices N_adapt, -1 for automatic determination", "DMAdaptor", adaptor->Nadapt, &adaptor->Nadapt, NULL));
   PetscCall(PetscOptionsReal("-adaptor_refinement_factor", "Set r such that N_adapt = r^dim N_orig", "DMAdaptor", adaptor->refinementFactor, &adaptor->refinementFactor, NULL));
-  PetscOptionsEnd();
+  PetscCall(PetscOptionsEnd();PetscCall(ierr);
   PetscCall(VecTaggerSetFromOptions(adaptor->refineTag));
   PetscCall(VecTaggerSetFromOptions(adaptor->coarsenTag));
   PetscFunctionReturn(0);
@@ -514,13 +514,15 @@ static PetscErrorCode DMAdaptorComputeErrorIndicator_Private(DMAdaptor adaptor, 
 static void identityFunc(PetscInt dim, PetscInt Nf, PetscInt NfAux,
                          const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
                          const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
-                         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar f[])
+                         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar f0[])
 {
-  PetscInt i, j;
+  PetscInt f, i, j;
 
-  for (i = 0; i < dim; ++i) {
-    for (j = 0; j < dim; ++j) {
-      f[i+dim*j] = u[i+dim*j];
+  for (f = 0; f < Nf; ++f) {
+    for (i = 0; i < dim; ++i) {
+      for (j = 0; j < dim; ++j) {
+        f0[f*Nf+i*dim+j] = u[f*Nf+i*dim+j];
+      }
     }
   }
 }
@@ -627,26 +629,29 @@ static PetscErrorCode DMAdaptorAdapt_Sequence_Private(DMAdaptor adaptor, Vec inx
     break;
     case DM_ADAPTATION_METRIC:
     {
-      DM           dmGrad, dmHess, dmMetric;
-      Vec          xGrad, xHess, metric;
-      PetscReal    N;
-      DMLabel      bdLabel = NULL, rgLabel = NULL;
-      PetscBool    higherOrder = PETSC_FALSE;
-      PetscInt     Nd = coordDim*coordDim, f, vStart, vEnd;
-      void       (**funcs)(PetscInt, PetscInt, PetscInt,
-                           const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
-                           const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
-                           PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]);
+      DM                 dmGrad, dmHess, dmMetric;
+      Vec                xGrad, xHess, metric = NULL, nMetric;
+      DMLabel            bdLabel = NULL, rgLabel = NULL;
+      PetscBool          higherOrder = PETSC_FALSE;
+      PetscFE            fe;
+      PetscInt          *fields, Nc, Nd = coordDim*coordDim, f, vStart, vEnd, v, numComponents = 0;
+      PetscReal          N;
+      const PetscScalar *H;
+      void             (**funcs)(PetscInt, PetscInt, PetscInt,
+                                 const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                 const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[],
+                                 PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]);
 
-      PetscCall(PetscMalloc(1, &funcs));
+      PetscCall(PetscNew(&funcs));
       funcs[0] = identityFunc;
+      PetscCall(PetscMalloc(numFields, &fields));
+      for (f = 0; f < numFields; ++f) fields[f] = f;
 
       /*     Setup finite element spaces */
       PetscCall(DMClone(dm, &dmGrad));
       PetscCall(DMClone(dm, &dmHess));
-      PetscCheck(numFields <= 1,PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Adaptation with multiple fields not yet considered");  // TODO
       for (f = 0; f < numFields; ++f) {
-        PetscFE         fe, feGrad, feHess;
+        PetscFE         feGrad, feHess;
         PetscDualSpace  Q;
         PetscSpace      space;
         DM              K;
@@ -656,7 +661,7 @@ static PetscErrorCode DMAdaptorAdapt_Sequence_Private(DMAdaptor adaptor, Vec inx
 
         PetscCall(PetscDSGetDiscretization(prob, f, (PetscObject *) &fe));
         PetscCall(PetscFEGetNumComponents(fe, &Nc));
-        PetscCheck(Nc <= 1,PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Adaptation with multiple components not yet considered");  // TODO
+        numComponents += Nc;
         PetscCall(PetscFEGetBasisSpace(fe, &space));
         PetscCall(PetscSpaceGetDegree(space, NULL, &p));
         if (p > 1) higherOrder = PETSC_TRUE;
@@ -686,7 +691,7 @@ static PetscErrorCode DMAdaptorAdapt_Sequence_Private(DMAdaptor adaptor, Vec inx
       PetscCall(VecViewFromOptions(xHess, NULL, "-adapt_hessian_view"));
       PetscCall(VecDestroy(&xGrad));
       PetscCall(DMDestroy(&dmGrad));
-      /*     Compute L-p normalized metric */
+      /*     Normalize each field and intersect them together */
       PetscCall(DMClone(dm, &dmMetric));
       N    = adaptor->Nadapt >= 0 ? adaptor->Nadapt : PetscPowRealInt(adaptor->refinementFactor, dim)*((PetscReal) (vEnd - vStart));
       if (adaptor->monitor) {
@@ -698,13 +703,51 @@ static PetscErrorCode DMAdaptorAdapt_Sequence_Private(DMAdaptor adaptor, Vec inx
       PetscCall(DMPlexMetricSetTargetComplexity(dmMetric, (PetscReal) N));
       if (higherOrder) {
         /*   Project Hessian into P1 space, if required */
-        PetscCall(DMPlexMetricCreate(dmMetric, 0, &metric));
+        PetscCall(DMPlexMetricCreateMultiple(dmMetric, numFields, fields, &metric);
         PetscCall(DMProjectFieldLocal(dmMetric, 0.0, xHess, funcs, INSERT_ALL_VALUES, metric));
         PetscCall(VecDestroy(&xHess));
         xHess = metric;
       }
+      PetscCall(PetscFree(fields));
       PetscCall(PetscFree(funcs));
-      PetscCall(DMPlexMetricNormalize(dmMetric, xHess, PETSC_TRUE, PETSC_TRUE, &metric));
+      PetscCall(VecGetArrayRead(xHess, &H));
+      for (f = 0; f < numFields; ++f) {
+        PetscInt fc, d;
+        Vec      fHess, M1, M2;
+
+        PetscCall(PetscDSGetDiscretization(prob, f, (PetscObject *) &fe));
+        PetscCall(PetscFEGetNumComponents(fe, &Nc));
+        /*   Extract subvector */
+        for (fc = 0; fc < Nc; ++fc) {
+          PetscScalar *fH;
+
+          PetscCall(DMPlexMetricCreate(dmMetric, fc, &fHess));
+          PetscCall(VecGetArrayWrite(fHess, &fH));
+          for (v = vStart; v < vEnd; ++v) {
+            PetscScalar *phess, *fhess;
+
+            // PetscCall(DMPlexPointLocalRead(dmMetric, v+fc*Nd, H, &phess));
+            PetscCall(DMPlexPointLocalRead(dmMetric, v, H, &phess));
+            PetscCall(DMPlexPointLocalRef(dmMetric, v, fH, &fhess));
+            // for (d = 0; d < Nd; ++d) fhess[d] = phess[d];  // FIXME: segfault
+            for (d = 0; d < Nd; ++d) fhess[d] = phess[d+fc*Nd];  // FIXME: segfault
+          }
+          PetscCall(VecRestoreArrayWrite(fHess, &fH));
+          PetscCall(DMPlexMetricNormalize(dmMetric, fHess, PETSC_TRUE, PETSC_TRUE, &M1));
+          if (Nc == 1) nMetric = M1;
+          else {
+            PetscCall(DMPlexMetricIntersection2(dmMetric, nMetric, M1, &M2));
+            PetscCall(VecDestroy(&nMetric));
+            PetscCall(VecDestroy(&M1));
+            nMetric = M2;
+          }
+          PetscCall(VecDestroy(&fHess));
+        }
+        if (metric) { PetscCall(DMPlexMetricIntersection2(dmMetric, nMetric, metric, &M1)); }
+        else M1 = nMetric;
+        metric = M1;
+      }
+      PetscCall(VecRestoreArrayRead(xHess, &H));
       PetscCall(VecDestroy(&xHess));
       PetscCall(DMDestroy(&dmHess));
       /*     Adapt DM from metric */

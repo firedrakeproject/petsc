@@ -1,57 +1,18 @@
 #include "petsc/private/garbagecollector.h"
 
-/* MPI keyvals,only used internally */
-PetscMPIInt Petsc_Garbage_HMap_keyval      = MPI_KEYVAL_INVALID;
-PetscMPIInt Petsc_Garbage_IntraComm_keyval = MPI_KEYVAL_INVALID;
-PetscMPIInt Petsc_Garbage_InterComm_keyval = MPI_KEYVAL_INVALID;
-
-static PetscErrorCode GarbageKeyvalFree_Private(void);
-
-/* Creates keyvals for storing attributes on MPI communicator */
-static PetscErrorCode GarbageKeyvalCreate_Private(void)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  if (Petsc_Garbage_HMap_keyval == MPI_KEYVAL_INVALID) {
-    ierr = PetscInfo(NULL,"Creating keyvals,should only happen once\n");CHKERRQ(ierr);
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Garbage_HMap_keyval,(void*)0);CHKERRMPI(ierr);
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Garbage_IntraComm_keyval,(void*)0);CHKERRMPI(ierr);
-    ierr = MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN,MPI_COMM_NULL_DELETE_FN,&Petsc_Garbage_InterComm_keyval,(void*)0);CHKERRMPI(ierr);
-    ierr = PetscRegisterFinalize(GarbageKeyvalFree_Private);CHKERRQ(ierr);
-  }
-  PetscFunctionReturn(0);
-}
-
-/* Destroys keyvals */
-static PetscErrorCode GarbageKeyvalFree_Private(void)
-{
-  PetscErrorCode ierr;
-
-  PetscFunctionBegin;
-  ierr = PetscInfo(NULL,"Freeing Petsc_Garbage_HMap_keyval,Petsc_Garbage_IntraComm_keyval and Petsc_Garbage_InterComm_keyval keyvals\n");CHKERRQ(ierr);
-  ierr = MPI_Comm_free_keyval(&Petsc_Garbage_HMap_keyval);CHKERRMPI(ierr);
-  ierr = MPI_Comm_free_keyval(&Petsc_Garbage_IntraComm_keyval);CHKERRMPI(ierr);
-  ierr = MPI_Comm_free_keyval(&Petsc_Garbage_InterComm_keyval);CHKERRMPI(ierr);
-  PetscFunctionReturn(0);
-}
-
 /* Fetches garbage hashmap from communicator */
 static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbage)
 {
-  void           *get_tmp;
   PetscInt       flag;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&get_tmp,&flag);CHKERRMPI(ierr);
+  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,garbage,&flag);CHKERRMPI(ierr);
   if (!flag) {
     /* No garbage,create one */
-    ierr = PetscMalloc1(1,garbage);CHKERRQ(ierr);
+    ierr = PetscNew(garbage);CHKERRQ(ierr);
     ierr = PetscHMapObjCreate(*garbage);CHKERRQ(ierr);
     ierr = MPI_Comm_set_attr(comm,Petsc_Garbage_HMap_keyval,*garbage);CHKERRMPI(ierr);
-  } else {
-    *garbage = (PetscHMapObj*)get_tmp;
   }
   PetscFunctionReturn(0);
 }
@@ -94,18 +55,15 @@ PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
   PetscFunctionBegin;
   /* Don't stash NULL pointers */
   if (*obj != NULL) {
-    /* If the keyvals aren't yet set up,create them and register finalizer */
-    ierr = GarbageKeyvalCreate_Private();CHKERRQ(ierr);
     ierr = PetscObjectGetComm(*obj,&petsc_comm);CHKERRQ(ierr);
     ierr = GarbageGetHMap_Private(petsc_comm,&garbage);CHKERRQ(ierr);
-    /* TODO: Does there need to be a check here for a NULL pointer? */
 
     /* Duplicate object header so managed language can clean up original */
-    ierr = PetscMalloc1(1,&duplicate);CHKERRQ(ierr);
+    ierr = PetscNew(&duplicate);CHKERRQ(ierr);
     ierr = PetscMemcpy(duplicate,obj,sizeof(PetscObject));CHKERRQ(ierr);
     ierr = PetscHMapObjSet(*garbage,(*duplicate)->cidx,duplicate);CHKERRQ(ierr);
     *obj = NULL;
-  } /* TODO: Is an else clause necessary? */
+  }
   PetscFunctionReturn(0);
 }
 
@@ -182,21 +140,33 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
   PetscFunctionReturn(0);
 }
 
-/* Setup inter- and intra- communicators for more efficient MPI */
-static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
+/* Calculate block for given communicator and blocksize */
+static PetscErrorCode CalculateBlock_Private(MPI_Comm comm,int blocksize)
 {
   PetscErrorCode ierr;
-  PetscInt       p,block,comm_size,comm_rank,blockrank,intra_rank,leader;
-  MPI_Comm       *intracom,*intercom;
+  PetscInt  p,block,comm_size;
 
   PetscFunctionBegin;
   /* Calculate biggest power of blocksize smaller than communicator size */
   ierr = MPI_Comm_size(comm,&comm_size);CHKERRMPI(ierr);
-  p = (int)PetscFloorReal(PetscLogReal((double)comm_size)/PetscLogReal((double)blocksize));
-  block = (int)PetscPowReal((double)blocksize,(double)p);
+  p = (PetscInt)PetscFloorReal(PetscLogReal((PetscReal)comm_size)/PetscLogReal((PetscReal)blocksize));
+  block = (PetscInt)PetscPowReal((PetscReal)blocksize,(PetscReal)p);
   if ((block == comm_size) && (comm_size != 1)) {
-    block = (int)PetscPowReal((double)blocksize,(double)(p - 1));
+    block = (PetscInt)PetscPowReal((PetscReal)blocksize,(PetscReal)(p - 1));
   }
+  PetscFunctionReturn(block);
+}
+
+/* Setup inter- and intra- communicators for more efficient MPI */
+static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
+{
+  PetscErrorCode ierr;
+  PetscInt       block,comm_rank,blockrank,intra_rank,leader;
+  MPI_Comm       *intracom,*intercom;
+
+  PetscFunctionBegin;
+  /* Calculate biggest power of blocksize smaller than communicator size */
+  block = CalculateBlock_Private(comm, blocksize);
 
   /* Create intra-communicators of size block or smaller */
   ierr = MPI_Comm_rank(comm,&comm_rank);CHKERRMPI(ierr);
@@ -258,11 +228,8 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
   MPI_Comm       *intracom,*intercom;
 
   PetscFunctionBegin;
-  /* If the keyvals aren't yet set up,create them and register finalizer */
-  ierr = GarbageKeyvalCreate_Private();CHKERRQ(ierr);
-  ierr = PetscCommDuplicate(comm,&comm,NULL);
-
   /* Get the garbage hash map */
+  ierr = PetscCommDuplicate(comm,&comm,NULL);
   ierr = GarbageGetHMap_Private(comm,&garbage);
 
   /* Get the intra- and inter- communicators,if they exist,otherwise set them up */
@@ -309,7 +276,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
     if (PetscCheckPointer((void*) obj,PETSC_OBJECT) && (obj != NULL)) {
       ierr = PetscObjectDestroy(obj);CHKERRQ(ierr);
       ierr = PetscFree(obj);CHKERRQ(ierr);
-    } /* TODO: else? */
+    }
     ierr = PetscHMapObjDel(*garbage,keys[ii]);CHKERRQ(ierr);
   }
   PetscFree(keys);CHKERRQ(ierr);
@@ -401,11 +368,8 @@ PetscErrorCode PetscRecursiveGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
   PetscHMapObj *garbage;
 
   PetscFunctionBegin;
-  /* If the keyvals aren't yet set up,create them and register finalizer */
-  ierr = GarbageKeyvalCreate_Private();CHKERRQ(ierr);
-  ierr = PetscCommDuplicate(comm,&comm,NULL);
-
   /* Get keys from garbage hash map and sort */
+  ierr = PetscCommDuplicate(comm,&comm,NULL);
   ierr = GarbageGetHMap_Private(comm,&garbage);
   ierr = PetscHMapObjGetSize(*garbage,&entries);CHKERRQ(ierr);
   ierr = PetscMalloc1(entries,&keys);CHKERRQ(ierr);
@@ -423,7 +387,7 @@ PetscErrorCode PetscRecursiveGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
     if (PetscCheckPointer((void*)obj,PETSC_OBJECT) && (obj != NULL)) {
       ierr = PetscObjectDestroy(obj);CHKERRQ(ierr);
       ierr = PetscFree(obj);CHKERRQ(ierr);
-    } /* TODO: else? */
+    }
     ierr = PetscHMapObjDel(*garbage,keys[ii]);CHKERRQ(ierr);
   }
   PetscFree(keys);CHKERRQ(ierr);

@@ -1,4 +1,5 @@
 #include <petsc/private/petscimpl.h>             /*I    "petscsys.h"   I*/
+#include <petsc/private/hashmapobj.h>
 /* ---------------------------------------------------------------- */
 /*
    A simple way to manage tags inside a communicator.
@@ -213,7 +214,7 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
       PetscCallMPI(MPI_Comm_set_attr(*comm_out,Petsc_Counter_keyval,counter));
 
       /* Add an object creation index to the communicator */
-      PetscCall(PetscCalloc(1,&cidx));
+      PetscCall(PetscNew(&cidx));
       PetscCallMPI(MPI_Comm_set_attr(*comm_out,Petsc_CreationIdx_keyval,cidx));
       PetscCall(PetscInfo(NULL,"Duplicating a communicator %ld %ld max tags = %d\n",(long)comm_in,(long)*comm_out,*maxval));
 
@@ -254,6 +255,24 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
   PetscFunctionReturn(0);
 }
 
+/* Clean up recursively defined comms */
+static PetscErrorCode PetscRecursiveCommCleanup(MPI_Comm comm)
+{
+  PetscErrorCode ierr;
+  PetscMPIInt    flg;
+  MPI_Comm       *intracom,*intercom;
+
+  PetscFunctionBegin;
+  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&intracom,&flg);CHKERRMPI(ierr);
+  if (flg) {
+    ierr = PetscRecursiveCommCleanup(*intracom);CHKERRQ(ierr);
+    free(intracom);
+    ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&intercom,&flg);CHKERRMPI(ierr);
+    free(intercom);
+  }
+  PetscFunctionReturn(0);
+}
+
 /*@C
    PetscCommDestroy - Frees communicator.  Use in conjunction with PetscCommDuplicate().
 
@@ -268,10 +287,10 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
 @*/
 PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
 {
-  void             *get_tmp;
   PetscInt         *cidx;
   PetscCommCounter *counter;
   PetscMPIInt      flg;
+  PetscHMapObj     *garbage;
   MPI_Comm         icomm = *comm,ocomm;
   union {MPI_Comm comm; void *ptr;} ucomm;
 
@@ -301,14 +320,20 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     }
 
     /* Remove the object creation index on the communicator */
-    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_CreationIdx_keyval,&get_tmp,&flg));
+    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_CreationIdx_keyval,&cidx,&flg));
     if (flg) {
-      cidx = (PetscInt *) get_tmp;
       PetscCall(PetscFree(cidx));
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index, problem with corrupted memory");
 
     PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
     PetscCallMPI(MPI_Comm_free(&icomm));
+
+    /* Remove garbage and inter- and intra- communicators set up by garbage collection */
+    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_HMap_keyval,&garbage,&flg));
+    if (flg) {
+      PetscCall(PetscFree(garbage));
+    }
+    PetscCall(PetscRecursiveCommCleanup(icomm));
   }
   *comm = MPI_COMM_NULL;
   PetscCall(PetscSpinlockUnlock(&PetscCommSpinLock));

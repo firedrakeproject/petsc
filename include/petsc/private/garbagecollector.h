@@ -1,7 +1,7 @@
 #if !defined(GARBAGECOLLECTOR_H)
 #define GARBAGECOLLECTOR_H
 
-#include "petsc/private/hashmapobj.h"
+#include <petsc/private/hashmapobj.h>
 #include <petscsys.h>
 
 PETSC_EXTERN PetscErrorCode PetscObjectDelayedDestroy(PetscObject*);

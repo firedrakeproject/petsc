@@ -59,7 +59,7 @@ cdef class Object:
         CHKERR( PetscObjectView(self.obj[0], vwr) )
 
     def destroy(self):
-        CHKERR( PetscObjectDestroy(&self.obj[0]) )
+        CHKERR( PetscObjectDelayedDestroy(&self.obj[0]) )
         return self
 
     def getType(self):

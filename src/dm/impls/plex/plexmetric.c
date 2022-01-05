@@ -844,6 +844,9 @@ PetscErrorCode DMPlexMetricGetNumIterations(DM dm, PetscInt *numIter)
   PetscFunctionReturn(0);
 }
 
+/*
+  Create a P1 field of a given size, indexed by f.
+*/
 PetscErrorCode DMPlexP1FieldCreate_Private(DM dm, PetscInt f, PetscInt size, Vec *metric)
 {
   MPI_Comm       comm;
@@ -859,6 +862,32 @@ PetscErrorCode DMPlexP1FieldCreate_Private(DM dm, PetscInt f, PetscInt size, Vec
   /* Create a P1 field of the requested size */
   PetscCall(PetscFECreateLagrange(comm, dim, size, PETSC_TRUE, 1, PETSC_DETERMINE, &fe));
   PetscCall(DMSetField(dm, f, NULL, (PetscObject)fe));
+  PetscCall(DMCreateDS(dm));
+  PetscCall(PetscFEDestroy(&fe));
+  PetscCall(DMCreateLocalVector(dm, metric));
+
+  PetscFunctionReturn(0);
+}
+
+/*
+  Create numFields P1 fields of a given size, indexed by fields
+*/
+PetscErrorCode DMPlexP1FieldCreateMultiple_Private(DM dm, PetscInt numFields, PetscInt fields[], PetscInt size, Vec *metric)
+{
+  MPI_Comm       comm;
+  PetscErrorCode ierr;
+  PetscFE        fe;
+  PetscInt       dim, i;
+
+  PetscFunctionBegin;
+
+  /* Extract metadata from dm */
+  PetscCall(PetscObjectGetComm((PetscObject) dm, &comm));
+  PetscCall(DMGetDimension(dm, &dim));
+
+  /* Create a P1 field of the requested size */
+  PetscCall(PetscFECreateLagrange(comm, dim, size, PETSC_TRUE, 1, PETSC_DETERMINE, &fe));
+  for (i = 0; i < numFields; ++i) PetscCall(DMSetField(dm, fields[i], NULL, (PetscObject)fe));
   PetscCall(DMCreateDS(dm));
   PetscCall(PetscFEDestroy(&fe));
   PetscCall(DMCreateLocalVector(dm, metric));
@@ -935,6 +964,60 @@ PetscErrorCode DMPlexMetricCreate(DM dm, PetscInt f, Vec *metric)
     PetscCall(DMPlexP1FieldCreate_Private(dm, f, 1, metric));
   } else {
     PetscCall(DMPlexP1FieldCreate_Private(dm, f, Nd, metric));
+  }
+  PetscFunctionReturn(0);
+}
+
+/*@
+  DMPlexMetricCreateMultiple - Create multiple Riemannian metric fields
+
+  Input parameters:
++ dm         - The DM
+. numMetrics - The number of metrics to create
+- fields     - The field numbers to use
+
+  Output parameter:
+. metric     - The metrics, concatenated into the same Vec
+
+  Level: developer
+
+  Notes:
+
+  This is useful if we want to project multiple fields into rank-2 P1 space.
+
+.seealso: DMPlexMetricCreate()
+@*/
+PetscErrorCode DMPlexMetricCreateMultiple(DM dm, PetscInt numMetrics, PetscInt fields[], Vec *metric)
+{
+  DM_Plex       *plex = (DM_Plex *) dm->data;
+  PetscErrorCode ierr;
+  PetscInt       coordDim, Nd;
+
+  PetscFunctionBegin;
+  if (!plex->metricCtx) {
+    PetscCall(PetscNew(&plex->metricCtx));
+    PetscCall(DMPlexMetricSetFromOptions(dm));
+  }
+  PetscCall(DMGetCoordinateDim(dm, &coordDim));
+  Nd = coordDim*coordDim;
+  PetscCall(DMPlexP1FieldCreateMultiple_Private(dm, numMetrics, fields, Nd, metric));
+  PetscFunctionReturn(0);
+}
+
+typedef struct {
+  PetscReal scaling;  /* Scaling for uniform metric diagonal */
+} DMPlexMetricUniformCtx;
+
+static PetscErrorCode diagonal(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+{
+  DMPlexMetricUniformCtx *user = (DMPlexMetricUniformCtx*)ctx;
+  PetscInt                i, j;
+
+  for (i = 0; i < dim; ++i) {
+    for (j = 0; j < dim; ++j) {
+      if (i == j) u[i+dim*j] = user->scaling;
+      else u[i+dim*j] = 0.0;
+    }
   }
   PetscFunctionReturn(0);
 }

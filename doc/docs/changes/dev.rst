@@ -121,6 +121,7 @@ In addition to the changes above
 - Add ``DMLabelPropagateBegin()``, ``DMLabelPropagatePush()``, and ``DMLabelPropagateEnd()``
 - Add ``DMPlexPointQueue`` and API
 - Add label value argument to ``DMPlexLabelCohesiveComplete()`` and ``DMPlexCreateHybridMesh()``
+- Add ``DMPlexMetricCreateMultiple()`` to create multiple concatenated metrics
 
 .. rubric:: FE/FV:
 

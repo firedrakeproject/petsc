@@ -1109,6 +1109,76 @@ static PetscErrorCode DMPlexMetricConvertIsotropicToGeneral_Private(DM dm, Vec i
   PetscFunctionReturn(0);
 }
 
+/*
+  Convert a metric from one format to another, based on the local size of the target format.
+*/
+static PetscErrorCode DMPlexMetricExpand_Private(DM dm, Vec metricIn, PetscInt size, Vec *metricOut)
+{
+  PetscErrorCode ierr;
+  PetscInt       dim, vStart, vEnd, numVertices, m;
+
+  PetscFunctionBegin;
+  ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
+  ierr = DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd);CHKERRQ(ierr);
+  numVertices = vEnd - vStart;
+  ierr = VecGetLocalSize(metricIn, &m);CHKERRQ(ierr);
+  if (m == size) {
+    ierr = VecDuplicate(metricIn, metricOut);CHKERRQ(ierr);
+    ierr = VecCopy(metricIn, *metricOut);CHKERRQ(ierr);
+  } else if (size/m == numVertices) {
+    ierr = DMPlexMetricConvertUniformToIsotropic_Private(dm, metricIn, metricOut);CHKERRQ(ierr);
+  } else if (size/m == dim*dim) {
+    ierr = DMPlexMetricConvertIsotropicToGeneral_Private(dm, metricIn, metricOut);CHKERRQ(ierr);
+  } else if (size/m == dim*dim*numVertices) {
+    ierr = DMPlexMetricConvertUniformToGeneral_Private(dm, metricIn, metricOut);CHKERRQ(ierr);
+  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Cannot expand metric from size %" PetscInt_FMT " to %" PetscInt_FMT "", m, size);
+  PetscFunctionReturn(0);
+}
+
+/*@
+  DMPlexMetricConvert - Convert a metric from one format to another.
+
+  Input parameters:
++ dm        - The DM
+. metricIn  - The metric to expand
+. uniform   - Should the output metric be uniform?
+- isotropic - Should the output metric be isotropic?
+
+  Output parameter:
+. metricOut - The converted metric
+
+  Level: beginner
+
+  Notes:
+
+  This routine supports conversion from isotropic to general and from uniform to either isotropic or general.
+
+  Reverse conversions are not supported.
+
+.seealso: DMPlexMetricCreate(), DMPlexMetricIsotropic(), DMPlexMetricCreateUniform()
+@*/
+PetscErrorCode DMPlexMetricConvert(DM dm, Vec metricIn, PetscBool uniform, PetscBool isotropic, Vec *metricOut)
+{
+  PetscErrorCode ierr;
+  PetscInt       dim, vStart, vEnd, numVertices, size;
+
+  PetscFunctionBegin;
+  if (uniform) {
+    PetscCheck(isotropic, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Uniform anisotropic metrics not supported");
+    size = 1;
+  } else {
+    ierr = DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd);CHKERRQ(ierr);
+    numVertices = vEnd - vStart;
+    if (isotropic) size = numVertices;
+    else {
+      ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
+      size = numVertices*dim*dim;
+    }
+  }
+  ierr = DMPlexMetricExpand_Private(dm, metricIn, size, metricOut);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode LAPACKsyevFail(PetscInt dim, PetscScalar Mpos[])
 {
   PetscInt i, j;

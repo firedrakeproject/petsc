@@ -1022,6 +1022,26 @@ PetscErrorCode DMPlexMetricCreateIsotropic(DM dm, PetscInt f, Vec indicator, Vec
   PetscFunctionReturn(0);
 }
 
+/*
+  Convert a uniform metric into an isotropic (possibly non-uniform) metric.
+*/
+static PetscErrorCode DMPlexMetricConvertUniformToIsotropic_Private(DM dm, Vec uMetric, Vec *iMetric)
+{
+  PetscErrorCode ierr;
+  PetscScalar   *alpha;
+  Vec            indicator;
+
+  PetscFunctionBegin;
+  ierr = DMPlexMetricSetUniform(dm, PETSC_FALSE);CHKERRQ(ierr);
+  ierr = DMPlexP1FieldCreate_Private(dm, 0, 1, &indicator);CHKERRQ(ierr);
+  ierr = VecGetArray(uMetric, &alpha);CHKERRQ(ierr);
+  ierr = VecSet(indicator, alpha[0]);CHKERRQ(ierr);
+  ierr = VecRestoreArray(uMetric, &alpha);CHKERRQ(ierr);
+  ierr = DMPlexMetricCreateIsotropic(dm, 0, indicator, iMetric);CHKERRQ(ierr);
+  ierr = VecDestroy(&indicator);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode LAPACKsyevFail(PetscInt dim, PetscScalar Mpos[])
 {
   PetscInt i, j;

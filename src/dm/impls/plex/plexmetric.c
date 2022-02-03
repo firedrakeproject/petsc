@@ -1075,6 +1075,40 @@ static PetscErrorCode DMPlexMetricConvertUniformToGeneral_Private(DM dm, Vec uMe
   PetscFunctionReturn(0);
 }
 
+/*
+  Convert an isotropic metric into a general (possibly anisotropic) metric.
+*/
+static PetscErrorCode DMPlexMetricConvertIsotropicToGeneral_Private(DM dm, Vec iMetric, Vec *metric)
+{
+  PetscErrorCode ierr;
+  PetscInt       dim, v, vStart, vEnd;
+  PetscScalar   *iMet, *met;
+
+  PetscFunctionBegin;
+  ierr = DMGetDimension(dm, &dim);CHKERRQ(ierr);
+  ierr = DMPlexMetricSetUniform(dm, PETSC_FALSE);CHKERRQ(ierr);
+  ierr = DMPlexMetricSetIsotropic(dm, PETSC_FALSE);CHKERRQ(ierr);
+  ierr = DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd);CHKERRQ(ierr);
+  ierr = DMPlexMetricCreate(dm, 0, metric);CHKERRQ(ierr);
+  ierr = VecGetArray(iMetric, &iMet);CHKERRQ(ierr);
+  ierr = VecGetArray(*metric, &met);CHKERRQ(ierr);
+  for (v = vStart; v < vEnd; ++v) {
+    PetscInt     i, j;
+    PetscScalar *imet, *vmet;
+    ierr = DMPlexPointLocalRef(dm, v, iMet, &imet);CHKERRQ(ierr);
+    ierr = DMPlexPointLocalRef(dm, v, met, &vmet);CHKERRQ(ierr);
+    for (i = 0; i < dim; ++i) {
+      for (j = 0; j < dim; ++j) {
+        if (i == j) vmet[dim*i+j] = imet[0];
+        else vmet[dim*i+j] = 0.0;
+      }
+    }
+  }
+  ierr = VecRestoreArray(*metric, &met);CHKERRQ(ierr);
+  ierr = VecRestoreArray(iMetric, &iMet);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode LAPACKsyevFail(PetscInt dim, PetscScalar Mpos[])
 {
   PetscInt i, j;

@@ -1548,34 +1548,64 @@ PetscErrorCode DMPlexMetricNormalize(DM dm, Vec metricIn, PetscBool restrictSize
 @*/
 PetscErrorCode DMPlexMetricAverage(DM dm, PetscInt numMetrics, PetscReal weights[], Vec metrics[], Vec *metricAvg)
 {
-  PetscBool haveWeights = PETSC_TRUE;
-  PetscInt  i, m, n;
-  PetscReal sum = 0.0, tol = 1.0e-10;
+  PetscBool      haveWeights = PETSC_TRUE, uniform, isotropic;
+  PetscErrorCode ierr;
+  PetscInt       dim, vStart, vEnd, numVertices, i, m, maxSize, minSize;
+  PetscReal      sum = 0.0, tol = 1.0e-10;
+  Vec           *tmpMetrics;
 
   PetscFunctionBegin;
   PetscCall(PetscLogEventBegin(DMPLEX_MetricAverage,0,0,0,0));
   PetscCheck(numMetrics >= 1, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Cannot average %" PetscInt_FMT " < 1 metrics", numMetrics);
-  PetscCall(DMPlexMetricCreate(dm, 0, metricAvg));
-  PetscCall(VecSet(*metricAvg, 0.0));
-  PetscCall(VecGetSize(*metricAvg, &m));
+  PetscCall(DMGetDimension(dm, &dim));
+
+  /* Determine heaviest metric format */
+  PetscCall(DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd));
+  numVertices = vEnd - vStart;
+  maxSize = 1;
+  minSize = dim*dim*numVertices;
   for (i = 0; i < numMetrics; ++i) {
-    PetscCall(VecGetSize(metrics[i], &n));
-    PetscCheck(m == n, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Averaging different metric types not implemented");
+    PetscCall(VecGetLocalSize(metrics[i], &m));
+    maxSize = PetscMax(m, maxSize);
+    minSize = PetscMin(m, minSize);
   }
+  if (maxSize == 1) {
+    uniform = PETSC_TRUE;
+    isotropic = PETSC_TRUE;
+  } else if (maxSize == numVertices) {
+    uniform = PETSC_FALSE;
+    isotropic = PETSC_TRUE;
+  } else {
+    uniform = PETSC_FALSE;
+    isotropic = PETSC_FALSE;
+  }
+  ierr = DMPlexMetricSetUniform(dm, uniform);CHKERRQ(ierr);
+  ierr = DMPlexMetricSetIsotropic(dm, isotropic);CHKERRQ(ierr);
+  ierr = DMPlexMetricCreate(dm, 0, metricAvg);CHKERRQ(ierr);
+  ierr = VecSet(*metricAvg, 0.0);CHKERRQ(ierr);
 
   /* Default to the unweighted case */
   if (!weights) {
     PetscCall(PetscMalloc1(numMetrics, &weights));
     haveWeights = PETSC_FALSE;
-    for (i = 0; i < numMetrics; ++i) {weights[i] = 1.0/numMetrics; }
+    for (i = 0; i < numMetrics; ++i) weights[i] = 1.0/numMetrics;
   }
 
   /* Check weights sum to unity */
   for (i = 0; i < numMetrics; ++i) sum += weights[i];
   PetscCheck(PetscAbsReal(sum - 1) <= tol, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Weights do not sum to unity");
 
-  /* Compute metric average */
-  for (i = 0; i < numMetrics; ++i) PetscCall(VecAXPY(*metricAvg, weights[i], metrics[i]));
+  /* Convert input metrics to a consistent format and average them */
+  if (minSize == maxSize) {
+    for (i = 0; i < numMetrics; ++i) PetscCall(VecAXPY(*metricAvg, weights[i], metrics[i]));
+  } else {
+    PetscCall(PetscMalloc(numMetrics, &tmpMetrics));
+    for (i = 0; i < numMetrics; ++i) {
+      PetscCall(DMPlexMetricExpand_Private(dm, metrics[i], maxSize, &tmpMetrics[i]));
+      PetscCall(VecAXPY(*metricAvg, weights[i], tmpMetrics[i]));
+    }
+    PetscCall(PetscFree(tmpMetrics));
+  }
   if (!haveWeights) PetscCall(PetscFree(weights));
 
   PetscCall(PetscLogEventEnd(DMPLEX_MetricAverage,0,0,0,0));
@@ -1783,55 +1813,96 @@ static PetscErrorCode DMPlexMetricIntersection_Private(PetscInt dim, PetscScalar
 PetscErrorCode DMPlexMetricIntersection(DM dm, PetscInt numMetrics, Vec metrics[], Vec *metricInt)
 {
   PetscBool      isotropic, uniform;
-  PetscInt       v, i, m, n;
+  PetscErrorCode ierr;
+  PetscInt       dim, v, vStart, vEnd, numVertices, i, m, maxSize, minSize;
   PetscScalar   *met, *meti;
 
   PetscFunctionBegin;
   PetscCall(PetscLogEventBegin(DMPLEX_MetricIntersection,0,0,0,0));
   PetscCheck(numMetrics >= 1, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Cannot intersect %" PetscInt_FMT " < 1 metrics", numMetrics);
+  PetscCall(DMGetDimension(dm, &dim));
+
+  /* Determine heaviest metric format */
+  PetscCall(DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd));
+  numVertices = vEnd - vStart;
+  maxSize = 1;
+  minSize = dim*dim*numVertices;
+  for (i = 0; i < numMetrics; ++i) {
+    PetscCall(VecGetLocalSize(metrics[i], &m));
+    maxSize = PetscMax(m, maxSize);
+    minSize = PetscMin(m, minSize);
+  }
+  if (maxSize == 1) {
+    uniform = PETSC_TRUE;
+    isotropic = PETSC_TRUE;
+  } else if (maxSize == numVertices) {
+    uniform = PETSC_FALSE;
+    isotropic = PETSC_TRUE;
+  } else {
+    uniform = PETSC_FALSE;
+    isotropic = PETSC_FALSE;
+  }
+  ierr = DMPlexMetricSetUniform(dm, uniform);CHKERRQ(ierr);
+  ierr = DMPlexMetricSetIsotropic(dm, isotropic);CHKERRQ(ierr);
 
   /* Copy over the first metric */
-  PetscCall(DMPlexMetricCreate(dm, 0, metricInt));
-  PetscCall(VecCopy(metrics[0], *metricInt));
+  ierr = DMPlexMetricExpand_Private(dm, metrics[0], maxSize, metricInt);CHKERRQ(ierr);
   if (numMetrics == 1) PetscFunctionReturn(0);
-  PetscCall(VecGetSize(*metricInt, &m));
-  for (i = 0; i < numMetrics; ++i) {
-    PetscCall(VecGetSize(metrics[i], &n));
-    PetscCheck(m == n, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Intersecting different metric types not implemented");
-  }
 
   /* Intersect subsequent metrics in turn */
-  PetscCall(DMPlexMetricIsUniform(dm, &uniform));
-  PetscCall(DMPlexMetricIsIsotropic(dm, &isotropic));
   if (uniform) {
 
     /* Uniform case */
     PetscCall(VecGetArray(*metricInt, &met));
-    for (i = 1; i < numMetrics; ++i) {
-      PetscCall(VecGetArray(metrics[i], &meti));
-      PetscCall(DMPlexMetricIntersection_Private(1, meti, met));
-      PetscCall(VecRestoreArray(metrics[i], &meti));
+    if (minSize == maxSize) {
+      for (i = 1; i < numMetrics; ++i) {
+        PetscCall(VecGetArray(metrics[i], &meti));
+        PetscCall(DMPlexMetricIntersection_Private(1, meti, met));
+        PetscCall(VecRestoreArray(metrics[i], &meti));
+      }
+    } else {
+      Vec tmpMetric;
+      for (i = 1; i < numMetrics; ++i) {
+        PetscCall(DMPlexMetricExpand_Private(dm, metrics[i], maxSize, &tmpMetric));
+        PetscCall(VecGetArray(tmpMetric, &meti));
+        PetscCall(DMPlexMetricIntersection_Private(1, meti, met));
+        PetscCall(VecRestoreArray(tmpMetric, &meti));
+        PetscCall(VecDestroy(&tmpMetric));
+      }
     }
     PetscCall(VecRestoreArray(*metricInt, &met));
   } else {
 
     /* Spatially varying case */
-    PetscInt     dim, vStart, vEnd, nrow;
+    PetscInt     nrow;
     PetscScalar *M, *Mi;
 
-    PetscCall(DMGetDimension(dm, &dim));
     if (isotropic) nrow = 1;
     else nrow = dim;
-    PetscCall(DMPlexGetDepthStratum(dm, 0, &vStart, &vEnd));
     PetscCall(VecGetArray(*metricInt, &met));
-    for (i = 1; i < numMetrics; ++i) {
-      PetscCall(VecGetArray(metrics[i], &meti));
-      for (v = vStart; v < vEnd; ++v) {
-        PetscCall(DMPlexPointLocalRef(dm, v, met, &M));
-        PetscCall(DMPlexPointLocalRef(dm, v, meti, &Mi));
-        PetscCall(DMPlexMetricIntersection_Private(nrow, Mi, M));
+    if (minSize == maxSize) {
+      for (i = 1; i < numMetrics; ++i) {
+        PetscCall(VecGetArray(metrics[i], &meti));
+        for (v = vStart; v < vEnd; ++v) {
+          PetscCall(DMPlexPointLocalRef(dm, v, met, &M));
+          PetscCall(DMPlexPointLocalRef(dm, v, meti, &Mi));
+          PetscCall(DMPlexMetricIntersection_Private(nrow, Mi, M));
+        }
+        PetscCall(VecRestoreArray(metrics[i], &meti));
       }
-      PetscCall(VecRestoreArray(metrics[i], &meti));
+    } else {
+      Vec tmpMetric;
+      for (i = 1; i < numMetrics; ++i) {
+        PetscCall(DMPlexMetricExpand_Private(dm, metrics[i], maxSize, &tmpMetric));
+        PetscCall(VecGetArray(tmpMetric, &meti));
+        for (v = vStart; v < vEnd; ++v) {
+          PetscCall(DMPlexPointLocalRef(dm, v, met, &M));
+          PetscCall(DMPlexPointLocalRef(dm, v, meti, &Mi));
+          PetscCall(DMPlexMetricIntersection_Private(nrow, Mi, M));
+        }
+        PetscCall(VecRestoreArray(tmpMetric, &meti));
+        PetscCall(VecDestroy(&tmpMetric));
+      }
     }
     PetscCall(VecRestoreArray(*metricInt, &met));
   }

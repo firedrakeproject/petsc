@@ -222,30 +222,33 @@ int main(int argc, char **argv) {
     PetscCall(DMPlexMetricNormalize(dm, metric, PETSC_TRUE, PETSC_TRUE, &metric1));
     if (isotropic) {
       PetscReal target;
+      Vec       metric3;
 
       PetscCall(DMPlexMetricGetTargetComplexity(dm, &target));
       scaling = PetscPowReal(target, 2.0/dim);
-      if (uniform) {
-        PetscCall(DMPlexMetricCreateUniform(dm, 0, scaling, &metric2));
-      } else {
-        DM  dmIndi;
-        Vec indicator;
-
-        PetscCall(CreateIndicator(dm, &indicator, &dmIndi));
-        PetscCall(VecSet(indicator, scaling));
-        PetscCall(DMPlexMetricCreateIsotropic(dm, 0, indicator, &metric2));
-        PetscCall(DMDestroy(&dmIndi));
-        PetscCall(VecDestroy(&indicator));
-      }
-      PetscCall(VecAXPY(metric2, -1, metric1));
-      PetscCall(VecNorm(metric2, NORM_2, &errornorm));
+      PetscCall(DMPlexMetricCreateUniform(dm, 0, scaling, &metric2));
+      PetscCall(DMPlexMetricConvert(dm, metric2, uniform, isotropic, &metric3));
+      PetscCall(VecDestroy(&metric2));
+      PetscCall(VecAXPY(metric3, -1, metric1));
+      PetscCall(VecNorm(metric3, NORM_2, &errornorm));
+      PetscCall(VecDestroy(&metric3));
       errornorm /= norm;
       PetscCall(PetscPrintf(comm, "Metric normalization L2 error: %.4f%%\n", (double)(100*errornorm)));
-      PetscCheck(errornorm <= tol,comm, PETSC_ERR_ARG_OUTOFRANGE, "Metric normalization test failed");
+      PetscCheck(errornorm < tol, comm, PETSC_ERR_ARG_OUTOFRANGE, "Metric normalization test failed");
     }
     PetscCall(VecCopy(metric1, metric));
-    PetscCall(VecDestroy(&metric2));
     PetscCall(VecDestroy(&metric1));
+
+    /* Test metric format conversion */
+    PetscCall(DMPlexMetricConvert(dm, metric, PETSC_FALSE, PETSC_FALSE, &metric1));
+    PetscCall(VecMax(metric, NULL, &norm));
+    PetscCall(VecMax(metric1, NULL, &errornorm));
+    errornorm -= norm;
+    PetscCall(PetscPrintf(comm, "Metric conversion error: %.4f%%\n", 100*errornorm));
+    PetscCheck(errornorm < tol, comm, PETSC_ERR_ARG_OUTOFRANGE, "Metric conversion test failed");
+    PetscCall(VecDestroy(&metric1));
+    PetscCall(DMPlexMetricSetUniform(dm, uniform));
+    PetscCall(DMPlexMetricSetIsotropic(dm, isotropic));
   }
 
   /* Adapt the mesh */

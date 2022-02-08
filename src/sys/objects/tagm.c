@@ -326,14 +326,14 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index, problem with corrupted memory");
 
     PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
-    PetscCallMPI(MPI_Comm_free(&icomm));
-
     /* Remove garbage and inter- and intra- communicators set up by garbage collection */
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_HMap_keyval,&garbage,&flg));
     if (flg) {
       PetscCall(PetscFree(garbage));
     }
     PetscCall(PetscRecursiveCommCleanup(icomm));
+    PetscCallMPI(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
+    PetscCallMPI(MPI_Comm_free(&icomm));
   }
   *comm = MPI_COMM_NULL;
   PetscCall(PetscSpinlockUnlock(&PetscCommSpinLock));

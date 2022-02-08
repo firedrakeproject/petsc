@@ -26,7 +26,7 @@ static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbag
     Input Parameters:
 .   obj - object to be destroyed
 
-    Notes: Analogue to PetscObjectDestroy for use in managed languages.
+    Notes: Analogue to PetscObjectDestroy() for use in managed languages.
 
     Petsc objects are given a creation index at initialisation based on
     the communicator it was created on and the order in which it is
@@ -68,8 +68,8 @@ PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
 }
 
 /* Performs the intersection of 2 sorted arrays seta and setb of lengths
- * lena and lenb respectively,returning the result in seta and len a
- * This is then an O(n) operation */
+   lena and lenb respectively,returning the result in seta and lena
+   This is an O(n) operation */
 static PetscErrorCode GarbageKeySortedIntersect_Private(PetscInt *seta,PetscInt *lena,PetscInt *setb,PetscInt lenb)
 {
   /* The arrays seta and setb MUST be sorted! */
@@ -133,7 +133,6 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
     }
   }
 
-  /* Free memory */
   ierr = PetscFree(set_sizes);CHKERRQ(ierr);
   ierr = PetscFree(displace);CHKERRQ(ierr);
   ierr = PetscFree(recvset);CHKERRQ(ierr);
@@ -144,15 +143,15 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
 static PetscErrorCode CalculateBlock_Private(MPI_Comm comm,int blocksize)
 {
   PetscErrorCode ierr;
-  PetscInt  p,block,comm_size;
+  PetscInt       p,block,comm_size;
 
   PetscFunctionBegin;
   /* Calculate biggest power of blocksize smaller than communicator size */
   ierr = MPI_Comm_size(comm,&comm_size);CHKERRMPI(ierr);
   p = (PetscInt)PetscFloorReal(PetscLogReal((PetscReal)comm_size)/PetscLogReal((PetscReal)blocksize));
-  block = (PetscInt)PetscPowReal((PetscReal)blocksize,(PetscReal)p);
+  block = PetscPowInt(blocksize,p);
   if ((block == comm_size) && (comm_size != 1)) {
-    block = (PetscInt)PetscPowReal((PetscReal)blocksize,(PetscReal)(p - 1));
+    block = PetscPowInt(blocksize,(p - 1));
   }
   PetscFunctionReturn(block);
 }
@@ -171,14 +170,14 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
   /* Create intra-communicators of size block or smaller */
   ierr = MPI_Comm_rank(comm,&comm_rank);CHKERRMPI(ierr);
   blockrank = comm_rank/block;
-  intracom = (MPI_Comm*)malloc(sizeof(MPI_Comm));
+  ierr = PetscNew(&intracom);CHKERRQ(ierr);
   ierr = MPI_Comm_split(comm,blockrank,comm_rank,intracom);CHKERRMPI(ierr);
   ierr = MPI_Comm_set_attr(comm,Petsc_Garbage_IntraComm_keyval,(void*)intracom);CHKERRMPI(ierr);
 
   /* Create inter-communicators between rank 0 of all above comms */
   ierr = MPI_Comm_rank(*intracom,&intra_rank);CHKERRMPI(ierr);
   leader = (intra_rank == 0) ? 0 : MPI_UNDEFINED;
-  intercom = (MPI_Comm*)malloc(sizeof(MPI_Comm));
+  ierr = PetscNew(&intercom);CHKERRQ(ierr);
   ierr = MPI_Comm_split(comm,leader,comm_rank,intercom);CHKERRMPI(ierr);
   ierr = MPI_Comm_set_attr(comm,Petsc_Garbage_InterComm_keyval,(void*)intercom);CHKERRMPI(ierr);
   PetscFunctionReturn(0);
@@ -279,12 +278,12 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
     }
     ierr = PetscHMapObjDel(*garbage,keys[ii]);CHKERRQ(ierr);
   }
-  PetscFree(keys);CHKERRQ(ierr);
+  ierr = PetscFree(keys);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
 /* Performs a collective intersection of one array per rank _recursively_
- * Replaces above GatherIntersect function */
+   Replaces above GatherIntersect function */
 static PetscErrorCode GarbageKeyRecursiveGatherIntersect_Private(MPI_Comm comm,PetscInt *set,PetscInt *entries,PetscInt blocksize)
 {
   PetscErrorCode ierr;
@@ -347,7 +346,7 @@ static PetscErrorCode GarbageKeyRecursiveBcast_Private(MPI_Comm comm,PetscInt *s
 }
 
 /*@C
-    PetscRecursiveGarbageCleanup - A recursive implementation of
+    PetscGarbageRecursiveCleanup - A recursive implementation of
     PetscGarbageCleanup
 
     Collective
@@ -360,7 +359,7 @@ static PetscErrorCode GarbageKeyRecursiveBcast_Private(MPI_Comm comm,PetscInt *s
 
 .seealso: PetscObjectDelayedDestroy()
 @*/
-PetscErrorCode PetscRecursiveGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
+PetscErrorCode PetscGarbageRecursiveCleanup(MPI_Comm comm,PetscInt blocksize)
 {
   PetscInt     ii,ierr,entries,offset;
   PetscInt     *keys;
@@ -390,6 +389,6 @@ PetscErrorCode PetscRecursiveGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
     }
     ierr = PetscHMapObjDel(*garbage,keys[ii]);CHKERRQ(ierr);
   }
-  PetscFree(keys);CHKERRQ(ierr);
+  ierr = PetscFree(keys);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

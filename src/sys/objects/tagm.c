@@ -256,7 +256,7 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
 }
 
 /* Clean up recursively defined comms */
-static PetscErrorCode PetscRecursiveCommCleanup(MPI_Comm comm)
+static PetscErrorCode PetscCommRecursiveCleanup(MPI_Comm comm)
 {
   PetscErrorCode ierr;
   PetscMPIInt    flg;
@@ -265,10 +265,10 @@ static PetscErrorCode PetscRecursiveCommCleanup(MPI_Comm comm)
   PetscFunctionBegin;
   ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&intracom,&flg);CHKERRMPI(ierr);
   if (flg) {
-    ierr = PetscRecursiveCommCleanup(*intracom);CHKERRQ(ierr);
-    free(intracom);
+    ierr = PetscCommRecursiveCleanup(*intracom);CHKERRQ(ierr);
+    ierr = PetscFree(intracom);CHKERRQ(ierr);
     ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&intercom,&flg);CHKERRMPI(ierr);
-    free(intercom);
+    ierr = PetscFree(intercom);CHKERRQ(ierr);
   }
   PetscFunctionReturn(0);
 }
@@ -325,14 +325,13 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
       PetscCall(PetscFree(cidx));
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index, problem with corrupted memory");
 
-    PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
     /* Remove garbage and inter- and intra- communicators set up by garbage collection */
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_HMap_keyval,&garbage,&flg));
     if (flg) {
       PetscCall(PetscFree(garbage));
     }
-    PetscCall(PetscRecursiveCommCleanup(icomm));
-    PetscCallMPI(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
+    PetscCall(PetscCommRecursiveCleanup(icomm));
+    PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
     PetscCallMPI(MPI_Comm_free(&icomm));
   }
   *comm = MPI_COMM_NULL;

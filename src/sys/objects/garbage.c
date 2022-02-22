@@ -3,7 +3,7 @@
 /* Fetches garbage hashmap from communicator */
 static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbage)
 {
-  PetscInt       flag;
+  PetscMPIInt    flag;
   PetscErrorCode ierr;
 
   PetscFunctionBegin;
@@ -95,8 +95,9 @@ static PetscErrorCode GarbageKeySortedIntersect_Private(PetscInt *seta,PetscInt 
 static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *set,PetscInt *entries)
 {
   PetscErrorCode ierr;
-  PetscInt       ii,comm_size,comm_rank,total;
+  PetscInt       ii,total;
   PetscInt       *set_sizes,*displace,*recvset;
+  PetscMPIInt    comm_size,comm_rank;
 
   PetscFunctionBegin;
   /* Gather and intersect on comm */
@@ -143,7 +144,8 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
 static PetscErrorCode CalculateBlock_Private(MPI_Comm comm,int blocksize)
 {
   PetscErrorCode ierr;
-  PetscInt       p,block,comm_size;
+  PetscInt       p,block;
+  PetscMPIInt    comm_size;
 
   PetscFunctionBegin;
   /* Calculate biggest power of blocksize smaller than communicator size */
@@ -160,7 +162,8 @@ static PetscErrorCode CalculateBlock_Private(MPI_Comm comm,int blocksize)
 static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
 {
   PetscErrorCode ierr;
-  PetscInt       block,comm_rank,blockrank,intra_rank,leader;
+  PetscInt       block,blockrank,leader;
+  PetscMPIInt    comm_rank,intra_rank;
   MPI_Comm       *intracom,*intercom;
 
   PetscFunctionBegin;
@@ -220,10 +223,11 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
 PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
 {
   PetscErrorCode ierr;
-  PetscInt       ii,flag,entries,offset,intra_rank,inter_rank;
+  PetscInt       ii,entries,offset;
   PetscInt       *keys;
   PetscObject    *obj;
   PetscHMapObj   *garbage;
+  PetscMPIInt    flag,intra_rank,inter_rank;
   MPI_Comm       *intracom,*intercom;
 
   PetscFunctionBegin;
@@ -287,7 +291,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
 static PetscErrorCode GarbageKeyRecursiveGatherIntersect_Private(MPI_Comm comm,PetscInt *set,PetscInt *entries,PetscInt blocksize)
 {
   PetscErrorCode ierr;
-  PetscInt       flag,comm_size,intra_rank,inter_rank;
+  PetscMPIInt    flag,comm_size,intra_rank,inter_rank;
   MPI_Comm       *intracom,*intercom;
 
   PetscFunctionBegin;
@@ -323,8 +327,9 @@ static PetscErrorCode GarbageKeyRecursiveGatherIntersect_Private(MPI_Comm comm,P
 /* Performs broadcast of resultant intersection _recursively_ */
 static PetscErrorCode GarbageKeyRecursiveBcast_Private(MPI_Comm comm,PetscInt *set,PetscInt *entries)
 {
-  PetscInt ierr,flag;
-  MPI_Comm *intracom,*intercom;
+  PetscInt    ierr;
+  PetscMPIInt flag;
+  MPI_Comm    *intracom,*intercom;
 
   PetscFunctionBegin;
   ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag);CHKERRMPI(ierr);

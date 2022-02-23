@@ -96,8 +96,9 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
 {
   PetscErrorCode ierr;
   PetscInt       ii,total;
-  PetscInt       *set_sizes,*displace,*recvset;
+  PetscInt       *recvset;
   PetscMPIInt    comm_size,comm_rank;
+  PetscMPIInt    *set_sizes,*displace;
 
   PetscFunctionBegin;
   /* Gather and intersect on comm */

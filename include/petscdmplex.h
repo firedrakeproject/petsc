@@ -113,7 +113,6 @@ PETSC_EXTERN PetscErrorCode DMPlexInterpolatePointSF(DM, PetscSF);
 PETSC_EXTERN PetscErrorCode DMPlexIsInterpolated(DM, DMPlexInterpolatedFlag *);
 PETSC_EXTERN PetscErrorCode DMPlexIsInterpolatedCollective(DM, DMPlexInterpolatedFlag *);
 
-PETSC_EXTERN PetscErrorCode DMPlexFilter(DM, DMLabel, PetscInt, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexGetCellNumbering(DM, IS *);
 PETSC_EXTERN PetscErrorCode DMPlexGetVertexNumbering(DM, IS *);
 PETSC_EXTERN PetscErrorCode DMPlexCreatePointNumbering(DM, IS *);
@@ -288,7 +287,22 @@ PETSC_EXTERN PetscErrorCode DMPlexCreateOverlapMigrationSF(DM, PetscSF, PetscSF 
 PETSC_EXTERN PetscErrorCode DMPlexStratifyMigrationSF(DM, PetscSF, PetscSF *);
 
 /* Submesh Support */
+typedef enum {DMPLEX_SUBMESH_CLOSURE, DMPLEX_SUBMESH_HYPERSURFACE, DMPLEX_SUBMESH_USER} DMPlexSubmeshType;
+/*E
+  DMPlexSubmeshType - type of completion rule for DMPlexCreateSubmeshGeneric
+
+$ DMPLEX_SUBMESH_CLOSURE      - Provided label marked at the submesh cell level, include the transitive closures of the marked points
+$ DMPLEX_SUBMESH_HYPERSURFACE - Provided label marked at the vertex level, include the hyper-surfaces containing the marked points and the supports of these hyper-surfaces
+$ DMPLEX_SUBMESH_USER         - Use user defined completion rule
+
+  Level: advanced
+
+.seealso: DMPlexCreateSubmeshGeneric()
+E*/
+PETSC_EXTERN PetscErrorCode DMPlexCreateSubmeshGeneric(DM, DMPlexSubmeshType, DMLabel, PetscInt, PetscInt, PetscBool, PetscBool, PetscBool, PetscErrorCode (*)(DM, DMLabel, PetscInt, PetscInt, DMLabel), const char [], PetscBool, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexFilter(DM, DMLabel, PetscInt, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateSubmesh(DM, DMLabel, PetscInt, PetscBool, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexCreateCohesiveSubmesh(DM, PetscBool, const char [], PetscInt, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateHybridMesh(DM, DMLabel, DMLabel, PetscInt, DMLabel *, DMLabel *, DM *, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexGetSubpointMap(DM, DMLabel *);
 PETSC_EXTERN PetscErrorCode DMPlexSetSubpointMap(DM, DMLabel);

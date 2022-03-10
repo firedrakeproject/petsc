@@ -121,6 +121,7 @@ cdef extern from * nogil:
     int DMPlexReorderGetDefault(PetscDM,PetscDMPlexReorderDefaultFlag*)
     int DMPlexReorderSetDefault(PetscDM,PetscDMPlexReorderDefaultFlag)
 
+    #int DMPlexCreateSubmeshGeneric(PetscDM,PetscDMLabel,PetscInt,PetscDM*)
     #int DMPlexCreateSubmesh(PetscDM,PetscDMLabel,PetscInt,PetscDM*)
     #int DMPlexCreateHybridMesh(PetscDM,PetscDMLabel,PetscDMLabel,PetscInt,PetscDMLabel*,PetscDMLabel*,PetscDM *,PetscDM *)
     #int DMPlexGetSubpointMap(PetscDM,PetscDMLabel*)

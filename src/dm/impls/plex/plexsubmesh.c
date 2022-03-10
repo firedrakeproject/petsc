@@ -2973,15 +2973,12 @@ static PetscErrorCode DMPlexCreateSubmesh_Uninterpolated(DM dm, DMLabel vertexLa
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   /* Create subpointMap which marks the submesh */
-  PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
-  PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
-  PetscCall(DMLabelDestroy(&subpointMap));
+  PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
   if (vertexLabel) PetscCall(DMPlexMarkSubmesh_Uninterpolated(dm, vertexLabel, value, subpointMap, &numSubFaces, &nFV, subdm));
   /* Setup chart */
   PetscCall(DMLabelGetStratumSize(subpointMap, 0, &numSubVertices));
   PetscCall(DMLabelGetStratumSize(subpointMap, 2, &numSubCells));
   PetscCall(DMPlexSetChart(subdm, 0, numSubCells + numSubFaces + numSubVertices));
-  PetscCall(DMPlexSetVTKCellHeight(subdm, 1));
   /* Set cone sizes */
   firstSubVertex = numSubCells;
   firstSubFace   = numSubCells + numSubVertices;
@@ -3097,13 +3094,14 @@ static inline PetscInt DMPlexFilterPoint_Internal(PetscInt point, PetscInt first
 
 static PetscErrorCode DMPlexFilterLabels_Internal(DM dm, const PetscInt numSubPoints[], const PetscInt *subpoints[], const PetscInt firstSubPoint[], DM subdm) {
   DMLabel  depthLabel;
-  PetscInt Nl, l, d;
+  PetscInt Nl, l, d, subd;
 
   PetscFunctionBegin;
   // Reset depth label for fast lookup
   PetscCall(DMPlexGetDepthLabel(dm, &depthLabel));
   PetscCall(DMLabelMakeAllInvalid_Internal(depthLabel));
   PetscCall(DMGetNumLabels(dm, &Nl));
+  PetscCall(DMPlexGetDepth(subdm, &subd));
   for (l = 0; l < Nl; ++l) {
     DMLabel         label, newlabel;
     const char     *lname;
@@ -3139,6 +3137,7 @@ static PetscErrorCode DMPlexFilterLabels_Internal(DM dm, const PetscInt numSubPo
         PetscInt       subp;
 
         PetscCall(DMPlexGetPointDepth(dm, point, &d));
+        if (d > subd) continue;
         subp = DMPlexFilterPoint_Internal(point, firstSubPoint[d], numSubPoints[d], subpoints[d]);
         if (subp >= 0) PetscCall(DMLabelSetValue(newlabel, subp, values[v]));
       }
@@ -3148,135 +3147,6 @@ static PetscErrorCode DMPlexFilterLabels_Internal(DM dm, const PetscInt numSubPo
     PetscCall(ISRestoreIndices(valueIS, &values));
     PetscCall(ISDestroy(&valueIS));
   }
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm) {
-  MPI_Comm         comm;
-  DMLabel          subpointMap;
-  IS              *subpointIS;
-  const PetscInt **subpoints;
-  PetscInt        *numSubPoints, *firstSubPoint;
-  PetscInt         totSubPoints = 0, dim, p, d;
-  PetscMPIInt      rank;
-
-  PetscFunctionBegin;
-  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
-  PetscCallMPI(MPI_Comm_rank(comm, &rank));
-  /* Create subpointMap which marks the submesh */
-  PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
-  PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
-  if (cellHeight) {
-    if (isCohesive) PetscCall(DMPlexMarkCohesiveSubmesh_Interpolated(dm, label, value, subpointMap, subdm));
-    else PetscCall(DMPlexMarkSubmesh_Interpolated(dm, label, value, markedFaces, subpointMap, subdm));
-  } else {
-    DMLabel         depth;
-    IS              pointIS;
-    const PetscInt *points;
-    PetscInt        numPoints = 0;
-
-    PetscCall(DMPlexGetDepthLabel(dm, &depth));
-    PetscCall(DMLabelGetStratumIS(label, value, &pointIS));
-    if (pointIS) {
-      PetscCall(ISGetIndices(pointIS, &points));
-      PetscCall(ISGetLocalSize(pointIS, &numPoints));
-    }
-    for (p = 0; p < numPoints; ++p) {
-      PetscInt *closure = NULL;
-      PetscInt  closureSize, c, pdim;
-
-      PetscCall(DMPlexGetTransitiveClosure(dm, points[p], PETSC_TRUE, &closureSize, &closure));
-      for (c = 0; c < closureSize * 2; c += 2) {
-        PetscCall(DMLabelGetValue(depth, closure[c], &pdim));
-        PetscCall(DMLabelSetValue(subpointMap, closure[c], pdim));
-      }
-      PetscCall(DMPlexRestoreTransitiveClosure(dm, points[p], PETSC_TRUE, &closureSize, &closure));
-    }
-    if (pointIS) PetscCall(ISRestoreIndices(pointIS, &points));
-    PetscCall(ISDestroy(&pointIS));
-  }
-  /* Setup chart */
-  PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(PetscMalloc4(dim + 1, &numSubPoints, dim + 1, &firstSubPoint, dim + 1, &subpointIS, dim + 1, &subpoints));
-  for (d = 0; d <= dim; ++d) {
-    PetscCall(DMLabelGetStratumSize(subpointMap, d, &numSubPoints[d]));
-    totSubPoints += numSubPoints[d];
-  }
-  PetscCall(DMPlexSetChart(subdm, 0, totSubPoints));
-  PetscCall(DMPlexSetVTKCellHeight(subdm, cellHeight));
-  /* Set cone sizes */
-  firstSubPoint[dim] = 0;
-  firstSubPoint[0]   = firstSubPoint[dim] + numSubPoints[dim];
-  if (dim > 1) firstSubPoint[dim - 1] = firstSubPoint[0] + numSubPoints[0];
-  if (dim > 2) firstSubPoint[dim - 2] = firstSubPoint[dim - 1] + numSubPoints[dim - 1];
-  for (d = 0; d <= dim; ++d) {
-    PetscCall(DMLabelGetStratumIS(subpointMap, d, &subpointIS[d]));
-    if (subpointIS[d]) PetscCall(ISGetIndices(subpointIS[d], &subpoints[d]));
-  }
-//  ierr = DMPlexSubmeshSetConeSizes(...);
-  PetscCall(DMLabelDestroy(&subpointMap));
-  PetscCall(DMSetUp(subdm));
-//  ierr = DMPlexSubmeshSetCones(...);
-  PetscCall(DMPlexSymmetrize(subdm));
-  PetscCall(DMPlexStratify(subdm));
-//  ierr = DMPlexSubmeshSetCoordinates(...)
-// DMPlexSubmeshSetPointSF(...)
-  /* Filter labels */
-  PetscCall(DMPlexFilterLabels_Internal(dm, numSubPoints, subpoints, firstSubPoint, subdm));
-  /* Cleanup */
-  for (d = 0; d <= dim; ++d) {
-    if (subpointIS[d]) PetscCall(ISRestoreIndices(subpointIS[d], &subpoints[d]));
-    PetscCall(ISDestroy(&subpointIS[d]));
-  }
-  PetscCall(PetscFree4(numSubPoints, firstSubPoint, subpointIS, subpoints));
-  PetscFunctionReturn(0);
-}
-
-static PetscErrorCode DMPlexCreateSubmesh_Interpolated(DM dm, DMLabel vertexLabel, PetscInt value, PetscBool markedFaces, DM subdm) {
-  PetscFunctionBegin;
-  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, vertexLabel, value, markedFaces, PETSC_FALSE, 1, subdm));
-  PetscFunctionReturn(0);
-}
-
-/*@
-  DMPlexCreateSubmesh - Extract a hypersurface from the mesh using vertices defined by a label
-
-  Input Parameters:
-+ dm           - The original mesh
-. vertexLabel  - The DMLabel marking points contained in the surface
-. value        - The label value to use
-- markedFaces  - PETSC_TRUE if surface faces are marked in addition to vertices, PETSC_FALSE if only vertices are marked
-
-  Output Parameter:
-. subdm - The surface mesh
-
-  Note: This function produces a DMLabel mapping original points in the submesh to their depth. This can be obtained using DMPlexGetSubpointMap().
-
-  Level: developer
-
-.seealso: `DMPlexGetSubpointMap()`, `DMGetLabel()`, `DMLabelSetValue()`
-@*/
-PetscErrorCode DMPlexCreateSubmesh(DM dm, DMLabel vertexLabel, PetscInt value, PetscBool markedFaces, DM *subdm) {
-  DMPlexInterpolatedFlag interpolated;
-  PetscInt               dim, cdim;
-
-  PetscFunctionBegin;
-  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscValidPointer(subdm, 5);
-  PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(DMCreate(PetscObjectComm((PetscObject)dm), subdm));
-  PetscCall(DMSetType(*subdm, DMPLEX));
-  PetscCall(DMSetDimension(*subdm, dim - 1));
-  PetscCall(DMGetCoordinateDim(dm, &cdim));
-  PetscCall(DMSetCoordinateDim(*subdm, cdim));
-  PetscCall(DMPlexIsInterpolated(dm, &interpolated));
-  PetscCheck(interpolated != DMPLEX_INTERPOLATED_PARTIAL, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Not for partially interpolated meshes");
-  if (interpolated) {
-    PetscCall(DMPlexCreateSubmesh_Interpolated(dm, vertexLabel, value, markedFaces, *subdm));
-  } else {
-    PetscCall(DMPlexCreateSubmesh_Uninterpolated(dm, vertexLabel, value, *subdm));
-  }
-  PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_TRUE, *subdm));
   PetscFunctionReturn(0);
 }
 
@@ -3292,15 +3162,12 @@ static PetscErrorCode DMPlexCreateCohesiveSubmesh_Uninterpolated(DM dm, PetscBoo
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   /* Create subpointMap which marks the submesh */
-  PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
-  PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
-  PetscCall(DMLabelDestroy(&subpointMap));
+  PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
   PetscCall(DMPlexMarkCohesiveSubmesh_Uninterpolated(dm, hasLagrange, label, value, subpointMap, &numSubFaces, &nFV, &subCells, subdm));
   /* Setup chart */
   PetscCall(DMLabelGetStratumSize(subpointMap, 0, &numSubVertices));
   PetscCall(DMLabelGetStratumSize(subpointMap, 2, &numSubCells));
   PetscCall(DMPlexSetChart(subdm, 0, numSubCells + numSubFaces + numSubVertices));
-  PetscCall(DMPlexSetVTKCellHeight(subdm, 1));
   /* Set cone sizes */
   firstSubVertex = numSubCells;
   firstSubFace   = numSubCells + numSubVertices;
@@ -3485,88 +3352,6 @@ static PetscErrorCode DMPlexCreateCohesiveSubmesh_Uninterpolated(DM dm, PetscBoo
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMPlexCreateCohesiveSubmesh_Interpolated(DM dm, const char labelname[], PetscInt value, DM subdm) {
-  DMLabel label = NULL;
-
-  PetscFunctionBegin;
-  if (labelname) PetscCall(DMGetLabel(dm, labelname, &label));
-  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, label, value, PETSC_FALSE, PETSC_TRUE, 1, subdm));
-  PetscFunctionReturn(0);
-}
-
-/*@C
-  DMPlexCreateCohesiveSubmesh - Extract from a mesh with cohesive cells the hypersurface defined by one face of the cells. Optionally, a Label can be given to restrict the cells.
-
-  Input Parameters:
-+ dm          - The original mesh
-. hasLagrange - The mesh has Lagrange unknowns in the cohesive cells
-. label       - A label name, or NULL
-- value  - A label value
-
-  Output Parameter:
-. subdm - The surface mesh
-
-  Note: This function produces a DMLabel mapping original points in the submesh to their depth. This can be obtained using DMPlexGetSubpointMap().
-
-  Level: developer
-
-.seealso: `DMPlexGetSubpointMap()`, `DMPlexCreateSubmesh()`
-@*/
-PetscErrorCode DMPlexCreateCohesiveSubmesh(DM dm, PetscBool hasLagrange, const char label[], PetscInt value, DM *subdm) {
-  PetscInt dim, cdim, depth;
-
-  PetscFunctionBegin;
-  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscValidPointer(subdm, 5);
-  PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(DMPlexGetDepth(dm, &depth));
-  PetscCall(DMCreate(PetscObjectComm((PetscObject)dm), subdm));
-  PetscCall(DMSetType(*subdm, DMPLEX));
-  PetscCall(DMSetDimension(*subdm, dim - 1));
-  PetscCall(DMGetCoordinateDim(dm, &cdim));
-  PetscCall(DMSetCoordinateDim(*subdm, cdim));
-  if (depth == dim) {
-    PetscCall(DMPlexCreateCohesiveSubmesh_Interpolated(dm, label, value, *subdm));
-  } else {
-    PetscCall(DMPlexCreateCohesiveSubmesh_Uninterpolated(dm, hasLagrange, label, value, *subdm));
-  }
-  PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_TRUE, *subdm));
-  PetscFunctionReturn(0);
-}
-
-/*@
-  DMPlexFilter - Extract a subset of mesh cells defined by a label as a separate mesh
-
-  Input Parameters:
-+ dm        - The original mesh
-. cellLabel - The DMLabel marking cells contained in the new mesh
-- value     - The label value to use
-
-  Output Parameter:
-. subdm - The new mesh
-
-  Note: This function produces a DMLabel mapping original points in the submesh to their depth. This can be obtained using DMPlexGetSubpointMap().
-
-  Level: developer
-
-.seealso: `DMPlexGetSubpointMap()`, `DMGetLabel()`, `DMLabelSetValue()`
-@*/
-PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, DM *subdm) {
-  PetscInt dim;
-
-  PetscFunctionBegin;
-  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscValidPointer(subdm, 4);
-  PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(DMCreate(PetscObjectComm((PetscObject)dm), subdm));
-  PetscCall(DMSetType(*subdm, DMPLEX));
-  PetscCall(DMSetDimension(*subdm, dim));
-  /* Extract submesh in place, could be empty on some procs, could have inconsistency if procs do not both extract a shared cell */
-  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, cellLabel, value, PETSC_FALSE, PETSC_FALSE, 0, *subdm));
-  PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_TRUE, *subdm));
-  PetscFunctionReturn(0);
-}
-
 /*@
   DMPlexGetSubpointMap - Returns a DMLabel with point dimension as values
 
@@ -3578,7 +3363,7 @@ PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, DM *subdm)
 
   Level: developer
 
-.seealso: `DMPlexCreateSubmesh()`, `DMPlexGetSubpointIS()`
+.seealso: `DMPlexCreateSubmeshGeneric()`, `DMPlexGetSubpointIS()`
 @*/
 PetscErrorCode DMPlexGetSubpointMap(DM dm, DMLabel *subpointMap) {
   PetscFunctionBegin;
@@ -3595,11 +3380,11 @@ PetscErrorCode DMPlexGetSubpointMap(DM dm, DMLabel *subpointMap) {
 + dm - The submesh DM
 - subpointMap - The DMLabel of all the points from the original mesh in this submesh
 
-  Note: Should normally not be called by the user, since it is set in DMPlexCreateSubmesh()
+  Note: Should normally not be called by the user, since it is set in DMPlexCreateSubmeshGeneric()
 
   Level: developer
 
-.seealso: `DMPlexCreateSubmesh()`, `DMPlexGetSubpointIS()`
+.seealso: `DMPlexCreateSubmeshGeneric()`, `DMPlexGetSubpointIS()`
 @*/
 PetscErrorCode DMPlexSetSubpointMap(DM dm, DMLabel subpointMap) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
@@ -3684,7 +3469,7 @@ static PetscErrorCode DMPlexCreateSubpointIS_Internal(DM dm, IS *subpointIS) {
 
   Level: developer
 
-.seealso: `DMPlexCreateSubmesh()`, `DMPlexGetSubpointMap()`
+.seealso: `DMPlexCreateSubmeshGeneric()`, `DMPlexGetSubpointMap()`
 @*/
 PetscErrorCode DMPlexGetSubpointIS(DM dm, IS *subpointIS) {
   DM_Plex         *mesh = (DM_Plex *)dm->data;
@@ -4391,5 +4176,231 @@ static PetscErrorCode DMPlexSubmeshSetPointSF(DM dm, DM subdm,
   PetscCall(PetscFree(updatedIndices));
   PetscCall(PetscSFSetGraph(subsf, subEnd - subStart, nsubleaves, subilocal, PETSC_OWN_POINTER, subiremote, PETSC_OWN_POINTER));
 
+  PetscFunctionReturn(0);
+}
+
+/*@
+  DMPlexCreateSubmeshGeneric - Extract a submesh of arbitrary dimension from the mesh using points defined by a label
+
+  Input Parameters:
++ dm           - The original mesh
+. submeshtype  - The DMPlexSubmeshType: DMPLEX_SUBMESH_CLOSURE, DMPLEX_SUBMESH_HYPERSURFACE, or DMPLEX_SUBMESH_USER
+. afilter      - The DMLabel marking points that define the submesh
+. filterValue  - The label value to use
+. height       - The height of the marked points
+. isCohesive   - PETSC_TRUE if using cohesive cells (only significant if submeshtype==DMPLEX_SUBMESH_HYPERSURFACE)
+. markedFaces  - PETSC_TRUE if surface faces are marked in addition to vertices, PETSC_FALSE if only vertices are marked (only significant if submeshtype==DMPLEX_SUBMESH_HYPERSURFACE and isCohesive==PETSC_FALSE)
+. hasLagrange  - PETSC_TRUE if the mesh has Lagrange unknowns in the cohesive cells (only significant if submeshtype==DMPLEX_SUBMESH_HYPERSURFACE and isCohesive==PETSC_TRUE)
+. user         - The user defined function to mark subpointMap using provided filter (only significant if submeshtype==DMPLEX_SUBMESH_USER)
+. filterName   - (optional) The name of a label existing in dm that is used as the filter. If non-NULL, afilter argument is ignored
+- isLocal      - PETSC_TRUE if building submesh on PETSC_COMM_SELF with a subset of locally visible points
+
+  Output Parameter:
+. subdm - The submesh
+
+  Note: This function produces a DMLabel mapping original points in the submesh to their depth. This can be obtained using DMPlexGetSubpointMap().
+
+  Level: developer
+
+.seealso: DMPlexGetSubpointMap()
+@*/
+PetscErrorCode DMPlexCreateSubmeshGeneric(DM dm, DMPlexSubmeshType submeshType, DMLabel afilter, PetscInt filterValue, PetscInt height, PetscBool isCohesive, PetscBool markedFaces, PetscBool hasLagrange, PetscErrorCode (*user)(DM, DMLabel, PetscInt, PetscInt, DMLabel), const char filterName[], PetscBool isLocal, DM *subdm)
+{
+  MPI_Comm         comm, subcomm;
+  PetscInt         dim, gdim, d;
+  PetscInt         depth, subdepth;
+  DMLabel          subpointMap;
+  DMLabel          filter = NULL;
+  PetscInt        *stratumSizes, *stratumOffsets, chart=0;
+  IS              *stratumISes;
+  const PetscInt **stratumIndices;
+
+  PetscFunctionBegin;
+
+  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
+  PetscValidPointer(subdm, 12);
+
+  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
+  if (isLocal) {subcomm = PETSC_COMM_SELF;}
+  else         {subcomm = comm;}
+  PetscCall(DMCreate(subcomm, subdm));
+  PetscCall(DMSetType(*subdm, DMPLEX));
+
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMSetDimension(*subdm, dim - height));
+  PetscCall(DMPlexGetDepth(dm, &depth));
+  if (dim - height < 0) {SETERRQ(subcomm, PETSC_ERR_PLIB, "Cannot create mesh with negative topological dimension");}
+  PetscCall(DMGetCoordinateDim(dm, &gdim));
+  PetscCall(DMSetCoordinateDim(*subdm, gdim));
+  PetscCall(DMPlexSetVTKCellHeight(*subdm, height));
+
+  /* Copy adjacency rules from dm to subdm:
+
+     If using different adjacency rules for the subdm, do:
+     - DMClone() the dm,
+     - Set the new adjacency rules on the clone
+     - Use the clone when calling this function
+     - DMDestroy() the clone
+
+     This is because, in DMPlexMarkSubpointMap_Closure(),
+     DMPlexGetAdjacency() with desired adjacency rules
+     must act on the parent dm. */
+  {
+    PetscBool        useCone, useClosure;
+    PetscInt         overlap;
+    PetscBool        useAnchors;
+    PetscErrorCode (*useradjacency)(DM,PetscInt,PetscInt*,PetscInt[],void*);
+    void            *useradjacencyctx;
+
+    PetscCall(DMGetAdjacency(dm, -1, &useCone, &useClosure));
+    PetscCall(DMSetAdjacency(*subdm, -1, useCone, useClosure));
+    PetscCall(DMPlexGetOverlap(dm, &overlap));
+    PetscCall(DMPlexSetOverlap_Plex(*subdm, NULL, overlap));
+    PetscCall(DMPlexGetAdjacencyUser(dm, &useradjacency, &useradjacencyctx));
+    PetscCall(DMPlexSetAdjacencyUser(*subdm, useradjacency, useradjacencyctx));
+    PetscCall(DMPlexGetAdjacencyUseAnchors(dm, &useAnchors));
+    PetscCall(DMPlexSetAdjacencyUseAnchors(*subdm, useAnchors));
+  }
+
+  /* Create problem dependent subpointMap */
+  PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
+  PetscCall(DMPlexSetSubpointMap(*subdm, subpointMap));
+  if (filterName) {PetscCall(DMGetLabel(dm, filterName, &filter));}
+  else            {filter = afilter;}
+
+  switch (submeshType) {
+    case DMPLEX_SUBMESH_CLOSURE:
+      PetscCall(DMPlexMarkSubpointMap_Closure(dm, filter, filterValue, height, subpointMap));
+      break;
+    case DMPLEX_SUBMESH_HYPERSURFACE:
+      if (height != 1) {SETERRQ(comm, PETSC_ERR_PLIB, "`height` must be 1 if `submeshType == DMPLEX_SUBMESH_HYPERSURFACE`.");}
+      /* filter must be a vertex label */
+      if (depth == dim) {
+        if (isCohesive) {PetscCall(DMPlexMarkCohesiveSubmesh_Interpolated(dm, filter, filterValue, subpointMap, *subdm));}
+        else            {PetscCall(DMPlexMarkSubmesh_Interpolated(dm, filter, filterValue, markedFaces, subpointMap, *subdm));}
+      } else {
+        if (isCohesive) {PetscCall(DMPlexCreateCohesiveSubmesh_Uninterpolated(dm, hasLagrange, filterName, filterValue, *subdm));}
+        else            {PetscCall(DMPlexCreateSubmesh_Uninterpolated(dm, filter, filterValue, *subdm));}
+        PetscFunctionReturn(0);
+      }
+      break;
+    case DMPLEX_SUBMESH_USER:
+      PetscCall((*user)(dm, filter, filterValue, height, subpointMap));
+      break;
+    default:
+      SETERRQ(comm, PETSC_ERR_PLIB, "Unknown DMPlexSubmeshType.");
+  }
+
+  /* Get subdepth; this might be different from subdim */
+  PetscCall(DMPlexSubmeshGetDepth(dm, *subdm, &subdepth));
+
+  /* Be compatible with the original DMPlexCreateSubmeshGeneric implementation */
+  if (submeshType == DMPLEX_SUBMESH_HYPERSURFACE) subdepth = dim;
+
+  PetscCall(PetscMalloc4(subdepth+1, &stratumSizes, subdepth+1, &stratumOffsets, subdepth+1, &stratumIndices, subdepth+1, &stratumISes));
+  for (d = 0; d <= subdepth; ++d) {
+    PetscCall(DMLabelGetStratumSize(subpointMap, d, &stratumSizes[d]));
+    PetscCall(DMLabelGetStratumIS(subpointMap, d, &stratumISes[d]));
+    if (stratumISes[d]) {
+      PetscCall(ISGetIndices(stratumISes[d], &stratumIndices[d]));
+    }
+  }
+  PetscCall(DMLabelDestroy(&subpointMap));
+  stratumOffsets[subdepth] = 0;
+  if (subdepth > 0) { stratumOffsets[0] = stratumOffsets[subdepth] + stratumSizes[subdepth]; }
+  if (subdepth > 1) { stratumOffsets[subdepth - 1] = stratumOffsets[0] + stratumSizes[0]; }
+  if (subdepth > 2) { stratumOffsets[subdepth - 2] = stratumOffsets[subdepth - 1] + stratumSizes[subdepth - 1]; }
+  if (subdepth > 3) { SETERRQ(subcomm, PETSC_ERR_PLIB, "Only coded for max 3 dimensional DMs"); }
+
+  for (d = 0; d <= subdepth; ++d) chart += stratumSizes[d];
+  PetscCall(DMPlexSetChart(*subdm, 0, chart));
+  PetscCall(DMPlexSubmeshSetTopology(dm, *subdm, stratumOffsets, stratumSizes, stratumIndices));
+  PetscCall(DMPlexSubmeshSetCoordinates(dm, *subdm, stratumOffsets, stratumSizes, stratumIndices));
+  PetscCall(DMPlexSubmeshSetPointSF(dm, *subdm, stratumOffsets, stratumSizes, stratumIndices));
+  /* Filter labels */
+  PetscCall(DMPlexFilterLabels_Internal(dm, stratumSizes, stratumIndices, stratumOffsets, *subdm));
+  /* Cleanup */
+  for (d = 0; d <= subdepth; ++d) {
+    if (stratumISes[d]) {
+      PetscCall(ISRestoreIndices(stratumISes[d], &stratumIndices[d]));
+    }
+    PetscCall(ISDestroy(&stratumISes[d]));
+  }
+  PetscCall(PetscFree4(stratumSizes, stratumOffsets, stratumIndices, stratumISes));
+  PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_TRUE, *subdm));
+  PetscFunctionReturn(0);
+}
+
+/*@
+  DMPlexFilter - Extract a subset of mesh cells defined by a label as a separate mesh
+
+  Input Parameters:
++ dm        - The original mesh
+. cellLabel - The DMLabel marking cells contained in the new mesh
+- value     - The label value to use
+
+  Output Parameter:
+. subdm - The new mesh
+
+  Note: This function produces a DMLabel mapping original points in the submesh to their depth. This can be obtained using DMPlexGetSubpointMap().
+
+  Level: developer
+
+.seealso: DMPlexCreateSubmeshGeneric(), DMPlexGetSubpointMap(), DMGetLabel(), DMLabelSetValue()
+@*/
+PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, DM *subdm)
+{
+  PetscFunctionBegin;
+  PetscCall(DMPlexCreateSubmeshGeneric(dm, DMPLEX_SUBMESH_CLOSURE, cellLabel, value, 0, PETSC_FALSE, PETSC_FALSE, PETSC_FALSE, NULL, NULL, PETSC_FALSE, subdm));
+  PetscFunctionReturn(0);
+}
+
+/*@
+  DMPlexCreateSubmesh - Extract a hypersurface from the mesh using vertices defined by a label
+
+  Input Parameters:
++ dm           - The original mesh
+. vertexLabel  - The DMLabel marking points contained in the surface
+. value        - The label value to use
+- markedFaces  - PETSC_TRUE if surface faces are marked in addition to vertices, PETSC_FALSE if only vertices are marked
+
+  Output Parameter:
+. subdm - The surface mesh
+
+  Note: This function produces a DMLabel mapping original points in the submesh to their depth. This can be obtained using DMPlexGetSubpointMap().
+
+  Level: developer
+
+.seealso: DMPlexCreateSubmeshGeneric(), DMPlexGetSubpointMap(), DMGetLabel(), DMLabelSetValue()
+@*/
+PetscErrorCode DMPlexCreateSubmesh(DM dm, DMLabel vertexLabel, PetscInt value, PetscBool markedFaces, DM *subdm)
+{
+  PetscFunctionBegin;
+  PetscCall(DMPlexCreateSubmeshGeneric(dm, DMPLEX_SUBMESH_HYPERSURFACE, vertexLabel, value, 1, PETSC_FALSE, markedFaces, PETSC_FALSE, NULL, NULL, PETSC_FALSE, subdm));
+  PetscFunctionReturn(0);
+}
+
+/*@C
+  DMPlexCreateCohesiveSubmesh - Extract from a mesh with cohesive cells the hypersurface defined by one face of the cells. Optionally, a Label an be given to restrict the cells.
+
+  Input Parameters:
++ dm          - The original mesh
+. hasLagrange - The mesh has Lagrange unknowns in the cohesive cells
+. label       - A label name, or NULL
+- value  - A label value
+
+  Output Parameter:
+. subdm - The surface mesh
+
+  Note: This function produces a DMLabel mapping original points in the submesh to their depth. This can be obtained using DMPlexGetSubpointMap().
+
+  Level: developer
+
+.seealso: DMPlexCreateSubmeshGeneric(), DMPlexGetSubpointMap()
+@*/
+PetscErrorCode DMPlexCreateCohesiveSubmesh(DM dm, PetscBool hasLagrange, const char labelName[], PetscInt value, DM *subdm)
+{
+  PetscFunctionBegin;
+  PetscCall(DMPlexCreateSubmeshGeneric(dm, DMPLEX_SUBMESH_HYPERSURFACE, NULL, value, 1, PETSC_TRUE, PETSC_FALSE, hasLagrange, NULL, labelName, PETSC_FALSE, subdm));
   PetscFunctionReturn(0);
 }

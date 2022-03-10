@@ -3156,8 +3156,8 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
   DMLabel          subpointMap;
   IS              *subpointIS;
   const PetscInt **subpoints;
-  PetscInt        *numSubPoints, *firstSubPoint, *coneNew, *orntNew;
-  PetscInt         totSubPoints = 0, maxConeSize, dim, p, d, v;
+  PetscInt        *numSubPoints, *firstSubPoint;
+  PetscInt         totSubPoints = 0, dim, p, d;
   PetscMPIInt      rank;
 
   PetscFunctionBegin;
@@ -3213,230 +3213,14 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
     PetscCall(DMLabelGetStratumIS(subpointMap, d, &subpointIS[d]));
     if (subpointIS[d]) PetscCall(ISGetIndices(subpointIS[d], &subpoints[d]));
   }
-  /* We do not want this label automatically computed, instead we compute it here */
-  PetscCall(DMCreateLabel(subdm, "celltype"));
-  for (d = 0; d <= dim; ++d) {
-    for (p = 0; p < numSubPoints[d]; ++p) {
-      const PetscInt  point    = subpoints[d][p];
-      const PetscInt  subpoint = firstSubPoint[d] + p;
-      const PetscInt *cone;
-      PetscInt        coneSize;
-
-      PetscCall(DMPlexGetConeSize(dm, point, &coneSize));
-      if (cellHeight && (d == dim)) {
-        PetscInt coneSizeNew, c, val;
-
-        PetscCall(DMPlexGetCone(dm, point, &cone));
-        for (c = 0, coneSizeNew = 0; c < coneSize; ++c) {
-          PetscCall(DMLabelGetValue(subpointMap, cone[c], &val));
-          if (val >= 0) coneSizeNew++;
-        }
-        PetscCall(DMPlexSetConeSize(subdm, subpoint, coneSizeNew));
-        PetscCall(DMPlexSetCellType(subdm, subpoint, DM_POLYTOPE_FV_GHOST));
-      } else {
-        DMPolytopeType ct;
-
-        PetscCall(DMPlexSetConeSize(subdm, subpoint, coneSize));
-        PetscCall(DMPlexGetCellType(dm, point, &ct));
-        PetscCall(DMPlexSetCellType(subdm, subpoint, ct));
-      }
-    }
-  }
+//  ierr = DMPlexSubmeshSetConeSizes(...);
   PetscCall(DMLabelDestroy(&subpointMap));
   PetscCall(DMSetUp(subdm));
-  /* Set cones */
-  PetscCall(DMPlexGetMaxSizes(dm, &maxConeSize, NULL));
-  PetscCall(PetscMalloc2(maxConeSize, &coneNew, maxConeSize, &orntNew));
-  for (d = 0; d <= dim; ++d) {
-    for (p = 0; p < numSubPoints[d]; ++p) {
-      const PetscInt  point    = subpoints[d][p];
-      const PetscInt  subpoint = firstSubPoint[d] + p;
-      const PetscInt *cone, *ornt;
-      PetscInt        coneSize, subconeSize, coneSizeNew, c, subc, fornt = 0;
-
-      if (d == dim - 1) {
-        const PetscInt *support, *cone, *ornt;
-        PetscInt        supportSize, coneSize, s, subc;
-
-        PetscCall(DMPlexGetSupport(dm, point, &support));
-        PetscCall(DMPlexGetSupportSize(dm, point, &supportSize));
-        for (s = 0; s < supportSize; ++s) {
-          PetscBool isHybrid;
-
-          PetscCall(DMPlexCellIsHybrid_Internal(dm, support[s], &isHybrid));
-          if (!isHybrid) continue;
-          PetscCall(PetscFindInt(support[s], numSubPoints[d + 1], subpoints[d + 1], &subc));
-          if (subc >= 0) {
-            const PetscInt ccell = subpoints[d + 1][subc];
-
-            PetscCall(DMPlexGetCone(dm, ccell, &cone));
-            PetscCall(DMPlexGetConeSize(dm, ccell, &coneSize));
-            PetscCall(DMPlexGetConeOrientation(dm, ccell, &ornt));
-            for (c = 0; c < coneSize; ++c) {
-              if (cone[c] == point) {
-                fornt = ornt[c];
-                break;
-              }
-            }
-            break;
-          }
-        }
-      }
-      PetscCall(DMPlexGetConeSize(dm, point, &coneSize));
-      PetscCall(DMPlexGetConeSize(subdm, subpoint, &subconeSize));
-      PetscCall(DMPlexGetCone(dm, point, &cone));
-      PetscCall(DMPlexGetConeOrientation(dm, point, &ornt));
-      for (c = 0, coneSizeNew = 0; c < coneSize; ++c) {
-        PetscCall(PetscFindInt(cone[c], numSubPoints[d - 1], subpoints[d - 1], &subc));
-        if (subc >= 0) {
-          coneNew[coneSizeNew] = firstSubPoint[d - 1] + subc;
-          orntNew[coneSizeNew] = ornt[c];
-          ++coneSizeNew;
-        }
-      }
-      PetscCheck(coneSizeNew == subconeSize, comm, PETSC_ERR_PLIB, "Number of cone points located %" PetscInt_FMT " does not match subcone size %" PetscInt_FMT, coneSizeNew, subconeSize);
-      PetscCall(DMPlexSetCone(subdm, subpoint, coneNew));
-      PetscCall(DMPlexSetConeOrientation(subdm, subpoint, orntNew));
-      if (fornt < 0) PetscCall(DMPlexOrientPoint(subdm, subpoint, fornt));
-    }
-  }
-  PetscCall(PetscFree2(coneNew, orntNew));
+//  ierr = DMPlexSubmeshSetCones(...);
   PetscCall(DMPlexSymmetrize(subdm));
   PetscCall(DMPlexStratify(subdm));
-  /* Build coordinates */
-  {
-    PetscSection coordSection, subCoordSection;
-    Vec          coordinates, subCoordinates;
-    PetscScalar *coords, *subCoords;
-    PetscInt     cdim, numComp, coordSize;
-    const char  *name;
-
-    PetscCall(DMGetCoordinateDim(dm, &cdim));
-    PetscCall(DMGetCoordinateSection(dm, &coordSection));
-    PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
-    PetscCall(DMGetCoordinateSection(subdm, &subCoordSection));
-    PetscCall(PetscSectionSetNumFields(subCoordSection, 1));
-    PetscCall(PetscSectionGetFieldComponents(coordSection, 0, &numComp));
-    PetscCall(PetscSectionSetFieldComponents(subCoordSection, 0, numComp));
-    PetscCall(PetscSectionSetChart(subCoordSection, firstSubPoint[0], firstSubPoint[0] + numSubPoints[0]));
-    for (v = 0; v < numSubPoints[0]; ++v) {
-      const PetscInt vertex    = subpoints[0][v];
-      const PetscInt subvertex = firstSubPoint[0] + v;
-      PetscInt       dof;
-
-      PetscCall(PetscSectionGetDof(coordSection, vertex, &dof));
-      PetscCall(PetscSectionSetDof(subCoordSection, subvertex, dof));
-      PetscCall(PetscSectionSetFieldDof(subCoordSection, subvertex, 0, dof));
-    }
-    PetscCall(PetscSectionSetUp(subCoordSection));
-    PetscCall(PetscSectionGetStorageSize(subCoordSection, &coordSize));
-    PetscCall(VecCreate(PETSC_COMM_SELF, &subCoordinates));
-    PetscCall(PetscObjectGetName((PetscObject)coordinates, &name));
-    PetscCall(PetscObjectSetName((PetscObject)subCoordinates, name));
-    PetscCall(VecSetSizes(subCoordinates, coordSize, PETSC_DETERMINE));
-    PetscCall(VecSetBlockSize(subCoordinates, cdim));
-    PetscCall(VecSetType(subCoordinates, VECSTANDARD));
-    PetscCall(VecGetArray(coordinates, &coords));
-    PetscCall(VecGetArray(subCoordinates, &subCoords));
-    for (v = 0; v < numSubPoints[0]; ++v) {
-      const PetscInt vertex    = subpoints[0][v];
-      const PetscInt subvertex = firstSubPoint[0] + v;
-      PetscInt       dof, off, sdof, soff, d;
-
-      PetscCall(PetscSectionGetDof(coordSection, vertex, &dof));
-      PetscCall(PetscSectionGetOffset(coordSection, vertex, &off));
-      PetscCall(PetscSectionGetDof(subCoordSection, subvertex, &sdof));
-      PetscCall(PetscSectionGetOffset(subCoordSection, subvertex, &soff));
-      PetscCheck(dof == sdof, comm, PETSC_ERR_PLIB, "Coordinate dimension %" PetscInt_FMT " on subvertex %" PetscInt_FMT ", vertex %" PetscInt_FMT " should be %" PetscInt_FMT, sdof, subvertex, vertex, dof);
-      for (d = 0; d < dof; ++d) subCoords[soff + d] = coords[off + d];
-    }
-    PetscCall(VecRestoreArray(coordinates, &coords));
-    PetscCall(VecRestoreArray(subCoordinates, &subCoords));
-    PetscCall(DMSetCoordinatesLocal(subdm, subCoordinates));
-    PetscCall(VecDestroy(&subCoordinates));
-  }
-  /* Build SF: We need this complexity because subpoints might not be selected on the owning process */
-  {
-    PetscSF            sfPoint, sfPointSub;
-    IS                 subpIS;
-    const PetscSFNode *remotePoints;
-    PetscSFNode       *sremotePoints = NULL, *newLocalPoints = NULL, *newOwners = NULL;
-    const PetscInt    *localPoints, *subpoints, *rootdegree;
-    PetscInt          *slocalPoints = NULL;
-    PetscInt           numRoots, numLeaves, numSubpoints = 0, numSubroots, numSubleaves = 0, l, sl = 0, ll = 0, pStart, pEnd, p;
-    PetscMPIInt        rank, size;
-
-    PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)dm), &rank));
-    PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)dm), &size));
-    PetscCall(DMGetPointSF(dm, &sfPoint));
-    PetscCall(DMGetPointSF(subdm, &sfPointSub));
-    PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
-    PetscCall(DMPlexGetChart(subdm, NULL, &numSubroots));
-    PetscCall(DMPlexGetSubpointIS(subdm, &subpIS));
-    if (subpIS) {
-      PetscCall(ISGetIndices(subpIS, &subpoints));
-      PetscCall(ISGetLocalSize(subpIS, &numSubpoints));
-    }
-    PetscCall(PetscSFGetGraph(sfPoint, &numRoots, &numLeaves, &localPoints, &remotePoints));
-    if (numRoots >= 0) {
-      PetscCall(PetscSFComputeDegreeBegin(sfPoint, &rootdegree));
-      PetscCall(PetscSFComputeDegreeEnd(sfPoint, &rootdegree));
-      PetscCall(PetscMalloc2(pEnd - pStart, &newLocalPoints, numRoots, &newOwners));
-      for (p = 0; p < pEnd - pStart; ++p) {
-        newLocalPoints[p].rank  = -2;
-        newLocalPoints[p].index = -2;
-      }
-      /* Set subleaves */
-      for (l = 0; l < numLeaves; ++l) {
-        const PetscInt point    = localPoints[l];
-        const PetscInt subpoint = DMPlexFilterPoint_Internal(point, 0, numSubpoints, subpoints);
-
-        if (subpoint < 0) continue;
-        newLocalPoints[point - pStart].rank  = rank;
-        newLocalPoints[point - pStart].index = subpoint;
-        ++numSubleaves;
-      }
-      /* Must put in owned subpoints */
-      for (p = pStart; p < pEnd; ++p) {
-        newOwners[p - pStart].rank  = -3;
-        newOwners[p - pStart].index = -3;
-      }
-      for (p = 0; p < numSubpoints; ++p) {
-        /* Hold on to currently owned points */
-        if (rootdegree[subpoints[p] - pStart]) newOwners[subpoints[p] - pStart].rank = rank + size;
-        else newOwners[subpoints[p] - pStart].rank = rank;
-        newOwners[subpoints[p] - pStart].index = p;
-      }
-      PetscCall(PetscSFReduceBegin(sfPoint, MPIU_2INT, newLocalPoints, newOwners, MPI_MAXLOC));
-      PetscCall(PetscSFReduceEnd(sfPoint, MPIU_2INT, newLocalPoints, newOwners, MPI_MAXLOC));
-      for (p = pStart; p < pEnd; ++p)
-        if (newOwners[p - pStart].rank >= size) newOwners[p - pStart].rank -= size;
-      PetscCall(PetscSFBcastBegin(sfPoint, MPIU_2INT, newOwners, newLocalPoints, MPI_REPLACE));
-      PetscCall(PetscSFBcastEnd(sfPoint, MPIU_2INT, newOwners, newLocalPoints, MPI_REPLACE));
-      PetscCall(PetscMalloc1(numSubleaves, &slocalPoints));
-      PetscCall(PetscMalloc1(numSubleaves, &sremotePoints));
-      for (l = 0; l < numLeaves; ++l) {
-        const PetscInt point    = localPoints[l];
-        const PetscInt subpoint = DMPlexFilterPoint_Internal(point, 0, numSubpoints, subpoints);
-
-        if (subpoint < 0) continue;
-        if (newLocalPoints[point].rank == rank) {
-          ++ll;
-          continue;
-        }
-        slocalPoints[sl]        = subpoint;
-        sremotePoints[sl].rank  = newLocalPoints[point].rank;
-        sremotePoints[sl].index = newLocalPoints[point].index;
-        PetscCheck(sremotePoints[sl].rank >= 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote rank for local point %" PetscInt_FMT, point);
-        PetscCheck(sremotePoints[sl].index >= 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote subpoint for local point %" PetscInt_FMT, point);
-        ++sl;
-      }
-      PetscCheck(sl + ll == numSubleaves, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Mismatch in number of subleaves %" PetscInt_FMT " + %" PetscInt_FMT " != %" PetscInt_FMT, sl, ll, numSubleaves);
-      PetscCall(PetscFree2(newLocalPoints, newOwners));
-      PetscCall(PetscSFSetGraph(sfPointSub, numSubroots, sl, slocalPoints, PETSC_OWN_POINTER, sremotePoints, PETSC_OWN_POINTER));
-    }
-    if (subpIS) PetscCall(ISRestoreIndices(subpIS, &subpoints));
-  }
+//  ierr = DMPlexSubmeshSetCoordinates(...)
+// DMPlexSubmeshSetPointSF(...)
   /* Filter labels */
   PetscCall(DMPlexFilterLabels_Internal(dm, numSubPoints, subpoints, firstSubPoint, subdm));
   /* Cleanup */
@@ -4028,6 +3812,535 @@ PetscErrorCode DMGetEnclosurePoint(DM dmA, DM dmB, DMEnclosureType etype, PetscI
     PetscCall(DMGetEnclosurePoint(dmA, dmB, enc, pB, pA));
   } break;
   default: SETERRQ(PetscObjectComm((PetscObject)dmA), PETSC_ERR_ARG_OUTOFRANGE, "Invalid enclosure type %d", (int)etype);
+  }
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMPlexMarkSubpointMap_Closure(DM dm,
+                                                    DMLabel filter,
+                                                    PetscInt filterValue,
+                                                    PetscInt height,
+                                                    DMLabel subpointMap)
+{
+  PetscInt           dim;
+  DMLabel            subpointMapLocal;
+  PetscInt           defaultValue, tempVal1, tempVal2;
+  IS                 marked;
+  const PetscInt    *points;
+  PetscInt           npoints, point, p;
+  IS                 localmarked;
+  const PetscInt    *localpoints;
+  PetscInt           nlocalpoints, localp, localpoint;
+  PetscInt           hStart, hEnd;
+  PetscInt           overlap, ol;
+  PetscInt          *closure = NULL, closureSize, cpoint, ci;
+  PetscInt           val;
+  PetscHMapI         leafpointMap;
+  PetscBool          updated;
+
+  PetscFunctionBegin;
+
+  //After https://gitlab.com/petsc/petsc/-/commit/5033f954864e65f2e3f984331e1f29a4c2527f49:
+  //dm_impls_plex_tests-ex16_1 fails, but this function catches more corner cases;
+  //so check what is wrong.
+  PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map_local", &subpointMapLocal));
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMLabelGetDefaultValue(subpointMapLocal, &defaultValue));
+  tempVal1 = dim + 1;
+  tempVal2 = dim + 2;
+
+  /* Mark non-overlapping points */
+  PetscCall(PetscHMapICreate(&leafpointMap));
+  {
+    PetscSF            sf;
+    PetscInt           nroots, nleaves;
+    const PetscInt    *ilocal;
+    const PetscSFNode *iremote;
+    PetscCall(DMGetPointSF(dm, &sf));
+    PetscCall(PetscSFGetGraph(sf, &nroots, &nleaves, &ilocal, &iremote));
+    for (p = 0; p < nleaves; ++p) {
+      PetscHMapISet(leafpointMap, ilocal[p], p);
+    }
+  }
+  PetscCall(DMLabelGetStratumIS(filter, filterValue, &marked));
+  PetscCall(DMPlexGetHeightStratum(dm, height, &hStart, &hEnd));
+  PetscCall(DMPlexGetOverlap(dm, &overlap));
+  if (marked) {
+    PetscCall(ISGetLocalSize(marked, &npoints));
+    PetscCall(ISGetIndices(marked, &points));
+    for (p = 0; p < npoints; ++p) {
+      point = points[p];
+      //if (point < hStart || point >= hEnd) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Filter label marks a point at the incorrect height");
+      if (point < hStart || point >= hEnd) continue;
+      PetscCall(PetscHMapIGet(leafpointMap, point, &val));
+      if (val >= 0) continue;
+
+      /* Mark transitive closure of owned point */
+      PetscCall(DMPlexGetTransitiveClosure(dm, point, PETSC_TRUE, &closureSize, &closure));
+      for (ci = 0; ci < closureSize; ++ci) {
+        PetscCall(DMLabelSetValue(subpointMapLocal, closure[2*ci], tempVal2));
+      }
+      PetscCall(DMPlexRestoreTransitiveClosure(dm, point, PETSC_TRUE, &closureSize, &closure));
+
+      /* Mark adjacent points */
+      ol = overlap;
+      while (ol > 0) {
+        PetscCall(DMLabelGetStratumIS(subpointMapLocal, tempVal2, &localmarked));
+        if (localmarked) {
+          PetscInt *adj = NULL;
+          PetscCall(ISGetLocalSize(localmarked, &nlocalpoints));
+          PetscCall(ISGetIndices(localmarked, &localpoints));
+          for (localp = 0; localp < nlocalpoints; ++localp) {
+            PetscInt adjSize = PETSC_DETERMINE, a;
+            PetscCall(DMPlexGetAdjacency(dm, localpoints[localp], &adjSize, &adj));
+            for (a = 0; a < adjSize; ++a) {
+              PetscCall(DMLabelSetValue(subpointMapLocal, adj[a], tempVal2));
+            }
+            PetscFree(adj);
+          }
+          PetscCall(ISRestoreIndices(localmarked, &localpoints));
+          PetscCall(ISDestroy(&localmarked));
+        }
+        --ol;
+      }
+
+      /* Mark transitive closure of owned point by tempVal1 */
+      PetscCall(DMPlexGetTransitiveClosure(dm, point, PETSC_TRUE, &closureSize, &closure));
+      for (ci = 0; ci < closureSize; ++ci) {
+        PetscCall(DMLabelClearValue(subpointMapLocal, closure[2*ci], tempVal2));
+        PetscCall(DMLabelSetValue(subpointMapLocal, closure[2*ci], tempVal1));
+      }
+      PetscCall(DMPlexRestoreTransitiveClosure(dm, point, PETSC_TRUE, &closureSize, &closure));
+
+      /* Mark adjacent points if connected */
+      updated = PETSC_TRUE;
+      while (updated) {
+        const PetscInt *cone;
+        PetscInt        coneSize;
+
+        updated = PETSC_FALSE;
+        PetscCall(DMLabelGetStratumIS(subpointMapLocal, tempVal2, &localmarked));
+        if (localmarked) {
+          PetscCall(ISGetLocalSize(localmarked, &nlocalpoints));
+          PetscCall(ISGetIndices(localmarked, &localpoints));
+          for (localp = 0; localp < nlocalpoints; ++localp) {
+            localpoint = localpoints[localp];
+            PetscCall(DMLabelGetValue(filter, localpoint, &val));
+            if (val == filterValue) {
+              /* Check if this subcell point is adjacent to any already marked point */
+              PetscCall(DMPlexGetConeSize(dm, localpoint, &coneSize));
+              PetscCall(DMPlexGetCone(dm, localpoint, &cone));
+              for (ci = 0; ci < coneSize; ++ci) {
+                PetscCall(DMLabelGetValue(subpointMapLocal, cone[ci], &val));
+                if (val == tempVal1) break;
+              }
+              if (ci == coneSize) continue;
+              PetscCall(DMPlexGetTransitiveClosure(dm, localpoint, PETSC_TRUE, &closureSize, &closure));
+              for (ci = 0; ci < closureSize; ++ci) {
+                cpoint = closure[2*ci];
+                PetscCall(DMLabelGetValue(subpointMapLocal, cpoint, &val));
+                if (val == tempVal2) {
+                  PetscCall(DMLabelClearValue(subpointMapLocal, cpoint, tempVal2));
+                  PetscCall(DMLabelSetValue(subpointMapLocal, cpoint, tempVal1));
+                }
+              }
+              PetscCall(DMPlexRestoreTransitiveClosure(dm, localpoint, PETSC_TRUE, &closureSize, &closure));
+              updated = PETSC_TRUE;
+            }
+          }
+          PetscCall(ISRestoreIndices(localmarked, &localpoints));
+          PetscCall(ISDestroy(&localmarked));
+        }
+      }
+
+      /* Copy to *subpointMap */
+      PetscCall(DMLabelGetStratumIS(subpointMapLocal, tempVal1, &localmarked));
+      if (localmarked) {
+        PetscCall(ISGetLocalSize(localmarked, &nlocalpoints));
+        PetscCall(ISGetIndices(localmarked, &localpoints));
+        for (localp = 0; localp < nlocalpoints; ++localp) {
+          PetscCall(DMLabelSetValue(subpointMap, localpoints[localp], tempVal1));
+        }
+        PetscCall(ISRestoreIndices(localmarked, &localpoints));
+        PetscCall(ISDestroy(&localmarked));
+      }
+      PetscCall(DMLabelReset(subpointMapLocal));
+    }
+    PetscCall(ISRestoreIndices(marked, &points));
+    PetscCall(ISDestroy(&marked));
+  }
+  PetscCall(PetscHMapIDestroy(&leafpointMap));
+  PetscCall(DMLabelDestroy(&subpointMapLocal));
+
+  /* Mark subpointMap */
+  {
+    PetscInt *pStart, *pEnd;
+    PetscInt d;
+
+    PetscCall(PetscMalloc2(dim+1, &pStart, dim+1, &pEnd));
+    for (d = 0; d <= dim; ++d) {
+      PetscCall(DMPlexGetDepthStratum(dm, d, &pStart[d], &pEnd[d]));
+    }
+    PetscCall(DMLabelGetStratumIS(subpointMap, tempVal1, &marked));
+    if (marked) {
+      PetscCall(ISGetLocalSize(marked, &npoints));
+      PetscCall(ISGetIndices(marked, &points));
+      for (p = 0; p < npoints; ++p) {
+        point = points[p];
+        for (d = 0; d <= dim; ++d) {
+          if ((point >= pStart[d]) && (point < pEnd[d])) {
+            PetscCall(DMLabelClearValue(subpointMap, point, tempVal1));
+            PetscCall(DMLabelSetValue(subpointMap, point, d));
+            break;
+          }
+        }
+      }
+      PetscCall(ISRestoreIndices(marked, &points));
+      PetscCall(ISDestroy(&marked));
+    }
+    PetscCall(PetscFree2(pStart, pEnd));
+  }
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMPlexSubmeshGetDepth(DM dm, DM subdm, PetscInt *subdepth)
+{
+  MPI_Comm       subcomm;
+  PetscInt       dim, d;
+  DMLabel        subpointMap = NULL;
+
+  PetscFunctionBegin;
+
+  subcomm = PetscObjectComm((PetscObject)subdm);
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
+  for (d = dim; d >= 0; --d) {
+    PetscInt stratumSize;
+    PetscCall(DMLabelGetStratumSize(subpointMap, d, &stratumSize));
+    if (stratumSize > 0) break;
+  }
+  PetscCall(MPI_Allreduce(&d, subdepth, 1, MPIU_INT, MPI_MAX, subcomm));
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMPlexSubmeshSetConeSizes(DM dm, DM subdm, const PetscInt subdepth,
+                                                const PetscInt *stratumOffsets,
+                                                const PetscInt *stratumSizes,
+                                                const PetscInt **stratumIndices)
+{
+  PetscInt       pStart, pEnd, d, p, dim, cellHeight;
+  DMLabel        subpointMap = NULL;
+
+  PetscFunctionBegin;
+
+  PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
+  PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
+  PetscCall(DMLabelCreateIndex(subpointMap, pStart, pEnd));
+  /* We do not want this label automatically computed, instead we compute it here */
+  PetscCall(DMCreateLabel(subdm, "celltype"));
+
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMPlexGetVTKCellHeight(subdm, &cellHeight));
+  for (d = 0; d <= subdepth; ++d) {
+    for (p = 0; p < stratumSizes[d]; ++p) {
+      const PetscInt  point = stratumIndices[d][p];
+      const PetscInt  subpoint = stratumOffsets[d] + p;
+      const PetscInt *cone;
+      PetscInt        coneSize, coneSizeNew, c;
+      DMPolytopeType  ct;
+      PetscCall(DMPlexGetCellType(dm, point, &ct));
+      PetscCall(DMPlexSetCellType(subdm, subpoint, ct));
+      PetscCall(DMPlexGetConeSize(dm, point, &coneSize));
+      PetscCall(DMPlexGetCone(dm, point, &cone));
+      coneSizeNew = 0;
+      for (c = 0; c < coneSize; ++c){
+        PetscBool flg;
+        PetscCall(DMLabelHasPoint(subpointMap, cone[c], &flg));
+        if (flg) coneSizeNew++;
+      }
+      PetscCall(DMPlexSetConeSize(subdm, subpoint, coneSizeNew));
+      if (cellHeight && d == dim) {
+        PetscCall(DMPlexSetCellType(subdm, subpoint, DM_POLYTOPE_FV_GHOST));
+      }
+    }
+  }
+  PetscCall(DMLabelDestroyIndex(subpointMap));
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMPlexSubmeshSetCones(DM dm, DM subdm, const PetscInt subdepth,
+                                            const PetscInt *stratumOffsets,
+                                            const PetscInt *stratumSizes,
+                                            const PetscInt **stratumIndices)
+{
+  PetscInt       *coneNew, *orntNew;
+  PetscInt        maxConeSize, p, dim, subdim, d, VTKCellHeight;
+
+  PetscFunctionBegin;
+
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMGetDimension(subdm, &subdim));
+  PetscCall(DMPlexGetVTKCellHeight(subdm, &VTKCellHeight));
+  PetscCall(DMPlexGetMaxSizes(dm, &maxConeSize, NULL));
+  PetscCall(PetscMalloc2(maxConeSize, &coneNew, maxConeSize, &orntNew));
+  for (d = 0; d <= subdepth; ++d) {
+    for (p = 0; p < stratumSizes[d]; ++p) {
+      const PetscInt  point    = stratumIndices[d][p];
+      const PetscInt  subpoint = stratumOffsets[d] + p;
+      const PetscInt *cone, *ornt;
+      PetscInt        coneSize, subconeSize, coneSizeNew, c, subc, fornt=0;
+
+      if (subdim == dim && d == dim - 1) {
+        const PetscInt *support, *scone, *sornt;
+        PetscInt        supportSize, sconeSize, s, subc;
+
+        PetscCall(DMPlexGetSupport(dm, point, &support));
+        PetscCall(DMPlexGetSupportSize(dm, point, &supportSize));
+        for (s = 0; s < supportSize; ++s) {
+          PetscBool isHybrid;
+
+          PetscCall(DMPlexCellIsHybrid_Internal(dm, support[s], &isHybrid));
+          if (!isHybrid) continue;
+          PetscCall(PetscFindInt(support[s], stratumSizes[d+1], stratumIndices[d+1], &subc));
+          if (subc >= 0) {
+            const PetscInt ccell = stratumIndices[d+1][subc];
+
+            PetscCall(DMPlexGetCone(dm, ccell, &scone));
+            PetscCall(DMPlexGetConeSize(dm, ccell, &sconeSize));
+            PetscCall(DMPlexGetConeOrientation(dm, ccell, &sornt));
+            for (c = 0; c < sconeSize; ++c) {
+              if (scone[c] == point) {
+                fornt = sornt[c];
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+      PetscCall(DMPlexGetConeSize(dm, point, &coneSize));
+      PetscCall(DMPlexGetConeSize(subdm, subpoint, &subconeSize));
+      PetscCall(DMPlexGetCone(dm, point, &cone));
+      PetscCall(DMPlexGetConeOrientation(dm, point, &ornt));
+      for (c = 0, coneSizeNew = 0; c < coneSize; ++c) {
+        PetscCall(PetscFindInt(cone[c], stratumSizes[d-1], stratumIndices[d-1], &subc));
+        if (subc >= 0) {
+          coneNew[coneSizeNew] = stratumOffsets[d-1] + subc;
+          orntNew[coneSizeNew] = ornt[c];
+          ++coneSizeNew;
+        }
+      }
+      PetscCheck(coneSizeNew == subconeSize, PetscObjectComm((PetscObject)subdm), PETSC_ERR_PLIB, "Number of cone points located %" PetscInt_FMT " does not match subcone size %" PetscInt_FMT, coneSizeNew, subconeSize);
+      PetscCall(DMPlexSetCone(subdm, subpoint, coneNew));
+      PetscCall(DMPlexSetConeOrientation(subdm, subpoint, orntNew));
+      if (fornt < 0) PetscCall(DMPlexOrientPoint(subdm, subpoint, fornt));
+    }
+  }
+  PetscCall(PetscFree2(coneNew, orntNew));
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMPlexSubmeshSetTopology(DM dm, DM subdm,
+                                               const PetscInt *stratumOffsets,
+                                               const PetscInt *stratumSizes,
+                                               const PetscInt **stratumIndices)
+{
+  DMLabel        subpointMap       = NULL;
+  PetscInt       dim, subdepth, subdepthCheck;
+
+  PetscFunctionBegin;
+
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
+  PetscCall(DMPlexSubmeshGetDepth(dm, subdm, &subdepth));
+
+  PetscCall(DMPlexSubmeshSetConeSizes(dm, subdm, subdepth,
+                                   stratumOffsets,
+                                   stratumSizes,
+                                   stratumIndices));
+
+  PetscCall(DMSetUp(subdm));
+
+  PetscCall(DMPlexSubmeshSetCones(dm, subdm, subdepth,
+                               stratumOffsets,
+                               stratumSizes,
+                               stratumIndices));
+  PetscCall(DMPlexSymmetrize(subdm));
+  PetscCall(DMPlexStratify(subdm));
+
+  PetscCall(DMPlexGetDepth(subdm, &subdepthCheck));
+  if (subdepth != subdepthCheck) {SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Mismatching submesh depth.");}
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMPlexSubmeshSetCoordinates(DM dm, DM subdm,
+                                                  const PetscInt *stratumOffsets,
+                                                  const PetscInt *stratumSizes,
+                                                  const PetscInt **stratumIndices)
+{
+  PetscSection       coordSection, subCoordSection;
+  Vec                coords, subcoords;
+  const PetscScalar *coordsArray;
+  PetscScalar       *subcoordsArray;
+  PetscInt           subpStart = PETSC_MAX_INT, subpEnd = PETSC_MIN_INT;
+  PetscInt           d, p, pStart, pEnd, subCoordSize, numComp, subdim, gdim;
+  const char        *name   = NULL;
+
+  PetscFunctionBegin;
+
+  PetscCall(DMPlexGetDepth(subdm, &subdim));
+  PetscCall(DMGetCoordinateSection(dm, &coordSection));
+  PetscCall(DMGetCoordinatesLocal(dm, &coords));
+  PetscCall(DMGetCoordinateSection(subdm, &subCoordSection));
+  PetscCall(PetscSectionSetNumFields(subCoordSection, 1));
+  PetscCall(PetscSectionGetFieldComponents(coordSection, 0, &numComp));
+  PetscCall(PetscSectionSetFieldComponents(subCoordSection, 0, numComp));
+  PetscCall(DMGetCoordinateDim(dm, &gdim));
+  if (numComp != gdim) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Mismatching geometric dimension and number of components");
+
+  PetscCall(PetscSectionGetChart(coordSection, &pStart, &pEnd));
+  for (d = 0; d <= subdim; ++d) {
+    for (p = 0; p < stratumSizes[d]; ++p) {
+      const PetscInt point = stratumIndices[d][p];
+      const PetscInt subpoint = stratumOffsets[d] + p;
+      PetscInt dof;
+      if ( point >= pStart && point < pEnd ) {
+        PetscCall(PetscSectionGetDof(coordSection, point, &dof));
+        if (dof > 0) {
+          subpStart = PetscMin(subpStart, subpoint);
+          subpEnd = PetscMax(subpEnd, subpoint);
+        }
+      }
+    }
+  }
+  PetscCall(PetscSectionSetChart(subCoordSection, subpStart, ++subpEnd)); 
+  for (d = 0; d <= subdim; ++d) {
+    for (p = 0; p < stratumSizes[d]; ++p) {
+      const PetscInt point = stratumIndices[d][p];
+      const PetscInt subpoint = stratumOffsets[d] + p;
+      PetscInt dof;
+      if (point >= pStart && point < pEnd) {
+        PetscCall(PetscSectionGetDof(coordSection, point, &dof));
+        if (dof > 0) {
+          PetscCall(PetscSectionSetDof(subCoordSection, subpoint, dof));
+          PetscCall(PetscSectionSetFieldDof(subCoordSection, subpoint, 0, dof));
+        }
+      }
+    }
+  }
+  PetscCall(PetscSectionSetUp(subCoordSection));
+  PetscCall(PetscSectionGetStorageSize(subCoordSection, &subCoordSize));
+  PetscCall(VecCreate(PETSC_COMM_SELF, &subcoords));
+  PetscCall(PetscObjectGetName((PetscObject)coords, &name));
+  PetscCall(PetscObjectSetName((PetscObject)subcoords, name));
+  PetscCall(VecSetSizes(subcoords, subCoordSize, PETSC_DETERMINE));
+  PetscCall(VecSetBlockSize(subcoords, gdim));
+  PetscCall(VecSetType(subcoords, VECSTANDARD));
+  PetscCall(VecGetArrayRead(coords, &coordsArray));
+  PetscCall(VecGetArray(subcoords, &subcoordsArray));
+  for (d = 0; d <= subdim; ++d) {
+    for (p = 0; p < stratumSizes[d]; ++p) {
+      const PetscInt point = stratumIndices[d][p];
+      const PetscInt subpoint = stratumOffsets[d] + p;
+      PetscInt dof, off, sdof, soff, d;
+      if ( point >= pStart && point < pEnd ) {
+        PetscCall(PetscSectionGetDof(coordSection, point, &dof));
+        if (dof > 0) {
+          PetscCall(PetscSectionGetOffset(coordSection, point, &off));
+          PetscCall(PetscSectionGetDof(subCoordSection, subpoint, &sdof));
+          PetscCheck(dof == sdof, PetscObjectComm((PetscObject)subdm), PETSC_ERR_PLIB, "Coordinate dimension %" PetscInt_FMT " on subvertex %" PetscInt_FMT ", vertex %" PetscInt_FMT " should be %" PetscInt_FMT, sdof, subpoint, point, dof);
+          PetscCall(PetscSectionGetOffset(subCoordSection, subpoint, &soff));
+          for (d = 0; d < dof; ++d) {
+            subcoordsArray[soff+d] = coordsArray[off+d];
+          }
+        }
+      }
+    }
+  }
+  PetscCall(VecRestoreArrayRead(coords, &coordsArray));
+  PetscCall(VecRestoreArray(subcoords, &subcoordsArray));
+  PetscCall(DMSetCoordinatesLocal(subdm, subcoords));
+  PetscCall(VecDestroy(&subcoords));
+
+  PetscFunctionReturn(0);
+}
+
+static PetscErrorCode DMPlexSubmeshSetPointSF(DM dm, DM subdm,
+                                              const PetscInt *stratumOffsets,
+                                              const PetscInt *stratumSizes,
+                                              const PetscInt **stratumIndices)
+{
+  PetscSF            sfPoint, sfPointSub;
+  IS                 subpIS;
+  const PetscSFNode *remotePoints;
+  PetscSFNode       *sremotePoints, *newLocalPoints, *newOwners;
+  const PetscInt    *localPoints, *subpoints;
+  PetscInt          *slocalPoints;
+  PetscInt           numRoots, numLeaves, numSubpoints = 0, numSubroots, numSubleaves = 0, l, sl, ll, pStart, pEnd, p;
+  PetscMPIInt        rank;
+
+  PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject) dm), &rank));
+  PetscCall(DMGetPointSF(dm, &sfPoint));
+  PetscCall(DMGetPointSF(subdm, &sfPointSub));
+  PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
+  PetscCall(DMPlexGetChart(subdm, NULL, &numSubroots));
+  PetscCall(DMPlexGetSubpointIS(subdm, &subpIS));
+  if (subpIS) {
+    PetscCall(ISGetIndices(subpIS, &subpoints));
+    PetscCall(ISGetLocalSize(subpIS, &numSubpoints));
+  }
+  PetscCall(PetscSFGetGraph(sfPoint, &numRoots, &numLeaves, &localPoints, &remotePoints));
+  if (numRoots >= 0) {
+    PetscCall(PetscMalloc2(pEnd-pStart,&newLocalPoints,numRoots,&newOwners));
+    for (p = 0; p < pEnd-pStart; ++p) {
+      newLocalPoints[p].rank  = -2;
+      newLocalPoints[p].index = -2;
+    }
+    /* Set subleaves */
+    for (l = 0; l < numLeaves; ++l) {
+      const PetscInt point    = localPoints[l];
+      const PetscInt subpoint = DMPlexFilterPoint_Internal(point, 0, numSubpoints, subpoints);
+       if (subpoint < 0) continue;
+      newLocalPoints[point-pStart].rank  = rank;
+      newLocalPoints[point-pStart].index = subpoint;
+      ++numSubleaves;
+    }
+    /* Must put in owned subpoints */
+    for (p = pStart; p < pEnd; ++p) {
+      newOwners[p-pStart].rank  = -3;
+      newOwners[p-pStart].index = -3;
+    }
+    for (p = 0; p < numSubpoints; ++p) {
+      newOwners[subpoints[p]-pStart].rank  = rank;
+      newOwners[subpoints[p]-pStart].index = p;
+    }
+    PetscCall(PetscSFReduceBegin(sfPoint, MPIU_2INT, newLocalPoints, newOwners, MPI_MAXLOC));
+    PetscCall(PetscSFReduceEnd(sfPoint, MPIU_2INT, newLocalPoints, newOwners, MPI_MAXLOC));
+    PetscCall(PetscSFBcastBegin(sfPoint, MPIU_2INT, newOwners, newLocalPoints,MPI_REPLACE));
+    PetscCall(PetscSFBcastEnd(sfPoint, MPIU_2INT, newOwners, newLocalPoints,MPI_REPLACE));
+    PetscCall(PetscMalloc1(numSubleaves, &slocalPoints));
+    PetscCall(PetscMalloc1(numSubleaves, &sremotePoints));
+    for (l = 0, sl = 0, ll = 0; l < numLeaves; ++l) {
+      const PetscInt point    = localPoints[l];
+      const PetscInt subpoint = DMPlexFilterPoint_Internal(point, 0, numSubpoints, subpoints);
+      if (subpoint < 0) continue;
+      if (newLocalPoints[point].rank == rank) {++ll; continue;}
+      slocalPoints[sl]        = subpoint;
+      sremotePoints[sl].rank  = newLocalPoints[point].rank;
+      sremotePoints[sl].index = newLocalPoints[point].index;
+      PetscCheck(sremotePoints[sl].rank  >= 0,PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote rank for local point %" PetscInt_FMT, point);
+      PetscCheck(sremotePoints[sl].index >= 0,PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote subpoint for local point %" PetscInt_FMT, point);
+      ++sl;
+    }
+    PetscCheck(sl + ll == numSubleaves,PETSC_COMM_SELF, PETSC_ERR_PLIB, "Mismatch in number of subleaves %" PetscInt_FMT " + %" PetscInt_FMT " != %" PetscInt_FMT, sl, ll, numSubleaves);
+    PetscCall(PetscFree2(newLocalPoints,newOwners));
+    PetscCall(PetscSFSetGraph(sfPointSub, numSubroots, sl, slocalPoints, PETSC_OWN_POINTER, sremotePoints, PETSC_OWN_POINTER));
+  }
+  if (subpIS) {
+    PetscCall(ISRestoreIndices(subpIS, &subpoints));
   }
   PetscFunctionReturn(0);
 }

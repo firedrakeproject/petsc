@@ -4273,74 +4273,123 @@ static PetscErrorCode DMPlexSubmeshSetPointSF(DM dm, DM subdm,
                                               const PetscInt *stratumSizes,
                                               const PetscInt **stratumIndices)
 {
-  PetscSF            sfPoint, sfPointSub;
-  IS                 subpIS;
-  const PetscSFNode *remotePoints;
-  PetscSFNode       *sremotePoints, *newLocalPoints, *newOwners;
-  const PetscInt    *localPoints, *subpoints;
-  PetscInt          *slocalPoints;
-  PetscInt           numRoots, numLeaves, numSubpoints = 0, numSubroots, numSubleaves = 0, l, sl, ll, pStart, pEnd, p;
-  PetscMPIInt        rank;
+  PetscSF            sf, subsf;
+  PetscMPIInt        rank, size, subsize;
+  PetscInt           pStart, pEnd, subStart, subEnd, p, idx, point;
+  PetscInt           nroots, nleaves, nsubleaves, nsubpoints;
+  IS                 subpointIS;
+  const PetscInt    *subpoints;
+  const PetscInt    *ilocal;
+  const PetscSFNode *iremote;
+  PetscSFNode       *subiremote;
+  PetscInt          *subilocal;
+  MPI_Comm           comm, subcomm;
+  PetscInt          *updatedOwnersReduced;
+  PetscInt          *updatedOwners;
+  PetscInt          *updatedIndicesReduced;
+  PetscInt          *updatedIndices;
 
-  PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject) dm), &rank));
-  PetscCall(DMGetPointSF(dm, &sfPoint));
-  PetscCall(DMGetPointSF(subdm, &sfPointSub));
+  PetscFunctionBegin;
+
+  // Dont forget to check that this function supersedes:
+  // https://gitlab.com/petsc/petsc/-/commit/5033f954864e65f2e3f984331e1f29a4c2527f49
+  comm = PetscObjectComm((PetscObject)dm);
+  subcomm = PetscObjectComm((PetscObject)subdm);
+  PetscCallMPI(MPI_Comm_rank(comm, &rank));
+  PetscCallMPI(MPI_Comm_size(comm, &size));
+  PetscCallMPI(MPI_Comm_size(subcomm, &subsize));
+  if (subsize == 1) PetscFunctionReturn(0); 
+  if (subsize != size) {SETERRQ(subcomm, PETSC_ERR_PLIB, "mesh and submesh mush have the same MPI_Comm");}
+  PetscCall(DMGetPointSF(dm, &sf));
+  PetscCall(DMGetPointSF(subdm, &subsf));
+  PetscCall(PetscSFGetGraph(sf, &nroots, &nleaves, &ilocal, &iremote));
+  if (nroots < 0) PetscFunctionReturn(0);
   PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
-  PetscCall(DMPlexGetChart(subdm, NULL, &numSubroots));
-  PetscCall(DMPlexGetSubpointIS(subdm, &subpIS));
-  if (subpIS) {
-    PetscCall(ISGetIndices(subpIS, &subpoints));
-    PetscCall(ISGetLocalSize(subpIS, &numSubpoints));
+  if (nroots != (pEnd - pStart)) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Number of roots does not match chart");
+  PetscCall(DMPlexGetChart(subdm, &subStart, &subEnd));
+
+  PetscCall(DMPlexGetSubpointIS(subdm, &subpointIS));
+  if (subpointIS) {
+    PetscCall(ISGetIndices(subpointIS, &subpoints));
+    PetscCall(ISGetLocalSize(subpointIS, &nsubpoints));
+  } else {
+    nsubpoints = 0;
   }
-  PetscCall(PetscSFGetGraph(sfPoint, &numRoots, &numLeaves, &localPoints, &remotePoints));
-  if (numRoots >= 0) {
-    PetscCall(PetscMalloc2(pEnd-pStart,&newLocalPoints,numRoots,&newOwners));
-    for (p = 0; p < pEnd-pStart; ++p) {
-      newLocalPoints[p].rank  = -2;
-      newLocalPoints[p].index = -2;
-    }
-    /* Set subleaves */
-    for (l = 0; l < numLeaves; ++l) {
-      const PetscInt point    = localPoints[l];
-      const PetscInt subpoint = DMPlexFilterPoint_Internal(point, 0, numSubpoints, subpoints);
-       if (subpoint < 0) continue;
-      newLocalPoints[point-pStart].rank  = rank;
-      newLocalPoints[point-pStart].index = subpoint;
-      ++numSubleaves;
-    }
-    /* Must put in owned subpoints */
-    for (p = pStart; p < pEnd; ++p) {
-      newOwners[p-pStart].rank  = -3;
-      newOwners[p-pStart].index = -3;
-    }
-    for (p = 0; p < numSubpoints; ++p) {
-      newOwners[subpoints[p]-pStart].rank  = rank;
-      newOwners[subpoints[p]-pStart].index = p;
-    }
-    PetscCall(PetscSFReduceBegin(sfPoint, MPIU_2INT, newLocalPoints, newOwners, MPI_MAXLOC));
-    PetscCall(PetscSFReduceEnd(sfPoint, MPIU_2INT, newLocalPoints, newOwners, MPI_MAXLOC));
-    PetscCall(PetscSFBcastBegin(sfPoint, MPIU_2INT, newOwners, newLocalPoints,MPI_REPLACE));
-    PetscCall(PetscSFBcastEnd(sfPoint, MPIU_2INT, newOwners, newLocalPoints,MPI_REPLACE));
-    PetscCall(PetscMalloc1(numSubleaves, &slocalPoints));
-    PetscCall(PetscMalloc1(numSubleaves, &sremotePoints));
-    for (l = 0, sl = 0, ll = 0; l < numLeaves; ++l) {
-      const PetscInt point    = localPoints[l];
-      const PetscInt subpoint = DMPlexFilterPoint_Internal(point, 0, numSubpoints, subpoints);
-      if (subpoint < 0) continue;
-      if (newLocalPoints[point].rank == rank) {++ll; continue;}
-      slocalPoints[sl]        = subpoint;
-      sremotePoints[sl].rank  = newLocalPoints[point].rank;
-      sremotePoints[sl].index = newLocalPoints[point].index;
-      PetscCheck(sremotePoints[sl].rank  >= 0,PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote rank for local point %" PetscInt_FMT, point);
-      PetscCheck(sremotePoints[sl].index >= 0,PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote subpoint for local point %" PetscInt_FMT, point);
-      ++sl;
-    }
-    PetscCheck(sl + ll == numSubleaves,PETSC_COMM_SELF, PETSC_ERR_PLIB, "Mismatch in number of subleaves %" PetscInt_FMT " + %" PetscInt_FMT " != %" PetscInt_FMT, sl, ll, numSubleaves);
-    PetscCall(PetscFree2(newLocalPoints,newOwners));
-    PetscCall(PetscSFSetGraph(sfPointSub, numSubroots, sl, slocalPoints, PETSC_OWN_POINTER, sremotePoints, PETSC_OWN_POINTER));
+  if (nsubpoints != (subEnd - subStart)) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Subpoint IS does not cover complete chart");
+
+  /* update owners */
+  PetscCall(PetscMalloc1(nroots, &updatedOwnersReduced));
+  PetscCall(PetscMalloc1(nroots, &updatedOwners));
+  for (p = pStart; p < pEnd; ++p) {
+    updatedOwnersReduced[p-pStart] = -1;
+    updatedOwners[p-pStart] = -1;
   }
-  if (subpIS) {
-    PetscCall(ISRestoreIndices(subpIS, &subpoints));
+  for (p = 0; p < nsubpoints; ++p) {
+    updatedOwners[subpoints[p]-pStart] = rank;
   }
+
+  PetscCall(PetscSFReduceBegin(sf, MPIU_INT, updatedOwners, updatedOwnersReduced, MPI_MAX));
+  PetscCall(PetscSFReduceEnd(sf, MPIU_INT, updatedOwners, updatedOwnersReduced, MPI_MAX));
+
+  for (p = 0; p < nsubpoints; ++p) {
+    updatedOwnersReduced[subpoints[p]-pStart] = rank;
+    updatedOwners[subpoints[p]-pStart] = rank;
+  }
+
+  PetscCall(PetscSFBcastBegin(sf, MPIU_INT, updatedOwnersReduced, updatedOwners, MPI_REPLACE));
+  PetscCall(PetscSFBcastEnd(sf, MPIU_INT, updatedOwnersReduced, updatedOwners, MPI_REPLACE));
+
+  PetscCall(PetscFree(updatedOwnersReduced));
+
+  /* broadcast new remote subdm indices including ones on new owners */
+  PetscCall(PetscMalloc1(nroots, &updatedIndicesReduced));
+  PetscCall(PetscMalloc1(nroots, &updatedIndices));
+
+  for (p = pStart; p < pEnd; ++p) {
+    updatedIndicesReduced[p - pStart] = -1;
+    updatedIndices[p - pStart] = -1;
+  }
+  for (p = 0; p < nsubpoints; ++p) {
+    point = subpoints[p];
+    if (updatedOwners[point-pStart] == rank) {
+      updatedIndices[point-pStart] = p;
+    }
+  }
+  PetscCall(PetscSFReduceBegin(sf, MPIU_INT, updatedIndices, updatedIndicesReduced, MPI_MAX));
+  PetscCall(PetscSFReduceEnd(sf, MPIU_INT, updatedIndices, updatedIndicesReduced, MPI_MAX));
+
+  for (p = 0; p < nsubpoints; ++p) {
+    point = subpoints[p];
+    updatedIndicesReduced[point-pStart] = p;
+  }
+  PetscCall(PetscSFBcastBegin(sf, MPIU_INT, updatedIndicesReduced, updatedIndices, MPI_REPLACE));
+  PetscCall(PetscSFBcastEnd(sf, MPIU_INT, updatedIndicesReduced, updatedIndices, MPI_REPLACE));
+  PetscCall(PetscFree(updatedIndicesReduced));
+
+  /* set subsf */
+  nsubleaves = 0;
+  for (p = 0; p < nsubpoints; ++p) {
+    if (updatedOwners[subpoints[p]-pStart] != rank) ++nsubleaves;
+  }
+  PetscCall(PetscMalloc1(nsubleaves, &subilocal));
+  PetscCall(PetscMalloc1(nsubleaves, &subiremote));
+
+  for (p = 0, idx = 0; p < nsubpoints; ++p) {
+    if (updatedOwners[subpoints[p]-pStart] != rank) {
+      subilocal[idx] = p;
+      subiremote[idx].rank = updatedOwners[subpoints[p]-pStart];
+      subiremote[idx].index = updatedIndices[subpoints[p]-pStart];
+      if (subiremote[idx].rank < 0) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote rank");
+      if (subiremote[idx].index < 0) SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid remote subpoint");
+      ++idx;
+    }
+  }
+  if (subpointIS) {
+    PetscCall(ISRestoreIndices(subpointIS, &subpoints));
+  }
+  PetscCall(PetscFree(updatedOwners));
+  PetscCall(PetscFree(updatedIndices));
+  PetscCall(PetscSFSetGraph(subsf, subEnd - subStart, nsubleaves, subilocal, PETSC_OWN_POINTER, subiremote, PETSC_OWN_POINTER));
+
   PetscFunctionReturn(0);
 }

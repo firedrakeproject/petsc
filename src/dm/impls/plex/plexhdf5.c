@@ -73,7 +73,7 @@ static PetscErrorCode DMPlexStorageVersionSetUpWriting_Private(DM dm, PetscViewe
   if (fileHasVersion) {
     char *tmp;
 
-    PetscCall(PetscViewerHDF5ReadAttribute(viewer, NULL, ATTR_NAME, PETSC_STRING, NULL, &tmp));
+    PetscCall(PetscViewerHDF5ReadAttribute(viewer, "/", ATTR_NAME, PETSC_STRING, NULL, &tmp));
     PetscCall(PetscStrcpy(fileVersion, tmp));
     PetscCall(PetscFree(tmp));
   }
@@ -103,7 +103,7 @@ static PetscErrorCode DMPlexStorageVersionGet_Private(DM dm, PetscViewer viewer,
   PetscFunctionBegin;
   //TODO string HDF5 attribute handling is terrible and should be redesigned
   PetscCall(PetscStrallocpy("1.0.0", &defaultVersion));
-  PetscCall(PetscViewerHDF5ReadAttribute(viewer, NULL, ATTR_NAME, PETSC_STRING, &defaultVersion, &versionString));
+  PetscCall(PetscViewerHDF5ReadAttribute(viewer, "/", ATTR_NAME, PETSC_STRING, &defaultVersion, &versionString));
   PetscCall(DMPlexStorageVersionParseString_Private(dm, versionString, version));
   PetscCall(DMPlexStorageVersionCheck_Private(dm, version));
   PetscCall(PetscFree(versionString));

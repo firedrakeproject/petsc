@@ -13,6 +13,12 @@ chk_petscdir:
           printf "******************************************************"${PETSC_TEXT_NORMAL}"\n" ; \
         fi
 
+chk_in_petscdir:
+	@if [ ! -f include/petscversion.h ]; then \
+	  printf ${PETSC_TEXT_HILIGHT}"*********************** ERROR **********************************************\n" ; \
+	  echo " This target should be invoked in top level PETSc source dir!"; \
+	  printf "****************************************************************************"${PETSC_TEXT_NORMAL}"\n" ;  false; fi
+
 chk_upgrade:
 	-@PETSC_DIR=${PETSC_DIR} ${PYTHON} ${PETSC_DIR}/lib/petsc/bin/petscnagupgrade.py
 
@@ -64,6 +70,10 @@ clean-legacy:
                ex[0-9]f.exe ex[0-9][0-9]f.exe ex[0-9][0-9][0-9]f.exe \
                ex[0-9]f90.exe ex[0-9][0-9]f90.exe ex[0-9][0-9][0-9]f90.exe \
                ex[0-9]cu.exe ex[0-9][0-9]cu.exe ex[0-9][0-9][0-9]cu.exe \
+               ex[0-9]hip ex[0-9][0-9]hip ex[0-9][0-9][0-9]hip \
+               ex[0-9]hip.exe ex[0-9][0-9]hip.exe ex[0-9][0-9][0-9]hip.exe \
+               ex[0-9]sycl ex[0-9][0-9]sycl ex[0-9][0-9][0-9]sycl \
+               ex[0-9]sycl.exe ex[0-9][0-9]sycl.exe ex[0-9][0-9][0-9]sycl.exe \
               PI* *.ln l.outa* mputil.mp_* core core.* *.tmp *.map gmon.out *.gcov.html \
               trashz \#*\# *.mex* *.stolen *.trace Log.* *.stolen \
               output/*~ .mpirtmp mon.out *.aus *.mon.* __* p4pg ins10*.c \
@@ -220,7 +230,7 @@ getautoconfargs:
 #
 #
 
-.SUFFIXES: .F  .F90 .f90 ${SUFFIXES} .PETSc .C .cc .cpp .cxx .r .rm .so .html .ad .m .tex .make  .fig .svg .eps .pdf .jpg .png .dvi .ps .F95 .f95 .fiat .cu .kokkos.cxx .raja.cxx *.sycl.cxx
+.SUFFIXES: .F  .F90 .f90 ${SUFFIXES} .PETSc .C .cc .cpp .cxx .r .rm .so .html .ad .m .tex .make  .fig .svg .eps .pdf .jpg .png .dvi .ps .F95 .f95 .fiat .cu .hip.cpp .kokkos.cxx .raja.cxx *.sycl.cxx
 
 #
 #
@@ -283,6 +293,9 @@ getautoconfargs:
 .cu.o:
 	${PETSC_CUCOMPILE_SINGLE} `pwd`/$<
 
+.hip.cpp.o:
+	${PETSC_HIPCOMPILE_SINGLE} `pwd`/$<
+
 .kokkos.cxx.o:
 	${PETSC_KOKKOSCOMPILE_SINGLE} `pwd`/$<
 
@@ -303,7 +316,7 @@ getautoconfargs:
 .cpp.rm .cxx.rm .cc.rm .C.rm .F.rm .F90.rm .f.rm .c.rm .cu.rm:
 	-@${RM} $* *.o $*.mon.* gmon.out mon.out
 	-@${RM} *.exe *.ilk *.pdb *.tds
-.cu.PETSc .kokkos.cxx.PETSc .c.PETSc .cxx.PETSc:
+.cu.PETSc .hip.cpp.PETSc .kokkos.cxx.PETSc .c.PETSc .cxx.PETSc:
 	-+@${OMAKE}  PETSC_ARCH=${PETSC_ARCH}  $* > trashz 2>&1
 	-@grep -v clog trashz | grep -v "information sections" | \
           grep -v "warning C4003: not enough actual parameters for macro 'PETSC_PASTE3_" | \
@@ -472,7 +485,7 @@ manexamples:
 	-@base=`basename ${LOCDIR}`; \
         if [ "$${base}" = "tutorials" ] ; then \
           echo "Generating manual example links" ; \
-          for i in ${EXAMPLESC} ${EXAMPLESF} foo ; do \
+          for i in ${EXAMPLESALL} foo ; do \
             if [ "$$i" != "foo" ] ; then \
               a=`cat $$i | ${MAPNAMES} -map ${LOC}/docs/manualpages/manualpages.cit \
                    -printmatch-link -o /dev/null| cut -f 2 | cut -d '#' -f 1 |sed -e s~^../~~ | grep \\.html$$ | sort | uniq` ;  \
@@ -500,7 +513,7 @@ exampleconcepts:
 	-@base=`basename ${LOCDIR}`; \
         if [ "$${base}" = "tutorials" ] ; then \
           echo "Generating concepts list" ; \
-          for i in ${EXAMPLESC} ${EXAMPLESF} foo ; do \
+          for i in ${EXAMPLESALL} foo ; do \
             if [ "$$i" != "foo" ] ; then \
               grep Concepts: $$i | sed -e s?Concepts:??g -e s?\!??g > ltmp;  \
               line=`cat ltmp | wc -l`; \
@@ -539,7 +552,7 @@ exampleconcepts:
 # which is processed to generate HTML.
 #
 manimplementations:
-	-@git grep "struct\s\+_p_[^\s]\+.*{" -- *.cu *.c *.h *.cxx | grep -v -e ";" -e "/tests/" -e "/tutorials/" > implsClassAll.txt ; \
+	-@git grep "struct\s\+_[pn]_[^\s]\+.*{" -- *.cu *.c *.h *.cxx | grep -v -e ";" -e "/tests/" -e "/tutorials/" > implsClassAll.txt ; \
   git grep -n "^\(static \)\?\(PETSC_EXTERN \)\?\(PETSC_INTERN \)\?\(extern \)\?PetscErrorCode \+[^_ ]\+_[^_ ]\+(" -- '*/impls/*.c' '*/impls/*.cu' '*/impls/*.cxx' '*/impls/*.h' | grep -v -e ";" -e "_[Pp]rivate" > implsFuncAll.txt ; \
   for i in ${LOC}/docs/manualpages/*/*.html foo; do \
        if [ "$$i" != "foo" ] ; then \
@@ -557,10 +570,11 @@ manimplementations:
             sed "s?\(.*\.[ch]x*u*\):.*\(_p_$${itemName}\)\b.*{?<A HREF=\"../../../\1.html#\2\">\2 in \1</A><BR>?" implsClass.txt >> $$i ; \
           fi ; \
           if [ -s implsFunc.txt ] || [ -s implsClass.txt ] ; then \
-            grep -v /BODY $$i > tmp; \
-            printf "</BODY></HTML>" >> tmp; \
-            mv tmp $$i ; \
-            ${RM} tmp ; \
+            export atmpfile=$$(mktemp) ; \
+            grep -v /BODY $$i > $$atmpfile; \
+            printf "</BODY></HTML>" >> $$atmpfile; \
+            mv $$atmpfile $$i ; \
+            ${RM} $$atmpfile ; \
           fi ; \
           ${RM} implsFunc.txt implsClass.txt; \
        fi ; \
@@ -575,8 +589,8 @@ getexlist:
 #   Rules for generating html code from C and Fortran
 #
 checkmakefilelist:
-	-@ls makefile ${SOURCEALL} ${EXAMPLESC} ${EXAMPLESF} ${EXAMPLESCH} ${EXAMPLESFH} ${EXAMPLESMATLAB} 2>/dev/null | grep -v \\.\\. |  sort | uniq > /tmp/$$USER.$$.make ;\
-	ls makefile *.{c,cxx,cu,F,F90,h,h90,m} 2>/dev/null | sort | uniq > /tmp/$$USER.$$.ls; \
+	-@ls makefile ${SOURCEALL} ${EXAMPLESALL} 2>/dev/null | grep -v \\.\\. |  sort | uniq > /tmp/$$USER.$$.make ;\
+	ls makefile *.{c,cxx,cpp,cu,F,F90,h,h90,m} 2>/dev/null | sort | uniq > /tmp/$$USER.$$.ls; \
 	${DIFF} /tmp/$$USER.$$.make  /tmp/$$USER.$$.ls; \
 	${RM}  /tmp/$$USER.$$.make  /tmp/$$USER.$$.ls
 
@@ -588,7 +602,13 @@ simplehtml: chk_c2html
               idir=`dirname $$i`;\
               if [ ! -d $${loc}/$${idir} ]; then ${MKDIR} -p $${loc}/$${idir}; fi ; \
               ${RM} $${loc}/$$i.html; \
-              sed -e "s/CHKERRMPI(ierr);//g" -e "s/CHKERRQ(ierr);//g" -e "s/PetscFunctionReturn(0)/return(0)/g" -e "s/ierr [ ]*= //g" -e "s/PETSC[A-Z]*_DLLEXPORT//g" $$i | ${C2HTML} -n | \
+              sed -E -e "s/PetscCall[A-Za-z_]*\((.*)\)\;/\1;/g" \
+                     -e "s/\;ierr\;/;/g" \
+                     -e "/\s*PetscFunctionBegin\;/d" \
+                     -e "s/PetscFunctionReturn\((\w+)\)/return \1/g" \
+                     -e "s/PetscFunctionReturnVoid\(\)/return/g" \
+                     -e "s/ierr\s+=\s+//g" \
+                     -e "s/PETSC[A-Z]*_DLLEXPORT//g" $$i | ${C2HTML} -n | \
               awk '{ sub(/<pre width="80">/,"<pre width=\"80\">\n"); print }' > $${loc}/$$i.html ; \
 	    fi; \
          done
@@ -602,7 +622,7 @@ html: chk_c2html
           ${MKDIR} -p $${loc} ;\
           current_git_sha=$$(git rev-parse HEAD) ;\
           rel_dir=$$(echo ${PWD} | sed "s%^${PETSC_DIR}/%%") ;\
-          for i in ${SOURCEALL} ${EXAMPLESC} ${EXAMPLESF} ${EXAMPLESCH} ${EXAMPLESFH} ${EXAMPLESMATLAB}  foo ; do\
+          for i in ${SOURCEALL} ${EXAMPLESALL} foo ; do\
             if [ -f $$i ]; then \
               idir=`dirname $$i`;\
               if [ ! -d $${loc}/$${idir} ]; then ${MKDIR} -p $${loc}/$${idir}; fi ; \
@@ -615,7 +635,13 @@ html: chk_c2html
               fi;\
               ${RM} $${loc}/$$i.html; \
               echo "<center><a href=\"https://gitlab.com/petsc/petsc/-/blob/$$current_git_sha/$$rel_dir/$$i\">Actual source code: $${iroot}</a></center><br>" > $${loc}/$$i.html; \
-              sed -e "s/CHKERRMPI(ierr);//g" -e "s/CHKERRQ(ierr);//g" -e "s/PetscFunctionReturn(0)/return(0)/g" -e "s/ierr [ ]*= //g" -e "s/PETSC[A-Z]*_DLLEXPORT//g" $$i | ${C2HTML} -n | \
+              sed -E -e "s/PetscCall[A-Za-z_]*\((.*)\)\;/\1;/g" \
+                     -e "s/\;ierr\;/;/g" \
+                     -e "/\s*PetscFunctionBegin\;/d" \
+                     -e "s/PetscFunctionReturn\((\w+)\)/return \1/g" \
+                     -e "s/PetscFunctionReturnVoid\(\)/return/g" \
+                     -e "s/ierr\s+=\s+//g" \
+                     -e "s/PETSC[A-Z]*_DLLEXPORT//g" $$i | ${C2HTML} -n | \
               awk '{ sub(/<pre width="80">/,"<pre width=\"80\">\n"); print }' | ${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/fixinclude.py $$i $${PETSC_DIR} | \
               egrep -v '(PetscValid|PetscFunctionBegin|PetscCheck|PetscErrorCode ierr;|#if !defined\(__|#define __|#undef __|EXTERN_C )' | \
               ${MAPNAMES} -map $$htmlmap_tmp -inhtml | sed -e s?ROOT?$${IROOT}?g >> $${loc}/$$i.html ; \
@@ -694,15 +720,13 @@ checkbadSource:
 	-@git --no-pager grep -n -P 'for \( ' -- ${GITSRC} >> checkbadSource.out;true
 	-@git --no-pager grep -n -P 'while \( ' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "Space before ) ---------------------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P '(?!.*\\$$) \)' -- ${GITSRC} >> checkbadSource.out;true
-	-@echo "Space before CHKERR(Q|MPI|CUDA|CUBLAS|CUSPARSE) ------" >> checkbadSource.out
-	-@git --no-pager grep -n -P '; CHKERR(Q|MPI|CUDA|CUBLAS|CUSPARSE)\(' -- ${GITSRC} >> checkbadSource.out;true
+	-@git --no-pager grep -n -P '(?!.*\\$$)\w+ +\)' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "No space after if, for or while ----------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -e '[^_]for\(' -e '[^_]if\(' -e 'while\(' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "Two ;; -----------------------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -e ';;' -- ${GITSRC} | grep -v ' for (' >> checkbadSource.out;true
-	-@echo "CHKERRQ for an MPI error code ------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P -e '= MPI[U]*_\w*\(.*CHKERRQ' -- ${GITSRC} | grep -v MPIU_File >> checkbadSource.out;true
+	-@echo "PetscCall for an MPI error code ----------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -e '= MPI[U]*_\w*\(.*PetscCall' -- ${GITSRC} | grep -v MPIU_File >> checkbadSource.out;true
 	-@echo "Missing if (ierr) return ierr; -----------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -e 'ierr = PetscInitialize\(' -- '*.[ch]' '*.cpp' '*.cxx' '*.cu' | grep -v 'if (ierr) return ierr;' | egrep "(test|tutorial)" >> checkbadSource.out;true
 	-@echo "DOS file (with DOS newlines) -------------------------" >> checkbadSource.out
@@ -710,9 +734,9 @@ checkbadSource:
 	-@echo "{ before SETERRQ -------------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P '{SETERRQ' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "{ on the same line as a function definition ----------" >> checkbadSource.out
-	-@git --no-pager grep -n -P -e '(PetscErrorCode|void|inline|PETSC_EXTERN|PETSC_INTERN|static inline)[ ]+[a-zA-Z0-9_-]+(.*)(\s*){$$' -- ${GITSRC} >> checkbadSource.out;true
-	-@echo "CHKERRQ following SETERRQ ----------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P 'SETERRQ' -- ${GITSRC} | grep ";CHKERRQ" >> checkbadSource.out;true
+	-@git --no-pager grep -n -P -e '^\s*(PetscErrorCode|void|inline|PETSC_EXTERN|PETSC_INTERN|static inline)[ ]+[a-zA-Z0-9_-]+(.*)(\s*){$$' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "PetscCall following SETERRQ --------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'SETERRQ' -- ${GITSRC} | grep ";PetscCall" >> checkbadSource.out;true
 	-@echo "SETERRQ() without defined error code -----------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P 'SETERRQ\((?!\))' -- ${GITSRC} | grep -v PETSC_ERR  | grep " if " | grep -v "__VA_ARGS__" | grep -v flow.c >> checkbadSource.out;true
 	-@echo "SETERRQ() with trailing newline ----------------------" >> checkbadSource.out
@@ -725,9 +749,19 @@ checkbadSource:
 	-@git --no-pager grep -n -P '[^\n]\z' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "No space after ierr ----------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P 'ierr=' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "Using if (condition) SETERRQ(...) instead of PetscCheck()" >> checkbadSource.out
+	-@git --no-pager grep -n -P ' if +(.*) *SETERRQ' -- ${GITSRC} | grep -v 'PetscUnlikelyDebug' | grep -v 'petscerror.h' >> checkbadSource.out;true
+	-@echo "Using if (PetscUnlikelyDebug(condition)) SETERRQ(...) instead of PetscAssert()" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E ' if +\(PetscUnlikelyDebug.*\) *SETERRQ' -- ${GITSRC} | grep -v petscerror.h >> checkbadSource.out;true
+	-@echo "Using PetscFunctionReturn(ierr) ----------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'PetscFunctionReturn(ierr)' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "Defining a returning macro without PetscMacroReturns()" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'define .*\w+;\s+do' -- ${GITSRC} | egrep -v '(PetscMacroReturns|PetscDrawCollectiveBegin|MatPreallocateInitialize|PetscOptionsBegin|PetscObjectOptionsBegin|PetscOptionsTail)' >> checkbadSource.out;true
+	-@echo "Defining a error checking macro using CHKERR style ---" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'define\s+CHKERR\w*\(.*\)\s*do\s+{' -- ${GITSRC} >> checkbadSource.out;true
 #	-@echo "Missing CHKERRQ --------------------------" >> checkbadSource.out
 #	-@git --no-pager grep -P 'ierr = ' -- '*.[ch]' '*.cxx' | grep ');' | egrep -v '(PetscFinalize|PetscInitialize|sys|benchmark|interfaces|fun3d|ftn-custom|f90-custom|CHK)' >> checkbadSource.out;true
-	@a=`cat checkbadSource.out | wc -l`; l=`expr $$a - 21` ;\
+	@a=`cat checkbadSource.out | wc -l`; l=`expr $$a - 24` ;\
          if [ $$l -gt 0 ] ; then \
            echo $$l " files with errors detected in source code formatting" ;\
            cat checkbadSource.out ;\
@@ -746,7 +780,7 @@ checkbadSource:
 	@test ! -s badSourceChar.out
 
 vermin:
-	@vermin -vvv -t=2.7- -t=3.4- ${VERMIN_OPTIONS} config
+	@vermin -vvv -t=2.7- -t=3.4- ${VERMIN_OPTIONS} ${PETSC_DIR}/config
 
 lint:
 	${PYTHON3} ${PETSC_DIR}/lib/petsc/bin/maint/petscClangLinter.py --verbose=${V} $(LINTER_OPTIONS)
@@ -855,13 +889,13 @@ sourcelist:
 #
 # Remove trailing blanks from source code
 rmtrailingblanks:
-	@for i in ${SOURCEALL} ${EXAMPLESC} ${EXAMPLESF}; do \
+	@for i in ${SOURCEALL} ${EXAMPLESALL}; do \
 	  sed -i '' s"/[ ]*$$//"g $$i; \
 	done
 
 #
 uncrustify:
-	@for i in ${SOURCED} ${EXAMPLESC}; do \
+	@for i in ${SOURCED} ${EXAMPLESALL}; do \
 	  uncrustify -c ${PETSC_DIR}/lib/petsc/conf/uncrustify.cfg $$i; \
 	done
 

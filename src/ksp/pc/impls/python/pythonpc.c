@@ -10,7 +10,7 @@
 -  pyname - full dotted Python name [package].module[.{class|function}]
 
    Options Database Key:
-.  -pc_python_type <pyname>
+.  -pc_python_type <pyname> - python class
 
    Level: intermediate
 
@@ -18,11 +18,9 @@
 @*/
 PetscErrorCode  PCPythonSetType(PC pc,const char pyname[])
 {
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc,PC_CLASSID,1);
   PetscValidCharPointer(pyname,2);
-  ierr = PetscTryMethod(pc,"PCPythonSetType_C",(PC, const char[]),(pc,pyname));CHKERRQ(ierr);
+  PetscCall(PetscTryMethod(pc,"PCPythonSetType_C",(PC, const char[]),(pc,pyname)));
   PetscFunctionReturn(0);
 }

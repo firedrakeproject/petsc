@@ -682,10 +682,12 @@ class Configure(config.base.Configure):
       if setHostFlag in self.getCompilerFlags():
         # don't want to override this if it is already set
         return
-    compilerName = self.getCompiler(lang='Cxx' if hasattr(self,'CXX') else 'C')
+    if not hasattr(self,'CXX'):
+        return
+    compilerName = self.getCompiler(lang='Cxx')
     hostCCFlag   = '{shf} {cc}'.format(shf=setHostFlag,cc=compilerName)
     with self.Language(language):
-      self.logPrint(' '.join(('checkDeviceHostCompiler: checking',compilerName,'accepts host compiler',compilerName)))
+      self.logPrint(' '.join(('checkDeviceHostCompiler: checking',language,'accepts host compiler',compilerName)))
       try:
         self.addCompilerFlag(hostCCFlag)
       except RuntimeError:
@@ -1829,7 +1831,7 @@ class Configure(config.base.Configure):
     oldFlags = getattr(self, flagsArg)
     setattr(self, flagsArg, oldFlags+' '+flag)
     (output, error, status) = self.outputCompile(includes, body)
-    output += error
+    output = self.filterCompileOutput(output+'\n'+error)
     self.logPrint('Output from compiling with '+oldFlags+' '+flag+'\n'+output)
     setattr(self, flagsArg, oldFlags)
     # Please comment each entry and provide an example line
@@ -2626,7 +2628,7 @@ if (dlclose(handle)) {
           del self.argDB[COMPILER]
       return disabled
 
-    for LANG in ['CUDA','HIP','SYCL','Cxx']:
+    for LANG in ['Cxx','CUDA','HIP','SYCL']:
       compilerName = LANG.upper() if LANG == 'Cxx' else LANG+'C'
       if not compilerIsDisabledFromOptions(compilerName):
         self.executeTest(getattr(self,LANG.join(('check','Compiler'))))

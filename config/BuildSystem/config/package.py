@@ -1103,7 +1103,7 @@ If its a remote branch, use: origin/'+self.gitcommit+' for commit.')
       extraFlags = ' -o -' # Force 'hipcc -E' to output to stdout, instead of *.cui files (as of hip-4.0. hip-4.1+ does not need it, but does not get hurt either).
     else:
       extraFlags = ''
-    setattr(self.compilers, flagsArg, oldFlags+extraFlags+' '+self.headers.toString(self.include))
+    setattr(self.compilers, flagsArg, oldFlags+extraFlags+' '+self.headers.toString(self.dinclude))
     self.compilers.saveLog()
 
     # X.py uses a weird list of two headers.
@@ -1817,6 +1817,11 @@ class CMakePackage(Package):
   def formCMakeConfigureArgs(self):
     import os
     import shlex
+    #  If user has set, for example, CMAKE_GENERATOR Ninja then CMake calls from configure will generate the wrong external package tools for building
+    try:
+      del os.environ['CMAKE_GENERATOR']
+    except:
+      pass
 
     args = ['-DCMAKE_INSTALL_PREFIX='+self.installDir]
     args.append('-DCMAKE_INSTALL_NAME_DIR:STRING="'+os.path.join(self.installDir,self.libdir)+'"')

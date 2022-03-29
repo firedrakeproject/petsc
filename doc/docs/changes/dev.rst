@@ -27,6 +27,7 @@ Changes: Development
 - Change ``PETSC_HAVE_MKL`` to ``PETSC_HAVE_MKL_LIBS``
 - Add ``PETSC_HAVE_MKL_INCLUDES``
 - Enable HYPRE GPU for 64bit indices build (using HYPRE's mixed-int configuration)
+- Reuse PETSc-installed hwloc when installing OpenMPI
 
 .. rubric:: Sys:
 
@@ -63,6 +64,13 @@ Changes: Development
 - Change ``SETERRMPI()`` to be variadic
 - Change ``SETERRABORT()`` to be variadic
 - Add ``PetscCheck()`` and ``PetscAssert()`` for checking a boolean condition is true. The former is always enabled, while the latter is enabled only in debug builds.
+- ``PetscDevice`` initialization for CUDA and HIP will now respect ``CUDA_VISIBILE_DEVICES`` and ``HIP_VISIBLE_DEVICES`` environment variables respectively
+- Add ``PETSC_ATTRIBUTE_COLD`` to inform compilers that a function is unlikely to be called
+- Add ``PetscCall()``, ``PetscCallVoid()``, ``PetscCallMPI()``, ``PetscCallAbort()``, ``PetscCallContinue()``, ``PetscCallThrow()``, and ``PetscCallCXX()``. These supersede ``CHKERRQ()``, ``CHKERRV()``, ``CHKERRMPI()``, ``CHKERRABORT()``, ``CHKERRCONTINUE()``, ``CHKERRXX()``, and ``CHKERRCXX()`` respectively
+- Add ``PetscCallCUDA()``, ``PetscCallCUBLAS()``, ``PetscCallCUSPARSE()``, ``PetscCallCUSOLVER()``, ``PetscCallCUFFT()``, and ``PetscCallCURAND()``. These supersede ``CHKERRCUDA()``, ``CHKERRCUBLAS()``, ``CHKERRCUSPARSE()``, ``CHKERRCUSOLVER()``, ``CHKERRCUFFT()``, and ``CHKERRCURAND()`` respectively
+- Add ``PetscCallHIP()``, ``PetscCallHIPBLAS()``, and ``PetscCallHIPSOLVER()``. These supersede ``CHKERRHIP()``, ``CHKERRHIPBLAS()``, and ``CHKERRHIPSOLVER()`` respectively
+- Add ``PetscCallCEED()`` which supersedes ``CHKERRQ_CEED()``
+- Soft-deprecate ``CHKERR`` variants listed above. New code should prefer the ``PetscCall`` variants, but no compiler diagnostics will be emitted if the old versions are used
 
 .. rubric:: PetscViewer:
 
@@ -70,17 +78,24 @@ Changes: Development
 
 .. rubric:: PetscDraw:
 
+- Add ``PetscDrawSPAddPointColorized()`` to change scatter point color based on third input value
+
 .. rubric:: AO:
 
 .. rubric:: IS:
 
 - ``ISLocalToGlobalMappingCreateSF()``: allow passing ``start = PETSC_DECIDE``
 - Add ``ISGeneralSetIndicesFromMask()``
+- Add ``ISSetLayout()``
+- Add ``PetscSectionSymDistribute()``
+- Add ``ISLocalToGlobalMappingGetType()``
 
 .. rubric:: VecScatter / PetscSF:
 
 - Add MPI-4.0 large count support. With an MPI-4.0 compliant MPI implementation and 64-bit indices, one can now pass over 2 billion elements in a single message in either VecScatter or PetscSF
 - Add ``PetscSFFetchAndOpWithMemTypeBegin()``, which is similar to ``PetscSFFetchAndOpBegin()``, but with explicit memory types
+- Change ``PetscSFSetGraph()`` and ``PetscSFSetGraphLayout()`` to sort leaves, remove ``const`` from ``ilocal`` and ``iremote`` arguments
+- Add ``PetscSFConcatenate()``
 
 .. rubric:: PF:
 
@@ -112,10 +127,21 @@ Changes: Development
 - Add ``MATORDERINGMETISND`` use METIS for nested dissection ordering of ``MatSeqAIJ``, with options ``nseps``, ``niter``, ``ufactor`` and ``pfactor`` under the common prefix ``-mat_ordering_metisnd_``
 - Change options ``-matproduct_<product_type>_via`` to ``-mat_product_algorithm``
 - Add ``-mat_superlu_dist_3d`` and ``-mat_superlu_dist_d <n>`` to support using SuperLU_DIST's version 7.2 3d decomposition algorithms
+- ``MATIS`` now supports negative and repeated indices in the local-to-global map and the COO assembly routines. This allows for better integration with libceed
+- Add ``MatISGetLocalToGlobalMapping()`` to retrieve the logical map for assembled subdomain problem
 
 .. rubric:: PC:
 
 - Add MG option ``-pc_mg_galerkin_mat_product_algorithm [cusparse|hypre]`` and ``PCMGGalerkinSetMatProductAlgorithm()`` to use cuSparse or hypre's SpGEMM for Galerkin products in hypre
+- Add PC type ``PCBJKOKKOS`` a new, experimental batch Kokkos solver ``-pc_type bjkokkos -pc_bjkokkos_ksp_type [tfqmr|bicg] -pc_bjkokkos_pc_type jacobi -ksp_type preonly``
+- Add -pc_svd_monitor ::all option to print all the singular values instead of a maximum of ten
+
+.. rubric:: PCMG:
+
+- Add ``PCMGGetGridComplexity()`` to get operator and grid complexity of MG hierarchy
+- Change ``PCGAMG`` default to use ``PCJACOBI`` smoothing instead of `PCSOR`. This also allows the default configuration to use GPUs effectively, and to deliver equivalent convergence. For the old default, use ``-mg_levels_pc_type sor``.
+- Change ``PCGAMG`` eigenvalue estimation to use ``KSPCG`` when ``MAT_SPD`` has been set (see ``MatSetOption()``) and ``KSPCR`` when ``MAT_SYMMETRIC`` or ``MAT_HERMITIAN`` has been set. These are usually somewhat more accurate and reliable than the previous default of ``KSPGMRES``, and in tune with ``KSPCHEBYSHEV``. Note that Chebyshev will generally not be a suitable smoother for indefinite matrices.
+- Change ``PCGAMG`` to use ``PCGAMGSetUseSAEstEig()`` by default when the smoother uses Jacobi preconditioning.
 
 .. rubric:: KSP:
 
@@ -137,6 +163,7 @@ Changes: Development
   - Add ``TSDiscGradIsGonzalez()`` to check flag for whether to use additional conservative terms in discrete gradient formulation
   - Add ``TSDiscGradUseGonzalez()`` to set discrete gradient formulation with or without additional conservative terms.  Without flag, the discrete gradients timestepper is just backwards euler
 - Add ``TSRemoveTrajectory`` to destroy and remove the internal TSTrajectory object from TS
+- Change ``TSMonitorSPSwarmSolution()`` to have correct axes labels and bounds
 
 .. rubric:: Tao:
 
@@ -159,13 +186,19 @@ Changes: Development
 - Add ``-dm_bind_below`` option for specifying size threshold below which GPU is not used for ``Vec`` and ``Mat`` objects associated with a DM
 - Add ``DMCreateMassMatrixLumped()`` to support explicit timestepping, also add ``DMTSCreateRHSMassMatrix()``, ``DMTSCreateRHSMassMatrixLumped()``, and ``DMTSDestroyRHSMassMatrix()``
 - Promote ``DMGetFirstLabelEntry()`` to public API and rename
+- Add bias vector argument to ``DMGetDefaultConstraints()`` and ``DMSetDefaultConstraints()``.  Passing ``bias=NULL`` recovers prior behavior.
+- Change ``DMGetAuxiliaryVec()``, ``DMSetAuxiliaryVec()``, and ``DMGetAuxiliaryLabels()`` to take an equation part number
 
 .. rubric:: DMSwarm:
+
+- Add ``DMSwarmGetNumSpecies()`` and ``DMSwarmSetNumSpecies()`` to support PIC
+- Add ``DMSwarmComputeLocalSize()``, ``DMSwarmComputeLocalSizeFromOptions()``, ``DMSwarmInitializeCoordinates()``, ``DMSwarmInitializeVelocities()``, ``DMSwarmInitializeVelocitiesFromOptions()`` to assist initialization of PIC methods
 
 .. rubric:: DMPlex:
 
 - Add ``DMExtrude()`` which now the default extrusion
 - Change ``DMPlexExtrude()`` to use DMPlexTransform underneath
+- Add ``DMPlexTransformExtrudeSetNormalFunction()`` to allow computed normals
 - Add ``DMGetNaturalSF()`` and ``DMSetNaturalSF()``
 - Change ``-dm_plex_csr_via_mat`` to ``-dm_plex_csr_alg`` which takes a DMPlexCSRAlgorithm name
 - Add public API for metric-based mesh adaptation:
@@ -205,8 +238,12 @@ Changes: Development
     - Add ``DMPlexMetricNoSwapping()`` to determine whether facet swapping is turned off for (Par)Mmg
     - Add ``DMPlexMetricSetNoMovement()`` to turn off node movement for (Par)Mmg
     - Add ``DMPlexMetricNoMovement()`` to determine whether node movement is turned off for (Par)Mmg
+    - Add ``DMPlexMetricSetNoSurf()`` to turn off surface modification for (Par)Mmg
+    - Add ``DMPlexMetricNoSurf()`` to determine whether surface modification is turned off for (Par)Mmg
     - Add ``DMPlexMetricSetGradationFactor()`` to set the metric gradation factor
     - Add ``DMPlexMetricGetGradationFactor()`` to get the metric gradation factor
+    - Add ``DMPlexMetricSetHausdorffNumber()`` to set the metric Hausdorff number
+    - Add ``DMPlexMetricGetHausdorffNumber()`` to get the metric Hausdorff number
     - Add ``DMPlexMetricSetNumIterations()`` to set the number of ParMmg adaptation iterations
     - Add ``DMPlexMetricGetNumIterations()`` to get the number of ParMmg adaptation iterations
 - Change ``DMPlexCoordinatesLoad()`` to take a ``PetscSF`` as argument
@@ -219,6 +256,21 @@ Changes: Development
 - Add ``DMPlexTSComputeRHSFunctionFEM()`` to support explicit timestepping
 - Newly created ``DMPlex`` will be distributed by default; this previously required ``-dm_distribute`` or explicit calls to ``DMPlexDistribute()``
 - Add ``DMPlexDistributeGetDefault()`` and ``DMPlexDistributeSetDefault()`` to determine and set the default for ``DMPlex`` distribution
+- Add meshing of the Schwarz-P and Gyroid triply periodic minimal surface (see ``DMPlexCreateTPSMesh()``). These meshes can be automatically generated using ``-dm_plex_shape schwarz_p`` or ``-dm_plex_shape gyroid``, with optional levels of refinement and extrusion to 3D solids with prescribed thickness.
+- Add ``DMCreateFEDefault()`` as a convenience method for creating the right element on a mesh
+- Add ``DMPlexCreateReferenceCell()``
+- Remove deprecated ``DMPlexCreateFromCellList()`` and ``DMPlexCreateFromCellListParallel()``
+- Add ``DMSetMatrixPreallocateSkip()`` to save initialization time when ``MatSetPreallocationCOO()`` will be used.
+- Improve loading performance related to coordinate projection in common cases.
+- Add ``DMPlexGetOrdering1D()`` for 1D Plex problems
+- Add ``DMPlexComputeClementInterpolant()`` averaging operator
+
+.. rubric:: DMPlexLandau:
+
+- Add ``DMPlexLandauCreateVelocitySpace()`` Create DMComposite of DMPlex for Landau collision operator
+- Add ``DMPlexLandauDestroyVelocitySpace()`` Destroy DMComposite of DMPlex for Landau collision operator
+- Add ``DMPlexLandauIFunction()`` Landau collision operator
+- Add ``DMPlexLandauIJacobian()`` Landau collision operator
 
 .. rubric:: FE/FV:
 
@@ -228,10 +280,14 @@ Changes: Development
 - Replace ``PetscDSGet/SetHybrid()`` with ``PetscDSGet/SetCohesive()``
 - Add ``PetscDSIsCohesive()``, ``PetscDSGetNumCohesive()``, and ``PetscDSGetFieldOffsetCohesive()``
 - Add argument to ``PetscFEIntegrateHybridJacobian()`` to indicate the face for the integration
+- Add ``PetscFECreateByCell()`` and ``PetscFECreateLagrangeByCell()`` to create FE spaces on specific cell types
+- Replace ``PetscDualSpaceCreateReferenceCell()`` with ``DMPlexCreateReferenceCell()``
+- Add ``PetscDualSpaceEqual()`` and ``PetscQuadratureEqual()``
 
 .. rubric:: DMNetwork:
 
 - ``DMNetworkAddComponent()`` now requires a valid component key for each call
+- Add ``DMNetworkSharedVertexGetInfo()``
 
 .. rubric:: DMStag:
 
@@ -239,6 +295,9 @@ Changes: Development
 
 - Add ``PetscDTPTrimmedEvalJet()`` to evaluate a stable basis for trimmed polynomials, and ``PetscDTPTrimmedSize()`` for the size of that space
 - Add ``PetscDSGetRHSResidual()`` and ``PetscDSSetRHSResidual()`` to support explicit timestepping
+- Add ``PetscDTTensorQuadratureCreate()`` to combine different quadratures, such as on a prism
+- Add ``PetscProbComputeKSStatistic()`` to apply the Kolmogorov-Smirnov test
+- Add probability distributions ``PetscPDFMaxwellBoltzmann1D()``, ``PetscCDFMaxwellBoltzmann1D()``, ``PetscPDFMaxwellBoltzmann2D()``, ``PetscCDFMaxwellBoltzmann2D()``, ``PetscPDFMaxwellBoltzmann3D()``, ``PetscCDFMaxwellBoltzmann3D()``, ``PetscPDFGaussian1D()``, ``PetscCDFGaussian1D()``, ``PetscPDFSampleGaussian1D()``, ``PetscPDFGaussian2D()``, ``PetscPDFSampleGaussian2D()``, ``PetscPDFConstant1D()``, ``PetscCDFConstant1D()``
 
 .. rubric:: Fortran:
 

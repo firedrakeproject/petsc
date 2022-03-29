@@ -72,6 +72,11 @@ class Configure(config.package.CMakePackage):
   def formCMakeConfigureArgs(self):
     args = config.package.CMakePackage.formCMakeConfigureArgs(self)
     args.append('-DUSE_XSDK_DEFAULTS=YES')
+
+    # always use C/C++'s alignment (i.e., sizeof(RealType)) for complex,
+    # instead of Kokkos's default "alignas(2 * sizeof(RealType))"
+    args.append('-DKokkos_ENABLE_COMPLEX_ALIGN=OFF')
+
     if not self.compilerFlags.debugging:
       args.append('-DXSDK_ENABLE_DEBUG=NO')
 
@@ -95,6 +100,7 @@ class Configure(config.package.CMakePackage):
       raise RuntimeError("Kokkos only supports a single parallel system during its configuration")
 
     args.append('-DKokkos_ENABLE_SERIAL=ON')
+    args.append('-DKokkos_ENABLE_LIBDL=OFF')
     if self.openmp.found:
       args.append('-DKokkos_ENABLE_OPENMP=ON')
       self.system = 'OpenMP'

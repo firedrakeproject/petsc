@@ -15,7 +15,7 @@ EXAMPLESC	 = ex1.c ex2.c ex3.c  ex5.c ex6.c ex9.c \
 EXAMPLESF	 = ex1f.F90 ex5f.F90 ex5f90.F90 ex5f90t.F90 ex40f90.F90 ex73f90t.F90
 EXAMPLESCH	 =
 EXAMPLESFH       = ex5f.h
-EXAMPLESMATLAB   = ex5m.m  ex61genm.m ex61m.m
+EXAMPLESMATLAB   = ex5m.m ex29view.m
 DIRS		 = ex10d network
 CLEANFILES       = ex5f90t
 
@@ -82,7 +82,7 @@ runex19_hypre_hip:
            else  printf "${PWD}\nPossible problem with ex19 running with hypre, diffs above\n=========================================\n"; fi; \
 	   ${RM} -f ex19_1.tmp
 runex19_cuda:
-	-@${MPIEXEC} -n 1 ./ex19 -snes_monitor -dm_mat_type seqaijcusparse -dm_vec_type seqcuda -pc_type gamg -ksp_monitor -mg_levels_ksp_max_it 3  > ex19_1.tmp 2>&1; \
+	-@${MPIEXEC} -n 1 ./ex19 -snes_monitor -dm_mat_type seqaijcusparse -dm_vec_type seqcuda -pc_type gamg -pc_gamg_esteig_ksp_max_it 10 -ksp_monitor -mg_levels_ksp_max_it 3  > ex19_1.tmp 2>&1; \
 	   if (${DIFF} output/ex19_cuda_1.out ex19_1.tmp) then \
            echo "C/C++ example src/snes/tutorials/ex19 run successfully with cuda"; \
            else  printf "${PWD}\nPossible problem with ex19 running with cuda, diffs above\n=========================================\n"; fi; \

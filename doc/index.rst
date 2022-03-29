@@ -68,6 +68,7 @@ Toolkits/libraries that use PETSc
    optimization
 -  `DEAL.II <https://www.dealii.org/>`__ C++ based finite element
    simulation package
+-  `DUNE-FEM <https://dune-project.org/sphinx/content/sphinx/dune-fem/>`__ Python and C++ based finite element simulation package      
 -  `FEniCS <https://fenicsproject.org/>`__ Python based finite
    element simulation package
 -  `Firedrake <https://www.firedrakeproject.org/>`__ Python based
@@ -118,7 +119,7 @@ Toolkits/libraries that use PETSc
 Citing PETSc
 ============
 
-You can run any PETSc program with the option``-citations`` to print appropriate citations for the algorithms you are using within PETSc.
+You can run any PETSc program with the option ``-citations`` to print appropriate citations for the algorithms you are using within PETSc.
 
 For general citations on PETSc please use the following:
 

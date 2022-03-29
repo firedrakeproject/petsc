@@ -10,7 +10,7 @@
 -  pyname - full dotted Python name [package].module[.{class|function}]
 
    Options Database Key:
-.  -tao_python_type <pyname>
+.  -tao_python_type <pyname> - python class
 
    Level: intermediate
 
@@ -18,12 +18,9 @@
 @*/
 PetscErrorCode TaoPythonSetType(Tao tao, const char pyname[])
 {
-  PetscErrorCode ierr;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao,TAO_CLASSID,1);
   PetscValidCharPointer(pyname,2);
-  ierr = PetscTryMethod(tao,"TaoPythonSetType_C",(Tao,const char[]),(tao,pyname));CHKERRQ(ierr);
+  PetscCall(PetscTryMethod(tao,"TaoPythonSetType_C",(Tao,const char[]),(tao,pyname)));
   PetscFunctionReturn(0);
 }
-

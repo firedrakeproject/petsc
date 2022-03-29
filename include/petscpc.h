@@ -296,8 +296,6 @@ PETSC_EXTERN PetscErrorCode PCGAMGSetProcEqLim(PC,PetscInt);
 
 PETSC_EXTERN PetscErrorCode PCGAMGSetRepartition(PC,PetscBool);
 PETSC_EXTERN PetscErrorCode PCGAMGSetUseSAEstEig(PC,PetscBool);
-PETSC_EXTERN PetscErrorCode PCGAMGSetEstEigKSPMaxIt(PC,PetscInt);
-PETSC_EXTERN PetscErrorCode PCGAMGSetEstEigKSPType(PC,char[]);
 PETSC_EXTERN PetscErrorCode PCGAMGSetEigenvalues(PC,PetscReal,PetscReal);
 PETSC_EXTERN PetscErrorCode PCGAMGASMSetUseAggs(PC,PetscBool);
 PETSC_EXTERN PetscErrorCode PCGAMGSetUseParallelCoarseGridSolve(PC,PetscBool);
@@ -390,6 +388,7 @@ PETSC_EXTERN PetscErrorCode PCMGMatResidualDefault(Mat,Mat,Mat,Mat);
 PETSC_EXTERN PetscErrorCode PCMGMatResidualTransposeDefault(Mat,Mat,Mat,Mat);
 PETSC_EXTERN PetscErrorCode PCMGGalerkinSetMatProductAlgorithm(PC,const char[]);
 PETSC_EXTERN PetscErrorCode PCMGGalerkinGetMatProductAlgorithm(PC,const char*[]);
+PETSC_EXTERN PetscErrorCode PCMGGetGridComplexity(PC,PetscReal*,PetscReal*);
 
 PETSC_EXTERN PetscErrorCode PCHMGSetReuseInterpolation(PC,PetscBool);
 PETSC_EXTERN PetscErrorCode PCHMGSetUseSubspaceCoarsening(PC,PetscBool);

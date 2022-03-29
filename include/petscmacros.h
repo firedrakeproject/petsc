@@ -125,6 +125,40 @@ M*/
 #define PetscHasAttribute(name) __has_attribute(name)
 
 /*MC
+  PETSC_ATTRIBUTE_COLD - Indicate to the compiler that a function is very unlikely to be
+  executed
+
+  Notes:
+  The marked function is often optimized for size rather than speed and may be grouped alongside
+  other equally frigid routines improving code locality of lukewarm or hotter parts of program.
+
+  The paths leading to cold functions are usually automatically marked as unlikely by the
+  compiler. It may thus be useful to mark functions used to handle unlikely conditions -- such
+  as error handlers -- as cold to improve optimization of the surrounding temperate functions.
+
+  Example Usage:
+.vb
+  void my_error_handler(...) PETSC_ATTRIBUTE_COLD;
+
+  if (temperature < 0) {
+    return my_error_handler(...); // chilly!
+  }
+.ve
+
+  Level: intermediate
+
+.seealso: PetscUnlikely(), PetscUnlikelyDebug(), PetscLikely(), PetscLikelyDebug(),
+PetscUnreachable()
+M*/
+#if PetscHasAttribute(__cold__)
+#  define PETSC_ATTRIBUTE_COLD __attribute__((__cold__))
+#elif PetscHasAttribute(cold) /* some implementations (old gcc) use no underscores */
+#  define PETSC_ATTRIBUTE_COLD __attribute__((cold))
+#else
+#  define PETSC_ATTRIBUTE_COLD
+#endif
+
+/*MC
   PETSC_NULLPTR - Standard way of indicating a null value or pointer
 
   Notes:
@@ -177,7 +211,7 @@ M*/
   Level: beginner
 
 .seealso: PETSC_CONSTEXPR_14, PETSC_NODISCARD
-MC*/
+M*/
 
 /*MC
   PETSC_CONSTEXPR_14 - C++14 constexpr
@@ -207,7 +241,7 @@ MC*/
   Level: beginner
 
 .seealso: PETSC_NULLPTR, PETSC_NODISCARD
-MC*/
+M*/
 
 /*MC
   PETSC_NODISCARD - Mark the return value of a function as non-discardable
@@ -250,7 +284,7 @@ MC*/
   Level: beginner
 
 .seealso: PETSC_NULLPTR, PETSC_CONSTEXPR_14
-MC*/
+M*/
 
 /* C++11 features */
 #if defined(__cplusplus)
@@ -260,7 +294,7 @@ MC*/
 #endif
 
 /* C++14 features */
-#if defined(__cplusplus) && defined(PETSC_HAVE_CXX_DIALECT_CXX14)
+#if defined(__cplusplus) && defined(PETSC_HAVE_CXX_DIALECT_CXX14) && __cplusplus >= 201402L
 #  define PETSC_CONSTEXPR_14 constexpr
 #else
 #  define PETSC_CONSTEXPR_14
@@ -318,7 +352,8 @@ MC*/
 
   Level: advanced
 
-.seealso: PetscLikely(), PetscUnlikelyDebug(), CHKERRQ, PetscDefined(), PetscHasAttribute()
+.seealso: PetscLikely(), PetscUnlikelyDebug(), PetscCall(), PetscDefined(), PetscHasAttribute(),
+PETSC_ATTRIBUTE_COLD
 M*/
 
 /*MC
@@ -351,6 +386,7 @@ M*/
   Level: advanced
 
 .seealso: PetscUnlikely(), PetscDefined(), PetscHasAttribute()
+PETSC_ATTRIBUTE_COLD
 M*/
 #if defined(PETSC_HAVE_BUILTIN_EXPECT)
 #  define PetscUnlikely(cond) __builtin_expect(!!(cond),0)
@@ -361,7 +397,7 @@ M*/
 #endif
 
 /*MC
-  PetscUnreachable() - Indicate to the compiler that a code-path is logically unreachable
+  PetscUnreachable - Indicate to the compiler that a code-path is logically unreachable
 
   Synopsis:
   #include <petscmacros.h>
@@ -396,8 +432,8 @@ M*/
 
   Level: advanced
 
-.seealso: SETERRABORT(), PETSCABORT()
-MC*/
+.seealso: SETERRABORT(), PETSCABORT(), PETSC_ATTRIBUTE_COLD
+M*/
 #if defined(__GNUC__)
 /* GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above) */
 #  define PetscUnreachable() __builtin_unreachable()
@@ -417,8 +453,10 @@ MC*/
   Input Paramter:
 . x - The preprocessor token to expand
 
+  Level: beginner
+
 .seealso: PetscStringize(), PetscConcat()
-MC*/
+M*/
 #define PetscExpand_(...) __VA_ARGS__
 #define PetscExpand(...)  PetscExpand_(__VA_ARGS__)
 
@@ -457,7 +495,7 @@ MC*/
   Level: beginner
 
 .seealso: PetscConcat(), PetscExpandToNothing(), PetscExpand()
-MC*/
+M*/
 #define PetscStringize_(x) #x
 #define PetscStringize(x)  PetscStringize_(x)
 
@@ -490,7 +528,7 @@ MC*/
   Level: beginner
 
 .seealso: PetscStringize(), PetscExpand()
-MC*/
+M*/
 #define PetscConcat_(x,y) x ## y
 #define PetscConcat(x,y)  PetscConcat_(x,y)
 
@@ -534,7 +572,7 @@ $ #define PETSC_DONT_HAVE_FOO PetscCompl(PetscDefined(HAVE_FOO))
   Level: beginner
 
 .seealso: PetscConcat(), PetscDefined()
-MC*/
+M*/
 #define PetscCompl(b) PetscConcat_(PETSC_INTERNAL_COMPL_,PetscExpand(b))
 
 #if !defined(PETSC_SKIP_VARIADIC_MACROS)
@@ -614,7 +652,7 @@ $ #define FooDefined(d) PetscDefined_(PetscConcat(FOO_,d))
 
 .seealso: PetscHasAttribute(), PetscUnlikely(), PetscLikely(), PetscConcat(),
 PetscExpandToNothing(), PetscCompl()
-MC*/
+M*/
 #define PetscDefined_arg_1 shift,
 #define PetscDefined_arg_  shift,
 #define PetscDefined__take_second_expanded(ignored, val, ...) val
@@ -674,9 +712,17 @@ MC*/
 
   Level: advanced
 
-.seealso: PetscUnlikely(), PetscLikely(), CHKERRQ, SETERRQ
+.seealso: PetscUnlikely(), PetscLikely(), PetscCall(), SETERRQ
 M*/
 #define PetscUnlikelyDebug(cond) (PetscDefined(USE_DEBUG) && PetscUnlikely(cond))
+
+#if defined(PETSC_CLANG_STATIC_ANALYZER)
+// silence compiler warnings when using -pedantic, this is only used by the linter and it cares
+// not what ISO C allows
+#  define PetscMacroReturns_(retexpr,...) __extension__ ({ __VA_ARGS__; retexpr; })
+#else
+#  define PetscMacroReturns_(retexpr,...) retexpr; do { __VA_ARGS__; } while (0)
+#endif
 
 /*MC
   PetscExpandToNothing - Expands to absolutely nothing at all
@@ -702,8 +748,87 @@ M*/
   Level: beginner
 
 .seealso: PetscConcat(), PetscDefined(), PetscStringize(), PetscExpand()
-MC*/
+M*/
 #define PetscExpandToNothing(...)
+
+/*MC
+  PetscMacroReturns - Define a macro body that returns a value
+
+  Synopsis:
+  #include <petscmacros.h>
+  return_type PetscMacroReturns(return_type retexpr, ...)
+
+  Input Parameters:
++ retexpr     - The value or expression that the macro should return
+- __VA_ARGS__ - The body of the macro
+
+  Notes:
+  Due to limitations of the C-preprocessor retexpr cannot depend on symbols declared in the
+  body of the macro and should not depend on values produced as a result of the expression. The
+  user should not assume that the result of this macro is equivalent to a single logical source
+  line. It is not portable to use macros defined using this one in conditional or loop bodies
+  without enclosing them in curly braces\:
+
+.vb
+  #define FOO(arg1) PetscMacroReturns(0,arg1+=10) // returns 0
+
+  int err,x = 10;
+
+  if (...) err = FOO(x);      // ERROR, body of FOO() executed outside the if statement
+  if (...) { err = FOO(x); }  // OK
+
+  for (...) err = FOO(x);     // ERROR, body of FOO() executed outside the loop
+  for (...) { err = FOO(x); } // OK
+.ve
+
+  It is also not portable to use this macro directly inside function call, conditional, loop,
+  or switch statements\:
+
+.vb
+  extern void bar(int);
+
+  int ret = FOO(x);
+
+  bar(FOO(x)); // ERROR, may not compile
+  bar(ret);    // OK
+
+  if (FOO(x))  // ERROR, may not compile
+  if (ret)     // OK
+.ve
+
+  Example usage:
+.vb
+  #define MY_SIMPLE_RETURNING_MACRO(arg1) PetscMacroReturns(0,arg1+=10)
+
+  int x = 10;
+  int err = MY_SIMPLE_RETURNING_MACRO(x); // err = 0, x = 20
+
+  // multiline macros allowed, but must declare with line continuation as usual
+  #define MY_COMPLEX_RETURNING_MACRO(arg1) PetscMacroReturns(0, \
+    if (arg1 > 10) {                                            \
+      puts("big int!");                                         \
+    } else {                                                    \
+      return 7355608;                                           \
+    }                                                           \
+  )
+
+  // if retexpr contains commas, must enclose it with braces
+  #define MY_COMPLEX_RETEXPR_MACRO_1() PetscMacroReturns(x+=10,0,body...)
+  #define MY_COMPLEX_RETEXPR_MACRO_2() PetscMacroReturns((x+=10,0),body...)
+
+  int x = 10;
+  int y = MY_COMPLEX_RETEXPR_MACRO_1(); // ERROR, y = x = 20 not 0
+  int z = MY_COMPLEX_RETEXPR_MACRO_2(); // OK, y = 0, x = 20
+.ve
+
+  Level: intermediate
+
+.seealso: PetscExpand(), PetscConcat(), PetscStringize()
+M*/
+#define PetscMacroReturns(retexpr,...) PetscMacroReturns_(retexpr,__VA_ARGS__)
+
+#define PetscMacroReturnStandard(...) PetscMacroReturns(0,__VA_ARGS__)
+
 #endif /* !PETSC_SKIP_VARIADIC_MACROS */
 
 #endif /* PETSC_PREPROCESSOR_MACROS_H */

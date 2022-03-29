@@ -55,6 +55,8 @@ struct _p_PetscSection {
 
 struct _PetscSectionSymOps {
   PetscErrorCode (*getpoints)(PetscSectionSym,PetscSection,PetscInt,const PetscInt *,const PetscInt **,const PetscScalar **);
+  PetscErrorCode (*distribute)(PetscSectionSym,PetscSF,PetscSectionSym*);
+  PetscErrorCode (*copy)(PetscSectionSym,PetscSectionSym);
   PetscErrorCode (*destroy)(PetscSectionSym);
   PetscErrorCode (*view)(PetscSectionSym,PetscViewer);
 };
@@ -84,6 +86,24 @@ PETSC_EXTERN PetscErrorCode ISIntersect_Caching_Internal(IS, IS, IS *);
 PETSC_INTERN PetscErrorCode PetscSectionView_HDF5_Internal(PetscSection, PetscViewer);
 PETSC_INTERN PetscErrorCode PetscSectionLoad_HDF5_Internal(PetscSection, PetscViewer);
 #endif
+
+static inline PetscErrorCode PetscSectionCheckConstraints_Private(PetscSection s)
+{
+  PetscFunctionBegin;
+  if (!s->bc) {
+    PetscCall(PetscSectionCreate(PETSC_COMM_SELF, &s->bc));
+    PetscCall(PetscSectionSetChart(s->bc, s->pStart, s->pEnd));
+  }
+  PetscFunctionReturn(0);
+}
+
+/* Call this if you directly modify atlasDof so that maxDof gets recalculated on next PetscSectionGetMaxDof() */
+static inline PetscErrorCode PetscSectionInvalidateMaxDof_Internal(PetscSection s)
+{
+  PetscFunctionBegin;
+  s->maxDof = PETSC_MIN_INT;
+  PetscFunctionReturn(0);
+}
 
 #if defined(PETSC_CLANG_STATIC_ANALYZER)
 #  define PetscSectionCheckValidField(x,y)

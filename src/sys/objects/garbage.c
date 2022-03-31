@@ -4,15 +4,14 @@
 static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbage)
 {
   PetscMPIInt    flag;
-  PetscErrorCode ierr;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,garbage,&flag);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,garbage,&flag));
   if (!flag) {
     /* No garbage,create one */
-    ierr = PetscNew(garbage);CHKERRQ(ierr);
-    ierr = PetscHMapObjCreate(*garbage);CHKERRQ(ierr);
-    ierr = MPI_Comm_set_attr(comm,Petsc_Garbage_HMap_keyval,*garbage);CHKERRMPI(ierr);
+    PetscCall(PetscNew(garbage));
+    PetscCall(PetscHMapObjCreate(*garbage));
+    PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_HMap_keyval,*garbage));
   }
   PetscFunctionReturn(0);
 }
@@ -48,20 +47,19 @@ static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbag
 PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
 {
   MPI_Comm       petsc_comm;
-  PetscErrorCode ierr;
   PetscObject    *duplicate;
   PetscHMapObj   *garbage;
 
   PetscFunctionBegin;
   /* Don't stash NULL pointers */
   if (*obj != NULL) {
-    ierr = PetscObjectGetComm(*obj,&petsc_comm);CHKERRQ(ierr);
-    ierr = GarbageGetHMap_Private(petsc_comm,&garbage);CHKERRQ(ierr);
+    PetscCall(PetscObjectGetComm(*obj,&petsc_comm));
+    PetscCall(GarbageGetHMap_Private(petsc_comm,&garbage));
 
     /* Duplicate object header so managed language can clean up original */
-    ierr = PetscNew(&duplicate);CHKERRQ(ierr);
-    ierr = PetscMemcpy(duplicate,obj,sizeof(PetscObject));CHKERRQ(ierr);
-    ierr = PetscHMapObjSet(*garbage,(*duplicate)->cidx,duplicate);CHKERRQ(ierr);
+    PetscCall(PetscNew(&duplicate));
+    PetscCall(PetscMemcpy(duplicate,obj,sizeof(PetscObject)));
+    PetscCall(PetscHMapObjSet(*garbage,(*duplicate)->cidx,duplicate));
     *obj = NULL;
   }
   PetscFunctionReturn(0);
@@ -94,7 +92,6 @@ static PetscErrorCode GarbageKeySortedIntersect_Private(PetscInt *seta,PetscInt 
 /* Performs a collective intersection of one array per rank */
 static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *set,PetscInt *entries)
 {
-  PetscErrorCode ierr;
   PetscInt       ii,total;
   PetscInt       *recvset;
   PetscMPIInt    comm_size,comm_rank;
@@ -102,18 +99,18 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
 
   PetscFunctionBegin;
   /* Gather and intersect on comm */
-  ierr = MPI_Comm_size(comm,&comm_size);CHKERRMPI(ierr);
-  ierr = MPI_Comm_rank(comm,&comm_rank);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_size(comm,&comm_size));
+  PetscCallMPI(MPI_Comm_rank(comm,&comm_rank));
   if (comm_rank == 0) {
-    ierr = PetscMalloc1(comm_size,&set_sizes);CHKERRQ(ierr);
+    PetscCall(PetscMalloc1(comm_size,&set_sizes));
   } else {
     set_sizes = NULL;
   }
 
   /* Gather number of keys from each rank */
-  ierr = MPI_Gather(entries,1,MPI_INT,set_sizes,1,MPI_INT,0,comm);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Gather(entries,1,MPI_INT,set_sizes,1,MPI_INT,0,comm));
   if (comm_rank == 0) {
-    ierr = PetscMalloc1(comm_size,&displace);CHKERRQ(ierr);
+    PetscCall(PetscMalloc1(comm_size,&displace));
     displace[0] = 0;
     total = 0;
     for (ii=1; ii<comm_size; ii++) {
@@ -121,36 +118,35 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
       displace[ii] = total;
     }
     total += set_sizes[comm_size - 1];
-    ierr = PetscMalloc1(total,&recvset);CHKERRQ(ierr);
+    PetscCall(PetscMalloc1(total,&recvset));
   } else {
     displace = NULL;
     recvset = NULL;
   }
 
   /* Gatherv keys from all ranks and intersect */
-  ierr = MPI_Gatherv(set,*entries,MPI_INT,recvset,set_sizes,displace,MPI_INT,0,comm);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Gatherv(set,*entries,MPI_INT,recvset,set_sizes,displace,MPI_INT,0,comm));
   if (comm_rank == 0) {
     for (ii=1; ii<comm_size; ii++) {
-      ierr = GarbageKeySortedIntersect_Private(set,entries,&recvset[displace[ii]],set_sizes[ii]);CHKERRQ(ierr);
+      PetscCall(GarbageKeySortedIntersect_Private(set,entries,&recvset[displace[ii]],set_sizes[ii]));
     }
   }
 
-  ierr = PetscFree(set_sizes);CHKERRQ(ierr);
-  ierr = PetscFree(displace);CHKERRQ(ierr);
-  ierr = PetscFree(recvset);CHKERRQ(ierr);
+  PetscCall(PetscFree(set_sizes));
+  PetscCall(PetscFree(displace));
+  PetscCall(PetscFree(recvset));
   PetscFunctionReturn(0);
 }
 
 /* Calculate block for given communicator and blocksize */
 static PetscErrorCode CalculateBlock_Private(MPI_Comm comm,int blocksize)
 {
-  PetscErrorCode ierr;
   PetscInt       p,block;
   PetscMPIInt    comm_size;
 
   PetscFunctionBegin;
   /* Calculate biggest power of blocksize smaller than communicator size */
-  ierr = MPI_Comm_size(comm,&comm_size);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_size(comm,&comm_size));
   p = (PetscInt)PetscFloorReal(PetscLogReal((PetscReal)comm_size)/PetscLogReal((PetscReal)blocksize));
   block = PetscPowInt(blocksize,p);
   if ((block == comm_size) && (comm_size != 1)) {
@@ -162,7 +158,6 @@ static PetscErrorCode CalculateBlock_Private(MPI_Comm comm,int blocksize)
 /* Setup inter- and intra- communicators for more efficient MPI */
 static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
 {
-  PetscErrorCode ierr;
   PetscInt       block,blockrank,leader;
   PetscMPIInt    comm_rank,intra_rank;
   MPI_Comm       *intracom,*intercom;
@@ -172,18 +167,18 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
   block = CalculateBlock_Private(comm, blocksize);
 
   /* Create intra-communicators of size block or smaller */
-  ierr = MPI_Comm_rank(comm,&comm_rank);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_rank(comm,&comm_rank));
   blockrank = comm_rank/block;
-  ierr = PetscNew(&intracom);CHKERRQ(ierr);
-  ierr = MPI_Comm_split(comm,blockrank,comm_rank,intracom);CHKERRMPI(ierr);
-  ierr = MPI_Comm_set_attr(comm,Petsc_Garbage_IntraComm_keyval,(void*)intracom);CHKERRMPI(ierr);
+  PetscCall(PetscNew(&intracom));
+  PetscCallMPI(MPI_Comm_split(comm,blockrank,comm_rank,intracom));
+  PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_IntraComm_keyval,(void*)intracom));
 
   /* Create inter-communicators between rank 0 of all above comms */
-  ierr = MPI_Comm_rank(*intracom,&intra_rank);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_rank(*intracom,&intra_rank));
   leader = (intra_rank == 0) ? 0 : MPI_UNDEFINED;
-  ierr = PetscNew(&intercom);CHKERRQ(ierr);
-  ierr = MPI_Comm_split(comm,leader,comm_rank,intercom);CHKERRMPI(ierr);
-  ierr = MPI_Comm_set_attr(comm,Petsc_Garbage_InterComm_keyval,(void*)intercom);CHKERRMPI(ierr);
+  PetscCall(PetscNew(&intercom));
+  PetscCallMPI(MPI_Comm_split(comm,leader,comm_rank,intercom));
+  PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_InterComm_keyval,(void*)intercom));
   PetscFunctionReturn(0);
 }
 
@@ -223,7 +218,6 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm,int blocksize)
 @*/
 PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
 {
-  PetscErrorCode ierr;
   PetscInt       ii,entries,offset;
   PetscInt       *keys;
   PetscObject    *obj;
@@ -233,57 +227,57 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
 
   PetscFunctionBegin;
   /* Get the garbage hash map */
-  ierr = PetscCommDuplicate(comm,&comm,NULL);
-  ierr = GarbageGetHMap_Private(comm,&garbage);
+  PetscCall(PetscCommDuplicate(comm,&comm,NULL));
+  PetscCall(GarbageGetHMap_Private(comm,&garbage));
 
   /* Get the intra- and inter- communicators,if they exist,otherwise set them up */
   intracom = NULL;
-  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag));
   if (!flag) {
-    ierr = GarbageSetupComms_Private(comm,blocksize);CHKERRQ(ierr);
-    ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag);CHKERRMPI(ierr);
+    PetscCall(GarbageSetupComms_Private(comm,blocksize));
+    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag));
   }
-  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag);CHKERRMPI(ierr);
-  ierr = MPI_Comm_rank(*intracom,&intra_rank);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag));
+  PetscCallMPI(MPI_Comm_rank(*intracom,&intra_rank));
   if (*intercom != MPI_COMM_NULL) {
-    ierr = MPI_Comm_rank(*intercom,&inter_rank);CHKERRMPI(ierr);
+    PetscCallMPI(MPI_Comm_rank(*intercom,&inter_rank));
   } else {
     inter_rank = MPI_UNDEFINED;
   }
 
   /* Get keys from garbage hash map and sort */
-  ierr = PetscHMapObjGetSize(*garbage,&entries);CHKERRQ(ierr);
-  ierr = PetscMalloc1(entries,&keys);CHKERRQ(ierr);
+  PetscCall(PetscHMapObjGetSize(*garbage,&entries));
+  PetscCall(PetscMalloc1(entries,&keys));
   offset = 0;
-  ierr = PetscHMapObjGetKeys(*garbage,&offset,keys);CHKERRQ(ierr);
-  ierr = PetscSortInt(entries,keys);CHKERRQ(ierr);
+  PetscCall(PetscHMapObjGetKeys(*garbage,&offset,keys));
+  PetscCall(PetscSortInt(entries,keys));
 
   /* Intracom gather and intersect */
-  ierr = GarbageKeyGatherIntersect_Private(*intracom,keys,&entries);CHKERRQ(ierr);
+  PetscCall(GarbageKeyGatherIntersect_Private(*intracom,keys,&entries));
 
   /* Intercom gather and intersect */
   if (*intercom != MPI_COMM_NULL) {
-    ierr = GarbageKeyGatherIntersect_Private(*intercom,keys,&entries);CHKERRQ(ierr);
+    PetscCall(GarbageKeyGatherIntersect_Private(*intercom,keys,&entries));
     /* Broadcast across intercom */
-    ierr = MPI_Bcast(&entries,1,MPI_INT,0,*intercom);CHKERRMPI(ierr);
-    ierr = MPI_Bcast(keys,entries,MPI_INT,0,*intercom);CHKERRMPI(ierr);
+    PetscCallMPI(MPI_Bcast(&entries,1,MPI_INT,0,*intercom));
+    PetscCallMPI(MPI_Bcast(keys,entries,MPI_INT,0,*intercom));
   }
 
   /* Broadcast across intracom */
-  ierr = MPI_Bcast(&entries,1,MPI_INT,0,*intracom);CHKERRMPI(ierr);
-  ierr = MPI_Bcast(keys,entries,MPI_INT,0,*intracom);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Bcast(&entries,1,MPI_INT,0,*intracom));
+  PetscCallMPI(MPI_Bcast(keys,entries,MPI_INT,0,*intracom));
 
   /* Collectively destroy objects objects that appear in garbage in
    * creation index order */
   for (ii = 0; ii < entries; ii++) {
-    ierr = PetscHMapObjGet(*garbage,keys[ii],&obj);CHKERRQ(ierr);
+    PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
     if (PetscCheckPointer((void*) obj,PETSC_OBJECT) && (obj != NULL)) {
-      ierr = PetscObjectDestroy(obj);CHKERRQ(ierr);
-      ierr = PetscFree(obj);CHKERRQ(ierr);
+      PetscCall(PetscObjectDestroy(obj));
+      PetscCall(PetscFree(obj));
     }
-    ierr = PetscHMapObjDel(*garbage,keys[ii]);CHKERRQ(ierr);
+    PetscCall(PetscHMapObjDel(*garbage,keys[ii]));
   }
-  ierr = PetscFree(keys);CHKERRQ(ierr);
+  PetscCall(PetscFree(keys));
   PetscFunctionReturn(0);
 }
 
@@ -291,36 +285,35 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
    Replaces above GatherIntersect function */
 static PetscErrorCode GarbageKeyRecursiveGatherIntersect_Private(MPI_Comm comm,PetscInt *set,PetscInt *entries,PetscInt blocksize)
 {
-  PetscErrorCode ierr;
   PetscMPIInt    flag,comm_size,intra_rank,inter_rank;
   MPI_Comm       *intracom,*intercom;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_size(comm,&comm_size);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_size(comm,&comm_size));
   if (comm_size > blocksize) {
     /* Get the intra- and inter- communicators,if they exist,otherwise set them up */
     intracom = NULL;
-    ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag);CHKERRMPI(ierr);
+    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag));
     if (!flag) {
-      ierr = GarbageSetupComms_Private(comm,blocksize);CHKERRQ(ierr);
-      ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag);CHKERRMPI(ierr);
+      PetscCall(GarbageSetupComms_Private(comm,blocksize));
+      PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag));
     }
-    ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag);CHKERRMPI(ierr);
-    ierr = MPI_Comm_rank(*intracom,&intra_rank);CHKERRMPI(ierr);
+    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag));
+    PetscCallMPI(MPI_Comm_rank(*intracom,&intra_rank));
     if (*intercom != MPI_COMM_NULL) {
-      ierr = MPI_Comm_rank(*intercom,&inter_rank);CHKERRMPI(ierr);
+      PetscCallMPI(MPI_Comm_rank(*intercom,&inter_rank));
     } else {
       inter_rank = MPI_UNDEFINED;
     }
 
     /* Gather and intersect on intracom recursively */
-    ierr = GarbageKeyRecursiveGatherIntersect_Private(*intracom,set,entries,blocksize);CHKERRQ(ierr);
+    PetscCall(GarbageKeyRecursiveGatherIntersect_Private(*intracom,set,entries,blocksize));
     /* Gather intersect over intercom */
     if (*intercom != MPI_COMM_NULL) {
-      ierr = GarbageKeyGatherIntersect_Private(*intercom,set,entries);CHKERRQ(ierr);
+      PetscCall(GarbageKeyGatherIntersect_Private(*intercom,set,entries));
     }
   } else {
-    ierr = GarbageKeyGatherIntersect_Private(comm,set,entries);CHKERRQ(ierr);
+    PetscCall(GarbageKeyGatherIntersect_Private(comm,set,entries));
   }
   PetscFunctionReturn(0);
 }
@@ -328,25 +321,24 @@ static PetscErrorCode GarbageKeyRecursiveGatherIntersect_Private(MPI_Comm comm,P
 /* Performs broadcast of resultant intersection _recursively_ */
 static PetscErrorCode GarbageKeyRecursiveBcast_Private(MPI_Comm comm,PetscInt *set,PetscInt *entries)
 {
-  PetscInt    ierr;
   PetscMPIInt flag;
   MPI_Comm    *intracom,*intercom;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag));
   if (flag) {
-    ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag);CHKERRMPI(ierr);
+    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag));
     if (*intercom != MPI_COMM_NULL) {
       /* Broadcast across intercom */
-      ierr = MPI_Bcast(entries,1,MPI_INT,0,*intercom);CHKERRMPI(ierr);
-      ierr = MPI_Bcast(set,*entries,MPI_INT,0,*intercom);CHKERRMPI(ierr);
+      PetscCallMPI(MPI_Bcast(entries,1,MPI_INT,0,*intercom));
+      PetscCallMPI(MPI_Bcast(set,*entries,MPI_INT,0,*intercom));
     }
     /* Broadcast across intracom */
-    ierr = GarbageKeyRecursiveBcast_Private(*intracom,set,entries);CHKERRQ(ierr);
+    PetscCall(GarbageKeyRecursiveBcast_Private(*intracom,set,entries));
   } else {
     /* If the comm has no intracom,we are at the recursion base case */
-    ierr = MPI_Bcast(entries,1,MPI_INT,0,comm);CHKERRMPI(ierr);
-    ierr = MPI_Bcast(set,*entries,MPI_INT,0,comm);CHKERRMPI(ierr);
+    PetscCallMPI(MPI_Bcast(entries,1,MPI_INT,0,comm));
+    PetscCallMPI(MPI_Bcast(set,*entries,MPI_INT,0,comm));
   }
   PetscFunctionReturn(0);
 }
@@ -367,34 +359,34 @@ static PetscErrorCode GarbageKeyRecursiveBcast_Private(MPI_Comm comm,PetscInt *s
 @*/
 PetscErrorCode PetscGarbageRecursiveCleanup(MPI_Comm comm,PetscInt blocksize)
 {
-  PetscInt     ii,ierr,entries,offset;
+  PetscInt     ii,entries,offset;
   PetscInt     *keys;
   PetscObject  *obj;
   PetscHMapObj *garbage;
 
   PetscFunctionBegin;
   /* Get keys from garbage hash map and sort */
-  ierr = PetscCommDuplicate(comm,&comm,NULL);
-  ierr = GarbageGetHMap_Private(comm,&garbage);
-  ierr = PetscHMapObjGetSize(*garbage,&entries);CHKERRQ(ierr);
-  ierr = PetscMalloc1(entries,&keys);CHKERRQ(ierr);
+  PetscCall(PetscCommDuplicate(comm,&comm,NULL));
+  PetscCall(GarbageGetHMap_Private(comm,&garbage));
+  PetscCall(PetscHMapObjGetSize(*garbage,&entries));
+  PetscCall(PetscMalloc1(entries,&keys));
   offset = 0;
-  ierr = PetscHMapObjGetKeys(*garbage,&offset,keys);CHKERRQ(ierr);
+  PetscCall(PetscHMapObjGetKeys(*garbage,&offset,keys));
 
-  ierr = PetscSortInt(entries,keys);CHKERRQ(ierr);
+  PetscCall(PetscSortInt(entries,keys));
 
   /* Recursive gather+intersect and broadcast */
-  ierr = GarbageKeyRecursiveGatherIntersect_Private(comm,keys,&entries,blocksize);CHKERRQ(ierr);
-  ierr = GarbageKeyRecursiveBcast_Private(comm,keys,&entries);CHKERRQ(ierr);
+  PetscCall(GarbageKeyRecursiveGatherIntersect_Private(comm,keys,&entries,blocksize));
+  PetscCall(GarbageKeyRecursiveBcast_Private(comm,keys,&entries));
 
   for (ii=0; ii<entries; ii++) {
-    ierr = PetscHMapObjGet(*garbage,keys[ii],&obj);CHKERRQ(ierr);
+    PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
     if (PetscCheckPointer((void*)obj,PETSC_OBJECT) && (obj != NULL)) {
-      ierr = PetscObjectDestroy(obj);CHKERRQ(ierr);
-      ierr = PetscFree(obj);CHKERRQ(ierr);
+      PetscCall(PetscObjectDestroy(obj));
+      PetscCall(PetscFree(obj));
     }
-    ierr = PetscHMapObjDel(*garbage,keys[ii]);CHKERRQ(ierr);
+    PetscCall(PetscHMapObjDel(*garbage,keys[ii]));
   }
-  ierr = PetscFree(keys);CHKERRQ(ierr);
+  PetscCall(PetscFree(keys));
   PetscFunctionReturn(0);
 }

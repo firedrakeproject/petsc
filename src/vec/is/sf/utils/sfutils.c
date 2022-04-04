@@ -54,6 +54,31 @@ PetscErrorCode PetscSFSetGraphLayout(PetscSF sf, PetscLayout layout, PetscInt nl
   PetscFunctionReturn(0);
 }
 
+//TODO manpage layout and gremote need to be freed
+PetscErrorCode PetscSFGetGraphLayout(PetscSF sf, PetscLayout *layout, PetscInt *nleaves, const PetscInt *ilocal[], PetscInt *gremote[]) {
+  PetscInt           nr, nl;
+  const PetscSFNode *ir;
+  PetscLayout        lt;
+
+  PetscFunctionBegin;
+  PetscCall(PetscSFGetGraph(sf, &nr, &nl, ilocal, &ir));
+  PetscCall(PetscLayoutCreateFromSizes(PetscObjectComm((PetscObject)sf), nr, PETSC_DECIDE, 1, &lt));
+  if (gremote) {
+    PetscInt        i;
+    const PetscInt *range;
+    PetscInt       *gr;
+
+    PetscCall(PetscLayoutGetRanges(lt, &range));
+    PetscCall(PetscMalloc1(nl, &gr));
+    for (i = 0; i < nl; i++) gr[i] = range[ir[i].rank] + ir[i].index;
+    *gremote = gr;
+  }
+  if (nleaves) *nleaves = nl;
+  if (layout) *layout = lt;
+  else PetscCall(PetscLayoutDestroy(&lt));
+  PetscFunctionReturn(0);
+}
+
 /*@
   PetscSFSetGraphSection - Sets the PetscSF graph encoding the parallel dof overlap based upon the PetscSections
   describing the data layout.

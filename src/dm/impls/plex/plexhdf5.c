@@ -2246,6 +2246,12 @@ static PetscErrorCode PlexLayerConcatenateSFs_Private(MPI_Comm comm, PetscInt de
     osfs[d]        = layers[e]->overlapSF;
     lsfs[d]        = layers[e]->l2gSF;
     leafOffsets[d] = layers[e]->offset;
+    {
+      char buf[256];
+      PetscCall(PetscSNPrintf(buf, sizeof(buf), "sfxc_depth_%" PetscInt_FMT, e));
+      PetscCall(PetscObjectSetName((PetscObject)lsfs[d], buf));
+      PetscCall(PetscSFViewFromOptions(lsfs[d], NULL, "-sfxc0_view"));
+    }
   }
   PetscCall(PetscSFConcatenate(comm, depth + 1, osfs, PETSC_FALSE, leafOffsets, overlapSF));
   PetscCall(PetscSFConcatenate(comm, depth + 1, lsfs, PETSC_FALSE, leafOffsets, l2gSF));
@@ -2480,6 +2486,7 @@ PetscErrorCode DMPlexLoad_HDF5_Internal(DM dm, PetscViewer viewer) {
 
     /* since DMPlexStorageVersion 2.0.0 */
     PetscCall(DMPlexTopologyLoad_HDF5_Internal(dm, viewer, &sfXC));
+    PetscCall(PetscSFViewFromOptions(sfXC, NULL, "-sfxc_view"));
     PetscCall(DMPlexLabelsLoad_HDF5_Internal(dm, viewer, sfXC));
     PetscCall(DMPlexCoordinatesLoad_HDF5_Internal(dm, viewer, sfXC));
     PetscCall(PetscSFDestroy(&sfXC));

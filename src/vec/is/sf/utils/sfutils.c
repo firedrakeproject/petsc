@@ -34,6 +34,7 @@ PetscErrorCode PetscSFSetGraphLayout(PetscSF sf, PetscLayout layout, PetscInt nl
   PetscSFNode    *remote;
 
   PetscFunctionBegin;
+  PetscCall(PetscLayoutSetUp(layout));
   PetscCall(PetscLayoutGetLocalSize(layout, &nroots));
   PetscCall(PetscLayoutGetRanges(layout, &range));
   PetscCall(PetscMalloc1(nleaves, &remote));

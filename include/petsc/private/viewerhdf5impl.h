@@ -58,5 +58,16 @@ typedef struct {
 } PetscViewer_HDF5;
 
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5CheckTimestepping_Internal(PetscViewer, const char[]); /* currently used in src/dm/impls/da/gr2.c so needs to be extern */
+
+/* DMPlex-specific support */
+#define DMPLEX_STORAGE_VERSION_READING_KEY "_dm_plex_storage_version_reading"
+#define DMPLEX_STORAGE_VERSION_WRITING_KEY "_dm_plex_storage_version_writing"
+
+static inline PetscErrorCode PetscViewerHDF5ResetAttachedDMPlexStorageVersion(PetscViewer v) {
+  PetscFunctionBegin;
+  PetscCall(PetscObjectCompose((PetscObject)v, DMPLEX_STORAGE_VERSION_READING_KEY, NULL));
+  PetscCall(PetscObjectCompose((PetscObject)v, DMPLEX_STORAGE_VERSION_WRITING_KEY, NULL));
+  PetscFunctionReturn(0);
+}
 #endif
 #endif

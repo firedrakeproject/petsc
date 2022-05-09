@@ -132,7 +132,7 @@ PETSC_EXTERN PetscErrorCode PetscSFGetLeafRanks(PetscSF, PetscInt *, const Petsc
 PETSC_EXTERN PetscErrorCode PetscSFGetGroups(PetscSF, MPI_Group *, MPI_Group *);
 PETSC_EXTERN PetscErrorCode PetscSFGetMultiSF(PetscSF, PetscSF *);
 PETSC_EXTERN PetscErrorCode PetscSFCreateInverseSF(PetscSF, PetscSF *);
-PETSC_EXTERN PetscErrorCode PetscSFConcatenate(MPI_Comm, PetscInt, PetscSF[], PetscBool, PetscInt[], PetscSF *);
+PETSC_EXTERN PetscErrorCode PetscSFConcatenate(MPI_Comm, PetscInt, PetscSF[], PetscInt, PetscInt[], PetscSF *);
 
 /* Build PetscSF from PetscLayout */
 PETSC_EXTERN PetscErrorCode PetscSFSetGraphLayout(PetscSF, PetscLayout, PetscInt, PetscInt *, PetscCopyMode, const PetscInt *);

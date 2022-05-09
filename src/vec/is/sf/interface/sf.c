@@ -2138,6 +2138,8 @@ PetscErrorCode PetscSFBcastToZero_Private(PetscSF sf, MPI_Datatype unit, const v
   PetscFunctionReturn(0);
 }
 
+//TODO enum for shareRoots
+//2 = global root renumbering
 /*@
   PetscSFConcatenate - concatenate multiple SFs into one
 
@@ -2166,14 +2168,17 @@ PetscErrorCode PetscSFBcastToZero_Private(PetscSF sf, MPI_Datatype unit, const v
 
 .seealso: `PetscSF`, `PetscSFCompose()`, `PetscSFGetGraph()`, `PetscSFSetGraph()`
 @*/
-PetscErrorCode PetscSFConcatenate(MPI_Comm comm, PetscInt nsfs, PetscSF sfs[], PetscBool shareRoots, PetscInt leafOffsets[], PetscSF *newsf) {
+PetscErrorCode PetscSFConcatenate(MPI_Comm comm, PetscInt nsfs, PetscSF sfs[], PetscInt shareRoots, PetscInt leafOffsets[], PetscSF *newsf) {
   PetscInt     i, s, nLeaves, nRoots;
   PetscInt    *leafArrayOffsets;
   PetscInt    *ilocal_new;
   PetscSFNode *iremote_new;
   PetscInt    *rootOffsets;
   PetscBool    all_ilocal_null = PETSC_FALSE;
-  PetscMPIInt  rank;
+  PetscLayout  glayout         = NULL;
+  PetscInt    *gremote         = NULL;
+  PetscMPIInt  rank, size;
+  PetscBool    debug = PETSC_FALSE;
 
   PetscFunctionBegin;
   {
@@ -2186,7 +2191,7 @@ PetscErrorCode PetscSFConcatenate(MPI_Comm comm, PetscInt nsfs, PetscSF sfs[], P
       PetscValidHeaderSpecific(sfs[i], PETSCSF_CLASSID, 3);
       PetscCheckSameComm(dummy, 1, sfs[i], 3);
     }
-    PetscValidLogicalCollectiveBool(dummy, shareRoots, 4);
+    PetscValidLogicalCollectiveInt(dummy, shareRoots, 4);
     if (leafOffsets) PetscValidIntPointer(leafOffsets, 5);
     PetscValidPointer(newsf, 6);
     PetscCall(PetscSFDestroy(&dummy));
@@ -2197,9 +2202,10 @@ PetscErrorCode PetscSFConcatenate(MPI_Comm comm, PetscInt nsfs, PetscSF sfs[], P
     PetscFunctionReturn(0);
   }
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
+  PetscCallMPI(MPI_Comm_size(comm, &size));
 
   PetscCall(PetscCalloc1(nsfs + 1, &rootOffsets));
-  if (shareRoots) {
+  if (shareRoots == 1) {
     PetscCall(PetscSFGetGraph(sfs[0], &nRoots, NULL, NULL, NULL));
     if (PetscDefined(USE_DEBUG)) {
       for (s = 1; s < nsfs; s++) {
@@ -2209,6 +2215,56 @@ PetscErrorCode PetscSFConcatenate(MPI_Comm comm, PetscInt nsfs, PetscSF sfs[], P
         PetscCheck(nr == nRoots, comm, PETSC_ERR_ARG_SIZ, "shareRoots = PETSC_TRUE but sfs[%" PetscInt_FMT "] has a different number of roots (%" PetscInt_FMT ") than sfs[0] (%" PetscInt_FMT ")", s, nr, nRoots);
       }
     }
+  } else if (shareRoots == 2) {
+    PetscInt    *nls;
+    PetscLayout *lts;
+    PetscInt   **inds;
+    PetscInt     j;
+    //TODO shadow nLeaves calculated once again below
+    PetscInt     nLeaves = 0;
+
+    PetscCall(PetscCalloc3(nsfs, &lts, nsfs, &nls, nsfs, &inds));
+    PetscCall(PetscLayoutCreate(comm, &glayout));
+    glayout->bs = 1;
+    glayout->n  = 0;
+    glayout->N  = 0;
+    for (s = 0; s < nsfs; s++) {
+      PetscCall(PetscSFGetGraphLayout(sfs[s], &lts[s], &nls[s], NULL, &inds[s]));
+      rootOffsets[s + 1] = rootOffsets[s] + lts[s]->N;
+      glayout->n += lts[s]->n;
+      glayout->N += lts[s]->N;
+      nLeaves += nls[s];
+    }
+    PetscCall(PetscLayoutSetUp(glayout));
+    if (debug) {
+      if (rank == 0) PetscCall(PetscSynchronizedPrintf(comm, "====== glayout =====\n"));
+      PetscCall(PetscSynchronizedPrintf(comm, "[%d] %" PetscInt_FMT " %" PetscInt_FMT "  [%" PetscInt_FMT ", %" PetscInt_FMT ")\n", rank, glayout->n, glayout->N, glayout->rstart, glayout->rend));
+      if (rank == size - 1) PetscCall(PetscSynchronizedPrintf(comm, "\n"));
+      PetscCall(PetscSynchronizedFlush(comm, PETSC_STDOUT));
+
+      PetscPrintf(comm, "===== rootOffsets =====\n");
+      PetscIntView(nsfs + 1, rootOffsets, PETSC_VIEWER_STDOUT_(comm));
+    }
+    PetscCall(PetscMalloc1(nLeaves, &gremote));
+    for (s = 0, j = 0; s < nsfs; s++) {
+      for (i = 0; i < nls[s]; i++, j++) gremote[j] = inds[s][i] + rootOffsets[s];
+      if (debug) {
+        char buf[256];
+
+        PetscCall(PetscSNPrintf(buf, sizeof(buf), "sf_%" PetscInt_FMT, s));
+        PetscCall(PetscObjectSetName((PetscObject)sfs[s], buf));
+        PetscCall(PetscSFViewFromOptions(sfs[s], NULL, "-sf_concat_view"));
+        PetscCall(PetscIntView(nls[s], inds[s], PETSC_VIEWER_STDOUT_(comm)));
+        PetscCall(PetscIntView(nls[s], &gremote[j - nls[s]], PETSC_VIEWER_STDOUT_(comm)));
+      }
+      PetscCall(PetscLayoutDestroy(&lts[s]));
+      PetscCall(PetscFree(inds[s]));
+    }
+    if (debug) PetscCall(PetscIntView(glayout->n, gremote, PETSC_VIEWER_STDOUT_(comm)));
+    PetscCall(PetscFree3(lts, nls, inds));
+    //TODO maybe we don't need rootOffsets here
+    PetscFree(rootOffsets);
+    nRoots = glayout->N;
   } else {
     for (s = 0; s < nsfs; s++) {
       PetscInt nr;
@@ -2260,38 +2316,47 @@ PetscErrorCode PetscSFConcatenate(MPI_Comm comm, PetscInt nsfs, PetscSF sfs[], P
   }
 
   /* Renumber and concatenate remote roots */
-  PetscCall(PetscMalloc1(nLeaves, &iremote_new));
-  for (i = 0; i < nLeaves; i++) {
-    iremote_new[i].rank  = -1;
-    iremote_new[i].index = -1;
-  }
-  for (s = 0; s < nsfs; s++) {
-    PetscInt           i, nl, nr;
-    PetscSF            tmp_sf;
-    const PetscSFNode *iremote;
-    PetscSFNode       *tmp_rootdata;
-    PetscSFNode       *tmp_leafdata = &iremote_new[leafArrayOffsets[s]];
-
-    PetscCall(PetscSFGetGraph(sfs[s], &nr, &nl, NULL, &iremote));
-    PetscCall(PetscSFCreate(comm, &tmp_sf));
-    /* create helper SF with contiguous leaves */
-    PetscCall(PetscSFSetGraph(tmp_sf, nr, nl, NULL, PETSC_USE_POINTER, (PetscSFNode *)iremote, PETSC_COPY_VALUES));
-    PetscCall(PetscSFSetUp(tmp_sf));
-    PetscCall(PetscMalloc1(nr, &tmp_rootdata));
-    for (i = 0; i < nr; i++) {
-      tmp_rootdata[i].index = i + rootOffsets[s];
-      tmp_rootdata[i].rank  = (PetscInt)rank;
+  if (shareRoots == 0 || shareRoots == 1) {
+    PetscCall(PetscMalloc1(nLeaves, &iremote_new));
+    for (i = 0; i < nLeaves; i++) {
+      iremote_new[i].rank  = -1;
+      iremote_new[i].index = -1;
     }
-    PetscCall(PetscSFBcastBegin(tmp_sf, MPIU_2INT, tmp_rootdata, tmp_leafdata, MPI_REPLACE));
-    PetscCall(PetscSFBcastEnd(tmp_sf, MPIU_2INT, tmp_rootdata, tmp_leafdata, MPI_REPLACE));
-    PetscCall(PetscSFDestroy(&tmp_sf));
-    PetscCall(PetscFree(tmp_rootdata));
-  }
+    for (s = 0; s < nsfs; s++) {
+      PetscInt           i, nl, nr;
+      PetscSF            tmp_sf;
+      const PetscSFNode *iremote;
+      PetscSFNode       *tmp_rootdata;
+      PetscSFNode       *tmp_leafdata = &iremote_new[leafArrayOffsets[s]];
 
-  /* Build the new SF */
-  PetscCall(PetscSFCreate(comm, newsf));
-  PetscCall(PetscSFSetGraph(*newsf, nRoots, nLeaves, ilocal_new, PETSC_OWN_POINTER, iremote_new, PETSC_OWN_POINTER));
+      PetscCall(PetscSFGetGraph(sfs[s], &nr, &nl, NULL, &iremote));
+      PetscCall(PetscSFCreate(comm, &tmp_sf));
+      /* create helper SF with contiguous leaves */
+      PetscCall(PetscSFSetGraph(tmp_sf, nr, nl, NULL, PETSC_USE_POINTER, (PetscSFNode *)iremote, PETSC_COPY_VALUES));
+      PetscCall(PetscSFSetUp(tmp_sf));
+      PetscCall(PetscMalloc1(nr, &tmp_rootdata));
+      for (i = 0; i < nr; i++) {
+        tmp_rootdata[i].index = i + rootOffsets[s];
+        tmp_rootdata[i].rank  = (PetscInt)rank;
+      }
+      PetscCall(PetscSFBcastBegin(tmp_sf, MPIU_2INT, tmp_rootdata, tmp_leafdata, MPI_REPLACE));
+      PetscCall(PetscSFBcastEnd(tmp_sf, MPIU_2INT, tmp_rootdata, tmp_leafdata, MPI_REPLACE));
+      PetscCall(PetscSFDestroy(&tmp_sf));
+      PetscCall(PetscFree(tmp_rootdata));
+    }
+
+    /* Build the new SF */
+    PetscCall(PetscSFCreate(comm, newsf));
+    PetscCall(PetscSFSetGraph(*newsf, nRoots, nLeaves, ilocal_new, PETSC_OWN_POINTER, iremote_new, PETSC_OWN_POINTER));
+  } else { // shareRoots == 2
+    /* Build the new SF */
+    PetscCall(PetscSFCreate(comm, newsf));
+    PetscCall(PetscSFSetGraphLayout(*newsf, glayout, nLeaves, ilocal_new, PETSC_OWN_POINTER, gremote));
+  }
   PetscCall(PetscSFSetUp(*newsf));
+  PetscCall(PetscSFViewFromOptions(*newsf, NULL, "-sf_concat_view"));
+  PetscCall(PetscLayoutDestroy(&glayout));
+  PetscCall(PetscFree(gremote));
   PetscCall(PetscFree(rootOffsets));
   PetscCall(PetscFree(leafArrayOffsets));
   PetscFunctionReturn(0);

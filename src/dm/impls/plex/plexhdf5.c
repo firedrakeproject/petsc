@@ -2254,7 +2254,8 @@ static PetscErrorCode PlexLayerConcatenateSFs_Private(MPI_Comm comm, PetscInt de
     }
   }
   PetscCall(PetscSFConcatenate(comm, depth + 1, osfs, PETSC_FALSE, leafOffsets, overlapSF));
-  PetscCall(PetscSFConcatenate(comm, depth + 1, lsfs, PETSC_FALSE, leafOffsets, l2gSF));
+  //TODO enum for shareRoots
+  PetscCall(PetscSFConcatenate(comm, depth + 1, lsfs, 2, leafOffsets, l2gSF));
   PetscCall(PetscFree3(osfs, lsfs, leafOffsets));
   PetscCall(ISRestoreIndices(strataPermutation, &permArr));
   PetscFunctionReturn(0);

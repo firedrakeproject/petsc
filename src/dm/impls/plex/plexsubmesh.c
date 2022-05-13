@@ -2421,15 +2421,13 @@ static PetscErrorCode DMPlexMarkSubmesh_Interpolated(DM dm, DMLabel vertexLabel,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMPlexMarkCohesiveSubmesh_Uninterpolated(DM dm, PetscBool hasLagrange, const char labelname[], PetscInt value, DMLabel subpointMap, PetscInt *numFaces, PetscInt *nFV, PetscInt *subCells[], DM subdm) {
-  DMLabel         label = NULL;
+static PetscErrorCode DMPlexMarkCohesiveSubmesh_Uninterpolated(DM dm, PetscBool hasLagrange, DMLabel label, PetscInt value, DMLabel subpointMap, PetscInt *numFaces, PetscInt *nFV, PetscInt *subCells[], DM subdm) {
   const PetscInt *cone;
   PetscInt        dim, cMax, cEnd, c, subc = 0, p, coneSize = -1;
 
   PetscFunctionBegin;
   *numFaces = 0;
   *nFV      = 0;
-  if (labelname) PetscCall(DMGetLabel(dm, labelname, &label));
   *subCells = NULL;
   PetscCall(DMGetDimension(dm, &dim));
   PetscCall(DMPlexGetTensorPrismBounds_Internal(dm, dim, &cMax, &cEnd));
@@ -3150,7 +3148,7 @@ static PetscErrorCode DMPlexFilterLabels_Internal(DM dm, const PetscInt numSubPo
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMPlexCreateCohesiveSubmesh_Uninterpolated(DM dm, PetscBool hasLagrange, const char label[], PetscInt value, DM subdm) {
+static PetscErrorCode DMPlexCreateCohesiveSubmesh_Uninterpolated(DM dm, DMLabel label, PetscInt value, PetscBool hasLagrange, DM subdm) {
   MPI_Comm        comm;
   DMLabel         subpointMap;
   IS              subvertexIS;
@@ -4279,7 +4277,7 @@ PetscErrorCode DMPlexCreateSubmeshGeneric(DM dm, DMPlexSubmeshType submeshType, 
         if (isCohesive) {PetscCall(DMPlexMarkCohesiveSubmesh_Interpolated(dm, filter, filterValue, subpointMap, *subdm));}
         else            {PetscCall(DMPlexMarkSubmesh_Interpolated(dm, filter, filterValue, markedFaces, subpointMap, *subdm));}
       } else {
-        if (isCohesive) {PetscCall(DMPlexCreateCohesiveSubmesh_Uninterpolated(dm, hasLagrange, filterName, filterValue, *subdm));}
+        if (isCohesive) {PetscCall(DMPlexCreateCohesiveSubmesh_Uninterpolated(dm, filter, filterValue, hasLagrange, *subdm));}
         else            {PetscCall(DMPlexCreateSubmesh_Uninterpolated(dm, filter, filterValue, *subdm));}
         PetscFunctionReturn(0);
       }

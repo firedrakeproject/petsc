@@ -10,6 +10,8 @@ class BaseTestIS(object):
 
     def tearDown(self):
         self.iset = None
+        PETSc._cleanup()
+        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testGetType(self):
         istype = self.iset.getType()

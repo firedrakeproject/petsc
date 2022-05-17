@@ -103,6 +103,11 @@ class BaseTestKSPPYTHON(BaseTestKSP):
         pytype = "{0}.{1}".format(ctx.__module__, type(ctx).__name__)
         self.assertTrue(self.ksp.getPythonType() == pytype)
 
+    def tearDown(self):
+        self.ksp.destroy()
+        PETSc._cleanup()
+        PETSc._cleanup(PETSc.COMM_SELF)
+
 class TestKSPPYTHON_RICH(BaseTestKSPPYTHON, unittest.TestCase):
     PC_TYPE  = PETSc.PC.Type.JACOBI
     ContextClass = MyRichardson

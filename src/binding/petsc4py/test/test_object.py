@@ -16,6 +16,8 @@ class BaseTestObject(object):
 
     def tearDown(self):
         self.obj = None
+        PETSc._cleanup()
+        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testTypeRegistry(self):
         type_reg = PETSc.__type_registry__

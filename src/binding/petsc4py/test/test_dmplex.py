@@ -27,6 +27,8 @@ class BaseTestPlex(object):
     def tearDown(self):
         self.plex.destroy()
         self.plex = None
+        PETSc._cleanup()
+        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testTopology(self):
         rank = self.COMM.rank

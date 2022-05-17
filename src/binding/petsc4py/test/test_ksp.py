@@ -23,6 +23,8 @@ class BaseTestKSP(object):
 
     def tearDown(self):
         self.ksp = None
+        PETSc._cleanup()
+        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testGetSetType(self):
         self.assertEqual(self.ksp.getType(), self.KSP_TYPE)
@@ -178,7 +180,7 @@ class TestKSPCHEBYCHEV(BaseTestKSP, unittest.TestCase):
         KSP_TYPE = PETSc.KSP.Type.CHEBYSHEV
     except AttributeError:
         KSP_TYPE = PETSc.KSP.Type.CHEBYCHEV
-        
+
 class TestKSPCG(BaseTestKSP, unittest.TestCase):
     KSP_TYPE = PETSc.KSP.Type.CG
 

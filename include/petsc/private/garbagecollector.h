@@ -8,4 +8,6 @@ PETSC_EXTERN PetscErrorCode PetscObjectDelayedDestroy(PetscObject*);
 PETSC_EXTERN PetscErrorCode PetscGarbageCleanup(MPI_Comm,PetscInt);
 PETSC_EXTERN PetscErrorCode PetscGarbageRecursiveCleanup(MPI_Comm,PetscInt);
 
+PETSC_EXTERN PetscErrorCode PrintGarbage_Private(MPI_Comm);
+
 #endif

@@ -18,6 +18,7 @@ cdef extern from "Python.h":
 cdef extern from "petsc/private/garbagecollector.h" nogil:
     int PetscGarbageCleanup(MPI_Comm, PetscInt)
     int PetscGarbageRecursiveCleanup(MPI_Comm, PetscInt)
+    int PrintGarbage_Private(MPI_Comm)
 
 cdef int tp_traverse(PyObject *o, visitproc visit, void *arg):
     ## printf("%s.tp_traverse(%p)\n", Py_TYPE(o).tp_name, <void*>o)
@@ -46,5 +47,14 @@ def _cleanup(comm=None, blocksize=64):
     if ccomm == MPI_COMM_NULL:
         raise ValueError("null communicator")
     CHKERR( PetscGarbageRecursiveCleanup(ccomm, blocksize) )
+
+def _print_garbage_dict(comm=None):
+    cdef MPI_Comm ccomm
+    if comm is None:
+        comm = COMM_WORLD
+    ccomm = GetComm(comm, MPI_COMM_NULL)
+    if ccomm == MPI_COMM_NULL:
+        raise ValueError("null communicator")
+    CHKERR( PrintGarbage_Private(ccomm) )
 
 # --------------------------------------------------------------------

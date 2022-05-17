@@ -1,4 +1,4 @@
-#include "petsc/private/garbagecollector.h"
+#include <petsc/private/garbagecollector.h>
 
 /* Fetches garbage hashmap from communicator */
 static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbage)
@@ -52,7 +52,8 @@ PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
 
   PetscFunctionBegin;
   /* Don't stash NULL pointers */
-  if (*obj != NULL) {
+  if ((*obj != NULL) && (--(*obj)->refct == 0)) {
+    (*obj)->refct = 1;
     PetscCall(PetscObjectGetComm(*obj,&petsc_comm));
     PetscCall(GarbageGetHMap_Private(petsc_comm,&garbage));
 
@@ -60,8 +61,8 @@ PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
     PetscCall(PetscNew(&duplicate));
     PetscCall(PetscMemcpy(duplicate,obj,sizeof(PetscObject)));
     PetscCall(PetscHMapObjSet(*garbage,(*duplicate)->cidx,duplicate));
-    *obj = NULL;
   }
+  *obj = NULL;
   PetscFunctionReturn(0);
 }
 
@@ -278,6 +279,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
     PetscCall(PetscHMapObjDel(*garbage,keys[ii]));
   }
   PetscCall(PetscFree(keys));
+  PetscCall(PetscCommDestroy(&comm));
   PetscFunctionReturn(0);
 }
 
@@ -365,10 +367,17 @@ PetscErrorCode PetscGarbageRecursiveCleanup(MPI_Comm comm,PetscInt blocksize)
   PetscHMapObj *garbage;
 
   PetscFunctionBegin;
-  /* Get keys from garbage hash map and sort */
+  /* Duplicate comm to prevent it being cleaned up by PetscObjectDestroy() */
   PetscCall(PetscCommDuplicate(comm,&comm,NULL));
+
+  /* Grab garbage from comm and remove it
+   this avoids calling PetscCommDestroy() and endlessly recursing */
   PetscCall(GarbageGetHMap_Private(comm,&garbage));
+  PetscCallMPI(MPI_Comm_delete_attr(comm,Petsc_Garbage_HMap_keyval));
+
+  /* Get keys from garbage hash map and sort */
   PetscCall(PetscHMapObjGetSize(*garbage,&entries));
+
   PetscCall(PetscMalloc1(entries,&keys));
   offset = 0;
   PetscCall(PetscHMapObjGetKeys(*garbage,&offset,keys));
@@ -388,5 +397,57 @@ PetscErrorCode PetscGarbageRecursiveCleanup(MPI_Comm comm,PetscInt blocksize)
     PetscCall(PetscHMapObjDel(*garbage,keys[ii]));
   }
   PetscCall(PetscFree(keys));
+
+  /* Put garbage back */
+  if (comm != MPI_COMM_NULL) {
+    PetscCallMPI(MPI_Comm_set_attr(comm, Petsc_Garbage_HMap_keyval, garbage));
+  } else {
+    PetscPrintf(comm, "No comm to stash garbage on!!!\n");
+  }
+
+  /* Cleanup comm if we made one */
+  PetscCall(PetscCommDestroy(&comm));
+  PetscFunctionReturn(0);
+}
+
+/* Utility function for printing the contents of the garbage on a given comm */
+PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
+{
+  PetscInt     ii,entries,offset;
+  PetscInt     *keys;
+  PetscObject  *obj;
+  PetscHMapObj *garbage;
+
+  PetscFunctionBegin;
+  PetscPrintf(comm, "PETSc garbage on ");
+  if (comm==PETSC_COMM_WORLD) {
+    PetscPrintf(comm, "PETSC_COMM_WORLD, id = %ld\n", comm);
+  } else if (comm==PETSC_COMM_SELF) {
+    PetscPrintf(comm, "PETSC_COMM_SELF, id= %ld\n", comm);
+  } else {
+    PetscPrintf(comm, "UNKNOWN_COMM, id = %ld\n", comm);
+  }
+  PetscCall(PetscCommDuplicate(comm,&comm,NULL));
+  PetscCall(GarbageGetHMap_Private(comm,&garbage));
+
+  /* Get keys from garbage hash map and sort */
+  PetscCall(PetscHMapObjGetSize(*garbage,&entries));
+  PetscPrintf(comm, "Total entries: %i\n", entries);
+  PetscCall(PetscMalloc1(entries,&keys));
+  offset = 0;
+  PetscCall(PetscHMapObjGetKeys(*garbage,&offset,keys));
+
+  /* Pretty print entries in a table */
+  if (entries) {
+    PetscPrintf(comm, "| Key   | Type             | Name                             | Object ID |\n");
+    PetscPrintf(comm, "|-------|------------------|----------------------------------|-----------|\n");
+  }
+  for (ii=0; ii<entries; ii++) {
+    PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
+    PetscPrintf(comm, "| %5i | %-16s | %-32s | %5i     |\n", keys[ii], (*obj)->class_name, (*obj)->description, (*obj)->id);
+  }
+
+  PetscCall(PetscFree(keys));
+  PetscCall(PetscCommDestroy(&comm));
   PetscFunctionReturn(0);
 }

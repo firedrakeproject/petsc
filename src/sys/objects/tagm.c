@@ -1,5 +1,6 @@
 #include <petsc/private/petscimpl.h>             /*I    "petscsys.h"   I*/
 #include <petsc/private/hashmapobj.h>
+#include <petsc/private/garbagecollector.h>
 /* ---------------------------------------------------------------- */
 /*
    A simple way to manage tags inside a communicator.
@@ -258,17 +259,16 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
 /* Clean up recursively defined comms */
 static PetscErrorCode PetscCommRecursiveCleanup(MPI_Comm comm)
 {
-  PetscErrorCode ierr;
   PetscMPIInt    flg;
   MPI_Comm       *intracom,*intercom;
 
   PetscFunctionBegin;
-  ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&intracom,&flg);CHKERRMPI(ierr);
+  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flg));
   if (flg) {
-    ierr = PetscCommRecursiveCleanup(*intracom);CHKERRQ(ierr);
-    ierr = PetscFree(intracom);CHKERRQ(ierr);
-    ierr = MPI_Comm_get_attr(comm,Petsc_Garbage_HMap_keyval,&intercom,&flg);CHKERRMPI(ierr);
-    ierr = PetscFree(intercom);CHKERRQ(ierr);
+    PetscCallMPI(PetscCommRecursiveCleanup(*intracom));
+    PetscCall(PetscFree(intracom));
+    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flg));
+    PetscCall(PetscFree(intercom));
   }
   PetscFunctionReturn(0);
 }
@@ -307,7 +307,6 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
   }
 
   counter->refcount--;
-
   if (!counter->refcount) {
     /* if MPI_Comm has outer comm then remove reference to inner MPI_Comm from outer MPI_Comm */
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_OuterComm_keyval,&ucomm,&flg));
@@ -328,6 +327,9 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     /* Remove garbage and inter- and intra- communicators set up by garbage collection */
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_HMap_keyval,&garbage,&flg));
     if (flg) {
+      PetscInt entries=0;
+      PetscCall(PetscHMapObjGetSize(*garbage,&entries));
+      if (entries > 0) PetscCall(PetscGarbageRecursiveCleanup(icomm, 4));
       PetscCall(PetscFree(garbage));
     }
     PetscCall(PetscCommRecursiveCleanup(icomm));

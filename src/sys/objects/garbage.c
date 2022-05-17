@@ -400,9 +400,9 @@ PetscErrorCode PetscGarbageRecursiveCleanup(MPI_Comm comm,PetscInt blocksize)
 
   /* Put garbage back */
   if (comm != MPI_COMM_NULL) {
-    PetscCallMPI(MPI_Comm_set_attr(comm, Petsc_Garbage_HMap_keyval, garbage));
+    PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_HMap_keyval,garbage));
   } else {
-    PetscPrintf(comm, "No comm to stash garbage on!!!\n");
+    PetscCall(PetscPrintf(comm,"No comm to stash garbage on!!!\n"));
   }
 
   /* Cleanup comm if we made one */
@@ -413,38 +413,41 @@ PetscErrorCode PetscGarbageRecursiveCleanup(MPI_Comm comm,PetscInt blocksize)
 /* Utility function for printing the contents of the garbage on a given comm */
 PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
 {
+  char         text[64];
   PetscInt     ii,entries,offset;
   PetscInt     *keys;
   PetscObject  *obj;
   PetscHMapObj *garbage;
 
   PetscFunctionBegin;
-  PetscPrintf(comm, "PETSc garbage on ");
-  if (comm==PETSC_COMM_WORLD) {
-    PetscPrintf(comm, "PETSC_COMM_WORLD, id = %i\n", comm);
-  } else if (comm==PETSC_COMM_SELF) {
-    PetscPrintf(comm, "PETSC_COMM_SELF, id= %i\n", comm);
+  PetscPrintf(comm,"PETSc garbage on ");
+  if (comm == PETSC_COMM_WORLD) {
+    PetscCall(PetscPrintf(comm,"PETSC_COMM_WORLD\n"));
+  } else if (comm == PETSC_COMM_SELF) {
+    PetscCall(PetscPrintf(comm,"PETSC_COMM_SELF\n"));
   } else {
-    PetscPrintf(comm, "UNKNOWN_COMM, id = %i\n", comm);
+    PetscCall(PetscPrintf(comm,"UNKNOWN_COMM\n"));
   }
   PetscCall(PetscCommDuplicate(comm,&comm,NULL));
   PetscCall(GarbageGetHMap_Private(comm,&garbage));
 
   /* Get keys from garbage hash map and sort */
   PetscCall(PetscHMapObjGetSize(*garbage,&entries));
-  PetscPrintf(comm, "Total entries: %i\n", entries);
+  PetscCall(PetscFormatConvert("Total entries: %D\n",text));
+  PetscCall(PetscPrintf(comm,text,entries));
   PetscCall(PetscMalloc1(entries,&keys));
   offset = 0;
   PetscCall(PetscHMapObjGetKeys(*garbage,&offset,keys));
 
   /* Pretty print entries in a table */
   if (entries) {
-    PetscPrintf(comm, "| Key   | Type             | Name                             | Object ID |\n");
-    PetscPrintf(comm, "|-------|------------------|----------------------------------|-----------|\n");
+    PetscCall(PetscPrintf(comm,"| Key   | Type             | Name                             | Object ID |\n"));
+    PetscCall(PetscPrintf(comm,"|-------|------------------|----------------------------------|-----------|\n"));
   }
   for (ii=0; ii<entries; ii++) {
     PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
-    PetscPrintf(comm, "| %5i | %-16s | %-32s | %5li     |\n", keys[ii], (*obj)->class_name, (*obj)->description, (*obj)->id);
+    PetscCall(PetscFormatConvert("| %5D | %-16s | %-32s | %5D     |\n",text));
+    PetscCall(PetscPrintf(comm,text,keys[ii],(*obj)->class_name,(*obj)->description,(*obj)->id));
   }
 
   PetscCall(PetscFree(keys));

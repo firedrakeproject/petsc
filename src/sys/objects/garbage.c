@@ -421,11 +421,11 @@ PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
   PetscFunctionBegin;
   PetscPrintf(comm, "PETSc garbage on ");
   if (comm==PETSC_COMM_WORLD) {
-    PetscPrintf(comm, "PETSC_COMM_WORLD, id = %ld\n", comm);
+    PetscPrintf(comm, "PETSC_COMM_WORLD, id = %i\n", comm);
   } else if (comm==PETSC_COMM_SELF) {
-    PetscPrintf(comm, "PETSC_COMM_SELF, id= %ld\n", comm);
+    PetscPrintf(comm, "PETSC_COMM_SELF, id= %i\n", comm);
   } else {
-    PetscPrintf(comm, "UNKNOWN_COMM, id = %ld\n", comm);
+    PetscPrintf(comm, "UNKNOWN_COMM, id = %i\n", comm);
   }
   PetscCall(PetscCommDuplicate(comm,&comm,NULL));
   PetscCall(GarbageGetHMap_Private(comm,&garbage));
@@ -444,7 +444,7 @@ PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
   }
   for (ii=0; ii<entries; ii++) {
     PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
-    PetscPrintf(comm, "| %5i | %-16s | %-32s | %5i     |\n", keys[ii], (*obj)->class_name, (*obj)->description, (*obj)->id);
+    PetscPrintf(comm, "| %5i | %-16s | %-32s | %5li     |\n", keys[ii], (*obj)->class_name, (*obj)->description, (*obj)->id);
   }
 
   PetscCall(PetscFree(keys));

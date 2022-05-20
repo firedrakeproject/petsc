@@ -126,7 +126,7 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt *
   }
 
   /* Gatherv keys from all ranks and intersect */
-  PetscCallMPI(MPI_Gatherv(set,*entries,MPI_INT,recvset,set_sizes,displace,MPI_INT,0,comm));
+  PetscCallMPI(MPI_Gatherv(set,*entries,MPIU_INT,recvset,set_sizes,displace,MPIU_INT,0,comm));
   if (comm_rank == 0) {
     for (ii=1; ii<comm_size; ii++) {
       PetscCall(GarbageKeySortedIntersect_Private(set,entries,&recvset[displace[ii]],set_sizes[ii]));
@@ -260,13 +260,13 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm,PetscInt blocksize)
   if (*intercom != MPI_COMM_NULL) {
     PetscCall(GarbageKeyGatherIntersect_Private(*intercom,keys,&entries));
     /* Broadcast across intercom */
-    PetscCallMPI(MPI_Bcast(&entries,1,MPI_INT,0,*intercom));
-    PetscCallMPI(MPI_Bcast(keys,entries,MPI_INT,0,*intercom));
+    PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intercom));
+    PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intercom));
   }
 
   /* Broadcast across intracom */
-  PetscCallMPI(MPI_Bcast(&entries,1,MPI_INT,0,*intracom));
-  PetscCallMPI(MPI_Bcast(keys,entries,MPI_INT,0,*intracom));
+  PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intracom));
+  PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intracom));
 
   /* Collectively destroy objects objects that appear in garbage in
    * creation index order */
@@ -332,15 +332,15 @@ static PetscErrorCode GarbageKeyRecursiveBcast_Private(MPI_Comm comm,PetscInt *s
     PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag));
     if (*intercom != MPI_COMM_NULL) {
       /* Broadcast across intercom */
-      PetscCallMPI(MPI_Bcast(entries,1,MPI_INT,0,*intercom));
-      PetscCallMPI(MPI_Bcast(set,*entries,MPI_INT,0,*intercom));
+      PetscCallMPI(MPI_Bcast(entries,1,MPIU_INT,0,*intercom));
+      PetscCallMPI(MPI_Bcast(set,*entries,MPIU_INT,0,*intercom));
     }
     /* Broadcast across intracom */
     PetscCall(GarbageKeyRecursiveBcast_Private(*intracom,set,entries));
   } else {
     /* If the comm has no intracom,we are at the recursion base case */
-    PetscCallMPI(MPI_Bcast(entries,1,MPI_INT,0,comm));
-    PetscCallMPI(MPI_Bcast(set,*entries,MPI_INT,0,comm));
+    PetscCallMPI(MPI_Bcast(entries,1,MPIU_INT,0,comm));
+    PetscCallMPI(MPI_Bcast(set,*entries,MPIU_INT,0,comm));
   }
   PetscFunctionReturn(0);
 }
@@ -418,6 +418,7 @@ PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
   PetscInt     *keys;
   PetscObject  *obj;
   PetscHMapObj *garbage;
+  PetscMPIInt  rank;
 
   PetscFunctionBegin;
   PetscPrintf(comm,"PETSc garbage on ");
@@ -433,22 +434,25 @@ PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
 
   /* Get keys from garbage hash map and sort */
   PetscCall(PetscHMapObjGetSize(*garbage,&entries));
-  PetscCall(PetscFormatConvert("Total entries: %D\n",text));
-  PetscCall(PetscPrintf(comm,text,entries));
   PetscCall(PetscMalloc1(entries,&keys));
   offset = 0;
   PetscCall(PetscHMapObjGetKeys(*garbage,&offset,keys));
 
   /* Pretty print entries in a table */
+  PetscCallMPI(MPI_Comm_rank(comm,&rank));
+  PetscCall(PetscSynchronizedPrintf(comm,"Rank %i:: ", rank));
+  PetscCall(PetscFormatConvert("Total entries: %D\n",text));
+  PetscCall(PetscSynchronizedPrintf(comm,text,entries));
   if (entries) {
-    PetscCall(PetscPrintf(comm,"| Key   | Type             | Name                             | Object ID |\n"));
-    PetscCall(PetscPrintf(comm,"|-------|------------------|----------------------------------|-----------|\n"));
+    PetscCall(PetscSynchronizedPrintf(comm,"| Key   | Type             | Name                             | Object ID |\n"));
+    PetscCall(PetscSynchronizedPrintf(comm,"|-------|------------------|----------------------------------|-----------|\n"));
   }
   for (ii=0; ii<entries; ii++) {
     PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
     PetscCall(PetscFormatConvert("| %5D | %-16s | %-32s | %5D     |\n",text));
-    PetscCall(PetscPrintf(comm,text,keys[ii],(*obj)->class_name,(*obj)->description,(*obj)->id));
+    PetscCall(PetscSynchronizedPrintf(comm,text,keys[ii],(*obj)->class_name,(*obj)->description,(*obj)->id));
   }
+  PetscCall(PetscSynchronizedFlush(comm,PETSC_STDOUT));
 
   PetscCall(PetscFree(keys));
   PetscCall(PetscCommDestroy(&comm));

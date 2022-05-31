@@ -219,6 +219,7 @@ PETSC_EXTERN PetscBool PetscCheckPointer(const void*,PetscDataType);
 #define PetscValidPointer(h,arg) do {(void)(h);} while (0)
 #define PetscValidCharPointer(h,arg) do {(void)(h);} while (0)
 #define PetscValidIntPointer(h,arg) do {(void)(h);} while (0)
+#define PetscValidCountPointer(h,arg) do {(void)(h);} while (0)
 #define PetscValidBoolPointer(h,arg) do {(void)(h);} while (0)
 #define PetscValidScalarPointer(h,arg) do {(void)(h);} while (0)
 #define PetscValidRealPointer(h,arg) do {(void)(h);} while (0)
@@ -257,6 +258,7 @@ PETSC_EXTERN PetscBool PetscCheckPointer(const void*,PetscDataType);
 #define PetscValidPointer(h,arg)       PetscValidPointer_Internal(h,arg,PETSC_CHAR,memory)
 #define PetscValidCharPointer(h,arg)   PetscValidPointer_Internal(h,arg,PETSC_CHAR,char)
 #define PetscValidIntPointer(h,arg)    PetscValidPointer_Internal(h,arg,PETSC_INT,PetscInt)
+#define PetscValidCountPointer(h,arg)  PetscValidPointer_Internal(h,arg,PETSC_COUNT,PetscCount)
 #define PetscValidBoolPointer(h,arg)   PetscValidPointer_Internal(h,arg,PETSC_BOOL,PetscBool)
 #define PetscValidScalarPointer(h,arg) PetscValidPointer_Internal(h,arg,PETSC_SCALAR,PetscScalar)
 #define PetscValidRealPointer(h,arg)   PetscValidPointer_Internal(h,arg,PETSC_REAL,PetscReal)
@@ -281,6 +283,8 @@ template <typename T>
 void PetscValidCharPointer(T*,int);
 template <typename T>
 void PetscValidIntPointer(T*,int);
+template <typename T>
+void PetscValidCountPointer(T*,int);
 template <typename T>
 void PetscValidBoolPointer(T*,int);
 template <typename T>

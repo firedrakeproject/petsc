@@ -32,7 +32,7 @@ PetscErrorCode  PetscHeaderCreate_Private(PetscObject h,PetscClassId classid,con
 {
   void            *get_tmp;
   static PetscInt idcnt = 1;
-  PetscInt        *cidx;
+  PetscCount      *cidx;
   PetscMPIInt     flg;
 #if defined(PETSC_USE_LOG)
   PetscObject     *newPetscObjects;
@@ -67,7 +67,7 @@ PetscErrorCode  PetscHeaderCreate_Private(PetscObject h,PetscClassId classid,con
   /* Increment and store current object creation index */
   PetscCallMPI(MPI_Comm_get_attr(h->comm,Petsc_CreationIdx_keyval,&get_tmp,&flg));
   if (flg) {
-    cidx = (PetscInt*)get_tmp;
+    cidx = (PetscCount*)get_tmp;
     h->cidx = (*cidx)++;
     PetscCallMPI(MPI_Comm_set_attr(h->comm,Petsc_CreationIdx_keyval,cidx));
   } else SETERRQ(h->comm,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have an object creation index, problem with corrupted memory");

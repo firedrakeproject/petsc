@@ -256,23 +256,6 @@ PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPII
   PetscFunctionReturn(0);
 }
 
-/* Clean up recursively defined comms */
-static PetscErrorCode PetscCommRecursiveCleanup(MPI_Comm comm)
-{
-  PetscMPIInt    flg;
-  MPI_Comm       *intracom,*intercom;
-
-  PetscFunctionBegin;
-  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flg));
-  if (flg) {
-    PetscCallMPI(PetscCommRecursiveCleanup(*intracom));
-    PetscCall(PetscFree(intracom));
-    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flg));
-    PetscCall(PetscFree(intercom));
-  }
-  PetscFunctionReturn(0);
-}
-
 /*@C
    PetscCommDestroy - Frees communicator.  Use in conjunction with PetscCommDuplicate().
 
@@ -287,11 +270,12 @@ static PetscErrorCode PetscCommRecursiveCleanup(MPI_Comm comm)
 @*/
 PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
 {
-  PetscInt         *cidx;
+  PetscCount       *cidx;
   PetscCommCounter *counter;
   PetscMPIInt      flg;
   PetscHMapObj     *garbage;
   MPI_Comm         icomm = *comm,ocomm;
+  MPI_Comm         *intracom,*intercom;
   union {MPI_Comm comm; void *ptr;} ucomm;
 
   PetscFunctionBegin;
@@ -329,10 +313,20 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     if (flg) {
       PetscInt entries=0;
       PetscCall(PetscHMapObjGetSize(*garbage,&entries));
-      if (entries > 0) PetscCall(PetscGarbageRecursiveCleanup(icomm, 4));
+      if (entries > 0) PetscCall(PetscGarbageCleanup(icomm));
       PetscCall(PetscFree(garbage));
     }
-    PetscCall(PetscCommRecursiveCleanup(icomm));
+
+    /* Clean up garbage collection comms */
+    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_IntraComm_keyval,&intracom,&flg));
+    if (flg) {
+      PetscCallMPI(MPI_Comm_free(intracom));
+      PetscCall(PetscFree(intracom));
+      PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_InterComm_keyval,&intercom,&flg));
+      if (*intercom != MPI_COMM_NULL) PetscCallMPI(MPI_Comm_free(intercom));
+      PetscCall(PetscFree(intercom));
+    }
+
     PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));
     PetscCallMPI(MPI_Comm_free(&icomm));
   }

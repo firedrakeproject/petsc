@@ -263,6 +263,32 @@ PetscErrorCode  PetscSortInt(PetscInt n,PetscInt X[])
 }
 
 /*@
+   PetscSortCounter - Sorts an array of integers in place in increasing order.
+
+   Not Collective
+
+   Input Parameters:
++  n  - number of values
+-  X  - array of integers
+
+   Notes:
+   This function sorts `PetscCount`s assumed to be in completely random order
+
+   Level: intermediate
+
+.seealso: `PetscSortInt()`
+@*/
+PetscErrorCode  PetscSortCount(PetscInt n,PetscCount X[])
+{
+  PetscCount pivot,t1;
+
+  PetscFunctionBegin;
+  if (n) PetscValidCountPointer(X,2);
+  QuickSort1(PetscSortCount,X,n,pivot,t1);
+  PetscFunctionReturn(0);
+}
+
+/*@
    PetscSortReverseInt - Sorts an array of integers in place in decreasing order.
 
    Not Collective

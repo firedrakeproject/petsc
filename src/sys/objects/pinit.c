@@ -1333,10 +1333,10 @@ PetscErrorCode  PetscFinalize(void)
 
     PetscCallMPI(MPI_Comm_get_attr(PETSC_COMM_SELF,Petsc_InnerComm_keyval,&ucomm,&flg));
     if (flg) PetscCallMPI(MPI_Comm_get_attr(ucomm.comm,Petsc_Garbage_HMap_keyval,&tmp,&flg));
-    if (flg) PetscCall(PetscGarbageRecursiveCleanup(PETSC_COMM_SELF, 4));
+    if (flg) PetscCall(PetscGarbageCleanup(PETSC_COMM_SELF));
     PetscCallMPI(MPI_Comm_get_attr(PETSC_COMM_WORLD,Petsc_InnerComm_keyval,&ucomm,&flg));
     if (flg) PetscCallMPI(MPI_Comm_get_attr(ucomm.comm,Petsc_Garbage_HMap_keyval,&tmp,&flg));
-    if (flg) PetscCall(PetscGarbageRecursiveCleanup(PETSC_COMM_WORLD, 4));
+    if (flg) PetscCall(PetscGarbageCleanup(PETSC_COMM_WORLD));
   }
 
   PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD,&rank));

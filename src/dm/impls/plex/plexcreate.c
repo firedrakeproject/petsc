@@ -3957,6 +3957,7 @@ PETSC_EXTERN PetscErrorCode DMCreate_Plex(DM dm)
   mesh->refinementLimit   = -1.0;
   mesh->distDefault       = PETSC_TRUE;
   mesh->reorderDefault    = DMPLEX_REORDER_DEFAULT_NOTSET;
+  mesh->distributionName  = NULL;
   mesh->interpolated      = DMPLEX_INTERPOLATED_INVALID;
   mesh->interpolatedCollective = DMPLEX_INTERPOLATED_INVALID;
 

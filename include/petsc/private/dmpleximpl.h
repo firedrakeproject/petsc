@@ -152,6 +152,7 @@ typedef struct {
   PetscInt             numOvExLabels;     /* The number of labels used for exclusion */
   DMLabel              ovExLabels[16];    /* Labels used to exclude points from the overlap */
   PetscInt             ovExValues[16];    /* Label values used to exclude points from the overlap */
+  char                *distributionName;  /* Name of the specific parallel distribution of the DM */
 
   /* Hierarchy */
   PetscBool            regularRefinement; /* This flag signals that we are a regular refinement of coarseMesh */

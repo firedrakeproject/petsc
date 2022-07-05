@@ -149,6 +149,7 @@ include "petscdmswarm.pxi"
 include "petscpartitioner.pxi"
 include "petscspace.pxi"
 include "petscdmutils.pxi"
+include "petscdevice.pxi"
 
 # --------------------------------------------------------------------
 
@@ -192,6 +193,7 @@ include "DMSwarm.pyx"
 include "Partitioner.pyx"
 include "Space.pyx"
 include "DMUtils.pyx"
+include "Device.pyx"
 
 # --------------------------------------------------------------------
 

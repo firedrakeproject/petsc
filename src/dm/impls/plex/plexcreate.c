@@ -37,7 +37,7 @@ PetscErrorCode DMPlexCopy_Internal(DM dmin, PetscBool copyPeriodicity, PetscBool
    - Share the coordinates
    - Share the SF
 */
-static PetscErrorCode DMPlexReplace_Static(DM dm, DM *ndm)
+PetscErrorCode DMPlexReplace_Internal(DM dm, DM *ndm)
 {
   PetscSF          sf;
   DM               dmNew = *ndm, coordDM, coarseDM;
@@ -167,7 +167,7 @@ static PetscErrorCode DMPlexInterpolateInPlace_Internal(DM dm)
   PetscFunctionBegin;
   PetscCall(DMPlexInterpolate(dm, &idm));
   PetscCall(DMPlexCopyCoordinates(dm, idm));
-  PetscCall(DMPlexReplace_Static(dm, &idm));
+  PetscCall(DMPlexReplace_Internal(dm, &idm));
   PetscFunctionReturn(0);
 }
 
@@ -788,7 +788,7 @@ static PetscErrorCode DMPlexCreateBoxMesh_Simplex_Internal(DM dm, PetscInt dim, 
   PetscCall(DMGetLabel(vol, "marker", &bdlabel));
   if (bdlabel) PetscCall(DMPlexLabelComplete(vol, bdlabel));
   PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_FALSE, vol));
-  PetscCall(DMPlexReplace_Static(dm, &vol));
+  PetscCall(DMPlexReplace_Internal(dm, &vol));
   PetscCall(DMDestroy(&boundary));
   PetscFunctionReturn(0);
 }
@@ -1246,7 +1246,7 @@ static PetscErrorCode DMPlexCreateBoxMesh_Internal(DM dm, PetscInt dim, PetscBoo
 
     PetscCall(DMPlexUninterpolate(dm, &udm));
     PetscCall(DMPlexCopyCoordinates(dm, udm));
-    PetscCall(DMPlexReplace_Static(dm, &udm));
+    PetscCall(DMPlexReplace_Internal(dm, &udm));
   }
   PetscFunctionReturn(0);
 }
@@ -1338,7 +1338,7 @@ static PetscErrorCode DMPlexCreateWedgeBoxMesh_Internal(DM dm, const PetscInt fa
   PetscCall(DMPlexCreateBoxMesh_Simplex_Internal(bdm, 2, faces, lower, upper, periodicity, PETSC_TRUE));
   PetscCall(DMPlexExtrude(bdm, faces[2], upper[2] - lower[2], PETSC_TRUE, PETSC_FALSE, NULL, NULL, &vol));
   PetscCall(DMDestroy(&bdm));
-  PetscCall(DMPlexReplace_Static(dm, &vol));
+  PetscCall(DMPlexReplace_Internal(dm, &vol));
   if (lower[2] != 0.0) {
     Vec          v;
     PetscScalar *x;
@@ -1392,7 +1392,7 @@ PetscErrorCode DMPlexCreateWedgeBoxMesh(MPI_Comm comm, const PetscInt faces[], c
     DM udm;
 
     PetscCall(DMPlexUninterpolate(*dm, &udm));
-    PetscCall(DMPlexReplace_Static(*dm, &udm));
+    PetscCall(DMPlexReplace_Internal(*dm, &udm));
   }
   if (periodicity) PetscCall(DMLocalizeCoordinates(*dm));
   PetscFunctionReturn(0);
@@ -2779,7 +2779,7 @@ static PetscErrorCode DMPlexCreateTPSMesh_Internal(DM dm, DMPlexTPSType tpstype,
   {
     DM idm;
     PetscCall(DMPlexInterpolate(dm, &idm));
-    PetscCall(DMPlexReplace_Static(dm, &idm));
+    PetscCall(DMPlexReplace_Internal(dm, &idm));
   }
   if (rank == 0) PetscCall(DMPlexBuildCoordinatesFromCellList(dm, spaceDim, vtxCoords));
   else           PetscCall(DMPlexBuildCoordinatesFromCellList(dm, spaceDim, NULL));
@@ -2805,7 +2805,7 @@ static PetscErrorCode DMPlexCreateTPSMesh_Internal(DM dm, DMPlexTPSType tpstype,
     PetscCall(PetscPartitionerSetFromOptions(part));
     PetscCall(DMPlexDistribute(dm, 0, NULL, &pdm));
     if (pdm) {
-      PetscCall(DMPlexReplace_Static(dm, &pdm));
+      PetscCall(DMPlexReplace_Internal(dm, &pdm));
     }
     // Do not auto-distribute again
     PetscCall(DMPlexDistributeSetDefault(dm, PETSC_FALSE));
@@ -2818,7 +2818,7 @@ static PetscErrorCode DMPlexCreateTPSMesh_Internal(DM dm, DMPlexTPSType tpstype,
     Vec X;
     PetscScalar *x;
     PetscCall(DMRefine(dm, MPI_COMM_NULL, &dmf));
-    PetscCall(DMPlexReplace_Static(dm, &dmf));
+    PetscCall(DMPlexReplace_Internal(dm, &dmf));
 
     PetscCall(DMGetCoordinatesLocal(dm, &X));
     PetscCall(VecGetLocalSize(X, &m));
@@ -2867,7 +2867,7 @@ static PetscErrorCode DMPlexCreateTPSMesh_Internal(DM dm, DMPlexTPSType tpstype,
       ((DM_Plex *)edm->data)->printL2     = ((DM_Plex *)dm->data)->printL2;
       ((DM_Plex *)edm->data)->printLocate = ((DM_Plex *)dm->data)->printLocate;
     }
-    PetscCall(DMPlexReplace_Static(dm, &edm));
+    PetscCall(DMPlexReplace_Internal(dm, &edm));
   }
   PetscFunctionReturn(0);
 }
@@ -2962,7 +2962,7 @@ static PetscErrorCode DMPlexCreateBallMesh_Internal(DM dm, PetscInt dim, PetscRe
   PetscCall(DMViewFromOptions(sdm, NULL, "-dm_view"));
   PetscCall(DMPlexGenerate(sdm, NULL, PETSC_TRUE, &vol));
   PetscCall(DMDestroy(&sdm));
-  PetscCall(DMPlexReplace_Static(dm, &vol));
+  PetscCall(DMPlexReplace_Internal(dm, &vol));
   PetscCall(DMCreateLabel(dm, "marker"));
   PetscCall(DMGetLabel(dm, "marker", &bdlabel));
   PetscCall(DMPlexMarkBoundaryFaces(dm, PETSC_DETERMINE, bdlabel));
@@ -3259,7 +3259,7 @@ static PetscErrorCode DMPlexCreateFromOptions_Internal(PetscOptionItems *PetscOp
 
     PetscCall(DMPlexCreateFromFile(PetscObjectComm((PetscObject) dm), filename, plexname, interpolate, &dmnew));
     PetscCall(DMPlexCopy_Internal(dm, PETSC_FALSE, PETSC_FALSE, dmnew));
-    PetscCall(DMPlexReplace_Static(dm, &dmnew));
+    PetscCall(DMPlexReplace_Internal(dm, &dmnew));
   } else if (refDomain) {
     PetscCall(DMPlexCreateReferenceCell_Internal(dm, cell));
   } else if (bdfflg) {
@@ -3271,7 +3271,7 @@ static PetscErrorCode DMPlexCreateFromOptions_Internal(PetscOptionItems *PetscOp
     PetscCall(DMPlexGenerate(bdm, NULL, interpolate, &dmnew));
     PetscCall(DMDestroy(&bdm));
     PetscCall(DMPlexCopy_Internal(dm, PETSC_FALSE, PETSC_FALSE, dmnew));
-    PetscCall(DMPlexReplace_Static(dm, &dmnew));
+    PetscCall(DMPlexReplace_Internal(dm, &dmnew));
   } else {
     PetscCall(PetscObjectSetName((PetscObject) dm, DMPlexShapes[shape]));
     switch (shape) {
@@ -3302,7 +3302,7 @@ static PetscErrorCode DMPlexCreateFromOptions_Internal(PetscOptionItems *PetscOp
               DM udm;
 
               PetscCall(DMPlexUninterpolate(dm, &udm));
-              PetscCall(DMPlexReplace_Static(dm, &udm));
+              PetscCall(DMPlexReplace_Internal(dm, &udm));
             }
             break;
           default:
@@ -3389,7 +3389,7 @@ static PetscErrorCode DMPlexCreateFromOptions_Internal(PetscOptionItems *PetscOp
         PetscCall(PetscOptionsReal("-dm_plex_doublet_refinementlimit", "Refinement limit", NULL, rl, &rl, NULL));
         PetscCall(DMPlexCreateDoublet(PetscObjectComm((PetscObject)dm), dim, simplex, interpolate, rl, &dmnew));
         PetscCall(DMPlexCopy_Internal(dm, PETSC_FALSE, PETSC_FALSE, dmnew));
-        PetscCall(DMPlexReplace_Static(dm, &dmnew));
+        PetscCall(DMPlexReplace_Internal(dm, &dmnew));
       }
       break;
       default: SETERRQ(comm, PETSC_ERR_SUP, "Domain shape %s is unsupported", DMPlexShapes[shape]);
@@ -3536,12 +3536,12 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
       DM udm;
 
       PetscCall(DMPlexUninterpolate(dm, &udm));
-      PetscCall(DMPlexReplace_Static(dm, &udm));
+      PetscCall(DMPlexReplace_Internal(dm, &udm));
     } else if (interpolated != DMPLEX_INTERPOLATED_FULL && interpolate) {
       DM idm;
 
       PetscCall(DMPlexInterpolate(dm, &idm));
-      PetscCall(DMPlexReplace_Static(dm, &idm));
+      PetscCall(DMPlexReplace_Internal(dm, &idm));
     }
   }
   /* Handle DMPlex refinement before distribution */
@@ -3564,7 +3564,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
 
     PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
     PetscCall(DMRefine(dm, PetscObjectComm((PetscObject) dm), &rdm));
-    PetscCall(DMPlexReplace_Static(dm, &rdm));
+    PetscCall(DMPlexReplace_Internal(dm, &rdm));
     PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
     if (coordFunc && remap) {
       PetscCall(DMPlexRemapGeometry(dm, 0.0, coordFunc));
@@ -3578,7 +3578,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
     DM edm;
 
     PetscCall(DMExtrude(dm, extLayers, &edm));
-    PetscCall(DMPlexReplace_Static(dm, &edm));
+    PetscCall(DMPlexReplace_Internal(dm, &edm));
     ((DM_Plex *) dm->data)->coordFunc = NULL;
     PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
     extLayers = 0;
@@ -3595,7 +3595,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
     PetscCall(DMPlexGetOrdering(dm, oname, NULL, &perm));
     PetscCall(DMPlexPermute(dm, perm, &pdm));
     PetscCall(ISDestroy(&perm));
-    PetscCall(DMPlexReplace_Static(dm, &pdm));
+    PetscCall(DMPlexReplace_Internal(dm, &pdm));
     PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
   }
   /* Handle DMPlex distribution */
@@ -3610,7 +3610,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
     PetscCall(PetscPartitionerSetFromOptions(part));
     PetscCall(DMPlexDistribute(dm, overlap, NULL, &pdm));
     if (pdm) {
-      PetscCall(DMPlexReplace_Static(dm, &pdm));
+      PetscCall(DMPlexReplace_Internal(dm, &pdm));
     }
   }
   /* Create coordinate space */
@@ -3686,7 +3686,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
       PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
       PetscCall(DMRefine(dm, PetscObjectComm((PetscObject) dm), &rdm));
       /* Total hack since we do not pass in a pointer */
-      PetscCall(DMPlexReplace_Static(dm, &rdm));
+      PetscCall(DMPlexReplace_Internal(dm, &rdm));
       PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
       if (coordFunc && remap) {
         PetscCall(DMPlexRemapGeometry(dm, 0.0, coordFunc));
@@ -3716,7 +3716,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
       PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
       PetscCall(DMCoarsen(dm, PetscObjectComm((PetscObject) dm), &cdm));
       /* Total hack since we do not pass in a pointer */
-      PetscCall(DMPlexReplace_Static(dm, &cdm));
+      PetscCall(DMPlexReplace_Internal(dm, &cdm));
       PetscCall(DMSetFromOptions_NonRefinement_Plex(PetscOptionsObject, dm));
       if (coordFunc) {
         PetscCall(DMPlexRemapGeometry(dm, 0.0, coordFunc));
@@ -3733,7 +3733,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
     lname[0] = '\0';
     PetscCall(PetscOptionsString("-dm_plex_fv_ghost_cells_label", "Label name for ghost cells boundary", "DMCreate", lname, lname, sizeof(lname), &flg));
     PetscCall(DMPlexConstructGhostCells(dm, flg ? lname : NULL, NULL, &gdm));
-    PetscCall(DMPlexReplace_Static(dm, &gdm));
+    PetscCall(DMPlexReplace_Internal(dm, &gdm));
   }
   /* Handle 1D order */
   if (reorder != DMPLEX_REORDER_DEFAULT_FALSE && dim == 1) {
@@ -3756,7 +3756,7 @@ static PetscErrorCode DMSetFromOptions_Plex(PetscOptionItems *PetscOptionsObject
     if (!distributed && id != PETSCFE_CLASSID) {
       PetscCall(DMPlexGetOrdering1D(dm, &perm));
       PetscCall(DMPlexPermute(dm, perm, &rdm));
-      PetscCall(DMPlexReplace_Static(dm, &rdm));
+      PetscCall(DMPlexReplace_Internal(dm, &rdm));
       PetscCall(ISDestroy(&perm));
     }
   }

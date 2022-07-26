@@ -2127,6 +2127,32 @@ PetscErrorCode VecGetOffloadMask(Vec v,PetscOffloadMask* mask)
   PetscFunctionReturn(0);
 }
 
+/*@
+  VecSetOffloadMask - Set the offload mask of a Vec.
+
+  Not Collective
+
+  Input Parameters:
+.   v - the vector
+.   mask - the `PetscOffloadMask` enum value to set
+
+  Output Parameters:
+
+  Level: advanced
+
+  Note:
+   No host<->device transfers are performed, the caller must ensure that the
+   on the host and device buffers are valid according to the `mask`.
+
+.seealso: `VecGetOffloadMask()`, `VecCreateSeqCUDA()`, `VecCreateSeqViennaCL()`, `VecGetArray()`
+@*/
+PetscErrorCode VecSetOffloadMask(Vec v,PetscOffloadMask mask)
+{
+  PetscFunctionBegin;
+  v->offloadmask = mask;
+  PetscFunctionReturn(0);
+}
+
 #if !defined(PETSC_HAVE_VIENNACL)
 PETSC_EXTERN PetscErrorCode VecViennaCLGetCLContext(Vec v,PETSC_UINTPTR_T* ctx)
 {

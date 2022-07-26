@@ -189,6 +189,7 @@ cdef extern from * nogil:
     int VecBindToCPU(PetscVec,PetscBool)
     int VecBoundToCPU(PetscVec,PetscBool*)
     int VecGetOffloadMask(PetscVec,PetscOffloadMask*)
+    int VecSetOffloadMask(PetscVec,PetscOffloadMask)
 
     int VecViennaCLGetCLContext(PetscVec,Py_uintptr_t*)
     int VecViennaCLGetCLQueue(PetscVec,Py_uintptr_t*)

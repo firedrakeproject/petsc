@@ -823,6 +823,17 @@ cdef class Vec(Object):
         CHKERR( VecGetOffloadMask(self.vec, &mask) )
         return mask
 
+    def setOffloadMask(self, PetscOffloadMask mask):
+        """
+        Sets the offload mask of *self* to *mask*.
+
+        .. warning::
+
+            Does not trigger host<->device transfer, the caller is responsible
+            for maintaining the host/device buffers to be valid as per *mask*.
+        """
+        CHKERR( VecSetOffloadMask(self.vec, mask) )
+
     def getCLContextHandle(self):
         """
         Returns a Vec's CL Context as :class:`int`.

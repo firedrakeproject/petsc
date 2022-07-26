@@ -23,12 +23,20 @@ class VecOption(object):
     IGNORE_OFF_PROC_ENTRIES = VEC_IGNORE_OFF_PROC_ENTRIES
     IGNORE_NEGATIVE_INDICES = VEC_IGNORE_NEGATIVE_INDICES
 
+class OffloadMask(object):
+    UNALLOCATED = PETSC_OFFLOAD_UNALLOCATED
+    CPU         = PETSC_OFFLOAD_CPU
+    GPU         = PETSC_OFFLOAD_GPU
+    BOTH        = PETSC_OFFLOAD_BOTH
+    KOKKOS      = PETSC_OFFLOAD_KOKKOS
+
 # --------------------------------------------------------------------
 
 cdef class Vec(Object):
 
     Type = VecType
     Option = VecOption
+    OffloadMaskType = OffloadMask
 
     #
 
@@ -1369,5 +1377,6 @@ cdef class Vec(Object):
 
 del VecType
 del VecOption
+del OffloadMask
 
 # --------------------------------------------------------------------

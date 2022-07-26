@@ -41,7 +41,7 @@ cdef extern from * nogil:
         PETSC_OWN_POINTER
         PETSC_USE_POINTER
 
-    ctypedef enum PetscOffloadMask:
+    ctypedef enum PetscOffloadMask "PetscOffloadMask":
         PETSC_OFFLOAD_UNALLOCATED
         PETSC_OFFLOAD_CPU
         PETSC_OFFLOAD_GPU

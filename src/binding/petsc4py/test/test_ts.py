@@ -77,7 +77,6 @@ class BaseTestTSNonlinear(object):
     def tearDown(self):
         self.ts = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
 
 class BaseTestTSNonlinearRHS(BaseTestTSNonlinear):

@@ -28,7 +28,6 @@ class TestNullSpace(unittest.TestCase):
         self.basis = None
         self.nullsp = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
     def _remove(self):
         v = PETSc.Vec().createSeq(3);

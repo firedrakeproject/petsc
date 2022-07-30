@@ -24,7 +24,6 @@ class BaseTestDA(object):
     def tearDown(self):
         self.da = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testGetInfo(self):
         dim = self.da.getDim()

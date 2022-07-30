@@ -158,7 +158,6 @@ class TestPCPYTHON(unittest.TestCase):
         self.pc.destroy() # XXX
         self.pc = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
         assert ctx.log['destroy'] == 1
         self.assertEqual(getrefcount(ctx), 2)
 
@@ -260,7 +259,7 @@ class TestPCPYTHON(unittest.TestCase):
         assert self._getCtx().log['setUp'         ] == 1
         assert self._getCtx().log['applyTranspose'] == 2
         del ksp # ksp.destroy()
-        PETSc._cleanup(PETSc.COMM_SELF)
+        PETSc._cleanup()
         self.assertEqual(self.pc.getRefCount(), 1)
 
     def testGetSetContext(self):

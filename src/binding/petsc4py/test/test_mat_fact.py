@@ -64,7 +64,6 @@ class BaseTestMatFactor(object):
         self.x.destroy(); self.x = None
         self.b.destroy(); self.b = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
 class BaseTestMatFactorLU(BaseTestMatFactor):
 

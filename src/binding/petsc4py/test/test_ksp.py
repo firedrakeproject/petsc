@@ -24,7 +24,6 @@ class BaseTestKSP(object):
     def tearDown(self):
         self.ksp = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testGetSetType(self):
         self.assertEqual(self.ksp.getType(), self.KSP_TYPE)

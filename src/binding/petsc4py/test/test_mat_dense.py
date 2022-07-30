@@ -38,7 +38,6 @@ class BaseTestMatAnyDense(object):
         self.A.destroy()
         self.A = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testSetValues(self):
         self._preallocate()

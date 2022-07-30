@@ -86,7 +86,6 @@ class TestTSPython(unittest.TestCase):
         self.ts.destroy() # XXX
         self.ts = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
         self.assertEqual(ctx.log['destroy'], 1)
         self.assertEqual(getrefcount(ctx),   2)
 

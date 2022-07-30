@@ -34,7 +34,6 @@ class BaseTestDMStag(object):
         self.da = None
         self.directda = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testCoordinates(self):
         self.da.setCoordinateDMType('stag')

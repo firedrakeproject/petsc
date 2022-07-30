@@ -20,7 +20,6 @@ class BaseTestLGMap(object):
     def tearDown(self):
         self.lgmap = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testGetSize(self):
         size = self.lgmap.getSize()

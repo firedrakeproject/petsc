@@ -41,11 +41,15 @@ cdef inline void TypeEnableGC(PyTypeObject *t):
 def _cleanup(comm=None):
     cdef MPI_Comm ccomm
     if comm is None:
-        comm = COMM_WORLD
-    ccomm = GetComm(comm, MPI_COMM_NULL)
-    if ccomm == MPI_COMM_NULL:
-        raise ValueError("null communicator")
-    CHKERR( PetscGarbageCleanup(ccomm) )
+        ccomm = GetComm(COMM_WORLD, MPI_COMM_NULL)
+        CHKERR( PetscGarbageCleanup(ccomm) )
+        ccomm = GetComm(COMM_SELF, MPI_COMM_NULL)
+        CHKERR( PetscGarbageCleanup(ccomm) )
+    else:
+        ccomm = GetComm(comm, MPI_COMM_NULL)
+        if ccomm == MPI_COMM_NULL:
+            raise ValueError("null communicator")
+        CHKERR( PetscGarbageCleanup(ccomm) )
 
 def _print_garbage_dict(comm=None):
     cdef MPI_Comm ccomm

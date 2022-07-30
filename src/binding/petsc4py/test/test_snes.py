@@ -38,7 +38,6 @@ class BaseTestSNES(object):
     def tearDown(self):
         self.snes = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
 
     def testGetSetType(self):
         self.assertEqual(self.snes.getType(), self.SNES_TYPE)

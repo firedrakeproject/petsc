@@ -314,7 +314,6 @@ class TestMatrix(unittest.TestCase):
         self.A.destroy() # XXX
         self.A = None
         PETSc._cleanup()
-        PETSc._cleanup(PETSc.COMM_SELF)
         self.assertEqual(getrefcount(ctx), 2)
         #import gc,pprint; pprint.pprint(gc.get_referrers(ctx))
 

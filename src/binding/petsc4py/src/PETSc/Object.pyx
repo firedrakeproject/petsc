@@ -9,7 +9,7 @@ cdef class Object:
         self.obj = &self.oval
 
     def __dealloc__(self):
-        CHKERR( PetscObjectDelayedDestroy(&self.obj[0]) )
+        CHKERR( PetscDEALLOC(&self.obj[0]) )
         self.obj = NULL
 
     def __richcmp__(self, other, int op):

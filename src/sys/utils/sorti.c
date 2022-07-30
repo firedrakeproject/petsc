@@ -263,7 +263,7 @@ PetscErrorCode  PetscSortInt(PetscInt n,PetscInt X[])
 }
 
 /*@
-   PetscSortCounter - Sorts an array of integers in place in increasing order.
+   PetscSortCount - Sorts an array of integers in place in increasing order.
 
    Not Collective
 

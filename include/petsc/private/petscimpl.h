@@ -100,7 +100,7 @@ typedef struct _p_PetscObject {
   PetscLogDouble       flops,time,mem,memchildren; /* these are not set properly and should possibly be removed */
   PetscObjectId        id;                         /* this is used to compare object for identity that may no longer exist since memory addresses get recycled for new objects */
   PetscInt             refct;
-  PetscInt             cidx;
+  PetscCount           cidx;
   PetscMPIInt          tag;
   PetscFunctionList    qlist;
   PetscObjectList      olist;

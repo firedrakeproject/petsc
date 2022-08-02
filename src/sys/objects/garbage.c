@@ -27,17 +27,17 @@ static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbag
 
     Notes: Analogue to PetscObjectDestroy() for use in managed languages.
 
-    Petsc objects are given a creation index at initialisation based on
+    A Petsc object is given a creation index at initialisation based on
     the communicator it was created on and the order in which it is
-    created. When this function is passed a Petsc object a pointer to
-    the object is stashed on a garbage dictionary (PetscHMapObj), keyed
-    by its creation index.
+    created. When this function is passed a Petsc object, a pointer to
+    the object is stashed on a garbage dictionary (PetscHMapObj) which is
+    keyed by its creation index.
 
     Objects stashed on this garbage dictionary can later be destroyed
     with a call to PetscGarbageCleanup().
 
     This function is intended for use with managed languages such as
-    Python or Julia, which may no destroy objects in a deterministic
+    Python or Julia, which may not destroy objects in a deterministic
     order.
 
     Level: developer
@@ -47,7 +47,6 @@ static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbag
 PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
 {
   MPI_Comm     petsc_comm;
-  //~ PetscObject  *duplicate;
   PetscHMapObj *garbage;
 
   PetscFunctionBegin;
@@ -56,12 +55,6 @@ PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
     (*obj)->refct = 1;
     PetscCall(PetscObjectGetComm(*obj,&petsc_comm));
     PetscCall(GarbageGetHMap_Private(petsc_comm,&garbage));
-
-    /* Duplicate object header so managed language can clean up original */
-    //~ PetscCall(PetscNew(&duplicate));
-    //~ PetscCall(PetscMemcpy(duplicate,obj,sizeof(PetscObject)));
-    //~ PetscCall(PetscHMapObjSet(*garbage,(*duplicate)->cidx,*duplicate));
-
     PetscCall(PetscHMapObjSet(*garbage,(*obj)->cidx,*obj));
   }
   *obj = NULL;
@@ -149,21 +142,21 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm)
 {
   PetscInt    leader;
   PetscMPIInt comm_rank,intra_rank;
-  MPI_Comm    *intracom,*intercom;
+  MPI_Comm    *intracomm,*intercomm;
 
   PetscFunctionBegin;
   /* Create shared memory intra-communicators */
   PetscCallMPI(MPI_Comm_rank(comm,&comm_rank));
-  PetscCall(PetscNew(&intracom));
-  PetscCallMPI(MPI_Comm_split(comm,MPI_COMM_TYPE_SHARED,comm_rank,intracom));
-  PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_IntraComm_keyval,(void*)intracom));
+  PetscCall(PetscNew(&intracomm));
+  PetscCallMPI(MPI_Comm_split(comm,MPI_COMM_TYPE_SHARED,comm_rank,intracomm));
+  PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_IntraComm_keyval,(void*)intracomm));
 
   /* Create inter-communicators between rank 0 of all above comms */
-  PetscCallMPI(MPI_Comm_rank(*intracom,&intra_rank));
+  PetscCallMPI(MPI_Comm_rank(*intracomm,&intra_rank));
   leader = (intra_rank == 0) ? 0 : MPI_UNDEFINED;
-  PetscCall(PetscNew(&intercom));
-  PetscCallMPI(MPI_Comm_split(comm,leader,comm_rank,intercom));
-  PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_InterComm_keyval,(void*)intercom));
+  PetscCall(PetscNew(&intercomm));
+  PetscCallMPI(MPI_Comm_split(comm,leader,comm_rank,intercomm));
+  PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_InterComm_keyval,(void*)intercomm));
   PetscFunctionReturn(0);
 }
 
@@ -207,7 +200,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
   PetscObject  obj;
   PetscHMapObj *garbage;
   PetscMPIInt  flag,intra_rank,inter_rank;
-  MPI_Comm     *intracom,*intercom;
+  MPI_Comm     *intracomm,*intercomm;
 
   PetscFunctionBegin;
   /* Duplicate comm to prevent it being cleaned up by PetscObjectDestroy() */
@@ -219,16 +212,16 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
   PetscCallMPI(MPI_Comm_delete_attr(comm,Petsc_Garbage_HMap_keyval));
 
   /* Get the intra- and inter- communicators,if they exist,otherwise set them up */
-  intracom = NULL;
-  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag));
+  intracomm = NULL;
+  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracomm,&flag));
   if (!flag) {
     PetscCall(GarbageSetupComms_Private(comm));
-    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracom,&flag));
+    PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_IntraComm_keyval,&intracomm,&flag));
   }
-  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercom,&flag));
-  PetscCallMPI(MPI_Comm_rank(*intracom,&intra_rank));
-  if (*intercom != MPI_COMM_NULL) {
-    PetscCallMPI(MPI_Comm_rank(*intercom,&inter_rank));
+  PetscCallMPI(MPI_Comm_get_attr(comm,Petsc_Garbage_InterComm_keyval,&intercomm,&flag));
+  PetscCallMPI(MPI_Comm_rank(*intracomm,&intra_rank));
+  if (*intercomm != MPI_COMM_NULL) {
+    PetscCallMPI(MPI_Comm_rank(*intercomm,&inter_rank));
   } else {
     inter_rank = MPI_UNDEFINED;
   }
@@ -239,20 +232,20 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
   offset = 0;
   PetscCall(PetscHMapObjGetKeys(*garbage,&offset,keys));
 
-  /* Intracom gather and intersect */
-  PetscCall(GarbageKeyGatherIntersect_Private(*intracom,keys,&entries));
+  /* intracomm gather and intersect */
+  PetscCall(GarbageKeyGatherIntersect_Private(*intracomm,keys,&entries));
 
-  /* Intercom gather and intersect */
-  if (*intercom != MPI_COMM_NULL) {
-    PetscCall(GarbageKeyGatherIntersect_Private(*intercom,keys,&entries));
-    /* Broadcast across intercom */
-    PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intercom));
-    PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intercom));
+  /* intercomm gather and intersect */
+  if (*intercomm != MPI_COMM_NULL) {
+    PetscCall(GarbageKeyGatherIntersect_Private(*intercomm,keys,&entries));
+    /* Broadcast across intercomm */
+    PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intercomm));
+    PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intercomm));
   }
 
-  /* Broadcast across intracom */
-  PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intracom));
-  PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intracom));
+  /* Broadcast across intracomm */
+  PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intracomm));
+  PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intracomm));
 
   /* Collectively destroy objects objects that appear in garbage in
      creation index order */

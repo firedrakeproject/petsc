@@ -70,7 +70,7 @@ PetscErrorCode  PetscHeaderCreate_Private(PetscObject h,PetscClassId classid,con
     cidx = (PetscCount*)get_tmp;
     h->cidx = (*cidx)++;
     PetscCallMPI(MPI_Comm_set_attr(h->comm,Petsc_CreationIdx_keyval,cidx));
-  } else SETERRQ(h->comm,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have an object creation index, problem with corrupted memory");
+  } else SETERRQ(h->comm,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have an object creation index");
 
 #if defined(PETSC_USE_LOG)
   /* Keep a record of object created */

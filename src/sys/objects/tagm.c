@@ -193,7 +193,7 @@ Level: developer
 @*/
 PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPIInt *first_tag)
 {
-  PetscInt         *cidx;
+  PetscCount       *cidx;
   PetscCommCounter *counter;
   PetscMPIInt      *maxval,flg;
 
@@ -275,7 +275,7 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
   PetscMPIInt      flg;
   PetscHMapObj     *garbage;
   MPI_Comm         icomm = *comm,ocomm;
-  MPI_Comm         *intracom,*intercom;
+  MPI_Comm         *intracomm,*intercomm;
   union {MPI_Comm comm; void *ptr;} ucomm;
 
   PetscFunctionBegin;
@@ -289,7 +289,6 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Counter_keyval,&counter,&flg));
     PetscCheck(flg,PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"Inner MPI_Comm does not have expected tag/name counter, problem with corrupted memory");
   }
-
   counter->refcount--;
   if (!counter->refcount) {
     /* if MPI_Comm has outer comm then remove reference to inner MPI_Comm from outer MPI_Comm */
@@ -306,7 +305,7 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_CreationIdx_keyval,&cidx,&flg));
     if (flg) {
       PetscCall(PetscFree(cidx));
-    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index, problem with corrupted memory");
+    } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index");
 
     /* Remove garbage and inter- and intra- communicators set up by garbage collection */
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_HMap_keyval,&garbage,&flg));
@@ -318,13 +317,13 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
     }
 
     /* Clean up garbage collection comms */
-    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_IntraComm_keyval,&intracom,&flg));
+    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_IntraComm_keyval,&intracomm,&flg));
     if (flg) {
-      PetscCallMPI(MPI_Comm_free(intracom));
-      PetscCall(PetscFree(intracom));
-      PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_InterComm_keyval,&intercom,&flg));
-      if (*intercom != MPI_COMM_NULL) PetscCallMPI(MPI_Comm_free(intercom));
-      PetscCall(PetscFree(intercom));
+      PetscCallMPI(MPI_Comm_free(intracomm));
+      PetscCall(PetscFree(intracomm));
+      PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_InterComm_keyval,&intercomm,&flg));
+      if (*intercomm != MPI_COMM_NULL) PetscCallMPI(MPI_Comm_free(intercomm));
+      PetscCall(PetscFree(intercomm));
     }
 
     PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));

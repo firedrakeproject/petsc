@@ -6,6 +6,6 @@
 /*
  * Hash map from PetscInt --> PetscObject*
  * */
-PETSC_HASH_MAP(HMapObj,PetscCount,PetscObject*,PetscHashInt,PetscHashEqual,NULL)
+PETSC_HASH_MAP(HMapObj,PetscCount,PetscObject,PetscHashInt,PetscHashEqual,NULL)
 
 #endif /* PETSC_HASHMAPP_H */

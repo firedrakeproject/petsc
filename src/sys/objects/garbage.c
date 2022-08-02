@@ -47,7 +47,7 @@ static PetscErrorCode GarbageGetHMap_Private(MPI_Comm comm,PetscHMapObj **garbag
 PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
 {
   MPI_Comm     petsc_comm;
-  PetscObject  *duplicate;
+  //~ PetscObject  *duplicate;
   PetscHMapObj *garbage;
 
   PetscFunctionBegin;
@@ -58,9 +58,11 @@ PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
     PetscCall(GarbageGetHMap_Private(petsc_comm,&garbage));
 
     /* Duplicate object header so managed language can clean up original */
-    PetscCall(PetscNew(&duplicate));
-    PetscCall(PetscMemcpy(duplicate,obj,sizeof(PetscObject)));
-    PetscCall(PetscHMapObjSet(*garbage,(*duplicate)->cidx,duplicate));
+    //~ PetscCall(PetscNew(&duplicate));
+    //~ PetscCall(PetscMemcpy(duplicate,obj,sizeof(PetscObject)));
+    //~ PetscCall(PetscHMapObjSet(*garbage,(*duplicate)->cidx,*duplicate));
+
+    PetscCall(PetscHMapObjSet(*garbage,(*obj)->cidx,*obj));
   }
   *obj = NULL;
   PetscFunctionReturn(0);
@@ -202,7 +204,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
 {
   PetscInt     ii,entries,offset;
   PetscCount   *keys;
-  PetscObject  *obj;
+  PetscObject  obj;
   PetscHMapObj *garbage;
   PetscMPIInt  flag,intra_rank,inter_rank;
   MPI_Comm     *intracom,*intercom;
@@ -256,7 +258,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
      creation index order */
   for (ii = 0; ii < entries; ii++) {
     PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
-    PetscCall(PetscObjectDestroy(obj));
+    PetscCall(PetscObjectDestroy(&obj));
     PetscCall(PetscFree(obj));
     PetscCall(PetscHMapObjDel(*garbage,keys[ii]));
   }
@@ -274,7 +276,7 @@ PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
   char         text[64];
   PetscInt     ii,entries,offset;
   PetscCount   *keys;
-  PetscObject  *obj;
+  PetscObject  obj;
   PetscHMapObj *garbage;
   PetscMPIInt  rank;
 
@@ -308,7 +310,7 @@ PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
   for (ii=0; ii<entries; ii++) {
     PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
     PetscCall(PetscFormatConvert("| %5D | %-16s | %-32s | %5D     |\n",text));
-    PetscCall(PetscSynchronizedPrintf(comm,text,keys[ii],(*obj)->class_name,(*obj)->description,(*obj)->id));
+    PetscCall(PetscSynchronizedPrintf(comm,text,keys[ii],obj->class_name,obj->description,obj->id));
   }
   PetscCall(PetscSynchronizedFlush(comm,PETSC_STDOUT));
 

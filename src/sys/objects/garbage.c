@@ -264,7 +264,7 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
 }
 
 /* Utility function for printing the contents of the garbage on a given comm */
-PetscErrorCode PrintGarbage_Private(MPI_Comm comm)
+PetscErrorCode PetscGarbagePrint_Private(MPI_Comm comm)
 {
   char         text[64];
   PetscInt     ii,entries,offset;

@@ -153,15 +153,19 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm)
   PetscInt    leader;
   PetscMPIInt comm_rank,intra_rank;
   MPI_Comm    *intracomm,*intercomm;
+  #if defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY)
+  MPI_Info    info;
+  #endif
 
   PetscFunctionBegin;
   /* Create shared memory intra-communicators */
   PetscCallMPI(MPI_Comm_rank(comm,&comm_rank));
   PetscCall(PetscNew(&intracomm));
   #if defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY)
-  PetscCallMPI(MPI_Comm_split_type(comm,MPI_COMM_TYPE_SHARED,comm_rank,intracomm));
+  PetscCallMPI(MPI_Info_create(&info));
+  PetscCallMPI(MPI_Comm_split_type(comm,MPI_COMM_TYPE_SHARED,comm_rank,info,intracomm));
   #else
-
+  PetscCall(PetscCommDuplicate(PETSC_COMM_WORLD,intracomm,NULL));
   #endif
   PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_IntraComm_keyval,(void*)intracomm));
 

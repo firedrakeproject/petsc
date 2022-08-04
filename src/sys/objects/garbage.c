@@ -158,7 +158,11 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm)
   /* Create shared memory intra-communicators */
   PetscCallMPI(MPI_Comm_rank(comm,&comm_rank));
   PetscCall(PetscNew(&intracomm));
-  PetscCallMPI(MPI_Comm_split(comm,MPI_COMM_TYPE_SHARED,comm_rank,intracomm));
+  #if defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY)
+  PetscCallMPI(MPI_Comm_split_type(comm,MPI_COMM_TYPE_SHARED,comm_rank,intracomm));
+  #else
+
+  #endif
   PetscCallMPI(MPI_Comm_set_attr(comm,Petsc_Garbage_IntraComm_keyval,(void*)intracomm));
 
   /* Create inter-communicators between rank 0 of all above comms */
@@ -292,7 +296,6 @@ PetscErrorCode PetscGarbagePrint_Private(MPI_Comm comm)
   } else {
     PetscCall(PetscPrintf(comm,"UNKNOWN_COMM\n"));
   }
-  PetscCall(PetscCommDuplicate(comm,&comm,NULL));
   PetscCall(GarbageGetHMap_Private(comm,&garbage));
 
   /* Get keys from garbage hash map and sort */
@@ -318,6 +321,5 @@ PetscErrorCode PetscGarbagePrint_Private(MPI_Comm comm)
   PetscCall(PetscSynchronizedFlush(comm,PETSC_STDOUT));
 
   PetscCall(PetscFree(keys));
-  PetscCall(PetscCommDestroy(&comm));
   PetscFunctionReturn(0);
 }

@@ -235,6 +235,31 @@ PetscErrorCode  PetscSortedInt(PetscInt n,const PetscInt X[],PetscBool *sorted)
 }
 
 /*@
+   PetscSortedInt64 - Determines whether the array is sorted.
+
+   Not Collective
+
+   Input Parameters:
++  n  - number of values
+-  X  - array of integers
+
+   Output Parameters:
+.  sorted - flag whether the array is sorted
+
+   Level: intermediate
+
+.seealso: `PetscSortInt64()`, `PetscSortInt()`, `PetscSortedMPIInt()`, `PetscSortedReal()`
+@*/
+PetscErrorCode  PetscSortedInt64(PetscInt n,const PetscInt64 X[],PetscBool *sorted)
+{
+  PetscFunctionBegin;
+  if (n) PetscValidInt64Pointer(X,2);
+  PetscValidBoolPointer(sorted,3);
+  PetscSorted(n,X,*sorted);
+  PetscFunctionReturn(0);
+}
+
+/*@
    PetscSortInt - Sorts an array of integers in place in increasing order.
 
    Not Collective
@@ -259,6 +284,32 @@ PetscErrorCode  PetscSortInt(PetscInt n,PetscInt X[])
   PetscFunctionBegin;
   if (n) PetscValidIntPointer(X,2);
   QuickSort1(PetscSortInt,X,n,pivot,t1);
+  PetscFunctionReturn(0);
+}
+
+/*@
+   PetscSortInt64 - Sorts an array of integers in place in increasing order.
+
+   Not Collective
+
+   Input Parameters:
++  n  - number of values
+-  X  - array of integers
+
+   Notes:
+   This function sorts `PetscCount`s assumed to be in completely random order
+
+   Level: intermediate
+
+.seealso: `PetscSortInt()`
+@*/
+PetscErrorCode  PetscSortInt64(PetscInt n,PetscInt64 X[])
+{
+  PetscCount pivot,t1;
+
+  PetscFunctionBegin;
+  if (n) PetscValidInt64Pointer(X,2);
+  QuickSort1(PetscSortInt64,X,n,pivot,t1);
   PetscFunctionReturn(0);
 }
 

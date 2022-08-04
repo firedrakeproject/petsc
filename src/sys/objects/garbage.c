@@ -64,14 +64,24 @@ PetscErrorCode PetscObjectDelayedDestroy(PetscObject *obj)
 /* Performs the intersection of 2 sorted arrays seta and setb of lengths
    lena and lenb respectively,returning the result in seta and lena
    This is an O(n) operation */
-static PetscErrorCode GarbageKeySortedIntersect_Private(PetscCount seta[],PetscInt *lena,PetscCount setb[],PetscInt lenb)
+static PetscErrorCode GarbageKeySortedIntersect_Private(PetscInt64 seta[],PetscInt *lena,PetscInt64 setb[],PetscInt lenb)
 {
   /* The arrays seta and setb MUST be sorted! */
   PetscInt   ii,counter = 0;
-  PetscCount *endb;
+  PetscInt64 *endb;
 
   PetscFunctionBegin;
-  endb = setb + (PetscCount)lenb;
+  if (PetscDefined(USE_DEBUG)) {
+    PetscBool sorted = PETSC_FALSE;
+    /* In debug mode check whether the array are sorted */
+    PetscCall(PetscSortedInt64(*lena,seta,&sorted));
+    if (sorted == PETSC_FALSE)
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Provided array in argument 1 is not sorted");
+    PetscCall(PetscSortedInt64(lenb,setb,&sorted));
+    if (sorted == PETSC_FALSE)
+      SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_WRONGSTATE,"Provided array in argument 3 is not sorted");
+  }
+  endb = setb + (PetscInt64)lenb;
   for (ii=0; ii<*lena; ii++) {
     while ((seta[ii] > *setb) && (setb < endb)) {
       setb++;
@@ -86,16 +96,16 @@ static PetscErrorCode GarbageKeySortedIntersect_Private(PetscCount seta[],PetscI
 }
 
 /* Performs a collective intersection of one array per rank */
-static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscCount *set,PetscInt *entries)
+static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscInt64 *set,PetscInt *entries)
 {
   PetscInt    ii,total;
-  PetscCount  *recvset;
+  PetscInt64  *recvset;
   PetscMPIInt comm_size,comm_rank;
   PetscMPIInt *set_sizes,*displace;
 
   PetscFunctionBegin;
   /* Sort keys first for use with `GarbageKeySortedIntersect_Private()`*/
-  PetscCall(PetscSortCount(*entries,set));
+  PetscCall(PetscSortInt64(*entries,set));
 
   /* Gather and intersect on comm */
   PetscCallMPI(MPI_Comm_size(comm,&comm_size));
@@ -124,7 +134,7 @@ static PetscErrorCode GarbageKeyGatherIntersect_Private(MPI_Comm comm,PetscCount
   }
 
   /* Gatherv keys from all ranks and intersect */
-  PetscCallMPI(MPI_Gatherv(set,*entries,MPI_AINT,recvset,set_sizes,displace,MPI_AINT,0,comm));
+  PetscCallMPI(MPI_Gatherv(set,*entries,MPIU_INT64,recvset,set_sizes,displace,MPI_INT64_T,0,comm));
   if (comm_rank == 0) {
     for (ii=1; ii<comm_size; ii++) {
       PetscCall(GarbageKeySortedIntersect_Private(set,entries,&recvset[displace[ii]],set_sizes[ii]));
@@ -196,7 +206,7 @@ static PetscErrorCode GarbageSetupComms_Private(MPI_Comm comm)
 PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
 {
   PetscInt     ii,entries,offset;
-  PetscCount   *keys;
+  PetscInt64   *keys;
   PetscObject  obj;
   PetscHMapObj *garbage;
   PetscMPIInt  flag,intra_rank,inter_rank;
@@ -240,12 +250,12 @@ PetscErrorCode PetscGarbageCleanup(MPI_Comm comm)
     PetscCall(GarbageKeyGatherIntersect_Private(*intercomm,keys,&entries));
     /* Broadcast across intercomm */
     PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intercomm));
-    PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intercomm));
+    PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT64,0,*intercomm));
   }
 
   /* Broadcast across intracomm */
   PetscCallMPI(MPI_Bcast(&entries,1,MPIU_INT,0,*intracomm));
-  PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT,0,*intracomm));
+  PetscCallMPI(MPI_Bcast(keys,entries,MPIU_INT64,0,*intracomm));
 
   /* Collectively destroy objects objects that appear in garbage in
      creation index order */
@@ -268,7 +278,7 @@ PetscErrorCode PetscGarbagePrint_Private(MPI_Comm comm)
 {
   char         text[64];
   PetscInt     ii,entries,offset;
-  PetscCount   *keys;
+  PetscInt64   *keys;
   PetscObject  obj;
   PetscHMapObj *garbage;
   PetscMPIInt  rank;
@@ -302,7 +312,7 @@ PetscErrorCode PetscGarbagePrint_Private(MPI_Comm comm)
   }
   for (ii=0; ii<entries; ii++) {
     PetscCall(PetscHMapObjGet(*garbage,keys[ii],&obj));
-    PetscCall(PetscFormatConvert("| %5D | %-16s | %-32s | %5D     |\n",text));
+    PetscCall(PetscFormatConvert("| %5" PetscInt64_FMT " | %-16s | %-32s | %5D     |\n",text));
     PetscCall(PetscSynchronizedPrintf(comm,text,keys[ii],obj->class_name,obj->description,obj->id));
   }
   PetscCall(PetscSynchronizedFlush(comm,PETSC_STDOUT));

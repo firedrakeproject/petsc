@@ -193,7 +193,7 @@ Level: developer
 @*/
 PetscErrorCode  PetscCommDuplicate(MPI_Comm comm_in,MPI_Comm *comm_out,PetscMPIInt *first_tag)
 {
-  PetscCount       *cidx;
+  PetscInt64       *cidx;
   PetscCommCounter *counter;
   PetscMPIInt      *maxval,flg;
 

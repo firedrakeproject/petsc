@@ -275,7 +275,6 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
   PetscMPIInt      flg;
   PetscHMapObj     *garbage;
   MPI_Comm         icomm = *comm,ocomm;
-  MPI_Comm         *intracomm,*intercomm;
   union {MPI_Comm comm; void *ptr;} ucomm;
 
   PetscFunctionBegin;
@@ -314,16 +313,6 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
       PetscCall(PetscHMapObjGetSize(*garbage,&entries));
       if (entries > 0) PetscCall(PetscGarbageCleanup(icomm));
       PetscCall(PetscFree(garbage));
-    }
-
-    /* Clean up garbage collection comms */
-    PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_IntraComm_keyval,&intracomm,&flg));
-    if (flg) {
-      PetscCallMPI(MPI_Comm_free(intracomm));
-      PetscCall(PetscFree(intracomm));
-      PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_InterComm_keyval,&intercomm,&flg));
-      if (*intercomm != MPI_COMM_NULL) PetscCallMPI(MPI_Comm_free(intercomm));
-      PetscCall(PetscFree(intercomm));
     }
 
     PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));

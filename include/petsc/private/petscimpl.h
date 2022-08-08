@@ -848,8 +848,6 @@ PETSC_EXTERN PetscMPIInt Petsc_Seq_keyval;
 PETSC_EXTERN PetscMPIInt Petsc_ShmComm_keyval;
 PETSC_EXTERN PetscMPIInt Petsc_CreationIdx_keyval;
 PETSC_EXTERN PetscMPIInt Petsc_Garbage_HMap_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_Garbage_IntraComm_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_Garbage_InterComm_keyval;
 
 struct PetscCommStash {
   struct PetscCommStash *next;

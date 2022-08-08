@@ -1190,6 +1190,7 @@ PETSC_EXTERN MPI_Op MPIU_MIN;
 #define MPIU_MAX MPI_MAX
 #define MPIU_MIN MPI_MIN
 #endif
+PETSC_EXTERN MPI_Op Petsc_Garbage_SetIntersectOp;
 PETSC_EXTERN PetscErrorCode PetscMaxSum(MPI_Comm,const PetscInt[],PetscInt*,PetscInt*);
 
 PETSC_EXTERN PetscErrorCode MPIULong_Send(void*,PetscInt,MPI_Datatype,PetscMPIInt,PetscMPIInt,MPI_Comm);

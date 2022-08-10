@@ -4,6 +4,11 @@
 #include <petsc/private/hashmapobj.h>
 #include <petscsys.h>
 
+typedef union _PetscGarbage{
+    PetscHMapObj map;
+    void         *ptr;
+} PetscGarbage;
+
 PETSC_EXTERN PetscErrorCode PetscObjectDelayedDestroy(PetscObject*);
 PETSC_EXTERN void PetscGarbageKeySortedIntersect(void*,void*,PetscMPIInt*,MPI_Datatype*);
 PETSC_EXTERN PetscErrorCode PetscGarbageCleanup(MPI_Comm);

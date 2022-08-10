@@ -273,7 +273,7 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
   PetscCount       *cidx;
   PetscCommCounter *counter;
   PetscMPIInt      flg;
-  PetscHMapObj     *garbage;
+  PetscGarbage     garbage;
   MPI_Comm         icomm = *comm,ocomm;
   union {MPI_Comm comm; void *ptr;} ucomm;
 
@@ -306,13 +306,13 @@ PetscErrorCode  PetscCommDestroy(MPI_Comm *comm)
       PetscCall(PetscFree(cidx));
     } else SETERRQ(PETSC_COMM_SELF,PETSC_ERR_ARG_CORRUPT,"MPI_Comm does not have object creation index");
 
-    /* Remove garbage and inter- and intra- communicators set up by garbage collection */
+    /* Remove garbage hashmap set up by garbage collection */
     PetscCallMPI(MPI_Comm_get_attr(icomm,Petsc_Garbage_HMap_keyval,&garbage,&flg));
     if (flg) {
       PetscInt entries=0;
-      PetscCall(PetscHMapObjGetSize(*garbage,&entries));
+      PetscCall(PetscHMapObjGetSize(garbage.map,&entries));
       if (entries > 0) PetscCall(PetscGarbageCleanup(icomm));
-      PetscCall(PetscFree(garbage));
+      PetscCall(PetscHMapObjDestroy(&(garbage.map)));
     }
 
     PetscCall(PetscInfo(NULL,"Deleting PETSc MPI_Comm %ld\n",(long)icomm));

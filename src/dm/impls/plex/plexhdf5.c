@@ -902,6 +902,9 @@ PetscErrorCode DMPlexLabelsView_HDF5_Internal(DM dm, IS globalPointNumbers, Pets
   }
   PetscCall(PetscViewerHDF5PushGroup(viewer, group));
   PetscCall(DMGetNumLabels(dm, &numLabels));
+PetscInt  gNumLabels;
+PetscCallMPI(MPI_Allreduce(&numLabels,&gNumLabels,1,MPIU_INT,MPI_MAX,PetscObjectComm((PetscObject)dm)));
+PetscCheck(numLabels == gNumLabels,PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "numLabels %" PetscInt_FMT " != gNumLabels %" PetscInt_FMT "\n", numLabels, gNumLabels);
   for (l = 0; l < numLabels; ++l) {
     DMLabel         label;
     const char     *name;
@@ -913,6 +916,9 @@ PetscErrorCode DMPlexLabelsView_HDF5_Internal(DM dm, IS globalPointNumbers, Pets
     PetscCall(DMGetLabelByNum(dm, l, &label));
     PetscCall(PetscObjectGetName((PetscObject)label, &name));
     PetscCall(DMGetLabelOutput(dm, name, &output));
+PetscInt  gout, out = (output ? 1 : 0);
+PetscCallMPI(MPI_Allreduce(&out,&gout,1,MPIU_INT,MPI_MAX,PetscObjectComm((PetscObject)dm)));
+PetscCheck(out == gout,PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "out %" PetscInt_FMT " != gout %" PetscInt_FMT "\n", out, gout);
     PetscCall(PetscStrncmp(name, "depth", 10, &isDepth));
     if (isDepth || !output) continue;
     PetscCall(PetscViewerHDF5PushGroup(viewer, name));

@@ -3281,6 +3281,36 @@ static PetscErrorCode DMPlexSubmeshGetDimension_Static(DM dm, DM subdm, PetscInt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode DMPlexMarkSubpointMap_Closure_Static(DM dm, DMLabel filter, PetscInt filterValue, DMLabel subpointMap)
+{
+  DMLabel         depth;
+  IS              pointIS;
+  const PetscInt *points;
+  PetscInt        numPoints = 0, p;
+
+  PetscFunctionBegin;
+  PetscCall(DMPlexGetDepthLabel(dm, &depth));
+  PetscCall(DMLabelGetStratumIS(filter, filterValue, &pointIS));
+  if (pointIS) {
+    PetscCall(ISGetIndices(pointIS, &points));
+    PetscCall(ISGetLocalSize(pointIS, &numPoints));
+  }
+  for (p = 0; p < numPoints; ++p) {
+    PetscInt *closure = NULL;
+    PetscInt  closureSize, c, pdim;
+
+    PetscCall(DMPlexGetTransitiveClosure(dm, points[p], PETSC_TRUE, &closureSize, &closure));
+    for (c = 0; c < closureSize * 2; c += 2) {
+      PetscCall(DMLabelGetValue(depth, closure[c], &pdim));
+      PetscCall(DMLabelSetValue(subpointMap, closure[c], pdim));
+    }
+    PetscCall(DMPlexRestoreTransitiveClosure(dm, points[p], PETSC_TRUE, &closureSize, &closure));
+  }
+  if (pointIS) PetscCall(ISRestoreIndices(pointIS, &points));
+  PetscCall(ISDestroy(&pointIS));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm)
 {
   MPI_Comm         comm;
@@ -3300,32 +3330,7 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
   if (cellHeight) {
     if (isCohesive) PetscCall(DMPlexMarkCohesiveSubmesh_Interpolated(dm, label, value, subpointMap, subdm));
     else PetscCall(DMPlexMarkSubmesh_Interpolated(dm, label, value, markedFaces, subpointMap, subdm));
-  } else {
-    DMLabel         depth;
-    IS              pointIS;
-    const PetscInt *points;
-    PetscInt        numPoints = 0;
-
-    PetscCall(DMPlexGetDepthLabel(dm, &depth));
-    PetscCall(DMLabelGetStratumIS(label, value, &pointIS));
-    if (pointIS) {
-      PetscCall(ISGetIndices(pointIS, &points));
-      PetscCall(ISGetLocalSize(pointIS, &numPoints));
-    }
-    for (p = 0; p < numPoints; ++p) {
-      PetscInt *closure = NULL;
-      PetscInt  closureSize, c, pdim;
-
-      PetscCall(DMPlexGetTransitiveClosure(dm, points[p], PETSC_TRUE, &closureSize, &closure));
-      for (c = 0; c < closureSize * 2; c += 2) {
-        PetscCall(DMLabelGetValue(depth, closure[c], &pdim));
-        PetscCall(DMLabelSetValue(subpointMap, closure[c], pdim));
-      }
-      PetscCall(DMPlexRestoreTransitiveClosure(dm, points[p], PETSC_TRUE, &closureSize, &closure));
-    }
-    if (pointIS) PetscCall(ISRestoreIndices(pointIS, &points));
-    PetscCall(ISDestroy(&pointIS));
-  }
+  } else PetscCall(DMPlexMarkSubpointMap_Closure_Static(dm, label, value, subpointMap));
   /* Setup chart */
   PetscCall(DMGetDimension(dm, &dim));
   PetscCall(DMGetCoordinateDim(dm, &cdim));

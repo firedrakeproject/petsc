@@ -3431,19 +3431,72 @@ static PetscErrorCode DMPlexSubmeshSetTopology_Static(DM dm, DM subdm, const Pet
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode DMPlexSubmeshSetCoordinates_Static(DM dm, DM subdm, const PetscInt *numSubPoints, const PetscInt *firstSubPoint, const PetscInt **subpoints)
+{
+  PetscSection coordSection, subCoordSection;
+  Vec          coordinates, subCoordinates;
+  PetscScalar *coords, *subCoords;
+  PetscInt     cdim, numComp, coordSize, v;
+  const char  *name;
+
+  PetscFunctionBegin;
+  PetscCall(DMGetCoordinateDim(dm, &cdim));
+  PetscCall(DMSetCoordinateDim(subdm, cdim));
+  PetscCall(DMGetCoordinateSection(dm, &coordSection));
+  PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
+  PetscCall(DMGetCoordinateSection(subdm, &subCoordSection));
+  PetscCall(PetscSectionSetNumFields(subCoordSection, 1));
+  PetscCall(PetscSectionGetFieldComponents(coordSection, 0, &numComp));
+  PetscCall(PetscSectionSetFieldComponents(subCoordSection, 0, numComp));
+  PetscCall(PetscSectionSetChart(subCoordSection, firstSubPoint[0], firstSubPoint[0] + numSubPoints[0]));
+  for (v = 0; v < numSubPoints[0]; ++v) {
+    const PetscInt vertex    = subpoints[0][v];
+    const PetscInt subvertex = firstSubPoint[0] + v;
+    PetscInt       dof;
+
+    PetscCall(PetscSectionGetDof(coordSection, vertex, &dof));
+    PetscCall(PetscSectionSetDof(subCoordSection, subvertex, dof));
+    PetscCall(PetscSectionSetFieldDof(subCoordSection, subvertex, 0, dof));
+  }
+  PetscCall(PetscSectionSetUp(subCoordSection));
+  PetscCall(PetscSectionGetStorageSize(subCoordSection, &coordSize));
+  PetscCall(VecCreate(PETSC_COMM_SELF, &subCoordinates));
+  PetscCall(PetscObjectGetName((PetscObject)coordinates, &name));
+  PetscCall(PetscObjectSetName((PetscObject)subCoordinates, name));
+  PetscCall(VecSetSizes(subCoordinates, coordSize, PETSC_DETERMINE));
+  PetscCall(VecSetBlockSize(subCoordinates, cdim));
+  PetscCall(VecSetType(subCoordinates, VECSTANDARD));
+  PetscCall(VecGetArray(coordinates, &coords));
+  PetscCall(VecGetArray(subCoordinates, &subCoords));
+  for (v = 0; v < numSubPoints[0]; ++v) {
+    const PetscInt vertex    = subpoints[0][v];
+    const PetscInt subvertex = firstSubPoint[0] + v;
+    PetscInt       dof, off, sdof, soff, d;
+
+    PetscCall(PetscSectionGetDof(coordSection, vertex, &dof));
+    PetscCall(PetscSectionGetOffset(coordSection, vertex, &off));
+    PetscCall(PetscSectionGetDof(subCoordSection, subvertex, &sdof));
+    PetscCall(PetscSectionGetOffset(subCoordSection, subvertex, &soff));
+    PetscCheck(dof == sdof, PetscObjectComm((PetscObject)dm), PETSC_ERR_PLIB, "Coordinate dimension %" PetscInt_FMT " on subvertex %" PetscInt_FMT ", vertex %" PetscInt_FMT " should be %" PetscInt_FMT, sdof, subvertex, vertex, dof);
+    for (d = 0; d < dof; ++d) subCoords[soff + d] = coords[off + d];
+  }
+  PetscCall(VecRestoreArray(coordinates, &coords));
+  PetscCall(VecRestoreArray(subCoordinates, &subCoords));
+  PetscCall(DMSetCoordinatesLocal(subdm, subCoordinates));
+  PetscCall(VecDestroy(&subCoordinates));
+
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm)
 {
-  MPI_Comm         comm;
   DMLabel          subpointMap;
   IS              *subpointIS;
   const PetscInt **subpoints;
   PetscInt        *numSubPoints, *firstSubPoint;
-  PetscInt         totSubPoints = 0, dim, sdim, cdim, p, d, v;
-  PetscMPIInt      rank;
+  PetscInt         totSubPoints = 0, dim, sdim, d;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
-  PetscCallMPI(MPI_Comm_rank(comm, &rank));
   /* Create subpointMap which marks the submesh */
   PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
   PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
@@ -3453,7 +3506,6 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
   } else PetscCall(DMPlexMarkSubpointMap_Closure_Static(dm, label, value, subpointMap));
   /* Setup chart */
   PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(DMGetCoordinateDim(dm, &cdim));
   PetscCall(PetscMalloc4(dim + 1, &numSubPoints, dim + 1, &firstSubPoint, dim + 1, &subpointIS, dim + 1, &subpoints));
   for (d = 0; d <= dim; ++d) {
     PetscCall(DMLabelGetStratumSize(subpointMap, d, &numSubPoints[d]));
@@ -3468,7 +3520,6 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
     // We reset the subdimension based on what is being selected
     PetscCall(DMPlexSubmeshGetDimension_Static(dm, subdm, &sdim));
     PetscCall(DMSetDimension(subdm, sdim));
-    PetscCall(DMSetCoordinateDim(subdm, cdim));
   }
   PetscCall(DMPlexSetChart(subdm, 0, totSubPoints));
   PetscCall(DMPlexSetVTKCellHeight(subdm, cellHeight));
@@ -3483,58 +3534,7 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
   }
   PetscCall(DMLabelDestroy(&subpointMap));
   PetscCall(DMPlexSubmeshSetTopology_Static(dm, subdm, numSubPoints, firstSubPoint, subpoints));
-  /* Build coordinates */
-  {
-    PetscSection coordSection, subCoordSection;
-    Vec          coordinates, subCoordinates;
-    PetscScalar *coords, *subCoords;
-    PetscInt     cdim, numComp, coordSize;
-    const char  *name;
-
-    PetscCall(DMGetCoordinateDim(dm, &cdim));
-    PetscCall(DMGetCoordinateSection(dm, &coordSection));
-    PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
-    PetscCall(DMGetCoordinateSection(subdm, &subCoordSection));
-    PetscCall(PetscSectionSetNumFields(subCoordSection, 1));
-    PetscCall(PetscSectionGetFieldComponents(coordSection, 0, &numComp));
-    PetscCall(PetscSectionSetFieldComponents(subCoordSection, 0, numComp));
-    PetscCall(PetscSectionSetChart(subCoordSection, firstSubPoint[0], firstSubPoint[0] + numSubPoints[0]));
-    for (v = 0; v < numSubPoints[0]; ++v) {
-      const PetscInt vertex    = subpoints[0][v];
-      const PetscInt subvertex = firstSubPoint[0] + v;
-      PetscInt       dof;
-
-      PetscCall(PetscSectionGetDof(coordSection, vertex, &dof));
-      PetscCall(PetscSectionSetDof(subCoordSection, subvertex, dof));
-      PetscCall(PetscSectionSetFieldDof(subCoordSection, subvertex, 0, dof));
-    }
-    PetscCall(PetscSectionSetUp(subCoordSection));
-    PetscCall(PetscSectionGetStorageSize(subCoordSection, &coordSize));
-    PetscCall(VecCreate(PETSC_COMM_SELF, &subCoordinates));
-    PetscCall(PetscObjectGetName((PetscObject)coordinates, &name));
-    PetscCall(PetscObjectSetName((PetscObject)subCoordinates, name));
-    PetscCall(VecSetSizes(subCoordinates, coordSize, PETSC_DETERMINE));
-    PetscCall(VecSetBlockSize(subCoordinates, cdim));
-    PetscCall(VecSetType(subCoordinates, VECSTANDARD));
-    PetscCall(VecGetArray(coordinates, &coords));
-    PetscCall(VecGetArray(subCoordinates, &subCoords));
-    for (v = 0; v < numSubPoints[0]; ++v) {
-      const PetscInt vertex    = subpoints[0][v];
-      const PetscInt subvertex = firstSubPoint[0] + v;
-      PetscInt       dof, off, sdof, soff, d;
-
-      PetscCall(PetscSectionGetDof(coordSection, vertex, &dof));
-      PetscCall(PetscSectionGetOffset(coordSection, vertex, &off));
-      PetscCall(PetscSectionGetDof(subCoordSection, subvertex, &sdof));
-      PetscCall(PetscSectionGetOffset(subCoordSection, subvertex, &soff));
-      PetscCheck(dof == sdof, comm, PETSC_ERR_PLIB, "Coordinate dimension %" PetscInt_FMT " on subvertex %" PetscInt_FMT ", vertex %" PetscInt_FMT " should be %" PetscInt_FMT, sdof, subvertex, vertex, dof);
-      for (d = 0; d < dof; ++d) subCoords[soff + d] = coords[off + d];
-    }
-    PetscCall(VecRestoreArray(coordinates, &coords));
-    PetscCall(VecRestoreArray(subCoordinates, &subCoords));
-    PetscCall(DMSetCoordinatesLocal(subdm, subCoordinates));
-    PetscCall(VecDestroy(&subCoordinates));
-  }
+  PetscCall(DMPlexSubmeshSetCoordinates_Static(dm, subdm, numSubPoints, firstSubPoint, subpoints));
   /* Build SF: We need this complexity because subpoints might not be selected on the owning process */
   {
     PetscSF            sfPoint, sfPointSub;

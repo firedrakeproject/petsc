@@ -3419,6 +3419,18 @@ static PetscErrorCode DMPlexSubmeshSetCones_Static(DM dm, DM subdm, const PetscI
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode DMPlexSubmeshSetTopology_Static(DM dm, DM subdm, const PetscInt *numSubPoints, const PetscInt *firstSubPoint, const PetscInt **subpoints)
+{
+  PetscFunctionBegin;
+  /* We do not want this label automatically computed, instead we compute it here */
+  PetscCall(DMPlexSubmeshSetConeSizes_Static(dm, subdm, numSubPoints, firstSubPoint, subpoints));
+  PetscCall(DMSetUp(subdm));
+  PetscCall(DMPlexSubmeshSetCones_Static(dm, subdm, numSubPoints, firstSubPoint, subpoints));
+  PetscCall(DMPlexSymmetrize(subdm));
+  PetscCall(DMPlexStratify(subdm));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm)
 {
   MPI_Comm         comm;
@@ -3469,13 +3481,8 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
     PetscCall(DMLabelGetStratumIS(subpointMap, d, &subpointIS[d]));
     if (subpointIS[d]) PetscCall(ISGetIndices(subpointIS[d], &subpoints[d]));
   }
-  /* We do not want this label automatically computed, instead we compute it here */
-  PetscCall(DMPlexSubmeshSetConeSizes_Static(dm, subdm, dim, numSubPoints, firstSubPoint, subpoints));
   PetscCall(DMLabelDestroy(&subpointMap));
-  PetscCall(DMSetUp(subdm));
-  PetscCall(DMPlexSubmeshSetCones_Static(dm, subdm, dim, numSubPoints, firstSubPoint, subpoints));
-  PetscCall(DMPlexSymmetrize(subdm));
-  PetscCall(DMPlexStratify(subdm));
+  PetscCall(DMPlexSubmeshSetTopology_Static(dm, subdm, numSubPoints, firstSubPoint, subpoints));
   /* Build coordinates */
   {
     PetscSection coordSection, subCoordSection;

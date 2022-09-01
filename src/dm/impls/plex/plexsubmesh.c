@@ -3352,61 +3352,14 @@ static PetscErrorCode DMPlexSubmeshSetConeSizes_Static(DM dm, DM subdm, const Pe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm)
+static PetscErrorCode DMPlexSubmeshSetCones_Static(DM dm, DM subdm, const PetscInt *numSubPoints, const PetscInt *firstSubPoint, const PetscInt **subpoints)
 {
-  MPI_Comm         comm;
-  DMLabel          subpointMap;
-  IS              *subpointIS;
-  const PetscInt **subpoints;
-  PetscInt        *numSubPoints, *firstSubPoint, *coneNew, *orntNew;
-  PetscInt         totSubPoints = 0, maxConeSize, dim, sdim, cdim, p, d, v;
-  PetscMPIInt      rank;
+  PetscInt  dim, sdim, d, p, maxConeSize;
+  PetscInt *coneNew, *orntNew;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
-  PetscCallMPI(MPI_Comm_rank(comm, &rank));
-  /* Create subpointMap which marks the submesh */
-  PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
-  PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
-  if (cellHeight) {
-    if (isCohesive) PetscCall(DMPlexMarkCohesiveSubmesh_Interpolated(dm, label, value, subpointMap, subdm));
-    else PetscCall(DMPlexMarkSubmesh_Interpolated(dm, label, value, markedFaces, subpointMap, subdm));
-  } else PetscCall(DMPlexMarkSubpointMap_Closure_Static(dm, label, value, subpointMap));
-  /* Setup chart */
   PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(DMGetCoordinateDim(dm, &cdim));
-  PetscCall(PetscMalloc4(dim + 1, &numSubPoints, dim + 1, &firstSubPoint, dim + 1, &subpointIS, dim + 1, &subpoints));
-  for (d = 0; d <= dim; ++d) {
-    PetscCall(DMLabelGetStratumSize(subpointMap, d, &numSubPoints[d]));
-    totSubPoints += numSubPoints[d];
-  }
-  // Determine submesh dimension
-  PetscCall(DMGetDimension(subdm, &sdim));
-  if (sdim > 0) {
-    // Calling function knows what dimension to use, and we include neighboring cells as well
-    sdim = dim;
-  } else {
-    // We reset the subdimension based on what is being selected
-    PetscCall(DMPlexSubmeshGetDimension_Static(dm, subdm, &sdim));
-    PetscCall(DMSetDimension(subdm, sdim));
-    PetscCall(DMSetCoordinateDim(subdm, cdim));
-  }
-  PetscCall(DMPlexSetChart(subdm, 0, totSubPoints));
-  PetscCall(DMPlexSetVTKCellHeight(subdm, cellHeight));
-  /* Set cone sizes */
-  firstSubPoint[sdim] = 0;
-  firstSubPoint[0]    = firstSubPoint[sdim] + numSubPoints[sdim];
-  if (sdim > 1) firstSubPoint[sdim - 1] = firstSubPoint[0] + numSubPoints[0];
-  if (sdim > 2) firstSubPoint[sdim - 2] = firstSubPoint[sdim - 1] + numSubPoints[sdim - 1];
-  for (d = 0; d <= sdim; ++d) {
-    PetscCall(DMLabelGetStratumIS(subpointMap, d, &subpointIS[d]));
-    if (subpointIS[d]) PetscCall(ISGetIndices(subpointIS[d], &subpoints[d]));
-  }
-  /* We do not want this label automatically computed, instead we compute it here */
-  PetscCall(DMPlexSubmeshSetConeSizes_Static(dm, subdm, dim, numSubPoints, firstSubPoint, subpoints));
-  PetscCall(DMLabelDestroy(&subpointMap));
-  PetscCall(DMSetUp(subdm));
-  /* Set cones */
+  PetscCall(DMPlexSubmeshGetDimension_Static(dm, subdm, &sdim));
   PetscCall(DMPlexGetMaxSizes(dm, &maxConeSize, NULL));
   PetscCall(PetscMalloc2(maxConeSize, &coneNew, maxConeSize, &orntNew));
   for (d = 0; d <= sdim; ++d) {
@@ -3456,13 +3409,71 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
           ++coneSizeNew;
         }
       }
-      PetscCheck(coneSizeNew == subconeSize, comm, PETSC_ERR_PLIB, "Number of cone points located %" PetscInt_FMT " does not match subcone size %" PetscInt_FMT, coneSizeNew, subconeSize);
+      PetscCheck(coneSizeNew == subconeSize, PetscObjectComm((PetscObject)dm), PETSC_ERR_PLIB, "Number of cone points located %" PetscInt_FMT " does not match subcone size %" PetscInt_FMT, coneSizeNew, subconeSize);
       PetscCall(DMPlexSetCone(subdm, subpoint, coneNew));
       PetscCall(DMPlexSetConeOrientation(subdm, subpoint, orntNew));
       if (fornt < 0) PetscCall(DMPlexOrientPoint(subdm, subpoint, fornt));
     }
   }
   PetscCall(PetscFree2(coneNew, orntNew));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm)
+{
+  MPI_Comm         comm;
+  DMLabel          subpointMap;
+  IS              *subpointIS;
+  const PetscInt **subpoints;
+  PetscInt        *numSubPoints, *firstSubPoint;
+  PetscInt         totSubPoints = 0, dim, sdim, cdim, p, d, v;
+  PetscMPIInt      rank;
+
+  PetscFunctionBegin;
+  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
+  PetscCallMPI(MPI_Comm_rank(comm, &rank));
+  /* Create subpointMap which marks the submesh */
+  PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
+  PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
+  if (cellHeight) {
+    if (isCohesive) PetscCall(DMPlexMarkCohesiveSubmesh_Interpolated(dm, label, value, subpointMap, subdm));
+    else PetscCall(DMPlexMarkSubmesh_Interpolated(dm, label, value, markedFaces, subpointMap, subdm));
+  } else PetscCall(DMPlexMarkSubpointMap_Closure_Static(dm, label, value, subpointMap));
+  /* Setup chart */
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMGetCoordinateDim(dm, &cdim));
+  PetscCall(PetscMalloc4(dim + 1, &numSubPoints, dim + 1, &firstSubPoint, dim + 1, &subpointIS, dim + 1, &subpoints));
+  for (d = 0; d <= dim; ++d) {
+    PetscCall(DMLabelGetStratumSize(subpointMap, d, &numSubPoints[d]));
+    totSubPoints += numSubPoints[d];
+  }
+  // Determine submesh dimension
+  PetscCall(DMGetDimension(subdm, &sdim));
+  if (sdim > 0) {
+    // Calling function knows what dimension to use, and we include neighboring cells as well
+    sdim = dim;
+  } else {
+    // We reset the subdimension based on what is being selected
+    PetscCall(DMPlexSubmeshGetDimension_Static(dm, subdm, &sdim));
+    PetscCall(DMSetDimension(subdm, sdim));
+    PetscCall(DMSetCoordinateDim(subdm, cdim));
+  }
+  PetscCall(DMPlexSetChart(subdm, 0, totSubPoints));
+  PetscCall(DMPlexSetVTKCellHeight(subdm, cellHeight));
+  /* Set cone sizes */
+  firstSubPoint[sdim] = 0;
+  firstSubPoint[0]    = firstSubPoint[sdim] + numSubPoints[sdim];
+  if (sdim > 1) firstSubPoint[sdim - 1] = firstSubPoint[0] + numSubPoints[0];
+  if (sdim > 2) firstSubPoint[sdim - 2] = firstSubPoint[sdim - 1] + numSubPoints[sdim - 1];
+  for (d = 0; d <= sdim; ++d) {
+    PetscCall(DMLabelGetStratumIS(subpointMap, d, &subpointIS[d]));
+    if (subpointIS[d]) PetscCall(ISGetIndices(subpointIS[d], &subpoints[d]));
+  }
+  /* We do not want this label automatically computed, instead we compute it here */
+  PetscCall(DMPlexSubmeshSetConeSizes_Static(dm, subdm, dim, numSubPoints, firstSubPoint, subpoints));
+  PetscCall(DMLabelDestroy(&subpointMap));
+  PetscCall(DMSetUp(subdm));
+  PetscCall(DMPlexSubmeshSetCones_Static(dm, subdm, dim, numSubPoints, firstSubPoint, subpoints));
   PetscCall(DMPlexSymmetrize(subdm));
   PetscCall(DMPlexStratify(subdm));
   /* Build coordinates */

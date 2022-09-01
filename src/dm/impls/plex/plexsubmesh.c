@@ -3311,6 +3311,47 @@ static PetscErrorCode DMPlexMarkSubpointMap_Closure_Static(DM dm, DMLabel filter
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode DMPlexSubmeshSetConeSizes_Static(DM dm, DM subdm, const PetscInt *numSubPoints, const PetscInt *firstSubPoint, const PetscInt **subpoints)
+{
+  DMLabel  subpointMap;
+  PetscInt dim, sdim, d, p, cellHeight;
+
+  PetscFunctionBegin;
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMPlexSubmeshGetDimension_Static(dm, subdm, &sdim));
+  PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
+  PetscCall(DMPlexGetVTKCellHeight(subdm, &cellHeight));
+  PetscCall(DMCreateLabel(subdm, "celltype"));
+  for (d = 0; d <= sdim; ++d) {
+    for (p = 0; p < numSubPoints[d]; ++p) {
+      const PetscInt  point    = subpoints[d][p];
+      const PetscInt  subpoint = firstSubPoint[d] + p;
+      const PetscInt *cone;
+      PetscInt        coneSize;
+
+      PetscCall(DMPlexGetConeSize(dm, point, &coneSize));
+      if (cellHeight && (d == sdim)) {
+        PetscInt coneSizeNew, c, val;
+
+        PetscCall(DMPlexGetCone(dm, point, &cone));
+        for (c = 0, coneSizeNew = 0; c < coneSize; ++c) {
+          PetscCall(DMLabelGetValue(subpointMap, cone[c], &val));
+          if (val >= 0) coneSizeNew++;
+        }
+        PetscCall(DMPlexSetConeSize(subdm, subpoint, coneSizeNew));
+        PetscCall(DMPlexSetCellType(subdm, subpoint, DM_POLYTOPE_FV_GHOST));
+      } else {
+        DMPolytopeType ct;
+
+        PetscCall(DMPlexSetConeSize(subdm, subpoint, coneSize));
+        PetscCall(DMPlexGetCellType(dm, point, &ct));
+        PetscCall(DMPlexSetCellType(subdm, subpoint, ct));
+      }
+    }
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm)
 {
   MPI_Comm         comm;
@@ -3362,34 +3403,7 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
     if (subpointIS[d]) PetscCall(ISGetIndices(subpointIS[d], &subpoints[d]));
   }
   /* We do not want this label automatically computed, instead we compute it here */
-  PetscCall(DMCreateLabel(subdm, "celltype"));
-  for (d = 0; d <= sdim; ++d) {
-    for (p = 0; p < numSubPoints[d]; ++p) {
-      const PetscInt  point    = subpoints[d][p];
-      const PetscInt  subpoint = firstSubPoint[d] + p;
-      const PetscInt *cone;
-      PetscInt        coneSize;
-
-      PetscCall(DMPlexGetConeSize(dm, point, &coneSize));
-      if (cellHeight && (d == sdim)) {
-        PetscInt coneSizeNew, c, val;
-
-        PetscCall(DMPlexGetCone(dm, point, &cone));
-        for (c = 0, coneSizeNew = 0; c < coneSize; ++c) {
-          PetscCall(DMLabelGetValue(subpointMap, cone[c], &val));
-          if (val >= 0) coneSizeNew++;
-        }
-        PetscCall(DMPlexSetConeSize(subdm, subpoint, coneSizeNew));
-        PetscCall(DMPlexSetCellType(subdm, subpoint, DM_POLYTOPE_FV_GHOST));
-      } else {
-        DMPolytopeType ct;
-
-        PetscCall(DMPlexSetConeSize(subdm, subpoint, coneSize));
-        PetscCall(DMPlexGetCellType(dm, point, &ct));
-        PetscCall(DMPlexSetCellType(subdm, subpoint, ct));
-      }
-    }
-  }
+  PetscCall(DMPlexSubmeshSetConeSizes_Static(dm, subdm, dim, numSubPoints, firstSubPoint, subpoints));
   PetscCall(DMLabelDestroy(&subpointMap));
   PetscCall(DMSetUp(subdm));
   /* Set cones */

@@ -3618,7 +3618,6 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
     PetscCall(DMSetDimension(subdm, sdim));
   }
   PetscCall(DMPlexSetChart(subdm, 0, totSubPoints));
-  PetscCall(DMPlexSetVTKCellHeight(subdm, cellHeight));
   /* Set cone sizes */
   firstSubPoint[sdim] = 0;
   firstSubPoint[0]    = firstSubPoint[sdim] + numSubPoints[sdim];
@@ -3646,6 +3645,7 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
 static PetscErrorCode DMPlexCreateSubmesh_Interpolated(DM dm, DMLabel vertexLabel, PetscInt value, PetscBool markedFaces, DM subdm)
 {
   PetscFunctionBegin;
+  PetscCall(DMPlexSetVTKCellHeight(subdm, 1));
   PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, vertexLabel, value, markedFaces, PETSC_FALSE, 1, subdm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -3906,6 +3906,7 @@ static PetscErrorCode DMPlexCreateCohesiveSubmesh_Interpolated(DM dm, const char
 
   PetscFunctionBegin;
   if (labelname) PetscCall(DMGetLabel(dm, labelname, &label));
+  PetscCall(DMPlexSetVTKCellHeight(subdm, 1));
   PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, label, value, PETSC_FALSE, PETSC_TRUE, 1, subdm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -4031,6 +4032,7 @@ PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, DM *subdm)
   PetscCall(DMGetDimension(dm, &dim));
   PetscCall(DMCreate(PetscObjectComm((PetscObject)dm), subdm));
   PetscCall(DMSetType(*subdm, DMPLEX));
+  PetscCall(DMPlexSetVTKCellHeight(*subdm, 0));
   /* Extract submesh in place, could be empty on some procs, could have inconsistency if procs do not both extract a shared cell */
   PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, cellLabel, value, PETSC_FALSE, PETSC_FALSE, 0, *subdm));
   PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_TRUE, *subdm));

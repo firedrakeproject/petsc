@@ -62,6 +62,10 @@ Changes: Development
 
 .. rubric:: DMPlex:
 
+- Add ``DMPlexTransformExtrudeGetPeriodic()`` and ``DMPlexTransformExtrudeSetPeriodic()``
+- Replace ``DMPlexGetGhostCellStratum()`` with ``DMPlexGetCellTypeStratum()``
+- Add parameters, ``ignoreLabelHalo`` and ``addOverlap``, to ``DMPlexFilter()``
+
 .. rubric:: FE/FV:
 
 .. rubric:: DMNetwork:

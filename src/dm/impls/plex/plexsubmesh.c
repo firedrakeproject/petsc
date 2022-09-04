@@ -3283,14 +3283,27 @@ static PetscErrorCode DMPlexSubmeshGetDimension_Static(DM dm, DM subdm, PetscInt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexMarkSubpointMap_Closure_Static(DM dm, DMLabel filter, PetscInt filterValue, DMLabel subpointMap)
+static PetscErrorCode DMPlexMarkSubpointMap_Closure_Static(DM dm, DMLabel filter, PetscInt filterValue, PetscBool ignoreLabelHalo, DMLabel subpointMap)
 {
   DMLabel         depth;
   IS              pointIS;
   const PetscInt *points;
   PetscInt        numPoints = 0, p;
+  PetscHMapI      leafpointMap;
 
   PetscFunctionBegin;
+  /* When https://gitlab.com/petsc/petsc/-/merge_requests/5356 lands */
+  /* we can use ghostMask array stored in plex instead of HMapI.     */
+  PetscCall(PetscHMapICreate(&leafpointMap));
+  {
+    PetscSF         sf;
+    PetscInt        nleaves;
+    const PetscInt *ilocal;
+
+    PetscCall(DMGetPointSF(dm, &sf));
+    PetscCall(PetscSFGetGraph(sf, NULL, &nleaves, &ilocal, NULL));
+    for (p = 0; p < nleaves; ++p) PetscHMapISet(leafpointMap, ilocal ? ilocal[p] : p, p);
+  }
   PetscCall(DMPlexGetDepthLabel(dm, &depth));
   PetscCall(DMLabelGetStratumIS(filter, filterValue, &pointIS));
   if (pointIS) {
@@ -3299,8 +3312,12 @@ static PetscErrorCode DMPlexMarkSubpointMap_Closure_Static(DM dm, DMLabel filter
   }
   for (p = 0; p < numPoints; ++p) {
     PetscInt *closure = NULL;
-    PetscInt  closureSize, c, pdim;
+    PetscInt  closureSize, c, pdim, val;
 
+    if (ignoreLabelHalo) {
+      PetscCall(PetscHMapIGet(leafpointMap, points[p], &val));
+      if (val >= 0) continue;
+    }
     PetscCall(DMPlexGetTransitiveClosure(dm, points[p], PETSC_TRUE, &closureSize, &closure));
     for (c = 0; c < closureSize * 2; c += 2) {
       PetscCall(DMLabelGetValue(depth, closure[c], &pdim));
@@ -3310,6 +3327,7 @@ static PetscErrorCode DMPlexMarkSubpointMap_Closure_Static(DM dm, DMLabel filter
   }
   if (pointIS) PetscCall(ISRestoreIndices(pointIS, &points));
   PetscCall(ISDestroy(&pointIS));
+  PetscCall(PetscHMapIDestroy(&leafpointMap));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -4039,21 +4057,30 @@ PetscErrorCode DMPlexReorderCohesiveSupports(DM dm)
   DMPlexFilter - Extract a subset of mesh cells defined by a label as a separate mesh
 
   Input Parameters:
-+ dm        - The original mesh
-. cellLabel - The `DMLabel` marking cells contained in the new mesh
-- value     - The label value to use
++ dm               - The original mesh
+. cellLabel        - The `DMLabel` marking cells contained in the new mesh
+. value            - The label value to use
+. ignoreLabelHalo  - If `PETSC_TRUE`, ignore marked points in the halo
+- addOverlap       - If `PETSC_TRUE`, add overlap to the extracted submesh; only significant if ignoreLabelHalo is `PETSC_TRUE`
 
   Output Parameter:
 . subdm - The new mesh
 
   Level: developer
 
-  Note:
+  Notes:
   This function produces a `DMLabel` mapping original points in the submesh to their depth. This can be obtained using `DMPlexGetSubpointMap()`.
+
+  If ignoreLabelHalo is `PETSC_TRUE`, one obtains globally consistent non-overlapping subdm; if addOverlap is further set `PETSC_TRUE`, subdm
+  inherits the adjacency rules and the overlap size from the parent dm and `DMPlexDistributeOverlap()` is called on subdm.
+
+  If you want to add custom overlap to subdm, simply set ignoreLabelHalo to `PETSC_TRUE` and addOverlap to `PETSC_FALSE` and call
+  `DMPlexDistributeOverlap()` on the returned subdm. In that case `DMLabel` mapping original points in the submesh will not be updated
+  for the overlapping subdm automatically, as such mappings can not constructed for general adjacency rules and overlap sizes used in subdm.
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexGetSubpointMap()`, `DMGetLabel()`, `DMLabelSetValue()`, `DMPlexCreateSubmesh()`
 @*/
-PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, DM *subdm)
+PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, PetscBool ignoreLabelHalo, PetscBool addOverlap, DM *subdm)
 {
   DMLabel  subpointMap;
   PetscInt dim, subdim, overlap;
@@ -4067,7 +4094,7 @@ PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, DM *subdm)
   /* Create subpointMap which marks the submesh */
   PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subpoint_map", &subpointMap));
   PetscCall(DMPlexSetSubpointMap(*subdm, subpointMap));
-  PetscCall(DMPlexMarkSubpointMap_Closure_Static(dm, cellLabel, value, subpointMap));
+  PetscCall(DMPlexMarkSubpointMap_Closure_Static(dm, cellLabel, value, ignoreLabelHalo, subpointMap));
   PetscCall(DMLabelDestroy(&subpointMap));
   PetscCall(DMPlexSubmeshGetDimension_Static(dm, *subdm, &subdim));
   /* Return if subpointMap was empty */

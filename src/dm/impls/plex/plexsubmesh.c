@@ -3263,6 +3263,24 @@ static PetscErrorCode DMPlexFilterLabels_Internal(DM dm, const PetscInt numSubPo
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode DMPlexSubmeshGetDimension_Static(DM dm, DM subdm, PetscInt *subdepth)
+{
+  DMLabel  subpointMap = NULL;
+  PetscInt dim, d;
+
+  PetscFunctionBegin;
+  PetscCall(DMGetDimension(dm, &dim));
+  PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
+  for (d = dim; d >= 0; --d) {
+    PetscInt stratumSize;
+
+    PetscCall(DMLabelGetStratumSize(subpointMap, d, &stratumSize));
+    if (stratumSize > 0) break;
+  }
+  PetscCall(MPIU_Allreduce(&d, subdepth, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)subdm)));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscBool isCohesive, PetscInt cellHeight, DM subdm)
 {
   MPI_Comm         comm;
@@ -3323,10 +3341,7 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
     sdim = dim;
   } else {
     // We reset the subdimension based on what is being selected
-    PetscInt lsdim;
-    for (lsdim = dim; lsdim >= 0; --lsdim)
-      if (numSubPoints[lsdim]) break;
-    PetscCall(MPIU_Allreduce(&lsdim, &sdim, 1, MPIU_INT, MPI_MAX, comm));
+    PetscCall(DMPlexSubmeshGetDimension_Static(dm, subdm, &sdim));
     PetscCall(DMSetDimension(subdm, sdim));
     PetscCall(DMSetCoordinateDim(subdm, cdim));
   }

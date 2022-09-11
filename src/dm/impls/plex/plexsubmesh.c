@@ -3488,7 +3488,7 @@ static PetscErrorCode DMPlexSubmeshSetCoordinates_Static(DM dm, DM subdm, const 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexSubmeshSetSubpointSF_Static(DM dm, DM subdm)
+static PetscErrorCode DMPlexSubmeshSetSubpointSF_Static(DM dm, DM subdm, PetscSF *ownershipTransferSF)
 {
   PetscSF            sf, subsf;
   PetscMPIInt        rank, size, subsize;
@@ -3540,8 +3540,46 @@ static PetscErrorCode DMPlexSubmeshSetSubpointSF_Static(DM dm, DM subdm)
     point                                  = subpoints[p];
     newOwnersReduced[point - pStart].rank  = rank;
     newOwnersReduced[point - pStart].index = p;
-    newOwners[point - pStart].rank         = -1;
-    newOwners[point - pStart].index        = -1;
+  }
+  if (ownershipTransferSF) {
+    PetscSFNode *iremote1 = NULL, *newOwnersReduced1 = NULL;
+    PetscInt    *ilocal1 = NULL;
+    PetscInt     nleaves1;
+
+    for (p = 0; p < nsubpoints; ++p) {
+      point                           = subpoints[p];
+      newOwners[point - pStart].index = point - pStart;
+    }
+    PetscCall(PetscMalloc1(nroots, &newOwnersReduced1));
+    for (p = 0; p < nroots; ++p) {
+      newOwnersReduced1[p].rank  = -1;
+      newOwnersReduced1[p].index = -1;
+    }
+    PetscCall(PetscSFReduceBegin(sf, MPIU_2INT, newOwners, newOwnersReduced1, MPI_MAXLOC));
+    PetscCall(PetscSFReduceEnd(sf, MPIU_2INT, newOwners, newOwnersReduced1, MPI_MAXLOC));
+    /* Elements of newOwnersReduced array filled as a result of PetscSFReduce correspond to owned points */
+    for (p = 0, nleaves1 = 0; p < nroots; ++p) {
+      if (newOwnersReduced[p].rank >= 0 && newOwnersReduced[p].rank != rank) { ++nleaves1; }
+    }
+    PetscCall(PetscMalloc1(nleaves1, &ilocal1));
+    PetscCall(PetscMalloc1(nleaves1, &iremote1));
+    for (p = 0, nleaves1 = 0; p < nroots; ++p) {
+      if (newOwnersReduced[p].rank >= 0 && newOwnersReduced[p].rank != rank) {
+        ilocal1[nleaves1]        = p;
+        iremote1[nleaves1].rank  = newOwnersReduced[p].rank;
+        iremote1[nleaves1].index = newOwnersReduced1[p].index;
+        ++nleaves1;
+      }
+    }
+    PetscCall(PetscFree(newOwnersReduced1));
+    PetscCall(PetscSFCreate(PetscObjectComm((PetscObject)sf), ownershipTransferSF));
+    PetscCall(PetscSFSetFromOptions(*ownershipTransferSF));
+    PetscCall(PetscSFSetGraph(*ownershipTransferSF, pEnd - pStart, nleaves1, ilocal1, PETSC_OWN_POINTER, iremote1, PETSC_OWN_POINTER));
+  }
+  for (p = 0; p < nsubpoints; ++p) {
+    point                           = subpoints[p];
+    newOwners[point - pStart].rank  = -1;
+    newOwners[point - pStart].index = -1;
   }
   PetscCall(PetscSFBcastBegin(sf, MPIU_2INT, newOwnersReduced, newOwners, MPI_REPLACE));
   PetscCall(PetscSFBcastEnd(sf, MPIU_2INT, newOwnersReduced, newOwners, MPI_REPLACE));
@@ -3570,7 +3608,7 @@ static PetscErrorCode DMPlexSubmeshSetSubpointSF_Static(DM dm, DM subdm)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, DM subdm)
+static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel label, PetscInt value, PetscBool markedFaces, PetscSF *ownershipTransferSF, DM subdm)
 {
   DMLabel          subpointMap;
   IS              *subpointIS;
@@ -3579,6 +3617,7 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
   PetscInt         totSubPoints = 0, dim, sdim, d;
 
   PetscFunctionBegin;
+  if (ownershipTransferSF) *ownershipTransferSF = NULL;
   PetscCall(DMPlexGetSubpointMap(subdm, &subpointMap));
   /* Setup chart */
   PetscCall(DMGetDimension(dm, &dim));
@@ -3609,7 +3648,7 @@ static PetscErrorCode DMPlexCreateSubmeshGeneric_Interpolated(DM dm, DMLabel lab
   }
   PetscCall(DMPlexSubmeshSetTopology_Static(dm, subdm, numSubPoints, firstSubPoint, subpoints));
   PetscCall(DMPlexSubmeshSetCoordinates_Static(dm, subdm, numSubPoints, firstSubPoint, subpoints));
-  PetscCall(DMPlexSubmeshSetSubpointSF_Static(dm, subdm));
+  PetscCall(DMPlexSubmeshSetSubpointSF_Static(dm, subdm, ownershipTransferSF));
   /* Filter labels */
   PetscCall(DMPlexFilterLabels_Internal(dm, numSubPoints, subpoints, firstSubPoint, subdm));
   /* Cleanup */
@@ -3632,7 +3671,7 @@ static PetscErrorCode DMPlexCreateSubmesh_Interpolated(DM dm, DMLabel vertexLabe
   PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
   PetscCall(DMPlexMarkSubmesh_Interpolated(dm, vertexLabel, value, markedFaces, subpointMap, subdm));
   PetscCall(DMLabelDestroy(&subpointMap));
-  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, vertexLabel, value, markedFaces, subdm));
+  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, vertexLabel, value, markedFaces, NULL, subdm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -3898,7 +3937,7 @@ static PetscErrorCode DMPlexCreateCohesiveSubmesh_Interpolated(DM dm, const char
   PetscCall(DMPlexSetSubpointMap(subdm, subpointMap));
   PetscCall(DMPlexMarkCohesiveSubmesh_Interpolated(dm, label, value, subpointMap, subdm));
   PetscCall(DMLabelDestroy(&subpointMap));
-  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, label, value, PETSC_FALSE, subdm));
+  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, label, value, PETSC_FALSE, NULL, subdm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -4033,7 +4072,7 @@ PetscErrorCode DMPlexFilter(DM dm, DMLabel cellLabel, PetscInt value, DM *subdm)
   PetscCall(DMPlexMarkSubpointMap_Closure_Static(dm, cellLabel, value, subpointMap));
   PetscCall(DMLabelDestroy(&subpointMap));
   /* Extract submesh in place, could be empty on some procs, could have inconsistency if procs do not both extract a shared cell */
-  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, cellLabel, value, PETSC_FALSE, *subdm));
+  PetscCall(DMPlexCreateSubmeshGeneric_Interpolated(dm, cellLabel, value, PETSC_FALSE, NULL, *subdm));
   PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_TRUE, *subdm));
   // It is possible to obtain a surface mesh where some faces are in SF
   //   We should either mark the mesh as having an overlap, or delete these from the SF

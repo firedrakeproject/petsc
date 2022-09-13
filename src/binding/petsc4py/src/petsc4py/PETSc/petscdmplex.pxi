@@ -19,6 +19,12 @@ cdef extern from * nogil:
     PetscDMPlexTransformType DMPLEXEXTRUDE
     PetscDMPlexTransformType DMPLEXTRANSFORMFILTER
 
+    ctypedef PetscErrorCode (*PetscDMPlexUserAdjacency)(PetscDM,
+                                                        PetscInt,
+                                                        PetscInt*,
+                                                        PetscInt[],
+                                                        void *) except PETSC_ERR_PYTHON
+
     PetscErrorCode DMPlexCreate(MPI_Comm,PetscDM*)
     PetscErrorCode DMPlexCreateCohesiveSubmesh(PetscDM,PetscBool,const char[],PetscInt,PetscDM*)
     PetscErrorCode DMPlexCreateFromCellListPetsc(MPI_Comm,PetscInt,PetscInt,PetscInt,PetscInt,PetscBool,PetscInt[],PetscInt,PetscReal[],PetscDM*)
@@ -134,11 +140,12 @@ cdef extern from * nogil:
     PetscErrorCode DMPlexReorderGetDefault(PetscDM,PetscDMPlexReorderDefaultFlag*)
     PetscErrorCode DMPlexReorderSetDefault(PetscDM,PetscDMPlexReorderDefaultFlag)
 
-    #int DMPlexCreateSubmesh(PetscDM,PetscDMLabel,PetscInt,PetscDM*)
-    #int DMPlexCreateHybridMesh(PetscDM,PetscDMLabel,PetscDMLabel,PetscInt,PetscDMLabel*,PetscDMLabel*,PetscDM *,PetscDM *)
-    #int DMPlexGetSubpointMap(PetscDM,PetscDMLabel*)
-    #int DMPlexSetSubpointMap(PetscDM,PetscDMLabel)
-    #int DMPlexCreateSubpointIS(PetscDM,PetscIS*)
+    PetscErrorCode DMPlexFilter(PetscDM,PetscDMLabel,PetscInt,PetscBool,PetscBool,PetscBool,PetscBool,PetscDMPlexUserAdjacency,void*,PetscDM*)
+    #PetscErrorCode DMPlexCreateSubmesh(PetscDM,PetscDMLabel,PetscInt,PetscDM*)
+    #PetscErrorCode DMPlexCreateHybridMesh(PetscDM,PetscDMLabel,PetscDMLabel,PetscInt,PetscDMLabel*,PetscDMLabel*,PetscDM *,PetscDM *)
+    PetscErrorCode DMPlexGetSubpointMap(PetscDM,PetscDMLabel*)
+    #PetscErrorCode DMPlexSetSubpointMap(PetscDM,PetscDMLabel)
+    PetscErrorCode DMPlexGetSubpointIS(PetscDM,PetscIS*)
 
     PetscErrorCode DMPlexCreateCoarsePointIS(PetscDM,PetscIS*)
     PetscErrorCode DMPlexMarkBoundaryFaces(PetscDM,PetscInt,PetscDMLabel)

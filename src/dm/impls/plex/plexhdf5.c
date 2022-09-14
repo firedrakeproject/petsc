@@ -777,7 +777,7 @@ PetscErrorCode DMPlexTopologyView_HDF5_Internal(DM dm, IS globalPointNumbers, Pe
   PetscCall(PetscViewerHDF5PopGroup(viewer)); /* "topology" */
 
   /* since DMPlexStorageVersion 2.1.0 */
-  if (version->major >= 2 && version->minor >= 1) {
+  if (version->major >= 2) {
     const char *distribution_name;
 
     PetscCall(DMPlexDistributionGetName(dm, &distribution_name));
@@ -2364,7 +2364,7 @@ PetscErrorCode DMPlexTopologyLoad_HDF5_Internal(DM dm, PetscViewer viewer, Petsc
   PetscCall(PetscViewerHDF5PopGroup(viewer)); /* "topology" */
 
   /* since DMPlexStorageVersion 2.1.0 */
-  if (version->major >= 2 && version->minor >= 1) {
+  if (version->major >= 2) {
     DM          distdm;
     PetscSF     distsf;
     const char *distribution_name;

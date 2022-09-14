@@ -378,6 +378,7 @@ static PetscErrorCode MatCholeskyFactorNumeric_CHOLMOD(Mat F, Mat A, const MatFa
   int            err;
 
   PetscFunctionBegin;
+  if (!A->rmap->N) PetscFunctionReturn(0);
   PetscCall((*chol->Wrap)(A, PETSC_TRUE, &cholA, &aijalloc, &valloc));
   static_F = F;
   err      = !cholmod_X_factorize(&cholA, chol->factor, chol->common);

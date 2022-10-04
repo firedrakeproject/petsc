@@ -516,6 +516,7 @@ cdef extern from * nogil:
         PetscErrorCode (*setdiagonal"diagonalset")(PetscMat,PetscVec,InsertMode) except IERR
         PetscErrorCode (*diagonalscale)(PetscMat,PetscVec,PetscVec) except IERR
         PetscErrorCode (*missingdiagonal)(PetscMat,PetscBool*,PetscInt*) except IERR
+        PetscErrorCode (*invertblockdiagonal)(PetscMat,const PetscScalar**) except IERR
         PetscErrorCode (*norm)(PetscMat,NormType,PetscReal*) except IERR
         PetscErrorCode (*realpart)(PetscMat) except IERR
         PetscErrorCode (*imagpart"imaginarypart")(PetscMat) except IERR
@@ -617,6 +618,7 @@ cdef dict dMatOps = {   3 : 'mult',
                       119 : 'multDiagonalBlock',
                       121 : 'multHermitian',
                       122 : 'multHermitianAdd',
+                      126 : 'invertBlockDiagonal',
                     }
 
 cdef PetscErrorCode MatCreate_Python(
@@ -663,6 +665,7 @@ cdef PetscErrorCode MatCreate_Python(
     ops.conjugate         = MatConjugate_Python
     ops.hasoperation      = MatHasOperation_Python
     ops.getdiagonalblock  = MatGetDiagonalBlock_Python
+    ops.invertblockdiagonal = MatInvertBlockDiagonal_Python
 
     ops.productsetfromoptions = MatProductSetFromOptions_Python
 
@@ -1225,6 +1228,18 @@ cdef PetscErrorCode MatMissingDiagonal_Python(
     missing[0] = <PetscBool>pymissing
     if loc:
         loc[0] = asInt(pyloc)
+    return FunctionEnd()
+
+cdef PetscErrorCode MatInvertBlockDiagonal_Python(
+    PetscMat mat,
+    const PetscScalar **values,
+    ) \
+    except IERR with gil:
+    FunctionBegin(b"MatInvertBlockDiagonal_Python")
+    cdef invertBlockDiagonal = PyMat(mat).invertBlockDiagonal
+    if invertBlockDiagonal is None: return UNSUPPORTED(b"invertBlockDiagonal")
+    cdef ndarray[PetscScalar, ndim=3, mode = 'c'] np_buff = invertBlockDiagonal(Mat_(mat))
+    values[0] = &np_buff[0,0,0]
     return FunctionEnd()
 
 cdef PetscErrorCode MatNorm_Python(

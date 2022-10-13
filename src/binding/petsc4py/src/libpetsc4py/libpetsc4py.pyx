@@ -1238,7 +1238,7 @@ cdef PetscErrorCode MatInvertBlockDiagonal_Python(
     FunctionBegin(b"MatInvertBlockDiagonal_Python")
     cdef invertBlockDiagonal = PyMat(mat).invertBlockDiagonal
     if invertBlockDiagonal is None: return UNSUPPORTED(b"invertBlockDiagonal")
-    cdef ndarray[PetscScalar, ndim=3, mode = 'c'] np_buff = invertBlockDiagonal(Mat_(mat))
+    cdef ndarray[PetscScalar, ndim=3, mode='fortran'] np_buff = invertBlockDiagonal(Mat_(mat))
     values[0] = &np_buff[0,0,0]
     return FunctionEnd()
 

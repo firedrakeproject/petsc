@@ -910,7 +910,7 @@ cdef class Mat(Object):
         cdef PetscBool flag1 = PETSC_FALSE
         cdef PetscBool flag2 = PETSC_FALSE
         CHKERR( MatIsHermitianKnown(self.mat, &flag1, &flag2) )
-        return (toBool(flag1), toBool(flag2))
+        return (toBool(fl:vsag1), toBool(flag2))
 
     def isStructurallySymmetric(self):
         cdef PetscBool flag = PETSC_FALSE

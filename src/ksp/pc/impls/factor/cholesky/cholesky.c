@@ -39,21 +39,21 @@ static PetscErrorCode PCSetUp_Cholesky(PC pc) {
 
     PetscCall(MatGetFactorType(pc->pmat, &ftype));
     if (ftype == MAT_FACTOR_NONE) {
-       if (dir->row && dir->col && (dir->row != dir->col)) PetscCall(ISDestroy(&dir->row));
-       PetscCall(ISDestroy(&dir->col));
-       /* should only get reordering if the factor matrix uses it but cannot determine because MatGetFactor() not called */
-       PetscCall(PCFactorSetDefaultOrdering_Factor(pc));
-       PetscCall(MatGetOrdering(pc->pmat, ((PC_Factor *)dir)->ordering, &dir->row, &dir->col));
-       if (dir->col && (dir->row != dir->col)) { /* only use row ordering for SBAIJ */
-         PetscCall(ISDestroy(&dir->col));
-       }
-       if (dir->row) PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)dir->row));
-       PetscCall(MatCholeskyFactor(pc->pmat, dir->row, &((PC_Factor *)dir)->info));
-       PetscCall(MatFactorGetError(pc->pmat, &err));
-       if (err) { /* Factor() fails */
-         pc->failedreason = (PCFailedReason)err;
-         PetscFunctionReturn(0);
-       }
+      if (dir->row && dir->col && (dir->row != dir->col)) PetscCall(ISDestroy(&dir->row));
+      PetscCall(ISDestroy(&dir->col));
+      /* should only get reordering if the factor matrix uses it but cannot determine because MatGetFactor() not called */
+      PetscCall(PCFactorSetDefaultOrdering_Factor(pc));
+      PetscCall(MatGetOrdering(pc->pmat, ((PC_Factor *)dir)->ordering, &dir->row, &dir->col));
+      if (dir->col && (dir->row != dir->col)) { /* only use row ordering for SBAIJ */
+        PetscCall(ISDestroy(&dir->col));
+      }
+      if (dir->row) PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)dir->row));
+      PetscCall(MatCholeskyFactor(pc->pmat, dir->row, &((PC_Factor *)dir)->info));
+      PetscCall(MatFactorGetError(pc->pmat, &err));
+      if (err) { /* Factor() fails */
+        pc->failedreason = (PCFailedReason)err;
+        PetscFunctionReturn(0);
+      }
     }
     ((PC_Factor *)dir)->fact = pc->pmat;
   } else {

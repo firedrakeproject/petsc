@@ -1041,6 +1041,45 @@ PetscErrorCode DMPlexMetricDeterminantCreate(DM dm, PetscInt f, Vec *determinant
   PetscFunctionReturn(0);
 }
 
+PetscErrorCode DMPlexMetricTrimOverlap(DM odm, Vec ometric, DM dm, Vec *metric)
+{
+  DM                 cdm, mdm;
+  PetscSection       csec, msec;
+  PetscScalar       *met;
+  const PetscScalar *omet;
+  PetscInt           pStart, pEnd, p;
+  const PetscInt     dim;
+  PetscErrorCode     ierr;
+
+  PetscFunctionBegin;
+  PetscCall(DMGetCoordinateDM(dm, &cdm));
+  PetscCall(DMGetCoordinateDim(dm, &dim));
+  Nd = dim*dim;
+  PetscCall(DMClone(cdm, &mdm));
+  PetscCall(DMGetLocalSection(cdm, &csec));
+  PetscCall(PetscSectionCreate(PetscObjectComm((PetscObject) dm), &msec));
+  PetscCall(PetscSectionSetNumFields(msec, 1));
+  PetscCall(PetscSectionSetFieldComponents(msec, 0, Nd));
+  PetscCall(PetscSectionGetChart(csec, &pStart, &pEnd));
+  PetscCall(PetscSectionSetChart(msec, pStart, pEnd));
+  for (p = pStart; p < pEnd; p++) {
+    PetscCall(PetscSectionSetDof(msec, p, Nd));
+    PetscCall(PetscSectionSetFieldDof(msec, p, 0, Nd));
+  }
+  PetscCall(PetscSectionSetUp(msec));
+  PetscCall(DMsetLocalSection(mdm, msec));
+  PetscCall(PetscSectionDestroy(&msec));
+
+  PetscCall(DMCreateLocalVector(mdm, metric));
+  PetscCall(VecGetArrayRead(ometric, &omet));
+  PetscCall(VecGetArray(*metric, &met));
+  PetscCall(PetscMemcpy(met, omet, Nd*(pEnd-pStart)*sizeof(PetscScalar)));
+  PetscCall(VecRestoreArray(*metric, &met));
+  PetscCall(VecRestoreArrayRead(ometric, &omet));
+  PetscCall(DMDestroy(&mdm));
+  PetscFunctionReturn(0);
+}
+
 static PetscErrorCode LAPACKsyevFail(PetscInt dim, PetscScalar Mpos[])
 {
   PetscInt i, j;

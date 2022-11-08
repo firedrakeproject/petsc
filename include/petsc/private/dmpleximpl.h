@@ -230,6 +230,8 @@ typedef struct {
   PetscReal printTol;
 } DM_Plex;
 
+PETSC_INTERN PetscErrorCode DMPlexMetricTrimOverlap(DM, Vec, DM, Vec *)
+
 PETSC_INTERN PetscErrorCode DMPlexCopy_Internal(DM, PetscBool, PetscBool, DM);
 PETSC_INTERN PetscErrorCode DMPlexReplace_Internal(DM, DM *);
 

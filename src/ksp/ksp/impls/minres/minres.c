@@ -56,10 +56,18 @@ static PetscErrorCode KSPSolve_MINRES(KSP ksp)
     PetscCall(VecCopy(B, R)); /*     r <- b (x is 0) */
   }
   PetscCall(KSP_PCApply(ksp, R, Z));  /*     z  <- B*r       */
-  PetscCall(VecNorm(Z, NORM_2, &np)); /*   np <- ||z||        */
-  KSPCheckNorm(ksp, np);
+
   PetscCall(VecDot(R, Z, &dp));
   KSPCheckDot(ksp, dp);
+
+  dp   = PetscAbsScalar(dp);
+  dp   = PetscSqrtScalar(dp);
+  beta = dp; /*  beta <- sqrt(r'*z)  */
+  eta  = beta;
+
+  np = dp;
+  //PetscCall(VecNorm(Z, NORM_2, &np)); /*   np <- ||z||        */
+  KSPCheckNorm(ksp, np);
 
   if (PetscRealPart(dp) < minres->haptol && np > minres->haptol) {
     PetscCheck(!ksp->errorifnotconverged, PetscObjectComm((PetscObject)ksp), PETSC_ERR_CONV_FAILED, "Detected indefinite operator %g tolerance %g", (double)PetscRealPart(dp), (double)minres->haptol);
@@ -74,11 +82,6 @@ static PetscErrorCode KSPSolve_MINRES(KSP ksp)
   PetscCall(KSPMonitor(ksp, 0, ksp->rnorm));
   PetscCall((*ksp->converged)(ksp, 0, ksp->rnorm, &ksp->reason, ksp->cnvP)); /* test for convergence */
   if (ksp->reason) PetscFunctionReturn(0);
-
-  dp   = PetscAbsScalar(dp);
-  dp   = PetscSqrtScalar(dp);
-  beta = dp; /*  beta <- sqrt(r'*z  */
-  eta  = beta;
 
   PetscCall(VecCopy(R, V));
   PetscCall(VecCopy(Z, U));
@@ -147,7 +150,11 @@ static PetscErrorCode KSPSolve_MINRES(KSP ksp)
       PetscCall(PetscInfo(ksp, "Possible indefinite operator %g tolerance %g\n", (double)PetscRealPart(dp), (double)minres->haptol));
       PetscCall(KSP_MatMult(ksp, Amat, X, VOLD));
       PetscCall(VecAXPY(VOLD, none, B));
-      PetscCall(VecNorm(VOLD, NORM_2, &np));
+      //PetscCall(VecNorm(VOLD, NORM_2, &np));
+      PetscCall(KSP_PCApply(ksp, VOLD, Z));       /*      z <- B*v_old   */
+      PetscCall(VecDot(VOLD, Z, &np));
+      np = PetscAbsScalar(np);
+      np = PetscSqrtScalar(np);
       KSPCheckNorm(ksp, np);
     } else {
       /* otherwise compute new residual norm via recurrence relation */

@@ -28,6 +28,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscInt          *bdFaces, *faceTags, *facesNew, *faceTagsNew;
   PetscInt          *corners, *requiredCells, *requiredVer, *ridges, *requiredFaces;
   PetscInt           cStart, cEnd, c, numCells, fStart, fEnd, f, numFaceTags, vStart, vEnd, v, numVertices;
+  PetscInt           numOwnedCells, *cIsLeave, numUsedVertices, *vertexNumber, *fIsIncluded;
   PetscInt           dim, off, coff, maxConeSize, bdSize, i, j, k, Neq, verbosity, numIter;
   PetscInt          *numVerInterfaces, *ngbRanks, *verNgbRank, *interfaces_lv, *interfaces_gv, *intOffset;
   PetscInt           niranks, nrranks, numNgbRanks, numVerNgbRanksTotal, count, sliceSize, p, r, n, lv, gv;
@@ -67,15 +68,54 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   numCells    = cEnd - cStart;
   numVertices = vEnd - vStart;
 
-  /* Get cell offsets */
-  PetscCall(PetscMalloc1(numCells * maxConeSize, &cells));
+  /* Get paralel data; work out which cells are owned and which are leaves */
+  PetscCall(PetscCalloc1(numCells, &cIsLeave));
+  numOwnedCells = numCells;
+  niranks = nrranks = 0;
+  if (numProcs > 1) {
+    PetscCall(DMGetPointSF(dm, &sf));
+    PetscCall(PetscSFSetUp(sf));
+    PetscCall(PetscSFGetLeafRanks(sf, &niranks, &iranks, &ioffset, &irootloc));
+    PetscCall(PetscSFGetRootRanks(sf, &nrranks, &rranks, &roffset, &rmine, &rremote));
+    for (r = 0; r < nrranks; ++r) {
+      for (i=roffset[r]; i<roffset[r+1]; ++i) {
+        if (rmine[i] >= cStart && rmine[i] < cEnd) {
+          cIsLeave[rmine[i] - cStart] = 1;
+          numOwnedCells--;
+        }
+      }
+    }
+  }
+
   for (c = 0, coff = 0; c < numCells; ++c) {
     const PetscInt *cone;
     PetscInt        coneSize, cl;
 
-    PetscCall(DMPlexGetConeSize(udm, c, &coneSize));
-    PetscCall(DMPlexGetCone(udm, c, &cone));
-    for (cl = 0; cl < coneSize; ++cl) cells[coff++] = cone[cl] - vStart + 1;
+    if (!cIsLeave[c]) {
+      PetscCall(DMPlexGetConeSize(udm, cStart + c, &coneSize));
+      PetscCall(DMPlexGetCone(udm, cStart + c, &cone));
+      for (cl = 0; cl < coneSize; ++cl) {
+      }
+    }
+  }
+
+  /* Create vertex numbering for parmmg starting at 1. Vertices not included in any owned cell remain 0 and will be removed */
+  numUsedVertices = 0;
+  PetscCall(PetscCalloc1(numVertices, &vertexNumber));
+  /* Using this numbering, create cells */
+  PetscCall(PetscMalloc1(numOwnedCells*maxConeSize, &cells));
+  for (c = 0, coff = 0; c < numCells; ++c) {
+    const PetscInt *cone;
+    PetscInt        coneSize, cl;
+
+    if (!cIsLeave[c]) {
+      PetscCall(DMPlexGetConeSize(udm, cStart + c, &coneSize));
+      PetscCall(DMPlexGetCone(udm, cStart + c, &cone));
+      for (cl = 0; cl < coneSize; ++cl) {
+        if (!vertexNumber[cone[cl]-vStart]) vertexNumber[cone[cl]-vStart] = ++numUsedVertices;
+        cells[coff++] = vertexNumber[cone[cl]-vStart];
+      }
+    }
   }
 
   /* Get vertex coordinate array */
@@ -83,10 +123,12 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscCall(DMGetLocalSection(cdm, &coordSection));
   PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
   PetscCall(VecGetArrayRead(coordinates, &coords));
-  PetscCall(PetscMalloc2(numVertices * Neq, &metric, dim * numVertices, &vertices));
-  for (v = 0; v < vEnd - vStart; ++v) {
-    PetscCall(PetscSectionGetOffset(coordSection, v + vStart, &off));
-    for (i = 0; i < dim; ++i) vertices[dim * v + i] = PetscRealPart(coords[off + i]);
+  PetscCall(PetscMalloc2(numUsedVertices*Neq, &metric, dim*numUsedVertices, &vertices));
+  for (v = 0; v < vEnd-vStart; ++v) {
+    PetscCall(PetscSectionGetOffset(coordSection, v+vStart, &off));
+    if (vertexNumber[v]) {
+      for (i = 0; i < dim; ++i) vertices[dim*(vertexNumber[v]-1)+i] = PetscRealPart(coords[off+i]);
+    }
   }
   PetscCall(VecRestoreArrayRead(coordinates, &coords));
 
@@ -97,12 +139,22 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(DMPlexMarkBoundaryFaces(dm, 1, bdLabel));
   }
   PetscCall(DMLabelGetBounds(bdLabel, &pStart, &pEnd));
+  PetscCall(PetscCalloc1(pEnd-pStart, &fIsIncluded));
   for (f = pStart, bdSize = 0, numFaceTags = 0; f < pEnd; ++f) {
     PetscBool hasPoint;
     PetscInt *closure = NULL, closureSize, cl;
 
     PetscCall(DMLabelHasPoint(bdLabel, f, &hasPoint));
     if ((!hasPoint) || (f < fStart) || (f >= fEnd)) continue;
+
+    /* Only faces adjecent to an owned (non-leaf) cell are included */
+    PetscInt nnbrs;
+    const PetscInt *nbrs;
+    PetscCall(DMPlexGetSupportSize(dm, f, &nnbrs));
+    PetscCall(DMPlexGetSupport(dm, f, &nbrs));
+    for (c = 0; c<nnbrs; ++c) fIsIncluded[f-pStart] = fIsIncluded[f-pStart] || !cIsLeave[nbrs[c]];
+    if (!fIsIncluded[f-pStart]) continue;
+
     numFaceTags++;
 
     PetscCall(DMPlexGetTransitiveClosure(dm, f, PETSC_TRUE, &closureSize, &closure));
@@ -113,67 +165,68 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   }
   PetscCall(PetscMalloc2(bdSize, &bdFaces, numFaceTags, &faceTags));
   for (f = pStart, bdSize = 0, numFaceTags = 0; f < pEnd; ++f) {
-    PetscBool hasPoint;
     PetscInt *closure = NULL, closureSize, cl;
 
-    PetscCall(DMLabelHasPoint(bdLabel, f, &hasPoint));
-    if ((!hasPoint) || (f < fStart) || (f >= fEnd)) continue;
+    if (!fIsIncluded[f-pStart]) continue;
 
     PetscCall(DMPlexGetTransitiveClosure(dm, f, PETSC_TRUE, &closureSize, &closure));
-    for (cl = 0; cl < closureSize * 2; cl += 2) {
-      if ((closure[cl] >= vStart) && (closure[cl] < vEnd)) bdFaces[bdSize++] = closure[cl] - vStart + 1;
+    for (cl = 0; cl < closureSize*2; cl += 2) {
+      if ((closure[cl] >= vStart) && (closure[cl] < vEnd)) bdFaces[bdSize++] = vertexNumber[closure[cl] - vStart];
     }
     PetscCall(DMPlexRestoreTransitiveClosure(dm, f, PETSC_TRUE, &closureSize, &closure));
     PetscCall(DMLabelGetValue(bdLabel, f, &faceTags[numFaceTags++]));
   }
+  PetscCall(PetscFree(fIsIncluded));
 
   /* Get cell tags */
-  PetscCall(PetscCalloc2(numVertices, &verTags, numCells, &cellTags));
+  PetscCall(PetscCalloc2(numUsedVertices, &verTags, numOwnedCells, &cellTags));
   if (rgLabel) {
-    for (c = cStart; c < cEnd; ++c) PetscCall(DMLabelGetValue(rgLabel, c, &cellTags[c]));
+    for (c = cStart, coff=0; c < cEnd; ++c) {
+      if (!cIsLeave[c-cStart]) {
+        PetscCall(DMLabelGetValue(rgLabel, c, &cellTags[coff++]));
+      }
+    }
   }
+  PetscCall(PetscFree(cIsLeave));
 
   /* Get metric */
   PetscCall(VecViewFromOptions(vertexMetric, NULL, "-adapt_metric_view"));
   PetscCall(VecGetArrayRead(vertexMetric, &met));
   PetscCall(DMPlexMetricIsIsotropic(dm, &isotropic));
   PetscCall(DMPlexMetricIsUniform(dm, &uniform));
-  for (v = 0; v < (vEnd - vStart); ++v) {
+  for (v = 0; v < (vEnd-vStart); ++v) {
+    PetscInt vv = vertexNumber[v];
+    if (!vv--) continue;
     for (i = 0, k = 0; i < dim; ++i) {
       for (j = i; j < dim; ++j, ++k) {
         if (isotropic) {
           if (i == j) {
-            if (uniform) metric[Neq * v + k] = PetscRealPart(met[0]);
-            else metric[Neq * v + k] = PetscRealPart(met[v]);
-          } else metric[Neq * v + k] = 0.0;
-        } else metric[Neq * v + k] = PetscRealPart(met[dim * dim * v + dim * i + j]);
+            if (uniform) metric[Neq*vv+k] = PetscRealPart(met[0]);
+            else metric[Neq*vv+k] = PetscRealPart(met[v]);
+          } else metric[Neq*vv+k] = 0.0;
+        } else metric[Neq*vv+k] = PetscRealPart(met[dim*dim*v+dim*i+j]);
       }
     }
   }
   PetscCall(VecRestoreArrayRead(vertexMetric, &met));
 
   /* Build ParMMG communicators: the list of vertices between two partitions  */
-  niranks = nrranks = 0;
-  numNgbRanks       = 0;
+  numNgbRanks = 0;
   if (numProcs > 1) {
-    PetscCall(DMGetPointSF(dm, &sf));
-    PetscCall(PetscSFSetUp(sf));
-    PetscCall(PetscSFGetLeafRanks(sf, &niranks, &iranks, &ioffset, &irootloc));
-    PetscCall(PetscSFGetRootRanks(sf, &nrranks, &rranks, &roffset, &rmine, &rremote));
     PetscCall(PetscCalloc1(numProcs, &numVerInterfaces));
 
     /* Count number of roots associated with each leaf */
     for (r = 0; r < niranks; ++r) {
-      for (i = ioffset[r], count = 0; i < ioffset[r + 1]; ++i) {
-        if (irootloc[i] >= vStart && irootloc[i] < vEnd) count++;
+      for (i=ioffset[r], count=0; i<ioffset[r+1]; ++i) {
+        if (irootloc[i] >= vStart && irootloc[i] < vEnd && vertexNumber[irootloc[i]-vStart]) count++;
       }
       numVerInterfaces[iranks[r]] += count;
     }
 
     /* Count number of leaves associated with each root */
     for (r = 0; r < nrranks; ++r) {
-      for (i = roffset[r], count = 0; i < roffset[r + 1]; ++i) {
-        if (rmine[i] >= vStart && rmine[i] < vEnd) count++;
+      for (i=roffset[r], count=0; i<roffset[r+1]; ++i) {
+        if (rmine[i] >= vStart && rmine[i] < vEnd && vertexNumber[rmine[i]-vStart]) count++;
       }
       numVerInterfaces[rranks[r]] += count;
     }
@@ -206,11 +259,11 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
         /* Add the right slice of irootloc at the right place */
         sliceSize = ioffset[i + 1] - ioffset[i];
         for (j = 0, count = 0; j < sliceSize; ++j) {
-          PetscCheck(ioffset[i] + j < ioffset[niranks], comm, PETSC_ERR_ARG_OUTOFRANGE, "Leaf index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", ioffset[i] + j, ioffset[niranks]);
-          v = irootloc[ioffset[i] + j];
-          if (v >= vStart && v < vEnd) {
-            PetscCheck(intOffset[p + 1] + count < numVerNgbRanksTotal, comm, PETSC_ERR_ARG_OUTOFRANGE, "Leaf interface index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", intOffset[p + 1] + count, numVerNgbRanksTotal);
-            interfaces_lv[intOffset[p + 1] + count] = v - vStart;
+          PetscCheck(ioffset[i]+j < ioffset[niranks],comm, PETSC_ERR_ARG_OUTOFRANGE, "Leaf index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", ioffset[i]+j, ioffset[niranks]);
+          v = irootloc[ioffset[i]+j];
+          if (v >= vStart && v < vEnd && vertexNumber[v-vStart]) {
+            PetscCheck(intOffset[p+1]+count < numVerNgbRanksTotal,comm, PETSC_ERR_ARG_OUTOFRANGE, "Leaf interface index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", intOffset[p+1]+count, numVerNgbRanksTotal);
+            interfaces_lv[intOffset[p+1]+count] = v-vStart;
             count++;
           }
         }
@@ -223,11 +276,11 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
         /* Add the right slice of rmine at the right place */
         sliceSize = roffset[r + 1] - roffset[r];
         for (j = 0, count = 0; j < sliceSize; ++j) {
-          PetscCheck(roffset[r] + j < roffset[nrranks], comm, PETSC_ERR_ARG_OUTOFRANGE, "Root index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", roffset[r] + j, roffset[nrranks]);
-          v = rmine[roffset[r] + j];
-          if (v >= vStart && v < vEnd) {
-            PetscCheck(intOffset[p + 1] + count < numVerNgbRanksTotal, comm, PETSC_ERR_ARG_OUTOFRANGE, "Root interface index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", intOffset[p + 1] + count, numVerNgbRanksTotal);
-            interfaces_lv[intOffset[p + 1] + count] = v - vStart;
+          PetscCheck(roffset[r]+j < roffset[nrranks],comm, PETSC_ERR_ARG_OUTOFRANGE, "Root index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", roffset[r]+j, roffset[nrranks]);
+          v = rmine[roffset[r]+j];
+          if (v >= vStart && v < vEnd && vertexNumber[v-vStart]) {
+            PetscCheck(intOffset[p+1]+count < numVerNgbRanksTotal,comm, PETSC_ERR_ARG_OUTOFRANGE, "Root interface index %" PetscInt_FMT " out of range (expected < %" PetscInt_FMT ")", intOffset[p+1]+count, numVerNgbRanksTotal);
+            interfaces_lv[intOffset[p+1]+count] = v-vStart;
             count++;
           }
         }
@@ -241,15 +294,16 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(DMPlexGetVertexNumbering(udm, &globalVertexNum));
     PetscCall(ISGetIndices(globalVertexNum, &gV));
     for (i = 0; i < numVerNgbRanksTotal; ++i) {
-      v                = gV[interfaces_lv[i]];
-      interfaces_gv[i] = v < 0 ? -v - 1 : v;
-      interfaces_lv[i] += 1;
+      v = gV[interfaces_lv[i]];
+      interfaces_gv[i] = v < 0 ? -v-1 : v;
+      interfaces_lv[i] = vertexNumber[interfaces_lv[i]];
       interfaces_gv[i] += 1;
     }
     PetscCall(ISRestoreIndices(globalVertexNum, &gV));
     PetscCall(PetscFree(numVerInterfaces));
   }
   PetscCall(DMDestroy(&udm));
+  PetscCall(PetscFree(vertexNumber));
 
   /* Send the data to ParMmg and remesh */
   PetscCall(DMPlexMetricNoInsertion(dm, &noInsert));
@@ -261,7 +315,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscCall(DMPlexMetricGetGradationFactor(dm, &gradationFactor));
   PetscCall(DMPlexMetricGetHausdorffNumber(dm, &hausdorffNumber));
   PetscCallMMG_NONSTANDARD(PMMG_Init_parMesh, PMMG_ARG_start, PMMG_ARG_ppParMesh, &parmesh, PMMG_ARG_pMesh, PMMG_ARG_pMet, PMMG_ARG_dim, 3, PMMG_ARG_MPIComm, comm, PMMG_ARG_end);
-  PetscCallMMG_NONSTANDARD(PMMG_Set_meshSize, parmesh, numVertices, numCells, 0, numFaceTags, 0, 0);
+  PetscCallMMG_NONSTANDARD(PMMG_Set_meshSize, parmesh, numUsedVertices, numOwnedCells, 0, numFaceTags, 0, 0);
   PetscCallMMG_NONSTANDARD(PMMG_Set_iparameter, parmesh, PMMG_IPARAM_APImode, PMMG_APIDISTRIB_nodes);
   PetscCallMMG_NONSTANDARD(PMMG_Set_iparameter, parmesh, PMMG_IPARAM_noinsert, noInsert);
   PetscCallMMG_NONSTANDARD(PMMG_Set_iparameter, parmesh, PMMG_IPARAM_noswap, noSwap);
@@ -275,7 +329,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscCallMMG_NONSTANDARD(PMMG_Set_vertices, parmesh, vertices, verTags);
   PetscCallMMG_NONSTANDARD(PMMG_Set_tetrahedra, parmesh, cells, cellTags);
   PetscCallMMG_NONSTANDARD(PMMG_Set_triangles, parmesh, bdFaces, faceTags);
-  PetscCallMMG_NONSTANDARD(PMMG_Set_metSize, parmesh, MMG5_Vertex, numVertices, MMG5_Tensor);
+  PetscCallMMG_NONSTANDARD(PMMG_Set_metSize, parmesh, MMG5_Vertex, numUsedVertices, MMG5_Tensor);
   PetscCallMMG_NONSTANDARD(PMMG_Set_tensorMets, parmesh, metric);
   PetscCallMMG_NONSTANDARD(PMMG_Set_numberOfNodeCommunicators, parmesh, numNgbRanks);
   for (c = 0; c < numNgbRanks; ++c) {

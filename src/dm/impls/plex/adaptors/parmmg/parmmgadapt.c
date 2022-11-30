@@ -261,6 +261,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(DMGetSectionSF(rankdm, &rankSF));
     PetscCall(PetscSFBcastBegin(rankSF, MPI_INT, rankArray, rankArray, MPI_REPLACE));
     PetscCall(PetscSFBcastEnd(rankSF, MPI_INT, rankArray, rankArray, MPI_REPLACE));
+    PetscCall(DMDestroy(&rankdm));
 
     PetscCall(PetscCalloc1(numProcs, &interfacesPerRank));
     for (v=vStart; v<vEnd; v++) {
@@ -306,7 +307,9 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
       }
     }
     PetscCall(PetscFree(interfacesPerRank));
+    PetscCall(PetscFree(rankArray));
     PetscCall(ISRestoreIndices(globalVertexNum, &gV));
+    PetscCall(PetscSectionDestroy(&rankSection));
   }
   PetscCall(DMDestroy(&udm));
   PetscCall(PetscFree(vertexNumber));

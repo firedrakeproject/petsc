@@ -299,7 +299,8 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
             if (r==rank) continue;
             k = interfacesOffset[r] + interfacesPerRank[r]++;
             interfaces_lv[k] = vertexNumber[v-vStart];
-            interfaces_gv[k] = gV[v-vStart] + 1;
+            k = gV[v-vStart];
+            interfaces_gv[k] = k<0 ? -k : k+1;
           }
         }
       }

@@ -206,7 +206,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscSF rankSF;
     const PetscInt *degree;
     PetscInt *rankOfUsedVertices, *rankOfUsedMultiRootLeafs, *usedCopies, *rankArray, *interfacesPerRank;
-    PetscInt offset, mrl, rootDegreeCnt, s, shareCnt;
+    PetscInt offset, mrl, rootDegreeCnt, s, shareCnt, gv;
 
     PetscCall(PetscSFComputeDegreeBegin(sf, &degree));
     PetscCall(PetscSFComputeDegreeEnd(sf, &degree));
@@ -309,8 +309,8 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
             if (r==rank) continue;
             k = interfacesOffset[r] + interfacesPerRank[r]++;
             interfaces_lv[k] = vertexNumber[v-vStart];
-            k = gV[v-vStart];
-            interfaces_gv[k] = k<0 ? -k : k+1;
+            gv = gV[v-vStart];
+            interfaces_gv[k] = gv<0 ? -gv : gv+1;
           }
         }
       }

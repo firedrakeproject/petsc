@@ -4,7 +4,7 @@
 static PetscErrorCode KSPQCGQuadraticRoots(Vec, Vec, PetscReal, PetscReal *, PetscReal *);
 
 /*@
-    KSPQCGSetTrustRegionRadius - Sets the radius of the trust region for `KSPQCG`
+    KSPQCGSetTrustRegionRadius - Sets the radius of the trust region.
 
     Logically Collective on ksp
 
@@ -18,8 +18,7 @@ static PetscErrorCode KSPQCGQuadraticRoots(Vec, Vec, PetscReal, PetscReal *, Pet
     Level: advanced
 
 @*/
-PetscErrorCode KSPQCGSetTrustRegionRadius(KSP ksp, PetscReal delta)
-{
+PetscErrorCode KSPQCGSetTrustRegionRadius(KSP ksp, PetscReal delta) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscCheck(delta >= 0.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Tolerance must be non-negative");
@@ -28,8 +27,8 @@ PetscErrorCode KSPQCGSetTrustRegionRadius(KSP ksp, PetscReal delta)
 }
 
 /*@
-    KSPQCGGetTrialStepNorm - Gets the norm of a trial step vector in `KSPQCG`.  The WCG step may be
-    constrained, so this is not necessarily the length of the ultimate step taken in `KSPQCG`.
+    KSPQCGGetTrialStepNorm - Gets the norm of a trial step vector.  The WCG step may be
+    constrained, so this is not necessarily the length of the ultimate step taken in QCG.
 
     Not Collective
 
@@ -41,8 +40,7 @@ PetscErrorCode KSPQCGSetTrustRegionRadius(KSP ksp, PetscReal delta)
 
     Level: advanced
 @*/
-PetscErrorCode KSPQCGGetTrialStepNorm(KSP ksp, PetscReal *tsnorm)
-{
+PetscErrorCode KSPQCGGetTrialStepNorm(KSP ksp, PetscReal *tsnorm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscUseMethod(ksp, "KSPQCGGetTrialStepNorm_C", (KSP, PetscReal *), (ksp, tsnorm));
@@ -74,19 +72,15 @@ PetscErrorCode KSPQCGGetTrialStepNorm(KSP ksp, PetscReal *tsnorm)
 .   quadratic - the quadratic function evaluated at the new iterate
 
     Level: advanced
-
-.seealso: [](chapter_ksp), `KSPQCG`
 @*/
-PetscErrorCode KSPQCGGetQuadratic(KSP ksp, PetscReal *quadratic)
-{
+PetscErrorCode KSPQCGGetQuadratic(KSP ksp, PetscReal *quadratic) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscUseMethod(ksp, "KSPQCGGetQuadratic_C", (KSP, PetscReal *), (ksp, quadratic));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode KSPSolve_QCG(KSP ksp)
-{
+PetscErrorCode KSPSolve_QCG(KSP ksp) {
   /*
    Correpondence with documentation above:
       B = g = gradient,
@@ -103,6 +97,7 @@ PetscErrorCode KSPSolve_QCG(KSP ksp)
   PetscReal   dzero = 0.0, bsnrm = 0.0;
   PetscInt    i, maxit;
   PC          pc = ksp->pc;
+  PCSide      side;
   PetscBool   diagonalscale;
 
   PetscFunctionBegin;
@@ -123,6 +118,8 @@ PetscErrorCode KSPSolve_QCG(KSP ksp)
   B        = ksp->vec_rhs;
 
   PetscCheck(pcgP->delta > dzero, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Input error: delta <= 0");
+  PetscCall(KSPGetPCSide(ksp, &side));
+  PetscCheck(side == PC_SYMMETRIC, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Requires symmetric preconditioner!");
 
   /* Initialize variables */
   PetscCall(VecSet(W, 0.0)); /* W = 0 */
@@ -265,16 +262,14 @@ PetscErrorCode KSPSolve_QCG(KSP ksp)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode KSPSetUp_QCG(KSP ksp)
-{
+PetscErrorCode KSPSetUp_QCG(KSP ksp) {
   PetscFunctionBegin;
   /* Get work vectors from user code */
   PetscCall(KSPSetWorkVecs(ksp, 7));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode KSPDestroy_QCG(KSP ksp)
-{
+PetscErrorCode KSPDestroy_QCG(KSP ksp) {
   PetscFunctionBegin;
   PetscCall(PetscObjectComposeFunction((PetscObject)ksp, "KSPQCGGetQuadratic_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)ksp, "KSPQCGGetTrialStepNorm_C", NULL));
@@ -283,8 +278,7 @@ PetscErrorCode KSPDestroy_QCG(KSP ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPQCGSetTrustRegionRadius_QCG(KSP ksp, PetscReal delta)
-{
+static PetscErrorCode KSPQCGSetTrustRegionRadius_QCG(KSP ksp, PetscReal delta) {
   KSP_QCG *cgP = (KSP_QCG *)ksp->data;
 
   PetscFunctionBegin;
@@ -292,8 +286,7 @@ static PetscErrorCode KSPQCGSetTrustRegionRadius_QCG(KSP ksp, PetscReal delta)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPQCGGetTrialStepNorm_QCG(KSP ksp, PetscReal *ltsnrm)
-{
+static PetscErrorCode KSPQCGGetTrialStepNorm_QCG(KSP ksp, PetscReal *ltsnrm) {
   KSP_QCG *cgP = (KSP_QCG *)ksp->data;
 
   PetscFunctionBegin;
@@ -301,8 +294,7 @@ static PetscErrorCode KSPQCGGetTrialStepNorm_QCG(KSP ksp, PetscReal *ltsnrm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPQCGGetQuadratic_QCG(KSP ksp, PetscReal *quadratic)
-{
+static PetscErrorCode KSPQCGGetQuadratic_QCG(KSP ksp, PetscReal *quadratic) {
   KSP_QCG *cgP = (KSP_QCG *)ksp->data;
 
   PetscFunctionBegin;
@@ -310,8 +302,7 @@ static PetscErrorCode KSPQCGGetQuadratic_QCG(KSP ksp, PetscReal *quadratic)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode KSPSetFromOptions_QCG(KSP ksp, PetscOptionItems *PetscOptionsObject)
-{
+PetscErrorCode KSPSetFromOptions_QCG(KSP ksp, PetscOptionItems *PetscOptionsObject) {
   PetscReal delta;
   KSP_QCG  *cgP = (KSP_QCG *)ksp->data;
   PetscBool flg;
@@ -325,17 +316,19 @@ PetscErrorCode KSPSetFromOptions_QCG(KSP ksp, PetscOptionItems *PetscOptionsObje
 }
 
 /*MC
-     KSPQCG -   Code to run conjugate gradient method subject to a constraint on the solution norm.
+     KSPQCG -   Code to run conjugate gradient method subject to a constraint
+         on the solution norm. This is used in Trust Region methods for nonlinear equations, SNESNEWTONTR
 
-   Options Database Key:
+   Options Database Keys:
 .      -ksp_qcg_trustregionradius <r> - Trust Region Radius
+
+   Notes:
+    This is rarely used directly
 
    Level: developer
 
-   Notes:
-    This is rarely used directly, ir is used in Trust Region methods for nonlinear equations, `SNESNEWTONTR`
-
-    Uses preconditioned conjugate gradient to compute
+  Notes:
+    Use preconditioned conjugate gradient to compute
       an approximate minimizer of the quadratic function
 
             q(s) = g^T * s + .5 * s^T * H * s
@@ -351,37 +344,33 @@ PetscErrorCode KSPSetFromOptions_QCG(KSP ksp, PetscOptionItems *PetscOptionsObje
      H is Hessian matrix,
      D is a scaling matrix.
 
-   `KSPConvergedReason` may be
-.vb
-   KSP_CONVERGED_CG_NEG_CURVE if convergence is reached along a negative curvature direction,
-   KSP_CONVERGED_CG_CONSTRAINED if convergence is reached along a constrained step,
-.ve
-   and other `KSP` converged/diverged reasons
+   KSPConvergedReason may be
+$  KSP_CONVERGED_CG_NEG_CURVE if convergence is reached along a negative curvature direction,
+$  KSP_CONVERGED_CG_CONSTRAINED if convergence is reached along a constrained step,
+$  other KSP converged/diverged reasons
 
   Notes:
   Currently we allow symmetric preconditioning with the following scaling matrices:
-.vb
-      `PCNONE`:   D = Identity matrix
-      `PCJACOBI`: D = diag [d_1, d_2, ...., d_n], where d_i = sqrt(H[i,i])
-      `PCICC`:    D = L^T, implemented with forward and backward solves. Here L is an incomplete Cholesky factor of H.
-.ve
+      PCNONE:   D = Identity matrix
+      PCJACOBI: D = diag [d_1, d_2, ...., d_n], where d_i = sqrt(H[i,i])
+      PCICC:    D = L^T, implemented with forward and backward solves.
+                Here L is an incomplete Cholesky factor of H.
 
   References:
 . * - Trond Steihaug, The Conjugate Gradient Method and Trust Regions in Large Scale Optimization,
    SIAM Journal on Numerical Analysis, Vol. 20, No. 3 (Jun., 1983).
 
-.seealso: [](chapter_ksp), 'KSPNASH`, `KSPGLTR`, `KSPSTCG`, `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPQCGSetTrustRegionRadius()`
+.seealso: `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPQCGSetTrustRegionRadius()`
           `KSPQCGGetTrialStepNorm()`, `KSPQCGGetQuadratic()`
 M*/
 
-PETSC_EXTERN PetscErrorCode KSPCreate_QCG(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_QCG(KSP ksp) {
   KSP_QCG *cgP;
 
   PetscFunctionBegin;
   PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_PRECONDITIONED, PC_SYMMETRIC, 3));
   PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_NONE, PC_SYMMETRIC, 1));
-  PetscCall(PetscNew(&cgP));
+  PetscCall(PetscNewLog(ksp, &cgP));
 
   ksp->data                = (void *)cgP;
   ksp->ops->setup          = KSPSetUp_QCG;
@@ -417,8 +406,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_QCG(KSP ksp)
    C code is translated from the Fortran version of the MINPACK-2 Project,
    Argonne National Laboratory, Brett M. Averick and Richard G. Carter.
 */
-static PetscErrorCode KSPQCGQuadraticRoots(Vec s, Vec p, PetscReal delta, PetscReal *step1, PetscReal *step2)
-{
+static PetscErrorCode KSPQCGQuadraticRoots(Vec s, Vec p, PetscReal delta, PetscReal *step1, PetscReal *step2) {
   PetscReal dsq, ptp, pts, rad, sts;
 
   PetscFunctionBegin;

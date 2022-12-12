@@ -3,8 +3,7 @@ static char help[] = "Tests late MatSetBlockSizes.\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat                    A;
   Vec                    x[4];
   IS                     is;

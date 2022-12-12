@@ -15,8 +15,7 @@ Compare this to ex2 which solves the same problem without a DM.\n\n";
 #include <petscdmda.h>
 #include <petscksp.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM          da;      /* distributed array */
   Vec         x, b, u; /* approx solution, RHS, exact solution */
   Mat         A;       /* linear system matrix */

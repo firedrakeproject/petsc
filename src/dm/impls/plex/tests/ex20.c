@@ -3,8 +3,7 @@ const char help[] = "Test DMPlex implementation of DMAdaptLabel().\n\n";
 #include <petscdm.h>
 #include <petscdmplex.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM       dm, dmAdapt;
   DMLabel  adaptLabel;
   PetscInt cStart, cEnd;

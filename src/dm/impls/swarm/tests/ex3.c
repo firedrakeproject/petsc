@@ -8,8 +8,7 @@ typedef struct {
   PetscInt particlesPerCell; /* The number of partices per cell */
 } AppCtx;
 
-static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscFunctionBeginUser;
   options->particlesPerCell = 1;
 
@@ -19,8 +18,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm, AppCtx *user)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm, AppCtx *user) {
   PetscFunctionBeginUser;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -29,8 +27,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm, AppCtx *user)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateParticles(DM dm, DM *sw, AppCtx *user)
-{
+static PetscErrorCode CreateParticles(DM dm, DM *sw, AppCtx *user) {
   PetscInt *cellid;
   PetscInt  dim, cStart, cEnd, c, Np = user->particlesPerCell, p;
 
@@ -60,8 +57,7 @@ static PetscErrorCode CreateParticles(DM dm, DM *sw, AppCtx *user)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM       dm, sw, cellsw; /* Mesh and particle managers */
   MPI_Comm comm;
   AppCtx   user;

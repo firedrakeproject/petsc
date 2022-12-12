@@ -39,8 +39,7 @@ typedef struct {
   void *dmksp_context_user;
 } PC_Telescope_CoarseDMCtx;
 
-PetscErrorCode PCTelescopeSetUp_scatters_CoarseDM(PC pc, PC_Telescope sred, PC_Telescope_CoarseDMCtx *ctx)
-{
+PetscErrorCode PCTelescopeSetUp_scatters_CoarseDM(PC pc, PC_Telescope sred, PC_Telescope_CoarseDMCtx *ctx) {
   Vec        xred, yred, xtmp, x, xp;
   VecScatter scatter;
   IS         isin;
@@ -83,8 +82,7 @@ PetscErrorCode PCTelescopeSetUp_scatters_CoarseDM(PC pc, PC_Telescope sred, PC_T
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCTelescopeSetUp_CoarseDM(PC pc, PC_Telescope sred)
-{
+PetscErrorCode PCTelescopeSetUp_CoarseDM(PC pc, PC_Telescope sred) {
   PC_Telescope_CoarseDMCtx *ctx;
   DM                        dm, dm_coarse = NULL;
   MPI_Comm                  comm;
@@ -220,8 +218,7 @@ PetscErrorCode PCTelescopeSetUp_CoarseDM(PC pc, PC_Telescope sred)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCApply_Telescope_CoarseDM(PC pc, Vec x, Vec y)
-{
+PetscErrorCode PCApply_Telescope_CoarseDM(PC pc, Vec x, Vec y) {
   PC_Telescope              sred = (PC_Telescope)pc->data;
   Vec                       xred, yred;
   PC_Telescope_CoarseDMCtx *ctx;
@@ -244,8 +241,7 @@ PetscErrorCode PCApply_Telescope_CoarseDM(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCTelescopeSubNullSpaceCreate_CoarseDM(PC pc, PC_Telescope sred, MatNullSpace nullspace, MatNullSpace *sub_nullspace)
-{
+PetscErrorCode PCTelescopeSubNullSpaceCreate_CoarseDM(PC pc, PC_Telescope sred, MatNullSpace nullspace, MatNullSpace *sub_nullspace) {
   PetscBool                 has_const;
   PetscInt                  k, n = 0;
   const Vec                *vecs;
@@ -274,8 +270,7 @@ PetscErrorCode PCTelescopeSubNullSpaceCreate_CoarseDM(PC pc, PC_Telescope sred, 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCTelescopeMatNullSpaceCreate_CoarseDM(PC pc, PC_Telescope sred, Mat sub_mat)
-{
+PetscErrorCode PCTelescopeMatNullSpaceCreate_CoarseDM(PC pc, PC_Telescope sred, Mat sub_mat) {
   Mat                       B;
   PC_Telescope_CoarseDMCtx *ctx;
 
@@ -343,8 +338,7 @@ PetscErrorCode PCTelescopeMatNullSpaceCreate_CoarseDM(PC pc, PC_Telescope sred, 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCReset_Telescope_CoarseDM(PC pc)
-{
+PetscErrorCode PCReset_Telescope_CoarseDM(PC pc) {
   PC_Telescope              sred = (PC_Telescope)pc->data;
   PC_Telescope_CoarseDMCtx *ctx;
 
@@ -361,8 +355,7 @@ PetscErrorCode PCReset_Telescope_CoarseDM(PC pc)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCApplyRichardson_Telescope_CoarseDM(PC pc, Vec x, Vec y, Vec w, PetscReal rtol, PetscReal abstol, PetscReal dtol, PetscInt its, PetscBool zeroguess, PetscInt *outits, PCRichardsonConvergedReason *reason)
-{
+PetscErrorCode PCApplyRichardson_Telescope_CoarseDM(PC pc, Vec x, Vec y, Vec w, PetscReal rtol, PetscReal abstol, PetscReal dtol, PetscInt its, PetscBool zeroguess, PetscInt *outits, PCRichardsonConvergedReason *reason) {
   PC_Telescope              sred                     = (PC_Telescope)pc->data;
   Vec                       yred                     = NULL;
   PetscBool                 default_init_guess_value = PETSC_FALSE;

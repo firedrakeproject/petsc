@@ -4,8 +4,7 @@
 
 #include <petsc/private/petscconvestimpl.h>
 
-static PetscErrorCode PetscConvEstSetTS_Private(PetscConvEst ce, PetscObject solver)
-{
+static PetscErrorCode PetscConvEstSetTS_Private(PetscConvEst ce, PetscObject solver) {
   PetscClassId id;
 
   PetscFunctionBegin;
@@ -15,15 +14,13 @@ static PetscErrorCode PetscConvEstSetTS_Private(PetscConvEst ce, PetscObject sol
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstInitGuessTS_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u)
-{
+static PetscErrorCode PetscConvEstInitGuessTS_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u) {
   PetscFunctionBegin;
   PetscCall(TSComputeInitialCondition((TS)ce->solver, u));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstComputeErrorTS_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u, PetscReal errors[])
-{
+static PetscErrorCode PetscConvEstComputeErrorTS_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u, PetscReal errors[]) {
   TS ts = (TS)ce->solver;
   PetscErrorCode (*exactError)(TS, Vec, Vec);
 
@@ -47,8 +44,7 @@ static PetscErrorCode PetscConvEstComputeErrorTS_Private(PetscConvEst ce, PetscI
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstGetConvRateTS_Temporal_Private(PetscConvEst ce, PetscReal alpha[])
-{
+static PetscErrorCode PetscConvEstGetConvRateTS_Temporal_Private(PetscConvEst ce, PetscReal alpha[]) {
   TS         ts = (TS)ce->solver;
   Vec        u, u0;
   PetscReal *dt, *x, *y, slope, intercept;
@@ -113,8 +109,7 @@ static PetscErrorCode PetscConvEstGetConvRateTS_Temporal_Private(PetscConvEst ce
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstGetConvRateTS_Spatial_Private(PetscConvEst ce, PetscReal alpha[])
-{
+static PetscErrorCode PetscConvEstGetConvRateTS_Spatial_Private(PetscConvEst ce, PetscReal alpha[]) {
   TS          ts = (TS)ce->solver;
   Vec         uInitial;
   DM         *dm;
@@ -278,8 +273,7 @@ static PetscErrorCode PetscConvEstGetConvRateTS_Spatial_Private(PetscConvEst ce,
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscConvEstUseTS(PetscConvEst ce, PetscBool checkTemporal)
-{
+PetscErrorCode PetscConvEstUseTS(PetscConvEst ce, PetscBool checkTemporal) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ce, PETSC_OBJECT_CLASSID, 1);
   ce->ops->setsolver    = PetscConvEstSetTS_Private;

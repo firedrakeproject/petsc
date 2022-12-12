@@ -2,8 +2,7 @@ static char help[] = "Tests VecPlaceArray() and VecReciprocal().\n\n";
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt     n = 5, bs;
   PetscBool    iscuda, iskokkos, iship;
   Vec          x, x1, x2, x3;

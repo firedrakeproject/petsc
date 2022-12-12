@@ -1,7 +1,7 @@
 /*
    Private data structure for QR preconditioner.
 */
-#ifndef QR_H
+#if !defined(QR_H)
 #define QR_H
 
 #include <../src/ksp/pc/impls/factor/factor.h>

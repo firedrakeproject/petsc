@@ -2,8 +2,7 @@
 
 static char help[] = "Solves a series of linear systems using KSPHPDDM.\n\n";
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Vec x, b; /* computed solution and RHS */
   Mat A;    /* linear system matrix */
   KSP ksp;  /* linear solver context */

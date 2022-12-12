@@ -24,8 +24,7 @@
 
 .seealso: `PetscMallocDump()`
  @*/
-PetscErrorCode PetscMPIDump(FILE *fd)
-{
+PetscErrorCode PetscMPIDump(FILE *fd) {
   PetscMPIInt rank;
   double      tsends, trecvs, work;
   int         err;
@@ -58,8 +57,7 @@ PetscErrorCode PetscMPIDump(FILE *fd)
 
 #else
 
-PetscErrorCode PetscMPIDump(FILE *fd)
-{
+PetscErrorCode PetscMPIDump(FILE *fd) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
@@ -71,8 +69,7 @@ PetscErrorCode PetscMPIDump(FILE *fd)
     OpenMPI version of MPI_Win_allocate_shared() does not provide __float128 alignment so we provide
     a utility that insures alignment up to data item size.
 */
-PetscErrorCode MPIU_Win_allocate_shared(MPI_Aint sz, PetscMPIInt szind, MPI_Info info, MPI_Comm comm, void *ptr, MPI_Win *win)
-{
+PetscErrorCode MPIU_Win_allocate_shared(MPI_Aint sz, PetscMPIInt szind, MPI_Info info, MPI_Comm comm, void *ptr, MPI_Win *win) {
   float *tmp;
 
   PetscFunctionBegin;
@@ -82,8 +79,7 @@ PetscErrorCode MPIU_Win_allocate_shared(MPI_Aint sz, PetscMPIInt szind, MPI_Info
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode MPIU_Win_shared_query(MPI_Win win, PetscMPIInt rank, MPI_Aint *sz, PetscMPIInt *szind, void *ptr)
-{
+PETSC_EXTERN PetscErrorCode MPIU_Win_shared_query(MPI_Win win, PetscMPIInt rank, MPI_Aint *sz, PetscMPIInt *szind, void *ptr) {
   float *tmp;
 
   PetscFunctionBegin;

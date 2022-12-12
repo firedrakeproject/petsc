@@ -36,8 +36,7 @@ static PetscErrorCode FormIFunction(TS, PetscReal, Vec, Vec, Vec, void *);
 static PetscErrorCode FormIJacobian(TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void *);
 static PetscErrorCode FormInitialSolution(TS, Vec, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS                ts;         /* time integrator */
   SNES              snes;       /* nonlinear solver */
   SNESLineSearch    linesearch; /* line search */
@@ -139,8 +138,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-static PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ptr)
-{
+static PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ptr) {
   User          user = (User)ptr;
   DM            da;
   DMDALocalInfo info;
@@ -170,8 +168,7 @@ static PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode FormRHSFunction(TS ts, PetscReal t, Vec X, Vec F, void *ptr)
-{
+static PetscErrorCode FormRHSFunction(TS ts, PetscReal t, Vec X, Vec F, void *ptr) {
   User          user = (User)ptr;
   DM            da;
   Vec           Xloc;
@@ -226,8 +223,7 @@ static PetscErrorCode FormRHSFunction(TS ts, PetscReal t, Vec X, Vec F, void *pt
 /*
   IJacobian - Compute IJacobian = dF/dU + a dF/dUdot
 */
-PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat J, Mat Jpre, void *ptr)
-{
+PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat J, Mat Jpre, void *ptr) {
   User          user = (User)ptr;
   DMDALocalInfo info;
   PetscInt      i;
@@ -267,8 +263,7 @@ PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, M
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormInitialSolution(TS ts, Vec X, void *ctx)
-{
+PetscErrorCode FormInitialSolution(TS ts, Vec X, void *ctx) {
   User          user = (User)ctx;
   DM            da;
   PetscInt      i;

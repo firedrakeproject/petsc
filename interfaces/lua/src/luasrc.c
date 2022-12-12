@@ -1,8 +1,7 @@
 #include <petsc.h>
 #include <lua.h>
 
-int lua_VecCreate(lua_State *L)
-{
+int lua_VecCreate(lua_State *L) {
   PetscErrorCode ierr;
   Vec            vec;
 
@@ -11,8 +10,7 @@ int lua_VecCreate(lua_State *L)
   return 1;
 }
 
-int lua_VecSetSize(lua_State *L)
-{
+int lua_VecSetSize(lua_State *L) {
   PetscErrorCode ierr;
   Vec            vec;
   PetscInt       n;
@@ -24,8 +22,7 @@ int lua_VecSetSize(lua_State *L)
   return 0;
 }
 
-int luaopen_libpetsc(lua_State *L)
-{
+int luaopen_libpetsc(lua_State *L) {
   PetscInitializeNoArguments();
   lua_register(L, "VecCreate", (lua_CFunction)lua_VecCreate);
   lua_register(L, "VecSetSize", (lua_CFunction)lua_VecSetSize);

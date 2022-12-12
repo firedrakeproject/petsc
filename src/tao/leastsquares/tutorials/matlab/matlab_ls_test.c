@@ -1,4 +1,4 @@
-static char help[] = "TAO/Pounders MATLAB Testing on the More'-Wild Benchmark Problems\n\
+static char help[] = "TAO/Pounders Matlab Testing on the More'-Wild Benchmark Problems\n\
 The interface calls:\n\
     TestingInitialize.m to initialize the problem set\n\
     ProblemInitialize.m to initialize each instance\n\
@@ -6,7 +6,7 @@ The interface calls:\n\
     TestingFinalize.m to store the entire set of performance data\n\
 \n\
 TestingPlot.m is called outside of TAO/Pounders to produce a performance profile\n\
-of the results compared to the MATLAB fminsearch algorithm.\n";
+of the results compared to the Matlab fminsearch algorithm.\n";
 
 #include <petsctao.h>
 #include <petscmatlab.h>
@@ -22,8 +22,7 @@ typedef struct {
   int npmax; /* Maximum interpolation points */
 } AppCtx;
 
-static PetscErrorCode EvaluateResidual(Tao tao, Vec X, Vec F, void *ptr)
-{
+static PetscErrorCode EvaluateResidual(Tao tao, Vec X, Vec F, void *ptr) {
   AppCtx *user = (AppCtx *)ptr;
 
   PetscFunctionBegin;
@@ -35,8 +34,7 @@ static PetscErrorCode EvaluateResidual(Tao tao, Vec X, Vec F, void *ptr)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode EvaluateJacobian(Tao tao, Vec X, Mat J, Mat JPre, void *ptr)
-{
+static PetscErrorCode EvaluateJacobian(Tao tao, Vec X, Mat J, Mat JPre, void *ptr) {
   AppCtx *user = (AppCtx *)ptr;
 
   PetscFunctionBegin;
@@ -48,8 +46,7 @@ static PetscErrorCode EvaluateJacobian(Tao tao, Vec X, Mat J, Mat JPre, void *pt
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoPounders(AppCtx *user)
-{
+static PetscErrorCode TaoPounders(AppCtx *user) {
   Tao  tao;
   Vec  X, F;
   Mat  J;
@@ -58,9 +55,9 @@ static PetscErrorCode TaoPounders(AppCtx *user)
   PetscFunctionBegin;
 
   /* Set the values for the algorithm options we want to use */
-  PetscCall(PetscSNPrintf(buf, PETSC_STATIC_ARRAY_LENGTH(buf), "%d", user->npmax));
+  sprintf(buf, "%d", user->npmax);
   PetscCall(PetscOptionsSetValue(NULL, "-tao_pounders_npmax", buf));
-  PetscCall(PetscSNPrintf(buf, PETSC_STATIC_ARRAY_LENGTH(buf), "%5.4e", user->delta));
+  sprintf(buf, "%5.4e", user->delta);
   PetscCall(PetscOptionsSetValue(NULL, "-tao_pounders_delta", buf));
 
   /* Create the TAO objects and set the type */
@@ -96,8 +93,7 @@ static PetscErrorCode TaoPounders(AppCtx *user)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   AppCtx      user;
   PetscScalar tmp;
   PetscInt    prob_id = 0;
@@ -160,7 +156,7 @@ int main(int argc, char **argv)
 /*TEST
 
    build:
-      requires: matlab
+      requires: matlab_engine
 
    test:
       localrunfiles: more_wild_probs TestingInitialize.m TestingFinalize.m ProblemInitialize.m ProblemFinalize.m

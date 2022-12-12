@@ -3,8 +3,7 @@ static char help[] = "Tests taking part of existing array to create a new vector
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt size;
   PetscInt    n = 10, i;
   PetscScalar array[10];

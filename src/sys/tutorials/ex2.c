@@ -2,8 +2,7 @@
 static char help[] = "Synchronized printing.\n\n";
 
 #include <petscsys.h>
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt rank, size;
 
   /*

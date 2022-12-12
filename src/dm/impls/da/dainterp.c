@@ -19,8 +19,7 @@
    matrix type for both the operator matrices and the interpolation matrices so that users
    can select matrix types of base MATAIJ for accelerators
 */
-static PetscErrorCode ConvertToAIJ(MatType intype, MatType *outtype)
-{
+static PetscErrorCode ConvertToAIJ(MatType intype, MatType *outtype) {
   PetscInt    i;
   char const *types[3] = {MATAIJ, MATSEQAIJ, MATMPIAIJ};
   PetscBool   flg;
@@ -37,8 +36,7 @@ static PetscErrorCode ConvertToAIJ(MatType intype, MatType *outtype)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInterpolation_DA_1D_Q1(DM dac, DM daf, Mat *A)
-{
+PetscErrorCode DMCreateInterpolation_DA_1D_Q1(DM dac, DM daf, Mat *A) {
   PetscInt               i, i_start, m_f, Mx;
   const PetscInt        *idx_f, *idx_c;
   PetscInt               m_ghost, m_ghost_c;
@@ -102,8 +100,8 @@ PetscErrorCode DMCreateInterpolation_DA_1D_Q1(DM dac, DM daf, Mat *A)
        nonzero. Note this is very important for final grid lines
        in x direction; since they have no right neighbor
        */
-      x  = ((PetscReal)(i - i_c * ratio)) / ((PetscReal)ratio);
-      nc = 0;
+      x        = ((PetscReal)(i - i_c * ratio)) / ((PetscReal)ratio);
+      nc       = 0;
       /* one left and below; or we are right on it */
       col      = (i_c - i_start_ghost_c);
       cols[nc] = idx_c[col];
@@ -174,8 +172,7 @@ PetscErrorCode DMCreateInterpolation_DA_1D_Q1(DM dac, DM daf, Mat *A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInterpolation_DA_1D_Q0(DM dac, DM daf, Mat *A)
-{
+PetscErrorCode DMCreateInterpolation_DA_1D_Q0(DM dac, DM daf, Mat *A) {
   PetscInt               i, i_start, m_f, Mx;
   const PetscInt        *idx_f, *idx_c;
   ISLocalToGlobalMapping ltog_f, ltog_c;
@@ -237,8 +234,8 @@ PetscErrorCode DMCreateInterpolation_DA_1D_Q0(DM dac, DM daf, Mat *A)
          nonzero. Note this is very important for final grid lines
          in x direction; since they have no right neighbor
     */
-    x  = ((PetscReal)(i - i_c * ratio)) / ((PetscReal)ratio);
-    nc = 0;
+    x        = ((PetscReal)(i - i_c * ratio)) / ((PetscReal)ratio);
+    nc       = 0;
     /* one left and below; or we are right on it */
     col      = (i_c - i_start_ghost_c);
     cols[nc] = idx_c[col];
@@ -260,8 +257,7 @@ PetscErrorCode DMCreateInterpolation_DA_1D_Q0(DM dac, DM daf, Mat *A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInterpolation_DA_2D_Q1(DM dac, DM daf, Mat *A)
-{
+PetscErrorCode DMCreateInterpolation_DA_2D_Q1(DM dac, DM daf, Mat *A) {
   PetscInt               i, j, i_start, j_start, m_f, n_f, Mx, My, dof;
   const PetscInt        *idx_c, *idx_f;
   ISLocalToGlobalMapping ltog_f, ltog_c;
@@ -343,7 +339,7 @@ PetscErrorCode DMCreateInterpolation_DA_2D_Q1(DM dac, DM daf, Mat *A)
        nonzero. Note this is very important for final grid lines
        in x and y directions; since they have no right/top neighbors
        */
-      nc = 0;
+      nc         = 0;
       /* one left and below; or we are right on it */
       col        = (m_ghost_c * (j_c - j_start_ghost_c) + (i_c - i_start_ghost_c));
       cols[nc++] = col_shift + idx_c[col];
@@ -389,7 +385,7 @@ PetscErrorCode DMCreateInterpolation_DA_2D_Q1(DM dac, DM daf, Mat *A)
         x = ((PetscReal)(i - i_c * ratioi)) / ((PetscReal)ratioi);
         y = ((PetscReal)(j - j_c * ratioj)) / ((PetscReal)ratioj);
 
-        nc = 0;
+        nc       = 0;
         /* one left and below; or we are right on it */
         col      = (m_ghost_c * (j_c - j_start_ghost_c) + (i_c - i_start_ghost_c));
         cols[nc] = col_shift + idx_c[col];
@@ -492,8 +488,7 @@ PetscErrorCode DMCreateInterpolation_DA_2D_Q1(DM dac, DM daf, Mat *A)
 /*
        Contributed by Andrei Draganescu <aidraga@sandia.gov>
 */
-PetscErrorCode DMCreateInterpolation_DA_2D_Q0(DM dac, DM daf, Mat *A)
-{
+PetscErrorCode DMCreateInterpolation_DA_2D_Q0(DM dac, DM daf, Mat *A) {
   PetscInt               i, j, i_start, j_start, m_f, n_f, Mx, My, dof;
   const PetscInt        *idx_c, *idx_f;
   ISLocalToGlobalMapping ltog_f, ltog_c;
@@ -565,7 +560,7 @@ PetscErrorCode DMCreateInterpolation_DA_2D_Q0(DM dac, DM daf, Mat *A)
          nonzero. Note this is very important for final grid lines
          in x and y directions; since they have no right/top neighbors
       */
-      nc = 0;
+      nc         = 0;
       /* one left and below; or we are right on it */
       col        = (m_ghost_c * (j_c - j_start_ghost_c) + (i_c - i_start_ghost_c));
       cols[nc++] = col_shift + idx_c[col];
@@ -593,9 +588,9 @@ PetscErrorCode DMCreateInterpolation_DA_2D_Q0(DM dac, DM daf, Mat *A)
       /* convert to local "natural" numbering and then to PETSc global numbering */
       row = idx_f[(m_ghost * (j - j_start_ghost) + (i - i_start_ghost))];
 
-      i_c = (i / ratioi); /* coarse grid node to left of fine grid node */
-      j_c = (j / ratioj); /* coarse grid node below fine grid node */
-      nc  = 0;
+      i_c      = (i / ratioi); /* coarse grid node to left of fine grid node */
+      j_c      = (j / ratioj); /* coarse grid node below fine grid node */
+      nc       = 0;
       /* one left and below; or we are right on it */
       col      = (m_ghost_c * (j_c - j_start_ghost_c) + (i_c - i_start_ghost_c));
       cols[nc] = col_shift + idx_c[col];
@@ -617,8 +612,7 @@ PetscErrorCode DMCreateInterpolation_DA_2D_Q0(DM dac, DM daf, Mat *A)
 /*
        Contributed by Jianming Yang <jianming-yang@uiowa.edu>
 */
-PetscErrorCode DMCreateInterpolation_DA_3D_Q0(DM dac, DM daf, Mat *A)
-{
+PetscErrorCode DMCreateInterpolation_DA_3D_Q0(DM dac, DM daf, Mat *A) {
   PetscInt               i, j, l, i_start, j_start, l_start, m_f, n_f, p_f, Mx, My, Mz, dof;
   const PetscInt        *idx_c, *idx_f;
   ISLocalToGlobalMapping ltog_f, ltog_c;
@@ -699,7 +693,7 @@ PetscErrorCode DMCreateInterpolation_DA_3D_Q0(DM dac, DM daf, Mat *A)
            nonzero. Note this is very important for final grid lines
            in x and y directions; since they have no right/top neighbors
         */
-        nc = 0;
+        nc         = 0;
         /* one left and below; or we are right on it */
         col        = (m_ghost_c * n_ghost_c * (l_c - l_start_ghost_c) + m_ghost_c * (j_c - j_start_ghost_c) + (i_c - i_start_ghost_c));
         cols[nc++] = col_shift + idx_c[col];
@@ -729,10 +723,10 @@ PetscErrorCode DMCreateInterpolation_DA_3D_Q0(DM dac, DM daf, Mat *A)
         /* convert to local "natural" numbering and then to PETSc global numbering */
         row = idx_f[(m_ghost * n_ghost * (l - l_start_ghost) + m_ghost * (j - j_start_ghost) + (i - i_start_ghost))];
 
-        i_c = (i / ratioi); /* coarse grid node to left of fine grid node */
-        j_c = (j / ratioj); /* coarse grid node below fine grid node */
-        l_c = (l / ratiol);
-        nc  = 0;
+        i_c      = (i / ratioi); /* coarse grid node to left of fine grid node */
+        j_c      = (j / ratioj); /* coarse grid node below fine grid node */
+        l_c      = (l / ratiol);
+        nc       = 0;
         /* one left and below; or we are right on it */
         col      = (m_ghost_c * n_ghost_c * (l_c - l_start_ghost_c) + m_ghost_c * (j_c - j_start_ghost_c) + (i_c - i_start_ghost_c));
         cols[nc] = col_shift + idx_c[col];
@@ -752,8 +746,7 @@ PetscErrorCode DMCreateInterpolation_DA_3D_Q0(DM dac, DM daf, Mat *A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInterpolation_DA_3D_Q1(DM dac, DM daf, Mat *A)
-{
+PetscErrorCode DMCreateInterpolation_DA_3D_Q1(DM dac, DM daf, Mat *A) {
   PetscInt               i, j, i_start, j_start, m_f, n_f, Mx, My, dof, l;
   const PetscInt        *idx_c, *idx_f;
   ISLocalToGlobalMapping ltog_f, ltog_c;
@@ -890,7 +883,7 @@ PetscErrorCode DMCreateInterpolation_DA_3D_Q1(DM dac, DM daf, Mat *A)
           y = ((PetscReal)(j - j_c * ratioj)) / ((PetscReal)ratioj);
           z = ((PetscReal)(l - l_c * ratiok)) / ((PetscReal)ratiok);
 
-          nc = 0;
+          nc  = 0;
           /* one left and below; or we are right on it */
           col = (m_ghost_c * n_ghost_c * (l_c - l_start_ghost_c) + m_ghost_c * (j_c - j_start_ghost_c) + (i_c - i_start_ghost_c));
 
@@ -1031,8 +1024,7 @@ PetscErrorCode DMCreateInterpolation_DA_3D_Q1(DM dac, DM daf, Mat *A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInterpolation_DA(DM dac, DM daf, Mat *A, Vec *scale)
-{
+PetscErrorCode DMCreateInterpolation_DA(DM dac, DM daf, Mat *A, Vec *scale) {
   PetscInt        dimc, Mc, Nc, Pc, mc, nc, pc, dofc, sc, dimf, Mf, Nf, Pf, mf, nf, pf, doff, sf;
   DMBoundaryType  bxc, byc, bzc, bxf, byf, bzf;
   DMDAStencilType stc, stf;
@@ -1076,8 +1068,7 @@ PetscErrorCode DMCreateInterpolation_DA(DM dac, DM daf, Mat *A, Vec *scale)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInjection_DA_1D(DM dac, DM daf, VecScatter *inject)
-{
+PetscErrorCode DMCreateInjection_DA_1D(DM dac, DM daf, VecScatter *inject) {
   PetscInt               i, i_start, m_f, Mx, dof;
   const PetscInt        *idx_f;
   ISLocalToGlobalMapping ltog_f;
@@ -1132,8 +1123,7 @@ PetscErrorCode DMCreateInjection_DA_1D(DM dac, DM daf, VecScatter *inject)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInjection_DA_2D(DM dac, DM daf, VecScatter *inject)
-{
+PetscErrorCode DMCreateInjection_DA_2D(DM dac, DM daf, VecScatter *inject) {
   PetscInt               i, j, i_start, j_start, m_f, n_f, Mx, My, dof;
   const PetscInt        *idx_c, *idx_f;
   ISLocalToGlobalMapping ltog_f, ltog_c;
@@ -1202,8 +1192,7 @@ PetscErrorCode DMCreateInjection_DA_2D(DM dac, DM daf, VecScatter *inject)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInjection_DA_3D(DM dac, DM daf, VecScatter *inject)
-{
+PetscErrorCode DMCreateInjection_DA_3D(DM dac, DM daf, VecScatter *inject) {
   PetscInt               i, j, k, i_start, j_start, k_start, m_f, n_f, p_f, Mx, My, Mz;
   PetscInt               m_ghost, n_ghost, p_ghost, m_ghost_c, n_ghost_c, p_ghost_c;
   PetscInt               i_start_ghost, j_start_ghost, k_start_ghost;
@@ -1292,8 +1281,7 @@ PetscErrorCode DMCreateInjection_DA_3D(DM dac, DM daf, VecScatter *inject)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateInjection_DA(DM dac, DM daf, Mat *mat)
-{
+PetscErrorCode DMCreateInjection_DA(DM dac, DM daf, Mat *mat) {
   PetscInt        dimc, Mc, Nc, Pc, mc, nc, pc, dofc, sc, dimf, Mf, Nf, Pf, mf, nf, pf, doff, sf;
   DMBoundaryType  bxc, byc, bzc, bxf, byf, bzf;
   DMDAStencilType stc, stf;
@@ -1332,35 +1320,32 @@ PetscErrorCode DMCreateInjection_DA(DM dac, DM daf, Mat *mat)
 
    Level: intermediate
 @*/
-PetscErrorCode DMCreateAggregates(DM dac, DM daf, Mat *mat)
-{
+PetscErrorCode DMCreateAggregates(DM dac, DM daf, Mat *mat) {
   return DMDACreateAggregates(dac, daf, mat);
 }
 
 /*@
    DMDACreateAggregates - Gets the aggregates that map between
-   grids associated with two `DMDA`
+   grids associated with two DMDAs.
 
    Collective on dmc
 
    Input Parameters:
-+  dmc - the coarse grid `DMDA`
--  dmf - the fine grid `DMDA`
++  dmc - the coarse grid DMDA
+-  dmf - the fine grid DMDA
 
    Output Parameters:
 .  rest - the restriction matrix (transpose of the projection matrix)
 
    Level: intermediate
 
-   Note:
-   This routine is not used by PETSc.
+   Note: This routine is not used by PETSc.
    It is not clear what its use case is and it may be removed in a future release.
    Users should contact petsc-maint@mcs.anl.gov if they plan to use it.
 
 .seealso: `DMRefine()`, `DMCreateInjection()`, `DMCreateInterpolation()`
 @*/
-PetscErrorCode DMDACreateAggregates(DM dac, DM daf, Mat *rest)
-{
+PetscErrorCode DMDACreateAggregates(DM dac, DM daf, Mat *rest) {
   PetscInt               dimc, Mc, Nc, Pc, mc, nc, pc, dofc, sc;
   PetscInt               dimf, Mf, Nf, Pf, mf, nf, pf, doff, sf;
   DMBoundaryType         bxc, byc, bzc, bxf, byf, bzf;

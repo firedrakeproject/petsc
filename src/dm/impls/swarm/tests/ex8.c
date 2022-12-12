@@ -21,8 +21,7 @@ typedef struct {
   PetscReal v0[2];   /* Species mean velocity in 1D */
 } AppCtx;
 
-PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscFunctionBegin;
   options->mass[0] = 9.10938356e-31;                                                /* Electron Mass [kg] */
   options->mass[1] = 87.62 * 1.66054e-27;                                           /* Sr+ Mass [kg] */
@@ -36,8 +35,7 @@ PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm) {
   PetscFunctionBeginUser;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -46,8 +44,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateSwarm(DM dm, AppCtx *user, DM *sw)
-{
+static PetscErrorCode CreateSwarm(DM dm, AppCtx *user, DM *sw) {
   PetscInt dim;
 
   PetscFunctionBeginUser;
@@ -70,8 +67,7 @@ static PetscErrorCode CreateSwarm(DM dm, AppCtx *user, DM *sw)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestDistribution(DM sw, PetscReal confidenceLevel, AppCtx *user)
-{
+static PetscErrorCode TestDistribution(DM sw, PetscReal confidenceLevel, AppCtx *user) {
   Vec           locv;
   PetscProbFunc cdf;
   PetscReal     alpha;
@@ -82,17 +78,10 @@ static PetscErrorCode TestDistribution(DM sw, PetscReal confidenceLevel, AppCtx 
   PetscCall(PetscObjectGetComm((PetscObject)sw, &comm));
   PetscCall(DMGetDimension(sw, &dim));
   switch (dim) {
-  case 1:
-    cdf = PetscCDFMaxwellBoltzmann1D;
-    break;
-  case 2:
-    cdf = PetscCDFMaxwellBoltzmann2D;
-    break;
-  case 3:
-    cdf = PetscCDFMaxwellBoltzmann3D;
-    break;
-  default:
-    SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "Dimension %" PetscInt_FMT " not supported", dim);
+  case 1: cdf = PetscCDFMaxwellBoltzmann1D; break;
+  case 2: cdf = PetscCDFMaxwellBoltzmann2D; break;
+  case 3: cdf = PetscCDFMaxwellBoltzmann3D; break;
+  default: SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "Dimension %" PetscInt_FMT " not supported", dim);
   }
   PetscCall(DMSwarmCreateLocalVectorFromField(sw, "velocity", &locv));
   PetscCall(PetscProbComputeKSStatistic(locv, cdf, &alpha));
@@ -102,8 +91,7 @@ static PetscErrorCode TestDistribution(DM sw, PetscReal confidenceLevel, AppCtx 
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM     dm, sw;
   AppCtx user;
 

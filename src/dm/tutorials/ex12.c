@@ -12,8 +12,7 @@ Use the options
 #include <petscdm.h>
 #include <petscdmda.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt        M = 10, N = 8;
   PetscBool       flg = PETSC_FALSE;
   DM              da;

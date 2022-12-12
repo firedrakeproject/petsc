@@ -19,8 +19,7 @@ typedef struct {
   PetscInt  maxbounces;
 } AppCtx;
 
-static PetscErrorCode Event(TS ts, PetscReal t, Vec U, PetscScalar *fvalue, void *ctx)
-{
+static PetscErrorCode Event(TS ts, PetscReal t, Vec U, PetscScalar *fvalue, void *ctx) {
   AppCtx            *app = (AppCtx *)ctx;
   Vec                V;
   const PetscScalar *u, *v;
@@ -38,8 +37,7 @@ static PetscErrorCode Event(TS ts, PetscReal t, Vec U, PetscScalar *fvalue, void
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PostEvent(TS ts, PetscInt nevents, PetscInt event_list[], PetscReal t, Vec U, PetscBool forwardsolve, void *ctx)
-{
+static PetscErrorCode PostEvent(TS ts, PetscInt nevents, PetscInt event_list[], PetscReal t, Vec U, PetscBool forwardsolve, void *ctx) {
   AppCtx      *app = (AppCtx *)ctx;
   Vec          V;
   PetscScalar *u, *v;
@@ -65,8 +63,7 @@ static PetscErrorCode PostEvent(TS ts, PetscInt nevents, PetscInt event_list[], 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode I2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F, void *ctx)
-{
+static PetscErrorCode I2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F, void *ctx) {
   AppCtx            *app = (AppCtx *)ctx;
   const PetscScalar *u, *v, *a;
   PetscScalar        Res, *f;
@@ -86,8 +83,7 @@ static PetscErrorCode I2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode I2Jacobian(TS ts, PetscReal t, Vec U, Vec V, Vec A, PetscReal shiftV, PetscReal shiftA, Mat J, Mat P, void *ctx)
-{
+static PetscErrorCode I2Jacobian(TS ts, PetscReal t, Vec U, Vec V, Vec A, PetscReal shiftV, PetscReal shiftA, Mat J, Mat P, void *ctx) {
   AppCtx            *app = (AppCtx *)ctx;
   const PetscScalar *u, *v, *a;
   PetscInt           i;
@@ -113,8 +109,7 @@ static PetscErrorCode I2Jacobian(TS ts, PetscReal t, Vec U, Vec V, Vec A, PetscR
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS           ts;   /* ODE integrator */
   Vec          U, V; /* solution will be stored here */
   Vec          F;    /* residual vector */

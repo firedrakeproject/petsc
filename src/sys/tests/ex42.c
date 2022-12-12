@@ -4,8 +4,7 @@ static char help[] = "Test scalability of PetscHSetI hash set.\n\n";
 #include <petsctime.h>
 #include <petsc/private/hashseti.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscHSetI     table;
   PetscInt       N = 0, i, j, n;
   PetscBool      flag;

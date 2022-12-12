@@ -7,8 +7,7 @@ typedef struct {
   PetscReal condLimit, tol; /* Condition number limit for cell output */
 } AppCtx;
 
-static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscFunctionBeginUser;
   options->report    = PETSC_FALSE;
   options->tol       = 0.5;
@@ -22,8 +21,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm) {
   PetscFunctionBeginUser;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -32,8 +30,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM      dm;
   DMLabel OQLabel;
   Vec     OQ;

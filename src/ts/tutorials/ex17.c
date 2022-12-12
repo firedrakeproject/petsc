@@ -43,8 +43,7 @@ static PetscErrorCode FormIFunction(TS, PetscReal, Vec, Vec, Vec, void *);
 static PetscErrorCode FormIJacobian(TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void *);
 static PetscErrorCode FormInitialSolution(TS, Vec, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS           ts; /* nonlinear solver */
   Vec          u;  /* solution, residual vectors */
   Mat          J;  /* Jacobian matrix */
@@ -153,8 +152,7 @@ int main(int argc, char **argv)
   return 0;
 }
 /* ------------------------------------------------------------------- */
-static PetscErrorCode FormIFunction(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec F, void *ptr)
-{
+static PetscErrorCode FormIFunction(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec F, void *ptr) {
   AppCtx      *user = (AppCtx *)ptr;
   DM           da;
   PetscInt     i, Mx, xs, xm;
@@ -211,8 +209,7 @@ static PetscErrorCode FormIFunction(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec
 /*
   IJacobian - Compute IJacobian = dF/dU + a dF/dUdot
 */
-PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat J, Mat Jpre, void *ctx)
-{
+PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat J, Mat Jpre, void *ctx) {
   PetscInt    i, rstart, rend, Mx;
   PetscReal   hx, sx;
   AppCtx     *user = (AppCtx *)ctx;
@@ -268,8 +265,7 @@ PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, M
 }
 
 /* ------------------------------------------------------------------- */
-PetscErrorCode FormInitialSolution(TS ts, Vec U, void *ptr)
-{
+PetscErrorCode FormInitialSolution(TS ts, Vec U, void *ptr) {
   AppCtx      *user = (AppCtx *)ptr;
   PetscReal    c    = user->c;
   DM           da;

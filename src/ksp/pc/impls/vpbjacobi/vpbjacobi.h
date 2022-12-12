@@ -1,4 +1,4 @@
-#ifndef VPBJACOBI_H
+#if !defined(VPBJACOBI_H)
 #define VPBJACOBI_H
 
 #include <petsc/private/pcimpl.h>

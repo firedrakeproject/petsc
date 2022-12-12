@@ -26,8 +26,7 @@ $       XXXView(XXX object,PETSC_VIEWER_SAWS_(comm));
 
 .seealso: `PetscViewer`, `PETSC_VIEWER_SAWS_WORLD`, `PETSC_VIEWER_SAWS_SELF`
 @*/
-PetscViewer PETSC_VIEWER_SAWS_(MPI_Comm comm)
-{
+PetscViewer PETSC_VIEWER_SAWS_(MPI_Comm comm) {
   PetscErrorCode ierr;
   PetscMPIInt    flag;
   PetscViewer    viewer;
@@ -79,8 +78,7 @@ PetscViewer PETSC_VIEWER_SAWS_(MPI_Comm comm)
 /*
        If there is a PetscViewer associated with this communicator, it is destroyed.
 */
-PetscErrorCode PetscViewer_SAWS_Destroy(MPI_Comm comm)
-{
+PetscErrorCode PetscViewer_SAWS_Destroy(MPI_Comm comm) {
   PetscMPIInt flag;
   PetscViewer viewer;
 
@@ -95,8 +93,7 @@ PetscErrorCode PetscViewer_SAWS_Destroy(MPI_Comm comm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscViewerDestroy_SAWs(PetscViewer viewer)
-{
+static PetscErrorCode PetscViewerDestroy_SAWs(PetscViewer viewer) {
   PetscFunctionBegin;
   /*
      Make sure that we mark that the stack is no longer published
@@ -105,8 +102,7 @@ static PetscErrorCode PetscViewerDestroy_SAWs(PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode PetscViewerCreate_SAWs(PetscViewer v)
-{
+PETSC_EXTERN PetscErrorCode PetscViewerCreate_SAWs(PetscViewer v) {
   PetscFunctionBegin;
   v->ops->destroy = PetscViewerDestroy_SAWs;
   PetscFunctionReturn(0);

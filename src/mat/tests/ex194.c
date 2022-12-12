@@ -3,8 +3,7 @@ static char help[] = "Tests MatCreateSubmatrix() with certain entire rows of mat
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         C, A;
   PetscInt    i, j, m = 3, n = 2, rstart, rend, cstart, cend;
   PetscMPIInt size, rank;

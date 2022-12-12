@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 .PHONY:all
 all: petsc
 	${MAKE} -C binary-io

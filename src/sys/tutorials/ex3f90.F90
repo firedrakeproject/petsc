@@ -235,7 +235,7 @@
 !   requires: !defined(PETSC_USE_LOG)
 !   test:
 !     suffix: ascii
-!     args: -log_view ascii:filename.txt -log_all
+!     args: -log_view ascii:filename.txt
 !   test:
 !     suffix: detail
 !     args: -log_view ascii:filename.txt:ascii_info_detail

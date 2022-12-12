@@ -5,8 +5,7 @@
       Special case where the matrix was ILU(0) factored in the natural
    ordering. This eliminates the need for the column and row permutation.
 */
-PetscErrorCode MatSolve_SeqBAIJ_1_NaturalOrdering_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_1_NaturalOrdering_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a = (Mat_SeqBAIJ *)A->data;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j, *diag = a->diag;
   const MatScalar   *aa = a->a, *v;
@@ -58,8 +57,7 @@ PetscErrorCode MatSolve_SeqBAIJ_1_NaturalOrdering_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatForwardSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatForwardSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a = (Mat_SeqBAIJ *)A->data;
   const PetscInt     n = a->mbs, *ai = a->i, *aj = a->j, *vi;
   PetscScalar       *x, sum;
@@ -91,8 +89,7 @@ PetscErrorCode MatForwardSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatBackwardSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatBackwardSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a = (Mat_SeqBAIJ *)A->data;
   const PetscInt     n = a->mbs, *aj = a->j, *adiag = a->diag, *vi;
   PetscScalar       *x, sum;
@@ -122,8 +119,7 @@ PetscErrorCode MatBackwardSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_1_NaturalOrdering(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a = (Mat_SeqBAIJ *)A->data;
   const PetscInt     n = a->mbs, *ai = a->i, *aj = a->j, *adiag = a->diag, *vi;
   PetscScalar       *x, sum;

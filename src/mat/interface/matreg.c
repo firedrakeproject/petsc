@@ -25,8 +25,7 @@ PetscFunctionList MatList = NULL;
 
 .seealso: `MatGetType()`, `MatSetType()`, `MatType`, `Mat`
 */
-PetscErrorCode MatGetRootType_Private(Mat mat, MatType *rootType)
-{
+PetscErrorCode MatGetRootType_Private(Mat mat, MatType *rootType) {
   PetscBool   found = PETSC_FALSE;
   MatRootName names = MatRootNameList;
   MatType     inType;
@@ -62,8 +61,7 @@ PetscErrorCode MatGetRootType_Private(Mat mat, MatType *rootType)
 
 .seealso: `MatGetType()`, `MatSetType()`, `MatType`, `Mat`
 */
-PetscErrorCode MatGetMPIMatType_Private(Mat mat, MatType *MPIType)
-{
+PetscErrorCode MatGetMPIMatType_Private(Mat mat, MatType *MPIType) {
   PetscBool   found = PETSC_FALSE;
   MatRootName names = MatRootNameList;
   MatType     inType;
@@ -106,29 +104,20 @@ PetscErrorCode MatGetMPIMatType_Private(Mat mat, MatType *MPIType)
 
 .seealso: `PCSetType()`, `VecSetType()`, `MatCreate()`, `MatType`, `Mat`
 @*/
-PetscErrorCode MatSetType(Mat mat, MatType matype)
-{
-  PetscBool   sametype, found, subclass = PETSC_FALSE, matMPI = PETSC_FALSE, requestSeq = PETSC_FALSE;
+PetscErrorCode MatSetType(Mat mat, MatType matype) {
+  PetscBool   sametype, found, subclass = PETSC_FALSE;
   MatRootName names = MatRootNameList;
   PetscErrorCode (*r)(Mat);
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
 
-  /* suppose with one MPI process, one created an MPIAIJ (mpiaij) matrix with MatCreateMPIAIJWithArrays(), and later tried
-     to change its type via '-mat_type aijcusparse'. Even there is only one MPI rank, we need to adapt matype to
-     'mpiaijcusparse' so that it will be treated as a subclass of MPIAIJ and proper MatCovert() will be called.
-  */
-  if (((PetscObject)mat)->type_name) PetscCall(PetscStrbeginswith(((PetscObject)mat)->type_name, "mpi", &matMPI)); /* mat claims itself is an 'mpi' matrix */
-  if (matype) PetscCall(PetscStrbeginswith(matype, "seq", &requestSeq));                                           /* user is requesting a 'seq' matrix */
-  PetscCheck(!(matMPI && requestSeq), PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Changing an MPI matrix (%s) to a sequential one (%s) is not allowed. Please remove the 'seq' prefix from your matrix type.", ((PetscObject)mat)->type_name, matype);
-
   while (names) {
     PetscCall(PetscStrcmp(matype, names->rname, &found));
     if (found) {
       PetscMPIInt size;
       PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)mat), &size));
-      if (size == 1 && !matMPI) matype = names->sname; /* try to align the requested type (matype) with the existing type per seq/mpi */
+      if (size == 1) matype = names->sname;
       else matype = names->mname;
       break;
     }
@@ -142,7 +131,7 @@ PetscErrorCode MatSetType(Mat mat, MatType matype)
   PetscCheck(r, PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "Unknown Mat type given: %s", matype);
 
   if (mat->assembled && ((PetscObject)mat)->type_name) PetscCall(PetscStrbeginswith(matype, ((PetscObject)mat)->type_name, &subclass));
-  if (subclass) { /* mat is a subclass of the requested 'matype'? */
+  if (subclass) {
     PetscCall(MatConvert(mat, matype, MAT_INPLACE_MATRIX, &mat));
     PetscFunctionReturn(0);
   }
@@ -186,8 +175,7 @@ PetscErrorCode MatSetType(Mat mat, MatType matype)
 
 .seealso: `MatType`, `MatSetType()`
 @*/
-PetscErrorCode MatGetType(Mat mat, MatType *type)
-{
+PetscErrorCode MatGetType(Mat mat, MatType *type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidPointer(type, 2);
@@ -210,8 +198,7 @@ PetscErrorCode MatGetType(Mat mat, MatType *type)
 
 .seealso: `MatType`, `Mat`, `MatSetVecType()`, `VecType`
 @*/
-PetscErrorCode MatGetVecType(Mat mat, VecType *vtype)
-{
+PetscErrorCode MatGetVecType(Mat mat, VecType *vtype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidPointer(vtype, 2);
@@ -235,8 +222,7 @@ PetscErrorCode MatGetVecType(Mat mat, VecType *vtype)
 
 .seealso: `VecType`, `VecSetType()`, `MatGetVecType()`
 @*/
-PetscErrorCode MatSetVecType(Mat mat, VecType vtype)
-{
+PetscErrorCode MatSetVecType(Mat mat, VecType vtype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscCall(PetscFree(mat->defaultvectype));
@@ -270,8 +256,7 @@ $     -mat_type my_mat
 
 .seealso: `Mat`, `MatType`, `MatSetType()`, `MatRegisterAll()`
 @*/
-PetscErrorCode MatRegister(const char sname[], PetscErrorCode (*function)(Mat))
-{
+PetscErrorCode MatRegister(const char sname[], PetscErrorCode (*function)(Mat)) {
   PetscFunctionBegin;
   PetscCall(MatInitializePackage());
   PetscCall(PetscFunctionListAdd(&MatList, sname, function));
@@ -303,8 +288,7 @@ MatRootName MatRootNameList = NULL;
 
 .seealso: `Mat`, `MatType`, `PetscObjectBaseTypeCompare()`
 @*/
-PetscErrorCode MatRegisterRootName(const char rname[], const char sname[], const char mname[])
-{
+PetscErrorCode MatRegisterRootName(const char rname[], const char sname[], const char mname[]) {
   MatRootName names;
 
   PetscFunctionBegin;

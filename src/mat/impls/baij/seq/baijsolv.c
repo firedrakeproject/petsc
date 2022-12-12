@@ -1,8 +1,7 @@
 #include <../src/mat/impls/baij/seq/baij.h>
 #include <petsc/private/kernels/blockinvert.h>
 
-PetscErrorCode MatSolve_SeqBAIJ_N_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_N_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *rout, *cout;
@@ -59,8 +58,7 @@ PetscErrorCode MatSolve_SeqBAIJ_N_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_7_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_7_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *ai = a->i, *aj = a->j;
@@ -179,8 +177,7 @@ PetscErrorCode MatSolve_SeqBAIJ_7_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_7(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_7(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *ai = a->i, *aj = a->j, *adiag = a->diag;
@@ -298,8 +295,7 @@ PetscErrorCode MatSolve_SeqBAIJ_7(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_6_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_6_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *rout, *cout;
@@ -408,8 +404,7 @@ PetscErrorCode MatSolve_SeqBAIJ_6_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_6(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_6(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *rout, *cout;
@@ -517,8 +512,7 @@ PetscErrorCode MatSolve_SeqBAIJ_6(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_5_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_5_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *rout, *cout, *diag = a->diag;
@@ -618,8 +612,7 @@ PetscErrorCode MatSolve_SeqBAIJ_5_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_5(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_5(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *rout, *cout;
@@ -718,8 +711,7 @@ PetscErrorCode MatSolve_SeqBAIJ_5(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_4_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_4_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j;
@@ -810,8 +802,7 @@ PetscErrorCode MatSolve_SeqBAIJ_4_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_4(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_4(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j, *adiag = a->diag;
@@ -901,8 +892,7 @@ PetscErrorCode MatSolve_SeqBAIJ_4(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_4_Demotion(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_4_Demotion(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j;
@@ -1000,10 +990,9 @@ PetscErrorCode MatSolve_SeqBAIJ_4_Demotion(Mat A, Vec bb, Vec xx)
 
 #if defined(PETSC_HAVE_SSE)
 
-  #include PETSC_HAVE_SSE
+#include PETSC_HAVE_SSE
 
-PetscErrorCode MatSolve_SeqBAIJ_4_SSE_Demotion(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_4_SSE_Demotion(Mat A, Vec bb, Vec xx) {
   /*
      Note: This code uses demotion of double
      to float when performing the mixed-mode computation.
@@ -1222,8 +1211,7 @@ PetscErrorCode MatSolve_SeqBAIJ_4_SSE_Demotion(Mat A, Vec bb, Vec xx)
 
 #endif
 
-PetscErrorCode MatSolve_SeqBAIJ_3_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_3_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j;
@@ -1304,8 +1292,7 @@ PetscErrorCode MatSolve_SeqBAIJ_3_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_3(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_3(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j, *adiag = a->diag;
@@ -1385,8 +1372,7 @@ PetscErrorCode MatSolve_SeqBAIJ_3(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_2_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_2_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j;
@@ -1458,8 +1444,7 @@ PetscErrorCode MatSolve_SeqBAIJ_2_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_2(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_2(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j, *adiag = a->diag;
@@ -1530,8 +1515,7 @@ PetscErrorCode MatSolve_SeqBAIJ_2(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_1_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_1_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt     n = a->mbs, *vi, *ai = a->i, *aj = a->j;
@@ -1581,8 +1565,7 @@ PetscErrorCode MatSolve_SeqBAIJ_1_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_SeqBAIJ_1(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_1(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a     = (Mat_SeqBAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   PetscInt           i, n = a->mbs, *vi, *ai = a->i, *aj = a->j, *adiag = a->diag, nz;

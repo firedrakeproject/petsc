@@ -1,4 +1,4 @@
--include ../../pde_../petscdir.mk
+-include ../../pde_../petsckdir.mk
 #requiresscalar    real
 
 SOURCEH  =

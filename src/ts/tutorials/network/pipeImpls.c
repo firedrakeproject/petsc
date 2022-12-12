@@ -7,8 +7,7 @@
      H(x) = H0 - (R/gA) Q0*|Q0|* x
  */
 /* ----------------------------------- */
-PetscErrorCode PipeComputeSteadyState(Pipe pipe, PetscScalar Q0, PetscScalar H0)
-{
+PetscErrorCode PipeComputeSteadyState(Pipe pipe, PetscScalar Q0, PetscScalar H0) {
   DM           cda;
   PipeField   *x;
   PetscInt     i, start, n;
@@ -32,11 +31,10 @@ PetscErrorCode PipeComputeSteadyState(Pipe pipe, PetscScalar Q0, PetscScalar H0)
   PetscFunctionReturn(0);
 }
 
-/* Function evaluations for PIPE    */
+/* Function evalutions for PIPE    */
 /*-------------------------------- */
 /* consider using a one-sided higher order fd derivative at boundary. */
-static inline PetscScalar dqdx(PipeField *x, PetscInt i, PetscInt ilast, PetscReal dx)
-{
+static inline PetscScalar dqdx(PipeField *x, PetscInt i, PetscInt ilast, PetscReal dx) {
   if (i == 0) {
     return (x[i + 1].q - x[i].q) / dx;
   } else if (i == ilast) {
@@ -46,8 +44,7 @@ static inline PetscScalar dqdx(PipeField *x, PetscInt i, PetscInt ilast, PetscRe
   }
 }
 
-static inline PetscScalar dhdx(PipeField *x, PetscInt i, PetscInt ilast, PetscReal dx)
-{
+static inline PetscScalar dhdx(PipeField *x, PetscInt i, PetscInt ilast, PetscReal dx) {
   if (i == 0) {
     return (x[i + 1].h - x[i].h) / dx;
   } else if (i == ilast) {
@@ -57,8 +54,7 @@ static inline PetscScalar dhdx(PipeField *x, PetscInt i, PetscInt ilast, PetscRe
   }
 }
 
-PetscErrorCode PipeIFunctionLocal_Lax(DMDALocalInfo *info, PetscReal ptime, PipeField *x, PipeField *xdot, PetscScalar *f, Pipe pipe)
-{
+PetscErrorCode PipeIFunctionLocal_Lax(DMDALocalInfo *info, PetscReal ptime, PipeField *x, PipeField *xdot, PetscScalar *f, Pipe pipe) {
   PetscInt    i, start, n, ilast;
   PetscReal   a = pipe->a, A = pipe->A, R = pipe->R, c = a * a / (GRAV * A);
   PetscReal   dx = pipe->length / (info->mx - 1), dt = pipe->dt;

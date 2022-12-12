@@ -3,8 +3,7 @@ static char help[] = "Tests retrieving unused PETSc options.\n\n";
 
 #include <petscsys.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt  i, N, M;
   char    **names, **values;
   PetscBool set;

@@ -4,8 +4,7 @@ This does the tricky case.\n\n";
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt    n = 5, N;
   PetscMPIInt size, rank;
   PetscScalar value, zero = 0.0;

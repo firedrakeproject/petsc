@@ -1,4 +1,4 @@
--include ../../../../../../../petscdir.mk
+-include ../../../../../../../petsckdir.mk
 #requiresdefine   'PETSC_HAVE_FORTRAN'
 
 SOURCEC  = zdrawopenxf.c

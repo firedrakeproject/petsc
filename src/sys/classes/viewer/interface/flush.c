@@ -15,8 +15,7 @@
 .seealso: `PetscViewer`, `PetscViewerSocketOpen()`, `PetscViewerASCIIOpen()`, `PetscViewerDrawOpen()`, `PetscViewerCreate()`, `PetscViewerDestroy()`,
           `PetscViewerSetType()`
 @*/
-PetscErrorCode PetscViewerFlush(PetscViewer viewer)
-{
+PetscErrorCode PetscViewerFlush(PetscViewer viewer) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 1);
   PetscTryTypeMethod(viewer, flush);

@@ -21,8 +21,7 @@ PetscLogEvent TAOLINESEARCH_Eval;
    Level: intermediate
 .seealso: `TaoLineSearch`, `TaoLineSearchView`, `PetscObjectViewFromOptions()`, `TaoLineSearchCreate()`
 @*/
-PetscErrorCode TaoLineSearchViewFromOptions(TaoLineSearch A, PetscObject obj, const char name[])
-{
+PetscErrorCode TaoLineSearchViewFromOptions(TaoLineSearch A, PetscObject obj, const char name[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, TAOLINESEARCH_CLASSID, 1);
   PetscCall(PetscObjectViewFromOptions((PetscObject)A, obj, name));
@@ -54,8 +53,7 @@ PetscErrorCode TaoLineSearchViewFromOptions(TaoLineSearch A, PetscObject obj, co
 .seealso: `PetscViewerASCIIOpen()`
 @*/
 
-PetscErrorCode TaoLineSearchView(TaoLineSearch ls, PetscViewer viewer)
-{
+PetscErrorCode TaoLineSearchView(TaoLineSearch ls, PetscViewer viewer) {
   PetscBool         isascii, isstring;
   TaoLineSearchType type;
 
@@ -114,8 +112,7 @@ PetscErrorCode TaoLineSearchView(TaoLineSearch ls, PetscViewer viewer)
 .seealso: `TaoLineSearchSetType()`, `TaoLineSearchApply()`, `TaoLineSearchDestroy()`
 @*/
 
-PetscErrorCode TaoLineSearchCreate(MPI_Comm comm, TaoLineSearch *newls)
-{
+PetscErrorCode TaoLineSearchCreate(MPI_Comm comm, TaoLineSearch *newls) {
   TaoLineSearch ls;
 
   PetscFunctionBegin;
@@ -159,8 +156,7 @@ PetscErrorCode TaoLineSearchCreate(MPI_Comm comm, TaoLineSearch *newls)
 .seealso: `TaoLineSearchCreate()`, `TaoLineSearchApply()`
 @*/
 
-PetscErrorCode TaoLineSearchSetUp(TaoLineSearch ls)
-{
+PetscErrorCode TaoLineSearchSetUp(TaoLineSearch ls) {
   const char *default_type = TAOLINESEARCHMT;
   PetscBool   flg;
 
@@ -211,8 +207,7 @@ PetscErrorCode TaoLineSearchSetUp(TaoLineSearch ls)
 
 .seealso: `TaoLineSearchCreate()`, `TaoLineSearchApply()`
 @*/
-PetscErrorCode TaoLineSearchReset(TaoLineSearch ls)
-{
+PetscErrorCode TaoLineSearchReset(TaoLineSearch ls) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscTryTypeMethod(ls, reset);
@@ -232,8 +227,7 @@ PetscErrorCode TaoLineSearchReset(TaoLineSearch ls)
 
 .seealse: TaoLineSearchCreate(), TaoLineSearchSolve()
 @*/
-PetscErrorCode TaoLineSearchDestroy(TaoLineSearch *ls)
-{
+PetscErrorCode TaoLineSearchDestroy(TaoLineSearch *ls) {
   PetscFunctionBegin;
   if (!*ls) PetscFunctionReturn(0);
   PetscValidHeaderSpecific(*ls, TAOLINESEARCH_CLASSID, 1);
@@ -295,8 +289,7 @@ PetscErrorCode TaoLineSearchDestroy(TaoLineSearch *ls)
   .seealso: `TaoLineSearchCreate()`, `TaoLineSearchSetType()`, `TaoLineSearchSetInitialStepLength()`, `TaoAddLineSearchCounts()`
  @*/
 
-PetscErrorCode TaoLineSearchApply(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, Vec s, PetscReal *steplength, TaoLineSearchConvergedReason *reason)
-{
+PetscErrorCode TaoLineSearchApply(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, Vec s, PetscReal *steplength, TaoLineSearchConvergedReason *reason) {
   PetscInt low1, low2, low3, high1, high2, high3;
 
   PetscFunctionBegin;
@@ -392,8 +385,7 @@ PetscErrorCode TaoLineSearchApply(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, 
 
 @*/
 
-PetscErrorCode TaoLineSearchSetType(TaoLineSearch ls, TaoLineSearchType type)
-{
+PetscErrorCode TaoLineSearchSetType(TaoLineSearch ls, TaoLineSearchType type) {
   PetscErrorCode (*r)(TaoLineSearch);
   PetscBool flg;
 
@@ -448,8 +440,7 @@ PetscErrorCode TaoLineSearchSetType(TaoLineSearch ls, TaoLineSearchType type)
    Level: developer
 
 @*/
-PetscErrorCode TaoLineSearchMonitor(TaoLineSearch ls, PetscInt its, PetscReal f, PetscReal step)
-{
+PetscErrorCode TaoLineSearchMonitor(TaoLineSearch ls, PetscInt its, PetscReal f, PetscReal step) {
   PetscInt tabs;
 
   PetscFunctionBegin;
@@ -491,8 +482,7 @@ PetscErrorCode TaoLineSearchMonitor(TaoLineSearch ls, PetscInt its, PetscReal f,
 
   Level: beginner
 @*/
-PetscErrorCode TaoLineSearchSetFromOptions(TaoLineSearch ls)
-{
+PetscErrorCode TaoLineSearchSetFromOptions(TaoLineSearch ls) {
   const char *default_type = TAOLINESEARCHMT;
   char        type[256], monfilename[PETSC_MAX_PATH_LEN];
   PetscViewer monviewer;
@@ -542,8 +532,7 @@ PetscErrorCode TaoLineSearchSetFromOptions(TaoLineSearch ls)
   Level: developer
 
 @*/
-PetscErrorCode TaoLineSearchGetType(TaoLineSearch ls, TaoLineSearchType *type)
-{
+PetscErrorCode TaoLineSearchGetType(TaoLineSearch ls, TaoLineSearchType *type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscValidPointer(type, 2);
@@ -573,8 +562,7 @@ PetscErrorCode TaoLineSearchGetType(TaoLineSearch ls, TaoLineSearchType *type)
   is already counting the number of evaluations.
 
 @*/
-PetscErrorCode TaoLineSearchGetNumberFunctionEvaluations(TaoLineSearch ls, PetscInt *nfeval, PetscInt *ngeval, PetscInt *nfgeval)
-{
+PetscErrorCode TaoLineSearchGetNumberFunctionEvaluations(TaoLineSearch ls, PetscInt *nfeval, PetscInt *ngeval, PetscInt *nfgeval) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   *nfeval  = ls->nfeval;
@@ -598,8 +586,7 @@ PetscErrorCode TaoLineSearchGetNumberFunctionEvaluations(TaoLineSearch ls, Petsc
 
   Level: developer
 @*/
-PetscErrorCode TaoLineSearchIsUsingTaoRoutines(TaoLineSearch ls, PetscBool *flg)
-{
+PetscErrorCode TaoLineSearchIsUsingTaoRoutines(TaoLineSearch ls, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   *flg = ls->usetaoroutines;
@@ -638,8 +625,7 @@ $      func (TaoLinesearch ls, Vec x, PetscReal *f, void *ctx);
 
 .seealso: `TaoLineSearchCreate()`, `TaoLineSearchSetGradientRoutine()`, `TaoLineSearchSetObjectiveAndGradientRoutine()`, `TaoLineSearchUseTaoRoutines()`
 @*/
-PetscErrorCode TaoLineSearchSetObjectiveRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, PetscReal *, void *), void *ctx)
-{
+PetscErrorCode TaoLineSearchSetObjectiveRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, PetscReal *, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
 
@@ -681,8 +667,7 @@ $      func (TaoLinesearch ls, Vec x, Vec g, void *ctx);
 
 .seealso: `TaoLineSearchCreate()`, `TaoLineSearchSetObjectiveRoutine()`, `TaoLineSearchSetObjectiveAndGradientRoutine()`, `TaoLineSearchUseTaoRoutines()`
 @*/
-PetscErrorCode TaoLineSearchSetGradientRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, Vec g, void *), void *ctx)
-{
+PetscErrorCode TaoLineSearchSetGradientRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, Vec g, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   ls->ops->computegradient = func;
@@ -723,8 +708,7 @@ $      func (TaoLinesearch ls, Vec x, PetscReal *f, Vec g, void *ctx);
 
 .seealso: `TaoLineSearchCreate()`, `TaoLineSearchSetObjectiveRoutine()`, `TaoLineSearchSetGradientRoutine()`, `TaoLineSearchUseTaoRoutines()`
 @*/
-PetscErrorCode TaoLineSearchSetObjectiveAndGradientRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, PetscReal *, Vec g, void *), void *ctx)
-{
+PetscErrorCode TaoLineSearchSetObjectiveAndGradientRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, PetscReal *, Vec g, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   ls->ops->computeobjectiveandgradient = func;
@@ -773,8 +757,7 @@ $      func (TaoLinesearch ls, Vec x, PetscReal *f, PetscReal *gts, void *ctx);
 
 .seealso: `TaoLineSearchCreate()`, `TaoLineSearchSetObjective()`, `TaoLineSearchSetGradient()`, `TaoLineSearchUseTaoRoutines()`
 @*/
-PetscErrorCode TaoLineSearchSetObjectiveAndGTSRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, Vec s, PetscReal *, PetscReal *, void *), void *ctx)
-{
+PetscErrorCode TaoLineSearchSetObjectiveAndGTSRoutine(TaoLineSearch ls, PetscErrorCode (*func)(TaoLineSearch ls, Vec x, Vec s, PetscReal *, PetscReal *, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   ls->ops->computeobjectiveandgts = func;
@@ -798,8 +781,7 @@ PetscErrorCode TaoLineSearchSetObjectiveAndGTSRoutine(TaoLineSearch ls, PetscErr
 
 .seealso: `TaoLineSearchCreate()`
 @*/
-PetscErrorCode TaoLineSearchUseTaoRoutines(TaoLineSearch ls, Tao ts)
-{
+PetscErrorCode TaoLineSearchUseTaoRoutines(TaoLineSearch ls, Tao ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscValidHeaderSpecific(ts, TAO_CLASSID, 2);
@@ -828,8 +810,7 @@ PetscErrorCode TaoLineSearchUseTaoRoutines(TaoLineSearch ls, Tao ts)
 
 .seealso: `TaoLineSearchComputeGradient()`, `TaoLineSearchComputeObjectiveAndGradient()`, `TaoLineSearchSetObjectiveRoutine()`
 @*/
-PetscErrorCode TaoLineSearchComputeObjective(TaoLineSearch ls, Vec x, PetscReal *f)
-{
+PetscErrorCode TaoLineSearchComputeObjective(TaoLineSearch ls, Vec x, PetscReal *f) {
   Vec       gdummy;
   PetscReal gts;
 
@@ -876,8 +857,7 @@ PetscErrorCode TaoLineSearchComputeObjective(TaoLineSearch ls, Vec x, PetscReal 
 
 .seealso: `TaoLineSearchComputeGradient()`, `TaoLineSearchComputeObjectiveAndGradient()`, `TaoLineSearchSetObjectiveRoutine()`
 @*/
-PetscErrorCode TaoLineSearchComputeObjectiveAndGradient(TaoLineSearch ls, Vec x, PetscReal *f, Vec g)
-{
+PetscErrorCode TaoLineSearchComputeObjectiveAndGradient(TaoLineSearch ls, Vec x, PetscReal *f, Vec g) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscValidHeaderSpecific(x, VEC_CLASSID, 2);
@@ -921,8 +901,7 @@ PetscErrorCode TaoLineSearchComputeObjectiveAndGradient(TaoLineSearch ls, Vec x,
 
 .seealso: `TaoLineSearchComputeObjective()`, `TaoLineSearchComputeObjectiveAndGradient()`, `TaoLineSearchSetGradient()`
 @*/
-PetscErrorCode TaoLineSearchComputeGradient(TaoLineSearch ls, Vec x, Vec g)
-{
+PetscErrorCode TaoLineSearchComputeGradient(TaoLineSearch ls, Vec x, Vec g) {
   PetscReal fdummy;
 
   PetscFunctionBegin;
@@ -964,8 +943,7 @@ PetscErrorCode TaoLineSearchComputeGradient(TaoLineSearch ls, Vec x, Vec g)
 
 .seealso: `TaoLineSearchComputeGradient()`, `TaoLineSearchComputeObjectiveAndGradient()`, `TaoLineSearchSetObjectiveRoutine()`
 @*/
-PetscErrorCode TaoLineSearchComputeObjectiveAndGTS(TaoLineSearch ls, Vec x, PetscReal *f, PetscReal *gts)
-{
+PetscErrorCode TaoLineSearchComputeObjectiveAndGTS(TaoLineSearch ls, Vec x, PetscReal *f, PetscReal *gts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscValidHeaderSpecific(x, VEC_CLASSID, 2);
@@ -1013,8 +991,7 @@ PetscErrorCode TaoLineSearchComputeObjectiveAndGTS(TaoLineSearch ls, Vec x, Pets
   Level: developer
 
 @*/
-PetscErrorCode TaoLineSearchGetSolution(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, PetscReal *steplength, TaoLineSearchConvergedReason *reason)
-{
+PetscErrorCode TaoLineSearchGetSolution(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, PetscReal *steplength, TaoLineSearchConvergedReason *reason) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscValidHeaderSpecific(x, VEC_CLASSID, 2);
@@ -1043,8 +1020,7 @@ PetscErrorCode TaoLineSearchGetSolution(TaoLineSearch ls, Vec x, PetscReal *f, V
 
   Level: intermediate
 @*/
-PetscErrorCode TaoLineSearchGetStartingVector(TaoLineSearch ls, Vec *x)
-{
+PetscErrorCode TaoLineSearchGetStartingVector(TaoLineSearch ls, Vec *x) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   if (x) *x = ls->start_x;
@@ -1065,8 +1041,7 @@ PetscErrorCode TaoLineSearchGetStartingVector(TaoLineSearch ls, Vec *x)
 
   Level: advanced
 @*/
-PetscErrorCode TaoLineSearchGetStepDirection(TaoLineSearch ls, Vec *s)
-{
+PetscErrorCode TaoLineSearchGetStepDirection(TaoLineSearch ls, Vec *s) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   if (s) *s = ls->stepdirection;
@@ -1087,8 +1062,7 @@ PetscErrorCode TaoLineSearchGetStepDirection(TaoLineSearch ls, Vec *s)
   Level: developer
 @*/
 
-PetscErrorCode TaoLineSearchGetFullStepObjective(TaoLineSearch ls, PetscReal *f_fullstep)
-{
+PetscErrorCode TaoLineSearchGetFullStepObjective(TaoLineSearch ls, PetscReal *f_fullstep) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   *f_fullstep = ls->f_fullstep;
@@ -1112,8 +1086,7 @@ PetscErrorCode TaoLineSearchGetFullStepObjective(TaoLineSearch ls, PetscReal *f_
 
 .seealso: `TaoSetVariableBounds()`, `TaoLineSearchCreate()`
 @*/
-PetscErrorCode TaoLineSearchSetVariableBounds(TaoLineSearch ls, Vec xl, Vec xu)
-{
+PetscErrorCode TaoLineSearchSetVariableBounds(TaoLineSearch ls, Vec xl, Vec xu) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   if (xl) PetscValidHeaderSpecific(xl, VEC_CLASSID, 2);
@@ -1142,8 +1115,7 @@ PetscErrorCode TaoLineSearchSetVariableBounds(TaoLineSearch ls, Vec xl, Vec xu)
 
 .seealso: `TaoLineSearchGetStepLength()`, `TaoLineSearchApply()`
 @*/
-PetscErrorCode TaoLineSearchSetInitialStepLength(TaoLineSearch ls, PetscReal s)
-{
+PetscErrorCode TaoLineSearchSetInitialStepLength(TaoLineSearch ls, PetscReal s) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscValidLogicalCollectiveReal(ls, s, 2);
@@ -1166,8 +1138,7 @@ PetscErrorCode TaoLineSearchSetInitialStepLength(TaoLineSearch ls, PetscReal s)
 
 .seealso: `TaoLineSearchSetInitialStepLength()`, `TaoLineSearchApply()`
 @*/
-PetscErrorCode TaoLineSearchGetStepLength(TaoLineSearch ls, PetscReal *s)
-{
+PetscErrorCode TaoLineSearchGetStepLength(TaoLineSearch ls, PetscReal *s) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   *s = ls->step;
@@ -1199,8 +1170,7 @@ $     -tao_ls_type my_linesearch
    Level: developer
 
 @*/
-PetscErrorCode TaoLineSearchRegister(const char sname[], PetscErrorCode (*func)(TaoLineSearch))
-{
+PetscErrorCode TaoLineSearchRegister(const char sname[], PetscErrorCode (*func)(TaoLineSearch)) {
   PetscFunctionBegin;
   PetscCall(TaoLineSearchInitializePackage());
   PetscCall(PetscFunctionListAdd(&TaoLineSearchList, sname, (void (*)(void))func));
@@ -1225,8 +1195,7 @@ PetscErrorCode TaoLineSearchRegister(const char sname[], PetscErrorCode (*func)(
 
 .seealso: `TaoLineSearchSetOptionsPrefix()`, `TaoLineSearchGetOptionsPrefix()`
 @*/
-PetscErrorCode TaoLineSearchAppendOptionsPrefix(TaoLineSearch ls, const char p[])
-{
+PetscErrorCode TaoLineSearchAppendOptionsPrefix(TaoLineSearch ls, const char p[]) {
   return PetscObjectAppendOptionsPrefix((PetscObject)ls, p);
 }
 
@@ -1250,8 +1219,7 @@ PetscErrorCode TaoLineSearchAppendOptionsPrefix(TaoLineSearch ls, const char p[]
 
 .seealso: `TaoLineSearchSetOptionsPrefix()`, `TaoLineSearchAppendOptionsPrefix()`
 @*/
-PetscErrorCode TaoLineSearchGetOptionsPrefix(TaoLineSearch ls, const char *p[])
-{
+PetscErrorCode TaoLineSearchGetOptionsPrefix(TaoLineSearch ls, const char *p[]) {
   return PetscObjectGetOptionsPrefix((PetscObject)ls, p);
 }
 
@@ -1287,7 +1255,6 @@ PetscErrorCode TaoLineSearchGetOptionsPrefix(TaoLineSearch ls, const char *p[])
 .seealso: `TaoLineSearchAppendOptionsPrefix()`, `TaoLineSearchGetOptionsPrefix()`
 @*/
 
-PetscErrorCode TaoLineSearchSetOptionsPrefix(TaoLineSearch ls, const char p[])
-{
+PetscErrorCode TaoLineSearchSetOptionsPrefix(TaoLineSearch ls, const char p[]) {
   return PetscObjectSetOptionsPrefix((PetscObject)ls, p);
 }

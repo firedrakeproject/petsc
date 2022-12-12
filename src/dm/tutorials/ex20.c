@@ -10,8 +10,7 @@ Options: \n\
 #include <petscdmplex.h>
 #include <petscdmswarm.h>
 
-PetscErrorCode pic_insert_DMDA(PetscInt dim)
-{
+PetscErrorCode pic_insert_DMDA(PetscInt dim) {
   DM        celldm = NULL, swarm;
   PetscInt  dof, stencil_width;
   PetscReal min[3], max[3];
@@ -81,8 +80,7 @@ PetscErrorCode pic_insert_DMDA(PetscInt dim)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pic_insert_DMPLEX_with_cell_list(PetscInt dim)
-{
+PetscErrorCode pic_insert_DMPLEX_with_cell_list(PetscInt dim) {
   DM          celldm = NULL, swarm, distributedMesh = NULL;
   const char *fieldnames[] = {"viscosity"};
 
@@ -204,8 +202,7 @@ PetscErrorCode pic_insert_DMPLEX_with_cell_list(PetscInt dim)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode pic_insert_DMPLEX(PetscBool is_simplex, PetscInt dim)
-{
+PetscErrorCode pic_insert_DMPLEX(PetscBool is_simplex, PetscInt dim) {
   DM          celldm, swarm, distributedMesh = NULL;
   const char *fieldnames[] = {"viscosity", "DMSwarm_rank"};
 
@@ -273,8 +270,7 @@ PetscErrorCode pic_insert_DMPLEX(PetscBool is_simplex, PetscInt dim)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscInt mode = 0;
   PetscInt dim  = 2;
 
@@ -283,9 +279,7 @@ int main(int argc, char **args)
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-mode", &mode, NULL));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-dim", &dim, NULL));
   switch (mode) {
-  case 0:
-    PetscCall(pic_insert_DMDA(dim));
-    break;
+  case 0: PetscCall(pic_insert_DMDA(dim)); break;
   case 1:
     /* tri / tet */
     PetscCall(pic_insert_DMPLEX(PETSC_TRUE, dim));
@@ -294,9 +288,7 @@ int main(int argc, char **args)
     /* quad / hex */
     PetscCall(pic_insert_DMPLEX(PETSC_FALSE, dim));
     break;
-  default:
-    PetscCall(pic_insert_DMDA(dim));
-    break;
+  default: PetscCall(pic_insert_DMDA(dim)); break;
   }
   PetscCall(PetscFinalize());
   return 0;

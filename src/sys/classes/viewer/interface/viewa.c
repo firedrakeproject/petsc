@@ -53,8 +53,7 @@ const char *const PetscViewerFormats[] = {"DEFAULT", "ASCII_MATLAB", "ASCII_MATH
 .seealso: `PetscViewerGetFormat()`, `PetscViewerASCIIOpen()`, `PetscViewerBinaryOpen()`, `MatView()`, `VecView()`, `PetscViewerType`,
           `PetscViewerPushFormat()`, `PetscViewerPopFormat()`, `PetscViewerDrawOpen()`, `PetscViewerSocketOpen()`
 @*/
-PetscErrorCode PetscViewerSetFormat(PetscViewer viewer, PetscViewerFormat format)
-{
+PetscErrorCode PetscViewerSetFormat(PetscViewer viewer, PetscViewerFormat format) {
   PetscFunctionBegin;
   if (!viewer) viewer = PETSC_VIEWER_STDOUT_SELF;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 1);
@@ -101,8 +100,7 @@ PetscErrorCode PetscViewerSetFormat(PetscViewer viewer, PetscViewerFormat format
 .seealso: `PetscViewer`, `PetscViewerASCIIOpen()`, `PetscViewerBinaryOpen()`, `MatView()`, `VecView()`,
           `PetscViewerSetFormat()`, `PetscViewerPopFormat()`
 @*/
-PetscErrorCode PetscViewerPushFormat(PetscViewer viewer, PetscViewerFormat format)
-{
+PetscErrorCode PetscViewerPushFormat(PetscViewer viewer, PetscViewerFormat format) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 1);
   PetscValidLogicalCollectiveEnum(viewer, format, 2);
@@ -126,8 +124,7 @@ PetscErrorCode PetscViewerPushFormat(PetscViewer viewer, PetscViewerFormat forma
 .seealso: `PetscViewer`, `PetscViewerASCIIOpen()`, `PetscViewerBinaryOpen()`, `MatView()`, `VecView()`,
           `PetscViewerSetFormat()`, `PetscViewerPushFormat()`
 @*/
-PetscErrorCode PetscViewerPopFormat(PetscViewer viewer)
-{
+PetscErrorCode PetscViewerPopFormat(PetscViewer viewer) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 1);
   if (viewer->iformat <= 0) PetscFunctionReturn(0);
@@ -183,8 +180,7 @@ PetscErrorCode PetscViewerPopFormat(PetscViewer viewer)
 .seealso: `PetscViewer`, `PetscViewerSetFormat()`, `PetscViewerASCIIOpen()`, `PetscViewerBinaryOpen()`, `MatView()`, `VecView()`, `PetscViewerType`,
           `PetscViewerPushFormat()`, `PetscViewerPopFormat()`, `PetscViewerDrawOpen()`, `PetscViewerSocketOpen()`
 @*/
-PetscErrorCode PetscViewerGetFormat(PetscViewer viewer, PetscViewerFormat *format)
-{
+PetscErrorCode PetscViewerGetFormat(PetscViewer viewer, PetscViewerFormat *format) {
   PetscFunctionBegin;
   *format = viewer->format;
   PetscFunctionReturn(0);

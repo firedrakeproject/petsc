@@ -22,8 +22,7 @@ F*/
 
 PetscErrorCode FormFunctionGradient(Tao, Vec, PetscReal *, Vec, void *);
 
-PetscErrorCode monitor(Tao tao, AppCtx *ctx)
-{
+PetscErrorCode monitor(Tao tao, AppCtx *ctx) {
   FILE              *fp;
   PetscInt           iterate;
   PetscReal          f, gnorm, cnorm, xdiff;
@@ -38,8 +37,7 @@ PetscErrorCode monitor(Tao tao, AppCtx *ctx)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Vec          p;
   PetscScalar *x_ptr;
   PetscMPIInt  size;
@@ -236,8 +234,7 @@ int main(int argc, char **argv)
    f   - the newly evaluated function
    G   - the newly evaluated gradient
 */
-PetscErrorCode FormFunctionGradient(Tao tao, Vec P, PetscReal *f, Vec G, void *ctx0)
-{
+PetscErrorCode FormFunctionGradient(Tao tao, Vec P, PetscReal *f, Vec G, void *ctx0) {
   AppCtx      *ctx = (AppCtx *)ctx0;
   PetscInt     nadj;
   PetscReal    ftime;

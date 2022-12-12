@@ -1,4 +1,4 @@
-#ifndef _KAIJ_H
+#if !defined(_KAIJ_H)
 #define _KAIJ_H
 
 #include <../src/mat/impls/aij/mpi/mpiaij.h>

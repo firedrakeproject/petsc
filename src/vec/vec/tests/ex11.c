@@ -3,8 +3,7 @@ static char help[] = "Scatters from a parallel vector to a sequential vector.\n\
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt size, rank;
   PetscInt    i, N;
   PetscScalar value;

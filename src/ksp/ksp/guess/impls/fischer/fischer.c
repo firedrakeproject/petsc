@@ -18,8 +18,7 @@ typedef struct {
   PetscScalar     *last_b_coefs; /* dot products of last_b and btilde, method 3 */
 } KSPGuessFischer;
 
-static PetscErrorCode KSPGuessReset_Fischer(KSPGuess guess)
-{
+static PetscErrorCode KSPGuessReset_Fischer(KSPGuess guess) {
   KSPGuessFischer *itg  = (KSPGuessFischer *)guess->data;
   PetscLayout      Alay = NULL, vlay = NULL;
   PetscBool        cong;
@@ -44,23 +43,42 @@ static PetscErrorCode KSPGuessReset_Fischer(KSPGuess guess)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessSetUp_Fischer(KSPGuess guess)
-{
+static PetscErrorCode KSPGuessSetUp_Fischer(KSPGuess guess) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
 
   PetscFunctionBegin;
-  if (!itg->alpha) PetscCall(PetscMalloc1(itg->maxl, &itg->alpha));
-  if (!itg->xtilde) PetscCall(KSPCreateVecs(guess->ksp, itg->maxl, &itg->xtilde, 0, NULL));
-  if (!itg->btilde && (itg->method == 1 || itg->method == 3)) PetscCall(KSPCreateVecs(guess->ksp, itg->maxl, &itg->btilde, 0, NULL));
-  if (!itg->Ax && itg->method == 2) PetscCall(VecDuplicate(itg->xtilde[0], &itg->Ax));
-  if (!itg->guess && (itg->method == 1 || itg->method == 2)) PetscCall(VecDuplicate(itg->xtilde[0], &itg->guess));
-  if (!itg->corr && itg->method == 3) PetscCall(PetscCalloc1(itg->maxl * itg->maxl, &itg->corr));
-  if (!itg->last_b_coefs && itg->method == 3) PetscCall(PetscCalloc1(itg->maxl, &itg->last_b_coefs));
+  if (!itg->alpha) {
+    PetscCall(PetscMalloc1(itg->maxl, &itg->alpha));
+    PetscCall(PetscLogObjectMemory((PetscObject)guess, itg->maxl * sizeof(PetscScalar)));
+  }
+  if (!itg->xtilde) {
+    PetscCall(KSPCreateVecs(guess->ksp, itg->maxl, &itg->xtilde, 0, NULL));
+    PetscCall(PetscLogObjectParents(guess, itg->maxl, itg->xtilde));
+  }
+  if (!itg->btilde && (itg->method == 1 || itg->method == 3)) {
+    PetscCall(KSPCreateVecs(guess->ksp, itg->maxl, &itg->btilde, 0, NULL));
+    PetscCall(PetscLogObjectParents(guess, itg->maxl, itg->btilde));
+  }
+  if (!itg->Ax && itg->method == 2) {
+    PetscCall(VecDuplicate(itg->xtilde[0], &itg->Ax));
+    PetscCall(PetscLogObjectParent((PetscObject)guess, (PetscObject)itg->Ax));
+  }
+  if (!itg->guess && (itg->method == 1 || itg->method == 2)) {
+    PetscCall(VecDuplicate(itg->xtilde[0], &itg->guess));
+    PetscCall(PetscLogObjectParent((PetscObject)guess, (PetscObject)itg->guess));
+  }
+  if (!itg->corr && itg->method == 3) {
+    PetscCall(PetscCalloc1(itg->maxl * itg->maxl, &itg->corr));
+    PetscCall(PetscLogObjectMemory((PetscObject)guess, itg->maxl * itg->maxl * sizeof(PetscScalar)));
+  }
+  if (!itg->last_b_coefs && itg->method == 3) {
+    PetscCall(PetscCalloc1(itg->maxl, &itg->last_b_coefs));
+    PetscCall(PetscLogObjectMemory((PetscObject)guess, itg->maxl * sizeof(PetscScalar)));
+  }
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessDestroy_Fischer(KSPGuess guess)
-{
+static PetscErrorCode KSPGuessDestroy_Fischer(KSPGuess guess) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
 
   PetscFunctionBegin;
@@ -77,8 +95,7 @@ static PetscErrorCode KSPGuessDestroy_Fischer(KSPGuess guess)
 }
 
 /* Note: do not change the b right hand side as is done in the publication */
-static PetscErrorCode KSPGuessFormGuess_Fischer_1(KSPGuess guess, Vec b, Vec x)
-{
+static PetscErrorCode KSPGuessFormGuess_Fischer_1(KSPGuess guess, Vec b, Vec x) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
   PetscInt         i;
 
@@ -95,8 +112,7 @@ static PetscErrorCode KSPGuessFormGuess_Fischer_1(KSPGuess guess, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessUpdate_Fischer_1(KSPGuess guess, Vec b, Vec x)
-{
+static PetscErrorCode KSPGuessUpdate_Fischer_1(KSPGuess guess, Vec b, Vec x) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
   PetscReal        norm;
   int              curl = itg->curl, i;
@@ -136,8 +152,7 @@ static PetscErrorCode KSPGuessUpdate_Fischer_1(KSPGuess guess, Vec b, Vec x)
   Figures out the components of b in each btilde direction and adds them to x
   Note: do not change the b right hand side as is done in the publication
 */
-static PetscErrorCode KSPGuessFormGuess_Fischer_2(KSPGuess guess, Vec b, Vec x)
-{
+static PetscErrorCode KSPGuessFormGuess_Fischer_2(KSPGuess guess, Vec b, Vec x) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
   PetscInt         i;
 
@@ -154,8 +169,7 @@ static PetscErrorCode KSPGuessFormGuess_Fischer_2(KSPGuess guess, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessUpdate_Fischer_2(KSPGuess guess, Vec b, Vec x)
-{
+static PetscErrorCode KSPGuessUpdate_Fischer_2(KSPGuess guess, Vec b, Vec x) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
   PetscScalar      norm;
   int              curl = itg->curl, i;
@@ -193,8 +207,7 @@ static PetscErrorCode KSPGuessUpdate_Fischer_2(KSPGuess guess, Vec b, Vec x)
 /*
   Rather than the standard algorithm implemented in 2, we treat the provided x and b vectors to be spanning sets (not necessarily linearly independent) and use them to compute a windowed correlation matrix. Since the correlation matrix may be singular we solve it with the pseudoinverse, provided by SYEV/HEEV.
 */
-static PetscErrorCode KSPGuessFormGuess_Fischer_3(KSPGuess guess, Vec b, Vec x)
-{
+static PetscErrorCode KSPGuessFormGuess_Fischer_3(KSPGuess guess, Vec b, Vec x) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
   PetscInt         i, j, m;
   PetscReal       *s_values;
@@ -279,8 +292,7 @@ static PetscErrorCode KSPGuessFormGuess_Fischer_3(KSPGuess guess, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessUpdate_Fischer_3(KSPGuess guess, Vec b, Vec x)
-{
+static PetscErrorCode KSPGuessUpdate_Fischer_3(KSPGuess guess, Vec b, Vec x) {
   KSPGuessFischer *itg    = (KSPGuessFischer *)guess->data;
   PetscBool        rotate = itg->curl == itg->maxl ? PETSC_TRUE : PETSC_FALSE;
   PetscInt         i, j;
@@ -332,8 +344,7 @@ static PetscErrorCode KSPGuessUpdate_Fischer_3(KSPGuess guess, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessSetFromOptions_Fischer(KSPGuess guess)
-{
+static PetscErrorCode KSPGuessSetFromOptions_Fischer(KSPGuess guess) {
   KSPGuessFischer *ITG  = (KSPGuessFischer *)guess->data;
   PetscInt         nmax = 2, model[2];
   PetscBool        flg;
@@ -350,8 +361,7 @@ static PetscErrorCode KSPGuessSetFromOptions_Fischer(KSPGuess guess)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessSetTolerance_Fischer(KSPGuess guess, PetscReal tol)
-{
+static PetscErrorCode KSPGuessSetTolerance_Fischer(KSPGuess guess, PetscReal tol) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
 
   PetscFunctionBegin;
@@ -359,8 +369,7 @@ static PetscErrorCode KSPGuessSetTolerance_Fischer(KSPGuess guess, PetscReal tol
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessView_Fischer(KSPGuess guess, PetscViewer viewer)
-{
+static PetscErrorCode KSPGuessView_Fischer(KSPGuess guess, PetscViewer viewer) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
   PetscBool        isascii;
 
@@ -371,7 +380,7 @@ static PetscErrorCode KSPGuessView_Fischer(KSPGuess guess, PetscViewer viewer)
 }
 
 /*@
-   KSPGuessFischerSetModel - Use the Paul Fischer algorithm or its variants to compute the initial guess
+   KSPGuessFischerSetModel - Use the Paul Fischer algorithm or its variants
 
    Logically Collective on guess
 
@@ -380,15 +389,14 @@ static PetscErrorCode KSPGuessView_Fischer(KSPGuess guess, PetscViewer viewer)
 .  model - use model 1, model 2, model 3, or any other number to turn it off
 -  size  - size of subspace used to generate initial guess
 
-    Options Database Key:
+    Options Database:
 .   -ksp_guess_fischer_model <model,size> - uses the Fischer initial guess generator for repeated linear solves
 
    Level: advanced
 
-.seealso: [](chapter_ksp), `KSPGuess`, `KSPGuessCreate()`, `KSPSetUseFischerGuess()`, `KSPSetGuess()`, `KSPGetGuess()`, `KSP`
+.seealso: `KSPGuess`, `KSPGuessCreate()`, `KSPSetUseFischerGuess()`, `KSPSetGuess()`, `KSPGetGuess()`, `KSP`
 @*/
-PetscErrorCode KSPGuessFischerSetModel(KSPGuess guess, PetscInt model, PetscInt size)
-{
+PetscErrorCode KSPGuessFischerSetModel(KSPGuess guess, PetscInt model, PetscInt size) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(guess, KSPGUESS_CLASSID, 1);
   PetscValidLogicalCollectiveInt(guess, model, 2);
@@ -396,8 +404,7 @@ PetscErrorCode KSPGuessFischerSetModel(KSPGuess guess, PetscInt model, PetscInt 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGuessFischerSetModel_Fischer(KSPGuess guess, PetscInt model, PetscInt size)
-{
+static PetscErrorCode KSPGuessFischerSetModel_Fischer(KSPGuess guess, PetscInt model, PetscInt size) {
   KSPGuessFischer *itg = (KSPGuessFischer *)guess->data;
 
   PetscFunctionBegin;
@@ -465,12 +472,11 @@ static PetscErrorCode KSPGuessFischerSetModel_Fischer(KSPGuess guess, PetscInt m
     Level: intermediate
 
 @*/
-PetscErrorCode KSPGuessCreate_Fischer(KSPGuess guess)
-{
+PetscErrorCode KSPGuessCreate_Fischer(KSPGuess guess) {
   KSPGuessFischer *fischer;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&fischer));
+  PetscCall(PetscNewLog(guess, &fischer));
   fischer->method = 1; /* defaults to method 1 */
   fischer->maxl   = 10;
   fischer->tol    = 32.0 * PETSC_MACHINE_EPSILON;

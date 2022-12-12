@@ -5,8 +5,7 @@ static char help[] = "Spot check DMStag Compatibility Checks";
 
 #define NDMS 4
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM       dms[NDMS];
   PetscInt i;
 

@@ -1,8 +1,7 @@
 #include <petsc/private/petscfeimpl.h> /*I "petscfe.h" I*/
 #include <petscblaslapack.h>
 
-static PetscErrorCode PetscFEDestroy_Basic(PetscFE fem)
-{
+static PetscErrorCode PetscFEDestroy_Basic(PetscFE fem) {
   PetscFE_Basic *b = (PetscFE_Basic *)fem->data;
 
   PetscFunctionBegin;
@@ -10,8 +9,7 @@ static PetscErrorCode PetscFEDestroy_Basic(PetscFE fem)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEView_Basic_Ascii(PetscFE fe, PetscViewer v)
-{
+static PetscErrorCode PetscFEView_Basic_Ascii(PetscFE fe, PetscViewer v) {
   PetscInt        dim, Nc;
   PetscSpace      basis = NULL;
   PetscDualSpace  dual  = NULL;
@@ -32,8 +30,7 @@ static PetscErrorCode PetscFEView_Basic_Ascii(PetscFE fe, PetscViewer v)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEView_Basic(PetscFE fe, PetscViewer v)
-{
+static PetscErrorCode PetscFEView_Basic(PetscFE fe, PetscViewer v) {
   PetscBool iascii;
 
   PetscFunctionBegin;
@@ -43,8 +40,7 @@ static PetscErrorCode PetscFEView_Basic(PetscFE fe, PetscViewer v)
 }
 
 /* Construct the change of basis from prime basis to nodal basis */
-PETSC_INTERN PetscErrorCode PetscFESetUp_Basic(PetscFE fem)
-{
+PETSC_INTERN PetscErrorCode PetscFESetUp_Basic(PetscFE fem) {
   PetscReal    *work;
   PetscBLASInt *pivots;
   PetscBLASInt  n, info;
@@ -84,8 +80,7 @@ PETSC_INTERN PetscErrorCode PetscFESetUp_Basic(PetscFE fem)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscFEGetDimension_Basic(PetscFE fem, PetscInt *dim)
-{
+PetscErrorCode PetscFEGetDimension_Basic(PetscFE fem, PetscInt *dim) {
   PetscFunctionBegin;
   PetscCall(PetscDualSpaceGetDimension(fem->dualSpace, dim));
   PetscFunctionReturn(0);
@@ -95,8 +90,7 @@ PetscErrorCode PetscFEGetDimension_Basic(PetscFE fem, PetscInt *dim)
  *    C[m,n,p] = A[m,k,p] * B[k,n]
  * where all matrices use C-style ordering.
  */
-static PetscErrorCode TensorContract_Private(PetscInt m, PetscInt n, PetscInt p, PetscInt k, const PetscReal *A, const PetscReal *B, PetscReal *C)
-{
+static PetscErrorCode TensorContract_Private(PetscInt m, PetscInt n, PetscInt p, PetscInt k, const PetscReal *A, const PetscReal *B, PetscReal *C) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -118,8 +112,7 @@ static PetscErrorCode TensorContract_Private(PetscInt m, PetscInt n, PetscInt p,
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode PetscFECreateTabulation_Basic(PetscFE fem, PetscInt npoints, const PetscReal points[], PetscInt K, PetscTabulation T)
-{
+PETSC_INTERN PetscErrorCode PetscFECreateTabulation_Basic(PetscFE fem, PetscInt npoints, const PetscReal points[], PetscInt K, PetscTabulation T) {
   DM         dm;
   PetscInt   pdim; /* Dimension of FE space P */
   PetscInt   dim;  /* Spatial dimension */
@@ -158,8 +151,7 @@ PETSC_INTERN PetscErrorCode PetscFECreateTabulation_Basic(PetscFE fem, PetscInt 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEIntegrate_Basic(PetscDS ds, PetscInt field, PetscInt Ne, PetscFEGeom *cgeom, const PetscScalar coefficients[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscScalar integral[])
-{
+static PetscErrorCode PetscFEIntegrate_Basic(PetscDS ds, PetscInt field, PetscInt Ne, PetscFEGeom *cgeom, const PetscScalar coefficients[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscScalar integral[]) {
   const PetscInt     debug = 0;
   PetscFE            fe;
   PetscPointFunc     obj_func;
@@ -247,8 +239,7 @@ static PetscErrorCode PetscFEIntegrate_Basic(PetscDS ds, PetscInt field, PetscIn
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEIntegrateBd_Basic(PetscDS ds, PetscInt field, PetscBdPointFunc obj_func, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscScalar integral[])
-{
+static PetscErrorCode PetscFEIntegrateBd_Basic(PetscDS ds, PetscInt field, PetscBdPointFunc obj_func, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscScalar integral[]) {
   const PetscInt     debug = 0;
   PetscFE            fe;
   PetscQuadrature    quad;
@@ -353,8 +344,7 @@ static PetscErrorCode PetscFEIntegrateBd_Basic(PetscDS ds, PetscInt field, Petsc
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscFEIntegrateResidual_Basic(PetscDS ds, PetscFormKey key, PetscInt Ne, PetscFEGeom *cgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscScalar elemVec[])
-{
+PetscErrorCode PetscFEIntegrateResidual_Basic(PetscDS ds, PetscFormKey key, PetscInt Ne, PetscFEGeom *cgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscScalar elemVec[]) {
   const PetscInt     debug = 0;
   const PetscInt     field = key.field;
   PetscFE            fe;
@@ -445,8 +435,7 @@ PetscErrorCode PetscFEIntegrateResidual_Basic(PetscDS ds, PetscFormKey key, Pets
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscFEIntegrateBdResidual_Basic(PetscDS ds, PetscWeakForm wf, PetscFormKey key, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscScalar elemVec[])
-{
+PetscErrorCode PetscFEIntegrateBdResidual_Basic(PetscDS ds, PetscWeakForm wf, PetscFormKey key, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscScalar elemVec[]) {
   const PetscInt     debug = 0;
   const PetscInt     field = key.field;
   PetscFE            fe;
@@ -494,7 +483,7 @@ PetscErrorCode PetscFEIntegrateBdResidual_Basic(PetscDS ds, PetscWeakForm wf, Pe
   NcI = Tf[field]->Nc;
   PetscCall(PetscQuadratureGetData(quad, &qdim, &qNc, &Nq, &quadPoints, &quadWeights));
   PetscCheck(qNc == 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "Only supports scalar quadrature, not %" PetscInt_FMT " components", qNc);
-  dE = fgeom->dimEmbed;
+  dE         = fgeom->dimEmbed;
   /* TODO FIX THIS */
   fgeom->dim = dim - 1;
   PetscCheck(fgeom->dim == qdim, PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "FEGeom dim %" PetscInt_FMT " != %" PetscInt_FMT " quadrature dim", fgeom->dim, qdim);
@@ -555,8 +544,7 @@ PetscErrorCode PetscFEIntegrateBdResidual_Basic(PetscDS ds, PetscWeakForm wf, Pe
     2) We need to assume that the orientation is 0 for both
     3) TODO We need to use a non-square Jacobian for the derivative maps, meaning the embedding dimension has to go to EvaluateFieldJets() and UpdateElementVec()
 */
-static PetscErrorCode PetscFEIntegrateHybridResidual_Basic(PetscDS ds, PetscFormKey key, PetscInt s, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscScalar elemVec[])
-{
+static PetscErrorCode PetscFEIntegrateHybridResidual_Basic(PetscDS ds, PetscFormKey key, PetscInt s, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscScalar elemVec[]) {
   const PetscInt     debug = 0;
   const PetscInt     field = key.field;
   PetscFE            fe;
@@ -652,8 +640,7 @@ static PetscErrorCode PetscFEIntegrateHybridResidual_Basic(PetscDS ds, PetscForm
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscFEIntegrateJacobian_Basic(PetscDS ds, PetscFEJacobianType jtype, PetscFormKey key, PetscInt Ne, PetscFEGeom *cgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscReal u_tshift, PetscScalar elemMat[])
-{
+PetscErrorCode PetscFEIntegrateJacobian_Basic(PetscDS ds, PetscFEJacobianType jtype, PetscFormKey key, PetscInt Ne, PetscFEGeom *cgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscReal u_tshift, PetscScalar elemMat[]) {
   const PetscInt     debug = 0;
   PetscFE            feI, feJ;
   PetscWeakForm      wf;
@@ -690,15 +677,9 @@ PetscErrorCode PetscFEIntegrateJacobian_Basic(PetscDS ds, PetscFEJacobianType jt
   PetscCall(PetscDSGetComponentDerivativeOffsets(ds, &uOff_x));
   PetscCall(PetscDSGetWeakForm(ds, &wf));
   switch (jtype) {
-  case PETSCFE_JACOBIAN_DYN:
-    PetscCall(PetscWeakFormGetDynamicJacobian(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func));
-    break;
-  case PETSCFE_JACOBIAN_PRE:
-    PetscCall(PetscWeakFormGetJacobianPreconditioner(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func));
-    break;
-  case PETSCFE_JACOBIAN:
-    PetscCall(PetscWeakFormGetJacobian(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func));
-    break;
+  case PETSCFE_JACOBIAN_DYN: PetscCall(PetscWeakFormGetDynamicJacobian(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func)); break;
+  case PETSCFE_JACOBIAN_PRE: PetscCall(PetscWeakFormGetJacobianPreconditioner(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func)); break;
+  case PETSCFE_JACOBIAN: PetscCall(PetscWeakFormGetJacobian(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func)); break;
   }
   if (!n0 && !n1 && !n2 && !n3) PetscFunctionReturn(0);
   PetscCall(PetscDSGetEvaluationArrays(ds, &u, coefficients_t ? &u_t : NULL, &u_x));
@@ -804,8 +785,7 @@ PetscErrorCode PetscFEIntegrateJacobian_Basic(PetscDS ds, PetscFEJacobianType jt
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEIntegrateBdJacobian_Basic(PetscDS ds, PetscWeakForm wf, PetscFormKey key, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscReal u_tshift, PetscScalar elemMat[])
-{
+static PetscErrorCode PetscFEIntegrateBdJacobian_Basic(PetscDS ds, PetscWeakForm wf, PetscFormKey key, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscReal u_tshift, PetscScalar elemMat[]) {
   const PetscInt     debug = 0;
   PetscFE            feI, feJ;
   PetscBdPointJac   *g0_func, *g1_func, *g2_func, *g3_func;
@@ -957,8 +937,7 @@ static PetscErrorCode PetscFEIntegrateBdJacobian_Basic(PetscDS ds, PetscWeakForm
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscFEIntegrateHybridJacobian_Basic(PetscDS ds, PetscFEJacobianType jtype, PetscFormKey key, PetscInt s, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscReal u_tshift, PetscScalar elemMat[])
-{
+PetscErrorCode PetscFEIntegrateHybridJacobian_Basic(PetscDS ds, PetscFEJacobianType jtype, PetscFormKey key, PetscInt s, PetscInt Ne, PetscFEGeom *fgeom, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscDS dsAux, const PetscScalar coefficientsAux[], PetscReal t, PetscReal u_tshift, PetscScalar elemMat[]) {
   const PetscInt     debug = 0;
   PetscFE            feI, feJ;
   PetscWeakForm      wf;
@@ -995,14 +974,9 @@ PetscErrorCode PetscFEIntegrateHybridJacobian_Basic(PetscDS ds, PetscFEJacobianT
   PetscCall(PetscDSGetComponentDerivativeOffsetsCohesive(ds, s, &uOff_x));
   PetscCall(PetscDSGetWeakForm(ds, &wf));
   switch (jtype) {
-  case PETSCFE_JACOBIAN_PRE:
-    PetscCall(PetscWeakFormGetBdJacobianPreconditioner(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func));
-    break;
-  case PETSCFE_JACOBIAN:
-    PetscCall(PetscWeakFormGetBdJacobian(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func));
-    break;
-  case PETSCFE_JACOBIAN_DYN:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "No boundary hybrid Jacobians :)");
+  case PETSCFE_JACOBIAN_PRE: PetscCall(PetscWeakFormGetBdJacobianPreconditioner(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func)); break;
+  case PETSCFE_JACOBIAN: PetscCall(PetscWeakFormGetBdJacobian(wf, key.label, key.value, fieldI, fieldJ, key.part, &n0, &g0_func, &n1, &g1_func, &n2, &g2_func, &n3, &g3_func)); break;
+  case PETSCFE_JACOBIAN_DYN: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "No boundary hybrid Jacobians :)");
   }
   if (!n0 && !n1 && !n2 && !n3) PetscFunctionReturn(0);
   PetscCall(PetscDSGetEvaluationArrays(ds, &u, coefficients_t ? &u_t : NULL, &u_x));
@@ -1132,8 +1106,7 @@ PetscErrorCode PetscFEIntegrateHybridJacobian_Basic(PetscDS ds, PetscFEJacobianT
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscFEInitialize_Basic(PetscFE fem)
-{
+static PetscErrorCode PetscFEInitialize_Basic(PetscFE fem) {
   PetscFunctionBegin;
   fem->ops->setfromoptions          = NULL;
   fem->ops->setup                   = PetscFESetUp_Basic;
@@ -1154,20 +1127,19 @@ static PetscErrorCode PetscFEInitialize_Basic(PetscFE fem)
 }
 
 /*MC
-  PETSCFEBASIC = "basic" - A `PetscFE` object that integrates with basic tiling and no vectorization
+  PETSCFEBASIC = "basic" - A PetscFE object that integrates with basic tiling and no vectorization
 
   Level: intermediate
 
-.seealso: `PetscFE`, `PetscFEType`, `PetscFECreate()`, `PetscFESetType()`
+.seealso: `PetscFEType`, `PetscFECreate()`, `PetscFESetType()`
 M*/
 
-PETSC_EXTERN PetscErrorCode PetscFECreate_Basic(PetscFE fem)
-{
+PETSC_EXTERN PetscErrorCode PetscFECreate_Basic(PetscFE fem) {
   PetscFE_Basic *b;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(fem, PETSCFE_CLASSID, 1);
-  PetscCall(PetscNew(&b));
+  PetscCall(PetscNewLog(fem, &b));
   fem->data = b;
 
   PetscCall(PetscFEInitialize_Basic(fem));

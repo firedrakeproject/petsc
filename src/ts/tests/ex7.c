@@ -13,8 +13,7 @@ static char help[] = "Solves DAE with integrator only on non-algebraic terms \n"
    f(U,V) = U + V
 
 */
-PetscErrorCode f(PetscReal t, Vec UV, Vec F)
-{
+PetscErrorCode f(PetscReal t, Vec UV, Vec F) {
   const PetscScalar *u, *v;
   PetscScalar       *f;
   PetscInt           n, i;
@@ -34,8 +33,7 @@ PetscErrorCode f(PetscReal t, Vec UV, Vec F)
 /*
    F(U,V) = U - V
 */
-PetscErrorCode F(PetscReal t, Vec UV, Vec F)
-{
+PetscErrorCode F(PetscReal t, Vec UV, Vec F) {
   const PetscScalar *u, *v;
   PetscScalar       *f;
   PetscInt           n, i;
@@ -64,8 +62,7 @@ typedef struct {
 extern PetscErrorCode TSFunction(TS, PetscReal, Vec, Vec, void *);
 extern PetscErrorCode SNESFunction(SNES, Vec, Vec, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   AppCtx      ctx;
   TS          ts;
   Vec         tsrhs, U;
@@ -124,8 +121,7 @@ int main(int argc, char **argv)
 
    Solves F(U,V) for V and then computes f(U,V)
 */
-PetscErrorCode TSFunction(TS ts, PetscReal t, Vec U, Vec F, void *actx)
-{
+PetscErrorCode TSFunction(TS ts, PetscReal t, Vec U, Vec F, void *actx) {
   AppCtx *ctx = (AppCtx *)actx;
 
   PetscFunctionBeginUser;
@@ -143,8 +139,7 @@ PetscErrorCode TSFunction(TS ts, PetscReal t, Vec U, Vec F, void *actx)
    Defines the nonlinear function that is passed to the nonlinear solver
 
 */
-PetscErrorCode SNESFunction(SNES snes, Vec V, Vec F, void *actx)
-{
+PetscErrorCode SNESFunction(SNES snes, Vec V, Vec F, void *actx) {
   AppCtx *ctx = (AppCtx *)actx;
 
   PetscFunctionBeginUser;

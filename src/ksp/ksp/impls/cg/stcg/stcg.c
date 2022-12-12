@@ -7,8 +7,7 @@
 
 static const char *DType_Table[64] = {"preconditioned", "unpreconditioned"};
 
-static PetscErrorCode KSPCGSolve_STCG(KSP ksp)
-{
+static PetscErrorCode KSPCGSolve_STCG(KSP ksp) {
 #if defined(PETSC_USE_COMPLEX)
   SETERRQ(PetscObjectComm((PetscObject)ksp), PETSC_ERR_SUP, "STCG is not available for complex systems");
 #else
@@ -163,9 +162,7 @@ static PetscErrorCode KSPCGSolve_STCG(KSP ksp)
     norm_r = PetscSqrtReal(rz); /* norm_r = |r|_M    */
     break;
 
-  default:
-    norm_r = 0.0;
-    break;
+  default: norm_r = 0.0; break;
   }
 
   PetscCall(KSPLogResidualHistory(ksp, norm_r));
@@ -228,13 +225,9 @@ static PetscErrorCode KSPCGSolve_STCG(KSP ksp)
   dMp    = 0.0;
   norm_d = 0.0;
   switch (cg->dtype) {
-  case STCG_PRECONDITIONED_DIRECTION:
-    norm_p = rz;
-    break;
+  case STCG_PRECONDITIONED_DIRECTION: norm_p = rz; break;
 
-  default:
-    PetscCall(VecDot(p, p, &norm_p));
-    break;
+  default: PetscCall(VecDot(p, p, &norm_p)); break;
   }
 
   /***************************************************************************/
@@ -358,13 +351,9 @@ static PetscErrorCode KSPCGSolve_STCG(KSP ksp)
     PetscCall(KSP_PCApply(ksp, r, z)); /* z = inv(M) r      */
 
     switch (cg->dtype) {
-    case STCG_PRECONDITIONED_DIRECTION:
-      norm_d = norm_dp1;
-      break;
+    case STCG_PRECONDITIONED_DIRECTION: norm_d = norm_dp1; break;
 
-    default:
-      PetscCall(VecDot(d, d, &norm_d));
-      break;
+    default: PetscCall(VecDot(d, d, &norm_d)); break;
     }
     cg->norm_d = PetscSqrtReal(norm_d);
 
@@ -408,9 +397,7 @@ static PetscErrorCode KSPCGSolve_STCG(KSP ksp)
       norm_r = PetscSqrtReal(rz); /* norm_r = |r|_M    */
       break;
 
-    default:
-      norm_r = 0.0;
-      break;
+    default: norm_r = 0.0; break;
     }
 
     PetscCall(KSPLogResidualHistory(ksp, norm_r));
@@ -519,8 +506,7 @@ static PetscErrorCode KSPCGSolve_STCG(KSP ksp)
 #endif
 }
 
-static PetscErrorCode KSPCGSetUp_STCG(KSP ksp)
-{
+static PetscErrorCode KSPCGSetUp_STCG(KSP ksp) {
   PetscFunctionBegin;
   /***************************************************************************/
   /* Set work vectors needed by conjugate gradient method and allocate       */
@@ -530,8 +516,7 @@ static PetscErrorCode KSPCGSetUp_STCG(KSP ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGDestroy_STCG(KSP ksp)
-{
+static PetscErrorCode KSPCGDestroy_STCG(KSP ksp) {
   PetscFunctionBegin;
   /***************************************************************************/
   /* Clear composed functions                                                */
@@ -549,8 +534,7 @@ static PetscErrorCode KSPCGDestroy_STCG(KSP ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGSetRadius_STCG(KSP ksp, PetscReal radius)
-{
+static PetscErrorCode KSPCGSetRadius_STCG(KSP ksp, PetscReal radius) {
   KSPCG_STCG *cg = (KSPCG_STCG *)ksp->data;
 
   PetscFunctionBegin;
@@ -558,8 +542,7 @@ static PetscErrorCode KSPCGSetRadius_STCG(KSP ksp, PetscReal radius)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGGetNormD_STCG(KSP ksp, PetscReal *norm_d)
-{
+static PetscErrorCode KSPCGGetNormD_STCG(KSP ksp, PetscReal *norm_d) {
   KSPCG_STCG *cg = (KSPCG_STCG *)ksp->data;
 
   PetscFunctionBegin;
@@ -567,8 +550,7 @@ static PetscErrorCode KSPCGGetNormD_STCG(KSP ksp, PetscReal *norm_d)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGGetObjFcn_STCG(KSP ksp, PetscReal *o_fcn)
-{
+static PetscErrorCode KSPCGGetObjFcn_STCG(KSP ksp, PetscReal *o_fcn) {
   KSPCG_STCG *cg = (KSPCG_STCG *)ksp->data;
 
   PetscFunctionBegin;
@@ -576,8 +558,7 @@ static PetscErrorCode KSPCGGetObjFcn_STCG(KSP ksp, PetscReal *o_fcn)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems *PetscOptionsObject) {
   KSPCG_STCG *cg = (KSPCG_STCG *)ksp->data;
 
   PetscFunctionBegin;
@@ -589,13 +570,15 @@ static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems *PetscO
 }
 
 /*MC
-     KSPSTCG -   Code to run conjugate gradient method subject to a constraint on the solution norm.
+     KSPSTCG -   Code to run conjugate gradient method subject to a constraint
+         on the solution norm. This is used in Trust Region methods for
+         nonlinear equations, SNESNEWTONTR
 
    Options Database Keys:
 .      -ksp_cg_radius <r> - Trust Region Radius
 
    Notes:
-    This is rarely used directly, it is used in Trust Region methods for nonlinear equations, `SNESNEWTONTR`
+    This is rarely used directly
 
   Use preconditioned conjugate gradient to compute
   an approximate minimizer of the quadratic function
@@ -613,30 +596,28 @@ static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems *PetscO
      H is the Hessian approximation, and
      M is the positive definite preconditioner matrix.
 
-   `KSPConvergedReason` may be
-.vb
-   KSP_CONVERGED_CG_NEG_CURVE if convergence is reached along a negative curvature direction,
-   KSP_CONVERGED_CG_CONSTRAINED if convergence is reached along a constrained step,
-.ve
-   other `KSP` converged/diverged reasons
+   KSPConvergedReason may be
+$  KSP_CONVERGED_CG_NEG_CURVE if convergence is reached along a negative curvature direction,
+$  KSP_CONVERGED_CG_CONSTRAINED if convergence is reached along a constrained step,
+$  other KSP converged/diverged reasons
 
+  Notes:
   The preconditioner supplied should be symmetric and positive definite.
 
-   References:
-+  * - Steihaug, T. (1983): The conjugate gradient method and trust regions in large scale optimization. SIAM J. Numer. Anal. 20, 626--637
--  * - Toint, Ph.L. (1981): Towards an efficient sparsity exploiting Newton method for minimization. In: Duff, I., ed., Sparse Matrices and Their Uses, pp. 57--88. Academic Press
+  References:
++ * - Steihaug, T. (1983): The conjugate gradient method and trust regions in large scale optimization. SIAM J. Numer. Anal. 20, 626--637
+- * - Toint, Ph.L. (1981): Towards an efficient sparsity exploiting Newton method for minimization. In: Duff, I., ed., Sparse Matrices and Their Uses, pp. 57--88. Academic Press
 
    Level: developer
 
-.seealso: [](chapter_ksp), `KSPCreate()`, `KSPCGSetType()`, `KSPType`, `KSP`, `KSPCGSetRadius()`, `KSPCGGetNormD()`, `KSPCGGetObjFcn()`, `KSPNASH`, `KSPGLTR`, `KSPQCG`
+.seealso: `KSPCreate()`, `KSPCGSetType()`, `KSPType`, `KSP`, `KSPCGSetRadius()`, `KSPCGGetNormD()`, `KSPCGGetObjFcn()`
 M*/
 
-PETSC_EXTERN PetscErrorCode KSPCreate_STCG(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_STCG(KSP ksp) {
   KSPCG_STCG *cg;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&cg));
+  PetscCall(PetscNewLog(ksp, &cg));
 
   cg->radius = 0.0;
   cg->dtype  = STCG_UNPRECONDITIONED_DIRECTION;

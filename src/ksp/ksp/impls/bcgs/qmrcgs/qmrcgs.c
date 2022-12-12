@@ -1,14 +1,16 @@
 
 /*
     This file implements QMRCGS (QMRCGStab).
+    Only right preconditioning is supported.
+
+    Contributed by: Xiangmin Jiao (xiangmin.jiao@stonybrook.edu)
 
     References:
 .   * - Chan, Gallopoulos, Simoncini, Szeto, and Tong (SISC 1994), Ghai, Lu, and Jiao (NLAA 2019)
 */
 #include <../src/ksp/ksp/impls/bcgs/bcgsimpl.h> /*I  "petscksp.h"  I*/
 
-static PetscErrorCode KSPSetUp_QMRCGS(KSP ksp)
-{
+static PetscErrorCode KSPSetUp_QMRCGS(KSP ksp) {
   PetscFunctionBegin;
   PetscCall(KSPSetWorkVecs(ksp, 14));
   PetscFunctionReturn(0);
@@ -16,8 +18,7 @@ static PetscErrorCode KSPSetUp_QMRCGS(KSP ksp)
 
 /* Only need a few hacks from KSPSolve_BCGS */
 
-static PetscErrorCode KSPSolve_QMRCGS(KSP ksp)
-{
+static PetscErrorCode KSPSolve_QMRCGS(KSP ksp) {
   PetscInt    i;
   PetscScalar eta, rho1, rho2, alpha, eta2, omega, beta, cf, cf1, uu;
   Vec         X, B, R, P, PH, V, D2, X2, S, SH, T, D, S2, RP, AX, Z;
@@ -212,22 +213,20 @@ static PetscErrorCode KSPSolve_QMRCGS(KSP ksp)
 /*MC
      KSPQMRCGS - Implements the QMRCGStab method.
 
+   Options Database Keys:
+    see KSPSolve()
+
    Level: beginner
 
-   Note:
-   Only right preconditioning is supported.
-
-   Contributed by:
-   Xiangmin Jiao (xiangmin.jiao@stonybrook.edu)
+   Notes:
+    Only right preconditioning is supported.
 
    References:
-+ * - Chan, Gallopoulos, Simoncini, Szeto, and Tong (SISC 1994)
-- * - Ghai, Lu, and Jiao (NLAA 2019)
+. * - Chan, Gallopoulos, Simoncini, Szeto, and Tong (SISC 1994), Ghai, Lu, and Jiao (NLAA 2019)
 
-.seealso: [](chapter_ksp), `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPBICG`, `KSPFBICGS`, `KSPFBCGSL`, `KSPSetPCSide()`
+.seealso: `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPBICG`, `KSPFBICGS`, `KSPFBCGSL`, `KSPSetPCSide()`
 M*/
-PETSC_EXTERN PetscErrorCode KSPCreate_QMRCGS(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_QMRCGS(KSP ksp) {
   KSP_BCGS         *bcgs;
   static const char citations[] = "@article{chan1994qmrcgs,\n"
                                   "  title={A quasi-minimal residual variant of the {Bi-CGSTAB} algorithm for nonsymmetric systems},\n"
@@ -252,8 +251,9 @@ PETSC_EXTERN PetscErrorCode KSPCreate_QMRCGS(KSP ksp)
   PetscBool         cite        = PETSC_FALSE;
 
   PetscFunctionBegin;
+
   PetscCall(PetscCitationsRegister(citations, &cite));
-  PetscCall(PetscNew(&bcgs));
+  PetscCall(PetscNewLog(ksp, &bcgs));
 
   ksp->data                = bcgs;
   ksp->ops->setup          = KSPSetUp_QMRCGS;

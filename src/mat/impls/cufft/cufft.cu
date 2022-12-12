@@ -4,7 +4,7 @@
     Testing examples can be found in ~src/mat/tests
 */
 
-#include <petscdevice_cuda.h>
+#include <petscdevice.h>
 #include <petsc/private/matimpl.h> /*I "petscmat.h" I*/
 
 typedef struct {
@@ -14,8 +14,7 @@ typedef struct {
   cufftComplex *devArray;
 } Mat_CUFFT;
 
-PetscErrorCode MatMult_SeqCUFFT(Mat A, Vec x, Vec y)
-{
+PetscErrorCode MatMult_SeqCUFFT(Mat A, Vec x, Vec y) {
   Mat_CUFFT    *cufft    = (Mat_CUFFT *)A->data;
   cufftComplex *devArray = cufft->devArray;
   PetscInt      ndim = cufft->ndim, *dim = cufft->dim;
@@ -27,17 +26,10 @@ PetscErrorCode MatMult_SeqCUFFT(Mat A, Vec x, Vec y)
   if (!cufft->p_forward) {
     /* create a plan, then execute it */
     switch (ndim) {
-    case 1:
-      PetscCallCUFFT(cufftPlan1d(&cufft->p_forward, dim[0], CUFFT_C2C, 1));
-      break;
-    case 2:
-      PetscCallCUFFT(cufftPlan2d(&cufft->p_forward, dim[0], dim[1], CUFFT_C2C));
-      break;
-    case 3:
-      PetscCallCUFFT(cufftPlan3d(&cufft->p_forward, dim[0], dim[1], dim[2], CUFFT_C2C));
-      break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Cannot create plan for %" PetscInt_FMT "-dimensional transform", ndim);
+    case 1: PetscCallCUFFT(cufftPlan1d(&cufft->p_forward, dim[0], CUFFT_C2C, 1)); break;
+    case 2: PetscCallCUFFT(cufftPlan2d(&cufft->p_forward, dim[0], dim[1], CUFFT_C2C)); break;
+    case 3: PetscCallCUFFT(cufftPlan3d(&cufft->p_forward, dim[0], dim[1], dim[2], CUFFT_C2C)); break;
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Cannot create plan for %" PetscInt_FMT "-dimensional transform", ndim);
     }
   }
   /* transfer to GPU memory */
@@ -51,8 +43,7 @@ PetscErrorCode MatMult_SeqCUFFT(Mat A, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqCUFFT(Mat A, Vec x, Vec y)
-{
+PetscErrorCode MatMultTranspose_SeqCUFFT(Mat A, Vec x, Vec y) {
   Mat_CUFFT    *cufft    = (Mat_CUFFT *)A->data;
   cufftComplex *devArray = cufft->devArray;
   PetscInt      ndim = cufft->ndim, *dim = cufft->dim;
@@ -64,17 +55,10 @@ PetscErrorCode MatMultTranspose_SeqCUFFT(Mat A, Vec x, Vec y)
   if (!cufft->p_backward) {
     /* create a plan, then execute it */
     switch (ndim) {
-    case 1:
-      PetscCallCUFFT(cufftPlan1d(&cufft->p_backward, dim[0], CUFFT_C2C, 1));
-      break;
-    case 2:
-      PetscCallCUFFT(cufftPlan2d(&cufft->p_backward, dim[0], dim[1], CUFFT_C2C));
-      break;
-    case 3:
-      PetscCallCUFFT(cufftPlan3d(&cufft->p_backward, dim[0], dim[1], dim[2], CUFFT_C2C));
-      break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Cannot create plan for %" PetscInt_FMT "-dimensional transform", ndim);
+    case 1: PetscCallCUFFT(cufftPlan1d(&cufft->p_backward, dim[0], CUFFT_C2C, 1)); break;
+    case 2: PetscCallCUFFT(cufftPlan2d(&cufft->p_backward, dim[0], dim[1], CUFFT_C2C)); break;
+    case 3: PetscCallCUFFT(cufftPlan3d(&cufft->p_backward, dim[0], dim[1], dim[2], CUFFT_C2C)); break;
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Cannot create plan for %" PetscInt_FMT "-dimensional transform", ndim);
     }
   }
   /* transfer to GPU memory */
@@ -88,8 +72,7 @@ PetscErrorCode MatMultTranspose_SeqCUFFT(Mat A, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_SeqCUFFT(Mat A)
-{
+PetscErrorCode MatDestroy_SeqCUFFT(Mat A) {
   Mat_CUFFT *cufft = (Mat_CUFFT *)A->data;
 
   PetscFunctionBegin;
@@ -122,8 +105,7 @@ PetscErrorCode MatDestroy_SeqCUFFT(Mat A)
 
 .seealso: `MATSEQCUFFT`
 @*/
-PetscErrorCode MatCreateSeqCUFFT(MPI_Comm comm, PetscInt ndim, const PetscInt dim[], Mat *A)
-{
+PetscErrorCode MatCreateSeqCUFFT(MPI_Comm comm, PetscInt ndim, const PetscInt dim[], Mat *A) {
   Mat_CUFFT *cufft;
   PetscInt   m = 1;
 
@@ -139,7 +121,7 @@ PetscErrorCode MatCreateSeqCUFFT(MPI_Comm comm, PetscInt ndim, const PetscInt di
   PetscCall(MatSetSizes(*A, m, m, m, m));
   PetscCall(PetscObjectChangeTypeName((PetscObject)*A, MATSEQCUFFT));
 
-  PetscCall(PetscNew(&cufft));
+  PetscCall(PetscNewLog(*A, &cufft));
   (*A)->data = (void *)cufft;
   PetscCall(PetscMalloc1(ndim + 1, &cufft->dim));
   PetscCall(PetscArraycpy(cufft->dim, dim, ndim));

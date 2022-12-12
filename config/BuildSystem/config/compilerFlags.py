@@ -1,4 +1,5 @@
 import config.base
+
 import re
 import os
 
@@ -31,7 +32,9 @@ class Configure(config.base.Configure):
     help.addArgument('Compiler Flags', '-CUDAOPTFLAGS=<string>',   nargs.Arg(None, None, 'Override the debugging/optimization flags for the CUDA compiler'))
     help.addArgument('Compiler Flags', '-HIPOPTFLAGS=<string>',   nargs.Arg(None, None, 'Override the debugging/optimization flags for the HIP compiler'))
     help.addArgument('Compiler Flags', '-SYCLOPTFLAGS=<string>',   nargs.Arg(None, None, 'Override the debugging/optimization flags for the SYCL compiler'))
-    help.addArgument('Compiler Flags', '-with-gcov=<bool>', nargs.ArgBool(None, value=None, help='Specify that GNUs coverage tool gcov is used', deprecated='--with-coverage'))
+    # not sure where to put this, currently gcov is handled in ../compilerOptions.py
+    # not sure where to put this, currently gcov is handled in ../compilerOptions.py
+    help.addArgument('Compiler Flags', '-with-gcov=<bool>', nargs.ArgBool(None, 0, 'Specify that GNUs coverage tool gcov is used'))
     return
 
   def setupDependencies(self, framework):
@@ -59,14 +62,11 @@ class Configure(config.base.Configure):
       raise RuntimeError('Unknown language: '+language)
     return flagsArg
 
-  def findOptFlags(self, flags):
-    if isinstance(flags, str):
-      flags = flags.split()
-
-    return [f for f in flags if f.startswith('-g') or f.startswith('-O') or f in {'-fast'}]
-
   def hasOptFlags(self,flags):
-    return len(self.findOptFlags(flags)) > 0
+    for flag in flags.split():
+      if flag.startswith('-g') or flag.startswith('-O') or flag in ['-fast']:
+        return 1
+    return 0
 
   def getOptionsObject(self):
     '''Get a configure object which will return default options for each compiler'''
@@ -87,6 +87,11 @@ class Configure(config.base.Configure):
       bopts.append('g')
     else:
       bopts.append('O')
+
+    # According to gcc doc, gcov does not require -g, so we do it alone
+    if self.argDB['with-gcov']:
+      bopts.append('gcov')
+      self.addDefine('USE_GCOV', 1)
 
     options = self.getOptionsObject()
     if not options:

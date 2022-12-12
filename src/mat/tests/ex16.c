@@ -3,8 +3,7 @@ static char help[] = "Tests MatDenseGetArray() and MatView()/MatLoad() with bina
 #include <petscmat.h>
 #include <petscviewer.h>
 
-static PetscErrorCode CheckValues(Mat A, PetscBool one)
-{
+static PetscErrorCode CheckValues(Mat A, PetscBool one) {
   const PetscScalar *array;
   PetscInt           M, N, rstart, rend, lda, i, j;
 
@@ -28,8 +27,7 @@ static PetscErrorCode CheckValues(Mat A, PetscBool one)
 #define CheckValuesIJ(A)  CheckValues(A, PETSC_FALSE)
 #define CheckValuesOne(A) CheckValues(A, PETSC_TRUE)
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat          A;
   PetscInt     i, j, M = 4, N = 3, rstart, rend;
   PetscScalar *array;

@@ -1,7 +1,6 @@
 #include <../src/tao/bound/impls/bqnk/bqnk.h>
 
-static PetscErrorCode TaoSetUp_BQNKTL(Tao tao)
-{
+static PetscErrorCode TaoSetUp_BQNKTL(Tao tao) {
   KSP               ksp;
   PetscVoidFunction valid;
 
@@ -18,14 +17,12 @@ static PetscErrorCode TaoSetUp_BQNKTL(Tao tao)
               minimization with bound constraints. This method approximates the Hessian-vector
               product using a limited-memory quasi-Newton formula, and iteratively inverts the
               Hessian with a Krylov solver. The quasi-Newton matrix and its settings can be
-              accessed via the prefix `-tao_bqnk_`. For options database, see `TAOBNK`
+              accessed via the prefix `-tao_bqnk_`. For options database, see TAOBNK
 
   Level: beginner
-
-.seealso: `Tao`, `TaoType`, `TAOBNK`, `TAOBQNKTR`, `TAOBQNKLS`
+.seealso `TAOBNK`, `TAOBQNKTR`, `TAOBQNKLS`
 M*/
-PETSC_EXTERN PetscErrorCode TaoCreate_BQNKTL(Tao tao)
-{
+PETSC_EXTERN PetscErrorCode TaoCreate_BQNKTL(Tao tao) {
   TAO_BNK  *bnk;
   TAO_BQNK *bqnk;
 

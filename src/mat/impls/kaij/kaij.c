@@ -45,8 +45,7 @@
 
 .seealso: `MatCreateKAIJ()`, `MATKAIJ`, `MATAIJ`
 @*/
-PetscErrorCode MatKAIJGetAIJ(Mat A, Mat *B)
-{
+PetscErrorCode MatKAIJGetAIJ(Mat A, Mat *B) {
   PetscBool ismpikaij, isseqkaij;
 
   PetscFunctionBegin;
@@ -84,8 +83,7 @@ PetscErrorCode MatKAIJGetAIJ(Mat A, Mat *B)
 
 .seealso: `MATKAIJ`, `MatCreateKAIJ()`, `MatGetBlockSizes()`
 @*/
-PetscErrorCode MatKAIJGetS(Mat A, PetscInt *m, PetscInt *n, PetscScalar **S)
-{
+PetscErrorCode MatKAIJGetS(Mat A, PetscInt *m, PetscInt *n, PetscScalar **S) {
   Mat_SeqKAIJ *b = (Mat_SeqKAIJ *)A->data;
   PetscFunctionBegin;
   if (m) *m = b->p;
@@ -114,8 +112,7 @@ PetscErrorCode MatKAIJGetS(Mat A, PetscInt *m, PetscInt *n, PetscScalar **S)
 
 .seealso: `MATKAIJ`, `MatCreateKAIJ()`, `MatGetBlockSizes()`
 @*/
-PetscErrorCode MatKAIJGetSRead(Mat A, PetscInt *m, PetscInt *n, const PetscScalar **S)
-{
+PetscErrorCode MatKAIJGetSRead(Mat A, PetscInt *m, PetscInt *n, const PetscScalar **S) {
   Mat_SeqKAIJ *b = (Mat_SeqKAIJ *)A->data;
   PetscFunctionBegin;
   if (m) *m = b->p;
@@ -143,8 +140,7 @@ PetscErrorCode MatKAIJGetSRead(Mat A, PetscInt *m, PetscInt *n, const PetscScala
 
 .seealso: `MATKAIJ`, `MatKAIJGetS()`, `MatKAIJGetSRead()`, `MatKAIJRestoreSRead()`
 @*/
-PetscErrorCode MatKAIJRestoreS(Mat A, PetscScalar **S)
-{
+PetscErrorCode MatKAIJRestoreS(Mat A, PetscScalar **S) {
   PetscFunctionBegin;
   if (S) *S = NULL;
   PetscCall(PetscObjectStateIncrease((PetscObject)A));
@@ -170,8 +166,7 @@ PetscErrorCode MatKAIJRestoreS(Mat A, PetscScalar **S)
 
 .seealso: `MATKAIJ`, `MatKAIJGetS()`, `MatKAIJGetSRead()`, `MatKAIJRestoreSRead()`
 @*/
-PetscErrorCode MatKAIJRestoreSRead(Mat A, const PetscScalar **S)
-{
+PetscErrorCode MatKAIJRestoreSRead(Mat A, const PetscScalar **S) {
   PetscFunctionBegin;
   if (S) *S = NULL;
   PetscFunctionReturn(0);
@@ -197,8 +192,7 @@ PetscErrorCode MatKAIJRestoreSRead(Mat A, const PetscScalar **S)
 
 .seealso: `MATKAIJ`, `MatCreateKAIJ()`, `MatGetBlockSizes()`
 @*/
-PetscErrorCode MatKAIJGetT(Mat A, PetscInt *m, PetscInt *n, PetscScalar **T)
-{
+PetscErrorCode MatKAIJGetT(Mat A, PetscInt *m, PetscInt *n, PetscScalar **T) {
   Mat_SeqKAIJ *b = (Mat_SeqKAIJ *)A->data;
   PetscFunctionBegin;
   if (m) *m = b->p;
@@ -226,8 +220,7 @@ PetscErrorCode MatKAIJGetT(Mat A, PetscInt *m, PetscInt *n, PetscScalar **T)
 
 .seealso: `MATKAIJ`, `MatCreateKAIJ()`, `MatGetBlockSizes()`
 @*/
-PetscErrorCode MatKAIJGetTRead(Mat A, PetscInt *m, PetscInt *n, const PetscScalar **T)
-{
+PetscErrorCode MatKAIJGetTRead(Mat A, PetscInt *m, PetscInt *n, const PetscScalar **T) {
   Mat_SeqKAIJ *b = (Mat_SeqKAIJ *)A->data;
   PetscFunctionBegin;
   if (m) *m = b->p;
@@ -255,8 +248,7 @@ PetscErrorCode MatKAIJGetTRead(Mat A, PetscInt *m, PetscInt *n, const PetscScala
 
 .seealso: `MATKAIJ`, `MatKAIJGetT()`, `MatKAIJGetTRead()`, `MatKAIJRestoreTRead()`
 @*/
-PetscErrorCode MatKAIJRestoreT(Mat A, PetscScalar **T)
-{
+PetscErrorCode MatKAIJRestoreT(Mat A, PetscScalar **T) {
   PetscFunctionBegin;
   if (T) *T = NULL;
   PetscCall(PetscObjectStateIncrease((PetscObject)A));
@@ -282,8 +274,7 @@ PetscErrorCode MatKAIJRestoreT(Mat A, PetscScalar **T)
 
 .seealso: `MATKAIJ`, `MatKAIJGetT()`, `MatKAIJGetTRead()`, `MatKAIJRestoreTRead()`
 @*/
-PetscErrorCode MatKAIJRestoreTRead(Mat A, const PetscScalar **T)
-{
+PetscErrorCode MatKAIJRestoreTRead(Mat A, const PetscScalar **T) {
   PetscFunctionBegin;
   if (T) *T = NULL;
   PetscFunctionReturn(0);
@@ -307,8 +298,7 @@ PetscErrorCode MatKAIJRestoreTRead(Mat A, const PetscScalar **T)
 
 .seealso: `MATKAIJ`, `MatKAIJGetAIJ()`, `MatKAIJSetS()`, `MatKAIJSetT()`
 @*/
-PetscErrorCode MatKAIJSetAIJ(Mat A, Mat B)
-{
+PetscErrorCode MatKAIJSetAIJ(Mat A, Mat B) {
   PetscMPIInt size;
   PetscBool   flg;
 
@@ -347,8 +337,7 @@ PetscErrorCode MatKAIJSetAIJ(Mat A, Mat B)
 
 .seealso: `MATKAIJ`, `MatKAIJGetS()`, `MatKAIJSetT()`, `MatKAIJSetAIJ()`
 @*/
-PetscErrorCode MatKAIJSetS(Mat A, PetscInt p, PetscInt q, const PetscScalar S[])
-{
+PetscErrorCode MatKAIJSetS(Mat A, PetscInt p, PetscInt q, const PetscScalar S[]) {
   Mat_SeqKAIJ *a = (Mat_SeqKAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -378,8 +367,7 @@ PetscErrorCode MatKAIJSetS(Mat A, PetscInt p, PetscInt q, const PetscScalar S[])
 
 .seealso: `MATKAIJ`, `MatKAIJGetS()`, `MatKAIJGetT()`
 @*/
-PetscErrorCode MatKAIJGetScaledIdentity(Mat A, PetscBool *identity)
-{
+PetscErrorCode MatKAIJGetScaledIdentity(Mat A, PetscBool *identity) {
   Mat_SeqKAIJ *a = (Mat_SeqKAIJ *)A->data;
   PetscInt     i, j;
 
@@ -424,8 +412,7 @@ PetscErrorCode MatKAIJGetScaledIdentity(Mat A, PetscBool *identity)
 
 .seealso: `MATKAIJ`, `MatKAIJGetT()`, `MatKAIJSetS()`, `MatKAIJSetAIJ()`
 @*/
-PetscErrorCode MatKAIJSetT(Mat A, PetscInt p, PetscInt q, const PetscScalar T[])
-{
+PetscErrorCode MatKAIJSetT(Mat A, PetscInt p, PetscInt q, const PetscScalar T[]) {
   PetscInt     i, j;
   Mat_SeqKAIJ *a    = (Mat_SeqKAIJ *)A->data;
   PetscBool    isTI = PETSC_FALSE;
@@ -459,8 +446,7 @@ PetscErrorCode MatKAIJSetT(Mat A, PetscInt p, PetscInt q, const PetscScalar T[])
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_SeqKAIJ(Mat A)
-{
+PetscErrorCode MatDestroy_SeqKAIJ(Mat A) {
   Mat_SeqKAIJ *b = (Mat_SeqKAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -474,8 +460,7 @@ PetscErrorCode MatDestroy_SeqKAIJ(Mat A)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatKAIJ_build_AIJ_OAIJ(Mat A)
-{
+PETSC_INTERN PetscErrorCode MatKAIJ_build_AIJ_OAIJ(Mat A) {
   Mat_MPIKAIJ     *a;
   Mat_MPIAIJ      *mpiaij;
   PetscScalar     *T;
@@ -515,8 +500,7 @@ PETSC_INTERN PetscErrorCode MatKAIJ_build_AIJ_OAIJ(Mat A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSetUp_KAIJ(Mat A)
-{
+PetscErrorCode MatSetUp_KAIJ(Mat A) {
   PetscInt     n;
   PetscMPIInt  size;
   Mat_SeqKAIJ *seqkaij = (Mat_SeqKAIJ *)A->data;
@@ -570,8 +554,7 @@ PetscErrorCode MatSetUp_KAIJ(Mat A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatView_KAIJ(Mat A, PetscViewer viewer)
-{
+PetscErrorCode MatView_KAIJ(Mat A, PetscViewer viewer) {
   PetscViewerFormat format;
   Mat_SeqKAIJ      *a = (Mat_SeqKAIJ *)A->data;
   Mat               B;
@@ -634,8 +617,7 @@ PetscErrorCode MatView_KAIJ(Mat A, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_MPIKAIJ(Mat A)
-{
+PetscErrorCode MatDestroy_MPIKAIJ(Mat A) {
   Mat_MPIKAIJ *b = (Mat_MPIKAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -656,8 +638,7 @@ PetscErrorCode MatDestroy_MPIKAIJ(Mat A)
 /* --------------------------------------------------------------------------------------*/
 
 /* zz = yy + Axx */
-PetscErrorCode MatMultAdd_SeqKAIJ(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqKAIJ(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqKAIJ       *b = (Mat_SeqKAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *s = b->S, *t = b->T;
@@ -725,8 +706,7 @@ PetscErrorCode MatMultAdd_SeqKAIJ(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMult_SeqKAIJ(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqKAIJ(Mat A, Vec xx, Vec yy) {
   PetscFunctionBegin;
   PetscCall(MatMultAdd_SeqKAIJ(A, xx, PETSC_NULL, yy));
   PetscFunctionReturn(0);
@@ -734,8 +714,7 @@ PetscErrorCode MatMult_SeqKAIJ(Mat A, Vec xx, Vec yy)
 
 #include <petsc/private/kernels/blockinvert.h>
 
-PetscErrorCode MatInvertBlockDiagonal_SeqKAIJ(Mat A, const PetscScalar **values)
-{
+PetscErrorCode MatInvertBlockDiagonal_SeqKAIJ(Mat A, const PetscScalar **values) {
   Mat_SeqKAIJ       *b = (Mat_SeqKAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *S = b->S;
@@ -756,7 +735,10 @@ PetscErrorCode MatInvertBlockDiagonal_SeqKAIJ(Mat A, const PetscScalar **values)
     if (values) *values = b->ibdiag;
     PetscFunctionReturn(0);
   }
-  if (!b->ibdiag) { PetscCall(PetscMalloc1(dof2 * m, &b->ibdiag)); }
+  if (!b->ibdiag) {
+    PetscCall(PetscMalloc1(dof2 * m, &b->ibdiag));
+    PetscCall(PetscLogObjectMemory((PetscObject)A, dof2 * m * sizeof(PetscScalar)));
+  }
   if (values) *values = b->ibdiag;
   diag = b->ibdiag;
 
@@ -787,8 +769,7 @@ PetscErrorCode MatInvertBlockDiagonal_SeqKAIJ(Mat A, const PetscScalar **values)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatGetDiagonalBlock_MPIKAIJ(Mat A, Mat *B)
-{
+static PetscErrorCode MatGetDiagonalBlock_MPIKAIJ(Mat A, Mat *B) {
   Mat_MPIKAIJ *kaij = (Mat_MPIKAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -796,8 +777,7 @@ static PetscErrorCode MatGetDiagonalBlock_MPIKAIJ(Mat A, Mat *B)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatConvert_KAIJ_AIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+static PetscErrorCode MatConvert_KAIJ_AIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat_SeqKAIJ   *a = (Mat_SeqKAIJ *)A->data;
   Mat            AIJ, OAIJ, B;
   PetscInt      *d_nnz, *o_nnz = NULL, nz, i, j, m, d;
@@ -848,8 +828,7 @@ static PetscErrorCode MatConvert_KAIJ_AIJ(Mat A, MatType newtype, MatReuse reuse
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType flag, PetscReal fshift, PetscInt its, PetscInt lits, Vec xx)
-{
+PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType flag, PetscReal fshift, PetscInt its, PetscInt lits, Vec xx) {
   Mat_SeqKAIJ       *kaij = (Mat_SeqKAIJ *)A->data;
   Mat_SeqAIJ        *a    = (Mat_SeqAIJ *)kaij->AIJ->data;
   const PetscScalar *aa = a->a, *T = kaij->T, *v;
@@ -1136,8 +1115,7 @@ PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType flag, P
 
 /*===================================================================================*/
 
-PetscErrorCode MatMultAdd_MPIKAIJ(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_MPIKAIJ(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_MPIKAIJ *b = (Mat_MPIKAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -1155,15 +1133,13 @@ PetscErrorCode MatMultAdd_MPIKAIJ(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMult_MPIKAIJ(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_MPIKAIJ(Mat A, Vec xx, Vec yy) {
   PetscFunctionBegin;
   PetscCall(MatMultAdd_MPIKAIJ(A, xx, PETSC_NULL, yy));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatInvertBlockDiagonal_MPIKAIJ(Mat A, const PetscScalar **values)
-{
+PetscErrorCode MatInvertBlockDiagonal_MPIKAIJ(Mat A, const PetscScalar **values) {
   Mat_MPIKAIJ *b = (Mat_MPIKAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -1174,8 +1150,7 @@ PetscErrorCode MatInvertBlockDiagonal_MPIKAIJ(Mat A, const PetscScalar **values)
 
 /* ----------------------------------------------------------------*/
 
-PetscErrorCode MatGetRow_SeqKAIJ(Mat A, PetscInt row, PetscInt *ncols, PetscInt **cols, PetscScalar **values)
-{
+PetscErrorCode MatGetRow_SeqKAIJ(Mat A, PetscInt row, PetscInt *ncols, PetscInt **cols, PetscScalar **values) {
   Mat_SeqKAIJ   *b    = (Mat_SeqKAIJ *)A->data;
   PetscErrorCode diag = PETSC_FALSE;
   PetscInt       nzaij, nz, *colsaij, *idx, i, j, p = b->p, q = b->q, r = row / p, s = row % p, c;
@@ -1245,8 +1220,7 @@ PetscErrorCode MatGetRow_SeqKAIJ(Mat A, PetscInt row, PetscInt *ncols, PetscInt 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRestoreRow_SeqKAIJ(Mat A, PetscInt row, PetscInt *nz, PetscInt **idx, PetscScalar **v)
-{
+PetscErrorCode MatRestoreRow_SeqKAIJ(Mat A, PetscInt row, PetscInt *nz, PetscInt **idx, PetscScalar **v) {
   PetscFunctionBegin;
   if (nz) *nz = 0;
   PetscCall(PetscFree2(*idx, *v));
@@ -1254,8 +1228,7 @@ PetscErrorCode MatRestoreRow_SeqKAIJ(Mat A, PetscInt row, PetscInt *nz, PetscInt
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatGetRow_MPIKAIJ(Mat A, PetscInt row, PetscInt *ncols, PetscInt **cols, PetscScalar **values)
-{
+PetscErrorCode MatGetRow_MPIKAIJ(Mat A, PetscInt row, PetscInt *ncols, PetscInt **cols, PetscScalar **values) {
   Mat_MPIKAIJ   *b    = (Mat_MPIKAIJ *)A->data;
   Mat            AIJ  = b->A;
   PetscBool      diag = PETSC_FALSE;
@@ -1350,16 +1323,14 @@ PetscErrorCode MatGetRow_MPIKAIJ(Mat A, PetscInt row, PetscInt *ncols, PetscInt 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRestoreRow_MPIKAIJ(Mat A, PetscInt row, PetscInt *nz, PetscInt **idx, PetscScalar **v)
-{
+PetscErrorCode MatRestoreRow_MPIKAIJ(Mat A, PetscInt row, PetscInt *nz, PetscInt **idx, PetscScalar **v) {
   PetscFunctionBegin;
   PetscCall(PetscFree2(*idx, *v));
   ((Mat_SeqKAIJ *)A->data)->getrowactive = PETSC_FALSE;
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatCreateSubMatrix_KAIJ(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat *newmat)
-{
+PetscErrorCode MatCreateSubMatrix_KAIJ(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat *newmat) {
   Mat A;
 
   PetscFunctionBegin;
@@ -1411,8 +1382,7 @@ PetscErrorCode MatCreateSubMatrix_KAIJ(Mat mat, IS isrow, IS iscol, MatReuse cll
 
 .seealso: `MatKAIJSetAIJ()`, `MatKAIJSetS()`, `MatKAIJSetT()`, `MatKAIJGetAIJ()`, `MatKAIJGetS()`, `MatKAIJGetT()`, `MATKAIJ`
 @*/
-PetscErrorCode MatCreateKAIJ(Mat A, PetscInt p, PetscInt q, const PetscScalar S[], const PetscScalar T[], Mat *kaij)
-{
+PetscErrorCode MatCreateKAIJ(Mat A, PetscInt p, PetscInt q, const PetscScalar S[], const PetscScalar T[], Mat *kaij) {
   PetscFunctionBegin;
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), kaij));
   PetscCall(MatSetType(*kaij, MATKAIJ));
@@ -1444,13 +1414,12 @@ PetscErrorCode MatCreateKAIJ(Mat A, PetscInt p, PetscInt q, const PetscScalar S[
 .seealso: `MatKAIJSetAIJ()`, `MatKAIJSetS()`, `MatKAIJSetT()`, `MatKAIJGetAIJ()`, `MatKAIJGetS()`, `MatKAIJGetT()`, `MatCreateKAIJ()`
 M*/
 
-PETSC_EXTERN PetscErrorCode MatCreate_KAIJ(Mat A)
-{
+PETSC_EXTERN PetscErrorCode MatCreate_KAIJ(Mat A) {
   Mat_MPIKAIJ *b;
   PetscMPIInt  size;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&b));
+  PetscCall(PetscNewLog(A, &b));
   A->data = (void *)b;
 
   PetscCall(PetscMemzero(A->ops, sizeof(struct _MatOps)));

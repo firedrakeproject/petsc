@@ -8,8 +8,7 @@
 PETSC_INTERN PetscErrorCode MatTransposeMatMatMultSymbolic_AIJ_AIJ_AIJ_wHYPRE(Mat, Mat, Mat, PetscReal, Mat);
 PETSC_INTERN PetscErrorCode MatTransposeMatMatMultNumeric_AIJ_AIJ_AIJ_wHYPRE(Mat, Mat, Mat, Mat);
 
-PETSC_INTERN PetscErrorCode MatProductNumeric_ABC_Transpose_AIJ_AIJ(Mat RAP)
-{
+PETSC_INTERN PetscErrorCode MatProductNumeric_ABC_Transpose_AIJ_AIJ(Mat RAP) {
   Mat_Product *product = RAP->product;
   Mat          Rt, R = product->A, A = product->B, P = product->C;
 
@@ -19,8 +18,7 @@ PETSC_INTERN PetscErrorCode MatProductNumeric_ABC_Transpose_AIJ_AIJ(Mat RAP)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatProductSymbolic_ABC_Transpose_AIJ_AIJ(Mat RAP)
-{
+PETSC_INTERN PetscErrorCode MatProductSymbolic_ABC_Transpose_AIJ_AIJ(Mat RAP) {
   Mat_Product *product = RAP->product;
   Mat          Rt, R = product->A, A = product->B, P = product->C;
   PetscBool    flg;
@@ -35,8 +33,7 @@ PETSC_INTERN PetscErrorCode MatProductSymbolic_ABC_Transpose_AIJ_AIJ(Mat RAP)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatProductSetFromOptions_Transpose_AIJ_AIJ(Mat C)
-{
+PETSC_INTERN PetscErrorCode MatProductSetFromOptions_Transpose_AIJ_AIJ(Mat C) {
   Mat_Product *product = C->product;
 
   PetscFunctionBegin;
@@ -47,8 +44,7 @@ PETSC_INTERN PetscErrorCode MatProductSetFromOptions_Transpose_AIJ_AIJ(Mat C)
 }
 #endif
 
-PetscErrorCode MatMatMatMultSymbolic_MPIAIJ_MPIAIJ_MPIAIJ(Mat A, Mat B, Mat C, PetscReal fill, Mat D)
-{
+PetscErrorCode MatMatMatMultSymbolic_MPIAIJ_MPIAIJ_MPIAIJ(Mat A, Mat B, Mat C, PetscReal fill, Mat D) {
   Mat          BC;
   PetscBool    scalable;
   Mat_Product *product;
@@ -76,8 +72,7 @@ PetscErrorCode MatMatMatMultSymbolic_MPIAIJ_MPIAIJ_MPIAIJ(Mat A, Mat B, Mat C, P
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMatMatMultNumeric_MPIAIJ_MPIAIJ_MPIAIJ(Mat A, Mat B, Mat C, Mat D)
-{
+PetscErrorCode MatMatMatMultNumeric_MPIAIJ_MPIAIJ_MPIAIJ(Mat A, Mat B, Mat C, Mat D) {
   Mat_Product *product;
   Mat          BC;
 
@@ -92,8 +87,7 @@ PetscErrorCode MatMatMatMultNumeric_MPIAIJ_MPIAIJ_MPIAIJ(Mat A, Mat B, Mat C, Ma
 }
 
 /* ----------------------------------------------------- */
-PetscErrorCode MatDestroy_MPIAIJ_RARt(void *data)
-{
+PetscErrorCode MatDestroy_MPIAIJ_RARt(void *data) {
   Mat_RARt *rart = (Mat_RARt *)data;
 
   PetscFunctionBegin;
@@ -103,8 +97,7 @@ PetscErrorCode MatDestroy_MPIAIJ_RARt(void *data)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatProductNumeric_RARt_MPIAIJ_MPIAIJ(Mat C)
-{
+PetscErrorCode MatProductNumeric_RARt_MPIAIJ_MPIAIJ(Mat C) {
   Mat_RARt *rart;
   Mat       A, R, Rt;
 
@@ -122,8 +115,7 @@ PetscErrorCode MatProductNumeric_RARt_MPIAIJ_MPIAIJ(Mat C)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatProductSymbolic_RARt_MPIAIJ_MPIAIJ(Mat C)
-{
+PetscErrorCode MatProductSymbolic_RARt_MPIAIJ_MPIAIJ(Mat C) {
   Mat       A, R, Rt;
   Mat_RARt *rart;
 

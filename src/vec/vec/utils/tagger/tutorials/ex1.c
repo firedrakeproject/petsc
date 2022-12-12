@@ -3,8 +3,7 @@ static char help[] = "VecTagger interface routines.\n\n";
 
 #include <petscvec.h>
 
-static PetscErrorCode ISGetBlockGlobalIS(IS is, Vec vec, PetscInt bs, IS *isBlockGlobal)
-{
+static PetscErrorCode ISGetBlockGlobalIS(IS is, Vec vec, PetscInt bs, IS *isBlockGlobal) {
   const PetscInt *idxin;
   PetscInt       *idxout, i, n, rstart;
   PetscLayout     map;
@@ -22,8 +21,7 @@ static PetscErrorCode ISGetBlockGlobalIS(IS is, Vec vec, PetscInt bs, IS *isBloc
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Vec           vec, tagged, untagged;
   VecScatter    taggedScatter, untaggedScatter;
   PetscInt      bs;

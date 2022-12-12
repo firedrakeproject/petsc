@@ -5,8 +5,7 @@
 #include <../src/vec/is/is/impls/general/general.h> /*I  "petscis.h"  I*/
 #include <petsc/private/viewerhdf5impl.h>
 
-static PetscErrorCode ISDuplicate_General(IS is, IS *newIS)
-{
+static PetscErrorCode ISDuplicate_General(IS is, IS *newIS) {
   IS_General *sub = (IS_General *)is->data;
   PetscInt    n;
 
@@ -16,8 +15,7 @@ static PetscErrorCode ISDuplicate_General(IS is, IS *newIS)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISDestroy_General(IS is)
-{
+static PetscErrorCode ISDestroy_General(IS is) {
   IS_General *is_general = (IS_General *)is->data;
 
   PetscFunctionBegin;
@@ -30,8 +28,7 @@ static PetscErrorCode ISDestroy_General(IS is)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISCopy_General(IS is, IS isy)
-{
+static PetscErrorCode ISCopy_General(IS is, IS isy) {
   IS_General *is_general = (IS_General *)is->data, *isy_general = (IS_General *)isy->data;
   PetscInt    n;
 
@@ -41,8 +38,7 @@ static PetscErrorCode ISCopy_General(IS is, IS isy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ISShift_General(IS is, PetscInt shift, IS isy)
-{
+PetscErrorCode ISShift_General(IS is, PetscInt shift, IS isy) {
   IS_General *is_general = (IS_General *)is->data, *isy_general = (IS_General *)isy->data;
   PetscInt    i, n;
 
@@ -52,8 +48,7 @@ PetscErrorCode ISShift_General(IS is, PetscInt shift, IS isy)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISOnComm_General(IS is, MPI_Comm comm, PetscCopyMode mode, IS *newis)
-{
+static PetscErrorCode ISOnComm_General(IS is, MPI_Comm comm, PetscCopyMode mode, IS *newis) {
   IS_General *sub = (IS_General *)is->data;
   PetscInt    n;
 
@@ -64,15 +59,13 @@ static PetscErrorCode ISOnComm_General(IS is, MPI_Comm comm, PetscCopyMode mode,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISSetBlockSize_General(IS is, PetscInt bs)
-{
+static PetscErrorCode ISSetBlockSize_General(IS is, PetscInt bs) {
   PetscFunctionBegin;
   PetscCall(PetscLayoutSetBlockSize(is->map, bs));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISContiguousLocal_General(IS is, PetscInt gstart, PetscInt gend, PetscInt *start, PetscBool *contig)
-{
+static PetscErrorCode ISContiguousLocal_General(IS is, PetscInt gstart, PetscInt gend, PetscInt *start, PetscBool *contig) {
   IS_General *sub = (IS_General *)is->data;
   PetscInt    n, i, p;
 
@@ -95,8 +88,7 @@ nomatch:
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISLocate_General(IS is, PetscInt key, PetscInt *location)
-{
+static PetscErrorCode ISLocate_General(IS is, PetscInt key, PetscInt *location) {
   IS_General *sub = (IS_General *)is->data;
   PetscInt    numIdx, i;
   PetscBool   sorted;
@@ -119,8 +111,7 @@ static PetscErrorCode ISLocate_General(IS is, PetscInt key, PetscInt *location)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISGetIndices_General(IS in, const PetscInt *idx[])
-{
+static PetscErrorCode ISGetIndices_General(IS in, const PetscInt *idx[]) {
   IS_General *sub = (IS_General *)in->data;
 
   PetscFunctionBegin;
@@ -128,8 +119,7 @@ static PetscErrorCode ISGetIndices_General(IS in, const PetscInt *idx[])
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISRestoreIndices_General(IS in, const PetscInt *idx[])
-{
+static PetscErrorCode ISRestoreIndices_General(IS in, const PetscInt *idx[]) {
   IS_General *sub = (IS_General *)in->data;
 
   PetscFunctionBegin;
@@ -138,8 +128,7 @@ static PetscErrorCode ISRestoreIndices_General(IS in, const PetscInt *idx[])
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISInvertPermutation_General(IS is, PetscInt nlocal, IS *isout)
-{
+static PetscErrorCode ISInvertPermutation_General(IS is, PetscInt nlocal, IS *isout) {
   IS_General     *sub = (IS_General *)is->data;
   PetscInt        i, *ii, n, nstart;
   const PetscInt *idx = sub->idx;
@@ -180,8 +169,7 @@ static PetscErrorCode ISInvertPermutation_General(IS is, PetscInt nlocal, IS *is
 }
 
 #if defined(PETSC_HAVE_HDF5)
-static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
-{
+static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer) {
   PetscViewer_HDF5 *hdf5 = (PetscViewer_HDF5 *)viewer->data;
   hid_t             filespace;  /* file dataspace identifier */
   hid_t             chunkspace; /* chunk dataset property identifier */
@@ -199,7 +187,7 @@ static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
   PetscFunctionBegin;
   PetscCall(ISGetBlockSize(is, &bs));
   bs = PetscMax(bs, 1); /* If N = 0, bs  = 0 as well */
-  PetscCall(PetscViewerHDF5OpenGroup(viewer, NULL, &file_id, &group));
+  PetscCall(PetscViewerHDF5OpenGroup(viewer, &file_id, &group));
   PetscCall(PetscViewerHDF5IsTimestepping(viewer, &timestepping));
   if (timestepping) PetscCall(PetscViewerHDF5GetTimestep(viewer, &timestep));
 
@@ -240,19 +228,19 @@ static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
   /* hdf5 chunks must be less than 4GB */
   if (chunksize > PETSC_HDF5_MAX_CHUNKSIZE / 64) {
     if (bs >= 1) {
-      if (chunkDims[dim - 2] > (hsize_t)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64))) chunkDims[dim - 2] = (hsize_t)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64));
-      if (chunkDims[dim - 1] > (hsize_t)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64))) chunkDims[dim - 1] = (hsize_t)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64));
+      if (chunkDims[dim - 2] > (PetscInt)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64))) chunkDims[dim - 2] = (PetscInt)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64));
+      if (chunkDims[dim - 1] > (PetscInt)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64))) chunkDims[dim - 1] = (PetscInt)PetscSqrtReal((PetscReal)(PETSC_HDF5_MAX_CHUNKSIZE / 64));
     } else {
       chunkDims[dim - 1] = PETSC_HDF5_MAX_CHUNKSIZE / 64;
     }
   }
   PetscCallHDF5Return(filespace, H5Screate_simple, (dim, dims, maxDims));
 
-  #if defined(PETSC_USE_64BIT_INDICES)
+#if defined(PETSC_USE_64BIT_INDICES)
   inttype = H5T_NATIVE_LLONG;
-  #else
+#else
   inttype = H5T_NATIVE_INT;
-  #endif
+#endif
 
   /* Create the dataset with default properties and close filespace */
   PetscCall(PetscObjectGetName((PetscObject)is, &isname));
@@ -326,8 +314,7 @@ static PetscErrorCode ISView_General_HDF5(IS is, PetscViewer viewer)
 }
 #endif
 
-static PetscErrorCode ISView_General(IS is, PetscViewer viewer)
-{
+static PetscErrorCode ISView_General(IS is, PetscViewer viewer) {
   IS_General *sub = (IS_General *)is->data;
   PetscInt    i, n, *idx = sub->idx;
   PetscBool   iascii, isbinary, ishdf5;
@@ -394,8 +381,7 @@ static PetscErrorCode ISView_General(IS is, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISSort_General(IS is)
-{
+static PetscErrorCode ISSort_General(IS is) {
   IS_General *sub = (IS_General *)is->data;
   PetscInt    n;
 
@@ -405,8 +391,7 @@ static PetscErrorCode ISSort_General(IS is)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISSortRemoveDups_General(IS is)
-{
+static PetscErrorCode ISSortRemoveDups_General(IS is) {
   IS_General *sub = (IS_General *)is->data;
   PetscLayout map;
   PetscInt    n;
@@ -426,15 +411,13 @@ static PetscErrorCode ISSortRemoveDups_General(IS is)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISSorted_General(IS is, PetscBool *flg)
-{
+static PetscErrorCode ISSorted_General(IS is, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(ISGetInfo(is, IS_SORTED, IS_LOCAL, PETSC_TRUE, flg));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ISToGeneral_General(IS is)
-{
+PetscErrorCode ISToGeneral_General(IS is) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
@@ -447,8 +430,7 @@ static struct _ISOps myops = {ISGetIndices_General, ISRestoreIndices_General, IS
 
 PETSC_INTERN PetscErrorCode ISSetUp_General(IS);
 
-PetscErrorCode ISSetUp_General(IS is)
-{
+PetscErrorCode ISSetUp_General(IS is) {
   IS_General     *sub = (IS_General *)is->data;
   const PetscInt *idx = sub->idx;
   PetscInt        n, i, min, max;
@@ -472,7 +454,8 @@ PetscErrorCode ISSetUp_General(IS is)
 }
 
 /*@
-   ISCreateGeneral - Creates a data structure for an index set containing a list of integers.
+   ISCreateGeneral - Creates a data structure for an index set
+   containing a list of integers.
 
    Collective
 
@@ -480,26 +463,22 @@ PetscErrorCode ISSetUp_General(IS is)
 +  comm - the MPI communicator
 .  n - the length of the index set
 .  idx - the list of integers
--  mode - `PETSC_COPY_VALUES`, `PETSC_OWN_POINTER`, or `PETSC_USE_POINTER`; see `PetscCopyMode` for meaning of this flag.
+-  mode - PETSC_COPY_VALUES, PETSC_OWN_POINTER, or PETSC_USE_POINTER; see PetscCopyMode for meaning of this flag.
 
    Output Parameter:
 .  is - the new index set
 
-   Level: beginner
-
    Notes:
-   When the communicator is not `MPI_COMM_SELF`, the operations on IS are NOT
-   conceptually the same as `MPI_Group` operations. The `IS` are then
+   When the communicator is not MPI_COMM_SELF, the operations on IS are NOT
+   conceptually the same as MPI_Group operations. The IS are then
    distributed sets of indices and thus certain operations on them are
    collective.
 
-   Use `ISGeneralSetIndices()` to provide indices to an already existing `IS` of `ISType` `ISGENERAL`
+   Level: beginner
 
-.seealso: [](sec_scatter), `IS`, `ISGENERAL`, `ISCreateStride()`, `ISCreateBlock()`, `ISAllGather()`, `PETSC_COPY_VALUES`, `PETSC_OWN_POINTER`,
-          `PETSC_USE_POINTER`, `PetscCopyMode`, `ISGeneralSetIndicesFromMask()`
+.seealso: `ISCreateStride()`, `ISCreateBlock()`, `ISAllGather()`, `PETSC_COPY_VALUES`, `PETSC_OWN_POINTER`, `PETSC_USE_POINTER`, `PetscCopyMode`
 @*/
-PetscErrorCode ISCreateGeneral(MPI_Comm comm, PetscInt n, const PetscInt idx[], PetscCopyMode mode, IS *is)
-{
+PetscErrorCode ISCreateGeneral(MPI_Comm comm, PetscInt n, const PetscInt idx[], PetscCopyMode mode, IS *is) {
   PetscFunctionBegin;
   PetscCall(ISCreate(comm, is));
   PetscCall(ISSetType(*is, ISGENERAL));
@@ -508,25 +487,21 @@ PetscErrorCode ISCreateGeneral(MPI_Comm comm, PetscInt n, const PetscInt idx[], 
 }
 
 /*@
-   ISGeneralSetIndices - Sets the indices for an `ISGENERAL` index set
+   ISGeneralSetIndices - Sets the indices for an ISGENERAL index set
 
-   Logically Collective on is
+   Collective on IS
 
    Input Parameters:
 +  is - the index set
 .  n - the length of the index set
 .  idx - the list of integers
--  mode - see `PetscCopyMode` for meaning of this flag.
+-  mode - see PetscCopyMode for meaning of this flag.
 
    Level: beginner
 
-   Note:
-   Use `ISCreateGeneral()` to create the `IS` and set its indices in a single function call
-
-.seealso: [](sec_scatter), `IS`, `ISBLOCK`, `ISCreateGeneral()`, `ISGeneralSetIndicesFromMask()`, `ISBlockSetIndices()`, `ISGENERAL`, `PetscCopyMode`
+.seealso: `ISCreateGeneral()`, `ISGeneralSetIndicesFromMask()`, `ISBlockSetIndices()`, `ISGENERAL`, `PetscCopyMode`
 @*/
-PetscErrorCode ISGeneralSetIndices(IS is, PetscInt n, const PetscInt idx[], PetscCopyMode mode)
-{
+PetscErrorCode ISGeneralSetIndices(IS is, PetscInt n, const PetscInt idx[], PetscCopyMode mode) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is, IS_CLASSID, 1);
   if (n) PetscValidIntPointer(idx, 3);
@@ -535,8 +510,7 @@ PetscErrorCode ISGeneralSetIndices(IS is, PetscInt n, const PetscInt idx[], Pets
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ISGeneralSetIndices_General(IS is, PetscInt n, const PetscInt idx[], PetscCopyMode mode)
-{
+PetscErrorCode ISGeneralSetIndices_General(IS is, PetscInt n, const PetscInt idx[], PetscCopyMode mode) {
   PetscLayout map;
   IS_General *sub = (IS_General *)is->data;
 
@@ -551,10 +525,12 @@ PetscErrorCode ISGeneralSetIndices_General(IS is, PetscInt n, const PetscInt idx
   if (sub->allocated) PetscCall(PetscFree(sub->idx));
   if (mode == PETSC_COPY_VALUES) {
     PetscCall(PetscMalloc1(n, &sub->idx));
+    PetscCall(PetscLogObjectMemory((PetscObject)is, n * sizeof(PetscInt)));
     PetscCall(PetscArraycpy(sub->idx, idx, n));
     sub->allocated = PETSC_TRUE;
   } else if (mode == PETSC_OWN_POINTER) {
-    sub->idx       = (PetscInt *)idx;
+    sub->idx = (PetscInt *)idx;
+    PetscCall(PetscLogObjectMemory((PetscObject)is, n * sizeof(PetscInt)));
     sub->allocated = PETSC_TRUE;
   } else {
     sub->idx       = (PetscInt *)idx;
@@ -567,36 +543,31 @@ PetscErrorCode ISGeneralSetIndices_General(IS is, PetscInt n, const PetscInt idx
 }
 
 /*@
-   ISGeneralSetIndicesFromMask - Sets the indices for an `ISGENERAL` index set using a boolean mask
+   ISGeneralSetIndicesFromMask - Sets the indices for an ISGENERAL index set using a boolean mask
 
-   Collective on is
+   Collective on IS
 
    Input Parameters:
 +  is - the index set
 .  rstart - the range start index (inclusive)
 .  rend - the range end index (exclusive)
--  mask - the boolean mask array of length rend-rstart, indices will be set for each `PETSC_TRUE` value in the array
+-  mask - the boolean mask array of length rend-rstart, indices will be set for each PETSC_TRUE value in the array
 
-   Level: beginner
-
-   Note:
+   Notes:
    The mask array may be freed by the user after this call.
 
    Example:
-.vb
-   PetscBool mask[] = {PETSC_FALSE, PETSC_TRUE, PETSC_FALSE, PETSC_FALSE, PETSC_TRUE};
-   ISGeneralSetIndicesFromMask(is,10,15,mask);
-.ve
-   will feed the `IS` with indices
-.vb
-  {11, 14}
-.ve
-  locally.
+$  PetscBool mask[] = {PETSC_FALSE, PETSC_TRUE, PETSC_FALSE, PETSC_FALSE, PETSC_TRUE};
+$  ISGeneralSetIndicesFromMask(is,10,15,mask);
+   will feed the IS with indices
+$  {11, 14}
+   locally.
 
-.seealso: [](sec_scatter), `IS`, `ISCreateGeneral()`, `ISGeneralSetIndices()`, `ISGENERAL`
+   Level: beginner
+
+.seealso: `ISCreateGeneral()`, `ISGeneralSetIndices()`, `ISGENERAL`
 @*/
-PetscErrorCode ISGeneralSetIndicesFromMask(IS is, PetscInt rstart, PetscInt rend, const PetscBool mask[])
-{
+PetscErrorCode ISGeneralSetIndicesFromMask(IS is, PetscInt rstart, PetscInt rend, const PetscBool mask[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is, IS_CLASSID, 1);
   if (rend - rstart) PetscValidBoolPointer(mask, 4);
@@ -605,8 +576,7 @@ PetscErrorCode ISGeneralSetIndicesFromMask(IS is, PetscInt rstart, PetscInt rend
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ISGeneralSetIndicesFromMask_General(IS is, PetscInt rstart, PetscInt rend, const PetscBool mask[])
-{
+PetscErrorCode ISGeneralSetIndicesFromMask_General(IS is, PetscInt rstart, PetscInt rend, const PetscBool mask[]) {
   PetscInt  i, nidx;
   PetscInt *idx;
 
@@ -624,8 +594,7 @@ PetscErrorCode ISGeneralSetIndicesFromMask_General(IS is, PetscInt rstart, Petsc
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ISGeneralFilter_General(IS is, PetscInt start, PetscInt end)
-{
+static PetscErrorCode ISGeneralFilter_General(IS is, PetscInt start, PetscInt end) {
   IS_General *sub = (IS_General *)is->data;
   PetscInt   *idx = sub->idx, *idxnew;
   PetscInt    i, n = is->map->n, nnew = 0, o;
@@ -642,9 +611,9 @@ static PetscErrorCode ISGeneralFilter_General(IS is, PetscInt start, PetscInt en
 }
 
 /*@
-   ISGeneralFilter - Remove all indices outside of [start, end) from an `ISGENERAL`
+   ISGeneralFilter - Remove all indices outside of [start, end)
 
-   Collective on is
+   Collective on IS
 
    Input Parameters:
 +  is - the index set
@@ -653,10 +622,9 @@ static PetscErrorCode ISGeneralFilter_General(IS is, PetscInt start, PetscInt en
 
    Level: beginner
 
-.seealso: [](sec_scatter), `IS`, `ISGENERAL`, `ISCreateGeneral()`, `ISGeneralSetIndices()`
+.seealso: `ISCreateGeneral()`, `ISGeneralSetIndices()`
 @*/
-PetscErrorCode ISGeneralFilter(IS is, PetscInt start, PetscInt end)
-{
+PetscErrorCode ISGeneralFilter(IS is, PetscInt start, PetscInt end) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is, IS_CLASSID, 1);
   PetscCall(ISClearInfoCache(is, PETSC_FALSE));
@@ -664,12 +632,11 @@ PetscErrorCode ISGeneralFilter(IS is, PetscInt start, PetscInt end)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode ISCreate_General(IS is)
-{
+PETSC_EXTERN PetscErrorCode ISCreate_General(IS is) {
   IS_General *sub;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&sub));
+  PetscCall(PetscNewLog(is, &sub));
   is->data = (void *)sub;
   PetscCall(PetscMemcpy(is->ops, &myops, sizeof(myops)));
   PetscCall(PetscObjectComposeFunction((PetscObject)is, "ISGeneralSetIndices_C", ISGeneralSetIndices_General));

@@ -7,8 +7,7 @@ static char help[] = "Tests DMCreateMatrix for DMComposite.\n\n";
 #include <petscdmcomposite.h>
 #include <petscpf.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   ISLocalToGlobalMapping *ltog, ltogs;
   PetscMPIInt             size;
   DM                      packer;

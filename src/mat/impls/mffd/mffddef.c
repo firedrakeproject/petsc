@@ -58,8 +58,7 @@ typedef struct {
 .  h - the scale computed
 
 */
-static PetscErrorCode MatMFFDCompute_DS(MatMFFD ctx, Vec U, Vec a, PetscScalar *h, PetscBool *zeroa)
-{
+static PetscErrorCode MatMFFDCompute_DS(MatMFFD ctx, Vec U, Vec a, PetscScalar *h, PetscBool *zeroa) {
   MatMFFD_DS *hctx = (MatMFFD_DS *)ctx->hctx;
   PetscReal   nrm, sum, umin = hctx->umin;
   PetscScalar dot;
@@ -108,8 +107,7 @@ static PetscErrorCode MatMFFDCompute_DS(MatMFFD ctx, Vec U, Vec a, PetscScalar *
 +  ctx - the matrix free context
 -  viewer - the PETSc viewer
 */
-static PetscErrorCode MatMFFDView_DS(MatMFFD ctx, PetscViewer viewer)
-{
+static PetscErrorCode MatMFFDView_DS(MatMFFD ctx, PetscViewer viewer) {
   MatMFFD_DS *hctx = (MatMFFD_DS *)ctx->hctx;
   PetscBool   iascii;
 
@@ -132,8 +130,7 @@ static PetscErrorCode MatMFFDView_DS(MatMFFD ctx, PetscViewer viewer)
 .  ctx - the matrix free context
 
 */
-static PetscErrorCode MatMFFDSetFromOptions_DS(MatMFFD ctx, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode MatMFFDSetFromOptions_DS(MatMFFD ctx, PetscOptionItems *PetscOptionsObject) {
   MatMFFD_DS *hctx = (MatMFFD_DS *)ctx->hctx;
 
   PetscFunctionBegin;
@@ -153,8 +150,7 @@ static PetscErrorCode MatMFFDSetFromOptions_DS(MatMFFD ctx, PetscOptionItems *Pe
    Note:
    Does not free the ctx, that is handled by the calling routine
 */
-static PetscErrorCode MatMFFDDestroy_DS(MatMFFD ctx)
-{
+static PetscErrorCode MatMFFDDestroy_DS(MatMFFD ctx) {
   PetscFunctionBegin;
   PetscCall(PetscFree(ctx->hctx));
   PetscFunctionReturn(0);
@@ -164,8 +160,7 @@ static PetscErrorCode MatMFFDDestroy_DS(MatMFFD ctx)
    The following two routines use the PetscObjectCompose() and PetscObjectQuery()
    mechanism to allow the user to change the Umin parameter used in this method.
 */
-PetscErrorCode MatMFFDDSSetUmin_DS(Mat mat, PetscReal umin)
-{
+PetscErrorCode MatMFFDDSSetUmin_DS(Mat mat, PetscReal umin) {
   MatMFFD     ctx = NULL;
   MatMFFD_DS *hctx;
 
@@ -194,8 +189,7 @@ PetscErrorCode MatMFFDDSSetUmin_DS(Mat mat, PetscReal umin)
 
 .seealso: `MATMFFD`, `MatMFFDSetFunctionError()`, `MatCreateSNESMF()`
 @*/
-PetscErrorCode MatMFFDDSSetUmin(Mat A, PetscReal umin)
-{
+PetscErrorCode MatMFFDDSSetUmin(Mat A, PetscReal umin) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscTryMethod(A, "MatMFFDDSSetUmin_C", (Mat, PetscReal), (A, umin));
@@ -228,14 +222,13 @@ PetscErrorCode MatMFFDDSSetUmin(Mat A, PetscReal umin)
 
 .seealso: `MATMFFD`, `MATMFFD_WP`, `MatCreateMFFD()`, `MatCreateSNESMF()`, `MATMFFD_WP`, `MatMFFDDSSetUmin()`
 M*/
-PETSC_EXTERN PetscErrorCode MatCreateMFFD_DS(MatMFFD ctx)
-{
+PETSC_EXTERN PetscErrorCode MatCreateMFFD_DS(MatMFFD ctx) {
   MatMFFD_DS *hctx;
 
   PetscFunctionBegin;
   /* allocate my own private data structure */
-  PetscCall(PetscNew(&hctx));
-  ctx->hctx = (void *)hctx;
+  PetscCall(PetscNewLog(ctx, &hctx));
+  ctx->hctx  = (void *)hctx;
   /* set a default for my parameter */
   hctx->umin = 1.e-6;
 

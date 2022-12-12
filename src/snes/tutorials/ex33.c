@@ -30,8 +30,7 @@ typedef struct {
    Output Parameter:
    Kappa - vector
  */
-PetscErrorCode FormPermeability(DM da, Vec Kappa, AppCtx *user)
-{
+PetscErrorCode FormPermeability(DM da, Vec Kappa, AppCtx *user) {
   DM           cda;
   Vec          c;
   PetscScalar *K;
@@ -61,8 +60,7 @@ PetscErrorCode FormPermeability(DM da, Vec Kappa, AppCtx *user)
 /*
    FormFunctionLocal - Evaluates nonlinear residual, F(x) on local process patch
 */
-PetscErrorCode FormFunctionLocal(DMDALocalInfo *info, Field *u, Field *f, AppCtx *user)
-{
+PetscErrorCode FormFunctionLocal(DMDALocalInfo *info, Field *u, Field *f, AppCtx *user) {
   Vec          L;
   PetscReal    phi        = user->phi;
   PetscReal    dt         = user->dt;
@@ -109,8 +107,7 @@ PetscErrorCode FormFunctionLocal(DMDALocalInfo *info, Field *u, Field *f, AppCtx
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   SNES      snes;    /* nonlinear solver */
   DM        da;      /* grid */
   Vec       u;       /* solution vector */

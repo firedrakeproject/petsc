@@ -1,9 +1,8 @@
 static char help[] = "Test VecScatterCreateToZero, VecScatterCreateToAll\n\n";
 
 #include <petscvec.h>
-int main(int argc, char **argv)
-{
-  PetscInt    i, N = 10, n = PETSC_DECIDE, low, high, onlylocal = -1;
+int main(int argc, char **argv) {
+  PetscInt    i, N = 10, low, high;
   PetscMPIInt size, rank;
   Vec         x, y;
   VecScatter  vscat;
@@ -12,15 +11,10 @@ int main(int argc, char **argv)
   PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &size));
   PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
-  PetscCall(PetscOptionsGetInt(NULL, NULL, "-n", &N, NULL));
-
-  /* Trigger special case in VecScatterCreateToAll to deal with the one-to-all pattern */
-  PetscCall(PetscOptionsGetInt(NULL, NULL, "-onlylocal", &onlylocal, NULL));
-  if (onlylocal >= 0 && onlylocal < size) n = (rank == onlylocal ? N : 0);
 
   PetscCall(VecCreate(PETSC_COMM_WORLD, &x));
   PetscCall(VecSetFromOptions(x));
-  PetscCall(VecSetSizes(x, n, N));
+  PetscCall(VecSetSizes(x, PETSC_DECIDE, N));
   PetscCall(VecGetOwnershipRange(x, &low, &high));
   PetscCall(PetscObjectSetName((PetscObject)x, "x"));
 
@@ -134,7 +128,7 @@ int main(int argc, char **argv)
       nsize: 3
       # Exact numbers really matter here
       diff_args: -j
-      filter: grep -v "type" | grep -v "Process "
+      filter: grep -v "type"
       output_file: output/ex8_2.out
 
       test:
@@ -154,34 +148,6 @@ int main(int argc, char **argv)
 
       test:
         suffix: 2_cuda_aware_mpi
-        args: -vec_type cuda
-        requires: cuda defined(PETSC_HAVE_MPI_GPU_AWARE)
-
-   testset:
-      # trigger one-to-all pattern in Allgatherv
-      nsize: 3
-      diff_args: -j
-      filter: grep -v "type" | grep -v "Process "
-      output_file: output/ex8_3.out
-      args: -onlylocal 1
-
-      test:
-        suffix: 2_standard_onetoall
-
-      test:
-        suffix: 2_cuda_onetoall
-        # sf_backend cuda is not needed if compiling only with cuda
-        args: -vec_type cuda -sf_backend cuda
-        requires: cuda
-
-      test:
-        suffix: 2_hip_onetoall
-        # sf_backend hip is not needed if compiling only with hip
-        args: -vec_type hip -sf_backend hip
-        requires: hip
-
-      test:
-        suffix: 2_cuda_aware_mpi_onetoall
         args: -vec_type cuda
         requires: cuda defined(PETSC_HAVE_MPI_GPU_AWARE)
 

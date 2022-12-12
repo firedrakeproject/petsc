@@ -1,7 +1,7 @@
 /*
    Private data structure for ILU preconditioner.
 */
-#ifndef __ILU_H
+#if !defined(__ILU_H)
 #define __ILU_H
 
 #include <../src/ksp/pc/impls/factor/factor.h>

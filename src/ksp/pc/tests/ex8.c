@@ -4,8 +4,7 @@ static char help[] = "Tests PCView() before PCSetup() with -pc_type lu.\n\n";
 #include <petscmat.h>
 #include <petscpc.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat A;
   PC  pc;
 

@@ -40,13 +40,11 @@ static const char help[] = "1D periodic Finite Volume solver in slope-limiter fo
 #include "finitevolume1d.h"
 #include <petsc/private/kernels/blockinvert.h>
 
-static inline PetscReal RangeMod(PetscReal a, PetscReal xmin, PetscReal xmax)
-{
+static inline PetscReal RangeMod(PetscReal a, PetscReal xmin, PetscReal xmax) {
   PetscReal range = xmax - xmin;
   return xmin + PetscFmodReal(range + PetscFmodReal(a, range), range);
 }
-static inline PetscReal MaxAbs(PetscReal a, PetscReal b)
-{
+static inline PetscReal MaxAbs(PetscReal a, PetscReal b) {
   return (PetscAbs(a) > PetscAbs(b)) ? a : b;
 }
 /* --------------------------------- Advection ----------------------------------- */
@@ -54,8 +52,7 @@ typedef struct {
   PetscReal a; /* advective velocity */
 } AdvectCtx;
 
-static PetscErrorCode PhysicsRiemann_Advect(void *vctx, PetscInt m, const PetscScalar *uL, const PetscScalar *uR, PetscScalar *flux, PetscReal *maxspeed)
-{
+static PetscErrorCode PhysicsRiemann_Advect(void *vctx, PetscInt m, const PetscScalar *uL, const PetscScalar *uR, PetscScalar *flux, PetscReal *maxspeed) {
   AdvectCtx *ctx = (AdvectCtx *)vctx;
   PetscReal  speed;
 
@@ -66,8 +63,7 @@ static PetscErrorCode PhysicsRiemann_Advect(void *vctx, PetscInt m, const PetscS
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsCharacteristic_Advect(void *vctx, PetscInt m, const PetscScalar *u, PetscScalar *X, PetscScalar *Xi, PetscReal *speeds)
-{
+static PetscErrorCode PhysicsCharacteristic_Advect(void *vctx, PetscInt m, const PetscScalar *u, PetscScalar *X, PetscScalar *Xi, PetscReal *speeds) {
   AdvectCtx *ctx = (AdvectCtx *)vctx;
 
   PetscFunctionBeginUser;
@@ -77,55 +73,31 @@ static PetscErrorCode PhysicsCharacteristic_Advect(void *vctx, PetscInt m, const
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsSample_Advect(void *vctx, PetscInt initial, FVBCType bctype, PetscReal xmin, PetscReal xmax, PetscReal t, PetscReal x, PetscReal *u)
-{
+static PetscErrorCode PhysicsSample_Advect(void *vctx, PetscInt initial, FVBCType bctype, PetscReal xmin, PetscReal xmax, PetscReal t, PetscReal x, PetscReal *u) {
   AdvectCtx *ctx = (AdvectCtx *)vctx;
   PetscReal  a   = ctx->a, x0;
 
   PetscFunctionBeginUser;
   switch (bctype) {
-  case FVBC_OUTFLOW:
-    x0 = x - a * t;
-    break;
-  case FVBC_PERIODIC:
-    x0 = RangeMod(x - a * t, xmin, xmax);
-    break;
-  default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown BCType");
+  case FVBC_OUTFLOW: x0 = x - a * t; break;
+  case FVBC_PERIODIC: x0 = RangeMod(x - a * t, xmin, xmax); break;
+  default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown BCType");
   }
   switch (initial) {
-  case 0:
-    u[0] = (x0 < 0) ? 1 : -1;
-    break;
-  case 1:
-    u[0] = (x0 < 0) ? -1 : 1;
-    break;
-  case 2:
-    u[0] = (0 < x0 && x0 < 1) ? 1 : 0;
-    break;
-  case 3:
-    u[0] = PetscSinReal(2 * PETSC_PI * x0);
-    break;
-  case 4:
-    u[0] = PetscAbs(x0);
-    break;
-  case 5:
-    u[0] = (x0 < 0 || x0 > 0.5) ? 0 : PetscSqr(PetscSinReal(2 * PETSC_PI * x0));
-    break;
-  case 6:
-    u[0] = (x0 < 0) ? 0 : ((x0 < 1) ? x0 : ((x0 < 2) ? 2 - x0 : 0));
-    break;
-  case 7:
-    u[0] = PetscPowReal(PetscSinReal(PETSC_PI * x0), 10.0);
-    break;
-  default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
+  case 0: u[0] = (x0 < 0) ? 1 : -1; break;
+  case 1: u[0] = (x0 < 0) ? -1 : 1; break;
+  case 2: u[0] = (0 < x0 && x0 < 1) ? 1 : 0; break;
+  case 3: u[0] = PetscSinReal(2 * PETSC_PI * x0); break;
+  case 4: u[0] = PetscAbs(x0); break;
+  case 5: u[0] = (x0 < 0 || x0 > 0.5) ? 0 : PetscSqr(PetscSinReal(2 * PETSC_PI * x0)); break;
+  case 6: u[0] = (x0 < 0) ? 0 : ((x0 < 1) ? x0 : ((x0 < 2) ? 2 - x0 : 0)); break;
+  case 7: u[0] = PetscPowReal(PetscSinReal(PETSC_PI * x0), 10.0); break;
+  default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
   }
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsCreate_Advect(FVCtx *ctx)
-{
+static PetscErrorCode PhysicsCreate_Advect(FVCtx *ctx) {
   AdvectCtx *user;
 
   PetscFunctionBeginUser;
@@ -150,14 +122,12 @@ typedef struct {
   PetscReal gravity;
 } ShallowCtx;
 
-static inline void ShallowFlux(ShallowCtx *phys, const PetscScalar *u, PetscScalar *f)
-{
+static inline void ShallowFlux(ShallowCtx *phys, const PetscScalar *u, PetscScalar *f) {
   f[0] = u[1];
   f[1] = PetscSqr(u[1]) / u[0] + 0.5 * phys->gravity * PetscSqr(u[0]);
 }
 
-static PetscErrorCode PhysicsRiemann_Shallow_Exact(void *vctx, PetscInt m, const PetscScalar *uL, const PetscScalar *uR, PetscScalar *flux, PetscReal *maxspeed)
-{
+static PetscErrorCode PhysicsRiemann_Shallow_Exact(void *vctx, PetscInt m, const PetscScalar *uL, const PetscScalar *uR, PetscScalar *flux, PetscReal *maxspeed) {
   ShallowCtx *phys = (ShallowCtx *)vctx;
   PetscScalar g    = phys->gravity, ustar[2], cL, cR, c, cstar;
   struct {
@@ -230,8 +200,7 @@ converged:
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsRiemann_Shallow_Rusanov(void *vctx, PetscInt m, const PetscScalar *uL, const PetscScalar *uR, PetscScalar *flux, PetscReal *maxspeed)
-{
+static PetscErrorCode PhysicsRiemann_Shallow_Rusanov(void *vctx, PetscInt m, const PetscScalar *uL, const PetscScalar *uR, PetscScalar *flux, PetscReal *maxspeed) {
   ShallowCtx *phys = (ShallowCtx *)vctx;
   PetscScalar g    = phys->gravity, fL[2], fR[2], s;
   struct {
@@ -258,8 +227,7 @@ static PetscErrorCode PhysicsRiemann_Shallow_Rusanov(void *vctx, PetscInt m, con
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsCharacteristic_Conservative(void *vctx, PetscInt m, const PetscScalar *u, PetscScalar *X, PetscScalar *Xi, PetscReal *speeds)
-{
+static PetscErrorCode PhysicsCharacteristic_Conservative(void *vctx, PetscInt m, const PetscScalar *u, PetscScalar *X, PetscScalar *Xi, PetscReal *speeds) {
   PetscInt i, j;
 
   PetscFunctionBeginUser;
@@ -270,8 +238,7 @@ static PetscErrorCode PhysicsCharacteristic_Conservative(void *vctx, PetscInt m,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsCharacteristic_Shallow(void *vctx, PetscInt m, const PetscScalar *u, PetscScalar *X, PetscScalar *Xi, PetscReal *speeds)
-{
+static PetscErrorCode PhysicsCharacteristic_Shallow(void *vctx, PetscInt m, const PetscScalar *u, PetscScalar *X, PetscScalar *Xi, PetscReal *speeds) {
   ShallowCtx *phys = (ShallowCtx *)vctx;
   PetscReal   c;
   PetscReal   tol = 1e-6;
@@ -298,8 +265,7 @@ static PetscErrorCode PhysicsCharacteristic_Shallow(void *vctx, PetscInt m, cons
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsSample_Shallow(void *vctx, PetscInt initial, FVBCType bctype, PetscReal xmin, PetscReal xmax, PetscReal t, PetscReal x, PetscReal *u)
-{
+static PetscErrorCode PhysicsSample_Shallow(void *vctx, PetscInt initial, FVBCType bctype, PetscReal xmin, PetscReal xmax, PetscReal t, PetscReal x, PetscReal *u) {
   PetscFunctionBeginUser;
   PetscCheck(t <= 0, PETSC_COMM_SELF, PETSC_ERR_SUP, "Exact solutions not implemented for t > 0");
   switch (initial) {
@@ -355,16 +321,14 @@ static PetscErrorCode PhysicsSample_Shallow(void *vctx, PetscInt initial, FVBCTy
       u[1] = 0.0;
     }
     break;
-  default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
+  default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
   }
   PetscFunctionReturn(0);
 }
 
 /* Implements inflow conditions for the given initial conditions. Which conditions are actually enforced depends on
    on the results of PhysicsSetInflowType_Shallow. */
-static PetscErrorCode PhysicsInflow_Shallow(void *vctx, PetscReal t, PetscReal x, PetscReal *u)
-{
+static PetscErrorCode PhysicsInflow_Shallow(void *vctx, PetscReal t, PetscReal x, PetscReal *u) {
   FVCtx *ctx = (FVCtx *)vctx;
 
   PetscFunctionBeginUser;
@@ -399,16 +363,14 @@ static PetscErrorCode PhysicsInflow_Shallow(void *vctx, PetscReal t, PetscReal x
       u[2] = 0;
       u[3] = -1.0; /* Right boundary conditions */
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
     }
   }
   PetscFunctionReturn(0);
 }
 
 /* Selects which boundary conditions are marked as inflow and which as outflow when FVBC_INFLOW is selected. */
-static PetscErrorCode PhysicsSetInflowType_Shallow(FVCtx *ctx)
-{
+static PetscErrorCode PhysicsSetInflowType_Shallow(FVCtx *ctx) {
   PetscFunctionBeginUser;
   switch (ctx->initial) {
   case 0:
@@ -425,14 +387,12 @@ static PetscErrorCode PhysicsSetInflowType_Shallow(FVCtx *ctx)
     ctx->physics2.bcinflowindex[2] = PETSC_FALSE;
     ctx->physics2.bcinflowindex[3] = PETSC_TRUE;
     break;
-  default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
+  default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "unknown initial condition");
   }
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PhysicsCreate_Shallow(FVCtx *ctx)
-{
+static PetscErrorCode PhysicsCreate_Shallow(FVCtx *ctx) {
   ShallowCtx       *user;
   PetscFunctionList rlist = 0, rclist = 0;
   char              rname[256] = "rusanov", rcname[256] = "characteristic";
@@ -471,8 +431,7 @@ static PetscErrorCode PhysicsCreate_Shallow(FVCtx *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FVSample_2WaySplit(FVCtx *ctx, DM da, PetscReal time, Vec U)
-{
+PetscErrorCode FVSample_2WaySplit(FVCtx *ctx, DM da, PetscReal time, Vec U) {
   PetscScalar   *u, *uj, xj, xi;
   PetscInt       i, j, k, dof, xs, xm, Mx;
   const PetscInt N = 200;
@@ -521,8 +480,7 @@ PetscErrorCode FVSample_2WaySplit(FVCtx *ctx, DM da, PetscReal time, Vec U)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SolutionErrorNorms_2WaySplit(FVCtx *ctx, DM da, PetscReal t, Vec X, PetscReal *nrm1)
-{
+static PetscErrorCode SolutionErrorNorms_2WaySplit(FVCtx *ctx, DM da, PetscReal t, Vec X, PetscReal *nrm1) {
   Vec                Y;
   PetscInt           i, Mx;
   const PetscScalar *ptr_X, *ptr_Y;
@@ -546,8 +504,7 @@ static PetscErrorCode SolutionErrorNorms_2WaySplit(FVCtx *ctx, DM da, PetscReal 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FVRHSFunction_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx)
-{
+PetscErrorCode FVRHSFunction_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx) {
   FVCtx       *ctx = (FVCtx *)vctx;
   PetscInt     i, j, k, Mx, dof, xs, xm, sf = ctx->sf, fs = ctx->fs;
   PetscReal    hxf, hxs, cfl_idt = 0;
@@ -723,8 +680,7 @@ PetscErrorCode FVRHSFunction_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void
 }
 
 /* --------------------------------- Finite Volume Solver for slow components ----------------------------------- */
-PetscErrorCode FVRHSFunctionslow_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx)
-{
+PetscErrorCode FVRHSFunctionslow_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx) {
   FVCtx       *ctx = (FVCtx *)vctx;
   PetscInt     i, j, k, Mx, dof, xs, xm, islow = 0, sf = ctx->sf, fs = ctx->fs, lsbwidth = ctx->lsbwidth, rsbwidth = ctx->rsbwidth;
   PetscReal    hxs, hxf, cfl_idt = 0;
@@ -874,8 +830,7 @@ PetscErrorCode FVRHSFunctionslow_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FVRHSFunctionslowbuffer_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx)
-{
+PetscErrorCode FVRHSFunctionslowbuffer_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx) {
   FVCtx       *ctx = (FVCtx *)vctx;
   PetscInt     i, j, k, Mx, dof, xs, xm, islow = 0, sf = ctx->sf, fs = ctx->fs, lsbwidth = ctx->lsbwidth, rsbwidth = ctx->rsbwidth;
   PetscReal    hxs, hxf;
@@ -1045,8 +1000,7 @@ PetscErrorCode FVRHSFunctionslowbuffer_2WaySplit(TS ts, PetscReal time, Vec X, V
 }
 
 /* --------------------------------- Finite Volume Solver for fast  parts ----------------------------------- */
-PetscErrorCode FVRHSFunctionfast_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx)
-{
+PetscErrorCode FVRHSFunctionfast_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void *vctx) {
   FVCtx       *ctx = (FVCtx *)vctx;
   PetscInt     i, j, k, Mx, dof, xs, xm, ifast = 0, sf = ctx->sf, fs = ctx->fs;
   PetscReal    hxs, hxf;
@@ -1178,8 +1132,7 @@ PetscErrorCode FVRHSFunctionfast_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, 
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   char              lname[256] = "mc", physname[256] = "advect", final_fname[256] = "solution.m";
   PetscFunctionList limiters = 0, physics = 0;
   MPI_Comm          comm;

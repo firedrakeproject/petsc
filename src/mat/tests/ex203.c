@@ -8,8 +8,7 @@ struct _n_User {
   Mat B;
 };
 
-static PetscErrorCode MatGetDiagonal_User(Mat A, Vec X)
-{
+static PetscErrorCode MatGetDiagonal_User(Mat A, Vec X) {
   User user;
 
   PetscFunctionBegin;
@@ -18,8 +17,7 @@ static PetscErrorCode MatGetDiagonal_User(Mat A, Vec X)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   const PetscScalar xvals[] = {11, 13};
   const PetscInt    inds[]  = {0, 1};
   PetscScalar       avals[] = {2, 3, 5, 7};

@@ -24,8 +24,7 @@ PetscBool         PFRegisterAllCalled = PETSC_FALSE;
 
 .seealso: `PFCreate()`, `PFDestroy()`, `PFSetType()`, `PFApply()`, `PFApplyVec()`
 @*/
-PetscErrorCode PFSet(PF pf, PetscErrorCode (*apply)(void *, PetscInt, const PetscScalar *, PetscScalar *), PetscErrorCode (*applyvec)(void *, Vec, Vec), PetscErrorCode (*view)(void *, PetscViewer), PetscErrorCode (*destroy)(void *), void *ctx)
-{
+PetscErrorCode PFSet(PF pf, PetscErrorCode (*apply)(void *, PetscInt, const PetscScalar *, PetscScalar *), PetscErrorCode (*applyvec)(void *, Vec, Vec), PetscErrorCode (*view)(void *, PetscViewer), PetscErrorCode (*destroy)(void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pf, PF_CLASSID, 1);
   pf->data          = ctx;
@@ -48,8 +47,7 @@ PetscErrorCode PFSet(PF pf, PetscErrorCode (*apply)(void *, PetscInt, const Pets
 
 .seealso: `PFCreate()`, `PFSet()`, `PFSetType()`
 @*/
-PetscErrorCode PFDestroy(PF *pf)
-{
+PetscErrorCode PFDestroy(PF *pf) {
   PetscFunctionBegin;
   if (!*pf) PetscFunctionReturn(0);
   PetscValidHeaderSpecific((*pf), PF_CLASSID, 1);
@@ -81,8 +79,7 @@ PetscErrorCode PFDestroy(PF *pf)
 
 .seealso: `PFSet()`, `PFApply()`, `PFDestroy()`, `PFApplyVec()`
 @*/
-PetscErrorCode PFCreate(MPI_Comm comm, PetscInt dimin, PetscInt dimout, PF *pf)
-{
+PetscErrorCode PFCreate(MPI_Comm comm, PetscInt dimin, PetscInt dimout, PF *pf) {
   PF newpf;
 
   PetscFunctionBegin;
@@ -121,8 +118,7 @@ PetscErrorCode PFCreate(MPI_Comm comm, PetscInt dimin, PetscInt dimout, PF *pf)
 
 .seealso: `PFApply()`, `PFCreate()`, `PFDestroy()`, `PFSetType()`, `PFSet()`
 @*/
-PetscErrorCode PFApplyVec(PF pf, Vec x, Vec y)
-{
+PetscErrorCode PFApplyVec(PF pf, Vec x, Vec y) {
   PetscInt  i, rstart, rend, n, p;
   PetscBool nox = PETSC_FALSE;
 
@@ -189,8 +185,7 @@ PetscErrorCode PFApplyVec(PF pf, Vec x, Vec y)
 
 .seealso: `PFApplyVec()`, `PFCreate()`, `PFDestroy()`, `PFSetType()`, `PFSet()`
 @*/
-PetscErrorCode PFApply(PF pf, PetscInt n, const PetscScalar *x, PetscScalar *y)
-{
+PetscErrorCode PFApply(PF pf, PetscInt n, const PetscScalar *x, PetscScalar *y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pf, PF_CLASSID, 1);
   PetscValidScalarPointer(x, 3);
@@ -214,8 +209,7 @@ PetscErrorCode PFApply(PF pf, PetscInt n, const PetscScalar *x, PetscScalar *y)
    Level: intermediate
 .seealso: `PF`, `PFView`, `PetscObjectViewFromOptions()`, `PFCreate()`
 @*/
-PetscErrorCode PFViewFromOptions(PF A, PetscObject obj, const char name[])
-{
+PetscErrorCode PFViewFromOptions(PF A, PetscObject obj, const char name[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, PF_CLASSID, 1);
   PetscCall(PetscObjectViewFromOptions((PetscObject)A, obj, name));
@@ -246,8 +240,7 @@ PetscErrorCode PFViewFromOptions(PF A, PetscObject obj, const char name[])
 
 .seealso: `PetscViewerCreate()`, `PetscViewerASCIIOpen()`
 @*/
-PetscErrorCode PFView(PF pf, PetscViewer viewer)
-{
+PetscErrorCode PFView(PF pf, PetscViewer viewer) {
   PetscBool         iascii;
   PetscViewerFormat format;
 
@@ -296,8 +289,7 @@ $     -pf_type my_function
 
 .seealso: `PFRegisterAll()`, `PFRegisterDestroy()`, `PFRegister()`
 @*/
-PetscErrorCode PFRegister(const char sname[], PetscErrorCode (*function)(PF, void *))
-{
+PetscErrorCode PFRegister(const char sname[], PetscErrorCode (*function)(PF, void *)) {
   PetscFunctionBegin;
   PetscCall(PFInitializePackage());
   PetscCall(PetscFunctionListAdd(&PFList, sname, function));
@@ -321,8 +313,7 @@ PetscErrorCode PFRegister(const char sname[], PetscErrorCode (*function)(PF, voi
 .seealso: `PFSetType()`
 
 @*/
-PetscErrorCode PFGetType(PF pf, PFType *type)
-{
+PetscErrorCode PFGetType(PF pf, PFType *type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pf, PF_CLASSID, 1);
   PetscValidPointer(type, 2);
@@ -352,8 +343,7 @@ PetscErrorCode PFGetType(PF pf, PFType *type)
 .seealso: `PFSet()`, `PFRegister()`, `PFCreate()`, `DMDACreatePF()`
 
 @*/
-PetscErrorCode PFSetType(PF pf, PFType type, void *ctx)
-{
+PetscErrorCode PFSetType(PF pf, PFType type, void *ctx) {
   PetscBool match;
   PetscErrorCode (*r)(PF, void *);
 
@@ -400,8 +390,7 @@ PetscErrorCode PFSetType(PF pf, PFType type, void *ctx)
 
 .seealso:
 @*/
-PetscErrorCode PFSetFromOptions(PF pf)
-{
+PetscErrorCode PFSetFromOptions(PF pf) {
   char      type[256];
   PetscBool flg;
 
@@ -428,13 +417,12 @@ static PetscBool PFPackageInitialized = PETSC_FALSE;
 
 .seealso: `PetscFinalize()`
 @*/
-PetscErrorCode PFFinalizePackage(void)
-{
-  PetscFunctionBegin;
-  PetscCall(PetscFunctionListDestroy(&PFList));
-  PFPackageInitialized = PETSC_FALSE;
-  PFRegisterAllCalled  = PETSC_FALSE;
-  PetscFunctionReturn(0);
+PetscErrorCode   PFFinalizePackage(void) {
+    PetscFunctionBegin;
+    PetscCall(PetscFunctionListDestroy(&PFList));
+    PFPackageInitialized = PETSC_FALSE;
+    PFRegisterAllCalled  = PETSC_FALSE;
+    PetscFunctionReturn(0);
 }
 
 /*@C
@@ -446,8 +434,7 @@ PetscErrorCode PFFinalizePackage(void)
 
 .seealso: `PetscInitialize()`
 @*/
-PetscErrorCode PFInitializePackage(void)
-{
+PetscErrorCode PFInitializePackage(void) {
   char      logList[256];
   PetscBool opt, pkg;
 

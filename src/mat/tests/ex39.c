@@ -3,8 +3,7 @@ static char help[] = "Tests Elemental interface.\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat             Cdense, B, C, Ct;
   Vec             d;
   PetscInt        i, j, m = 5, n, nrows, ncols;

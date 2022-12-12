@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 CPPFLAGS  = ${PTSCOTCH_INCLUDE}
 SOURCEC   = partptscotch.c

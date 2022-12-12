@@ -4,8 +4,7 @@ static char help[] = "Tests dynamic loading of viewer.\n\n";
 #include <petscsys.h>
 #include <petscviewer.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscViewer viewer;
 
   PetscFunctionBeginUser;

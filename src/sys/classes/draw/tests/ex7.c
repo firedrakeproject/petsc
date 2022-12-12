@@ -3,8 +3,7 @@ static char help[] = "Demonstrates drawing primitives in a window\n";
 
 #include <petscdraw.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscDraw draw;
 
   int i, j, w, h;

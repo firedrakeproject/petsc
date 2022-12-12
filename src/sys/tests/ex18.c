@@ -3,8 +3,7 @@ static char help[] = "Tests PetscContainerCreate() and PetscContainerDestroy().\
 
 #include <petscsys.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscContainer container;
 
   PetscFunctionBeginUser;

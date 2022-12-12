@@ -7,8 +7,7 @@ struct _n_User {
   Mat A;
 };
 
-static PetscErrorCode MatMult_User(Mat A, Vec X, Vec Y)
-{
+static PetscErrorCode MatMult_User(Mat A, Vec X, Vec Y) {
   User user;
 
   PetscFunctionBegin;
@@ -17,8 +16,7 @@ static PetscErrorCode MatMult_User(Mat A, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatCopy_User(Mat A, Mat B, MatStructure str)
-{
+static PetscErrorCode MatCopy_User(Mat A, Mat B, MatStructure str) {
   User userA, userB;
 
   PetscFunctionBegin;
@@ -31,8 +29,7 @@ static PetscErrorCode MatCopy_User(Mat A, Mat B, MatStructure str)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatDestroy_User(Mat A)
-{
+static PetscErrorCode MatDestroy_User(Mat A) {
   User user;
 
   PetscFunctionBegin;
@@ -44,8 +41,7 @@ static PetscErrorCode MatDestroy_User(Mat A)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   const PetscScalar xvals[] = {11, 13}, yvals[] = {17, 19};
   const PetscInt    inds[]  = {0, 1};
   PetscScalar       avals[] = {2, 3, 5, 7};

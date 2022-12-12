@@ -5,8 +5,7 @@
 
 #include <petsc/private/dmdaimpl.h> /*I   "petscdmda.h"   I*/
 
-PetscErrorCode DMDestroy_DA(DM da)
-{
+PetscErrorCode DMDestroy_DA(DM da) {
   PetscErrorCode i;
   DM_DA         *dd = (DM_DA *)da->data;
 

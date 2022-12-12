@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 SOURCEC  = bnk.c bnls.c bntr.c bntl.c
 SOURCEF  =

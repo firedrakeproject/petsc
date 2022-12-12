@@ -1,5 +1,6 @@
-#ifndef PETSC_NNIMPL_H
-#define PETSC_NNIMPL_H
+
+#if !defined(__pcnn_h)
+#define __pcnn_h
 
 #include <petsc/private/pcisimpl.h>
 
@@ -24,4 +25,4 @@ PETSC_EXTERN PetscErrorCode PCNNApplySchurToChunk(PC pc, PetscInt n, PetscInt *i
 PETSC_EXTERN PetscErrorCode PCNNApplyInterfacePreconditioner(PC pc, Vec r, Vec z, PetscScalar *work_N, Vec vec1_B, Vec vec2_B, Vec vec3_B, Vec vec1_D, Vec vec2_D, Vec vec1_N, Vec vec2_N);
 PETSC_EXTERN PetscErrorCode PCNNBalancing(PC pc, Vec r, Vec u, Vec z, Vec vec1_B, Vec vec2_B, Vec vec3_B, Vec vec1_D, Vec vec2_D, PetscScalar *work_N);
 
-#endif // PETSC_NNIMPL_H
+#endif /* __pcnn_h */

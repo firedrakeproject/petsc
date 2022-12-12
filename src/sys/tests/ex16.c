@@ -4,8 +4,7 @@ static char help[] = "Demonstrates PetscMatlabEngineXXX()\n";
 #include <petscsys.h>
 #include <petscmatlab.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt rank;
   char        buffer[256], *output, user[256];
   PetscBool   userhappy = PETSC_FALSE;

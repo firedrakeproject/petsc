@@ -1,7 +1,7 @@
 -include ../../../../../petscdir.mk
 
 LOCDIR          = src/dm/impls/stag/tutorials/
-MANSEC          = DM
+MANSEC          = DMSTAG
 
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules

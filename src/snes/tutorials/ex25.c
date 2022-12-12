@@ -25,8 +25,7 @@ Uses 2-dimensional distributed arrays.\n\
 
 extern PetscErrorCode FormFunctionLocal(DMDALocalInfo *, PetscScalar **, PetscScalar **, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   SNES      snes;
   PetscInt  its, lits;
   PetscReal litspit;
@@ -60,8 +59,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-PetscErrorCode FormFunctionLocal(DMDALocalInfo *info, PetscScalar **t, PetscScalar **f, void *ptr)
-{
+PetscErrorCode FormFunctionLocal(DMDALocalInfo *info, PetscScalar **t, PetscScalar **f, void *ptr) {
   PetscInt    i, j;
   PetscScalar hx, hy;
   PetscScalar gradup, graddown, gradleft, gradright, gradx, grady;

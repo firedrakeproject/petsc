@@ -26,8 +26,7 @@ PetscBool PetscViewerRegisterAllCalled;
 
    Level: developer
 @*/
-PetscErrorCode PetscViewerRegisterAll(void)
-{
+PetscErrorCode PetscViewerRegisterAll(void) {
   PetscFunctionBegin;
   if (PetscViewerRegisterAllCalled) PetscFunctionReturn(0);
   PetscViewerRegisterAllCalled = PETSC_TRUE;
@@ -46,7 +45,7 @@ PetscErrorCode PetscViewerRegisterAll(void)
 #if defined(PETSC_HAVE_HDF5)
   PetscCall(PetscViewerRegister(PETSCVIEWERHDF5, PetscViewerCreate_HDF5));
 #endif
-#if defined(PETSC_HAVE_MATLAB)
+#if defined(PETSC_HAVE_MATLAB_ENGINE)
   PetscCall(PetscViewerRegister(PETSCVIEWERMATLAB, PetscViewerCreate_Matlab));
 #endif
 #if defined(PETSC_HAVE_SAWS)

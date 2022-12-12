@@ -35,7 +35,6 @@ class BaseTestTAO(object):
 
     def tearDown(self):
         self.tao = None
-        PETSc.garbage_cleanup()
 
     def testSetRoutinesToNone(self):
         tao = self.tao

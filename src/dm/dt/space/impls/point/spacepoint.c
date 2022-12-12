@@ -1,8 +1,7 @@
 #include <petsc/private/petscfeimpl.h> /*I "petscfe.h" I*/
 #include <petsc/private/dtimpl.h>      /*I "petscdt.h" I*/
 
-static PetscErrorCode PetscSpacePointView_Ascii(PetscSpace sp, PetscViewer viewer)
-{
+static PetscErrorCode PetscSpacePointView_Ascii(PetscSpace sp, PetscViewer viewer) {
   PetscSpace_Point *pt = (PetscSpace_Point *)sp->data;
   PetscViewerFormat format;
 
@@ -17,8 +16,7 @@ static PetscErrorCode PetscSpacePointView_Ascii(PetscSpace sp, PetscViewer viewe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSpaceView_Point(PetscSpace sp, PetscViewer viewer)
-{
+static PetscErrorCode PetscSpaceView_Point(PetscSpace sp, PetscViewer viewer) {
   PetscBool iascii;
 
   PetscFunctionBegin;
@@ -29,8 +27,7 @@ static PetscErrorCode PetscSpaceView_Point(PetscSpace sp, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSpaceSetUp_Point(PetscSpace sp)
-{
+static PetscErrorCode PetscSpaceSetUp_Point(PetscSpace sp) {
   PetscSpace_Point *pt = (PetscSpace_Point *)sp->data;
 
   PetscFunctionBegin;
@@ -41,8 +38,7 @@ static PetscErrorCode PetscSpaceSetUp_Point(PetscSpace sp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSpaceDestroy_Point(PetscSpace sp)
-{
+static PetscErrorCode PetscSpaceDestroy_Point(PetscSpace sp) {
   PetscSpace_Point *pt = (PetscSpace_Point *)sp->data;
 
   PetscFunctionBegin;
@@ -51,8 +47,7 @@ static PetscErrorCode PetscSpaceDestroy_Point(PetscSpace sp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSpaceGetDimension_Point(PetscSpace sp, PetscInt *dim)
-{
+static PetscErrorCode PetscSpaceGetDimension_Point(PetscSpace sp, PetscInt *dim) {
   PetscSpace_Point *pt = (PetscSpace_Point *)sp->data;
 
   PetscFunctionBegin;
@@ -60,8 +55,7 @@ static PetscErrorCode PetscSpaceGetDimension_Point(PetscSpace sp, PetscInt *dim)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSpaceEvaluate_Point(PetscSpace sp, PetscInt npoints, const PetscReal points[], PetscReal B[], PetscReal D[], PetscReal H[])
-{
+static PetscErrorCode PetscSpaceEvaluate_Point(PetscSpace sp, PetscInt npoints, const PetscReal points[], PetscReal B[], PetscReal D[], PetscReal H[]) {
   PetscSpace_Point *pt  = (PetscSpace_Point *)sp->data;
   PetscInt          dim = sp->Nv, pdim = pt->quad->numPoints, d, p, i, c;
 
@@ -90,8 +84,7 @@ static PetscErrorCode PetscSpaceEvaluate_Point(PetscSpace sp, PetscInt npoints, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSpaceInitialize_Point(PetscSpace sp)
-{
+static PetscErrorCode PetscSpaceInitialize_Point(PetscSpace sp) {
   PetscFunctionBegin;
   sp->ops->setfromoptions = NULL;
   sp->ops->setup          = PetscSpaceSetUp_Point;
@@ -103,20 +96,19 @@ static PetscErrorCode PetscSpaceInitialize_Point(PetscSpace sp)
 }
 
 /*MC
-  PETSCSPACEPOINT = "point" - A `PetscSpace` object that encapsulates functions defined on a set of quadrature points.
+  PETSCSPACEPOINT = "point" - A PetscSpace object that encapsulates functions defined on a set of quadrature points.
 
   Level: intermediate
 
-.seealso: `PetscSpace`, `PetscSpaceType`, `PetscSpaceCreate()`, `PetscSpaceSetType()`
+.seealso: `PetscSpaceType`, `PetscSpaceCreate()`, `PetscSpaceSetType()`
 M*/
 
-PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Point(PetscSpace sp)
-{
+PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Point(PetscSpace sp) {
   PetscSpace_Point *pt;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sp, PETSCSPACE_CLASSID, 1);
-  PetscCall(PetscNew(&pt));
+  PetscCall(PetscNewLog(sp, &pt));
   sp->data = pt;
 
   sp->Nv        = 0;
@@ -134,15 +126,14 @@ PETSC_EXTERN PetscErrorCode PetscSpaceCreate_Point(PetscSpace sp)
   Logically collective
 
   Input Parameters:
-+ sp - The `PetscSpace`
-- q  - The `PetscQuadrature` defining the points
++ sp - The PetscSpace
+- q  - The PetscQuadrature defining the points
 
   Level: intermediate
 
-.seealso: `PetscSpace`, `PetscQuadrature`, `PetscSpaceCreate()`, `PetscSpaceSetType()`
+.seealso: `PetscSpaceCreate()`, `PetscSpaceSetType()`
 @*/
-PetscErrorCode PetscSpacePointSetPoints(PetscSpace sp, PetscQuadrature q)
-{
+PetscErrorCode PetscSpacePointSetPoints(PetscSpace sp, PetscQuadrature q) {
   PetscSpace_Point *pt = (PetscSpace_Point *)sp->data;
 
   PetscFunctionBegin;
@@ -159,17 +150,16 @@ PetscErrorCode PetscSpacePointSetPoints(PetscSpace sp, PetscQuadrature q)
   Logically collective
 
   Input Parameter:
-. sp - The `PetscSpace`
+. sp - The PetscSpace
 
   Output Parameter:
-. q  - The `PetscQuadrature` defining the points
+. q  - The PetscQuadrature defining the points
 
   Level: intermediate
 
-.seealso: `PetscSpace`, `PetscQuadrature`, `PetscSpaceCreate()`, `PetscSpaceSetType()`
+.seealso: `PetscSpaceCreate()`, `PetscSpaceSetType()`
 @*/
-PetscErrorCode PetscSpacePointGetPoints(PetscSpace sp, PetscQuadrature *q)
-{
+PetscErrorCode PetscSpacePointGetPoints(PetscSpace sp, PetscQuadrature *q) {
   PetscSpace_Point *pt = (PetscSpace_Point *)sp->data;
 
   PetscFunctionBegin;

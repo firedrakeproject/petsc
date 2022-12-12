@@ -17,8 +17,7 @@ typedef Kokkos::View<const char *, HostMemorySpace>   HostConstBuffer_t;
 /*====================================================================================*/
 template <typename Type>
 struct Insert {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = y;
     return old;
@@ -26,8 +25,7 @@ struct Insert {
 };
 template <typename Type>
 struct Add {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x += y;
     return old;
@@ -35,8 +33,7 @@ struct Add {
 };
 template <typename Type>
 struct Mult {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x *= y;
     return old;
@@ -44,8 +41,7 @@ struct Mult {
 };
 template <typename Type>
 struct Min {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = PetscMin(x, y);
     return old;
@@ -53,8 +49,7 @@ struct Min {
 };
 template <typename Type>
 struct Max {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = PetscMax(x, y);
     return old;
@@ -62,8 +57,7 @@ struct Max {
 };
 template <typename Type>
 struct LAND {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = x && y;
     return old;
@@ -71,8 +65,7 @@ struct LAND {
 };
 template <typename Type>
 struct LOR {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = x || y;
     return old;
@@ -80,8 +73,7 @@ struct LOR {
 };
 template <typename Type>
 struct LXOR {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = !x != !y;
     return old;
@@ -89,8 +81,7 @@ struct LXOR {
 };
 template <typename Type>
 struct BAND {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = x & y;
     return old;
@@ -98,8 +89,7 @@ struct BAND {
 };
 template <typename Type>
 struct BOR {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = x | y;
     return old;
@@ -107,8 +97,7 @@ struct BOR {
 };
 template <typename Type>
 struct BXOR {
-  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION Type operator()(Type &x, Type y) const {
     Type old = x;
     x        = x ^ y;
     return old;
@@ -116,8 +105,7 @@ struct BXOR {
 };
 template <typename PairType>
 struct Minloc {
-  KOKKOS_INLINE_FUNCTION PairType operator()(PairType &x, PairType y) const
-  {
+  KOKKOS_INLINE_FUNCTION PairType operator()(PairType &x, PairType y) const {
     PairType old = x;
     if (y.first < x.first) x = y;
     else if (y.first == x.first) x.second = PetscMin(x.second, y.second);
@@ -126,8 +114,7 @@ struct Minloc {
 };
 template <typename PairType>
 struct Maxloc {
-  KOKKOS_INLINE_FUNCTION PairType operator()(PairType &x, PairType y) const
-  {
+  KOKKOS_INLINE_FUNCTION PairType operator()(PairType &x, PairType y) const {
     PairType old = x;
     if (y.first > x.first) x = y;
     else if (y.first == x.first) x.second = PetscMin(x.second, y.second); /* See MPI MAXLOC */
@@ -160,16 +147,14 @@ struct AtomicBXOR {
 };
 template <typename Type>
 struct AtomicLAND {
-  KOKKOS_INLINE_FUNCTION void operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION void operator()(Type &x, Type y) const {
     const Type zero = 0, one = ~0;
     Kokkos::atomic_and(&x, y ? one : zero);
   }
 };
 template <typename Type>
 struct AtomicLOR {
-  KOKKOS_INLINE_FUNCTION void operator()(Type &x, Type y) const
-  {
+  KOKKOS_INLINE_FUNCTION void operator()(Type &x, Type y) const {
     const Type zero = 0, one = 1;
     Kokkos::atomic_or(&x, y ? one : zero);
   }
@@ -193,8 +178,7 @@ struct AtomicFetchAdd {
 };
 
 /* Map a thread id to an index in root/leaf space through a series of 3D subdomains. See PetscSFPackOpt. */
-static KOKKOS_INLINE_FUNCTION PetscInt MapTidToIndex(const PetscInt *opt, PetscInt tid)
-{
+static KOKKOS_INLINE_FUNCTION PetscInt MapTidToIndex(const PetscInt *opt, PetscInt tid) {
   PetscInt        i, j, k, m, n, r;
   const PetscInt *offset, *start, *dx, *dy, *X, *Y;
 
@@ -230,8 +214,7 @@ static KOKKOS_INLINE_FUNCTION PetscInt MapTidToIndex(const PetscInt *opt, PetscI
   For the common case in VecScatter, bs=1, BS=1, EQ=1, MBS=1, the inner for-loops below will be totally unrolled.
 */
 template <typename Type, PetscInt BS, PetscInt EQ>
-static PetscErrorCode Pack(PetscSFLink link, PetscInt count, PetscInt start, PetscSFPackOpt opt, const PetscInt *idx, const void *data_, void *buf_)
-{
+static PetscErrorCode Pack(PetscSFLink link, PetscInt count, PetscInt start, PetscSFPackOpt opt, const PetscInt *idx, const void *data_, void *buf_) {
   const PetscInt      *iopt = opt ? opt->array : NULL;
   const PetscInt       M = EQ ? 1 : link->bs / BS, MBS = M * BS; /* If EQ, then MBS will be a compile-time const */
   const Type          *data = static_cast<const Type *>(data_);
@@ -252,8 +235,7 @@ static PetscErrorCode Pack(PetscSFLink link, PetscInt count, PetscInt start, Pet
 }
 
 template <typename Type, class Op, PetscInt BS, PetscInt EQ>
-static PetscErrorCode UnpackAndOp(PetscSFLink link, PetscInt count, PetscInt start, PetscSFPackOpt opt, const PetscInt *idx, void *data_, const void *buf_)
-{
+static PetscErrorCode UnpackAndOp(PetscSFLink link, PetscInt count, PetscInt start, PetscSFPackOpt opt, const PetscInt *idx, void *data_, const void *buf_) {
   Op                   op;
   const PetscInt      *iopt = opt ? opt->array : NULL;
   const PetscInt       M = EQ ? 1 : link->bs / BS, MBS = M * BS;
@@ -272,8 +254,7 @@ static PetscErrorCode UnpackAndOp(PetscSFLink link, PetscInt count, PetscInt sta
 }
 
 template <typename Type, class Op, PetscInt BS, PetscInt EQ>
-static PetscErrorCode FetchAndOp(PetscSFLink link, PetscInt count, PetscInt start, PetscSFPackOpt opt, const PetscInt *idx, void *data, void *buf)
-{
+static PetscErrorCode FetchAndOp(PetscSFLink link, PetscInt count, PetscInt start, PetscSFPackOpt opt, const PetscInt *idx, void *data, void *buf) {
   Op                   op;
   const PetscInt      *ropt = opt ? opt->array : NULL;
   const PetscInt       M = EQ ? 1 : link->bs / BS, MBS = M * BS;
@@ -291,8 +272,7 @@ static PetscErrorCode FetchAndOp(PetscSFLink link, PetscInt count, PetscInt star
 }
 
 template <typename Type, class Op, PetscInt BS, PetscInt EQ>
-static PetscErrorCode ScatterAndOp(PetscSFLink link, PetscInt count, PetscInt srcStart, PetscSFPackOpt srcOpt, const PetscInt *srcIdx, const void *src_, PetscInt dstStart, PetscSFPackOpt dstOpt, const PetscInt *dstIdx, void *dst_)
-{
+static PetscErrorCode ScatterAndOp(PetscSFLink link, PetscInt count, PetscInt srcStart, PetscSFPackOpt srcOpt, const PetscInt *srcIdx, const void *src_, PetscInt dstStart, PetscSFPackOpt dstOpt, const PetscInt *dstIdx, void *dst_) {
   PetscInt             srcx = 0, srcy = 0, srcX = 0, srcY = 0, dstx = 0, dsty = 0, dstX = 0, dstY = 0;
   const PetscInt       M = (EQ) ? 1 : link->bs / BS, MBS = M * BS;
   const Type          *src = static_cast<const Type *>(src_);
@@ -356,8 +336,7 @@ static PetscErrorCode ScatterAndOp(PetscSFLink link, PetscInt count, PetscInt sr
 
 /* Specialization for Insert since we may use memcpy */
 template <typename Type, PetscInt BS, PetscInt EQ>
-static PetscErrorCode ScatterAndInsert(PetscSFLink link, PetscInt count, PetscInt srcStart, PetscSFPackOpt srcOpt, const PetscInt *srcIdx, const void *src_, PetscInt dstStart, PetscSFPackOpt dstOpt, const PetscInt *dstIdx, void *dst_)
-{
+static PetscErrorCode ScatterAndInsert(PetscSFLink link, PetscInt count, PetscInt srcStart, PetscSFPackOpt srcOpt, const PetscInt *srcIdx, const void *src_, PetscInt dstStart, PetscSFPackOpt dstOpt, const PetscInt *dstIdx, void *dst_) {
   const Type          *src = static_cast<const Type *>(src_);
   Type                *dst = static_cast<Type *>(dst_);
   DeviceExecutionSpace exec;
@@ -377,8 +356,7 @@ static PetscErrorCode ScatterAndInsert(PetscSFLink link, PetscInt count, PetscIn
 }
 
 template <typename Type, class Op, PetscInt BS, PetscInt EQ>
-static PetscErrorCode FetchAndOpLocal(PetscSFLink link, PetscInt count, PetscInt rootstart, PetscSFPackOpt rootopt, const PetscInt *rootidx, void *rootdata_, PetscInt leafstart, PetscSFPackOpt leafopt, const PetscInt *leafidx, const void *leafdata_, void *leafupdate_)
-{
+static PetscErrorCode FetchAndOpLocal(PetscSFLink link, PetscInt count, PetscInt rootstart, PetscSFPackOpt rootopt, const PetscInt *rootidx, void *rootdata_, PetscInt leafstart, PetscSFPackOpt leafopt, const PetscInt *leafidx, const void *leafdata_, void *leafupdate_) {
   Op                   op;
   const PetscInt       M = (EQ) ? 1 : link->bs / BS, MBS = M * BS;
   const PetscInt      *ropt     = rootopt ? rootopt->array : NULL;
@@ -401,16 +379,15 @@ static PetscErrorCode FetchAndOpLocal(PetscSFLink link, PetscInt count, PetscInt
 /*  Init various types and instantiate pack/unpack function pointers                  */
 /*====================================================================================*/
 template <typename Type, PetscInt BS, PetscInt EQ>
-static void PackInit_RealType(PetscSFLink link)
-{
+static void PackInit_RealType(PetscSFLink link) {
   /* Pack/unpack for remote communication */
-  link->d_Pack            = Pack<Type, BS, EQ>;
-  link->d_UnpackAndInsert = UnpackAndOp<Type, Insert<Type>, BS, EQ>;
-  link->d_UnpackAndAdd    = UnpackAndOp<Type, Add<Type>, BS, EQ>;
-  link->d_UnpackAndMult   = UnpackAndOp<Type, Mult<Type>, BS, EQ>;
-  link->d_UnpackAndMin    = UnpackAndOp<Type, Min<Type>, BS, EQ>;
-  link->d_UnpackAndMax    = UnpackAndOp<Type, Max<Type>, BS, EQ>;
-  link->d_FetchAndAdd     = FetchAndOp<Type, Add<Type>, BS, EQ>;
+  link->d_Pack             = Pack<Type, BS, EQ>;
+  link->d_UnpackAndInsert  = UnpackAndOp<Type, Insert<Type>, BS, EQ>;
+  link->d_UnpackAndAdd     = UnpackAndOp<Type, Add<Type>, BS, EQ>;
+  link->d_UnpackAndMult    = UnpackAndOp<Type, Mult<Type>, BS, EQ>;
+  link->d_UnpackAndMin     = UnpackAndOp<Type, Min<Type>, BS, EQ>;
+  link->d_UnpackAndMax     = UnpackAndOp<Type, Max<Type>, BS, EQ>;
+  link->d_FetchAndAdd      = FetchAndOp<Type, Add<Type>, BS, EQ>;
   /* Scatter for local communication */
   link->d_ScatterAndInsert = ScatterAndInsert<Type, BS, EQ>; /* Has special optimizations */
   link->d_ScatterAndAdd    = ScatterAndOp<Type, Add<Type>, BS, EQ>;
@@ -435,8 +412,7 @@ static void PackInit_RealType(PetscSFLink link)
 }
 
 template <typename Type, PetscInt BS, PetscInt EQ>
-static void PackInit_IntegerType(PetscSFLink link)
-{
+static void PackInit_IntegerType(PetscSFLink link) {
   link->d_Pack            = Pack<Type, BS, EQ>;
   link->d_UnpackAndInsert = UnpackAndOp<Type, Insert<Type>, BS, EQ>;
   link->d_UnpackAndAdd    = UnpackAndOp<Type, Add<Type>, BS, EQ>;
@@ -491,8 +467,7 @@ static void PackInit_IntegerType(PetscSFLink link)
 
 #if defined(PETSC_HAVE_COMPLEX)
 template <typename Type, PetscInt BS, PetscInt EQ>
-static void PackInit_ComplexType(PetscSFLink link)
-{
+static void PackInit_ComplexType(PetscSFLink link) {
   link->d_Pack            = Pack<Type, BS, EQ>;
   link->d_UnpackAndInsert = UnpackAndOp<Type, Insert<Type>, BS, EQ>;
   link->d_UnpackAndAdd    = UnpackAndOp<Type, Add<Type>, BS, EQ>;
@@ -517,8 +492,7 @@ static void PackInit_ComplexType(PetscSFLink link)
 #endif
 
 template <typename Type>
-static void PackInit_PairType(PetscSFLink link)
-{
+static void PackInit_PairType(PetscSFLink link) {
   link->d_Pack            = Pack<Type, 1, 1>;
   link->d_UnpackAndInsert = UnpackAndOp<Type, Insert<Type>, 1, 1>;
   link->d_UnpackAndMaxloc = UnpackAndOp<Type, Maxloc<Type>, 1, 1>;
@@ -531,8 +505,7 @@ static void PackInit_PairType(PetscSFLink link)
 }
 
 template <typename Type, PetscInt BS, PetscInt EQ>
-static void PackInit_DumbType(PetscSFLink link)
-{
+static void PackInit_DumbType(PetscSFLink link) {
   link->d_Pack             = Pack<Type, BS, EQ>;
   link->d_UnpackAndInsert  = UnpackAndOp<Type, Insert<Type>, BS, EQ>;
   link->d_ScatterAndInsert = ScatterAndInsert<Type, BS, EQ>;
@@ -557,23 +530,20 @@ static PetscErrorCode PetscSFLinkDestroy_Kokkos(PetscSFLink link)
 */
 
 /* Some device-specific utilities */
-static PetscErrorCode PetscSFLinkSyncDevice_Kokkos(PetscSFLink PETSC_UNUSED link)
-{
+static PetscErrorCode PetscSFLinkSyncDevice_Kokkos(PetscSFLink PETSC_UNUSED link) {
   PetscFunctionBegin;
   Kokkos::fence();
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFLinkSyncStream_Kokkos(PetscSFLink PETSC_UNUSED link)
-{
+static PetscErrorCode PetscSFLinkSyncStream_Kokkos(PetscSFLink PETSC_UNUSED link) {
   DeviceExecutionSpace exec;
   PetscFunctionBegin;
   exec.fence();
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFLinkMemcpy_Kokkos(PetscSFLink PETSC_UNUSED link, PetscMemType dstmtype, void *dst, PetscMemType srcmtype, const void *src, size_t n)
-{
+static PetscErrorCode PetscSFLinkMemcpy_Kokkos(PetscSFLink PETSC_UNUSED link, PetscMemType dstmtype, void *dst, PetscMemType srcmtype, const void *src, size_t n) {
   DeviceExecutionSpace exec;
 
   PetscFunctionBegin;
@@ -600,8 +570,7 @@ static PetscErrorCode PetscSFLinkMemcpy_Kokkos(PetscSFLink PETSC_UNUSED link, Pe
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSFMalloc_Kokkos(PetscMemType mtype, size_t size, void **ptr)
-{
+PetscErrorCode PetscSFMalloc_Kokkos(PetscMemType mtype, size_t size, void **ptr) {
   PetscFunctionBegin;
   if (PetscMemTypeHost(mtype)) PetscCall(PetscMalloc(size, ptr));
   else if (PetscMemTypeDevice(mtype)) {
@@ -611,8 +580,7 @@ PetscErrorCode PetscSFMalloc_Kokkos(PetscMemType mtype, size_t size, void **ptr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSFFree_Kokkos(PetscMemType mtype, void *ptr)
-{
+PetscErrorCode PetscSFFree_Kokkos(PetscMemType mtype, void *ptr) {
   PetscFunctionBegin;
   if (PetscMemTypeHost(mtype)) PetscCall(PetscFree(ptr));
   else if (PetscMemTypeDevice(mtype)) {
@@ -622,8 +590,7 @@ PetscErrorCode PetscSFFree_Kokkos(PetscMemType mtype, void *ptr)
 }
 
 /* Destructor when the link uses MPI for communication */
-static PetscErrorCode PetscSFLinkDestroy_Kokkos(PetscSF sf, PetscSFLink link)
-{
+static PetscErrorCode PetscSFLinkDestroy_Kokkos(PetscSF sf, PetscSFLink link) {
   PetscFunctionBegin;
   for (int i = PETSCSF_LOCAL; i <= PETSCSF_REMOTE; i++) {
     PetscCall(PetscSFFree(sf, PETSC_MEMTYPE_DEVICE, link->rootbuf_alloc[i][PETSC_MEMTYPE_DEVICE]));
@@ -633,8 +600,7 @@ static PetscErrorCode PetscSFLinkDestroy_Kokkos(PetscSF sf, PetscSFLink link)
 }
 
 /* Some fields of link are initialized by PetscSFPackSetUp_Host. This routine only does what needed on device */
-PetscErrorCode PetscSFLinkSetUp_Kokkos(PetscSF PETSC_UNUSED sf, PetscSFLink link, MPI_Datatype unit)
-{
+PetscErrorCode PetscSFLinkSetUp_Kokkos(PetscSF PETSC_UNUSED sf, PetscSFLink link, MPI_Datatype unit) {
   PetscInt  nSignedChar = 0, nUnsignedChar = 0, nInt = 0, nPetscInt = 0, nPetscReal = 0;
   PetscBool is2Int, is2PetscInt;
 #if defined(PETSC_HAVE_COMPLEX)
@@ -722,7 +688,7 @@ PetscErrorCode PetscSFLinkSetUp_Kokkos(PetscSF PETSC_UNUSED sf, PetscSFLink link
       PackInit_IntegerType<unsigned char, 1, 0>(link);
 #if defined(PETSC_HAVE_COMPLEX)
   } else if (nPetscComplex) {
-  #if !defined(PETSC_HAVE_DEVICE)
+#if !defined(PETSC_HAVE_DEVICE)
     if (nPetscComplex == 8) PackInit_ComplexType<Kokkos::complex<PetscReal>, 8, 1>(link);
     else if (nPetscComplex % 8 == 0) PackInit_ComplexType<Kokkos::complex<PetscReal>, 8, 0>(link);
     else if (nPetscComplex == 4) PackInit_ComplexType<Kokkos::complex<PetscReal>, 4, 1>(link);
@@ -731,7 +697,7 @@ PetscErrorCode PetscSFLinkSetUp_Kokkos(PetscSF PETSC_UNUSED sf, PetscSFLink link
     else if (nPetscComplex % 2 == 0) PackInit_ComplexType<Kokkos::complex<PetscReal>, 2, 0>(link);
     else if (nPetscComplex == 1) PackInit_ComplexType<Kokkos::complex<PetscReal>, 1, 1>(link);
     else if (nPetscComplex % 1 == 0)
-  #endif
+#endif
       PackInit_ComplexType<Kokkos::complex<PetscReal>, 1, 0>(link);
 #endif
   } else {

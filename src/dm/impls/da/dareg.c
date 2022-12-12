@@ -4,8 +4,7 @@ extern PetscErrorCode DMSetUp_DA_1D(DM);
 extern PetscErrorCode DMSetUp_DA_2D(DM);
 extern PetscErrorCode DMSetUp_DA_3D(DM);
 
-PetscErrorCode DMSetUp_DA(DM da)
-{
+PetscErrorCode DMSetUp_DA(DM da) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;

@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 SOURCEC  = alpha1.c alpha2.c
 SOURCEF  =

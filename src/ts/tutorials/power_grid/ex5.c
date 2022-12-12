@@ -61,14 +61,13 @@ typedef struct {
 } AppCtx;
 
 /* Initial values computed by Power flow and initialization */
-PetscScalar s = -0.00011577790353;
+PetscScalar s    = -0.00011577790353;
 /*Pw = 0.011064344110238; %Te*wm */
 PetscScalar vwa  = 22.317142184449754;
 PetscReal   tmax = 20.0;
 
 /* Saves the solution at each time to a matrix */
-PetscErrorCode SaveSolution(TS ts)
-{
+PetscErrorCode SaveSolution(TS ts) {
   AppCtx            *user;
   Vec                X;
   PetscScalar       *mat;
@@ -92,8 +91,7 @@ PetscErrorCode SaveSolution(TS ts)
 }
 
 /* Computes the wind speed using Weibull distribution */
-PetscErrorCode WindSpeeds(AppCtx *user)
-{
+PetscErrorCode WindSpeeds(AppCtx *user) {
   PetscScalar *x, *t, avg_dev, sum;
   PetscInt     i;
 
@@ -135,8 +133,7 @@ PetscErrorCode WindSpeeds(AppCtx *user)
 }
 
 /* Sets the parameters for wind turbine */
-PetscErrorCode SetWindTurbineParams(AppCtx *user)
-{
+PetscErrorCode SetWindTurbineParams(AppCtx *user) {
   PetscFunctionBegin;
   user->Rt  = 35;
   user->Ar  = PETSC_PI * user->Rt * user->Rt;
@@ -147,8 +144,7 @@ PetscErrorCode SetWindTurbineParams(AppCtx *user)
 }
 
 /* Sets the parameters for induction generator */
-PetscErrorCode SetInductionGeneratorParams(AppCtx *user)
-{
+PetscErrorCode SetInductionGeneratorParams(AppCtx *user) {
   PetscFunctionBegin;
   user->np = 4;
   user->Xm = 3.0;
@@ -163,8 +159,7 @@ PetscErrorCode SetInductionGeneratorParams(AppCtx *user)
 }
 
 /* Computes the power extracted from wind */
-PetscErrorCode GetWindPower(PetscScalar wm, PetscScalar vw, PetscScalar *Pw, AppCtx *user)
-{
+PetscErrorCode GetWindPower(PetscScalar wm, PetscScalar vw, PetscScalar *Pw, AppCtx *user) {
   PetscScalar temp, lambda, lambda_i, cp;
 
   PetscFunctionBegin;
@@ -179,8 +174,7 @@ PetscErrorCode GetWindPower(PetscScalar wm, PetscScalar vw, PetscScalar *Pw, App
 /*
      Defines the ODE passed to the ODE solver
 */
-static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, AppCtx *user)
-{
+static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, AppCtx *user) {
   PetscScalar       *f, wm, Pw, *wd;
   const PetscScalar *u, *udot;
   PetscInt           stepnum;
@@ -205,8 +199,7 @@ static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, AppC
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS                 ts; /* ODE integrator */
   Vec                U;  /* solution will be stored here */
   Mat                A;  /* Jacobian matrix */

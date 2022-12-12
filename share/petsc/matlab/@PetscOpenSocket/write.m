@@ -1,8 +1,6 @@
 function write(sreader,data,datatype)
 %
-%   write(sreader,data,datatype) - writes data to a socket opened with sopen(socketnumber)
-%
-%   See $PETSC_DIR/share/petsc/matlab/@PetscOpenSocket/PetscOpenSocket.m
+%   write(sreader,data,datatype) - writes data to a socket opened with sreader(socketnumber)
 %
   switch (datatype)
   case 'int32'

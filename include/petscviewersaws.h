@@ -1,5 +1,5 @@
 
-#ifndef PETSCVIEWERSAWS_H
+#if !defined(PETSCVIEWERSAWS_H)
 #define PETSCVIEWERSAWS_H
 
 #include <petscviewer.h>

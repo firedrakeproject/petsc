@@ -9,26 +9,25 @@ typedef struct {
 } KSPMonitor_SAWs;
 
 /*@C
-   KSPMonitorSAWsCreate - create an SAWs monitor context for `KSP`
+   KSPMonitorSAWsCreate - create an SAWs monitor context
 
    Collective
 
    Input Parameter:
-.  ksp - `KSP` to monitor
+.  ksp - KSP to monitor
 
    Output Parameter:
 .  ctx - context for monitor
 
    Level: developer
 
-.seealso: [](chapter_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorSAWs()`, `KSPMonitorSAWsDestroy()`
+.seealso: `KSPMonitorSAWs()`, `KSPMonitorSAWsDestroy()`
 @*/
-PetscErrorCode KSPMonitorSAWsCreate(KSP ksp, void **ctx)
-{
+PetscErrorCode KSPMonitorSAWsCreate(KSP ksp, void **ctx) {
   KSPMonitor_SAWs *mon;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&mon));
+  PetscCall(PetscNewLog(ksp, &mon));
   mon->viewer = PETSC_VIEWER_SAWS_(PetscObjectComm((PetscObject)ksp));
   PetscCheck(mon->viewer, PetscObjectComm((PetscObject)ksp), PETSC_ERR_PLIB, "Cannot create SAWs default viewer");
   *ctx = (void *)mon;
@@ -36,7 +35,7 @@ PetscErrorCode KSPMonitorSAWsCreate(KSP ksp, void **ctx)
 }
 
 /*@C
-   KSPMonitorSAWsDestroy - destroy a monitor context created with `KSPMonitorSAWsCreate()`
+   KSPMonitorSAWsDestroy - destroy a monitor context created with KSPMonitorSAWsCreate()
 
    Collective
 
@@ -45,10 +44,9 @@ PetscErrorCode KSPMonitorSAWsCreate(KSP ksp, void **ctx)
 
    Level: developer
 
-.seealso: [](chapter_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorSAWsCreate()`
+.seealso: `KSPMonitorSAWsCreate()`
 @*/
-PetscErrorCode KSPMonitorSAWsDestroy(void **ctx)
-{
+PetscErrorCode KSPMonitorSAWsDestroy(void **ctx) {
   KSPMonitor_SAWs *mon = (KSPMonitor_SAWs *)*ctx;
 
   PetscFunctionBegin;
@@ -58,7 +56,7 @@ PetscErrorCode KSPMonitorSAWsDestroy(void **ctx)
 }
 
 /*@C
-   KSPMonitorSAWs - monitor `KSP` solution using SAWs
+   KSPMonitorSAWs - monitor solution using SAWs
 
    Logically Collective on ksp
 
@@ -66,17 +64,13 @@ PetscErrorCode KSPMonitorSAWsDestroy(void **ctx)
 +  ksp   - iterative context
 .  n     - iteration number
 .  rnorm - 2-norm (preconditioned) residual value (may be estimated).
--  ctx -  created with `KSPMonitorSAWsCreate()`
+-  ctx -  PetscViewer of type SAWs
 
    Level: advanced
 
-   Note:
-   Create the ctx with `KSPMonitorSAWsCreate()` then call `KSPMonitorSet()` with the context, this function, and `KSPMonitorSAWsDestroy()`
-
-.seealso: [](chapter_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorSAWsCreate()`, `KSPMonitorSAWsDestroy()`, `KSPMonitorSingularValue()`, `KSPComputeExtremeSingularValues()`, `PetscViewerSAWsOpen()`
+.seealso: `KSPMonitorSingularValue()`, `KSPComputeExtremeSingularValues()`, `PetscViewerSAWsOpen()`
 @*/
-PetscErrorCode KSPMonitorSAWs(KSP ksp, PetscInt n, PetscReal rnorm, void *ctx)
-{
+PetscErrorCode KSPMonitorSAWs(KSP ksp, PetscInt n, PetscReal rnorm, void *ctx) {
   KSPMonitor_SAWs *mon = (KSPMonitor_SAWs *)ctx;
   PetscReal        emax, emin;
   PetscMPIInt      rank;

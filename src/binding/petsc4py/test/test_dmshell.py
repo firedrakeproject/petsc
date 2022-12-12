@@ -11,9 +11,7 @@ class TestDMShell(unittest.TestCase):
         self.dm = PETSc.DMShell().create(comm=self.COMM)
 
     def tearDown(self):
-        self.dm.destroy()
         self.dm = None
-        PETSc.garbage_cleanup()
 
     def testSetGlobalVector(self):
         vec = PETSc.Vec().create(comm=self.COMM)

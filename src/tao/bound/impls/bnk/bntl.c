@@ -105,8 +105,7 @@
  end
 */
 
-PetscErrorCode TaoSolve_BNTL(Tao tao)
-{
+PetscErrorCode TaoSolve_BNTL(Tao tao) {
   TAO_BNK                     *bnk = (TAO_BNK *)tao->data;
   KSPConvergedReason           ksp_reason;
   TaoLineSearchConvergedReason ls_reason;
@@ -230,8 +229,7 @@ PetscErrorCode TaoSolve_BNTL(Tao tao)
 }
 
 /*------------------------------------------------------------*/
-static PetscErrorCode TaoSetUp_BNTL(Tao tao)
-{
+static PetscErrorCode TaoSetUp_BNTL(Tao tao) {
   KSP               ksp;
   PetscVoidFunction valid;
 
@@ -244,8 +242,7 @@ static PetscErrorCode TaoSetUp_BNTL(Tao tao)
 }
 
 /*------------------------------------------------------------*/
-static PetscErrorCode TaoSetFromOptions_BNTL(Tao tao, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode TaoSetFromOptions_BNTL(Tao tao, PetscOptionItems *PetscOptionsObject) {
   TAO_BNK *bnk = (TAO_BNK *)tao->data;
 
   PetscFunctionBegin;
@@ -267,8 +264,7 @@ static PetscErrorCode TaoSetFromOptions_BNTL(Tao tao, PetscOptionItems *PetscOpt
 
   Level: beginner
 M*/
-PETSC_EXTERN PetscErrorCode TaoCreate_BNTL(Tao tao)
-{
+PETSC_EXTERN PetscErrorCode TaoCreate_BNTL(Tao tao) {
   TAO_BNK *bnk;
 
   PetscFunctionBegin;

@@ -19,8 +19,7 @@
 
 .seealso: `PetscDraw`, `PetscDrawPushCurrentPoint()`, `PetscDrawPopCurrentPoint()`, `PetscDrawSetCurrentPoint()`
 @*/
-PetscErrorCode PetscDrawGetBoundingBox(PetscDraw draw, PetscReal *xl, PetscReal *yl, PetscReal *xr, PetscReal *yr)
-{
+PetscErrorCode PetscDrawGetBoundingBox(PetscDraw draw, PetscReal *xl, PetscReal *yl, PetscReal *xr, PetscReal *yr) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   if (xl) PetscValidRealPointer(xl, 2);
@@ -49,8 +48,7 @@ PetscErrorCode PetscDrawGetBoundingBox(PetscDraw draw, PetscReal *xl, PetscReal 
 
 .seealso: `PetscDraw`, `PetscDrawPushCurrentPoint()`, `PetscDrawPopCurrentPoint()`, `PetscDrawSetCurrentPoint()`
 @*/
-PetscErrorCode PetscDrawGetCurrentPoint(PetscDraw draw, PetscReal *x, PetscReal *y)
-{
+PetscErrorCode PetscDrawGetCurrentPoint(PetscDraw draw, PetscReal *x, PetscReal *y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   PetscValidRealPointer(x, 2);
@@ -73,8 +71,7 @@ PetscErrorCode PetscDrawGetCurrentPoint(PetscDraw draw, PetscReal *x, PetscReal 
 
 .seealso: `PetscDraw`, `PetscDrawPushCurrentPoint()`, `PetscDrawPopCurrentPoint()`, `PetscDrawGetCurrentPoint()`
 @*/
-PetscErrorCode PetscDrawSetCurrentPoint(PetscDraw draw, PetscReal x, PetscReal y)
-{
+PetscErrorCode PetscDrawSetCurrentPoint(PetscDraw draw, PetscReal x, PetscReal y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   draw->currentpoint_x[draw->currentpoint] = x;
@@ -95,8 +92,7 @@ PetscErrorCode PetscDrawSetCurrentPoint(PetscDraw draw, PetscReal x, PetscReal y
 
 .seealso: `PetscDraw`, `PetscDrawPushCurrentPoint()`, `PetscDrawPopCurrentPoint()`, `PetscDrawGetCurrentPoint()`
 @*/
-PetscErrorCode PetscDrawPushCurrentPoint(PetscDraw draw, PetscReal x, PetscReal y)
-{
+PetscErrorCode PetscDrawPushCurrentPoint(PetscDraw draw, PetscReal x, PetscReal y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   PetscCheck(draw->currentpoint <= 19, PETSC_COMM_SELF, PETSC_ERR_SUP, "You have pushed too many current points");
@@ -117,8 +113,7 @@ PetscErrorCode PetscDrawPushCurrentPoint(PetscDraw draw, PetscReal x, PetscReal 
 
 .seealso: `PetscDraw`, `PetscDrawPushCurrentPoint()`, `PetscDrawSetCurrentPoint()`, `PetscDrawGetCurrentPoint()`
 @*/
-PetscErrorCode PetscDrawPopCurrentPoint(PetscDraw draw)
-{
+PetscErrorCode PetscDrawPopCurrentPoint(PetscDraw draw) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   PetscCheck(draw->currentpoint-- > 0, PETSC_COMM_SELF, PETSC_ERR_SUP, "You have popped too many current points");
@@ -140,8 +135,7 @@ PetscErrorCode PetscDrawPopCurrentPoint(PetscDraw draw)
 .seealso: `PetscDraw`, `PetscDrawArrow()`, `PetscDrawLineSetWidth()`, `PetscDrawLineGetWidth()`, `PetscDrawRectangle()`, `PetscDrawTriangle()`, `PetscDrawEllipse()`,
           `PetscDrawMarker()`, `PetscDrawPoint()`
 @*/
-PetscErrorCode PetscDrawLine(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int cl)
-{
+PetscErrorCode PetscDrawLine(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int cl) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   PetscUseTypeMethod(draw, line, xl, yl, xr, yr, cl);
@@ -163,8 +157,7 @@ PetscErrorCode PetscDrawLine(PetscDraw draw, PetscReal xl, PetscReal yl, PetscRe
 .seealso: `PetscDraw`, `PetscDrawLine()`, `PetscDrawLineSetWidth()`, `PetscDrawLineGetWidth()`, `PetscDrawRectangle()`, `PetscDrawTriangle()`, `PetscDrawEllipse()`,
           `PetscDrawMarker()`, `PetscDrawPoint()`
 @*/
-PetscErrorCode PetscDrawArrow(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int cl)
-{
+PetscErrorCode PetscDrawArrow(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int cl) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   PetscUseTypeMethod(draw, arrow, xl, yl, xr, yr, cl);
@@ -186,8 +179,7 @@ PetscErrorCode PetscDrawArrow(PetscDraw draw, PetscReal xl, PetscReal yl, PetscR
 
 .seealso: `PetscDraw`, `PetscDrawLineGetWidth()`, `PetscDrawLine()`, `PetscDrawArrow()`
 @*/
-PetscErrorCode PetscDrawLineSetWidth(PetscDraw draw, PetscReal width)
-{
+PetscErrorCode PetscDrawLineSetWidth(PetscDraw draw, PetscReal width) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   PetscTryTypeMethod(draw, linesetwidth, width);
@@ -214,8 +206,7 @@ PetscErrorCode PetscDrawLineSetWidth(PetscDraw draw, PetscReal width)
 
 .seealso: `PetscDraw`, `PetscDrawLineSetWidth()`, `PetscDrawLine()`, `PetscDrawArrow()`
 @*/
-PetscErrorCode PetscDrawLineGetWidth(PetscDraw draw, PetscReal *width)
-{
+PetscErrorCode PetscDrawLineGetWidth(PetscDraw draw, PetscReal *width) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(draw, PETSC_DRAW_CLASSID, 1);
   PetscValidRealPointer(width, 2);

@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 SOURCEC	  = iscomp.c iscoloring.c isdiff.c isblock.c
 SOURCEF	  =

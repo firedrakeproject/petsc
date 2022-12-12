@@ -38,8 +38,7 @@ PETSC_EXTERN PetscErrorCode DMCreate_Stag(DM);
 
 .seealso: `DMRegister()`, `DMRegisterDestroy()`
 @*/
-PetscErrorCode DMRegisterAll(void)
-{
+PetscErrorCode DMRegisterAll(void) {
   PetscFunctionBegin;
   if (DMRegisterAllCalled) PetscFunctionReturn(0);
   DMRegisterAllCalled = PETSC_TRUE;
@@ -88,8 +87,7 @@ PETSC_EXTERN PetscErrorCode PetscSpaceCreate_WXY(PetscSpace);
 
 .seealso: `PetscSpaceRegister()`, `PetscSpaceRegisterDestroy()`
 @*/
-PetscErrorCode PetscSpaceRegisterAll(void)
-{
+PetscErrorCode PetscSpaceRegisterAll(void) {
   PetscFunctionBegin;
   if (PetscSpaceRegisterAllCalled) PetscFunctionReturn(0);
   PetscSpaceRegisterAllCalled = PETSC_TRUE;
@@ -121,8 +119,7 @@ PETSC_EXTERN PetscErrorCode PetscDualSpaceCreate_Refined(PetscDualSpace);
 
 .seealso: `PetscDualSpaceRegister()`, `PetscDualSpaceRegisterDestroy()`
 @*/
-PetscErrorCode PetscDualSpaceRegisterAll(void)
-{
+PetscErrorCode PetscDualSpaceRegisterAll(void) {
   PetscFunctionBegin;
   if (PetscDualSpaceRegisterAllCalled) PetscFunctionReturn(0);
   PetscDualSpaceRegisterAllCalled = PETSC_TRUE;
@@ -153,8 +150,7 @@ PETSC_EXTERN PetscErrorCode PetscFECreate_OpenCL(PetscFE);
 
 .seealso: `PetscFERegister()`, `PetscFERegisterDestroy()`
 @*/
-PetscErrorCode PetscFERegisterAll(void)
-{
+PetscErrorCode PetscFERegisterAll(void) {
   PetscFunctionBegin;
   if (PetscFERegisterAllCalled) PetscFunctionReturn(0);
   PetscFERegisterAllCalled = PETSC_TRUE;
@@ -189,8 +185,7 @@ PETSC_EXTERN PetscErrorCode PetscLimiterCreate_MC(PetscLimiter);
 
 .seealso: `PetscLimiterRegister()`, `PetscLimiterRegisterDestroy()`
 @*/
-PetscErrorCode PetscLimiterRegisterAll(void)
-{
+PetscErrorCode PetscLimiterRegisterAll(void) {
   PetscFunctionBegin;
   if (PetscLimiterRegisterAllCalled) PetscFunctionReturn(0);
   PetscLimiterRegisterAllCalled = PETSC_TRUE;
@@ -221,8 +216,7 @@ PETSC_EXTERN PetscErrorCode PetscFVCreate_LeastSquares(PetscFV);
 
 .seealso: `PetscFVRegister()`, `PetscFVRegisterDestroy()`
 @*/
-PetscErrorCode PetscFVRegisterAll(void)
-{
+PetscErrorCode PetscFVRegisterAll(void) {
   PetscFunctionBegin;
   if (PetscFVRegisterAllCalled) PetscFunctionReturn(0);
   PetscFVRegisterAllCalled = PETSC_TRUE;
@@ -247,8 +241,7 @@ PETSC_EXTERN PetscErrorCode PetscDSCreate_Basic(PetscDS);
 
 .seealso: `PetscDSRegister()`, `PetscDSRegisterDestroy()`
 @*/
-PetscErrorCode PetscDSRegisterAll(void)
-{
+PetscErrorCode PetscDSRegisterAll(void) {
   PetscFunctionBegin;
   if (PetscDSRegisterAllCalled) PetscFunctionReturn(0);
   PetscDSRegisterAllCalled = PETSC_TRUE;

@@ -3,8 +3,7 @@ static char help[] = "Demonstrates scattering with the indices specified by a pr
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt rank, size;
   Vec         x, y;
   IS          is1, is2;

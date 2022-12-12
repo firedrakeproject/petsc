@@ -24,8 +24,7 @@ static char help[] = "Newton methods to solve u''  = f in parallel with periodic
 PetscErrorCode FormJacobian(SNES, Vec, Mat, Mat, void *);
 PetscErrorCode FormFunction(SNES, Vec, Vec, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   SNES         snes; /* SNES context */
   Mat          J;    /* Jacobian matrix */
   DM           da;
@@ -107,8 +106,7 @@ int main(int argc, char **argv)
    The user-defined context can contain any application-specific
    data needed for the function evaluation.
 */
-PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx)
-{
+PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
   DM           da = (DM)ctx;
   PetscScalar *xx, *ff;
   PetscReal    h;
@@ -173,8 +171,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx)
 .  B - optionally different preconditioning matrix
 .  flag - flag indicating matrix structure
 */
-PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx)
-{
+PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
   PetscScalar *xx, A[3];
   PetscInt     i, M, xs, xm;
   DM           da = (DM)ctx;

@@ -10,8 +10,7 @@ typedef struct _projectConstraintsCtx {
   Vec mask;
 } projectConstraintsCtx;
 
-PetscErrorCode MatMult_GlobalToLocalNormal(Mat CtC, Vec x, Vec y)
-{
+PetscErrorCode MatMult_GlobalToLocalNormal(Mat CtC, Vec x, Vec y) {
   DM                     dm;
   Vec                    local, mask;
   projectConstraintsCtx *ctx;
@@ -31,8 +30,7 @@ PetscErrorCode MatMult_GlobalToLocalNormal(Mat CtC, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMGlobalToLocalSolve_project1(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx)
-{
+static PetscErrorCode DMGlobalToLocalSolve_project1(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx) {
   PetscInt f;
 
   PetscFunctionBegin;
@@ -41,15 +39,15 @@ static PetscErrorCode DMGlobalToLocalSolve_project1(PetscInt dim, PetscReal time
 }
 
 /*@
-  DMGlobalToLocalSolve - Solve for the global vector that is mapped to a given local vector by `DMGlobalToLocalBegin()`/`DMGlobalToLocalEnd()` with mode
-  = `INSERT_VALUES`.  It is assumed that the sum of all the local vector sizes is greater than or equal to the global vector size, so the solution is
-  a least-squares solution.  It is also assumed that `DMLocalToGlobalBegin()`/`DMLocalToGlobalEnd()` with mode = `ADD_VALUES` is the adjoint of the
+  DMGlobalToLocalSolve - Solve for the global vector that is mapped to a given local vector by DMGlobalToLocalBegin()/DMGlobalToLocalEnd() with mode
+  = INSERT_VALUES.  It is assumed that the sum of all the local vector sizes is greater than or equal to the global vector size, so the solution is
+  a least-squares solution.  It is also assumed that DMLocalToGlobalBegin()/DMLocalToGlobalEnd() with mode = ADD_VALUES is the adjoint of the
   global-to-local map, so that the least-squares solution may be found by the normal equations.
 
   collective
 
   Input Parameters:
-+ dm - The `DM` object
++ dm - The DM object
 . x - The local vector
 - y - The global vector: the input value of globalVec is used as an initial guess
 
@@ -58,15 +56,13 @@ static PetscErrorCode DMGlobalToLocalSolve_project1(PetscInt dim, PetscReal time
 
   Level: advanced
 
-  Note:
-  If the `DM` is of type `DMPLEX`, then y is the solution of L' * D * L * y = L' * D * x, where D is a diagonal mask that is 1 for every point in
+  Note: If the DM is of type DMPLEX, then y is the solution of L' * D * L * y = L' * D * x, where D is a diagonal mask that is 1 for every point in
   the union of the closures of the local cells and 0 otherwise.  This difference is only relevant if there are anchor points that are not in the
-  closure of any local cell (see `DMPlexGetAnchors()`/`DMPlexSetAnchors()`).
+  closure of any local cell (see DMPlexGetAnchors()/DMPlexSetAnchors()).
 
-.seealso: [](chapter_ksp), `DM`, `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobalEnd()`, `DMPlexGetAnchors()`, `DMPlexSetAnchors()`
+.seealso: `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobalEnd()`, `DMPlexGetAnchors()`, `DMPlexSetAnchors()`
 @*/
-PetscErrorCode DMGlobalToLocalSolve(DM dm, Vec x, Vec y)
-{
+PetscErrorCode DMGlobalToLocalSolve(DM dm, Vec x, Vec y) {
   Mat                   CtC;
   PetscInt              n, N, cStart, cEnd, c;
   PetscBool             isPlex;
@@ -153,10 +149,10 @@ PetscErrorCode DMGlobalToLocalSolve(DM dm, Vec x, Vec y)
 /*@C
   DMProjectField - This projects the given function of the input fields into the function space provided, putting the coefficients in a global vector.
 
-  Collective on dm
+  Collective on DM
 
   Input Parameters:
-+ dm      - The `DM`
++ dm      - The DM
 . time    - The time
 . U       - The input field vector
 . funcs   - The functions to evaluate, one per field
@@ -166,12 +162,10 @@ PetscErrorCode DMGlobalToLocalSolve(DM dm, Vec x, Vec y)
 . X       - The output vector
 
    Calling sequence of func:
-.vb
-    func(PetscInt dim, PetscInt Nf, PetscInt NfAux,
-         const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
-         const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
-         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar f[]);
-.ve
+$    func(PetscInt dim, PetscInt Nf, PetscInt NfAux,
+$         const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[],
+$         const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[],
+$         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar f[]);
 
 +  dim          - The spatial dimension
 .  Nf           - The number of input fields
@@ -192,18 +186,16 @@ PetscErrorCode DMGlobalToLocalSolve(DM dm, Vec x, Vec y)
 .  constants    - The value of each constant
 -  f            - The value of the function at this point in space
 
-  Level: advanced
-
-  Note:
-  There are three different `DM`s that potentially interact in this function. The output `DM`, dm, specifies the layout of the values calculates by funcs.
-  The input `DM`, attached to U, may be different. For example, you can input the solution over the full domain, but output over a piece of the boundary, or
-  a subdomain. You can also output a different number of fields than the input, with different discretizations. Last the auxiliary `DM`, attached to the
+  Note: There are three different DMs that potentially interact in this function. The output DM, dm, specifies the layout of the values calculates by funcs.
+  The input DM, attached to U, may be different. For example, you can input the solution over the full domain, but output over a piece of the boundary, or
+  a subdomain. You can also output a different number of fields than the input, with different discretizations. Last the auxiliary DM, attached to the
   auxiliary field vector, which is attached to dm, can also be different. It can have a different topology, number of fields, and discretizations.
 
-.seealso: [](chapter_ksp), `DM`, `DMProjectFieldLocal()`, `DMProjectFieldLabelLocal()`, `DMProjectFunction()`, `DMComputeL2Diff()`
+  Level: intermediate
+
+.seealso: `DMProjectFieldLocal()`, `DMProjectFieldLabelLocal()`, `DMProjectFunction()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectField(DM dm, PetscReal time, Vec U, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec X)
-{
+PetscErrorCode DMProjectField(DM dm, PetscReal time, Vec U, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec X) {
   Vec localX, localU;
   DM  dmIn;
 
@@ -237,8 +229,7 @@ PetscErrorCode DMProjectField(DM dm, PetscReal time, Vec U, void (**funcs)(Petsc
 /********************* Adaptive Interpolation **************************/
 
 /* See the discussion of Adaptive Interpolation in manual/high_level_mg.rst */
-PetscErrorCode DMAdaptInterpolator(DM dmc, DM dmf, Mat In, KSP smoother, Mat MF, Mat MC, Mat *InAdapt, void *user)
-{
+PetscErrorCode DMAdaptInterpolator(DM dmc, DM dmf, Mat In, KSP smoother, Mat MF, Mat MC, Mat *InAdapt, void *user) {
   Mat                globalA, AF;
   Vec                tmp;
   const PetscScalar *af, *ac;
@@ -403,8 +394,7 @@ PetscErrorCode DMAdaptInterpolator(DM dmc, DM dmf, Mat In, KSP smoother, Mat MF,
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCheckInterpolator(DM dmf, Mat In, Mat MC, Mat MF, PetscReal tol)
-{
+PetscErrorCode DMCheckInterpolator(DM dmf, Mat In, Mat MC, Mat MF, PetscReal tol) {
   Vec       tmp;
   PetscReal norminf, norm2, maxnorminf = 0.0, maxnorm2 = 0.0;
   PetscInt  k, Nc;

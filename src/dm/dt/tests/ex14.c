@@ -6,8 +6,7 @@ const char help[] = "Tests properties of probability distributions";
    - the PDF integrates to 1
    - the incomplete integral of the PDF is the CDF at many points
 */
-static PetscErrorCode VerifyDistribution(const char name[], PetscBool pos, PetscProbFunc pdf, PetscProbFunc cdf)
-{
+static PetscErrorCode VerifyDistribution(const char name[], PetscBool pos, PetscProbFunc pdf, PetscProbFunc cdf) {
   const PetscInt digits = 14;
   PetscReal      lower = pos ? 0. : -10., upper = 10.;
   PetscReal      integral, integral2;
@@ -26,8 +25,7 @@ static PetscErrorCode VerifyDistribution(const char name[], PetscBool pos, Petsc
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestDistributions()
-{
+static PetscErrorCode TestDistributions() {
   PetscProbFunc pdf[]  = {PetscPDFMaxwellBoltzmann1D, PetscPDFMaxwellBoltzmann2D, PetscPDFMaxwellBoltzmann3D, PetscPDFGaussian1D};
   PetscProbFunc cdf[]  = {PetscCDFMaxwellBoltzmann1D, PetscCDFMaxwellBoltzmann2D, PetscCDFMaxwellBoltzmann3D, PetscCDFGaussian1D};
   PetscBool     pos[]  = {PETSC_TRUE, PETSC_TRUE, PETSC_TRUE, PETSC_FALSE};
@@ -38,8 +36,7 @@ static PetscErrorCode TestDistributions()
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestSampling()
-{
+static PetscErrorCode TestSampling() {
   PetscProbFunc cdf[2]     = {PetscCDFMaxwellBoltzmann1D, PetscCDFMaxwellBoltzmann2D};
   PetscProbFunc sampler[2] = {PetscPDFSampleGaussian1D, PetscPDFSampleGaussian2D};
   PetscInt      dim[2]     = {1, 2};
@@ -74,8 +71,7 @@ static PetscErrorCode TestSampling()
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(TestDistributions());

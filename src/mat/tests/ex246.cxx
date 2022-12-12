@@ -3,8 +3,7 @@ static char help[] = "Tests MATHTOOL with a derived htool::IMatrix<PetscScalar> 
 #include <petscmat.h>
 #include <htool/misc/petsc.hpp>
 
-static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx)
-{
+static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx) {
   PetscInt  d, j, k;
   PetscReal diff = 0.0, *coords = (PetscReal *)(ctx);
 
@@ -26,8 +25,7 @@ private:
 public:
   MyIMatrix(PetscInt M, PetscInt N, PetscInt spacedim, PetscReal *gcoords) : htool::VirtualGenerator<PetscScalar>(M, N), coords(gcoords), sdim(spacedim) { }
 
-  void copy_submatrix(PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr) const override
-  {
+  void copy_submatrix(PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr) const override {
     PetscReal diff = 0.0;
 
     PetscFunctionBeginUser;
@@ -41,8 +39,7 @@ public:
   }
 };
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat            A, B, P, R;
   PetscInt       m = 100, dim = 3, M, begin = 0;
   PetscMPIInt    size;

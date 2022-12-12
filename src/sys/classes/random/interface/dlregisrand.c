@@ -10,13 +10,12 @@ static PetscBool PetscRandomPackageInitialized = PETSC_FALSE;
 
 .seealso: `PetscFinalize()`
 @*/
-PetscErrorCode PetscRandomFinalizePackage(void)
-{
-  PetscFunctionBegin;
-  PetscCall(PetscFunctionListDestroy(&PetscRandomList));
-  PetscRandomPackageInitialized = PETSC_FALSE;
-  PetscRandomRegisterAllCalled  = PETSC_FALSE;
-  PetscFunctionReturn(0);
+PetscErrorCode   PetscRandomFinalizePackage(void) {
+    PetscFunctionBegin;
+    PetscCall(PetscFunctionListDestroy(&PetscRandomList));
+    PetscRandomPackageInitialized = PETSC_FALSE;
+    PetscRandomRegisterAllCalled  = PETSC_FALSE;
+    PetscFunctionReturn(0);
 }
 
 /*@C
@@ -28,8 +27,7 @@ PetscErrorCode PetscRandomFinalizePackage(void)
 
 .seealso: `PetscInitialize()`
 @*/
-PetscErrorCode PetscRandomInitializePackage(void)
-{
+PetscErrorCode PetscRandomInitializePackage(void) {
   char      logList[256];
   PetscBool opt, pkg;
 

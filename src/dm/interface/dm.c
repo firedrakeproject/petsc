@@ -8,11 +8,11 @@
 #include <petscds.h>
 
 #ifdef PETSC_HAVE_LIBCEED
-  #include <petscfeceed.h>
+#include <petscfeceed.h>
 #endif
 
 #if !defined(PETSC_HAVE_WINDOWS_COMPILERS)
-  #include <petsc/private/valgrind/memcheck.h>
+#include <petsc/private/valgrind/memcheck.h>
 #endif
 
 PetscClassId DM_CLASSID;
@@ -47,8 +47,7 @@ const char *const DMCopyLabelsModes[] = {"replace", "keep", "fail", "DMCopyLabel
 
 .seealso: `DMSetType()`, `DMType`, `DMDACreate()`, `DMDA`, `DMSLICED`, `DMCOMPOSITE`, `DMPLEX`, `DMMOAB`, `DMNETWORK`
 @*/
-PetscErrorCode DMCreate(MPI_Comm comm, DM *dm)
-{
+PetscErrorCode DMCreate(MPI_Comm comm, DM *dm) {
   DM      v;
   PetscDS ds;
 
@@ -58,8 +57,6 @@ PetscErrorCode DMCreate(MPI_Comm comm, DM *dm)
   PetscCall(DMInitializePackage());
 
   PetscCall(PetscHeaderCreate(v, DM_CLASSID, "DM", "Distribution Manager", "DM", comm, DMDestroy, DMView));
-
-  ((PetscObject)v)->non_cyclic_references = &DMCountNonCyclicReferences;
 
   v->setupcalled          = PETSC_FALSE;
   v->setfromoptionscalled = PETSC_FALSE;
@@ -128,9 +125,9 @@ PetscErrorCode DMCreate(MPI_Comm comm, DM *dm)
   Use `DMConvert()` for a general way to create new `DM` from a given `DM`
 
 .seealso: `DMDestroy()`, `DMCreate()`, `DMSetType()`, `DMSetLocalSection()`, `DMSetGlobalSection()`, `DMPLEX`, `DMSetType()`, `DMConvert()`
+
 @*/
-PetscErrorCode DMClone(DM dm, DM *newdm)
-{
+PetscErrorCode DMClone(DM dm, DM *newdm) {
   PetscSF  sf;
   Vec      coords;
   void    *ctx;
@@ -223,8 +220,7 @@ PetscErrorCode DMClone(DM dm, DM *newdm)
 .seealso: `DMCreate()`, `DMDestroy()`, `DM`, `DMDAInterpolationType`, `VecType`, `DMGetVecType()`, `DMSetMatType()`, `DMGetMatType()`,
           `VECSTANDARD`, `VECCUDA`, `VECVIENNACL`, `DMCreateLocalVector()`, `DMCreateGlobalVector()`
 @*/
-PetscErrorCode DMSetVecType(DM da, VecType ctype)
-{
+PetscErrorCode DMSetVecType(DM da, VecType ctype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(da, DM_CLASSID, 1);
   PetscCall(PetscFree(da->vectype));
@@ -247,8 +243,7 @@ PetscErrorCode DMSetVecType(DM da, VecType ctype)
 
 .seealso: `DMCreate()`, `DMDestroy()`, `DM`, `DMDAInterpolationType`, `VecType`, `DMSetMatType()`, `DMGetMatType()`, `DMSetVecType()`
 @*/
-PetscErrorCode DMGetVecType(DM da, VecType *ctype)
-{
+PetscErrorCode DMGetVecType(DM da, VecType *ctype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(da, DM_CLASSID, 1);
   *ctype = da->vectype;
@@ -273,8 +268,7 @@ PetscErrorCode DMGetVecType(DM da, VecType *ctype)
 
 .seealso: `DM`, `VecSetDM()`, `DMGetLocalVector()`, `DMGetGlobalVector()`, `DMSetVecType()`
 @*/
-PetscErrorCode VecGetDM(Vec v, DM *dm)
-{
+PetscErrorCode VecGetDM(Vec v, DM *dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(v, VEC_CLASSID, 1);
   PetscValidPointer(dm, 2);
@@ -300,8 +294,7 @@ PetscErrorCode VecGetDM(Vec v, DM *dm)
 
 .seealso: `VecGetDM()`, `DMGetLocalVector()`, `DMGetGlobalVector()`, `DMSetVecType()`
 @*/
-PetscErrorCode VecSetDM(Vec v, DM dm)
-{
+PetscErrorCode VecSetDM(Vec v, DM dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(v, VEC_CLASSID, 1);
   if (dm) PetscValidHeaderSpecific(dm, DM_CLASSID, 2);
@@ -326,8 +319,7 @@ PetscErrorCode VecSetDM(Vec v, DM dm)
 .seealso: `DMDACreate1d()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMSetMatrixPreallocateOnly()`, `MatType`, `DMGetMatType()`,
           `DMGetISColoringType()`, `ISColoringType`, `IS_COLORING_GLOBAL`, `IS_COLORING_LOCAL`
 @*/
-PetscErrorCode DMSetISColoringType(DM dm, ISColoringType ctype)
-{
+PetscErrorCode DMSetISColoringType(DM dm, ISColoringType ctype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->coloringtype = ctype;
@@ -335,7 +327,7 @@ PetscErrorCode DMSetISColoringType(DM dm, ISColoringType ctype)
 }
 
 /*@C
-       DMGetISColoringType - Gets the type of coloring, `IS_COLORING_GLOBAL` or `IS_COLORING_LOCAL` that is created by the `DM`
+       DMGetISColoringType - Gets the type of coloring,  `IS_COLORING_GLOBAL` or `IS_COLORING_LOCAL` that is created by the `DM`
 
    Logically Collective on dm
 
@@ -353,8 +345,7 @@ PetscErrorCode DMSetISColoringType(DM dm, ISColoringType ctype)
 .seealso: `DMDACreate1d()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMSetMatrixPreallocateOnly()`, `MatType`, `DMGetMatType()`,
           `DMGetISColoringType()`, `ISColoringType`, `IS_COLORING_GLOBAL`, `IS_COLORING_LOCAL`
 @*/
-PetscErrorCode DMGetISColoringType(DM dm, ISColoringType *ctype)
-{
+PetscErrorCode DMGetISColoringType(DM dm, ISColoringType *ctype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *ctype = dm->coloringtype;
@@ -377,8 +368,7 @@ PetscErrorCode DMGetISColoringType(DM dm, ISColoringType *ctype)
 
 .seealso: `MatType`, `DMDACreate1d()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMSetMatrixPreallocateOnly()`, `MatType`, `DMGetMatType()`, `DMSetMatType()`, `DMGetMatType()`, `DMCreateGlobalVector()`, `DMCreateLocalVector()`
 @*/
-PetscErrorCode DMSetMatType(DM dm, MatType ctype)
-{
+PetscErrorCode DMSetMatType(DM dm, MatType ctype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscFree(dm->mattype));
@@ -401,8 +391,7 @@ PetscErrorCode DMSetMatType(DM dm, MatType ctype)
 
 .seealso: `DMDACreate1d()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMSetMatrixPreallocateOnly()`, `MatType`, `DMSetMatType()`, `DMSetMatType()`, `DMGetMatType()`
 @*/
-PetscErrorCode DMGetMatType(DM dm, MatType *ctype)
-{
+PetscErrorCode DMGetMatType(DM dm, MatType *ctype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *ctype = dm->mattype;
@@ -430,8 +419,7 @@ PetscErrorCode DMGetMatType(DM dm, MatType *ctype)
 
 .seealso: `MatSetDM()`, `DMCreateMatrix()`, `DMSetMatType()`
 @*/
-PetscErrorCode MatGetDM(Mat A, DM *dm)
-{
+PetscErrorCode MatGetDM(Mat A, DM *dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidPointer(dm, 2);
@@ -459,8 +447,7 @@ PetscErrorCode MatGetDM(Mat A, DM *dm)
 
 .seealso: `MatGetDM()`, `DMCreateMatrix()`, `DMSetMatType()`
 @*/
-PetscErrorCode MatSetDM(Mat A, DM dm)
-{
+PetscErrorCode MatSetDM(Mat A, DM dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   if (dm) PetscValidHeaderSpecific(dm, DM_CLASSID, 2);
@@ -485,8 +472,7 @@ PetscErrorCode MatSetDM(Mat A, DM dm)
 
 .seealso: `PetscObjectSetOptionsPrefix()`, `DMSetFromOptions()`
 @*/
-PetscErrorCode DMSetOptionsPrefix(DM dm, const char prefix[])
-{
+PetscErrorCode DMSetOptionsPrefix(DM dm, const char prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscObjectSetOptionsPrefix((PetscObject)dm, prefix));
@@ -514,8 +500,7 @@ PetscErrorCode DMSetOptionsPrefix(DM dm, const char prefix[])
 
 .seealso: `DMSetOptionsPrefix()`, `DMGetOptionsPrefix()`, `PetscObjectAppendOptionsPrefix()`, `DMSetFromOptions()`
 @*/
-PetscErrorCode DMAppendOptionsPrefix(DM dm, const char prefix[])
-{
+PetscErrorCode DMAppendOptionsPrefix(DM dm, const char prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscObjectAppendOptionsPrefix((PetscObject)dm, prefix));
@@ -542,16 +527,14 @@ PetscErrorCode DMAppendOptionsPrefix(DM dm, const char prefix[])
 
 .seealso: `DMSetOptionsPrefix()`, `DMAppendOptionsPrefix()`, `DMSetFromOptions()`
 @*/
-PetscErrorCode DMGetOptionsPrefix(DM dm, const char *prefix[])
-{
+PetscErrorCode DMGetOptionsPrefix(DM dm, const char *prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscObjectGetOptionsPrefix((PetscObject)dm, prefix));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMCountNonCyclicReferences_Internal(DM dm, PetscBool recurseCoarse, PetscBool recurseFine, PetscInt *ncrefct)
-{
+static PetscErrorCode DMCountNonCyclicReferences(DM dm, PetscBool recurseCoarse, PetscBool recurseFine, PetscInt *ncrefct) {
   PetscInt refct = ((PetscObject)dm)->refct;
 
   PetscFunctionBegin;
@@ -561,7 +544,7 @@ static PetscErrorCode DMCountNonCyclicReferences_Internal(DM dm, PetscBool recur
     if (recurseCoarse) {
       PetscInt coarseCount;
 
-      PetscCall(DMCountNonCyclicReferences_Internal(dm->coarseMesh, PETSC_TRUE, PETSC_FALSE, &coarseCount));
+      PetscCall(DMCountNonCyclicReferences(dm->coarseMesh, PETSC_TRUE, PETSC_FALSE, &coarseCount));
       refct += coarseCount;
     }
   }
@@ -570,7 +553,7 @@ static PetscErrorCode DMCountNonCyclicReferences_Internal(DM dm, PetscBool recur
     if (recurseFine) {
       PetscInt fineCount;
 
-      PetscCall(DMCountNonCyclicReferences_Internal(dm->fineMesh, PETSC_FALSE, PETSC_TRUE, &fineCount));
+      PetscCall(DMCountNonCyclicReferences(dm->fineMesh, PETSC_FALSE, PETSC_TRUE, &fineCount));
       refct += fineCount;
     }
   }
@@ -578,16 +561,7 @@ static PetscErrorCode DMCountNonCyclicReferences_Internal(DM dm, PetscBool recur
   PetscFunctionReturn(0);
 }
 
-/* Generic wrapper for DMCountNonCyclicReferences_Internal() */
-PetscErrorCode DMCountNonCyclicReferences(PetscObject dm, PetscInt *ncrefct)
-{
-  PetscFunctionBegin;
-  PetscCall(DMCountNonCyclicReferences_Internal((DM)dm, PETSC_TRUE, PETSC_TRUE, ncrefct));
-  PetscFunctionReturn(0);
-}
-
-PetscErrorCode DMDestroyLabelLinkList_Internal(DM dm)
-{
+PetscErrorCode DMDestroyLabelLinkList_Internal(DM dm) {
   DMLabelLink next = dm->labels;
 
   PetscFunctionBegin;
@@ -605,8 +579,7 @@ PetscErrorCode DMDestroyLabelLinkList_Internal(DM dm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMDestroyCoordinates_Private(DMCoordinates *c)
-{
+PetscErrorCode DMDestroyCoordinates_Private(DMCoordinates *c) {
   PetscFunctionBegin;
   c->dim = PETSC_DEFAULT;
   PetscCall(DMDestroy(&c->dm));
@@ -627,9 +600,9 @@ PetscErrorCode DMDestroyCoordinates_Private(DMCoordinates *c)
     Level: developer
 
 .seealso: `DMCreate()`, `DMType`, `DMSetType()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`
+
 @*/
-PetscErrorCode DMDestroy(DM *dm)
-{
+PetscErrorCode DMDestroy(DM *dm) {
   PetscInt       cnt;
   DMNamedVecLink nlink, nnext;
 
@@ -638,7 +611,7 @@ PetscErrorCode DMDestroy(DM *dm)
   PetscValidHeaderSpecific((*dm), DM_CLASSID, 1);
 
   /* count all non-cyclic references in the doubly-linked list of coarse<->fine meshes */
-  PetscCall(DMCountNonCyclicReferences_Internal(*dm, PETSC_TRUE, PETSC_TRUE, &cnt));
+  PetscCall(DMCountNonCyclicReferences(*dm, PETSC_TRUE, PETSC_TRUE, &cnt));
   --((PetscObject)(*dm))->refct;
   if (--cnt > 0) {
     *dm = NULL;
@@ -812,9 +785,9 @@ PetscErrorCode DMDestroy(DM *dm)
     This is usually called after various parameter setting operations and `DMSetFromOptions()` are called on the `DM`
 
 .seealso: `DM`, `DMCreate()`, `DMSetType()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`
+
 @*/
-PetscErrorCode DMSetUp(DM dm)
-{
+PetscErrorCode DMSetUp(DM dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (dm->setupcalled) PetscFunctionReturn(0);
@@ -889,9 +862,9 @@ PetscErrorCode DMSetUp(DM dm)
 .seealso: `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`,
          `DMPlexCheckSymmetry()`, `DMPlexCheckSkeleton()`, `DMPlexCheckFaces()`, `DMPlexCheckGeometry()`, `DMPlexCheckPointSF()`, `DMPlexCheckInterfaceCones()`,
          `DMSetOptionsPrefix()`, `DM`, `DMType`, `DMPLEX`, `DMDA`
+
 @*/
-PetscErrorCode DMSetFromOptions(DM dm)
-{
+PetscErrorCode DMSetFromOptions(DM dm) {
   char      typeName[256];
   PetscBool flg;
 
@@ -900,7 +873,6 @@ PetscErrorCode DMSetFromOptions(DM dm)
   dm->setfromoptionscalled = PETSC_TRUE;
   if (dm->sf) PetscCall(PetscSFSetFromOptions(dm->sf));
   if (dm->sectionSF) PetscCall(PetscSFSetFromOptions(dm->sectionSF));
-  if (dm->coordinates[0].dm) PetscCall(DMSetFromOptions(dm->coordinates[0].dm));
   PetscObjectOptionsBegin((PetscObject)dm);
   PetscCall(PetscOptionsBool("-dm_preallocate_only", "only preallocate matrix, but do not set column indices", "DMSetMatrixPreallocateOnly", dm->prealloc_only, &dm->prealloc_only, NULL));
   PetscCall(PetscOptionsFList("-dm_vec_type", "Vector type used for created vectors", "DMSetVecType", VecList, dm->vectype, typeName, 256, &flg));
@@ -933,8 +905,7 @@ PetscErrorCode DMSetFromOptions(DM dm)
 
 .seealso: `DM`, `DMView()`, `PetscObjectViewFromOptions()`, `DMCreate()`, `PetscObjectViewFromOptions()`
 @*/
-PetscErrorCode DMViewFromOptions(DM dm, PetscObject obj, const char name[])
-{
+PetscErrorCode DMViewFromOptions(DM dm, PetscObject obj, const char name[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscObjectViewFromOptions((PetscObject)dm, obj, name));
@@ -961,8 +932,7 @@ PetscErrorCode DMViewFromOptions(DM dm, PetscObject obj, const char name[])
 .seealso: `PetscViewer`, `PetscViewerFormat`, `PetscViewerSetFormat`(), `DMDestroy()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMLoad()`, `PetscObjectSetName()`
 
 @*/
-PetscErrorCode DMView(DM dm, PetscViewer v)
-{
+PetscErrorCode DMView(DM dm, PetscViewer v) {
   PetscBool         isbinary;
   PetscMPIInt       size;
   PetscViewerFormat format;
@@ -1014,9 +984,9 @@ PetscErrorCode DMView(DM dm, PetscViewer v)
 
 .seealso: `Vec`, `DMCreateLocalVector()`, `DMGetGlobalVector()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`,
          `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`
+
 @*/
-PetscErrorCode DMCreateGlobalVector(DM dm, Vec *vec)
-{
+PetscErrorCode DMCreateGlobalVector(DM dm, Vec *vec) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(vec, 2);
@@ -1048,9 +1018,9 @@ PetscErrorCode DMCreateGlobalVector(DM dm, Vec *vec)
 
  .seealso: `Vec`, `DMCreateGlobalVector()`, `DMGetLocalVector()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`
          `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`
+
 @*/
-PetscErrorCode DMCreateLocalVector(DM dm, Vec *vec)
-{
+PetscErrorCode DMCreateLocalVector(DM dm, Vec *vec) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(vec, 2);
@@ -1085,11 +1055,10 @@ PetscErrorCode DMCreateLocalVector(DM dm, Vec *vec)
 
    This mapping can then be used by `VecSetLocalToGlobalMapping()` or `MatSetLocalToGlobalMapping()`.
 
-.seealso: `DMCreateLocalVector()`, `DMCreateLocalVector()`, `DMCreateGlobalVector()`, `VecSetLocalToGlobalMapping()`, `MatSetLocalToGlobalMapping()`,
+.seealso: `DMCreateLocalVector()`,  `DMCreateLocalVector()`, `DMCreateGlobalVector()`, `VecSetLocalToGlobalMapping()`, `MatSetLocalToGlobalMapping()`,
           `DMCreateMatrix()`
 @*/
-PetscErrorCode DMGetLocalToGlobalMapping(DM dm, ISLocalToGlobalMapping *ltog)
-{
+PetscErrorCode DMGetLocalToGlobalMapping(DM dm, ISLocalToGlobalMapping *ltog) {
   PetscInt bs = -1, bsLocal[2], bsMinMax[2];
 
   PetscFunctionBegin;
@@ -1148,6 +1117,7 @@ PetscErrorCode DMGetLocalToGlobalMapping(DM dm, ISLocalToGlobalMapping *ltog)
         n /= bs;
       }
       PetscCall(ISLocalToGlobalMappingCreate(PetscObjectComm((PetscObject)dm), bs, n, ltog, PETSC_OWN_POINTER, &dm->ltogmap));
+      PetscCall(PetscLogObjectParent((PetscObject)dm, (PetscObject)dm->ltogmap));
     } else PetscUseTypeMethod(dm, getlocaltoglobalmapping);
   }
   *ltog = dm->ltogmap;
@@ -1175,8 +1145,7 @@ PetscErrorCode DMGetLocalToGlobalMapping(DM dm, ISLocalToGlobalMapping *ltog)
 
 .seealso: `ISCreateBlock()`, `VecSetBlockSize()`, `MatSetBlockSize()`, `DMGetLocalToGlobalMapping()`
 @*/
-PetscErrorCode DMGetBlockSize(DM dm, PetscInt *bs)
-{
+PetscErrorCode DMGetBlockSize(DM dm, PetscInt *bs) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidIntPointer(bs, 2);
@@ -1209,9 +1178,9 @@ PetscErrorCode DMGetBlockSize(DM dm, PetscInt *bs)
     vectors EXCEPT in the periodic case where it does not make sense since the coordinate vectors are not periodic.
 
 .seealso: `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMRefine()`, `DMCoarsen()`, `DMCreateRestriction()`, `DMCreateInterpolationScale()`
+
 @*/
-PetscErrorCode DMCreateInterpolation(DM dmc, DM dmf, Mat *mat, Vec *vec)
-{
+PetscErrorCode DMCreateInterpolation(DM dmc, DM dmf, Mat *mat, Vec *vec) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dmc, DM_CLASSID, 1);
   PetscValidHeaderSpecific(dmf, DM_CLASSID, 2);
@@ -1242,9 +1211,9 @@ PetscErrorCode DMCreateInterpolation(DM dmc, DM dmf, Mat *mat, Vec *vec)
   on the restriction/interpolation operator to set the bindingpropagates flag to true.
 
 .seealso: `MatRestrict()`, `MatInterpolate()`, `DMCreateInterpolation()`, DMCreateRestriction()`, `DMCreateGlobalVector()`
+
 @*/
-PetscErrorCode DMCreateInterpolationScale(DM dac, DM daf, Mat mat, Vec *scale)
-{
+PetscErrorCode DMCreateInterpolationScale(DM dac, DM daf, Mat mat, Vec *scale) {
   Vec         fine;
   PetscScalar one = 1.0;
 #if defined(PETSC_HAVE_CUDA)
@@ -1292,9 +1261,9 @@ PetscErrorCode DMCreateInterpolationScale(DM dac, DM daf, Mat mat, Vec *scale)
     matrix multiplied by the vector obtained with `DMCreateInterpolationScale()` provides the desired object.
 
 .seealso: `DMRestrict()`, `DMInterpolate()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMRefine()`, `DMCoarsen()`, `DMCreateInterpolation()`
+
 @*/
-PetscErrorCode DMCreateRestriction(DM dmc, DM dmf, Mat *mat)
-{
+PetscErrorCode DMCreateRestriction(DM dmc, DM dmf, Mat *mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dmc, DM_CLASSID, 1);
   PetscValidHeaderSpecific(dmf, DM_CLASSID, 2);
@@ -1328,9 +1297,9 @@ PetscErrorCode DMCreateRestriction(DM dmc, DM dmf, Mat *mat)
 
 .seealso: `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMCreateInterpolation()`,
           `DMCreateRestriction()`, `MatRestrict()`, `MatInterpolate()`
+
 @*/
-PetscErrorCode DMCreateInjection(DM dac, DM daf, Mat *mat)
-{
+PetscErrorCode DMCreateInjection(DM dac, DM daf, Mat *mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dac, DM_CLASSID, 1);
   PetscValidHeaderSpecific(daf, DM_CLASSID, 2);
@@ -1363,8 +1332,7 @@ PetscErrorCode DMCreateInjection(DM dac, DM daf, Mat *mat)
 
 .seealso: `DMCreateMassMatrixLumped()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMRefine()`, `DMCoarsen()`, `DMCreateRestriction()`, `DMCreateInterpolation()`, `DMCreateInjection()`
 @*/
-PetscErrorCode DMCreateMassMatrix(DM dmc, DM dmf, Mat *mat)
-{
+PetscErrorCode DMCreateMassMatrix(DM dmc, DM dmf, Mat *mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dmc, DM_CLASSID, 1);
   PetscValidHeaderSpecific(dmf, DM_CLASSID, 2);
@@ -1393,8 +1361,7 @@ PetscErrorCode DMCreateMassMatrix(DM dmc, DM dmf, Mat *mat)
 
 .seealso: `DMCreateMassMatrix()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMRefine()`, `DMCoarsen()`, `DMCreateRestriction()`, `DMCreateInterpolation()`, `DMCreateInjection()`
 @*/
-PetscErrorCode DMCreateMassMatrixLumped(DM dm, Vec *lm)
-{
+PetscErrorCode DMCreateMassMatrixLumped(DM dm, Vec *lm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(lm, 2);
@@ -1424,9 +1391,9 @@ PetscErrorCode DMCreateMassMatrixLumped(DM dm, Vec *lm)
     Level: developer
 
 .seealso: `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMSetMatType()`, `MatColoring`, `MatFDColoringCreate()`
+
 @*/
-PetscErrorCode DMCreateColoring(DM dm, ISColoringType ctype, ISColoring *coloring)
-{
+PetscErrorCode DMCreateColoring(DM dm, ISColoringType ctype, ISColoring *coloring) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(coloring, 3);
@@ -1464,9 +1431,9 @@ PetscErrorCode DMCreateColoring(DM dm, ISColoringType ctype, ISColoring *colorin
     `MatSetValues()` requires the indices for the global numbering for the `DMDA` which is complic`ated to compute
 
 .seealso: `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMSetMatType()`, `DMCreateMassMatrix()`
+
 @*/
-PetscErrorCode DMCreateMatrix(DM dm, Mat *mat)
-{
+PetscErrorCode DMCreateMatrix(DM dm, Mat *mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(mat, 2);
@@ -1520,8 +1487,7 @@ PetscErrorCode DMCreateMatrix(DM dm, Mat *mat)
 
 .seealso: `DMCreateMatrix()`, `DMSetMatrixStructureOnly()`, `DMSetMatrixPreallocateOnly()`
 @*/
-PetscErrorCode DMSetMatrixPreallocateSkip(DM dm, PetscBool skip)
-{
+PetscErrorCode DMSetMatrixPreallocateSkip(DM dm, PetscBool skip) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->prealloc_skip = skip;
@@ -1545,8 +1511,7 @@ PetscErrorCode DMSetMatrixPreallocateSkip(DM dm, PetscBool skip)
 
 .seealso: `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMSetMatrixStructureOnly()`, `DMSetMatrixPreallocateSkip()`
 @*/
-PetscErrorCode DMSetMatrixPreallocateOnly(DM dm, PetscBool only)
-{
+PetscErrorCode DMSetMatrixPreallocateOnly(DM dm, PetscBool only) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->prealloc_only = only;
@@ -1567,8 +1532,7 @@ PetscErrorCode DMSetMatrixPreallocateOnly(DM dm, PetscBool only)
 
 .seealso: `DMCreateMatrix()`, `DMSetMatrixPreallocateOnly()`, `DMSetMatrixPreallocateSkip()`
 @*/
-PetscErrorCode DMSetMatrixStructureOnly(DM dm, PetscBool only)
-{
+PetscErrorCode DMSetMatrixStructureOnly(DM dm, PetscBool only) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->structure_only = only;
@@ -1597,8 +1561,7 @@ PetscErrorCode DMSetMatrixStructureOnly(DM dm, PetscBool only)
 
 .seealso: `DMDestroy()`, `DMCreate()`, `DMRestoreWorkArray()`, `PetscMalloc()`
 @*/
-PetscErrorCode DMGetWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, void *mem)
-{
+PetscErrorCode DMGetWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, void *mem) {
   DMWorkLink  link;
   PetscMPIInt dsize;
 
@@ -1609,7 +1572,7 @@ PetscErrorCode DMGetWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, void *m
     link       = dm->workin;
     dm->workin = dm->workin->next;
   } else {
-    PetscCall(PetscNew(&link));
+    PetscCall(PetscNewLog(dm, &link));
   }
   PetscCallMPI(MPI_Type_size(dtype, &dsize));
   if (((size_t)dsize * count) > link->bytes) {
@@ -1647,8 +1610,7 @@ PetscErrorCode DMGetWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, void *m
 
 .seealso: `DMDestroy()`, `DMCreate()`, `DMGetWorkArray()`
 @*/
-PetscErrorCode DMRestoreWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, void *mem)
-{
+PetscErrorCode DMRestoreWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, void *mem) {
   DMWorkLink *p, link;
 
   PetscFunctionBegin;
@@ -1693,8 +1655,7 @@ PetscErrorCode DMRestoreWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, voi
 
 .seealso: `DMAddField()`, `DMGetNullSpaceConstructor()`, `DMSetNearNullSpaceConstructor()`, `DMGetNearNullSpaceConstructor()`, `DMCreateSubDM()`, `DMCreateSuperDM()`
 @*/
-PetscErrorCode DMSetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (*nullsp)(DM, PetscInt, PetscInt, MatNullSpace *))
-{
+PetscErrorCode DMSetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (*nullsp)(DM, PetscInt, PetscInt, MatNullSpace *)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCheck(field < 10, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= 10 fields", field);
@@ -1730,8 +1691,7 @@ PetscErrorCode DMSetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (
 
 .seealso: `DMAddField()`, `DMGetField()`, `DMSetNullSpaceConstructor()`, `DMSetNearNullSpaceConstructor()`, `DMGetNearNullSpaceConstructor()`, `DMCreateSubDM()`, `DMCreateSuperDM()`
 @*/
-PetscErrorCode DMGetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (**nullsp)(DM, PetscInt, PetscInt, MatNullSpace *))
-{
+PetscErrorCode DMGetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (**nullsp)(DM, PetscInt, PetscInt, MatNullSpace *)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(nullsp, 3);
@@ -1767,8 +1727,7 @@ PetscErrorCode DMGetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (
 .seealso: `DMAddField()`, `DMGetNearNullSpaceConstructor()`, `DMSetNullSpaceConstructor()`, `DMGetNullSpaceConstructor()`, `DMCreateSubDM()`, `DMCreateSuperDM()`,
           `MatNullSpace`
 @*/
-PetscErrorCode DMSetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (*nullsp)(DM, PetscInt, PetscInt, MatNullSpace *))
-{
+PetscErrorCode DMSetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (*nullsp)(DM, PetscInt, PetscInt, MatNullSpace *)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCheck(field < 10, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= 10 fields", field);
@@ -1805,8 +1764,7 @@ PetscErrorCode DMSetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCo
 .seealso: `DMAddField()`, `DMGetField()`, `DMSetNearNullSpaceConstructor()`, `DMSetNullSpaceConstructor()`, `DMGetNullSpaceConstructor()`, `DMCreateSubDM()`,
           `MatNullSpace`, `DMCreateSuperDM()`
 @*/
-PetscErrorCode DMGetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (**nullsp)(DM, PetscInt, PetscInt, MatNullSpace *))
-{
+PetscErrorCode DMGetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (**nullsp)(DM, PetscInt, PetscInt, MatNullSpace *)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(nullsp, 3);
@@ -1845,8 +1803,7 @@ PetscErrorCode DMGetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCo
 .seealso: `DMAddField()`, `DMGetField()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`,
           `DMCreateFieldDecomposition()`
 @*/
-PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, IS **fields)
-{
+PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, IS **fields) {
   PetscSection section, sectionGlobal;
 
   PetscFunctionBegin;
@@ -1974,8 +1931,7 @@ PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, I
 
 .seealso: `DMAddField()`, `DMCreateFieldIS()`, `DMCreateSubDM()`, `DMCreateDomainDecomposition()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMCreateFieldIS()`
 @*/
-PetscErrorCode DMCreateFieldDecomposition(DM dm, PetscInt *len, char ***namelist, IS **islist, DM **dmlist)
-{
+PetscErrorCode DMCreateFieldDecomposition(DM dm, PetscInt *len, char ***namelist, IS **islist, DM **dmlist) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (len) {
@@ -2051,8 +2007,7 @@ PetscErrorCode DMCreateFieldDecomposition(DM dm, PetscInt *len, char ***namelist
 
 .seealso: `DMCreateFieldIS()`, `DMCreateFieldDecomposition()`, `DMAddField()`, `DMCreateSuperDM()`, `DM`, `IS`, `DMPlexSetMigrationSF()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMCreateFieldIS()`
 @*/
-PetscErrorCode DMCreateSubDM(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm)
-{
+PetscErrorCode DMCreateSubDM(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidIntPointer(fields, 3);
@@ -2082,8 +2037,7 @@ PetscErrorCode DMCreateSubDM(DM dm, PetscInt numFields, const PetscInt fields[],
 
 .seealso: `DM`, `DMCreateSubDM()`, `DMPlexSetMigrationSF()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMCreateFieldIS()`
 @*/
-PetscErrorCode DMCreateSuperDM(DM dms[], PetscInt n, IS **is, DM *superdm)
-{
+PetscErrorCode DMCreateSuperDM(DM dms[], PetscInt n, IS **is, DM *superdm) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -2130,8 +2084,7 @@ PetscErrorCode DMCreateSuperDM(DM dms[], PetscInt n, IS **is, DM *superdm)
 
 .seealso: `DMCreateFieldDecomposition()`, `DMDestroy()`, `DMCreateDomainDecompositionScatters()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMCreateFieldDecomposition()`
 @*/
-PetscErrorCode DMCreateDomainDecomposition(DM dm, PetscInt *n, char ***namelist, IS **innerislist, IS **outerislist, DM **dmlist)
-{
+PetscErrorCode DMCreateDomainDecomposition(DM dm, PetscInt *n, char ***namelist, IS **innerislist, IS **outerislist, DM **dmlist) {
   DMSubDomainHookLink link;
   PetscInt            i, l;
 
@@ -2207,8 +2160,7 @@ PetscErrorCode DMCreateDomainDecomposition(DM dm, PetscInt *n, char ***namelist,
 
 .seealso: `DM`, `DMCreateDomainDecomposition()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMCreateFieldIS()`
 @*/
-PetscErrorCode DMCreateDomainDecompositionScatters(DM dm, PetscInt n, DM *subdms, VecScatter **iscat, VecScatter **oscat, VecScatter **gscat)
-{
+PetscErrorCode DMCreateDomainDecompositionScatters(DM dm, PetscInt n, DM *subdms, VecScatter **iscat, VecScatter **oscat, VecScatter **gscat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(subdms, 3);
@@ -2238,8 +2190,7 @@ PetscErrorCode DMCreateDomainDecompositionScatters(DM dm, PetscInt n, DM *subdms
 
 .seealso: `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
 @*/
-PetscErrorCode DMRefine(DM dm, MPI_Comm comm, DM *dmf)
-{
+PetscErrorCode DMRefine(DM dm, MPI_Comm comm, DM *dmf) {
   DMRefineHookLink link;
 
   PetscFunctionBegin;
@@ -2305,8 +2256,7 @@ $    interphook(DM coarse,Mat interp,DM fine,void *ctx)
 
 .seealso: `DM`, `DMCoarsenHookAdd()`, `DMInterpolate()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMRefineHookAdd(DM coarse, PetscErrorCode (*refinehook)(DM, DM, void *), PetscErrorCode (*interphook)(DM, Mat, DM, void *), void *ctx)
-{
+PetscErrorCode DMRefineHookAdd(DM coarse, PetscErrorCode (*refinehook)(DM, DM, void *), PetscErrorCode (*interphook)(DM, Mat, DM, void *), void *ctx) {
   DMRefineHookLink link, *p;
 
   PetscFunctionBegin;
@@ -2345,8 +2295,7 @@ PetscErrorCode DMRefineHookAdd(DM coarse, PetscErrorCode (*refinehook)(DM, DM, v
 
 .seealso: `DMRefineHookAdd()`, `DMCoarsenHookRemove()`, `DMInterpolate()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMRefineHookRemove(DM coarse, PetscErrorCode (*refinehook)(DM, DM, void *), PetscErrorCode (*interphook)(DM, Mat, DM, void *), void *ctx)
-{
+PetscErrorCode DMRefineHookRemove(DM coarse, PetscErrorCode (*refinehook)(DM, DM, void *), PetscErrorCode (*interphook)(DM, Mat, DM, void *), void *ctx) {
   DMRefineHookLink link, *p;
 
   PetscFunctionBegin;
@@ -2380,8 +2329,7 @@ PetscErrorCode DMRefineHookRemove(DM coarse, PetscErrorCode (*refinehook)(DM, DM
 
 .seealso: `DM`, `DMRefineHookAdd()`, `MatInterpolate()`
 @*/
-PetscErrorCode DMInterpolate(DM coarse, Mat interp, DM fine)
-{
+PetscErrorCode DMInterpolate(DM coarse, Mat interp, DM fine) {
   DMRefineHookLink link;
 
   PetscFunctionBegin;
@@ -2420,8 +2368,7 @@ PetscErrorCode DMInterpolate(DM coarse, Mat interp, DM fine)
 
 .seealso: `DMInterpolate()`, `DMCreateInterpolation()`
 @*/
-PetscErrorCode DMInterpolateSolution(DM coarse, DM fine, Mat interp, Vec coarseSol, Vec fineSol)
-{
+PetscErrorCode DMInterpolateSolution(DM coarse, DM fine, Mat interp, Vec coarseSol, Vec fineSol) {
   PetscErrorCode (*interpsol)(DM, DM, Mat, Vec, Vec) = NULL;
 
   PetscFunctionBegin;
@@ -2456,9 +2403,9 @@ PetscErrorCode DMInterpolateSolution(DM coarse, DM fine, Mat interp, Vec coarseS
     This can be used, by example, to set the number of coarser levels associated with this `DM` for a multigrid solver.
 
 .seealso: `DMRefine()`, `DMCoarsen()`, `DMGetCoarsenLevel()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
+
 @*/
-PetscErrorCode DMGetRefineLevel(DM dm, PetscInt *level)
-{
+PetscErrorCode DMGetRefineLevel(DM dm, PetscInt *level) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *level = dm->levelup;
@@ -2482,9 +2429,9 @@ PetscErrorCode DMGetRefineLevel(DM dm, PetscInt *level)
     The values are usually set automatically by the process that is causing the refinements of an initial `DM` by calling this routine.
 
 .seealso: `DMGetRefineLevel()`, `DMCoarsen()`, `DMGetCoarsenLevel()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
+
 @*/
-PetscErrorCode DMSetRefineLevel(DM dm, PetscInt level)
-{
+PetscErrorCode DMSetRefineLevel(DM dm, PetscInt level) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->levelup = level;
@@ -2510,8 +2457,7 @@ PetscErrorCode DMSetRefineLevel(DM dm, PetscInt level)
 
 .seealso: `DMRefine()`, `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`
 @*/
-PetscErrorCode DMExtrude(DM dm, PetscInt layers, DM *dme)
-{
+PetscErrorCode DMExtrude(DM dm, PetscInt layers, DM *dme) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscUseTypeMethod(dm, extrude, layers, dme);
@@ -2524,8 +2470,7 @@ PetscErrorCode DMExtrude(DM dm, PetscInt layers, DM *dme)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMGetBasisTransformDM_Internal(DM dm, DM *tdm)
-{
+PetscErrorCode DMGetBasisTransformDM_Internal(DM dm, DM *tdm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(tdm, 2);
@@ -2533,8 +2478,7 @@ PetscErrorCode DMGetBasisTransformDM_Internal(DM dm, DM *tdm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMGetBasisTransformVec_Internal(DM dm, Vec *tv)
-{
+PetscErrorCode DMGetBasisTransformVec_Internal(DM dm, Vec *tv) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(tv, 2);
@@ -2555,8 +2499,7 @@ PetscErrorCode DMGetBasisTransformVec_Internal(DM dm, Vec *tv)
 
 .seealso: `DM`, `DMPlexGlobalToLocalBasis()`, `DMPlexLocalToGlobalBasis()`, `DMPlexCreateBasisRotation()`
 @*/
-PetscErrorCode DMHasBasisTransform(DM dm, PetscBool *flg)
-{
+PetscErrorCode DMHasBasisTransform(DM dm, PetscBool *flg) {
   Vec tv;
 
   PetscFunctionBegin;
@@ -2567,8 +2510,7 @@ PetscErrorCode DMHasBasisTransform(DM dm, PetscBool *flg)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMConstructBasisTransform_Internal(DM dm)
-{
+PetscErrorCode DMConstructBasisTransform_Internal(DM dm) {
   PetscSection s, ts;
   PetscScalar *ta;
   PetscInt     cdim, pStart, pEnd, p, Nf, f, Nc, dof;
@@ -2615,8 +2557,7 @@ PetscErrorCode DMConstructBasisTransform_Internal(DM dm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCopyTransform(DM dm, DM newdm)
-{
+PetscErrorCode DMCopyTransform(DM dm, DM newdm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(newdm, DM_CLASSID, 2);
@@ -2661,8 +2602,7 @@ $    endhook(DM fine,VecScatter out,VecScatter in,DM coarse,void *ctx)
 
 .seealso: `DM`, `DMGlobalToLocal()`, `DMRefineHookAdd()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMGlobalToLocalHookAdd(DM dm, PetscErrorCode (*beginhook)(DM, Vec, InsertMode, Vec, void *), PetscErrorCode (*endhook)(DM, Vec, InsertMode, Vec, void *), void *ctx)
-{
+PetscErrorCode DMGlobalToLocalHookAdd(DM dm, PetscErrorCode (*beginhook)(DM, Vec, InsertMode, Vec, void *), PetscErrorCode (*endhook)(DM, Vec, InsertMode, Vec, void *), void *ctx) {
   DMGlobalToLocalHookLink link, *p;
 
   PetscFunctionBegin;
@@ -2677,8 +2617,7 @@ PetscErrorCode DMGlobalToLocalHookAdd(DM dm, PetscErrorCode (*beginhook)(DM, Vec
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMGlobalToLocalHook_Constraints(DM dm, Vec g, InsertMode mode, Vec l, void *ctx)
-{
+static PetscErrorCode DMGlobalToLocalHook_Constraints(DM dm, Vec g, InsertMode mode, Vec l, void *ctx) {
   Mat          cMat;
   Vec          cVec, cBias;
   PetscSection section, cSec;
@@ -2732,9 +2671,9 @@ static PetscErrorCode DMGlobalToLocalHook_Constraints(DM dm, Vec g, InsertMode m
 .seealso: `DM`, `DMGlobalToLocalHookAdd()`, `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`,
           `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobal()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobalEnd()`,
           `DMGlobalToLocalBegin()` `DMGlobalToLocalEnd()`
+
 @*/
-PetscErrorCode DMGlobalToLocal(DM dm, Vec g, InsertMode mode, Vec l)
-{
+PetscErrorCode DMGlobalToLocal(DM dm, Vec g, InsertMode mode, Vec l) {
   PetscFunctionBegin;
   PetscCall(DMGlobalToLocalBegin(dm, g, mode, l));
   PetscCall(DMGlobalToLocalEnd(dm, g, mode, l));
@@ -2764,9 +2703,9 @@ PetscErrorCode DMGlobalToLocal(DM dm, Vec g, InsertMode mode, Vec l)
     `DMGlobalToLocalHookAdd()` may be used to provide additional operations that are performed during the update process.
 
 .seealso: `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMGlobalToLocal()`, `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobal()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobalEnd()`
+
 @*/
-PetscErrorCode DMGlobalToLocalBegin(DM dm, Vec g, InsertMode mode, Vec l)
-{
+PetscErrorCode DMGlobalToLocalBegin(DM dm, Vec g, InsertMode mode, Vec l) {
   PetscSF                 sf;
   DMGlobalToLocalHookLink link;
 
@@ -2810,9 +2749,9 @@ PetscErrorCode DMGlobalToLocalBegin(DM dm, Vec g, InsertMode mode, Vec l)
     See `DMGlobalToLocalBegin()` for details.
 
 .seealso: `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMGlobalToLocal()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobal()`, `DMLocalToGlobalBegin()`, `DMLocalToGlobalEnd()`
+
 @*/
-PetscErrorCode DMGlobalToLocalEnd(DM dm, Vec g, InsertMode mode, Vec l)
-{
+PetscErrorCode DMGlobalToLocalEnd(DM dm, Vec g, InsertMode mode, Vec l) {
   PetscSF                 sf;
   const PetscScalar      *gArray;
   PetscScalar            *lArray;
@@ -2876,8 +2815,7 @@ $    endhook(DM fine,Vec l,InsertMode mode,Vec g,void *ctx)
 
 .seealso: `DMLocalToGlobal()`, `DMRefineHookAdd()`, `DMGlobalToLocalHookAdd()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMLocalToGlobalHookAdd(DM dm, PetscErrorCode (*beginhook)(DM, Vec, InsertMode, Vec, void *), PetscErrorCode (*endhook)(DM, Vec, InsertMode, Vec, void *), void *ctx)
-{
+PetscErrorCode DMLocalToGlobalHookAdd(DM dm, PetscErrorCode (*beginhook)(DM, Vec, InsertMode, Vec, void *), PetscErrorCode (*endhook)(DM, Vec, InsertMode, Vec, void *), void *ctx) {
   DMLocalToGlobalHookLink link, *p;
 
   PetscFunctionBegin;
@@ -2892,8 +2830,7 @@ PetscErrorCode DMLocalToGlobalHookAdd(DM dm, PetscErrorCode (*beginhook)(DM, Vec
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMLocalToGlobalHook_Constraints(DM dm, Vec l, InsertMode mode, Vec g, void *ctx)
-{
+static PetscErrorCode DMLocalToGlobalHook_Constraints(DM dm, Vec l, InsertMode mode, Vec g, void *ctx) {
   Mat          cMat;
   Vec          cVec;
   PetscSection section, cSec;
@@ -2950,10 +2887,10 @@ static PetscErrorCode DMLocalToGlobalHook_Constraints(DM dm, Vec l, InsertMode m
 
     Level: beginner
 
-.seealso: `DMLocalToGlobalBegin()`, `DMLocalToGlobalEnd()`, `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMGlobalToLocal()`, `DMGlobalToLocalEnd()`, `DMGlobalToLocalBegin()`, `DMLocalToGlobalHookAdd()`,  `DMGlobaToLocallHookAdd()`
+.seealso: `DMLocalToGlobalBegin()`, `DMLocalToGlobalEnd()`, `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMGlobalToLocal()`, `DMGlobalToLocalEnd()`, `DMGlobalToLocalBegin()`,  `DMLocalToGlobalHookAdd()`,  `DMGlobaToLocallHookAdd()`
+
 @*/
-PetscErrorCode DMLocalToGlobal(DM dm, Vec l, InsertMode mode, Vec g)
-{
+PetscErrorCode DMLocalToGlobal(DM dm, Vec l, InsertMode mode, Vec g) {
   PetscFunctionBegin;
   PetscCall(DMLocalToGlobalBegin(dm, l, mode, g));
   PetscCall(DMLocalToGlobalEnd(dm, l, mode, g));
@@ -2985,9 +2922,9 @@ PetscErrorCode DMLocalToGlobal(DM dm, Vec l, InsertMode mode, Vec g)
     Level: intermediate
 
 .seealso: `DMLocalToGlobal()`, `DMLocalToGlobalEnd()`, `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMGlobalToLocal()`, `DMGlobalToLocalEnd()`, `DMGlobalToLocalBegin()`
+
 @*/
-PetscErrorCode DMLocalToGlobalBegin(DM dm, Vec l, InsertMode mode, Vec g)
-{
+PetscErrorCode DMLocalToGlobalBegin(DM dm, Vec l, InsertMode mode, Vec g) {
   PetscSF                 sf;
   PetscSection            s, gs;
   DMLocalToGlobalHookLink link;
@@ -3008,16 +2945,11 @@ PetscErrorCode DMLocalToGlobalBegin(DM dm, Vec l, InsertMode mode, Vec g)
   switch (mode) {
   case INSERT_VALUES:
   case INSERT_ALL_VALUES:
-  case INSERT_BC_VALUES:
-    isInsert = PETSC_TRUE;
-    break;
+  case INSERT_BC_VALUES: isInsert = PETSC_TRUE; break;
   case ADD_VALUES:
   case ADD_ALL_VALUES:
-  case ADD_BC_VALUES:
-    isInsert = PETSC_FALSE;
-    break;
-  default:
-    SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Invalid insertion mode %d", mode);
+  case ADD_BC_VALUES: isInsert = PETSC_FALSE; break;
+  default: SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Invalid insertion mode %d", mode);
   }
   if ((sf && !isInsert) || (s && isInsert)) {
     PetscCall(DMHasBasisTransform(dm, &transform));
@@ -3113,9 +3045,9 @@ PetscErrorCode DMLocalToGlobalBegin(DM dm, Vec l, InsertMode mode, Vec g)
     See `DMLocalToGlobalBegin()` for full details
 
 .seealso: `DMLocalToGlobalBegin()`, `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMGlobalToLocalEnd()`, `DMGlobalToLocalEnd()`
+
 @*/
-PetscErrorCode DMLocalToGlobalEnd(DM dm, Vec l, InsertMode mode, Vec g)
-{
+PetscErrorCode DMLocalToGlobalEnd(DM dm, Vec l, InsertMode mode, Vec g) {
   PetscSF                 sf;
   PetscSection            s;
   DMLocalToGlobalHookLink link;
@@ -3127,15 +3059,10 @@ PetscErrorCode DMLocalToGlobalEnd(DM dm, Vec l, InsertMode mode, Vec g)
   PetscCall(DMGetLocalSection(dm, &s));
   switch (mode) {
   case INSERT_VALUES:
-  case INSERT_ALL_VALUES:
-    isInsert = PETSC_TRUE;
-    break;
+  case INSERT_ALL_VALUES: isInsert = PETSC_TRUE; break;
   case ADD_VALUES:
-  case ADD_ALL_VALUES:
-    isInsert = PETSC_FALSE;
-    break;
-  default:
-    SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Invalid insertion mode %d", mode);
+  case ADD_ALL_VALUES: isInsert = PETSC_FALSE; break;
+  default: SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Invalid insertion mode %d", mode);
   }
   if (sf && !isInsert) {
     const PetscScalar *lArray;
@@ -3186,14 +3113,12 @@ PetscErrorCode DMLocalToGlobalEnd(DM dm, Vec l, InsertMode mode, Vec g)
    Level: intermediate
 
 .seealso: `DMLocalToLocalEnd(), `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateLocalVector()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMLocalToLocalEnd()`, `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`
+
 @*/
-PetscErrorCode DMLocalToLocalBegin(DM dm, Vec g, InsertMode mode, Vec l)
-{
+PetscErrorCode DMLocalToLocalBegin(DM dm, Vec g, InsertMode mode, Vec l) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscValidHeaderSpecific(g, VEC_CLASSID, 2);
-  PetscValidHeaderSpecific(l, VEC_CLASSID, 4);
-  PetscUseTypeMethod(dm, localtolocalbegin, g, mode == INSERT_ALL_VALUES ? INSERT_VALUES : (mode == ADD_ALL_VALUES ? ADD_VALUES : mode), l);
+  PetscCall((*dm->ops->localtolocalbegin)(dm, g, mode == INSERT_ALL_VALUES ? INSERT_VALUES : (mode == ADD_ALL_VALUES ? ADD_VALUES : mode), l));
   PetscFunctionReturn(0);
 }
 
@@ -3214,14 +3139,12 @@ PetscErrorCode DMLocalToLocalBegin(DM dm, Vec g, InsertMode mode, Vec l)
    Level: intermediate
 
 .seealso: `DMLocalToLocalBegin()`, `DMCoarsen()`, `DMDestroy()`, `DMView()`, `DMCreateLocalVector()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMLocalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`
+
 @*/
-PetscErrorCode DMLocalToLocalEnd(DM dm, Vec g, InsertMode mode, Vec l)
-{
+PetscErrorCode DMLocalToLocalEnd(DM dm, Vec g, InsertMode mode, Vec l) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscValidHeaderSpecific(g, VEC_CLASSID, 2);
-  PetscValidHeaderSpecific(l, VEC_CLASSID, 4);
-  PetscUseTypeMethod(dm, localtolocalend, g, mode == INSERT_ALL_VALUES ? INSERT_VALUES : (mode == ADD_ALL_VALUES ? ADD_VALUES : mode), l);
+  PetscCall((*dm->ops->localtolocalend)(dm, g, mode == INSERT_ALL_VALUES ? INSERT_VALUES : (mode == ADD_ALL_VALUES ? ADD_VALUES : mode), l));
   PetscFunctionReturn(0);
 }
 
@@ -3240,9 +3163,9 @@ PetscErrorCode DMLocalToLocalEnd(DM dm, Vec g, InsertMode mode, Vec l)
     Level: developer
 
 .seealso: `DM`, `DMRefine()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
+
 @*/
-PetscErrorCode DMCoarsen(DM dm, MPI_Comm comm, DM *dmc)
-{
+PetscErrorCode DMCoarsen(DM dm, MPI_Comm comm, DM *dmc) {
   DMCoarsenHookLink link;
 
   PetscFunctionBegin;
@@ -3312,8 +3235,7 @@ $
 
 .seealso: `DMCoarsenHookRemove()`, `DMRefineHookAdd()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMCoarsenHookAdd(DM fine, PetscErrorCode (*coarsenhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, Mat, Vec, Mat, DM, void *), void *ctx)
-{
+PetscErrorCode DMCoarsenHookAdd(DM fine, PetscErrorCode (*coarsenhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, Mat, Vec, Mat, DM, void *), void *ctx) {
   DMCoarsenHookLink link, *p;
 
   PetscFunctionBegin;
@@ -3351,8 +3273,7 @@ PetscErrorCode DMCoarsenHookAdd(DM fine, PetscErrorCode (*coarsenhook)(DM, DM, v
 
 .seealso: `DMCoarsenHookAdd()`, `DMRefineHookAdd()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMCoarsenHookRemove(DM fine, PetscErrorCode (*coarsenhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, Mat, Vec, Mat, DM, void *), void *ctx)
-{
+PetscErrorCode DMCoarsenHookRemove(DM fine, PetscErrorCode (*coarsenhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, Mat, Vec, Mat, DM, void *), void *ctx) {
   DMCoarsenHookLink link, *p;
 
   PetscFunctionBegin;
@@ -3387,8 +3308,7 @@ PetscErrorCode DMCoarsenHookRemove(DM fine, PetscErrorCode (*coarsenhook)(DM, DM
 
 .seealso: `DMCoarsenHookAdd()`, `MatRestrict()`, `DMInterpolate()`, `DMRefineHookAdd()`
 @*/
-PetscErrorCode DMRestrict(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse)
-{
+PetscErrorCode DMRestrict(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse) {
   DMCoarsenHookLink link;
 
   PetscFunctionBegin;
@@ -3440,8 +3360,7 @@ $    restricthook(DM global,VecScatter out,VecScatter in,DM block,void *ctx)
 
 .seealso: `DMSubDomainHookRemove()`, `DMRefineHookAdd()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMSubDomainHookAdd(DM global, PetscErrorCode (*ddhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, VecScatter, VecScatter, DM, void *), void *ctx)
-{
+PetscErrorCode DMSubDomainHookAdd(DM global, PetscErrorCode (*ddhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, VecScatter, VecScatter, DM, void *), void *ctx) {
   DMSubDomainHookLink link, *p;
 
   PetscFunctionBegin;
@@ -3476,8 +3395,7 @@ PetscErrorCode DMSubDomainHookAdd(DM global, PetscErrorCode (*ddhook)(DM, DM, vo
 
 .seealso: `DMSubDomainHookAdd()`, `SNESFASGetInterpolation()`, `SNESFASGetInjection()`, `PetscObjectCompose()`, `PetscContainerCreate()`
 @*/
-PetscErrorCode DMSubDomainHookRemove(DM global, PetscErrorCode (*ddhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, VecScatter, VecScatter, DM, void *), void *ctx)
-{
+PetscErrorCode DMSubDomainHookRemove(DM global, PetscErrorCode (*ddhook)(DM, DM, void *), PetscErrorCode (*restricthook)(DM, VecScatter, VecScatter, DM, void *), void *ctx) {
   DMSubDomainHookLink link, *p;
 
   PetscFunctionBegin;
@@ -3508,8 +3426,7 @@ PetscErrorCode DMSubDomainHookRemove(DM global, PetscErrorCode (*ddhook)(DM, DM,
 
 .seealso: `DMCoarsenHookAdd()`, `MatRestrict()`
 @*/
-PetscErrorCode DMSubDomainRestrict(DM global, VecScatter oscatter, VecScatter gscatter, DM subdm)
-{
+PetscErrorCode DMSubDomainRestrict(DM global, VecScatter oscatter, VecScatter gscatter, DM subdm) {
   DMSubDomainHookLink link;
 
   PetscFunctionBegin;
@@ -3533,9 +3450,9 @@ PetscErrorCode DMSubDomainRestrict(DM global, VecScatter oscatter, VecScatter gs
     Level: developer
 
 .seealso: `DMCoarsen()`, `DMSetCoarsenLevel()`, `DMGetRefineLevel()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
+
 @*/
-PetscErrorCode DMGetCoarsenLevel(DM dm, PetscInt *level)
-{
+PetscErrorCode DMGetCoarsenLevel(DM dm, PetscInt *level) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidIntPointer(level, 2);
@@ -3559,8 +3476,7 @@ PetscErrorCode DMGetCoarsenLevel(DM dm, PetscInt *level)
 
 .seealso: `DMSetCoarsenLevel()`, `DMCoarsen()`, `DMGetCoarsenLevel()`, `DMGetRefineLevel()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
 @*/
-PetscErrorCode DMSetCoarsenLevel(DM dm, PetscInt level)
-{
+PetscErrorCode DMSetCoarsenLevel(DM dm, PetscInt level) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->leveldown = level;
@@ -3582,9 +3498,9 @@ PetscErrorCode DMSetCoarsenLevel(DM dm, PetscInt level)
     Level: developer
 
 .seealso: `DMCoarsen()`, `DMCoarsenHierarchy()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
+
 @*/
-PetscErrorCode DMRefineHierarchy(DM dm, PetscInt nlevels, DM dmf[])
-{
+PetscErrorCode DMRefineHierarchy(DM dm, PetscInt nlevels, DM dmf[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCheck(nlevels >= 0, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "nlevels cannot be negative");
@@ -3616,9 +3532,9 @@ PetscErrorCode DMRefineHierarchy(DM dm, PetscInt nlevels, DM dmf[])
     Level: developer
 
 .seealso: `DMCoarsen()`, `DMRefineHierarchy()`, `DMDestroy()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`
+
 @*/
-PetscErrorCode DMCoarsenHierarchy(DM dm, PetscInt nlevels, DM dmc[])
-{
+PetscErrorCode DMCoarsenHierarchy(DM dm, PetscInt nlevels, DM dmc[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCheck(nlevels >= 0, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "nlevels cannot be negative");
@@ -3647,9 +3563,9 @@ PetscErrorCode DMCoarsenHierarchy(DM dm, PetscInt nlevels, DM dmc[])
     Level: intermediate
 
 .seealso: `DMSetApplicationContext()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`
+
 @*/
-PetscErrorCode DMSetApplicationContextDestroy(DM dm, PetscErrorCode (*destroy)(void **))
-{
+PetscErrorCode DMSetApplicationContextDestroy(DM dm, PetscErrorCode (*destroy)(void **)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->ctxdestroy = destroy;
@@ -3671,9 +3587,9 @@ PetscErrorCode DMSetApplicationContextDestroy(DM dm, PetscErrorCode (*destroy)(v
     A user context is a way to pass problem specific information that is accessable whenever the `DM` is available
 
 .seealso: `DMGetApplicationContext()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`
+
 @*/
-PetscErrorCode DMSetApplicationContext(DM dm, void *ctx)
-{
+PetscErrorCode DMSetApplicationContext(DM dm, void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->ctx = ctx;
@@ -3697,9 +3613,9 @@ PetscErrorCode DMSetApplicationContext(DM dm, void *ctx)
     A user context is a way to pass problem specific information that is accessable whenever the `DM` is available
 
 .seealso: `DMGetApplicationContext()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`
+
 @*/
-PetscErrorCode DMGetApplicationContext(DM dm, void *ctx)
-{
+PetscErrorCode DMGetApplicationContext(DM dm, void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *(void **)ctx = dm->ctx;
@@ -3719,9 +3635,9 @@ PetscErrorCode DMGetApplicationContext(DM dm, void *ctx)
 
 .seealso: `DMComputeVariableBounds()`, `DMHasVariableBounds()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`,
          `DMSetJacobian()`
+
 @*/
-PetscErrorCode DMSetVariableBounds(DM dm, PetscErrorCode (*f)(DM, Vec, Vec))
-{
+PetscErrorCode DMSetVariableBounds(DM dm, PetscErrorCode (*f)(DM, Vec, Vec)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->ops->computevariablebounds = f;
@@ -3742,9 +3658,9 @@ PetscErrorCode DMSetVariableBounds(DM dm, PetscErrorCode (*f)(DM, Vec, Vec))
     Level: developer
 
 .seealso: `DMComputeVariableBounds()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`
+
 @*/
-PetscErrorCode DMHasVariableBounds(DM dm, PetscBool *flg)
-{
+PetscErrorCode DMHasVariableBounds(DM dm, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidBoolPointer(flg, 2);
@@ -3770,9 +3686,9 @@ PetscErrorCode DMHasVariableBounds(DM dm, PetscBool *flg)
     This is generally not called by users. It calls the function provided by the user with DMSetVariableBounds()
 
 .seealso: `DMHasVariableBounds()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`
+
 @*/
-PetscErrorCode DMComputeVariableBounds(DM dm, Vec xl, Vec xu)
-{
+PetscErrorCode DMComputeVariableBounds(DM dm, Vec xl, Vec xu) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(xl, VEC_CLASSID, 2);
@@ -3795,9 +3711,9 @@ PetscErrorCode DMComputeVariableBounds(DM dm, Vec xl, Vec xu)
     Level: developer
 
 .seealso: `DMCreateColoring()`
+
 @*/
-PetscErrorCode DMHasColoring(DM dm, PetscBool *flg)
-{
+PetscErrorCode DMHasColoring(DM dm, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidBoolPointer(flg, 2);
@@ -3819,9 +3735,9 @@ PetscErrorCode DMHasColoring(DM dm, PetscBool *flg)
     Level: developer
 
 .seealso: `DMCreateRestriction()`, `DMHasCreateInterpolation()`, `DMHasCreateInjection()`
+
 @*/
-PetscErrorCode DMHasCreateRestriction(DM dm, PetscBool *flg)
-{
+PetscErrorCode DMHasCreateRestriction(DM dm, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidBoolPointer(flg, 2);
@@ -3843,9 +3759,9 @@ PetscErrorCode DMHasCreateRestriction(DM dm, PetscBool *flg)
     Level: developer
 
 .seealso: `DMCreateInjection()`, `DMHasCreateRestriction()`, `DMHasCreateInterpolation()`
+
 @*/
-PetscErrorCode DMHasCreateInjection(DM dm, PetscBool *flg)
-{
+PetscErrorCode DMHasCreateInjection(DM dm, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidBoolPointer(flg, 2);
@@ -3876,8 +3792,7 @@ PetscBool         DMRegisterAllCalled = PETSC_FALSE;
 
 .seealso: `DMType`, `DMDA`, `DMPLEX`, `DMGetType()`, `DMCreate()`, `DMDACreate2d()`
 @*/
-PetscErrorCode DMSetType(DM dm, DMType method)
-{
+PetscErrorCode DMSetType(DM dm, DMType method) {
   PetscErrorCode (*r)(DM);
   PetscBool match;
 
@@ -3912,8 +3827,7 @@ PetscErrorCode DMSetType(DM dm, DMType method)
 
 .seealso: `DMType`, `DMDA`, `DMPLEX`, `DMSetType()`, `DMCreate()`
 @*/
-PetscErrorCode DMGetType(DM dm, DMType *type)
-{
+PetscErrorCode DMGetType(DM dm, DMType *type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(type, 2);
@@ -3943,8 +3857,7 @@ PetscErrorCode DMGetType(DM dm, DMType *type)
 
 .seealso: `DM`, `DMSetType()`, `DMCreate()`, `DMClone()`
 @*/
-PetscErrorCode DMConvert(DM dm, DMType newtype, DM *M)
-{
+PetscErrorCode DMConvert(DM dm, DMType newtype, DM *M) {
   DM        B;
   char      convname[256];
   PetscBool sametype /*, issame */;
@@ -4063,9 +3976,9 @@ PetscErrorCode DMConvert(DM dm, DMType newtype, DM *M)
   Level: advanced
 
 .seealso: `DM`, `DMType`, `DMSetType()`, `DMRegisterAll()`, `DMRegisterDestroy()`
+
 @*/
-PetscErrorCode DMRegister(const char sname[], PetscErrorCode (*function)(DM))
-{
+PetscErrorCode DMRegister(const char sname[], PetscErrorCode (*function)(DM)) {
   PetscFunctionBegin;
   PetscCall(DMInitializePackage());
   PetscCall(PetscFunctionListAdd(&DMList, sname, function));
@@ -4103,8 +4016,7 @@ PetscErrorCode DMRegister(const char sname[], PetscErrorCode (*function)(DM))
 
 .seealso: `PetscViewerBinaryOpen()`, `DMView()`, `MatLoad()`, `VecLoad()`
 @*/
-PetscErrorCode DMLoad(DM newdm, PetscViewer viewer)
-{
+PetscErrorCode DMLoad(DM newdm, PetscViewer viewer) {
   PetscBool isbinary, ishdf5;
 
   PetscFunctionBegin;
@@ -4132,8 +4044,7 @@ PetscErrorCode DMLoad(DM newdm, PetscViewer viewer)
 
 /******************************** FEM Support **********************************/
 
-PetscErrorCode DMPrintCellVector(PetscInt c, const char name[], PetscInt len, const PetscScalar x[])
-{
+PetscErrorCode DMPrintCellVector(PetscInt c, const char name[], PetscInt len, const PetscScalar x[]) {
   PetscInt f;
 
   PetscFunctionBegin;
@@ -4142,8 +4053,7 @@ PetscErrorCode DMPrintCellVector(PetscInt c, const char name[], PetscInt len, co
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMPrintCellMatrix(PetscInt c, const char name[], PetscInt rows, PetscInt cols, const PetscScalar A[])
-{
+PetscErrorCode DMPrintCellMatrix(PetscInt c, const char name[], PetscInt rows, PetscInt cols, const PetscScalar A[]) {
   PetscInt f, g;
 
   PetscFunctionBegin;
@@ -4156,8 +4066,7 @@ PetscErrorCode DMPrintCellMatrix(PetscInt c, const char name[], PetscInt rows, P
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMPrintLocalVec(DM dm, const char name[], PetscReal tol, Vec X)
-{
+PetscErrorCode DMPrintLocalVec(DM dm, const char name[], PetscReal tol, Vec X) {
   PetscInt           localSize, bs;
   PetscMPIInt        size;
   Vec                x, xglob;
@@ -4207,8 +4116,7 @@ PetscErrorCode DMPrintLocalVec(DM dm, const char name[], PetscReal tol, Vec X)
 
 .seealso: `DMGetLocalSection()`, `DMSetLocalSection()`, `DMGetGlobalSection()`
 @*/
-PetscErrorCode DMGetSection(DM dm, PetscSection *section)
-{
+PetscErrorCode DMGetSection(DM dm, PetscSection *section) {
   PetscFunctionBegin;
   PetscCall(DMGetLocalSection(dm, section));
   PetscFunctionReturn(0);
@@ -4233,8 +4141,7 @@ PetscErrorCode DMGetSection(DM dm, PetscSection *section)
 
 .seealso: `DMSetLocalSection()`, `DMGetGlobalSection()`
 @*/
-PetscErrorCode DMGetLocalSection(DM dm, PetscSection *section)
-{
+PetscErrorCode DMGetLocalSection(DM dm, PetscSection *section) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(section, 2);
@@ -4282,8 +4189,7 @@ PetscErrorCode DMGetLocalSection(DM dm, PetscSection *section)
 
 .seealso: `DMSetLocalSection()`, `DMGetLocalSection()`, `DMSetGlobalSection()`
 @*/
-PetscErrorCode DMSetSection(DM dm, PetscSection section)
-{
+PetscErrorCode DMSetSection(DM dm, PetscSection section) {
   PetscFunctionBegin;
   PetscCall(DMSetLocalSection(dm, section));
   PetscFunctionReturn(0);
@@ -4303,8 +4209,7 @@ PetscErrorCode DMSetSection(DM dm, PetscSection section)
 
 .seealso: `PetscSection`, `DMGetLocalSection()`, `DMSetGlobalSection()`
 @*/
-PetscErrorCode DMSetLocalSection(DM dm, PetscSection section)
-{
+PetscErrorCode DMSetLocalSection(DM dm, PetscSection section) {
   PetscInt numFields = 0;
   PetscInt f;
 
@@ -4351,8 +4256,7 @@ PetscErrorCode DMSetLocalSection(DM dm, PetscSection section)
 
 .seealso: `DMSetDefaultConstraints()`
 @*/
-PetscErrorCode DMGetDefaultConstraints(DM dm, PetscSection *section, Mat *mat, Vec *bias)
-{
+PetscErrorCode DMGetDefaultConstraints(DM dm, PetscSection *section, Mat *mat, Vec *bias) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (!dm->defaultConstraint.section && !dm->defaultConstraint.mat && dm->ops->createdefaultconstraints) PetscUseTypeMethod(dm, createdefaultconstraints);
@@ -4384,8 +4288,7 @@ PetscErrorCode DMGetDefaultConstraints(DM dm, PetscSection *section, Mat *mat, V
 
 .seealso: `DMGetDefaultConstraints()`
 @*/
-PetscErrorCode DMSetDefaultConstraints(DM dm, PetscSection section, Mat mat, Vec bias)
-{
+PetscErrorCode DMSetDefaultConstraints(DM dm, PetscSection section, Mat mat, Vec bias) {
   PetscMPIInt result;
 
   PetscFunctionBegin;
@@ -4430,8 +4333,7 @@ PetscErrorCode DMSetDefaultConstraints(DM dm, PetscSection section, Mat mat, Vec
 
 .seealso: `DMGetSectionSF()`, `DMSetSectionSF()`
 */
-static PetscErrorCode DMDefaultSectionCheckConsistency_Internal(DM dm, PetscSection localSection, PetscSection globalSection)
-{
+static PetscErrorCode DMDefaultSectionCheckConsistency_Internal(DM dm, PetscSection localSection, PetscSection globalSection) {
   MPI_Comm        comm;
   PetscLayout     layout;
   const PetscInt *ranges;
@@ -4513,8 +4415,7 @@ static PetscErrorCode DMDefaultSectionCheckConsistency_Internal(DM dm, PetscSect
 
 .seealso: `DMSetLocalSection()`, `DMGetLocalSection()`
 @*/
-PetscErrorCode DMGetGlobalSection(DM dm, PetscSection *section)
-{
+PetscErrorCode DMGetGlobalSection(DM dm, PetscSection *section) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(section, 2);
@@ -4547,8 +4448,7 @@ PetscErrorCode DMGetGlobalSection(DM dm, PetscSection *section)
 
 .seealso: `DMGetGlobalSection()`, `DMSetLocalSection()`
 @*/
-PetscErrorCode DMSetGlobalSection(DM dm, PetscSection section)
-{
+PetscErrorCode DMSetGlobalSection(DM dm, PetscSection section) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (section) PetscValidHeaderSpecific(section, PETSC_SECTION_CLASSID, 2);
@@ -4578,8 +4478,7 @@ PetscErrorCode DMSetGlobalSection(DM dm, PetscSection section)
 
 .seealso: `DMSetSectionSF()`, `DMCreateSectionSF()`
 @*/
-PetscErrorCode DMGetSectionSF(DM dm, PetscSF *sf)
-{
+PetscErrorCode DMGetSectionSF(DM dm, PetscSF *sf) {
   PetscInt nroots;
 
   PetscFunctionBegin;
@@ -4617,8 +4516,7 @@ PetscErrorCode DMGetSectionSF(DM dm, PetscSF *sf)
 
 .seealso: `DMGetSectionSF()`, `DMCreateSectionSF()`
 @*/
-PetscErrorCode DMSetSectionSF(DM dm, PetscSF sf)
-{
+PetscErrorCode DMSetSectionSF(DM dm, PetscSF sf) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (sf) PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 2);
@@ -4649,8 +4547,7 @@ PetscErrorCode DMSetSectionSF(DM dm, PetscSF sf)
 
 .seealso: `DMGetSectionSF()`, `DMSetSectionSF()`, `DMGetLocalSection()`, `DMGetGlobalSection()`
 @*/
-PetscErrorCode DMCreateSectionSF(DM dm, PetscSection localSection, PetscSection globalSection)
-{
+PetscErrorCode DMCreateSectionSF(DM dm, PetscSection localSection, PetscSection globalSection) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscSFSetGraphSection(dm->sectionSF, localSection, globalSection));
@@ -4675,8 +4572,7 @@ PetscErrorCode DMCreateSectionSF(DM dm, PetscSection localSection, PetscSection 
 
 .seealso: `DMSetPointSF()`, `DMGetSectionSF()`, `DMSetSectionSF()`, `DMCreateSectionSF()`
 @*/
-PetscErrorCode DMGetPointSF(DM dm, PetscSF *sf)
-{
+PetscErrorCode DMGetPointSF(DM dm, PetscSF *sf) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(sf, 2);
@@ -4697,8 +4593,7 @@ PetscErrorCode DMGetPointSF(DM dm, PetscSF *sf)
 
 .seealso: `DMGetPointSF()`, `DMGetSectionSF()`, `DMSetSectionSF()`, `DMCreateSectionSF()`
 @*/
-PetscErrorCode DMSetPointSF(DM dm, PetscSF sf)
-{
+PetscErrorCode DMSetPointSF(DM dm, PetscSF sf) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (sf) PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 2);
@@ -4724,8 +4619,7 @@ PetscErrorCode DMSetPointSF(DM dm, PetscSF sf)
 
 .seealso: `DMSetNaturalSF()`, `DMSetUseNatural()`, `DMGetUseNatural()`, `DMPlexCreateGlobalToNaturalSF()`, `DMPlexDistribute()`
 @*/
-PetscErrorCode DMGetNaturalSF(DM dm, PetscSF *sf)
-{
+PetscErrorCode DMGetNaturalSF(DM dm, PetscSF *sf) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(sf, 2);
@@ -4744,8 +4638,7 @@ PetscErrorCode DMGetNaturalSF(DM dm, PetscSF *sf)
 
 .seealso: `DMGetNaturalSF()`, `DMSetUseNatural()`, `DMGetUseNatural()`, `DMPlexCreateGlobalToNaturalSF()`, `DMPlexDistribute()`
 @*/
-PetscErrorCode DMSetNaturalSF(DM dm, PetscSF sf)
-{
+PetscErrorCode DMSetNaturalSF(DM dm, PetscSF sf) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (sf) PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 2);
@@ -4755,8 +4648,7 @@ PetscErrorCode DMSetNaturalSF(DM dm, PetscSF sf)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMSetDefaultAdjacency_Private(DM dm, PetscInt f, PetscObject disc)
-{
+static PetscErrorCode DMSetDefaultAdjacency_Private(DM dm, PetscInt f, PetscObject disc) {
   PetscClassId id;
 
   PetscFunctionBegin;
@@ -4771,8 +4663,7 @@ static PetscErrorCode DMSetDefaultAdjacency_Private(DM dm, PetscInt f, PetscObje
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMFieldEnlarge_Static(DM dm, PetscInt NfNew)
-{
+static PetscErrorCode DMFieldEnlarge_Static(DM dm, PetscInt NfNew) {
   RegionField *tmpr;
   PetscInt     Nf = dm->Nf, f;
 
@@ -4803,8 +4694,7 @@ static PetscErrorCode DMFieldEnlarge_Static(DM dm, PetscInt NfNew)
 
 .seealso: `DMGetNumFields()`, `DMSetNumFields()`, `DMSetField()`
 @*/
-PetscErrorCode DMClearFields(DM dm)
-{
+PetscErrorCode DMClearFields(DM dm) {
   PetscInt f;
 
   PetscFunctionBegin;
@@ -4834,8 +4724,7 @@ PetscErrorCode DMClearFields(DM dm)
 
 .seealso: `DMSetNumFields()`, `DMSetField()`
 @*/
-PetscErrorCode DMGetNumFields(DM dm, PetscInt *numFields)
-{
+PetscErrorCode DMGetNumFields(DM dm, PetscInt *numFields) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidIntPointer(numFields, 2);
@@ -4856,8 +4745,7 @@ PetscErrorCode DMGetNumFields(DM dm, PetscInt *numFields)
 
 .seealso: `DMGetNumFields()`, `DMSetField()`
 @*/
-PetscErrorCode DMSetNumFields(DM dm, PetscInt numFields)
-{
+PetscErrorCode DMSetNumFields(DM dm, PetscInt numFields) {
   PetscInt Nf, f;
 
   PetscFunctionBegin;
@@ -4890,8 +4778,7 @@ PetscErrorCode DMSetNumFields(DM dm, PetscInt numFields)
 
 .seealso: `DMAddField()`, `DMSetField()`
 @*/
-PetscErrorCode DMGetField(DM dm, PetscInt f, DMLabel *label, PetscObject *disc)
-{
+PetscErrorCode DMGetField(DM dm, PetscInt f, DMLabel *label, PetscObject *disc) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(disc, 4);
@@ -4902,8 +4789,7 @@ PetscErrorCode DMGetField(DM dm, PetscInt f, DMLabel *label, PetscObject *disc)
 }
 
 /* Does not clear the DS */
-PetscErrorCode DMSetField_Internal(DM dm, PetscInt f, DMLabel label, PetscObject disc)
-{
+PetscErrorCode DMSetField_Internal(DM dm, PetscInt f, DMLabel label, PetscObject disc) {
   PetscFunctionBegin;
   PetscCall(DMFieldEnlarge_Static(dm, f + 1));
   PetscCall(DMLabelDestroy(&dm->fields[f].label));
@@ -4931,8 +4817,7 @@ PetscErrorCode DMSetField_Internal(DM dm, PetscInt f, DMLabel label, PetscObject
 
 .seealso: `DMAddField()`, `DMGetField()`
 @*/
-PetscErrorCode DMSetField(DM dm, PetscInt f, DMLabel label, PetscObject disc)
-{
+PetscErrorCode DMSetField(DM dm, PetscInt f, DMLabel label, PetscObject disc) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (label) PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 3);
@@ -4966,8 +4851,7 @@ PetscErrorCode DMSetField(DM dm, PetscInt f, DMLabel label, PetscObject disc)
 
 .seealso: `DMSetLabel()`, `DMSetField()`, `DMGetField()`, `PetscFE`
 @*/
-PetscErrorCode DMAddField(DM dm, DMLabel label, PetscObject disc)
-{
+PetscErrorCode DMAddField(DM dm, DMLabel label, PetscObject disc) {
   PetscInt Nf = dm->Nf;
 
   PetscFunctionBegin;
@@ -4998,8 +4882,7 @@ PetscErrorCode DMAddField(DM dm, DMLabel label, PetscObject disc)
 
 .seealso: `DMGetFieldAvoidTensor()`, `DMSetField()`, `DMGetField()`
 @*/
-PetscErrorCode DMSetFieldAvoidTensor(DM dm, PetscInt f, PetscBool avoidTensor)
-{
+PetscErrorCode DMSetFieldAvoidTensor(DM dm, PetscInt f, PetscBool avoidTensor) {
   PetscFunctionBegin;
   PetscCheck((f >= 0) && (f < dm->Nf), PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Field %" PetscInt_FMT " is not in [0, %" PetscInt_FMT ")", f, dm->Nf);
   dm->fields[f].avoidTensor = avoidTensor;
@@ -5022,8 +4905,7 @@ PetscErrorCode DMSetFieldAvoidTensor(DM dm, PetscInt f, PetscBool avoidTensor)
 
  .seealso: `DMAddField()`, `DMSetField()`, `DMGetField()`, `DMSetFieldAvoidTensor()`, `DMSetField()`, `DMGetField()`
 @*/
-PetscErrorCode DMGetFieldAvoidTensor(DM dm, PetscInt f, PetscBool *avoidTensor)
-{
+PetscErrorCode DMGetFieldAvoidTensor(DM dm, PetscInt f, PetscBool *avoidTensor) {
   PetscFunctionBegin;
   PetscCheck((f >= 0) && (f < dm->Nf), PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Field %" PetscInt_FMT " is not in [0, %" PetscInt_FMT ")", f, dm->Nf);
   *avoidTensor = dm->fields[f].avoidTensor;
@@ -5045,8 +4927,7 @@ PetscErrorCode DMGetFieldAvoidTensor(DM dm, PetscInt f, PetscBool *avoidTensor)
 
 .seealso: `DMGetField()`, `DMSetField()`, `DMAddField()`, `DMCopyDS()`, `DMGetDS()`, `DMGetCellDS()`
 @*/
-PetscErrorCode DMCopyFields(DM dm, DM newdm)
-{
+PetscErrorCode DMCopyFields(DM dm, DM newdm) {
   PetscInt Nf, f;
 
   PetscFunctionBegin;
@@ -5089,8 +4970,7 @@ $     FVM++: Two points p and q are adjacent if q \in star(closure(p)),   useCon
 
 .seealso: `DMSetAdjacency()`, `DMGetField()`, `DMSetField()`
 @*/
-PetscErrorCode DMGetAdjacency(DM dm, PetscInt f, PetscBool *useCone, PetscBool *useClosure)
-{
+PetscErrorCode DMGetAdjacency(DM dm, PetscInt f, PetscBool *useCone, PetscBool *useClosure) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (useCone) PetscValidBoolPointer(useCone, 3);
@@ -5130,8 +5010,7 @@ $     FVM++: Two points p and q are adjacent if q \in star(closure(p)),   useCon
 
 .seealso: `DMGetAdjacency()`, `DMGetField()`, `DMSetField()`
 @*/
-PetscErrorCode DMSetAdjacency(DM dm, PetscInt f, PetscBool useCone, PetscBool useClosure)
-{
+PetscErrorCode DMSetAdjacency(DM dm, PetscInt f, PetscBool useCone, PetscBool useClosure) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (f < 0) {
@@ -5169,8 +5048,7 @@ $     FVM++: Two points p and q are adjacent if q \in star(closure(p)),   useCon
 
 .seealso: `DMSetBasicAdjacency()`, `DMGetField()`, `DMSetField()`
 @*/
-PetscErrorCode DMGetBasicAdjacency(DM dm, PetscBool *useCone, PetscBool *useClosure)
-{
+PetscErrorCode DMGetBasicAdjacency(DM dm, PetscBool *useCone, PetscBool *useClosure) {
   PetscInt Nf;
 
   PetscFunctionBegin;
@@ -5205,8 +5083,7 @@ $     FVM++: Two points p and q are adjacent if q \in star(closure(p)),   useCon
 
 .seealso: `DMGetBasicAdjacency()`, `DMGetField()`, `DMSetField()`
 @*/
-PetscErrorCode DMSetBasicAdjacency(DM dm, PetscBool useCone, PetscBool useClosure)
-{
+PetscErrorCode DMSetBasicAdjacency(DM dm, PetscBool useCone, PetscBool useClosure) {
   PetscInt Nf;
 
   PetscFunctionBegin;
@@ -5220,8 +5097,7 @@ PetscErrorCode DMSetBasicAdjacency(DM dm, PetscBool useCone, PetscBool useClosur
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCompleteBCLabels_Internal(DM dm)
-{
+PetscErrorCode DMCompleteBCLabels_Internal(DM dm) {
   DM           plex;
   DMLabel     *labels, *glabels;
   const char **names;
@@ -5306,8 +5182,7 @@ PetscErrorCode DMCompleteBCLabels_Internal(DM dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMDSEnlarge_Static(DM dm, PetscInt NdsNew)
-{
+static PetscErrorCode DMDSEnlarge_Static(DM dm, PetscInt NdsNew) {
   DMSpace *tmpd;
   PetscInt Nds = dm->Nds, s;
 
@@ -5341,8 +5216,7 @@ static PetscErrorCode DMDSEnlarge_Static(DM dm, PetscInt NdsNew)
 
 .seealso: `DMGetDS()`, `DMGetCellDS()`
 @*/
-PetscErrorCode DMGetNumDS(DM dm, PetscInt *Nds)
-{
+PetscErrorCode DMGetNumDS(DM dm, PetscInt *Nds) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidIntPointer(Nds, 2);
@@ -5362,8 +5236,7 @@ PetscErrorCode DMGetNumDS(DM dm, PetscInt *Nds)
 
 .seealso: `DMGetNumDS()`, `DMGetDS()`, `DMSetField()`
 @*/
-PetscErrorCode DMClearDS(DM dm)
-{
+PetscErrorCode DMClearDS(DM dm) {
   PetscInt s;
 
   PetscFunctionBegin;
@@ -5394,8 +5267,7 @@ PetscErrorCode DMClearDS(DM dm)
 
 .seealso: `DMGetCellDS()`, `DMGetRegionDS()`
 @*/
-PetscErrorCode DMGetDS(DM dm, PetscDS *prob)
-{
+PetscErrorCode DMGetDS(DM dm, PetscDS *prob) {
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(prob, 2);
@@ -5426,8 +5298,7 @@ PetscErrorCode DMGetDS(DM dm, PetscDS *prob)
 
 .seealso: `DMGetDS()`, `DMSetRegionDS()`
 @*/
-PetscErrorCode DMGetCellDS(DM dm, PetscInt point, PetscDS *prob)
-{
+PetscErrorCode DMGetCellDS(DM dm, PetscInt point, PetscDS *prob) {
   PetscDS  probDef = NULL;
   PetscInt s;
 
@@ -5475,8 +5346,7 @@ PetscErrorCode DMGetCellDS(DM dm, PetscInt point, PetscDS *prob)
 
 .seealso: `DMGetRegionNumDS()`, `DMSetRegionDS()`, `DMGetDS()`, `DMGetCellDS()`
 @*/
-PetscErrorCode DMGetRegionDS(DM dm, DMLabel label, IS *fields, PetscDS *ds)
-{
+PetscErrorCode DMGetRegionDS(DM dm, DMLabel label, IS *fields, PetscDS *ds) {
   PetscInt Nds = dm->Nds, s;
 
   PetscFunctionBegin;
@@ -5519,8 +5389,7 @@ PetscErrorCode DMGetRegionDS(DM dm, DMLabel label, IS *fields, PetscDS *ds)
 
 .seealso: `DMGetRegionDS()`, `DMSetRegionNumDS()`, `DMGetDS()`, `DMGetCellDS()`
 @*/
-PetscErrorCode DMSetRegionDS(DM dm, DMLabel label, IS fields, PetscDS ds)
-{
+PetscErrorCode DMSetRegionDS(DM dm, DMLabel label, IS fields, PetscDS ds) {
   PetscInt Nds = dm->Nds, s;
 
   PetscFunctionBegin;
@@ -5567,8 +5436,7 @@ PetscErrorCode DMSetRegionDS(DM dm, DMLabel label, IS fields, PetscDS ds)
 
 .seealso: `DMGetRegionDS()`, `DMSetRegionDS()`, `DMGetDS()`, `DMGetCellDS()`
 @*/
-PetscErrorCode DMGetRegionNumDS(DM dm, PetscInt num, DMLabel *label, IS *fields, PetscDS *ds)
-{
+PetscErrorCode DMGetRegionNumDS(DM dm, PetscInt num, DMLabel *label, IS *fields, PetscDS *ds) {
   PetscInt Nds;
 
   PetscFunctionBegin;
@@ -5606,8 +5474,7 @@ PetscErrorCode DMGetRegionNumDS(DM dm, PetscInt num, DMLabel *label, IS *fields,
 
 .seealso: `DMGetRegionDS()`, `DMSetRegionDS()`, `DMGetDS()`, `DMGetCellDS()`
 @*/
-PetscErrorCode DMSetRegionNumDS(DM dm, PetscInt num, DMLabel label, IS fields, PetscDS ds)
-{
+PetscErrorCode DMSetRegionNumDS(DM dm, PetscInt num, DMLabel label, IS fields, PetscDS ds) {
   PetscInt Nds;
 
   PetscFunctionBegin;
@@ -5649,8 +5516,7 @@ PetscErrorCode DMSetRegionNumDS(DM dm, PetscInt num, DMLabel label, IS fields, P
 
 .seealso: `DMGetRegionNumDS()`, `DMGetRegionDS()`, `DMSetRegionDS()`, `DMGetDS()`, `DMGetCellDS()`
 @*/
-PetscErrorCode DMFindRegionNum(DM dm, PetscDS ds, PetscInt *num)
-{
+PetscErrorCode DMFindRegionNum(DM dm, PetscDS ds, PetscInt *num) {
   PetscInt Nds, n;
 
   PetscFunctionBegin;
@@ -5686,8 +5552,7 @@ PetscErrorCode DMFindRegionNum(DM dm, PetscDS ds, PetscInt *num)
 
 .seealso: `PetscFECreateByCell()`, `DMAddField()`, `DMCreateDS()`, `DMGetCellDS()`, `DMGetRegionDS()`
 @*/
-PetscErrorCode DMCreateFEDefault(DM dm, PetscInt Nc, const char prefix[], PetscInt qorder, PetscFE *fem)
-{
+PetscErrorCode DMCreateFEDefault(DM dm, PetscInt Nc, const char prefix[], PetscInt qorder, PetscFE *fem) {
   DMPolytopeType ct;
   PetscInt       dim, cStart;
 
@@ -5722,8 +5587,7 @@ PetscErrorCode DMCreateFEDefault(DM dm, PetscInt Nc, const char prefix[], PetscI
 
 .seealso: `DMSetField`, `DMAddField()`, `DMGetDS()`, `DMGetCellDS()`, `DMGetRegionDS()`, `DMSetRegionDS()`
 @*/
-PetscErrorCode DMCreateDS(DM dm)
-{
+PetscErrorCode DMCreateDS(DM dm) {
   MPI_Comm  comm;
   PetscDS   dsDef;
   DMLabel  *labelSet;
@@ -5874,11 +5738,8 @@ PetscErrorCode DMCreateDS(DM dm)
         case DM_POLYTOPE_POINT_PRISM_TENSOR:
         case DM_POLYTOPE_SEG_PRISM_TENSOR:
         case DM_POLYTOPE_TRI_PRISM_TENSOR:
-        case DM_POLYTOPE_QUAD_PRISM_TENSOR:
-          isCohesiveLocal = PETSC_TRUE;
-          break;
-        default:
-          break;
+        case DM_POLYTOPE_QUAD_PRISM_TENSOR: isCohesiveLocal = PETSC_TRUE; break;
+        default: break;
         }
       }
       PetscCallMPI(MPI_Allreduce(&isCohesiveLocal, &isCohesive, 1, MPIU_BOOL, MPI_LOR, comm));
@@ -5961,8 +5822,7 @@ PetscErrorCode DMCreateDS(DM dm)
 
 .seealso: `PetscDSSetExactSolution()`
 @*/
-PetscErrorCode DMComputeExactSolution(DM dm, PetscReal time, Vec u, Vec u_t)
-{
+PetscErrorCode DMComputeExactSolution(DM dm, PetscReal time, Vec u, Vec u_t) {
   PetscErrorCode (**exacts)(PetscInt, PetscReal, const PetscReal x[], PetscInt, PetscScalar *u, void *ctx);
   void   **ectxs;
   PetscInt Nf, Nds, s;
@@ -6025,8 +5885,7 @@ PetscErrorCode DMComputeExactSolution(DM dm, PetscReal time, Vec u, Vec u_t)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMTransferDS_Internal(DM dm, DMLabel label, IS fields, PetscDS ds)
-{
+PetscErrorCode DMTransferDS_Internal(DM dm, DMLabel label, IS fields, PetscDS ds) {
   PetscDS    dsNew;
   DSBoundary b;
   PetscInt   cdim, Nf, f, d;
@@ -6079,8 +5938,7 @@ PetscErrorCode DMTransferDS_Internal(DM dm, DMLabel label, IS fields, PetscDS ds
 
 .seealso: `DMCopyFields()`, `DMAddField()`, `DMGetDS()`, `DMGetCellDS()`, `DMGetRegionDS()`, `DMSetRegionDS()`
 @*/
-PetscErrorCode DMCopyDS(DM dm, DM newdm)
-{
+PetscErrorCode DMCopyDS(DM dm, DM newdm) {
   PetscInt Nds, s;
 
   PetscFunctionBegin;
@@ -6096,7 +5954,7 @@ PetscErrorCode DMCopyDS(DM dm, DM newdm)
     PetscCall(DMGetRegionNumDS(dm, s, &label, &fields, &ds));
     /* TODO: We need to change all keys from labels in the old DM to labels in the new DM */
     PetscCall(DMTransferDS_Internal(newdm, label, fields, ds));
-    /* Complete new labels in the new DS */
+    /* Commplete new labels in the new DS */
     PetscCall(DMGetRegionDS(newdm, label, NULL, &newds));
     PetscCall(PetscDSGetNumBoundary(newds, &Nbd));
     for (bd = 0; bd < Nbd; ++bd) {
@@ -6130,8 +5988,7 @@ PetscErrorCode DMCopyDS(DM dm, DM newdm)
 
 .seealso: `DMCopyFields()`, `DMCopyDS()`
 @*/
-PetscErrorCode DMCopyDisc(DM dm, DM newdm)
-{
+PetscErrorCode DMCopyDisc(DM dm, DM newdm) {
   PetscFunctionBegin;
   PetscCall(DMCopyFields(dm, newdm));
   PetscCall(DMCopyDS(dm, newdm));
@@ -6153,8 +6010,7 @@ PetscErrorCode DMCopyDisc(DM dm, DM newdm)
 
 .seealso: `DMSetDimension()`, `DMCreate()`
 @*/
-PetscErrorCode DMGetDimension(DM dm, PetscInt *dim)
-{
+PetscErrorCode DMGetDimension(DM dm, PetscInt *dim) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidIntPointer(dim, 2);
@@ -6175,8 +6031,7 @@ PetscErrorCode DMGetDimension(DM dm, PetscInt *dim)
 
 .seealso: `DMGetDimension()`, `DMCreate()`
 @*/
-PetscErrorCode DMSetDimension(DM dm, PetscInt dim)
-{
+PetscErrorCode DMSetDimension(DM dm, PetscInt dim) {
   PetscDS  ds;
   PetscInt Nds, n;
 
@@ -6216,8 +6071,7 @@ PetscErrorCode DMSetDimension(DM dm, PetscInt dim)
 
 .seealso: `DMPLEX`, `DMPlexGetDepthStratum()`, `DMPlexGetHeightStratum()`
 @*/
-PetscErrorCode DMGetDimPoints(DM dm, PetscInt dim, PetscInt *pStart, PetscInt *pEnd)
-{
+PetscErrorCode DMGetDimPoints(DM dm, PetscInt dim, PetscInt *pStart, PetscInt *pEnd) {
   PetscInt d;
 
   PetscFunctionBegin;
@@ -6248,8 +6102,7 @@ PetscErrorCode DMGetDimPoints(DM dm, PetscInt dim, PetscInt *pStart, PetscInt *p
 
 .seealso: `VecView()`, `DMGetGlobalSection()`, `DMCreateGlobalVector()`, `PetscSectionHasConstraints()`, `DMSetGlobalSection()`
 @*/
-PetscErrorCode DMGetOutputDM(DM dm, DM *odm)
-{
+PetscErrorCode DMGetOutputDM(DM dm, DM *odm) {
   PetscSection section;
   PetscBool    hasConstraints, ghasConstraints;
 
@@ -6303,8 +6156,7 @@ PetscErrorCode DMGetOutputDM(DM dm, DM *odm)
 
 .seealso: `VecView()`
 @*/
-PetscErrorCode DMGetOutputSequenceNumber(DM dm, PetscInt *num, PetscReal *val)
-{
+PetscErrorCode DMGetOutputSequenceNumber(DM dm, PetscInt *num, PetscReal *val) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (num) {
@@ -6334,8 +6186,7 @@ PetscErrorCode DMGetOutputSequenceNumber(DM dm, PetscInt *num, PetscReal *val)
 
 .seealso: `VecView()`
 @*/
-PetscErrorCode DMSetOutputSequenceNumber(DM dm, PetscInt num, PetscReal val)
-{
+PetscErrorCode DMSetOutputSequenceNumber(DM dm, PetscInt num, PetscReal val) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   dm->outputSequenceNum = num;
@@ -6365,8 +6216,7 @@ PetscErrorCode DMSetOutputSequenceNumber(DM dm, PetscInt num, PetscReal val)
 
 .seealso: `DMGetOutputSequenceNumber()`, `DMSetOutputSequenceNumber()`, `VecView()`
 @*/
-PetscErrorCode DMOutputSequenceLoad(DM dm, PetscViewer viewer, const char *name, PetscInt num, PetscReal *val)
-{
+PetscErrorCode DMOutputSequenceLoad(DM dm, PetscViewer viewer, const char *name, PetscInt num, PetscReal *val) {
   PetscBool ishdf5;
 
   PetscFunctionBegin;
@@ -6400,8 +6250,7 @@ PetscErrorCode DMOutputSequenceLoad(DM dm, PetscViewer viewer, const char *name,
 
 .seealso: `DMSetUseNatural()`, `DMCreate()`
 @*/
-PetscErrorCode DMGetUseNatural(DM dm, PetscBool *useNatural)
-{
+PetscErrorCode DMGetUseNatural(DM dm, PetscBool *useNatural) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidBoolPointer(useNatural, 2);
@@ -6425,8 +6274,7 @@ PetscErrorCode DMGetUseNatural(DM dm, PetscBool *useNatural)
 
 .seealso: `DMGetUseNatural()`, `DMCreate()`, `DMPlexDistribute()`, `DMCreateSubDM()`, `DMCreateSuperDM()`
 @*/
-PetscErrorCode DMSetUseNatural(DM dm, PetscBool useNatural)
-{
+PetscErrorCode DMSetUseNatural(DM dm, PetscBool useNatural) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidLogicalCollectiveBool(dm, useNatural, 2);
@@ -6447,8 +6295,7 @@ PetscErrorCode DMSetUseNatural(DM dm, PetscBool useNatural)
 
 .seealso: `DMLabelCreate()`, `DMHasLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMCreateLabel(DM dm, const char name[])
-{
+PetscErrorCode DMCreateLabel(DM dm, const char name[]) {
   PetscBool flg;
   DMLabel   label;
 
@@ -6478,8 +6325,7 @@ PetscErrorCode DMCreateLabel(DM dm, const char name[])
 
 .seealso: `DMCreateLabel()`, `DMLabelCreate()`, `DMHasLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMCreateLabelAtIndex(DM dm, PetscInt l, const char name[])
-{
+PetscErrorCode DMCreateLabelAtIndex(DM dm, PetscInt l, const char name[]) {
   DMLabelLink orig, prev = NULL;
   DMLabel     label;
   PetscInt    Nl, m;
@@ -6534,8 +6380,7 @@ PetscErrorCode DMCreateLabelAtIndex(DM dm, PetscInt l, const char name[])
 
 .seealso: `DMLabelGetValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMGetLabelValue(DM dm, const char name[], PetscInt point, PetscInt *value)
-{
+PetscErrorCode DMGetLabelValue(DM dm, const char name[], PetscInt point, PetscInt *value) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6564,8 +6409,7 @@ PetscErrorCode DMGetLabelValue(DM dm, const char name[], PetscInt point, PetscIn
 
 .seealso: `DMLabelSetValue()`, `DMGetStratumIS()`, `DMClearLabelValue()`
 @*/
-PetscErrorCode DMSetLabelValue(DM dm, const char name[], PetscInt point, PetscInt value)
-{
+PetscErrorCode DMSetLabelValue(DM dm, const char name[], PetscInt point, PetscInt value) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6595,8 +6439,7 @@ PetscErrorCode DMSetLabelValue(DM dm, const char name[], PetscInt point, PetscIn
 
 .seealso: `DMLabelClearValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMClearLabelValue(DM dm, const char name[], PetscInt point, PetscInt value)
-{
+PetscErrorCode DMClearLabelValue(DM dm, const char name[], PetscInt point, PetscInt value) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6627,8 +6470,7 @@ PetscErrorCode DMClearLabelValue(DM dm, const char name[], PetscInt point, Petsc
 
 .seealso: `DMLabelGetNumValues()`, `DMSetLabelValue()`, `DMGetLabel()`
 @*/
-PetscErrorCode DMGetLabelSize(DM dm, const char name[], PetscInt *size)
-{
+PetscErrorCode DMGetLabelSize(DM dm, const char name[], PetscInt *size) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6658,8 +6500,7 @@ PetscErrorCode DMGetLabelSize(DM dm, const char name[], PetscInt *size)
 
 .seealso: `DMLabelGetValueIS()`, `DMGetLabelSize()`
 @*/
-PetscErrorCode DMGetLabelIdIS(DM dm, const char name[], IS *ids)
-{
+PetscErrorCode DMGetLabelIdIS(DM dm, const char name[], IS *ids) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6694,8 +6535,7 @@ PetscErrorCode DMGetLabelIdIS(DM dm, const char name[], IS *ids)
 
 .seealso: `DMLabelGetStratumSize()`, `DMGetLabelSize()`, `DMGetLabelIds()`
 @*/
-PetscErrorCode DMGetStratumSize(DM dm, const char name[], PetscInt value, PetscInt *size)
-{
+PetscErrorCode DMGetStratumSize(DM dm, const char name[], PetscInt value, PetscInt *size) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6726,8 +6566,7 @@ PetscErrorCode DMGetStratumSize(DM dm, const char name[], PetscInt value, PetscI
 
 .seealso: `DMLabelGetStratumIS()`, `DMGetStratumSize()`
 @*/
-PetscErrorCode DMGetStratumIS(DM dm, const char name[], PetscInt value, IS *points)
-{
+PetscErrorCode DMGetStratumIS(DM dm, const char name[], PetscInt value, IS *points) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6756,8 +6595,7 @@ PetscErrorCode DMGetStratumIS(DM dm, const char name[], PetscInt value, IS *poin
 
 .seealso: `DMLabel`, `DMClearLabelStratum()`, `DMLabelClearStratum()`, `DMLabelSetStratumIS()`, `DMGetStratumSize()`
 @*/
-PetscErrorCode DMSetStratumIS(DM dm, const char name[], PetscInt value, IS points)
-{
+PetscErrorCode DMSetStratumIS(DM dm, const char name[], PetscInt value, IS points) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6786,8 +6624,7 @@ PetscErrorCode DMSetStratumIS(DM dm, const char name[], PetscInt value, IS point
 
 .seealso: `DMLabel`, `DMLabelClearStratum()`, `DMSetLabelValue()`, `DMGetStratumIS()`, `DMClearLabelValue()`
 @*/
-PetscErrorCode DMClearLabelStratum(DM dm, const char name[], PetscInt value)
-{
+PetscErrorCode DMClearLabelStratum(DM dm, const char name[], PetscInt value) {
   DMLabel label;
 
   PetscFunctionBegin;
@@ -6814,8 +6651,7 @@ PetscErrorCode DMClearLabelStratum(DM dm, const char name[], PetscInt value)
 
 .seealso: `DMLabel`, `DMGetLabelByNum()`, `DMGetLabelName()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMGetNumLabels(DM dm, PetscInt *numLabels)
-{
+PetscErrorCode DMGetNumLabels(DM dm, PetscInt *numLabels) {
   DMLabelLink next = dm->labels;
   PetscInt    n    = 0;
 
@@ -6849,8 +6685,7 @@ PetscErrorCode DMGetNumLabels(DM dm, PetscInt *numLabels)
 
 .seealso: `DMLabel`, `DMGetLabelByNum()`, `DMGetLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMGetLabelName(DM dm, PetscInt n, const char **name)
-{
+PetscErrorCode DMGetLabelName(DM dm, PetscInt n, const char **name) {
   DMLabelLink next = dm->labels;
   PetscInt    l    = 0;
 
@@ -6884,8 +6719,7 @@ PetscErrorCode DMGetLabelName(DM dm, PetscInt n, const char **name)
 
 .seealso: `DMLabel`, `DMGetLabel()`, `DMGetLabelByNum()`, `DMCreateLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMHasLabel(DM dm, const char name[], PetscBool *hasLabel)
-{
+PetscErrorCode DMHasLabel(DM dm, const char name[], PetscBool *hasLabel) {
   DMLabelLink next = dm->labels;
   const char *lname;
 
@@ -6927,8 +6761,7 @@ PetscErrorCode DMHasLabel(DM dm, const char name[], PetscBool *hasLabel)
 
 .seealso: `DMLabel`, `DMHasLabel()`, `DMGetLabelByNum()`, `DMAddLabel()`, `DMCreateLabel()`, `DMHasLabel()`, `DMPlexGetDepthLabel()`, `DMPlexGetCellType()`
 @*/
-PetscErrorCode DMGetLabel(DM dm, const char name[], DMLabel *label)
-{
+PetscErrorCode DMGetLabel(DM dm, const char name[], DMLabel *label) {
   DMLabelLink next = dm->labels;
   PetscBool   hasLabel;
   const char *lname;
@@ -6966,8 +6799,7 @@ PetscErrorCode DMGetLabel(DM dm, const char name[], DMLabel *label)
 
 .seealso: `DMLabel`, `DMAddLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMGetLabelByNum(DM dm, PetscInt n, DMLabel *label)
-{
+PetscErrorCode DMGetLabelByNum(DM dm, PetscInt n, DMLabel *label) {
   DMLabelLink next = dm->labels;
   PetscInt    l    = 0;
 
@@ -6998,8 +6830,7 @@ PetscErrorCode DMGetLabelByNum(DM dm, PetscInt n, DMLabel *label)
 
 .seealso: `DMLabel`, `DMLabel`, `DMCreateLabel()`, `DMHasLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMAddLabel(DM dm, DMLabel label)
-{
+PetscErrorCode DMAddLabel(DM dm, DMLabel label) {
   DMLabelLink l, *p, tmpLabel;
   PetscBool   hasLabel;
   const char *lname;
@@ -7044,8 +6875,7 @@ PetscErrorCode DMAddLabel(DM dm, DMLabel label)
 
 .seealso: `DMLabel`, `DMCreateLabel()`, `DMHasLabel()`, `DMPlexGetDepthLabel()`, `DMPlexGetCellType()`
 @*/
-PetscErrorCode DMSetLabel(DM dm, DMLabel label)
-{
+PetscErrorCode DMSetLabel(DM dm, DMLabel label) {
   DMLabelLink next = dm->labels;
   PetscBool   hasLabel, flg;
   const char *name, *lname;
@@ -7089,8 +6919,7 @@ PetscErrorCode DMSetLabel(DM dm, DMLabel label)
 
 .seealso: `DMLabel`, `DMCreateLabel()`, `DMHasLabel()`, `DMGetLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMLabelDestroy()`, `DMRemoveLabelBySelf()`
 @*/
-PetscErrorCode DMRemoveLabel(DM dm, const char name[], DMLabel *label)
-{
+PetscErrorCode DMRemoveLabel(DM dm, const char name[], DMLabel *label) {
   DMLabelLink link, *pnext;
   PetscBool   hasLabel;
   const char *lname;
@@ -7139,8 +6968,7 @@ PetscErrorCode DMRemoveLabel(DM dm, const char name[], DMLabel *label)
 
 .seealso: `DMLabel`, `DMCreateLabel()`, `DMHasLabel()`, `DMGetLabel()` `DMGetLabelValue()`, `DMSetLabelValue()`, `DMLabelDestroy()`, `DMRemoveLabel()`
 @*/
-PetscErrorCode DMRemoveLabelBySelf(DM dm, DMLabel *label, PetscBool failNotFound)
-{
+PetscErrorCode DMRemoveLabelBySelf(DM dm, DMLabel *label, PetscBool failNotFound) {
   DMLabelLink link, *pnext;
   PetscBool   hasLabel = PETSC_FALSE;
 
@@ -7182,8 +7010,7 @@ PetscErrorCode DMRemoveLabelBySelf(DM dm, DMLabel *label, PetscBool failNotFound
 
 .seealso: `DMLabel`, `DMSetLabelOutput()`, `DMCreateLabel()`, `DMHasLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMGetLabelOutput(DM dm, const char name[], PetscBool *output)
-{
+PetscErrorCode DMGetLabelOutput(DM dm, const char name[], PetscBool *output) {
   DMLabelLink next = dm->labels;
   const char *lname;
 
@@ -7219,8 +7046,7 @@ PetscErrorCode DMGetLabelOutput(DM dm, const char name[], PetscBool *output)
 
 .seealso: `DMLabel`, `DMGetOutputFlag()`, `DMGetLabelOutput()`, `DMCreateLabel()`, `DMHasLabel()`, `DMGetLabelValue()`, `DMSetLabelValue()`, `DMGetStratumIS()`
 @*/
-PetscErrorCode DMSetLabelOutput(DM dm, const char name[], PetscBool output)
-{
+PetscErrorCode DMSetLabelOutput(DM dm, const char name[], PetscBool output) {
   DMLabelLink next = dm->labels;
   const char *lname;
 
@@ -7260,8 +7086,7 @@ PetscErrorCode DMSetLabelOutput(DM dm, const char name[], PetscBool output)
 
 .seealso: `DMLabel`, `DMAddLabel()`, `DMCopyLabelsMode`
 @*/
-PetscErrorCode DMCopyLabels(DM dmA, DM dmB, PetscCopyMode mode, PetscBool all, DMCopyLabelsMode emode)
-{
+PetscErrorCode DMCopyLabels(DM dmA, DM dmB, PetscCopyMode mode, PetscBool all, DMCopyLabelsMode emode) {
   DMLabel     label, labelNew, labelOld;
   const char *name;
   PetscBool   flg;
@@ -7288,15 +7113,10 @@ PetscErrorCode DMCopyLabels(DM dmA, DM dmB, PetscCopyMode mode, PetscBool all, D
     PetscCall(DMGetLabel(dmB, name, &labelOld));
     if (labelOld) {
       switch (emode) {
-      case DM_COPY_LABELS_KEEP:
-        continue;
-      case DM_COPY_LABELS_REPLACE:
-        PetscCall(DMRemoveLabelBySelf(dmB, &labelOld, PETSC_TRUE));
-        break;
-      case DM_COPY_LABELS_FAIL:
-        SETERRQ(PetscObjectComm((PetscObject)dmA), PETSC_ERR_ARG_OUTOFRANGE, "Label %s already exists in destination DM", name);
-      default:
-        SETERRQ(PetscObjectComm((PetscObject)dmA), PETSC_ERR_ARG_OUTOFRANGE, "Unhandled DMCopyLabelsMode %d", (int)emode);
+      case DM_COPY_LABELS_KEEP: continue;
+      case DM_COPY_LABELS_REPLACE: PetscCall(DMRemoveLabelBySelf(dmB, &labelOld, PETSC_TRUE)); break;
+      case DM_COPY_LABELS_FAIL: SETERRQ(PetscObjectComm((PetscObject)dmA), PETSC_ERR_ARG_OUTOFRANGE, "Label %s already exists in destination DM", name);
+      default: SETERRQ(PetscObjectComm((PetscObject)dmA), PETSC_ERR_ARG_OUTOFRANGE, "Unhandled DMCopyLabelsMode %d", (int)emode);
       }
     }
     if (mode == PETSC_COPY_VALUES) {
@@ -7348,8 +7168,7 @@ PetscErrorCode DMCopyLabels(DM dmA, DM dmB, PetscCopyMode mode, PetscBool all, D
 
 .seealso: `DMLabel`, `DMAddLabel()`, `DMCopyLabelsMode`, `DMLabelCompare()`
 @*/
-PetscErrorCode DMCompareLabels(DM dm0, DM dm1, PetscBool *equal, char **message)
-{
+PetscErrorCode DMCompareLabels(DM dm0, DM dm1, PetscBool *equal, char **message) {
   PetscInt    n, i;
   char        msg[PETSC_MAX_PATH_LEN] = "";
   PetscBool   eq;
@@ -7409,8 +7228,7 @@ finish:
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSetLabelValue_Fast(DM dm, DMLabel *label, const char name[], PetscInt point, PetscInt value)
-{
+PetscErrorCode DMSetLabelValue_Fast(DM dm, DMLabel *label, const char name[], PetscInt point, PetscInt value) {
   PetscFunctionBegin;
   PetscValidPointer(label, 2);
   if (!*label) {
@@ -7429,8 +7247,7 @@ PetscErrorCode DMSetLabelValue_Fast(DM dm, DMLabel *label, const char name[], Pe
   However, a mesh point can have multiple labels, so we must separate all these values. We will assign a bit range to
   each label.
 */
-PetscErrorCode DMUniversalLabelCreate(DM dm, DMUniversalLabel *universal)
-{
+PetscErrorCode DMUniversalLabelCreate(DM dm, DMUniversalLabel *universal) {
   DMUniversalLabel ul;
   PetscBool       *active;
   PetscInt         pStart, pEnd, p, Nl, l, m;
@@ -7528,8 +7345,7 @@ PetscErrorCode DMUniversalLabelCreate(DM dm, DMUniversalLabel *universal)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMUniversalLabelDestroy(DMUniversalLabel *universal)
-{
+PetscErrorCode DMUniversalLabelDestroy(DMUniversalLabel *universal) {
   PetscInt l;
 
   PetscFunctionBegin;
@@ -7542,16 +7358,14 @@ PetscErrorCode DMUniversalLabelDestroy(DMUniversalLabel *universal)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMUniversalLabelGetLabel(DMUniversalLabel ul, DMLabel *ulabel)
-{
+PetscErrorCode DMUniversalLabelGetLabel(DMUniversalLabel ul, DMLabel *ulabel) {
   PetscFunctionBegin;
   PetscValidPointer(ulabel, 2);
   *ulabel = ul->label;
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMUniversalLabelCreateLabels(DMUniversalLabel ul, PetscBool preserveOrder, DM dm)
-{
+PetscErrorCode DMUniversalLabelCreateLabels(DMUniversalLabel ul, PetscBool preserveOrder, DM dm) {
   PetscInt Nl = ul->Nl, l;
 
   PetscFunctionBegin;
@@ -7573,8 +7387,7 @@ PetscErrorCode DMUniversalLabelCreateLabels(DMUniversalLabel ul, PetscBool prese
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMUniversalLabelSetLabelValue(DMUniversalLabel ul, DM dm, PetscBool useIndex, PetscInt p, PetscInt value)
-{
+PetscErrorCode DMUniversalLabelSetLabelValue(DMUniversalLabel ul, DM dm, PetscBool useIndex, PetscInt p, PetscInt value) {
   PetscInt l;
 
   PetscFunctionBegin;
@@ -7606,8 +7419,7 @@ PetscErrorCode DMUniversalLabelSetLabelValue(DMUniversalLabel ul, DM dm, PetscBo
 
 .seealso: `DMSetCoarseDM()`, `DMCoarsen()`
 @*/
-PetscErrorCode DMGetCoarseDM(DM dm, DM *cdm)
-{
+PetscErrorCode DMGetCoarseDM(DM dm, DM *cdm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(cdm, 2);
@@ -7629,12 +7441,10 @@ PetscErrorCode DMGetCoarseDM(DM dm, DM *cdm)
 
 .seealso: `DMGetCoarseDM()`, `DMCoarsen()`, `DMSetRefine()`, `DMSetFineDM()`
 @*/
-PetscErrorCode DMSetCoarseDM(DM dm, DM cdm)
-{
+PetscErrorCode DMSetCoarseDM(DM dm, DM cdm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (cdm) PetscValidHeaderSpecific(cdm, DM_CLASSID, 2);
-  if (dm == cdm) cdm = NULL;
   PetscCall(PetscObjectReference((PetscObject)cdm));
   PetscCall(DMDestroy(&dm->coarseMesh));
   dm->coarseMesh = cdm;
@@ -7654,8 +7464,7 @@ PetscErrorCode DMSetCoarseDM(DM dm, DM cdm)
 
 .seealso: `DMSetFineDM()`, `DMCoarsen()`, `DMRefine()`
 @*/
-PetscErrorCode DMGetFineDM(DM dm, DM *fdm)
-{
+PetscErrorCode DMGetFineDM(DM dm, DM *fdm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(fdm, 2);
@@ -7677,12 +7486,10 @@ PetscErrorCode DMGetFineDM(DM dm, DM *fdm)
 
 .seealso: `DMGetFineDM()`, `DMCoarsen()`, `DMRefine()`
 @*/
-PetscErrorCode DMSetFineDM(DM dm, DM fdm)
-{
+PetscErrorCode DMSetFineDM(DM dm, DM fdm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (fdm) PetscValidHeaderSpecific(fdm, DM_CLASSID, 2);
-  if (dm == fdm) fdm = NULL;
   PetscCall(PetscObjectReference((PetscObject)fdm));
   PetscCall(DMDestroy(&dm->fineMesh));
   dm->fineMesh = fdm;
@@ -7749,8 +7556,7 @@ $        PetscReal time, const PetscReal x[], PetscScalar bcval[])
 
 .seealso: `DSGetBoundary()`, `PetscDSAddBoundary()`
 @*/
-PetscErrorCode DMAddBoundary(DM dm, DMBoundaryConditionType type, const char name[], DMLabel label, PetscInt Nv, const PetscInt values[], PetscInt field, PetscInt Nc, const PetscInt comps[], void (*bcFunc)(void), void (*bcFunc_t)(void), void *ctx, PetscInt *bd)
-{
+PetscErrorCode DMAddBoundary(DM dm, DMBoundaryConditionType type, const char name[], DMLabel label, PetscInt Nv, const PetscInt values[], PetscInt field, PetscInt Nc, const PetscInt comps[], void (*bcFunc)(void), void (*bcFunc_t)(void), void *ctx, PetscInt *bd) {
   PetscDS ds;
 
   PetscFunctionBegin;
@@ -7782,8 +7588,7 @@ PetscErrorCode DMAddBoundary(DM dm, DMBoundaryConditionType type, const char nam
 }
 
 /* TODO Remove this since now the structures are the same */
-static PetscErrorCode DMPopulateBoundary(DM dm)
-{
+static PetscErrorCode DMPopulateBoundary(DM dm) {
   PetscDS     ds;
   DMBoundary *lastnext;
   DSBoundary  dsbound;
@@ -7814,16 +7619,15 @@ static PetscErrorCode DMPopulateBoundary(DM dm)
     dmbound->dsboundary = dsbound;
     dmbound->label      = dsbound->label;
     /* push on the back instead of the front so that it is in the same order as in the PetscDS */
-    *lastnext = dmbound;
-    lastnext  = &(dmbound->next);
-    dsbound   = dsbound->next;
+    *lastnext           = dmbound;
+    lastnext            = &(dmbound->next);
+    dsbound             = dsbound->next;
   }
   PetscFunctionReturn(0);
 }
 
 /* TODO: missing manual page */
-PetscErrorCode DMIsBoundaryPoint(DM dm, PetscInt point, PetscBool *isBd)
-{
+PetscErrorCode DMIsBoundaryPoint(DM dm, PetscInt point, PetscBool *isBd) {
   DMBoundary b;
 
   PetscFunctionBegin;
@@ -7879,8 +7683,7 @@ $    func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscS
 
 .seealso: `DMProjectFunctionLocal()`, `DMProjectFunctionLabel()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectFunction(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec X)
-{
+PetscErrorCode DMProjectFunction(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec X) {
   Vec localX;
 
   PetscFunctionBegin;
@@ -7926,8 +7729,7 @@ $    func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscS
 
 .seealso: `DMProjectFunction()`, `DMProjectFunctionLabel()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectFunctionLocal(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec localX)
-{
+PetscErrorCode DMProjectFunctionLocal(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec localX) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(localX, VEC_CLASSID, 6);
@@ -7969,8 +7771,7 @@ $    func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscS
 
 .seealso: `DMProjectFunction()`, `DMProjectFunctionLocal()`, `DMProjectFunctionLabelLocal()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectFunctionLabel(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec X)
-{
+PetscErrorCode DMProjectFunctionLabel(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec X) {
   Vec localX;
 
   PetscFunctionBegin;
@@ -8017,8 +7818,7 @@ $    func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscS
 
 .seealso: `DMProjectFunction()`, `DMProjectFunctionLocal()`, `DMProjectFunctionLabel()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectFunctionLabelLocal(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec localX)
-{
+PetscErrorCode DMProjectFunctionLabelLocal(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec localX) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(localX, VEC_CLASSID, 11);
@@ -8081,8 +7881,7 @@ $         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscSc
 
 .seealso: `DMProjectField()`, `DMProjectFieldLabelLocal()`, `DMProjectFunction()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectFieldLocal(DM dm, PetscReal time, Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX)
-{
+PetscErrorCode DMProjectFieldLocal(DM dm, PetscReal time, Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(localU, VEC_CLASSID, 3);
@@ -8151,8 +7950,7 @@ $         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscSc
 
 .seealso: `DMProjectField()`, `DMProjectFieldLabel()`, `DMProjectFunction()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectFieldLabelLocal(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX)
-{
+PetscErrorCode DMProjectFieldLabelLocal(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(localU, VEC_CLASSID, 8);
@@ -8221,8 +8019,7 @@ $         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscSc
 
 .seealso: `DMProjectField()`, `DMProjectFieldLabelLocal()`, `DMProjectFunction()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectFieldLabel(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], Vec U, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec X)
-{
+PetscErrorCode DMProjectFieldLabel(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], Vec U, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec X) {
   DM  dmIn;
   Vec localU, localX;
 
@@ -8302,8 +8099,7 @@ $         PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscSc
 
 .seealso: `DMProjectField()`, `DMProjectFieldLabelLocal()`, `DMProjectFunction()`, `DMComputeL2Diff()`
 @*/
-PetscErrorCode DMProjectBdFieldLabelLocal(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX)
-{
+PetscErrorCode DMProjectBdFieldLabelLocal(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Nc, const PetscInt comps[], Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(localU, VEC_CLASSID, 8);
@@ -8336,8 +8132,7 @@ PetscErrorCode DMProjectBdFieldLabelLocal(DM dm, PetscReal time, DMLabel label, 
 
 .seealso: `DMProjectFunction()`, `DMComputeL2FieldDiff()`, `DMComputeL2GradientDiff()`
 @*/
-PetscErrorCode DMComputeL2Diff(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, Vec X, PetscReal *diff)
-{
+PetscErrorCode DMComputeL2Diff(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, Vec X, PetscReal *diff) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 5);
@@ -8370,8 +8165,7 @@ PetscErrorCode DMComputeL2Diff(DM dm, PetscReal time, PetscErrorCode (**funcs)(P
 
 .seealso: `DMProjectFunction()`, `DMComputeL2Diff()`, `DMComputeL2FieldDiff()`
 @*/
-PetscErrorCode DMComputeL2GradientDiff(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, Vec X, const PetscReal n[], PetscReal *diff)
-{
+PetscErrorCode DMComputeL2GradientDiff(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, Vec X, const PetscReal n[], PetscReal *diff) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 5);
@@ -8403,8 +8197,7 @@ PetscErrorCode DMComputeL2GradientDiff(DM dm, PetscReal time, PetscErrorCode (**
 
 .seealso: `DMProjectFunction()`, `DMComputeL2FieldDiff()`, `DMComputeL2GradientDiff()`
 @*/
-PetscErrorCode DMComputeL2FieldDiff(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, Vec X, PetscReal diff[])
-{
+PetscErrorCode DMComputeL2FieldDiff(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, Vec X, PetscReal diff[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 5);
@@ -8431,8 +8224,7 @@ PetscErrorCode DMComputeL2FieldDiff(DM dm, PetscReal time, PetscErrorCode (**fun
 
  .seealso: `DMDAGetNeighbors()`, `PetscSFGetRootRanks()`
 @*/
-PetscErrorCode DMGetNeighbors(DM dm, PetscInt *nranks, const PetscMPIInt *ranks[])
-{
+PetscErrorCode DMGetNeighbors(DM dm, PetscInt *nranks, const PetscMPIInt *ranks[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall((dm->ops->getneighbors)(dm, nranks, ranks));
@@ -8445,8 +8237,7 @@ PetscErrorCode DMGetNeighbors(DM dm, PetscInt *nranks, const PetscMPIInt *ranks[
     Converts the input vector to a ghosted vector and then calls the standard coloring code.
     This has be a different function because it requires DM which is not defined in the Mat library
 */
-PetscErrorCode MatFDColoringApply_AIJDM(Mat J, MatFDColoring coloring, Vec x1, void *sctx)
-{
+PetscErrorCode MatFDColoringApply_AIJDM(Mat J, MatFDColoring coloring, Vec x1, void *sctx) {
   PetscFunctionBegin;
   if (coloring->ctype == IS_COLORING_LOCAL) {
     Vec x1local;
@@ -8480,8 +8271,7 @@ PetscErrorCode MatFDColoringApply_AIJDM(Mat J, MatFDColoring coloring, Vec x1, v
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `ISColoringType`
 @*/
-PetscErrorCode MatFDColoringUseDM(Mat coloring, MatFDColoring fdcoloring)
-{
+PetscErrorCode MatFDColoringUseDM(Mat coloring, MatFDColoring fdcoloring) {
   PetscFunctionBegin;
   coloring->ops->fdcoloringapply = MatFDColoringApply_AIJDM;
   PetscFunctionReturn(0);
@@ -8565,8 +8355,7 @@ PetscErrorCode MatFDColoringUseDM(Mat coloring, MatFDColoring fdcoloring)
 
 .seealso: `DM`, `DMDACreateCompatibleDMDA()`, `DMStagCreateCompatibleDMStag()`
 @*/
-PetscErrorCode DMGetCompatibility(DM dm1, DM dm2, PetscBool *compatible, PetscBool *set)
-{
+PetscErrorCode DMGetCompatibility(DM dm1, DM dm2, PetscBool *compatible, PetscBool *set) {
   PetscMPIInt compareResult;
   DMType      type, type2;
   PetscBool   sameType;
@@ -8640,10 +8429,9 @@ PetscErrorCode DMGetCompatibility(DM dm1, DM dm2, PetscBool *compatible, PetscBo
 
   Level: intermediate
 
-.seealso: `DMMonitorCancel()`, `DMMonitorSetFromOptions()`, `DMMonitor()`
+.seealso: `DMMonitorCancel()`,`DMMonitorSetFromOptions()`, `DMMonitor()`
 @*/
-PetscErrorCode DMMonitorSet(DM dm, PetscErrorCode (*f)(DM, void *), void *mctx, PetscErrorCode (*monitordestroy)(void **))
-{
+PetscErrorCode DMMonitorSet(DM dm, PetscErrorCode (*f)(DM, void *), void *mctx, PetscErrorCode (*monitordestroy)(void **)) {
   PetscInt m;
 
   PetscFunctionBegin;
@@ -8679,10 +8467,9 @@ PetscErrorCode DMMonitorSet(DM dm, PetscErrorCode (*f)(DM, void *), void *mctx, 
 
   Level: intermediate
 
-.seealso: `DMMonitorSet()`, `DMMonitorSetFromOptions()`, `DMMonitor()`
+.seealso: `DMMonitorSet()`, `DMMonitorSetFromOptions()`,  `DMMonitor()`
 @*/
-PetscErrorCode DMMonitorCancel(DM dm)
-{
+PetscErrorCode DMMonitorCancel(DM dm) {
   PetscInt m;
 
   PetscFunctionBegin;
@@ -8720,8 +8507,7 @@ PetscErrorCode DMMonitorCancel(DM dm)
           `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
           `PetscOptionsFList()`, `PetscOptionsEList()`, `DMMonitor()`, `DMMonitorSet()`
 @*/
-PetscErrorCode DMMonitorSetFromOptions(DM dm, const char name[], const char help[], const char manual[], PetscErrorCode (*monitor)(DM, void *), PetscErrorCode (*monitorsetup)(DM, PetscViewerAndFormat *), PetscBool *flg)
-{
+PetscErrorCode DMMonitorSetFromOptions(DM dm, const char name[], const char help[], const char manual[], PetscErrorCode (*monitor)(DM, void *), PetscErrorCode (*monitorsetup)(DM, PetscViewerAndFormat *), PetscBool *flg) {
   PetscViewer       viewer;
   PetscViewerFormat format;
 
@@ -8755,8 +8541,7 @@ PetscErrorCode DMMonitorSetFromOptions(DM dm, const char name[], const char help
 
 .seealso: `DMMonitorSet()`, `DMMonitorSetFromOptions()`
 @*/
-PetscErrorCode DMMonitor(DM dm)
-{
+PetscErrorCode DMMonitor(DM dm) {
   PetscInt m;
 
   PetscFunctionBegin;
@@ -8789,8 +8574,7 @@ PetscErrorCode DMMonitor(DM dm)
 
 .seealso: `DMMonitorSet()`, `DMGetRegionNumDS()`, `PetscDSGetExactSolution()`, `DMGetOutputSequenceNumber()`
 @*/
-PetscErrorCode DMComputeError(DM dm, Vec sol, PetscReal errors[], Vec *errorVec)
-{
+PetscErrorCode DMComputeError(DM dm, Vec sol, PetscReal errors[], Vec *errorVec) {
   PetscErrorCode (**exactSol)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar[], void *);
   void    **ctxs;
   PetscReal time;
@@ -8871,8 +8655,7 @@ PetscErrorCode DMComputeError(DM dm, Vec sol, PetscReal errors[], Vec *errorVec)
 
 .seealso: `DMSetAuxiliaryVec()`, `DMGetAuxiliaryLabels()`, `DMGetAuxiliaryVec()`, `DMSetAuxiliaryVec()`
 @*/
-PetscErrorCode DMGetNumAuxiliaryVec(DM dm, PetscInt *numAux)
-{
+PetscErrorCode DMGetNumAuxiliaryVec(DM dm, PetscInt *numAux) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscHMapAuxGetSize(dm->auxData, numAux));
@@ -8900,8 +8683,7 @@ PetscErrorCode DMGetNumAuxiliaryVec(DM dm, PetscInt *numAux)
 
 .seealso: `DMSetAuxiliaryVec()`, `DMGetNumAuxiliaryVec()`, `DMGetAuxiliaryLabels()`
 @*/
-PetscErrorCode DMGetAuxiliaryVec(DM dm, DMLabel label, PetscInt value, PetscInt part, Vec *aux)
-{
+PetscErrorCode DMGetAuxiliaryVec(DM dm, DMLabel label, PetscInt value, PetscInt part, Vec *aux) {
   PetscHashAuxKey key, wild = {NULL, 0, 0};
   PetscBool       has;
 
@@ -8933,8 +8715,7 @@ PetscErrorCode DMGetAuxiliaryVec(DM dm, DMLabel label, PetscInt value, PetscInt 
 
 .seealso: `DMGetAuxiliaryVec()`, `DMGetAuxiliaryLabels()`, `DMCopyAuxiliaryVec()`
 @*/
-PetscErrorCode DMSetAuxiliaryVec(DM dm, DMLabel label, PetscInt value, PetscInt part, Vec aux)
-{
+PetscErrorCode DMSetAuxiliaryVec(DM dm, DMLabel label, PetscInt value, PetscInt part, Vec aux) {
   Vec             old;
   PetscHashAuxKey key;
 
@@ -8972,8 +8753,7 @@ PetscErrorCode DMSetAuxiliaryVec(DM dm, DMLabel label, PetscInt value, PetscInt 
 
 .seealso: `DMGetNumAuxiliaryVec()`, `DMGetAuxiliaryVec()`, `DMGetNumAuxiliaryVec()`, `DMSetAuxiliaryVec()`, DMCopyAuxiliaryVec()`
 @*/
-PetscErrorCode DMGetAuxiliaryLabels(DM dm, DMLabel labels[], PetscInt values[], PetscInt parts[])
-{
+PetscErrorCode DMGetAuxiliaryLabels(DM dm, DMLabel labels[], PetscInt values[], PetscInt parts[]) {
   PetscHashAuxKey *keys;
   PetscInt         n, i, off = 0;
 
@@ -9012,8 +8792,7 @@ PetscErrorCode DMGetAuxiliaryLabels(DM dm, DMLabel labels[], PetscInt values[], 
 
 .seealso: `DMGetNumAuxiliaryVec()`, `DMGetAuxiliaryVec()`, `DMSetAuxiliaryVec()`
 @*/
-PetscErrorCode DMCopyAuxiliaryVec(DM dm, DM dmNew)
-{
+PetscErrorCode DMCopyAuxiliaryVec(DM dm, DM dmNew) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(PetscHMapAuxDestroy(&dmNew->auxData));
@@ -9047,8 +8826,7 @@ PetscErrorCode DMCopyAuxiliaryVec(DM dm, DM dmNew)
 
 .seealso: `DMPolytopeGetOrientation()`, `DMPolytopeMatchVertexOrientation()`, `DMPolytopeGetVertexOrientation()`
 @*/
-PetscErrorCode DMPolytopeMatchOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt, PetscBool *found)
-{
+PetscErrorCode DMPolytopeMatchOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt, PetscBool *found) {
   const PetscInt cS = DMPolytopeTypeGetConeSize(ct);
   const PetscInt nO = DMPolytopeTypeGetNumArrangments(ct) / 2;
   PetscInt       o, c;
@@ -9096,8 +8874,7 @@ PetscErrorCode DMPolytopeMatchOrientation(DMPolytopeType ct, const PetscInt sour
 
 .seealso: `DMPolytopeType`, `DMPolytopeMatchOrientation()`, `DMPolytopeGetVertexOrientation()`, `DMPolytopeMatchVertexOrientation()`
 @*/
-PetscErrorCode DMPolytopeGetOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt)
-{
+PetscErrorCode DMPolytopeGetOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt) {
   PetscBool found;
 
   PetscFunctionBegin;
@@ -9132,8 +8909,7 @@ PetscErrorCode DMPolytopeGetOrientation(DMPolytopeType ct, const PetscInt source
 
 .seealso: `DMPolytopeType`, `DMPolytopeGetOrientation()`, `DMPolytopeMatchOrientation()`, `DMPolytopeTypeGetNumVertices()`, `DMPolytopeTypeGetVertexArrangment()`
 @*/
-PetscErrorCode DMPolytopeMatchVertexOrientation(DMPolytopeType ct, const PetscInt sourceVert[], const PetscInt targetVert[], PetscInt *ornt, PetscBool *found)
-{
+PetscErrorCode DMPolytopeMatchVertexOrientation(DMPolytopeType ct, const PetscInt sourceVert[], const PetscInt targetVert[], PetscInt *ornt, PetscBool *found) {
   const PetscInt cS = DMPolytopeTypeGetNumVertices(ct);
   const PetscInt nO = DMPolytopeTypeGetNumArrangments(ct) / 2;
   PetscInt       o, c;
@@ -9181,8 +8957,7 @@ PetscErrorCode DMPolytopeMatchVertexOrientation(DMPolytopeType ct, const PetscIn
 
 .seealso: `DMPolytopeType`, `DMPolytopeMatchVertexOrientation()`, `DMPolytopeGetOrientation()`
 @*/
-PetscErrorCode DMPolytopeGetVertexOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt)
-{
+PetscErrorCode DMPolytopeGetVertexOrientation(DMPolytopeType ct, const PetscInt sourceCone[], const PetscInt targetCone[], PetscInt *ornt) {
   PetscBool found;
 
   PetscFunctionBegin;
@@ -9207,8 +8982,7 @@ PetscErrorCode DMPolytopeGetVertexOrientation(DMPolytopeType ct, const PetscInt 
 
 .seealso: `DM`, `DMPolytopeType`, `DMLocatePoints()`
 @*/
-PetscErrorCode DMPolytopeInCellTest(DMPolytopeType ct, const PetscReal point[], PetscBool *inside)
-{
+PetscErrorCode DMPolytopeInCellTest(DMPolytopeType ct, const PetscReal point[], PetscBool *inside) {
   PetscReal sum = 0.0;
   PetscInt  d;
 
@@ -9237,8 +9011,7 @@ PetscErrorCode DMPolytopeInCellTest(DMPolytopeType ct, const PetscReal point[], 
         break;
       }
     break;
-  default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unsupported polytope type %s", DMPolytopeTypes[ct]);
+  default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unsupported polytope type %s", DMPolytopeTypes[ct]);
   }
   PetscFunctionReturn(0);
 }

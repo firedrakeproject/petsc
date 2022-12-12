@@ -6,7 +6,7 @@ typedef struct {
 } SNESLineSearch_BT;
 
 /*@
-   SNESLineSearchBTSetAlpha - Sets the descent parameter, alpha, in the `SNESLINESEARCHBT` variant.
+   SNESLineSearchBTSetAlpha - Sets the descent parameter, alpha, in the BT linesearch variant.
 
    Input Parameters:
 +  linesearch - linesearch context
@@ -14,10 +14,9 @@ typedef struct {
 
    Level: intermediate
 
-.seealso: `SNESLineSearch`, `SNESLineSearchSetLambda()`, `SNESLineSearchGetTolerances()`, `SNESLINESEARCHBT`, `SNESLineSearchBTGetAlpha()`
+.seealso: `SNESLineSearchSetLambda()`, `SNESLineSearchGetTolerances()` `SNESLINESEARCHBT`
 @*/
-PetscErrorCode SNESLineSearchBTSetAlpha(SNESLineSearch linesearch, PetscReal alpha)
-{
+PetscErrorCode SNESLineSearchBTSetAlpha(SNESLineSearch linesearch, PetscReal alpha) {
   SNESLineSearch_BT *bt = (SNESLineSearch_BT *)linesearch->data;
 
   PetscFunctionBegin;
@@ -27,20 +26,19 @@ PetscErrorCode SNESLineSearchBTSetAlpha(SNESLineSearch linesearch, PetscReal alp
 }
 
 /*@
-   SNESLineSearchBTGetAlpha - Gets the descent parameter, alpha, in the `SNESLINESEARCHBT` variant.
+   SNESLineSearchBTGetAlpha - Gets the descent parameter, alpha, in the BT linesearch variant.
 
-   Input Parameter:
+   Input Parameters:
 .  linesearch - linesearch context
 
-   Output Parameter:
+   Output Parameters:
 .  alpha - The descent parameter
 
    Level: intermediate
 
-.seealso: `SNESLineSearchGetLambda()`, `SNESLineSearchGetTolerances()` `SNESLINESEARCHBT`, `SNESLineSearchBTGetAlpha()`
+.seealso: `SNESLineSearchGetLambda()`, `SNESLineSearchGetTolerances()` `SNESLINESEARCHBT`
 @*/
-PetscErrorCode SNESLineSearchBTGetAlpha(SNESLineSearch linesearch, PetscReal *alpha)
-{
+PetscErrorCode SNESLineSearchBTGetAlpha(SNESLineSearch linesearch, PetscReal *alpha) {
   SNESLineSearch_BT *bt = (SNESLineSearch_BT *)linesearch->data;
 
   PetscFunctionBegin;
@@ -49,8 +47,7 @@ PetscErrorCode SNESLineSearchBTGetAlpha(SNESLineSearch linesearch, PetscReal *al
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESLineSearchApply_BT(SNESLineSearch linesearch)
-{
+static PetscErrorCode SNESLineSearchApply_BT(SNESLineSearch linesearch) {
   PetscBool          changed_y, changed_w;
   Vec                X, F, Y, W, G;
   SNES               snes;
@@ -369,8 +366,7 @@ static PetscErrorCode SNESLineSearchApply_BT(SNESLineSearch linesearch)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SNESLineSearchView_BT(SNESLineSearch linesearch, PetscViewer viewer)
-{
+PetscErrorCode SNESLineSearchView_BT(SNESLineSearch linesearch, PetscViewer viewer) {
   PetscBool          iascii;
   SNESLineSearch_BT *bt = (SNESLineSearch_BT *)linesearch->data;
 
@@ -387,15 +383,13 @@ PetscErrorCode SNESLineSearchView_BT(SNESLineSearch linesearch, PetscViewer view
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESLineSearchDestroy_BT(SNESLineSearch linesearch)
-{
+static PetscErrorCode SNESLineSearchDestroy_BT(SNESLineSearch linesearch) {
   PetscFunctionBegin;
   PetscCall(PetscFree(linesearch->data));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESLineSearchSetFromOptions_BT(SNESLineSearch linesearch, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode SNESLineSearchSetFromOptions_BT(SNESLineSearch linesearch, PetscOptionItems *PetscOptionsObject) {
   SNESLineSearch_BT *bt = (SNESLineSearch_BT *)linesearch->data;
 
   PetscFunctionBegin;
@@ -409,7 +403,7 @@ static PetscErrorCode SNESLineSearchSetFromOptions_BT(SNESLineSearch linesearch,
    SNESLINESEARCHBT - Backtracking line search.
 
    This line search finds the minimum of a polynomial fitting of the L2 norm of the
-   function or the objective function if it is provided with `SNESSetObjective()`. If this fit does not satisfy the conditions for progress, the interval shrinks
+   function or the objective function if it is provided with SNESSetObjective(). If this fit does not satisfy the conditions for progress, the interval shrinks
    and the fit is reattempted at most max_it times or until lambda is below minlambda.
 
    Options Database Keys:
@@ -423,16 +417,15 @@ static PetscErrorCode SNESLineSearchSetFromOptions_BT(SNESLineSearch linesearch,
 
    Level: advanced
 
-   Note:
+   Notes:
+   This line search is taken from "Numerical Methods for Unconstrained
+   Optimization and Nonlinear Equations" by Dennis and Schnabel, page 325.
+
    This line search will always produce a step that is less than or equal to, in length, the full step size.
 
-   Reference:
-.  - * - "Numerical Methods for Unconstrained Optimization and Nonlinear Equations" by Dennis and Schnabel, page 325.
-
-.seealso: `SNESLineSearch`, `SNESLineSearchType`, `SNESLineSearchCreate()`, `SNESLineSearchSetType()`
+.seealso: `SNESLineSearchCreate()`, `SNESLineSearchSetType()`
 M*/
-PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_BT(SNESLineSearch linesearch)
-{
+PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_BT(SNESLineSearch linesearch) {
   SNESLineSearch_BT *bt;
 
   PetscFunctionBegin;
@@ -443,7 +436,7 @@ PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_BT(SNESLineSearch linesearch)
   linesearch->ops->view           = SNESLineSearchView_BT;
   linesearch->ops->setup          = NULL;
 
-  PetscCall(PetscNew(&bt));
+  PetscCall(PetscNewLog(linesearch, &bt));
 
   linesearch->data    = (void *)bt;
   linesearch->max_its = 40;

@@ -12,8 +12,7 @@ static PetscBool SNESPackageInitialized = PETSC_FALSE;
 
 .seealso: `PetscFinalize()`
 @*/
-PetscErrorCode SNESFinalizePackage(void)
-{
+PetscErrorCode SNESFinalizePackage(void) {
   PetscFunctionBegin;
   PetscCall(PetscFunctionListDestroy(&SNESList));
   PetscCall(PetscFunctionListDestroy(&SNESLineSearchList));
@@ -32,8 +31,7 @@ PetscErrorCode SNESFinalizePackage(void)
 
 .seealso: `PetscInitialize()`
 @*/
-PetscErrorCode SNESInitializePackage(void)
-{
+PetscErrorCode SNESInitializePackage(void) {
   char      logList[256];
   PetscBool opt, pkg, cls;
 
@@ -92,8 +90,7 @@ PetscErrorCode SNESInitializePackage(void)
   This registers all of the SNES methods that are in the basic PETSc libpetscsnes library.
 
  */
-PETSC_EXTERN PetscErrorCode PetscDLLibraryRegister_petscsnes(void)
-{
+PETSC_EXTERN PetscErrorCode PetscDLLibraryRegister_petscsnes(void) {
   PetscFunctionBegin;
   PetscCall(SNESInitializePackage());
   PetscFunctionReturn(0);

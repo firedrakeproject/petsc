@@ -6,8 +6,7 @@ static char help[] = "Tests C=A^T*B via MatTranspose() and MatMatMult(). \n\
  */
 
 #include <petscmat.h>
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A, AT, B, C;
   PetscViewer viewer;
   PetscBool   flg;

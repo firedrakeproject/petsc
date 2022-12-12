@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 CPPFLAGS  = ${CHACO_INCLUDE}
 SOURCEC   = partchaco.c

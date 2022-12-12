@@ -25,8 +25,7 @@ extern PetscErrorCode KSPDGMRESSetEigen_DGMRES(KSP, PetscInt);
    Note that most data are allocated in KSPSetUp_DGMRES and KSPSetUp_GMRES, including the space for the basis vectors, the various Hessenberg matrices and the Givens rotations coefficients
 
 */
-static PetscErrorCode KSPSetUp_AGMRES(KSP ksp)
-{
+static PetscErrorCode KSPSetUp_AGMRES(KSP ksp) {
   PetscInt       hes;
   PetscInt       nloc;
   KSP_AGMRES    *agmres = (KSP_AGMRES *)ksp->data;
@@ -36,12 +35,13 @@ static PetscErrorCode KSPSetUp_AGMRES(KSP ksp)
   PetscInt       lwork  = PetscMax(8 * N + 16, 4 * neig * (N - neig));
 
   PetscFunctionBegin;
-  N = MAXKSPSIZE;
+  PetscCheck(ksp->pc_side != PC_SYMMETRIC, PetscObjectComm((PetscObject)ksp), PETSC_ERR_SUP, "no symmetric preconditioning for KSPAGMRES");
+  N                     = MAXKSPSIZE;
   /* Preallocate space during the call to KSPSetup_GMRES for the Krylov basis */
   agmres->q_preallocate = PETSC_TRUE; /* No allocation on the fly */
   /* Preallocate space to compute later the eigenvalues in GMRES */
-  ksp->calc_sings = PETSC_TRUE;
-  agmres->max_k   = N; /* Set the augmented size to be allocated in KSPSetup_GMRES */
+  ksp->calc_sings       = PETSC_TRUE;
+  agmres->max_k         = N; /* Set the augmented size to be allocated in KSPSetup_GMRES */
   PetscCall(KSPSetUp_DGMRES(ksp));
   agmres->max_k = max_k;
   hes           = (N + 1) * (N + 1);
@@ -73,8 +73,7 @@ static PetscErrorCode KSPSetUp_AGMRES(KSP ksp)
 /*
     Returns the current solution from the private data structure of AGMRES back to ptr.
 */
-static PetscErrorCode KSPBuildSolution_AGMRES(KSP ksp, Vec ptr, Vec *result)
-{
+static PetscErrorCode KSPBuildSolution_AGMRES(KSP ksp, Vec ptr, Vec *result) {
   KSP_AGMRES *agmres = (KSP_AGMRES *)ksp->data;
 
   PetscFunctionBegin;
@@ -82,6 +81,7 @@ static PetscErrorCode KSPBuildSolution_AGMRES(KSP ksp, Vec ptr, Vec *result)
     if (!agmres->sol_temp) {
       PetscCall(VecDuplicate(ksp->vec_sol, &agmres->sol_temp));
       PetscCall(VecCopy(ksp->vec_sol, agmres->sol_temp));
+      PetscCall(PetscLogObjectParent((PetscObject)ksp, (PetscObject)agmres->sol_temp));
     }
     ptr = agmres->sol_temp;
   } else {
@@ -96,8 +96,7 @@ static PetscErrorCode KSPBuildSolution_AGMRES(KSP ksp, Vec ptr, Vec *result)
    One cycle of GMRES with the Arnoldi process is performed and the eigenvalues of the induced Hessenberg matrix (the Ritz values) are computed.
    NOTE: This function is not currently used; the next function is rather used when  the eigenvectors are needed next to augment the basis
 */
-PetscErrorCode KSPComputeShifts_GMRES(KSP ksp)
-{
+PetscErrorCode KSPComputeShifts_GMRES(KSP ksp) {
   KSP_AGMRES    *agmres = (KSP_AGMRES *)(ksp->data);
   KSP            kspgmres;
   Mat            Amat, Pmat;
@@ -163,8 +162,7 @@ PetscErrorCode KSPComputeShifts_GMRES(KSP ksp)
     - The shifts as complex pair of arrays in wr and wi (size max_k).
     - The harmonic Ritz vectors (agmres->U) if deflation is needed.
 */
-static PetscErrorCode KSPComputeShifts_DGMRES(KSP ksp)
-{
+static PetscErrorCode KSPComputeShifts_DGMRES(KSP ksp) {
   KSP_AGMRES    *agmres = (KSP_AGMRES *)(ksp->data);
   PetscInt       max_k  = agmres->max_k; /* size of the (non augmented) Krylov subspace */
   PetscInt       Neig   = 0;
@@ -249,8 +247,7 @@ static PetscErrorCode KSPComputeShifts_DGMRES(KSP ksp)
     - agmres->vecs or VEC_V : basis vectors
     - agmres->Scale : Scaling factors (equal to 1 if no scaling is done)
 */
-static PetscErrorCode KSPAGMRESBuildBasis(KSP ksp)
-{
+static PetscErrorCode KSPAGMRESBuildBasis(KSP ksp) {
   KSP_AGMRES    *agmres  = (KSP_AGMRES *)ksp->data;
   PetscReal     *Rshift  = agmres->Rshift;
   PetscReal     *Ishift  = agmres->Ishift;
@@ -358,8 +355,7 @@ static PetscErrorCode KSPAGMRESBuildBasis(KSP ksp)
 
    NOTE: Note that the computed Hessenberg matrix is not mathematically equivalent to that in the real Arnoldi process (in KSP GMRES). If it is needed, it can be explicitly  formed as H <-- H * RLoc^-1.
  */
-static PetscErrorCode KSPAGMRESBuildHessenberg(KSP ksp)
-{
+static PetscErrorCode KSPAGMRESBuildHessenberg(KSP ksp) {
   KSP_AGMRES    *agmres = (KSP_AGMRES *)ksp->data;
   PetscScalar   *Rshift = agmres->Rshift;
   PetscScalar   *Ishift = agmres->Ishift;
@@ -396,8 +392,7 @@ static PetscErrorCode KSPAGMRESBuildHessenberg(KSP ksp)
 /*
   Form the new approximate solution from the least-square problem
 */
-static PetscErrorCode KSPAGMRESBuildSoln(KSP ksp, PetscInt it)
-{
+static PetscErrorCode KSPAGMRESBuildSoln(KSP ksp, PetscInt it) {
   KSP_AGMRES    *agmres = (KSP_AGMRES *)ksp->data;
   const PetscInt max_k  = agmres->max_k; /* Size of the non-augmented Krylov basis */
   PetscInt       i, j;
@@ -460,8 +455,7 @@ static PetscErrorCode KSPAGMRESBuildSoln(KSP ksp, PetscInt it)
  .
  NOTE: Unlike GMRES where the residual norm is available at each (inner) iteration,  here it is available at the end of the cycle.
 */
-static PetscErrorCode KSPAGMRESCycle(PetscInt *itcount, KSP ksp)
-{
+static PetscErrorCode KSPAGMRESCycle(PetscInt *itcount, KSP ksp) {
   KSP_AGMRES *agmres = (KSP_AGMRES *)(ksp->data);
   PetscReal   res;
   PetscInt    KspSize = KSPSIZE;
@@ -498,8 +492,7 @@ static PetscErrorCode KSPAGMRESCycle(PetscInt *itcount, KSP ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPSolve_AGMRES(KSP ksp)
-{
+static PetscErrorCode KSPSolve_AGMRES(KSP ksp) {
   PetscInt    its;
   KSP_AGMRES *agmres     = (KSP_AGMRES *)ksp->data;
   PetscBool   guess_zero = ksp->guess_zero;
@@ -550,8 +543,7 @@ static PetscErrorCode KSPSolve_AGMRES(KSP ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPDestroy_AGMRES(KSP ksp)
-{
+static PetscErrorCode KSPDestroy_AGMRES(KSP ksp) {
   KSP_AGMRES *agmres = (KSP_AGMRES *)ksp->data;
 
   PetscFunctionBegin;
@@ -578,10 +570,10 @@ static PetscErrorCode KSPDestroy_AGMRES(KSP ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPView_AGMRES(KSP ksp, PetscViewer viewer)
-{
+static PetscErrorCode KSPView_AGMRES(KSP ksp, PetscViewer viewer) {
   KSP_AGMRES *agmres = (KSP_AGMRES *)ksp->data;
   const char *cstr   = "RODDEC ORTHOGONOLIZATION";
+  char        ritzvec[25];
   PetscBool   iascii, isstring;
 #if defined(KSP_AGMRES_NONORM)
   const char *Nstr = "SCALING FACTORS : NO";
@@ -605,8 +597,10 @@ static PetscErrorCode KSPView_AGMRES(KSP ksp, PetscViewer viewer)
       PetscCall(PetscViewerASCIIPrintf(viewer, "  Total number of extracted eigenvalues = %" PetscInt_FMT "\n", agmres->r));
       PetscCall(PetscViewerASCIIPrintf(viewer, "  Maximum number of eigenvalues set to be extracted = %" PetscInt_FMT "\n", agmres->max_neig));
     } else {
+      if (agmres->ritz) sprintf(ritzvec, "Ritz vectors");
+      else sprintf(ritzvec, "Harmonic Ritz vectors");
       PetscCall(PetscViewerASCIIPrintf(viewer, " STRATEGY OF DEFLATION: AUGMENT\n"));
-      PetscCall(PetscViewerASCIIPrintf(viewer, " augmented vectors  %" PetscInt_FMT " at frequency %" PetscInt_FMT " with %sRitz vectors\n", agmres->r, agmres->neig, agmres->ritz ? "" : "Harmonic "));
+      PetscCall(PetscViewerASCIIPrintf(viewer, " augmented vectors  %" PetscInt_FMT " at frequency %" PetscInt_FMT " with %s\n", agmres->r, agmres->neig, ritzvec));
     }
     PetscCall(PetscViewerASCIIPrintf(viewer, " Minimum relaxation parameter for the adaptive strategy(smv)  = %g\n", (double)agmres->smv));
     PetscCall(PetscViewerASCIIPrintf(viewer, " Maximum relaxation parameter for the adaptive strategy(bgv)  = %g\n", (double)agmres->bgv));
@@ -616,8 +610,7 @@ static PetscErrorCode KSPView_AGMRES(KSP ksp, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPSetFromOptions_AGMRES(KSP ksp, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode KSPSetFromOptions_AGMRES(KSP ksp, PetscOptionItems *PetscOptionsObject) {
   PetscInt    neig;
   KSP_AGMRES *agmres = (KSP_AGMRES *)ksp->data;
   PetscBool   flg;
@@ -654,19 +647,19 @@ There are  many ongoing work that aim at avoiding (or minimizing) the communicat
  .   -ksp_agmres_maxeigen <max_neig> - Maximum number of eigenvalues to deflate
  .   -ksp_agmres_MinRatio <1> - Relaxation parameter in the adaptive strategy; smallest multiple of the remaining number of steps allowed
  .   -ksp_agmres_MaxRatio <1> - Relaxation parameter in the adaptive strategy; Largest multiple of the remaining number of steps allowed
- .   -ksp_agmres_DeflPrecond - Apply deflation as a preconditioner, this is similar to `KSPDGMRES` but it rather builds a Newton basis.  This is an experimental option.
+ .   -ksp_agmres_DeflPrecond - Apply deflation as a preconditioner, this is similar to DGMRES but it rather builds a Newton basis.  This is an experimental option.
  -   -ksp_dgmres_force <0, 1> - Force the deflation at each restart.
 
- Level: intermediate
+ Level: beginner
 
- Note:
+ Notes:
     Left and right preconditioning are supported, but not symmetric preconditioning. Complex arithmetic is not supported
 
- Developer Note:
-    This object is subclassed off of `KSPDGMRES`
+ Developer Notes:
+    This object is subclassed off of KSPDGMRES
 
- Contributed by:
- Desire NUENTSA WAKAM, INRIA <desire.nuentsa_wakam@inria.fr> with inputs from Guy Atenekeng <atenekeng@yahoo.com> and R.B. Sidje <roger.b.sidje@ua.edu>
+ Contributed by Desire NUENTSA WAKAM, INRIA <desire.nuentsa_wakam@inria.fr>
+ Inputs from Guy Atenekeng <atenekeng@yahoo.com> and R.B. Sidje <roger.b.sidje@ua.edu>
 
  References :
  +   [1] D. Nuentsa Wakam and J. Erhel, Parallelism and robustness in GMRES with the Newton basis and the deflated restarting. Research report INRIA RR-7787, November 2011,https://hal.inria.fr/inria-00638247/en,  in revision for ETNA.
@@ -677,18 +670,17 @@ Mathematics, 62(9), pp. 1171-1186, 2012
  .  [5] M. Mohiyuddin, M. Hoemmen, J. Demmel, and K. Yelick, Minimizing communication in sparse matrix solvers, in SC '09: Proceedings of the Conference on High Performance Computing Networking, Storage and Analysis, New York, NY, USA, 2009, ACM, pp. 1154-1171.
  .    Sidje, Roger B. Alternatives for parallel Krylov subspace basis computation. Numer. Linear Algebra Appl. 4 (1997), no. 4, 305-331
 
- .seealso: [](chapter_ksp), `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPDGMRES`, `KSPPGMRES`,
+ .seealso: `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPDGMRES`, `KSPPGMRES`,
            `KSPGMRESSetRestart()`, `KSPGMRESSetHapTol()`, `KSPGMRESSetPreAllocateVectors()`, `KSPGMRESSetOrthogonalization()`, `KSPGMRESGetOrthogonalization()`,
            `KSPGMRESClassicalGramSchmidtOrthogonalization()`, `KSPGMRESModifiedGramSchmidtOrthogonalization()`,
            `KSPGMRESCGSRefinementType`, `KSPGMRESSetCGSRefinementType()`, `KSPGMRESGetCGSRefinementType()`, `KSPGMRESMonitorKrylov()`, `KSPSetPCSide()`
  M*/
 
-PETSC_EXTERN PetscErrorCode KSPCreate_AGMRES(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_AGMRES(KSP ksp) {
   KSP_AGMRES *agmres;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&agmres));
+  PetscCall(PetscNewLog(ksp, &agmres));
   ksp->data = (void *)agmres;
 
   PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_PRECONDITIONED, PC_LEFT, 3));

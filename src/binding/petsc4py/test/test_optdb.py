@@ -34,7 +34,6 @@ class TestOptions(unittest.TestCase):
 
     def tearDown(self):
         self.opts = None
-        PETSc.garbage_cleanup()
 
     def testHasOpts(self):
         self._putopts()

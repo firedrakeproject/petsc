@@ -33,8 +33,7 @@ PetscErrorCode InitialConditions(DM, Vec);
 PetscErrorCode RHSJacobianShell(TS, PetscReal, Vec, Mat, Mat, void *);
 PetscErrorCode IJacobianShell(TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void *);
 
-PetscErrorCode InitializeLambda(DM da, Vec lambda, PetscReal x, PetscReal y)
-{
+PetscErrorCode InitializeLambda(DM da, Vec lambda, PetscReal x, PetscReal y) {
   PetscInt i, j, Mx, My, xs, ys, xm, ym;
   Field  **l;
   PetscFunctionBegin;
@@ -55,8 +54,7 @@ PetscErrorCode InitializeLambda(DM da, Vec lambda, PetscReal x, PetscReal y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MyRHSMatMultTranspose(Mat A_shell, Vec X, Vec Y)
-{
+static PetscErrorCode MyRHSMatMultTranspose(Mat A_shell, Vec X, Vec Y) {
   MCtx       *mctx;
   AppCtx     *appctx;
   DM          da;
@@ -114,8 +112,7 @@ static PetscErrorCode MyRHSMatMultTranspose(Mat A_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MyIMatMultTranspose(Mat A_shell, Vec X, Vec Y)
-{
+static PetscErrorCode MyIMatMultTranspose(Mat A_shell, Vec X, Vec Y) {
   MCtx       *mctx;
   AppCtx     *appctx;
   DM          da;
@@ -175,8 +172,7 @@ static PetscErrorCode MyIMatMultTranspose(Mat A_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MyIMatMult(Mat A_shell, Vec X, Vec Y)
-{
+static PetscErrorCode MyIMatMult(Mat A_shell, Vec X, Vec Y) {
   MCtx       *mctx;
   AppCtx     *appctx;
   DM          da;
@@ -236,8 +232,7 @@ static PetscErrorCode MyIMatMult(Mat A_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS             ts; /* ODE integrator */
   Vec            x;  /* solution */
   DM             da;
@@ -387,8 +382,7 @@ int main(int argc, char **argv)
 }
 
 /* ------------------------------------------------------------------- */
-PetscErrorCode RHSJacobianShell(TS ts, PetscReal t, Vec U, Mat A, Mat BB, void *ctx)
-{
+PetscErrorCode RHSJacobianShell(TS ts, PetscReal t, Vec U, Mat A, Mat BB, void *ctx) {
   MCtx *mctx;
 
   PetscFunctionBegin;
@@ -397,8 +391,7 @@ PetscErrorCode RHSJacobianShell(TS ts, PetscReal t, Vec U, Mat A, Mat BB, void *
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode IJacobianShell(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat A, Mat BB, void *ctx)
-{
+PetscErrorCode IJacobianShell(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat A, Mat BB, void *ctx) {
   MCtx *mctx;
 
   PetscFunctionBegin;
@@ -410,8 +403,7 @@ PetscErrorCode IJacobianShell(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, 
 }
 
 /* ------------------------------------------------------------------- */
-PetscErrorCode InitialConditions(DM da, Vec U)
-{
+PetscErrorCode InitialConditions(DM da, Vec U) {
   PetscInt  i, j, xs, ys, xm, ym, Mx, My;
   Field   **u;
   PetscReal hx, hy, x, y;

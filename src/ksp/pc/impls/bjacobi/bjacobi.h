@@ -1,4 +1,4 @@
-#ifndef __BJACOBI_H
+#if !defined(__BJACOBI_H)
 #define __BJACOBI_H
 /*
     Private data for block Jacobi and block Gauss-Seidel preconditioner.

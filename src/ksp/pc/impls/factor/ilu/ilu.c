@@ -4,8 +4,7 @@
 */
 #include <../src/ksp/pc/impls/factor/ilu/ilu.h> /*I "petscpc.h"  I*/
 
-PetscErrorCode PCFactorReorderForNonzeroDiagonal_ILU(PC pc, PetscReal z)
-{
+PetscErrorCode PCFactorReorderForNonzeroDiagonal_ILU(PC pc, PetscReal z) {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -15,8 +14,7 @@ PetscErrorCode PCFactorReorderForNonzeroDiagonal_ILU(PC pc, PetscReal z)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCReset_ILU(PC pc)
-{
+PetscErrorCode PCReset_ILU(PC pc) {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -26,8 +24,7 @@ PetscErrorCode PCReset_ILU(PC pc)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCFactorSetDropTolerance_ILU(PC pc, PetscReal dt, PetscReal dtcol, PetscInt dtcount)
-{
+PetscErrorCode PCFactorSetDropTolerance_ILU(PC pc, PetscReal dt, PetscReal dtcol, PetscInt dtcount) {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -41,8 +38,7 @@ PetscErrorCode PCFactorSetDropTolerance_ILU(PC pc, PetscReal dt, PetscReal dtcol
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_ILU(PC pc, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode PCSetFromOptions_ILU(PC pc, PetscOptionItems *PetscOptionsObject) {
   PetscInt  itmp;
   PetscBool flg, set;
   PC_ILU   *ilu = (PC_ILU *)pc->data;
@@ -68,8 +64,7 @@ static PetscErrorCode PCSetFromOptions_ILU(PC pc, PetscOptionItems *PetscOptions
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetUp_ILU(PC pc)
-{
+static PetscErrorCode PCSetUp_ILU(PC pc) {
   PC_ILU        *ilu = (PC_ILU *)pc->data;
   MatInfo        info;
   PetscBool      flg;
@@ -103,6 +98,8 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
       PetscCall(PCFactorSetDefaultOrdering_Factor(pc));
       PetscCall(MatDestroy(&((PC_Factor *)ilu)->fact));
       PetscCall(MatGetOrdering(pc->pmat, ((PC_Factor *)ilu)->ordering, &ilu->row, &ilu->col));
+      if (ilu->row) PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)ilu->row));
+      if (ilu->col) PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)ilu->col));
     }
 
     /* In place ILU only makes sense with fill factor of 1.0 because
@@ -124,11 +121,16 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
     if (!pc->setupcalled) {
       /* first time in so compute reordering and symbolic factorization */
       PetscBool canuseordering;
-      if (!((PC_Factor *)ilu)->fact) { PetscCall(MatGetFactor(pc->pmat, ((PC_Factor *)ilu)->solvertype, MAT_FACTOR_ILU, &((PC_Factor *)ilu)->fact)); }
+      if (!((PC_Factor *)ilu)->fact) {
+        PetscCall(MatGetFactor(pc->pmat, ((PC_Factor *)ilu)->solvertype, MAT_FACTOR_ILU, &((PC_Factor *)ilu)->fact));
+        PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)((PC_Factor *)ilu)->fact));
+      }
       PetscCall(MatFactorGetCanUseOrdering(((PC_Factor *)ilu)->fact, &canuseordering));
       if (canuseordering) {
         PetscCall(PCFactorSetDefaultOrdering_Factor(pc));
         PetscCall(MatGetOrdering(pc->pmat, ((PC_Factor *)ilu)->ordering, &ilu->row, &ilu->col));
+        PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)ilu->row));
+        PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)ilu->col));
         /*  Remove zeros along diagonal?     */
         if (ilu->nonzerosalongdiagonal) PetscCall(MatReorderForNonzeroDiagonal(pc->pmat, ilu->nonzerosalongdiagonaltol, ilu->row, ilu->col));
       }
@@ -140,6 +142,7 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
         PetscBool canuseordering;
         PetscCall(MatDestroy(&((PC_Factor *)ilu)->fact));
         PetscCall(MatGetFactor(pc->pmat, ((PC_Factor *)ilu)->solvertype, MAT_FACTOR_ILU, &((PC_Factor *)ilu)->fact));
+        PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)((PC_Factor *)ilu)->fact));
         PetscCall(MatFactorGetCanUseOrdering(((PC_Factor *)ilu)->fact, &canuseordering));
         if (canuseordering) {
           /* compute a new ordering for the ILU */
@@ -147,6 +150,8 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
           PetscCall(ISDestroy(&ilu->col));
           PetscCall(PCFactorSetDefaultOrdering_Factor(pc));
           PetscCall(MatGetOrdering(pc->pmat, ((PC_Factor *)ilu)->ordering, &ilu->row, &ilu->col));
+          PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)ilu->row));
+          PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)ilu->col));
           /*  Remove zeros along diagonal?     */
           if (ilu->nonzerosalongdiagonal) PetscCall(MatReorderForNonzeroDiagonal(pc->pmat, ilu->nonzerosalongdiagonaltol, ilu->row, ilu->col));
         }
@@ -177,8 +182,7 @@ static PetscErrorCode PCSetUp_ILU(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDestroy_ILU(PC pc)
-{
+static PetscErrorCode PCDestroy_ILU(PC pc) {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -190,8 +194,7 @@ static PetscErrorCode PCDestroy_ILU(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApply_ILU(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApply_ILU(PC pc, Vec x, Vec y) {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -199,8 +202,7 @@ static PetscErrorCode PCApply_ILU(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCMatApply_ILU(PC pc, Mat X, Mat Y)
-{
+static PetscErrorCode PCMatApply_ILU(PC pc, Mat X, Mat Y) {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -208,8 +210,7 @@ static PetscErrorCode PCMatApply_ILU(PC pc, Mat X, Mat Y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApplyTranspose_ILU(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApplyTranspose_ILU(PC pc, Vec x, Vec y) {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -217,8 +218,7 @@ static PetscErrorCode PCApplyTranspose_ILU(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApplySymmetricLeft_ILU(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApplySymmetricLeft_ILU(PC pc, Vec x, Vec y) {
   PC_ILU *icc = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -226,8 +226,7 @@ static PetscErrorCode PCApplySymmetricLeft_ILU(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApplySymmetricRight_ILU(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApplySymmetricRight_ILU(PC pc, Vec x, Vec y) {
   PC_ILU *icc = (PC_ILU *)pc->data;
 
   PetscFunctionBegin;
@@ -255,15 +254,15 @@ static PetscErrorCode PCApplySymmetricRight_ILU(PC pc, Vec x, Vec y)
    Level: beginner
 
    Notes:
-   Only implemented for some matrix format and sequential. For parallel see `PCHYPRE` for hypre's ILU
+    Only implemented for some matrix formats. (for parallel see PCHYPRE for hypre's ILU)
 
-   For `MATSEQBAIJ` matrices this implements a point block ILU
+          For BAIJ matrices this implements a point block ILU
 
-   The "symmetric" application of this preconditioner is not actually symmetric since L is not transpose(U)
-   even when the matrix is not symmetric since the U stores the diagonals of the factorization.
+          The "symmetric" application of this preconditioner is not actually symmetric since L is not transpose(U)
+          even when the matrix is not symmetric since the U stores the diagonals of the factorization.
 
-   If you are using `MATSEQAIJCUSPARSE` matrices (or `MATMPIAIJCUSPARSE` matrices with block Jacobi), factorization
-   is never done on the GPU).
+          If you are using MATSEQAIJCUSPARSE matrices (or MATMPIAIJCUSPARSE matrices with block Jacobi), factorization
+          is never done on the GPU).
 
    References:
 +  * - T. Dupont, R. Kendall, and H. Rachford. An approximate factorization procedure for solving
@@ -274,19 +273,19 @@ static PetscErrorCode PCApplySymmetricRight_ILU(PC pc, Vec x, Vec y)
       Algorithms, edited by D. Keyes, A. Semah, V. Venkatakrishnan, ICASE/LaRC Interdisciplinary Series in
       Science and Engineering, Kluwer.
 
-.seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCSOR`, `MatOrderingType`, `PCLU`, `PCICC`, `PCCHOLESKY`,
+.seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCSOR`, `MatOrderingType`,
           `PCFactorSetZeroPivot()`, `PCFactorSetShiftSetType()`, `PCFactorSetAmount()`,
           `PCFactorSetDropTolerance()`, `PCFactorSetFill()`, `PCFactorSetMatOrderingType()`, `PCFactorSetReuseOrdering()`,
           `PCFactorSetLevels()`, `PCFactorSetUseInPlace()`, `PCFactorSetAllowDiagonalFill()`, `PCFactorSetPivotInBlocks()`,
           `PCFactorGetAllowDiagonalFill()`, `PCFactorGetUseInPlace()`
+
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_ILU(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_ILU(PC pc) {
   PC_ILU *ilu;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&ilu));
+  PetscCall(PetscNewLog(pc, &ilu));
   pc->data = (void *)ilu;
   PetscCall(PCFactorInitialize(pc, MAT_FACTOR_ILU));
 

@@ -38,12 +38,11 @@ typedef struct {
   Vec     *VecsSensi2Temp;        /* Working vectors that holds the residual for the second-order adjoint */
   Vec     *VecsAffine;            /* Working vectors to store residuals */
   /* context for error estimation */
-  Vec vec_sol_prev;
-  Vec vec_lte_work;
+  Vec      vec_sol_prev;
+  Vec      vec_lte_work;
 } TS_Theta;
 
-static PetscErrorCode TSThetaGetX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
-{
+static PetscErrorCode TSThetaGetX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -60,8 +59,7 @@ static PetscErrorCode TSThetaGetX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSThetaRestoreX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
-{
+static PetscErrorCode TSThetaRestoreX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot) {
   PetscFunctionBegin;
   if (X0) {
     if (dm && dm != ts->dm) PetscCall(DMRestoreNamedGlobalVector(dm, "TSTheta_X0", X0));
@@ -72,14 +70,12 @@ static PetscErrorCode TSThetaRestoreX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMCoarsenHook_TSTheta(DM fine, DM coarse, void *ctx)
-{
+static PetscErrorCode DMCoarsenHook_TSTheta(DM fine, DM coarse, void *ctx) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMRestrictHook_TSTheta(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
-{
+static PetscErrorCode DMRestrictHook_TSTheta(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx) {
   TS  ts = (TS)ctx;
   Vec X0, Xdot, X0_c, Xdot_c;
 
@@ -95,14 +91,12 @@ static PetscErrorCode DMRestrictHook_TSTheta(DM fine, Mat restrct, Vec rscale, M
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMSubDomainHook_TSTheta(DM dm, DM subdm, void *ctx)
-{
+static PetscErrorCode DMSubDomainHook_TSTheta(DM dm, DM subdm, void *ctx) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMSubDomainRestrictHook_TSTheta(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx)
-{
+static PetscErrorCode DMSubDomainRestrictHook_TSTheta(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx) {
   TS  ts = (TS)ctx;
   Vec X0, Xdot, X0_sub, Xdot_sub;
 
@@ -121,8 +115,7 @@ static PetscErrorCode DMSubDomainRestrictHook_TSTheta(DM dm, VecScatter gscat, V
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSThetaEvaluateCostIntegral(TS ts)
-{
+static PetscErrorCode TSThetaEvaluateCostIntegral(TS ts) {
   TS_Theta *th     = (TS_Theta *)ts->data;
   TS        quadts = ts->quadraturets;
 
@@ -142,8 +135,7 @@ static PetscErrorCode TSThetaEvaluateCostIntegral(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSForwardCostIntegral_Theta(TS ts)
-{
+static PetscErrorCode TSForwardCostIntegral_Theta(TS ts) {
   TS_Theta *th     = (TS_Theta *)ts->data;
   TS        quadts = ts->quadraturets;
 
@@ -154,8 +146,7 @@ static PetscErrorCode TSForwardCostIntegral_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdjointCostIntegral_Theta(TS ts)
-{
+static PetscErrorCode TSAdjointCostIntegral_Theta(TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -166,8 +157,7 @@ static PetscErrorCode TSAdjointCostIntegral_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSTheta_SNESSolve(TS ts, Vec b, Vec x)
-{
+static PetscErrorCode TSTheta_SNESSolve(TS ts, Vec b, Vec x) {
   PetscInt nits, lits;
 
   PetscFunctionBegin;
@@ -179,8 +169,7 @@ static PetscErrorCode TSTheta_SNESSolve(TS ts, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSStep_Theta(TS ts)
-{
+static PetscErrorCode TSStep_Theta(TS ts) {
   TS_Theta *th         = (TS_Theta *)ts->data;
   PetscInt  rejections = 0;
   PetscBool stageok, accept = PETSC_TRUE;
@@ -246,8 +235,7 @@ static PetscErrorCode TSStep_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdjointStepBEuler_Private(TS ts)
-{
+static PetscErrorCode TSAdjointStepBEuler_Private(TS ts) {
   TS_Theta      *th           = (TS_Theta *)ts->data;
   TS             quadts       = ts->quadraturets;
   Vec           *VecsDeltaLam = th->VecsDeltaLam, *VecsDeltaMu = th->VecsDeltaMu, *VecsSensiTemp = th->VecsSensiTemp;
@@ -391,8 +379,7 @@ static PetscErrorCode TSAdjointStepBEuler_Private(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdjointStep_Theta(TS ts)
-{
+static PetscErrorCode TSAdjointStep_Theta(TS ts) {
   TS_Theta    *th           = (TS_Theta *)ts->data;
   TS           quadts       = ts->quadraturets;
   Vec         *VecsDeltaLam = th->VecsDeltaLam, *VecsDeltaMu = th->VecsDeltaMu, *VecsSensiTemp = th->VecsSensiTemp;
@@ -650,8 +637,7 @@ static PetscErrorCode TSAdjointStep_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSInterpolate_Theta(TS ts, PetscReal t, Vec X)
-{
+static PetscErrorCode TSInterpolate_Theta(TS ts, PetscReal t, Vec X) {
   TS_Theta *th = (TS_Theta *)ts->data;
   PetscReal dt = t - ts->ptime;
 
@@ -662,8 +648,7 @@ static PetscErrorCode TSInterpolate_Theta(TS ts, PetscReal t, Vec X)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSEvaluateWLTE_Theta(TS ts, NormType wnormtype, PetscInt *order, PetscReal *wlte)
-{
+static PetscErrorCode TSEvaluateWLTE_Theta(TS ts, NormType wnormtype, PetscInt *order, PetscReal *wlte) {
   TS_Theta *th = (TS_Theta *)ts->data;
   Vec       X  = ts->vec_sol;      /* X = solution */
   Vec       Y  = th->vec_lte_work; /* Y = X + LTE  */
@@ -699,8 +684,7 @@ static PetscErrorCode TSEvaluateWLTE_Theta(TS ts, NormType wnormtype, PetscInt *
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSRollBack_Theta(TS ts)
-{
+static PetscErrorCode TSRollBack_Theta(TS ts) {
   TS_Theta *th     = (TS_Theta *)ts->data;
   TS        quadts = ts->quadraturets;
 
@@ -713,8 +697,7 @@ static PetscErrorCode TSRollBack_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSForwardStep_Theta(TS ts)
-{
+static PetscErrorCode TSForwardStep_Theta(TS ts) {
   TS_Theta    *th                   = (TS_Theta *)ts->data;
   TS           quadts               = ts->quadraturets;
   Mat          MatDeltaFwdSensip    = th->MatDeltaFwdSensip;
@@ -842,8 +825,7 @@ static PetscErrorCode TSForwardStep_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSForwardGetStages_Theta(TS ts, PetscInt *ns, Mat *stagesensip[])
-{
+static PetscErrorCode TSForwardGetStages_Theta(TS ts, PetscInt *ns, Mat *stagesensip[]) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -864,8 +846,7 @@ static PetscErrorCode TSForwardGetStages_Theta(TS ts, PetscInt *ns, Mat *stagese
 }
 
 /*------------------------------------------------------------*/
-static PetscErrorCode TSReset_Theta(TS ts)
-{
+static PetscErrorCode TSReset_Theta(TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -881,8 +862,7 @@ static PetscErrorCode TSReset_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdjointReset_Theta(TS ts)
-{
+static PetscErrorCode TSAdjointReset_Theta(TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -895,8 +875,7 @@ static PetscErrorCode TSAdjointReset_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSDestroy_Theta(TS ts)
-{
+static PetscErrorCode TSDestroy_Theta(TS ts) {
   PetscFunctionBegin;
   PetscCall(TSReset_Theta(ts));
   if (ts->dm) {
@@ -919,8 +898,7 @@ static PetscErrorCode TSDestroy_Theta(TS ts)
   otherwise U = theta U_{n+1} + (1 - theta) U0, which for the case of implicit midpoint is
   U = (U_{n+1} + U0)/2
 */
-static PetscErrorCode SNESTSFormFunction_Theta(SNES snes, Vec x, Vec y, TS ts)
-{
+static PetscErrorCode SNESTSFormFunction_Theta(SNES snes, Vec x, Vec y, TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
   Vec       X0, Xdot;
   DM        dm, dmsave;
@@ -944,8 +922,7 @@ static PetscErrorCode SNESTSFormFunction_Theta(SNES snes, Vec x, Vec y, TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESTSFormJacobian_Theta(SNES snes, Vec x, Mat A, Mat B, TS ts)
-{
+static PetscErrorCode SNESTSFormJacobian_Theta(SNES snes, Vec x, Mat A, Mat B, TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
   Vec       Xdot;
   DM        dm, dmsave;
@@ -964,8 +941,7 @@ static PetscErrorCode SNESTSFormJacobian_Theta(SNES snes, Vec x, Mat A, Mat B, T
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSForwardSetUp_Theta(TS ts)
-{
+static PetscErrorCode TSForwardSetUp_Theta(TS ts) {
   TS_Theta *th     = (TS_Theta *)ts->data;
   TS        quadts = ts->quadraturets;
 
@@ -984,8 +960,7 @@ static PetscErrorCode TSForwardSetUp_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSForwardReset_Theta(TS ts)
-{
+static PetscErrorCode TSForwardReset_Theta(TS ts) {
   TS_Theta *th     = (TS_Theta *)ts->data;
   TS        quadts = ts->quadraturets;
 
@@ -1000,8 +975,7 @@ static PetscErrorCode TSForwardReset_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSSetUp_Theta(TS ts)
-{
+static PetscErrorCode TSSetUp_Theta(TS ts) {
   TS_Theta *th     = (TS_Theta *)ts->data;
   TS        quadts = ts->quadraturets;
   PetscBool match;
@@ -1037,8 +1011,7 @@ static PetscErrorCode TSSetUp_Theta(TS ts)
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode TSAdjointSetUp_Theta(TS ts)
-{
+static PetscErrorCode TSAdjointSetUp_Theta(TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1061,8 +1034,7 @@ static PetscErrorCode TSAdjointSetUp_Theta(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSSetFromOptions_Theta(TS ts, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode TSSetFromOptions_Theta(TS ts, PetscOptionItems *PetscOptionsObject) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1076,8 +1048,7 @@ static PetscErrorCode TSSetFromOptions_Theta(TS ts, PetscOptionItems *PetscOptio
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSView_Theta(TS ts, PetscViewer viewer)
-{
+static PetscErrorCode TSView_Theta(TS ts, PetscViewer viewer) {
   TS_Theta *th = (TS_Theta *)ts->data;
   PetscBool iascii;
 
@@ -1090,8 +1061,7 @@ static PetscErrorCode TSView_Theta(TS ts, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSThetaGetTheta_Theta(TS ts, PetscReal *theta)
-{
+static PetscErrorCode TSThetaGetTheta_Theta(TS ts, PetscReal *theta) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1099,8 +1069,7 @@ static PetscErrorCode TSThetaGetTheta_Theta(TS ts, PetscReal *theta)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSThetaSetTheta_Theta(TS ts, PetscReal theta)
-{
+static PetscErrorCode TSThetaSetTheta_Theta(TS ts, PetscReal theta) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1110,8 +1079,7 @@ static PetscErrorCode TSThetaSetTheta_Theta(TS ts, PetscReal theta)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSThetaGetEndpoint_Theta(TS ts, PetscBool *endpoint)
-{
+static PetscErrorCode TSThetaGetEndpoint_Theta(TS ts, PetscBool *endpoint) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1119,8 +1087,7 @@ static PetscErrorCode TSThetaGetEndpoint_Theta(TS ts, PetscBool *endpoint)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSThetaSetEndpoint_Theta(TS ts, PetscBool flg)
-{
+static PetscErrorCode TSThetaSetEndpoint_Theta(TS ts, PetscBool flg) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1129,8 +1096,7 @@ static PetscErrorCode TSThetaSetEndpoint_Theta(TS ts, PetscBool flg)
 }
 
 #if defined(PETSC_HAVE_COMPLEX)
-static PetscErrorCode TSComputeLinearStability_Theta(TS ts, PetscReal xr, PetscReal xi, PetscReal *yr, PetscReal *yi)
-{
+static PetscErrorCode TSComputeLinearStability_Theta(TS ts, PetscReal xr, PetscReal xi, PetscReal *yr, PetscReal *yi) {
   PetscComplex    z   = xr + xi * PETSC_i, f;
   TS_Theta       *th  = (TS_Theta *)ts->data;
   const PetscReal one = 1.0;
@@ -1143,8 +1109,7 @@ static PetscErrorCode TSComputeLinearStability_Theta(TS ts, PetscReal xr, PetscR
 }
 #endif
 
-static PetscErrorCode TSGetStages_Theta(TS ts, PetscInt *ns, Vec *Y[])
-{
+static PetscErrorCode TSGetStages_Theta(TS ts, PetscInt *ns, Vec *Y[]) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1170,15 +1135,15 @@ static PetscErrorCode TSGetStages_Theta(TS ts, PetscInt *ns, Vec *Y[])
 
    Level: beginner
 
-   Options Database Keys:
+   Options Database:
 +  -ts_theta_theta <Theta> - Location of stage (0<Theta<=1)
 .  -ts_theta_endpoint <flag> - Use the endpoint (like Crank-Nicholson) instead of midpoint form of the Theta method
 -  -ts_theta_initial_guess_extrapolate <flg> - Extrapolate stage initial guess from previous solution (sometimes unstable)
 
    Notes:
-$  -ts_type theta -ts_theta_theta 1.0 corresponds to backward Euler (`TSBEULER`)
+$  -ts_type theta -ts_theta_theta 1.0 corresponds to backward Euler (TSBEULER)
 $  -ts_type theta -ts_theta_theta 0.5 corresponds to the implicit midpoint rule
-$  -ts_type theta -ts_theta_theta 0.5 -ts_theta_endpoint corresponds to Crank-Nicholson (`TSCN`)
+$  -ts_type theta -ts_theta_theta 0.5 -ts_theta_endpoint corresponds to Crank-Nicholson (TSCN)
 
    The endpoint variant of the Theta method and backward Euler can be applied to DAE. The midpoint variant is not suitable for DAEs because it is not stiffly accurate.
 
@@ -1209,10 +1174,10 @@ $  Y_i = X + h sum_j a_ij Y'_j
 
    is interpreted as a formula for Y'_i in terms of Y_i and known values (Y'_j, j<i)
 
-.seealso: [](chapter_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSCN`, `TSBEULER`, `TSThetaSetTheta()`, `TSThetaSetEndpoint()`
+.seealso: `TSCreate()`, `TS`, `TSSetType()`, `TSCN`, `TSBEULER`, `TSThetaSetTheta()`, `TSThetaSetEndpoint()`
+
 M*/
-PETSC_EXTERN PetscErrorCode TSCreate_Theta(TS ts)
-{
+PETSC_EXTERN PetscErrorCode TSCreate_Theta(TS ts) {
   TS_Theta *th;
 
   PetscFunctionBegin;
@@ -1246,7 +1211,7 @@ PETSC_EXTERN PetscErrorCode TSCreate_Theta(TS ts)
 
   ts->usessnes = PETSC_TRUE;
 
-  PetscCall(PetscNew(&th));
+  PetscCall(PetscNewLog(ts, &th));
   ts->data = (void *)th;
 
   th->VecsDeltaLam   = NULL;
@@ -1265,7 +1230,7 @@ PETSC_EXTERN PetscErrorCode TSCreate_Theta(TS ts)
 }
 
 /*@
-  TSThetaGetTheta - Get the abscissa of the stage in (0,1] for `TSTHETA`
+  TSThetaGetTheta - Get the abscissa of the stage in (0,1].
 
   Not Collective
 
@@ -1275,15 +1240,14 @@ PETSC_EXTERN PetscErrorCode TSCreate_Theta(TS ts)
   Output Parameter:
 .  theta - stage abscissa
 
-  Level: advanced
-
   Note:
-  Use of this function is normally only required to hack `TSTHETA` to use a modified integration scheme.
+  Use of this function is normally only required to hack TSTHETA to use a modified integration scheme.
 
-.seealso: [](chapter_ts), `TSThetaSetTheta()`, `TSTHETA`
+  Level: Advanced
+
+.seealso: `TSThetaSetTheta()`
 @*/
-PetscErrorCode TSThetaGetTheta(TS ts, PetscReal *theta)
-{
+PetscErrorCode TSThetaGetTheta(TS ts, PetscReal *theta) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidRealPointer(theta, 2);
@@ -1292,7 +1256,7 @@ PetscErrorCode TSThetaGetTheta(TS ts, PetscReal *theta)
 }
 
 /*@
-  TSThetaSetTheta - Set the abscissa of the stage in (0,1]  for `TSTHETA`
+  TSThetaSetTheta - Set the abscissa of the stage in (0,1].
 
   Not Collective
 
@@ -1300,15 +1264,14 @@ PetscErrorCode TSThetaGetTheta(TS ts, PetscReal *theta)
 +  ts - timestepping context
 -  theta - stage abscissa
 
-  Options Database Key:
+  Options Database:
 .  -ts_theta_theta <theta> - set theta
 
-  Level: intermediate
+  Level: Intermediate
 
-.seealso: [](chapter_ts), `TSThetaGetTheta()`, `TSTHETA`, `TSCN`
+.seealso: `TSThetaGetTheta()`
 @*/
-PetscErrorCode TSThetaSetTheta(TS ts, PetscReal theta)
-{
+PetscErrorCode TSThetaSetTheta(TS ts, PetscReal theta) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscTryMethod(ts, "TSThetaSetTheta_C", (TS, PetscReal), (ts, theta));
@@ -1316,7 +1279,7 @@ PetscErrorCode TSThetaSetTheta(TS ts, PetscReal theta)
 }
 
 /*@
-  TSThetaGetEndpoint - Gets whether to use the endpoint variant of the method (e.g. trapezoid/Crank-Nicolson instead of midpoint rule) for `TSTHETA`
+  TSThetaGetEndpoint - Gets whether to use the endpoint variant of the method (e.g. trapezoid/Crank-Nicolson instead of midpoint rule).
 
   Not Collective
 
@@ -1324,14 +1287,13 @@ PetscErrorCode TSThetaSetTheta(TS ts, PetscReal theta)
 .  ts - timestepping context
 
   Output Parameter:
-.  endpoint - `PETSC_TRUE` when using the endpoint variant
+.  endpoint - PETSC_TRUE when using the endpoint variant
 
-  Level: advanced
+  Level: Advanced
 
-.seealso: [](chapter_ts), `TSThetaSetEndpoint()`, `TSTHETA`, `TSCN`
+.seealso: `TSThetaSetEndpoint()`, `TSTHETA`, `TSCN`
 @*/
-PetscErrorCode TSThetaGetEndpoint(TS ts, PetscBool *endpoint)
-{
+PetscErrorCode TSThetaGetEndpoint(TS ts, PetscBool *endpoint) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidBoolPointer(endpoint, 2);
@@ -1340,23 +1302,22 @@ PetscErrorCode TSThetaGetEndpoint(TS ts, PetscBool *endpoint)
 }
 
 /*@
-  TSThetaSetEndpoint - Sets whether to use the endpoint variant of the method (e.g. trapezoid/Crank-Nicolson instead of midpoint rule) for `TSTHETA`
+  TSThetaSetEndpoint - Sets whether to use the endpoint variant of the method (e.g. trapezoid/Crank-Nicolson instead of midpoint rule).
 
   Not Collective
 
   Input Parameters:
 +  ts - timestepping context
--  flg - `PETSC_TRUE` to use the endpoint variant
+-  flg - PETSC_TRUE to use the endpoint variant
 
-  Options Database Key:
+  Options Database:
 .  -ts_theta_endpoint <flg> - use the endpoint variant
 
-  Level: intermediate
+  Level: Intermediate
 
-.seealso: [](chapter_ts), `TSTHETA`, `TSCN`
+.seealso: `TSTHETA`, `TSCN`
 @*/
-PetscErrorCode TSThetaSetEndpoint(TS ts, PetscBool flg)
-{
+PetscErrorCode TSThetaSetEndpoint(TS ts, PetscBool flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscTryMethod(ts, "TSThetaSetEndpoint_C", (TS, PetscBool), (ts, flg));
@@ -1368,8 +1329,7 @@ PetscErrorCode TSThetaSetEndpoint(TS ts, PetscBool flg)
  * The creation functions for these specializations are below.
  */
 
-static PetscErrorCode TSSetUp_BEuler(TS ts)
-{
+static PetscErrorCode TSSetUp_BEuler(TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1379,8 +1339,7 @@ static PetscErrorCode TSSetUp_BEuler(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSView_BEuler(TS ts, PetscViewer viewer)
-{
+static PetscErrorCode TSView_BEuler(TS ts, PetscViewer viewer) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
@@ -1390,14 +1349,15 @@ static PetscErrorCode TSView_BEuler(TS ts, PetscViewer viewer)
 
   Level: beginner
 
-  Note:
-  `TSBEULER` is equivalent to `TSTHETA` with Theta=1.0
+  Notes:
+  TSBEULER is equivalent to TSTHETA with Theta=1.0
+
 $  -ts_type theta -ts_theta_theta 1.0
 
-.seealso: [](chapter_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSEULER`, `TSCN`, `TSTHETA`
+.seealso: `TSCreate()`, `TS`, `TSSetType()`, `TSEULER`, `TSCN`, `TSTHETA`
+
 M*/
-PETSC_EXTERN PetscErrorCode TSCreate_BEuler(TS ts)
-{
+PETSC_EXTERN PetscErrorCode TSCreate_BEuler(TS ts) {
   PetscFunctionBegin;
   PetscCall(TSCreate_Theta(ts));
   PetscCall(TSThetaSetTheta(ts, 1.0));
@@ -1407,8 +1367,7 @@ PETSC_EXTERN PetscErrorCode TSCreate_BEuler(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSSetUp_CN(TS ts)
-{
+static PetscErrorCode TSSetUp_CN(TS ts) {
   TS_Theta *th = (TS_Theta *)ts->data;
 
   PetscFunctionBegin;
@@ -1418,8 +1377,7 @@ static PetscErrorCode TSSetUp_CN(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSView_CN(TS ts, PetscViewer viewer)
-{
+static PetscErrorCode TSView_CN(TS ts, PetscViewer viewer) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
@@ -1430,17 +1388,14 @@ static PetscErrorCode TSView_CN(TS ts, PetscViewer viewer)
   Level: beginner
 
   Notes:
-  `TSCN` is equivalent to `TSTHETA` with Theta=0.5 and the "endpoint" option set. I.e.
-.vb
-  -ts_type theta
-  -ts_theta_theta 0.5
-  -ts_theta_endpoint
-.ve
+  TSCN is equivalent to TSTHETA with Theta=0.5 and the "endpoint" option set. I.e.
 
-.seealso: [](chapter_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSBEULER`, `TSTHETA`, `TSType`,
+$  -ts_type theta -ts_theta_theta 0.5 -ts_theta_endpoint
+
+.seealso: `TSCreate()`, `TS`, `TSSetType()`, `TSBEULER`, `TSTHETA`
+
 M*/
-PETSC_EXTERN PetscErrorCode TSCreate_CN(TS ts)
-{
+PETSC_EXTERN PetscErrorCode TSCreate_CN(TS ts) {
   PetscFunctionBegin;
   PetscCall(TSCreate_Theta(ts));
   PetscCall(TSThetaSetTheta(ts, 0.5));

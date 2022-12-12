@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 #requirespackage 	'PETSC_HAVE_FORTRAN'
 
 SOURCEC = ztaosolverf.c

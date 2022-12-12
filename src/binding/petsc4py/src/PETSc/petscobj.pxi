@@ -4,6 +4,7 @@ cdef extern from * nogil:
 
     ctypedef int PetscClassId
     ctypedef int PetscObjectState
+    int PetscObjectCreate(MPI_Comm,PetscObject*)
     int PetscObjectView(PetscObject,PetscViewer)
     int PetscObjectDestroy(PetscObject*)
     int PetscObjectGetReference(PetscObject,PetscInt*)
@@ -37,9 +38,6 @@ cdef extern from * nogil:
 cdef extern from "custom.h" nogil:
     int PetscObjectGetDeviceId(PetscObject,PetscInt*)
 
-cdef extern from "petsc/private/garbagecollector.h" nogil:
-    int PetscObjectDelayedDestroy(PetscObject*)
-
 # --------------------------------------------------------------------
 
 cdef inline int PetscINCREF(PetscObject *obj) nogil:
@@ -61,7 +59,7 @@ cdef inline int PetscDEALLOC(PetscObject* obj) nogil:
     tmp = obj[0]; obj[0] = NULL
     if not (<int>PetscInitializeCalled): return 0
     if     (<int>PetscFinalizeCalled):   return 0
-    return PetscObjectDelayedDestroy(&tmp)
+    return PetscObjectDestroy(&tmp)
 
 cdef inline int PetscINCSTATE(PetscObject *obj) nogil:
     if obj    == NULL: return 0

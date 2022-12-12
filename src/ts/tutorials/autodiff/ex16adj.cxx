@@ -30,8 +30,7 @@ struct _n_User {
 /*
   'Passive' RHS function, used in residual evaluations during the time integration.
 */
-static PetscErrorCode RHSFunctionPassive(TS ts, PetscReal t, Vec X, Vec F, void *ctx)
-{
+static PetscErrorCode RHSFunctionPassive(TS ts, PetscReal t, Vec X, Vec F, void *ctx) {
   User               user = (User)ctx;
   PetscScalar       *f;
   const PetscScalar *x;
@@ -50,8 +49,7 @@ static PetscErrorCode RHSFunctionPassive(TS ts, PetscReal t, Vec X, Vec F, void 
   Trace RHS to mark on tape 1 the dependence of f upon x. This tape is used in generating the
   Jacobian transform.
 */
-static PetscErrorCode RHSFunctionActive(TS ts, PetscReal t, Vec X, Vec F, void *ctx)
-{
+static PetscErrorCode RHSFunctionActive(TS ts, PetscReal t, Vec X, Vec F, void *ctx) {
   User               user = (User)ctx;
   PetscScalar       *f;
   const PetscScalar *x;
@@ -83,8 +81,7 @@ static PetscErrorCode RHSFunctionActive(TS ts, PetscReal t, Vec X, Vec F, void *
   Trace RHS again to mark on tape 2 the dependence of f upon the parameter mu. This tape is used in
   generating JacobianP.
 */
-static PetscErrorCode RHSFunctionActiveP(TS ts, PetscReal t, Vec X, Vec F, void *ctx)
-{
+static PetscErrorCode RHSFunctionActiveP(TS ts, PetscReal t, Vec X, Vec F, void *ctx) {
   User               user = (User)ctx;
   PetscScalar       *f;
   const PetscScalar *x;
@@ -116,8 +113,7 @@ static PetscErrorCode RHSFunctionActiveP(TS ts, PetscReal t, Vec X, Vec F, void 
 /*
   Compute the Jacobian w.r.t. x using PETSc-ADOL-C driver for explicit TS.
 */
-static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec X, Mat A, Mat B, void *ctx)
-{
+static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec X, Mat A, Mat B, void *ctx) {
   User               user = (User)ctx;
   const PetscScalar *x;
 
@@ -131,8 +127,7 @@ static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec X, Mat A, Mat B, void 
 /*
   Compute the Jacobian w.r.t. mu using PETSc-ADOL-C driver for explicit TS.
 */
-static PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec X, Mat A, void *ctx)
-{
+static PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec X, Mat A, void *ctx) {
   User               user = (User)ctx;
   const PetscScalar *x;
 
@@ -146,8 +141,7 @@ static PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec X, Mat A, void *ctx)
 /*
   Monitor timesteps and use interpolation to output at integer multiples of 0.1
 */
-static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec X, void *ctx)
-{
+static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec X, void *ctx) {
   const PetscScalar *x;
   PetscReal          tfinal, dt, tprev;
   User               user = (User)ctx;
@@ -163,8 +157,7 @@ static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec X, void *ct
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS             ts;   /* nonlinear solver */
   Vec            x;    /* solution, residual vectors */
   Mat            A;    /* Jacobian matrix */

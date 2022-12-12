@@ -11,72 +11,70 @@ PETSc/TAO is a tool for writing, analyzing, and optimizing properties of large-s
 Algebraic objects
 =================
 
-* :any:`Vectors <chapter_vectors>` - containers for simulation solutions, right hand sides of linear systems, etc (``Vec``).
+* ``Vec`` - containers for simulation solutions, right hand sides of linear systems, etc. (:any:`chapter_vectors`)
 
-* :any:`Matrices <chapter_matrices>`  - contain Jacobians and operators that define linear systems (``Mat``).
+* ``Mat`` - contain Jacobians and operators that define linear systems (:any:`chapter_matrices`)
 
-  * Multiple sparse and dense matrix storage formats,
+  * Several sparse and dense matrix storage formats (see ``MatType``):
 
-  * limited memory variable metric representations,
+  * Limited memory variable metric matrix representations
 
-  * block and nested representations (see ``MatType``).
+  * Block
+
+  * Nested
 
   * :ref:`Easy, efficient matrix assembly and interface <sec_matcreate>`
 
-* Indices - used to access portions of vectors and matrix, for example {1,2,4} or 1:10 (``IS``).
+* ``IS`` indices - used to access portions of vectors and matrix, for example {1,2,4} or 1:10
 
 Solvers
 =======
 
-* :any:`Linear solvers<chapter_ksp>` based on preconditioners (``PC``) and Krylov subspace methods (``KSP``).
+* ``PC`` preconditioners - approximate solvers to algebra systems without a history of previous iterations
 
-* :any:`Nonlinear solvers <chapter_snes>` (``SNES``).
+* ``KSP`` Krylov subspace methods - approximate solvers with a history of previous iterations (:any:`chapter_ksp`)
 
-* :any:`Time integrators <chapter_ts>`, (ODE/PDE), explicit, implicit, IMEX, (``TS``)
+* ``SNES`` nonlinear equation solvers (:any:`chapter_snes`)
+
+* ``TS`` time integrators (ODE/PDE), explicit, implicit, local and global error estimators (:any:`chapter_ts`)
 
   * Local and global error estimators
 
-  * :any:`section_sa`.
+  * ``TSAdjoint`` derivatives/sensitivities of functions of ODE/PDE integration solutions (:any:`section_sa`)
 
-* :any:`Optimization <chapter_tao>` with equality and inequality constraints, first and second order (Newton) methods (``Tao``).
+* ``TAO`` - optimization, with equality and inequality constraints, first and second order (Newton) methods (:any:`chapter_tao`)
 
 .. seealso::
 
    For full feature list and prerequisites see:
 
-   - :ref:`Vector table <doc_vector>`
-   - :ref:`Matrix table <doc_matrix>`
    - :ref:`Linear solver table <doc_linsolve>`
    - :ref:`Nonlinear solver table <doc_nonlinsolve>`
    - :ref:`Tao solver table <doc_taosolve>`
 
-DM: Interfacing Solvers to Models/Discretizations
+DM: Interfacing Between Solvers and Models/Discretizations
 ==========================================================
 
 * ``DMDA`` - for simulations computed on simple structured grids
 
-* :any:`chapter_stag` - for simulations computed on staggered grids, (``DMSTAG``)
+* ``DMSTAG`` - for simulations computed on staggered grids (:any:`chapter_stag`)
 
-* :any:`chapter_unstructured` - for simulation computed on unstructured meshes, (``DMPLEX``)
+* ``DMPLEX``  - for simulation computed on unstructured meshes (:any:`chapter_unstructured`)
 
-* :any:`chapter_network` - for simulations on networks or graphs, for example the power grid, river networks, the nervous system, (``DMNETWORK``)
+* ``DMNETWORK`` - for simulations on networks or graphs, for example the power grid, river networks, the nervous system (:any:`chapter_network`)
 
 * ``DMP4EST`` - for simulations on collections of quad or octree meshes
 
 * ``DMSWARM`` - for simulations on particles
 
 
-Utilities for the Simulation/Solver Process
-===========================================
+Utilities
+=========
 
-Runtime
+* ``PetscOptions`` - control of discretization and solution process
 
-* control of the simulation, :any:`sec_options`
+* ``PetscViewer`` - visualizing algebraic objects, solvers, connectors
 
-* visualization of the solvers and simulation, :any:`sec_viewers`,
+* Monitor - monitoring of solution progress
 
-* monitoring of solution progress,
-
-*  :any:`ch_profiling` of the performance,
-
-* robust :any:`sec_errors`.
+* ``Profiling`` - profiling of the performance of the simulation solution process

@@ -20,8 +20,7 @@
   end
  */
 
-static PetscErrorCode MatSolve_LMVMBrdn(Mat B, Vec F, Vec dX)
-{
+static PetscErrorCode MatSolve_LMVMBrdn(Mat B, Vec F, Vec dX) {
   Mat_LMVM   *lmvm  = (Mat_LMVM *)B->data;
   Mat_Brdn   *lbrdn = (Mat_Brdn *)lmvm->ctx;
   PetscInt    i, j;
@@ -74,8 +73,7 @@ static PetscErrorCode MatSolve_LMVMBrdn(Mat B, Vec F, Vec dX)
   end
  */
 
-static PetscErrorCode MatMult_LMVMBrdn(Mat B, Vec X, Vec Z)
-{
+static PetscErrorCode MatMult_LMVMBrdn(Mat B, Vec X, Vec Z) {
   Mat_LMVM   *lmvm  = (Mat_LMVM *)B->data;
   Mat_Brdn   *lbrdn = (Mat_Brdn *)lmvm->ctx;
   PetscInt    i, j;
@@ -107,8 +105,7 @@ static PetscErrorCode MatMult_LMVMBrdn(Mat B, Vec X, Vec Z)
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode MatUpdate_LMVMBrdn(Mat B, Vec X, Vec F)
-{
+static PetscErrorCode MatUpdate_LMVMBrdn(Mat B, Vec X, Vec F) {
   Mat_LMVM   *lmvm  = (Mat_LMVM *)B->data;
   Mat_Brdn   *lbrdn = (Mat_Brdn *)lmvm->ctx;
   PetscInt    old_k, i;
@@ -140,8 +137,7 @@ static PetscErrorCode MatUpdate_LMVMBrdn(Mat B, Vec X, Vec F)
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode MatCopy_LMVMBrdn(Mat B, Mat M, MatStructure str)
-{
+static PetscErrorCode MatCopy_LMVMBrdn(Mat B, Mat M, MatStructure str) {
   Mat_LMVM *bdata = (Mat_LMVM *)B->data;
   Mat_Brdn *bctx  = (Mat_Brdn *)bdata->ctx;
   Mat_LMVM *mdata = (Mat_LMVM *)M->data;
@@ -162,8 +158,7 @@ static PetscErrorCode MatCopy_LMVMBrdn(Mat B, Mat M, MatStructure str)
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode MatReset_LMVMBrdn(Mat B, PetscBool destructive)
-{
+static PetscErrorCode MatReset_LMVMBrdn(Mat B, PetscBool destructive) {
   Mat_LMVM *lmvm  = (Mat_LMVM *)B->data;
   Mat_Brdn *lbrdn = (Mat_Brdn *)lmvm->ctx;
 
@@ -181,8 +176,7 @@ static PetscErrorCode MatReset_LMVMBrdn(Mat B, PetscBool destructive)
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode MatAllocate_LMVMBrdn(Mat B, Vec X, Vec F)
-{
+static PetscErrorCode MatAllocate_LMVMBrdn(Mat B, Vec X, Vec F) {
   Mat_LMVM *lmvm  = (Mat_LMVM *)B->data;
   Mat_Brdn *lbrdn = (Mat_Brdn *)lmvm->ctx;
 
@@ -201,8 +195,7 @@ static PetscErrorCode MatAllocate_LMVMBrdn(Mat B, Vec X, Vec F)
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode MatDestroy_LMVMBrdn(Mat B)
-{
+static PetscErrorCode MatDestroy_LMVMBrdn(Mat B) {
   Mat_LMVM *lmvm  = (Mat_LMVM *)B->data;
   Mat_Brdn *lbrdn = (Mat_Brdn *)lmvm->ctx;
 
@@ -220,8 +213,7 @@ static PetscErrorCode MatDestroy_LMVMBrdn(Mat B)
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode MatSetUp_LMVMBrdn(Mat B)
-{
+static PetscErrorCode MatSetUp_LMVMBrdn(Mat B) {
   Mat_LMVM *lmvm  = (Mat_LMVM *)B->data;
   Mat_Brdn *lbrdn = (Mat_Brdn *)lmvm->ctx;
 
@@ -240,8 +232,7 @@ static PetscErrorCode MatSetUp_LMVMBrdn(Mat B)
 
 /*------------------------------------------------------------*/
 
-PetscErrorCode MatCreate_LMVMBrdn(Mat B)
-{
+PetscErrorCode MatCreate_LMVMBrdn(Mat B) {
   Mat_LMVM *lmvm;
   Mat_Brdn *lbrdn;
 
@@ -260,7 +251,7 @@ PetscErrorCode MatCreate_LMVMBrdn(Mat B)
   lmvm->ops->update   = MatUpdate_LMVMBrdn;
   lmvm->ops->copy     = MatCopy_LMVMBrdn;
 
-  PetscCall(PetscNew(&lbrdn));
+  PetscCall(PetscNewLog(B, &lbrdn));
   lmvm->ctx        = (void *)lbrdn;
   lbrdn->allocated = PETSC_FALSE;
   lbrdn->needP = lbrdn->needQ = PETSC_TRUE;
@@ -275,34 +266,33 @@ PetscErrorCode MatCreate_LMVMBrdn(Mat B)
    positive-definite.
 
    The provided local and global sizes must match the solution and function vectors
-   used with `MatLMVMUpdate()` and `MatSolve()`. The resulting L-Brdn matrix will have
-   storage vectors allocated with `VecCreateSeq()` in serial and `VecCreateMPI()` in
+   used with MatLMVMUpdate() and MatSolve(). The resulting L-Brdn matrix will have
+   storage vectors allocated with VecCreateSeq() in serial and VecCreateMPI() in
    parallel. To use the L-Brdn matrix with other vector types, the matrix must be
-   created using `MatCreate()` and `MatSetType()`, followed by `MatLMVMAllocate()`.
+   created using MatCreate() and MatSetType(), followed by MatLMVMAllocate().
    This ensures that the internal storage and work vectors are duplicated from the
    correct type of vector.
 
    Collective
 
    Input Parameters:
-+  comm - MPI communicator
++  comm - MPI communicator, set to PETSC_COMM_SELF
 .  n - number of local rows for storage vectors
 -  N - global size of the storage vectors
 
    Output Parameter:
 .  B - the matrix
 
-   Level: intermediate
-
    Note:
-   It is recommended that one use the `MatCreate()`, `MatSetType()` and/or `MatSetFromOptions()`
+   It is recommended that one use the MatCreate(), MatSetType() and/or MatSetFromOptions()
    paradigm instead of this routine directly.
 
-.seealso: [](chapter_ksp), `MatCreate()`, `MATLMVM`, `MATLMVMBRDN`, `MatCreateLMVMDFP()`, `MatCreateLMVMSR1()`,
+   Level: intermediate
+
+.seealso: `MatCreate()`, `MATLMVM`, `MATLMVMBRDN`, `MatCreateLMVMDFP()`, `MatCreateLMVMSR1()`,
           `MatCreateLMVMBFGS()`, `MatCreateLMVMBadBrdn()`, `MatCreateLMVMSymBrdn()`
 @*/
-PetscErrorCode MatCreateLMVMBroyden(MPI_Comm comm, PetscInt n, PetscInt N, Mat *B)
-{
+PetscErrorCode MatCreateLMVMBroyden(MPI_Comm comm, PetscInt n, PetscInt N, Mat *B) {
   PetscFunctionBegin;
   PetscCall(MatCreate(comm, B));
   PetscCall(MatSetSizes(*B, n, n, N, N));

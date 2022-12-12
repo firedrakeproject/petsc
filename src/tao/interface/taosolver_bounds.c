@@ -14,8 +14,7 @@
 
 .seealso: `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoGetVariableBounds()`
 @*/
-PetscErrorCode TaoSetVariableBounds(Tao tao, Vec XL, Vec XU)
-{
+PetscErrorCode TaoSetVariableBounds(Tao tao, Vec XL, Vec XU) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (XL) PetscValidHeaderSpecific(XL, VEC_CLASSID, 2);
@@ -56,8 +55,7 @@ $      func (Tao tao, Vec xl, Vec xu);
 .seealso: `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariableBounds()`
 
 @*/
-PetscErrorCode TaoSetVariableBoundsRoutine(Tao tao, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx)
-{
+PetscErrorCode TaoSetVariableBoundsRoutine(Tao tao, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   tao->user_boundsP       = ctx;
@@ -74,7 +72,7 @@ PetscErrorCode TaoSetVariableBoundsRoutine(Tao tao, PetscErrorCode (*func)(Tao, 
   Input Parameter:
 . tao - the Tao context
 
-  Output Parameters:
+  Output Parametrs:
 + XL  - vector of lower bounds
 - XU  - vector of upper bounds
 
@@ -82,8 +80,7 @@ PetscErrorCode TaoSetVariableBoundsRoutine(Tao tao, PetscErrorCode (*func)(Tao, 
 
 .seealso: `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariableBounds()`
 @*/
-PetscErrorCode TaoGetVariableBounds(Tao tao, Vec *XL, Vec *XU)
-{
+PetscErrorCode TaoGetVariableBounds(Tao tao, Vec *XL, Vec *XU) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (XL) *XL = tao->XL;
@@ -105,8 +102,7 @@ PetscErrorCode TaoGetVariableBounds(Tao tao, Vec *XL, Vec *XU)
 .seealso: `Tao`, `TaoSetVariableBoundsRoutine()`, `TaoSetVariableBounds()`
 @*/
 
-PetscErrorCode TaoComputeVariableBounds(Tao tao)
-{
+PetscErrorCode TaoComputeVariableBounds(Tao tao) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (tao->ops->computebounds) {
@@ -137,8 +133,7 @@ PetscErrorCode TaoComputeVariableBounds(Tao tao)
 
 .seealso: `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoGetInequalityBounds()`
 @*/
-PetscErrorCode TaoSetInequalityBounds(Tao tao, Vec IL, Vec IU)
-{
+PetscErrorCode TaoSetInequalityBounds(Tao tao, Vec IL, Vec IU) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (IL) PetscValidHeaderSpecific(IL, VEC_CLASSID, 2);
@@ -169,8 +164,7 @@ PetscErrorCode TaoSetInequalityBounds(Tao tao, Vec IL, Vec IU)
 
 .seealso: `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetInequalityBounds()`
 @*/
-PetscErrorCode TaoGetInequalityBounds(Tao tao, Vec *IL, Vec *IU)
-{
+PetscErrorCode TaoGetInequalityBounds(Tao tao, Vec *IL, Vec *IU) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (IL) *IL = tao->IL;
@@ -192,8 +186,7 @@ PetscErrorCode TaoGetInequalityBounds(Tao tao, Vec *IL, Vec *IU)
 .seealso: `Tao`, `TaoSetConstraintsRoutine()`, `TaoComputeJacobian()`
 @*/
 
-PetscErrorCode TaoComputeConstraints(Tao tao, Vec X, Vec C)
-{
+PetscErrorCode TaoComputeConstraints(Tao tao, Vec X, Vec C) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -231,8 +224,7 @@ $      func (Tao tao, Vec x, Vec c, void *ctx);
 .seealso: `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariablevBounds()`
 
 @*/
-PetscErrorCode TaoSetConstraintsRoutine(Tao tao, Vec c, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx)
-{
+PetscErrorCode TaoSetConstraintsRoutine(Tao tao, Vec c, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (c) PetscValidHeaderSpecific(c, VEC_CLASSID, 2);
@@ -269,8 +261,7 @@ PetscErrorCode TaoSetConstraintsRoutine(Tao tao, Vec c, PetscErrorCode (*func)(T
 
  .seealso: `Tao`, `TaoComputeObjective()`, `TaoSetVariableBounds()`
 @*/
-PetscErrorCode TaoComputeDualVariables(Tao tao, Vec DL, Vec DU)
-{
+PetscErrorCode TaoComputeDualVariables(Tao tao, Vec DL, Vec DU) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(DL, VEC_CLASSID, 2);
@@ -302,8 +293,7 @@ PetscErrorCode TaoComputeDualVariables(Tao tao, Vec DL, Vec DU)
 
 .seealso: `Tao`, `TaoComputeDualVariables()`
 @*/
-PetscErrorCode TaoGetDualVariables(Tao tao, Vec *DE, Vec *DI)
-{
+PetscErrorCode TaoGetDualVariables(Tao tao, Vec *DE, Vec *DI) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (DE) *DE = tao->DE;
@@ -335,8 +325,7 @@ $      func (Tao tao, Vec x, Vec ce, void *ctx);
 .seealso: `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariableBounds()`
 
 @*/
-PetscErrorCode TaoSetEqualityConstraintsRoutine(Tao tao, Vec ce, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx)
-{
+PetscErrorCode TaoSetEqualityConstraintsRoutine(Tao tao, Vec ce, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (ce) PetscValidHeaderSpecific(ce, VEC_CLASSID, 2);
@@ -373,8 +362,7 @@ $      func (Tao tao, Vec x, Vec ci, void *ctx);
  .seealso: `Tao, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariableBounds()`
 
 @*/
-PetscErrorCode TaoSetInequalityConstraintsRoutine(Tao tao, Vec ci, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx)
-{
+PetscErrorCode TaoSetInequalityConstraintsRoutine(Tao tao, Vec ci, PetscErrorCode (*func)(Tao, Vec, Vec, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (ci) PetscValidHeaderSpecific(ci, VEC_CLASSID, 2);
@@ -405,8 +393,7 @@ PetscErrorCode TaoSetInequalityConstraintsRoutine(Tao tao, Vec ci, PetscErrorCod
 .seealso: `Tao`, `TaoSetEqualityConstraintsRoutine()`, `TaoComputeJacobianEquality()`, `TaoComputeInequalityConstraints()`
 @*/
 
-PetscErrorCode TaoComputeEqualityConstraints(Tao tao, Vec X, Vec CE)
-{
+PetscErrorCode TaoComputeEqualityConstraints(Tao tao, Vec X, Vec CE) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -438,8 +425,7 @@ PetscErrorCode TaoComputeEqualityConstraints(Tao tao, Vec X, Vec CE)
 .seealso: `Tao`, `TaoSetInequalityConstraintsRoutine()`, `TaoComputeJacobianInequality()`, `TaoComputeEqualityConstraints()`
 @*/
 
-PetscErrorCode TaoComputeInequalityConstraints(Tao tao, Vec X, Vec CI)
-{
+PetscErrorCode TaoComputeInequalityConstraints(Tao tao, Vec X, Vec CI) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);

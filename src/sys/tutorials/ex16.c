@@ -2,8 +2,7 @@
 static char help[] = "Tests calling PetscOptionsSetValue() before PetscInitialize()\n\n";
 
 #include <petscsys.h>
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt rank, size;
 
   /*
@@ -37,6 +36,6 @@ int main(int argc, char **argv)
       requires: defined(PETSC_USE_LOG)
       nsize: 2
       args: -options_view -get_total_flops
-      filter: grep -E -v "(cuda_initialize|Total flops|options_left)"
+      filter: egrep -v "(cuda_initialize|Total flops|options_left)"
 
 TEST*/

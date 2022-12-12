@@ -1,15 +1,13 @@
 #define PETSC_DESIRE_FEATURE_TEST_MACROS /* for drand48() */
 #include <petsc/private/randomimpl.h>
 
-PetscErrorCode PetscRandomSeed_Rand48(PetscRandom r)
-{
+PetscErrorCode PetscRandomSeed_Rand48(PetscRandom r) {
   PetscFunctionBegin;
   srand48(r->seed);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscRandomGetValue_Rand48(PetscRandom r, PetscScalar *val)
-{
+PetscErrorCode PetscRandomGetValue_Rand48(PetscRandom r, PetscScalar *val) {
   PetscFunctionBegin;
 #if defined(PETSC_USE_COMPLEX)
   if (r->iset) {
@@ -24,8 +22,7 @@ PetscErrorCode PetscRandomGetValue_Rand48(PetscRandom r, PetscScalar *val)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscRandomGetValueReal_Rand48(PetscRandom r, PetscReal *val)
-{
+PetscErrorCode PetscRandomGetValueReal_Rand48(PetscRandom r, PetscReal *val) {
   PetscFunctionBegin;
 #if defined(PETSC_USE_COMPLEX)
   if (r->iset) *val = PetscRealPart(r->width) * drand48() + PetscRealPart(r->low);
@@ -57,8 +54,7 @@ static struct _PetscRandomOps PetscRandomOps_Values = {
 .seealso: `PetscRandomCreate()`, `PetscRandomSetType()`, `PETSCRAND`, `PETSCSPRNG`, `PetscRandomSetFromOptions()`
 M*/
 
-PETSC_EXTERN PetscErrorCode PetscRandomCreate_Rand48(PetscRandom r)
-{
+PETSC_EXTERN PetscErrorCode PetscRandomCreate_Rand48(PetscRandom r) {
   PetscFunctionBegin;
   PetscCall(PetscMemcpy(r->ops, &PetscRandomOps_Values, sizeof(PetscRandomOps_Values)));
   PetscCall(PetscObjectChangeTypeName((PetscObject)r, PETSCRAND48));

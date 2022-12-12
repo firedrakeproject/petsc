@@ -4,30 +4,26 @@
   DMPlexGetLocalOffsets - Allocate and populate array of local offsets.
 
   Input Parameters:
-+  dm - The `DMPLEX` object
-.  domain_label - label for `DMPLEX` domain, or NULL for whole domain
-.  label_value - Stratum value
-.  height - Height of target cells in `DMPLEX` topology
--  dm_field - Index of `DMPLEX` field
+  dm - The DMPlex object
+  domain_label - label for DMPlex domain, or NULL for whole domain
+  label_value - Stratum value
+  height - Height of target cells in DMPlex topology
+  dm_field - Index of DMPlex field
 
   Output Parameters:
-+  num_cells - Number of local cells
-.  cell_size - Size of each cell, given by cell_size * num_comp = num_dof
-.  num_comp - Number of components per dof
-.  l_size - Size of local vector
--  offsets - Allocated offsets array for cells
+  num_cells - Number of local cells
+  cell_size - Size of each cell, given by cell_size * num_comp = num_dof
+  num_comp - Number of components per dof
+  l_size - Size of local vector
+  offsets - Allocated offsets array for cells
+
+  Notes: Allocate and populate array of shape [num_cells, cell_size] defining offsets for each value (cell, node) for local vector of the DMPlex field. All offsets are in the range [0, l_size - 1]. Caller is responsible for freeing the offsets array using PetscFree().
 
   Level: developer
 
-  Notes:
-  Allocate and populate array of shape [num_cells, cell_size] defining offsets for each value (cell, node) for local vector of the `DMPLEX` field. All offsets are in the range [0, l_size - 1].
-
-   Caller is responsible for freeing the offsets array using `PetscFree()`.
-
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMLabel`, `DMPlexGetClosureIndices()`, `DMPlexSetClosurePermutationTensor()`, `DMPlexGetCeedRestriction()`
+.seealso: `DMPlexGetClosureIndices()`, `DMPlexSetClosurePermutationTensor()`, `DMPlexGetCeedRestriction()`
 @*/
-PetscErrorCode DMPlexGetLocalOffsets(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field, PetscInt *num_cells, PetscInt *cell_size, PetscInt *num_comp, PetscInt *l_size, PetscInt **offsets)
-{
+PetscErrorCode DMPlexGetLocalOffsets(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field, PetscInt *num_cells, PetscInt *cell_size, PetscInt *num_comp, PetscInt *l_size, PetscInt **offsets) {
   PetscDS         ds = NULL;
   PetscFE         fe;
   PetscSection    section;
@@ -155,27 +151,24 @@ PetscErrorCode DMPlexGetLocalOffsets(DM dm, DMLabel domain_label, PetscInt label
 }
 
 #if defined(PETSC_HAVE_LIBCEED)
-  #include <petscdmplexceed.h>
+#include <petscdmplexceed.h>
 
 /*@C
   DMPlexGetCeedRestriction - Define the libCEED map from the local vector (Lvector) to the cells (Evector)
 
   Input Parameters:
-+  dm - The `DMPLEX` object
-.  domain_label - label for `DMPLEX` domain, or NULL for the whole domain
-.  label_value - Stratum value
-.  height - Height of target cells in `DMPLEX` topology
--  dm_field - Index of `DMPLEX` field
+  dm - The DMPlex object
+  domain_label - label for DMPlex domain, or NULL for the whole domain
+  label_value - Stratum value
+  height - Height of target cells in DMPlex topology
+  dm_field - Index of DMPlex field
 
-  Output Parameter:
-.  ERestrict - libCEED restriction from local vector to to the cells
+  Output Parameters:
+  ERestrict - libCEED restriction from local vector to to the cells
 
   Level: developer
-
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMLabel`, `DMPlexGetLocalOffsets()`
 @*/
-PetscErrorCode DMPlexGetCeedRestriction(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field, CeedElemRestriction *ERestrict)
-{
+PetscErrorCode DMPlexGetCeedRestriction(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field, CeedElemRestriction *ERestrict) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(ERestrict, 2);

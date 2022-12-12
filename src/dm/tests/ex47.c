@@ -7,8 +7,7 @@ static char help[] = "Test VTK structured grid (.vts) viewer support\n\n";
   Write 3D DMDA vector with coordinates in VTK .vts format
 
 */
-PetscErrorCode test_3d(const char filename[])
-{
+PetscErrorCode test_3d(const char filename[]) {
   MPI_Comm          comm = MPI_COMM_WORLD;
   const PetscInt    M = 10, N = 15, P = 30, dof = 1, sw = 1;
   const PetscScalar Lx = 1.0, Ly = 1.0, Lz = 1.0;
@@ -50,8 +49,7 @@ PetscErrorCode test_3d(const char filename[])
   Write 2D DMDA vector with coordinates in VTK .vts format
 
 */
-PetscErrorCode test_2d(const char filename[])
-{
+PetscErrorCode test_2d(const char filename[]) {
   MPI_Comm          comm = MPI_COMM_WORLD;
   const PetscInt    M = 10, N = 20, dof = 1, sw = 1;
   const PetscScalar Lx = 1.0, Ly = 1.0, Lz = 1.0;
@@ -89,8 +87,7 @@ PetscErrorCode test_2d(const char filename[])
   Write 2D DMDA vector without coordinates in VTK .vts format
 
 */
-PetscErrorCode test_2d_nocoord(const char filename[])
-{
+PetscErrorCode test_2d_nocoord(const char filename[]) {
   MPI_Comm          comm = MPI_COMM_WORLD;
   const PetscInt    M = 10, N = 20, dof = 1, sw = 1;
   const PetscScalar Lx = 1.0, Ly = 1.0;
@@ -127,8 +124,7 @@ PetscErrorCode test_2d_nocoord(const char filename[])
   Write 3D DMDA vector without coordinates in VTK .vts format
 
 */
-PetscErrorCode test_3d_nocoord(const char filename[])
-{
+PetscErrorCode test_3d_nocoord(const char filename[]) {
   MPI_Comm          comm = MPI_COMM_WORLD;
   const PetscInt    M = 10, N = 20, P = 30, dof = 1, sw = 1;
   const PetscScalar Lx = 1.0, Ly = 1.0, Lz = 1.0;
@@ -165,8 +161,7 @@ PetscErrorCode test_3d_nocoord(const char filename[])
   return 0;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, 0, help));
   PetscCall(test_3d("3d.vts"));

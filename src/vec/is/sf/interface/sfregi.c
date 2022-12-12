@@ -17,16 +17,15 @@ PetscFunctionList PetscSFList;
 PetscBool         PetscSFRegisterAllCalled;
 
 /*@C
-   PetscSFRegisterAll - Registers all the `PetscSF` communication implementations
+   PetscSFRegisterAll - Registers all the PetscSF communication implementations
 
    Not Collective
 
    Level: advanced
 
-.seealso: `PetscSF`, `PetscSFRegister()`, `PetscSFRegisterDestroy()`
+.seealso: `PetscSFRegisterDestroy()`
 @*/
-PetscErrorCode PetscSFRegisterAll(void)
-{
+PetscErrorCode PetscSFRegisterAll(void) {
   PetscFunctionBegin;
   if (PetscSFRegisterAllCalled) PetscFunctionReturn(0);
   PetscSFRegisterAllCalled = PETSC_TRUE;
@@ -46,13 +45,16 @@ PetscErrorCode PetscSFRegisterAll(void)
 }
 
 /*@C
-  PetscSFRegister  - Adds an implementation of the `PetscSF` communication protocol.
+  PetscSFRegister  - Adds an implementation of the PetscSF communication protocol.
 
    Not collective
 
    Input Parameters:
 +  name - name of a new user-defined implementation
 -  create - routine to create method context
+
+   Notes:
+   PetscSFRegister() may be called multiple times to add several user-defined implementations.
 
    Sample usage:
 .vb
@@ -66,13 +68,9 @@ $     -sf_type my_impl
 
    Level: advanced
 
-   Note:
-   `PetscSFRegister()` may be called multiple times to add several user-defined implementations.
-
-.seealso: `PetscSF`, `PetscSFRegisterAll()`, `PetscSFInitializePackage()`
+.seealso: `PetscSFRegisterAll()`, `PetscSFInitializePackage()`
 @*/
-PetscErrorCode PetscSFRegister(const char name[], PetscErrorCode (*create)(PetscSF))
-{
+PetscErrorCode PetscSFRegister(const char name[], PetscErrorCode (*create)(PetscSF)) {
   PetscFunctionBegin;
   PetscCall(PetscSFInitializePackage());
   PetscCall(PetscFunctionListAdd(&PetscSFList, name, create));

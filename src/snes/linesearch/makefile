@@ -1,4 +1,4 @@
--include ../../../petscdir.mk
+-include ../../../petsckdir.mk
 
 SOURCEH  = ../../../include/petsc/private/linesearchimpl.h
 DIRS     = interface impls

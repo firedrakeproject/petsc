@@ -29,8 +29,7 @@ static PetscInt edge_not_pow_2;
 static PetscInt edge_node[sizeof(PetscInt) * 32];
 
 /***********************************comm.c*************************************/
-PetscErrorCode PCTFS_comm_init(void)
-{
+PetscErrorCode PCTFS_comm_init(void) {
   PetscFunctionBegin;
   if (p_init++) PetscFunctionReturn(0);
 
@@ -60,8 +59,7 @@ PetscErrorCode PCTFS_comm_init(void)
 }
 
 /***********************************comm.c*************************************/
-PetscErrorCode PCTFS_giop(PetscInt *vals, PetscInt *work, PetscInt n, PetscInt *oprs)
-{
+PetscErrorCode PCTFS_giop(PetscInt *vals, PetscInt *work, PetscInt n, PetscInt *oprs) {
   PetscInt   mask, edge;
   PetscInt   type, dest;
   vfp        fp;
@@ -69,7 +67,7 @@ PetscErrorCode PCTFS_giop(PetscInt *vals, PetscInt *work, PetscInt n, PetscInt *
 
   PetscFunctionBegin;
   /* ok ... should have some data, work, and operator(s) */
-  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_giop() :: vals=%p, work=%p, oprs=%p", (void *)vals, (void *)work, (void *)oprs);
+  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_giop() :: vals=%p, work=%p, oprs=%p", vals, work, oprs);
 
   /* non-uniform should have at least two entries */
   PetscCheck(!(oprs[0] == NON_UNIFORM) || !(n < 2), PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_giop() :: non_uniform and n=0,1?");
@@ -137,8 +135,7 @@ PetscErrorCode PCTFS_giop(PetscInt *vals, PetscInt *work, PetscInt n, PetscInt *
 }
 
 /***********************************comm.c*************************************/
-PetscErrorCode PCTFS_grop(PetscScalar *vals, PetscScalar *work, PetscInt n, PetscInt *oprs)
-{
+PetscErrorCode PCTFS_grop(PetscScalar *vals, PetscScalar *work, PetscInt n, PetscInt *oprs) {
   PetscInt   mask, edge;
   PetscInt   type, dest;
   vfp        fp;
@@ -146,7 +143,7 @@ PetscErrorCode PCTFS_grop(PetscScalar *vals, PetscScalar *work, PetscInt n, Pets
 
   PetscFunctionBegin;
   /* ok ... should have some data, work, and operator(s) */
-  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_grop() :: vals=%p, work=%p, oprs=%p", (void *)vals, (void *)work, (void *)oprs);
+  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_grop() :: vals=%p, work=%p, oprs=%p", vals, work, oprs);
 
   /* non-uniform should have at least two entries */
   PetscCheck(!(oprs[0] == NON_UNIFORM) || !(n < 2), PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_grop() :: non_uniform and n=0,1?");
@@ -213,8 +210,7 @@ PetscErrorCode PCTFS_grop(PetscScalar *vals, PetscScalar *work, PetscInt n, Pets
 }
 
 /***********************************comm.c*************************************/
-PetscErrorCode PCTFS_grop_hc(PetscScalar *vals, PetscScalar *work, PetscInt n, PetscInt *oprs, PetscInt dim)
-{
+PetscErrorCode PCTFS_grop_hc(PetscScalar *vals, PetscScalar *work, PetscInt n, PetscInt *oprs, PetscInt dim) {
   PetscInt   mask, edge;
   PetscInt   type, dest;
   vfp        fp;
@@ -222,7 +218,7 @@ PetscErrorCode PCTFS_grop_hc(PetscScalar *vals, PetscScalar *work, PetscInt n, P
 
   PetscFunctionBegin;
   /* ok ... should have some data, work, and operator(s) */
-  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_grop_hc() :: vals=%p, work=%p, oprs=%p", (void *)vals, (void *)work, (void *)oprs);
+  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_grop_hc() :: vals=%p, work=%p, oprs=%p", vals, work, oprs);
 
   /* non-uniform should have at least two entries */
   PetscCheck(!(oprs[0] == NON_UNIFORM) || !(n < 2), PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_grop_hc() :: non_uniform and n=0,1?");
@@ -276,8 +272,7 @@ PetscErrorCode PCTFS_grop_hc(PetscScalar *vals, PetscScalar *work, PetscInt n, P
 }
 
 /******************************************************************************/
-PetscErrorCode PCTFS_ssgl_radd(PetscScalar *vals, PetscScalar *work, PetscInt level, PetscInt *segs)
-{
+PetscErrorCode PCTFS_ssgl_radd(PetscScalar *vals, PetscScalar *work, PetscInt level, PetscInt *segs) {
   PetscInt     edge, type, dest, mask;
   PetscInt     stage_n;
   MPI_Status   status;
@@ -326,8 +321,7 @@ PetscErrorCode PCTFS_ssgl_radd(PetscScalar *vals, PetscScalar *work, PetscInt le
 }
 
 /***********************************comm.c*************************************/
-PetscErrorCode PCTFS_giop_hc(PetscInt *vals, PetscInt *work, PetscInt n, PetscInt *oprs, PetscInt dim)
-{
+PetscErrorCode PCTFS_giop_hc(PetscInt *vals, PetscInt *work, PetscInt n, PetscInt *oprs, PetscInt dim) {
   PetscInt   mask, edge;
   PetscInt   type, dest;
   vfp        fp;
@@ -335,7 +329,7 @@ PetscErrorCode PCTFS_giop_hc(PetscInt *vals, PetscInt *work, PetscInt n, PetscIn
 
   PetscFunctionBegin;
   /* ok ... should have some data, work, and operator(s) */
-  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_giop_hc() :: vals=%p, work=%p, oprs=%p", (void *)vals, (void *)work, (void *)oprs);
+  PetscCheck(vals && work && oprs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_giop_hc() :: vals=%p, work=%p, oprs=%p", vals, work, oprs);
 
   /* non-uniform should have at least two entries */
   PetscCheck(!(oprs[0] == NON_UNIFORM) || !(n < 2), PETSC_COMM_SELF, PETSC_ERR_PLIB, "PCTFS_giop_hc() :: non_uniform and n=0,1?");

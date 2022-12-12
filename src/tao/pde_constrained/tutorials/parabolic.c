@@ -93,8 +93,7 @@ PetscErrorCode Scatter_i(Vec, Vec *, VecScatter *, PetscInt);
 
 static char help[] = "";
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Vec      x, x0;
   Tao      tao;
   AppCtx   user;
@@ -224,8 +223,7 @@ int main(int argc, char **argv)
    lwork = L*(u-ur)
    f = 1/2 * (dwork.dork + alpha*lwork.lwork)
 */
-PetscErrorCode FormFunction(Tao tao, Vec X, PetscReal *f, void *ptr)
-{
+PetscErrorCode FormFunction(Tao tao, Vec X, PetscReal *f, void *ptr) {
   PetscReal d1 = 0, d2 = 0;
   PetscInt  i, j;
   AppCtx   *user = (AppCtx *)ptr;
@@ -254,8 +252,7 @@ PetscErrorCode FormFunction(Tao tao, Vec X, PetscReal *f, void *ptr)
     state: g_s = Q' *(Qy - d)
     design: g_d = alpha*L'*L*(u-ur)
 */
-PetscErrorCode FormGradient(Tao tao, Vec X, Vec G, void *ptr)
-{
+PetscErrorCode FormGradient(Tao tao, Vec X, Vec G, void *ptr) {
   PetscInt i, j;
   AppCtx  *user = (AppCtx *)ptr;
 
@@ -285,8 +282,7 @@ PetscErrorCode FormGradient(Tao tao, Vec X, Vec G, void *ptr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *f, Vec G, void *ptr)
-{
+PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *f, Vec G, void *ptr) {
   PetscReal d1, d2;
   PetscInt  i, j;
   AppCtx   *user = (AppCtx *)ptr;
@@ -325,8 +321,7 @@ PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *f, Vec G, void *p
 /* A
 MatShell object
 */
-PetscErrorCode FormJacobianState(Tao tao, Vec X, Mat J, Mat JPre, Mat JInv, void *ptr)
-{
+PetscErrorCode FormJacobianState(Tao tao, Vec X, Mat J, Mat JPre, Mat JInv, void *ptr) {
   AppCtx *user = (AppCtx *)ptr;
 
   PetscFunctionBegin;
@@ -354,8 +349,7 @@ PetscErrorCode FormJacobianState(Tao tao, Vec X, Mat J, Mat JPre, Mat JInv, void
 
 /* ------------------------------------------------------------------- */
 /* B */
-PetscErrorCode FormJacobianDesign(Tao tao, Vec X, Mat J, void *ptr)
-{
+PetscErrorCode FormJacobianDesign(Tao tao, Vec X, Mat J, void *ptr) {
   AppCtx *user = (AppCtx *)ptr;
 
   PetscFunctionBegin;
@@ -363,8 +357,7 @@ PetscErrorCode FormJacobianDesign(Tao tao, Vec X, Mat J, void *ptr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatMult(Mat J_shell, Vec X, Vec Y)
-{
+PetscErrorCode StateMatMult(Mat J_shell, Vec X, Vec Y) {
   PetscInt i;
   AppCtx  *user;
 
@@ -380,8 +373,7 @@ PetscErrorCode StateMatMult(Mat J_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatMultTranspose(Mat J_shell, Vec X, Vec Y)
-{
+PetscErrorCode StateMatMultTranspose(Mat J_shell, Vec X, Vec Y) {
   PetscInt i;
   AppCtx  *user;
 
@@ -398,8 +390,7 @@ PetscErrorCode StateMatMultTranspose(Mat J_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatBlockMult(Mat J_shell, Vec X, Vec Y)
-{
+PetscErrorCode StateMatBlockMult(Mat J_shell, Vec X, Vec Y) {
   AppCtx *user;
 
   PetscFunctionBegin;
@@ -411,8 +402,7 @@ PetscErrorCode StateMatBlockMult(Mat J_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DesignMatMult(Mat J_shell, Vec X, Vec Y)
-{
+PetscErrorCode DesignMatMult(Mat J_shell, Vec X, Vec Y) {
   PetscInt i;
   AppCtx  *user;
 
@@ -451,8 +441,7 @@ PetscErrorCode DesignMatMult(Mat J_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DesignMatMultTranspose(Mat J_shell, Vec X, Vec Y)
-{
+PetscErrorCode DesignMatMultTranspose(Mat J_shell, Vec X, Vec Y) {
   PetscInt i;
   AppCtx  *user;
 
@@ -493,8 +482,7 @@ PetscErrorCode DesignMatMultTranspose(Mat J_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatBlockPrecMult(PC PC_shell, Vec X, Vec Y)
-{
+PetscErrorCode StateMatBlockPrecMult(PC PC_shell, Vec X, Vec Y) {
   AppCtx *user;
 
   PetscFunctionBegin;
@@ -506,8 +494,7 @@ PetscErrorCode StateMatBlockPrecMult(PC PC_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatInvMult(Mat J_shell, Vec X, Vec Y)
-{
+PetscErrorCode StateMatInvMult(Mat J_shell, Vec X, Vec Y) {
   AppCtx  *user;
   PetscInt its, i;
 
@@ -536,8 +523,7 @@ PetscErrorCode StateMatInvMult(Mat J_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatInvTransposeMult(Mat J_shell, Vec X, Vec Y)
-{
+PetscErrorCode StateMatInvTransposeMult(Mat J_shell, Vec X, Vec Y) {
   AppCtx  *user;
   PetscInt its, i;
 
@@ -564,8 +550,7 @@ PetscErrorCode StateMatInvTransposeMult(Mat J_shell, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatDuplicate(Mat J_shell, MatDuplicateOption opt, Mat *new_shell)
-{
+PetscErrorCode StateMatDuplicate(Mat J_shell, MatDuplicateOption opt, Mat *new_shell) {
   AppCtx *user;
 
   PetscFunctionBegin;
@@ -579,8 +564,7 @@ PetscErrorCode StateMatDuplicate(Mat J_shell, MatDuplicateOption opt, Mat *new_s
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode StateMatGetDiagonal(Mat J_shell, Vec X)
-{
+PetscErrorCode StateMatGetDiagonal(Mat J_shell, Vec X) {
   AppCtx *user;
 
   PetscFunctionBegin;
@@ -589,8 +573,7 @@ PetscErrorCode StateMatGetDiagonal(Mat J_shell, Vec X)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormConstraints(Tao tao, Vec X, Vec C, void *ptr)
-{
+PetscErrorCode FormConstraints(Tao tao, Vec X, Vec C, void *ptr) {
   /* con = Ay - q, A = [B  0  0 ... 0;
                        -I  B  0 ... 0;
                         0 -I  B ... 0;
@@ -613,8 +596,7 @@ PetscErrorCode FormConstraints(Tao tao, Vec X, Vec C, void *ptr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode Scatter(Vec x, Vec state, VecScatter s_scat, Vec design, VecScatter d_scat)
-{
+PetscErrorCode Scatter(Vec x, Vec state, VecScatter s_scat, Vec design, VecScatter d_scat) {
   PetscFunctionBegin;
   PetscCall(VecScatterBegin(s_scat, x, state, INSERT_VALUES, SCATTER_FORWARD));
   PetscCall(VecScatterEnd(s_scat, x, state, INSERT_VALUES, SCATTER_FORWARD));
@@ -623,8 +605,7 @@ PetscErrorCode Scatter(Vec x, Vec state, VecScatter s_scat, Vec design, VecScatt
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode Scatter_i(Vec y, Vec *yi, VecScatter *scat, PetscInt nt)
-{
+PetscErrorCode Scatter_i(Vec y, Vec *yi, VecScatter *scat, PetscInt nt) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -635,8 +616,7 @@ PetscErrorCode Scatter_i(Vec y, Vec *yi, VecScatter *scat, PetscInt nt)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode Gather(Vec x, Vec state, VecScatter s_scat, Vec design, VecScatter d_scat)
-{
+PetscErrorCode Gather(Vec x, Vec state, VecScatter s_scat, Vec design, VecScatter d_scat) {
   PetscFunctionBegin;
   PetscCall(VecScatterBegin(s_scat, state, x, INSERT_VALUES, SCATTER_REVERSE));
   PetscCall(VecScatterEnd(s_scat, state, x, INSERT_VALUES, SCATTER_REVERSE));
@@ -645,8 +625,7 @@ PetscErrorCode Gather(Vec x, Vec state, VecScatter s_scat, Vec design, VecScatte
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode Gather_i(Vec y, Vec *yi, VecScatter *scat, PetscInt nt)
-{
+PetscErrorCode Gather_i(Vec y, Vec *yi, VecScatter *scat, PetscInt nt) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -657,8 +636,7 @@ PetscErrorCode Gather_i(Vec y, Vec *yi, VecScatter *scat, PetscInt nt)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ParabolicInitialize(AppCtx *user)
-{
+PetscErrorCode ParabolicInitialize(AppCtx *user) {
   PetscInt    m, n, i, j, k, linear_index, istart, iend, iblock, lo, hi, lo2, hi2;
   Vec         XX, YY, ZZ, XXwork, YYwork, ZZwork, UTwork, yi, di, bc;
   PetscReal  *x, *y, *z;
@@ -1187,8 +1165,7 @@ PetscErrorCode ParabolicInitialize(AppCtx *user)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ParabolicDestroy(AppCtx *user)
-{
+PetscErrorCode ParabolicDestroy(AppCtx *user) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -1246,8 +1223,7 @@ PetscErrorCode ParabolicDestroy(AppCtx *user)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ParabolicMonitor(Tao tao, void *ptr)
-{
+PetscErrorCode ParabolicMonitor(Tao tao, void *ptr) {
   Vec       X;
   PetscReal unorm, ynorm;
   AppCtx   *user = (AppCtx *)ptr;

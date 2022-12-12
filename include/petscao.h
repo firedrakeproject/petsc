@@ -1,4 +1,4 @@
-#ifndef PETSCAO_H
+#if !defined(PETSCAO_H)
 #define PETSCAO_H
 
 #include <petscis.h>

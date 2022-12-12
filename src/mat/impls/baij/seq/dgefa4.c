@@ -11,8 +11,7 @@
 */
 #include <petscsys.h>
 
-PETSC_EXTERN PetscErrorCode PetscKernel_A_gets_inverse_A_4(MatScalar *a, PetscReal shift, PetscBool allowzeropivot, PetscBool *zeropivotdetected)
-{
+PETSC_EXTERN PetscErrorCode PetscKernel_A_gets_inverse_A_4(MatScalar *a, PetscReal shift, PetscBool allowzeropivot, PetscBool *zeropivotdetected) {
   PetscInt   i__2, i__3, kp1, j, k, l, ll, i, ipvt[4], kb, k3;
   PetscInt   k4, j3;
   MatScalar *aa, *ax, *ay, work[16], stmp;
@@ -156,10 +155,9 @@ PETSC_EXTERN PetscErrorCode PetscKernel_A_gets_inverse_A_4(MatScalar *a, PetscRe
 }
 
 #if defined(PETSC_HAVE_SSE)
-  #include PETSC_HAVE_SSE
+#include PETSC_HAVE_SSE
 
-PETSC_EXTERN PetscErrorCode PetscKernel_A_gets_inverse_A_4_SSE(float *a)
-{
+PETSC_EXTERN PetscErrorCode PetscKernel_A_gets_inverse_A_4_SSE(float *a) {
   /*
      This routine is converted from Intel's Small Matrix Library.
      See: Streaming SIMD Extensions -- Inverse of 4x4 Matrix

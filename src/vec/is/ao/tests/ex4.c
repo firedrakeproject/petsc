@@ -4,8 +4,7 @@ static char help[] = "Test AO with on IS with 0 entries - contributed by Ethan C
 #include <petscsys.h>
 #include <petscao.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   AO          ao;
   PetscInt   *localvert = NULL, nlocal;
   PetscMPIInt rank;

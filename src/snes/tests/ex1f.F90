@@ -342,6 +342,8 @@
       return
       end
 
+! ---------------------------------------------------------------------
+!
 !  ApplicationInitialGuess - Computes initial approximation, called by
 !  the higher level routine FormInitialGuess().
 !

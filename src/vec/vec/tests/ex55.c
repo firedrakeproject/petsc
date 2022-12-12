@@ -3,8 +3,7 @@ static char help[] = "Tests I/O of vector and string attribute for HDF5 format\n
 #include <petscvec.h>
 #include <petscviewerhdf5.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Vec         u;
   PetscViewer viewer;
   char       *attrReadVal, attrWriteVal[20] = {"Hello World!!"};

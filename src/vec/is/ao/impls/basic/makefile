@@ -1,4 +1,4 @@
--include ../../../../../../petscdir.mk
+-include ../../../../../../petsckdir.mk
 
 SOURCEC   = aobasic.c
 SOURCEF   =

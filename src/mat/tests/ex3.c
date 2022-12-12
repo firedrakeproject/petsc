@@ -3,8 +3,7 @@ static char help[] = "Tests relaxation for dense matrices.\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         C;
   Vec         u, x, b, e;
   PetscInt    i, n = 10, midx[3];

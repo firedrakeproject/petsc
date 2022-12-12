@@ -20,8 +20,8 @@ static char help[] = "Simple Advection-diffusion equation solved using FVM in DM
 #include <petscblaslapack.h>
 
 #if defined(PETSC_HAVE_CGNS)
-  #undef I
-  #include <cgnslib.h>
+#undef I
+#include <cgnslib.h>
 #endif
 /*
    User-defined routines
@@ -38,8 +38,7 @@ typedef struct {
 } AppCtx;
 
 /* Options for the scenario */
-static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscFunctionBeginUser;
   options->u         = 2.5;
   options->v         = 0.0;
@@ -56,8 +55,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   User can provide the file containing the mesh.
   Or can generate the mesh using DMPlexCreateBoxMesh with the specified options.
 */
-static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm) {
   PetscFunctionBeginUser;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -76,8 +74,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
     The initial solution can be modified accordingly inside the loops.
     No need for a local vector because there is exchange of information
     across the processors. Unlike for FormFunction which depends on the neighbours */
-PetscErrorCode FormInitialSolution(DM da, Vec U)
-{
+PetscErrorCode FormInitialSolution(DM da, Vec U) {
   PetscScalar *u;
   PetscInt     cell, cStart, cEnd;
   PetscReal    cellvol, centroid[3], normal[3];
@@ -99,8 +96,7 @@ PetscErrorCode FormInitialSolution(DM da, Vec U)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyTSMonitor(TS ts, PetscInt step, PetscReal ptime, Vec v, void *ctx)
-{
+PetscErrorCode MyTSMonitor(TS ts, PetscInt step, PetscReal ptime, Vec v, void *ctx) {
   PetscReal norm;
   MPI_Comm  comm;
 
@@ -121,8 +117,7 @@ PetscErrorCode MyTSMonitor(TS ts, PetscInt step, PetscReal ptime, Vec v, void *c
      ctx - optional user-defined context for private data for the
          monitor routine, as set by SNESMonitorSet()
 */
-PetscErrorCode MySNESMonitor(SNES snes, PetscInt its, PetscReal fnorm, PetscViewerAndFormat *vf)
-{
+PetscErrorCode MySNESMonitor(SNES snes, PetscInt its, PetscReal fnorm, PetscViewerAndFormat *vf) {
   PetscFunctionBeginUser;
   PetscCall(SNESMonitorDefaultShort(snes, its, fnorm, vf));
   PetscFunctionReturn(0);
@@ -139,8 +134,7 @@ PetscErrorCode MySNESMonitor(SNES snes, PetscInt its, PetscReal fnorm, PetscView
    Output Parameter:
 .  F - function vector
  */
-PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ctx)
-{
+PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ctx) {
   AppCtx            *user = (AppCtx *)ctx;
   DM                 da;
   PetscScalar       *x, *f;
@@ -257,8 +251,7 @@ PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ctx)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS                    ts; /* time integrator */
   SNES                  snes;
   Vec                   x, r; /* solution, residual vectors */
@@ -295,7 +288,7 @@ int main(int argc, char **argv)
   numDof[0 * (dim + 1) + dim]     = 1;
 
   /* Setup boundary conditions */
-  numBC = 1;
+  numBC      = 1;
   /* Prescribe a Dirichlet condition on u on the boundary
        Label "marker" is made by the mesh creation routine  */
   bcField[0] = 0;

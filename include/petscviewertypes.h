@@ -2,7 +2,7 @@
      PetscViewers are objects where other objects can be looked at or stored.
 */
 
-#ifndef PETSCVIEWERTYPES_H
+#if !defined(PETSCVIEWERTYPES_H)
 #define PETSCVIEWERTYPES_H
 
 /* SUBMANSEC = Viewer */

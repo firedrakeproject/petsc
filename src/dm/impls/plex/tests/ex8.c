@@ -10,16 +10,15 @@ typedef enum {
 } RunType;
 
 typedef struct {
-  DM        dm;
-  RunType   runType;   /* Type of mesh to use */
-  PetscBool transform; /* Use random coordinate transformations */
+  DM         dm;
+  RunType    runType;   /* Type of mesh to use */
+  PetscBool  transform; /* Use random coordinate transformations */
   /* Data for input meshes */
   PetscReal *v0, *J, *invJ, *detJ;    /* FEM data */
   PetscReal *centroid, *normal, *vol; /* FVM data */
 } AppCtx;
 
-static PetscErrorCode ReadMesh(MPI_Comm comm, AppCtx *user, DM *dm)
-{
+static PetscErrorCode ReadMesh(MPI_Comm comm, AppCtx *user, DM *dm) {
   PetscFunctionBegin;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -30,8 +29,7 @@ static PetscErrorCode ReadMesh(MPI_Comm comm, AppCtx *user, DM *dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   const char *runTypes[4] = {"reference", "hex_curved", "file", "display"};
   PetscInt    run;
 
@@ -103,8 +101,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ChangeCoordinates(DM dm, PetscInt spaceDim, PetscScalar vertexCoords[])
-{
+static PetscErrorCode ChangeCoordinates(DM dm, PetscInt spaceDim, PetscScalar vertexCoords[]) {
   PetscSection coordSection;
   Vec          coordinates;
   PetscScalar *coords;
@@ -143,8 +140,7 @@ static PetscErrorCode ChangeCoordinates(DM dm, PetscInt spaceDim, PetscScalar ve
 
 #define RelativeError(a, b) PetscAbs(a - b) / (1.0 + PetscMax(PetscAbs(a), PetscAbs(b)))
 
-static PetscErrorCode CheckFEMGeometry(DM dm, PetscInt cell, PetscInt spaceDim, PetscReal v0Ex[], PetscReal JEx[], PetscReal invJEx[], PetscReal detJEx)
-{
+static PetscErrorCode CheckFEMGeometry(DM dm, PetscInt cell, PetscInt spaceDim, PetscReal v0Ex[], PetscReal JEx[], PetscReal invJEx[], PetscReal detJEx) {
   PetscReal v0[3], J[9], invJ[9], detJ;
   PetscInt  d, i, j;
 
@@ -153,12 +149,9 @@ static PetscErrorCode CheckFEMGeometry(DM dm, PetscInt cell, PetscInt spaceDim, 
   for (d = 0; d < spaceDim; ++d) {
     if (v0[d] != v0Ex[d]) {
       switch (spaceDim) {
-      case 2:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid v0 (%g, %g) != (%g, %g)", (double)v0[0], (double)v0[1], (double)v0Ex[0], (double)v0Ex[1]);
-      case 3:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid v0 (%g, %g, %g) != (%g, %g, %g)", (double)v0[0], (double)v0[1], (double)v0[2], (double)v0Ex[0], (double)v0Ex[1], (double)v0Ex[2]);
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid space dimension %" PetscInt_FMT, spaceDim);
+      case 2: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid v0 (%g, %g) != (%g, %g)", (double)v0[0], (double)v0[1], (double)v0Ex[0], (double)v0Ex[1]);
+      case 3: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid v0 (%g, %g, %g) != (%g, %g, %g)", (double)v0[0], (double)v0[1], (double)v0[2], (double)v0Ex[0], (double)v0Ex[1], (double)v0Ex[2]);
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid space dimension %" PetscInt_FMT, spaceDim);
       }
     }
   }
@@ -172,8 +165,7 @@ static PetscErrorCode CheckFEMGeometry(DM dm, PetscInt cell, PetscInt spaceDim, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CheckFVMGeometry(DM dm, PetscInt cell, PetscInt spaceDim, PetscReal centroidEx[], PetscReal normalEx[], PetscReal volEx)
-{
+static PetscErrorCode CheckFVMGeometry(DM dm, PetscInt cell, PetscInt spaceDim, PetscReal centroidEx[], PetscReal normalEx[], PetscReal volEx) {
   PetscReal tol = PetscMax(10 * PETSC_SMALL, 1e-10);
   PetscReal centroid[3], normal[3], vol;
   PetscInt  d;
@@ -189,8 +181,7 @@ static PetscErrorCode CheckFVMGeometry(DM dm, PetscInt cell, PetscInt spaceDim, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CheckGaussLaw(DM dm, PetscInt cell)
-{
+static PetscErrorCode CheckGaussLaw(DM dm, PetscInt cell) {
   DMPolytopeType  ct;
   PetscReal       tol = PetscMax(10 * PETSC_SMALL, 1e-10);
   PetscReal       normal[3], integral[3] = {0., 0., 0.}, area;
@@ -217,8 +208,7 @@ static PetscErrorCode CheckGaussLaw(DM dm, PetscInt cell)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CheckCell(DM dm, PetscInt cell, PetscBool transform, PetscReal v0Ex[], PetscReal JEx[], PetscReal invJEx[], PetscReal detJEx, PetscReal centroidEx[], PetscReal normalEx[], PetscReal volEx, PetscReal faceCentroidEx[], PetscReal faceNormalEx[], PetscReal faceVolEx[])
-{
+static PetscErrorCode CheckCell(DM dm, PetscInt cell, PetscBool transform, PetscReal v0Ex[], PetscReal JEx[], PetscReal invJEx[], PetscReal detJEx, PetscReal centroidEx[], PetscReal normalEx[], PetscReal volEx, PetscReal faceCentroidEx[], PetscReal faceNormalEx[], PetscReal faceVolEx[]) {
   const PetscInt *cone;
   PetscInt        coneSize, c;
   PetscInt        dim, depth, cdim;
@@ -298,8 +288,7 @@ static PetscErrorCode CheckCell(DM dm, PetscInt cell, PetscBool transform, Petsc
         R[8] = cp * ct;
         break;
       }
-      default:
-        SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Invalid coordinate dimension %" PetscInt_FMT, cdim);
+      default: SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Invalid coordinate dimension %" PetscInt_FMT, cdim);
       }
       if (v0Ex) {
         detJExT = detJEx;
@@ -432,8 +421,7 @@ static PetscErrorCode CheckCell(DM dm, PetscInt cell, PetscBool transform, Petsc
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestTriangle(MPI_Comm comm, PetscBool transform)
-{
+static PetscErrorCode TestTriangle(MPI_Comm comm, PetscBool transform) {
   DM dm;
 
   PetscFunctionBegin;
@@ -470,8 +458,7 @@ static PetscErrorCode TestTriangle(MPI_Comm comm, PetscBool transform)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestQuadrilateral(MPI_Comm comm, PetscBool transform)
-{
+static PetscErrorCode TestQuadrilateral(MPI_Comm comm, PetscBool transform) {
   DM dm;
 
   PetscFunctionBegin;
@@ -508,8 +495,7 @@ static PetscErrorCode TestQuadrilateral(MPI_Comm comm, PetscBool transform)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestTetrahedron(MPI_Comm comm, PetscBool transform)
-{
+static PetscErrorCode TestTetrahedron(MPI_Comm comm, PetscBool transform) {
   DM dm;
 
   PetscFunctionBegin;
@@ -532,8 +518,7 @@ static PetscErrorCode TestTetrahedron(MPI_Comm comm, PetscBool transform)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestHexahedron(MPI_Comm comm, PetscBool transform)
-{
+static PetscErrorCode TestHexahedron(MPI_Comm comm, PetscBool transform) {
   DM dm;
 
   PetscFunctionBegin;
@@ -556,8 +541,7 @@ static PetscErrorCode TestHexahedron(MPI_Comm comm, PetscBool transform)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestHexahedronCurved(MPI_Comm comm)
-{
+static PetscErrorCode TestHexahedronCurved(MPI_Comm comm) {
   DM          dm;
   PetscScalar coords[24] = {-1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.1, 1.0, -1.0, 1.0, 1.0, 1.0, 1.1, -1.0, 1.0, 1.0};
 
@@ -577,8 +561,7 @@ static PetscErrorCode TestHexahedronCurved(MPI_Comm comm)
 }
 
 /* This wedge is a tensor product cell, rather than a normal wedge */
-static PetscErrorCode TestWedge(MPI_Comm comm, PetscBool transform)
-{
+static PetscErrorCode TestWedge(MPI_Comm comm, PetscBool transform) {
   DM dm;
 
   PetscFunctionBegin;
@@ -610,8 +593,7 @@ static PetscErrorCode TestWedge(MPI_Comm comm, PetscBool transform)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   AppCtx user;
 
   PetscFunctionBeginUser;

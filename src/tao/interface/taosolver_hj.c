@@ -26,8 +26,7 @@ $    func(Tao tao,Vec x,Mat H,Mat Hpre,void *ctx);
 
 .seealso: `Tao`, `TaoTypes`, `TaoSetObjective()`, `TaoSetGradient()`, `TaoSetObjectiveAndGradient()`, `TaoGetHessian()`
 @*/
-PetscErrorCode TaoSetHessian(Tao tao, Mat H, Mat Hpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
-{
+PetscErrorCode TaoSetHessian(Tao tao, Mat H, Mat Hpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (H) {
@@ -80,8 +79,7 @@ $    func(Tao tao,Vec x,Mat H,Mat Hpre,void *ctx);
 
 .seealso: `Tao`, TaoType`, `TaoGetObjective()`, `TaoGetGradient()`, `TaoGetObjectiveAndGradient()`, `TaoSetHessian()`
 @*/
-PetscErrorCode TaoGetHessian(Tao tao, Mat *H, Mat *Hpre, PetscErrorCode (**func)(Tao, Vec, Mat, Mat, void *), void **ctx)
-{
+PetscErrorCode TaoGetHessian(Tao tao, Mat *H, Mat *Hpre, PetscErrorCode (**func)(Tao, Vec, Mat, Mat, void *), void **ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (H) *H = tao->hessian;
@@ -91,8 +89,7 @@ PetscErrorCode TaoGetHessian(Tao tao, Mat *H, Mat *Hpre, PetscErrorCode (**func)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TaoTestHessian(Tao tao)
-{
+PetscErrorCode TaoTestHessian(Tao tao) {
   Mat               A, B, C, D, hessian;
   Vec               x = tao->solution;
   PetscReal         nrm, gnorm;
@@ -251,14 +248,11 @@ PetscErrorCode TaoTestHessian(Tao tao)
 
 .seealso: `Tao`, `TaoComputeObjective()`, `TaoComputeObjectiveAndGradient()`, `TaoSetHessian()`
 @*/
-PetscErrorCode TaoComputeHessian(Tao tao, Vec X, Mat H, Mat Hpre)
-{
+PetscErrorCode TaoComputeHessian(Tao tao, Vec X, Mat H, Mat Hpre) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
   PetscCheckSameComm(tao, 1, X, 2);
-  PetscCheck(tao->ops->computehessian, PetscObjectComm((PetscObject)tao), PETSC_ERR_ARG_WRONGSTATE, "TaoSetHessian() not called");
-
   ++tao->nhess;
   PetscCall(VecLockReadPush(X));
   PetscCall(PetscLogEventBegin(TAO_HessianEval, tao, X, H, Hpre));
@@ -296,8 +290,7 @@ PetscErrorCode TaoComputeHessian(Tao tao, Vec X, Mat H, Mat Hpre)
 
 .seealso: `TaoComputeObjective()`, `TaoComputeObjectiveAndGradient()`, `TaoSetJacobianRoutine()`
 @*/
-PetscErrorCode TaoComputeJacobian(Tao tao, Vec X, Mat J, Mat Jpre)
-{
+PetscErrorCode TaoComputeJacobian(Tao tao, Vec X, Mat J, Mat Jpre) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -337,8 +330,7 @@ PetscErrorCode TaoComputeJacobian(Tao tao, Vec X, Mat J, Mat Jpre)
 
 .seealso: `Tao`, `TaoComputeResidual()`, `TaoSetJacobianResidual()`
 @*/
-PetscErrorCode TaoComputeResidualJacobian(Tao tao, Vec X, Mat J, Mat Jpre)
-{
+PetscErrorCode TaoComputeResidualJacobian(Tao tao, Vec X, Mat J, Mat Jpre) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -375,8 +367,7 @@ PetscErrorCode TaoComputeResidualJacobian(Tao tao, Vec X, Mat J, Mat Jpre)
 
 .seealso: `Tao`, `TaoComputeObjective()`, `TaoComputeObjectiveAndGradient()`, `TaoSetJacobianStateRoutine()`, `TaoComputeJacobianDesign()`, `TaoSetStateDesignIS()`
 @*/
-PetscErrorCode TaoComputeJacobianState(Tao tao, Vec X, Mat J, Mat Jpre, Mat Jinv)
-{
+PetscErrorCode TaoComputeJacobianState(Tao tao, Vec X, Mat J, Mat Jpre, Mat Jinv) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -411,8 +402,7 @@ PetscErrorCode TaoComputeJacobianState(Tao tao, Vec X, Mat J, Mat Jpre, Mat Jinv
 
 .seealso: `Tao`, `TaoComputeObjective()`, `TaoComputeObjectiveAndGradient()`, `TaoSetJacobianDesignRoutine()`, `TaoComputeJacobianDesign()`, `TaoSetStateDesignIS()`
 @*/
-PetscErrorCode TaoComputeJacobianDesign(Tao tao, Vec X, Mat J)
-{
+PetscErrorCode TaoComputeJacobianDesign(Tao tao, Vec X, Mat J) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -452,8 +442,7 @@ $    func(Tao tao,Vec x,Mat J,Mat Jpre,void *ctx);
 
 .seealso: `Tao`, `TaoSetGradient()`, `TaoSetObjective()`
 @*/
-PetscErrorCode TaoSetJacobianRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
-{
+PetscErrorCode TaoSetJacobianRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (J) {
@@ -506,8 +495,7 @@ $    func(Tao tao,Vec x,Mat J,Mat Jpre,void *ctx);
 
 .seealso: `Tao`, `TaoSetGradient()`, `TaoSetObjective()`
 @*/
-PetscErrorCode TaoSetJacobianResidualRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
-{
+PetscErrorCode TaoSetJacobianResidualRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (J) {
@@ -563,8 +551,7 @@ $    func(Tao tao,Vec x,Mat J,Mat Jpre,Mat Jinv,void *ctx);
 
 .seealso: `Tao`, `TaoComputeJacobianState()`, `TaoSetJacobianDesignRoutine()`, `TaoSetStateDesignIS()`
 @*/
-PetscErrorCode TaoSetJacobianStateRoutine(Tao tao, Mat J, Mat Jpre, Mat Jinv, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, Mat, void *), void *ctx)
-{
+PetscErrorCode TaoSetJacobianStateRoutine(Tao tao, Mat J, Mat Jpre, Mat Jinv, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, Mat, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (J) {
@@ -625,8 +612,7 @@ $    func(Tao tao,Vec x,Mat J,void *ctx);
 
 .seealso: `Tao`, `TaoComputeJacobianDesign()`, `TaoSetJacobianStateRoutine()`, `TaoSetStateDesignIS()`
 @*/
-PetscErrorCode TaoSetJacobianDesignRoutine(Tao tao, Mat J, PetscErrorCode (*func)(Tao, Vec, Mat, void *), void *ctx)
-{
+PetscErrorCode TaoSetJacobianDesignRoutine(Tao tao, Mat J, PetscErrorCode (*func)(Tao, Vec, Mat, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (J) {
@@ -659,8 +645,7 @@ PetscErrorCode TaoSetJacobianDesignRoutine(Tao tao, Mat J, PetscErrorCode (*func
 
 .seealso: `Tao`, `TaoSetJacobianStateRoutine()`, `TaoSetJacobianDesignRoutine()`
 @*/
-PetscErrorCode TaoSetStateDesignIS(Tao tao, IS s_is, IS d_is)
-{
+PetscErrorCode TaoSetStateDesignIS(Tao tao, IS s_is, IS d_is) {
   PetscFunctionBegin;
   PetscCall(PetscObjectReference((PetscObject)s_is));
   PetscCall(ISDestroy(&tao->state_is));
@@ -693,8 +678,7 @@ PetscErrorCode TaoSetStateDesignIS(Tao tao, IS s_is, IS d_is)
 
 .seealso: `TaoComputeObjective()`, `TaoComputeObjectiveAndGradient()`, `TaoSetJacobianStateRoutine()`, `TaoComputeJacobianDesign()`, `TaoSetStateDesignIS()`
 @*/
-PetscErrorCode TaoComputeJacobianEquality(Tao tao, Vec X, Mat J, Mat Jpre)
-{
+PetscErrorCode TaoComputeJacobianEquality(Tao tao, Vec X, Mat J, Mat Jpre) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -730,8 +714,7 @@ PetscErrorCode TaoComputeJacobianEquality(Tao tao, Vec X, Mat J, Mat Jpre)
 
 .seealso: `Tao`, `TaoComputeObjective()`, `TaoComputeObjectiveAndGradient()`, `TaoSetJacobianStateRoutine()`, `TaoComputeJacobianDesign()`, `TaoSetStateDesignIS()`
 @*/
-PetscErrorCode TaoComputeJacobianInequality(Tao tao, Vec X, Mat J, Mat Jpre)
-{
+PetscErrorCode TaoComputeJacobianInequality(Tao tao, Vec X, Mat J, Mat Jpre) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidHeaderSpecific(X, VEC_CLASSID, 2);
@@ -773,8 +756,7 @@ $    func(Tao tao,Vec x,Mat J,Mat Jpre,void *ctx);
 
 .seealso: `Tao`, `TaoComputeJacobianEquality()`, `TaoSetJacobianDesignRoutine()`, `TaoSetEqualityDesignIS()`
 @*/
-PetscErrorCode TaoSetJacobianEqualityRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
-{
+PetscErrorCode TaoSetJacobianEqualityRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (J) {
@@ -828,8 +810,7 @@ $    func(Tao tao,Vec x,Mat J,Mat Jpre,void *ctx);
 
 .seealso: `Tao`, `TaoComputeJacobianInequality()`, `TaoSetJacobianDesignRoutine()`, `TaoSetInequalityDesignIS()`
 @*/
-PetscErrorCode TaoSetJacobianInequalityRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
-{
+PetscErrorCode TaoSetJacobianInequalityRoutine(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   if (J) {

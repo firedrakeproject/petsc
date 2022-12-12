@@ -71,8 +71,7 @@ char matrix_free_options[] = "-mat_mffd_compute_normu no \
 
 extern PetscErrorCode DMCreateMatrix_MF(DM, Mat *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   UserCtx   user;
   DM        red, da;
   SNES      snes;
@@ -139,14 +138,13 @@ typedef struct {
 } ULambda;
 
 /*
-      Evaluates FU = Gradient(L(w,u,lambda))
+      Evaluates FU = Gradiant(L(w,u,lambda))
 
      This local function acts on the ghosted version of U (accessed via DMCompositeGetLocalVectors() and
    DMCompositeScatter()) BUT the global, nonghosted version of FU (via DMCompositeGetAccess()).
 
 */
-PetscErrorCode ComputeFunction(SNES snes, Vec U, Vec FU, void *ctx)
-{
+PetscErrorCode ComputeFunction(SNES snes, Vec U, Vec FU, void *ctx) {
   PetscInt    xs, xm, i, N;
   ULambda    *u_lambda, *fu_lambda;
   PetscScalar d, h, *w, *fw;
@@ -203,8 +201,7 @@ PetscErrorCode ComputeFunction(SNES snes, Vec U, Vec FU, void *ctx)
 /*
     Computes the exact solution
 */
-PetscErrorCode u_solution(void *dummy, PetscInt n, const PetscScalar *x, PetscScalar *u)
-{
+PetscErrorCode u_solution(void *dummy, PetscInt n, const PetscScalar *x, PetscScalar *u) {
   PetscInt i;
 
   PetscFunctionBeginUser;
@@ -212,8 +209,7 @@ PetscErrorCode u_solution(void *dummy, PetscInt n, const PetscScalar *x, PetscSc
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ExactSolution(DM packer, Vec U)
-{
+PetscErrorCode ExactSolution(DM packer, Vec U) {
   PF           pf;
   Vec          x, u_global;
   PetscScalar *w;
@@ -239,8 +235,7 @@ PetscErrorCode ExactSolution(DM packer, Vec U)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal rnorm, void *dummy)
-{
+PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal rnorm, void *dummy) {
   UserCtx     *user;
   PetscInt     m, N;
   PetscScalar *w, *dw;
@@ -277,8 +272,7 @@ PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal rnorm, void *dummy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateMatrix_MF(DM packer, Mat *A)
-{
+PetscErrorCode DMCreateMatrix_MF(DM packer, Mat *A) {
   Vec      t;
   PetscInt m;
 
@@ -292,8 +286,7 @@ PetscErrorCode DMCreateMatrix_MF(DM packer, Mat *A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ComputeJacobian_MF(SNES snes, Vec x, Mat A, Mat B, void *ctx)
-{
+PetscErrorCode ComputeJacobian_MF(SNES snes, Vec x, Mat A, Mat B, void *ctx) {
   PetscFunctionBeginUser;
   PetscCall(MatMFFDSetFunction(A, (PetscErrorCode(*)(void *, Vec, Vec))SNESComputeFunction, snes));
   PetscCall(MatMFFDSetBase(A, x, NULL));

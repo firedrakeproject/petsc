@@ -8,8 +8,7 @@
 extern PetscErrorCode KSPComputeExtremeSingularValues_CG(KSP, PetscReal *, PetscReal *);
 extern PetscErrorCode KSPComputeEigenvalues_CG(KSP, PetscInt, PetscReal *, PetscReal *, PetscInt *);
 
-static PetscErrorCode KSPCGSetType_CGNE(KSP ksp, KSPCGType type)
-{
+static PetscErrorCode KSPCGSetType_CGNE(KSP ksp, KSPCGType type) {
   KSP_CG *cg = (KSP_CG *)ksp->data;
 
   PetscFunctionBegin;
@@ -22,8 +21,7 @@ static PetscErrorCode KSPCGSetType_CGNE(KSP ksp, KSPCGType type)
 
      IDENTICAL TO THE CG ONE EXCEPT for one extra work vector!
 */
-static PetscErrorCode KSPSetUp_CGNE(KSP ksp)
-{
+static PetscErrorCode KSPSetUp_CGNE(KSP ksp) {
   KSP_CG  *cgP   = (KSP_CG *)ksp->data;
   PetscInt maxit = ksp->max_it;
 
@@ -38,6 +36,7 @@ static PetscErrorCode KSPSetUp_CGNE(KSP ksp)
   if (ksp->calc_sings) {
     /* get space to store tridiagonal matrix for Lanczos */
     PetscCall(PetscMalloc4(maxit, &cgP->e, maxit, &cgP->d, maxit, &cgP->ee, maxit, &cgP->dd));
+    PetscCall(PetscLogObjectMemory((PetscObject)ksp, 2 * maxit * (sizeof(PetscScalar) + sizeof(PetscReal))));
 
     ksp->ops->computeextremesingularvalues = KSPComputeExtremeSingularValues_CG;
     ksp->ops->computeeigenvalues           = KSPComputeEigenvalues_CG;
@@ -56,8 +55,7 @@ static PetscErrorCode KSPSetUp_CGNE(KSP ksp)
     Virtually identical to the KSPSolve_CG, it should definitely reuse the same code.
 
 */
-static PetscErrorCode KSPSolve_CGNE(KSP ksp)
-{
+static PetscErrorCode KSPSolve_CGNE(KSP ksp) {
   PetscInt    i, stored_max_it, eigs;
   PetscScalar dpi, a = 1.0, beta, betaold = 1.0, b = 0, *e = NULL, *d = NULL;
   PetscReal   dp = 0.0;
@@ -206,14 +204,15 @@ static PetscErrorCode KSPSolve_CGNE(KSP ksp)
    Level: beginner
 
    Notes:
-   Eigenvalue computation routines including `KSPSetComputeEigenvalues()` and `KSPComputeEigenvalues()` will return information about the
-    spectrum of A^t*A, rather than A.
+    eigenvalue computation routines will return information about the
+          spectrum of A^t*A, rather than A.
 
-   `KSPCGNE` is a general-purpose non-symmetric method. It works well when the singular values are much better behaved than
-   eigenvalues. A unitary matrix is a classic example where `KSPCGNE` converges in one iteration, but `KSPGMRES` and `KSPCGS` need N
-   iterations, see [1]. If you intend to solve least squares problems, use `KSPLSQR`.
+   CGNE is a general-purpose non-symmetric method. It works well when the singular values are much better behaved than
+   eigenvalues. A unitary matrix is a classic example where CGNE converges in one iteration, but GMRES and CGS need N
+   iterations (see Nachtigal, Reddy, and Trefethen, "How fast are nonsymmetric matrix iterations", 1992). If you intend
+   to solve least squares problems, use KSPLSQR.
 
-   This is NOT a different algorithm than used with `KSPCG`, it merely uses that algorithm with the
+   This is NOT a different algorithm than used with KSPCG, it merely uses that algorithm with the
    matrix defined by A^t*A and preconditioner defined by B^t*B where B is the preconditioner for A.
 
    This method requires that one be able to apply the transpose of the preconditioner and operator
@@ -222,22 +221,18 @@ static PetscErrorCode KSPSolve_CGNE(KSP ksp)
 
    This only supports left preconditioning.
 
-   Reference:
-.   [1] -  Nachtigal, Reddy, and Trefethen, "How fast are nonsymmetric matrix iterations", 1992
+   This object is subclassed off of KSPCG
 
-   Developer Note:
-   This object is subclassed off of `KSPCG`
+.seealso: `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`,
+          `KSPCGSetType()`, `KSPBICG`
 
-.seealso: [](chapter_ksp), `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, 'KSPCG', `KSPLSQR', 'KSPCGLS`,
-          `KSPCGSetType()`, `KSPBICG`, `KSPSetComputeEigenvalues()`, `KSPComputeEigenvalues()`
 M*/
 
-PETSC_EXTERN PetscErrorCode KSPCreate_CGNE(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_CGNE(KSP ksp) {
   KSP_CG *cg;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&cg));
+  PetscCall(PetscNewLog(ksp, &cg));
 #if !defined(PETSC_USE_COMPLEX)
   cg->type = KSP_CG_SYMMETRIC;
 #else

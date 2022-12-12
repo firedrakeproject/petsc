@@ -3,16 +3,15 @@
 PETSC_EXTERN PetscErrorCode CharacteristicCreate_DA(Characteristic);
 
 /*@C
-  CharacteristicRegisterAll - Registers all of the methods in the `Characteristic` package.
+  CharacteristicRegisterAll - Registers all of the Krylov subspace methods in the Characteristic package.
 
   Not Collective
 
   Level: advanced
 
-.seealso: [](chapter_ts), `CharacteristicRegisterDestroy()`
+.seealso: `CharacteristicRegisterDestroy()`
 @*/
-PetscErrorCode CharacteristicRegisterAll(void)
-{
+PetscErrorCode CharacteristicRegisterAll(void) {
   PetscFunctionBegin;
   if (CharacteristicRegisterAllCalled) PetscFunctionReturn(0);
   CharacteristicRegisterAllCalled = PETSC_TRUE;

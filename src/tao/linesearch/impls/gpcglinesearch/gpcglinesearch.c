@@ -3,8 +3,7 @@
 
 /* ---------------------------------------------------------- */
 
-static PetscErrorCode TaoLineSearchDestroy_GPCG(TaoLineSearch ls)
-{
+static PetscErrorCode TaoLineSearchDestroy_GPCG(TaoLineSearch ls) {
   TaoLineSearch_GPCG *ctx = (TaoLineSearch_GPCG *)ls->data;
 
   PetscFunctionBegin;
@@ -17,8 +16,7 @@ static PetscErrorCode TaoLineSearchDestroy_GPCG(TaoLineSearch ls)
 }
 
 /*------------------------------------------------------------*/
-static PetscErrorCode TaoLineSearchView_GPCG(TaoLineSearch ls, PetscViewer viewer)
-{
+static PetscErrorCode TaoLineSearchView_GPCG(TaoLineSearch ls, PetscViewer viewer) {
   PetscBool isascii;
 
   PetscFunctionBegin;
@@ -28,8 +26,7 @@ static PetscErrorCode TaoLineSearchView_GPCG(TaoLineSearch ls, PetscViewer viewe
 }
 
 /*------------------------------------------------------------*/
-static PetscErrorCode TaoLineSearchApply_GPCG(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, Vec s)
-{
+static PetscErrorCode TaoLineSearchApply_GPCG(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, Vec s) {
   TaoLineSearch_GPCG *neP = (TaoLineSearch_GPCG *)ls->data;
   PetscInt            i;
   PetscBool           g_computed = PETSC_FALSE; /* to prevent extra gradient computation */
@@ -189,8 +186,7 @@ static PetscErrorCode TaoLineSearchApply_GPCG(TaoLineSearch ls, Vec x, PetscReal
 
 .keywords: Tao, linesearch
 M*/
-PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_GPCG(TaoLineSearch ls)
-{
+PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_GPCG(TaoLineSearch ls) {
   TaoLineSearch_GPCG *neP;
 
   PetscFunctionBegin;
@@ -203,7 +199,7 @@ PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_GPCG(TaoLineSearch ls)
   ls->max_funcs = 30;
   ls->step      = 1.0;
 
-  PetscCall(PetscNew(&neP));
+  PetscCall(PetscNewLog(ls, &neP));
   neP->bracket = 0;
   neP->infoc   = 1;
   ls->data     = (void *)neP;

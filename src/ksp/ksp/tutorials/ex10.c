@@ -21,8 +21,7 @@ typedef enum {
 } RHSType;
 const char *const RHSTypes[] = {"FILE", "ONE", "RANDOM", "RHSType", "RHS_", NULL};
 
-PetscErrorCode CheckResult(KSP *ksp, Mat *A, Vec *b, Vec *x, IS *rowperm)
-{
+PetscErrorCode CheckResult(KSP *ksp, Mat *A, Vec *b, Vec *x, IS *rowperm) {
   PetscReal norm; /* norm of solution error */
   PetscInt  its;
   PetscFunctionBegin;
@@ -44,8 +43,7 @@ PetscErrorCode CheckResult(KSP *ksp, Mat *A, Vec *b, Vec *x, IS *rowperm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode CreateSystem(const char filename[PETSC_MAX_PATH_LEN], RHSType rhstype, MatOrderingType ordering, PetscBool permute, IS *colperm_out, Mat *A_out, Vec *b_out, Vec *x_out)
-{
+PetscErrorCode CreateSystem(const char filename[PETSC_MAX_PATH_LEN], RHSType rhstype, MatOrderingType ordering, PetscBool permute, IS *rowperm_out, Mat *A_out, Vec *b_out, Vec *x_out) {
   Vec                x, b, b2;
   Mat                A;      /* linear system matrix */
   PetscViewer        viewer; /* viewer */
@@ -112,16 +110,16 @@ PetscErrorCode CreateSystem(const char filename[PETSC_MAX_PATH_LEN], RHSType rhs
     Mat Aperm;
     PetscCall(MatGetOrdering(A, ordering, &rowperm, &colperm));
     PetscCall(MatPermute(A, rowperm, colperm, &Aperm));
-    PetscCall(VecPermute(b, rowperm, PETSC_FALSE));
+    PetscCall(VecPermute(b, colperm, PETSC_FALSE));
     PetscCall(MatDestroy(&A));
     A = Aperm; /* Replace original operator with permuted version */
-    PetscCall(ISDestroy(&rowperm));
+    PetscCall(ISDestroy(&colperm));
   }
 
   *b_out       = b;
   *x_out       = x;
   *A_out       = A;
-  *colperm_out = colperm;
+  *rowperm_out = rowperm;
 
   PetscFunctionReturn(0);
 }
@@ -130,15 +128,14 @@ PetscErrorCode CreateSystem(const char filename[PETSC_MAX_PATH_LEN], RHSType rhs
    where we referenced its profiling stages, preloading and output etc.
    When you modify it, please make sure it is still consistent with the manual.
  */
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Vec       x, b;
   Mat       A;   /* linear system matrix */
   KSP       ksp; /* Krylov subspace method context */
   char      file[2][PETSC_MAX_PATH_LEN], ordering[256] = MATORDERINGRCM;
   RHSType   rhstype = RHS_FILE;
   PetscBool flg, preload = PETSC_FALSE, trans = PETSC_FALSE, permute = PETSC_FALSE;
-  IS        colperm = NULL;
+  IS        rowperm = NULL;
 
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &args, (char *)0, help));
@@ -201,7 +198,7 @@ int main(int argc, char **args)
     =========================*/
 
   PetscPreLoadBegin(preload, "Load System 0");
-  PetscCall(CreateSystem(file[0], rhstype, ordering, permute, &colperm, &A, &b, &x));
+  PetscCall(CreateSystem(file[0], rhstype, ordering, permute, &rowperm, &A, &b, &x));
 
   PetscPreLoadStage("KSPSetUp 0");
   PetscCall(KSPCreate(PETSC_COMM_WORLD, &ksp));
@@ -221,9 +218,9 @@ int main(int argc, char **args)
   if (trans) PetscCall(KSPSolveTranspose(ksp, b, x));
   else PetscCall(KSPSolve(ksp, b, x));
 
-  if (permute) PetscCall(VecPermute(x, colperm, PETSC_TRUE));
+  if (permute) PetscCall(VecPermute(x, rowperm, PETSC_TRUE));
 
-  PetscCall(CheckResult(&ksp, &A, &b, &x, &colperm));
+  PetscCall(CheckResult(&ksp, &A, &b, &x, &rowperm));
 
   /*=========================
     solve a large system
@@ -231,7 +228,7 @@ int main(int argc, char **args)
 
   PetscPreLoadStage("Load System 1");
 
-  PetscCall(CreateSystem(file[1], rhstype, ordering, permute, &colperm, &A, &b, &x));
+  PetscCall(CreateSystem(file[1], rhstype, ordering, permute, &rowperm, &A, &b, &x));
 
   PetscPreLoadStage("KSPSetUp 1");
   PetscCall(KSPCreate(PETSC_COMM_WORLD, &ksp));
@@ -251,9 +248,9 @@ int main(int argc, char **args)
   if (trans) PetscCall(KSPSolveTranspose(ksp, b, x));
   else PetscCall(KSPSolve(ksp, b, x));
 
-  if (permute) PetscCall(VecPermute(x, colperm, PETSC_TRUE));
+  if (permute) PetscCall(VecPermute(x, rowperm, PETSC_TRUE));
 
-  PetscCall(CheckResult(&ksp, &A, &b, &x, &colperm));
+  PetscCall(CheckResult(&ksp, &A, &b, &x, &rowperm));
 
   PetscPreLoadEnd();
   /*

@@ -1,8 +1,7 @@
 
 #include <petsc/private/matimpl.h> /*I   "petscmat.h"  I*/
 
-static PetscErrorCode MatMultEqual_Private(Mat A, Mat B, PetscInt n, PetscBool *flg, PetscInt t, PetscBool add)
-{
+static PetscErrorCode MatMultEqual_Private(Mat A, Mat B, PetscInt n, PetscBool *flg, PetscInt t, PetscBool add) {
   Vec         Ax = NULL, Bx = NULL, s1 = NULL, s2 = NULL, Ay = NULL, By = NULL;
   PetscRandom rctx;
   PetscReal   r1, r2, tol = PETSC_SQRT_MACHINE_EPSILON;
@@ -94,8 +93,7 @@ static PetscErrorCode MatMultEqual_Private(Mat A, Mat B, PetscInt n, PetscBool *
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMatMultEqual_Private(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg, PetscBool At, PetscBool Bt)
-{
+static PetscErrorCode MatMatMultEqual_Private(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg, PetscBool At, PetscBool Bt) {
   Vec         Ax, Bx, Cx, s1, s2, s3;
   PetscRandom rctx;
   PetscReal   r1, r2, tol = PETSC_SQRT_MACHINE_EPSILON;
@@ -201,8 +199,7 @@ static PetscErrorCode MatMatMultEqual_Private(Mat A, Mat B, Mat C, PetscInt n, P
    Level: intermediate
 
 @*/
-PetscErrorCode MatMultEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMultEqual(Mat A, Mat B, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMultEqual_Private(A, B, n, flg, 0, PETSC_FALSE));
   PetscFunctionReturn(0);
@@ -224,8 +221,7 @@ PetscErrorCode MatMultEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
    Level: intermediate
 
 @*/
-PetscErrorCode MatMultAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMultAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMultEqual_Private(A, B, n, flg, 0, PETSC_TRUE));
   PetscFunctionReturn(0);
@@ -247,8 +243,7 @@ PetscErrorCode MatMultAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
    Level: intermediate
 
 @*/
-PetscErrorCode MatMultTransposeEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMultTransposeEqual(Mat A, Mat B, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMultEqual_Private(A, B, n, flg, 1, PETSC_FALSE));
   PetscFunctionReturn(0);
@@ -270,8 +265,7 @@ PetscErrorCode MatMultTransposeEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
    Level: intermediate
 
 @*/
-PetscErrorCode MatMultTransposeAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMultTransposeAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMultEqual_Private(A, B, n, flg, 1, PETSC_TRUE));
   PetscFunctionReturn(0);
@@ -293,8 +287,7 @@ PetscErrorCode MatMultTransposeAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg
    Level: intermediate
 
 @*/
-PetscErrorCode MatMultHermitianTransposeEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMultHermitianTransposeEqual(Mat A, Mat B, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMultEqual_Private(A, B, n, flg, 2, PETSC_FALSE));
   PetscFunctionReturn(0);
@@ -316,8 +309,7 @@ PetscErrorCode MatMultHermitianTransposeEqual(Mat A, Mat B, PetscInt n, PetscBoo
    Level: intermediate
 
 @*/
-PetscErrorCode MatMultHermitianTransposeAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMultHermitianTransposeAddEqual(Mat A, Mat B, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMultEqual_Private(A, B, n, flg, 2, PETSC_TRUE));
   PetscFunctionReturn(0);
@@ -340,8 +332,7 @@ PetscErrorCode MatMultHermitianTransposeAddEqual(Mat A, Mat B, PetscInt n, Petsc
    Level: intermediate
 
 @*/
-PetscErrorCode MatMatMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMatMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMatMultEqual_Private(A, B, C, n, flg, PETSC_FALSE, PETSC_FALSE));
   PetscFunctionReturn(0);
@@ -364,8 +355,7 @@ PetscErrorCode MatMatMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
    Level: intermediate
 
 @*/
-PetscErrorCode MatTransposeMatMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatTransposeMatMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMatMultEqual_Private(A, B, C, n, flg, PETSC_TRUE, PETSC_FALSE));
   PetscFunctionReturn(0);
@@ -388,15 +378,13 @@ PetscErrorCode MatTransposeMatMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBo
    Level: intermediate
 
 @*/
-PetscErrorCode MatMatTransposeMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatMatTransposeMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatMatMultEqual_Private(A, B, C, n, flg, PETSC_FALSE, PETSC_TRUE));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatProjMultEqual_Private(Mat A, Mat B, Mat C, PetscInt n, PetscBool rart, PetscBool *flg)
-{
+static PetscErrorCode MatProjMultEqual_Private(Mat A, Mat B, Mat C, PetscInt n, PetscBool rart, PetscBool *flg) {
   Vec         x, v1, v2, v3, v4, Cx, Bx;
   PetscReal   norm_abs, norm_rel, tol = PETSC_SQRT_MACHINE_EPSILON;
   PetscInt    i, am, an, bm, bn, cm, cn;
@@ -487,8 +475,7 @@ static PetscErrorCode MatProjMultEqual_Private(Mat A, Mat B, Mat C, PetscInt n, 
    Level: intermediate
 
 @*/
-PetscErrorCode MatPtAPMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatPtAPMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatProjMultEqual_Private(A, B, C, n, PETSC_FALSE, flg));
   PetscFunctionReturn(0);
@@ -511,8 +498,7 @@ PetscErrorCode MatPtAPMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
    Level: intermediate
 
 @*/
-PetscErrorCode MatRARtMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatRARtMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg) {
   PetscFunctionBegin;
   PetscCall(MatProjMultEqual_Private(A, B, C, n, PETSC_TRUE, flg));
   PetscFunctionReturn(0);
@@ -532,8 +518,7 @@ PetscErrorCode MatRARtMultEqual(Mat A, Mat B, Mat C, PetscInt n, PetscBool *flg)
 
    Level: intermediate
 @*/
-PetscErrorCode MatIsLinear(Mat A, PetscInt n, PetscBool *flg)
-{
+PetscErrorCode MatIsLinear(Mat A, PetscInt n, PetscBool *flg) {
   Vec         x, y, s1, s2;
   PetscRandom rctx;
   PetscScalar a;

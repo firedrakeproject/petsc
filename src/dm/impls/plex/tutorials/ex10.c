@@ -6,8 +6,7 @@ typedef struct {
   PetscBool adapt; /* Flag for adaptation of the surface mesh */
 } AppCtx;
 
-static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscFunctionBeginUser;
   options->adapt = PETSC_FALSE;
 
@@ -17,8 +16,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateDomainLabel(DM dm)
-{
+static PetscErrorCode CreateDomainLabel(DM dm) {
   DMLabel  label;
   PetscInt cStart, cEnd, c;
 
@@ -47,8 +45,7 @@ static PetscErrorCode CreateDomainLabel(DM dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode AdaptMesh(DM *dm, AppCtx *ctx)
-{
+static PetscErrorCode AdaptMesh(DM *dm, AppCtx *ctx) {
   DM              dmCur = *dm;
   DMLabel         label;
   IS              valueIS, vIS;
@@ -143,8 +140,7 @@ static PetscErrorCode AdaptMesh(DM *dm, AppCtx *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm) {
   PetscInt dim;
 
   PetscFunctionBeginUser;
@@ -165,8 +161,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM     dm;
   AppCtx user;
 

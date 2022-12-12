@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 SOURCEC   = index.c isregall.c isreg.c
 SOURCEF   =

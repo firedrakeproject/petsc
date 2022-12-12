@@ -1,11 +1,11 @@
 
 /*
     This file implements flexible BiCGStab (FBiCGStab).
+    Only allow right preconditioning.
 */
 #include <../src/ksp/ksp/impls/bcgs/bcgsimpl.h> /*I  "petscksp.h"  I*/
 
-static PetscErrorCode KSPSetUp_FBCGS(KSP ksp)
-{
+static PetscErrorCode KSPSetUp_FBCGS(KSP ksp) {
   PetscFunctionBegin;
   PetscCall(KSPSetWorkVecs(ksp, 8));
   PetscFunctionReturn(0);
@@ -13,8 +13,7 @@ static PetscErrorCode KSPSetUp_FBCGS(KSP ksp)
 
 /* Only need a few hacks from KSPSolve_BCGS */
 
-static PetscErrorCode KSPSolve_FBCGS(KSP ksp)
-{
+static PetscErrorCode KSPSolve_FBCGS(KSP ksp) {
   PetscInt    i;
   PetscScalar rho, rhoold, alpha, beta, omega, omegaold, d1;
   Vec         X, B, V, P, R, RP, T, S, P2, S2;
@@ -35,6 +34,8 @@ static PetscErrorCode KSPSolve_FBCGS(KSP ksp)
   S2 = ksp->work[6];
   P2 = ksp->work[7];
 
+  /* Only supports right preconditioning */
+  PetscCheck(ksp->pc_side == PC_RIGHT, PetscObjectComm((PetscObject)ksp), PETSC_ERR_SUP, "KSP fbcgs does not support %s", PCSides[ksp->pc_side]);
   if (!ksp->guess_zero) {
     if (!bcgs->guess) PetscCall(VecDuplicate(X, &bcgs->guess));
     PetscCall(VecCopy(X, bcgs->guess));
@@ -147,28 +148,23 @@ static PetscErrorCode KSPSolve_FBCGS(KSP ksp)
 }
 
 /*MC
-     KSPFBCGS - Implements the flexible BiCGStab method. [](sec_flexibleksp)
+     KSPFBCGS - Implements flexible BiCGStab method.
+
+   Options Database Keys:
+    see KSPSolve()
 
    Level: beginner
 
    Notes:
-   Flexible BiCGStab, unlike most Krylov methods allows the preconditioner to be nonlinear, that is the action of the preconditioner to a vector need not be linear
-   in the vector entries.
+    Only allow right preconditioning
 
-   `KSPFBCGSR` provides another variant of this algorithm that requires fewer `MPI_Allreduce()` calls and my converge faster
-
-   See `KSPPIPEBCGS` for a pipelined version of the algorithm
-
-   Only supportst right preconditioning
-
-.seealso: [](chapter_ksp),  [](sec_flexibleksp), `KSPFBCGSR`, `KSPPIPEBCGS`, `KSPBCGSL`, `KSPFBCGS`, `KSPCreate()`, `KSPFGMRES`, `KSPSetType()`, `KSPType`, `KSP`, `KSPBICG`, `KSPFBCGSL`, `KSPSetPCSide()`
+.seealso: `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPBICG`, `KSPFBCGSL`, `KSPSetPCSide()`
 M*/
-PETSC_EXTERN PetscErrorCode KSPCreate_FBCGS(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_FBCGS(KSP ksp) {
   KSP_BCGS *bcgs;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&bcgs));
+  PetscCall(PetscNewLog(ksp, &bcgs));
 
   ksp->data                = bcgs;
   ksp->ops->setup          = KSPSetUp_FBCGS;
@@ -177,9 +173,11 @@ PETSC_EXTERN PetscErrorCode KSPCreate_FBCGS(KSP ksp)
   ksp->ops->reset          = KSPReset_BCGS;
   ksp->ops->buildresidual  = KSPBuildResidualDefault;
   ksp->ops->setfromoptions = KSPSetFromOptions_BCGS;
-  ksp->pc_side             = PC_RIGHT;
+  ksp->pc_side             = PC_RIGHT; /* set default PC side */
 
+  PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_PRECONDITIONED, PC_LEFT, 3));
   PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_UNPRECONDITIONED, PC_RIGHT, 2));
+  PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_NONE, PC_LEFT, 1));
   PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_NONE, PC_RIGHT, 1));
   PetscFunctionReturn(0);
 }

@@ -22,8 +22,7 @@
 
 .seealso: `PetscClassRegLogDestroy()`, `PetscStageLogCreate()`
 @*/
-PetscErrorCode PetscClassRegLogCreate(PetscClassRegLog *classLog)
-{
+PetscErrorCode PetscClassRegLogCreate(PetscClassRegLog *classLog) {
   PetscClassRegLog l;
 
   PetscFunctionBegin;
@@ -53,8 +52,7 @@ PetscErrorCode PetscClassRegLogCreate(PetscClassRegLog *classLog)
 
 .seealso: `PetscClassRegLogCreate()`
 @*/
-PetscErrorCode PetscClassRegLogDestroy(PetscClassRegLog classLog)
-{
+PetscErrorCode PetscClassRegLogDestroy(PetscClassRegLog classLog) {
   int c;
 
   PetscFunctionBegin;
@@ -79,8 +77,7 @@ PetscErrorCode PetscClassRegLogDestroy(PetscClassRegLog classLog)
 
 .seealso: `PetscStageLogDestroy()`, `EventLogDestroy()`
 @*/
-PetscErrorCode PetscClassRegInfoDestroy(PetscClassRegInfo *c)
-{
+PetscErrorCode PetscClassRegInfoDestroy(PetscClassRegInfo *c) {
   PetscFunctionBegin;
   PetscCall(PetscFree(c->name));
   PetscFunctionReturn(0);
@@ -101,8 +98,7 @@ PetscErrorCode PetscClassRegInfoDestroy(PetscClassRegInfo *c)
 
 .seealso: `PetscClassPerfLogDestroy()`, `PetscStageLogCreate()`
 @*/
-PetscErrorCode PetscClassPerfLogCreate(PetscClassPerfLog *classLog)
-{
+PetscErrorCode PetscClassPerfLogCreate(PetscClassPerfLog *classLog) {
   PetscClassPerfLog l;
 
   PetscFunctionBegin;
@@ -132,8 +128,7 @@ PetscErrorCode PetscClassPerfLogCreate(PetscClassPerfLog *classLog)
 
 .seealso: `PetscClassPerfLogCreate()`
 @*/
-PetscErrorCode PetscClassPerfLogDestroy(PetscClassPerfLog classLog)
-{
+PetscErrorCode PetscClassPerfLogDestroy(PetscClassPerfLog classLog) {
   PetscFunctionBegin;
   PetscCall(PetscFree(classLog->classInfo));
   PetscCall(PetscFree(classLog));
@@ -156,8 +151,7 @@ PetscErrorCode PetscClassPerfLogDestroy(PetscClassPerfLog classLog)
 
 .seealso: `PetscClassPerfLogCreate()`
 @*/
-PetscErrorCode PetscClassPerfInfoClear(PetscClassPerfInfo *classInfo)
-{
+PetscErrorCode PetscClassPerfInfoClear(PetscClassPerfInfo *classInfo) {
   PetscFunctionBegin;
   classInfo->id           = -1;
   classInfo->creations    = 0;
@@ -183,8 +177,7 @@ PetscErrorCode PetscClassPerfInfoClear(PetscClassPerfInfo *classInfo)
 
 .seealso: `PetscClassPerfLogCreate()`
 @*/
-PetscErrorCode PetscClassPerfLogEnsureSize(PetscClassPerfLog classLog, int size)
-{
+PetscErrorCode PetscClassPerfLogEnsureSize(PetscClassPerfLog classLog, int size) {
   PetscClassPerfInfo *classInfo;
 
   PetscFunctionBegin;
@@ -220,8 +213,7 @@ PetscErrorCode PetscClassPerfLogEnsureSize(PetscClassPerfLog classLog, int size)
 
 .seealso: `PetscClassIdRegister()`
 @*/
-PetscErrorCode PetscClassRegLogRegister(PetscClassRegLog classLog, const char cname[], PetscClassId classid)
-{
+PetscErrorCode PetscClassRegLogRegister(PetscClassRegLog classLog, const char cname[], PetscClassId classid) {
   PetscClassRegInfo *classInfo;
   char              *str;
   int                c;
@@ -264,8 +256,7 @@ PetscErrorCode PetscClassRegLogRegister(PetscClassRegLog classLog, const char cn
 
 .seealso: `PetscClassIdRegister()`, `PetscLogObjCreateDefault()`, `PetscLogObjDestroyDefault()`
 @*/
-PetscErrorCode PetscClassRegLogGetClass(PetscClassRegLog classLog, PetscClassId classid, int *oclass)
-{
+PetscErrorCode PetscClassRegLogGetClass(PetscClassRegLog classLog, PetscClassId classid, int *oclass) {
   int c;
 
   PetscFunctionBegin;
@@ -281,8 +272,7 @@ PetscErrorCode PetscClassRegLogGetClass(PetscClassRegLog classLog, PetscClassId 
 
 /*----------------------------------------------- Logging Functions -------------------------------------------------*/
 /* Default object create logger */
-PetscErrorCode PetscLogObjCreateDefault(PetscObject obj)
-{
+PetscErrorCode PetscLogObjCreateDefault(PetscObject obj) {
   PetscStageLog     stageLog;
   PetscClassRegLog  classRegLog;
   PetscClassPerfLog classPerfLog;
@@ -354,8 +344,7 @@ PetscErrorCode PetscLogObjCreateDefault(PetscObject obj)
 }
 
 /* Default object destroy logger */
-PetscErrorCode PetscLogObjDestroyDefault(PetscObject obj)
-{
+PetscErrorCode PetscLogObjDestroyDefault(PetscObject obj) {
   PetscStageLog     stageLog;
   PetscClassRegLog  classRegLog;
   PetscClassPerfLog classPerfLog;
@@ -374,6 +363,7 @@ PetscErrorCode PetscLogObjDestroyDefault(PetscObject obj)
     PetscCall(PetscStageLogGetClassPerfLog(stageLog, stage, &classPerfLog));
     PetscCall(PetscClassRegLogGetClass(classRegLog, obj->classid, &oclass));
     classPerfLog->classInfo[oclass].destructions++;
+    classPerfLog->classInfo[oclass].mem += obj->mem;
   }
   /* Cannot Credit all ancestors with your memory because they may have already been destroyed*/
   petsc_numObjectsDestroyed++;
@@ -407,6 +397,7 @@ PetscErrorCode PetscLogObjDestroyDefault(PetscObject obj)
   if (petsc_logObjects) {
     if (obj->name) PetscCall(PetscStrncpy(petsc_objects[obj->id].name, obj->name, 64));
     petsc_objects[obj->id].obj = NULL;
+    petsc_objects[obj->id].mem = obj->mem;
   }
   PetscFunctionReturn(0);
 }

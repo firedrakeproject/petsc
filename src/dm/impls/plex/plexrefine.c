@@ -5,24 +5,23 @@
 #include <petscsf.h>
 
 /*@
-  DMPlexCreateProcessSF - Create an `PetscSF` which just has process connectivity
+  DMPlexCreateProcessSF - Create an SF which just has process connectivity
 
   Collective on dm
 
   Input Parameters:
-+ dm      - The `DM`
-- sfPoint - The `PetscSF` which encodes point connectivity
++ dm      - The DM
+- sfPoint - The PetscSF which encodes point connectivity
 
   Output Parameters:
 + processRanks - A list of process neighbors, or NULL
-- sfProcess    - An `PetscSF` encoding the process connectivity, or NULL
+- sfProcess    - An SF encoding the process connectivity, or NULL
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `PetscSF`, `PetscSFCreate()`, `DMPlexCreateTwoSidedProcessSF()`
+.seealso: `PetscSFCreate()`, `DMPlexCreateTwoSidedProcessSF()`
 @*/
-PetscErrorCode DMPlexCreateProcessSF(DM dm, PetscSF sfPoint, IS *processRanks, PetscSF *sfProcess)
-{
+PetscErrorCode DMPlexCreateProcessSF(DM dm, PetscSF sfPoint, IS *processRanks, PetscSF *sfProcess) {
   PetscInt           numRoots, numLeaves, l;
   const PetscInt    *localPoints;
   const PetscSFNode *remotePoints;
@@ -63,22 +62,21 @@ PetscErrorCode DMPlexCreateProcessSF(DM dm, PetscSF sfPoint, IS *processRanks, P
 }
 
 /*@
-  DMPlexCreateCoarsePointIS - Creates an `IS` covering the coarse `DM` chart with the fine points as data
+  DMPlexCreateCoarsePointIS - Creates an IS covering the coarse DM chart with the fine points as data
 
   Collective on dm
 
   Input Parameter:
-. dm - The coarse `DM`
+. dm - The coarse DM
 
   Output Parameter:
-. fpointIS - The `IS` of all the fine points which exist in the original coarse mesh
+. fpointIS - The IS of all the fine points which exist in the original coarse mesh
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `IS`, `DMRefine()`, `DMPlexSetRefinementUniform()`, `DMPlexGetSubpointIS()`
+.seealso: `DMRefine()`, `DMPlexSetRefinementUniform()`, `DMPlexGetSubpointIS()`
 @*/
-PetscErrorCode DMPlexCreateCoarsePointIS(DM dm, IS *fpointIS)
-{
+PetscErrorCode DMPlexCreateCoarsePointIS(DM dm, IS *fpointIS) {
   DMPlexTransform tr;
   PetscInt       *fpoints;
   PetscInt        pStart, pEnd, p, vStart, vEnd, v;
@@ -105,15 +103,14 @@ PetscErrorCode DMPlexCreateCoarsePointIS(DM dm, IS *fpointIS)
   DMPlexSetTransformType - Set the transform type for uniform refinement
 
   Input Parameters:
-+ dm - The `DM`
++ dm - The DM
 - type - The transform type for uniform refinement
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMPlexTransformType`, `DMRefine()`, `DMPlexGetTransformType()`, `DMPlexSetRefinementUniform()`
+.seealso: `DMPlexTransformType`, `DMRefine()`, `DMPlexGetTransformType()`, `DMPlexSetRefinementUniform()`
 @*/
-PetscErrorCode DMPlexSetTransformType(DM dm, DMPlexTransformType type)
-{
+PetscErrorCode DMPlexSetTransformType(DM dm, DMPlexTransformType type) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -128,17 +125,16 @@ PetscErrorCode DMPlexSetTransformType(DM dm, DMPlexTransformType type)
   DMPlexGetTransformType - Retrieve the transform type for uniform refinement
 
   Input Parameter:
-. dm - The `DM`
+. dm - The DM
 
   Output Parameter:
 . type - The transform type for uniform refinement
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMPlexTransformType`, `DMRefine()`, `DMPlexSetTransformType()`, `DMPlexGetRefinementUniform()`
+.seealso: `DMPlexTransformType`, `DMRefine()`, `DMPlexSetTransformType()`, `DMPlexGetRefinementUniform()`
 @*/
-PetscErrorCode DMPlexGetTransformType(DM dm, DMPlexTransformType *type)
-{
+PetscErrorCode DMPlexGetTransformType(DM dm, DMPlexTransformType *type) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -152,15 +148,14 @@ PetscErrorCode DMPlexGetTransformType(DM dm, DMPlexTransformType *type)
   DMPlexSetRefinementUniform - Set the flag for uniform refinement
 
   Input Parameters:
-+ dm - The `DM`
++ dm - The DM
 - refinementUniform - The flag for uniform refinement
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMRefine()`, `DMPlexGetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
+.seealso: `DMRefine()`, `DMPlexGetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
 @*/
-PetscErrorCode DMPlexSetRefinementUniform(DM dm, PetscBool refinementUniform)
-{
+PetscErrorCode DMPlexSetRefinementUniform(DM dm, PetscBool refinementUniform) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -173,17 +168,16 @@ PetscErrorCode DMPlexSetRefinementUniform(DM dm, PetscBool refinementUniform)
   DMPlexGetRefinementUniform - Retrieve the flag for uniform refinement
 
   Input Parameter:
-. dm - The `DM`
+. dm - The DM
 
   Output Parameter:
 . refinementUniform - The flag for uniform refinement
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMRefine()`, `DMPlexSetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
+.seealso: `DMRefine()`, `DMPlexSetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
 @*/
-PetscErrorCode DMPlexGetRefinementUniform(DM dm, PetscBool *refinementUniform)
-{
+PetscErrorCode DMPlexGetRefinementUniform(DM dm, PetscBool *refinementUniform) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -197,15 +191,14 @@ PetscErrorCode DMPlexGetRefinementUniform(DM dm, PetscBool *refinementUniform)
   DMPlexSetRefinementLimit - Set the maximum cell volume for refinement
 
   Input Parameters:
-+ dm - The `DM`
++ dm - The DM
 - refinementLimit - The maximum cell volume in the refined mesh
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMRefine()`, `DMPlexGetRefinementLimit()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`
+.seealso: `DMRefine()`, `DMPlexGetRefinementLimit()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`
 @*/
-PetscErrorCode DMPlexSetRefinementLimit(DM dm, PetscReal refinementLimit)
-{
+PetscErrorCode DMPlexSetRefinementLimit(DM dm, PetscReal refinementLimit) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -218,17 +211,16 @@ PetscErrorCode DMPlexSetRefinementLimit(DM dm, PetscReal refinementLimit)
   DMPlexGetRefinementLimit - Retrieve the maximum cell volume for refinement
 
   Input Parameter:
-. dm - The `DM`
+. dm - The DM
 
   Output Parameter:
 . refinementLimit - The maximum cell volume in the refined mesh
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMRefine()`, `DMPlexSetRefinementLimit()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`
+.seealso: `DMRefine()`, `DMPlexSetRefinementLimit()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`
 @*/
-PetscErrorCode DMPlexGetRefinementLimit(DM dm, PetscReal *refinementLimit)
-{
+PetscErrorCode DMPlexGetRefinementLimit(DM dm, PetscReal *refinementLimit) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -243,20 +235,18 @@ PetscErrorCode DMPlexGetRefinementLimit(DM dm, PetscReal *refinementLimit)
   DMPlexSetRefinementFunction - Set the function giving the maximum cell volume for refinement
 
   Input Parameters:
-+ dm - The `DM`
++ dm - The DM
 - refinementFunc - Function giving the maximum cell volume in the refined mesh
 
-  Calling Sequence of refinementFunc:
-$ refinementFunc(coords, limit)
-+ coords - Coordinates of the current point, usually a cell centroid
-- limit  - The maximum cell volume for a cell containing this point
+  Note: The calling sequence is refinementFunc(coords, limit)
+$ coords - Coordinates of the current point, usually a cell centroid
+$ limit  - The maximum cell volume for a cell containing this point
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMRefine()`, `DMPlexGetRefinementFunction()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
+.seealso: `DMRefine()`, `DMPlexGetRefinementFunction()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
 @*/
-PetscErrorCode DMPlexSetRefinementFunction(DM dm, PetscErrorCode (*refinementFunc)(const PetscReal[], PetscReal *))
-{
+PetscErrorCode DMPlexSetRefinementFunction(DM dm, PetscErrorCode (*refinementFunc)(const PetscReal[], PetscReal *)) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -274,17 +264,15 @@ PetscErrorCode DMPlexSetRefinementFunction(DM dm, PetscErrorCode (*refinementFun
   Output Parameter:
 . refinementFunc - Function giving the maximum cell volume in the refined mesh
 
-  Calling Sequence of refinementFunc:
-$  refinementFunc(coords, limit)
-+ coords - Coordinates of the current point, usually a cell centroid
-- limit  - The maximum cell volume for a cell containing this point
+  Note: The calling sequence is refinementFunc(coords, limit)
+$ coords - Coordinates of the current point, usually a cell centroid
+$ limit  - The maximum cell volume for a cell containing this point
 
   Level: developer
 
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMRefine()`, `DMPlexSetRefinementFunction()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
+.seealso: `DMRefine()`, `DMPlexSetRefinementFunction()`, `DMPlexGetRefinementUniform()`, `DMPlexSetRefinementUniform()`, `DMPlexGetRefinementLimit()`, `DMPlexSetRefinementLimit()`
 @*/
-PetscErrorCode DMPlexGetRefinementFunction(DM dm, PetscErrorCode (**refinementFunc)(const PetscReal[], PetscReal *))
-{
+PetscErrorCode DMPlexGetRefinementFunction(DM dm, PetscErrorCode (**refinementFunc)(const PetscReal[], PetscReal *)) {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
   PetscFunctionBegin;
@@ -294,8 +282,7 @@ PetscErrorCode DMPlexGetRefinementFunction(DM dm, PetscErrorCode (**refinementFu
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm)
-{
+PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm) {
   PetscBool isUniform;
 
   PetscFunctionBegin;
@@ -339,8 +326,7 @@ PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMRefineHierarchy_Plex(DM dm, PetscInt nlevels, DM rdm[])
-{
+PetscErrorCode DMRefineHierarchy_Plex(DM dm, PetscInt nlevels, DM rdm[]) {
   DM        cdm = dm;
   PetscInt  r;
   PetscBool isUniform, localized;

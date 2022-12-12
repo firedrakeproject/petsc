@@ -1,6 +1,6 @@
 -include ../../../../../petscdir.mk
 
-DIRS     = cuda hip
+DIRS     = cuda
 SOURCEC  = dense.c densehdf5.c
 SOURCEF  =
 SOURCEH  = dense.h

@@ -87,8 +87,7 @@
  end
 */
 
-PetscErrorCode TaoSolve_BNLS(Tao tao)
-{
+PetscErrorCode TaoSolve_BNLS(Tao tao) {
   TAO_BNK                     *bnk = (TAO_BNK *)tao->data;
   KSPConvergedReason           ksp_reason;
   TaoLineSearchConvergedReason ls_reason;
@@ -184,8 +183,7 @@ PetscErrorCode TaoSolve_BNLS(Tao tao)
 
   Level: beginner
 M*/
-PETSC_EXTERN PetscErrorCode TaoCreate_BNLS(Tao tao)
-{
+PETSC_EXTERN PetscErrorCode TaoCreate_BNLS(Tao tao) {
   TAO_BNK *bnk;
 
   PetscFunctionBegin;

@@ -2,8 +2,7 @@
 #include <petsctao.h> /*I "petsctao.h" I*/
 #include <petscsys.h>
 
-static inline PetscReal Fischer(PetscReal a, PetscReal b)
-{
+static inline PetscReal Fischer(PetscReal a, PetscReal b) {
   /* Method suggested by Bob Vanderbei */
   if (a + b <= 0) return PetscSqrtReal(a * a + b * b) - (a + b);
   return -2.0 * a * b / (PetscSqrtReal(a * a + b * b) + (a + b));
@@ -13,7 +12,7 @@ static inline PetscReal Fischer(PetscReal a, PetscReal b)
    VecFischer - Evaluates the Fischer-Burmeister function for complementarity
    problems.
 
-   Logically Collective on X
+   Logically Collective on vectors
 
    Input Parameters:
 +  X - current point
@@ -39,10 +38,8 @@ $        phi(a,b) := sqrt(a*a + b*b) - a - b
 
    Level: developer
 
-.seealso: `Vec`, `VecSFischer()`, `MatDFischer()`, `MatDSFischer()`
 @*/
-PetscErrorCode VecFischer(Vec X, Vec F, Vec L, Vec U, Vec FB)
-{
+PetscErrorCode VecFischer(Vec X, Vec F, Vec L, Vec U, Vec FB) {
   const PetscScalar *x, *f, *l, *u;
   PetscScalar       *fb;
   PetscReal          xval, fval, lval, uval;
@@ -104,8 +101,7 @@ PetscErrorCode VecFischer(Vec X, Vec F, Vec L, Vec U, Vec FB)
   PetscFunctionReturn(0);
 }
 
-static inline PetscReal SFischer(PetscReal a, PetscReal b, PetscReal c)
-{
+static inline PetscReal SFischer(PetscReal a, PetscReal b, PetscReal c) {
   /* Method suggested by Bob Vanderbei */
   if (a + b <= 0) return PetscSqrtReal(a * a + b * b + 2.0 * c * c) - (a + b);
   return 2.0 * (c * c - a * b) / (PetscSqrtReal(a * a + b * b + 2.0 * c * c) + (a + b));
@@ -115,7 +111,7 @@ static inline PetscReal SFischer(PetscReal a, PetscReal b, PetscReal c)
    VecSFischer - Evaluates the Smoothed Fischer-Burmeister function for
    complementarity problems.
 
-   Logically Collective on X
+   Logically Collective on vectors
 
    Input Parameters:
 +  X - current point
@@ -142,10 +138,9 @@ $        phi(a,b) := sqrt(a*a + b*b + 2*mu*mu) - a - b
 
    Level: developer
 
-.seealso: `Vec`, `VecFischer()`, `MatDFischer()`, `MatDSFischer()`
+.seealso `VecFischer()`
 @*/
-PetscErrorCode VecSFischer(Vec X, Vec F, Vec L, Vec U, PetscReal mu, Vec FB)
-{
+PetscErrorCode VecSFischer(Vec X, Vec F, Vec L, Vec U, PetscReal mu, Vec FB) {
   const PetscScalar *x, *f, *l, *u;
   PetscScalar       *fb;
   PetscReal          xval, fval, lval, uval;
@@ -207,13 +202,11 @@ PetscErrorCode VecSFischer(Vec X, Vec F, Vec L, Vec U, PetscReal mu, Vec FB)
   PetscFunctionReturn(0);
 }
 
-static inline PetscReal fischnorm(PetscReal a, PetscReal b)
-{
+static inline PetscReal fischnorm(PetscReal a, PetscReal b) {
   return PetscSqrtReal(a * a + b * b);
 }
 
-static inline PetscReal fischsnorm(PetscReal a, PetscReal b, PetscReal c)
-{
+static inline PetscReal fischsnorm(PetscReal a, PetscReal b, PetscReal c) {
   return PetscSqrtReal(a * a + b * b + 2.0 * c * c);
 }
 
@@ -238,10 +231,9 @@ static inline PetscReal fischsnorm(PetscReal a, PetscReal b, PetscReal c)
 
    Level: developer
 
-.seealso: `Mat`, `VecFischer()`, `VecSFischer()`, `MatDSFischer()`
+.seealso: `VecFischer()`
 @*/
-PetscErrorCode MatDFischer(Mat jac, Vec X, Vec Con, Vec XL, Vec XU, Vec T1, Vec T2, Vec Da, Vec Db)
-{
+PetscErrorCode MatDFischer(Mat jac, Vec X, Vec Con, Vec XL, Vec XU, Vec T1, Vec T2, Vec Da, Vec Db) {
   PetscInt           i, nn;
   const PetscScalar *x, *f, *l, *u, *t2;
   PetscScalar       *da, *db, *t1;
@@ -384,10 +376,9 @@ PetscErrorCode MatDFischer(Mat jac, Vec X, Vec Con, Vec XL, Vec XU, Vec T1, Vec 
 
    Level: developer
 
-.seealso: `Mat`, `VecFischer()`, `VecDFischer()`, `MatDFischer()`
+.seealso `MatDFischer()`
 @*/
-PetscErrorCode MatDSFischer(Mat jac, Vec X, Vec Con, Vec XL, Vec XU, PetscReal mu, Vec T1, Vec T2, Vec Da, Vec Db, Vec Dm)
-{
+PetscErrorCode MatDSFischer(Mat jac, Vec X, Vec Con, Vec XL, Vec XU, PetscReal mu, Vec T1, Vec T2, Vec Da, Vec Db, Vec Dm) {
   PetscInt           i, nn;
   const PetscScalar *x, *f, *l, *u;
   PetscScalar       *da, *db, *dm;
@@ -466,18 +457,15 @@ PetscErrorCode MatDSFischer(Mat jac, Vec X, Vec Con, Vec XL, Vec XU, PetscReal m
   PetscFunctionReturn(0);
 }
 
-static inline PetscReal ST_InternalPN(PetscScalar in, PetscReal lb, PetscReal ub)
-{
+static inline PetscReal ST_InternalPN(PetscScalar in, PetscReal lb, PetscReal ub) {
   return PetscMax(0, (PetscReal)PetscRealPart(in) - ub) - PetscMax(0, -(PetscReal)PetscRealPart(in) - PetscAbsReal(lb));
 }
 
-static inline PetscReal ST_InternalNN(PetscScalar in, PetscReal lb, PetscReal ub)
-{
+static inline PetscReal ST_InternalNN(PetscScalar in, PetscReal lb, PetscReal ub) {
   return PetscMax(0, (PetscReal)PetscRealPart(in) + PetscAbsReal(ub)) - PetscMax(0, -(PetscReal)PetscRealPart(in) - PetscAbsReal(lb));
 }
 
-static inline PetscReal ST_InternalPP(PetscScalar in, PetscReal lb, PetscReal ub)
-{
+static inline PetscReal ST_InternalPP(PetscScalar in, PetscReal lb, PetscReal ub) {
   return PetscMax(0, (PetscReal)PetscRealPart(in) - ub) + PetscMin(0, (PetscReal)PetscRealPart(in) - lb);
 }
 
@@ -504,10 +492,8 @@ static inline PetscReal ST_InternalPP(PetscScalar in, PetscReal lb, PetscReal ub
 
    Level: developer
 
-.seealso: `Tao`, `Vec`
 @*/
-PetscErrorCode TaoSoftThreshold(Vec in, PetscReal lb, PetscReal ub, Vec out)
-{
+PetscErrorCode TaoSoftThreshold(Vec in, PetscReal lb, PetscReal ub, Vec out) {
   PetscInt     i, nlocal, mlocal;
   PetscScalar *inarray, *outarray;
 

@@ -1,8 +1,6 @@
 !
 !
 !  Include file for Fortran use of the Mat package in PETSc
-!  Portions of this code are under:
-!  Copyright (c) 2022 Advanced Micro Devices, Inc. All rights reserved.
 !
 #if !defined (PETSCMATDEF_H)
 #define PETSCMATDEF_H
@@ -96,9 +94,6 @@
 #define MATAIJCUSPARSE     'aijcusparse'
 #define MATSEQAIJCUSPARSE  'seqaijcusparse'
 #define MATMPIAIJCUSPARSE  'mpiaijcusparse'
-#define MATAIJHIPSPARSE    'aijhipsparse'
-#define MATSEQAIJHIPSPARSE 'seqaijhipsparse'
-#define MATMPIAIJHIPSPARSE 'mpiaijhipsparse'
 #define MATAIJKOKKOS       'aijkokkos'
 #define MATSEQAIJKOKKOS    'seqaijkokkos'
 #define MATMPIAIJKOKKOS    'mpiaijkokkos'
@@ -121,13 +116,10 @@
 #define MATCENTERING       'centering'
 #define MATDENSE           'dense'
 #define MATDENSECUDA       'densecuda'
-#define MATDENSEHIP        'densehip'
 #define MATSEQDENSE        'seqdense'
 #define MATSEQDENSECUDA    'seqdensecuda'
-#define MATSEQDENSEHIP     'seqdensehip'
 #define MATMPIDENSE        'mpidense'
 #define MATMPIDENSECUDA    'mpidensecuda'
-#define MATMPIDENSEHIP     'mpidensehip'
 #define MATELEMENTAL       'elemental'
 #define MATSCALAPACK       'scalapack'
 #define MATBAIJ            'baij'
@@ -205,9 +197,6 @@
 #define MATSOLVERCUSPARSE        'cusparse'
 #define MATSOLVERCUSPARSEBAND    'cusparseband'
 #define MATSOLVERCUDA            'cuda'
-#define MATSOLVERHIPSPARSE       'hipsparse'
-#define MATSOLVERHIPSPARSEBAND   'hipsparseband'
-#define MATSOLVERHIP             'hip'
 #define MATSOLVERKOKKOS          'kokkos'
 #define MATSOLVERKOKKOSDEVICE    'kokkosdevice'
 #define MATSOLVERSPQR            'spqr'
@@ -217,12 +206,6 @@
 !
 #define MatCUSPARSEStorageFormat PetscEnum
 #define MatCUSPARSEFormatOperation PetscEnum
-
-!
-! GPU Storage Formats for HIPSPARSE
-!
-#define MatHIPSPARSEStorageFormat PetscEnum
-#define MatHIPSPARSEFormatOperation PetscEnum
 
 !
 ! sparsity reducing ordering for STRUMPACK

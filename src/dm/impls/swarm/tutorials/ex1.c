@@ -5,8 +5,7 @@ static char help[] = "Example program demonstrating projection between particle 
 #include "petscdmswarm.h"
 #include "petscksp.h"
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM            dm, sw;
   PetscFE       fe;
   KSP           ksp;

@@ -1,4 +1,4 @@
--include ../../../petscdir.mk
+-include ../../../petsckdir.mk
 
 SOURCEC  = ts.c tscreate.c tsreg.c tsregall.c dlregists.c tseig.c tsrhssplit.c tshistory.c tsmon.c
 SOURCEF  =

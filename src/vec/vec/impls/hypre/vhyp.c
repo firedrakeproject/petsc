@@ -7,8 +7,7 @@
 #include <../src/vec/vec/impls/hypre/vhyp.h>
 #include <HYPRE.h>
 
-PetscErrorCode VecHYPRE_IJVectorCreate(PetscLayout map, VecHYPRE_IJVector *ij)
-{
+PetscErrorCode VecHYPRE_IJVectorCreate(PetscLayout map, VecHYPRE_IJVector *ij) {
   VecHYPRE_IJVector nij;
 
   PetscFunctionBegin;
@@ -26,8 +25,7 @@ PetscErrorCode VecHYPRE_IJVectorCreate(PetscLayout map, VecHYPRE_IJVector *ij)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode VecHYPRE_IJVectorDestroy(VecHYPRE_IJVector *ij)
-{
+PetscErrorCode VecHYPRE_IJVectorDestroy(VecHYPRE_IJVector *ij) {
   PetscFunctionBegin;
   if (!*ij) PetscFunctionReturn(0);
   PetscCheck(!(*ij)->pvec, PetscObjectComm((PetscObject)((*ij)->pvec)), PETSC_ERR_ORDER, "Forgot to call VecHYPRE_IJVectorPopVec()");
@@ -36,8 +34,7 @@ PetscErrorCode VecHYPRE_IJVectorDestroy(VecHYPRE_IJVector *ij)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode VecHYPRE_IJVectorCopy(Vec v, VecHYPRE_IJVector ij)
-{
+PetscErrorCode VecHYPRE_IJVectorCopy(Vec v, VecHYPRE_IJVector ij) {
   const PetscScalar *array;
 
   PetscFunctionBegin;
@@ -73,8 +70,7 @@ PetscErrorCode VecHYPRE_IJVectorCopy(Vec v, VecHYPRE_IJVector ij)
    - the function returns a pointer to the data (ptr) and the corresponding restore
   Could be extended to VECKOKKOS if we had a way to access the raw pointer to device data.
 */
-static inline PetscErrorCode VecGetArrayForHYPRE(Vec v, int rw, HYPRE_MemoryLocation hmem, PetscScalar **ptr, PetscErrorCode (**res)(Vec, PetscScalar **))
-{
+static inline PetscErrorCode VecGetArrayForHYPRE(Vec v, int rw, HYPRE_MemoryLocation hmem, PetscScalar **ptr, PetscErrorCode (**res)(Vec, PetscScalar **)) {
   PetscMemType mtype;
   MPI_Comm     comm;
 
@@ -116,8 +112,7 @@ static inline PetscErrorCode VecGetArrayForHYPRE(Vec v, int rw, HYPRE_MemoryLoca
       *res = VecRestoreArrayAndMemType;
     }
     break;
-  default:
-    SETERRQ(comm, PETSC_ERR_SUP, "Unhandled case %d", rw);
+  default: SETERRQ(comm, PETSC_ERR_SUP, "Unhandled case %d", rw);
   }
   PetscFunctionReturn(0);
 }
@@ -127,8 +122,7 @@ static inline PetscErrorCode VecGetArrayForHYPRE(Vec v, int rw, HYPRE_MemoryLoca
 /* Temporarily pushes the array of the data in v to ij (read access)
    depending on the value of the ij memory location
    Must be completed with a call to VecHYPRE_IJVectorPopVec */
-PetscErrorCode VecHYPRE_IJVectorPushVecRead(VecHYPRE_IJVector ij, Vec v)
-{
+PetscErrorCode VecHYPRE_IJVectorPushVecRead(VecHYPRE_IJVector ij, Vec v) {
   HYPRE_Complex *pv;
 
   PetscFunctionBegin;
@@ -144,8 +138,7 @@ PetscErrorCode VecHYPRE_IJVectorPushVecRead(VecHYPRE_IJVector ij, Vec v)
 /* Temporarily pushes the array of the data in v to ij (write access)
    depending on the value of the ij memory location
    Must be completed with a call to VecHYPRE_IJVectorPopVec */
-PetscErrorCode VecHYPRE_IJVectorPushVecWrite(VecHYPRE_IJVector ij, Vec v)
-{
+PetscErrorCode VecHYPRE_IJVectorPushVecWrite(VecHYPRE_IJVector ij, Vec v) {
   HYPRE_Complex *pv;
 
   PetscFunctionBegin;
@@ -161,8 +154,7 @@ PetscErrorCode VecHYPRE_IJVectorPushVecWrite(VecHYPRE_IJVector ij, Vec v)
 /* Temporarily pushes the array of the data in v to ij (read/write access)
    depending on the value of the ij memory location
    Must be completed with a call to VecHYPRE_IJVectorPopVec */
-PetscErrorCode VecHYPRE_IJVectorPushVec(VecHYPRE_IJVector ij, Vec v)
-{
+PetscErrorCode VecHYPRE_IJVectorPushVec(VecHYPRE_IJVector ij, Vec v) {
   HYPRE_Complex *pv;
 
   PetscFunctionBegin;
@@ -176,8 +168,7 @@ PetscErrorCode VecHYPRE_IJVectorPushVec(VecHYPRE_IJVector ij, Vec v)
 }
 
 /* Restores the pointer data to v */
-PetscErrorCode VecHYPRE_IJVectorPopVec(VecHYPRE_IJVector ij)
-{
+PetscErrorCode VecHYPRE_IJVectorPopVec(VecHYPRE_IJVector ij) {
   HYPRE_Complex *pv;
 
   PetscFunctionBegin;
@@ -191,8 +182,7 @@ PetscErrorCode VecHYPRE_IJVectorPopVec(VecHYPRE_IJVector ij)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode VecHYPRE_IJBindToCPU(VecHYPRE_IJVector ij, PetscBool bind)
-{
+PetscErrorCode VecHYPRE_IJBindToCPU(VecHYPRE_IJVector ij, PetscBool bind) {
   HYPRE_MemoryLocation hmem = bind ? HYPRE_MEMORY_HOST : HYPRE_MEMORY_DEVICE;
   hypre_ParVector     *hij;
 

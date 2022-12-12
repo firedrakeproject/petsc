@@ -130,8 +130,7 @@ typedef struct {
   PetscBool shell;                     /* Use DMShell to wrap sections */
 } AppCtx;
 
-PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscBool flg;
 
   PetscFunctionBegin;
@@ -143,8 +142,7 @@ PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   MPI_Comm          comm;
   PetscMPIInt       size, rank, mycolor;
   const char        exampleDMPlexName[]    = "exampleDMPlex";
@@ -280,8 +278,7 @@ int main(int argc, char **argv)
       PetscCall(VecGetArrayWrite(vec, &array));
       if (includesConstraints) {
         switch (rank) {
-        case 0:
-          break;
+        case 0: break;
         case 1:
           array[0] = 1.0;
           array[1] = 1.1;
@@ -295,8 +292,7 @@ int main(int argc, char **argv)
         }
       } else {
         switch (rank) {
-        case 0:
-          break;
+        case 0: break;
         case 1:
           array[0] = 1.0;
           array[1] = 1.1;

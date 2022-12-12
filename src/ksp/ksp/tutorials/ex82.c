@@ -2,8 +2,7 @@
 
 static char help[] = "Solves a linear system using PCHPDDM and MATHTOOL.\n\n";
 
-static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx)
-{
+static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx) {
   PetscInt  d, j, k;
   PetscReal diff = 0.0, *coords = (PetscReal *)(ctx);
 
@@ -24,8 +23,7 @@ static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const Pe
 #endif
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   KSP            ksp;
   PC             pc;
   Vec            b, x;

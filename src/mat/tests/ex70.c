@@ -4,8 +4,7 @@ static char help[] = "Tests MatMat operations with MAT_REUSE_MATRIX and already 
 
 static PetscScalar MAGIC_NUMBER = 12345;
 
-static PetscErrorCode CheckLocal(Mat A, Mat B, PetscScalar *a, PetscScalar *b)
-{
+static PetscErrorCode CheckLocal(Mat A, Mat B, PetscScalar *a, PetscScalar *b) {
   PetscBool wA = PETSC_FALSE, wB = PETSC_FALSE;
   PetscBool wAv = PETSC_FALSE, wBv = PETSC_FALSE;
   PetscInt  lda, i, j, m, n;
@@ -48,8 +47,7 @@ typedef struct {
   Mat R;
 } proj_data;
 
-PetscErrorCode proj_destroy(void *ctx)
-{
+PetscErrorCode proj_destroy(void *ctx) {
   proj_data *userdata = (proj_data *)ctx;
 
   PetscFunctionBegin;
@@ -61,8 +59,7 @@ PetscErrorCode proj_destroy(void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode proj_mult(Mat S, Vec X, Vec Y)
-{
+PetscErrorCode proj_mult(Mat S, Vec X, Vec Y) {
   Mat        A, R, P;
   Vec        Ax, Ay;
   Vec        Px, Py;
@@ -105,8 +102,7 @@ PetscErrorCode proj_mult(Mat S, Vec X, Vec Y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyPtShellPMultSymbolic(Mat S, Mat P, Mat PtAP, void **ctx)
-{
+PetscErrorCode MyPtShellPMultSymbolic(Mat S, Mat P, Mat PtAP, void **ctx) {
   proj_data *userdata;
 
   PetscFunctionBegin;
@@ -116,8 +112,7 @@ PetscErrorCode MyPtShellPMultSymbolic(Mat S, Mat P, Mat PtAP, void **ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyPtShellPMultNumeric(Mat S, Mat P, Mat PtAP, void *ctx)
-{
+PetscErrorCode MyPtShellPMultNumeric(Mat S, Mat P, Mat PtAP, void *ctx) {
   Mat        A;
   proj_data *userdata = (proj_data *)ctx;
 
@@ -137,8 +132,7 @@ PetscErrorCode MyPtShellPMultNumeric(Mat S, Mat P, Mat PtAP, void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyRShellRtMultSymbolic(Mat S, Mat R, Mat RARt, void **ctx)
-{
+PetscErrorCode MyRShellRtMultSymbolic(Mat S, Mat R, Mat RARt, void **ctx) {
   proj_data *userdata;
 
   PetscFunctionBegin;
@@ -148,8 +142,7 @@ PetscErrorCode MyRShellRtMultSymbolic(Mat S, Mat R, Mat RARt, void **ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyRShellRtMultNumeric(Mat S, Mat R, Mat RARt, void *ctx)
-{
+PetscErrorCode MyRShellRtMultNumeric(Mat S, Mat R, Mat RARt, void *ctx) {
   Mat        A;
   proj_data *userdata = (proj_data *)ctx;
 
@@ -169,8 +162,7 @@ PetscErrorCode MyRShellRtMultNumeric(Mat S, Mat R, Mat RARt, void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyMatShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
-{
+PetscErrorCode MyMatShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx) {
   Mat A;
 
   PetscFunctionBegin;
@@ -179,8 +171,7 @@ PetscErrorCode MyMatShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyMatTransposeShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
-{
+PetscErrorCode MyMatTransposeShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx) {
   Mat A;
 
   PetscFunctionBegin;
@@ -189,8 +180,7 @@ PetscErrorCode MyMatTransposeShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyMatShellMatTransposeMultNumeric(Mat S, Mat B, Mat C, void *ctx)
-{
+PetscErrorCode MyMatShellMatTransposeMultNumeric(Mat S, Mat B, Mat C, void *ctx) {
   Mat A;
 
   PetscFunctionBegin;
@@ -199,8 +189,7 @@ PetscErrorCode MyMatShellMatTransposeMultNumeric(Mat S, Mat B, Mat C, void *ctx)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat          X, B, A, Bt, T, T2, PtAP = NULL, RARt = NULL, R = NULL;
   Vec          r, l, rs, ls;
   PetscInt     m, n, k, M = 10, N = 10, K = 5, ldx = 3, ldb = 5, ldr = 4;
@@ -740,20 +729,10 @@ int main(int argc, char **args)
     PetscCall(MatProductSetFromOptions(D));
     PetscCall(MatProductSymbolic(D));
     PetscCall(MatProductNumeric(C));
-    PetscCall(MatMatMultEqual(A, B, C, 10, &flg));
-    if (!flg) {
-      PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Error with Normal (AB != C)\n"));
-      PetscCall(MatView(A, NULL));
-      PetscCall(MatView(B, NULL));
-      PetscCall(MatView(C, NULL));
-    }
     PetscCall(MatProductNumeric(D));
     PetscCall(MatMatMultEqual(AtA, B, D, 10, &flg));
     if (!flg) {
-      PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Error with Normal (2)\n"));
       PetscCall(MatMatMult(AtA, C, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &T));
-      PetscCall(MatView(D, NULL));
-      PetscCall(MatView(T, NULL));
       PetscCall(MatAXPY(T, -1.0, D, SAME_NONZERO_PATTERN));
       PetscCall(MatView(T, NULL));
       PetscCall(MatDestroy(&T));

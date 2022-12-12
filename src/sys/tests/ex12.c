@@ -3,8 +3,7 @@ static char help[] = "Tests timing PetscSortInt().\n\n";
 
 #include <petscsys.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt i, n = 1000, *values;
 #if defined(PETSC_USE_LOG)
   PetscLogEvent event;

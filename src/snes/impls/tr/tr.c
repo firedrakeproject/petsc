@@ -8,8 +8,7 @@ typedef struct {
   void *convctx;
 } SNES_TR_KSPConverged_Ctx;
 
-static PetscErrorCode SNESTR_KSPConverged_Private(KSP ksp, PetscInt n, PetscReal rnorm, KSPConvergedReason *reason, void *cctx)
-{
+static PetscErrorCode SNESTR_KSPConverged_Private(KSP ksp, PetscInt n, PetscReal rnorm, KSPConvergedReason *reason, void *cctx) {
   SNES_TR_KSPConverged_Ctx *ctx  = (SNES_TR_KSPConverged_Ctx *)cctx;
   SNES                      snes = ctx->snes;
   SNES_NEWTONTR            *neP  = (SNES_NEWTONTR *)snes->data;
@@ -29,8 +28,7 @@ static PetscErrorCode SNESTR_KSPConverged_Private(KSP ksp, PetscInt n, PetscReal
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESTR_KSPConverged_Destroy(void *cctx)
-{
+static PetscErrorCode SNESTR_KSPConverged_Destroy(void *cctx) {
   SNES_TR_KSPConverged_Ctx *ctx = (SNES_TR_KSPConverged_Ctx *)cctx;
 
   PetscFunctionBegin;
@@ -39,12 +37,13 @@ static PetscErrorCode SNESTR_KSPConverged_Destroy(void *cctx)
   PetscFunctionReturn(0);
 }
 
+/* ---------------------------------------------------------------- */
 /*
    SNESTR_Converged_Private -test convergence JUST for
    the trust region tolerance.
+
 */
-static PetscErrorCode SNESTR_Converged_Private(SNES snes, PetscInt it, PetscReal xnorm, PetscReal pnorm, PetscReal fnorm, SNESConvergedReason *reason, void *dummy)
-{
+static PetscErrorCode SNESTR_Converged_Private(SNES snes, PetscInt it, PetscReal xnorm, PetscReal pnorm, PetscReal fnorm, SNESConvergedReason *reason, void *dummy) {
   SNES_NEWTONTR *neP = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -63,24 +62,20 @@ static PetscErrorCode SNESTR_Converged_Private(SNES snes, PetscInt it, PetscReal
    SNESNewtonTRSetPreCheck - Sets a user function that is called before the search step has been determined.
        Allows the user a chance to change or override the decision of the line search routine.
 
-   Deprecated use `SNESNEWTONDCTRDC`
-
    Logically Collective on snes
 
    Input Parameters:
 +  snes - the nonlinear solver object
-.  func - [optional] function evaluation routine, see `SNESNewtonTRPreCheck()`  for the calling sequence
+.  func - [optional] function evaluation routine, see SNESNewtonTRPreCheck()  for the calling sequence
 -  ctx  - [optional] user-defined context for private data for the function evaluation routine (may be NULL)
 
    Level: intermediate
 
-   Note:
-   This function is called BEFORE the function evaluation within the `SNESNEWTONTR` solver.
+   Note: This function is called BEFORE the function evaluation within the SNESNEWTONTR solver.
 
-.seealso: `SNESNEWTONDCTRDC`, `SNESNEWTONDCTR`, `SNESNewtonTRPreCheck()`, `SNESNewtonTRGetPreCheck()`, `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRGetPostCheck()`
+.seealso: `SNESNewtonTRPreCheck()`, `SNESNewtonTRGetPreCheck()`, `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRGetPostCheck()`
 @*/
-PetscErrorCode SNESNewtonTRSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, PetscBool *, void *), void *ctx)
-{
+PetscErrorCode SNESNewtonTRSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, PetscBool *, void *), void *ctx) {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -93,23 +88,20 @@ PetscErrorCode SNESNewtonTRSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, V
 /*@C
    SNESNewtonTRGetPreCheck - Gets the pre-check function
 
-   Deprecated use `SNESNEWTONDCTRDC`
-
    Not collective
 
    Input Parameter:
 .  snes - the nonlinear solver context
 
    Output Parameters:
-+  func - [optional] function evaluation routine, see for the calling sequence `SNESNewtonTRPreCheck()`
++  func - [optional] function evaluation routine, see for the calling sequence SNESNewtonTRPreCheck()
 -  ctx  - [optional] user-defined context for private data for the function evaluation routine (may be NULL)
 
    Level: intermediate
 
-.seealso: `SNESNEWTONDCTRDC`, `SNESNEWTONDCTR`, `SNESNewtonTRSetPreCheck()`, `SNESNewtonTRPreCheck()`
+.seealso: `SNESNewtonTRSetPreCheck()`, `SNESNewtonTRPreCheck()`
 @*/
-PetscErrorCode SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, PetscBool *, void *), void **ctx)
-{
+PetscErrorCode SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, PetscBool *, void *), void **ctx) {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -123,25 +115,21 @@ PetscErrorCode SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, 
    SNESNewtonTRSetPostCheck - Sets a user function that is called after the search step has been determined but before the next
        function evaluation. Allows the user a chance to change or override the decision of the line search routine
 
-   Deprecated use `SNESNEWTONDCTRDC`
-
    Logically Collective on snes
 
    Input Parameters:
 +  snes - the nonlinear solver object
-.  func - [optional] function evaluation routine, see `SNESNewtonTRPostCheck()`  for the calling sequence
+.  func - [optional] function evaluation routine, see SNESNewtonTRPostCheck()  for the calling sequence
 -  ctx  - [optional] user-defined context for private data for the function evaluation routine (may be NULL)
 
    Level: intermediate
 
-   Note:
-   This function is called BEFORE the function evaluation within the `SNESNEWTONTR` solver while the function set in
-   `SNESLineSearchSetPostCheck()` is called AFTER the function evaluation.
+   Note: This function is called BEFORE the function evaluation within the SNESNEWTONTR solver while the function set in
+   SNESLineSearchSetPostCheck() is called AFTER the function evaluation.
 
-.seealso: `SNESNEWTONDCTRDC`, `SNESNEWTONDCTR`, `SNESNewtonTRPostCheck()`, `SNESNewtonTRGetPostCheck()`
+.seealso: `SNESNewtonTRPostCheck()`, `SNESNewtonTRGetPostCheck()`
 @*/
-PetscErrorCode SNESNewtonTRSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void *ctx)
-{
+PetscErrorCode SNESNewtonTRSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void *ctx) {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -154,23 +142,20 @@ PetscErrorCode SNESNewtonTRSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, 
 /*@C
    SNESNewtonTRGetPostCheck - Gets the post-check function
 
-   Deprecated use `SNESNEWTONDCTRDC`
-
    Not collective
 
    Input Parameter:
 .  snes - the nonlinear solver context
 
    Output Parameters:
-+  func - [optional] function evaluation routine, see for the calling sequence `SNESNewtonTRPostCheck()`
++  func - [optional] function evaluation routine, see for the calling sequence SNESNewtonTRPostCheck()
 -  ctx  - [optional] user-defined context for private data for the function evaluation routine (may be NULL)
 
    Level: intermediate
 
-.seealso: `SNESNEWTONDCTRDC`, `SNESNEWTONDCTR`, `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRPostCheck()`
+.seealso: `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRPostCheck()`
 @*/
-PetscErrorCode SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void **ctx)
-{
+PetscErrorCode SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void **ctx) {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -181,9 +166,7 @@ PetscErrorCode SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES,
 }
 
 /*@C
-   SNESNewtonTRPreCheck - Called before the step has been determined in `SNESNEWTONTR`
-
-   Deprecated use `SNESNEWTONDCTRDC`
+   SNESNewtonTRPreCheck - Called before the step has been determined in SNESNEWTONTR
 
    Logically Collective on snes
 
@@ -197,10 +180,9 @@ PetscErrorCode SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES,
 
    Level: developer
 
-.seealso: `SNESNEWTONDCTRDC`, `SNESNEWTONDCTR`, `SNESNewtonTRSetPreCheck()`, `SNESNewtonTRGetPreCheck()`
+.seealso: `SNESNewtonTRSetPreCheck()`, `SNESNewtonTRGetPreCheck()`
 @*/
-static PetscErrorCode SNESNewtonTRPreCheck(SNES snes, Vec X, Vec Y, PetscBool *changed_Y)
-{
+static PetscErrorCode SNESNewtonTRPreCheck(SNES snes, Vec X, Vec Y, PetscBool *changed_Y) {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -213,9 +195,7 @@ static PetscErrorCode SNESNewtonTRPreCheck(SNES snes, Vec X, Vec Y, PetscBool *c
 }
 
 /*@C
-   SNESNewtonTRPostCheck - Called after the step has been determined in `SNESNEWTONTR` but before the function evaluation
-
-   Deprecated use `SNESNEWTONDCTRDC`
+   SNESNewtonTRPostCheck - Called after the step has been determined in SNESNEWTONTR but before the function evaluation
 
    Logically Collective on snes
 
@@ -229,15 +209,14 @@ static PetscErrorCode SNESNewtonTRPreCheck(SNES snes, Vec X, Vec Y, PetscBool *c
 +  changed_Y - indicator if step has been changed
 -  changed_W - Indicator if the new candidate solution W has been changed.
 
-   Note:
+   Notes:
      If Y is changed then W is recomputed as X - Y
 
    Level: developer
 
-.seealso: `SNESNEWTONDCTRDC`, `SNESNEWTONDCTR`, `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRGetPostCheck()`
+.seealso: `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRGetPostCheck()`
 @*/
-static PetscErrorCode SNESNewtonTRPostCheck(SNES snes, Vec X, Vec Y, Vec W, PetscBool *changed_Y, PetscBool *changed_W)
-{
+static PetscErrorCode SNESNewtonTRPostCheck(SNES snes, Vec X, Vec Y, Vec W, PetscBool *changed_Y, PetscBool *changed_W) {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -256,8 +235,7 @@ static PetscErrorCode SNESNewtonTRPostCheck(SNES snes, Vec X, Vec Y, Vec W, Pets
    region approach for solving systems of nonlinear equations.
 
 */
-static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
-{
+static PetscErrorCode SNESSolve_NEWTONTR(SNES snes) {
   SNES_NEWTONTR            *neP = (SNES_NEWTONTR *)snes->data;
   Vec                       X, F, Y, G, Ytmp, W;
   PetscInt                  maxits, i, lits;
@@ -424,30 +402,28 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESSetUp_NEWTONTR(SNES snes)
-{
+/*------------------------------------------------------------*/
+static PetscErrorCode SNESSetUp_NEWTONTR(SNES snes) {
   PetscFunctionBegin;
   PetscCall(SNESSetWorkVecs(snes, 4));
   PetscCall(SNESSetUpMatrices(snes));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SNESReset_NEWTONTR(SNES snes)
-{
+PetscErrorCode SNESReset_NEWTONTR(SNES snes) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESDestroy_NEWTONTR(SNES snes)
-{
+static PetscErrorCode SNESDestroy_NEWTONTR(SNES snes) {
   PetscFunctionBegin;
   PetscCall(SNESReset_NEWTONTR(snes));
   PetscCall(PetscFree(snes->data));
   PetscFunctionReturn(0);
 }
+/*------------------------------------------------------------*/
 
-static PetscErrorCode SNESSetFromOptions_NEWTONTR(SNES snes, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode SNESSetFromOptions_NEWTONTR(SNES snes, PetscOptionItems *PetscOptionsObject) {
   SNES_NEWTONTR *ctx = (SNES_NEWTONTR *)snes->data;
 
   PetscFunctionBegin;
@@ -464,8 +440,7 @@ static PetscErrorCode SNESSetFromOptions_NEWTONTR(SNES snes, PetscOptionItems *P
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESView_NEWTONTR(SNES snes, PetscViewer viewer)
-{
+static PetscErrorCode SNESView_NEWTONTR(SNES snes, PetscViewer viewer) {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
   PetscBool      iascii;
 
@@ -478,13 +453,11 @@ static PetscErrorCode SNESView_NEWTONTR(SNES snes, PetscViewer viewer)
   }
   PetscFunctionReturn(0);
 }
-
+/* ------------------------------------------------------------ */
 /*MC
       SNESNEWTONTR - Newton based nonlinear solver that uses a trust region
 
-      Deprecated use `SNESNEWTONTRDC`
-
-   Options Database Keys:
+   Options Database:
 +    -snes_trtol <tol> - trust region tolerance
 .    -snes_tr_mu <mu> - trust region parameter
 .    -snes_tr_eta <eta> - trust region parameter
@@ -494,16 +467,16 @@ static PetscErrorCode SNESView_NEWTONTR(SNES snes, PetscViewer viewer)
 .    -snes_tr_delta2 <delta2> - trust region parameter
 -    -snes_tr_delta3 <delta3> - trust region parameter
 
-   Reference:
-.  - *  "The Minpack Project", by More', Sorensen, Garbow, Hillstrom, pages 88-111 of "Sources and Development
+   The basic algorithm is taken from "The Minpack Project", by More',
+   Sorensen, Garbow, Hillstrom, pages 88-111 of "Sources and Development
    of Mathematical Software", Wayne Cowell, editor.
 
    Level: intermediate
 
-.seealso: `SNESNEWTONTRDC`, `SNESCreate()`, `SNES`, `SNESSetType()`, `SNESNEWTONLS`, `SNESSetTrustRegionTolerance()`
+.seealso: `SNESCreate()`, `SNES`, `SNESSetType()`, `SNESNEWTONLS`, `SNESSetTrustRegionTolerance()`
+
 M*/
-PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONTR(SNES snes)
-{
+PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONTR(SNES snes) {
   SNES_NEWTONTR *neP;
 
   PetscFunctionBegin;
@@ -519,7 +492,7 @@ PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONTR(SNES snes)
 
   snes->alwayscomputesfinalresidual = PETSC_TRUE;
 
-  PetscCall(PetscNew(&neP));
+  PetscCall(PetscNewLog(snes, &neP));
   snes->data  = (void *)neP;
   neP->mu     = 0.25;
   neP->eta    = 0.75;

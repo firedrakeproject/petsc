@@ -16,8 +16,7 @@
   always produces a real, symmetric tridiagonal matrix.
 */
 
-static PetscReal LINPACKcgpthy(PetscReal *a, PetscReal *b)
-{
+static PetscReal LINPACKcgpthy(PetscReal *a, PetscReal *b) {
   /* System generated locals */
   PetscReal d__1, d__2, d__3;
 
@@ -40,9 +39,9 @@ static PetscReal LINPACKcgpthy(PetscReal *a, PetscReal *b)
 L10:
   t = r + 4.;
   if (t == 4.) goto L20;
-  s = r / t;
-  u = s * 2. + 1.;
-  p = u * p;
+  s    = r / t;
+  u    = s * 2. + 1.;
+  p    = u * p;
   /* Computing 2nd power */
   d__1 = s / u;
   r    = d__1 * d__1 * r;
@@ -51,8 +50,7 @@ L20:
   return p;
 } /* cgpthy_ */
 
-static PetscErrorCode LINPACKcgtql1(PetscInt *n, PetscReal *d, PetscReal *e, PetscInt *ierr)
-{
+static PetscErrorCode LINPACKcgtql1(PetscInt *n, PetscReal *d, PetscReal *e, PetscInt *ierr) {
   /* System generated locals */
   PetscInt  i__1, i__2;
   PetscReal d__1, d__2, c_b10 = 1.0;
@@ -166,12 +164,12 @@ static PetscErrorCode LINPACKcgtql1(PetscInt *n, PetscReal *d, PetscReal *e, Pet
   L145:
     f += h;
     /*     .......... QL TRANSFORMATION .......... */
-    p   = d[m];
-    c   = 1.;
-    c2  = c;
-    el1 = e[l1];
-    s   = 0.;
-    mml = m - l;
+    p    = d[m];
+    c    = 1.;
+    c2   = c;
+    el1  = e[l1];
+    s    = 0.;
+    mml  = m - l;
     /*     .......... FOR I=M-1 STEP -1 UNTIL L DO -- .......... */
     i__2 = mml;
     for (ii = 1; ii <= i__2; ++ii) {
@@ -222,8 +220,7 @@ L1001:
   PetscFunctionReturn(0);
 } /* cgtql1_ */
 
-PetscErrorCode KSPComputeEigenvalues_CG(KSP ksp, PetscInt nmax, PetscReal *r, PetscReal *c, PetscInt *neig)
-{
+PetscErrorCode KSPComputeEigenvalues_CG(KSP ksp, PetscInt nmax, PetscReal *r, PetscReal *c, PetscInt *neig) {
   KSP_CG      *cgP = (KSP_CG *)ksp->data;
   PetscScalar *d, *e;
   PetscReal   *ee;
@@ -251,8 +248,7 @@ PetscErrorCode KSPComputeEigenvalues_CG(KSP ksp, PetscInt nmax, PetscReal *r, Pe
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode KSPComputeExtremeSingularValues_CG(KSP ksp, PetscReal *emax, PetscReal *emin)
-{
+PetscErrorCode KSPComputeExtremeSingularValues_CG(KSP ksp, PetscReal *emax, PetscReal *emin) {
   KSP_CG      *cgP = (KSP_CG *)ksp->data;
   PetscScalar *d, *e;
   PetscReal   *dd, *ee;

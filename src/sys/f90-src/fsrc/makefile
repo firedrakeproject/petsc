@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 
 SOURCEC  =
 SOURCEF90= f90_fwrap.F90

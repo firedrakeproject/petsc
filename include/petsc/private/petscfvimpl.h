@@ -1,4 +1,4 @@
-#ifndef PETSCFVIMPL_H
+#if !defined(PETSCFVIMPL_H)
 #define PETSCFVIMPL_H
 
 #include <petscfv.h>
@@ -88,8 +88,7 @@ typedef struct {
   PetscScalar *B, *Binv, *tau, *work;
 } PetscFV_LeastSquares;
 
-static inline PetscErrorCode PetscFVInterpolate_Static(PetscFV fv, const PetscScalar x[], PetscInt q, PetscScalar interpolant[])
-{
+static inline PetscErrorCode PetscFVInterpolate_Static(PetscFV fv, const PetscScalar x[], PetscInt q, PetscScalar interpolant[]) {
   PetscInt Nc;
 
   PetscFunctionBeginHot;

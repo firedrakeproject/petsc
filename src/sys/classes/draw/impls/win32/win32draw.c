@@ -10,16 +10,16 @@
 #define MAX_LOADSTRING 100
 
 #if !defined(SelectPen)
-  #define SelectPen(hdc, hpen) ((HPEN)SelectObject((hdc), (HGDIOBJ)(HPEN)(hpen)))
+#define SelectPen(hdc, hpen) ((HPEN)SelectObject((hdc), (HGDIOBJ)(HPEN)(hpen)))
 #endif
 #if !defined(SelectFont)
-  #define SelectFont(hdc, hfont) ((HFONT)SelectObject((hdc), (HGDIOBJ)(HFONT)(hfont)))
+#define SelectFont(hdc, hfont) ((HFONT)SelectObject((hdc), (HGDIOBJ)(HFONT)(hfont)))
 #endif
 #if !defined(SelectBrush)
-  #define SelectBrush(hdc, hbrush) ((HBRUSH)SelectObject((hdc), (HGDIOBJ)(HBRUSH)(hbrush)))
+#define SelectBrush(hdc, hbrush) ((HBRUSH)SelectObject((hdc), (HGDIOBJ)(HBRUSH)(hbrush)))
 #endif
 #if !defined(GetStockBrush)
-  #define GetStockBrush(i) ((HBRUSH)GetStockObject(i))
+#define GetStockBrush(i) ((HBRUSH)GetStockObject(i))
 #endif
 
 #define XTRANS(draw, win, x) (int)(((win)->w) * ((draw)->port_xl + (((x - (draw)->coor_xl) * ((draw)->port_xr - (draw)->port_xl)) / ((draw)->coor_xr - (draw)->coor_xl))))
@@ -45,8 +45,7 @@ static void           OnDestroy_Win32(HWND);
 static PetscErrorCode MouseRecord_Win32(HWND, PetscDrawButton);
 static PetscErrorCode PetscDrawGetPopup_Win32(PetscDraw, PetscDraw *);
 
-static PetscErrorCode PetscDrawSetDoubleBuffer_Win32(PetscDraw draw)
-{
+static PetscErrorCode PetscDrawSetDoubleBuffer_Win32(PetscDraw draw) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   HDC              hdc     = GetDC(windraw->hWnd);
 
@@ -64,8 +63,7 @@ static PetscErrorCode PetscDrawSetDoubleBuffer_Win32(PetscDraw draw)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawFlush_Win32(PetscDraw draw)
-{
+static PetscErrorCode PetscDrawFlush_Win32(PetscDraw draw) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   HDC              hdc     = GetDC(windraw->hWnd);
 
@@ -78,8 +76,7 @@ static PetscErrorCode PetscDrawFlush_Win32(PetscDraw draw)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode deletemouselist_Win32(WindowNode deletelist)
-{
+static PetscErrorCode deletemouselist_Win32(WindowNode deletelist) {
   /* Called upon window close. Frees memory of linked list of stored mouse commands */
   MouseNode node;
 
@@ -95,8 +92,7 @@ static PetscErrorCode deletemouselist_Win32(WindowNode deletelist)
   return 0;
 }
 
-static PetscErrorCode PetscDrawGetMouseButton_Win32(PetscDraw draw, PetscDrawButton *button, PetscReal *x_user, PetscReal *y_user, PetscReal *x_phys, PetscReal *y_phys)
-{
+static PetscErrorCode PetscDrawGetMouseButton_Win32(PetscDraw draw, PetscDrawButton *button, PetscReal *x_user, PetscReal *y_user, PetscReal *x_phys, PetscReal *y_phys) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   WindowNode       current;
   MouseNode        node = 0;
@@ -140,23 +136,20 @@ static PetscErrorCode PetscDrawGetMouseButton_Win32(PetscDraw draw, PetscDrawBut
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawPause_Win32(PetscDraw draw)
-{
+static PetscErrorCode PetscDrawPause_Win32(PetscDraw draw) {
   PetscFunctionBegin;
   PetscSleep(draw->pause);
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TranslateColor_Win32(PetscDraw draw, int color)
-{
+static PetscErrorCode TranslateColor_Win32(PetscDraw draw, int color) {
   /* Maps single color value into the RGB colors in our tables */
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   windraw->currentcolor    = RGB(RedMap[color], GreenMap[color], BlueMap[color]);
   return 0;
 }
 
-static PetscErrorCode AverageColorRectangle_Win32(PetscDraw draw, int c1, int c2, int c3, int c4)
-{
+static PetscErrorCode AverageColorRectangle_Win32(PetscDraw draw, int c1, int c2, int c3, int c4) {
   /* Averages colors given at points of rectangle and sets color from color table
     will be changed once the color gradient problem is worked out */
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
@@ -164,8 +157,7 @@ static PetscErrorCode AverageColorRectangle_Win32(PetscDraw draw, int c1, int c2
   return 0;
 }
 
-static PetscErrorCode AverageColorTriangle_Win32(PetscDraw draw, int c1, int c2, int c3)
-{
+static PetscErrorCode AverageColorTriangle_Win32(PetscDraw draw, int c1, int c2, int c3) {
   /* Averages colors given at points of rectangle and sets color from color table
     will be changed once the color gradient problem is worked out */
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
@@ -173,8 +165,7 @@ static PetscErrorCode AverageColorTriangle_Win32(PetscDraw draw, int c1, int c2,
   return 0;
 }
 
-static PetscErrorCode PetscDrawRectangle_Win32(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int c1, int c2, int c3, int c4)
-{
+static PetscErrorCode PetscDrawRectangle_Win32(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int c1, int c2, int c3, int c4) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   HBRUSH           hbrush;
   RECT             rect;
@@ -201,8 +192,7 @@ static PetscErrorCode PetscDrawRectangle_Win32(PetscDraw draw, PetscReal xl, Pet
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawLine_Win32(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int color)
-{
+static PetscErrorCode PetscDrawLine_Win32(PetscDraw draw, PetscReal xl, PetscReal yl, PetscReal xr, PetscReal yr, int color) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   HPEN             hpen;
   int              x1, yone, x2, y2;
@@ -227,8 +217,7 @@ static PetscErrorCode PetscDrawLine_Win32(PetscDraw draw, PetscReal xl, PetscRea
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawLineSetWidth_Win32(PetscDraw draw, PetscReal width)
-{
+static PetscErrorCode PetscDrawLineSetWidth_Win32(PetscDraw draw, PetscReal width) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   int              averagesize, finalwidth;
   RECT             rect;
@@ -243,8 +232,7 @@ static PetscErrorCode PetscDrawLineSetWidth_Win32(PetscDraw draw, PetscReal widt
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawLineGetWidth_Win32(PetscDraw draw, PetscReal *width)
-{
+static PetscErrorCode PetscDrawLineGetWidth_Win32(PetscDraw draw, PetscReal *width) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
 
   PetscFunctionBegin;
@@ -252,8 +240,7 @@ static PetscErrorCode PetscDrawLineGetWidth_Win32(PetscDraw draw, PetscReal *wid
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawPoint_Win32(PetscDraw draw, PetscReal x, PetscReal y, int color)
-{
+static PetscErrorCode PetscDrawPoint_Win32(PetscDraw draw, PetscReal x, PetscReal y, int color) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   HBRUSH           hbrush;
   HRGN             hrgn;
@@ -283,8 +270,7 @@ static PetscErrorCode PetscDrawPoint_Win32(PetscDraw draw, PetscReal x, PetscRea
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawPointSetSize_Win32(PetscDraw draw, PetscReal width)
-{
+static PetscErrorCode PetscDrawPointSetSize_Win32(PetscDraw draw, PetscReal width) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   int              averagesize, diameter;
   RECT             rect;
@@ -298,8 +284,7 @@ static PetscErrorCode PetscDrawPointSetSize_Win32(PetscDraw draw, PetscReal widt
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawString_Win32(PetscDraw draw, PetscReal x, PetscReal y, int color, const char *text)
-{
+static PetscErrorCode PetscDrawString_Win32(PetscDraw draw, PetscReal x, PetscReal y, int color, const char *text) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   RECT             r;
   HFONT            hfont;
@@ -344,8 +329,7 @@ static PetscErrorCode PetscDrawString_Win32(PetscDraw draw, PetscReal x, PetscRe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawStringVertical_Win32(PetscDraw draw, PetscReal x, PetscReal y, int color, const char *text)
-{
+static PetscErrorCode PetscDrawStringVertical_Win32(PetscDraw draw, PetscReal x, PetscReal y, int color, const char *text) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   RECT             r;
   HFONT            hfont;
@@ -390,8 +374,7 @@ static PetscErrorCode PetscDrawStringVertical_Win32(PetscDraw draw, PetscReal x,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawStringSetSize_Win32(PetscDraw draw, PetscReal width, PetscReal height)
-{
+static PetscErrorCode PetscDrawStringSetSize_Win32(PetscDraw draw, PetscReal width, PetscReal height) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   int              w, h;
 
@@ -404,8 +387,7 @@ static PetscErrorCode PetscDrawStringSetSize_Win32(PetscDraw draw, PetscReal wid
   windraw->stringwidth  = w;
   PetscFunctionReturn(0);
 }
-static PetscErrorCode PetscDrawStringGetSize_Win32(PetscDraw draw, PetscReal *width, PetscReal *height)
-{
+static PetscErrorCode PetscDrawStringGetSize_Win32(PetscDraw draw, PetscReal *width, PetscReal *height) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   double           scaleX  = (draw->coor_xr - draw->coor_xl) / (draw->w) * (draw->port_xr - draw->port_xl);
   double           scaleY  = (draw->coor_yr - draw->coor_yl) / (draw->h) * (draw->port_yr - draw->port_yl);
@@ -416,8 +398,7 @@ static PetscErrorCode PetscDrawStringGetSize_Win32(PetscDraw draw, PetscReal *wi
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawResizeWindow_Win32(PetscDraw draw, int w, int h)
-{
+static PetscErrorCode PetscDrawResizeWindow_Win32(PetscDraw draw, int w, int h) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   RECT             r;
 
@@ -434,8 +415,7 @@ static PetscErrorCode PetscDrawResizeWindow_Win32(PetscDraw draw, int w, int h)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawCheckResizedWindow_Win32(PetscDraw draw)
-{
+static PetscErrorCode PetscDrawCheckResizedWindow_Win32(PetscDraw draw) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
 
   PetscFunctionBegin;
@@ -443,8 +423,7 @@ static PetscErrorCode PetscDrawCheckResizedWindow_Win32(PetscDraw draw)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawSetTitle_Win32(PetscDraw draw, const char title[])
-{
+static PetscErrorCode PetscDrawSetTitle_Win32(PetscDraw draw, const char title[]) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
 
   PetscFunctionBegin;
@@ -452,8 +431,7 @@ static PetscErrorCode PetscDrawSetTitle_Win32(PetscDraw draw, const char title[]
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawClear_Win32(PetscDraw draw)
-{
+static PetscErrorCode PetscDrawClear_Win32(PetscDraw draw) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
 
   PetscFunctionBegin;
@@ -468,8 +446,7 @@ static PetscErrorCode PetscDrawClear_Win32(PetscDraw draw)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscDrawTriangle_Win32(PetscDraw draw, PetscReal x1, PetscReal yone, PetscReal x2, PetscReal y2, PetscReal x3, PetscReal y3, int c1, int c2, int c3)
-{
+static PetscErrorCode PetscDrawTriangle_Win32(PetscDraw draw, PetscReal x1, PetscReal yone, PetscReal x2, PetscReal y2, PetscReal x3, PetscReal y3, int c1, int c2, int c3) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   HBRUSH           hbrush;
   HPEN             hpen;
@@ -505,8 +482,7 @@ static PetscErrorCode PetscDrawTriangle_Win32(PetscDraw draw, PetscReal x1, Pets
   PetscFunctionReturn(0);
 }
 
-void PopMessageLoopThread_Win32(PetscDraw popdraw)
-{
+void PopMessageLoopThread_Win32(PetscDraw popdraw) {
   PetscDraw_Win32 *pop = (PetscDraw_Win32 *)popdraw->data;
   MSG              msg;
   HWND             hWnd           = NULL;
@@ -563,8 +539,7 @@ void PopMessageLoopThread_Win32(PetscDraw popdraw)
   PetscFunctionReturnVoid();
 }
 
-static PetscErrorCode PetscDrawDestroy_Win32(PetscDraw draw)
-{
+static PetscErrorCode PetscDrawDestroy_Win32(PetscDraw draw) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
 
   PetscFunctionBegin;
@@ -573,8 +548,7 @@ static PetscErrorCode PetscDrawDestroy_Win32(PetscDraw draw)
   PetscFunctionReturn(0);
 }
 
-void MessageLoopThread_Win32(PetscDraw draw)
-{
+void MessageLoopThread_Win32(PetscDraw draw) {
   PetscDraw_Win32 *windraw = (PetscDraw_Win32 *)draw->data;
   MSG              msg;
   HWND             hWnd        = NULL;
@@ -621,8 +595,7 @@ void MessageLoopThread_Win32(PetscDraw draw)
 
 static struct _PetscDrawOps DvOps = {PetscDrawSetDoubleBuffer_Win32, PetscDrawFlush_Win32, PetscDrawLine_Win32, PetscDrawLineSetWidth_Win32, PetscDrawLineGetWidth_Win32, PetscDrawPoint_Win32, PetscDrawPointSetSize_Win32, PetscDrawString_Win32, PetscDrawStringVertical_Win32, PetscDrawStringSetSize_Win32, PetscDrawStringGetSize_Win32, 0, PetscDrawClear_Win32, PetscDrawRectangle_Win32, PetscDrawTriangle_Win32, 0, PetscDrawGetMouseButton_Win32, PetscDrawPause_Win32, 0, 0, PetscDrawGetPopup_Win32, PetscDrawSetTitle_Win32, PetscDrawCheckResizedWindow_Win32, PetscDrawResizeWindow_Win32, PetscDrawDestroy_Win32, 0, 0, 0, 0};
 
-static PetscErrorCode PetscDrawGetPopup_Win32(PetscDraw draw, PetscDraw *popup)
-{
+static PetscErrorCode PetscDrawGetPopup_Win32(PetscDraw draw, PetscDraw *popup) {
   PetscDraw_Win32 *win = (PetscDraw_Win32 *)draw->data;
   PetscBool        flg = PETSC_TRUE;
 
@@ -637,8 +610,7 @@ static PetscErrorCode PetscDrawGetPopup_Win32(PetscDraw draw, PetscDraw *popup)
   }
   PetscFunctionReturn(0);
 }
-PETSC_EXTERN PetscErrorCode PetscDrawCreate_Win32(PetscDraw draw)
-{
+PETSC_EXTERN PetscErrorCode PetscDrawCreate_Win32(PetscDraw draw) {
   PetscDraw_Win32 *windraw;
   HANDLE           hThread = NULL;
   WindowNode       newnode;
@@ -700,8 +672,7 @@ PETSC_EXTERN PetscErrorCode PetscDrawCreate_Win32(PetscDraw draw)
    WM_PAINT    - Paint the main window
    WM_DESTROY  - post a quit message and return */
 
-LRESULT CALLBACK PetscWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
+LRESULT CALLBACK PetscWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
   int wmId;
 
   switch (message) {
@@ -711,30 +682,19 @@ LRESULT CALLBACK PetscWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
     wmId = LOWORD(wParam);
     /* Parse the menu selections:*/
     switch (wmId) {
-    case IDM_EXIT:
-      DestroyWindow(hWnd);
-      break;
-    default:
-      return DefWindowProc(hWnd, message, wParam, lParam);
+    case IDM_EXIT: DestroyWindow(hWnd); break;
+    default: return DefWindowProc(hWnd, message, wParam, lParam);
     }
     break;
-  case WM_LBUTTONUP:
-    MouseRecord_Win32(hWnd, PETSC_BUTTON_LEFT);
-    break;
-  case WM_RBUTTONUP:
-    MouseRecord_Win32(hWnd, PETSC_BUTTON_RIGHT);
-    break;
-  case WM_MBUTTONUP:
-    MouseRecord_Win32(hWnd, PETSC_BUTTON_CENTER);
-    break;
-  default:
-    return DefWindowProc(hWnd, message, wParam, lParam);
+  case WM_LBUTTONUP: MouseRecord_Win32(hWnd, PETSC_BUTTON_LEFT); break;
+  case WM_RBUTTONUP: MouseRecord_Win32(hWnd, PETSC_BUTTON_RIGHT); break;
+  case WM_MBUTTONUP: MouseRecord_Win32(hWnd, PETSC_BUTTON_CENTER); break;
+  default: return DefWindowProc(hWnd, message, wParam, lParam);
   }
   return 0;
 }
 
-static void OnPaint_Win32(HWND hWnd)
-{
+static void OnPaint_Win32(HWND hWnd) {
   PAINTSTRUCT ps;
   HDC         hdc;
   WindowNode  current = NULL;
@@ -760,8 +720,7 @@ static void OnPaint_Win32(HWND hWnd)
   return;
 }
 
-static PetscErrorCode MouseRecord_Win32(HWND hWnd, PetscDrawButton button)
-{
+static PetscErrorCode MouseRecord_Win32(HWND hWnd, PetscDrawButton button) {
   /* Called by all three mouse button actions
     Records needed mouse data in windows data structure */
   WindowNode current = NULL;
@@ -801,8 +760,7 @@ static PetscErrorCode MouseRecord_Win32(HWND hWnd, PetscDrawButton button)
   PetscFunctionReturn(0);
 }
 
-static void OnDestroy_Win32(HWND hWnd)
-{
+static void OnDestroy_Win32(HWND hWnd) {
   /* searches linked list of window data and frees corresponding memory */
   WindowNode current;
 

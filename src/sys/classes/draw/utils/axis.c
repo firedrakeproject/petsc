@@ -6,8 +6,7 @@
    label; this is useful in determining how many significant figures to
    keep.
  */
-PetscErrorCode PetscADefLabel(PetscReal val, PetscReal sep, char **p)
-{
+PetscErrorCode PetscADefLabel(PetscReal val, PetscReal sep, char **p) {
   static char buf[40];
 
   PetscFunctionBegin;
@@ -16,7 +15,7 @@ PetscErrorCode PetscADefLabel(PetscReal val, PetscReal sep, char **p)
     buf[0] = '0';
     buf[1] = 0;
   } else {
-    PetscCall(PetscSNPrintf(buf, PETSC_STATIC_ARRAY_LENGTH(buf), "%0.1e", (double)val));
+    sprintf(buf, "%0.1e", (double)val);
     PetscCall(PetscStripZerosPlus(buf));
     PetscCall(PetscStripe0(buf));
     PetscCall(PetscStripInitialZero(buf));
@@ -28,8 +27,7 @@ PetscErrorCode PetscADefLabel(PetscReal val, PetscReal sep, char **p)
 }
 
 /* Finds "nice" locations for the ticks */
-PetscErrorCode PetscADefTicks(PetscReal low, PetscReal high, int num, int *ntick, PetscReal *tickloc, int maxtick)
-{
+PetscErrorCode PetscADefTicks(PetscReal low, PetscReal high, int num, int *ntick, PetscReal *tickloc, int maxtick) {
   int       i, power;
   PetscReal x = 0.0, base = 0.0, eps;
 
@@ -56,15 +54,13 @@ PetscErrorCode PetscADefTicks(PetscReal low, PetscReal high, int num, int *ntick
 
 #define EPS 1.e-6
 
-PetscErrorCode PetscExp10(PetscReal d, PetscReal *result)
-{
+PetscErrorCode PetscExp10(PetscReal d, PetscReal *result) {
   PetscFunctionBegin;
   *result = PetscPowReal((PetscReal)10.0, d);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscMod(PetscReal x, PetscReal y, PetscReal *result)
-{
+PetscErrorCode PetscMod(PetscReal x, PetscReal y, PetscReal *result) {
   int i;
 
   PetscFunctionBegin;
@@ -79,8 +75,7 @@ PetscErrorCode PetscMod(PetscReal x, PetscReal y, PetscReal *result)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscCopysign(PetscReal a, PetscReal b, PetscReal *result)
-{
+PetscErrorCode PetscCopysign(PetscReal a, PetscReal b, PetscReal *result) {
   PetscFunctionBegin;
   if (b >= 0) *result = a;
   else *result = -a;
@@ -91,8 +86,7 @@ PetscErrorCode PetscCopysign(PetscReal a, PetscReal b, PetscReal *result)
     Given a value "in" and a "base", return a nice value.
     based on "sign", extend up (+1) or down (-1)
  */
-PetscErrorCode PetscAGetNice(PetscReal in, PetscReal base, int sign, PetscReal *result)
-{
+PetscErrorCode PetscAGetNice(PetscReal in, PetscReal base, int sign, PetscReal *result) {
   PetscReal etmp, s, s2, m;
 
   PetscFunctionBegin;
@@ -107,8 +101,7 @@ PetscErrorCode PetscAGetNice(PetscReal in, PetscReal base, int sign, PetscReal *
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscAGetBase(PetscReal vmin, PetscReal vmax, int num, PetscReal *Base, int *power)
-{
+PetscErrorCode PetscAGetBase(PetscReal vmin, PetscReal vmax, int num, PetscReal *Base, int *power) {
   PetscReal        base, ftemp, e10;
   static PetscReal base_try[5] = {10.0, 5.0, 2.0, 1.0, 0.5};
   int              i;

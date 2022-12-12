@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 SOURCEH = ../../../../../include/petsc/private/vecimpl.h ../../../../../include/petscvec.h
 DIRS    = interface impls tutorials

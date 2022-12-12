@@ -81,8 +81,7 @@ PETSC_EXTERN PetscLogEvent DMSWARM_DataExchangerEnd;
 PETSC_EXTERN PetscLogEvent DMSWARM_DataExchangerSendCount;
 PETSC_EXTERN PetscLogEvent DMSWARM_DataExchangerPack;
 
-PetscErrorCode DMSwarmDataExCreate(MPI_Comm comm, const PetscInt count, DMSwarmDataEx *ex)
-{
+PetscErrorCode DMSwarmDataExCreate(MPI_Comm comm, const PetscInt count, DMSwarmDataEx *ex) {
   DMSwarmDataEx d;
 
   PetscFunctionBegin;
@@ -127,8 +126,7 @@ PetscErrorCode DMSwarmDataExCreate(MPI_Comm comm, const PetscInt count, DMSwarmD
     Should be printing to a viewer, should not be using PETSC_COMM_WORLD
 
 */
-PetscErrorCode DMSwarmDataExView(DMSwarmDataEx d)
-{
+PetscErrorCode DMSwarmDataExView(DMSwarmDataEx d) {
   PetscMPIInt p;
 
   PetscFunctionBegin;
@@ -161,8 +159,7 @@ PetscErrorCode DMSwarmDataExView(DMSwarmDataEx d)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExDestroy(DMSwarmDataEx d)
-{
+PetscErrorCode DMSwarmDataExDestroy(DMSwarmDataEx d) {
   PetscFunctionBegin;
   PetscCallMPI(MPI_Comm_free(&d->comm));
   if (d->neighbour_procs) PetscCall(PetscFree(d->neighbour_procs));
@@ -182,8 +179,7 @@ PetscErrorCode DMSwarmDataExDestroy(DMSwarmDataEx d)
 
 /* === Phase A === */
 
-PetscErrorCode DMSwarmDataExTopologyInitialize(DMSwarmDataEx d)
-{
+PetscErrorCode DMSwarmDataExTopologyInitialize(DMSwarmDataEx d) {
   PetscFunctionBegin;
   d->topology_status   = DEOBJECT_INITIALIZED;
   d->n_neighbour_procs = 0;
@@ -197,8 +193,7 @@ PetscErrorCode DMSwarmDataExTopologyInitialize(DMSwarmDataEx d)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExTopologyAddNeighbour(DMSwarmDataEx d, const PetscMPIInt proc_id)
-{
+PetscErrorCode DMSwarmDataExTopologyAddNeighbour(DMSwarmDataEx d, const PetscMPIInt proc_id) {
   PetscMPIInt n, found;
   PetscMPIInt size;
 
@@ -259,12 +254,11 @@ If we require that proc A will receive from proc B, then the RECV tag index will
   N * rank(B) + rank(A) + offset
 
 */
-static void _get_tags(PetscInt counter, PetscMPIInt N, PetscMPIInt r0, PetscMPIInt r1, PetscMPIInt maxtag, PetscMPIInt *_st, PetscMPIInt *_rt)
-{
+static void _get_tags(PetscInt counter, PetscMPIInt N, PetscMPIInt r0, PetscMPIInt r1, PetscMPIInt *_st, PetscMPIInt *_rt) {
   PetscMPIInt st, rt;
 
-  st   = (N * r0 + r1 + N * N * counter) % maxtag;
-  rt   = (N * r1 + r0 + N * N * counter) % maxtag;
+  st   = N * r0 + r1 + N * N * counter;
+  rt   = N * r1 + r0 + N * N * counter;
   *_st = st;
   *_rt = rt;
 }
@@ -272,8 +266,7 @@ static void _get_tags(PetscInt counter, PetscMPIInt N, PetscMPIInt r0, PetscMPII
 /*
 Makes the communication map symmetric
 */
-PetscErrorCode _DMSwarmDataExCompleteCommunicationMap(MPI_Comm comm, PetscMPIInt n, PetscMPIInt proc_neighbours[], PetscMPIInt *n_new, PetscMPIInt **proc_neighbours_new)
-{
+PetscErrorCode _DMSwarmDataExCompleteCommunicationMap(MPI_Comm comm, PetscMPIInt n, PetscMPIInt proc_neighbours[], PetscMPIInt *n_new, PetscMPIInt **proc_neighbours_new) {
   Mat                A;
   PetscInt           i, j, nc;
   PetscInt           n_, *proc_neighbours_;
@@ -331,9 +324,8 @@ PetscErrorCode _DMSwarmDataExCompleteCommunicationMap(MPI_Comm comm, PetscMPIInt
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExTopologyFinalize(DMSwarmDataEx d)
-{
-  PetscMPIInt symm_nn, *symm_procs, r0, n, st, rt, size, *maxtag, flg;
+PetscErrorCode DMSwarmDataExTopologyFinalize(DMSwarmDataEx d) {
+  PetscMPIInt symm_nn, *symm_procs, r0, n, st, rt, size;
 
   PetscFunctionBegin;
   PetscCheck(d->topology_status == DEOBJECT_INITIALIZED, d->comm, PETSC_ERR_ARG_WRONGSTATE, "Topology must be initialised. Call DMSwarmDataExTopologyInitialize() first");
@@ -356,13 +348,11 @@ PetscErrorCode DMSwarmDataExTopologyFinalize(DMSwarmDataEx d)
   if (!d->recv_tags) PetscCall(PetscMalloc(sizeof(int) * d->n_neighbour_procs, &d->recv_tags));
   /* compute message tags */
   PetscCallMPI(MPI_Comm_size(d->comm, &size));
-  PetscCallMPI(MPI_Comm_get_attr(MPI_COMM_WORLD, MPI_TAG_UB, &maxtag, &flg));
-  PetscCheck(flg, d->comm, PETSC_ERR_LIB, "MPI error: MPI_Comm_get_attr() is not returning a MPI_TAG_UB");
   r0 = d->rank;
   for (n = 0; n < d->n_neighbour_procs; ++n) {
     PetscMPIInt r1 = d->neighbour_procs[n];
 
-    _get_tags(d->instance, size, r0, r1, *maxtag, &st, &rt);
+    _get_tags(d->instance, size, r0, r1, &st, &rt);
     d->send_tags[n] = (int)st;
     d->recv_tags[n] = (int)rt;
   }
@@ -372,8 +362,7 @@ PetscErrorCode DMSwarmDataExTopologyFinalize(DMSwarmDataEx d)
 }
 
 /* === Phase B === */
-PetscErrorCode _DMSwarmDataExConvertProcIdToLocalIndex(DMSwarmDataEx de, PetscMPIInt proc_id, PetscMPIInt *local)
-{
+PetscErrorCode _DMSwarmDataExConvertProcIdToLocalIndex(DMSwarmDataEx de, PetscMPIInt proc_id, PetscMPIInt *local) {
   PetscMPIInt i, np;
 
   PetscFunctionBegin;
@@ -388,8 +377,7 @@ PetscErrorCode _DMSwarmDataExConvertProcIdToLocalIndex(DMSwarmDataEx de, PetscMP
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExInitializeSendCount(DMSwarmDataEx de)
-{
+PetscErrorCode DMSwarmDataExInitializeSendCount(DMSwarmDataEx de) {
   PetscMPIInt i;
 
   PetscFunctionBegin;
@@ -403,8 +391,7 @@ PetscErrorCode DMSwarmDataExInitializeSendCount(DMSwarmDataEx de)
 /*
 1) only allows counters to be set on neighbouring cpus
 */
-PetscErrorCode DMSwarmDataExAddToSendCount(DMSwarmDataEx de, const PetscMPIInt proc_id, const PetscInt count)
-{
+PetscErrorCode DMSwarmDataExAddToSendCount(DMSwarmDataEx de, const PetscMPIInt proc_id, const PetscInt count) {
   PetscMPIInt local_val;
 
   PetscFunctionBegin;
@@ -418,8 +405,7 @@ PetscErrorCode DMSwarmDataExAddToSendCount(DMSwarmDataEx de, const PetscMPIInt p
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExFinalizeSendCount(DMSwarmDataEx de)
-{
+PetscErrorCode DMSwarmDataExFinalizeSendCount(DMSwarmDataEx de) {
   PetscFunctionBegin;
   PetscCheck(de->message_lengths_status == DEOBJECT_INITIALIZED, de->comm, PETSC_ERR_ORDER, "Message lengths must be defined. Call DMSwarmDataExInitializeSendCount() first");
 
@@ -436,8 +422,7 @@ PetscErrorCode DMSwarmDataExFinalizeSendCount(DMSwarmDataEx de)
   zeros out all counters
   zero out packed data counters
 */
-PetscErrorCode _DMSwarmDataExInitializeTmpStorage(DMSwarmDataEx de)
-{
+PetscErrorCode _DMSwarmDataExInitializeTmpStorage(DMSwarmDataEx de) {
   PetscMPIInt i, np;
 
   PetscFunctionBegin;
@@ -457,8 +442,7 @@ PetscErrorCode _DMSwarmDataExInitializeTmpStorage(DMSwarmDataEx de)
    Checks send counts properly initialized
    allocates space for pack data
 */
-PetscErrorCode DMSwarmDataExPackInitialize(DMSwarmDataEx de, size_t unit_message_size)
-{
+PetscErrorCode DMSwarmDataExPackInitialize(DMSwarmDataEx de, size_t unit_message_size) {
   PetscMPIInt i, np;
   PetscInt    total;
 
@@ -499,8 +483,7 @@ PetscErrorCode DMSwarmDataExPackInitialize(DMSwarmDataEx de, size_t unit_message
 /*
     Ensures data gets been packed appropriately and no overlaps occur
 */
-PetscErrorCode DMSwarmDataExPackData(DMSwarmDataEx de, PetscMPIInt proc_id, PetscInt n, void *data)
-{
+PetscErrorCode DMSwarmDataExPackData(DMSwarmDataEx de, PetscMPIInt proc_id, PetscInt n, void *data) {
   PetscMPIInt local;
   PetscInt    insert_location;
   void       *dest;
@@ -526,8 +509,7 @@ PetscErrorCode DMSwarmDataExPackData(DMSwarmDataEx de, PetscMPIInt proc_id, Pets
 /*
 *) Ensures all data has been packed
 */
-PetscErrorCode DMSwarmDataExPackFinalize(DMSwarmDataEx de)
-{
+PetscErrorCode DMSwarmDataExPackFinalize(DMSwarmDataEx de) {
   PetscMPIInt i, np;
   PetscInt    total;
 
@@ -558,8 +540,7 @@ PetscErrorCode DMSwarmDataExPackFinalize(DMSwarmDataEx de)
 }
 
 /* do the actual message passing */
-PetscErrorCode DMSwarmDataExBegin(DMSwarmDataEx de)
-{
+PetscErrorCode DMSwarmDataExBegin(DMSwarmDataEx de) {
   PetscMPIInt i, np;
   void       *dest;
   PetscInt    length;
@@ -583,8 +564,7 @@ PetscErrorCode DMSwarmDataExBegin(DMSwarmDataEx de)
 }
 
 /* do the actual message passing now */
-PetscErrorCode DMSwarmDataExEnd(DMSwarmDataEx de)
-{
+PetscErrorCode DMSwarmDataExEnd(DMSwarmDataEx de) {
   PetscMPIInt i, np;
   PetscInt    total;
   PetscInt   *message_recv_offsets;
@@ -616,8 +596,7 @@ PetscErrorCode DMSwarmDataExEnd(DMSwarmDataEx de)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExGetSendData(DMSwarmDataEx de, PetscInt *length, void **send)
-{
+PetscErrorCode DMSwarmDataExGetSendData(DMSwarmDataEx de, PetscInt *length, void **send) {
   PetscFunctionBegin;
   PetscCheck(de->packer_status == DEOBJECT_FINALIZED, de->comm, PETSC_ERR_ARG_WRONGSTATE, "Data has not finished being packed.");
   *length = de->send_message_length;
@@ -625,8 +604,7 @@ PetscErrorCode DMSwarmDataExGetSendData(DMSwarmDataEx de, PetscInt *length, void
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExGetRecvData(DMSwarmDataEx de, PetscInt *length, void **recv)
-{
+PetscErrorCode DMSwarmDataExGetRecvData(DMSwarmDataEx de, PetscInt *length, void **recv) {
   PetscFunctionBegin;
   PetscCheck(de->communication_status == DEOBJECT_FINALIZED, de->comm, PETSC_ERR_ARG_WRONGSTATE, "Data has not finished being sent.");
   *length = de->recv_message_length;
@@ -634,8 +612,7 @@ PetscErrorCode DMSwarmDataExGetRecvData(DMSwarmDataEx de, PetscInt *length, void
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmDataExTopologyGetNeighbours(DMSwarmDataEx de, PetscMPIInt *n, PetscMPIInt *neigh[])
-{
+PetscErrorCode DMSwarmDataExTopologyGetNeighbours(DMSwarmDataEx de, PetscMPIInt *n, PetscMPIInt *neigh[]) {
   PetscFunctionBegin;
   if (n) *n = de->n_neighbour_procs;
   if (neigh) *neigh = de->neighbour_procs;

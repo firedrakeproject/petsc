@@ -340,9 +340,9 @@ Direct Solvers
      -
    * - Direct QR
      - QR
-     - `PCQR`
-     - `MATSEQAIJ`
-     -  `SuiteSparse QR <https://people.engr.tamu.edu/davis/suitesparse.html>`__
+     -
+     - MATLAB
+     - `MATLAB <https://www.mathworks.com/products/matlab.html>`__
      -
      -
    * -

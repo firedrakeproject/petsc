@@ -1,7 +1,7 @@
 /*
     Contains all error handling interfaces for PETSc.
 */
-#ifndef PETSCERROR_H
+#if !defined(PETSCERROR_H)
 #define PETSCERROR_H
 
 #include <petscmacros.h>
@@ -60,16 +60,15 @@
 #define PETSC_ERR_INT_OVERFLOW 84
 
 #define PETSC_ERR_FLOP_COUNT     90
-#define PETSC_ERR_NOT_CONVERGED  91  /* solver did not converge */
-#define PETSC_ERR_MISSING_FACTOR 92  /* MatGetFactor() failed */
-#define PETSC_ERR_OPT_OVERWRITE  93  /* attempted to over write options which should not be changed */
-#define PETSC_ERR_WRONG_MPI_SIZE 94  /* example/application run with number of MPI ranks it does not support */
-#define PETSC_ERR_USER_INPUT     95  /* missing or incorrect user input */
-#define PETSC_ERR_GPU_RESOURCE   96  /* unable to load a GPU resource, for example cuBLAS */
-#define PETSC_ERR_GPU            97  /* An error from a GPU call, this may be due to lack of resources on the GPU or a true error in the call */
-#define PETSC_ERR_MPI            98  /* general MPI error */
-#define PETSC_ERR_RETURN         99  /* PetscError() incorrectly returned an error code of 0 */
-#define PETSC_ERR_MAX_VALUE      100 /* this is always the one more than the largest error code */
+#define PETSC_ERR_NOT_CONVERGED  91 /* solver did not converge */
+#define PETSC_ERR_MISSING_FACTOR 92 /* MatGetFactor() failed */
+#define PETSC_ERR_OPT_OVERWRITE  93 /* attempted to over write options which should not be changed */
+#define PETSC_ERR_WRONG_MPI_SIZE 94 /* example/application run with number of MPI ranks it does not support */
+#define PETSC_ERR_USER_INPUT     95 /* missing or incorrect user input */
+#define PETSC_ERR_GPU_RESOURCE   96 /* unable to load a GPU resource, for example cuBLAS */
+#define PETSC_ERR_GPU            97 /* An error from a GPU call, this may be due to lack of resources on the GPU or a true error in the call */
+#define PETSC_ERR_MPI            98 /* general MPI error */
+#define PETSC_ERR_MAX_VALUE      99 /* this is always the one more than the largest error code */
 
 #define SETERRQ1(...) PETSC_DEPRECATED_MACRO("GCC warning \"Use SETERRQ() (since version 3.17)\"") SETERRQ(__VA_ARGS__)
 #define SETERRQ2(...) PETSC_DEPRECATED_MACRO("GCC warning \"Use SETERRQ() (since version 3.17)\"") SETERRQ(__VA_ARGS__)
@@ -110,11 +109,7 @@
 .seealso: `PetscCheck()`, `PetscAssert()`, `PetscTraceBackErrorHandler()`, `PetscPushErrorHandler()`,
           `PetscError()`, `PetscCall()`, `CHKMEMQ`, `CHKERRA()`, `PetscCallMPI()`
 M*/
-#define SETERRQ(comm, ierr, ...) \
-  do { \
-    PetscErrorCode ierr_seterrq_petsc_ = PetscError(comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr, PETSC_ERROR_INITIAL, __VA_ARGS__); \
-    return ierr_seterrq_petsc_ ? ierr_seterrq_petsc_ : PETSC_ERR_RETURN; \
-  } while (0)
+#define SETERRQ(comm, ierr, ...) return PetscError(comm, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr, PETSC_ERROR_INITIAL, __VA_ARGS__)
 
 /*
     Returned from PETSc functions that are called from MPI, such as related to attributes
@@ -256,12 +251,10 @@ M*/
 
   Level: developer
 
-.seealso: `PetscAssertAbort()`, `PetscAssert()`, `SETERRQ()`, `PetscError()`, `PetscCall()`, `PetscCheck()`, `SETTERRABORT()`
+.seealso: `PetscAssert()`, `SETERRQ()`, `PetscError()`, `PetscCall()`, `PetscCheck()`, `SETTERRABORT()`
 M*/
 #define PetscCheckAbort(cond, comm, ierr, ...) \
-  do { \
-    if (PetscUnlikely(!(cond))) SETERRABORT(comm, ierr, __VA_ARGS__); \
-  } while (0)
+  if (PetscUnlikely(!(cond))) SETERRABORT(comm, ierr, __VA_ARGS__)
 
 /*MC
   PetscAssert - Assert that a particular condition is true
@@ -279,7 +272,9 @@ M*/
 - message - Error message in printf format
 
   Notes:
-  Equivalent to `PetscCheck()` if debugging is enabled, and `PetscAssume(cond)` otherwise.
+  Enabled only in debug builds. Note that any arguments to this macros are still visible to the
+  compiler optimized builds (so must still contain valid code) but are guaranteed to not be
+  executed.
 
   See `PetscCheck()` for usage and behaviour.
 
@@ -287,39 +282,11 @@ M*/
 
   Level: beginner
 
-.seealso: `PetscCheck()`, `SETERRQ()`, `PetscError()`, `PetscAssertAbort()`
+.seealso: `PetscCheck()`, `SETERRQ()`, `PetscError()`
 M*/
-#if PetscDefined(USE_DEBUG)
-  #define PetscAssert(cond, comm, ierr, ...) PetscCheck(cond, comm, ierr, __VA_ARGS__)
-#else
-  #define PetscAssert(cond, ...) PetscAssume(cond)
-#endif
-
-/*MC
-  PetscAssertAbort - Assert that a particular condition is true, otherwise prints error and aborts
-
-  Synopsis:
-  #include <petscerror.h>
-  void PetscAssertAbort(bool cond, MPI_Comm comm, PetscErrorCode ierr, const char *message, ...)
-
-  Collective
-
-  Input Parameters:
-+ cond    - The boolean condition
-. comm    - The communicator on which the check can be collective on
-. ierr    - A nonzero error code, see include/petscerror.h for the complete list
-- message - Error message in printf format
-
-  Notes:
-  Enabled only in debug builds. See `PetscCheckAbort()` for usage.
-
-  Level: beginner
-
-.seealso: `PetscCheckAbort()`, `PetscAssert()`, `PetscCheck()`, `SETERRABORT()`, `PetscError()`
-M*/
-#define PetscAssertAbort(cond, comm, ierr, ...) \
+#define PetscAssert(cond, comm, ierr, ...) \
   do { \
-    if (PetscUnlikelyDebug(!(cond))) SETERRABORT(comm, ierr, __VA_ARGS__); \
+    if (PetscUnlikelyDebug(!(cond))) SETERRQ(comm, ierr, __VA_ARGS__); \
   } while (0)
 
 /*MC
@@ -428,32 +395,32 @@ void PetscCall(PetscErrorCode);
 void PetscCallBack(const char *, PetscErrorCode);
 void PetscCallVoid(PetscErrorCode);
 #else
-  #define PetscCall(...) \
-    do { \
-      PetscErrorCode ierr_q_; \
-      PetscStackUpdateLine; \
-      ierr_q_ = __VA_ARGS__; \
-      if (PetscUnlikely(ierr_q_)) return PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_q_, PETSC_ERROR_REPEAT, " "); \
-    } while (0)
-  #define PetscCallBack(function, ...) \
-    do { \
-      PetscErrorCode ierr_q_; \
-      PetscStackUpdateLine; \
-      PetscStackPushExternal(function); \
-      ierr_q_ = __VA_ARGS__; \
-      PetscStackPop; \
-      if (PetscUnlikely(ierr_q_)) return PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_q_, PETSC_ERROR_REPEAT, " "); \
-    } while (0)
-  #define PetscCallVoid(...) \
-    do { \
-      PetscErrorCode ierr_void_; \
-      PetscStackUpdateLine; \
-      ierr_void_ = __VA_ARGS__; \
-      if (PetscUnlikely(ierr_void_)) { \
-        (void)PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_void_, PETSC_ERROR_REPEAT, " "); \
-        return; \
-      } \
-    } while (0)
+#define PetscCall(...) \
+  do { \
+    PetscErrorCode ierr_q_; \
+    PetscStackUpdateLine; \
+    ierr_q_ = __VA_ARGS__; \
+    if (PetscUnlikely(ierr_q_)) return PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_q_, PETSC_ERROR_REPEAT, " "); \
+  } while (0)
+#define PetscCallBack(function, ...) \
+  do { \
+    PetscErrorCode ierr_q_; \
+    PetscStackUpdateLine; \
+    PetscStackPushExternal(function); \
+    ierr_q_ = __VA_ARGS__; \
+    PetscStackPop; \
+    if (PetscUnlikely(ierr_q_)) return PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_q_, PETSC_ERROR_REPEAT, " "); \
+  } while (0)
+#define PetscCallVoid(...) \
+  do { \
+    PetscErrorCode ierr_void_; \
+    PetscStackUpdateLine; \
+    ierr_void_ = __VA_ARGS__; \
+    if (PetscUnlikely(ierr_void_)) { \
+      (void)PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_void_, PETSC_ERROR_REPEAT, " "); \
+      return; \
+    } \
+  } while (0)
 #endif
 
 /*MC
@@ -532,21 +499,19 @@ M*/
 #if defined(PETSC_CLANG_STATIC_ANALYZER)
 void PetscCallMPI(PetscMPIInt);
 #else
-  #define PetscCallMPI(...) \
-    do { \
-      PetscMPIInt _7_errorcode; \
-      char        _7_errorstring[2 * MPI_MAX_ERROR_STRING]; \
-      PetscStackUpdateLine; \
-      PetscStackPushExternal("MPI function"); \
-      { \
-        _7_errorcode = __VA_ARGS__; \
-      } \
-      PetscStackPop; \
-      if (PetscUnlikely(_7_errorcode)) { \
-        PetscMPIErrorString(_7_errorcode, (char *)_7_errorstring); \
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_MPI, "MPI error %d %s", (int)_7_errorcode, _7_errorstring); \
-      } \
-    } while (0)
+#define PetscCallMPI(...) \
+  do { \
+    PetscMPIInt _7_errorcode; \
+    char        _7_errorstring[2 * MPI_MAX_ERROR_STRING]; \
+    PetscStackUpdateLine; \
+    PetscStackPushExternal("MPI function"); \
+    { _7_errorcode = __VA_ARGS__; } \
+    PetscStackPop; \
+    if (PetscUnlikely(_7_errorcode)) { \
+      PetscMPIErrorString(_7_errorcode, (char *)_7_errorstring); \
+      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_MPI, "MPI error %d %s", (int)_7_errorcode, _7_errorstring); \
+    } \
+  } while (0)
 #endif
 
 /*MC
@@ -627,25 +592,25 @@ M*/
   Level: intermediate
 
 .seealso: `SETERRABORT()`, `PetscTraceBackErrorHandler()`, `PetscPushErrorHandler()`, `PetscError()`,
-          `SETERRQ()`, `CHKMEMQ`, `PetscCallMPI()`, `PetscCallCXXAbort()`
+          `SETERRQ()`, `CHKMEMQ`, `PetscCallMPI()`
 M*/
 #if defined(PETSC_CLANG_STATIC_ANALYZER)
 void PetscCallAbort(MPI_Comm, PetscErrorCode);
 void PetscCallContinue(PetscErrorCode);
 #else
-  #define PetscCallAbort(comm, ...) \
-    do { \
-      PetscErrorCode ierr_abort_ = __VA_ARGS__; \
-      if (PetscUnlikely(ierr_abort_)) { \
-        PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_abort_, PETSC_ERROR_REPEAT, " "); \
-        MPI_Abort(comm, ierr_abort_); \
-      } \
-    } while (0)
-  #define PetscCallContinue(...) \
-    do { \
-      PetscErrorCode ierr_continue_ = __VA_ARGS__; \
-      if (PetscUnlikely(ierr_continue_)) PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_continue_, PETSC_ERROR_REPEAT, " "); \
-    } while (0)
+#define PetscCallAbort(comm, ...) \
+  do { \
+    PetscErrorCode ierr_abort_ = __VA_ARGS__; \
+    if (PetscUnlikely(ierr_abort_)) { \
+      PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_abort_, PETSC_ERROR_REPEAT, " "); \
+      MPI_Abort(comm, ierr_abort_); \
+    } \
+  } while (0)
+#define PetscCallContinue(...) \
+  do { \
+    PetscErrorCode ierr_continue_ = __VA_ARGS__; \
+    if (PetscUnlikely(ierr_continue_)) PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_continue_, PETSC_ERROR_REPEAT, " "); \
+  } while (0)
 #endif
 
 /*MC
@@ -735,7 +700,7 @@ PETSC_EXTERN PetscBool petscindebugger;
   } while (0)
 
 #ifdef PETSC_CLANGUAGE_CXX
-  /*MC
+/*MC
   PetscCallThrow - Checks error code, if non-zero it calls the C++ error handler which throws
   an exception
 
@@ -760,13 +725,13 @@ PETSC_EXTERN PetscBool petscindebugger;
 .seealso: `SETERRQ()`, `PetscCall()`, `SETERRABORT()`, `PetscCallAbort()`, `PetscTraceBackErrorHandler()`,
           `PetscPushErrorHandler()`, `PetscError()`, `CHKMEMQ`
 M*/
-  #define PetscCallThrow(...) \
-    do { \
-      PetscErrorCode ierr_cxx_ = __VA_ARGS__; \
-      if (PetscUnlikely(ierr_cxx_)) PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_cxx_, PETSC_ERROR_IN_CXX, PETSC_NULLPTR); \
-    } while (0)
+#define PetscCallThrow(...) \
+  do { \
+    PetscErrorCode ierr_cxx_ = __VA_ARGS__; \
+    if (PetscUnlikely(ierr_cxx_)) PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_cxx_, PETSC_ERROR_IN_CXX, PETSC_NULLPTR); \
+  } while (0)
 
-  /*MC
+/*MC
   CHKERRXX - Checks error code, if non-zero it calls the C++ error handler which throws an exception
 
   Synopsis:
@@ -785,7 +750,7 @@ M*/
 
 .seealso: `PetscCallThrow()`
 M*/
-  #define CHKERRXX(...) PetscCallThrow(__VA_ARGS__)
+#define CHKERRXX(...) PetscCallThrow(__VA_ARGS__)
 #endif
 
 /*MC
@@ -794,27 +759,23 @@ M*/
 
   Synopsis:
   #include <petscerror.h>
-  void PetscCallCXX(...) noexcept;
+  void PetscCallCXX(expr) noexcept;
 
   Not Collective
 
   Input Parameter:
-. __VA_ARGS__ - An arbitrary expression
-
-  Level: beginner
+. expr - An arbitrary expression
 
   Notes:
-  `PetscCallCXX(...)` is a macro replacement for
+  PetscCallCXX(expr) is a macro replacement for
 .vb
   try {
-    __VA_ARGS__;
+    expr;
   } catch (const std::exception& e) {
     return ConvertToPetscErrorCode(e);
   }
 .ve
   Due to the fact that it catches any (reasonable) exception, it is essentially noexcept.
-
-  If you cannot return a `PetscErrorCode` use `PetscCallCXXAbort()` instead.
 
   Example Usage:
 .vb
@@ -831,7 +792,7 @@ M*/
 
     PetscCallCXX(
       bar();
-      foo(); // OK multiple statements allowed
+      foo(); // OK mutliple statements allowed
     );
   }
 
@@ -852,112 +813,17 @@ M*/
   )
 .ve
 
-.seealso: `PetscCallCXXAbort()`, `PetscCallThrow()`, `SETERRQ()`, `PetscCall()`,
-`SETERRABORT()`, `PetscCallAbort()`, `PetscTraceBackErrorHandler()`, `PetscPushErrorHandler()`,
-`PetscError()`, `CHKMEMQ`
-M*/
-#if defined(PETSC_CLANG_STATIC_ANALYZER)
-void PetscCallCXX(PetscErrorCode);
-#else
-  #define PetscCallCXX(...) \
-    do { \
-      PetscStackUpdateLine; \
-      try { \
-        __VA_ARGS__; \
-      } catch (const std::exception &e) { \
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "%s", e.what()); \
-      } \
-    } while (0)
-#endif
-
-/*MC
-  PetscCallCXXAbort - Like `PetscCallCXX()` but calls `MPI_Abort()` instead of returning an
-  error-code
-
-  Synopsis:
-  #include <petscerror.h>
-  void PetscCallCXXAbort(MPI_Comm comm, ...) noexcept;
-
-  Collective on `comm`
-
-  Input Parameters:
-+ comm        - The MPI communicator to abort on
-- __VA_ARGS__ - An arbitrary expression
-
   Level: beginner
 
-  Notes:
-  This macro may be used to check C++ expressions for exceptions in cases where you cannot
-  return an error code. This includes constructors, destructors, copy/move assignment functions
-  or constructors among others.
-
-  If an exception is caught, the macro calls `SETERRABORT()` on `comm`. The exception must
-  derive from `std::exception` in order to be caught.
-
-  If the routine _can_ return an error-code it is highly advised to use `PetscCallCXX()`
-  instead.
-
-  See `PetscCallCXX()` for additional discussion.
-
-  Fortran Note:
-  Not available from Fortran.
-
-  Example Usage:
-.vb
-  class Foo
-  {
-    std::vector<int> data_;
-
-  public:
-    // normally std::vector::reserve() may raise an exception, but since we handle it with
-    // PetscCallCXXAbort() we may mark this routine as noexcept!
-    Foo() noexcept
-    {
-      PetscCallCXXAbort(PETSC_COMM_SELF, data_.reserve(10));
-    }
-  };
-
-  std::vector<int> bar()
-  {
-    std::vector<int> v;
-
-    PetscFunctionBegin;
-    // OK!
-    PetscCallCXXAbort(PETSC_COMM_SELF, v.emplace_back(1));
-    PetscFunctionReturn(v);
-  }
-
-  PetscErrorCode baz()
-  {
-    std::vector<int> v;
-
-    PetscFunctionBegin;
-    // WRONG! baz() returns a PetscErrorCode, prefer PetscCallCXX() instead
-    PetscCallCXXAbort(PETSC_COMM_SELF, v.emplace_back(1));
-    PetscFunctionReturn(0);
-  }
-.ve
-
-.seealso: `PetscCallCXX()`, `SETERRABORT()`, `PetscCallAbort()`
+.seealso: `PetscCallThrow()`, `SETERRQ()`, `PetscCall()`, `SETERRABORT()`, `PetscCallAbort()`,
+          `PetscTraceBackErrorHandler()`, `PetscPushErrorHandler()`, `PetscError()`, `CHKMEMQ`
 M*/
-#define PetscCallCXXAbort(comm, ...) \
+#define PetscCallCXX(...) \
   do { \
     PetscStackUpdateLine; \
     try { \
       __VA_ARGS__; \
-    } catch (const std::exception &e) { \
-      SETERRABORT(comm, PETSC_ERR_LIB, "%s", e.what()); \
-    } \
-  } while (0)
-
-#define PetscCallCXXAbort(comm, ...) \
-  do { \
-    PetscStackUpdateLine; \
-    try { \
-      __VA_ARGS__; \
-    } catch (const std::exception &e) { \
-      SETERRABORT(comm, PETSC_ERR_LIB, "%s", e.what()); \
-    } \
+    } catch (const std::exception &e) { SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "%s", e.what()); } \
   } while (0)
 
 /*MC
@@ -1009,15 +875,15 @@ M*/
 .seealso: `PetscTraceBackErrorHandler()`, `PetscPushErrorHandler()`, `PetscError()`, `SETERRQ()`, `PetscMallocValidate()`
 M*/
 #if defined(PETSC_CLANG_STATIC_ANALYZER)
-  #define CHKMEMQ
-  #define CHKMEMA
+#define CHKMEMQ
+#define CHKMEMA
 #else
-  #define CHKMEMQ \
-    do { \
-      PetscErrorCode ierr_memq_ = PetscMallocValidate(__LINE__, PETSC_FUNCTION_NAME, __FILE__); \
-      if (PetscUnlikely(ierr_memq_)) return PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_memq_, PETSC_ERROR_REPEAT, " "); \
-    } while (0)
-  #define CHKMEMA PetscMallocValidate(__LINE__, PETSC_FUNCTION_NAME, __FILE__)
+#define CHKMEMQ \
+  do { \
+    PetscErrorCode ierr_memq_ = PetscMallocValidate(__LINE__, PETSC_FUNCTION_NAME, __FILE__); \
+    if (PetscUnlikely(ierr_memq_)) return PetscError(PETSC_COMM_SELF, __LINE__, PETSC_FUNCTION_NAME, __FILE__, ierr_memq_, PETSC_ERROR_REPEAT, " "); \
+  } while (0)
+#define CHKMEMA PetscMallocValidate(__LINE__, PETSC_FUNCTION_NAME, __FILE__)
 #endif
 
 /*E
@@ -1060,8 +926,7 @@ PETSC_EXTERN PetscErrorCode PetscPushSignalHandler(PetscErrorCode (*)(int, void 
 PETSC_EXTERN PetscErrorCode PetscPopSignalHandler(void);
 PETSC_EXTERN PetscErrorCode PetscCheckPointerSetIntensity(PetscInt);
 PETSC_EXTERN void           PetscSignalSegvCheckPointerOrMpi(void);
-PETSC_DEPRECATED_FUNCTION("Use PetscSignalSegvCheckPointerOrMpi() (since version 3.13)") static inline void PetscSignalSegvCheckPointer(void)
-{
+PETSC_DEPRECATED_FUNCTION("Use PetscSignalSegvCheckPointerOrMpi() (since version 3.13)") static inline void PetscSignalSegvCheckPointer(void) {
   PetscSignalSegvCheckPointerOrMpi();
 }
 
@@ -1132,7 +997,7 @@ PETSC_EXTERN PetscErrorCode PetscDetermineInitialFPTrap(void);
 */
 
 #if defined(PETSC_USE_DEBUG)
-  #define PETSCSTACKSIZE 64
+#define PETSCSTACKSIZE 64
 typedef struct {
   const char *function[PETSCSTACKSIZE];
   const char *file[PETSCSTACKSIZE];
@@ -1150,73 +1015,73 @@ typedef struct {
 #endif
 
 #if defined(PETSC_SERIALIZE_FUNCTIONS)
-  #include <petsc/private/petscfptimpl.h>
-  /*
+#include <petsc/private/petscfptimpl.h>
+/*
    Registers the current function into the global function pointer to function name table
 
    Have to fix this to handle errors but cannot return error since used in PETSC_VIEWER_DRAW_() etc
 */
-  #define PetscRegister__FUNCT__() \
-    do { \
-      static PetscBool __chked = PETSC_FALSE; \
-      if (!__chked) { \
-        void *ptr; \
-        PetscDLSym(NULL, PETSC_FUNCTION_NAME, &ptr); \
-        __chked = PETSC_TRUE; \
-      } \
-    } while (0)
+#define PetscRegister__FUNCT__() \
+  do { \
+    static PetscBool __chked = PETSC_FALSE; \
+    if (!__chked) { \
+      void *ptr; \
+      PetscDLSym(NULL, PETSC_FUNCTION_NAME, &ptr); \
+      __chked = PETSC_TRUE; \
+    } \
+  } while (0)
 #else
-  #define PetscRegister__FUNCT__()
+#define PetscRegister__FUNCT__()
 #endif
 
 #if defined(PETSC_CLANG_STATIC_ANALYZER)
-  #define PetscStackPushNoCheck(funct, petsc_routine, hot)
-  #define PetscStackUpdateLine
-  #define PetscStackPushExternal(funct)
-  #define PetscStackPopNoCheck
-  #define PetscStackClearTop
-  #define PetscFunctionBegin
-  #define PetscFunctionBeginUser
-  #define PetscFunctionBeginHot
-  #define PetscFunctionReturn(...)  return __VA_ARGS__
-  #define PetscFunctionReturnVoid() return
-  #define PetscStackPop
-  #define PetscStackPush(f)
+#define PetscStackPushNoCheck(funct, petsc_routine, hot)
+#define PetscStackUpdateLine
+#define PetscStackPushExternal(funct)
+#define PetscStackPopNoCheck
+#define PetscStackClearTop
+#define PetscFunctionBegin
+#define PetscFunctionBeginUser
+#define PetscFunctionBeginHot
+#define PetscFunctionReturn(a)    return a
+#define PetscFunctionReturnVoid() return
+#define PetscStackPop
+#define PetscStackPush(f)
 #elif defined(PETSC_USE_DEBUG)
 
-  #define PetscStackPush_Private(stack__, file__, func__, line__, petsc_routine__, hot__) \
-    do { \
-      if (stack__.currentsize < PETSCSTACKSIZE) { \
-        stack__.function[stack__.currentsize] = func__; \
-        if (petsc_routine__) { \
-          stack__.file[stack__.currentsize] = file__; \
-          stack__.line[stack__.currentsize] = line__; \
-        } else { \
-          stack__.file[stack__.currentsize] = PETSC_NULLPTR; \
-          stack__.line[stack__.currentsize] = 0; \
-        } \
-        stack__.petscroutine[stack__.currentsize] = petsc_routine__; \
+#define PetscStackPush_Private(stack__, file__, func__, line__, petsc_routine__, hot__) \
+  do { \
+    if (stack__.currentsize < PETSCSTACKSIZE) { \
+      stack__.function[stack__.currentsize] = func__; \
+      if (petsc_routine__) { \
+        stack__.file[stack__.currentsize] = file__; \
+        stack__.line[stack__.currentsize] = line__; \
+      } else { \
+        stack__.file[stack__.currentsize] = PETSC_NULLPTR; \
+        stack__.line[stack__.currentsize] = 0; \
       } \
-      ++stack__.currentsize; \
-      stack__.hotdepth += (hot__ || stack__.hotdepth); \
-    } while (0)
+      stack__.petscroutine[stack__.currentsize] = petsc_routine__; \
+    } \
+    ++stack__.currentsize; \
+    stack__.hotdepth += (hot__ || stack__.hotdepth); \
+  } while (0)
 
-  /* uses PetscCheckAbort() because may be used in a function that does not return an error code */
-  #define PetscStackPop_Private(stack__, func__) \
-    do { \
-      PetscCheckAbort(!stack__.check || stack__.currentsize > 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid stack size %d, pop %s %s:%d.\n", stack__.currentsize, func__, __FILE__, __LINE__); \
-      if (--stack__.currentsize < PETSCSTACKSIZE) { \
-        PetscCheckAbort(!stack__.check || stack__.petscroutine[stack__.currentsize] != 1 || stack__.function[stack__.currentsize] == (const char *)(func__), PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid stack: push from %s %s:%d. Pop from %s %s:%d.\n", \
-                        stack__.function[stack__.currentsize], stack__.file[stack__.currentsize], stack__.line[stack__.currentsize], func__, __FILE__, __LINE__); \
-        stack__.function[stack__.currentsize]     = PETSC_NULLPTR; \
-        stack__.file[stack__.currentsize]         = PETSC_NULLPTR; \
-        stack__.line[stack__.currentsize]         = 0; \
-        stack__.petscroutine[stack__.currentsize] = 0; \
-      } \
-      stack__.hotdepth = PetscMax(stack__.hotdepth - 1, 0); \
-    } while (0)
+/* uses PetscCheckAbort() because may be used in a function that does not return an error code */
+#define PetscStackPop_Private(stack__, func__) \
+  do { \
+    PetscCheckAbort(!stack__.check || stack__.currentsize > 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid stack size %d, pop %s %s:%d.\n", stack__.currentsize, func__, __FILE__, __LINE__); \
+    if (--stack__.currentsize < PETSCSTACKSIZE) { \
+      PetscCheckAbort(!stack__.check || stack__.petscroutine[stack__.currentsize] != 1 || stack__.function[stack__.currentsize] == (const char *)(func__), PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid stack: push from %s %s:%d. Pop from %s %s:%d.\n", \
+                      stack__.function[stack__.currentsize], stack__.file[stack__.currentsize], stack__.line[stack__.currentsize], func__, __FILE__, __LINE__); \
+      stack__.function[stack__.currentsize]     = PETSC_NULLPTR; \
+      stack__.file[stack__.currentsize]         = PETSC_NULLPTR; \
+      stack__.line[stack__.currentsize]         = 0; \
+      stack__.petscroutine[stack__.currentsize] = 0; \
+    } \
+    stack__.hotdepth = PetscMax(stack__.hotdepth - 1, 0); \
+  } while (0)
 
-  /*MC
+/*MC
    PetscStackPushNoCheck - Pushes a new function name and line number onto the PETSc default stack that tracks where the running program is
    currently in the source code.
 
@@ -1248,14 +1113,14 @@ typedef struct {
           `PetscFunctionReturn()`, `PetscFunctionBeginHot()`, `PetscFunctionBeginUser()`, `PetscStackPush()`, `PetscStackPop`,
           `PetscStackPushExternal()`
 M*/
-  #define PetscStackPushNoCheck(funct, petsc_routine, hot) \
-    do { \
-      PetscStackSAWsTakeAccess(); \
-      PetscStackPush_Private(petscstack, __FILE__, funct, __LINE__, petsc_routine, hot); \
-      PetscStackSAWsGrantAccess(); \
-    } while (0)
+#define PetscStackPushNoCheck(funct, petsc_routine, hot) \
+  do { \
+    PetscStackSAWsTakeAccess(); \
+    PetscStackPush_Private(petscstack, __FILE__, funct, __LINE__, petsc_routine, hot); \
+    PetscStackSAWsGrantAccess(); \
+  } while (0)
 
-  /*MC
+/*MC
    PetscStackUpdateLine - in a function that has a `PetscFunctionBegin` or `PetscFunctionBeginUser` updates the stack line number to the
    current line number.
 
@@ -1280,10 +1145,10 @@ M*/
 
 .seealso: `PetscAttachDebugger()`, `PetscStackCopy()`, `PetscStackView()`, `PetscStackPushNoCheck()`, `PetscStackPop`, `PetscCall()`
 M*/
-  #define PetscStackUpdateLine \
-    if (petscstack.currentsize > 0 && petscstack.function[petscstack.currentsize - 1] == PETSC_FUNCTION_NAME) { petscstack.line[petscstack.currentsize - 1] = __LINE__; }
+#define PetscStackUpdateLine \
+  if (petscstack.currentsize > 0 && petscstack.function[petscstack.currentsize - 1] == PETSC_FUNCTION_NAME) { petscstack.line[petscstack.currentsize - 1] = __LINE__; }
 
-  /*MC
+/*MC
    PetscStackPushExternal - Pushes a new function name onto the PETSc default stack that tracks where the running program is
    currently in the source code. Does not include the filename or line number since this is called by the calling routine
    for non-PETSc or user functions.
@@ -1315,13 +1180,13 @@ M*/
 .seealso: `PetscAttachDebugger()`, `PetscStackCopy()`, `PetscStackView()`, `PetscStackPopNoCheck()`, `PetscCall()`, `PetscFunctionBegin()`,
           `PetscFunctionReturn()`, `PetscFunctionBeginHot()`, `PetscFunctionBeginUser()`, `PetscStackPushNoCheck()`, `PetscStackPop`
 M*/
-  #define PetscStackPushExternal(funct) \
-    do { \
-      PetscStackUpdateLine; \
-      PetscStackPushNoCheck(funct, 0, PETSC_TRUE); \
-    } while (0);
+#define PetscStackPushExternal(funct) \
+  do { \
+    PetscStackUpdateLine; \
+    PetscStackPushNoCheck(funct, 0, PETSC_TRUE); \
+  } while (0);
 
-  /*MC
+/*MC
    PetscStackPopNoCheck - Pops a function name from the PETSc default stack that tracks where the running program is
    currently in the source code.
 
@@ -1350,27 +1215,27 @@ M*/
 
 .seealso: `PetscAttachDebugger()`, `PetscStackCopy()`, `PetscStackView()`, `PetscStackPushNoCheck()`, `PetscStackPop`
 M*/
-  #define PetscStackPopNoCheck(funct) \
-    do { \
-      PetscStackSAWsTakeAccess(); \
-      PetscStackPop_Private(petscstack, funct); \
-      PetscStackSAWsGrantAccess(); \
-    } while (0)
+#define PetscStackPopNoCheck(funct) \
+  do { \
+    PetscStackSAWsTakeAccess(); \
+    PetscStackPop_Private(petscstack, funct); \
+    PetscStackSAWsGrantAccess(); \
+  } while (0)
 
-  #define PetscStackClearTop \
-    do { \
-      PetscStackSAWsTakeAccess(); \
-      if (petscstack.currentsize > 0 && --petscstack.currentsize < PETSCSTACKSIZE) { \
-        petscstack.function[petscstack.currentsize]     = PETSC_NULLPTR; \
-        petscstack.file[petscstack.currentsize]         = PETSC_NULLPTR; \
-        petscstack.line[petscstack.currentsize]         = 0; \
-        petscstack.petscroutine[petscstack.currentsize] = 0; \
-      } \
-      petscstack.hotdepth = PetscMax(petscstack.hotdepth - 1, 0); \
-      PetscStackSAWsGrantAccess(); \
-    } while (0)
+#define PetscStackClearTop \
+  do { \
+    PetscStackSAWsTakeAccess(); \
+    if (petscstack.currentsize > 0 && --petscstack.currentsize < PETSCSTACKSIZE) { \
+      petscstack.function[petscstack.currentsize]     = PETSC_NULLPTR; \
+      petscstack.file[petscstack.currentsize]         = PETSC_NULLPTR; \
+      petscstack.line[petscstack.currentsize]         = 0; \
+      petscstack.petscroutine[petscstack.currentsize] = 0; \
+    } \
+    petscstack.hotdepth = PetscMax(petscstack.hotdepth - 1, 0); \
+    PetscStackSAWsGrantAccess(); \
+  } while (0)
 
-  /*MC
+/*MC
    PetscFunctionBegin - First executable line of each PETSc function,  used for error handling. Final
       line of PETSc functions should be `PetscFunctionReturn`(0);
 
@@ -1397,13 +1262,13 @@ M*/
 .seealso: `PetscFunctionReturn()`, `PetscFunctionBeginHot()`, `PetscFunctionBeginUser()`, `PetscStackPushNoCheck()`
 
 M*/
-  #define PetscFunctionBegin \
-    do { \
-      PetscStackPushNoCheck(PETSC_FUNCTION_NAME, 1, PETSC_FALSE); \
-      PetscRegister__FUNCT__(); \
-    } while (0)
+#define PetscFunctionBegin \
+  do { \
+    PetscStackPushNoCheck(PETSC_FUNCTION_NAME, 1, PETSC_FALSE); \
+    PetscRegister__FUNCT__(); \
+  } while (0)
 
-  /*MC
+/*MC
    PetscFunctionBeginHot - Substitute for `PetscFunctionBegin` to be used in functions that are called in
    performance-critical circumstances.  Use of this function allows for lighter profiling by default.
 
@@ -1428,13 +1293,13 @@ M*/
 .seealso: `PetscFunctionBegin`, `PetscFunctionReturn()`, `PetscStackPushNoCheck()`
 
 M*/
-  #define PetscFunctionBeginHot \
-    do { \
-      PetscStackPushNoCheck(PETSC_FUNCTION_NAME, 1, PETSC_TRUE); \
-      PetscRegister__FUNCT__(); \
-    } while (0)
+#define PetscFunctionBeginHot \
+  do { \
+    PetscStackPushNoCheck(PETSC_FUNCTION_NAME, 1, PETSC_TRUE); \
+    PetscRegister__FUNCT__(); \
+  } while (0)
 
-  /*MC
+/*MC
    PetscFunctionBeginUser - First executable line of user provided routines
 
    Synopsis:
@@ -1465,13 +1330,13 @@ M*/
 .seealso: `PetscFunctionReturn()`, `PetscFunctionBegin`, `PetscFunctionBeginHot`, `PetscStackPushNoCheck()`
 
 M*/
-  #define PetscFunctionBeginUser \
-    do { \
-      PetscStackPushNoCheck(PETSC_FUNCTION_NAME, 2, PETSC_FALSE); \
-      PetscRegister__FUNCT__(); \
-    } while (0)
+#define PetscFunctionBeginUser \
+  do { \
+    PetscStackPushNoCheck(PETSC_FUNCTION_NAME, 2, PETSC_FALSE); \
+    PetscRegister__FUNCT__(); \
+  } while (0)
 
-  /*MC
+/*MC
    PetscStackPush - Pushes a new function name and line number onto the PETSc default stack that tracks where the running program is
    currently in the source code and verifies the memory is not corrupted.
 
@@ -1496,13 +1361,13 @@ M*/
 .seealso: `PetscAttachDebugger()`, `PetscStackCopy()`, `PetscStackView()`, `PetscStackPopNoCheck()`, `PetscCall()`, `PetscFunctionBegin()`,
           `PetscFunctionReturn()`, `PetscFunctionBeginHot()`, `PetscFunctionBeginUser()`, `PetscStackPushNoCheck()`, `PetscStackPop`
 M*/
-  #define PetscStackPush(n) \
-    do { \
-      PetscStackPushNoCheck(n, 0, PETSC_FALSE); \
-      CHKMEMQ; \
-    } while (0)
+#define PetscStackPush(n) \
+  do { \
+    PetscStackPushNoCheck(n, 0, PETSC_FALSE); \
+    CHKMEMQ; \
+  } while (0)
 
-  /*MC
+/*MC
    PetscStackPop - Pops a function name from the PETSc default stack that tracks where the running program is
    currently in the source code and verifies the memory is not corrupted.
 
@@ -1523,129 +1388,68 @@ M*/
 
 .seealso: `PetscAttachDebugger()`, `PetscStackCopy()`, `PetscStackView()`, `PetscStackPushNoCheck()`, `PetscStackPopNoCheck()`, `PetscStackPush()`
 M*/
-  #define PetscStackPop \
-    do { \
-      CHKMEMQ; \
-      PetscStackPopNoCheck(PETSC_FUNCTION_NAME); \
-    } while (0)
+#define PetscStackPop \
+  do { \
+    CHKMEMQ; \
+    PetscStackPopNoCheck(PETSC_FUNCTION_NAME); \
+  } while (0)
 
-  /*MC
-   PetscFunctionReturn - Last executable line of each PETSc function used for error
-   handling. Replaces `return()`.
+/*MC
+   PetscFunctionReturn - Last executable line of each PETSc function
+        used for error handling. Replaces `return()`
 
    Synopsis:
-   #include <petscerror.h>
-   void PetscFunctionReturn(...)
+   #include <petscsys.h>
+   void PetscFunctionReturn(0);
 
    Not Collective
 
-   Level: beginner
-
-   Notes:
-   This routine is a macro, so while it does not "return" anything itself, it does return from
-   the function in the literal sense.
-
-   Usually the return value is the integer literal `0` (for example in any function returning
-   `PetscErrorCode`), however it is possible to return any arbitrary type. The arguments of
-   this macro are placed before the `return` statement as-is.
-
-   Any routine which returns via `PetscFunctionReturn()` must begin with a corresponding
-   `PetscFunctionBegin`.
-
-   For routines which return `void` use `PetscFunctionReturnVoid()` instead.
-
-   Example Usage:
+   Usage:
 .vb
-   PetscErrorCode foo(int *x)
-   {
-     PetscFunctionBegin; // don't forget the begin!
-     *x = 10;
+    ....
      PetscFunctionReturn(0);
    }
 .ve
 
-   May return any arbitrary type\:
-.vb
-  struct Foo
-  {
-    int x;
-  };
+   Note:
+     Not available in Fortran
 
-  struct Foo make_foo(int value)
-  {
-    struct Foo f;
+   Level: developer
 
-    PetscFunctionBegin;
-    f.x = value;
-    PetscFunctionReturn(f);
-  }
-.ve
+.seealso: `PetscFunctionBegin()`, `PetscStackPopNoCheck()`
 
-   Fortran Note:
-   Not available in Fortran
-
-.seealso: `PetscFunctionBegin`, `PetscFunctionBeginUser`, `PetscFunctionReturnVoid()`,
-`PetscStackPopNoCheck()`
 M*/
-  #define PetscFunctionReturn(...) \
-    do { \
-      PetscStackPopNoCheck(PETSC_FUNCTION_NAME); \
-      return __VA_ARGS__; \
-    } while (0)
+#define PetscFunctionReturn(a) \
+  do { \
+    PetscStackPopNoCheck(PETSC_FUNCTION_NAME); \
+    return a; \
+  } while (0)
 
-  /*MC
-  PetscFunctionReturnVoid - Like `PetscFunctionReturn()` but returns `void`
-
-  Synopsis:
-  #include <petscerror.h>
-  void PetscFunctionReturnVoid()
-
-  Not Collective
-
-  Level: beginner
-
-  Note:
-  Behaves identically to `PetscFunctionReturn()` except that it returns `void`. That is, this
-  macro culminates with `return`.
-
-  Example Usage:
-.vb
-  void foo()
-  {
-    PetscFunctionBegin; // must start with PetscFunctionBegin!
-    bar();
-    baz();
-    PetscFunctionReturnVoid();
-  }
-.ve
-
-.seealso: `PetscFunctionReturn()`, `PetscFunctionBegin`, PetscFunctionBeginUser`
-M*/
-  #define PetscFunctionReturnVoid() \
-    do { \
-      PetscStackPopNoCheck(PETSC_FUNCTION_NAME); \
-      return; \
-    } while (0)
+#define PetscFunctionReturnVoid() \
+  do { \
+    PetscStackPopNoCheck(PETSC_FUNCTION_NAME); \
+    return; \
+  } while (0)
 #else /* PETSC_USE_DEBUG */
-  #define PetscStackPushNoCheck(funct, petsc_routine, hot)
-  #define PetscStackUpdateLine
-  #define PetscStackPushExternal(funct)
-  #define PetscStackPopNoCheck
-  #define PetscStackClearTop
-  #define PetscFunctionBegin
-  #define PetscFunctionBeginUser
-  #define PetscFunctionBeginHot
-  #define PetscFunctionReturn(...)  return __VA_ARGS__
-  #define PetscFunctionReturnVoid() return
-  #define PetscStackPop             CHKMEMQ
-  #define PetscStackPush(f)         CHKMEMQ
+#define PetscStackPushNoCheck(funct, petsc_routine, hot)
+#define PetscStackUpdateLine
+#define PetscStackPushExternal(funct)
+#define PetscStackPopNoCheck
+#define PetscStackClearTop
+#define PetscFunctionBegin
+#define PetscFunctionBeginUser
+#define PetscFunctionBeginHot
+#define PetscFunctionReturn(a)    return a
+#define PetscFunctionReturnVoid() return
+#define PetscStackPop             CHKMEMQ
+#define PetscStackPush(f)         CHKMEMQ
 #endif /* PETSC_USE_DEBUG */
 
 #if defined(PETSC_CLANG_STATIC_ANALYZER)
-  #define PetscStackCallExternalVoid(name, routine)
-  #define PetscCallExternal(func, ...)
+#define PetscStackCallExternalVoid(name, routine)
+#define PetscCallExternal(func, ...)
 #else
-  /*MC
+/*MC
     PetscStackCallExternalVoid - Calls an external library routine or user function after pushing the name of the routine on the stack.
 
    Input Parameters:
@@ -1666,14 +1470,14 @@ M*/
 
 .seealso: `PetscCall()`, `PetscStackPushNoCheck()`, `PetscStackPush()`, `PetscCallExternal()`, `PetscCallBLAS()`
 @*/
-  #define PetscStackCallExternalVoid(name, routine) \
-    do { \
-      PetscStackPush(name); \
-      routine; \
-      PetscStackPop; \
-    } while (0)
+#define PetscStackCallExternalVoid(name, routine) \
+  do { \
+    PetscStackPush(name); \
+    routine; \
+    PetscStackPop; \
+  } while (0)
 
-  /*MC
+/*MC
     PetscCallExternal - Calls an external library routine that returns an error code after pushing the name of the routine on the stack.
 
    Input Parameters:
@@ -1690,17 +1494,17 @@ M*/
    Assumes the error return code of the function is an integer and that a value of 0 indicates success
 
    Developer Note:
-   This is so that when an external package routine results in a crash or corrupts memory, they get blamed instead of PETSc.
+   This is so that when an external packge routine results in a crash or corrupts memory, they get blamed instead of PETSc.
 
 .seealso: `PetscCall()`, `PetscStackPushNoCheck()`, `PetscStackPush()`, `PetscStackCallExternalVoid()`
 M*/
-  #define PetscCallExternal(func, ...) \
-    do { \
-      PetscStackPush(PetscStringize(func)); \
-      PetscErrorCode __ierr = func(__VA_ARGS__); \
-      PetscStackPop; \
-      PetscCheck(!__ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in %s(): error code %d", PetscStringize(func), __ierr); \
-    } while (0)
+#define PetscCallExternal(func, ...) \
+  do { \
+    PetscStackPush(PetscStringize(func)); \
+    PetscErrorCode __ierr = func(__VA_ARGS__); \
+    PetscStackPop; \
+    PetscCheck(!__ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in %s(): error code %d", PetscStringize(func), __ierr); \
+  } while (0)
 #endif /* PETSC_CLANG_STATIC_ANALYZER */
 
 #endif

@@ -2,7 +2,7 @@
    Distributed arrays - communication tools for parallel, rectangular grids.
 */
 
-#ifndef _DAIMPL_H
+#if !defined(_DAIMPL_H)
 #define _DAIMPL_H
 
 #include <petscdmda.h>

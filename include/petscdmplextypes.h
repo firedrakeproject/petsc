@@ -1,4 +1,4 @@
-#ifndef PETSCDMPLEXTYPES_H
+#if !defined(PETSCDMPLEXTYPES_H)
 #define PETSCDMPLEXTYPES_H
 
 /* SUBMANSEC = DMPlex */
@@ -15,7 +15,6 @@ $ DM_SHAPE_CYLINDER    - The tensor product of the interval and disk
 $ DM_SHAPE_SCHWARZ_P   - The Schwarz-P triply periodic minimal surface
 $ DM_SHAPE_GYROID      - The Gyroid triply periodic minimal surface
 $ DM_SHAPE_DOUBLET     - The mesh of two cells of a specified type
-$ DM_SHAPE_ANNULUS     - The area between two concentric spheres in dimension d
 
   Level: beginner
 
@@ -30,7 +29,6 @@ typedef enum {
   DM_SHAPE_SCHWARZ_P,
   DM_SHAPE_GYROID,
   DM_SHAPE_DOUBLET,
-  DM_SHAPE_ANNULUS,
   DM_SHAPE_UNKNOWN
 } DMPlexShape;
 PETSC_EXTERN const char *const DMPlexShapes[];

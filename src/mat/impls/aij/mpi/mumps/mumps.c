@@ -9,17 +9,17 @@
 
 EXTERN_C_BEGIN
 #if defined(PETSC_USE_COMPLEX)
-  #if defined(PETSC_USE_REAL_SINGLE)
-    #include <cmumps_c.h>
-  #else
-    #include <zmumps_c.h>
-  #endif
+#if defined(PETSC_USE_REAL_SINGLE)
+#include <cmumps_c.h>
 #else
-  #if defined(PETSC_USE_REAL_SINGLE)
-    #include <smumps_c.h>
-  #else
-    #include <dmumps_c.h>
-  #endif
+#include <zmumps_c.h>
+#endif
+#else
+#if defined(PETSC_USE_REAL_SINGLE)
+#include <smumps_c.h>
+#else
+#include <dmumps_c.h>
+#endif
 #endif
 EXTERN_C_END
 #define JOB_INIT         -1
@@ -31,17 +31,17 @@ EXTERN_C_END
 
 /* calls to MUMPS */
 #if defined(PETSC_USE_COMPLEX)
-  #if defined(PETSC_USE_REAL_SINGLE)
-    #define MUMPS_c cmumps_c
-  #else
-    #define MUMPS_c zmumps_c
-  #endif
+#if defined(PETSC_USE_REAL_SINGLE)
+#define MUMPS_c cmumps_c
 #else
-  #if defined(PETSC_USE_REAL_SINGLE)
-    #define MUMPS_c smumps_c
-  #else
-    #define MUMPS_c dmumps_c
-  #endif
+#define MUMPS_c zmumps_c
+#endif
+#else
+#if defined(PETSC_USE_REAL_SINGLE)
+#define MUMPS_c smumps_c
+#else
+#define MUMPS_c dmumps_c
+#endif
 #endif
 
 /* MUMPS uses MUMPS_INT for nonzero indices such as irn/jcn, irn_loc/jcn_loc and uses int64_t for
@@ -51,13 +51,13 @@ EXTERN_C_END
 typedef MUMPS_INT PetscMUMPSInt;
 
 #if PETSC_PKG_MUMPS_VERSION_GE(5, 3, 0)
-  #if defined(MUMPS_INTSIZE64) /* MUMPS_INTSIZE64 is in MUMPS headers if it is built in full 64-bit mode, therefore the macro is more reliable */
-    #error "Petsc has not been tested with full 64-bit MUMPS and we choose to error out"
-  #endif
+#if defined(MUMPS_INTSIZE64) /* MUMPS_INTSIZE64 is in MUMPS headers if it is built in full 64-bit mode, therefore the macro is more reliable */
+#error "Petsc has not been tested with full 64-bit MUMPS and we choose to error out"
+#endif
 #else
-  #if defined(INTSIZE64) /* INTSIZE64 is a command line macro one used to build MUMPS in full 64-bit mode */
-    #error "Petsc has not been tested with full 64-bit MUMPS and we choose to error out"
-  #endif
+#if defined(INTSIZE64) /* INTSIZE64 is a command line macro one used to build MUMPS in full 64-bit mode */
+#error "Petsc has not been tested with full 64-bit MUMPS and we choose to error out"
+#endif
 #endif
 
 #define MPIU_MUMPSINT       MPI_INT
@@ -65,8 +65,7 @@ typedef MUMPS_INT PetscMUMPSInt;
 #define PETSC_MUMPS_INT_MIN -2147483648
 
 /* Cast PetscInt to PetscMUMPSInt. Usually there is no overflow since <a> is row/col indices or some small integers*/
-static inline PetscErrorCode PetscMUMPSIntCast(PetscInt a, PetscMUMPSInt *b)
-{
+static inline PetscErrorCode PetscMUMPSIntCast(PetscInt a, PetscMUMPSInt *b) {
   PetscFunctionBegin;
 #if PetscDefined(USE_64BIT_INDICES)
   PetscAssert(a <= PETSC_MUMPS_INT_MAX && a >= PETSC_MUMPS_INT_MIN, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "PetscInt too long for PetscMUMPSInt");
@@ -76,8 +75,7 @@ static inline PetscErrorCode PetscMUMPSIntCast(PetscInt a, PetscMUMPSInt *b)
 }
 
 /* Put these utility routines here since they are only used in this file */
-static inline PetscErrorCode PetscOptionsMUMPSInt_Private(PetscOptionItems *PetscOptionsObject, const char opt[], const char text[], const char man[], PetscMUMPSInt currentvalue, PetscMUMPSInt *value, PetscBool *set, PetscMUMPSInt lb, PetscMUMPSInt ub)
-{
+static inline PetscErrorCode PetscOptionsMUMPSInt_Private(PetscOptionItems *PetscOptionsObject, const char opt[], const char text[], const char man[], PetscMUMPSInt currentvalue, PetscMUMPSInt *value, PetscBool *set, PetscMUMPSInt lb, PetscMUMPSInt ub) {
   PetscInt  myval;
   PetscBool myset;
   PetscFunctionBegin;
@@ -91,43 +89,41 @@ static inline PetscErrorCode PetscOptionsMUMPSInt_Private(PetscOptionItems *Pets
 
 /* if using PETSc OpenMP support, we only call MUMPS on master ranks. Before/after the call, we change/restore CPUs the master ranks can run on */
 #if defined(PETSC_HAVE_OPENMP_SUPPORT)
-  #define PetscMUMPS_c(mumps) \
-    do { \
-      if (mumps->use_petsc_omp_support) { \
-        if (mumps->is_omp_master) { \
-          PetscCall(PetscOmpCtrlOmpRegionOnMasterBegin(mumps->omp_ctrl)); \
-          MUMPS_c(&mumps->id); \
-          PetscCall(PetscOmpCtrlOmpRegionOnMasterEnd(mumps->omp_ctrl)); \
-        } \
-        PetscCall(PetscOmpCtrlBarrier(mumps->omp_ctrl)); \
-        /* Global info is same on all processes so we Bcast it within omp_comm. Local info is specific      \
+#define PetscMUMPS_c(mumps) \
+  do { \
+    if (mumps->use_petsc_omp_support) { \
+      if (mumps->is_omp_master) { \
+        PetscCall(PetscOmpCtrlOmpRegionOnMasterBegin(mumps->omp_ctrl)); \
+        MUMPS_c(&mumps->id); \
+        PetscCall(PetscOmpCtrlOmpRegionOnMasterEnd(mumps->omp_ctrl)); \
+      } \
+      PetscCall(PetscOmpCtrlBarrier(mumps->omp_ctrl)); \
+      /* Global info is same on all processes so we Bcast it within omp_comm. Local info is specific      \
          to processes, so we only Bcast info[1], an error code and leave others (since they do not have   \
          an easy translation between omp_comm and petsc_comm). See MUMPS-5.1.2 manual p82.                   \
          omp_comm is a small shared memory communicator, hence doing multiple Bcast as shown below is OK. \
       */ \
-        PetscCallMPI(MPI_Bcast(mumps->id.infog, 40, MPIU_MUMPSINT, 0, mumps->omp_comm)); \
-        PetscCallMPI(MPI_Bcast(mumps->id.rinfog, 20, MPIU_REAL, 0, mumps->omp_comm)); \
-        PetscCallMPI(MPI_Bcast(mumps->id.info, 1, MPIU_MUMPSINT, 0, mumps->omp_comm)); \
-      } else { \
-        MUMPS_c(&mumps->id); \
-      } \
-    } while (0)
-#else
-  #define PetscMUMPS_c(mumps) \
-    do { \
+      PetscCallMPI(MPI_Bcast(mumps->id.infog, 40, MPIU_MUMPSINT, 0, mumps->omp_comm)); \
+      PetscCallMPI(MPI_Bcast(mumps->id.rinfog, 20, MPIU_REAL, 0, mumps->omp_comm)); \
+      PetscCallMPI(MPI_Bcast(mumps->id.info, 1, MPIU_MUMPSINT, 0, mumps->omp_comm)); \
+    } else { \
       MUMPS_c(&mumps->id); \
-    } while (0)
+    } \
+  } while (0)
+#else
+#define PetscMUMPS_c(mumps) \
+  do { MUMPS_c(&mumps->id); } while (0)
 #endif
 
 /* declare MumpsScalar */
 #if defined(PETSC_USE_COMPLEX)
-  #if defined(PETSC_USE_REAL_SINGLE)
-    #define MumpsScalar mumps_complex
-  #else
-    #define MumpsScalar mumps_double_complex
-  #endif
+#if defined(PETSC_USE_REAL_SINGLE)
+#define MumpsScalar mumps_complex
 #else
-  #define MumpsScalar PetscScalar
+#define MumpsScalar mumps_double_complex
+#endif
+#else
+#define MumpsScalar PetscScalar
 #endif
 
 /* macros s.t. indices match MUMPS documentation */
@@ -141,17 +137,17 @@ static inline PetscErrorCode PetscOptionsMUMPSInt_Private(PetscOptionItems *Pets
 typedef struct Mat_MUMPS Mat_MUMPS;
 struct Mat_MUMPS {
 #if defined(PETSC_USE_COMPLEX)
-  #if defined(PETSC_USE_REAL_SINGLE)
+#if defined(PETSC_USE_REAL_SINGLE)
   CMUMPS_STRUC_C id;
-  #else
-  ZMUMPS_STRUC_C id;
-  #endif
 #else
-  #if defined(PETSC_USE_REAL_SINGLE)
+  ZMUMPS_STRUC_C id;
+#endif
+#else
+#if defined(PETSC_USE_REAL_SINGLE)
   SMUMPS_STRUC_C id;
-  #else
+#else
   DMUMPS_STRUC_C id;
-  #endif
+#endif
 #endif
 
   MatStructure   matstruc;
@@ -194,8 +190,7 @@ struct Mat_MUMPS {
 /* Cast a 1-based CSR represented by (nrow, ia, ja) of type PetscInt to a CSR of type PetscMUMPSInt.
    Here, nrow is number of rows, ia[] is row pointer and ja[] is column indices.
  */
-static PetscErrorCode PetscMUMPSIntCSRCast(Mat_MUMPS *mumps, PetscInt nrow, PetscInt *ia, PetscInt *ja, PetscMUMPSInt **ia_mumps, PetscMUMPSInt **ja_mumps, PetscMUMPSInt *nnz_mumps)
-{
+static PetscErrorCode PetscMUMPSIntCSRCast(Mat_MUMPS *mumps, PetscInt nrow, PetscInt *ia, PetscInt *ja, PetscMUMPSInt **ia_mumps, PetscMUMPSInt **ja_mumps, PetscMUMPSInt *nnz_mumps) {
   PetscInt nnz = ia[nrow] - 1; /* mumps uses 1-based indices. Uses PetscInt instead of PetscInt64 since mumps only uses PetscMUMPSInt for rhs */
 
   PetscFunctionBegin;
@@ -225,8 +220,7 @@ static PetscErrorCode PetscMUMPSIntCSRCast(Mat_MUMPS *mumps, PetscInt nrow, Pets
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMumpsResetSchur_Private(Mat_MUMPS *mumps)
-{
+static PetscErrorCode MatMumpsResetSchur_Private(Mat_MUMPS *mumps) {
   PetscFunctionBegin;
   PetscCall(PetscFree(mumps->id.listvar_schur));
   PetscCall(PetscFree(mumps->id.redrhs));
@@ -238,8 +232,7 @@ static PetscErrorCode MatMumpsResetSchur_Private(Mat_MUMPS *mumps)
 }
 
 /* solve with rhs in mumps->id.redrhs and return in the same location */
-static PetscErrorCode MatMumpsSolveSchur_Private(Mat F)
-{
+static PetscErrorCode MatMumpsSolveSchur_Private(Mat F) {
   Mat_MUMPS           *mumps = (Mat_MUMPS *)F->data;
   Mat                  S, B, X;
   MatFactorSchurStatus schurstatus;
@@ -254,9 +247,7 @@ static PetscErrorCode MatMumpsSolveSchur_Private(Mat F)
   PetscCall(MatBindToCPU(B, S->boundtocpu));
 #endif
   switch (schurstatus) {
-  case MAT_FACTOR_SCHUR_FACTORED:
-    PetscCall(MatCreateSeqDense(PETSC_COMM_SELF, mumps->id.size_schur, mumps->id.nrhs, (PetscScalar *)mumps->id.redrhs, &X));
-    PetscCall(MatSetType(X, ((PetscObject)S)->type_name));
+  case MAT_FACTOR_SCHUR_FACTORED: PetscCall(MatCreateSeqDense(PETSC_COMM_SELF, mumps->id.size_schur, mumps->id.nrhs, (PetscScalar *)mumps->id.redrhs, &X)); PetscCall(MatSetType(X, ((PetscObject)S)->type_name));
 #if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
     PetscCall(MatBindToCPU(X, S->boundtocpu));
 #endif
@@ -290,8 +281,7 @@ static PetscErrorCode MatMumpsSolveSchur_Private(Mat F)
 
     PetscCall(MatCopy(X, B, SAME_NONZERO_PATTERN));
     break;
-  default:
-    SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
+  default: SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
   }
   PetscCall(MatFactorRestoreSchurComplement(F, &S, schurstatus));
   PetscCall(MatDestroy(&B));
@@ -299,8 +289,7 @@ static PetscErrorCode MatMumpsSolveSchur_Private(Mat F)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMumpsHandleSchur_Private(Mat F, PetscBool expansion)
-{
+static PetscErrorCode MatMumpsHandleSchur_Private(Mat F, PetscBool expansion) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -353,8 +342,7 @@ static PetscErrorCode MatMumpsHandleSchur_Private(Mat F, PetscBool expansion)
 
  */
 
-PetscErrorCode MatConvertToTriples_seqaij_seqaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_seqaij_seqaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   const PetscScalar *av;
   const PetscInt    *ai, *aj, *ajj, M = A->rmap->n;
   PetscInt64         nz, rnz, i, j, k;
@@ -386,8 +374,7 @@ PetscErrorCode MatConvertToTriples_seqaij_seqaij(Mat A, PetscInt shift, MatReuse
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_seqsell_seqaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_seqsell_seqaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   PetscInt64     nz, i, j, k, r;
   Mat_SeqSELL   *a = (Mat_SeqSELL *)A->data;
   PetscMUMPSInt *row, *col;
@@ -408,8 +395,7 @@ PetscErrorCode MatConvertToTriples_seqsell_seqaij(Mat A, PetscInt shift, MatReus
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_seqbaij_seqaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_seqbaij_seqaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   Mat_SeqBAIJ    *aa = (Mat_SeqBAIJ *)A->data;
   const PetscInt *ai, *aj, *ajj, bs2 = aa->bs2;
   PetscInt64      M, nz, idx = 0, rnz, i, j, k, m;
@@ -445,8 +431,7 @@ PetscErrorCode MatConvertToTriples_seqbaij_seqaij(Mat A, PetscInt shift, MatReus
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_seqsbaij_seqsbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_seqsbaij_seqsbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   const PetscInt *ai, *aj, *ajj;
   PetscInt        bs;
   PetscInt64      nz, rnz, i, j, k, m;
@@ -519,8 +504,7 @@ PetscErrorCode MatConvertToTriples_seqsbaij_seqsbaij(Mat A, PetscInt shift, MatR
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_seqaij_seqsbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_seqaij_seqsbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   const PetscInt    *ai, *aj, *ajj, *adiag, M = A->rmap->n;
   PetscInt64         nz, rnz, i, j;
   const PetscScalar *av, *v1;
@@ -628,8 +612,7 @@ PetscErrorCode MatConvertToTriples_seqaij_seqsbaij(Mat A, PetscInt shift, MatReu
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_mpisbaij_mpisbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_mpisbaij_mpisbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   const PetscInt    *ai, *aj, *bi, *bj, *garray, *ajj, *bjj;
   PetscInt           bs;
   PetscInt64         rstart, nz, i, j, k, m, jj, irow, countA, countB;
@@ -735,8 +718,7 @@ PetscErrorCode MatConvertToTriples_mpisbaij_mpisbaij(Mat A, PetscInt shift, MatR
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_mpiaij_mpiaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_mpiaij_mpiaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   const PetscInt    *ai, *aj, *bi, *bj, *garray, m = A->rmap->n, *ajj, *bjj;
   PetscInt64         rstart, nz, i, j, jj, irow, countA, countB;
   PetscMUMPSInt     *row, *col;
@@ -806,8 +788,7 @@ PetscErrorCode MatConvertToTriples_mpiaij_mpiaij(Mat A, PetscInt shift, MatReuse
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_mpibaij_mpiaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_mpibaij_mpiaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   Mat_MPIBAIJ       *mat = (Mat_MPIBAIJ *)A->data;
   Mat_SeqBAIJ       *aa  = (Mat_SeqBAIJ *)(mat->A)->data;
   Mat_SeqBAIJ       *bb  = (Mat_SeqBAIJ *)(mat->B)->data;
@@ -876,8 +857,7 @@ PetscErrorCode MatConvertToTriples_mpibaij_mpiaij(Mat A, PetscInt shift, MatReus
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvertToTriples_mpiaij_mpisbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatConvertToTriples_mpiaij_mpisbaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps) {
   const PetscInt    *ai, *aj, *adiag, *bi, *bj, *garray, m = A->rmap->n, *ajj, *bjj;
   PetscInt64         rstart, nz, nza, nzb, i, j, jj, irow, countA, countB;
   PetscMUMPSInt     *row, *col;
@@ -968,8 +948,7 @@ PetscErrorCode MatConvertToTriples_mpiaij_mpisbaij(Mat A, PetscInt shift, MatReu
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_MUMPS(Mat A)
-{
+PetscErrorCode MatDestroy_MUMPS(Mat A) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)A->data;
 
   PetscFunctionBegin;
@@ -1026,8 +1005,7 @@ PetscErrorCode MatDestroy_MUMPS(Mat A)
 }
 
 /* Set up the distributed RHS info for MUMPS. <nrhs> is the number of RHS. <array> points to start of RHS on the local processor. */
-static PetscErrorCode MatMumpsSetUpDistRHSInfo(Mat A, PetscInt nrhs, const PetscScalar *array)
-{
+static PetscErrorCode MatMumpsSetUpDistRHSInfo(Mat A, PetscInt nrhs, const PetscScalar *array) {
   Mat_MUMPS        *mumps   = (Mat_MUMPS *)A->data;
   const PetscMPIInt ompsize = mumps->omp_comm_size;
   PetscInt          i, m, M, rstart;
@@ -1123,8 +1101,7 @@ static PetscErrorCode MatMumpsSetUpDistRHSInfo(Mat A, PetscInt nrhs, const Petsc
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolve_MUMPS(Mat A, Vec b, Vec x)
-{
+PetscErrorCode MatSolve_MUMPS(Mat A, Vec b, Vec x) {
   Mat_MUMPS         *mumps  = (Mat_MUMPS *)A->data;
   const PetscScalar *rarray = NULL;
   PetscScalar       *array;
@@ -1223,8 +1200,7 @@ PetscErrorCode MatSolve_MUMPS(Mat A, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolveTranspose_MUMPS(Mat A, Vec b, Vec x)
-{
+PetscErrorCode MatSolveTranspose_MUMPS(Mat A, Vec b, Vec x) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)A->data;
 
   PetscFunctionBegin;
@@ -1234,8 +1210,7 @@ PetscErrorCode MatSolveTranspose_MUMPS(Mat A, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
-{
+PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X) {
   Mat                Bt = NULL;
   PetscBool          denseX, denseB, flg, flgT;
   Mat_MUMPS         *mumps = (Mat_MUMPS *)A->data;
@@ -1479,8 +1454,7 @@ PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMatSolveTranspose_MUMPS(Mat A, Mat B, Mat X)
-{
+PetscErrorCode MatMatSolveTranspose_MUMPS(Mat A, Mat B, Mat X) {
   Mat_MUMPS    *mumps    = (Mat_MUMPS *)A->data;
   PetscMUMPSInt oldvalue = mumps->id.ICNTL(9);
 
@@ -1491,8 +1465,7 @@ PetscErrorCode MatMatSolveTranspose_MUMPS(Mat A, Mat B, Mat X)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMatTransposeSolve_MUMPS(Mat A, Mat Bt, Mat X)
-{
+PetscErrorCode MatMatTransposeSolve_MUMPS(Mat A, Mat Bt, Mat X) {
   PetscBool flg;
   Mat       B;
 
@@ -1517,8 +1490,7 @@ PetscErrorCode MatMatTransposeSolve_MUMPS(Mat A, Mat Bt, Mat X)
    nzero:    total number of zero pivots
    npos:     (global dimension of F) - nneg - nzero
 */
-PetscErrorCode MatGetInertia_SBAIJMUMPS(Mat F, PetscInt *nneg, PetscInt *nzero, PetscInt *npos)
-{
+PetscErrorCode MatGetInertia_SBAIJMUMPS(Mat F, PetscInt *nneg, PetscInt *nzero, PetscInt *npos) {
   Mat_MUMPS  *mumps = (Mat_MUMPS *)F->data;
   PetscMPIInt size;
 
@@ -1537,8 +1509,7 @@ PetscErrorCode MatGetInertia_SBAIJMUMPS(Mat F, PetscInt *nneg, PetscInt *nzero, 
 }
 #endif
 
-PetscErrorCode MatMumpsGatherNonzerosOnMaster(MatReuse reuse, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatMumpsGatherNonzerosOnMaster(MatReuse reuse, Mat_MUMPS *mumps) {
   PetscInt       i, nreqs;
   PetscMUMPSInt *irn, *jcn;
   PetscMPIInt    count;
@@ -1655,8 +1626,7 @@ PetscErrorCode MatMumpsGatherNonzerosOnMaster(MatReuse reuse, Mat_MUMPS *mumps)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatFactorNumeric_MUMPS(Mat F, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatFactorNumeric_MUMPS(Mat F, Mat A, const MatFactorInfo *info) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)(F)->data;
   PetscBool  isMPIAIJ;
 
@@ -1737,8 +1707,7 @@ PetscErrorCode MatFactorNumeric_MUMPS(Mat F, Mat A, const MatFactorInfo *info)
 }
 
 /* Sets MUMPS options from the options database */
-PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
-{
+PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A) {
   Mat_MUMPS    *mumps = (Mat_MUMPS *)F->data;
   PetscMUMPSInt icntl = 0, size, *listvar_schur;
   PetscInt      info[80], i, ninfo = 80, rbs, cbs;
@@ -1944,8 +1913,7 @@ PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatFactorSymbolic_MUMPS_ReportIfError(Mat F, Mat A, const MatFactorInfo *info, Mat_MUMPS *mumps)
-{
+PetscErrorCode MatFactorSymbolic_MUMPS_ReportIfError(Mat F, Mat A, const MatFactorInfo *info, Mat_MUMPS *mumps) {
   PetscFunctionBegin;
   if (mumps->id.INFOG(1) < 0) {
     PetscCheck(!A->erroriffailure, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error reported by MUMPS in analysis phase: INFOG(1)=%d", mumps->id.INFOG(1));
@@ -1965,8 +1933,7 @@ PetscErrorCode MatFactorSymbolic_MUMPS_ReportIfError(Mat F, Mat A, const MatFact
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorSymbolic_AIJMUMPS(Mat F, Mat A, IS r, IS c, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorSymbolic_AIJMUMPS(Mat F, Mat A, IS r, IS c, const MatFactorInfo *info) {
   Mat_MUMPS     *mumps = (Mat_MUMPS *)F->data;
   Vec            b;
   const PetscInt M = A->rmap->N;
@@ -2035,8 +2002,7 @@ PetscErrorCode MatLUFactorSymbolic_AIJMUMPS(Mat F, Mat A, IS r, IS c, const MatF
 }
 
 /* Note the Petsc r and c permutations are ignored */
-PetscErrorCode MatLUFactorSymbolic_BAIJMUMPS(Mat F, Mat A, IS r, IS c, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorSymbolic_BAIJMUMPS(Mat F, Mat A, IS r, IS c, const MatFactorInfo *info) {
   Mat_MUMPS     *mumps = (Mat_MUMPS *)F->data;
   Vec            b;
   const PetscInt M = A->rmap->N;
@@ -2091,8 +2057,7 @@ PetscErrorCode MatLUFactorSymbolic_BAIJMUMPS(Mat F, Mat A, IS r, IS c, const Mat
 }
 
 /* Note the Petsc r permutation and factor info are ignored */
-PetscErrorCode MatCholeskyFactorSymbolic_MUMPS(Mat F, Mat A, IS r, const MatFactorInfo *info)
-{
+PetscErrorCode MatCholeskyFactorSymbolic_MUMPS(Mat F, Mat A, IS r, const MatFactorInfo *info) {
   Mat_MUMPS     *mumps = (Mat_MUMPS *)F->data;
   Vec            b;
   const PetscInt M = A->rmap->N;
@@ -2153,8 +2118,7 @@ PetscErrorCode MatCholeskyFactorSymbolic_MUMPS(Mat F, Mat A, IS r, const MatFact
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatView_MUMPS(Mat A, PetscViewer viewer)
-{
+PetscErrorCode MatView_MUMPS(Mat A, PetscViewer viewer) {
   PetscBool         iascii;
   PetscViewerFormat format;
   Mat_MUMPS        *mumps = (Mat_MUMPS *)A->data;
@@ -2303,8 +2267,7 @@ PetscErrorCode MatView_MUMPS(Mat A, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatGetInfo_MUMPS(Mat A, MatInfoType flag, MatInfo *info)
-{
+PetscErrorCode MatGetInfo_MUMPS(Mat A, MatInfoType flag, MatInfo *info) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)A->data;
 
   PetscFunctionBegin;
@@ -2322,8 +2285,7 @@ PetscErrorCode MatGetInfo_MUMPS(Mat A, MatInfoType flag, MatInfo *info)
 }
 
 /* -------------------------------------------------------------------------------------------*/
-PetscErrorCode MatFactorSetSchurIS_MUMPS(Mat F, IS is)
-{
+PetscErrorCode MatFactorSetSchurIS_MUMPS(Mat F, IS is) {
   Mat_MUMPS         *mumps = (Mat_MUMPS *)F->data;
   const PetscScalar *arr;
   const PetscInt    *idxs;
@@ -2353,8 +2315,7 @@ PetscErrorCode MatFactorSetSchurIS_MUMPS(Mat F, IS is)
 }
 
 /* -------------------------------------------------------------------------------------------*/
-PetscErrorCode MatFactorCreateSchurComplement_MUMPS(Mat F, Mat *S)
-{
+PetscErrorCode MatFactorCreateSchurComplement_MUMPS(Mat F, Mat *S) {
   Mat          St;
   Mat_MUMPS   *mumps = (Mat_MUMPS *)F->data;
   PetscScalar *array;
@@ -2422,8 +2383,7 @@ PetscErrorCode MatFactorCreateSchurComplement_MUMPS(Mat F, Mat *S)
 }
 
 /* -------------------------------------------------------------------------------------------*/
-PetscErrorCode MatMumpsSetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt ival)
-{
+PetscErrorCode MatMumpsSetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt ival) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2442,8 +2402,7 @@ PetscErrorCode MatMumpsSetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt ival)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt *ival)
-{
+PetscErrorCode MatMumpsGetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt *ival) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2461,7 +2420,7 @@ PetscErrorCode MatMumpsGetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt *ival)
 .  icntl - index of MUMPS parameter array ICNTL()
 -  ival - value of MUMPS ICNTL(icntl)
 
-  Options Database Key:
+  Options Database:
 .   -mat_mumps_icntl_<icntl> <ival> - change the option numbered icntl to ival
 
    Level: beginner
@@ -2471,8 +2430,7 @@ PetscErrorCode MatMumpsGetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt *ival)
 
 .seealso: `MatGetFactor()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
-PetscErrorCode MatMumpsSetIcntl(Mat F, PetscInt icntl, PetscInt ival)
-{
+PetscErrorCode MatMumpsSetIcntl(Mat F, PetscInt icntl, PetscInt ival) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2502,8 +2460,7 @@ PetscErrorCode MatMumpsSetIcntl(Mat F, PetscInt icntl, PetscInt ival)
 
 .seealso: `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
-PetscErrorCode MatMumpsGetIcntl(Mat F, PetscInt icntl, PetscInt *ival)
-{
+PetscErrorCode MatMumpsGetIcntl(Mat F, PetscInt icntl, PetscInt *ival) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2515,8 +2472,7 @@ PetscErrorCode MatMumpsGetIcntl(Mat F, PetscInt icntl, PetscInt *ival)
 }
 
 /* -------------------------------------------------------------------------------------------*/
-PetscErrorCode MatMumpsSetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal val)
-{
+PetscErrorCode MatMumpsSetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal val) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2535,8 +2491,7 @@ PetscErrorCode MatMumpsSetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal val)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal *val)
-{
+PetscErrorCode MatMumpsGetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal *val) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2554,7 +2509,7 @@ PetscErrorCode MatMumpsGetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal *val)
 .  icntl - index of MUMPS parameter array CNTL()
 -  val - value of MUMPS CNTL(icntl)
 
-  Options Database Key:
+  Options Database:
 .   -mat_mumps_cntl_<icntl> <val>  - change the option numbered icntl to ival
 
    Level: beginner
@@ -2564,8 +2519,7 @@ PetscErrorCode MatMumpsGetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal *val)
 
 .seealso: `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
-PetscErrorCode MatMumpsSetCntl(Mat F, PetscInt icntl, PetscReal val)
-{
+PetscErrorCode MatMumpsSetCntl(Mat F, PetscInt icntl, PetscReal val) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2595,8 +2549,7 @@ PetscErrorCode MatMumpsSetCntl(Mat F, PetscInt icntl, PetscReal val)
 
 .seealso: `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
-PetscErrorCode MatMumpsGetCntl(Mat F, PetscInt icntl, PetscReal *val)
-{
+PetscErrorCode MatMumpsGetCntl(Mat F, PetscInt icntl, PetscReal *val) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2607,8 +2560,7 @@ PetscErrorCode MatMumpsGetCntl(Mat F, PetscInt icntl, PetscReal *val)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetInfo_MUMPS(Mat F, PetscInt icntl, PetscInt *info)
-{
+PetscErrorCode MatMumpsGetInfo_MUMPS(Mat F, PetscInt icntl, PetscInt *info) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2616,8 +2568,7 @@ PetscErrorCode MatMumpsGetInfo_MUMPS(Mat F, PetscInt icntl, PetscInt *info)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetInfog_MUMPS(Mat F, PetscInt icntl, PetscInt *infog)
-{
+PetscErrorCode MatMumpsGetInfog_MUMPS(Mat F, PetscInt icntl, PetscInt *infog) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2625,8 +2576,7 @@ PetscErrorCode MatMumpsGetInfog_MUMPS(Mat F, PetscInt icntl, PetscInt *infog)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetRinfo_MUMPS(Mat F, PetscInt icntl, PetscReal *rinfo)
-{
+PetscErrorCode MatMumpsGetRinfo_MUMPS(Mat F, PetscInt icntl, PetscReal *rinfo) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2634,8 +2584,7 @@ PetscErrorCode MatMumpsGetRinfo_MUMPS(Mat F, PetscInt icntl, PetscReal *rinfo)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetRinfog_MUMPS(Mat F, PetscInt icntl, PetscReal *rinfog)
-{
+PetscErrorCode MatMumpsGetRinfog_MUMPS(Mat F, PetscInt icntl, PetscReal *rinfog) {
   Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
 
   PetscFunctionBegin;
@@ -2643,8 +2592,7 @@ PetscErrorCode MatMumpsGetRinfog_MUMPS(Mat F, PetscInt icntl, PetscReal *rinfog)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetInverse_MUMPS(Mat F, Mat spRHS)
-{
+PetscErrorCode MatMumpsGetInverse_MUMPS(Mat F, Mat spRHS) {
   Mat          Bt = NULL, Btseq = NULL;
   PetscBool    flg;
   Mat_MUMPS   *mumps = (Mat_MUMPS *)F->data;
@@ -2720,8 +2668,7 @@ PetscErrorCode MatMumpsGetInverse_MUMPS(Mat F, Mat spRHS)
 
 .seealso: `MatGetFactor()`, `MatCreateTranspose()`
 @*/
-PetscErrorCode MatMumpsGetInverse(Mat F, Mat spRHS)
-{
+PetscErrorCode MatMumpsGetInverse(Mat F, Mat spRHS) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2729,8 +2676,7 @@ PetscErrorCode MatMumpsGetInverse(Mat F, Mat spRHS)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMumpsGetInverseTranspose_MUMPS(Mat F, Mat spRHST)
-{
+PetscErrorCode MatMumpsGetInverseTranspose_MUMPS(Mat F, Mat spRHST) {
   Mat spRHS;
 
   PetscFunctionBegin;
@@ -2759,8 +2705,7 @@ PetscErrorCode MatMumpsGetInverseTranspose_MUMPS(Mat F, Mat spRHST)
 
 .seealso: `MatGetFactor()`, `MatCreateTranspose()`, `MatMumpsGetInverse()`
 @*/
-PetscErrorCode MatMumpsGetInverseTranspose(Mat F, Mat spRHST)
-{
+PetscErrorCode MatMumpsGetInverseTranspose(Mat F, Mat spRHST) {
   PetscBool flg;
 
   PetscFunctionBegin;
@@ -2792,8 +2737,7 @@ PetscErrorCode MatMumpsGetInverseTranspose(Mat F, Mat spRHST)
 
 .seealso: `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
-PetscErrorCode MatMumpsGetInfo(Mat F, PetscInt icntl, PetscInt *ival)
-{
+PetscErrorCode MatMumpsGetInfo(Mat F, PetscInt icntl, PetscInt *ival) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2821,8 +2765,7 @@ PetscErrorCode MatMumpsGetInfo(Mat F, PetscInt icntl, PetscInt *ival)
 
 .seealso: `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
-PetscErrorCode MatMumpsGetInfog(Mat F, PetscInt icntl, PetscInt *ival)
-{
+PetscErrorCode MatMumpsGetInfog(Mat F, PetscInt icntl, PetscInt *ival) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2850,8 +2793,7 @@ PetscErrorCode MatMumpsGetInfog(Mat F, PetscInt icntl, PetscInt *ival)
 
 .seealso: `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfog()`
 @*/
-PetscErrorCode MatMumpsGetRinfo(Mat F, PetscInt icntl, PetscReal *val)
-{
+PetscErrorCode MatMumpsGetRinfo(Mat F, PetscInt icntl, PetscReal *val) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -2879,8 +2821,7 @@ PetscErrorCode MatMumpsGetRinfo(Mat F, PetscInt icntl, PetscReal *val)
 
 .seealso: `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`
 @*/
-PetscErrorCode MatMumpsGetRinfog(Mat F, PetscInt icntl, PetscReal *val)
-{
+PetscErrorCode MatMumpsGetRinfog(Mat F, PetscInt icntl, PetscReal *val) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
@@ -3004,16 +2945,14 @@ $     if a compute node has 32 cores and you run on two nodes, you may use "mpir
 .seealso: `PCFactorSetMatSolverType()`, `MatSolverType`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`, `KSPGetPC()`, `PCFactorGetMatrix()`
 M*/
 
-static PetscErrorCode MatFactorGetSolverType_mumps(Mat A, MatSolverType *type)
-{
+static PetscErrorCode MatFactorGetSolverType_mumps(Mat A, MatSolverType *type) {
   PetscFunctionBegin;
   *type = MATSOLVERMUMPS;
   PetscFunctionReturn(0);
 }
 
 /* MatGetFactor for Seq and MPI AIJ matrices */
-static PetscErrorCode MatGetFactor_aij_mumps(Mat A, MatFactorType ftype, Mat *F)
-{
+static PetscErrorCode MatGetFactor_aij_mumps(Mat A, MatFactorType ftype, Mat *F) {
   Mat         B;
   Mat_MUMPS  *mumps;
   PetscBool   isSeqAIJ;
@@ -3030,7 +2969,7 @@ static PetscErrorCode MatGetFactor_aij_mumps(Mat A, MatFactorType ftype, Mat *F)
   PetscCall(PetscStrallocpy("mumps", &((PetscObject)B)->type_name));
   PetscCall(MatSetUp(B));
 
-  PetscCall(PetscNew(&mumps));
+  PetscCall(PetscNewLog(B, &mumps));
 
   B->ops->view    = MatView_MUMPS;
   B->ops->getinfo = MatGetInfo_MUMPS;
@@ -3090,8 +3029,7 @@ static PetscErrorCode MatGetFactor_aij_mumps(Mat A, MatFactorType ftype, Mat *F)
 }
 
 /* MatGetFactor for Seq and MPI SBAIJ matrices */
-static PetscErrorCode MatGetFactor_sbaij_mumps(Mat A, MatFactorType ftype, Mat *F)
-{
+static PetscErrorCode MatGetFactor_sbaij_mumps(Mat A, MatFactorType ftype, Mat *F) {
   Mat         B;
   Mat_MUMPS  *mumps;
   PetscBool   isSeqSBAIJ;
@@ -3106,7 +3044,7 @@ static PetscErrorCode MatGetFactor_sbaij_mumps(Mat A, MatFactorType ftype, Mat *
   PetscCall(PetscStrallocpy("mumps", &((PetscObject)B)->type_name));
   PetscCall(MatSetUp(B));
 
-  PetscCall(PetscNew(&mumps));
+  PetscCall(PetscNewLog(B, &mumps));
   PetscCall(PetscObjectTypeCompare((PetscObject)A, MATSEQSBAIJ, &isSeqSBAIJ));
   if (isSeqSBAIJ) {
     mumps->ConvertToTriples = MatConvertToTriples_seqsbaij_seqsbaij;
@@ -3160,8 +3098,7 @@ static PetscErrorCode MatGetFactor_sbaij_mumps(Mat A, MatFactorType ftype, Mat *
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatGetFactor_baij_mumps(Mat A, MatFactorType ftype, Mat *F)
-{
+static PetscErrorCode MatGetFactor_baij_mumps(Mat A, MatFactorType ftype, Mat *F) {
   Mat         B;
   Mat_MUMPS  *mumps;
   PetscBool   isSeqBAIJ;
@@ -3175,7 +3112,7 @@ static PetscErrorCode MatGetFactor_baij_mumps(Mat A, MatFactorType ftype, Mat *F
   PetscCall(PetscStrallocpy("mumps", &((PetscObject)B)->type_name));
   PetscCall(MatSetUp(B));
 
-  PetscCall(PetscNew(&mumps));
+  PetscCall(PetscNewLog(B, &mumps));
   if (ftype == MAT_FACTOR_LU) {
     B->ops->lufactorsymbolic = MatLUFactorSymbolic_BAIJMUMPS;
     B->factortype            = MAT_FACTOR_LU;
@@ -3222,8 +3159,7 @@ static PetscErrorCode MatGetFactor_baij_mumps(Mat A, MatFactorType ftype, Mat *F
 }
 
 /* MatGetFactor for Seq and MPI SELL matrices */
-static PetscErrorCode MatGetFactor_sell_mumps(Mat A, MatFactorType ftype, Mat *F)
-{
+static PetscErrorCode MatGetFactor_sell_mumps(Mat A, MatFactorType ftype, Mat *F) {
   Mat         B;
   Mat_MUMPS  *mumps;
   PetscBool   isSeqSELL;
@@ -3237,7 +3173,7 @@ static PetscErrorCode MatGetFactor_sell_mumps(Mat A, MatFactorType ftype, Mat *F
   PetscCall(PetscStrallocpy("mumps", &((PetscObject)B)->type_name));
   PetscCall(MatSetUp(B));
 
-  PetscCall(PetscNew(&mumps));
+  PetscCall(PetscNewLog(B, &mumps));
 
   B->ops->view    = MatView_MUMPS;
   B->ops->getinfo = MatGetInfo_MUMPS;
@@ -3282,8 +3218,7 @@ static PetscErrorCode MatGetFactor_sell_mumps(Mat A, MatFactorType ftype, Mat *F
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode MatSolverTypeRegister_MUMPS(void)
-{
+PETSC_EXTERN PetscErrorCode MatSolverTypeRegister_MUMPS(void) {
   PetscFunctionBegin;
   PetscCall(MatSolverTypeRegister(MATSOLVERMUMPS, MATMPIAIJ, MAT_FACTOR_LU, MatGetFactor_aij_mumps));
   PetscCall(MatSolverTypeRegister(MATSOLVERMUMPS, MATMPIAIJ, MAT_FACTOR_CHOLESKY, MatGetFactor_aij_mumps));

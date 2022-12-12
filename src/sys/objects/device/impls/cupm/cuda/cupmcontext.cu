@@ -1,21 +1,21 @@
 #include "../cupmcontext.hpp" /*I "petscdevice.h" I*/
 
-using namespace Petsc::device::cupm;
+using namespace Petsc::Device::CUPM;
 
-PetscErrorCode PetscDeviceContextCreate_CUDA(PetscDeviceContext dctx)
-{
-  static constexpr auto cuda_context = CUPMContextCuda();
+PetscErrorCode PetscDeviceContextCreate_CUDA(PetscDeviceContext dctx) {
+  static constexpr auto contextCuda = CUPMContextCuda();
+  PetscDeviceContext_(CUDA) * dci;
 
   PetscFunctionBegin;
-  PetscCall(cuda_context.initialize(dctx->device));
-  dctx->data = new PetscDeviceContext_(CUDA);
-  PetscCall(PetscMemcpy(dctx->ops, &cuda_context.ops, sizeof(cuda_context.ops)));
+  PetscCall(contextCuda.initialize());
+  PetscCall(PetscNew(&dci));
+  dctx->data = static_cast<decltype(dctx->data)>(dci);
+  PetscCall(PetscMemcpy(dctx->ops, &contextCuda.ops, sizeof(contextCuda.ops)));
   PetscFunctionReturn(0);
 }
 
 /* Management of CUBLAS and CUSOLVER handles */
-PetscErrorCode PetscCUBLASGetHandle(cublasHandle_t *handle)
-{
+PetscErrorCode PetscCUBLASGetHandle(cublasHandle_t *handle) {
   PetscDeviceContext dctx;
 
   PetscFunctionBegin;
@@ -25,8 +25,7 @@ PetscErrorCode PetscCUBLASGetHandle(cublasHandle_t *handle)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscCUSOLVERDnGetHandle(cusolverDnHandle_t *handle)
-{
+PetscErrorCode PetscCUSOLVERDnGetHandle(cusolverDnHandle_t *handle) {
   PetscDeviceContext dctx;
 
   PetscFunctionBegin;

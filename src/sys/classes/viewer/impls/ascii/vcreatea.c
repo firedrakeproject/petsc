@@ -26,8 +26,7 @@ PetscMPIInt Petsc_Viewer_Stdout_keyval = MPI_KEYVAL_INVALID;
 .seealso: `PETSC_VIEWER_DRAW_()`, `PetscViewerASCIIOpen()`, `PETSC_VIEWER_STDERR_`, `PETSC_VIEWER_STDOUT_WORLD`,
           `PETSC_VIEWER_STDOUT_SELF`
 @*/
-PetscErrorCode PetscViewerASCIIGetStdout(MPI_Comm comm, PetscViewer *viewer)
-{
+PetscErrorCode PetscViewerASCIIGetStdout(MPI_Comm comm, PetscViewer *viewer) {
   PetscBool flg;
   MPI_Comm  ncomm;
 
@@ -65,8 +64,7 @@ $      XXXView(XXX object,PETSC_VIEWER_STDOUT_(comm));
 .seealso: `PETSC_VIEWER_DRAW_()`, `PetscViewerASCIIOpen()`, `PETSC_VIEWER_STDERR_`, `PETSC_VIEWER_STDOUT_WORLD`,
           `PETSC_VIEWER_STDOUT_SELF`
 @*/
-PetscViewer PETSC_VIEWER_STDOUT_(MPI_Comm comm)
-{
+PetscViewer PETSC_VIEWER_STDOUT_(MPI_Comm comm) {
   PetscErrorCode ierr;
   PetscViewer    viewer;
 
@@ -104,8 +102,7 @@ PetscMPIInt Petsc_Viewer_Stderr_keyval = MPI_KEYVAL_INVALID;
 .seealso: `PETSC_VIEWER_DRAW_()`, `PetscViewerASCIIOpen()`, `PETSC_VIEWER_STDERR_`, `PETSC_VIEWER_STDERR_WORLD`,
           `PETSC_VIEWER_STDERR_SELF`
 @*/
-PetscErrorCode PetscViewerASCIIGetStderr(MPI_Comm comm, PetscViewer *viewer)
-{
+PetscErrorCode PetscViewerASCIIGetStderr(MPI_Comm comm, PetscViewer *viewer) {
   PetscBool flg;
   MPI_Comm  ncomm;
 
@@ -143,8 +140,7 @@ $      XXXView(XXX object,PETSC_VIEWER_STDERR_(comm));
 .seealso: `PETSC_VIEWER_DRAW_`, `PetscViewerASCIIOpen()`, `PETSC_VIEWER_STDOUT_`, `PETSC_VIEWER_STDOUT_WORLD`,
           `PETSC_VIEWER_STDOUT_SELF`, `PETSC_VIEWER_STDERR_WORLD`, `PETSC_VIEWER_STDERR_SELF`
 @*/
-PetscViewer PETSC_VIEWER_STDERR_(MPI_Comm comm)
-{
+PetscViewer PETSC_VIEWER_STDERR_(MPI_Comm comm) {
   PetscErrorCode ierr;
   PetscViewer    viewer;
 
@@ -157,7 +153,7 @@ PetscViewer PETSC_VIEWER_STDERR_(MPI_Comm comm)
   PetscFunctionReturn(viewer);
 }
 
-PetscMPIInt Petsc_Viewer_keyval = MPI_KEYVAL_INVALID;
+PetscMPIInt                     Petsc_Viewer_keyval = MPI_KEYVAL_INVALID;
 /*
    Called with MPI_Comm_free() is called on a communicator that has a viewer as an attribute. The viewer is not actually destroyed because that is managed by
    PetscObjectDestroyRegisterAll(). PetscViewerASCIIGetStdout() registers the viewer with PetscObjectDestroyRegister() to be destroyed when PetscFinalize() is called.
@@ -165,8 +161,7 @@ PetscMPIInt Petsc_Viewer_keyval = MPI_KEYVAL_INVALID;
   This is called by MPI, not by users.
 
 */
-PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelViewer(MPI_Comm comm, PetscMPIInt keyval, void *attr_val, void *extra_state)
-{
+PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelViewer(MPI_Comm comm, PetscMPIInt keyval, void *attr_val, void *extra_state) {
   PetscFunctionBegin;
   PetscCallMPI(PetscInfo(NULL, "Removing viewer data attribute in an MPI_Comm %ld\n", (long)comm));
   PetscFunctionReturn(MPI_SUCCESS);
@@ -211,8 +206,7 @@ PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelViewer(MPI_Comm comm, PetscMPIInt keyva
           `PetscViewerASCIIGetPointer()`, `PetscViewerPushFormat()`, `PETSC_VIEWER_STDOUT_`, `PETSC_VIEWER_STDERR_`,
           `PETSC_VIEWER_STDOUT_WORLD`, `PETSC_VIEWER_STDOUT_SELF`,
 @*/
-PetscErrorCode PetscViewerASCIIOpen(MPI_Comm comm, const char name[], PetscViewer *lab)
-{
+PetscErrorCode PetscViewerASCIIOpen(MPI_Comm comm, const char name[], PetscViewer *lab) {
   PetscViewerLink *vlink, *nv;
   PetscBool        flg, eq;
   size_t           len;
@@ -297,8 +291,7 @@ PetscErrorCode PetscViewerASCIIOpen(MPI_Comm comm, const char name[], PetscViewe
           `PetscViewerASCIIGetPointer()`, `PetscViewerPushFormat()`, `PETSC_VIEWER_STDOUT_`, `PETSC_VIEWER_STDERR_`,
           `PETSC_VIEWER_STDOUT_WORLD`, `PETSC_VIEWER_STDOUT_SELF`, `PetscViewerASCIIOpen()`, `PetscViewerASCIISetFILE()`, `PETSCVIEWERASCII`
 @*/
-PetscErrorCode PetscViewerASCIIOpenWithFILE(MPI_Comm comm, FILE *fd, PetscViewer *lab)
-{
+PetscErrorCode PetscViewerASCIIOpenWithFILE(MPI_Comm comm, FILE *fd, PetscViewer *lab) {
   PetscFunctionBegin;
   PetscCall(PetscViewerCreate(comm, lab));
   PetscCall(PetscViewerSetType(*lab, PETSCVIEWERASCII));
@@ -328,8 +321,7 @@ PetscErrorCode PetscViewerASCIIOpenWithFILE(MPI_Comm comm, FILE *fd, PetscViewer
           `PetscViewerASCIIGetPointer()`, `PetscViewerPushFormat()`, `PETSC_VIEWER_STDOUT_`, `PETSC_VIEWER_STDERR_`,
           `PETSC_VIEWER_STDOUT_WORLD`, `PETSC_VIEWER_STDOUT_SELF`, `PetscViewerASCIIOpen()`, `PetscViewerASCIIOpenWithFILE()`, `PETSCVIEWERASCII`
 @*/
-PetscErrorCode PetscViewerASCIISetFILE(PetscViewer viewer, FILE *fd)
-{
+PetscErrorCode PetscViewerASCIISetFILE(PetscViewer viewer, FILE *fd) {
   PetscViewer_ASCII *vascii = (PetscViewer_ASCII *)viewer->data;
 
   PetscFunctionBegin;

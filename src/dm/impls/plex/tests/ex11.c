@@ -3,8 +3,7 @@ static char help[] = "Tests for DMLabel\n\n";
 #include <petscdmplex.h>
 #include <petsc/private/dmimpl.h>
 
-static PetscErrorCode TestInsertion()
-{
+static PetscErrorCode TestInsertion() {
   DMLabel        label, label2;
   const PetscInt values[5] = {0, 3, 4, -1, 176}, N = 10000;
   PetscInt       i, v;
@@ -54,8 +53,7 @@ static PetscErrorCode TestInsertion()
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestEmptyStrata(MPI_Comm comm)
-{
+static PetscErrorCode TestEmptyStrata(MPI_Comm comm) {
   DM               dm, dmDist;
   PetscPartitioner part;
   PetscInt         c0[6]  = {2, 3, 6, 7, 9, 11};
@@ -177,8 +175,7 @@ static PetscErrorCode TestEmptyStrata(MPI_Comm comm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestDistribution(MPI_Comm comm)
-{
+static PetscErrorCode TestDistribution(MPI_Comm comm) {
   DM               dm, dmDist;
   PetscPartitioner part;
   DMLabel          label;
@@ -215,8 +212,7 @@ static PetscErrorCode TestDistribution(MPI_Comm comm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestUniversalLabel(MPI_Comm comm)
-{
+static PetscErrorCode TestUniversalLabel(MPI_Comm comm) {
   DM               dm1, dm2;
   DMLabel          bd1, bd2, ulabel;
   DMUniversalLabel universal;
@@ -292,8 +288,7 @@ static PetscErrorCode TestUniversalLabel(MPI_Comm comm)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   /*PetscCall(ProcessOptions(PETSC_COMM_WORLD, &user));*/

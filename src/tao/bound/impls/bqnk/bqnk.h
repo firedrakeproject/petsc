@@ -2,7 +2,7 @@
 Context for bounded quasi-Newton-Krylov type optimization algorithms
 */
 
-#ifndef __TAO_BQNK_H
+#if !defined(__TAO_BQNK_H)
 #define __TAO_BQNK_H
 
 #include <../src/tao/bound/impls/bnk/bnk.h>

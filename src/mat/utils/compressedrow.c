@@ -23,8 +23,7 @@
 
    Level: developer
 @*/
-PETSC_EXTERN PetscErrorCode MatCheckCompressedRow(Mat A, PetscInt nrows, Mat_CompressedRow *compressedrow, PetscInt *ai, PetscInt mbs, PetscReal ratio)
-{
+PETSC_EXTERN PetscErrorCode MatCheckCompressedRow(Mat A, PetscInt nrows, Mat_CompressedRow *compressedrow, PetscInt *ai, PetscInt mbs, PetscReal ratio) {
   PetscInt *cpi = NULL, *ridx = NULL, nz, i, row;
 
   PetscFunctionBegin;

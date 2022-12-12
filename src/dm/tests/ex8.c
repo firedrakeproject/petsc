@@ -3,8 +3,7 @@ static char help[] = "Test parallel ruotines for GLVis\n\n";
 #include <petscdmshell.h>
 #include <petsc/private/glvisvecimpl.h>
 
-PetscErrorCode VecView_Shell(Vec v, PetscViewer viewer)
-{
+PetscErrorCode VecView_Shell(Vec v, PetscViewer viewer) {
   PetscViewerFormat format;
   PetscBool         isglvis, isascii;
 
@@ -30,8 +29,7 @@ PetscErrorCode VecView_Shell(Vec v, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSetUpGLVisViewer_Shell(PetscObject odm, PetscViewer viewer)
-{
+PetscErrorCode DMSetUpGLVisViewer_Shell(PetscObject odm, PetscViewer viewer) {
   DM          dm = (DM)odm;
   Vec         V;
   PetscInt    dim      = 2;
@@ -45,8 +43,7 @@ PetscErrorCode DMSetUpGLVisViewer_Shell(PetscObject odm, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM  dm;
   Vec v;
 

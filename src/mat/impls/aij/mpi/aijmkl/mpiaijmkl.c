@@ -74,10 +74,9 @@
 
    Level: intermediate
 
-.seealso: [Sparse Matrix Creation](sec_matsparse), `MATMPIAIJMKL`, `MatCreate()`, `MatCreateSeqAIJMKL()`, `MatSetValues()`
+.seealso: `MATMPIAIJMKL`, `MatCreate()`, `MatCreateSeqAIJMKL()`, `MatSetValues()`
 @*/
-PetscErrorCode MatCreateMPIAIJMKL(MPI_Comm comm, PetscInt m, PetscInt n, PetscInt M, PetscInt N, PetscInt d_nz, const PetscInt d_nnz[], PetscInt o_nz, const PetscInt o_nnz[], Mat *A)
-{
+PetscErrorCode MatCreateMPIAIJMKL(MPI_Comm comm, PetscInt m, PetscInt n, PetscInt M, PetscInt N, PetscInt d_nz, const PetscInt d_nnz[], PetscInt o_nz, const PetscInt o_nnz[], Mat *A) {
   PetscMPIInt size;
 
   PetscFunctionBegin;
@@ -96,8 +95,7 @@ PetscErrorCode MatCreateMPIAIJMKL(MPI_Comm comm, PetscInt m, PetscInt n, PetscIn
 
 PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJMKL(Mat, MatType, MatReuse, Mat *);
 
-PetscErrorCode MatMPIAIJSetPreallocation_MPIAIJMKL(Mat B, PetscInt d_nz, const PetscInt d_nnz[], PetscInt o_nz, const PetscInt o_nnz[])
-{
+PetscErrorCode MatMPIAIJSetPreallocation_MPIAIJMKL(Mat B, PetscInt d_nz, const PetscInt d_nnz[], PetscInt o_nz, const PetscInt o_nnz[]) {
   Mat_MPIAIJ *b = (Mat_MPIAIJ *)B->data;
 
   PetscFunctionBegin;
@@ -107,8 +105,7 @@ PetscErrorCode MatMPIAIJSetPreallocation_MPIAIJMKL(Mat B, PetscInt d_nz, const P
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPIAIJMKL(Mat A, MatType type, MatReuse reuse, Mat *newmat)
-{
+PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPIAIJMKL(Mat A, MatType type, MatReuse reuse, Mat *newmat) {
   Mat B = *newmat;
 
   PetscFunctionBegin;
@@ -119,8 +116,7 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPIAIJMKL(Mat A, MatType type, Mat
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode MatCreate_MPIAIJMKL(Mat A)
-{
+PETSC_EXTERN PetscErrorCode MatCreate_MPIAIJMKL(Mat A) {
   PetscFunctionBegin;
   PetscCall(MatSetType(A, MATMPIAIJ));
   PetscCall(MatConvert_MPIAIJ_MPIAIJMKL(A, MATMPIAIJMKL, MAT_INPLACE_MATRIX, &A));

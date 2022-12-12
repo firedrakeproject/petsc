@@ -2,8 +2,7 @@ static char help[] = "Test combinations of scalings, shifts and get diagonal of 
 
 #include <petscmat.h>
 
-static PetscErrorCode myMult(Mat S, Vec x, Vec y)
-{
+static PetscErrorCode myMult(Mat S, Vec x, Vec y) {
   Mat A;
 
   PetscFunctionBegin;
@@ -12,8 +11,7 @@ static PetscErrorCode myMult(Mat S, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode myGetDiagonal(Mat S, Vec d)
-{
+static PetscErrorCode myGetDiagonal(Mat S, Vec d) {
   Mat A;
 
   PetscFunctionBegin;
@@ -22,8 +20,7 @@ static PetscErrorCode myGetDiagonal(Mat S, Vec d)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode shiftandscale(Mat A, Vec *D)
-{
+static PetscErrorCode shiftandscale(Mat A, Vec *D) {
   Vec ll, d, rr;
 
   PetscFunctionBegin;
@@ -57,8 +54,7 @@ static PetscErrorCode shiftandscale(Mat A, Vec *D)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat       A, Aij, B;
   Vec       Adiag, Aijdiag;
   PetscInt  m = 3;

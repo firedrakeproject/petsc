@@ -3,8 +3,7 @@ static char help[] = "Tests MatCreateHermitianTranspose().\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         C, C_htransposed, Cht, C_empty;
   PetscInt    i, j, m = 10, n = 10;
   PetscScalar v;

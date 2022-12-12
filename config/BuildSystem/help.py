@@ -157,9 +157,7 @@ class Help(Info):
         dlist = self.argDB.dlist[i]
         found = 0
         for k in range(0,len(dlist)):
-          fd = os.path.join(pkgdir,(os.path.basename(dlist[k])))
-          if fd.endswith('.git'):
-            fd = fd[:-4]
+          fd = os.path.join(pkgdir,os.path.basename(dlist[k]))
           if os.path.isdir(fd) or os.path.isfile(fd):
             found = 1
             break
@@ -172,9 +170,7 @@ class Help(Info):
         dlist = self.argDB.dlist[i]
         found = 0
         for k in range(0,len(dlist)):
-          fd = os.path.join(pkgdir,(os.path.basename(dlist[k])))
-          if fd.endswith('.git'):
-            fd = fd[:-4]
+          fd = os.path.join(pkgdir,os.path.basename(dlist[k]))
           if os.path.isdir(fd) or os.path.isfile(fd):
             found = 1
             for k in range(0,len(self.clArgs)):

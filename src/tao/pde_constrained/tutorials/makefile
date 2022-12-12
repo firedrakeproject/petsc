@@ -1,7 +1,7 @@
 -include ../../../../petscdir.mk
 
 LOCDIR		 = src/tao/pde_constrained/tutorials/
-MANSEC           = Tao
+MANSEC           =
 EXAMPLESMATLAB   =
 CLEANFILES       = elliptic parabolic hyperbolic
 

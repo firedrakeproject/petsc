@@ -1,7 +1,6 @@
 #include <petsc/private/matimpl.h> /*I "petscmat.h"  I*/
 
-static PetscErrorCode MatColoringApply_Power(MatColoring mc, ISColoring *iscoloring)
-{
+static PetscErrorCode MatColoringApply_Power(MatColoring mc, ISColoring *iscoloring) {
   Mat         m = mc->mat, mp, ms;
   MatColoring imc;
   PetscInt    i;
@@ -45,8 +44,7 @@ static PetscErrorCode MatColoringApply_Power(MatColoring mc, ISColoring *iscolor
 
 .seealso: `MatColoring`, `MatColoringType`, `MatColoringCreate()`, `MatColoring`, `MatColoringSetType()`
 M*/
-PETSC_EXTERN PetscErrorCode MatColoringCreate_Power(MatColoring mc)
-{
+PETSC_EXTERN PetscErrorCode MatColoringCreate_Power(MatColoring mc) {
   PetscFunctionBegin;
   mc->ops->apply          = MatColoringApply_Power;
   mc->ops->view           = NULL;

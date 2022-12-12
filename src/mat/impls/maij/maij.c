@@ -20,8 +20,7 @@
 
 .seealso: `MATMAIJ`, `MATAIJ`, `MatCreateMAIJ()`
 @*/
-PetscErrorCode MatMAIJGetAIJ(Mat A, Mat *B)
-{
+PetscErrorCode MatMAIJGetAIJ(Mat A, Mat *B) {
   PetscBool ismpimaij, isseqmaij;
 
   PetscFunctionBegin;
@@ -57,8 +56,7 @@ PetscErrorCode MatMAIJGetAIJ(Mat A, Mat *B)
 
 .seealso: `MATMAIJ`, `MatCreateMAIJ()`
 @*/
-PetscErrorCode MatMAIJRedimension(Mat A, PetscInt dof, Mat *B)
-{
+PetscErrorCode MatMAIJRedimension(Mat A, PetscInt dof, Mat *B) {
   Mat Aij = NULL;
 
   PetscFunctionBegin;
@@ -68,8 +66,7 @@ PetscErrorCode MatMAIJRedimension(Mat A, PetscInt dof, Mat *B)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_SeqMAIJ(Mat A)
-{
+PetscErrorCode MatDestroy_SeqMAIJ(Mat A) {
   Mat_SeqMAIJ *b = (Mat_SeqMAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -81,14 +78,12 @@ PetscErrorCode MatDestroy_SeqMAIJ(Mat A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSetUp_MAIJ(Mat A)
-{
+PetscErrorCode MatSetUp_MAIJ(Mat A) {
   PetscFunctionBegin;
   SETERRQ(PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Must use MatCreateMAIJ() to create MAIJ matrices");
 }
 
-PetscErrorCode MatView_SeqMAIJ(Mat A, PetscViewer viewer)
-{
+PetscErrorCode MatView_SeqMAIJ(Mat A, PetscViewer viewer) {
   Mat B;
 
   PetscFunctionBegin;
@@ -98,8 +93,7 @@ PetscErrorCode MatView_SeqMAIJ(Mat A, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatView_MPIMAIJ(Mat A, PetscViewer viewer)
-{
+PetscErrorCode MatView_MPIMAIJ(Mat A, PetscViewer viewer) {
   Mat B;
 
   PetscFunctionBegin;
@@ -109,8 +103,7 @@ PetscErrorCode MatView_MPIMAIJ(Mat A, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_MPIMAIJ(Mat A)
-{
+PetscErrorCode MatDestroy_MPIMAIJ(Mat A) {
   Mat_MPIMAIJ *b = (Mat_MPIMAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -145,13 +138,12 @@ PetscErrorCode MatDestroy_MPIMAIJ(Mat A)
 .seealso: `MATAIJ`, `MatMAIJGetAIJ()`, `MatMAIJRedimension()`, `MatCreateMAIJ()`
 M*/
 
-PETSC_EXTERN PetscErrorCode MatCreate_MAIJ(Mat A)
-{
+PETSC_EXTERN PetscErrorCode MatCreate_MAIJ(Mat A) {
   Mat_MPIMAIJ *b;
   PetscMPIInt  size;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&b));
+  PetscCall(PetscNewLog(A, &b));
   A->data = (void *)b;
 
   PetscCall(PetscMemzero(A->ops, sizeof(struct _MatOps)));
@@ -175,8 +167,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_MAIJ(Mat A)
 }
 
 /* --------------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_2(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_2(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -213,8 +204,7 @@ PetscErrorCode MatMult_SeqMAIJ_2(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_2(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_2(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -246,8 +236,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_2(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_2(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_2(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -282,8 +271,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_2(Mat A, Vec xx, Vec yy, Vec zz)
   PetscCall(VecRestoreArray(zz, &y));
   PetscFunctionReturn(0);
 }
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_2(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_2(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -315,8 +303,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_2(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 /* --------------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_3(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_3(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -356,8 +343,7 @@ PetscErrorCode MatMult_SeqMAIJ_3(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_3(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_3(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -391,8 +377,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_3(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_3(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_3(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -430,8 +415,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_3(Mat A, Vec xx, Vec yy, Vec zz)
   PetscCall(VecRestoreArray(zz, &y));
   PetscFunctionReturn(0);
 }
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_3(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_3(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -465,8 +449,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_3(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /* ------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_4(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_4(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -508,8 +491,7 @@ PetscErrorCode MatMult_SeqMAIJ_4(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_4(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_4(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -544,8 +526,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_4(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_4(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_4(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -586,8 +567,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_4(Mat A, Vec xx, Vec yy, Vec zz)
   PetscCall(VecRestoreArray(zz, &y));
   PetscFunctionReturn(0);
 }
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_4(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_4(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -624,8 +604,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_4(Mat A, Vec xx, Vec yy, Vec zz)
 }
 /* ------------------------------------------------------------------------------*/
 
-PetscErrorCode MatMult_SeqMAIJ_5(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_5(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -671,8 +650,7 @@ PetscErrorCode MatMult_SeqMAIJ_5(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_5(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_5(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -710,8 +688,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_5(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_5(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_5(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -756,8 +733,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_5(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_5(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_5(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -796,8 +772,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_5(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /* ------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_6(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_6(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -846,8 +821,7 @@ PetscErrorCode MatMult_SeqMAIJ_6(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_6(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_6(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -887,8 +861,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_6(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_6(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_6(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -936,8 +909,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_6(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_6(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_6(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -978,8 +950,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_6(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /* ------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_7(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_7(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1031,8 +1002,7 @@ PetscErrorCode MatMult_SeqMAIJ_7(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_7(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_7(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1074,8 +1044,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_7(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_7(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_7(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1126,8 +1095,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_7(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_7(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_7(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1168,8 +1136,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_7(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMult_SeqMAIJ_8(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_8(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1224,8 +1191,7 @@ PetscErrorCode MatMult_SeqMAIJ_8(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_8(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_8(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1269,8 +1235,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_8(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_8(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_8(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1324,8 +1289,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_8(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_8(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_8(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1369,8 +1333,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_8(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /* ------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_9(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_9(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1430,8 +1393,7 @@ PetscErrorCode MatMult_SeqMAIJ_9(Mat A, Vec xx, Vec yy)
 
 /* ------------------------------------------------------------------------------*/
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_9(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_9(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1477,8 +1439,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_9(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_9(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_9(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1535,8 +1496,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_9(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_9(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_9(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1580,8 +1540,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_9(Mat A, Vec xx, Vec yy, Vec zz)
   PetscCall(VecRestoreArray(zz, &y));
   PetscFunctionReturn(0);
 }
-PetscErrorCode MatMult_SeqMAIJ_10(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_10(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1642,8 +1601,7 @@ PetscErrorCode MatMult_SeqMAIJ_10(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_10(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_10(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1703,8 +1661,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_10(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_10(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_10(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1752,8 +1709,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_10(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_10(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_10(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1801,8 +1757,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_10(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /*--------------------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_11(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_11(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1866,8 +1821,7 @@ PetscErrorCode MatMult_SeqMAIJ_11(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_11(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_11(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1930,8 +1884,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_11(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_11(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_11(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -1981,8 +1934,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_11(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_11(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_11(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2032,8 +1984,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_11(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /*--------------------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_16(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_16(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2113,8 +2064,7 @@ PetscErrorCode MatMult_SeqMAIJ_16(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_16(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_16(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2175,8 +2125,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_16(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_16(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_16(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2255,8 +2204,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_16(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_16(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_16(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2317,8 +2265,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_16(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /*--------------------------------------------------------------------------------------------*/
-PetscErrorCode MatMult_SeqMAIJ_18(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_18(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2404,8 +2351,7 @@ PetscErrorCode MatMult_SeqMAIJ_18(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_18(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_18(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2470,8 +2416,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_18(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_18(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_18(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2556,8 +2501,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_18(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_18(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_18(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2621,8 +2565,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_18(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMult_SeqMAIJ_N(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqMAIJ_N(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2654,8 +2597,7 @@ PetscErrorCode MatMult_SeqMAIJ_N(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_SeqMAIJ_N(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_SeqMAIJ_N(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v;
@@ -2687,8 +2629,7 @@ PetscErrorCode MatMultAdd_SeqMAIJ_N(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_SeqMAIJ_N(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_SeqMAIJ_N(Mat A, Vec xx, Vec yy) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v, *alpha;
@@ -2717,8 +2658,7 @@ PetscErrorCode MatMultTranspose_SeqMAIJ_N(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_SeqMAIJ_N(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_SeqMAIJ_N(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_SeqMAIJ       *b = (Mat_SeqMAIJ *)A->data;
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)b->AIJ->data;
   const PetscScalar *x, *v, *alpha;
@@ -2748,8 +2688,7 @@ PetscErrorCode MatMultTransposeAdd_SeqMAIJ_N(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /*===================================================================================*/
-PetscErrorCode MatMult_MPIMAIJ_dof(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_MPIMAIJ_dof(Mat A, Vec xx, Vec yy) {
   Mat_MPIMAIJ *b = (Mat_MPIMAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -2761,8 +2700,7 @@ PetscErrorCode MatMult_MPIMAIJ_dof(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_MPIMAIJ_dof(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMultTranspose_MPIMAIJ_dof(Mat A, Vec xx, Vec yy) {
   Mat_MPIMAIJ *b = (Mat_MPIMAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -2773,8 +2711,7 @@ PetscErrorCode MatMultTranspose_MPIMAIJ_dof(Mat A, Vec xx, Vec yy)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_MPIMAIJ_dof(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultAdd_MPIMAIJ_dof(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_MPIMAIJ *b = (Mat_MPIMAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -2786,8 +2723,7 @@ PetscErrorCode MatMultAdd_MPIMAIJ_dof(Mat A, Vec xx, Vec yy, Vec zz)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_MPIMAIJ_dof(Mat A, Vec xx, Vec yy, Vec zz)
-{
+PetscErrorCode MatMultTransposeAdd_MPIMAIJ_dof(Mat A, Vec xx, Vec yy, Vec zz) {
   Mat_MPIMAIJ *b = (Mat_MPIMAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -2799,8 +2735,7 @@ PetscErrorCode MatMultTransposeAdd_MPIMAIJ_dof(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /* ----------------------------------------------------------------*/
-PetscErrorCode MatProductSetFromOptions_SeqAIJ_SeqMAIJ(Mat C)
-{
+PetscErrorCode MatProductSetFromOptions_SeqAIJ_SeqMAIJ(Mat C) {
   Mat_Product *product = C->product;
 
   PetscFunctionBegin;
@@ -2810,8 +2745,7 @@ PetscErrorCode MatProductSetFromOptions_SeqAIJ_SeqMAIJ(Mat C)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatProductSetFromOptions_MPIAIJ_MPIMAIJ(Mat C)
-{
+PetscErrorCode MatProductSetFromOptions_MPIAIJ_MPIMAIJ(Mat C) {
   Mat_Product *product = C->product;
   PetscBool    flg     = PETSC_FALSE;
   Mat          A = product->A, P = product->B;
@@ -2864,8 +2798,7 @@ PetscErrorCode MatProductSetFromOptions_MPIAIJ_MPIMAIJ(Mat C)
 }
 
 /* ----------------------------------------------------------------*/
-PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A, Mat PP, PetscReal fill, Mat C)
-{
+PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A, Mat PP, PetscReal fill, Mat C) {
   PetscFreeSpaceList free_space = NULL, current_space = NULL;
   Mat_SeqMAIJ       *pp = (Mat_SeqMAIJ *)PP->data;
   Mat                P  = pp->AIJ;
@@ -2925,10 +2858,10 @@ PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A, Mat PP, PetscReal fill, Mat
         /* Get offset within block of P */
         pshift = *ptaj % ppdof;
         /* Get block row of P */
-        prow = (*ptaj++) / ppdof; /* integer division */
+        prow   = (*ptaj++) / ppdof; /* integer division */
         /* P has same number of nonzeros per row as the compressed form */
-        pnzj = pi[prow + 1] - pi[prow];
-        pjj  = pj + pi[prow];
+        pnzj   = pi[prow + 1] - pi[prow];
+        pjj    = pj + pi[prow];
         for (k = 0; k < pnzj; k++) {
           /* Locations in C are shifted by the offset within the block */
           /* Note: we cannot use PetscLLAdd here because of the additional offset for the write location */
@@ -2990,8 +2923,7 @@ PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A, Mat PP, PetscReal fill, Mat
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqMAIJ(Mat A, Mat PP, Mat C)
-{
+PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqMAIJ(Mat A, Mat PP, Mat C) {
   /* This routine requires testing -- first draft only */
   Mat_SeqMAIJ     *pp = (Mat_SeqMAIJ *)PP->data;
   Mat              P  = pp->AIJ;
@@ -3020,10 +2952,10 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqMAIJ(Mat A, Mat PP, Mat C)
       /* Get offset within block of P */
       pshift = *aj % ppdof;
       /* Get block row of P */
-      prow = *aj++ / ppdof; /* integer division */
-      pnzj = pi[prow + 1] - pi[prow];
-      pjj  = pj + pi[prow];
-      paj  = pa + pi[prow];
+      prow   = *aj++ / ppdof; /* integer division */
+      pnzj   = pi[prow + 1] - pi[prow];
+      pjj    = pj + pi[prow];
+      paj    = pa + pi[prow];
       for (k = 0; k < pnzj; k++) {
         poffset = pjj[k] * ppdof + pshift;
         if (!apjdense[poffset]) {
@@ -3046,8 +2978,8 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqMAIJ(Mat A, Mat PP, Mat C)
     poffset = pi[prow];
     pnzi    = pi[prow + 1] - poffset;
     /* Reset pJ and pA so we can traverse the same row of P 'dof' times. */
-    pJ = pj + poffset;
-    pA = pa + poffset;
+    pJ      = pj + poffset;
+    pA      = pa + poffset;
     for (j = 0; j < pnzi; j++) {
       crow = (*pJ) * ppdof + pshift;
       cjj  = cj + ci[crow];
@@ -3075,8 +3007,7 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqMAIJ(Mat A, Mat PP, Mat C)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqMAIJ(Mat C)
-{
+PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqMAIJ(Mat C) {
   Mat_Product *product = C->product;
   Mat          A = product->A, P = product->B;
 
@@ -3085,22 +3016,19 @@ PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqMAIJ(Mat C)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ(Mat A, Mat PP, PetscReal fill, Mat *C)
-{
+PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ(Mat A, Mat PP, PetscReal fill, Mat *C) {
   PetscFunctionBegin;
   SETERRQ(PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "MatPtAPSymbolic is not implemented for MPIMAIJ matrix yet");
 }
 
-PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ(Mat A, Mat PP, Mat C)
-{
+PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ(Mat A, Mat PP, Mat C) {
   PetscFunctionBegin;
   SETERRQ(PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "MatPtAPNumeric is not implemented for MPIMAIJ matrix yet");
 }
 
 PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIXAIJ_allatonce(Mat, Mat, PetscInt, Mat);
 
-PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce(Mat A, Mat P, Mat C)
-{
+PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce(Mat A, Mat P, Mat C) {
   Mat_MPIMAIJ *maij = (Mat_MPIMAIJ *)P->data;
 
   PetscFunctionBegin;
@@ -3111,8 +3039,7 @@ PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce(Mat A, Mat P
 
 PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIXAIJ_allatonce(Mat, Mat, PetscInt, PetscReal, Mat);
 
-PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce(Mat A, Mat P, PetscReal fill, Mat C)
-{
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce(Mat A, Mat P, PetscReal fill, Mat C) {
   Mat_MPIMAIJ *maij = (Mat_MPIMAIJ *)P->data;
 
   PetscFunctionBegin;
@@ -3123,8 +3050,7 @@ PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce(Mat A, Mat 
 
 PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIXAIJ_allatonce_merged(Mat, Mat, PetscInt, Mat);
 
-PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce_merged(Mat A, Mat P, Mat C)
-{
+PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce_merged(Mat A, Mat P, Mat C) {
   Mat_MPIMAIJ *maij = (Mat_MPIMAIJ *)P->data;
 
   PetscFunctionBegin;
@@ -3135,8 +3061,7 @@ PETSC_INTERN PetscErrorCode MatPtAPNumeric_MPIAIJ_MPIMAIJ_allatonce_merged(Mat A
 
 PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIXAIJ_allatonce_merged(Mat, Mat, PetscInt, PetscReal, Mat);
 
-PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce_merged(Mat A, Mat P, PetscReal fill, Mat C)
-{
+PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce_merged(Mat A, Mat P, PetscReal fill, Mat C) {
   Mat_MPIMAIJ *maij = (Mat_MPIMAIJ *)P->data;
 
   PetscFunctionBegin;
@@ -3146,8 +3071,7 @@ PETSC_INTERN PetscErrorCode MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce_merged(Mat 
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_MPIAIJ_MPIMAIJ(Mat C)
-{
+PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_MPIAIJ_MPIMAIJ(Mat C) {
   Mat_Product *product = C->product;
   Mat          A = product->A, P = product->B;
   PetscBool    flg;
@@ -3170,8 +3094,7 @@ PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_MPIAIJ_MPIMAIJ(Mat C)
   SETERRQ(PetscObjectComm((PetscObject)C), PETSC_ERR_SUP, "Mat Product Algorithm is not supported");
 }
 
-PETSC_INTERN PetscErrorCode MatConvert_SeqMAIJ_SeqAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+PETSC_INTERN PetscErrorCode MatConvert_SeqMAIJ_SeqAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat_SeqMAIJ *b   = (Mat_SeqMAIJ *)A->data;
   Mat          a   = b->AIJ, B;
   Mat_SeqAIJ  *aij = (Mat_SeqAIJ *)a->data;
@@ -3216,8 +3139,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqMAIJ_SeqAIJ(Mat A, MatType newtype, Ma
 
 #include <../src/mat/impls/aij/mpi/mpiaij.h>
 
-PETSC_INTERN PetscErrorCode MatConvert_MPIMAIJ_MPIAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+PETSC_INTERN PetscErrorCode MatConvert_MPIMAIJ_MPIAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat_MPIMAIJ *maij    = (Mat_MPIMAIJ *)A->data;
   Mat          MatAIJ  = ((Mat_SeqMAIJ *)maij->AIJ->data)->AIJ, B;
   Mat          MatOAIJ = ((Mat_SeqMAIJ *)maij->OAIJ->data)->AIJ;
@@ -3283,8 +3205,7 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIMAIJ_MPIAIJ(Mat A, MatType newtype, Ma
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatCreateSubMatrix_MAIJ(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat *newmat)
-{
+PetscErrorCode MatCreateSubMatrix_MAIJ(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat *newmat) {
   Mat A;
 
   PetscFunctionBegin;
@@ -3294,8 +3215,7 @@ PetscErrorCode MatCreateSubMatrix_MAIJ(Mat mat, IS isrow, IS iscol, MatReuse cll
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatCreateSubMatrices_MAIJ(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[])
-{
+PetscErrorCode MatCreateSubMatrices_MAIJ(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[]) {
   Mat A;
 
   PetscFunctionBegin;
@@ -3334,8 +3254,7 @@ PetscErrorCode MatCreateSubMatrices_MAIJ(Mat mat, PetscInt n, const IS irow[], c
 
 .seealso: `MATAIJ`, `MATMAIJ`, `MatMAIJGetAIJ()`, `MatMAIJRedimension()`, `MATMAIJ`
 @*/
-PetscErrorCode MatCreateMAIJ(Mat A, PetscInt dof, Mat *maij)
-{
+PetscErrorCode MatCreateMAIJ(Mat A, PetscInt dof, Mat *maij) {
   PetscInt  n;
   Mat       B;
   PetscBool flg;

@@ -40,8 +40,7 @@ F*/
 #include <petscdmda.h>
 
 /* ------------------------------------------------------------------- */
-PetscErrorCode InitialConditions(DM da, Vec U)
-{
+PetscErrorCode InitialConditions(DM da, Vec U) {
   PetscInt  i, j, xs, ys, xm, ym, Mx, My;
   Field   **u;
   PetscReal hx, hy, x, y;
@@ -84,8 +83,7 @@ PetscErrorCode InitialConditions(DM da, Vec U)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS     ts; /* ODE integrator */
   Vec    x;  /* solution */
   DM     da;

@@ -18,8 +18,7 @@ typedef struct {
   MatStencil commSize;  /* Size of patch comm */
 } AppCtx;
 
-PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscInt patchSize, commSize, gridSize;
 
   PetscFunctionBegin;
@@ -58,8 +57,7 @@ PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM     dm;
   AppCtx user; /* user-defined work context */
 

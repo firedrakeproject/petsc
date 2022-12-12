@@ -4,8 +4,7 @@
 #include <petscdmswarm.h>
 #include <petsc/private/dmswarmimpl.h>
 
-int sort_CompareSwarmPoint(const void *dataA, const void *dataB)
-{
+int sort_CompareSwarmPoint(const void *dataA, const void *dataB) {
   SwarmPoint *pointA = (SwarmPoint *)dataA;
   SwarmPoint *pointB = (SwarmPoint *)dataB;
 
@@ -18,15 +17,13 @@ int sort_CompareSwarmPoint(const void *dataA, const void *dataB)
   }
 }
 
-PetscErrorCode DMSwarmSortApplyCellIndexSort(DMSwarmSort ctx)
-{
+PetscErrorCode DMSwarmSortApplyCellIndexSort(DMSwarmSort ctx) {
   PetscFunctionBegin;
   qsort(ctx->list, ctx->npoints, sizeof(SwarmPoint), sort_CompareSwarmPoint);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmSortCreate(DMSwarmSort *_ctx)
-{
+PetscErrorCode DMSwarmSortCreate(DMSwarmSort *_ctx) {
   DMSwarmSort ctx;
 
   PetscFunctionBegin;
@@ -40,8 +37,7 @@ PetscErrorCode DMSwarmSortCreate(DMSwarmSort *_ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmSortSetup(DMSwarmSort ctx, DM dm, PetscInt ncells)
-{
+PetscErrorCode DMSwarmSortSetup(DMSwarmSort ctx, DM dm, PetscInt ncells) {
   PetscInt *swarm_cellid;
   PetscInt  p, npoints;
   PetscInt  tmp, c, count;
@@ -91,8 +87,7 @@ PetscErrorCode DMSwarmSortSetup(DMSwarmSort ctx, DM dm, PetscInt ncells)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmSortDestroy(DMSwarmSort *_ctx)
-{
+PetscErrorCode DMSwarmSortDestroy(DMSwarmSort *_ctx) {
   DMSwarmSort ctx;
 
   PetscFunctionBegin;
@@ -123,8 +118,7 @@ PetscErrorCode DMSwarmSortDestroy(DMSwarmSort *_ctx)
 
 .seealso: `DMSwarmSetType()`, `DMSwarmSortGetAccess()`, `DMSwarmSortGetPointsPerCell()`
 @*/
-PetscErrorCode DMSwarmSortGetNumberOfPointsPerCell(DM dm, PetscInt e, PetscInt *npoints)
-{
+PetscErrorCode DMSwarmSortGetNumberOfPointsPerCell(DM dm, PetscInt e, PetscInt *npoints) {
   DM_Swarm   *swarm = (DM_Swarm *)dm->data;
   PetscInt    points_per_cell;
   DMSwarmSort ctx;
@@ -160,8 +154,7 @@ PetscErrorCode DMSwarmSortGetNumberOfPointsPerCell(DM dm, PetscInt e, PetscInt *
 
 .seealso: `DMSwarmSetType()`, `DMSwarmSortGetAccess()`, `DMSwarmSortGetNumberOfPointsPerCell()`
 @*/
-PETSC_EXTERN PetscErrorCode DMSwarmSortGetPointsPerCell(DM dm, PetscInt e, PetscInt *npoints, PetscInt **pidlist)
-{
+PETSC_EXTERN PetscErrorCode DMSwarmSortGetPointsPerCell(DM dm, PetscInt e, PetscInt *npoints, PetscInt **pidlist) {
   DM_Swarm   *swarm = (DM_Swarm *)dm->data;
   PetscInt    points_per_cell;
   PetscInt    p, pid, pid_unsorted;
@@ -223,8 +216,7 @@ PETSC_EXTERN PetscErrorCode DMSwarmSortGetPointsPerCell(DM dm, PetscInt e, Petsc
 
 .seealso: `DMSwarmSetType()`, `DMSwarmSortRestoreAccess()`
 @*/
-PETSC_EXTERN PetscErrorCode DMSwarmSortGetAccess(DM dm)
-{
+PETSC_EXTERN PetscErrorCode DMSwarmSortGetAccess(DM dm) {
   DM_Swarm *swarm = (DM_Swarm *)dm->data;
   PetscInt  ncells;
   DM        celldm;
@@ -281,8 +273,7 @@ PETSC_EXTERN PetscErrorCode DMSwarmSortGetAccess(DM dm)
 
 .seealso: `DMSwarmSetType()`, `DMSwarmSortGetAccess()`
 @*/
-PETSC_EXTERN PetscErrorCode DMSwarmSortRestoreAccess(DM dm)
-{
+PETSC_EXTERN PetscErrorCode DMSwarmSortRestoreAccess(DM dm) {
   DM_Swarm *swarm = (DM_Swarm *)dm->data;
 
   PetscFunctionBegin;
@@ -307,8 +298,7 @@ PETSC_EXTERN PetscErrorCode DMSwarmSortRestoreAccess(DM dm)
 
 .seealso: `DMSwarmSetType()`, `DMSwarmSortGetAccess()`
 @*/
-PETSC_EXTERN PetscErrorCode DMSwarmSortGetIsValid(DM dm, PetscBool *isvalid)
-{
+PETSC_EXTERN PetscErrorCode DMSwarmSortGetIsValid(DM dm, PetscBool *isvalid) {
   DM_Swarm *swarm = (DM_Swarm *)dm->data;
 
   PetscFunctionBegin;
@@ -336,8 +326,7 @@ PETSC_EXTERN PetscErrorCode DMSwarmSortGetIsValid(DM dm, PetscBool *isvalid)
 
 .seealso: `DMSwarmSetType()`, `DMSwarmSortGetAccess()`
 @*/
-PETSC_EXTERN PetscErrorCode DMSwarmSortGetSizes(DM dm, PetscInt *ncells, PetscInt *npoints)
-{
+PETSC_EXTERN PetscErrorCode DMSwarmSortGetSizes(DM dm, PetscInt *ncells, PetscInt *npoints) {
   DM_Swarm *swarm = (DM_Swarm *)dm->data;
 
   PetscFunctionBegin;

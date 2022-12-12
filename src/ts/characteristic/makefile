@@ -1,4 +1,4 @@
--include ../../../petscdir.mk
+-include ../../../petsckdir.mk
 #requiresscalar    real
 
 SOURCEH   = ../../../include/petsc/private/characteristicimpl.h ../../../include/petsccharacteristic.h

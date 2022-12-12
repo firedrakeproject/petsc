@@ -4,14 +4,15 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.gitcommit        = '3.7.00'
+    self.gitcommit        = '3.6.01'
     self.versionname      = 'KOKKOSKERNELS_VERSION'
     self.download         = ['git://https://github.com/kokkos/kokkos-kernels.git']
     self.includes         = ['KokkosBlas.hpp','KokkosSparse_CrsMatrix.hpp']
     self.liblist          = [['libkokkoskernels.a']]
     self.functions        = ['']
-    # Even libkokkoskernels exists, we really don't know which KK components are enabled and which functions/symbols are there
-    self.functionsCxx     = [1,'#include <iostream>','std::cout << "Assume Kokkos-Kernels is header only and skip the function test";']
+    # use one of the only non-templated functions in all of KK to check this library
+    # exists
+    self.functionsCxx     = [1,'namespace KokkosBatched { void print_compiler_info(); }','KokkosBatched::print_compiler_info();']
     self.buildLanguages   = ['Cxx']
     self.hastests         = 1
     self.requiresrpath    = 1

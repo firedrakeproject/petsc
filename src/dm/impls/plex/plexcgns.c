@@ -2,7 +2,7 @@
 #include <petsc/private/dmpleximpl.h> /*I   "petscdmplex.h"   I*/
 
 /*@C
-  DMPlexCreateCGNS - Create a `DMPLEX` mesh from a CGNS file.
+  DMPlexCreateCGNS - Create a DMPlex mesh from a CGNS file.
 
   Collective
 
@@ -12,17 +12,15 @@
 - interpolate - Create faces and edges in the mesh
 
   Output Parameter:
-. dm  - The `DM` object representing the mesh
+. dm  - The DM object representing the mesh
+
+  Note: https://cgns.github.io
 
   Level: beginner
 
-  Note:
-  https://cgns.github.io
-
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMPlexCreate()`, `DMPlexCreateCGNS()`, `DMPlexCreateExodus()`
+.seealso: `DMPlexCreate()`, `DMPlexCreateCGNS()`, `DMPlexCreateExodus()`
 @*/
-PetscErrorCode DMPlexCreateCGNSFromFile(MPI_Comm comm, const char filename[], PetscBool interpolate, DM *dm)
-{
+PetscErrorCode DMPlexCreateCGNSFromFile(MPI_Comm comm, const char filename[], PetscBool interpolate, DM *dm) {
   PetscFunctionBegin;
   PetscValidCharPointer(filename, 2);
 #if defined(PETSC_HAVE_CGNS)
@@ -34,7 +32,7 @@ PetscErrorCode DMPlexCreateCGNSFromFile(MPI_Comm comm, const char filename[], Pe
 }
 
 /*@
-  DMPlexCreateCGNS - Create a `DMPLEX` mesh from a CGNS file ID.
+  DMPlexCreateCGNS - Create a DMPlex mesh from a CGNS file ID.
 
   Collective
 
@@ -44,17 +42,15 @@ PetscErrorCode DMPlexCreateCGNSFromFile(MPI_Comm comm, const char filename[], Pe
 - interpolate - Create faces and edges in the mesh
 
   Output Parameter:
-. dm  - The `DM` object representing the mesh
+. dm  - The DM object representing the mesh
+
+  Note: https://cgns.github.io
 
   Level: beginner
 
-  Note:
-  https://cgns.github.io
-
-.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMPlexCreate()`, `DMPlexCreateExodus()`
+.seealso: `DMPlexCreate()`, `DMPlexCreateExodus()`
 @*/
-PetscErrorCode DMPlexCreateCGNS(MPI_Comm comm, PetscInt cgid, PetscBool interpolate, DM *dm)
-{
+PetscErrorCode DMPlexCreateCGNS(MPI_Comm comm, PetscInt cgid, PetscBool interpolate, DM *dm) {
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_CGNS)
   PetscCall(DMPlexCreateCGNS_Internal(comm, cgid, interpolate, dm));

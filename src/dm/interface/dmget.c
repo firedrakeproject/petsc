@@ -31,8 +31,7 @@
           `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMCreateLocalVector()`, `DMRestoreLocalVector()`,
           `VecStrideMax()`, `VecStrideMin()`, `VecStrideNorm()`
 @*/
-PetscErrorCode DMGetLocalVector(DM dm, Vec *g)
-{
+PetscErrorCode DMGetLocalVector(DM dm, Vec *g) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(g, 2);
@@ -63,8 +62,8 @@ alldone:
 
 /*@
    DMRestoreLocalVector - Returns a PETSc vector that was
-     obtained from `DMGetLocalVector()`. Do not use with vector obtained via
-     `DMCreateLocalVector()`.
+     obtained from DMGetLocalVector(). Do not use with vector obtained via
+     DMCreateLocalVector().
 
    Not Collective
 
@@ -74,12 +73,11 @@ alldone:
 
    Level: beginner
 
-.seealso: `DM`, `DMCreateGlobalVector()`, `VecDuplicate()`, `VecDuplicateVecs()`,
+.seealso: `DMCreateGlobalVector()`, `VecDuplicate()`, `VecDuplicateVecs()`,
           `DMDACreate1d()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMGlobalToLocalBegin()`,
           `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMCreateLocalVector()`, `DMGetLocalVector()`
 @*/
-PetscErrorCode DMRestoreLocalVector(DM dm, Vec *g)
-{
+PetscErrorCode DMRestoreLocalVector(DM dm, Vec *g) {
   PetscInt i, j;
 
   PetscFunctionBegin;
@@ -108,7 +106,7 @@ alldone:
 }
 
 /*@
-   DMGetGlobalVector - Gets a PETSc vector that may be used with the `DM` global routines.
+   DMGetGlobalVector - Gets a PETSc vector that may be used with the DM global routines.
 
    Collective on dm
 
@@ -125,21 +123,20 @@ alldone:
    to zero them.
 
    The output parameter, g, is a regular PETSc vector that should be returned with
-   `DMRestoreGlobalVector()` DO NOT call `VecDestroy()` on it.
+   DMRestoreGlobalVector() DO NOT call VecDestroy() on it.
 
    This is intended to be used for vectors you need for a short time, like within a single function call.
    For vectors that you intend to keep around (for example in a C struct) or pass around large parts of your
-   code you should use `DMCreateGlobalVector()`.
+   code you should use DMCreateGlobalVector().
 
-   VecStride*() operations can be useful when using `DM` with dof > 1
+   VecStride*() operations can be useful when using DM with dof > 1
 
-.seealso: `DM`, `DMCreateGlobalVector()`, `VecDuplicate()`, `VecDuplicateVecs()`,
+.seealso: `DMCreateGlobalVector()`, `VecDuplicate()`, `VecDuplicateVecs()`,
           `DMDACreate1d()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMGlobalToLocalBegin()`,
           `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMCreateLocalVector()`, `DMRestoreLocalVector()`
           `VecStrideMax()`, `VecStrideMin()`, `VecStrideNorm()`
 @*/
-PetscErrorCode DMGetGlobalVector(DM dm, Vec *g)
-{
+PetscErrorCode DMGetGlobalVector(DM dm, Vec *g) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -185,8 +182,7 @@ alldone:
           `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMCreateLocalVector()`, `DMRestoreLocalVector()`
           `VecStrideMax()`, `VecStrideMin()`, `VecStrideNorm()`
 @*/
-PetscErrorCode DMClearGlobalVectors(DM dm)
-{
+PetscErrorCode DMClearGlobalVectors(DM dm) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -223,8 +219,7 @@ PetscErrorCode DMClearGlobalVectors(DM dm)
           `DMLocalToLocalEnd()`, `DMLocalToLocalBegin()`, `DMCreateLocalVector()`, `DMRestoreLocalVector()`
           `VecStrideMax()`, `VecStrideMin()`, `VecStrideNorm()`
 @*/
-PetscErrorCode DMClearLocalVectors(DM dm)
-{
+PetscErrorCode DMClearLocalVectors(DM dm) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -263,8 +258,7 @@ PetscErrorCode DMClearLocalVectors(DM dm)
           `DMDACreate1d()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMGlobalToGlobalBegin()`,
           `DMGlobalToGlobalEnd()`, `DMGlobalToGlobal()`, `DMCreateLocalVector()`, `DMGetGlobalVector()`
 @*/
-PetscErrorCode DMRestoreGlobalVector(DM dm, Vec *g)
-{
+PetscErrorCode DMRestoreGlobalVector(DM dm, Vec *g) {
   PetscInt i, j;
 
   PetscFunctionBegin;
@@ -311,8 +305,7 @@ alldone:
 
 .seealso: `DMGetNamedGlobalVector()`, `DMRestoreNamedLocalVector()`
 @*/
-PetscErrorCode DMHasNamedGlobalVector(DM dm, const char *name, PetscBool *exists)
-{
+PetscErrorCode DMHasNamedGlobalVector(DM dm, const char *name, PetscBool *exists) {
   DMNamedVecLink link;
 
   PetscFunctionBegin;
@@ -349,8 +342,7 @@ PetscErrorCode DMHasNamedGlobalVector(DM dm, const char *name, PetscBool *exists
 
 .seealso: `DMRestoreNamedGlobalVector()`
 @*/
-PetscErrorCode DMGetNamedGlobalVector(DM dm, const char *name, Vec *X)
-{
+PetscErrorCode DMGetNamedGlobalVector(DM dm, const char *name, Vec *X) {
   DMNamedVecLink link;
 
   PetscFunctionBegin;
@@ -399,8 +391,7 @@ found:
 
 .seealso: `DMGetNamedGlobalVector()`
 @*/
-PetscErrorCode DMRestoreNamedGlobalVector(DM dm, const char *name, Vec *X)
-{
+PetscErrorCode DMRestoreNamedGlobalVector(DM dm, const char *name, Vec *X) {
   DMNamedVecLink link;
 
   PetscFunctionBegin;
@@ -447,8 +438,7 @@ PetscErrorCode DMRestoreNamedGlobalVector(DM dm, const char *name, Vec *X)
 
 .seealso: `DMGetNamedGlobalVector()`, `DMRestoreNamedLocalVector()`
 @*/
-PetscErrorCode DMHasNamedLocalVector(DM dm, const char *name, PetscBool *exists)
-{
+PetscErrorCode DMHasNamedLocalVector(DM dm, const char *name, PetscBool *exists) {
   DMNamedVecLink link;
 
   PetscFunctionBegin;
@@ -485,8 +475,7 @@ PetscErrorCode DMHasNamedLocalVector(DM dm, const char *name, PetscBool *exists)
 
 .seealso: `DMGetNamedGlobalVector()`, `DMRestoreNamedLocalVector()`
 @*/
-PetscErrorCode DMGetNamedLocalVector(DM dm, const char *name, Vec *X)
-{
+PetscErrorCode DMGetNamedLocalVector(DM dm, const char *name, Vec *X) {
   DMNamedVecLink link;
 
   PetscFunctionBegin;
@@ -535,8 +524,7 @@ found:
 
 .seealso: `DMRestoreNamedGlobalVector()`, `DMGetNamedLocalVector()`
 @*/
-PetscErrorCode DMRestoreNamedLocalVector(DM dm, const char *name, Vec *X)
-{
+PetscErrorCode DMRestoreNamedLocalVector(DM dm, const char *name, Vec *X) {
   DMNamedVecLink link;
 
   PetscFunctionBegin;

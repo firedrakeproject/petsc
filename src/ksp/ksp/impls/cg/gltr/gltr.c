@@ -9,22 +9,18 @@
 static const char *DType_Table[64] = {"preconditioned", "unpreconditioned"};
 
 /*@
-    KSPGLTRGetMinEig - Get minimum eigenvalue computed by `KSPGLTR`
+    KSPGLTRGetMinEig - Get minimum eigenvalue.
 
     Collective on ksp
 
-    Input Parameter:
-.   ksp   - the iterative context
-
-    Output Parameter:
-.   e_min - the minimum eigenvalue
+    Input Parameters:
++   ksp   - the iterative context
+-   e_min - the minimum eigenvalue
 
     Level: advanced
 
-.seealso: [](chapter_ksp), `KSPGLTR`, `KSPGLTRGetLambda()`
 @*/
-PetscErrorCode KSPGLTRGetMinEig(KSP ksp, PetscReal *e_min)
-{
+PetscErrorCode KSPGLTRGetMinEig(KSP ksp, PetscReal *e_min) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscUseMethod(ksp, "KSPGLTRGetMinEig_C", (KSP, PetscReal *), (ksp, e_min));
@@ -32,30 +28,25 @@ PetscErrorCode KSPGLTRGetMinEig(KSP ksp, PetscReal *e_min)
 }
 
 /*@
-    KSPGLTRGetLambda - Get the multiplier on the trust-region constraint when using `KSPGLTR`
-t
+    KSPGLTRGetLambda - Get multiplier on trust-region constraint.
+
     Not Collective
 
-    Input Parameter:
-.   ksp    - the iterative context
-
-    Output Parameter:
-.   lambda - the multiplier
+    Input Parameters:
++   ksp    - the iterative context
+-   lambda - the multiplier
 
     Level: advanced
 
-.seealso: [](chapter_ksp), `KSPGLTR`, `KSPGLTRGetMinEig()`
 @*/
-PetscErrorCode KSPGLTRGetLambda(KSP ksp, PetscReal *lambda)
-{
+PetscErrorCode KSPGLTRGetLambda(KSP ksp, PetscReal *lambda) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscUseMethod(ksp, "KSPGLTRGetLambda_C", (KSP, PetscReal *), (ksp, lambda));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
-{
+static PetscErrorCode KSPCGSolve_GLTR(KSP ksp) {
 #if defined(PETSC_USE_COMPLEX)
   SETERRQ(PetscObjectComm((PetscObject)ksp), PETSC_ERR_SUP, "GLTR is not available for complex systems");
 #else
@@ -231,9 +222,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
     norm_r = cg->norm_r[0]; /* norm_r = |r|_M    */
     break;
 
-  default:
-    norm_r = 0.0;
-    break;
+  default: norm_r = 0.0; break;
   }
 
   PetscCall(KSPLogResidualHistory(ksp, norm_r));
@@ -299,13 +288,9 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
   dMp    = 0.0;
   norm_d = 0.0;
   switch (cg->dtype) {
-  case GLTR_PRECONDITIONED_DIRECTION:
-    norm_p = rz;
-    break;
+  case GLTR_PRECONDITIONED_DIRECTION: norm_p = rz; break;
 
-  default:
-    PetscCall(VecDot(p, p, &norm_p));
-    break;
+  default: PetscCall(VecDot(p, p, &norm_p)); break;
   }
 
   cg->diag[t_size] = kappa / rz;
@@ -476,13 +461,9 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
     PetscCall(KSP_PCApply(ksp, r, z)); /* z = inv(M) r      */
 
     switch (cg->dtype) {
-    case GLTR_PRECONDITIONED_DIRECTION:
-      norm_d = norm_dp1;
-      break;
+    case GLTR_PRECONDITIONED_DIRECTION: norm_d = norm_dp1; break;
 
-    default:
-      PetscCall(VecDot(d, d, &norm_d));
-      break;
+    default: PetscCall(VecDot(d, d, &norm_d)); break;
     }
     cg->norm_d = PetscSqrtReal(norm_d);
 
@@ -528,9 +509,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
       norm_r = cg->norm_r[l_size + 1]; /* norm_r = |r|_M    */
       break;
 
-    default:
-      norm_r = 0.0;
-      break;
+    default: norm_r = 0.0; break;
     }
 
     PetscCall(KSPLogResidualHistory(ksp, norm_r));
@@ -729,9 +708,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
       norm_r = cg->norm_r[l_size + 1]; /* norm_r = |r|_M    */
       break;
 
-    default:
-      norm_r = 0.0;
-      break;
+    default: norm_r = 0.0; break;
     }
 
     PetscCall(KSPLogResidualHistory(ksp, norm_r));
@@ -1163,8 +1140,7 @@ static PetscErrorCode KSPCGSolve_GLTR(KSP ksp)
 #endif
 }
 
-static PetscErrorCode KSPCGSetUp_GLTR(KSP ksp)
-{
+static PetscErrorCode KSPCGSetUp_GLTR(KSP ksp) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
   PetscInt    max_its;
 
@@ -1189,12 +1165,12 @@ static PetscErrorCode KSPCGSetUp_GLTR(KSP ksp)
     PetscCall(PetscArrayzero(cg->norm_r, max_its));
   } else {
     PetscCall(PetscCalloc5(max_its, &cg->diag, max_its, &cg->offd, max_its, &cg->alpha, max_its, &cg->beta, max_its, &cg->norm_r));
+    PetscCall(PetscLogObjectMemory((PetscObject)ksp, 5 * max_its * sizeof(PetscReal)));
   }
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGDestroy_GLTR(KSP ksp)
-{
+static PetscErrorCode KSPCGDestroy_GLTR(KSP ksp) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
 
   PetscFunctionBegin;
@@ -1222,8 +1198,7 @@ static PetscErrorCode KSPCGDestroy_GLTR(KSP ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGSetRadius_GLTR(KSP ksp, PetscReal radius)
-{
+static PetscErrorCode KSPCGSetRadius_GLTR(KSP ksp, PetscReal radius) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
 
   PetscFunctionBegin;
@@ -1231,8 +1206,7 @@ static PetscErrorCode KSPCGSetRadius_GLTR(KSP ksp, PetscReal radius)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGGetNormD_GLTR(KSP ksp, PetscReal *norm_d)
-{
+static PetscErrorCode KSPCGGetNormD_GLTR(KSP ksp, PetscReal *norm_d) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
 
   PetscFunctionBegin;
@@ -1240,8 +1214,7 @@ static PetscErrorCode KSPCGGetNormD_GLTR(KSP ksp, PetscReal *norm_d)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGGetObjFcn_GLTR(KSP ksp, PetscReal *o_fcn)
-{
+static PetscErrorCode KSPCGGetObjFcn_GLTR(KSP ksp, PetscReal *o_fcn) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
 
   PetscFunctionBegin;
@@ -1249,8 +1222,7 @@ static PetscErrorCode KSPCGGetObjFcn_GLTR(KSP ksp, PetscReal *o_fcn)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGLTRGetMinEig_GLTR(KSP ksp, PetscReal *e_min)
-{
+static PetscErrorCode KSPGLTRGetMinEig_GLTR(KSP ksp, PetscReal *e_min) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
 
   PetscFunctionBegin;
@@ -1258,8 +1230,7 @@ static PetscErrorCode KSPGLTRGetMinEig_GLTR(KSP ksp, PetscReal *e_min)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPGLTRGetLambda_GLTR(KSP ksp, PetscReal *lambda)
-{
+static PetscErrorCode KSPGLTRGetLambda_GLTR(KSP ksp, PetscReal *lambda) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
 
   PetscFunctionBegin;
@@ -1267,8 +1238,7 @@ static PetscErrorCode KSPGLTRGetLambda_GLTR(KSP ksp, PetscReal *lambda)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode KSPCGSetFromOptions_GLTR(KSP ksp, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode KSPCGSetFromOptions_GLTR(KSP ksp, PetscOptionItems *PetscOptionsObject) {
   KSPCG_GLTR *cg = (KSPCG_GLTR *)ksp->data;
 
   PetscFunctionBegin;
@@ -1291,15 +1261,16 @@ static PetscErrorCode KSPCGSetFromOptions_GLTR(KSP ksp, PetscOptionItems *PetscO
 
 /*MC
      KSPGLTR -   Code to run conjugate gradient method subject to a constraint
-         on the solution norm.
+         on the solution norm. This is used in Trust Region methods for
+         nonlinear equations, SNESNEWTONTR
 
    Options Database Keys:
 .      -ksp_cg_radius <r> - Trust Region Radius
 
-   Level: developer
+   Notes:
+    This is rarely used directly
 
-  Notes:
-  Uses preconditioned conjugate gradient to compute
+  Use preconditioned conjugate gradient to compute
   an approximate minimizer of the quadratic function
 
             q(s) = g^T * s + .5 * s^T * H * s
@@ -1315,29 +1286,28 @@ static PetscErrorCode KSPCGSetFromOptions_GLTR(KSP ksp, PetscOptionItems *PetscO
      H is the Hessian approximation,
      M is the positive definite preconditioner matrix.
 
-   `KSPConvergedReason` may have the additional values
-.vb
-   KSP_CONVERGED_CG_NEG_CURVE if convergence is reached along a negative curvature direction,
-   KSP_CONVERGED_CG_CONSTRAINED if convergence is reached along a constrained step.
-.ve
+   KSPConvergedReason may be
+$  KSP_CONVERGED_CG_NEG_CURVE if convergence is reached along a negative curvature direction,
+$  KSP_CONVERGED_CG_CONSTRAINED if convergence is reached along a constrained step,
+$  other KSP converged/diverged reasons
 
-  The operator and the preconditioner supplied must be symmetric and positive definite.
-
-  This is rarely used directly, it is used in Trust Region methods for nonlinear equations, `SNESNEWTONTR`
+  Notes:
+  The preconditioner supplied should be symmetric and positive definite.
 
   Reference:
-. * -  Gould, N. and Lucidi, S. and Roma, M. and Toint, P., Solving the Trust-Region Subproblem using the Lanczos Method,
+   Gould, N. and Lucidi, S. and Roma, M. and Toint, P., Solving the Trust-Region Subproblem using the Lanczos Method,
    SIAM Journal on Optimization, volume 9, number 2, 1999, 504-525
 
-.seealso: [](chapter_ksp), `KSPQCG`, `KSPNASH`, `KSPSTCG`, `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPCGSetRadius()`, `KSPCGGetNormD()`, `KSPCGGetObjFcn()`, `KSPGLTRGetMinEig()`, `KSPGLTRGetLambda()`, `KSPCG`
+   Level: developer
+
+.seealso: `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`, `KSPCGSetRadius()`, `KSPCGGetNormD()`, `KSPCGGetObjFcn()`, `KSPGLTRGetMinEig()`, `KSPGLTRGetLambda()`
 M*/
 
-PETSC_EXTERN PetscErrorCode KSPCreate_GLTR(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_GLTR(KSP ksp) {
   KSPCG_GLTR *cg;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&cg));
+  PetscCall(PetscNewLog(ksp, &cg));
   cg->radius = 0.0;
   cg->dtype  = GLTR_UNPRECONDITIONED_DIRECTION;
 

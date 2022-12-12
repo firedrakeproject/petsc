@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 SOURCEH	  =
 SOURCEC   = section.c sectionhdf5.c

@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk
+-include ../../../../../petsckdir.mk
 
 DIRS      = socket ascii binary string draw vu mathematica hdf5 matlab ams vtk glvis adios cgns
 LOCDIR    = src/sys/classes/viewer/impls/

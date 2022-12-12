@@ -2,8 +2,7 @@ static char help[] = "Test DMPlexGetCellType\n\n";
 
 #include <petsc.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM             dm, pdm;
   char           ifilename[PETSC_MAX_PATH_LEN];
   PetscInt       pStart, pEnd, p;

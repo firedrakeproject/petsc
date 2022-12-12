@@ -3,8 +3,7 @@ static char help[] = "Tests PetscArraymove()/PetscMemmove()\n";
 
 #include <petscsys.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt i, *a, *b;
 
   PetscFunctionBeginUser;

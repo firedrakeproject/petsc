@@ -2,8 +2,7 @@
 #include <petscsf.h>
 
 /* this function maps rows to locally owned rows */
-PETSC_INTERN PetscErrorCode MatZeroRowsMapLocal_Private(Mat A, PetscInt N, const PetscInt *rows, PetscInt *nr, PetscInt **olrows)
-{
+PETSC_INTERN PetscErrorCode MatZeroRowsMapLocal_Private(Mat A, PetscInt N, const PetscInt *rows, PetscInt *nr, PetscInt **olrows) {
   PetscInt    *owners = A->rmap->range;
   PetscInt     n      = A->rmap->n;
   PetscSF      sf;

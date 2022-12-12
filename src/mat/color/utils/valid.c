@@ -3,8 +3,7 @@
 
 PETSC_EXTERN PetscErrorCode MatColoringCreateBipartiteGraph(MatColoring, PetscSF *, PetscSF *);
 
-PETSC_EXTERN PetscErrorCode MatColoringTest(MatColoring mc, ISColoring coloring)
-{
+PETSC_EXTERN PetscErrorCode MatColoringTest(MatColoring mc, ISColoring coloring) {
   Mat             m = mc->mat;
   PetscSF         etor, etoc;
   PetscInt        s, e;
@@ -95,8 +94,7 @@ PETSC_EXTERN PetscErrorCode MatColoringTest(MatColoring mc, ISColoring coloring)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode MatISColoringTest(Mat A, ISColoring iscoloring)
-{
+PETSC_EXTERN PetscErrorCode MatISColoringTest(Mat A, ISColoring iscoloring) {
   PetscInt        nn, c, i, j, M, N, nc, nnz, col, row;
   const PetscInt *cia, *cja, *cols;
   IS             *isis;

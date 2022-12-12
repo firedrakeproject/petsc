@@ -1,11 +1,11 @@
-#ifndef __WIN32DRAW_H
+#if !defined(__WIN32DRAW_H)
 #define __WIN32DRAW_H
 
 #if defined(PETSC_HAVE_WINDOWS_H)
-  #include <windows.h>
+#include <windows.h>
 #endif
 #if defined(PETSC_HAVE_WINDOWSX_H)
-  #include <windowsx.h>
+#include <windowsx.h>
 #endif
 #include <petscdraw.h>
 

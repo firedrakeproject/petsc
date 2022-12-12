@@ -8,7 +8,7 @@
 
 */
 
-#ifndef __LCDIMPL_H
+#if !defined(__LCDIMPL_H)
 #define __LCDIMPL_H
 
 /*

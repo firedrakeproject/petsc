@@ -4,8 +4,7 @@
 #include <nvshmem.h>
 #include <nvshmemx.h>
 
-PetscErrorCode PetscNvshmemInitializeCheck(void)
-{
+PetscErrorCode PetscNvshmemInitializeCheck(void) {
   PetscFunctionBegin;
   if (!PetscNvshmemInitialized) { /* Note NVSHMEM does not provide a routine to check whether it is initialized */
     nvshmemx_init_attr_t attr;
@@ -18,8 +17,7 @@ PetscErrorCode PetscNvshmemInitializeCheck(void)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscNvshmemMalloc(size_t size, void **ptr)
-{
+PetscErrorCode PetscNvshmemMalloc(size_t size, void **ptr) {
   PetscFunctionBegin;
   PetscCall(PetscNvshmemInitializeCheck());
   *ptr = nvshmem_malloc(size);
@@ -27,8 +25,7 @@ PetscErrorCode PetscNvshmemMalloc(size_t size, void **ptr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscNvshmemCalloc(size_t size, void **ptr)
-{
+PetscErrorCode PetscNvshmemCalloc(size_t size, void **ptr) {
   PetscFunctionBegin;
   PetscCall(PetscNvshmemInitializeCheck());
   *ptr = nvshmem_calloc(size, 1);
@@ -36,23 +33,20 @@ PetscErrorCode PetscNvshmemCalloc(size_t size, void **ptr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscNvshmemFree_Private(void *ptr)
-{
+PetscErrorCode PetscNvshmemFree_Private(void *ptr) {
   PetscFunctionBegin;
   nvshmem_free(ptr);
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscNvshmemFinalize(void)
-{
+PetscErrorCode PetscNvshmemFinalize(void) {
   PetscFunctionBegin;
   nvshmem_finalize();
   PetscFunctionReturn(0);
 }
 
 /* Free nvshmem related fields in the SF */
-PetscErrorCode PetscSFReset_Basic_NVSHMEM(PetscSF sf)
-{
+PetscErrorCode PetscSFReset_Basic_NVSHMEM(PetscSF sf) {
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
 
   PetscFunctionBegin;
@@ -71,8 +65,7 @@ PetscErrorCode PetscSFReset_Basic_NVSHMEM(PetscSF sf)
 }
 
 /* Set up NVSHMEM related fields for an SF of type SFBASIC (only after PetscSFSetup_Basic() already set up dependant fields */
-static PetscErrorCode PetscSFSetUp_Basic_NVSHMEM(PetscSF sf)
-{
+static PetscErrorCode PetscSFSetUp_Basic_NVSHMEM(PetscSF sf) {
   cudaError_t    cerr;
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
   PetscInt       i, nRemoteRootRanks, nRemoteLeafRanks;
@@ -156,8 +149,7 @@ static PetscErrorCode PetscSFSetUp_Basic_NVSHMEM(PetscSF sf)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSFLinkNvshmemCheck(PetscSF sf, PetscMemType rootmtype, const void *rootdata, PetscMemType leafmtype, const void *leafdata, PetscBool *use_nvshmem)
-{
+PetscErrorCode PetscSFLinkNvshmemCheck(PetscSF sf, PetscMemType rootmtype, const void *rootdata, PetscMemType leafmtype, const void *leafdata, PetscBool *use_nvshmem) {
   MPI_Comm    comm;
   PetscBool   isBasic;
   PetscMPIInt result = MPI_UNEQUAL;
@@ -211,8 +203,7 @@ PetscErrorCode PetscSFLinkNvshmemCheck(PetscSF sf, PetscMemType rootmtype, const
 }
 
 /* Build dependence between <stream> and <remoteCommStream> at the entry of NVSHMEM communication */
-static PetscErrorCode PetscSFLinkBuildDependenceBegin(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+static PetscErrorCode PetscSFLinkBuildDependenceBegin(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   cudaError_t    cerr;
   PetscSF_Basic *bas    = (PetscSF_Basic *)sf->data;
   PetscInt       buflen = (direction == PETSCSF_ROOT2LEAF) ? bas->rootbuflen[PETSCSF_REMOTE] : sf->leafbuflen[PETSCSF_REMOTE];
@@ -226,8 +217,7 @@ static PetscErrorCode PetscSFLinkBuildDependenceBegin(PetscSF sf, PetscSFLink li
 }
 
 /* Build dependence between <stream> and <remoteCommStream> at the exit of NVSHMEM communication */
-static PetscErrorCode PetscSFLinkBuildDependenceEnd(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+static PetscErrorCode PetscSFLinkBuildDependenceEnd(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   cudaError_t    cerr;
   PetscSF_Basic *bas    = (PetscSF_Basic *)sf->data;
   PetscInt       buflen = (direction == PETSCSF_ROOT2LEAF) ? sf->leafbuflen[PETSCSF_REMOTE] : bas->rootbuflen[PETSCSF_REMOTE];
@@ -250,8 +240,7 @@ static PetscErrorCode PetscSFLinkBuildDependenceEnd(PetscSF sf, PetscSFLink link
   . ranks    - remote ranks
   - newval   - Set signals to this value
 */
-__global__ static void NvshmemSendSignals(PetscInt n, uint64_t *sig, PetscInt *sigdisp, PetscMPIInt *ranks, uint64_t newval)
-{
+__global__ static void NvshmemSendSignals(PetscInt n, uint64_t *sig, PetscInt *sigdisp, PetscMPIInt *ranks, uint64_t newval) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
 
   /* Each thread puts one remote signal */
@@ -266,8 +255,7 @@ __global__ static void NvshmemSendSignals(PetscInt n, uint64_t *sig, PetscInt *s
   . expval   - expected value
   - newval   - Set signals to this new value
 */
-__global__ static void NvshmemWaitSignals(PetscInt n, uint64_t *sig, uint64_t expval, uint64_t newval)
-{
+__global__ static void NvshmemWaitSignals(PetscInt n, uint64_t *sig, uint64_t expval, uint64_t newval) {
 #if 0
   /* Akhil Langer@NVIDIA said using 1 thread and nvshmem_uint64_wait_until_all is better */
   int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -301,8 +289,7 @@ __global__ static void NvshmemWaitSignals(PetscInt n, uint64_t *sig, uint64_t ex
 /* PrePack operation -- since sender will overwrite the send buffer which the receiver might be getting data from.
    Sender waits for signals (from receivers) indicating receivers have finished getting data
 */
-PetscErrorCode PetscSFLinkWaitSignalsOfCompletionOfGettingData_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+PetscErrorCode PetscSFLinkWaitSignalsOfCompletionOfGettingData_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
   uint64_t      *sig;
   PetscInt       n;
@@ -324,8 +311,7 @@ PetscErrorCode PetscSFLinkWaitSignalsOfCompletionOfGettingData_NVSHMEM(PetscSF s
 }
 
 /* n thread blocks. Each takes in charge one remote rank */
-__global__ static void GetDataFromRemotelyAccessible(PetscInt nsrcranks, PetscMPIInt *srcranks, const char *src, PetscInt *srcdisp, char *dst, PetscInt *dstdisp, PetscInt unitbytes)
-{
+__global__ static void GetDataFromRemotelyAccessible(PetscInt nsrcranks, PetscMPIInt *srcranks, const char *src, PetscInt *srcdisp, char *dst, PetscInt *dstdisp, PetscInt unitbytes) {
   int         bid = blockIdx.x;
   PetscMPIInt pe  = srcranks[bid];
 
@@ -336,8 +322,7 @@ __global__ static void GetDataFromRemotelyAccessible(PetscInt nsrcranks, PetscMP
 }
 
 /* Start communication -- Get data in the given direction */
-PetscErrorCode PetscSFLinkGetDataBegin_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+PetscErrorCode PetscSFLinkGetDataBegin_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   cudaError_t    cerr;
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
 
@@ -432,8 +417,7 @@ PetscErrorCode PetscSFLinkGetDataBegin_NVSHMEM(PetscSF sf, PetscSFLink link, Pet
 /* Finish the communication (can be done before Unpack)
    Receiver tells its senders that they are allowed to reuse their send buffer (since receiver has got data from their send buffer)
 */
-PetscErrorCode PetscSFLinkGetDataEnd_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+PetscErrorCode PetscSFLinkGetDataEnd_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   cudaError_t    cerr;
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
   uint64_t      *srcsig;
@@ -485,8 +469,7 @@ PetscErrorCode PetscSFLinkGetDataEnd_NVSHMEM(PetscSF sf, PetscSFLink link, Petsc
    ===========================================================================================================*/
 
 /* n thread blocks. Each takes in charge one remote rank */
-__global__ static void WaitAndPutDataToRemotelyAccessible(PetscInt ndstranks, PetscMPIInt *dstranks, char *dst, PetscInt *dstdisp, const char *src, PetscInt *srcdisp, uint64_t *srcsig, PetscInt unitbytes)
-{
+__global__ static void WaitAndPutDataToRemotelyAccessible(PetscInt ndstranks, PetscMPIInt *dstranks, char *dst, PetscInt *dstdisp, const char *src, PetscInt *srcdisp, uint64_t *srcsig, PetscInt unitbytes) {
   int         bid = blockIdx.x;
   PetscMPIInt pe  = dstranks[bid];
 
@@ -499,8 +482,7 @@ __global__ static void WaitAndPutDataToRemotelyAccessible(PetscInt ndstranks, Pe
 }
 
 /* one-thread kernel, which takes in charge all locally accesible */
-__global__ static void WaitSignalsFromLocallyAccessible(PetscInt ndstranks, PetscMPIInt *dstranks, uint64_t *srcsig, const char *dst)
-{
+__global__ static void WaitSignalsFromLocallyAccessible(PetscInt ndstranks, PetscMPIInt *dstranks, uint64_t *srcsig, const char *dst) {
   for (int i = 0; i < ndstranks; i++) {
     int pe = dstranks[i];
     if (nvshmem_ptr(dst, pe)) {
@@ -511,8 +493,7 @@ __global__ static void WaitSignalsFromLocallyAccessible(PetscInt ndstranks, Pets
 }
 
 /* Put data in the given direction  */
-PetscErrorCode PetscSFLinkPutDataBegin_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+PetscErrorCode PetscSFLinkPutDataBegin_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   cudaError_t    cerr;
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
   PetscInt       ndstranks, nLocallyAccessible = 0;
@@ -584,8 +565,7 @@ PetscErrorCode PetscSFLinkPutDataBegin_NVSHMEM(PetscSF sf, PetscSFLink link, Pet
 }
 
 /* A one-thread kernel. The thread takes in charge all remote PEs */
-__global__ static void PutDataEnd(PetscInt nsrcranks, PetscInt ndstranks, PetscMPIInt *dstranks, uint64_t *dstsig, PetscInt *dstsigdisp)
-{
+__global__ static void PutDataEnd(PetscInt nsrcranks, PetscInt ndstranks, PetscMPIInt *dstranks, uint64_t *dstsig, PetscInt *dstsigdisp) {
   /* TODO: Shall we finished the non-blocking remote puts? */
 
   /* 1. Send a signal to each dst rank */
@@ -603,8 +583,7 @@ __global__ static void PutDataEnd(PetscInt nsrcranks, PetscInt ndstranks, PetscM
 }
 
 /* Finish the communication -- A receiver waits until it can access its receive buffer */
-PetscErrorCode PetscSFLinkPutDataEnd_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+PetscErrorCode PetscSFLinkPutDataEnd_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   cudaError_t    cerr;
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
   PetscMPIInt   *dstranks;
@@ -637,8 +616,7 @@ PetscErrorCode PetscSFLinkPutDataEnd_NVSHMEM(PetscSF sf, PetscSFLink link, Petsc
 }
 
 /* PostUnpack operation -- A receiver tells its senders that they are allowed to put data to here (it implies recv buf is free to take new data) */
-PetscErrorCode PetscSFLinkSendSignalsToAllowPuttingData_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction)
-{
+PetscErrorCode PetscSFLinkSendSignalsToAllowPuttingData_NVSHMEM(PetscSF sf, PetscSFLink link, PetscSFDirection direction) {
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
   uint64_t      *srcsig;
   PetscInt       nsrcranks, *srcsigdisp_d;
@@ -665,8 +643,7 @@ PetscErrorCode PetscSFLinkSendSignalsToAllowPuttingData_NVSHMEM(PetscSF sf, Pets
 }
 
 /* Destructor when the link uses nvshmem for communication */
-static PetscErrorCode PetscSFLinkDestroy_NVSHMEM(PetscSF sf, PetscSFLink link)
-{
+static PetscErrorCode PetscSFLinkDestroy_NVSHMEM(PetscSF sf, PetscSFLink link) {
   cudaError_t cerr;
 
   PetscFunctionBegin;
@@ -684,8 +661,7 @@ static PetscErrorCode PetscSFLinkDestroy_NVSHMEM(PetscSF sf, PetscSFLink link)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSFLinkCreate_NVSHMEM(PetscSF sf, MPI_Datatype unit, PetscMemType rootmtype, const void *rootdata, PetscMemType leafmtype, const void *leafdata, MPI_Op op, PetscSFOperation sfop, PetscSFLink *mylink)
-{
+PetscErrorCode PetscSFLinkCreate_NVSHMEM(PetscSF sf, MPI_Datatype unit, PetscMemType rootmtype, const void *rootdata, PetscMemType leafmtype, const void *leafdata, MPI_Op op, PetscSFOperation sfop, PetscSFLink *mylink) {
   cudaError_t    cerr;
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
   PetscSFLink   *p, link;
@@ -747,7 +723,7 @@ PetscErrorCode PetscSFLinkCreate_NVSHMEM(PetscSF sf, MPI_Datatype unit, PetscMem
   link->rootmtype   = PETSC_MEMTYPE_DEVICE; /* Only need 0/1-based mtype from now on */
   link->leafmtype   = PETSC_MEMTYPE_DEVICE;
   /* Overwrite some function pointers set by PetscSFLinkSetUp_CUDA */
-  link->Destroy = PetscSFLinkDestroy_NVSHMEM;
+  link->Destroy     = PetscSFLinkDestroy_NVSHMEM;
   if (sf->use_nvshmem_get) { /* get-based protocol */
     link->PrePack             = PetscSFLinkWaitSignalsOfCompletionOfGettingData_NVSHMEM;
     link->StartCommunication  = PetscSFLinkGetDataBegin_NVSHMEM;
@@ -790,8 +766,7 @@ found:
 }
 
 #if defined(PETSC_USE_REAL_SINGLE)
-PetscErrorCode PetscNvshmemSum(PetscInt count, float *dst, const float *src)
-{
+PetscErrorCode PetscNvshmemSum(PetscInt count, float *dst, const float *src) {
   PetscMPIInt num; /* Assume nvshmem's int is MPI's int */
 
   PetscFunctionBegin;
@@ -800,8 +775,7 @@ PetscErrorCode PetscNvshmemSum(PetscInt count, float *dst, const float *src)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscNvshmemMax(PetscInt count, float *dst, const float *src)
-{
+PetscErrorCode PetscNvshmemMax(PetscInt count, float *dst, const float *src) {
   PetscMPIInt num;
 
   PetscFunctionBegin;
@@ -810,8 +784,7 @@ PetscErrorCode PetscNvshmemMax(PetscInt count, float *dst, const float *src)
   PetscFunctionReturn(0);
 }
 #elif defined(PETSC_USE_REAL_DOUBLE)
-PetscErrorCode PetscNvshmemSum(PetscInt count, double *dst, const double *src)
-{
+PetscErrorCode PetscNvshmemSum(PetscInt count, double *dst, const double *src) {
   PetscMPIInt num;
 
   PetscFunctionBegin;
@@ -820,8 +793,7 @@ PetscErrorCode PetscNvshmemSum(PetscInt count, double *dst, const double *src)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscNvshmemMax(PetscInt count, double *dst, const double *src)
-{
+PetscErrorCode PetscNvshmemMax(PetscInt count, double *dst, const double *src) {
   PetscMPIInt num;
 
   PetscFunctionBegin;

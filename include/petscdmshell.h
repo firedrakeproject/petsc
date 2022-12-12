@@ -1,4 +1,4 @@
-#ifndef PETSCDMSHELL_H
+#if !defined(PETSCDMSHELL_H)
 #define PETSCDMSHELL_H
 
 #include <petscdm.h>
@@ -6,7 +6,6 @@
 PETSC_EXTERN PetscErrorCode DMShellCreate(MPI_Comm, DM *);
 PETSC_EXTERN PetscErrorCode DMShellSetContext(DM, void *);
 PETSC_EXTERN PetscErrorCode DMShellGetContext(DM, void *);
-PETSC_EXTERN PetscErrorCode DMShellSetDestroyContext(DM, PetscErrorCode (*)(void *));
 PETSC_EXTERN PetscErrorCode DMShellSetMatrix(DM, Mat);
 PETSC_EXTERN PetscErrorCode DMShellSetGlobalVector(DM, Vec);
 PETSC_EXTERN PetscErrorCode DMShellGetGlobalVector(DM, Vec *);

@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 #requiresdefine    'PETSC_USE_LOG'
 
 SOURCEC	  = classlog.c stagelog.c eventlog.c stack.c

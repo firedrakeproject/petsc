@@ -1,7 +1,6 @@
 #include <petsc/private/dmpleximpl.h> /*I      "petscdmplex.h"   I*/
 
-PetscErrorCode DMCoarsen_Plex(DM dm, MPI_Comm comm, DM *dmCoarsened)
-{
+PetscErrorCode DMCoarsen_Plex(DM dm, MPI_Comm comm, DM *dmCoarsened) {
   PetscFunctionBegin;
   if (!dm->coarseMesh) PetscCall(DMPlexCoarsen_Internal(dm, NULL, NULL, NULL, &dm->coarseMesh));
   PetscCall(PetscObjectReference((PetscObject)dm->coarseMesh));
@@ -9,8 +8,7 @@ PetscErrorCode DMCoarsen_Plex(DM dm, MPI_Comm comm, DM *dmCoarsened)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCoarsenHierarchy_Plex(DM dm, PetscInt nlevels, DM dmCoarsened[])
-{
+PetscErrorCode DMCoarsenHierarchy_Plex(DM dm, PetscInt nlevels, DM dmCoarsened[]) {
   DM        rdm = dm;
   PetscInt  c;
   PetscBool localized;

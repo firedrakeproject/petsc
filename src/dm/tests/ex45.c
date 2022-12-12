@@ -12,8 +12,7 @@ _._._._._._._._._._._._._._._._._._._._._.*/
 
 #include <petscdmda.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   PetscInt nx = 2;
   PetscInt ny = 2;
   PetscInt nz = 128;

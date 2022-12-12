@@ -4,8 +4,7 @@ static char help[] = "Bilinear elements on the unit square for the Laplacian. In
 
 #include <petscksp.h>
 
-int FormElementStiffness(PetscReal H, PetscScalar *Ke)
-{
+int FormElementStiffness(PetscReal H, PetscScalar *Ke) {
   Ke[0]  = H / 6.0;
   Ke[1]  = -.125 * H;
   Ke[2]  = H / 12.0;
@@ -25,8 +24,7 @@ int FormElementStiffness(PetscReal H, PetscScalar *Ke)
   return 0;
 }
 
-int FormElementRhs(PetscReal x, PetscReal y, PetscReal H, PetscScalar *r)
-{
+int FormElementRhs(PetscReal x, PetscReal y, PetscReal H, PetscScalar *r) {
   r[0] = 0.;
   r[1] = 0.;
   r[2] = 0.;
@@ -35,8 +33,7 @@ int FormElementRhs(PetscReal x, PetscReal y, PetscReal H, PetscScalar *r)
 }
 
 /* Note: this code is for testing purposes only. The assembly process is not scalable */
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         C;
   PetscInt    i, m = 2, N, M, its, idx[4], count, *rows;
   PetscScalar val, Ke[16], r[4];
@@ -99,8 +96,8 @@ int main(int argc, char **args)
   if (rank == 0) {
     for (i = 0; i < M; i++) {
       /* location of lower left corner of element */
-      x = h * (i % m);
-      y = h * (i / m);
+      x      = h * (i % m);
+      y      = h * (i / m);
       /* node numbers for the four corners of element */
       idx[0] = (m + 1) * (i / m) + (i % m);
       idx[1] = idx[0] + 1;

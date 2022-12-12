@@ -3,8 +3,7 @@ Modified from the code contributed by Pierre Jolivet \n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscInt  n = 2, convert;
   Mat       A, B, Bdense, Conjugate;
   PetscBool conjugate = PETSC_FALSE, equal, flg;

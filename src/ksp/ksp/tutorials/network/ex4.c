@@ -2,8 +2,7 @@ static char help[] = "This example tests subnetwork coupling with zero size comp
 
 #include <petscdmnetwork.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt     size, rank;
   DM              dmnetwork;
   PetscInt        i, j, net, Nsubnet, ne, nv, nvar, v, goffset, row, compkey0, compkey1, compkey;

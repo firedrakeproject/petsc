@@ -1,4 +1,6 @@
 
+/*  -------------------------------------------------------------------- */
+
 /*
    Include files needed for the ViennaCL Chow-Patel parallel ILU preconditioner:
      pcimpl.h - private include file intended for use by all preconditioners
@@ -20,6 +22,7 @@ typedef struct {
   viennacl::linalg::chow_patel_ilu_precond<viennacl::compressed_matrix<PetscScalar>> *CHOWILUVIENNACL;
 } PC_CHOWILUVIENNACL;
 
+/* -------------------------------------------------------------------------- */
 /*
    PCSetUp_CHOWILUVIENNACL - Prepares for the use of the CHOWILUVIENNACL preconditioner
                              by setting data structures and options.
@@ -29,12 +32,11 @@ typedef struct {
 
    Application Interface Routine: PCSetUp()
 
-   Note:
+   Notes:
    The interface routine PCSetUp() is not usually called directly by
    the user, but instead is called by PCApply() if necessary.
 */
-static PetscErrorCode PCSetUp_CHOWILUVIENNACL(PC pc)
-{
+static PetscErrorCode PCSetUp_CHOWILUVIENNACL(PC pc) {
   PC_CHOWILUVIENNACL *ilu = (PC_CHOWILUVIENNACL *)pc->data;
   PetscBool           flg = PETSC_FALSE;
   Mat_SeqAIJViennaCL *gpustruct;
@@ -45,9 +47,7 @@ static PetscErrorCode PCSetUp_CHOWILUVIENNACL(PC pc)
   if (pc->setupcalled != 0) {
     try {
       delete ilu->CHOWILUVIENNACL;
-    } catch (char *ex) {
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex);
-    }
+    } catch (char *ex) { SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex); }
   }
   try {
 #if defined(PETSC_USE_COMPLEX)
@@ -61,12 +61,11 @@ static PetscErrorCode PCSetUp_CHOWILUVIENNACL(PC pc)
     ViennaCLAIJMatrix               *mat = (ViennaCLAIJMatrix *)gpustruct->mat;
     ilu->CHOWILUVIENNACL                 = new viennacl::linalg::chow_patel_ilu_precond<viennacl::compressed_matrix<PetscScalar>>(*mat, ilu_tag);
 #endif
-  } catch (char *ex) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex);
-  }
+  } catch (char *ex) { SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex); }
   PetscFunctionReturn(0);
 }
 
+/* -------------------------------------------------------------------------- */
 /*
    PCApply_CHOWILUVIENNACL - Applies the CHOWILUVIENNACL preconditioner to a vector.
 
@@ -79,8 +78,7 @@ static PetscErrorCode PCSetUp_CHOWILUVIENNACL(PC pc)
 
    Application Interface Routine: PCApply()
  */
-static PetscErrorCode PCApply_CHOWILUVIENNACL(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApply_CHOWILUVIENNACL(PC pc, Vec x, Vec y) {
   PC_CHOWILUVIENNACL                  *ilu = (PC_CHOWILUVIENNACL *)pc->data;
   PetscBool                            flg1, flg2;
   viennacl::vector<PetscScalar> const *xarray = NULL;
@@ -102,15 +100,13 @@ static PetscErrorCode PCApply_CHOWILUVIENNACL(PC pc, Vec x, Vec y)
     *yarray                              = *xarray;
     ilu->CHOWILUVIENNACL->apply(*yarray);
 #endif
-  } catch (char *ex) {
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex);
-  }
+  } catch (char *ex) { SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex); }
   PetscCall(VecViennaCLRestoreArrayRead(x, &xarray));
   PetscCall(VecViennaCLRestoreArrayWrite(y, &yarray));
   PetscCall(PetscObjectStateIncrease((PetscObject)y));
   PetscFunctionReturn(0);
 }
-
+/* -------------------------------------------------------------------------- */
 /*
    PCDestroy_CHOWILUVIENNACL - Destroys the private context for the CHOWILUVIENNACL preconditioner
    that was created with PCCreate_CHOWILUVIENNACL().
@@ -120,17 +116,14 @@ static PetscErrorCode PCApply_CHOWILUVIENNACL(PC pc, Vec x, Vec y)
 
    Application Interface Routine: PCDestroy()
 */
-static PetscErrorCode PCDestroy_CHOWILUVIENNACL(PC pc)
-{
+static PetscErrorCode PCDestroy_CHOWILUVIENNACL(PC pc) {
   PC_CHOWILUVIENNACL *ilu = (PC_CHOWILUVIENNACL *)pc->data;
 
   PetscFunctionBegin;
   if (ilu->CHOWILUVIENNACL) {
     try {
       delete ilu->CHOWILUVIENNACL;
-    } catch (char *ex) {
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex);
-    }
+    } catch (char *ex) { SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex); }
   }
 
   /*
@@ -140,27 +133,25 @@ static PetscErrorCode PCDestroy_CHOWILUVIENNACL(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_CHOWILUVIENNACL(PC pc, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode PCSetFromOptions_CHOWILUVIENNACL(PC pc, PetscOptionItems *PetscOptionsObject) {
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "CHOWILUVIENNACL options");
   PetscOptionsHeadEnd();
   PetscFunctionReturn(0);
 }
 
+/* -------------------------------------------------------------------------- */
+
 /*MC
      PCCHOWILUViennaCL  - A smoothed agglomeration algorithm that can be used via the CUDA, OpenCL, and OpenMP backends of ViennaCL
 
    Level: advanced
 
-   Developer Note:
-   This does not appear to be wired up with `PCRegisterType()`
-
 .seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`
+
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_CHOWILUVIENNACL(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_CHOWILUVIENNACL(PC pc) {
   PC_CHOWILUVIENNACL *ilu;
 
   PetscFunctionBegin;
@@ -168,7 +159,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_CHOWILUVIENNACL(PC pc)
      Creates the private data structure for this preconditioner and
      attach it to the PC object.
   */
-  PetscCall(PetscNew(&ilu));
+  PetscCall(PetscNewLog(pc, &ilu));
   pc->data = (void *)ilu;
 
   /*

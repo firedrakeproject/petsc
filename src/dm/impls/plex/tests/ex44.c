@@ -11,8 +11,7 @@ typedef struct {
 PETSC_EXTERN PetscErrorCode pyramidNormal(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar[], void *);
 
 /* The pyramid apex is at (0.5, 0.5, -1) */
-PetscErrorCode pyramidNormal(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt r, PetscScalar u[], void *ctx)
-{
+PetscErrorCode pyramidNormal(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt r, PetscScalar u[], void *ctx) {
   PetscReal apex[3] = {0.5, 0.5, -1.0};
   PetscInt  d;
 
@@ -21,8 +20,7 @@ PetscErrorCode pyramidNormal(PetscInt dim, PetscReal time, const PetscReal x[], 
   return 0;
 }
 
-static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscInt  n = 64;
   PetscBool flg;
 
@@ -36,8 +34,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *ctx, DM *dm)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *ctx, DM *dm) {
   PetscFunctionBegin;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -46,8 +43,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *ctx, DM *dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateAdaptLabel(DM dm, AppCtx *ctx, DMLabel *adaptLabel)
-{
+static PetscErrorCode CreateAdaptLabel(DM dm, AppCtx *ctx, DMLabel *adaptLabel) {
   DMLabel  label;
   PetscInt b;
 
@@ -74,8 +70,7 @@ static PetscErrorCode CreateAdaptLabel(DM dm, AppCtx *ctx, DMLabel *adaptLabel)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM      dm, dma;
   DMLabel adaptLabel;
   AppCtx  ctx;

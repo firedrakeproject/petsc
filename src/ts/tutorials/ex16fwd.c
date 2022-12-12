@@ -55,8 +55,7 @@ struct _n_User {
 /*
    User-defined routines
 */
-static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec X, Vec F, void *ctx)
-{
+static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec X, Vec F, void *ctx) {
   User               user = (User)ctx;
   PetscScalar       *f;
   const PetscScalar *x;
@@ -71,8 +70,7 @@ static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec X, Vec F, void *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec X, Mat A, Mat B, void *ctx)
-{
+static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec X, Mat A, Mat B, void *ctx) {
   User               user     = (User)ctx;
   PetscReal          mu       = user->mu;
   PetscInt           rowcol[] = {0, 1};
@@ -96,8 +94,7 @@ static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec X, Mat A, Mat B, void 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec X, Mat A, void *ctx)
-{
+static PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec X, Mat A, void *ctx) {
   PetscInt           row[] = {0, 1}, col[] = {2};
   PetscScalar        J[2][1];
   const PetscScalar *x;
@@ -115,8 +112,7 @@ static PetscErrorCode RHSJacobianP(TS ts, PetscReal t, Vec X, Mat A, void *ctx)
 }
 
 /* Monitor timesteps and use interpolation to output at integer multiples of 0.1 */
-static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec X, void *ctx)
-{
+static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec X, void *ctx) {
   const PetscScalar *x;
   PetscReal          tfinal, dt, tprev;
   User               user = (User)ctx;
@@ -132,8 +128,7 @@ static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec X, void *ct
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS             ts;   /* nonlinear solver */
   Vec            x;    /* solution, residual vectors */
   Mat            A;    /* Jacobian matrix */

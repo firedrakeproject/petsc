@@ -3,8 +3,7 @@ static char help[] = "Tests MatTranspose() with MAT_REUSE_MATRIX and different n
 
 #include <petscmat.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat         A, B;
   PetscMPIInt size;
 

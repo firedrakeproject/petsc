@@ -1,6 +1,4 @@
 #include <petsc/private/petscimpl.h> /*I    "petscsys.h"   I*/
-#include <petsc/private/hashmapobj.h>
-#include <petsc/private/garbagecollector.h>
 /* ---------------------------------------------------------------- */
 /*
    A simple way to manage tags inside a communicator.
@@ -33,8 +31,7 @@
 
 .seealso: `PetscCommGetNewTag()`
 @*/
-PetscErrorCode PetscObjectGetNewTag(PetscObject obj, PetscMPIInt *tag)
-{
+PetscErrorCode PetscObjectGetNewTag(PetscObject obj, PetscMPIInt *tag) {
   PetscFunctionBegin;
   PetscCall(PetscCommGetNewTag(obj->comm, tag));
   PetscFunctionReturn(0);
@@ -58,8 +55,7 @@ PetscErrorCode PetscObjectGetNewTag(PetscObject obj, PetscMPIInt *tag)
 
 .seealso: `PetscObjectGetNewTag()`, `PetscCommDuplicate()`
 @*/
-PetscErrorCode PetscCommGetNewTag(MPI_Comm comm, PetscMPIInt *tag)
-{
+PetscErrorCode PetscCommGetNewTag(MPI_Comm comm, PetscMPIInt *tag) {
   PetscCommCounter *counter;
   PetscMPIInt      *maxval, flg;
 
@@ -108,8 +104,7 @@ Level: developer
 
 .seealso: `PetscObjectGetNewTag()`, `PetscCommGetNewTag()`, `PetscCommDestroy()`, `PetscCommRestoreComm()`
 @*/
-PetscErrorCode PetscCommGetComm(MPI_Comm comm_in, MPI_Comm *comm_out)
-{
+PetscErrorCode PetscCommGetComm(MPI_Comm comm_in, MPI_Comm *comm_out) {
   PetscCommCounter *counter;
   PetscMPIInt       flg;
 
@@ -145,8 +140,7 @@ Level: developer
 
 .seealso: `PetscObjectGetNewTag()`, `PetscCommGetNewTag()`, `PetscCommDestroy()`, `PetscCommRestoreComm()`
 @*/
-PetscErrorCode PetscCommRestoreComm(MPI_Comm comm_in, MPI_Comm *comm_out)
-{
+PetscErrorCode PetscCommRestoreComm(MPI_Comm comm_in, MPI_Comm *comm_out) {
   PetscCommCounter      *counter;
   PetscMPIInt            flg;
   struct PetscCommStash *pcomms, *ncomm;
@@ -194,9 +188,7 @@ Level: developer
 
 .seealso: `PetscObjectGetNewTag()`, `PetscCommGetNewTag()`, `PetscCommDestroy()`
 @*/
-PetscErrorCode PetscCommDuplicate(MPI_Comm comm_in, MPI_Comm *comm_out, PetscMPIInt *first_tag)
-{
-  PetscInt64       *cidx;
+PetscErrorCode PetscCommDuplicate(MPI_Comm comm_in, MPI_Comm *comm_out, PetscMPIInt *first_tag) {
   PetscCommCounter *counter;
   PetscMPIInt      *maxval, flg;
 
@@ -220,9 +212,6 @@ PetscErrorCode PetscCommDuplicate(MPI_Comm comm_in, MPI_Comm *comm_out, PetscMPI
       PetscCall(PetscNew(&counter)); /* all fields of counter are zero'ed */
       counter->tag = *maxval;
       PetscCallMPI(MPI_Comm_set_attr(*comm_out, Petsc_Counter_keyval, counter));
-      /* Add an object creation index to the communicator */
-      PetscCall(PetscNew(&cidx));
-      PetscCallMPI(MPI_Comm_set_attr(*comm_out, Petsc_CreationIdx_keyval, cidx));
       PetscCall(PetscInfo(NULL, "Duplicating a communicator %ld %ld max tags = %d\n", (long)comm_in, (long)*comm_out, *maxval));
 
       /* save PETSc communicator inside user communicator, so we can get it next time */
@@ -274,12 +263,9 @@ PetscErrorCode PetscCommDuplicate(MPI_Comm comm_in, MPI_Comm *comm_out, PetscMPI
 
 .seealso: `PetscCommDuplicate()`
 @*/
-PetscErrorCode PetscCommDestroy(MPI_Comm *comm)
-{
-  PetscInt64       *cidx;
+PetscErrorCode PetscCommDestroy(MPI_Comm *comm) {
   PetscCommCounter *counter;
   PetscMPIInt       flg;
-  PetscGarbage      garbage;
   MPI_Comm          icomm = *comm, ocomm;
   union
   {
@@ -298,30 +284,18 @@ PetscErrorCode PetscCommDestroy(MPI_Comm *comm)
     PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_Counter_keyval, &counter, &flg));
     PetscCheck(flg, PETSC_COMM_SELF, PETSC_ERR_ARG_CORRUPT, "Inner MPI_Comm does not have expected tag/name counter, problem with corrupted memory");
   }
+
   counter->refcount--;
+
   if (!counter->refcount) {
     /* if MPI_Comm has outer comm then remove reference to inner MPI_Comm from outer MPI_Comm */
     PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_OuterComm_keyval, &ucomm, &flg));
     if (flg) {
       ocomm = ucomm.comm;
       PetscCallMPI(MPI_Comm_get_attr(ocomm, Petsc_InnerComm_keyval, &ucomm, &flg));
-      PetscCheck(flg, PETSC_COMM_SELF, PETSC_ERR_ARG_CORRUPT, "Outer MPI_Comm %ld does not have expected reference to inner comm %ld, problem with corrupted memory", (long int)ocomm, (long int)icomm);
-      PetscCallMPI(MPI_Comm_delete_attr(ocomm, Petsc_InnerComm_keyval));
-    }
-
-    /* Remove the object creation index on the communicator */
-    PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_CreationIdx_keyval, &cidx, &flg));
-    if (flg) {
-      PetscCall(PetscFree(cidx));
-    } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_CORRUPT, "MPI_Comm does not have object creation index");
-
-    /* Remove garbage hashmap set up by garbage collection */
-    PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_Garbage_HMap_keyval, &garbage, &flg));
-    if (flg) {
-      PetscInt entries = 0;
-      PetscCall(PetscHMapObjGetSize(garbage.map, &entries));
-      if (entries > 0) PetscCall(PetscGarbageCleanup(icomm));
-      PetscCall(PetscHMapObjDestroy(&(garbage.map)));
+      if (flg) {
+        PetscCallMPI(MPI_Comm_delete_attr(ocomm, Petsc_InnerComm_keyval));
+      } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_CORRUPT, "Outer MPI_Comm %ld does not have expected reference to inner comm %ld, problem with corrupted memory", (long int)ocomm, (long int)icomm);
     }
 
     PetscCall(PetscInfo(NULL, "Deleting PETSc MPI_Comm %ld\n", (long)icomm));
@@ -354,8 +328,7 @@ PetscErrorCode PetscCommDestroy(MPI_Comm *comm)
     This is needed when PETSc is used with certain languages that do garbage collection to manage object life cycles.
 
 @*/
-PetscErrorCode PetscObjectsListGetGlobalNumbering(MPI_Comm comm, PetscInt len, PetscObject *objlist, PetscInt *count, PetscInt *numbering)
-{
+PetscErrorCode PetscObjectsListGetGlobalNumbering(MPI_Comm comm, PetscInt len, PetscObject *objlist, PetscInt *count, PetscInt *numbering) {
   PetscInt    i, roots, offset;
   PetscMPIInt size, rank;
 

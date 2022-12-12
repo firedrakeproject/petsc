@@ -2,8 +2,7 @@ static char help[] = "Tests MatLoad() with uneven dimensions set in program\n\n"
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A;
   PetscViewer fd;
   char        file[PETSC_MAX_PATH_LEN];

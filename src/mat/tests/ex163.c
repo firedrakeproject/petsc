@@ -3,8 +3,7 @@ static char help[] = "Tests MatTransposeMatMult() on MatLoad() matrix \n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat          A, C, Bdense, Cdense;
   PetscViewer  fd;                       /* viewer */
   char         file[PETSC_MAX_PATH_LEN]; /* input file name */

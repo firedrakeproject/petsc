@@ -32,8 +32,7 @@ static PetscErrorCode QuadraticH(AppCtx *, Vec, Mat);
 PetscErrorCode        FormFunctionGradient(Tao, Vec, PetscReal *, Vec, void *);
 PetscErrorCode        FormHessian(Tao, Vec, Mat, Mat, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt    N;    /* Size of vector */
   PetscMPIInt size; /* Number of processors */
   Vec         x;    /* solution, gradient vectors */
@@ -121,8 +120,7 @@ int main(int argc, char **argv)
 .   fcn     - the newly evaluated function
 .   G       - vector containing the newly evaluated gradient
 */
-PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *fcn, Vec G, void *userCtx)
-{
+PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *fcn, Vec G, void *userCtx) {
   AppCtx            *user = (AppCtx *)userCtx;
   PetscInt           i, j, row;
   PetscInt           mx = user->mx, my = user->my;
@@ -280,8 +278,7 @@ PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *fcn, Vec G, void 
 .  flg  - flag indicating matrix structure
 
 */
-PetscErrorCode FormHessian(Tao tao, Vec X, Mat H, Mat Hpre, void *ptr)
-{
+PetscErrorCode FormHessian(Tao tao, Vec X, Mat H, Mat Hpre, void *ptr) {
   AppCtx *user = (AppCtx *)ptr;
 
   PetscFunctionBeginUser;
@@ -301,8 +298,7 @@ PetscErrorCode FormHessian(Tao tao, Vec X, Mat H, Mat Hpre, void *ptr)
    Output Parameter:
 .  H    - Hessian matrix
 */
-PetscErrorCode QuadraticH(AppCtx *user, Vec X, Mat Hessian)
-{
+PetscErrorCode QuadraticH(AppCtx *user, Vec X, Mat Hessian) {
   PetscInt           i, j, k, row;
   PetscInt           mx = user->mx, my = user->my;
   PetscInt           col[7];
@@ -468,8 +464,7 @@ PetscErrorCode QuadraticH(AppCtx *user, Vec X, Mat Hessian)
    Output Parameter:
 .  user - user-defined application context
 */
-static PetscErrorCode MSA_BoundaryConditions(AppCtx *user)
-{
+static PetscErrorCode MSA_BoundaryConditions(AppCtx *user) {
   PetscInt   i, j, k, limit = 0;
   PetscInt   maxits = 5;
   PetscInt   mx = user->mx, my = user->my;
@@ -556,8 +551,7 @@ static PetscErrorCode MSA_BoundaryConditions(AppCtx *user)
    Output Parameters:
 .  X - newly computed initial guess
 */
-static PetscErrorCode MSA_InitialPoint(AppCtx *user, Vec X)
-{
+static PetscErrorCode MSA_InitialPoint(AppCtx *user, Vec X) {
   PetscInt  start = -1, i, j;
   PetscReal zero  = 0.0;
   PetscBool flg;

@@ -6,26 +6,25 @@ typedef struct {
 } SNESMonitor_SAWs;
 
 /*@C
-   SNESMonitorSAWsCreate - create an SAWs monitor context for `SNES`
+   SNESMonitorSAWsCreate - create an SAWs monitor context
 
-   Collective on snes
+   Collective
 
    Input Parameter:
-.  snes - `SNES` to monitor
+.  snes - SNES to monitor
 
    Output Parameter:
 .  ctx - context for monitor
 
    Level: developer
 
-.seealso: `SNESSetMonitor()`, `SNES`, `SNESMonitorSAWs()`, `SNESMonitorSAWsDestroy()`
+.seealso: `SNESMonitorSAWs()`, `SNESMonitorSAWsDestroy()`
 @*/
-PetscErrorCode SNESMonitorSAWsCreate(SNES snes, void **ctx)
-{
+PetscErrorCode SNESMonitorSAWsCreate(SNES snes, void **ctx) {
   SNESMonitor_SAWs *mon;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&mon));
+  PetscCall(PetscNewLog(snes, &mon));
   mon->viewer = PETSC_VIEWER_SAWS_(PetscObjectComm((PetscObject)snes));
   PetscCheck(mon->viewer, PetscObjectComm((PetscObject)snes), PETSC_ERR_PLIB, "Cannot create SAWs default viewer");
   *ctx = (void *)mon;
@@ -33,7 +32,7 @@ PetscErrorCode SNESMonitorSAWsCreate(SNES snes, void **ctx)
 }
 
 /*@C
-   SNESMonitorSAWsDestroy - destroy a monitor context created with `SNESMonitorSAWsCreate()`
+   SNESMonitorSAWsDestroy - destroy a monitor context created with SNESMonitorSAWsCreate()
 
    Collective
 
@@ -44,30 +43,28 @@ PetscErrorCode SNESMonitorSAWsCreate(SNES snes, void **ctx)
 
 .seealso: `SNESMonitorSAWsCreate()`
 @*/
-PetscErrorCode SNESMonitorSAWsDestroy(void **ctx)
-{
+PetscErrorCode SNESMonitorSAWsDestroy(void **ctx) {
   PetscFunctionBegin;
   PetscCall(PetscFree(*ctx));
   PetscFunctionReturn(0);
 }
 
 /*@C
-   SNESMonitorSAWs - monitor solution process of `SNES` using SAWs
+   SNESMonitorSAWs - monitor solution using SAWs
 
-   Collective on snes
+   Logically Collective on SNES
 
    Input Parameters:
 +  snes   - iterative context
 .  n     - iteration number
 .  rnorm - 2-norm (preconditioned) residual value (may be estimated).
--  ctx -  `PetscViewer` of type `PETSCVIEWERSAWS`
+-  ctx -  PetscViewer of type SAWs
 
    Level: advanced
 
-.seealso: `PetscViewerSAWsOpen()`, `SNESMonitorSAWsDestroy()`, `SNESMonitorSAWsCreate()`
+.seealso: `PetscViewerSAWsOpen()`
 @*/
-PetscErrorCode SNESMonitorSAWs(SNES snes, PetscInt n, PetscReal rnorm, void *ctx)
-{
+PetscErrorCode SNESMonitorSAWs(SNES snes, PetscInt n, PetscReal rnorm, void *ctx) {
   PetscMPIInt rank;
 
   PetscFunctionBegin;

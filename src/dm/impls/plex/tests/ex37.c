@@ -12,8 +12,7 @@ typedef struct {
   PetscBool volumeMesh;
 } AppCtx;
 
-static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
-{
+static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options) {
   PetscFunctionBeginUser;
   options->filename[0] = '\0';
   options->volumeMesh  = PETSC_TRUE;
@@ -25,8 +24,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode ComputeVolume(DM dm)
-{
+static PetscErrorCode ComputeVolume(DM dm) {
   PetscObject obj = (PetscObject)dm;
   DMLabel     bodyLabel, faceLabel, edgeLabel;
   double      surface = 0., volume = 0., vol;
@@ -62,8 +60,7 @@ static PetscErrorCode ComputeVolume(DM dm)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   DM     surface, dm;
   AppCtx ctx;
 

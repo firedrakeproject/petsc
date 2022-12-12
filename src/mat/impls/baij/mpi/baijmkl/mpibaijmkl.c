@@ -2,8 +2,7 @@
 
 PETSC_INTERN PetscErrorCode MatConvert_SeqBAIJ_SeqBAIJMKL(Mat, MatType, MatReuse, Mat *);
 
-static PetscErrorCode MatMPIBAIJSetPreallocation_MPIBAIJMKL(Mat B, PetscInt bs, PetscInt d_nz, const PetscInt *d_nnz, PetscInt o_nz, const PetscInt *o_nnz)
-{
+static PetscErrorCode MatMPIBAIJSetPreallocation_MPIBAIJMKL(Mat B, PetscInt bs, PetscInt d_nz, const PetscInt *d_nnz, PetscInt o_nz, const PetscInt *o_nnz) {
   Mat_MPIBAIJ *b = (Mat_MPIBAIJ *)B->data;
 
   PetscFunctionBegin;
@@ -13,8 +12,7 @@ static PetscErrorCode MatMPIBAIJSetPreallocation_MPIBAIJMKL(Mat B, PetscInt bs, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatConvert_MPIBAIJ_MPIBAIJMKL(Mat A, MatType type, MatReuse reuse, Mat *newmat)
-{
+static PetscErrorCode MatConvert_MPIBAIJ_MPIBAIJMKL(Mat A, MatType type, MatReuse reuse, Mat *newmat) {
   Mat B = *newmat;
 
   PetscFunctionBegin;
@@ -130,8 +128,7 @@ static PetscErrorCode MatConvert_MPIBAIJ_MPIBAIJMKL(Mat A, MatType type, MatReus
 .seealso: `MATBAIJMKL`, `MATBAIJ`, `MatCreate()`, `MatCreateSeqBAIJMKL()`, `MatSetValues()`, `MatCreateBAIJMKL()`, `MatMPIBAIJSetPreallocation()`, `MatMPIBAIJSetPreallocationCSR()`
 @*/
 
-PetscErrorCode MatCreateBAIJMKL(MPI_Comm comm, PetscInt bs, PetscInt m, PetscInt n, PetscInt M, PetscInt N, PetscInt d_nz, const PetscInt d_nnz[], PetscInt o_nz, const PetscInt o_nnz[], Mat *A)
-{
+PetscErrorCode MatCreateBAIJMKL(MPI_Comm comm, PetscInt bs, PetscInt m, PetscInt n, PetscInt M, PetscInt N, PetscInt d_nz, const PetscInt d_nnz[], PetscInt o_nz, const PetscInt o_nnz[], Mat *A) {
   PetscMPIInt size;
 
   PetscFunctionBegin;
@@ -148,8 +145,7 @@ PetscErrorCode MatCreateBAIJMKL(MPI_Comm comm, PetscInt bs, PetscInt m, PetscInt
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode MatCreate_MPIBAIJMKL(Mat A)
-{
+PETSC_EXTERN PetscErrorCode MatCreate_MPIBAIJMKL(Mat A) {
   PetscFunctionBegin;
   PetscCall(MatSetType(A, MATMPIBAIJ));
   PetscCall(MatConvert_MPIBAIJ_MPIBAIJMKL(A, MATMPIBAIJMKL, MAT_INPLACE_MATRIX, &A));

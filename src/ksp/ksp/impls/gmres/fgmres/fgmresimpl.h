@@ -1,5 +1,5 @@
-#ifndef PETSC_FGMRESIMPL_H
-#define PETSC_FGMRESIMPL_H
+#if !defined(__FGMRES)
+#define __FGMRES
 
 #define KSPGMRES_NO_MACROS
 #include <../src/ksp/ksp/impls/gmres/gmresimpl.h>
@@ -42,4 +42,4 @@ typedef struct {
   fgmres->prevecs[i] /* use to access
                                                         preconditioned basis */
 
-#endif // PETSC_FGMRESIMPL_H
+#endif

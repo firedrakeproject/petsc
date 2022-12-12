@@ -1,6 +1,6 @@
--include ../../../petscdir.mk
+-include ../../../petsckdir.mk
 
-SOURCEC	  = version.c gcomm.c gtype.c olist.c pname.c tagm.c destroy.c gcookie.c inherit.c options.c optionsyaml.c pgname.c prefix.c init.c pinit.c ptype.c state.c aoptions.c subcomm.c fcallback.c package.c garbage.c
+SOURCEC	  = version.c gcomm.c gtype.c olist.c pname.c tagm.c destroy.c gcookie.c inherit.c options.c optionsyaml.c pgname.c prefix.c init.c pinit.c ptype.c state.c aoptions.c subcomm.c fcallback.c package.c
 SOURCEF	  =
 SOURCEH	  = ../../../include/petscoptions.h
 MANSEC	  = Sys

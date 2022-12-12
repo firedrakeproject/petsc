@@ -3,8 +3,7 @@ static char help[] = "Tests various routines in MatMPISBAIJ format.\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Vec         x, y, u, s1, s2;
   Mat         A, sA, sB;
   PetscRandom rctx;

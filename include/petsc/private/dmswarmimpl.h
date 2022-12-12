@@ -1,5 +1,5 @@
 
-#ifndef _SWARMIMPL_H
+#if !defined(_SWARMIMPL_H)
 #define _SWARMIMPL_H
 
 #include <petscvec.h>     /*I "petscvec.h" I*/

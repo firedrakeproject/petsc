@@ -1,6 +1,6 @@
 
-#ifndef __MPISELL_H
-  #define __MPISELL_H
+#if !defined(__MPISELL_H)
+#define __MPISELL_H
 #endif
 #include <../src/mat/impls/sell/seq/sell.h>
 
@@ -18,7 +18,7 @@ typedef struct {
   PetscScalar *svalues, *rvalues; /* sending and receiving data */
   PetscInt     rmax;              /* maximum message length */
 #if defined(PETSC_USE_CTABLE)
-  PetscHMapI colmap;
+  PetscTable colmap;
 #else
   PetscInt *colmap; /* local col number of off-diag col */
 #endif

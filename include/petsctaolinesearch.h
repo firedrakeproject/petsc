@@ -1,4 +1,4 @@
-#ifndef PETSCTAOLINESEARCH_H
+#if !defined(PETSCTAOLINESEARCH_H)
 #define PETSCTAOLINESEARCH_H
 
 typedef struct _p_TaoLineSearch *TaoLineSearch;

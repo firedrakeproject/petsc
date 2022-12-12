@@ -4,8 +4,7 @@
 
 #include <petsc/private/dmdaimpl.h> /*I   "petscdmda.h"   I*/
 
-PetscErrorCode DMGlobalToLocalBegin_DA(DM da, Vec g, InsertMode mode, Vec l)
-{
+PetscErrorCode DMGlobalToLocalBegin_DA(DM da, Vec g, InsertMode mode, Vec l) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;
@@ -16,8 +15,7 @@ PetscErrorCode DMGlobalToLocalBegin_DA(DM da, Vec g, InsertMode mode, Vec l)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMGlobalToLocalEnd_DA(DM da, Vec g, InsertMode mode, Vec l)
-{
+PetscErrorCode DMGlobalToLocalEnd_DA(DM da, Vec g, InsertMode mode, Vec l) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;
@@ -28,8 +26,7 @@ PetscErrorCode DMGlobalToLocalEnd_DA(DM da, Vec g, InsertMode mode, Vec l)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMLocalToGlobalBegin_DA(DM da, Vec l, InsertMode mode, Vec g)
-{
+PetscErrorCode DMLocalToGlobalBegin_DA(DM da, Vec l, InsertMode mode, Vec g) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;
@@ -47,8 +44,7 @@ PetscErrorCode DMLocalToGlobalBegin_DA(DM da, Vec l, InsertMode mode, Vec g)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMLocalToGlobalEnd_DA(DM da, Vec l, InsertMode mode, Vec g)
-{
+PetscErrorCode DMLocalToGlobalEnd_DA(DM da, Vec l, InsertMode mode, Vec g) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;
@@ -74,50 +70,49 @@ extern PetscErrorCode DMDAGetNatural_Private(DM, PetscInt *, IS *);
 
    Level: developer
 
-   Note:
-    This is an internal routine called by `DMDAGlobalToNatural()` to
+   Notes:
+    This is an internal routine called by DMDAGlobalToNatural() to
      create the scatter context.
 
-.seealso: `DM`, `DMDA`, `DMDAGlobalToNaturalBegin()`, `DMDAGlobalToNaturalEnd()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
+.seealso: `DMDAGlobalToNaturalBegin()`, `DMDAGlobalToNaturalEnd()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
           `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMDACreateNaturalVector()`
 */
-PetscErrorCode DMDAGlobalToNatural_Create(DM da)
-{
-  PetscInt m, start, Nlocal;
-  IS       from, to;
-  Vec      global;
-  DM_DA   *dd = (DM_DA *)da->data;
+PetscErrorCode        DMDAGlobalToNatural_Create(DM da) {
+         PetscInt m, start, Nlocal;
+         IS       from, to;
+         Vec      global;
+         DM_DA   *dd = (DM_DA *)da->data;
 
-  PetscFunctionBegin;
-  PetscValidHeaderSpecific(da, DM_CLASSID, 1);
-  PetscCheck(dd->natural, PetscObjectComm((PetscObject)da), PETSC_ERR_ORDER, "Natural layout vector not yet created; cannot scatter into it");
+         PetscFunctionBegin;
+         PetscValidHeaderSpecific(da, DM_CLASSID, 1);
+         PetscCheck(dd->natural, PetscObjectComm((PetscObject)da), PETSC_ERR_ORDER, "Natural layout vector not yet created; cannot scatter into it");
 
-  /* create the scatter context */
-  PetscCall(VecGetLocalSize(dd->natural, &m));
-  PetscCall(VecGetOwnershipRange(dd->natural, &start, NULL));
+         /* create the scatter context */
+         PetscCall(VecGetLocalSize(dd->natural, &m));
+         PetscCall(VecGetOwnershipRange(dd->natural, &start, NULL));
 
-  PetscCall(DMDAGetNatural_Private(da, &Nlocal, &to));
-  PetscCheck(Nlocal == m, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Internal error: Nlocal %" PetscInt_FMT " local vector size %" PetscInt_FMT, Nlocal, m);
-  PetscCall(ISCreateStride(PetscObjectComm((PetscObject)da), m, start, 1, &from));
-  PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)da), dd->w, dd->Nlocal, PETSC_DETERMINE, NULL, &global));
-  PetscCall(VecScatterCreate(global, from, dd->natural, to, &dd->gton));
-  PetscCall(VecDestroy(&global));
-  PetscCall(ISDestroy(&from));
-  PetscCall(ISDestroy(&to));
-  PetscFunctionReturn(0);
+         PetscCall(DMDAGetNatural_Private(da, &Nlocal, &to));
+         PetscCheck(Nlocal == m, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Internal error: Nlocal %" PetscInt_FMT " local vector size %" PetscInt_FMT, Nlocal, m);
+         PetscCall(ISCreateStride(PetscObjectComm((PetscObject)da), m, start, 1, &from));
+         PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)da), dd->w, dd->Nlocal, PETSC_DETERMINE, NULL, &global));
+         PetscCall(VecScatterCreate(global, from, dd->natural, to, &dd->gton));
+         PetscCall(VecDestroy(&global));
+         PetscCall(ISDestroy(&from));
+         PetscCall(ISDestroy(&to));
+         PetscFunctionReturn(0);
 }
 
 /*@
    DMDAGlobalToNaturalBegin - Maps values from the global vector to a global vector
    in the "natural" grid ordering. Must be followed by
-   `DMDAGlobalToNaturalEnd()` to complete the exchange.
+   DMDAGlobalToNaturalEnd() to complete the exchange.
 
    Neighbor-wise Collective on da
 
    Input Parameters:
 +  da - the distributed array context
 .  g - the global vector
--  mode - one of `INSERT_VALUES` or `ADD_VALUES`
+-  mode - one of INSERT_VALUES or ADD_VALUES
 
    Output Parameter:
 .  l  - the natural ordering values
@@ -126,17 +121,17 @@ PetscErrorCode DMDAGlobalToNatural_Create(DM da)
 
    Notes:
    The global and natrual vectors used here need not be the same as those
-   obtained from `DMCreateGlobalVector()` and `DMDACreateNaturalVector()`, BUT they
+   obtained from DMCreateGlobalVector() and DMDACreateNaturalVector(), BUT they
    must have the same parallel data layout; they could, for example, be
-   obtained with `VecDuplicate()` from the `DMDA` originating vectors.
+   obtained with VecDuplicate() from the DMDA originating vectors.
 
-   You must call `DMDACreateNaturalVector()` before using this routine
+   You must call DMDACreateNaturalVector() before using this routine
 
-.seealso: `DM`, `DMDA`, `DMDAGlobalToNaturalEnd()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
+.seealso: `DMDAGlobalToNaturalEnd()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
           `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMDACreateNaturalVector()`
+
 @*/
-PetscErrorCode DMDAGlobalToNaturalBegin(DM da, Vec g, InsertMode mode, Vec n)
-{
+PetscErrorCode DMDAGlobalToNaturalBegin(DM da, Vec g, InsertMode mode, Vec n) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;
@@ -153,14 +148,14 @@ PetscErrorCode DMDAGlobalToNaturalBegin(DM da, Vec g, InsertMode mode, Vec n)
 
 /*@
    DMDAGlobalToNaturalEnd - Maps values from the global vector to a global vector
-   in the natural ordering. Must be preceded by `DMDAGlobalToNaturalBegin()`.
+   in the natural ordering. Must be preceded by DMDAGlobalToNaturalBegin().
 
    Neighbor-wise Collective on da
 
    Input Parameters:
 +  da - the distributed array context
 .  g - the global vector
--  mode - one of `INSERT_VALUES` or `ADD_VALUES`
+-  mode - one of INSERT_VALUES or ADD_VALUES
 
    Output Parameter:
 .  l  - the global values in the natural ordering
@@ -169,15 +164,15 @@ PetscErrorCode DMDAGlobalToNaturalBegin(DM da, Vec g, InsertMode mode, Vec n)
 
    Notes:
    The global and local vectors used here need not be the same as those
-   obtained from `DMCreateGlobalVector()` and `DMDACreateNaturalVector()`, BUT they
+   obtained from DMCreateGlobalVector() and DMDACreateNaturalVector(), BUT they
    must have the same parallel data layout; they could, for example, be
-   obtained with VecDuplicate() from the `DMDA` originating vectors.
+   obtained with VecDuplicate() from the DMDA originating vectors.
 
-.seealso: `DM`, `DMDA`, `DMDAGlobalToNaturalBegin()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
+.seealso: `DMDAGlobalToNaturalBegin()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
           `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMDACreateNaturalVector()`
+
 @*/
-PetscErrorCode DMDAGlobalToNaturalEnd(DM da, Vec g, InsertMode mode, Vec n)
-{
+PetscErrorCode DMDAGlobalToNaturalEnd(DM da, Vec g, InsertMode mode, Vec n) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;
@@ -190,32 +185,32 @@ PetscErrorCode DMDAGlobalToNaturalEnd(DM da, Vec g, InsertMode mode, Vec n)
 
 /*@
    DMDANaturalToGlobalBegin - Maps values from a global vector in the "natural" ordering
-   to a global vector in the PETSc `DMDA` grid ordering. Must be followed by
-   `DMDANaturalToGlobalEnd()` to complete the exchange.
+   to a global vector in the PETSc DMDA grid ordering. Must be followed by
+   DMDANaturalToGlobalEnd() to complete the exchange.
 
    Neighbor-wise Collective on da
 
    Input Parameters:
 +  da - the distributed array context
 .  g - the global vector in a natural ordering
--  mode - one of `INSERT_VALUES` or `ADD_VALUES`
+-  mode - one of INSERT_VALUES or ADD_VALUES
 
    Output Parameter:
-.  l  - the values in the `DMDA` ordering
+.  l  - the values in the DMDA ordering
 
    Level: advanced
 
    Notes:
    The global and natural vectors used here need not be the same as those
-   obtained from `DMCreateGlobalVector()` and `DMDACreateNaturalVector()`, BUT they
+   obtained from DMCreateGlobalVector() and DMDACreateNaturalVector(), BUT they
    must have the same parallel data layout; they could, for example, be
-   obtained with `VecDuplicate()` from the `DMDA` originating vectors.
+   obtained with VecDuplicate() from the DMDA originating vectors.
 
-.seealso: `DM`, `DMDA`, `DMDAGlobalToNaturalEnd()`, `DMDAGlobalToNaturalBegin()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
+.seealso: `DMDAGlobalToNaturalEnd()`, `DMDAGlobalToNaturalBegin()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
           `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMDACreateNaturalVector()`
+
 @*/
-PetscErrorCode DMDANaturalToGlobalBegin(DM da, Vec n, InsertMode mode, Vec g)
-{
+PetscErrorCode DMDANaturalToGlobalBegin(DM da, Vec n, InsertMode mode, Vec g) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;
@@ -232,31 +227,31 @@ PetscErrorCode DMDANaturalToGlobalBegin(DM da, Vec n, InsertMode mode, Vec g)
 
 /*@
    DMDANaturalToGlobalEnd - Maps values from the natural ordering global vector
-   to a global vector in the PETSc `DMDA` ordering. Must be preceded by `DMDANaturalToGlobalBegin()`.
+   to a global vector in the PETSc DMDA ordering. Must be preceded by DMDANaturalToGlobalBegin().
 
    Neighbor-wise Collective on da
 
    Input Parameters:
 +  da - the distributed array context
 .  g - the global vector in a natural ordering
--  mode - one of `INSERT_VALUES` or `ADD_VALUES`
+-  mode - one of INSERT_VALUES or ADD_VALUES
 
    Output Parameter:
-.  l  - the global values in the PETSc `DMDA` ordering
+.  l  - the global values in the PETSc DMDA ordering
 
    Level: advanced
 
    Notes:
    The global and local vectors used here need not be the same as those
-   obtained from `DMCreateGlobalVector()` and `DMDACreateNaturalVector()`, BUT they
+   obtained from DMCreateGlobalVector() and DMDACreateNaturalVector(), BUT they
    must have the same parallel data layout; they could, for example, be
-   obtained with `VecDuplicate()` from the `DMDA` originating vectors.
+   obtained with VecDuplicate() from the DMDA originating vectors.
 
-.seealso: `DM`, `DMDA`, `DMDAGlobalToNaturalBegin()`, `DMDAGlobalToNaturalEnd()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
+.seealso: `DMDAGlobalToNaturalBegin()`, `DMDAGlobalToNaturalEnd()`, `DMLocalToGlobalBegin()`, `DMDACreate2d()`,
           `DMGlobalToLocalBegin()`, `DMGlobalToLocalEnd()`, `DMDACreateNaturalVector()`
+
 @*/
-PetscErrorCode DMDANaturalToGlobalEnd(DM da, Vec n, InsertMode mode, Vec g)
-{
+PetscErrorCode DMDANaturalToGlobalEnd(DM da, Vec n, InsertMode mode, Vec g) {
   DM_DA *dd = (DM_DA *)da->data;
 
   PetscFunctionBegin;

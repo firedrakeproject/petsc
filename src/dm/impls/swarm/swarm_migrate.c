@@ -8,8 +8,7 @@
 /*
  User loads desired location (MPI rank) into field DMSwarm_rank
 */
-PetscErrorCode DMSwarmMigrate_Push_Basic(DM dm, PetscBool remove_sent_points)
-{
+PetscErrorCode DMSwarmMigrate_Push_Basic(DM dm, PetscBool remove_sent_points) {
   DM_Swarm     *swarm = (DM_Swarm *)dm->data;
   DMSwarmDataEx de;
   PetscInt      p, npoints, *rankval, n_points_recv;
@@ -92,8 +91,7 @@ PetscErrorCode DMSwarmMigrate_Push_Basic(DM dm, PetscBool remove_sent_points)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmMigrate_DMNeighborScatter(DM dm, DM dmcell, PetscBool remove_sent_points, PetscInt *npoints_prior_migration)
-{
+PetscErrorCode DMSwarmMigrate_DMNeighborScatter(DM dm, DM dmcell, PetscBool remove_sent_points, PetscInt *npoints_prior_migration) {
   DM_Swarm          *swarm = (DM_Swarm *)dm->data;
   DMSwarmDataEx      de;
   PetscInt           r, p, npoints, *rankval, n_points_recv;
@@ -175,8 +173,7 @@ PetscErrorCode DMSwarmMigrate_DMNeighborScatter(DM dm, DM dmcell, PetscBool remo
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmMigrate_CellDMScatter(DM dm, PetscBool remove_sent_points)
-{
+PetscErrorCode DMSwarmMigrate_CellDMScatter(DM dm, PetscBool remove_sent_points) {
   DM_Swarm          *swarm = (DM_Swarm *)dm->data;
   PetscInt           p, npoints, npointsg = 0, npoints2, npoints2g, *rankval, npoints_prior_migration;
   PetscSF            sfcell = NULL;
@@ -350,8 +347,7 @@ PetscErrorCode DMSwarmMigrate_CellDMScatter(DM dm, PetscBool remove_sent_points)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSwarmMigrate_CellDMExact(DM dm, PetscBool remove_sent_points)
-{
+PetscErrorCode DMSwarmMigrate_CellDMExact(DM dm, PetscBool remove_sent_points) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
@@ -359,8 +355,7 @@ PetscErrorCode DMSwarmMigrate_CellDMExact(DM dm, PetscBool remove_sent_points)
 /*
  Redundant as this assumes points can only be sent to a single rank
 */
-PetscErrorCode DMSwarmMigrate_GlobalToLocal_Basic(DM dm, PetscInt *globalsize)
-{
+PetscErrorCode DMSwarmMigrate_GlobalToLocal_Basic(DM dm, PetscInt *globalsize) {
   DM_Swarm     *swarm = (DM_Swarm *)dm->data;
   DMSwarmDataEx de;
   PetscInt      p, npoints, *rankval, n_points_recv;
@@ -429,8 +424,7 @@ typedef struct {
   PetscReal   min[3], max[3];
 } CollectBBox;
 
-PETSC_EXTERN PetscErrorCode DMSwarmCollect_DMDABoundingBox(DM dm, PetscInt *globalsize)
-{
+PETSC_EXTERN PetscErrorCode DMSwarmCollect_DMDABoundingBox(DM dm, PetscInt *globalsize) {
   DM_Swarm          *swarm = (DM_Swarm *)dm->data;
   DMSwarmDataEx      de;
   PetscInt           p, pk, npoints, *rankval, n_points_recv, n_bbox_recv, dim, neighbour_cells;
@@ -581,8 +575,7 @@ PETSC_EXTERN PetscErrorCode DMSwarmCollect_DMDABoundingBox(DM dm, PetscInt *glob
    collect(swarm,context,n,list)
  }
 */
-PETSC_EXTERN PetscErrorCode DMSwarmCollect_General(DM dm, PetscErrorCode (*collect)(DM, void *, PetscInt *, PetscInt **), size_t ctx_size, void *ctx, PetscInt *globalsize)
-{
+PETSC_EXTERN PetscErrorCode DMSwarmCollect_General(DM dm, PetscErrorCode (*collect)(DM, void *, PetscInt *, PetscInt **), size_t ctx_size, void *ctx, PetscInt *globalsize) {
   DM_Swarm     *swarm = (DM_Swarm *)dm->data;
   DMSwarmDataEx de;
   PetscInt      p, r, npoints, n_points_recv;

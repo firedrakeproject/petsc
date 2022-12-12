@@ -3,8 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 
-PetscErrorCode PFReadMatPowerData(PFDATA *pf, char *filename)
-{
+PetscErrorCode PFReadMatPowerData(PFDATA *pf, char *filename) {
   FILE        *fp;
   VERTEX_Power Bus;
   LOAD         Load;

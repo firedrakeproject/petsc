@@ -20,8 +20,7 @@ typedef struct {
   PetscBool variant;
 } AppCtx;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   SNES        snes;                /* SNES context */
   SNESType    type = SNESNEWTONLS; /* default nonlinear solution method */
   Vec         x, r, F, U;          /* vectors */
@@ -102,8 +101,7 @@ int main(int argc, char **argv)
 }
 /* --------------------  Evaluate Function F(x) --------------------- */
 
-PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *dummy)
-{
+PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *dummy) {
   const PetscScalar *xx, *FF;
   PetscScalar       *ff, d;
   PetscInt           i, n;
@@ -123,8 +121,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *dummy)
   return 0;
 }
 
-PetscErrorCode FormFunctioni(void *dummy, PetscInt i, Vec x, PetscScalar *s)
-{
+PetscErrorCode FormFunctioni(void *dummy, PetscInt i, Vec x, PetscScalar *s) {
   const PetscScalar *xx, *FF;
   PetscScalar        d;
   PetscInt           n;
@@ -154,8 +151,7 @@ PetscErrorCode FormFunctioni(void *dummy, PetscInt i, Vec x, PetscScalar *s)
    Example function that when differenced produces the same matrix free Jacobian as FormFunction()
    this is provided to show how a user can provide a different function
 */
-PetscErrorCode OtherFunctionForDifferencing(void *dummy, Vec x, Vec f)
-{
+PetscErrorCode OtherFunctionForDifferencing(void *dummy, Vec x, Vec f) {
   PetscCall(FormFunction(NULL, x, f, dummy));
   PetscCall(VecShift(f, 1.0));
   return 0;
@@ -163,8 +159,7 @@ PetscErrorCode OtherFunctionForDifferencing(void *dummy, Vec x, Vec f)
 
 /* --------------------  Form initial approximation ----------------- */
 
-PetscErrorCode FormInitialGuess(SNES snes, Vec x)
-{
+PetscErrorCode FormInitialGuess(SNES snes, Vec x) {
   PetscScalar pfive = .50;
   PetscCall(VecSet(x, pfive));
   return 0;
@@ -175,8 +170,7 @@ PetscErrorCode FormInitialGuess(SNES snes, Vec x)
     also EXACTLY the Jacobian. In general, it would be some lower
     order, simplified apprioximation */
 
-PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy)
-{
+PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy) {
   const PetscScalar *xx;
   PetscScalar        A[3], d;
   PetscInt           i, n, j[3];
@@ -212,8 +206,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy)
   return 0;
 }
 
-PetscErrorCode FormJacobianNoMatrix(SNES snes, Vec x, Mat jac, Mat B, void *dummy)
-{
+PetscErrorCode FormJacobianNoMatrix(SNES snes, Vec x, Mat jac, Mat B, void *dummy) {
   AppCtx *user = (AppCtx *)dummy;
 
   if (user->variant) PetscCall(MatMFFDSetBase(jac, x, NULL));
@@ -224,8 +217,7 @@ PetscErrorCode FormJacobianNoMatrix(SNES snes, Vec x, Mat jac, Mat B, void *dumm
 
 /* --------------------  User-defined monitor ----------------------- */
 
-PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal fnorm, void *dummy)
-{
+PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal fnorm, void *dummy) {
   MonitorCtx *monP = (MonitorCtx *)dummy;
   Vec         x;
   MPI_Comm    comm;

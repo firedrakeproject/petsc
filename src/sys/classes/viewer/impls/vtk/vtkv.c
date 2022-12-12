@@ -37,8 +37,7 @@ M*/
 
 .seealso: `PETSCVIEWERVTK`, `PetscViewerVTKOpen()`, `DMDAVTKWriteAll()`, `PetscViewerVTKWriteFunction`, `PetscViewerVTKGetDM()`
 @*/
-PetscErrorCode PetscViewerVTKAddField(PetscViewer viewer, PetscObject dm, PetscErrorCode (*PetscViewerVTKWriteFunction)(PetscObject, PetscViewer), PetscInt fieldnum, PetscViewerVTKFieldType fieldtype, PetscBool checkdm, PetscObject vec)
-{
+PetscErrorCode PetscViewerVTKAddField(PetscViewer viewer, PetscObject dm, PetscErrorCode (*PetscViewerVTKWriteFunction)(PetscObject, PetscViewer), PetscInt fieldnum, PetscViewerVTKFieldType fieldtype, PetscBool checkdm, PetscObject vec) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 1);
   PetscValidHeader(dm, 2);
@@ -60,16 +59,14 @@ PetscErrorCode PetscViewerVTKAddField(PetscViewer viewer, PetscObject dm, PetscE
 
 .seealso: `PETSCVIEWERVTK`, `PetscViewerVTKOpen()`, `DMDAVTKWriteAll()`, `PetscViewerVTKWriteFunction`, `PetscViewerVTKAddField()`
 @*/
-PetscErrorCode PetscViewerVTKGetDM(PetscViewer viewer, PetscObject *dm)
-{
+PetscErrorCode PetscViewerVTKGetDM(PetscViewer viewer, PetscObject *dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 1);
   PetscUseMethod(viewer, "PetscViewerVTKGetDM_C", (PetscViewer, PetscObject *), (viewer, dm));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscViewerDestroy_VTK(PetscViewer viewer)
-{
+static PetscErrorCode PetscViewerDestroy_VTK(PetscViewer viewer) {
   PetscViewer_VTK *vtk = (PetscViewer_VTK *)viewer->data;
 
   PetscFunctionBegin;
@@ -84,8 +81,7 @@ static PetscErrorCode PetscViewerDestroy_VTK(PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscViewerFlush_VTK(PetscViewer viewer)
-{
+static PetscErrorCode PetscViewerFlush_VTK(PetscViewer viewer) {
   PetscViewer_VTK         *vtk = (PetscViewer_VTK *)viewer->data;
   PetscViewerVTKObjectLink link, next;
 
@@ -103,8 +99,7 @@ static PetscErrorCode PetscViewerFlush_VTK(PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscViewerFileSetName_VTK(PetscViewer viewer, const char name[])
-{
+PetscErrorCode PetscViewerFileSetName_VTK(PetscViewer viewer, const char name[]) {
   PetscViewer_VTK *vtk = (PetscViewer_VTK *)viewer->data;
   PetscBool        isvtk, isvts, isvtu, isvtr;
   size_t           len;
@@ -138,16 +133,14 @@ PetscErrorCode PetscViewerFileSetName_VTK(PetscViewer viewer, const char name[])
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscViewerFileGetName_VTK(PetscViewer viewer, const char **name)
-{
+PetscErrorCode PetscViewerFileGetName_VTK(PetscViewer viewer, const char **name) {
   PetscViewer_VTK *vtk = (PetscViewer_VTK *)viewer->data;
   PetscFunctionBegin;
   *name = vtk->filename;
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscViewerFileSetMode_VTK(PetscViewer viewer, PetscFileMode type)
-{
+PetscErrorCode PetscViewerFileSetMode_VTK(PetscViewer viewer, PetscFileMode type) {
   PetscViewer_VTK *vtk = (PetscViewer_VTK *)viewer->data;
 
   PetscFunctionBegin;
@@ -155,8 +148,7 @@ PetscErrorCode PetscViewerFileSetMode_VTK(PetscViewer viewer, PetscFileMode type
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscViewerFileGetMode_VTK(PetscViewer viewer, PetscFileMode *type)
-{
+PetscErrorCode PetscViewerFileGetMode_VTK(PetscViewer viewer, PetscFileMode *type) {
   PetscViewer_VTK *vtk = (PetscViewer_VTK *)viewer->data;
 
   PetscFunctionBegin;
@@ -164,8 +156,7 @@ PetscErrorCode PetscViewerFileGetMode_VTK(PetscViewer viewer, PetscFileMode *typ
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscViewerVTKAddField_VTK(PetscViewer viewer, PetscObject dm, PetscErrorCode (*PetscViewerVTKWriteFunction)(PetscObject, PetscViewer), PetscInt fieldnum, PetscViewerVTKFieldType fieldtype, PetscBool checkdm, PetscObject vec)
-{
+PetscErrorCode PetscViewerVTKAddField_VTK(PetscViewer viewer, PetscObject dm, PetscErrorCode (*PetscViewerVTKWriteFunction)(PetscObject, PetscViewer), PetscInt fieldnum, PetscViewerVTKFieldType fieldtype, PetscBool checkdm, PetscObject vec) {
   PetscViewer_VTK         *vtk = (PetscViewer_VTK *)viewer->data;
   PetscViewerVTKObjectLink link, tail = vtk->link;
 
@@ -190,8 +181,7 @@ PetscErrorCode PetscViewerVTKAddField_VTK(PetscViewer viewer, PetscObject dm, Pe
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscViewerVTKGetDM_VTK(PetscViewer viewer, PetscObject *dm)
-{
+PetscErrorCode PetscViewerVTKGetDM_VTK(PetscViewer viewer, PetscObject *dm) {
   PetscViewer_VTK *vtk = (PetscViewer_VTK *)viewer->data;
 
   PetscFunctionBegin;
@@ -210,12 +200,11 @@ PetscErrorCode PetscViewerVTKGetDM_VTK(PetscViewer viewer, PetscObject *dm)
           `PetscViewerFileSetName()`, `PetscViewerFileSetMode()`, `PetscViewerFormat`, `PetscViewerType`, `PetscViewerSetType()`
 M*/
 
-PETSC_EXTERN PetscErrorCode PetscViewerCreate_VTK(PetscViewer v)
-{
+PETSC_EXTERN PetscErrorCode PetscViewerCreate_VTK(PetscViewer v) {
   PetscViewer_VTK *vtk;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&vtk));
+  PetscCall(PetscNewLog(v, &vtk));
 
   v->data         = (void *)vtk;
   v->ops->destroy = PetscViewerDestroy_VTK;
@@ -254,8 +243,7 @@ $    `FILE_MODE_APPEND` - open existing file for binary output (not currently su
           `VecView()`, `MatView()`, `VecLoad()`, `MatLoad()`,
           `PetscFileMode`, `PetscViewer`
 @*/
-PetscErrorCode PetscViewerVTKOpen(MPI_Comm comm, const char name[], PetscFileMode type, PetscViewer *vtk)
-{
+PetscErrorCode PetscViewerVTKOpen(MPI_Comm comm, const char name[], PetscFileMode type, PetscViewer *vtk) {
   PetscFunctionBegin;
   PetscCall(PetscViewerCreate(comm, vtk));
   PetscCall(PetscViewerSetType(*vtk, PETSCVIEWERVTK));
@@ -283,8 +271,7 @@ PetscErrorCode PetscViewerVTKOpen(MPI_Comm comm, const char name[], PetscFileMod
 
 .seealso: `PETSCVIEWERVTK`, `DMDAVTKWriteAll()`, `DMPlexVTKWriteAll()`, `PetscViewerPushFormat()`, `PetscViewerVTKOpen()`, `PetscBinaryWrite()`
 @*/
-PetscErrorCode PetscViewerVTKFWrite(PetscViewer viewer, FILE *fp, const void *data, PetscInt n, MPI_Datatype dtype)
-{
+PetscErrorCode PetscViewerVTKFWrite(PetscViewer viewer, FILE *fp, const void *data, PetscInt n, MPI_Datatype dtype) {
   PetscMPIInt  rank;
   MPI_Datatype vdtype = dtype;
 #if defined(PETSC_USE_REAL___FLOAT128)

@@ -2,8 +2,7 @@ static char help[] = "Test MatMultHermitianTranspose() and MatMultHermitianTrans
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A, B, C;
   Vec         x, y, ys;
   PetscInt    i, j;

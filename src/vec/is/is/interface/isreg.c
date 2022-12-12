@@ -5,7 +5,7 @@ PetscFunctionList ISList              = NULL;
 PetscBool         ISRegisterAllCalled = PETSC_FALSE;
 
 /*@
-   ISCreate - Creates an index set object. `IS` are objects used to do efficient indexing into other data structures such as `Vec` and `Mat`
+   ISCreate - Creates an index set object.
 
    Collective
 
@@ -16,17 +16,16 @@ PetscBool         ISRegisterAllCalled = PETSC_FALSE;
 .  is - the new index set
 
    Notes:
-   When the communicator is not `MPI_COMM_SELF`, the operations on `IS` are NOT
-   conceptually the same as `MPI_Group` operations. The `IS` are then
+   When the communicator is not MPI_COMM_SELF, the operations on IS are NOT
+   conceptually the same as MPI_Group operations. The IS are then
    distributed sets of indices and thus certain operations on them are
    collective.
 
    Level: beginner
 
-.seealso: [](sec_scatter), `IS`, `ISType()`, `ISSetType()`, `ISCreateGeneral()`, `ISCreateStride()`, `ISCreateBlock()`, `ISAllGather()`
+.seealso: `ISCreateGeneral()`, `ISCreateStride()`, `ISCreateBlock()`, `ISAllGather()`
 @*/
-PetscErrorCode ISCreate(MPI_Comm comm, IS *is)
-{
+PetscErrorCode ISCreate(MPI_Comm comm, IS *is) {
   PetscFunctionBegin;
   PetscValidPointer(is, 2);
   PetscCall(ISInitializePackage());
@@ -37,9 +36,9 @@ PetscErrorCode ISCreate(MPI_Comm comm, IS *is)
 }
 
 /*@C
-  ISSetType - Builds a index set, for a particular `ISType`
+  ISSetType - Builds a index set, for a particular implementation.
 
-  Collective on is
+  Collective on IS
 
   Input Parameters:
 + is    - The index set object
@@ -51,14 +50,13 @@ PetscErrorCode ISCreate(MPI_Comm comm, IS *is)
   Notes:
   See "petsc/include/petscis.h" for available istor types (for instance, ISGENERAL, ISSTRIDE, or ISBLOCK).
 
-  Use `ISDuplicate()` to make a duplicate
+  Use ISDuplicate() to make a duplicate
 
   Level: intermediate
 
-.seealso: [](sec_scatter), `IS`, `ISGENERAL`, `ISBLOCK`, `ISGetType()`, `ISCreate()`
+.seealso: `ISGetType()`, `ISCreate()`
 @*/
-PetscErrorCode ISSetType(IS is, ISType method)
-{
+PetscErrorCode ISSetType(IS is, ISType method) {
   PetscErrorCode (*r)(IS);
   PetscBool match;
 
@@ -79,7 +77,7 @@ PetscErrorCode ISSetType(IS is, ISType method)
 }
 
 /*@C
-  ISGetType - Gets the index set type name, `ISType`, (as a string) from the `IS`.
+  ISGetType - Gets the index set type name (as a string) from the IS.
 
   Not Collective
 
@@ -91,10 +89,9 @@ PetscErrorCode ISSetType(IS is, ISType method)
 
   Level: intermediate
 
-.seealso: [](sec_scatter), `IS`, `ISType`, `ISSetType()`, `ISCreate()`
+.seealso: `ISSetType()`, `ISCreate()`
 @*/
-PetscErrorCode ISGetType(IS is, ISType *type)
-{
+PetscErrorCode ISGetType(IS is, ISType *type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is, IS_CLASSID, 1);
   PetscValidPointer(type, 2);
@@ -114,6 +111,9 @@ PetscErrorCode ISGetType(IS is, ISType *type)
 + name        - The name of a new user-defined creation routine
 - create_func - The creation routine itself
 
+  Notes:
+  ISRegister() may be called multiple times to add several user-defined vectors
+
   Sample usage:
 .vb
     ISRegister("my_is_name",  MyISCreate);
@@ -129,18 +129,16 @@ PetscErrorCode ISGetType(IS is, ISType *type)
     -is_type my_is_name
 .ve
 
+  This is no ISSetFromOptions() and the current implementations do not have a way to dynamically determine type, so
+  dynamic registration of custom IS types will be of limited use to users.
+
   Level: developer
 
-  Notes:
-  `ISRegister()` may be called multiple times to add several user-defined vectors
+.seealso: `ISRegisterAll()`, `ISRegisterDestroy()`, `ISRegister()`
 
-  This is no `ISSetFromOptions()` and the current implementations do not have a way to dynamically determine type, so
-  dynamic registration of custom `IS` types will be of limited use to users.
-
-.seealso: [](sec_scatter), `IS`, `ISType`, `ISSetType()`, `ISRegisterAll()`, `ISRegisterDestroy()`, `ISRegister()`
+  Level: advanced
 @*/
-PetscErrorCode ISRegister(const char sname[], PetscErrorCode (*function)(IS))
-{
+PetscErrorCode ISRegister(const char sname[], PetscErrorCode (*function)(IS)) {
   PetscFunctionBegin;
   PetscCall(ISInitializePackage());
   PetscCall(PetscFunctionListAdd(&ISList, sname, function));

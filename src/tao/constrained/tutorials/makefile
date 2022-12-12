@@ -1,7 +1,7 @@
 -include ../../../../petscdir.mk
 
 LOCDIR		 = src/tao/constrained/tutorials/
-MANSEC		 = Tao
+MANSEC		 =
 DOCS		 =
 DIRS		 =
 

@@ -24,8 +24,7 @@
 
 .seealso: `PetscGetTmp()`, `PetscSharedTmp()`, `PetscGetWorkingDirectory()`
 @*/
-PetscErrorCode PetscGetHomeDirectory(char dir[], size_t maxlen)
-{
+PetscErrorCode PetscGetHomeDirectory(char dir[], size_t maxlen) {
   const char *d1;
 
   PetscFunctionBegin;
@@ -53,8 +52,7 @@ PetscErrorCode PetscGetHomeDirectory(char dir[], size_t maxlen)
    Note:
    Call `PetscFixFilename()` just before calling fopen().
 @*/
-PetscErrorCode PetscFixFilename(const char filein[], char fileout[])
-{
+PetscErrorCode PetscFixFilename(const char filein[], char fileout[]) {
   size_t i, n;
 
   PetscFunctionBegin;

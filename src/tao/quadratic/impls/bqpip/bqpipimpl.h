@@ -2,7 +2,7 @@
   Private data structure used for bqpip method
 */
 
-#ifndef __TAO_BQPIP_H
+#if !defined(__TAO_BQPIP_H)
 #define __TAO_BQPIP_H
 
 #include <petsc/private/taoimpl.h>

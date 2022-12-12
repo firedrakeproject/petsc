@@ -1,5 +1,5 @@
 /* DM for redundant globally coupled degrees of freedom */
-#ifndef PETSCDMREDUNDANT_H
+#if !defined(PETSCDMREDUNDANT_H)
 #define PETSCDMREDUNDANT_H
 
 #include <petscdm.h>

@@ -1,5 +1,5 @@
 
-#ifndef _MINPACK_COLOR_H
+#if !defined(_MINPACK_COLOR_H)
 #define _MINPACK_COLOR_H
 #include <petscmat.h>
 

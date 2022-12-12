@@ -135,7 +135,6 @@ classIdMap = {
   "_p_PetscContainer *"         : "PETSC_CONTAINER_CLASSID",
   "_p_PetscConvEst *"           : "PETSC_OBJECT_CLASSID",
   "_p_PetscDS *"                : "PETSCDS_CLASSID",
-  "_p_PetscDeviceContext *"     : "PETSC_DEVICE_CONTEXT_CLASSID",
   "_p_PetscDraw *"              : "PETSC_DRAW_CLASSID",
   "_p_PetscDrawAxis *"          : "PETSC_DRAWAXIS_CLASSID",
   "_p_PetscDrawBar *"           : "PETSC_DRAWBAR_CLASSID",
@@ -812,8 +811,7 @@ class PetscLinter(object):
     self.processRemoveDuplicates(filename,tu)
     return
 
-  @staticmethod
-  def getArgumentCursors(funcCursor):
+  def getArgumentCursors(self,funcCursor):
     return tuple(PetscCursor(a,i+1) for i,a in enumerate(funcCursor.get_arguments()))
 
   def process(self,filename,tu):
@@ -1237,7 +1235,7 @@ def checkMatchingClassid(linter,obj,objClassid):
     linter.addErrorFromCursor(obj,"Classid doesn't match. Expected '{}' found '{}'".format(expectedClassid,objClassid.name),patch=fix)
   return
 
-def checkTraceableToParentArgs(obj,parentArgs):
+def checkTraceableToParentArgs(obj,parentArgNames):
   __doc__="""
   Try and see if the cursor can be linked to parent function arguments. If it can be successfully linked return the index of the matched object otherwise raises ParsingError.
 
@@ -1274,16 +1272,6 @@ def checkTraceableToParentArgs(obj,parentArgs):
           potentialParentsTemp = [c for c in memberChild.walk_preorder() if c.kind == clx.CursorKind.DECL_REF_EXPR]
           potentialParentsTemp = [parent for parent in potentialParentsTemp if parent.spelling != memberChild.spelling]
           potentialParents.extend(potentialParentsTemp)
-    elif defCursor.kind == clx.CursorKind.PARM_DECL:
-      # possibly in a lambda expression, try and find its uses
-      funcDef = defCursor.semantic_parent
-      if funcDef and funcDef.kind == clx.CursorKind.CXX_METHOD:
-        assert funcDef.semantic_parent.kind == clx.CursorKind.CLASS_DECL
-        # ok definitely a lambda, in which case we should redefine the "parent" arguments
-        # to be the lambda argument list not the enclosing function
-        parentArgs = PetscLinter.getArgumentCursors(funcDef)
-        # see if we can find ourselves in the arguments
-        potentialParents.extend([c for c in parentArgs if c.spelling == obj.name])
   elif obj.kind in convertCursors:
     curs = [PetscCursor(c,obj.argidx) for c in obj.walk_preorder() if c.kind == clx.CursorKind.DECL_REF_EXPR]
     if len(curs) > 1:
@@ -1333,11 +1321,6 @@ def checkTraceableToParentArgs(obj,parentArgs):
     lineRange = clx.SourceRange.from_locations(lineStart,lineEnd)
     tGroup    = list(clx.TokenGroup.get_tokens(tu,lineRange))
     funcProto = [i for i,t in enumerate(tGroup) if t.cursor.type.get_canonical().kind in functionTypes]
-    if not funcProto:
-      # maybe not a function prototype, but maybe its a lambda
-      funcProto = [
-        i for i,t in enumerate(tGroup) if t.cursor.kind in {*functionTypes,clx.CursorKind.LAMBDA_EXPR}
-      ]
     if funcProto:
       filterExpr = lambda t: t.kind in varTokens and t.cursor.type.kind not in functionTypes
       iterator   = [x.cursor for x in filter(filterExpr,tGroup[funcProto[0]+2:])]
@@ -1364,15 +1347,15 @@ def checkTraceableToParentArgs(obj,parentArgs):
   if parent.get_definition().kind == clx.CursorKind.PARM_DECL:
     name = PetscCursor.getNameFromCursor(parent)
     try:
-      loc = tuple(c.name for c in parentArgs).index(name)
+      loc  = parentArgNames.index(name)
     except ValueError as ve:
       # name isn't in the parent arguments, so we raise parsing error from it
       raise ParsingError from ve
   else:
     parent = PetscCursor(parent,obj.argidx)
     # deeper into the rabbit hole
-    loc,parentArgs = checkTraceableToParentArgs(parent,parentArgs)
-  return loc,parentArgs
+    loc = checkTraceableToParentArgs(parent,parentArgNames)
+  return loc
 
 def checkMatchingArgNum(linter,obj,idx,parentArgs):
   __doc__="""
@@ -1389,11 +1372,12 @@ def checkMatchingArgNum(linter,obj,idx,parentArgs):
   except ValueError:
     linter.addWarningFromCursor(idx,"Potential argument mismatch, could not determine integer value")
     return
+  parentArgNames = tuple(s.name for s in parentArgs)
   try:
-    matchLoc = tuple(s.name for s in parentArgs).index(obj.name)
+    matchLoc = parentArgNames.index(obj.name)
   except ValueError:
     try:
-      matchLoc,parentArgs = checkTraceableToParentArgs(obj,parentArgs)
+      matchLoc = checkTraceableToParentArgs(obj,parentArgNames)
     except ParsingError as pe:
       # If the parent arguments don't contain the symbol and we couldn't determine a
       # definition then we cannot check for correct numbering, so we cannot do

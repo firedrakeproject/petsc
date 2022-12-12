@@ -2,8 +2,7 @@ static char help[] = "Tests ISLocate().\n\n";
 
 #include <petscis.h>
 
-static PetscErrorCode TestGeneral(void)
-{
+static PetscErrorCode TestGeneral(void) {
   MPI_Comm       comm  = PETSC_COMM_SELF;
   const PetscInt idx[] = {8, 6, 7, -5, 3, 0, 9};
   PetscInt       n = 7, key = 3, nonkey = 1, keylocation = 4, sortedlocation = 2, location;
@@ -24,8 +23,7 @@ static PetscErrorCode TestGeneral(void)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestBlock(void)
-{
+static PetscErrorCode TestBlock(void) {
   MPI_Comm       comm  = PETSC_COMM_SELF;
   const PetscInt idx[] = {
     8, 6, 7, -5, 3, 0, 9,
@@ -48,8 +46,7 @@ static PetscErrorCode TestBlock(void)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestStride(void)
-{
+static PetscErrorCode TestStride(void) {
   MPI_Comm comm   = PETSC_COMM_SELF;
   PetscInt stride = 7, first = -3, n = 18, key = 39, keylocation = 6;
   PetscInt nonkey[] = {-2, 123}, i, location;
@@ -67,8 +64,7 @@ static PetscErrorCode TestStride(void)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(TestGeneral());

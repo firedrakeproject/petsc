@@ -1,8 +1,8 @@
 .. _ind_developers:
 
-==========
-Developers
-==========
+===============================
+PETSc Developer's Documentation
+===============================
 
 Information for PETSc developers and those interested in contributing.
 

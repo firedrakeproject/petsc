@@ -3,8 +3,7 @@ static char help[] = "Test event log of VecScatter with various block sizes\n\n"
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt           i, j, low, high, n = 256, N, errors, tot_errors;
   PetscInt           bs = 1, ix[2], iy[2];
   PetscMPIInt        nproc, rank;

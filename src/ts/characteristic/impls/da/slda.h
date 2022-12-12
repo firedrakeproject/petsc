@@ -1,5 +1,5 @@
-#ifndef PETSC_CHARACTERISTIC_DA_H
-#define PETSC_CHARACTERISTIC_DA_H
+#if !defined(_CHARACTERISTIC_DA_)
+#define _CHARACTERISTIC_DA_
 
 #include <petsc/private/characteristicimpl.h> /*I "petsccharacteristic.h" I*/
 
@@ -7,4 +7,4 @@ typedef struct {
   PetscInt dummy;
 } Characteristic_DA;
 
-#endif // PETSC_CHARACTERISTIC_DA_H
+#endif /* _CHARACTERISTIC_DA_ */

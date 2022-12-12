@@ -6,10 +6,9 @@ static char help[] = "Benchmarking cudaPointerGetAttributes() time\n";
     Average cudaPointerGetAttributes() time = 0.31 microseconds
 */
 #include <petscsys.h>
-#include <petscdevice_cuda.h>
+#include <petscdevice.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt                     i, n = 4000;
   cudaError_t                  cerr;
   PetscScalar                **ptrs;

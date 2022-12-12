@@ -1,4 +1,4 @@
-#ifndef _SFGATHERV_H
+#if !defined(_SFGATHERV_H)
 #define _SFGATHERV_H
 
 #include <../src/vec/is/sf/impls/basic/allgatherv/sfallgatherv.h>

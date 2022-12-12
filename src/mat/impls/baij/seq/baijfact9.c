@@ -9,8 +9,7 @@
 /*
       Version for when blocks are 5 by 5
 */
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_inplace(Mat C, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_inplace(Mat C, Mat A, const MatFactorInfo *info) {
   Mat_SeqBAIJ     *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   IS               isrow = b->row, isicol = b->icol;
   const PetscInt  *r, *ic, *bi = b->i, *bj = b->j, *ajtmpold, *ajtmp;
@@ -300,8 +299,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_inplace(Mat C, Mat A, const MatFacto
        PetscKernel_A_gets_inverse_A()
 */
 
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5(Mat B, Mat A, const MatFactorInfo *info) {
   Mat             C = B;
   Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   IS              isrow = b->row, isicol = b->icol;
@@ -408,8 +406,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5(Mat B, Mat A, const MatFactorInfo *i
 /*
       Version for when blocks are 5 by 5 Using natural ordering
 */
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_NaturalOrdering_inplace(Mat C, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_NaturalOrdering_inplace(Mat C, Mat A, const MatFactorInfo *info) {
   Mat_SeqBAIJ *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   PetscInt     i, j, n = a->mbs, *bi = b->i, *bj = b->j, ipvt[5];
   PetscInt    *ajtmpold, *ajtmp, nz, row;
@@ -669,8 +666,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_NaturalOrdering_inplace(Mat C, Mat A
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_NaturalOrdering(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_5_NaturalOrdering(Mat B, Mat A, const MatFactorInfo *info) {
   Mat             C = B;
   Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   PetscInt        i, j, k, nz, nzL, row;

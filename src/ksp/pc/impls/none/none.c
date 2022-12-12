@@ -4,15 +4,13 @@
 */
 #include <petsc/private/pcimpl.h> /*I "petscpc.h" I*/
 
-PetscErrorCode PCApply_None(PC pc, Vec x, Vec y)
-{
+PetscErrorCode PCApply_None(PC pc, Vec x, Vec y) {
   PetscFunctionBegin;
   PetscCall(VecCopy(x, y));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PCMatApply_None(PC pc, Mat X, Mat Y)
-{
+PetscErrorCode PCMatApply_None(PC pc, Mat X, Mat Y) {
   PetscFunctionBegin;
   PetscCall(MatCopy(X, Y, SAME_NONZERO_PATTERN));
   PetscFunctionReturn(0);
@@ -24,15 +22,13 @@ PetscErrorCode PCMatApply_None(PC pc, Mat X, Mat Y)
 
    Level: beginner
 
-  Developer Note:
-  This is implemented by a `VecCopy()`. It would be nice if the `KSP` implementations could be organized to avoid this copy without making them
-  more complex.
+  Notes:
+    This is implemented by a VecCopy()
 
 .seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_None(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_None(PC pc) {
   PetscFunctionBegin;
   pc->ops->apply               = PCApply_None;
   pc->ops->matapply            = PCMatApply_None;

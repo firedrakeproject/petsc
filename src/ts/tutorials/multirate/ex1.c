@@ -15,8 +15,7 @@ typedef struct {
   PetscReal a, b, Tf, dt;
 } AppCtx;
 
-static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, AppCtx *ctx)
-{
+static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, AppCtx *ctx) {
   const PetscScalar *u;
   PetscScalar       *f;
 
@@ -30,8 +29,7 @@ static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, AppCtx *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RHSFunctionslow(TS ts, PetscReal t, Vec U, Vec F, AppCtx *ctx)
-{
+static PetscErrorCode RHSFunctionslow(TS ts, PetscReal t, Vec U, Vec F, AppCtx *ctx) {
   const PetscScalar *u;
   PetscScalar       *f;
 
@@ -44,8 +42,7 @@ static PetscErrorCode RHSFunctionslow(TS ts, PetscReal t, Vec U, Vec F, AppCtx *
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RHSFunctionfast(TS ts, PetscReal t, Vec U, Vec F, AppCtx *ctx)
-{
+static PetscErrorCode RHSFunctionfast(TS ts, PetscReal t, Vec U, Vec F, AppCtx *ctx) {
   const PetscScalar *u;
   PetscScalar       *f;
 
@@ -61,8 +58,7 @@ static PetscErrorCode RHSFunctionfast(TS ts, PetscReal t, Vec U, Vec F, AppCtx *
 /*
   Define the analytic solution for check method easily
 */
-static PetscErrorCode sol_true(PetscReal t, Vec U, AppCtx *ctx)
-{
+static PetscErrorCode sol_true(PetscReal t, Vec U, AppCtx *ctx) {
   PetscScalar *u;
 
   PetscFunctionBegin;
@@ -73,8 +69,7 @@ static PetscErrorCode sol_true(PetscReal t, Vec U, AppCtx *ctx)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS           ts; /* ODE integrator */
   Vec          U;  /* solution will be stored here */
   Vec          Utrue;

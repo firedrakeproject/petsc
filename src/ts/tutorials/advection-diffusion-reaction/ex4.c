@@ -40,8 +40,7 @@ typedef struct {
 */
 extern PetscErrorCode IFunction(TS, PetscReal, Vec, Vec, Vec, void *), InitialConditions(DM, Vec);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS     ts; /* nonlinear solver */
   Vec    U;  /* solution, residual vectors */
   DM     da;
@@ -133,8 +132,7 @@ int main(int argc, char **argv)
    Output Parameter:
 .  F - function vector
  */
-PetscErrorCode IFunction(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec F, void *ptr)
-{
+PetscErrorCode IFunction(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec F, void *ptr) {
   AppCtx     *appctx = (AppCtx *)ptr;
   DM          da;
   PetscInt    i, Mx, xs, xm;
@@ -216,8 +214,7 @@ PetscErrorCode IFunction(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec F, void *p
 }
 
 /* ------------------------------------------------------------------- */
-PetscErrorCode InitialConditions(DM da, Vec U)
-{
+PetscErrorCode InitialConditions(DM da, Vec U) {
   PetscInt  i, xs, xm, Mx;
   Field    *u;
   PetscReal hx, x;

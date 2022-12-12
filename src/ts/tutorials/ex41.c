@@ -14,8 +14,7 @@ static char help[] = "Parallel bouncing ball example to test TS event feature.\n
 
 #include <petscts.h>
 
-PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscScalar *fvalue, void *ctx)
-{
+PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscScalar *fvalue, void *ctx) {
   const PetscScalar *u;
 
   PetscFunctionBeginUser;
@@ -26,8 +25,7 @@ PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscScalar *fvalue, voi
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PostEventFunction(TS ts, PetscInt nevents, PetscInt event_list[], PetscReal t, Vec U, PetscBool forwardsolve, void *ctx)
-{
+PetscErrorCode PostEventFunction(TS ts, PetscInt nevents, PetscInt event_list[], PetscReal t, Vec U, PetscBool forwardsolve, void *ctx) {
   PetscScalar *u;
   PetscMPIInt  rank;
 
@@ -47,8 +45,7 @@ PetscErrorCode PostEventFunction(TS ts, PetscInt nevents, PetscInt event_list[],
 /*
      Defines the ODE passed to the ODE solver in explicit form: U_t = F(U)
 */
-static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, void *ctx)
-{
+static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, void *ctx) {
   PetscScalar       *f;
   const PetscScalar *u;
 
@@ -68,8 +65,7 @@ static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, void *ctx)
 /*
      Defines the Jacobian of the ODE passed to the ODE solver. See TSSetRHSJacobian() for the meaning the Jacobian.
 */
-static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B, void *ctx)
-{
+static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B, void *ctx) {
   PetscInt           rowcol[2], rstart;
   PetscScalar        J[2][2];
   const PetscScalar *u;
@@ -100,8 +96,7 @@ static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B, void 
 /*
      Defines the ODE passed to the ODE solver in implicit form: F(U_t,U) = 0
 */
-static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, void *ctx)
-{
+static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, void *ctx) {
   PetscScalar       *f;
   const PetscScalar *u, *udot;
 
@@ -123,8 +118,7 @@ static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, void
 /*
      Defines the Jacobian of the ODE passed to the ODE solver. See TSSetIJacobian() for the meaning of a and the Jacobian.
 */
-static PetscErrorCode IJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat A, Mat B, void *ctx)
-{
+static PetscErrorCode IJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat A, Mat B, void *ctx) {
   PetscInt           rowcol[2], rstart;
   PetscScalar        J[2][2];
   const PetscScalar *u, *udot;
@@ -155,8 +149,7 @@ static PetscErrorCode IJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS           ts; /* ODE integrator */
   Vec          U;  /* solution will be stored here */
   PetscMPIInt  rank;

@@ -3,8 +3,7 @@ static char help[] = "Test Hypre matrix APIs\n";
 
 #include <petscmathypre.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A, B, C;
   PetscReal   err;
   PetscInt    i, j, M = 20;

@@ -1,4 +1,4 @@
-#ifndef __DMFIELDIMPL_H
+#if !defined(__DMFIELDIMPL_H)
 #define __DMFIELDIMPL_H
 
 #include <petscdmfield.h>

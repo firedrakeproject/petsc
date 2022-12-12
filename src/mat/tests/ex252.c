@@ -2,8 +2,7 @@ static char help[] = "Test MatZeroEntries() on unassembled matrices \n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat      A;
   PetscInt N = 32;
   MPI_Comm comm;

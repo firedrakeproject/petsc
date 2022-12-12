@@ -13,8 +13,7 @@ typedef struct {
   PetscSFNode  *iremote;
 } AppCtx;
 
-static PetscErrorCode GetOptions(MPI_Comm comm, AppCtx *ctx)
-{
+static PetscErrorCode GetOptions(MPI_Comm comm, AppCtx *ctx) {
   PetscFunctionBegin;
   ctx->comm             = comm;
   ctx->nLeavesPerRank   = 4;
@@ -34,8 +33,7 @@ static PetscErrorCode GetOptions(MPI_Comm comm, AppCtx *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFCheckEqual_Private(PetscSF sf0, PetscSF sf1)
-{
+static PetscErrorCode PetscSFCheckEqual_Private(PetscSF sf0, PetscSF sf1) {
   PetscInt  nRoot, nLeave;
   Vec       vecRoot0, vecLeave0, vecRoot1, vecLeave1;
   MPI_Comm  comm;
@@ -83,8 +81,7 @@ static PetscErrorCode PetscSFCheckEqual_Private(PetscSF sf0, PetscSF sf1)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode CreateSF0(AppCtx *ctx, PetscSF *sf0)
-{
+PetscErrorCode CreateSF0(AppCtx *ctx, PetscSF *sf0) {
   PetscInt     j, k, r;
   PetscInt     nLeaves = ctx->nLeavesPerRank * ctx->size;
   PetscInt     nroots  = ctx->nLeavesPerRank;
@@ -122,8 +119,7 @@ PetscErrorCode CreateSF0(AppCtx *ctx, PetscSF *sf0)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode CreateSF1(AppCtx *ctx, PetscSF *sf1)
-{
+PetscErrorCode CreateSF1(AppCtx *ctx, PetscSF *sf1) {
   PetscInt     j, k, r;
   PetscInt    *ilocal = NULL;
   PetscSFNode *iremote;
@@ -155,8 +151,7 @@ PetscErrorCode CreateSF1(AppCtx *ctx, PetscSF *sf1)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   AppCtx   ctx;
   PetscSF  sf0, sf1;
   MPI_Comm comm;

@@ -21,8 +21,7 @@
 
 #include <petsc/private/vecimpl.h> /*I   "petscvec.h"    I*/
 
-static PetscErrorCode MPIPetsc_Iallreduce(void *sendbuf, void *recvbuf, PetscMPIInt count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm, MPI_Request *request)
-{
+static PetscErrorCode MPIPetsc_Iallreduce(void *sendbuf, void *recvbuf, PetscMPIInt count, MPI_Datatype datatype, MPI_Op op, MPI_Comm comm, MPI_Request *request) {
   PetscFunctionBegin;
 #if defined(PETSC_HAVE_MPI_NONBLOCKING_COLLECTIVES)
   PetscCallMPI(MPI_Iallreduce(sendbuf, recvbuf, count, datatype, op, comm, request));
@@ -38,8 +37,7 @@ static PetscErrorCode PetscSplitReductionApply(PetscSplitReduction *);
 /*
    PetscSplitReductionCreate - Creates a data structure to contain the queued information.
 */
-static PetscErrorCode PetscSplitReductionCreate(MPI_Comm comm, PetscSplitReduction **sr)
-{
+static PetscErrorCode PetscSplitReductionCreate(MPI_Comm comm, PetscSplitReduction **sr) {
   PetscFunctionBegin;
   PetscCall(PetscNew(sr));
   (*sr)->numopsbegin = 0;
@@ -69,8 +67,7 @@ static PetscErrorCode PetscSplitReductionCreate(MPI_Comm comm, PetscSplitReducti
 */
 MPI_Op PetscSplitReduction_Op = 0;
 
-PETSC_EXTERN void MPIAPI PetscSplitReduction_Local(void *in, void *out, PetscMPIInt *cnt, MPI_Datatype *datatype)
-{
+PETSC_EXTERN void MPIAPI PetscSplitReduction_Local(void *in, void *out, PetscMPIInt *cnt, MPI_Datatype *datatype) {
   struct PetscScalarInt {
     PetscScalar v;
     PetscInt    i;
@@ -112,8 +109,7 @@ PETSC_EXTERN void MPIAPI PetscSplitReduction_Local(void *in, void *out, PetscMPI
 
 .seealso: `VecNormBegin()`, `VecNormEnd()`, `VecDotBegin()`, `VecDotEnd()`, `VecTDotBegin()`, `VecTDotEnd()`, `VecMDotBegin()`, `VecMDotEnd()`, `VecMTDotBegin()`, `VecMTDotEnd()`
 @*/
-PetscErrorCode PetscCommSplitReductionBegin(MPI_Comm comm)
-{
+PetscErrorCode PetscCommSplitReductionBegin(MPI_Comm comm) {
   PetscSplitReduction *sr;
 
   PetscFunctionBegin;
@@ -163,13 +159,10 @@ PetscErrorCode PetscCommSplitReductionBegin(MPI_Comm comm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSplitReductionEnd(PetscSplitReduction *sr)
-{
+PetscErrorCode PetscSplitReductionEnd(PetscSplitReduction *sr) {
   PetscFunctionBegin;
   switch (sr->state) {
-  case STATE_BEGIN: /* We are doing synchronous communication and this is the first call to VecXxxEnd() so do the communication */
-    PetscCall(PetscSplitReductionApply(sr));
-    break;
+  case STATE_BEGIN: /* We are doing synchronous communication and this is the first call to VecXxxEnd() so do the communication */ PetscCall(PetscSplitReductionApply(sr)); break;
   case STATE_PENDING:
     /* We are doing asynchronous-mode communication and this is the first VecXxxEnd() so wait for comm to complete */
     PetscCall(PetscLogEventBegin(VEC_ReduceEnd, 0, 0, 0, 0));
@@ -182,8 +175,7 @@ PetscErrorCode PetscSplitReductionEnd(PetscSplitReduction *sr)
     }
     PetscCall(PetscLogEventEnd(VEC_ReduceEnd, 0, 0, 0, 0));
     break;
-  default:
-    break; /* everything is already done */
+  default: break; /* everything is already done */
   }
   PetscFunctionReturn(0);
 }
@@ -191,8 +183,7 @@ PetscErrorCode PetscSplitReductionEnd(PetscSplitReduction *sr)
 /*
    PetscSplitReductionApply - Actually do the communication required for a split phase reduction
 */
-static PetscErrorCode PetscSplitReductionApply(PetscSplitReduction *sr)
-{
+static PetscErrorCode PetscSplitReductionApply(PetscSplitReduction *sr) {
   PetscInt     i, numops = sr->numopsbegin, *reducetype = sr->reducetype;
   PetscScalar *lvalues = sr->lvalues, *gvalues = sr->gvalues;
   PetscInt     sum_flg = 0, max_flg = 0, min_flg = 0;
@@ -238,8 +229,7 @@ static PetscErrorCode PetscSplitReductionApply(PetscSplitReduction *sr)
 /*
    PetscSplitReductionExtend - Double the amount of space (slots) allocated for a split reduction object.
 */
-PetscErrorCode PetscSplitReductionExtend(PetscSplitReduction *sr)
-{
+PetscErrorCode PetscSplitReductionExtend(PetscSplitReduction *sr) {
   struct PetscScalarInt {
     PetscScalar v;
     PetscInt    i;
@@ -263,8 +253,7 @@ PetscErrorCode PetscSplitReductionExtend(PetscSplitReduction *sr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscSplitReductionDestroy(PetscSplitReduction *sr)
-{
+PetscErrorCode PetscSplitReductionDestroy(PetscSplitReduction *sr) {
   PetscFunctionBegin;
   PetscCall(PetscFree6(sr->lvalues, sr->gvalues, sr->reducetype, sr->invecs, sr->lvalues_mix, sr->gvalues_mix));
   PetscCall(PetscFree(sr));
@@ -280,8 +269,7 @@ PetscMPIInt Petsc_Reduction_keyval = MPI_KEYVAL_INVALID;
   The binding for the first argument changed from MPI 1.0 to 1.1; in 1.0
   it was MPI_Comm *comm.
 */
-PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelReduction(MPI_Comm comm, PetscMPIInt keyval, void *attr_val, void *extra_state)
-{
+PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelReduction(MPI_Comm comm, PetscMPIInt keyval, void *attr_val, void *extra_state) {
   PetscFunctionBegin;
   PetscCallMPI(PetscInfo(0, "Deleting reduction data in an MPI_Comm %ld\n", (long)comm));
   PetscCallMPI(PetscSplitReductionDestroy((PetscSplitReduction *)attr_val));
@@ -293,8 +281,7 @@ PETSC_EXTERN PetscMPIInt MPIAPI Petsc_DelReduction(MPI_Comm comm, PetscMPIInt ke
         PETSc vector, creates if it does not exit.
 
 */
-PetscErrorCode PetscSplitReductionGet(MPI_Comm comm, PetscSplitReduction **sr)
-{
+PetscErrorCode PetscSplitReductionGet(MPI_Comm comm, PetscSplitReduction **sr) {
   PetscMPIInt flag;
 
   PetscFunctionBegin;
@@ -335,8 +322,7 @@ PetscErrorCode PetscSplitReductionGet(MPI_Comm comm, PetscSplitReduction **sr)
 seealso: VecDotEnd(), VecNormBegin(), VecNormEnd(), VecNorm(), VecDot(), VecMDot(),
          VecTDotBegin(), VecTDotEnd(), PetscCommSplitReductionBegin()
 @*/
-PetscErrorCode VecDotBegin(Vec x, Vec y, PetscScalar *result)
-{
+PetscErrorCode VecDotBegin(Vec x, Vec y, PetscScalar *result) {
   PetscSplitReduction *sr;
   MPI_Comm             comm;
 
@@ -372,8 +358,7 @@ PetscErrorCode VecDotBegin(Vec x, Vec y, PetscScalar *result)
           `VecTDotBegin()`, `VecTDotEnd()`, `PetscCommSplitReductionBegin()`
 
 @*/
-PetscErrorCode VecDotEnd(Vec x, Vec y, PetscScalar *result)
-{
+PetscErrorCode VecDotEnd(Vec x, Vec y, PetscScalar *result) {
   PetscSplitReduction *sr;
   MPI_Comm             comm;
 
@@ -416,8 +401,7 @@ PetscErrorCode VecDotEnd(Vec x, Vec y, PetscScalar *result)
           `VecDotBegin()`, `VecDotEnd()`, `PetscCommSplitReductionBegin()`
 
 @*/
-PetscErrorCode VecTDotBegin(Vec x, Vec y, PetscScalar *result)
-{
+PetscErrorCode VecTDotBegin(Vec x, Vec y, PetscScalar *result) {
   PetscSplitReduction *sr;
   MPI_Comm             comm;
 
@@ -450,8 +434,7 @@ PetscErrorCode VecTDotBegin(Vec x, Vec y, PetscScalar *result)
 seealso: VecTDotBegin(), VecNormBegin(), VecNormEnd(), VecNorm(), VecDot(), VecMDot(),
          VecDotBegin(), VecDotEnd()
 @*/
-PetscErrorCode VecTDotEnd(Vec x, Vec y, PetscScalar *result)
-{
+PetscErrorCode VecTDotEnd(Vec x, Vec y, PetscScalar *result) {
   PetscFunctionBegin;
   /*
       TDotEnd() is the same as DotEnd() so reuse the code
@@ -478,8 +461,7 @@ PetscErrorCode VecTDotEnd(Vec x, Vec y, PetscScalar *result)
 .seealso: `VecNormEnd()`, `VecNorm()`, `VecDot()`, `VecMDot()`, `VecDotBegin()`, `VecDotEnd()`, `PetscCommSplitReductionBegin()`
 
 @*/
-PetscErrorCode VecNormBegin(Vec x, NormType ntype, PetscReal *result)
-{
+PetscErrorCode VecNormBegin(Vec x, NormType ntype, PetscReal *result) {
   PetscSplitReduction *sr;
   PetscReal            lresult[2];
   MPI_Comm             comm;
@@ -525,8 +507,7 @@ PetscErrorCode VecNormBegin(Vec x, NormType ntype, PetscReal *result)
 .seealso: `VecNormBegin()`, `VecNorm()`, `VecDot()`, `VecMDot()`, `VecDotBegin()`, `VecDotEnd()`, `PetscCommSplitReductionBegin()`
 
 @*/
-PetscErrorCode VecNormEnd(Vec x, NormType ntype, PetscReal *result)
-{
+PetscErrorCode VecNormEnd(Vec x, NormType ntype, PetscReal *result) {
   PetscSplitReduction *sr;
   MPI_Comm             comm;
 
@@ -582,8 +563,7 @@ PetscErrorCode VecNormEnd(Vec x, NormType ntype, PetscReal *result)
 .seealso: `VecMDotEnd()`, `VecNormBegin()`, `VecNormEnd()`, `VecNorm()`, `VecDot()`, `VecMDot()`,
           `VecTDotBegin()`, `VecTDotEnd()`, `VecMTDotBegin()`, `VecMTDotEnd()`, `PetscCommSplitReductionBegin()`
 @*/
-PetscErrorCode VecMDotBegin(Vec x, PetscInt nv, const Vec y[], PetscScalar result[])
-{
+PetscErrorCode VecMDotBegin(Vec x, PetscInt nv, const Vec y[], PetscScalar result[]) {
   PetscSplitReduction *sr;
   MPI_Comm             comm;
   PetscInt             i;
@@ -624,8 +604,7 @@ PetscErrorCode VecMDotBegin(Vec x, PetscInt nv, const Vec y[], PetscScalar resul
           `VecTDotBegin()`, `VecTDotEnd()`, `VecMTDotBegin()`, `VecMTDotEnd()`, `PetscCommSplitReductionBegin()`
 
 @*/
-PetscErrorCode VecMDotEnd(Vec x, PetscInt nv, const Vec y[], PetscScalar result[])
-{
+PetscErrorCode VecMDotEnd(Vec x, PetscInt nv, const Vec y[], PetscScalar result[]) {
   PetscSplitReduction *sr;
   MPI_Comm             comm;
   PetscInt             i;
@@ -669,8 +648,7 @@ PetscErrorCode VecMDotEnd(Vec x, PetscInt nv, const Vec y[], PetscScalar result[
           `VecDotBegin()`, `VecDotEnd()`, `VecMDotBegin()`, `VecMDotEnd()`, `PetscCommSplitReductionBegin()`
 
 @*/
-PetscErrorCode VecMTDotBegin(Vec x, PetscInt nv, const Vec y[], PetscScalar result[])
-{
+PetscErrorCode VecMTDotBegin(Vec x, PetscInt nv, const Vec y[], PetscScalar result[]) {
   PetscSplitReduction *sr;
   MPI_Comm             comm;
   PetscInt             i;
@@ -710,8 +688,7 @@ PetscErrorCode VecMTDotBegin(Vec x, PetscInt nv, const Vec y[], PetscScalar resu
 .seealso: `VecMTDotBegin()`, `VecNormBegin()`, `VecNormEnd()`, `VecNorm()`, `VecDot()`, `VecMDot()`,
           `VecDotBegin()`, `VecDotEnd()`, `VecMDotBegin()`, `VecMDotEnd()`, `PetscCommSplitReductionBegin()`
 @*/
-PetscErrorCode VecMTDotEnd(Vec x, PetscInt nv, const Vec y[], PetscScalar result[])
-{
+PetscErrorCode VecMTDotEnd(Vec x, PetscInt nv, const Vec y[], PetscScalar result[]) {
   PetscFunctionBegin;
   /*
       MTDotEnd() is the same as MDotEnd() so reuse the code

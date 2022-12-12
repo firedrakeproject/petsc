@@ -20,8 +20,7 @@
   Note: Only arrays of doubles are currently accounted for in ADOL-C's myalloc2 function.
 */
 template <class T>
-PetscErrorCode AdolcMalloc2(PetscInt m, PetscInt n, T **A[])
-{
+PetscErrorCode AdolcMalloc2(PetscInt m, PetscInt n, T **A[]) {
   PetscFunctionBegin;
   *A = myalloc2(m, n);
   PetscFunctionReturn(0);
@@ -36,8 +35,7 @@ PetscErrorCode AdolcMalloc2(PetscInt m, PetscInt n, T **A[])
   Note: Only arrays of doubles are currently accounted for in ADOL-C's myfree2 function.
 */
 template <class T>
-PetscErrorCode AdolcFree2(T **A)
-{
+PetscErrorCode AdolcFree2(T **A) {
   PetscFunctionBegin;
   myfree2(A);
   PetscFunctionReturn(0);
@@ -57,8 +55,7 @@ PetscErrorCode AdolcFree2(T **A)
           ghost points, pointing to the 1-array
 */
 template <class T>
-PetscErrorCode GiveGhostPoints(DM da, T *cgs, void *array)
-{
+PetscErrorCode GiveGhostPoints(DM da, T *cgs, void *array) {
   PetscInt dim;
 
   PetscFunctionBegin;
@@ -82,8 +79,7 @@ PetscErrorCode GiveGhostPoints(DM da, T *cgs, void *array)
   a1d - contiguously allocated 1-array
 */
 template <class T>
-PetscErrorCode GiveGhostPoints1d(DM da, T *a1d[])
-{
+PetscErrorCode GiveGhostPoints1d(DM da, T *a1d[]) {
   PetscInt gxs;
 
   PetscFunctionBegin;
@@ -106,8 +102,7 @@ PetscErrorCode GiveGhostPoints1d(DM da, T *a1d[])
         1-array
 */
 template <class T>
-PetscErrorCode GiveGhostPoints2d(DM da, T *cgs, T **a2d[])
-{
+PetscErrorCode GiveGhostPoints2d(DM da, T *cgs, T **a2d[]) {
   PetscInt gxs, gys, gxm, gym;
 
   PetscFunctionBegin;
@@ -128,8 +123,7 @@ PetscErrorCode GiveGhostPoints2d(DM da, T *cgs, T **a2d[])
   S - resulting n x m submatrix
 */
 template <class T>
-PetscErrorCode Subidentity(PetscInt n, PetscInt s, T **S)
-{
+PetscErrorCode Subidentity(PetscInt n, PetscInt s, T **S) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -145,8 +139,7 @@ PetscErrorCode Subidentity(PetscInt n, PetscInt s, T **S)
   I - n x n array with memory pre-allocated
 */
 template <class T>
-PetscErrorCode Identity(PetscInt n, T **I)
-{
+PetscErrorCode Identity(PetscInt n, T **I) {
   PetscFunctionBegin;
   PetscCall(Subidentity(n, 0, I));
   PetscFunctionReturn(0);

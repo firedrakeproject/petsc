@@ -8,14 +8,13 @@
 */
 #include <errno.h>
 #if defined(PETSC_HAVE_UNISTD_H)
-  #include <unistd.h>
+#include <unistd.h>
 #endif
 
 /*
   SYByteSwapInt - Swap bytes in an integer
 */
-void SYByteSwapInt(int *buff, int n)
-{
+void SYByteSwapInt(int *buff, int n) {
   int   i, j, tmp;
   char *ptr1, *ptr2 = (char *)&tmp;
   for (j = 0; j < n; j++) {
@@ -27,8 +26,7 @@ void SYByteSwapInt(int *buff, int n)
 /*
   SYByteSwapShort - Swap bytes in a short
 */
-void SYByteSwapShort(short *buff, int n)
-{
+void SYByteSwapShort(short *buff, int n) {
   int   i, j;
   short tmp;
   char *ptr1, *ptr2 = (char *)&tmp;
@@ -42,8 +40,7 @@ void SYByteSwapShort(short *buff, int n)
   SYByteSwapScalar - Swap bytes in a double
   Complex is dealt with as if array of double twice as long.
 */
-void SYByteSwapScalar(PetscScalar *buff, int n)
-{
+void SYByteSwapScalar(PetscScalar *buff, int n) {
   int    i, j;
   double tmp, *buff1 = (double *)buff;
   char  *ptr1, *ptr2 = (char *)&tmp;
@@ -77,8 +74,7 @@ void SYByteSwapScalar(PetscScalar *buff, int n)
   Notes:
     does byte swapping to work on all machines.
 */
-PetscErrorCode PetscBinaryRead(int fd, void *p, int n, int *dummy, PetscDataType type)
-{
+PetscErrorCode PetscBinaryRead(int fd, void *p, int n, int *dummy, PetscDataType type) {
   int   maxblock, wsize, err;
   char *pp   = (char *)p;
   int   ntmp = n;
@@ -123,9 +119,8 @@ PetscErrorCode PetscBinaryRead(int fd, void *p, int n, int *dummy, PetscDataType
   Notes:
     does byte swapping to work on all machines.
 */
-PetscErrorCode PetscBinaryWrite(int fd, const void *p, int n, PetscDataType type)
-{
-  int   maxblock, wsize, err = 0, retv = 0;
+PetscErrorCode PetscBinaryWrite(int fd, const void *p, int n, PetscDataType type) {
+  int   maxblock, wsize, err, retv = 0;
   char *pp   = (char *)p;
   int   ntmp = n;
   void *ptmp = (void *)p;

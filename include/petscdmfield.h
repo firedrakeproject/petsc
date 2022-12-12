@@ -1,4 +1,4 @@
-#ifndef PETSCDMFIELD_H
+#if !defined(PETSCDMFIELD_H)
 #define PETSCDMFIELD_H
 
 #include <petscdm.h>

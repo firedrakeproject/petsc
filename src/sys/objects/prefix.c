@@ -26,8 +26,7 @@
 .seealso: `PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectSetOptionsPrefix()`, `PetscObjectAppendOptionsPrefix()`, `PetscObjectPrependOptionsPrefix()`,
           `PetscObjectGetOptionsPrefix()`, `PetscObjectSetOptions()`
 @*/
-PetscErrorCode PetscObjectGetOptions(PetscObject obj, PetscOptions *options)
-{
+PetscErrorCode PetscObjectGetOptions(PetscObject obj, PetscOptions *options) {
   PetscFunctionBegin;
   PetscValidHeader(obj, 1);
   *options = obj->options;
@@ -54,8 +53,7 @@ PetscErrorCode PetscObjectGetOptions(PetscObject obj, PetscOptions *options)
 .seealso: `PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectSetOptionsPrefix()`, `PetscObjectAppendOptionsPrefix()`, `PetscObjectPrependOptionsPrefix()`,
           `PetscObjectGetOptionsPrefix()`, `PetscObjectGetOptions()`
 @*/
-PetscErrorCode PetscObjectSetOptions(PetscObject obj, PetscOptions options)
-{
+PetscErrorCode PetscObjectSetOptions(PetscObject obj, PetscOptions options) {
   PetscFunctionBegin;
   PetscValidHeader(obj, 1);
   obj->options = options;
@@ -82,8 +80,7 @@ PetscErrorCode PetscObjectSetOptions(PetscObject obj, PetscOptions options)
 .seealso: `PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectAppendOptionsPrefix()`, `PetscObjectPrependOptionsPrefix()`,
           `PetscObjectGetOptionsPrefix()`, `TSSetOptionsPrefix()`, `SNESSetOptionsPrefix()`, `KSPSetOptionsPrefix()`
 @*/
-PetscErrorCode PetscObjectSetOptionsPrefix(PetscObject obj, const char prefix[])
-{
+PetscErrorCode PetscObjectSetOptionsPrefix(PetscObject obj, const char prefix[]) {
   PetscFunctionBegin;
   PetscValidHeader(obj, 1);
   if (prefix) {
@@ -114,8 +111,7 @@ PetscErrorCode PetscObjectSetOptionsPrefix(PetscObject obj, const char prefix[])
 .seealso: `PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectSetOptionsPrefix()`, `PetscObjectPrependOptionsPrefix()`,
           `PetscObjectGetOptionsPrefix()`, `TSAppendOptionsPrefix()`, `SNESAppendOptionsPrefix()`, `KSPAppendOptionsPrefix()`
 @*/
-PetscErrorCode PetscObjectAppendOptionsPrefix(PetscObject obj, const char prefix[])
-{
+PetscErrorCode PetscObjectAppendOptionsPrefix(PetscObject obj, const char prefix[]) {
   char  *buf = obj->prefix;
   size_t len1, len2;
 
@@ -151,8 +147,7 @@ PetscErrorCode PetscObjectAppendOptionsPrefix(PetscObject obj, const char prefix
 .seealso: `PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectSetOptionsPrefix()`, `PetscObjectAppendOptionsPrefix()`, `PetscObjectPrependOptionsPrefix()`,
           `TSGetOptionsPrefix()`, `SNESGetOptionsPrefix()`, `KSPGetOptionsPrefix()`
 @*/
-PetscErrorCode PetscObjectGetOptionsPrefix(PetscObject obj, const char *prefix[])
-{
+PetscErrorCode PetscObjectGetOptionsPrefix(PetscObject obj, const char *prefix[]) {
   PetscFunctionBegin;
   PetscValidHeader(obj, 1);
   PetscValidPointer(prefix, 2);
@@ -177,8 +172,7 @@ PetscErrorCode PetscObjectGetOptionsPrefix(PetscObject obj, const char *prefix[]
 .seealso: `PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectSetOptionsPrefix()`, `PetscObjectAppendOptionsPrefix()`,
           `PetscObjectGetOptionsPrefix()`
 @*/
-PetscErrorCode PetscObjectPrependOptionsPrefix(PetscObject obj, const char prefix[])
-{
+PetscErrorCode PetscObjectPrependOptionsPrefix(PetscObject obj, const char prefix[]) {
   char  *buf;
   size_t len1, len2;
 

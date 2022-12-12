@@ -2,8 +2,7 @@ static char help[] = "Creates MatSeqBAIJ matrix of given BS for timing tests of 
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A;
   Vec         x, y;
   PetscInt    m = 50000, bs = 12, i, j, k, l, row, col, M, its = 25;

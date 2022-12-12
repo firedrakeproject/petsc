@@ -2,8 +2,7 @@
 #include <petscds.h>
 
 // Greatest common divisor of two nonnegative integers
-PetscInt PetscGCD(PetscInt a, PetscInt b)
-{
+PetscInt PetscGCD(PetscInt a, PetscInt b) {
   while (b != 0) {
     PetscInt tmp = b;
     b            = a % b;
@@ -12,8 +11,7 @@ PetscInt PetscGCD(PetscInt a, PetscInt b)
   return a;
 }
 
-PetscErrorCode DMCreateGlobalVector_Section_Private(DM dm, Vec *vec)
-{
+PetscErrorCode DMCreateGlobalVector_Section_Private(DM dm, Vec *vec) {
   PetscSection gSection;
   PetscInt     localSize, bs, blockSize = -1, pStart, pEnd, p;
   PetscInt     in[2], out[2];
@@ -61,8 +59,7 @@ PetscErrorCode DMCreateGlobalVector_Section_Private(DM dm, Vec *vec)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateLocalVector_Section_Private(DM dm, Vec *vec)
-{
+PetscErrorCode DMCreateLocalVector_Section_Private(DM dm, Vec *vec) {
   PetscSection section;
   PetscInt     localSize, blockSize = -1, pStart, pEnd, p;
 
@@ -106,8 +103,7 @@ PetscErrorCode DMCreateLocalVector_Section_Private(DM dm, Vec *vec)
 
 .seealso `DMCreateSubDM()`, `DMGetLocalSection()`, `DMPlexSetMigrationSF()`, `DMView()`
 @*/
-PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm)
-{
+PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm) {
   PetscSection section, sectionGlobal;
   PetscInt    *subIndices;
   PetscInt     subSize = 0, subOff = 0, Nf, f, pStart, pEnd, p;
@@ -318,8 +314,7 @@ PetscErrorCode DMCreateSectionSubDM(DM dm, PetscInt numFields, const PetscInt fi
 
 .seealso `DMCreateSuperDM()`, `DMGetLocalSection()`, `DMPlexSetMigrationSF()`, `DMView()`
 @*/
-PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *superdm)
-{
+PetscErrorCode DMCreateSectionSuperDM(DM dms[], PetscInt len, IS **is, DM *superdm) {
   MPI_Comm     comm;
   PetscSection supersection, *sections, *sectionGlobals;
   PetscInt    *Nfs, Nf = 0, f, supf, oldf = -1, nullf = -1, i;

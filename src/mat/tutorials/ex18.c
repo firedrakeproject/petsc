@@ -16,8 +16,7 @@ static char help[] = "Demonstrates the use of the COO interface to PETSc matrice
 #include <petscmat.h>
 #include "ex18.h"
 
-static PetscErrorCode CreateFEStruct(FEStruct *fe)
-{
+static PetscErrorCode CreateFEStruct(FEStruct *fe) {
   PetscFunctionBeginUser;
   fe->Nv = 5;
   fe->Ne = 3;
@@ -36,16 +35,14 @@ static PetscErrorCode CreateFEStruct(FEStruct *fe)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DestroyFEStruct(FEStruct *fe)
-{
+static PetscErrorCode DestroyFEStruct(FEStruct *fe) {
   PetscFunctionBeginUser;
   PetscCall(PetscFree(fe->vertices));
   PetscCall(PetscFree(fe->coo));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateMatrix(FEStruct *fe, Mat *A)
-{
+static PetscErrorCode CreateMatrix(FEStruct *fe, Mat *A) {
   PetscInt *oor, *ooc, cnt = 0;
 
   PetscFunctionBeginUser;
@@ -75,8 +72,7 @@ static PetscErrorCode CreateMatrix(FEStruct *fe, Mat *A)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode FillMatrixCPU(FEStruct *fe, Mat A)
-{
+static PetscErrorCode FillMatrixCPU(FEStruct *fe, Mat A) {
   PetscScalar s[9];
 
   PetscFunctionBeginUser;
@@ -96,8 +92,7 @@ static PetscErrorCode FillMatrixCPU(FEStruct *fe, Mat A)
    Shows an example of tracking element offsets explicitly, which allows for
    mixed-topology meshes and combining both volume and surface parts into the weak form.
 */
-static PetscErrorCode FillMatrixCPUCOO(FEStruct *fe, Mat A)
-{
+static PetscErrorCode FillMatrixCPUCOO(FEStruct *fe, Mat A) {
   PetscScalar *v, *s;
 
   PetscFunctionBeginUser;
@@ -118,8 +113,7 @@ static PetscErrorCode FillMatrixCPUCOO(FEStruct *fe, Mat A)
   Uses a multi-dimensional indexing technique that works for homogeneous meshes
   such as single-topology with volume integral only.
 */
-static PetscErrorCode FillMatrixCPUCOO3d(FEStruct *fe, Mat A)
-{
+static PetscErrorCode FillMatrixCPUCOO3d(FEStruct *fe, Mat A) {
   PetscScalar(*s)[3][3];
 
   PetscFunctionBeginUser;
@@ -135,8 +129,7 @@ static PetscErrorCode FillMatrixCPUCOO3d(FEStruct *fe, Mat A)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A;
   FEStruct    fe;
   PetscMPIInt size;

@@ -23,7 +23,7 @@
 !/*TEST
 !
 ! testset:
-!   filter: grep -E -v "(options_left)"
+!   filter: egrep -v "(options_left)"
 !
 !   test:
 !      suffix: 1

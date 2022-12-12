@@ -16,8 +16,7 @@ Test 2:
   solution: u_1 = b_3, u_2 = b_2, u_3 = b_1 - b_3
 */
 
-PetscErrorCode ComputeFunctionLinear(SNES snes, Vec x, Vec f, void *ctx)
-{
+PetscErrorCode ComputeFunctionLinear(SNES snes, Vec x, Vec f, void *ctx) {
   Mat A = (Mat)ctx;
 
   PetscFunctionBeginUser;
@@ -25,14 +24,12 @@ PetscErrorCode ComputeFunctionLinear(SNES snes, Vec x, Vec f, void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ComputeJacobianLinear(SNES snes, Vec x, Mat A, Mat J, void *ctx)
-{
+PetscErrorCode ComputeJacobianLinear(SNES snes, Vec x, Mat A, Mat J, void *ctx) {
   PetscFunctionBeginUser;
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ConstructProblem1(Mat A, Vec b)
-{
+PetscErrorCode ConstructProblem1(Mat A, Vec b) {
   PetscInt rStart, rEnd, row;
 
   PetscFunctionBeginUser;
@@ -48,8 +45,7 @@ PetscErrorCode ConstructProblem1(Mat A, Vec b)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode CheckProblem1(Mat A, Vec b, Vec u)
-{
+PetscErrorCode CheckProblem1(Mat A, Vec b, Vec u) {
   Vec       errorVec;
   PetscReal norm, error;
 
@@ -63,8 +59,7 @@ PetscErrorCode CheckProblem1(Mat A, Vec b, Vec u)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ConstructProblem2(Mat A, Vec b)
-{
+PetscErrorCode ConstructProblem2(Mat A, Vec b) {
   PetscInt N = 10, constraintSize = 4;
   PetscInt row;
 
@@ -94,8 +89,7 @@ PetscErrorCode ConstructProblem2(Mat A, Vec b)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode CheckProblem2(Mat A, Vec b, Vec u)
-{
+PetscErrorCode CheckProblem2(Mat A, Vec b, Vec u) {
   PetscInt           N = 10, constraintSize = 4, r;
   PetscReal          norm, error;
   const PetscScalar *uArray, *bArray;
@@ -121,8 +115,7 @@ PetscErrorCode CheckProblem2(Mat A, Vec b, Vec u)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   MPI_Comm comm;
   SNES     snes;    /* nonlinear solver */
   Vec      u, r, b; /* solution, residual, and rhs vectors */
@@ -146,14 +139,9 @@ int main(int argc, char **argv)
   J = A;
 
   switch (problem) {
-  case 1:
-    PetscCall(ConstructProblem1(A, b));
-    break;
-  case 2:
-    PetscCall(ConstructProblem2(A, b));
-    break;
-  default:
-    SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "Invalid problem number %" PetscInt_FMT, problem);
+  case 1: PetscCall(ConstructProblem1(A, b)); break;
+  case 2: PetscCall(ConstructProblem2(A, b)); break;
+  default: SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "Invalid problem number %" PetscInt_FMT, problem);
   }
 
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
@@ -165,14 +153,9 @@ int main(int argc, char **argv)
   PetscCall(VecView(u, NULL));
 
   switch (problem) {
-  case 1:
-    PetscCall(CheckProblem1(A, b, u));
-    break;
-  case 2:
-    PetscCall(CheckProblem2(A, b, u));
-    break;
-  default:
-    SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "Invalid problem number %" PetscInt_FMT, problem);
+  case 1: PetscCall(CheckProblem1(A, b, u)); break;
+  case 2: PetscCall(CheckProblem2(A, b, u)); break;
+  default: SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "Invalid problem number %" PetscInt_FMT, problem);
   }
 
   if (A != J) PetscCall(MatDestroy(&A));

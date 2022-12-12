@@ -1,4 +1,4 @@
-#ifndef TAOADMM_H
+#if !defined(TAOADMM_H)
 #define TAOADMM_H
 #include <petsc/private/taoimpl.h>
 

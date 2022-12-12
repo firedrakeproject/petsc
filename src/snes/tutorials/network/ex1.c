@@ -16,8 +16,7 @@ typedef struct {
   Vec           localXold;  /* store previous solution, used by FormFunction_Dummy() */
 } UserCtx;
 
-PetscErrorCode UserMonitor(SNES snes, PetscInt its, PetscReal fnorm, void *appctx)
-{
+PetscErrorCode UserMonitor(SNES snes, PetscInt its, PetscReal fnorm, void *appctx) {
   UserCtx    *user = (UserCtx *)appctx;
   Vec         X, localXold = user->localXold;
   DM          networkdm;
@@ -44,8 +43,7 @@ PetscErrorCode UserMonitor(SNES snes, PetscInt its, PetscReal fnorm, void *appct
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormJacobian_subPower(SNES snes, Vec X, Mat J, Mat Jpre, void *appctx)
-{
+PetscErrorCode FormJacobian_subPower(SNES snes, Vec X, Mat J, Mat Jpre, void *appctx) {
   DM              networkdm;
   Vec             localX;
   PetscInt        nv, ne, i, j, offset, nvar, row;
@@ -92,8 +90,7 @@ PetscErrorCode FormJacobian_subPower(SNES snes, Vec X, Mat J, Mat Jpre, void *ap
 }
 
 /* Dummy equation localF(X) = localX - localXold */
-PetscErrorCode FormFunction_Dummy(DM networkdm, Vec localX, Vec localF, PetscInt nv, PetscInt ne, const PetscInt *vtx, const PetscInt *edges, void *appctx)
-{
+PetscErrorCode FormFunction_Dummy(DM networkdm, Vec localX, Vec localF, PetscInt nv, PetscInt ne, const PetscInt *vtx, const PetscInt *edges, void *appctx) {
   const PetscScalar *xarr, *xoldarr;
   PetscScalar       *farr;
   PetscInt           i, j, offset, nvar;
@@ -121,8 +118,7 @@ PetscErrorCode FormFunction_Dummy(DM networkdm, Vec localX, Vec localF, PetscInt
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormFunction(SNES snes, Vec X, Vec F, void *appctx)
-{
+PetscErrorCode FormFunction(SNES snes, Vec X, Vec F, void *appctx) {
   DM              networkdm;
   Vec             localX, localF;
   PetscInt        nv, ne, v;
@@ -179,17 +175,10 @@ PetscErrorCode FormFunction(SNES snes, Vec X, Vec F, void *appctx)
 
       /* Verify the coupling vertex is a powernet load vertex or a water vertex */
       switch (k) {
-      case 0:
-        PetscCheck(key == appctx_power.compkey_bus && nvar == 2, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "key %" PetscInt_FMT " not a power bus vertex or nvar %" PetscInt_FMT " != 2", key, nvar);
-        break;
-      case 1:
-        PetscCheck(key == appctx_power.compkey_load && nvar == 0 && goffset[1] == goffset[0] + 2, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Not a power load vertex");
-        break;
-      case 2:
-        PetscCheck(key == appctx_water.compkey_vtx && nvar == 1 && goffset[2] == goffset[1], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Not a water vertex");
-        break;
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "k %" PetscInt_FMT " is wrong", k);
+      case 0: PetscCheck(key == appctx_power.compkey_bus && nvar == 2, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "key %" PetscInt_FMT " not a power bus vertex or nvar %" PetscInt_FMT " != 2", key, nvar); break;
+      case 1: PetscCheck(key == appctx_power.compkey_load && nvar == 0 && goffset[1] == goffset[0] + 2, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Not a power load vertex"); break;
+      case 2: PetscCheck(key == appctx_water.compkey_vtx && nvar == 1 && goffset[2] == goffset[1], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Not a water vertex"); break;
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "k %" PetscInt_FMT " is wrong", k);
       }
       /* printf("  [%d] coupling vertex[%" PetscInt_FMT "]: key %" PetscInt_FMT "; nvar %" PetscInt_FMT ", goffset %" PetscInt_FMT "\n",rank,v,key,nvar,goffset[k]); */
     }
@@ -218,8 +207,7 @@ PetscErrorCode FormFunction(SNES snes, Vec X, Vec F, void *appctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SetInitialGuess(DM networkdm, Vec X, void *appctx)
-{
+PetscErrorCode SetInitialGuess(DM networkdm, Vec X, void *appctx) {
   PetscInt        nv, ne, i, j, ncomp, offset, key;
   const PetscInt *vtx, *edges;
   UserCtx        *user         = (UserCtx *)appctx;
@@ -283,8 +271,7 @@ PetscErrorCode SetInitialGuess(DM networkdm, Vec X, void *appctx)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM                  networkdm;
   PetscLogStage       stage[4];
   PetscMPIInt         rank, size;
@@ -319,6 +306,7 @@ int main(int argc, char **argv)
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &size));
 
   /* (1) Read Data - Only rank 0 reads the data */
+  /*--------------------------------------------*/
   PetscCall(PetscLogStageRegister("Read Data", &stage[0]));
   PetscCall(PetscLogStagePush(stage[0]));
 
@@ -362,6 +350,7 @@ int main(int argc, char **argv)
   PetscLogStagePop();
 
   /* (2) Create a network consist of two subnetworks */
+  /*-------------------------------------------------*/
   PetscCall(PetscLogStageRegister("Net Setup", &stage[1]));
   PetscCall(PetscLogStagePush(stage[1]));
 
@@ -404,6 +393,7 @@ int main(int argc, char **argv)
   PetscCall(DMNetworkLayoutSetUp(networkdm));
 
   /* ADD VARIABLES AND COMPONENTS FOR THE POWER SUBNETWORK */
+  /*-------------------------------------------------------*/
   genj  = 0;
   loadj = 0;
   PetscCall(DMNetworkGetSubnetwork(networkdm, power_netnum, &nv, &ne, &vtx, &edges));
@@ -424,6 +414,7 @@ int main(int argc, char **argv)
   }
 
   /* ADD VARIABLES AND COMPONENTS FOR THE WATER SUBNETWORK */
+  /*-------------------------------------------------------*/
   PetscCall(DMNetworkGetSubnetwork(networkdm, water_netnum, &nv, &ne, &vtx, &edges));
   for (i = 0; i < ne; i++) PetscCall(DMNetworkAddComponent(networkdm, edges[i], appctx_water->compkey_edge, &waterdata->edge[i], 0));
 
@@ -435,6 +426,7 @@ int main(int argc, char **argv)
   }
 
   /* ADD VARIABLES AND COMPONENTS AT THE SHARED VERTEX: net[0].4 coupls with net[1].0 -- owning and all ghost ranks of the vertex do this */
+  /*----------------------------------------------------------------------------------------------------------------------------*/
   PetscCall(DMNetworkGetSharedVertices(networkdm, &nv, &vtx));
   for (i = 0; i < nv; i++) {
     /* power */
@@ -509,6 +501,7 @@ int main(int argc, char **argv)
   PetscLogStagePop();
 
   /* (3) Setup Solvers */
+  /*-------------------*/
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-viewJ", &viewJ, NULL));
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-viewX", &viewX, NULL));
 
@@ -518,6 +511,7 @@ int main(int argc, char **argv)
   PetscCall(SetInitialGuess(networkdm, X, &user));
 
   /* Create coupled snes */
+  /*-------------------- */
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "SNES_coupled setup ......\n"));
   user.subsnes_id = Nsubnet;
   PetscCall(SNESCreate(PETSC_COMM_WORLD, &snes));
@@ -544,6 +538,7 @@ int main(int argc, char **argv)
   }
 
   /* Create snes_power */
+  /*-------------------*/
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "SNES_power setup ......\n"));
 
   user.subsnes_id = 0;
@@ -570,6 +565,7 @@ int main(int argc, char **argv)
   }
 
   /* Create snes_water */
+  /*-------------------*/
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "SNES_water setup......\n"));
 
   user.subsnes_id = 1;
@@ -587,6 +583,7 @@ int main(int argc, char **argv)
   PetscCall(PetscLogStagePop());
 
   /* (4) Solve */
+  /*-----------*/
   PetscCall(PetscLogStageRegister("SNES Solve", &stage[3]));
   PetscCall(PetscLogStagePush(stage[3]));
   user.it = 0;

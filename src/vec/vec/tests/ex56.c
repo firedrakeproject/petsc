@@ -17,8 +17,7 @@ const char *kernelSrc = "\n"
                         "}                                                             \n"
                         "\n";
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt        size = 5;
   Vec             x;
   cl_program      prg;

@@ -1,4 +1,4 @@
--include ../../../../../petscdir.mk.petsc
+-include ../../../../../petsckdir.mk.petsc
 # -*- makefile -*-
 
 EXECUTABLE=poisson3d

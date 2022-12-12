@@ -2,8 +2,7 @@ static char help[] = "Test MatMult() for Hermitian matrix.\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A, As;
   PetscBool   flg;
   PetscMPIInt size;

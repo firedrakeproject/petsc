@@ -347,7 +347,15 @@ You now have a working PETSc installation and are ready to start using the libra
 
 .. [#] Should you be missing any of these dependencies or would like to update them, either
    download and install the latest versions from their respective websites, or use your
-   preferred package manager to update them. For example, for macOS see :any:`doc_macos_install`
+   preferred package manager to update them. For example on macOS using the package manager
+   `homebrew <https://brew.sh/>`__ to install `python3 <https://www.python.org/>`__
+
+.. code-block:: console
+
+   $ brew update
+   $ brew list            # Show all packages installed through brew
+   $ brew upgrade         # Update packages already installed through brew
+   $ brew install python3
 
 .. [#blas] The `BLAS/LAPACK <https://www.netlib.org/lapack/lug/node11.html>`__ package
    installed as part of this tutorial is a `reference implementation

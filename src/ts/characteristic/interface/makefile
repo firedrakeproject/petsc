@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 
 SOURCEC   = characteristic.c mocregis.c slregis.c
 SOURCEF   =

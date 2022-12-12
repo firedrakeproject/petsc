@@ -3,8 +3,7 @@ static char help[] = "An example of writing a global Vec from a DMPlex with HDF5
 #include <petscdmplex.h>
 #include <petscviewerhdf5.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   MPI_Comm     comm;
   DM           dm;
   Vec          v, nv, rv, coord;

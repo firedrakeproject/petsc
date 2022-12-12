@@ -60,8 +60,7 @@ PetscErrorCode FormInitialGuess(AppCtx *, Vec);
 PetscErrorCode FormFunctionGradient(Tao, Vec, PetscReal *, Vec, void *);
 PetscErrorCode FormHessian(Tao, Vec, Mat, Mat, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Vec       x;
   Mat       H;
   PetscInt  Nx, Ny;
@@ -153,8 +152,7 @@ int main(int argc, char **argv)
     Output Parameters:
     X    - vector
 */
-PetscErrorCode FormInitialGuess(AppCtx *user, Vec X)
-{
+PetscErrorCode FormInitialGuess(AppCtx *user, Vec X) {
   PetscInt  i, j, k, mx = user->mx, my = user->my;
   PetscInt  xs, ys, xm, ym, gxm, gym, gxs, gys, xe, ye;
   PetscReal hx = 1.0 / (mx + 1), hy = 1.0 / (my + 1), temp, val;
@@ -193,8 +191,7 @@ PetscErrorCode FormInitialGuess(AppCtx *user, Vec X)
    f   - the newly evaluated function
    G   - the newly evaluated gradient
 */
-PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *f, Vec G, void *ptr)
-{
+PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *f, Vec G, void *ptr) {
   AppCtx   *user = (AppCtx *)ptr;
   PetscInt  i, j, k, ind;
   PetscInt  xe, ye, xsm, ysm, xep, yep;
@@ -323,8 +320,7 @@ PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *f, Vec G, void *p
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormHessian(Tao tao, Vec X, Mat A, Mat Hpre, void *ctx)
-{
+PetscErrorCode FormHessian(Tao tao, Vec X, Mat A, Mat Hpre, void *ctx) {
   AppCtx   *user = (AppCtx *)ctx;
   PetscInt  i, j, k;
   PetscInt  col[5], row;

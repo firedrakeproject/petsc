@@ -1,8 +1,7 @@
 #include <petsc/private/matimpl.h>
 #include <../src/mat/impls/dense/seq/dense.h>
 
-PETSC_INTERN PetscErrorCode MatFactorSetUpInPlaceSchur_Private(Mat F)
-{
+PETSC_INTERN PetscErrorCode MatFactorSetUpInPlaceSchur_Private(Mat F) {
   Mat           St, S = F->schur;
   MatFactorInfo info;
 
@@ -25,8 +24,7 @@ PETSC_INTERN PetscErrorCode MatFactorSetUpInPlaceSchur_Private(Mat F)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatFactorUpdateSchurStatus_Private(Mat F)
-{
+PETSC_INTERN PetscErrorCode MatFactorUpdateSchurStatus_Private(Mat F) {
   Mat S = F->schur;
 
   PetscFunctionBegin;
@@ -44,17 +42,14 @@ PETSC_INTERN PetscErrorCode MatFactorUpdateSchurStatus_Private(Mat F)
       PetscCall(PetscFree(S->solvertype));
     }
     break;
-  case MAT_FACTOR_SCHUR_FACTORED:
-    break;
-  default:
-    SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
+  case MAT_FACTOR_SCHUR_FACTORED: break;
+  default: SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
   }
   PetscFunctionReturn(0);
 }
 
 /* Schur status updated in the interface */
-PETSC_INTERN PetscErrorCode MatFactorFactorizeSchurComplement_Private(Mat F)
-{
+PETSC_INTERN PetscErrorCode MatFactorFactorizeSchurComplement_Private(Mat F) {
   MatFactorInfo info;
 
   PetscFunctionBegin;
@@ -69,8 +64,7 @@ PETSC_INTERN PetscErrorCode MatFactorFactorizeSchurComplement_Private(Mat F)
 }
 
 /* Schur status updated in the interface */
-PETSC_INTERN PetscErrorCode MatFactorInvertSchurComplement_Private(Mat F)
-{
+PETSC_INTERN PetscErrorCode MatFactorInvertSchurComplement_Private(Mat F) {
   Mat S = F->schur;
 
   PetscFunctionBegin;

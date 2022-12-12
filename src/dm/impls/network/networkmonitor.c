@@ -16,8 +16,7 @@
 
 .seealso: `DMNetworkMonitorDestroy()`, `DMNetworkMonitorAdd()`
 @*/
-PetscErrorCode DMNetworkMonitorCreate(DM network, DMNetworkMonitor *monitorptr)
-{
+PetscErrorCode DMNetworkMonitorCreate(DM network, DMNetworkMonitor *monitorptr) {
   DMNetworkMonitor monitor;
   MPI_Comm         comm;
   PetscMPIInt      size;
@@ -48,8 +47,7 @@ PetscErrorCode DMNetworkMonitorCreate(DM network, DMNetworkMonitor *monitorptr)
 
 .seealso: `DMNetworkMonitorCreate`, `DMNetworkMonitorAdd`
 @*/
-PetscErrorCode DMNetworkMonitorDestroy(DMNetworkMonitor *monitor)
-{
+PetscErrorCode DMNetworkMonitorDestroy(DMNetworkMonitor *monitor) {
   PetscFunctionBegin;
   while ((*monitor)->firstnode) PetscCall(DMNetworkMonitorPop(*monitor));
 
@@ -69,8 +67,7 @@ PetscErrorCode DMNetworkMonitorDestroy(DMNetworkMonitor *monitor)
 
 .seealso: `DMNetworkMonitorCreate()`, `DMNetworkMonitorDestroy()`
 @*/
-PetscErrorCode DMNetworkMonitorPop(DMNetworkMonitor monitor)
-{
+PetscErrorCode DMNetworkMonitorPop(DMNetworkMonitor monitor) {
   DMNetworkMonitorList node;
 
   PetscFunctionBegin;
@@ -116,8 +113,7 @@ PetscErrorCode DMNetworkMonitorPop(DMNetworkMonitor monitor)
 
 .seealso: `DMNetworkMonitorCreate()`, `DMNetworkMonitorDestroy()`
 @*/
-PetscErrorCode DMNetworkMonitorAdd(DMNetworkMonitor monitor, const char *name, PetscInt element, PetscInt nodes, PetscInt start, PetscInt blocksize, PetscReal xmin, PetscReal xmax, PetscReal ymin, PetscReal ymax, PetscBool hold)
-{
+PetscErrorCode DMNetworkMonitorAdd(DMNetworkMonitor monitor, const char *name, PetscInt element, PetscInt nodes, PetscInt start, PetscInt blocksize, PetscReal xmin, PetscReal xmax, PetscReal ymin, PetscReal ymax, PetscBool hold) {
   PetscDrawLG          drawlg;
   PetscDrawAxis        axis;
   PetscMPIInt          rank, size;
@@ -180,8 +176,7 @@ PetscErrorCode DMNetworkMonitorAdd(DMNetworkMonitor monitor, const char *name, P
 .seealso: `DMNetworkMonitorCreate()`, `DMNetworkMonitorDestroy()`, `DMNetworkMonitorAdd()`
 @*/
 
-PetscErrorCode DMNetworkMonitorView(DMNetworkMonitor monitor, Vec x)
-{
+PetscErrorCode DMNetworkMonitorView(DMNetworkMonitor monitor, Vec x) {
   PetscInt             varoffset, i, start;
   const PetscScalar   *xx;
   PetscScalar         *vv;

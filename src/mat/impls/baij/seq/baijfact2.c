@@ -14,8 +14,7 @@ extern PetscErrorCode MatDuplicateNoCreate_SeqBAIJ(Mat, Mat, MatDuplicateOption,
 /*
    This is not much faster than MatLUFactorNumeric_SeqBAIJ_N() but the solve is faster at least sometimes
 */
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_15_NaturalOrdering(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_15_NaturalOrdering(Mat B, Mat A, const MatFactorInfo *info) {
   Mat              C = B;
   Mat_SeqBAIJ     *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   PetscInt         i, j, k, ipvt[15];
@@ -113,8 +112,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_15_NaturalOrdering(Mat B, Mat A, const
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_N(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_N(Mat B, Mat A, const MatFactorInfo *info) {
   Mat             C = B;
   Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   IS              isrow = b->row, isicol = b->icol;
@@ -218,21 +216,11 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_N(Mat B, Mat A, const MatFactorInfo *i
       C->ops->solve = MatSolve_SeqBAIJ_N_NaturalOrdering;
 #endif
       break;
-    case 11:
-      C->ops->solve = MatSolve_SeqBAIJ_11_NaturalOrdering;
-      break;
-    case 12:
-      C->ops->solve = MatSolve_SeqBAIJ_12_NaturalOrdering;
-      break;
-    case 13:
-      C->ops->solve = MatSolve_SeqBAIJ_13_NaturalOrdering;
-      break;
-    case 14:
-      C->ops->solve = MatSolve_SeqBAIJ_14_NaturalOrdering;
-      break;
-    default:
-      C->ops->solve = MatSolve_SeqBAIJ_N_NaturalOrdering;
-      break;
+    case 11: C->ops->solve = MatSolve_SeqBAIJ_11_NaturalOrdering; break;
+    case 12: C->ops->solve = MatSolve_SeqBAIJ_12_NaturalOrdering; break;
+    case 13: C->ops->solve = MatSolve_SeqBAIJ_13_NaturalOrdering; break;
+    case 14: C->ops->solve = MatSolve_SeqBAIJ_14_NaturalOrdering; break;
+    default: C->ops->solve = MatSolve_SeqBAIJ_N_NaturalOrdering; break;
     }
   } else {
     C->ops->solve = MatSolve_SeqBAIJ_N;
@@ -251,8 +239,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_N(Mat B, Mat A, const MatFactorInfo *i
    because this code is almost identical to MatILUFactorSymbolic_SeqAIJ_ilu0_inplace().
 */
 
-PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_ilu0(Mat fact, Mat A, IS isrow, IS iscol, const MatFactorInfo *info)
-{
+PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_ilu0(Mat fact, Mat A, IS isrow, IS iscol, const MatFactorInfo *info) {
   Mat_SeqBAIJ *a = (Mat_SeqBAIJ *)A->data, *b;
   PetscInt     n = a->mbs, *ai = a->i, *aj, *adiag = a->diag, bs2 = a->bs2;
   PetscInt     i, j, nz, *bi, *bj, *bdiag, bi_temp;
@@ -263,13 +250,17 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_ilu0(Mat fact, Mat A, IS isrow, IS i
 
   /* allocate matrix arrays for new data structure */
   PetscCall(PetscMalloc3(bs2 * ai[n] + 1, &b->a, ai[n] + 1, &b->j, n + 1, &b->i));
+  PetscCall(PetscLogObjectMemory((PetscObject)fact, ai[n] * (bs2 * sizeof(PetscScalar) + sizeof(PetscInt)) + (n + 1) * sizeof(PetscInt)));
 
   b->singlemalloc    = PETSC_TRUE;
   b->free_a          = PETSC_TRUE;
   b->free_ij         = PETSC_TRUE;
   fact->preallocated = PETSC_TRUE;
   fact->assembled    = PETSC_TRUE;
-  if (!b->diag) { PetscCall(PetscMalloc1(n + 1, &b->diag)); }
+  if (!b->diag) {
+    PetscCall(PetscMalloc1(n + 1, &b->diag));
+    PetscCall(PetscLogObjectMemory((PetscObject)fact, (n + 1) * sizeof(PetscInt)));
+  }
   bdiag = b->diag;
 
   if (n > 0) PetscCall(PetscArrayzero(b->a, bs2 * ai[n]));
@@ -309,8 +300,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_ilu0(Mat fact, Mat A, IS isrow, IS i
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatILUFactorSymbolic_SeqBAIJ(Mat fact, Mat A, IS isrow, IS iscol, const MatFactorInfo *info)
-{
+PetscErrorCode MatILUFactorSymbolic_SeqBAIJ(Mat fact, Mat A, IS isrow, IS iscol, const MatFactorInfo *info) {
   Mat_SeqBAIJ       *a = (Mat_SeqBAIJ *)A->data, *b;
   IS                 isicol;
   const PetscInt    *r, *ic;
@@ -480,6 +470,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ(Mat fact, Mat A, IS isrow, IS iscol,
 
   /* put together the new matrix */
   PetscCall(MatSeqBAIJSetPreallocation(fact, bs, MAT_SKIP_ALLOCATION, NULL));
+  PetscCall(PetscLogObjectParent((PetscObject)fact, (PetscObject)isicol));
 
   b               = (Mat_SeqBAIJ *)(fact)->data;
   b->free_a       = PETSC_TRUE;
@@ -503,6 +494,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ(Mat fact, Mat A, IS isrow, IS iscol,
   PetscCall(PetscMalloc1(bs * n + bs, &b->solve_work));
   /* In b structure:  Free imax, ilen, old a, old j.
      Allocate bdiag, solve_work, new a, new j */
+  PetscCall(PetscLogObjectMemory((PetscObject)fact, (bdiag[0] + 1) * (sizeof(PetscInt) + bs2 * sizeof(PetscScalar))));
   b->maxnz = b->nz = bdiag[0] + 1;
 
   fact->info.factor_mallocs    = reallocs;
@@ -518,8 +510,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ(Mat fact, Mat A, IS isrow, IS iscol,
    except that the data structure of Mat_SeqAIJ is slightly different.
    Not a good example of code reuse.
 */
-PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_inplace(Mat fact, Mat A, IS isrow, IS iscol, const MatFactorInfo *info)
-{
+PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_inplace(Mat fact, Mat A, IS isrow, IS iscol, const MatFactorInfo *info) {
   Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A->data, *b;
   IS              isicol;
   const PetscInt *r, *ic, *ai = a->i, *aj = a->j, *xi;
@@ -568,7 +559,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_inplace(Mat fact, Mat A, IS isrow, I
   PetscCall(PetscMalloc1(n + 1, &ainew));
   ainew[0] = 0;
   /* don't know how many column pointers are needed so estimate */
-  jmax = (PetscInt)(f * ai[n] + 1);
+  jmax     = (PetscInt)(f * ai[n] + 1);
   PetscCall(PetscMalloc1(jmax, &ajnew));
   /* ajfill is level of fill for each fill entry */
   PetscCall(PetscMalloc1(jmax, &ajfill));
@@ -695,6 +686,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_inplace(Mat fact, Mat A, IS isrow, I
 
   /* put together the new matrix */
   PetscCall(MatSeqBAIJSetPreallocation(fact, bs, MAT_SKIP_ALLOCATION, NULL));
+  PetscCall(PetscLogObjectParent((PetscObject)fact, (PetscObject)isicol));
   b = (Mat_SeqBAIJ *)fact->data;
 
   b->free_a       = PETSC_TRUE;
@@ -720,6 +712,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_inplace(Mat fact, Mat A, IS isrow, I
   PetscCall(PetscMalloc1(bs * n + bs, &b->solve_work));
   /* In b structure:  Free imax, ilen, old a, old j.
      Allocate dloc, solve_work, new a, new j */
+  PetscCall(PetscLogObjectMemory((PetscObject)fact, (ainew[n] - n) * (sizeof(PetscInt)) + bs2 * ainew[n] * sizeof(PetscScalar)));
   b->maxnz = b->nz = ainew[n];
 
   fact->info.factor_mallocs    = reallocate;
@@ -730,8 +723,7 @@ PetscErrorCode MatILUFactorSymbolic_SeqBAIJ_inplace(Mat fact, Mat A, IS isrow, I
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSetUnfactored_SeqBAIJ_4_NaturalOrdering_SSE(Mat A)
-{
+PetscErrorCode MatSetUnfactored_SeqBAIJ_4_NaturalOrdering_SSE(Mat A) {
   /* Mat_SeqBAIJ *a = (Mat_SeqBAIJ*)A->data; */
   /* int i,*AJ=a->j,nz=a->nz; */
 
@@ -745,8 +737,7 @@ PetscErrorCode MatSetUnfactored_SeqBAIJ_4_NaturalOrdering_SSE(Mat A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSetUnfactored_SeqBAIJ_4_NaturalOrdering_SSE_usj(Mat A)
-{
+PetscErrorCode MatSetUnfactored_SeqBAIJ_4_NaturalOrdering_SSE_usj(Mat A) {
   Mat_SeqBAIJ    *a  = (Mat_SeqBAIJ *)A->data;
   PetscInt       *AJ = a->j, nz = a->nz;
   unsigned short *aj = (unsigned short *)AJ;

@@ -5,8 +5,7 @@ static char help[] = "Time vector operations on GPU\n";
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Vec         v, w, x;
   PetscInt    n = 15;
   PetscScalar val;

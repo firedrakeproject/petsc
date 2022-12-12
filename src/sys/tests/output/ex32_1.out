@@ -1,5 +1,5 @@
 #PETSc Option Table entries:
--abc # (source: code)
--options_left 0 # (source: command line)
--skip_petscrc # (source: command line)
+-abc
+-options_left 0
+-skip_petscrc
 #End of PETSc Option Table entries

@@ -2,8 +2,7 @@ static char help[] = "Test different KSP and Mat prefixes.\n\n";
 
 #include <petscksp.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   KSP ksp;
   PC  pc;
   Mat A, B, C;

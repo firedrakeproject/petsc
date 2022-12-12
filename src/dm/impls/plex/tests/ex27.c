@@ -3,8 +3,7 @@ static char help[] = "Test section ordering for FEM discretizations\n\n";
 #include <petscdmplex.h>
 #include <petscds.h>
 
-static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm) {
   PetscFunctionBegin;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -13,8 +12,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TestLocalDofOrder(DM dm)
-{
+static PetscErrorCode TestLocalDofOrder(DM dm) {
   PetscFE      fe[3];
   PetscSection s;
   PetscBool    simplex;
@@ -39,8 +37,7 @@ static PetscErrorCode TestLocalDofOrder(DM dm)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM dm;
 
   PetscFunctionBeginUser;

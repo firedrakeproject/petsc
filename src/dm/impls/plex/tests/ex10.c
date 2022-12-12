@@ -11,8 +11,7 @@ typedef struct {
   PetscInt  numGroups;       /* If greater than 1, use grouping in test */
 } AppCtx;
 
-PetscErrorCode ProcessOptions(AppCtx *options)
-{
+PetscErrorCode ProcessOptions(AppCtx *options) {
   PetscInt  len;
   PetscBool flg;
 
@@ -35,8 +34,7 @@ PetscErrorCode ProcessOptions(AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode CleanupContext(AppCtx *user)
-{
+PetscErrorCode CleanupContext(AppCtx *user) {
   PetscFunctionBegin;
   PetscCall(PetscFree(user->numComponents));
   PetscCall(PetscFree(user->numDof));
@@ -44,8 +42,7 @@ PetscErrorCode CleanupContext(AppCtx *user)
 }
 
 /* This mesh comes from~\cite{saad2003}, Fig. 2.10, p. 70. */
-PetscErrorCode CreateTestMesh(MPI_Comm comm, DM *dm, AppCtx *options)
-{
+PetscErrorCode CreateTestMesh(MPI_Comm comm, DM *dm, AppCtx *options) {
   const PetscInt  cells[16 * 3]  = {6, 7, 8, 7, 9, 10, 10, 11, 12, 11, 13, 14, 0, 6, 8, 6, 2, 7, 1, 8, 7, 1, 7, 10, 2, 9, 7, 10, 9, 4, 1, 10, 12, 10, 4, 11, 12, 11, 3, 3, 11, 14, 11, 4, 13, 14, 13, 5};
   const PetscReal coords[15 * 2] = {0, -3, 0, -1, 2, -1, 0, 1, 2, 1, 0, 3, 1, -2, 1, -1, 0, -2, 2, 0, 1, 0, 1, 1, 0, 0, 1, 2, 0, 2};
 
@@ -54,8 +51,7 @@ PetscErrorCode CreateTestMesh(MPI_Comm comm, DM *dm, AppCtx *options)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TestReordering(DM dm, AppCtx *user)
-{
+PetscErrorCode TestReordering(DM dm, AppCtx *user) {
   DM              pdm;
   IS              perm;
   Mat             A, pA;
@@ -87,8 +83,7 @@ PetscErrorCode TestReordering(DM dm, AppCtx *user)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode CreateGroupLabel(DM dm, PetscInt numGroups, DMLabel *label, AppCtx *options)
-{
+PetscErrorCode CreateGroupLabel(DM dm, PetscInt numGroups, DMLabel *label, AppCtx *options) {
   const PetscInt groupA[10] = {15, 3, 13, 12, 2, 10, 7, 6, 0, 4};
   const PetscInt groupB[6]  = {14, 11, 9, 1, 8, 5};
   PetscInt       c;
@@ -105,8 +100,7 @@ PetscErrorCode CreateGroupLabel(DM dm, PetscInt numGroups, DMLabel *label, AppCt
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TestReorderingByGroup(DM dm, AppCtx *user)
-{
+PetscErrorCode TestReorderingByGroup(DM dm, AppCtx *user) {
   DM              pdm;
   DMLabel         label;
   Mat             A, pA;
@@ -133,8 +127,7 @@ PetscErrorCode TestReorderingByGroup(DM dm, AppCtx *user)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM           dm;
   PetscSection s;
   AppCtx       user;

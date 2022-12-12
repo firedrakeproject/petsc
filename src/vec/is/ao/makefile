@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 
 SOURCEH	  = aoimpl.h ../../../../include/petscao.h
 DIRS	  = interface impls  tests

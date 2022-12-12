@@ -2,7 +2,7 @@
 Context for a Newton line search method (unconstrained minimization)
 */
 
-#ifndef __TAO_NLS_H
+#if !defined(__TAO_NLS_H)
 #define __TAO_NLS_H
 #include <petsc/private/taoimpl.h>
 

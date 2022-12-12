@@ -32,8 +32,7 @@
 
 .seealso: `PetscTellMyCell()`, `PetscOpenSocket()`, `PetscHTTPRequest()`
 @*/
-PetscErrorCode PetscTextBelt(MPI_Comm comm, const char number[], const char message[], PetscBool *flg)
-{
+PetscErrorCode PetscTextBelt(MPI_Comm comm, const char number[], const char message[], PetscBool *flg) {
   size_t      nlen, mlen, blen;
   PetscMPIInt rank;
 

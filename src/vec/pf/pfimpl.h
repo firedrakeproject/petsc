@@ -1,5 +1,6 @@
-#ifndef PETSC_PFIMPL_H
-#define PETSC_PFIMPL_H
+
+#if !defined(_PFIMPL)
+#define _PFIMPL
 
 #include <petscpf.h>
 #include <petsc/private/petscimpl.h>
@@ -23,4 +24,4 @@ struct _p_PF {
   void    *data;
 };
 
-#endif // PETSC_PFIMPL_H
+#endif

@@ -5,8 +5,7 @@ typedef struct {
   Vec Y;
 } TSAdapt_GLEE;
 
-static PetscErrorCode TSAdaptChoose_GLEE(TSAdapt adapt, TS ts, PetscReal h, PetscInt *next_sc, PetscReal *next_h, PetscBool *accept, PetscReal *wlte, PetscReal *wltea, PetscReal *wlter)
-{
+static PetscErrorCode TSAdaptChoose_GLEE(TSAdapt adapt, TS ts, PetscReal h, PetscInt *next_sc, PetscReal *next_h, PetscBool *accept, PetscReal *wlte, PetscReal *wltea, PetscReal *wlter) {
   TSAdapt_GLEE *glee = (TSAdapt_GLEE *)adapt->data;
   Vec           X, Y, E;
   PetscReal     enorm, enorma, enormr, hfac_lte, hfac_ltea, hfac_lter, h_lte, safety;
@@ -85,7 +84,7 @@ static PetscErrorCode TSAdaptChoose_GLEE(TSAdapt adapt, TS ts, PetscReal h, Pets
       /* factor based on the relative tolerance */
       hfac_lter = safety * PetscPowReal(1. / enormr, ((PetscReal)1) / (order + 1));
       /* pick the minimum time step among the relative and absolute tolerances */
-      hfac_lte = PetscMin(hfac_ltea, hfac_lter);
+      hfac_lte  = PetscMin(hfac_ltea, hfac_lter);
     } else {
       hfac_lte = safety * PETSC_INFINITY;
     }
@@ -99,7 +98,7 @@ static PetscErrorCode TSAdaptChoose_GLEE(TSAdapt adapt, TS ts, PetscReal h, Pets
       /* factor based on the relative tolerance */
       hfac_lter = safety * PetscPowReal(enormr, ((PetscReal)-1) / order);
       /* pick the minimum time step among the relative and absolute tolerances */
-      hfac_lte = PetscMin(hfac_ltea, hfac_lter);
+      hfac_lte  = PetscMin(hfac_ltea, hfac_lter);
     } else {
       hfac_lte = safety * PETSC_INFINITY;
     }
@@ -112,8 +111,7 @@ static PetscErrorCode TSAdaptChoose_GLEE(TSAdapt adapt, TS ts, PetscReal h, Pets
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptReset_GLEE(TSAdapt adapt)
-{
+static PetscErrorCode TSAdaptReset_GLEE(TSAdapt adapt) {
   TSAdapt_GLEE *glee = (TSAdapt_GLEE *)adapt->data;
 
   PetscFunctionBegin;
@@ -121,8 +119,7 @@ static PetscErrorCode TSAdaptReset_GLEE(TSAdapt adapt)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptDestroy_GLEE(TSAdapt adapt)
-{
+static PetscErrorCode TSAdaptDestroy_GLEE(TSAdapt adapt) {
   PetscFunctionBegin;
   PetscCall(TSAdaptReset_GLEE(adapt));
   PetscCall(PetscFree(adapt->data));
@@ -134,14 +131,13 @@ static PetscErrorCode TSAdaptDestroy_GLEE(TSAdapt adapt)
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSAdapt`, `TSGetAdapt()`, `TSAdaptType`
+.seealso: `TS`, `TSAdapt`, `TSGetAdapt()`
 M*/
-PETSC_EXTERN PetscErrorCode TSAdaptCreate_GLEE(TSAdapt adapt)
-{
+PETSC_EXTERN PetscErrorCode TSAdaptCreate_GLEE(TSAdapt adapt) {
   TSAdapt_GLEE *glee;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&glee));
+  PetscCall(PetscNewLog(adapt, &glee));
   adapt->data         = (void *)glee;
   adapt->ops->choose  = TSAdaptChoose_GLEE;
   adapt->ops->reset   = TSAdaptReset_GLEE;

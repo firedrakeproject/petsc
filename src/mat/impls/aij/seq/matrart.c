@@ -8,8 +8,7 @@
 #include <../src/mat/utils/freespace.h>
 #include <../src/mat/impls/dense/seq/dense.h> /*I "petscmat.h" I*/
 
-PetscErrorCode MatDestroy_SeqAIJ_RARt(void *data)
-{
+PetscErrorCode MatDestroy_SeqAIJ_RARt(void *data) {
   Mat_RARt *rart = (Mat_RARt *)data;
 
   PetscFunctionBegin;
@@ -23,8 +22,7 @@ PetscErrorCode MatDestroy_SeqAIJ_RARt(void *data)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_colorrart(Mat A, Mat R, PetscReal fill, Mat C)
-{
+PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_colorrart(Mat A, Mat R, PetscReal fill, Mat C) {
   Mat                  P;
   Mat_RARt            *rart;
   MatColoring          coloring;
@@ -101,8 +99,7 @@ PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_colorrart(Mat A, Mat R, PetscReal f
 /*
  RAB = R * A * B, R and A in seqaij format, B in dense format;
 */
-PetscErrorCode MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqDense(Mat R, Mat A, Mat B, Mat RAB, PetscScalar *work)
-{
+PetscErrorCode MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqDense(Mat R, Mat A, Mat B, Mat RAB, PetscScalar *work) {
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)A->data, *r = (Mat_SeqAIJ *)R->data;
   PetscScalar        r1, r2, r3, r4;
   const PetscScalar *b, *b1, *b2, *b3, *b4;
@@ -217,8 +214,7 @@ PetscErrorCode MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqDense(Mat R, Mat A, Mat B, 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_colorrart(Mat A, Mat R, Mat C)
-{
+PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_colorrart(Mat A, Mat R, Mat C) {
   Mat_RARt            *rart;
   MatTransposeColoring matcoloring;
   Mat                  Rt, RARt;
@@ -242,8 +238,7 @@ PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_colorrart(Mat A, Mat R, Mat C)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_matmattransposemult(Mat A, Mat R, PetscReal fill, Mat C)
-{
+PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_matmattransposemult(Mat A, Mat R, PetscReal fill, Mat C) {
   Mat       ARt;
   Mat_RARt *rart;
   char     *alg;
@@ -278,8 +273,7 @@ PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ_matmattransposemult(Mat A, Mat R, P
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_matmattransposemult(Mat A, Mat R, Mat C)
-{
+PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_matmattransposemult(Mat A, Mat R, Mat C) {
   Mat_RARt *rart;
 
   PetscFunctionBegin;
@@ -291,8 +285,7 @@ PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_matmattransposemult(Mat A, Mat R, Ma
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat R, PetscReal fill, Mat C)
-{
+PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat R, PetscReal fill, Mat C) {
   Mat       Rt;
   Mat_RARt *rart;
 
@@ -313,8 +306,7 @@ PetscErrorCode MatRARtSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat R, PetscReal fill, Mat C
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ(Mat A, Mat R, Mat C)
-{
+PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ(Mat A, Mat R, Mat C) {
   Mat_RARt *rart;
 
   PetscFunctionBegin;
@@ -329,8 +321,7 @@ PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ(Mat A, Mat R, Mat C)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatRARt_SeqAIJ_SeqAIJ(Mat A, Mat R, MatReuse scall, PetscReal fill, Mat *C)
-{
+PetscErrorCode MatRARt_SeqAIJ_SeqAIJ(Mat A, Mat R, MatReuse scall, PetscReal fill, Mat *C) {
   const char *algTypes[3] = {"matmatmatmult", "matmattransposemult", "coloring_rart"};
   PetscInt    alg         = 0; /* set default algorithm */
 
@@ -366,8 +357,7 @@ PetscErrorCode MatRARt_SeqAIJ_SeqAIJ(Mat A, Mat R, MatReuse scall, PetscReal fil
 }
 
 /* ------------------------------------------------------------- */
-PetscErrorCode MatProductSymbolic_RARt_SeqAIJ_SeqAIJ(Mat C)
-{
+PetscErrorCode MatProductSymbolic_RARt_SeqAIJ_SeqAIJ(Mat C) {
   Mat_Product        *product = C->product;
   Mat                 A = product->A, R = product->B;
   MatProductAlgorithm alg  = product->alg;

@@ -1,4 +1,4 @@
-#ifndef PARTITIONERIMPL_H
+#if !defined(PARTITIONERIMPL_H)
 #define PARTITIONERIMPL_H
 
 #include <petscviewer.h>

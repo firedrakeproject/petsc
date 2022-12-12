@@ -5,8 +5,7 @@
 
 #include <petscsys.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   char access_token[512];
 
   PetscFunctionBeginUser;

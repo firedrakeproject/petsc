@@ -37,7 +37,6 @@ class BaseTestMatAnyDense(object):
     def tearDown(self):
         self.A.destroy()
         self.A = None
-        PETSc.garbage_cleanup()
 
     def testSetValues(self):
         self._preallocate()

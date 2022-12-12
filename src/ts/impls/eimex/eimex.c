@@ -25,13 +25,11 @@ typedef struct {
 } TS_EIMEX;
 
 /* This function is pure */
-static PetscInt Map(PetscInt i, PetscInt j, PetscInt s)
-{
+static PetscInt Map(PetscInt i, PetscInt j, PetscInt s) {
   return ((2 * s - j + 1) * j / 2 + i - j);
 }
 
-static PetscErrorCode TSEvaluateStep_EIMEX(TS ts, PetscInt order, Vec X, PetscBool *done)
-{
+static PetscErrorCode TSEvaluateStep_EIMEX(TS ts, PetscInt order, Vec X, PetscBool *done) {
   TS_EIMEX      *ext = (TS_EIMEX *)ts->data;
   const PetscInt ns  = ext->nstages;
   PetscFunctionBegin;
@@ -39,8 +37,7 @@ static PetscErrorCode TSEvaluateStep_EIMEX(TS ts, PetscInt order, Vec X, PetscBo
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSStage_EIMEX(TS ts, PetscInt istage)
-{
+static PetscErrorCode TSStage_EIMEX(TS ts, PetscInt istage) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   PetscReal h;
   Vec       Y = ext->Y, Z = ext->Z;
@@ -70,8 +67,7 @@ static PetscErrorCode TSStage_EIMEX(TS ts, PetscInt istage)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSStep_EIMEX(TS ts)
-{
+static PetscErrorCode TSStep_EIMEX(TS ts) {
   TS_EIMEX      *ext = (TS_EIMEX *)ts->data;
   const PetscInt ns  = ext->nstages;
   Vec           *T = ext->T, Y = ext->Y;
@@ -146,8 +142,7 @@ static PetscErrorCode TSStep_EIMEX(TS ts)
 }
 
 /* cubic Hermit spline */
-static PetscErrorCode TSInterpolate_EIMEX(TS ts, PetscReal itime, Vec X)
-{
+static PetscErrorCode TSInterpolate_EIMEX(TS ts, PetscReal itime, Vec X) {
   TS_EIMEX       *ext = (TS_EIMEX *)ts->data;
   PetscReal       t, a, b;
   Vec             Y0 = ext->VecSolPrev, Y1 = ext->Y, Ydot = ext->Ydot, YdotI = ext->YdotI;
@@ -171,8 +166,7 @@ static PetscErrorCode TSInterpolate_EIMEX(TS ts, PetscReal itime, Vec X)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSReset_EIMEX(TS ts)
-{
+static PetscErrorCode TSReset_EIMEX(TS ts) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   PetscInt  ns;
 
@@ -189,8 +183,7 @@ static PetscErrorCode TSReset_EIMEX(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSDestroy_EIMEX(TS ts)
-{
+static PetscErrorCode TSDestroy_EIMEX(TS ts) {
   PetscFunctionBegin;
   PetscCall(TSReset_EIMEX(ts));
   PetscCall(PetscFree(ts->data));
@@ -200,8 +193,7 @@ static PetscErrorCode TSDestroy_EIMEX(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSEIMEXGetVecs(TS ts, DM dm, Vec *Z, Vec *Ydot, Vec *YdotI, Vec *YdotRHS)
-{
+static PetscErrorCode TSEIMEXGetVecs(TS ts, DM dm, Vec *Z, Vec *Ydot, Vec *YdotI, Vec *YdotRHS) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
 
   PetscFunctionBegin;
@@ -228,8 +220,7 @@ static PetscErrorCode TSEIMEXGetVecs(TS ts, DM dm, Vec *Z, Vec *Ydot, Vec *YdotI
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSEIMEXRestoreVecs(TS ts, DM dm, Vec *Z, Vec *Ydot, Vec *YdotI, Vec *YdotRHS)
-{
+static PetscErrorCode TSEIMEXRestoreVecs(TS ts, DM dm, Vec *Z, Vec *Ydot, Vec *YdotI, Vec *YdotRHS) {
   PetscFunctionBegin;
   if (Z) {
     if (dm && dm != ts->dm) PetscCall(DMRestoreNamedGlobalVector(dm, "TSEIMEX_Z", Z));
@@ -252,8 +243,7 @@ static PetscErrorCode TSEIMEXRestoreVecs(TS ts, DM dm, Vec *Z, Vec *Ydot, Vec *Y
   In the case of Backward Euler, Fn = (U-U0)/h-g(t1,U))
   Since FormIFunction calculates G = ydot - g(t,y), ydot will be set to (U-U0)/h
 */
-static PetscErrorCode SNESTSFormFunction_EIMEX(SNES snes, Vec X, Vec G, TS ts)
-{
+static PetscErrorCode SNESTSFormFunction_EIMEX(SNES snes, Vec X, Vec G, TS ts) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   Vec       Ydot, Z;
   DM        dm, dmsave;
@@ -278,8 +268,7 @@ static PetscErrorCode SNESTSFormFunction_EIMEX(SNES snes, Vec X, Vec G, TS ts)
 /*
  This defined the Jacobian matrix for SNES. Jn = (I/h-g'(t,y))
  */
-static PetscErrorCode SNESTSFormJacobian_EIMEX(SNES snes, Vec X, Mat A, Mat B, TS ts)
-{
+static PetscErrorCode SNESTSFormJacobian_EIMEX(SNES snes, Vec X, Mat A, Mat B, TS ts) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   Vec       Ydot;
   DM        dm, dmsave;
@@ -296,14 +285,12 @@ static PetscErrorCode SNESTSFormJacobian_EIMEX(SNES snes, Vec X, Mat A, Mat B, T
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMCoarsenHook_TSEIMEX(DM fine, DM coarse, void *ctx)
-{
+static PetscErrorCode DMCoarsenHook_TSEIMEX(DM fine, DM coarse, void *ctx) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode DMRestrictHook_TSEIMEX(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
-{
+static PetscErrorCode DMRestrictHook_TSEIMEX(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx) {
   TS  ts = (TS)ctx;
   Vec Z, Z_c;
 
@@ -317,8 +304,7 @@ static PetscErrorCode DMRestrictHook_TSEIMEX(DM fine, Mat restrct, Vec rscale, M
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSSetUp_EIMEX(TS ts)
-{
+static PetscErrorCode TSSetUp_EIMEX(TS ts) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   DM        dm;
 
@@ -353,8 +339,7 @@ static PetscErrorCode TSSetUp_EIMEX(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSSetFromOptions_EIMEX(TS ts, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode TSSetFromOptions_EIMEX(TS ts, PetscOptionItems *PetscOptionsObject) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   PetscInt  tindex[2];
   PetscInt  np = 2, nrows = TSEIMEXDefault;
@@ -375,14 +360,13 @@ static PetscErrorCode TSSetFromOptions_EIMEX(TS ts, PetscOptionItems *PetscOptio
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSView_EIMEX(TS ts, PetscViewer viewer)
-{
+static PetscErrorCode TSView_EIMEX(TS ts, PetscViewer viewer) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
 /*@C
-  TSEIMEXSetMaxRows - Set the maximum number of rows for `TSEIMEX` schemes
+  TSEIMEXSetMaxRows - Set the maximum number of rows for EIMEX schemes
 
   Logically collective
 
@@ -392,10 +376,9 @@ static PetscErrorCode TSView_EIMEX(TS ts, PetscViewer viewer)
 
   Level: intermediate
 
-.seealso: [](chapter_ts), `TSEIMEXSetRowCol()`, `TSEIMEXSetOrdAdapt()`, `TSEIMEX`
+.seealso: `TSEIMEXSetRowCol()`, `TSEIMEXSetOrdAdapt()`, `TSEIMEX`
 @*/
-PetscErrorCode TSEIMEXSetMaxRows(TS ts, PetscInt nrows)
-{
+PetscErrorCode TSEIMEXSetMaxRows(TS ts, PetscInt nrows) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscTryMethod(ts, "TSEIMEXSetMaxRows_C", (TS, PetscInt), (ts, nrows));
@@ -403,7 +386,7 @@ PetscErrorCode TSEIMEXSetMaxRows(TS ts, PetscInt nrows)
 }
 
 /*@C
-  TSEIMEXSetRowCol - Set the type index in the T table for the return value for the `TSEIMEX` scheme
+  TSEIMEXSetRowCol - Set the type index in the T table for the return value
 
   Logically collective
 
@@ -413,10 +396,9 @@ PetscErrorCode TSEIMEXSetMaxRows(TS ts, PetscInt nrows)
 
   Level: intermediate
 
-.seealso: [](chapter_ts), `TSEIMEXSetMaxRows()`, `TSEIMEXSetOrdAdapt()`, `TSEIMEX`
+.seealso: `TSEIMEXSetMaxRows()`, `TSEIMEXSetOrdAdapt()`, `TSEIMEX`
 @*/
-PetscErrorCode TSEIMEXSetRowCol(TS ts, PetscInt row, PetscInt col)
-{
+PetscErrorCode TSEIMEXSetRowCol(TS ts, PetscInt row, PetscInt col) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscTryMethod(ts, "TSEIMEXSetRowCol_C", (TS, PetscInt, PetscInt), (ts, row, col));
@@ -424,7 +406,7 @@ PetscErrorCode TSEIMEXSetRowCol(TS ts, PetscInt row, PetscInt col)
 }
 
 /*@C
-  TSEIMEXSetOrdAdapt - Set the order adaptativity for the `TSEIMEX` schemes
+  TSEIMEXSetOrdAdapt - Set the order adaptativity
 
   Logically collective
 
@@ -434,18 +416,16 @@ PetscErrorCode TSEIMEXSetRowCol(TS ts, PetscInt row, PetscInt col)
 
   Level: intermediate
 
-.seealso: [](chapter_ts), `TSEIMEXSetRowCol()`, `TSEIMEXSetOrdAdapt()`, `TSEIMEX`
+.seealso: `TSEIMEXSetRowCol()`, `TSEIMEXSetOrdAdapt()`, `TSEIMEX`
 @*/
-PetscErrorCode TSEIMEXSetOrdAdapt(TS ts, PetscBool flg)
-{
+PetscErrorCode TSEIMEXSetOrdAdapt(TS ts, PetscBool flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscTryMethod(ts, "TSEIMEXSetOrdAdapt_C", (TS, PetscBool), (ts, flg));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSEIMEXSetMaxRows_EIMEX(TS ts, PetscInt nrows)
-{
+static PetscErrorCode TSEIMEXSetMaxRows_EIMEX(TS ts, PetscInt nrows) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   PetscInt  i;
 
@@ -458,8 +438,7 @@ static PetscErrorCode TSEIMEXSetMaxRows_EIMEX(TS ts, PetscInt nrows)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSEIMEXSetRowCol_EIMEX(TS ts, PetscInt row, PetscInt col)
-{
+static PetscErrorCode TSEIMEXSetRowCol_EIMEX(TS ts, PetscInt row, PetscInt col) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
 
   PetscFunctionBegin;
@@ -473,8 +452,7 @@ static PetscErrorCode TSEIMEXSetRowCol_EIMEX(TS ts, PetscInt row, PetscInt col)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSEIMEXSetOrdAdapt_EIMEX(TS ts, PetscBool flg)
-{
+static PetscErrorCode TSEIMEXSetOrdAdapt_EIMEX(TS ts, PetscBool flg) {
   TS_EIMEX *ext = (TS_EIMEX *)ts->data;
   PetscFunctionBegin;
   ext->ord_adapt = flg;
@@ -485,13 +463,11 @@ static PetscErrorCode TSEIMEXSetOrdAdapt_EIMEX(TS ts, PetscBool flg)
       TSEIMEX - Time stepping with Extrapolated IMEX methods.
 
    These methods are intended for problems with well-separated time scales, especially when a slow scale is strongly nonlinear such that it
-   is expensive to solve with a fully implicit method. The user should provide the stiff part of the equation using `TSSetIFunction()` and the
-   non-stiff part with `TSSetRHSFunction()`.
+   is expensive to solve with a fully implicit method. The user should provide the stiff part of the equation using TSSetIFunction() and the
+   non-stiff part with TSSetRHSFunction().
 
-      Level: beginner
-
-  Notes:
-  The default is a 3-stage scheme, it can be changed with `TSEIMEXSetMaxRows()` or -ts_eimex_max_rows
+   Notes:
+  The default is a 3-stage scheme, it can be changed with TSEIMEXSetMaxRows() or -ts_eimex_max_rows
 
   This method currently only works with ODE, for which the stiff part G(t,X,Xdot) has the form Xdot + Ghat(t,X).
 
@@ -500,7 +476,7 @@ static PetscErrorCode TSEIMEXSetOrdAdapt_EIMEX(TS ts, PetscBool flg)
   G(t,X,Xdot) = F(t,X)
 
   where G represents the stiff part and F represents the non-stiff part. The user should provide the stiff part
-  of the equation using TSSetIFunction() and the non-stiff part with `TSSetRHSFunction()`.
+  of the equation using TSSetIFunction() and the non-stiff part with TSSetRHSFunction().
   This method is designed to be linearly implicit on G and can use an approximate and lagged Jacobian.
 
   Another common form for the system is
@@ -511,13 +487,16 @@ static PetscErrorCode TSEIMEXSetOrdAdapt_EIMEX(TS ts, PetscBool flg)
 
   G = y'-g(x), F = f(x)
 
- Reference:
-. [1] -  E. Constantinescu and A. Sandu, Extrapolated implicit-explicit time stepping, SIAM Journal on Scientific Computing, 31 (2010), pp. 4452-4477.
+ References
+  E. Constantinescu and A. Sandu, Extrapolated implicit-explicit time stepping, SIAM Journal on Scientific
+Computing, 31 (2010), pp. 4452-4477.
 
-.seealso: [](chapter_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSEIMEXSetMaxRows()`, `TSEIMEXSetRowCol()`, `TSEIMEXSetOrdAdapt()`, `TSType`
+      Level: beginner
+
+.seealso: `TSCreate()`, `TS`, `TSSetType()`, `TSEIMEXSetMaxRows()`, `TSEIMEXSetRowCol()`, `TSEIMEXSetOrdAdapt()`
+
  M*/
-PETSC_EXTERN PetscErrorCode TSCreate_EIMEX(TS ts)
-{
+PETSC_EXTERN PetscErrorCode TSCreate_EIMEX(TS ts) {
   TS_EIMEX *ext;
 
   PetscFunctionBegin;
@@ -536,7 +515,7 @@ PETSC_EXTERN PetscErrorCode TSCreate_EIMEX(TS ts)
 
   ts->usessnes = PETSC_TRUE;
 
-  PetscCall(PetscNew(&ext));
+  PetscCall(PetscNewLog(ts, &ext));
   ts->data = (void *)ext;
 
   ext->ord_adapt = PETSC_FALSE; /* By default, no order adapativity */

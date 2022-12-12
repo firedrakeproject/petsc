@@ -14,9 +14,9 @@ struct _n_TSMonitorSPEigCtx {
 };
 
 /*@C
-   TSMonitorSPEigCtxCreate - Creates a context for use with `TS` to monitor the eigenvalues of the linearized operator
+   TSMonitorSPEigCtxCreate - Creates a context for use with TS to monitor the eigenvalues of the linearized operator
 
-   Collective
+   Collective on TS
 
    Input Parameters:
 +  host - the X display to open, or null for the local machine
@@ -31,19 +31,19 @@ struct _n_TSMonitorSPEigCtx {
    Options Database Key:
 .  -ts_monitor_sp_eig - plot egienvalues of linearized right hand side
 
-   Level: intermediate
-
    Notes:
-   Use `TSMonitorSPEigCtxDestroy()` to destroy the context
+   Use TSMonitorSPEigCtxDestroy() to destroy.
 
    Currently only works if the Jacobian is provided explicitly.
 
    Currently only works for ODEs u_t - F(t,u) = 0; that is with no mass matrix.
 
-.seealso: [](chapter_ts), `TSMonitorSPEigTimeStep()`, `TSMonitorSet()`, `TSMonitorLGSolution()`, `TSMonitorLGError()`
+   Level: intermediate
+
+.seealso: `TSMonitorSPEigTimeStep()`, `TSMonitorSet()`, `TSMonitorLGSolution()`, `TSMonitorLGError()`
+
 @*/
-PetscErrorCode TSMonitorSPEigCtxCreate(MPI_Comm comm, const char host[], const char label[], int x, int y, int m, int n, PetscInt howoften, TSMonitorSPEigCtx *ctx)
-{
+PetscErrorCode TSMonitorSPEigCtxCreate(MPI_Comm comm, const char host[], const char label[], int x, int y, int m, int n, PetscInt howoften, TSMonitorSPEigCtx *ctx) {
   PetscDraw win;
   PC        pc;
 
@@ -77,8 +77,7 @@ PetscErrorCode TSMonitorSPEigCtxCreate(MPI_Comm comm, const char host[], const c
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSLinearStabilityIndicator(TS ts, PetscReal xr, PetscReal xi, PetscBool *flg)
-{
+static PetscErrorCode TSLinearStabilityIndicator(TS ts, PetscReal xr, PetscReal xi, PetscBool *flg) {
   PetscReal yr, yi;
 
   PetscFunctionBegin;
@@ -88,8 +87,7 @@ static PetscErrorCode TSLinearStabilityIndicator(TS ts, PetscReal xr, PetscReal 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TSMonitorSPEig(TS ts, PetscInt step, PetscReal ptime, Vec v, void *monctx)
-{
+PetscErrorCode TSMonitorSPEig(TS ts, PetscInt step, PetscReal ptime, Vec v, void *monctx) {
   TSMonitorSPEigCtx ctx = (TSMonitorSPEigCtx)monctx;
   KSP               ksp = ctx->ksp;
   PetscInt          n, N, nits, neig, i, its = 200;
@@ -173,22 +171,18 @@ PetscErrorCode TSMonitorSPEig(TS ts, PetscInt step, PetscReal ptime, Vec v, void
 }
 
 /*@C
-   TSMonitorSPEigCtxDestroy - Destroys a scatter plot context that was created with `TSMonitorSPEigCtxCreate()`.
+   TSMonitorSPEigCtxDestroy - Destroys a scatter plot context that was created with TSMonitorSPEigCtxCreate().
 
-   Collective on ctx
+   Collective on TSMonitorSPEigCtx
 
    Input Parameter:
 .  ctx - the monitor context
 
    Level: intermediate
 
-   Note:
-   Should be passed to `TSMonitorSet()` along with `TSMonitorSPEig()` an the context created with `TSMonitorSPEigCtxCreate()`
-
-.seealso: [](chapter_ts), `TSMonitorSPEigCtxCreate()`, `TSMonitorSet()`, `TSMonitorSPEig();`
+.seealso: `TSMonitorSPEigCtxCreate()`, `TSMonitorSet()`, `TSMonitorSPEig();`
 @*/
-PetscErrorCode TSMonitorSPEigCtxDestroy(TSMonitorSPEigCtx *ctx)
-{
+PetscErrorCode TSMonitorSPEigCtxDestroy(TSMonitorSPEigCtx *ctx) {
   PetscDraw draw;
 
   PetscFunctionBegin;

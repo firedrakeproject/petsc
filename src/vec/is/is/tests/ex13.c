@@ -9,8 +9,7 @@ type = 0 general
 type = 1 stride
 type = 2 block
 */
-static PetscErrorCode CreateIS(MPI_Comm comm, PetscInt type, PetscInt n, PetscInt first, PetscInt step, IS *is)
-{
+static PetscErrorCode CreateIS(MPI_Comm comm, PetscInt type, PetscInt n, PetscInt first, PetscInt step, IS *is) {
   PetscInt   *idx, i, j;
   PetscMPIInt rank;
 
@@ -23,9 +22,7 @@ static PetscErrorCode CreateIS(MPI_Comm comm, PetscInt type, PetscInt n, PetscIn
     for (i = 0, j = first; i < n; i++, j += step) idx[i] = j;
     PetscCall(ISCreateGeneral(comm, n, idx, PETSC_OWN_POINTER, is));
     break;
-  case 1:
-    PetscCall(ISCreateStride(comm, n, first, step, is));
-    break;
+  case 1: PetscCall(ISCreateStride(comm, n, first, step, is)); break;
   case 2:
     PetscCall(PetscMalloc1(n, &idx));
     for (i = 0, j = first; i < n; i++, j += step) idx[i] = j;
@@ -35,8 +32,7 @@ static PetscErrorCode CreateIS(MPI_Comm comm, PetscInt type, PetscInt n, PetscIn
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   IS        is[128];
   IS        tmp;
   PetscInt  n = 10, first = 0, step = 1, offset = 0;

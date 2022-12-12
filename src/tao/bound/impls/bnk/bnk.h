@@ -2,7 +2,7 @@
 Context for bounded Newton-Krylov type optimization algorithms
 */
 
-#ifndef __TAO_BNK_H
+#if !defined(__TAO_BNK_H)
 #define __TAO_BNK_H
 #include <petsc/private/taoimpl.h>
 #include <../src/tao/bound/impls/bncg/bncg.h>

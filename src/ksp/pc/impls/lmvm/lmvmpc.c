@@ -14,19 +14,16 @@ typedef struct {
 } PC_LMVM;
 
 /*@
-   PCLMVMSetMatLMVM - Replaces the `MATLMVM` matrix inside the preconditioner with
+   PCLMVMSetMatLMVM - Replaces the LMVM matrix inside the preconditioner with
    the one provided by the user.
 
    Input Parameters:
-+  pc - An `PCLMVM` preconditioner
--  B  - An  LMVM-type matrix (`MATLMVM`, `MATLDFP`, `MATLBFGS`, `MATLSR1`, `MATLBRDN`, `MATLMBRDN`, `MATLSBRDN`)
++  pc - An LMVM preconditioner
+-  B  - An LMVM-type matrix (MATLDFP, MATLBFGS, MATLSR1, MATLBRDN, MATLMBRDN, MATLSBRDN)
 
    Level: intermediate
-
-.seealso: `PCLMVM`, `MATLDFP`, `MATLBFGS`, `MATLSR1`, `MATLBRDN`, `MATLMBRDN`, `MATLSBRDN`, `PCLMVMGetMatLMVM()`
 @*/
-PetscErrorCode PCLMVMSetMatLMVM(PC pc, Mat B)
-{
+PetscErrorCode PCLMVMSetMatLMVM(PC pc, Mat B) {
   PC_LMVM  *ctx = (PC_LMVM *)pc->data;
   PetscBool same;
 
@@ -44,20 +41,17 @@ PetscErrorCode PCLMVMSetMatLMVM(PC pc, Mat B)
 }
 
 /*@
-   PCLMVMGetMatLMVM - Returns a pointer to the underlying `MATLMVM` matrix.
+   PCLMVMGetMatLMVM - Returns a pointer to the underlying LMVM matrix.
 
-   Input Parameter:
-.  pc - An `PCLMVM` preconditioner
+   Input Parameters:
+.  pc - An LMVM preconditioner
 
-   Output Parameter:
-.  B - matrix inside the preconditioner, one of type `MATLMVM`, `MATLDFP`, `MATLBFGS`, `MATLSR1`, `MATLBRDN`, `MATLMBRDN`, `MATLSBRDN`
+   Output Parameters:
+.  B - LMVM matrix inside the preconditioner
 
    Level: intermediate
-
-.seealso: `PCLMVM`, `MATLMVM`, `MATLDFP`, `MATLBFGS`, `MATLSR1`, `MATLBRDN`, `MATLMBRDN`, `MATLSBRDN`, `PCLMVMSetMatLMVM()`
 @*/
-PetscErrorCode PCLMVMGetMatLMVM(PC pc, Mat *B)
-{
+PetscErrorCode PCLMVMGetMatLMVM(PC pc, Mat *B) {
   PC_LMVM  *ctx = (PC_LMVM *)pc->data;
   PetscBool same;
 
@@ -70,21 +64,17 @@ PetscErrorCode PCLMVMGetMatLMVM(PC pc, Mat *B)
 }
 
 /*@
-   PCLMVMSetIS - Sets the index sets that reduce the `PC` application.
+   PCLMVMSetIS - Sets the index sets that reduce the PC application.
 
    Input Parameters:
-+  pc - An `PCLMVM` preconditioner
++  pc - An LMVM preconditioner
 -  inactive - Index set defining the variables removed from the problem
 
    Level: intermediate
 
-   Developer Note:
-   Need to explain the purpose of this `IS`
-
-.seealso: `PCLMVM`, `MatLMVMUpdate()`
+.seealso: `MatLMVMUpdate()`
 @*/
-PetscErrorCode PCLMVMSetIS(PC pc, IS inactive)
-{
+PetscErrorCode PCLMVMSetIS(PC pc, IS inactive) {
   PC_LMVM  *ctx = (PC_LMVM *)pc->data;
   PetscBool same;
 
@@ -100,17 +90,16 @@ PetscErrorCode PCLMVMSetIS(PC pc, IS inactive)
 }
 
 /*@
-   PCLMVMClearIS - Removes the inactive variable index set from a `PCLMVM`
+   PCLMVMClearIS - Removes the inactive variable index set.
 
-   Input Parameter:
-.  pc - An `PCLMVM` preconditioner
+   Input Parameters:
+.  pc - An LMVM preconditioner
 
    Level: intermediate
 
-.seealso: `PCLMVM`, `MatLMVMUpdate()`
+.seealso: `MatLMVMUpdate()`
 @*/
-PetscErrorCode PCLMVMClearIS(PC pc)
-{
+PetscErrorCode PCLMVMClearIS(PC pc) {
   PC_LMVM  *ctx = (PC_LMVM *)pc->data;
   PetscBool same;
 
@@ -122,8 +111,7 @@ PetscErrorCode PCLMVMClearIS(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApply_LMVM(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApply_LMVM(PC pc, Vec x, Vec y) {
   PC_LMVM *ctx = (PC_LMVM *)pc->data;
   Vec      xsub, ysub;
 
@@ -147,8 +135,7 @@ static PetscErrorCode PCApply_LMVM(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCReset_LMVM(PC pc)
-{
+static PetscErrorCode PCReset_LMVM(PC pc) {
   PC_LMVM *ctx = (PC_LMVM *)pc->data;
 
   PetscFunctionBegin;
@@ -157,15 +144,13 @@ static PetscErrorCode PCReset_LMVM(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetUp_LMVM(PC pc)
-{
+static PetscErrorCode PCSetUp_LMVM(PC pc) {
   PC_LMVM    *ctx = (PC_LMVM *)pc->data;
   PetscInt    n, N;
   PetscBool   allocated;
   const char *prefix;
 
   PetscFunctionBegin;
-  if (pc->setupcalled) PetscFunctionReturn(0);
   PetscCall(MatLMVMIsAllocated(ctx->B, &allocated));
   if (!allocated) {
     PetscCall(MatCreateVecs(pc->mat, &ctx->xwork, &ctx->ywork));
@@ -182,8 +167,7 @@ static PetscErrorCode PCSetUp_LMVM(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCView_LMVM(PC pc, PetscViewer viewer)
-{
+static PetscErrorCode PCView_LMVM(PC pc, PetscViewer viewer) {
   PC_LMVM  *ctx = (PC_LMVM *)pc->data;
   PetscBool iascii;
 
@@ -197,8 +181,7 @@ static PetscErrorCode PCView_LMVM(PC pc, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_LMVM(PC pc, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode PCSetFromOptions_LMVM(PC pc, PetscOptionItems *PetscOptionsObject) {
   PC_LMVM    *ctx = (PC_LMVM *)pc->data;
   const char *prefix;
 
@@ -210,8 +193,7 @@ static PetscErrorCode PCSetFromOptions_LMVM(PC pc, PetscOptionItems *PetscOption
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDestroy_LMVM(PC pc)
-{
+static PetscErrorCode PCDestroy_LMVM(PC pc) {
   PC_LMVM *ctx = (PC_LMVM *)pc->data;
 
   PetscFunctionBegin;
@@ -226,20 +208,19 @@ static PetscErrorCode PCDestroy_LMVM(PC pc)
 }
 
 /*MC
-   PCLMVM - A a preconditioner constructed from a `MATLMVM` matrix. Options for the
-            underlying `MATLMVM` matrix can be access with the -pc_lmvm_ prefix.
+   PCLMVM - Creates a preconditioner around an LMVM matrix. Options for the
+            underlying LMVM matrix can be access with the "-pc_lmvm_" prefix.
 
    Level: intermediate
 
-.seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PCLMVM`, `MATLDFP`, `MATLBFGS`, `MATLSR1`, `MATLBRDN`, `MATLMBRDN`, `MATLSBRDN`,
+.seealso: `PCCreate()`, `PCSetType()`, `PCType`,
           `PC`, `MATLMVM`, `PCLMVMUpdate()`, `PCLMVMSetMatLMVM()`, `PCLMVMGetMatLMVM()`
 M*/
-PETSC_EXTERN PetscErrorCode PCCreate_LMVM(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_LMVM(PC pc) {
   PC_LMVM *ctx;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&ctx));
+  PetscCall(PetscNewLog(pc, &ctx));
   pc->data = (void *)ctx;
 
   pc->ops->reset               = PCReset_LMVM;
@@ -254,6 +235,8 @@ PETSC_EXTERN PetscErrorCode PCCreate_LMVM(PC pc)
   pc->ops->applyrichardson     = NULL;
   pc->ops->presolve            = NULL;
   pc->ops->postsolve           = NULL;
+
+  PetscCall(PCSetReusePreconditioner(pc, PETSC_TRUE));
 
   PetscCall(MatCreate(PetscObjectComm((PetscObject)pc), &ctx->B));
   PetscCall(MatSetType(ctx->B, MATLMVMBFGS));

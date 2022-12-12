@@ -1,5 +1,5 @@
-#ifndef PETSC_DMSTAGIMPL_H
-#define PETSC_DMSTAGIMPL_H
+#if !defined(DMSTAGIMPL_H_)
+#define DMSTAGIMPL_H_
 
 #include <petscdmstag.h> /*I "petscdmstag.h" I*/
 #include <petsc/private/dmimpl.h>
@@ -71,4 +71,4 @@ PETSC_INTERN PetscErrorCode DMStagSetUniformCoordinatesExplicit_2d(DM, PetscReal
 PETSC_INTERN PetscErrorCode DMStagSetUniformCoordinatesExplicit_3d(DM, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal);
 PETSC_INTERN PetscErrorCode DMStagStencilLocationCanonicalize(DMStagStencilLocation, DMStagStencilLocation *);
 
-#endif // PETSC_DMSTAGIMPL_H
+#endif

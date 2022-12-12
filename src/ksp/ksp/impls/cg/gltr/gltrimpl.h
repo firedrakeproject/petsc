@@ -15,8 +15,8 @@
 /*     9, pages 504-525, 1999.                                               */
 /*****************************************************************************/
 
-#ifndef PETSC_CG_GLTRIMPL_H
-#define PETSC_CG_GLTRIMPL_H
+#if !defined(__CG_GLTR)
+#define __CG_GLTR
 
 #include <petsc/private/kspimpl.h>
 
@@ -48,4 +48,4 @@ typedef struct {
   PetscInt dtype;           /* Method used to measure the norm of step   */
 } KSPCG_GLTR;
 
-#endif // PETSC_CG_GLTRIMPL_H
+#endif

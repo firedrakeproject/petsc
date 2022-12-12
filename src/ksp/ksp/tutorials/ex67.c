@@ -37,8 +37,7 @@ PetscBool symmetric = PETSC_TRUE;
 PetscErrorCode FormMatrix(Mat, void *);
 PetscErrorCode FormRightHandSide(Vec, void *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   KSP          ksp;
   Mat          J;
   DM           da;
@@ -134,8 +133,7 @@ int main(int argc, char **argv)
      Since MatSetNullSpace() is called and the matrix is symmetric; the Krylov method automatically removes this
      portion of the right hand side before solving the linear system.
 */
-PetscErrorCode FormRightHandSide(Vec f, void *ctx)
-{
+PetscErrorCode FormRightHandSide(Vec f, void *ctx) {
   DM           da = (DM)ctx;
   PetscScalar *ff;
   PetscInt     i, M, xs, xm;
@@ -165,8 +163,7 @@ PetscErrorCode FormRightHandSide(Vec f, void *ctx)
   PetscFunctionReturn(0);
 }
 /* ------------------------------------------------------------------- */
-PetscErrorCode FormMatrix(Mat jac, void *ctx)
-{
+PetscErrorCode FormMatrix(Mat jac, void *ctx) {
   PetscScalar A[3];
   PetscInt    i, M, xs, xm;
   DM          da = (DM)ctx;

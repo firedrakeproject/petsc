@@ -1,8 +1,7 @@
 
 #include <../src/ksp/pc/impls/factor/icc/icc.h> /*I "petscpc.h" I*/
 
-static PetscErrorCode PCSetUp_ICC(PC pc)
-{
+static PetscErrorCode PCSetUp_ICC(PC pc) {
   PC_ICC        *icc  = (PC_ICC *)pc->data;
   IS             perm = NULL, cperm = NULL;
   MatInfo        info;
@@ -64,8 +63,7 @@ static PetscErrorCode PCSetUp_ICC(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCReset_ICC(PC pc)
-{
+static PetscErrorCode PCReset_ICC(PC pc) {
   PC_ICC *icc = (PC_ICC *)pc->data;
 
   PetscFunctionBegin;
@@ -73,8 +71,7 @@ static PetscErrorCode PCReset_ICC(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDestroy_ICC(PC pc)
-{
+static PetscErrorCode PCDestroy_ICC(PC pc) {
   PC_ICC *icc = (PC_ICC *)pc->data;
 
   PetscFunctionBegin;
@@ -86,8 +83,7 @@ static PetscErrorCode PCDestroy_ICC(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApply_ICC(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApply_ICC(PC pc, Vec x, Vec y) {
   PC_ICC *icc = (PC_ICC *)pc->data;
 
   PetscFunctionBegin;
@@ -95,8 +91,7 @@ static PetscErrorCode PCApply_ICC(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCMatApply_ICC(PC pc, Mat X, Mat Y)
-{
+static PetscErrorCode PCMatApply_ICC(PC pc, Mat X, Mat Y) {
   PC_ICC *icc = (PC_ICC *)pc->data;
 
   PetscFunctionBegin;
@@ -104,8 +99,7 @@ static PetscErrorCode PCMatApply_ICC(PC pc, Mat X, Mat Y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApplySymmetricLeft_ICC(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApplySymmetricLeft_ICC(PC pc, Vec x, Vec y) {
   PC_ICC *icc = (PC_ICC *)pc->data;
 
   PetscFunctionBegin;
@@ -113,8 +107,7 @@ static PetscErrorCode PCApplySymmetricLeft_ICC(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApplySymmetricRight_ICC(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApplySymmetricRight_ICC(PC pc, Vec x, Vec y) {
   PC_ICC *icc = (PC_ICC *)pc->data;
 
   PetscFunctionBegin;
@@ -122,8 +115,7 @@ static PetscErrorCode PCApplySymmetricRight_ICC(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_ICC(PC pc, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode PCSetFromOptions_ICC(PC pc, PetscOptionItems *PetscOptionsObject) {
   PC_ICC   *icc = (PC_ICC *)pc->data;
   PetscBool flg;
   /* PetscReal      dt[3];*/
@@ -161,32 +153,32 @@ extern PetscErrorCode PCFactorSetDropTolerance_ILU(PC, PetscReal, PetscReal, Pet
    Level: beginner
 
    Notes:
-   Only implemented for some matrix formats. Not implemented in parallel.
+    Only implemented for some matrix formats. Not implemented in parallel.
 
-   For `MATSEQBAIJ` matrices this implements a point block ICC.
+          For BAIJ matrices this implements a point block ICC.
 
-   By default, the Manteuffel is applied (for matrices with block size 1). Call `PCFactorSetShiftType`(pc,`MAT_SHIFT_POSITIVE_DEFINITE`);
-   to turn off the shift.
+          The Manteuffel shift is only implemented for matrices with block size 1
 
-   The Manteuffel shift is only implemented for matrices with block size 1
+          By default, the Manteuffel is applied (for matrices with block size 1). Call PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE);
+          to turn off the shift.
 
    References:
 .  * - TONY F. CHAN AND HENK A. VAN DER VORST, Review article: APPROXIMATE AND INCOMPLETE FACTORIZATIONS,
       Chapter in Parallel Numerical Algorithms, edited by D. Keyes, A. Semah, V. Venkatakrishnan, ICASE/LaRC Interdisciplinary Series in
       Science and Engineering, Kluwer.
 
-.seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCSOR`, `MatOrderingType`, `PCILU`, `PCLU`, `PCCHOLESKY`,
+.seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCSOR`, `MatOrderingType`,
           `PCFactorSetZeroPivot()`, `PCFactorSetShiftType()`, `PCFactorSetShiftAmount()`,
           `PCFactorSetFill()`, `PCFactorSetMatOrderingType()`, `PCFactorSetReuseOrdering()`,
           `PCFactorSetLevels()`
+
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_ICC(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_ICC(PC pc) {
   PC_ICC *icc;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&icc));
+  PetscCall(PetscNewLog(pc, &icc));
   pc->data = (void *)icc;
   PetscCall(PCFactorInitialize(pc, MAT_FACTOR_ICC));
 

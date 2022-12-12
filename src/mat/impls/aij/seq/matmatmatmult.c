@@ -4,8 +4,7 @@
 */
 #include <../src/mat/impls/aij/seq/aij.h> /*I "petscmat.h" I*/
 
-PetscErrorCode MatDestroy_SeqAIJ_MatMatMatMult(void *data)
-{
+PetscErrorCode MatDestroy_SeqAIJ_MatMatMatMult(void *data) {
   Mat_MatMatMatMult *matmatmatmult = (Mat_MatMatMatMult *)data;
 
   PetscFunctionBegin;
@@ -14,8 +13,7 @@ PetscErrorCode MatDestroy_SeqAIJ_MatMatMatMult(void *data)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMatMatMultSymbolic_SeqAIJ_SeqAIJ_SeqAIJ(Mat A, Mat B, Mat C, PetscReal fill, Mat D)
-{
+PetscErrorCode MatMatMatMultSymbolic_SeqAIJ_SeqAIJ_SeqAIJ(Mat A, Mat B, Mat C, PetscReal fill, Mat D) {
   Mat                BC;
   Mat_MatMatMatMult *matmatmatmult;
   char              *alg;
@@ -43,8 +41,7 @@ PetscErrorCode MatMatMatMultSymbolic_SeqAIJ_SeqAIJ_SeqAIJ(Mat A, Mat B, Mat C, P
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqAIJ(Mat A, Mat B, Mat C, Mat D)
-{
+PetscErrorCode MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqAIJ(Mat A, Mat B, Mat C, Mat D) {
   Mat_MatMatMatMult *matmatmatmult;
   Mat                BC;
 

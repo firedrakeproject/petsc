@@ -5,8 +5,7 @@ typedef struct {
   PetscViewer viewer;
 } TSTrajectory_Singlefile;
 
-static PetscErrorCode TSTrajectorySet_Singlefile(TSTrajectory tj, TS ts, PetscInt stepnum, PetscReal time, Vec X)
-{
+static PetscErrorCode TSTrajectorySet_Singlefile(TSTrajectory tj, TS ts, PetscInt stepnum, PetscReal time, Vec X) {
   TSTrajectory_Singlefile *sf = (TSTrajectory_Singlefile *)tj->data;
   const char              *filename;
 
@@ -23,8 +22,7 @@ static PetscErrorCode TSTrajectorySet_Singlefile(TSTrajectory tj, TS ts, PetscIn
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSTrajectoryDestroy_Singlefile(TSTrajectory tj)
-{
+static PetscErrorCode TSTrajectoryDestroy_Singlefile(TSTrajectory tj) {
   TSTrajectory_Singlefile *sf = (TSTrajectory_Singlefile *)tj->data;
 
   PetscFunctionBegin;
@@ -34,15 +32,14 @@ static PetscErrorCode TSTrajectoryDestroy_Singlefile(TSTrajectory tj)
 }
 
 /*MC
-      TSTRAJECTORYSINGLEFILE - Stores all solutions of the ODE/ADE into a single file followed by each timestep.
-      Does not save the intermediate stages in a multistage method
+      TSTRAJECTORYSINGLEFILE - Stores all solutions of the ODE/ADE into a single file followed by each timestep. Does not save the intermediate stages in a multistage method
 
   Level: intermediate
 
-.seealso: [](chapter_ts), `TSTrajectoryCreate()`, `TS`, `TSTrajectorySetType()`, `TSTrajectoryType`, `TSTrajectory`
+.seealso: `TSTrajectoryCreate()`, `TS`, `TSTrajectorySetType()`
+
 M*/
-PETSC_EXTERN PetscErrorCode TSTrajectoryCreate_Singlefile(TSTrajectory tj, TS ts)
-{
+PETSC_EXTERN PetscErrorCode TSTrajectoryCreate_Singlefile(TSTrajectory tj, TS ts) {
   TSTrajectory_Singlefile *sf;
 
   PetscFunctionBegin;

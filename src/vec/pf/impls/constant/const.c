@@ -1,8 +1,7 @@
 
 #include <../src/vec/pf/pfimpl.h> /*I "petscpf.h" I*/
 
-static PetscErrorCode PFApply_Constant(void *value, PetscInt n, const PetscScalar *x, PetscScalar *y)
-{
+static PetscErrorCode PFApply_Constant(void *value, PetscInt n, const PetscScalar *x, PetscScalar *y) {
   PetscInt    i;
   PetscScalar v = ((PetscScalar *)value)[0];
 
@@ -12,14 +11,12 @@ static PetscErrorCode PFApply_Constant(void *value, PetscInt n, const PetscScala
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PFApplyVec_Constant(void *value, Vec x, Vec y)
-{
+static PetscErrorCode PFApplyVec_Constant(void *value, Vec x, Vec y) {
   PetscFunctionBegin;
   PetscCall(VecSet(y, *((PetscScalar *)value)));
   PetscFunctionReturn(0);
 }
-PetscErrorCode PFView_Constant(void *value, PetscViewer viewer)
-{
+PetscErrorCode PFView_Constant(void *value, PetscViewer viewer) {
   PetscBool iascii;
 
   PetscFunctionBegin;
@@ -33,15 +30,13 @@ PetscErrorCode PFView_Constant(void *value, PetscViewer viewer)
   }
   PetscFunctionReturn(0);
 }
-static PetscErrorCode PFDestroy_Constant(void *value)
-{
+static PetscErrorCode PFDestroy_Constant(void *value) {
   PetscFunctionBegin;
   PetscCall(PetscFree(value));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PFSetFromOptions_Constant(PF pf, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode PFSetFromOptions_Constant(PF pf, PetscOptionItems *PetscOptionsObject) {
   PetscScalar *value = (PetscScalar *)pf->data;
 
   PetscFunctionBegin;
@@ -51,8 +46,7 @@ static PetscErrorCode PFSetFromOptions_Constant(PF pf, PetscOptionItems *PetscOp
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode PFCreate_Constant(PF pf, void *value)
-{
+PETSC_EXTERN PetscErrorCode PFCreate_Constant(PF pf, void *value) {
   PetscScalar *loc;
 
   PetscFunctionBegin;
@@ -68,16 +62,14 @@ PETSC_EXTERN PetscErrorCode PFCreate_Constant(PF pf, void *value)
 
 /*typedef PetscErrorCode (*FCN)(void*,PetscInt,const PetscScalar*,PetscScalar*);  force argument to next function to not be extern C*/
 
-PETSC_EXTERN PetscErrorCode PFCreate_Quick(PF pf, PetscErrorCode (*function)(void *, PetscInt, const PetscScalar *, PetscScalar *))
-{
+PETSC_EXTERN PetscErrorCode PFCreate_Quick(PF pf, PetscErrorCode (*function)(void *, PetscInt, const PetscScalar *, PetscScalar *)) {
   PetscFunctionBegin;
   PetscCall(PFSet(pf, function, NULL, NULL, NULL, NULL));
   PetscFunctionReturn(0);
 }
 
 /* -------------------------------------------------------------------------------------------------------------------*/
-static PetscErrorCode PFApply_Identity(void *value, PetscInt n, const PetscScalar *x, PetscScalar *y)
-{
+static PetscErrorCode PFApply_Identity(void *value, PetscInt n, const PetscScalar *x, PetscScalar *y) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -86,14 +78,12 @@ static PetscErrorCode PFApply_Identity(void *value, PetscInt n, const PetscScala
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PFApplyVec_Identity(void *value, Vec x, Vec y)
-{
+static PetscErrorCode PFApplyVec_Identity(void *value, Vec x, Vec y) {
   PetscFunctionBegin;
   PetscCall(VecCopy(x, y));
   PetscFunctionReturn(0);
 }
-static PetscErrorCode PFView_Identity(void *value, PetscViewer viewer)
-{
+static PetscErrorCode PFView_Identity(void *value, PetscViewer viewer) {
   PetscBool iascii;
 
   PetscFunctionBegin;
@@ -101,15 +91,13 @@ static PetscErrorCode PFView_Identity(void *value, PetscViewer viewer)
   if (iascii) PetscCall(PetscViewerASCIIPrintf(viewer, "Identity function\n"));
   PetscFunctionReturn(0);
 }
-static PetscErrorCode PFDestroy_Identity(void *value)
-{
+static PetscErrorCode PFDestroy_Identity(void *value) {
   PetscFunctionBegin;
   PetscCall(PetscFree(value));
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode PFCreate_Identity(PF pf, void *value)
-{
+PETSC_EXTERN PetscErrorCode PFCreate_Identity(PF pf, void *value) {
   PetscInt *loc;
 
   PetscFunctionBegin;

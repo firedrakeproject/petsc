@@ -1,8 +1,6 @@
 function close(sreader)
 %
-%   O = close(sreader) - closes the socket connection created with sopen(socketnumber)
-%
-%   See $PETSC_DIR/share/petsc/matlab/@PetscOpenSocket/PetscOpenSocket.m
+%   O = close(sreader) - closes the socket connection
 %
 sclose(sreader.fd);
 sreader.fd = 0;

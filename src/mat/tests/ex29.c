@@ -3,8 +3,7 @@ static char help[] = "Tests PetscHeapCreate()\n\n";
 #include <petscsys.h>
 #include <petscviewer.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscHeap h;
   PetscInt  id, val, cnt, *values;
 

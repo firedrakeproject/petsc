@@ -8,15 +8,16 @@
           F'(u)a  ~=  ----------------
                             h
 */
-#ifndef PETSC_MFFDIMPL_H
-#define PETSC_MFFDIMPL_H
+
+#if !defined(__MFFD_H__)
+#define __MFFD_H__
 
 #include <petscmat.h> /*I  "petscmat.h"   I*/
 #include <petsc/private/petscimpl.h>
 
 /*
- Table of functions that manage the computation and understanding
- of the parameter for finite difference based matrix-free computations
+    Table of functions that manage the computation and understanding
+    of the parameter for finite difference based matrix-free computations
 */
 struct _MFOps {
   PetscErrorCode (*compute)(MatMFFD, Vec, Vec, PetscScalar *, PetscBool *zeroa);
@@ -59,4 +60,4 @@ PETSC_EXTERN PetscFunctionList MatMFFDList;
 PETSC_EXTERN PetscBool         MatMFFDRegisterAllCalled;
 PETSC_EXTERN PetscErrorCode    MatMFFDRegisterAll(void);
 
-#endif // PETSC_MFFDIMPL_H
+#endif

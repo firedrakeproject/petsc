@@ -2,8 +2,7 @@ static char help[] = "Nest vector functionality.\n\n";
 
 #include <petscvec.h>
 
-static PetscErrorCode GetISs(Vec vecs[], IS is[], PetscBool inv)
-{
+static PetscErrorCode GetISs(Vec vecs[], IS is[], PetscBool inv) {
   PetscInt rstart[2], rend[2];
 
   PetscFunctionBegin;
@@ -19,8 +18,7 @@ static PetscErrorCode GetISs(Vec vecs[], IS is[], PetscBool inv)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode test_view(void)
-{
+PetscErrorCode test_view(void) {
   Vec          X, lX, a, b;
   Vec          c, d, e, f;
   Vec          tmp_buf[2];
@@ -170,8 +168,7 @@ PetscErrorCode test_vec_ops(void)
 }
 #endif
 
-PetscErrorCode gen_test_vector(MPI_Comm comm, PetscInt length, PetscInt start_value, PetscInt stride, Vec *_v)
-{
+PetscErrorCode gen_test_vector(MPI_Comm comm, PetscInt length, PetscInt start_value, PetscInt stride, Vec *_v) {
   PetscMPIInt size;
   Vec         v;
   PetscInt    i;
@@ -203,8 +200,7 @@ Y = aX + y = ([4,8,12,16], (15,18,21,24,27])
 Y = aX + y = ([4,9,14,19], (25,30,35,40,45])
 
 */
-PetscErrorCode test_axpy_dot_max(void)
-{
+PetscErrorCode test_axpy_dot_max(void) {
   Vec         x1, y1, x2, y2;
   Vec         tmp_buf[2];
   Vec         X, Y;
@@ -275,8 +271,7 @@ PetscErrorCode test_axpy_dot_max(void)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &args, (char *)0, help));
   PetscCall(test_view());

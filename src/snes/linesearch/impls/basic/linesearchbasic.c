@@ -1,8 +1,7 @@
 #include <petsc/private/linesearchimpl.h>
 #include <petsc/private/snesimpl.h>
 
-static PetscErrorCode SNESLineSearchApply_Basic(SNESLineSearch linesearch)
-{
+static PetscErrorCode SNESLineSearchApply_Basic(SNESLineSearch linesearch) {
   PetscBool changed_y, changed_w;
   Vec       X, F, Y, W;
   SNES      snes;
@@ -63,24 +62,23 @@ static PetscErrorCode SNESLineSearchApply_Basic(SNESLineSearch linesearch)
 /*MC
    SNESLINESEARCHBASIC - This line search implementation is not a line
    search at all; it simply uses the full step.  Thus, this routine is intended
-   for methods with well-scaled updates; i.e. Newton's method (`SNESNEWTONLS`), on
-   well-behaved problems. Also named as `SNESLINESEARCHNONE`
+   for methods with well-scaled updates; i.e. Newton's method (SNESNEWTONLS), on
+   well-behaved problems. Also named as SNESLINESEARCHNONE
 
    Options Database Keys:
 +   -snes_linesearch_damping <damping> - search vector is scaled by this amount, default is 1.0
 -   -snes_linesearch_norms <flag> - whether to compute norms or not, default is true (SNESLineSearchSetComputeNorms())
 
-   Note:
-   For methods with ill-scaled updates (`SNESNRICHARDSON`, `SNESNCG`), a small
+   Notes:
+   For methods with ill-scaled updates (SNESNRICHARDSON, SNESNCG), a small
    damping parameter may yield satisfactory but slow convergence despite
-   the lack of the line search.
+   the simplicity of the line search.
 
    Level: advanced
 
-.seealso: `SNES`, `SNESLineSearch`, `SNESLineSearchType`, `SNESLineSearchCreate()`, `SNESLineSearchSetType()`, `SNESLineSearchSetDamping()`, `SNESLineSearchSetComputeNorms()`
+.seealso: `SNESLineSearchCreate()`, `SNESLineSearchSetType()`, `SNESLineSearchSetDamping()`, `SNESLineSearchSetComputeNorms()`
 M*/
-PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_Basic(SNESLineSearch linesearch)
-{
+PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_Basic(SNESLineSearch linesearch) {
   PetscFunctionBegin;
   linesearch->ops->apply          = SNESLineSearchApply_Basic;
   linesearch->ops->destroy        = NULL;

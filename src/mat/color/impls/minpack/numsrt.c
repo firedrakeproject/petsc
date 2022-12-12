@@ -2,8 +2,7 @@
 
 #include <../src/mat/color/impls/minpack/color.h>
 
-PetscErrorCode MINPACKnumsrt(PetscInt *n, PetscInt *nmax, PetscInt *num, PetscInt *mode, PetscInt *idex, PetscInt *last, PetscInt *next)
-{
+PetscErrorCode MINPACKnumsrt(PetscInt *n, PetscInt *nmax, PetscInt *num, PetscInt *mode, PetscInt *idex, PetscInt *last, PetscInt *next) {
   /* System generated locals */
   PetscInt i__1, i__2;
 

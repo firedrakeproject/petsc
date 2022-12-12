@@ -1,4 +1,4 @@
--include ../../../petscdir.mk
+-include ../../../petsckdir.mk
 
 SOURCEC  = taosolver.c taosolver_fg.c taosolverregi.c taosolver_hj.c taosolver_bounds.c dlregistao.c fdiff.c
 SOURCEF  =

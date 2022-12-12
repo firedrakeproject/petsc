@@ -1,8 +1,7 @@
 
 #include <petsc/private/matimpl.h> /*I "petscmat.h" I*/
 
-PetscErrorCode MatMult_Centering(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_Centering(Mat A, Vec xx, Vec yy) {
   PetscScalar       *y;
   const PetscScalar *x;
   PetscScalar        sum, mean;
@@ -47,8 +46,7 @@ PetscErrorCode MatMult_Centering(Mat A, Vec xx, Vec yy)
 
 .seealso: `MatCreateLRC()`, `MatCreateComposite()`
 @*/
-PetscErrorCode MatCreateCentering(MPI_Comm comm, PetscInt n, PetscInt N, Mat *C)
-{
+PetscErrorCode MatCreateCentering(MPI_Comm comm, PetscInt n, PetscInt N, Mat *C) {
   PetscMPIInt size;
 
   PetscFunctionBegin;

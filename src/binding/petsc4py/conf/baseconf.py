@@ -61,14 +61,14 @@ def fix_config_vars(names, values):
         if 'ARCHFLAGS' in os.environ:
             ARCHFLAGS = os.environ['ARCHFLAGS']
             for i, flag in enumerate(list(values)):
-                flag, count = re.subn('-arch\s+\w+', ' ', str(flag))
+                flag, count = re.subn('-arch\s+\w+', ' ', flag)
                 if count and ARCHFLAGS:
                     flag = flag + ' ' + ARCHFLAGS
                 values[i] = flag
         if 'SDKROOT' in os.environ:
             SDKROOT = os.environ['SDKROOT']
             for i, flag in enumerate(list(values)):
-                flag, count = re.subn('-isysroot [^ \t]*', ' ', str(flag))
+                flag, count = re.subn('-isysroot [^ \t]*', ' ', flag)
                 if count and SDKROOT:
                     flag = flag + ' ' + '-isysroot ' + SDKROOT
                 values[i] = flag

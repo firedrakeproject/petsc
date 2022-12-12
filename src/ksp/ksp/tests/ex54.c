@@ -6,8 +6,7 @@
 
 #include <petscksp.h>
 
-PetscErrorCode fill(Mat m, Vec v)
-{
+PetscErrorCode fill(Mat m, Vec v) {
   PetscInt    idxn[3]   = {0, 1, 2};
   PetscInt    localRows = 0;
   PetscMPIInt rank, size;
@@ -60,8 +59,7 @@ PetscErrorCode fill(Mat m, Vec v)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat       Q, C, V, A, B;
   Vec       v, a, b, se;
   KSP       QRsolver;

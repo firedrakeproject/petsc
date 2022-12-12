@@ -2,8 +2,7 @@ static char help[] = "Tests MATHTOOL\n\n";
 
 #include <petscmat.h>
 
-static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx)
-{
+static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx) {
   PetscInt  d, j, k;
   PetscReal diff = 0.0, *coords = (PetscReal *)(ctx);
 
@@ -18,8 +17,7 @@ static PetscErrorCode GenEntries(PetscInt sdim, PetscInt M, PetscInt N, const Pe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode GenEntriesRectangular(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx)
-{
+static PetscErrorCode GenEntriesRectangular(PetscInt sdim, PetscInt M, PetscInt N, const PetscInt *J, const PetscInt *K, PetscScalar *ptr, void *ctx) {
   PetscInt  d, j, k;
   PetscReal diff = 0.0, **coords = (PetscReal **)(ctx);
 
@@ -34,8 +32,7 @@ static PetscErrorCode GenEntriesRectangular(PetscInt sdim, PetscInt M, PetscInt 
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat            A, AT, D, B, P, R, RT;
   PetscInt       m = 100, dim = 3, M, K = 10, begin, n = 0, N, bs;
   PetscMPIInt    size;

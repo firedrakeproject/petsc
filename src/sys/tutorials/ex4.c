@@ -2,8 +2,7 @@ static char help[] = "Introductory example that illustrates running PETSc on a s
 
 #include <petscsys.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   PetscMPIInt rank, size;
 
   /* We must call MPI_Init() first, making us, not PETSc, responsible for MPI */

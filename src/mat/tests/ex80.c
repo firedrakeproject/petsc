@@ -11,8 +11,7 @@ static char help[] = "Partition tiny grid.\n\n";
 */
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat             A, At;
   PetscMPIInt     rank, size;
   PetscInt       *ia, *ja, row;

@@ -5,8 +5,7 @@ static char help[] = "Create a mesh, refine and coarsen simultaneously, and tran
 #include <petscdmforest.h>
 #include <petscoptions.h>
 
-static PetscErrorCode AddIdentityLabel(DM dm)
-{
+static PetscErrorCode AddIdentityLabel(DM dm) {
   PetscInt pStart, pEnd, p;
 
   PetscFunctionBegin;
@@ -16,8 +15,7 @@ static PetscErrorCode AddIdentityLabel(DM dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateAdaptivityLabel(DM forest, DMLabel *adaptLabel)
-{
+static PetscErrorCode CreateAdaptivityLabel(DM forest, DMLabel *adaptLabel) {
   DMLabel  identLabel;
   PetscInt cStart, cEnd, c;
 
@@ -35,22 +33,19 @@ static PetscErrorCode CreateAdaptivityLabel(DM forest, DMLabel *adaptLabel)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode LinearFunction(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx)
-{
+static PetscErrorCode LinearFunction(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx) {
   PetscFunctionBeginUser;
   u[0] = (x[0] * 2.0 + 1.) + (x[1] * 20.0 + 10.) + ((dim == 3) ? (x[2] * 200.0 + 100.) : 0.);
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MultiaffineFunction(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx)
-{
+static PetscErrorCode MultiaffineFunction(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx) {
   PetscFunctionBeginUser;
   u[0] = (x[0] * 1.0 + 2.0) * (x[1] * 3.0 - 4.0) * ((dim == 3) ? (x[2] * 5.0 + 6.0) : 1.);
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CoordsFunction(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx)
-{
+static PetscErrorCode CoordsFunction(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar u[], void *ctx) {
   PetscInt f;
 
   PetscFunctionBeginUser;
@@ -65,8 +60,7 @@ typedef struct _bc_func_ctx {
   void    *ctx;
 } bc_func_ctx;
 
-static PetscErrorCode bc_func_fv(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, void *ctx)
-{
+static PetscErrorCode bc_func_fv(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, void *ctx) {
   bc_func_ctx *bcCtx;
 
   PetscFunctionBegin;
@@ -75,8 +69,7 @@ static PetscErrorCode bc_func_fv(PetscReal time, const PetscReal *c, const Petsc
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode IdentifyBadPoints(DM dm, Vec vec, PetscReal tol)
-{
+static PetscErrorCode IdentifyBadPoints(DM dm, Vec vec, PetscReal tol) {
   DM           dmplex;
   PetscInt     p, pStart, pEnd, maxDof;
   Vec          vecLocal;
@@ -130,8 +123,7 @@ static PetscErrorCode IdentifyBadPoints(DM dm, Vec vec, PetscReal tol)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   MPI_Comm comm;
   DM       base, preForest, postForest;
   PetscInt dim, Nf          = 1;

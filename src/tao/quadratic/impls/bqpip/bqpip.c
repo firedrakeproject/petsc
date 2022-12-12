@@ -7,8 +7,7 @@
 #include <../src/tao/quadratic/impls/bqpip/bqpipimpl.h>
 #include <petscksp.h>
 
-static PetscErrorCode QPIPComputeResidual(TAO_BQPIP *qp, Tao tao)
-{
+static PetscErrorCode QPIPComputeResidual(TAO_BQPIP *qp, Tao tao) {
   PetscReal dtmp = 1.0 - qp->psteplength;
 
   PetscFunctionBegin;
@@ -31,8 +30,7 @@ static PetscErrorCode QPIPComputeResidual(TAO_BQPIP *qp, Tao tao)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode QPIPSetInitialPoint(TAO_BQPIP *qp, Tao tao)
-{
+static PetscErrorCode QPIPSetInitialPoint(TAO_BQPIP *qp, Tao tao) {
   PetscReal two = 2.0, p01 = 1;
   PetscReal gap1, gap2, fff, mu;
 
@@ -123,8 +121,7 @@ static PetscErrorCode QPIPSetInitialPoint(TAO_BQPIP *qp, Tao tao)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode QPIPStepLength(TAO_BQPIP *qp)
-{
+static PetscErrorCode QPIPStepLength(TAO_BQPIP *qp) {
   PetscReal tstep1, tstep2, tstep3, tstep4, tstep;
 
   PetscFunctionBegin;
@@ -145,8 +142,7 @@ static PetscErrorCode QPIPStepLength(TAO_BQPIP *qp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode QPIPComputeNormFromCentralPath(TAO_BQPIP *qp, PetscReal *norm)
-{
+static PetscErrorCode QPIPComputeNormFromCentralPath(TAO_BQPIP *qp, PetscReal *norm) {
   PetscReal gap[2], mu[2], nmu;
 
   PetscFunctionBegin;
@@ -170,8 +166,7 @@ static PetscErrorCode QPIPComputeNormFromCentralPath(TAO_BQPIP *qp, PetscReal *n
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode QPIPComputeStepDirection(TAO_BQPIP *qp, Tao tao)
-{
+static PetscErrorCode QPIPComputeStepDirection(TAO_BQPIP *qp, Tao tao) {
   PetscFunctionBegin;
   /* Calculate DG */
   PetscCall(VecCopy(tao->stepdirection, qp->DG));
@@ -196,8 +191,7 @@ static PetscErrorCode QPIPComputeStepDirection(TAO_BQPIP *qp, Tao tao)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoSetup_BQPIP(Tao tao)
-{
+static PetscErrorCode TaoSetup_BQPIP(Tao tao) {
   TAO_BQPIP *qp = (TAO_BQPIP *)tao->data;
 
   PetscFunctionBegin;
@@ -234,8 +228,7 @@ static PetscErrorCode TaoSetup_BQPIP(Tao tao)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoSolve_BQPIP(Tao tao)
-{
+static PetscErrorCode TaoSolve_BQPIP(Tao tao) {
   TAO_BQPIP *qp = (TAO_BQPIP *)tao->data;
   PetscInt   its;
   PetscReal  d1, d2, ksptol, sigmamu;
@@ -446,14 +439,12 @@ static PetscErrorCode TaoSolve_BQPIP(Tao tao)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoView_BQPIP(Tao tao, PetscViewer viewer)
-{
+static PetscErrorCode TaoView_BQPIP(Tao tao, PetscViewer viewer) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoSetFromOptions_BQPIP(Tao tao, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode TaoSetFromOptions_BQPIP(Tao tao, PetscOptionItems *PetscOptionsObject) {
   TAO_BQPIP *qp = (TAO_BQPIP *)tao->data;
 
   PetscFunctionBegin;
@@ -464,8 +455,7 @@ static PetscErrorCode TaoSetFromOptions_BQPIP(Tao tao, PetscOptionItems *PetscOp
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoDestroy_BQPIP(Tao tao)
-{
+static PetscErrorCode TaoDestroy_BQPIP(Tao tao) {
   TAO_BQPIP *qp = (TAO_BQPIP *)tao->data;
 
   PetscFunctionBegin;
@@ -497,8 +487,7 @@ static PetscErrorCode TaoDestroy_BQPIP(Tao tao)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoComputeDual_BQPIP(Tao tao, Vec DXL, Vec DXU)
-{
+static PetscErrorCode TaoComputeDual_BQPIP(Tao tao, Vec DXL, Vec DXU) {
   TAO_BQPIP *qp = (TAO_BQPIP *)tao->data;
 
   PetscFunctionBegin;
@@ -522,12 +511,11 @@ static PetscErrorCode TaoComputeDual_BQPIP(Tao tao, Vec DXL, Vec DXU)
   Level: beginner
 M*/
 
-PETSC_EXTERN PetscErrorCode TaoCreate_BQPIP(Tao tao)
-{
+PETSC_EXTERN PetscErrorCode TaoCreate_BQPIP(Tao tao) {
   TAO_BQPIP *qp;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&qp));
+  PetscCall(PetscNewLog(tao, &qp));
 
   tao->ops->setup          = TaoSetup_BQPIP;
   tao->ops->solve          = TaoSolve_BQPIP;

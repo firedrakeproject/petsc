@@ -28,8 +28,7 @@ struct _Problem {
 /*
       Stiff 3-variable system from chemical reactions, due to Robertson (1966), problem ROBER in Hairer&Wanner, ODE 2, 1996
 */
-static PetscErrorCode RoberFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx)
-{
+static PetscErrorCode RoberFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx) {
   PetscScalar       *f;
   const PetscScalar *x, *xdot;
 
@@ -46,8 +45,7 @@ static PetscErrorCode RoberFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RoberJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, void *ctx)
-{
+static PetscErrorCode RoberJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, void *ctx) {
   PetscInt           rowcol[] = {0, 1, 2};
   PetscScalar        J[3][3];
   const PetscScalar *x, *xdot;
@@ -77,8 +75,7 @@ static PetscErrorCode RoberJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscRe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RoberSolution(PetscReal t, Vec X, void *ctx)
-{
+static PetscErrorCode RoberSolution(PetscReal t, Vec X, void *ctx) {
   PetscScalar *x;
 
   PetscFunctionBeginUser;
@@ -91,8 +88,7 @@ static PetscErrorCode RoberSolution(PetscReal t, Vec X, void *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RoberCreate(Problem p)
-{
+static PetscErrorCode RoberCreate(Problem p) {
   PetscFunctionBeginUser;
   p->destroy    = 0;
   p->function   = &RoberFunction;
@@ -111,15 +107,13 @@ typedef struct {
   PetscReal lambda;
 } CECtx;
 
-static PetscErrorCode CEDestroy(Problem p)
-{
+static PetscErrorCode CEDestroy(Problem p) {
   PetscFunctionBeginUser;
   PetscCall(PetscFree(p->data));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CEFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx)
-{
+static PetscErrorCode CEFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx) {
   PetscReal          l = ((CECtx *)ctx)->lambda;
   PetscScalar       *f;
   const PetscScalar *x, *xdot;
@@ -138,8 +132,7 @@ static PetscErrorCode CEFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, voi
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CEJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, void *ctx)
-{
+static PetscErrorCode CEJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, void *ctx) {
   PetscReal          l        = ((CECtx *)ctx)->lambda;
   PetscInt           rowcol[] = {0};
   PetscScalar        J[1][1];
@@ -162,8 +155,7 @@ static PetscErrorCode CEJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CESolution(PetscReal t, Vec X, void *ctx)
-{
+static PetscErrorCode CESolution(PetscReal t, Vec X, void *ctx) {
   PetscReal    l = ((CECtx *)ctx)->lambda;
   PetscScalar *x;
 
@@ -174,8 +166,7 @@ static PetscErrorCode CESolution(PetscReal t, Vec X, void *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CECreate(Problem p)
-{
+static PetscErrorCode CECreate(Problem p) {
   CECtx *ce;
 
   PetscFunctionBeginUser;
@@ -192,9 +183,7 @@ static PetscErrorCode CECreate(Problem p)
 
   ce->lambda = 10;
   PetscOptionsBegin(p->comm, NULL, "CE options", "");
-  {
-    PetscCall(PetscOptionsReal("-problem_ce_lambda", "Parameter controlling stiffness: xdot + lambda*(x - cos(t))", "", ce->lambda, &ce->lambda, NULL));
-  }
+  { PetscCall(PetscOptionsReal("-problem_ce_lambda", "Parameter controlling stiffness: xdot + lambda*(x - cos(t))", "", ce->lambda, &ce->lambda, NULL)); }
   PetscOptionsEnd();
   PetscFunctionReturn(0);
 }
@@ -202,8 +191,7 @@ static PetscErrorCode CECreate(Problem p)
 /*
    Stiff 3-variable oscillatory system from chemical reactions. problem OREGO in Hairer&Wanner
 */
-static PetscErrorCode OregoFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx)
-{
+static PetscErrorCode OregoFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx) {
   PetscScalar       *f;
   const PetscScalar *x, *xdot;
 
@@ -220,8 +208,7 @@ static PetscErrorCode OregoFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode OregoJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, void *ctx)
-{
+static PetscErrorCode OregoJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, void *ctx) {
   PetscInt           rowcol[] = {0, 1, 2};
   PetscScalar        J[3][3];
   const PetscScalar *x, *xdot;
@@ -251,8 +238,7 @@ static PetscErrorCode OregoJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscRe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode OregoSolution(PetscReal t, Vec X, void *ctx)
-{
+static PetscErrorCode OregoSolution(PetscReal t, Vec X, void *ctx) {
   PetscScalar *x;
 
   PetscFunctionBeginUser;
@@ -265,8 +251,7 @@ static PetscErrorCode OregoSolution(PetscReal t, Vec X, void *ctx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode OregoCreate(Problem p)
-{
+static PetscErrorCode OregoCreate(Problem p) {
   PetscFunctionBeginUser;
   p->destroy    = 0;
   p->function   = &OregoFunction;
@@ -286,8 +271,7 @@ typedef struct {
   Vec      x;
 } MonitorCtx;
 
-static PetscErrorCode MonitorError(TS ts, PetscInt step, PetscReal t, Vec x, void *ctx)
-{
+static PetscErrorCode MonitorError(TS ts, PetscInt step, PetscReal t, Vec x, void *ctx) {
   MonitorCtx *mon = (MonitorCtx *)ctx;
   PetscReal   h, nrm_x, nrm_exact, nrm_diff;
 
@@ -304,8 +288,7 @@ static PetscErrorCode MonitorError(TS ts, PetscInt step, PetscReal t, Vec x, voi
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscFunctionList plist = NULL;
   char              pname[256];
   TS                ts;   /* nonlinear solver */

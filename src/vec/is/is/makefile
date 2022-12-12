@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 
 SOURCEH	  = ../../../../include/petsc/private/isimpl.h ../../../../include/petscis.h ../../../../include/petscistypes.h
 LIBBASE	  = libpetscvec

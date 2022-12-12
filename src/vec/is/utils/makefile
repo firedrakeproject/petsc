@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 
 SOURCEC	  = hdf5io.c isio.c isltog.c pmap.c psort.c
 SOURCEF	  =

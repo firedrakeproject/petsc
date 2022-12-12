@@ -4,14 +4,12 @@ static char help[] = "Tests MatView()/MatLoad() with binary viewers for SBAIJ ma
 #include <petscviewer.h>
 
 #include <petsc/private/hashtable.h>
-static PetscReal MakeValue(PetscInt i, PetscInt j, PetscInt M)
-{
+static PetscReal MakeValue(PetscInt i, PetscInt j, PetscInt M) {
   PetscHash_t h = PetscHashCombine(PetscHashInt(i), PetscHashInt(j));
   return (PetscReal)((h % 5 == 0) ? (1 + i + j * M) : 0);
 }
 
-static PetscErrorCode CheckValuesAIJ(Mat A)
-{
+static PetscErrorCode CheckValuesAIJ(Mat A) {
   PetscInt    M, N, rstart, rend, i, j;
   PetscReal   v, w;
   PetscScalar val;
@@ -34,8 +32,7 @@ static PetscErrorCode CheckValuesAIJ(Mat A)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A;
   PetscInt    M = 24, N = 24, bs = 3;
   PetscInt    rstart, rend, i, j;

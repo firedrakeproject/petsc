@@ -21,8 +21,7 @@
 
 .seealso: `PetscObject`, `PetscClassId`, `PetscObjectGetClassName()`, `PetscObjectGetType()`
 @*/
-PetscErrorCode PetscObjectGetClassId(PetscObject obj, PetscClassId *classid)
-{
+PetscErrorCode PetscObjectGetClassId(PetscObject obj, PetscClassId *classid) {
   PetscFunctionBegin;
   PetscValidHeader(obj, 1);
   PetscValidIntPointer(classid, 2);
@@ -47,8 +46,7 @@ PetscErrorCode PetscObjectGetClassId(PetscObject obj, PetscClassId *classid)
 
 .seealso: `PetscObject`, `PetscClassId`, `PetscObjectGetType()`
 @*/
-PetscErrorCode PetscObjectGetClassName(PetscObject obj, const char *classname[])
-{
+PetscErrorCode PetscObjectGetClassName(PetscObject obj, const char *classname[]) {
   PetscFunctionBegin;
   PetscValidHeader(obj, 1);
   PetscValidPointer(classname, 2);

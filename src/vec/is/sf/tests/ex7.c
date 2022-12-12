@@ -1,8 +1,7 @@
 static char help[] = "Test vecscatter of different block sizes across processes\n\n";
 
 #include <petscvec.h>
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt           i, bs, n, low, high;
   PetscMPIInt        nproc, rank;
   Vec                x, y, z;

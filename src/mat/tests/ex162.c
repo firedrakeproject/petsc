@@ -2,8 +2,7 @@ static char help[] = "Tests MatShift for SeqAIJ matrices with some missing diago
 
 #include <petscmat.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat         A;
   PetscInt    coli[4], row;
   PetscScalar vali[4];

@@ -4,11 +4,10 @@
 */
 #include <../src/mat/impls/sbaij/mpi/mpisbaij.h>
 
-PetscErrorCode MatSetUpMultiply_MPISBAIJ(Mat mat)
-{
+PetscErrorCode MatSetUpMultiply_MPISBAIJ(Mat mat) {
   Mat_MPISBAIJ   *sbaij = (Mat_MPISBAIJ *)mat->data;
   Mat_SeqBAIJ    *B     = (Mat_SeqBAIJ *)(sbaij->B->data);
-  PetscInt        i, j, *aj = B->j, ec = 0, *garray, *sgarray;
+  PetscInt        Nbs = sbaij->Nbs, i, j, *aj = B->j, ec = 0, *garray, *sgarray;
   PetscInt        bs = mat->rmap->bs, *stmp, mbs = sbaij->mbs, vec_size, nt;
   IS              from, to;
   Vec             gvec;
@@ -17,48 +16,45 @@ PetscErrorCode MatSetUpMultiply_MPISBAIJ(Mat mat)
   const PetscInt *sowners;
   PetscScalar    *ptr;
 #if defined(PETSC_USE_CTABLE)
-  PetscHMapI    gid1_lid1 = NULL; /* one-based gid to lid table */
-  PetscHashIter tpos;
-  PetscInt      gid, lid;
+  PetscTable         gid1_lid1; /* one-based gid to lid table */
+  PetscTablePosition tpos;
+  PetscInt           gid, lid;
 #else
-  PetscInt  Nbs = sbaij->Nbs;
   PetscInt *indices;
 #endif
 
   PetscFunctionBegin;
 #if defined(PETSC_USE_CTABLE)
-  PetscCall(PetscHMapICreateWithSize(mbs, &gid1_lid1));
+  PetscCall(PetscTableCreate(mbs, Nbs + 1, &gid1_lid1));
   for (i = 0; i < B->mbs; i++) {
     for (j = 0; j < B->ilen[i]; j++) {
       PetscInt data, gid1 = aj[B->i[i] + j] + 1;
-      PetscCall(PetscHMapIGetWithDefault(gid1_lid1, gid1, 0, &data));
-      if (!data) PetscCall(PetscHMapISet(gid1_lid1, gid1, ++ec));
+      PetscCall(PetscTableFind(gid1_lid1, gid1, &data));
+      if (!data) PetscCall(PetscTableAdd(gid1_lid1, gid1, ++ec, INSERT_VALUES));
     }
   }
   /* form array of columns we need */
   PetscCall(PetscMalloc1(ec, &garray));
-  PetscHashIterBegin(gid1_lid1, tpos);
-  while (!PetscHashIterAtEnd(gid1_lid1, tpos)) {
-    PetscHashIterGetKey(gid1_lid1, tpos, gid);
-    PetscHashIterGetVal(gid1_lid1, tpos, lid);
-    PetscHashIterNext(gid1_lid1, tpos);
+  PetscCall(PetscTableGetHeadPosition(gid1_lid1, &tpos));
+  while (tpos) {
+    PetscCall(PetscTableGetNext(gid1_lid1, &tpos, &gid, &lid));
     gid--;
     lid--;
     garray[lid] = gid;
   }
   PetscCall(PetscSortInt(ec, garray));
-  PetscCall(PetscHMapIClear(gid1_lid1));
-  for (i = 0; i < ec; i++) PetscCall(PetscHMapISet(gid1_lid1, garray[i] + 1, i + 1));
+  PetscCall(PetscTableRemoveAll(gid1_lid1));
+  for (i = 0; i < ec; i++) PetscCall(PetscTableAdd(gid1_lid1, garray[i] + 1, i + 1, INSERT_VALUES));
   /* compact out the extra columns in B */
   for (i = 0; i < B->mbs; i++) {
     for (j = 0; j < B->ilen[i]; j++) {
       PetscInt gid1 = aj[B->i[i] + j] + 1;
-      PetscCall(PetscHMapIGetWithDefault(gid1_lid1, gid1, 0, &lid));
+      PetscCall(PetscTableFind(gid1_lid1, gid1, &lid));
       lid--;
       aj[B->i[i] + j] = lid;
     }
   }
-  PetscCall(PetscHMapIDestroy(&gid1_lid1));
+  PetscCall(PetscTableDestroy(&gid1_lid1));
   PetscCall(PetscMalloc2(2 * ec, &sgarray, ec, &ec_owner));
   for (i = j = 0; i < ec; i++) {
     while (garray[i] >= owners[j + 1]) j++;
@@ -121,6 +117,11 @@ PetscErrorCode MatSetUpMultiply_MPISBAIJ(Mat mat)
 
   sbaij->garray = garray;
 
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->Mvctx));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->lvec));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)from));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)to));
+
   PetscCall(ISDestroy(&from));
   PetscCall(ISDestroy(&to));
 
@@ -165,6 +166,16 @@ PetscErrorCode MatSetUpMultiply_MPISBAIJ(Mat mat)
 
   PetscCall(PetscFree(stmp));
 
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->sMvctx));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->slvec0));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->slvec1));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->slvec0b));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->slvec1a));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)sbaij->slvec1b));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)from));
+  PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)to));
+
+  PetscCall(PetscLogObjectMemory((PetscObject)mat, ec * sizeof(PetscInt)));
   PetscCall(ISDestroy(&from));
   PetscCall(ISDestroy(&to));
   PetscCall(PetscFree2(sgarray, ec_owner));
@@ -180,13 +191,12 @@ PetscErrorCode MatSetUpMultiply_MPISBAIJ(Mat mat)
    Kind of slow! But that's what application programmers get when
    they are sloppy.
 */
-PetscErrorCode MatDisAssemble_MPISBAIJ(Mat A)
-{
+PetscErrorCode MatDisAssemble_MPISBAIJ(Mat A) {
   Mat_MPISBAIJ *baij  = (Mat_MPISBAIJ *)A->data;
   Mat           B     = baij->B, Bnew;
   Mat_SeqBAIJ  *Bbaij = (Mat_SeqBAIJ *)B->data;
   PetscInt      i, j, mbs = Bbaij->mbs, n = A->cmap->N, col, *garray = baij->garray;
-  PetscInt      k, bs = A->rmap->bs, bs2 = baij->bs2, *rvals, *nz, m = A->rmap->n;
+  PetscInt      k, bs = A->rmap->bs, bs2 = baij->bs2, *rvals, *nz, ec, m = A->rmap->n;
   MatScalar    *a = Bbaij->a;
   PetscScalar  *atmp;
 #if defined(PETSC_USE_REAL_MAT_SINGLE)
@@ -198,6 +208,7 @@ PetscErrorCode MatDisAssemble_MPISBAIJ(Mat A)
   PetscCall(PetscMalloc1(A->rmap->bs, &atmp));
 #endif
   /* free stuff related to matrix-vec multiply */
+  PetscCall(VecGetSize(baij->lvec, &ec)); /* needed for PetscLogObjectMemory below */
   PetscCall(VecDestroy(&baij->lvec));
   PetscCall(VecScatterDestroy(&baij->Mvctx));
 
@@ -209,9 +220,10 @@ PetscErrorCode MatDisAssemble_MPISBAIJ(Mat A)
 
   if (baij->colmap) {
 #if defined(PETSC_USE_CTABLE)
-    PetscCall(PetscHMapIDestroy(&baij->colmap));
+    PetscCall(PetscTableDestroy(&baij->colmap));
 #else
     PetscCall(PetscFree(baij->colmap));
+    PetscCall(PetscLogObjectMemory((PetscObject)A, -Bbaij->nbs * sizeof(PetscInt)));
 #endif
   }
 
@@ -262,7 +274,9 @@ PetscErrorCode MatDisAssemble_MPISBAIJ(Mat A)
   baij->garray = NULL;
 
   PetscCall(PetscFree(rvals));
+  PetscCall(PetscLogObjectMemory((PetscObject)A, -ec * sizeof(PetscInt)));
   PetscCall(MatDestroy(&B));
+  PetscCall(PetscLogObjectParent((PetscObject)A, (PetscObject)Bnew));
 
   baij->B = Bnew;
 

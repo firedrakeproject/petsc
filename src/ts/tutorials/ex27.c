@@ -64,8 +64,7 @@ extern PetscErrorCode FormIFunctionLocal(DMDALocalInfo *, PetscReal, Field **, F
 extern PetscErrorCode FormIFunction(TS, PetscReal, Vec, Vec, Vec, void *);
 extern PetscErrorCode ReactingFlowPostCheck(SNESLineSearch, Vec, Vec, Vec, PetscBool *, PetscBool *, void *);
 
-PetscErrorCode SetFromOptions(AppCtx *ctx)
-{
+PetscErrorCode SetFromOptions(AppCtx *ctx) {
   PetscInt i, j;
 
   PetscFunctionBeginUser;
@@ -110,8 +109,7 @@ PetscErrorCode SetFromOptions(AppCtx *ctx)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS             ts;
   SNES           snes;
   SNESLineSearch linesearch;
@@ -159,8 +157,7 @@ int main(int argc, char **argv)
 
 /* ------------------------------------------------------------------- */
 
-PetscErrorCode FormInitialGuess(DM da, AppCtx *ctx, Vec X)
-{
+PetscErrorCode FormInitialGuess(DM da, AppCtx *ctx, Vec X) {
   PetscInt i, j, l, Mx, My, xs, ys, xm, ym;
   Field  **x;
 
@@ -184,8 +181,7 @@ PetscErrorCode FormInitialGuess(DM da, AppCtx *ctx, Vec X)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormIFunctionLocal(DMDALocalInfo *info, PetscScalar ptime, Field **x, Field **xt, Field **f, AppCtx *ctx)
-{
+PetscErrorCode FormIFunctionLocal(DMDALocalInfo *info, PetscScalar ptime, Field **x, Field **xt, Field **f, AppCtx *ctx) {
   PetscInt    i, j, l, m;
   PetscReal   hx, hy, dhx, dhy, hxdhy, hydhx, scale;
   PetscScalar u, uxx, uyy;
@@ -282,8 +278,7 @@ PetscErrorCode FormIFunctionLocal(DMDALocalInfo *info, PetscScalar ptime, Field 
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ReactingFlowPostCheck(SNESLineSearch linesearch, Vec X, Vec Y, Vec W, PetscBool *changed_y, PetscBool *changed_w, void *vctx)
-{
+PetscErrorCode ReactingFlowPostCheck(SNESLineSearch linesearch, Vec X, Vec Y, Vec W, PetscBool *changed_y, PetscBool *changed_w, void *vctx) {
   PetscInt    i, j, l, Mx, My, xs, ys, xm, ym;
   Field     **x;
   SNES        snes;
@@ -312,8 +307,7 @@ PetscErrorCode ReactingFlowPostCheck(SNESLineSearch linesearch, Vec X, Vec Y, Ve
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode FormIFunction(TS ts, PetscReal ptime, Vec X, Vec Xdot, Vec F, void *user)
-{
+PetscErrorCode FormIFunction(TS ts, PetscReal ptime, Vec X, Vec Xdot, Vec F, void *user) {
   DMDALocalInfo info;
   Field       **u, **udot, **fu;
   Vec           localX;

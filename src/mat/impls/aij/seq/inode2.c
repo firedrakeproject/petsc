@@ -4,8 +4,7 @@
 extern PetscErrorCode MatInodeAdjustForInodes_SeqAIJ_Inode(Mat, IS *, IS *);
 extern PetscErrorCode MatInodeGetInodeSizes_SeqAIJ_Inode(Mat, PetscInt *, PetscInt *[], PetscInt *);
 
-PetscErrorCode MatView_SeqAIJ_Inode(Mat A, PetscViewer viewer)
-{
+PetscErrorCode MatView_SeqAIJ_Inode(Mat A, PetscViewer viewer) {
   Mat_SeqAIJ       *a = (Mat_SeqAIJ *)A->data;
   PetscBool         iascii;
   PetscViewerFormat format;
@@ -25,8 +24,7 @@ PetscErrorCode MatView_SeqAIJ_Inode(Mat A, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatAssemblyEnd_SeqAIJ_Inode(Mat A, MatAssemblyType mode)
-{
+PetscErrorCode MatAssemblyEnd_SeqAIJ_Inode(Mat A, MatAssemblyType mode) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -35,8 +33,7 @@ PetscErrorCode MatAssemblyEnd_SeqAIJ_Inode(Mat A, MatAssemblyType mode)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_SeqAIJ_Inode(Mat A)
-{
+PetscErrorCode MatDestroy_SeqAIJ_Inode(Mat A) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -52,8 +49,7 @@ PetscErrorCode MatDestroy_SeqAIJ_Inode(Mat A)
 /* It is intended as a helper for the MATSEQAIJ class, so classes which desire Inodes should  */
 /*    inherit off of MATSEQAIJ instead by calling MatSetType(MATSEQAIJ) in their constructor. */
 /* Maybe this is a bad idea. (?) */
-PetscErrorCode MatCreate_SeqAIJ_Inode(Mat B)
-{
+PetscErrorCode MatCreate_SeqAIJ_Inode(Mat B) {
   Mat_SeqAIJ *b = (Mat_SeqAIJ *)B->data;
   PetscBool   no_inode, no_unroll;
 
@@ -85,17 +81,13 @@ PetscErrorCode MatCreate_SeqAIJ_Inode(Mat B)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSetOption_SeqAIJ_Inode(Mat A, MatOption op, PetscBool flg)
-{
+PetscErrorCode MatSetOption_SeqAIJ_Inode(Mat A, MatOption op, PetscBool flg) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
   PetscFunctionBegin;
   switch (op) {
-  case MAT_USE_INODES:
-    a->inode.use = flg;
-    break;
-  default:
-    break;
+  case MAT_USE_INODES: a->inode.use = flg; break;
+  default: break;
   }
   PetscFunctionReturn(0);
 }

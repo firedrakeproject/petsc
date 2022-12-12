@@ -7,8 +7,7 @@
 /*
       Version for when blocks are 7 by 7
 */
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_inplace(Mat C, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_inplace(Mat C, Mat A, const MatFactorInfo *info) {
   Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   IS              isrow = b->row, isicol = b->icol;
   const PetscInt *r, *ic, *bi = b->i, *bj = b->j, *ajtmp, *diag_offset = b->diag, *ai = a->i, *aj = a->j, *pj, *ajtmpold;
@@ -454,8 +453,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_inplace(Mat C, Mat A, const MatFacto
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7(Mat B, Mat A, const MatFactorInfo *info) {
   Mat             C = B;
   Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   IS              isrow = b->row, isicol = b->icol;
@@ -559,8 +557,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7(Mat B, Mat A, const MatFactorInfo *i
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_NaturalOrdering_inplace(Mat C, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_NaturalOrdering_inplace(Mat C, Mat A, const MatFactorInfo *info) {
   Mat_SeqBAIJ *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   PetscInt     i, j, n = a->mbs, *bi = b->i, *bj = b->j;
   PetscInt    *ajtmpold, *ajtmp, nz, row;
@@ -1001,8 +998,7 @@ PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_NaturalOrdering_inplace(Mat C, Mat A
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_NaturalOrdering(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqBAIJ_7_NaturalOrdering(Mat B, Mat A, const MatFactorInfo *info) {
   Mat             C = B;
   Mat_SeqBAIJ    *a = (Mat_SeqBAIJ *)A->data, *b = (Mat_SeqBAIJ *)C->data;
   PetscInt        i, j, k, nz, nzL, row;

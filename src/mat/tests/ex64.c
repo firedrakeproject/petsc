@@ -3,8 +3,7 @@ static char help[] = "Saves 4by4 block matrix.\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A;
   PetscInt    i, j;
   PetscMPIInt size;

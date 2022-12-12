@@ -19,8 +19,7 @@ static const char NLEQERR_citation[] = "@book{deuflhard2011,\n"
                                        "  publisher = {Springer-Verlag},\n"
                                        "  address = {Berlin, Heidelberg}\n}\n";
 
-static PetscErrorCode SNESLineSearchReset_NLEQERR(SNESLineSearch linesearch)
-{
+static PetscErrorCode SNESLineSearchReset_NLEQERR(SNESLineSearch linesearch) {
   SNESLineSearch_NLEQERR *nleqerr = (SNESLineSearch_NLEQERR *)linesearch->data;
 
   PetscFunctionBegin;
@@ -30,8 +29,7 @@ static PetscErrorCode SNESLineSearchReset_NLEQERR(SNESLineSearch linesearch)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESLineSearchApply_NLEQERR(SNESLineSearch linesearch)
-{
+static PetscErrorCode SNESLineSearchApply_NLEQERR(SNESLineSearch linesearch) {
   PetscBool               changed_y, changed_w;
   Vec                     X, F, Y, W, G;
   SNES                    snes;
@@ -254,8 +252,7 @@ static PetscErrorCode SNESLineSearchApply_NLEQERR(SNESLineSearch linesearch)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode SNESLineSearchView_NLEQERR(SNESLineSearch linesearch, PetscViewer viewer)
-{
+PetscErrorCode SNESLineSearchView_NLEQERR(SNESLineSearch linesearch, PetscViewer viewer) {
   PetscBool               iascii;
   SNESLineSearch_NLEQERR *nleqerr;
 
@@ -269,8 +266,7 @@ PetscErrorCode SNESLineSearchView_NLEQERR(SNESLineSearch linesearch, PetscViewer
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESLineSearchDestroy_NLEQERR(SNESLineSearch linesearch)
-{
+static PetscErrorCode SNESLineSearchDestroy_NLEQERR(SNESLineSearch linesearch) {
   PetscFunctionBegin;
   PetscCall(PetscFree(linesearch->data));
   PetscFunctionReturn(0);
@@ -284,22 +280,30 @@ static PetscErrorCode SNESLineSearchDestroy_NLEQERR(SNESLineSearch linesearch)
    matrix A. This is a fundamental property; the philosophy of this linesearch is that globalisations
    of Newton's method should carefully preserve it.
 
+   For a discussion of the theory behind this algorithm, see
+
+   @book{deuflhard2011,
+     title={Newton Methods for Nonlinear Problems},
+     author={Deuflhard, P.},
+     volume={35},
+     year={2011},
+     publisher={Springer-Verlag},
+     address={Berlin, Heidelberg}
+   }
+
+   Pseudocode is given on page 148.
+
    Options Database Keys:
 +  -snes_linesearch_damping<1.0> - initial step length
 -  -snes_linesearch_minlambda<1e-12> - minimum step length allowed
 
-   Level: advanced
-
-   Note:
    Contributed by Patrick Farrell <patrick.farrell@maths.ox.ac.uk>
 
-   Reference:
-.  - * - Newton Methods for Nonlinear Problems, Deuflhard, P. 2011, Springer-Verlag, page 148
+   Level: advanced
 
-.seealso: `SNESLineSearch`, `SNES`, `SNESLineSearchCreate()`, `SNESLineSearchSetType()`
+.seealso: `SNESLineSearchCreate()`, `SNESLineSearchSetType()`
 M*/
-PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_NLEQERR(SNESLineSearch linesearch)
-{
+PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_NLEQERR(SNESLineSearch linesearch) {
   SNESLineSearch_NLEQERR *nleqerr;
 
   PetscFunctionBegin;
@@ -310,7 +314,7 @@ PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_NLEQERR(SNESLineSearch linesear
   linesearch->ops->view           = SNESLineSearchView_NLEQERR;
   linesearch->ops->setup          = NULL;
 
-  PetscCall(PetscNew(&nleqerr));
+  PetscCall(PetscNewLog(linesearch, &nleqerr));
 
   linesearch->data    = (void *)nleqerr;
   linesearch->max_its = 40;

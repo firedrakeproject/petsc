@@ -2,8 +2,7 @@
 
 static char help[] = "Test memory allocation of PetscFV arrays used in PetscFVComputeGradient";
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscFV      fvm;
   PetscInt     dim, numFaces;
   PetscScalar *dx, *grad;

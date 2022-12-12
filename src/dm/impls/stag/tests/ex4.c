@@ -3,8 +3,7 @@ static char help[] = "Test DMStag explicit coordinate routines";
 #include <petscdm.h>
 #include <petscdmstag.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt  dim;
   PetscBool flg;
   DM        dm;

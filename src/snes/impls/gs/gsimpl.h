@@ -1,5 +1,5 @@
-#ifndef PETSC_GSIMPL_H
-#define PETSC_GSIMPL_H
+#if !defined(__GSIMPL)
+#define __GSIMPL
 
 #include <petsc/private/snesimpl.h> /*I "petscsnes.h"  I*/
 #include <petscdm.h>
@@ -17,4 +17,4 @@ typedef struct {
 
 PETSC_EXTERN PetscErrorCode SNESComputeNGSDefaultSecant(SNES, Vec, Vec, void *);
 
-#endif // PETSC_GSIMPL_H
+#endif

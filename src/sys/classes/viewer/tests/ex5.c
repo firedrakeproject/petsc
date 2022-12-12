@@ -3,8 +3,7 @@ static char help[] = "Tests PetscOptionsPushGetViewerOff() via checking output o
 
 #include <petscviewer.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscViewer       viewer;
   PetscViewerFormat format;
   PetscBool         iascii;

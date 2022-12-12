@@ -7,12 +7,11 @@
 #include <petsc/private/dmdaimpl.h> /*I  "petscdmda.h"   I*/
 
 #include <petscdraw.h>
-static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
-{
+static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer) {
   PetscMPIInt rank;
   PetscBool   iascii, isdraw, isglvis, isbinary;
   DM_DA      *dd = (DM_DA *)da->data;
-#if defined(PETSC_HAVE_MATLAB)
+#if defined(PETSC_HAVE_MATLAB_ENGINE)
   PetscBool ismatlab;
 #endif
 
@@ -23,7 +22,7 @@ static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERGLVIS, &isglvis));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
-#if defined(PETSC_HAVE_MATLAB)
+#if defined(PETSC_HAVE_MATLAB_ENGINE)
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERMATLAB, &ismatlab));
 #endif
   if (iascii) {
@@ -114,7 +113,7 @@ static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
     PetscCall(DMView_DA_GLVis(da, viewer));
   } else if (isbinary) {
     PetscCall(DMView_DA_Binary(da, viewer));
-#if defined(PETSC_HAVE_MATLAB)
+#if defined(PETSC_HAVE_MATLAB_ENGINE)
   } else if (ismatlab) {
     PetscCall(DMView_DA_Matlab(da, viewer));
 #endif
@@ -122,8 +121,7 @@ static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSetUp_DA_1D(DM da)
-{
+PetscErrorCode DMSetUp_DA_1D(DM da) {
   DM_DA          *dd    = (DM_DA *)da->data;
   const PetscInt  M     = dd->M;
   const PetscInt  dof   = dd->w;
@@ -235,6 +233,7 @@ PetscErrorCode DMSetUp_DA_1D(DM da)
   PetscCall(ISCreateStride(comm, dof * (IXe - IXs), dof * (IXs - Xs), 1, &to));
 
   PetscCall(PetscMalloc1(x + 2 * sDist, &idx));
+  PetscCall(PetscLogObjectMemory((PetscObject)da, (x + 2 * (sDist)) * sizeof(PetscInt)));
 
   for (i = 0; i < IXs - Xs; i++) idx[i] = -1; /* prepend with -1s if needed for ghosted case*/
 
@@ -281,6 +280,7 @@ PetscErrorCode DMSetUp_DA_1D(DM da)
 
   PetscCall(ISCreateBlock(comm, dof, nn - IXs + Xs, &idx[IXs - Xs], PETSC_USE_POINTER, &from));
   PetscCall(VecScatterCreate(global, from, local, to, &gtol));
+  PetscCall(PetscLogObjectParent((PetscObject)da, (PetscObject)gtol));
   PetscCall(ISDestroy(&to));
   PetscCall(ISDestroy(&from));
   PetscCall(VecDestroy(&local));
@@ -310,6 +310,7 @@ PetscErrorCode DMSetUp_DA_1D(DM da)
   for (i = 0; i < Xe - IXe; i++) idx[nn++] = -1; /* pad with -1s if needed for ghosted case*/
 
   PetscCall(ISLocalToGlobalMappingCreate(comm, dof, nn, idx, PETSC_OWN_POINTER, &da->ltogmap));
+  PetscCall(PetscLogObjectParent((PetscObject)da, (PetscObject)da->ltogmap));
 
   PetscFunctionReturn(0);
 }
@@ -323,7 +324,7 @@ PetscErrorCode DMSetUp_DA_1D(DM da)
    Input Parameters:
 +  comm - MPI communicator
 .  bx - type of ghost cells at the boundary the array should have, if any. Use
-          `DM_BOUNDARY_NONE`, `DM_BOUNDARY_GHOSTED`, or `DM_BOUNDARY_PERIODIC`.
+          DM_BOUNDARY_NONE, DM_BOUNDARY_GHOSTED, or DM_BOUNDARY_PERIODIC.
 .  M - global dimension of the array (that is the number of grid points)
             from the command line with -da_grid_x <M>)
 .  dof - number of degrees of freedom per node
@@ -335,31 +336,31 @@ PetscErrorCode DMSetUp_DA_1D(DM da)
    Output Parameter:
 .  da - the resulting distributed array object
 
-   Options Database Keys:
-+  -dm_view - Calls `DMView()` at the conclusion of `DMDACreate1d()`
+   Options Database Key:
++  -dm_view - Calls DMView() at the conclusion of DMDACreate1d()
 .  -da_grid_x <nx> - number of grid points in x direction
 .  -da_refine_x <rx> - refinement factor
--  -da_refine <n> - refine the `DMDA` n times before creating it
+-  -da_refine <n> - refine the DMDA n times before creating it
 
    Level: beginner
 
    Notes:
-   The array data itself is NOT stored in the `DMDA`, it is stored in `Vec` objects;
-   The appropriate vector objects can be obtained with calls to `DMCreateGlobalVector()`
-   and `DMCreateLocalVector()` and calls to `VecDuplicate()` if more are needed.
+   The array data itself is NOT stored in the DMDA, it is stored in Vec objects;
+   The appropriate vector objects can be obtained with calls to DMCreateGlobalVector()
+   and DMCreateLocalVector() and calls to VecDuplicate() if more are needed.
 
-   You must call `DMSetUp()` after this call before using this `DM`.
+   You must call DMSetUp() after this call before using this DM.
 
-   If you wish to use the options database to change values in the `DMDA` call `DMSetFromOptions()` after this call
-   but before `DMSetUp()`.
+   If you wish to use the options database to change values in the DMDA call DMSetFromOptions() after this call
+   but before DMSetUp().
 
-.seealso: `DMDA`, `DM`, `DMDestroy()`, `DMView()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMGlobalToLocalBegin()`, `DMDASetRefinementFactor()`,
+.seealso: `DMDestroy()`, `DMView()`, `DMDACreate2d()`, `DMDACreate3d()`, `DMGlobalToLocalBegin()`, `DMDASetRefinementFactor()`,
           `DMGlobalToLocalEnd()`, `DMLocalToGlobalBegin()`, `DMLocalToLocalBegin()`, `DMLocalToLocalEnd()`, `DMDAGetRefinementFactor()`,
           `DMDAGetInfo()`, `DMCreateGlobalVector()`, `DMCreateLocalVector()`, `DMDACreateNaturalVector()`, `DMLoad()`, `DMDAGetOwnershipRanges()`,
           `DMStagCreate1d()`
+
 @*/
-PetscErrorCode DMDACreate1d(MPI_Comm comm, DMBoundaryType bx, PetscInt M, PetscInt dof, PetscInt s, const PetscInt lx[], DM *da)
-{
+PetscErrorCode DMDACreate1d(MPI_Comm comm, DMBoundaryType bx, PetscInt M, PetscInt dof, PetscInt s, const PetscInt lx[], DM *da) {
   PetscMPIInt size;
 
   PetscFunctionBegin;

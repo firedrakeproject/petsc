@@ -1,5 +1,5 @@
-#ifndef PETSC_DMPRODUCT_H
-#define PETSC_DMPRODUCT_H
+#if !defined(DMPRODUCT_H_)
+#define DMPRODUCT_H_
 
 #include <petscdm.h>
 
@@ -8,4 +8,4 @@ PETSC_EXTERN PetscErrorCode DMProductGetDM(DM, PetscInt, DM *);
 PETSC_EXTERN PetscErrorCode DMProductSetDimensionIndex(DM, PetscInt, PetscInt);
 PETSC_EXTERN PetscErrorCode DMProductSetDM(DM, PetscInt, DM);
 
-#endif // PETSC_DMPRODUCT_H
+#endif

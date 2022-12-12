@@ -63,8 +63,7 @@ PETSC_EXTERN PetscErrorCode DMLocatePoints_Moab(DM dm, Vec v, IS *cellIS);
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabCreate(MPI_Comm comm, DM *dmb)
-{
+PetscErrorCode DMMoabCreate(MPI_Comm comm, DM *dmb) {
   PetscFunctionBegin;
   PetscValidPointer(dmb, 2);
   PetscCall(DMCreate(comm, dmb));
@@ -90,8 +89,7 @@ PetscErrorCode DMMoabCreate(MPI_Comm comm, DM *dmb)
   Level: intermediate
 
 @*/
-PetscErrorCode DMMoabCreateMoab(MPI_Comm comm, moab::Interface *mbiface, moab::Tag *ltog_tag, moab::Range *range, DM *dmb)
-{
+PetscErrorCode DMMoabCreateMoab(MPI_Comm comm, moab::Interface *mbiface, moab::Tag *ltog_tag, moab::Range *range, DM *dmb) {
   moab::ErrorCode merr;
   DM              dmmb;
   DM_Moab        *dmmoab;
@@ -173,8 +171,7 @@ PetscErrorCode DMMoabCreateMoab(MPI_Comm comm, moab::Interface *mbiface, moab::T
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetParallelComm(DM dm, moab::ParallelComm **pcomm)
-{
+PetscErrorCode DMMoabGetParallelComm(DM dm, moab::ParallelComm **pcomm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *pcomm = ((DM_Moab *)(dm)->data)->pcomm;
@@ -195,8 +192,7 @@ PetscErrorCode DMMoabGetParallelComm(DM dm, moab::ParallelComm **pcomm)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabSetInterface(DM dm, moab::Interface *mbiface)
-{
+PetscErrorCode DMMoabSetInterface(DM dm, moab::Interface *mbiface) {
   DM_Moab *dmmoab = (DM_Moab *)(dm)->data;
 
   PetscFunctionBegin;
@@ -224,8 +220,7 @@ PetscErrorCode DMMoabSetInterface(DM dm, moab::Interface *mbiface)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetInterface(DM dm, moab::Interface **mbiface)
-{
+PetscErrorCode DMMoabGetInterface(DM dm, moab::Interface **mbiface) {
   static PetscBool cite = PETSC_FALSE;
 
   PetscFunctionBegin;
@@ -249,8 +244,7 @@ PetscErrorCode DMMoabGetInterface(DM dm, moab::Interface **mbiface)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabSetLocalVertices(DM dm, moab::Range *range)
-{
+PetscErrorCode DMMoabSetLocalVertices(DM dm, moab::Range *range) {
   moab::Range tmpvtxs;
   DM_Moab    *dmmoab = (DM_Moab *)(dm)->data;
 
@@ -302,8 +296,7 @@ PetscErrorCode DMMoabSetLocalVertices(DM dm, moab::Range *range)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetAllVertices(DM dm, moab::Range *local)
-{
+PetscErrorCode DMMoabGetAllVertices(DM dm, moab::Range *local) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (local) *local = *((DM_Moab *)dm->data)->vlocal;
@@ -325,8 +318,7 @@ PetscErrorCode DMMoabGetAllVertices(DM dm, moab::Range *local)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetLocalVertices(DM dm, const moab::Range **owned, const moab::Range **ghost)
-{
+PetscErrorCode DMMoabGetLocalVertices(DM dm, const moab::Range **owned, const moab::Range **ghost) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (owned) *owned = ((DM_Moab *)dm->data)->vowned;
@@ -348,8 +340,7 @@ PetscErrorCode DMMoabGetLocalVertices(DM dm, const moab::Range **owned, const mo
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetLocalElements(DM dm, const moab::Range **range)
-{
+PetscErrorCode DMMoabGetLocalElements(DM dm, const moab::Range **range) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (range) *range = ((DM_Moab *)dm->data)->elocal;
@@ -368,8 +359,7 @@ PetscErrorCode DMMoabGetLocalElements(DM dm, const moab::Range **range)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabSetLocalElements(DM dm, moab::Range *range)
-{
+PetscErrorCode DMMoabSetLocalElements(DM dm, moab::Range *range) {
   DM_Moab *dmmoab = (DM_Moab *)(dm)->data;
 
   PetscFunctionBegin;
@@ -406,8 +396,7 @@ PetscErrorCode DMMoabSetLocalElements(DM dm, moab::Range *range)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabSetLocalToGlobalTag(DM dm, moab::Tag ltogtag)
-{
+PetscErrorCode DMMoabSetLocalToGlobalTag(DM dm, moab::Tag ltogtag) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   ((DM_Moab *)dm->data)->ltog_tag = ltogtag;
@@ -428,8 +417,7 @@ PetscErrorCode DMMoabSetLocalToGlobalTag(DM dm, moab::Tag ltogtag)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetLocalToGlobalTag(DM dm, moab::Tag *ltog_tag)
-{
+PetscErrorCode DMMoabGetLocalToGlobalTag(DM dm, moab::Tag *ltog_tag) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *ltog_tag = ((DM_Moab *)dm->data)->ltog_tag;
@@ -448,8 +436,7 @@ PetscErrorCode DMMoabGetLocalToGlobalTag(DM dm, moab::Tag *ltog_tag)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabSetBlockSize(DM dm, PetscInt bs)
-{
+PetscErrorCode DMMoabSetBlockSize(DM dm, PetscInt bs) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   ((DM_Moab *)dm->data)->bs = bs;
@@ -470,8 +457,7 @@ PetscErrorCode DMMoabSetBlockSize(DM dm, PetscInt bs)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetBlockSize(DM dm, PetscInt *bs)
-{
+PetscErrorCode DMMoabGetBlockSize(DM dm, PetscInt *bs) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *bs = ((DM_Moab *)dm->data)->bs;
@@ -493,8 +479,7 @@ PetscErrorCode DMMoabGetBlockSize(DM dm, PetscInt *bs)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetSize(DM dm, PetscInt *neg, PetscInt *nvg)
-{
+PetscErrorCode DMMoabGetSize(DM dm, PetscInt *neg, PetscInt *nvg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (neg) *neg = ((DM_Moab *)dm->data)->nele;
@@ -519,8 +504,7 @@ PetscErrorCode DMMoabGetSize(DM dm, PetscInt *neg, PetscInt *nvg)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetLocalSize(DM dm, PetscInt *nel, PetscInt *neg, PetscInt *nvl, PetscInt *nvg)
-{
+PetscErrorCode DMMoabGetLocalSize(DM dm, PetscInt *nel, PetscInt *neg, PetscInt *nvl, PetscInt *nvg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (nel) *nel = ((DM_Moab *)dm->data)->neleloc;
@@ -544,8 +528,7 @@ PetscErrorCode DMMoabGetLocalSize(DM dm, PetscInt *nel, PetscInt *neg, PetscInt 
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetOffset(DM dm, PetscInt *offset)
-{
+PetscErrorCode DMMoabGetOffset(DM dm, PetscInt *offset) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *offset = ((DM_Moab *)dm->data)->vstart;
@@ -566,8 +549,7 @@ PetscErrorCode DMMoabGetOffset(DM dm, PetscInt *offset)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetDimension(DM dm, PetscInt *dim)
-{
+PetscErrorCode DMMoabGetDimension(DM dm, PetscInt *dim) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   *dim = ((DM_Moab *)dm->data)->dim;
@@ -589,8 +571,7 @@ PetscErrorCode DMMoabGetDimension(DM dm, PetscInt *dim)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetHierarchyLevel(DM dm, PetscInt *nlevel)
-{
+PetscErrorCode DMMoabGetHierarchyLevel(DM dm, PetscInt *nlevel) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (nlevel) *nlevel = ((DM_Moab *)dm->data)->hlevel;
@@ -612,8 +593,7 @@ PetscErrorCode DMMoabGetHierarchyLevel(DM dm, PetscInt *nlevel)
   Level: beginner
 
 @*/
-PetscErrorCode DMMoabGetMaterialBlock(DM dm, const moab::EntityHandle ehandle, PetscInt *mat)
-{
+PetscErrorCode DMMoabGetMaterialBlock(DM dm, const moab::EntityHandle ehandle, PetscInt *mat) {
   DM_Moab *dmmoab;
 
   PetscFunctionBegin;
@@ -642,8 +622,7 @@ PetscErrorCode DMMoabGetMaterialBlock(DM dm, const moab::EntityHandle ehandle, P
 
 .seealso: `DMMoabGetVertexConnectivity()`
 @*/
-PetscErrorCode DMMoabGetVertexCoordinates(DM dm, PetscInt nconn, const moab::EntityHandle *conn, PetscReal *vpos)
-{
+PetscErrorCode DMMoabGetVertexCoordinates(DM dm, PetscInt nconn, const moab::EntityHandle *conn, PetscReal *vpos) {
   DM_Moab        *dmmoab;
   moab::ErrorCode merr;
 
@@ -681,8 +660,7 @@ PetscErrorCode DMMoabGetVertexCoordinates(DM dm, PetscInt nconn, const moab::Ent
 
 .seealso: `DMMoabGetVertexCoordinates()`, `DMMoabRestoreVertexConnectivity()`
 @*/
-PetscErrorCode DMMoabGetVertexConnectivity(DM dm, moab::EntityHandle vhandle, PetscInt *nconn, moab::EntityHandle **conn)
-{
+PetscErrorCode DMMoabGetVertexConnectivity(DM dm, moab::EntityHandle vhandle, PetscInt *nconn, moab::EntityHandle **conn) {
   DM_Moab                        *dmmoab;
   std::vector<moab::EntityHandle> adj_entities, connect;
   moab::ErrorCode                 merr;
@@ -721,8 +699,7 @@ PetscErrorCode DMMoabGetVertexConnectivity(DM dm, moab::EntityHandle vhandle, Pe
 
 .seealso: `DMMoabGetVertexCoordinates()`, `DMMoabGetVertexConnectivity()`
 @*/
-PetscErrorCode DMMoabRestoreVertexConnectivity(DM dm, moab::EntityHandle ehandle, PetscInt *nconn, moab::EntityHandle **conn)
-{
+PetscErrorCode DMMoabRestoreVertexConnectivity(DM dm, moab::EntityHandle ehandle, PetscInt *nconn, moab::EntityHandle **conn) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidPointer(conn, 4);
@@ -749,8 +726,7 @@ PetscErrorCode DMMoabRestoreVertexConnectivity(DM dm, moab::EntityHandle ehandle
 
 .seealso: `DMMoabGetVertexCoordinates()`, `DMMoabGetVertexConnectivity()`, `DMMoabRestoreVertexConnectivity()`
 @*/
-PetscErrorCode DMMoabGetElementConnectivity(DM dm, moab::EntityHandle ehandle, PetscInt *nconn, const moab::EntityHandle **conn)
-{
+PetscErrorCode DMMoabGetElementConnectivity(DM dm, moab::EntityHandle ehandle, PetscInt *nconn, const moab::EntityHandle **conn) {
   DM_Moab                        *dmmoab;
   const moab::EntityHandle       *connect;
   std::vector<moab::EntityHandle> vconn;
@@ -786,8 +762,7 @@ PetscErrorCode DMMoabGetElementConnectivity(DM dm, moab::EntityHandle ehandle, P
 
 .seealso: `DMMoabCheckBoundaryVertices()`
 @*/
-PetscErrorCode DMMoabIsEntityOnBoundary(DM dm, const moab::EntityHandle ent, PetscBool *ent_on_boundary)
-{
+PetscErrorCode DMMoabIsEntityOnBoundary(DM dm, const moab::EntityHandle ent, PetscBool *ent_on_boundary) {
   moab::EntityType etype;
   DM_Moab         *dmmoab;
   PetscInt         edim;
@@ -832,8 +807,7 @@ PetscErrorCode DMMoabIsEntityOnBoundary(DM dm, const moab::EntityHandle ent, Pet
 
 .seealso: `DMMoabIsEntityOnBoundary()`
 @*/
-PetscErrorCode DMMoabCheckBoundaryVertices(DM dm, PetscInt nconn, const moab::EntityHandle *cnt, PetscBool *isbdvtx)
-{
+PetscErrorCode DMMoabCheckBoundaryVertices(DM dm, PetscInt nconn, const moab::EntityHandle *cnt, PetscBool *isbdvtx) {
   DM_Moab *dmmoab;
   PetscInt i;
 
@@ -862,8 +836,7 @@ PetscErrorCode DMMoabCheckBoundaryVertices(DM dm, PetscInt nconn, const moab::En
 
 .seealso: `DMMoabCheckBoundaryVertices()`, `DMMoabIsEntityOnBoundary()`
 @*/
-PetscErrorCode DMMoabGetBoundaryMarkers(DM dm, const moab::Range **bdvtx, const moab::Range **bdelems, const moab::Range **bdfaces)
-{
+PetscErrorCode DMMoabGetBoundaryMarkers(DM dm, const moab::Range **bdvtx, const moab::Range **bdelems, const moab::Range **bdfaces) {
   DM_Moab *dmmoab;
 
   PetscFunctionBegin;
@@ -876,8 +849,7 @@ PetscErrorCode DMMoabGetBoundaryMarkers(DM dm, const moab::Range **bdvtx, const 
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMDestroy_Moab(DM dm)
-{
+PETSC_EXTERN PetscErrorCode DMDestroy_Moab(DM dm) {
   PetscInt        i;
   moab::ErrorCode merr;
   DM_Moab        *dmmoab = (DM_Moab *)dm->data;
@@ -930,8 +902,7 @@ PETSC_EXTERN PetscErrorCode DMDestroy_Moab(DM dm)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMSetFromOptions_Moab(DM dm, PetscOptionItems *PetscOptionsObject)
-{
+PETSC_EXTERN PetscErrorCode DMSetFromOptions_Moab(DM dm, PetscOptionItems *PetscOptionsObject) {
   DM_Moab *dmmoab = (DM_Moab *)dm->data;
 
   PetscFunctionBegin;
@@ -947,8 +918,7 @@ PETSC_EXTERN PetscErrorCode DMSetFromOptions_Moab(DM dm, PetscOptionItems *Petsc
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMSetUp_Moab(DM dm)
-{
+PETSC_EXTERN PetscErrorCode DMSetUp_Moab(DM dm) {
   moab::ErrorCode       merr;
   Vec                   local, global;
   IS                    from, to;
@@ -1246,8 +1216,7 @@ PETSC_EXTERN PetscErrorCode DMSetUp_Moab(DM dm)
 
 .seealso: `DMMoabCreateSubmesh()`, `DMMoabCreateElement()`
 @*/
-PetscErrorCode DMMoabCreateVertices(DM dm, const PetscReal *coords, PetscInt nverts, moab::Range *overts)
-{
+PetscErrorCode DMMoabCreateVertices(DM dm, const PetscReal *coords, PetscInt nverts, moab::Range *overts) {
   moab::ErrorCode merr;
   DM_Moab        *dmmoab;
   moab::Range     verts;
@@ -1286,8 +1255,7 @@ PetscErrorCode DMMoabCreateVertices(DM dm, const PetscReal *coords, PetscInt nve
 
 .seealso: `DMMoabCreateSubmesh()`, `DMMoabCreateVertices()`
 @*/
-PetscErrorCode DMMoabCreateElement(DM dm, const moab::EntityType type, const moab::EntityHandle *conn, PetscInt nverts, moab::EntityHandle *oelem)
-{
+PetscErrorCode DMMoabCreateElement(DM dm, const moab::EntityType type, const moab::EntityHandle *conn, PetscInt nverts, moab::EntityHandle *oelem) {
   moab::ErrorCode    merr;
   DM_Moab           *dmmoab;
   moab::EntityHandle elem;
@@ -1325,8 +1293,7 @@ PetscErrorCode DMMoabCreateElement(DM dm, const moab::EntityType type, const moa
 
 .seealso: `DMCreate()`, `DMMoabCreateVertices()`, `DMMoabCreateElement()`
 @*/
-PetscErrorCode DMMoabCreateSubmesh(DM dm, DM *newdm)
-{
+PetscErrorCode DMMoabCreateSubmesh(DM dm, DM *newdm) {
   DM_Moab        *dmmoab;
   DM_Moab        *ndmmoab;
   moab::ErrorCode merr;
@@ -1360,8 +1327,7 @@ PetscErrorCode DMMoabCreateSubmesh(DM dm, DM *newdm)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMMoabView_Ascii(DM dm, PetscViewer viewer)
-{
+PETSC_EXTERN PetscErrorCode DMMoabView_Ascii(DM dm, PetscViewer viewer) {
   DM_Moab    *dmmoab = (DM_Moab *)(dm)->data;
   const char *name;
   MPI_Comm    comm;
@@ -1399,18 +1365,15 @@ PETSC_EXTERN PetscErrorCode DMMoabView_Ascii(DM dm, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMMoabView_VTK(DM dm, PetscViewer v)
-{
+PETSC_EXTERN PetscErrorCode DMMoabView_VTK(DM dm, PetscViewer v) {
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMMoabView_HDF5(DM dm, PetscViewer v)
-{
+PETSC_EXTERN PetscErrorCode DMMoabView_HDF5(DM dm, PetscViewer v) {
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMView_Moab(DM dm, PetscViewer viewer)
-{
+PETSC_EXTERN PetscErrorCode DMView_Moab(DM dm, PetscViewer viewer) {
   PetscBool iascii, ishdf5, isvtk;
 
   PetscFunctionBegin;
@@ -1435,8 +1398,7 @@ PETSC_EXTERN PetscErrorCode DMView_Moab(DM dm, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMInitialize_Moab(DM dm)
-{
+PETSC_EXTERN PetscErrorCode DMInitialize_Moab(DM dm) {
   PetscFunctionBegin;
   dm->ops->view                     = DMView_Moab;
   dm->ops->load                     = NULL /* DMLoad_Moab */;
@@ -1469,8 +1431,7 @@ PETSC_EXTERN PetscErrorCode DMInitialize_Moab(DM dm)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMClone_Moab(DM dm, DM *newdm)
-{
+PETSC_EXTERN PetscErrorCode DMClone_Moab(DM dm, DM *newdm) {
   PetscFunctionBegin;
   /* get all the necessary handles from the private DM object */
   (*newdm)->data = (DM_Moab *)dm->data;
@@ -1481,11 +1442,10 @@ PETSC_EXTERN PetscErrorCode DMClone_Moab(DM dm, DM *newdm)
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode DMCreate_Moab(DM dm)
-{
+PETSC_EXTERN PetscErrorCode DMCreate_Moab(DM dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscCall(PetscNew((DM_Moab **)&dm->data));
+  PetscCall(PetscNewLog(dm, (DM_Moab **)&dm->data));
 
   ((DM_Moab *)dm->data)->bs            = 1;
   ((DM_Moab *)dm->data)->numFields     = 1;

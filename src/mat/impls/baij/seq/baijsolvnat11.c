@@ -4,8 +4,7 @@
 /* Block operations are done by accessing one column at at time */
 /* Default MatSolve for block size 11 */
 
-PetscErrorCode MatSolve_SeqBAIJ_11_NaturalOrdering(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqBAIJ_11_NaturalOrdering(Mat A, Vec bb, Vec xx) {
   Mat_SeqBAIJ       *a = (Mat_SeqBAIJ *)A->data;
   const PetscInt     n = a->mbs, *ai = a->i, *aj = a->j, *adiag = a->diag, *vi, bs = A->rmap->bs, bs2 = a->bs2;
   PetscInt           i, k, nz, idx, idt, m;

@@ -1,5 +1,5 @@
 
-#ifndef __ICC_H
+#if !defined(__ICC_H)
 #define __ICC_H
 
 #include <../src/ksp/pc/impls/factor/factor.h>

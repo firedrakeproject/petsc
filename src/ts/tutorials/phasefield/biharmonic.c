@@ -62,8 +62,7 @@ typedef struct {
   PetscDrawViewPorts *ports;
 } UserCtx;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS        ts;   /* nonlinear solver */
   Vec       x, r; /* solution, residual vectors */
   Mat       J;    /* Jacobian matrix */
@@ -194,8 +193,7 @@ int main(int argc, char **argv)
    Output Parameter:
 .  F - function vector
  */
-PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr)
-{
+PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr) {
   DM           da;
   PetscInt     i, Mx, xs, xm;
   PetscReal    hx, sx;
@@ -248,12 +246,8 @@ PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr)
     f[i] = -ctx->kappa * (l + r - 2.0 * c) * sx;
     if (ctx->cahnhillard) {
       switch (ctx->energy) {
-      case 1: /*  double well */
-        f[i] += 6. * .25 * x[i] * (x[i + 1] - x[i - 1]) * (x[i + 1] - x[i - 1]) * sx + (3. * x[i] * x[i] - 1.) * (x[i - 1] + x[i + 1] - 2.0 * x[i]) * sx;
-        break;
-      case 2: /* double obstacle */
-        f[i] += -(x[i - 1] + x[i + 1] - 2.0 * x[i]) * sx;
-        break;
+      case 1: /*  double well */ f[i] += 6. * .25 * x[i] * (x[i + 1] - x[i - 1]) * (x[i + 1] - x[i - 1]) * sx + (3. * x[i] * x[i] - 1.) * (x[i - 1] + x[i + 1] - 2.0 * x[i]) * sx; break;
+      case 2: /* double obstacle */ f[i] += -(x[i - 1] + x[i + 1] - 2.0 * x[i]) * sx; break;
       case 3: /* logarithmic + double well */
         f[i] += 6. * .25 * x[i] * (x[i + 1] - x[i - 1]) * (x[i + 1] - x[i - 1]) * sx + (3. * x[i] * x[i] - 1.) * (x[i - 1] + x[i + 1] - 2.0 * x[i]) * sx;
         if (ctx->truncation == 2) { /* log function with approximated with a quadratic polynomial outside -1.0+2*tol, 1.0-2*tol */
@@ -300,8 +294,7 @@ PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr)
    FormJacobian - Evaluates nonlinear function's Jacobian
 
 */
-PetscErrorCode FormJacobian(TS ts, PetscReal ftime, Vec X, Mat A, Mat B, void *ptr)
-{
+PetscErrorCode FormJacobian(TS ts, PetscReal ftime, Vec X, Mat A, Mat B, void *ptr) {
   DM           da;
   PetscInt     i, Mx, xs, xm;
   MatStencil   row, cols[5];
@@ -369,10 +362,8 @@ PetscErrorCode FormJacobian(TS ts, PetscReal ftime, Vec X, Mat A, Mat B, void *p
       case 2: /* double obstacle */
         /*        f[i] += -(x[i-1] + x[i+1] - 2.0*x[i])*sx; */
         break;
-      case 3: /* logarithmic + double well */
-        break;
-      case 4: /* logarithmic + double obstacle */
-        break;
+      case 3: /* logarithmic + double well */ break;
+      case 4: /* logarithmic + double obstacle */ break;
       }
     }
   }
@@ -391,8 +382,7 @@ PetscErrorCode FormJacobian(TS ts, PetscReal ftime, Vec X, Mat A, Mat B, void *p
   PetscFunctionReturn(0);
 }
 /* ------------------------------------------------------------------- */
-PetscErrorCode FormInitialSolution(DM da, Vec U)
-{
+PetscErrorCode FormInitialSolution(DM da, Vec U) {
   PetscInt           i, xs, xm, Mx, N, scale;
   PetscScalar       *u;
   PetscReal          r, hx, x;
@@ -453,17 +443,16 @@ PetscErrorCode FormInitialSolution(DM da, Vec U)
 /*
     This routine is not parallel
 */
-PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
-{
-  UserCtx     *ctx = (UserCtx *)ptr;
-  PetscDrawLG  lg;
-  PetscScalar *u, l, r, c;
-  PetscInt     Mx, i, xs, xm, cnt;
-  PetscReal    x, y, hx, pause, sx, len, max, xx[4], yy[4], xx_netforce, yy_netforce, yup, ydown, y2, len2;
-  PetscDraw    draw;
-  Vec          localU;
-  DM           da;
-  int          colors[] = {PETSC_DRAW_YELLOW, PETSC_DRAW_RED, PETSC_DRAW_BLUE, PETSC_DRAW_PLUM, PETSC_DRAW_BLACK};
+PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr) {
+  UserCtx            *ctx = (UserCtx *)ptr;
+  PetscDrawLG         lg;
+  PetscScalar        *u, l, r, c;
+  PetscInt            Mx, i, xs, xm, cnt;
+  PetscReal           x, y, hx, pause, sx, len, max, xx[4], yy[4], xx_netforce, yy_netforce, yup, ydown, y2, len2;
+  PetscDraw           draw;
+  Vec                 localU;
+  DM                  da;
+  int                 colors[] = {PETSC_DRAW_YELLOW, PETSC_DRAW_RED, PETSC_DRAW_BLUE, PETSC_DRAW_PLUM, PETSC_DRAW_BLACK};
   /*
   const char *const  legend[3][3] = {{"-kappa (\\grad u,\\grad u)","(1 - u^2)^2"},{"-kappa (\\grad u,\\grad u)","(1 - u^2)"},{"-kappa (\\grad u,\\grad u)","logarithmic"}};
    */
@@ -514,12 +503,8 @@ PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
 
     if (ctx->cahnhillard) {
       switch (ctx->energy) {
-      case 1: /* double well */
-        yy[1] = .25 * PetscRealPart((1. - u[i] * u[i]) * (1. - u[i] * u[i]));
-        break;
-      case 2: /* double obstacle */
-        yy[1] = .5 * PetscRealPart(1. - u[i] * u[i]);
-        break;
+      case 1: /* double well */ yy[1] = .25 * PetscRealPart((1. - u[i] * u[i]) * (1. - u[i] * u[i])); break;
+      case 2: /* double obstacle */ yy[1] = .5 * PetscRealPart(1. - u[i] * u[i]); break;
       case 3: /* logarithm + double well */
         yy[1] = .25 * PetscRealPart((1. - u[i] * u[i]) * (1. - u[i] * u[i]));
         if (PetscRealPart(u[i]) < -1.0 + 2.0 * tol) yy[2] = .5 * theta * (2.0 * tol * PetscLogReal(tol) + PetscRealPart(1.0 - u[i]) * PetscLogReal(PetscRealPart(1. - u[i]) / 2.0));
@@ -532,8 +517,7 @@ PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
         else if (PetscRealPart(u[i]) > 1.0 - 2.0 * tol) yy[2] = .5 * theta * (PetscRealPart(1.0 + u[i]) * PetscLogReal(PetscRealPart(1.0 + u[i]) / 2.0) + 2.0 * tol * PetscLogReal(tol));
         else yy[2] = .5 * theta * (PetscRealPart(1.0 + u[i]) * PetscLogReal(PetscRealPart(1.0 + u[i]) / 2.0) + PetscRealPart(1.0 - u[i]) * PetscLogReal(PetscRealPart(1.0 - u[i]) / 2.0));
         break;
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "It will always be one of the values");
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "It will always be one of the values");
       }
     }
     PetscCall(PetscDrawLGAddPoint(lg, xx, yy));
@@ -571,12 +555,8 @@ PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
     max         = PetscMax(max, PetscAbs(yy[0]));
     if (ctx->cahnhillard) {
       switch (ctx->energy) {
-      case 1: /* double well */
-        yy[1] = PetscRealPart(6. * .25 * u[i] * (u[i + 1] - u[i - 1]) * (u[i + 1] - u[i - 1]) * sx + (3. * u[i] * u[i] - 1.) * (u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx);
-        break;
-      case 2: /* double obstacle */
-        yy[1] = -PetscRealPart(u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx;
-        break;
+      case 1: /* double well */ yy[1] = PetscRealPart(6. * .25 * u[i] * (u[i + 1] - u[i - 1]) * (u[i + 1] - u[i - 1]) * sx + (3. * u[i] * u[i] - 1.) * (u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx); break;
+      case 2: /* double obstacle */ yy[1] = -PetscRealPart(u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx; break;
       case 3: /* logarithmic + double well */
         yy[1] = PetscRealPart(6. * .25 * u[i] * (u[i + 1] - u[i - 1]) * (u[i + 1] - u[i - 1]) * sx + (3. * u[i] * u[i] - 1.) * (u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx);
         if (ctx->truncation == 2) { /* quadratic */
@@ -605,8 +585,7 @@ PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
           else yy[2] = PetscRealPart(2.0 * theta * u[i] / ((1.0 - u[i] * u[i]) * (1.0 - u[i] * u[i])) * .25 * (u[i + 1] - u[i - 1]) * (u[i + 1] - u[i - 1]) * sx + (theta / (1.0 - u[i] * u[i])) * (u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx);
         }
         break;
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "It will always be one of the values");
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "It will always be one of the values");
       }
       if (ctx->energy < 3) {
         max         = PetscMax(max, PetscAbs(yy[1]));
@@ -668,12 +647,8 @@ PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
       else yup += len;
 
       switch (ctx->energy) {
-      case 1: /* double well */
-        len = .5 * PetscRealPart(6. * .25 * u[i] * (u[i + 1] - u[i - 1]) * (u[i + 1] - u[i - 1]) * sx + (3. * u[i] * u[i] - 1.) * (u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx) / max;
-        break;
-      case 2: /* double obstacle */
-        len = -.5 * PetscRealPart(u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx / max;
-        break;
+      case 1: /* double well */ len = .5 * PetscRealPart(6. * .25 * u[i] * (u[i + 1] - u[i - 1]) * (u[i + 1] - u[i - 1]) * sx + (3. * u[i] * u[i] - 1.) * (u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx) / max; break;
+      case 2: /* double obstacle */ len = -.5 * PetscRealPart(u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx / max; break;
       case 3: /* logarithmic + double well */
         len = .5 * PetscRealPart(6. * .25 * u[i] * (u[i + 1] - u[i - 1]) * (u[i + 1] - u[i - 1]) * sx + (3. * u[i] * u[i] - 1.) * (u[i - 1] + u[i + 1] - 2.0 * u[i]) * sx) / max;
         if (len < 0.) ydown += len;
@@ -726,8 +701,7 @@ PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyDestroy(void **ptr)
-{
+PetscErrorCode MyDestroy(void **ptr) {
   UserCtx *ctx = *(UserCtx **)ptr;
 
   PetscFunctionBegin;

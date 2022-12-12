@@ -11,8 +11,7 @@ static char help[] = "Reads a PETSc matrix and vector from a socket connection, 
 */
 #include <petscksp.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   KSP         ksp;  /* linear solver context */
   Mat         A;    /* matrix */
   Vec         x, b; /* approx solution, RHS, exact solution */

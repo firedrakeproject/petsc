@@ -3,8 +3,8 @@
    Private data structure used by the LGMRES method.
 */
 
-#ifndef PETSC_LGMRESIMPL_H
-#define PETSC_LGMRESIMPL_H
+#if !defined(__LGMRES)
+#define __LGMRES
 
 #define KSPGMRES_NO_MACROS
 #include <../src/ksp/ksp/impls/gmres/gmresimpl.h>
@@ -13,8 +13,8 @@ typedef struct {
   KSPGMRESHEADER
 
   /* LGMRES_MOD - make these for the z vectors - new storage for lgmres */
-  Vec  *augvecs;           /* holds the error approximation vectors for lgmres. */
-  Vec **augvecs_user_work; /* same purpose as user_work above, but this one is
+  Vec         *augvecs;           /* holds the error approximation vectors for lgmres. */
+  Vec        **augvecs_user_work; /* same purpose as user_work above, but this one is
                                          for our error approx vectors */
   /* currently only augvecs_user_work[0] is used, not sure if this will be */
   /* extended in the future to use more, or if this is a design bug */
@@ -65,5 +65,4 @@ typedef struct {
 #define AUG_ORDER(i) lgmres->aug_order[i]                              /*order in which to augment */
 #define A_AUGVEC(i)  lgmres->augvecs[AUG_OFFSET + i + lgmres->aug_dim] /*A times error vector */
 #define AUG_TEMP     lgmres->augvecs[0]                                /* work vector */
-
-#endif // PETSC_LGMRESIMPL_H
+#endif

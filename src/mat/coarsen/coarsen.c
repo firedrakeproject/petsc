@@ -30,8 +30,7 @@ $     -mat_coarsen_type my_agg
 
 .seealso: `MatCoarsen`, `MatCoarsenType`, `MatCoarsenSetType()`, `MatCoarsenCreate()`, `MatCoarsenRegisterDestroy()`, `MatCoarsenRegisterAll()`
 @*/
-PetscErrorCode MatCoarsenRegister(const char sname[], PetscErrorCode (*function)(MatCoarsen))
-{
+PetscErrorCode MatCoarsenRegister(const char sname[], PetscErrorCode (*function)(MatCoarsen)) {
   PetscFunctionBegin;
   PetscCall(MatInitializePackage());
   PetscCall(PetscFunctionListAdd(&MatCoarsenList, sname, function));
@@ -56,8 +55,7 @@ PetscErrorCode MatCoarsenRegister(const char sname[], PetscErrorCode (*function)
 
 .seealso: `MatCoarsen`, `MatCoarsenCreate()`, `MatCoarsenType`, `MatCoarsenSetType()`, `MatCoarsenRegister()`
 @*/
-PetscErrorCode MatCoarsenGetType(MatCoarsen coarsen, MatCoarsenType *type)
-{
+PetscErrorCode MatCoarsenGetType(MatCoarsen coarsen, MatCoarsenType *type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(coarsen, MAT_COARSEN_CLASSID, 1);
   PetscValidPointer(type, 2);
@@ -91,8 +89,7 @@ $    -mat_coarsen_view
           `MatCoarsenDestroy()`, `MatCoarsenSetAdjacency()`
           `MatCoarsenGetData()`
 @*/
-PetscErrorCode MatCoarsenApply(MatCoarsen coarser)
-{
+PetscErrorCode MatCoarsenApply(MatCoarsen coarser) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(coarser, MAT_COARSEN_CLASSID, 1);
   PetscValidPointer(coarser, 1);
@@ -117,8 +114,7 @@ PetscErrorCode MatCoarsenApply(MatCoarsen coarser)
 
 .seealso: `MatCoarsen`, `MatCoarsenSetFromOptions()`, `Mat`, `MatCoarsenCreate()`, `MatCoarsenApply()`
 @*/
-PetscErrorCode MatCoarsenSetAdjacency(MatCoarsen agg, Mat adj)
-{
+PetscErrorCode MatCoarsenSetAdjacency(MatCoarsen agg, Mat adj) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(agg, MAT_COARSEN_CLASSID, 1);
   PetscValidHeaderSpecific(adj, MAT_CLASSID, 2);
@@ -138,8 +134,7 @@ PetscErrorCode MatCoarsenSetAdjacency(MatCoarsen agg, Mat adj)
 
 .seealso: `MatCoarsen`, `MatCoarsenCreate()`, `MatCoarsenSetFromOptions()`
 @*/
-PetscErrorCode MatCoarsenSetStrictAggs(MatCoarsen agg, PetscBool str)
-{
+PetscErrorCode MatCoarsenSetStrictAggs(MatCoarsen agg, PetscBool str) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(agg, MAT_COARSEN_CLASSID, 1);
   agg->strict_aggs = str;
@@ -158,8 +153,7 @@ PetscErrorCode MatCoarsenSetStrictAggs(MatCoarsen agg, PetscBool str)
 
 .seealso: `MatCoarsen`, `MatCoarsenCreate()`
 @*/
-PetscErrorCode MatCoarsenDestroy(MatCoarsen *agg)
-{
+PetscErrorCode MatCoarsenDestroy(MatCoarsen *agg) {
   PetscFunctionBegin;
   if (!*agg) PetscFunctionReturn(0);
   PetscValidHeaderSpecific((*agg), MAT_COARSEN_CLASSID, 1);
@@ -193,8 +187,7 @@ PetscErrorCode MatCoarsenDestroy(MatCoarsen *agg)
           `MatCoarsenSetAdjacency()`, `MatCoarsenGetData()`
 
 @*/
-PetscErrorCode MatCoarsenCreate(MPI_Comm comm, MatCoarsen *newcrs)
-{
+PetscErrorCode MatCoarsenCreate(MPI_Comm comm, MatCoarsen *newcrs) {
   MatCoarsen agg;
 
   PetscFunctionBegin;
@@ -236,8 +229,7 @@ PetscErrorCode MatCoarsenCreate(MPI_Comm comm, MatCoarsen *newcrs)
 
 .seealso: `MatCoarsen`, `MatCoarsenView`, `PetscObjectViewFromOptions()`, `MatCoarsenCreate()`
 @*/
-PetscErrorCode MatCoarsenViewFromOptions(MatCoarsen A, PetscObject obj, const char name[])
-{
+PetscErrorCode MatCoarsenViewFromOptions(MatCoarsen A, PetscObject obj, const char name[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_COARSEN_CLASSID, 1);
   PetscCall(PetscObjectViewFromOptions((PetscObject)A, obj, name));
@@ -259,8 +251,7 @@ PetscErrorCode MatCoarsenViewFromOptions(MatCoarsen A, PetscObject obj, const ch
 
 .seealso: `MatCoarsen`, `PetscViewer`, `PetscViewerASCIIOpen()`, `MatCoarsenViewFromOptions`
 @*/
-PetscErrorCode MatCoarsenView(MatCoarsen agg, PetscViewer viewer)
-{
+PetscErrorCode MatCoarsenView(MatCoarsen agg, PetscViewer viewer) {
   PetscBool iascii;
 
   PetscFunctionBegin;
@@ -288,15 +279,16 @@ PetscErrorCode MatCoarsenView(MatCoarsen agg, PetscViewer viewer)
 +  coarser - the coarsen context.
 -  type - a known coarsening method
 
-   Options Database Key:
-.  -mat_coarsen_type  <type> - (for instance, misk), use -help for a list of available methods
+   Options Database Command:
+$  -mat_coarsen_type  <type>
+$      Use -help for a list of available methods
+$      (for instance, misk)
 
    Level: advanced
 
 .seealso: `MatCoarsen`, `MatCoarsenCreate()`, `MatCoarsenApply()`, `MatCoarsenType`, `MatCoarsenGetType()`
 @*/
-PetscErrorCode MatCoarsenSetType(MatCoarsen coarser, MatCoarsenType type)
-{
+PetscErrorCode MatCoarsenSetType(MatCoarsen coarser, MatCoarsenType type) {
   PetscBool match;
   PetscErrorCode (*r)(MatCoarsen);
 
@@ -336,8 +328,7 @@ PetscErrorCode MatCoarsenSetType(MatCoarsen coarser, MatCoarsenType type)
 
 .seealso: `MatCoarsen`, `MatCoarsenType`, `MatCoarsenCreate()`, `MatCoarsenSetType()`
 @*/
-PetscErrorCode MatCoarsenSetGreedyOrdering(MatCoarsen coarser, const IS perm)
-{
+PetscErrorCode MatCoarsenSetGreedyOrdering(MatCoarsen coarser, const IS perm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(coarser, MAT_COARSEN_CLASSID, 1);
   coarser->perm = perm;
@@ -359,8 +350,7 @@ PetscErrorCode MatCoarsenSetGreedyOrdering(MatCoarsen coarser, const IS perm)
 
 .seealso: `MatCoarsen`, `MatCoarsenApply()`, `MatCoarsenCreate()`, `MatCoarsenSetType()`
 @*/
-PetscErrorCode MatCoarsenGetData(MatCoarsen coarser, PetscCoarsenData **llist)
-{
+PetscErrorCode MatCoarsenGetData(MatCoarsen coarser, PetscCoarsenData **llist) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(coarser, MAT_COARSEN_CLASSID, 1);
   PetscCheck(coarser->agg_lists, PetscObjectComm((PetscObject)coarser), PETSC_ERR_ARG_WRONGSTATE, "No linked list - generate it or call ApplyCoarsen");
@@ -377,18 +367,19 @@ PetscErrorCode MatCoarsenGetData(MatCoarsen coarser, PetscCoarsenData **llist)
    Input Parameter:
 .  coarser - the coarsen context.
 
-   Options Database Key:
-.  -mat_coarsen_type  <type> - (for instance, mis), use -help for a list of available methods
+   Options Database Command:
+$  -mat_coarsen_type  <type>
+$      Use -help for a list of available methods
+$      (for instance, mis)
 
    Level: advanced
 
    Note:
-   Sets the `MatCoarsenType` to `MATCOARSENMISK` if has not been set previously
+   Set the `MatCoarsenType` to `MATCOARSENMISK` if has not been set previously
 
 .seealso: `MatCoarsen`, `MatCoarsenType`, `MatCoarsenApply()`, `MatCoarsenCreate()`, `MatCoarsenSetType()`
 @*/
-PetscErrorCode MatCoarsenSetFromOptions(MatCoarsen coarser)
-{
+PetscErrorCode MatCoarsenSetFromOptions(MatCoarsen coarser) {
   PetscBool   flag;
   char        type[256];
   const char *def;

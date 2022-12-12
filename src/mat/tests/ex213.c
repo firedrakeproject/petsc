@@ -11,8 +11,7 @@ static char help[] = "Tests MatMPIBAIJSetPreallocationCSR()\n\n";
 */
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         A;
   PetscInt   *ia, *ja, bs = 2;
   PetscInt    N = 9, n;

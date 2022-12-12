@@ -5,15 +5,13 @@ typedef struct {
   PetscReal haptol;
 } KSP_SYMMLQ;
 
-PetscErrorCode KSPSetUp_SYMMLQ(KSP ksp)
-{
+PetscErrorCode KSPSetUp_SYMMLQ(KSP ksp) {
   PetscFunctionBegin;
   PetscCall(KSPSetWorkVecs(ksp, 9));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode KSPSolve_SYMMLQ(KSP ksp)
-{
+PetscErrorCode KSPSolve_SYMMLQ(KSP ksp) {
   PetscInt    i;
   PetscScalar alpha, beta, ibeta, betaold, beta1, ceta = 0, ceta_oold = 0.0, ceta_old = 0.0, ceta_bar;
   PetscScalar c = 1.0, cold = 1.0, s = 0.0, sold = 0.0, coold, soold, rho0, rho1, rho2, rho3;
@@ -185,29 +183,29 @@ PetscErrorCode KSPSolve_SYMMLQ(KSP ksp)
 /*MC
      KSPSYMMLQ -  This code implements the SYMMLQ method.
 
+   Options Database Keys:
+    see KSPSolve()
+
    Level: beginner
 
    Notes:
-   The operator and the preconditioner must be symmetric for this method.
+    The operator and the preconditioner must be symmetric for this method. The
+          preconditioner must be POSITIVE-DEFINITE.
 
-   The preconditioner must be POSITIVE-DEFINITE.
+          Supports only left preconditioning.
 
-   Supports only left preconditioning.
+   Reference: Paige & Saunders, 1975.
 
-   Reference:
-. * - Paige & Saunders, Solution of sparse indefinite systems of linear equations, SIAM J. Numer. Anal. 12, 1975.
-
-.seealso: [](chapter_ksp), `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`
+.seealso: `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`
 M*/
-PETSC_EXTERN PetscErrorCode KSPCreate_SYMMLQ(KSP ksp)
-{
+PETSC_EXTERN PetscErrorCode KSPCreate_SYMMLQ(KSP ksp) {
   KSP_SYMMLQ *symmlq;
 
   PetscFunctionBegin;
   PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_PRECONDITIONED, PC_LEFT, 3));
   PetscCall(KSPSetSupportedNorm(ksp, KSP_NORM_NONE, PC_LEFT, 1));
 
-  PetscCall(PetscNew(&symmlq));
+  PetscCall(PetscNewLog(ksp, &symmlq));
   symmlq->haptol = 1.e-18;
   ksp->data      = (void *)symmlq;
 

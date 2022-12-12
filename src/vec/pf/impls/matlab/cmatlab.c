@@ -11,8 +11,7 @@ typedef struct {
   char             *string;
 } PF_Matlab;
 
-PetscErrorCode PFView_Matlab(void *value, PetscViewer viewer)
-{
+PetscErrorCode PFView_Matlab(void *value, PetscViewer viewer) {
   PetscBool  iascii;
   PF_Matlab *matlab = (PF_Matlab *)value;
 
@@ -22,8 +21,7 @@ PetscErrorCode PFView_Matlab(void *value, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PFDestroy_Matlab(void *value)
-{
+PetscErrorCode PFDestroy_Matlab(void *value) {
   PF_Matlab *matlab = (PF_Matlab *)value;
 
   PetscFunctionBegin;
@@ -33,8 +31,7 @@ PetscErrorCode PFDestroy_Matlab(void *value)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PFApply_Matlab(void *value, PetscInt n, const PetscScalar *in, PetscScalar *out)
-{
+PetscErrorCode PFApply_Matlab(void *value, PetscInt n, const PetscScalar *in, PetscScalar *out) {
   PF_Matlab *matlab = (PF_Matlab *)value;
 
   PetscFunctionBegin;
@@ -45,8 +42,7 @@ PetscErrorCode PFApply_Matlab(void *value, PetscInt n, const PetscScalar *in, Pe
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PFSetFromOptions_Matlab(PF pf, PetscOptionItems *PetscOptionsObject)
-{
+PetscErrorCode PFSetFromOptions_Matlab(PF pf, PetscOptionItems *PetscOptionsObject) {
   PetscBool  flag;
   char       value[256];
   PF_Matlab *matlab = (PF_Matlab *)pf->data;
@@ -59,12 +55,11 @@ PetscErrorCode PFSetFromOptions_Matlab(PF pf, PetscOptionItems *PetscOptionsObje
   PetscFunctionReturn(0);
 }
 
-PETSC_EXTERN PetscErrorCode PFCreate_Matlab(PF pf, void *value)
-{
+PETSC_EXTERN PetscErrorCode PFCreate_Matlab(PF pf, void *value) {
   PF_Matlab *matlab;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&matlab));
+  PetscCall(PetscNewLog(pf, &matlab));
   matlab->dimin  = pf->dimin;
   matlab->dimout = pf->dimout;
 

@@ -1,5 +1,5 @@
-#ifndef PETSC_DMPRODUCTIMPL_H
-#define PETSC_DMPRODUCTIMPL_H
+#if !defined(DMPRODUCTIMPL_H_)
+#define DMPRODUCTIMPL_H_
 
 #include <petscdmproduct.h> /*I "petscdmproduct.h" I*/
 #include <petsc/private/dmimpl.h>
@@ -11,4 +11,4 @@ typedef struct {
   PetscInt dim[DMPRODUCT_MAX_DIM]; /* Which dimension in the sub DM for this slot? */
 } DM_Product;
 
-#endif // PETSC_DMPRODUCTIMPL_H
+#endif

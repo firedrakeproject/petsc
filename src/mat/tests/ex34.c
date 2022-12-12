@@ -3,8 +3,7 @@ static char help[] = "Test MatMatMult() and MatTransposeMatMult() for MPIAIJ and
 
 #include <petsc.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat         A, B, C, C1;
   PetscMPIInt size;
   PetscInt    i, ia[2] = {0, 2}, ja[2] = {0, 1}, lda = 4;

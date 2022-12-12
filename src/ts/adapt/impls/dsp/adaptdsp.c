@@ -35,13 +35,11 @@ typedef struct {
   PetscBool rollback;
 } TSAdapt_DSP;
 
-static PetscReal Limiter(PetscReal value, PetscReal kappa)
-{
+static PetscReal Limiter(PetscReal value, PetscReal kappa) {
   return 1 + kappa * PetscAtanReal((value - 1) / kappa);
 }
 
-static PetscErrorCode TSAdaptRestart_DSP(TSAdapt adapt)
-{
+static PetscErrorCode TSAdaptRestart_DSP(TSAdapt adapt) {
   TSAdapt_DSP *dsp = (TSAdapt_DSP *)adapt->data;
   PetscFunctionBegin;
   dsp->cerror[0] = dsp->hratio[0] = 1.0;
@@ -50,8 +48,7 @@ static PetscErrorCode TSAdaptRestart_DSP(TSAdapt adapt)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptRollBack_DSP(TSAdapt adapt)
-{
+static PetscErrorCode TSAdaptRollBack_DSP(TSAdapt adapt) {
   TSAdapt_DSP *dsp = (TSAdapt_DSP *)adapt->data;
   PetscFunctionBegin;
   dsp->cerror[0] = dsp->cerror[1];
@@ -63,8 +60,7 @@ static PetscErrorCode TSAdaptRollBack_DSP(TSAdapt adapt)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptChoose_DSP(TSAdapt adapt, TS ts, PetscReal h, PetscInt *next_sc, PetscReal *next_h, PetscBool *accept, PetscReal *wlte, PetscReal *wltea, PetscReal *wlter)
-{
+static PetscErrorCode TSAdaptChoose_DSP(TSAdapt adapt, TS ts, PetscReal h, PetscInt *next_sc, PetscReal *next_h, PetscBool *accept, PetscReal *wlte, PetscReal *wltea, PetscReal *wlter) {
   TSAdapt_DSP *dsp   = (TSAdapt_DSP *)adapt->data;
   PetscInt     order = PETSC_DECIDE;
   PetscReal    enorm = -1;
@@ -165,8 +161,7 @@ static PetscErrorCode TSAdaptChoose_DSP(TSAdapt adapt, TS ts, PetscReal h, Petsc
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptDestroy_DSP(TSAdapt adapt)
-{
+static PetscErrorCode TSAdaptDestroy_DSP(TSAdapt adapt) {
   PetscFunctionBegin;
   PetscCall(PetscObjectComposeFunction((PetscObject)adapt, "TSAdaptDSPSetFilter_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)adapt, "TSAdaptDSPSetPID_C", NULL));
@@ -174,8 +169,7 @@ static PetscErrorCode TSAdaptDestroy_DSP(TSAdapt adapt)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptView_DSP(TSAdapt adapt, PetscViewer viewer)
-{
+static PetscErrorCode TSAdaptView_DSP(TSAdapt adapt, PetscViewer viewer) {
   TSAdapt_DSP *dsp = (TSAdapt_DSP *)adapt->data;
   PetscBool    iascii;
 
@@ -220,8 +214,7 @@ static struct FilterTab filterlist[] = {
   {"H321",    18, {6, 1, -5},  {-15, -3}},
 };
 
-static PetscErrorCode TSAdaptDSPSetFilter_DSP(TSAdapt adapt, const char *name)
-{
+static PetscErrorCode TSAdaptDSPSetFilter_DSP(TSAdapt adapt, const char *name) {
   TSAdapt_DSP      *dsp = (TSAdapt_DSP *)adapt->data;
   PetscInt          i, count = (PetscInt)(sizeof(filterlist) / sizeof(filterlist[0]));
   struct FilterTab *tab = NULL;
@@ -244,8 +237,7 @@ static PetscErrorCode TSAdaptDSPSetFilter_DSP(TSAdapt adapt, const char *name)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptDSPSetPID_DSP(TSAdapt adapt, PetscReal kkI, PetscReal kkP, PetscReal kkD)
-{
+static PetscErrorCode TSAdaptDSPSetPID_DSP(TSAdapt adapt, PetscReal kkI, PetscReal kkP, PetscReal kkD) {
   TSAdapt_DSP *dsp = (TSAdapt_DSP *)adapt->data;
 
   PetscFunctionBegin;
@@ -257,8 +249,7 @@ static PetscErrorCode TSAdaptDSPSetPID_DSP(TSAdapt adapt, PetscReal kkI, PetscRe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSAdaptSetFromOptions_DSP(TSAdapt adapt, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode TSAdaptSetFromOptions_DSP(TSAdapt adapt, PetscOptionItems *PetscOptionsObject) {
   TSAdapt_DSP *dsp = (TSAdapt_DSP *)adapt->data;
   const char  *names[sizeof(filterlist) / sizeof(filterlist[0])];
   PetscInt     count  = (PetscInt)(sizeof(filterlist) / sizeof(filterlist[0]));
@@ -295,32 +286,32 @@ static PetscErrorCode TSAdaptSetFromOptions_DSP(TSAdapt adapt, PetscOptionItems 
 /*@C
    TSAdaptDSPSetFilter - Sets internal parameters corresponding to the named filter
 
-   Collective on adapt
+   Collective on TSAdapt
 
    Input Parameters:
 +  adapt - adaptive controller context
 -  name - filter name
-
-   Options Database Key:
-.   -ts_adapt_dsp_filter <name> - Sets predefined controller by name; use -help for a list of available controllers
-
-    Filter names:
-+  basic - similar to `TSADAPTBASIC` but with different criteria for step rejections.
-.  PI30, PI42, PI33, PI34 - PI controllers.
-.  PC11, PC47, PC36 - predictive controllers.
-.  H0211, H211b, H211PI - digital filters with orders dynamics=2, adaptivity=1, filter=1.
-.  H0312, H312b, H312PID - digital filters with orders dynamics=3, adaptivity=1, filter=2.
--  H0321, H321 - digital filters with orders dynamics=3, adaptivity=2, filter=1.
 
    Level: intermediate
 
    References:
 .  * - http://dx.doi.org/10.1145/641876.641877
 
-.seealso: [](chapter_ts), `TS`, `TSAdapt`, `TSGetAdapt()`, `TSAdaptDSPSetPID()`
+   Notes:
+    Valid filter names are
++  "basic" - similar to TSADAPTBASIC but with different criteria for step rejections.
+.  "PI30", "PI42", "PI33", "PI34" - PI controllers.
+.  "PC11", "PC47", "PC36" - predictive controllers.
+.  "H0211", "H211b", "H211PI" - digital filters with orders dynamics=2, adaptivity=1, filter=1.
+.  "H0312", "H312b", "H312PID" - digital filters with orders dynamics=3, adaptivity=1, filter=2.
+-  "H0321", "H321" - digital filters with orders dynamics=3, adaptivity=2, filter=1.
+
+   Options Database:
+.   -ts_adapt_dsp_filter <name> - Sets predefined controller by name; use -help for a list of available controllers
+
+.seealso: `TS`, `TSAdapt`, `TSGetAdapt()`, `TSAdaptDSPSetPID()`
 @*/
-PetscErrorCode TSAdaptDSPSetFilter(TSAdapt adapt, const char *name)
-{
+PetscErrorCode TSAdaptDSPSetFilter(TSAdapt adapt, const char *name) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(adapt, TSADAPT_CLASSID, 1);
   PetscValidCharPointer(name, 2);
@@ -337,18 +328,17 @@ PetscErrorCode TSAdaptDSPSetFilter(TSAdapt adapt, const char *name)
 .  kkP - Proportional parameter
 -  kkD - Derivative parameter
 
-   Options Database Key:
-.   -ts_adapt_dsp_pid <kkI,kkP,kkD> - Sets PID controller parameters
-
    Level: intermediate
 
    References:
 .  * - http://dx.doi.org/10.1016/j.cam.2005.03.008
 
-.seealso: [](chapter_ts), `TS`, `TSAdapt`, `TSGetAdapt()`, `TSAdaptDSPSetFilter()`
+   Options Database:
+.   -ts_adapt_dsp_pid <kkI,kkP,kkD> - Sets PID controller parameters
+
+.seealso: `TS`, `TSAdapt`, `TSGetAdapt()`, `TSAdaptDSPSetFilter()`
 @*/
-PetscErrorCode TSAdaptDSPSetPID(TSAdapt adapt, PetscReal kkI, PetscReal kkP, PetscReal kkD)
-{
+PetscErrorCode TSAdaptDSPSetPID(TSAdapt adapt, PetscReal kkI, PetscReal kkP, PetscReal kkD) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(adapt, TSADAPT_CLASSID, 1);
   PetscValidLogicalCollectiveReal(adapt, kkI, 2);
@@ -361,26 +351,25 @@ PetscErrorCode TSAdaptDSPSetPID(TSAdapt adapt, PetscReal kkI, PetscReal kkP, Pet
 /*MC
    TSADAPTDSP - Adaptive controller for time-stepping based on digital signal processing (DSP)
 
-   Options Database Key:
-+   -ts_adapt_dsp_filter <name> - Sets predefined controller by name; use -help for a list of available controllers
-.   -ts_adapt_dsp_pid <kkI,kkP,kkD> - Sets PID controller parameters
-.   -ts_adapt_dsp_kbeta <b1,b2,b2> - Sets general filter parameters
--   -ts_adapt_dsp_alpha <a2,a3> - Sets general filter parameters
-
    Level: intermediate
 
    References:
 +  * - http://dx.doi.org/10.1145/641876.641877
 -  * - http://dx.doi.org/10.1016/j.cam.2005.03.008
 
-.seealso: [](chapter_ts), `TS`, `TSAdapt`, `TSGetAdapt()`, `TSAdaptDSPSetPID()`, `TSAdaptDSPSetFilter()`, `TSAdaptType`
+   Options Database:
++   -ts_adapt_dsp_filter <name> - Sets predefined controller by name; use -help for a list of available controllers
+.   -ts_adapt_dsp_pid <kkI,kkP,kkD> - Sets PID controller parameters
+.   -ts_adapt_dsp_kbeta <b1,b2,b2> - Sets general filter parameters
+-   -ts_adapt_dsp_alpha <a2,a3> - Sets general filter parameters
+
+.seealso: `TS`, `TSAdapt`, `TSGetAdapt()`, `TSAdaptDSPSetPID()`, `TSAdaptDSPSetFilter()`
 M*/
-PETSC_EXTERN PetscErrorCode TSAdaptCreate_DSP(TSAdapt adapt)
-{
+PETSC_EXTERN PetscErrorCode TSAdaptCreate_DSP(TSAdapt adapt) {
   TSAdapt_DSP *dsp;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&dsp));
+  PetscCall(PetscNewLog(adapt, &dsp));
   adapt->reject_safety = 1.0; /* unused */
 
   adapt->data                = (void *)dsp;

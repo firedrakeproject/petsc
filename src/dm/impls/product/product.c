@@ -1,7 +1,6 @@
 #include <petsc/private/dmproductimpl.h>
 
-static PetscErrorCode DMDestroy_Product(DM dm)
-{
+static PetscErrorCode DMDestroy_Product(DM dm) {
   DM_Product *product = (DM_Product *)dm->data;
   PetscInt    d;
 
@@ -23,14 +22,13 @@ static PetscErrorCode DMDestroy_Product(DM dm)
           `DMStagGetProductCoordinateArrays()`, `DMStagGetProductCoordinateArraysRead()`
 M*/
 
-PETSC_EXTERN PetscErrorCode DMCreate_Product(DM dm)
-{
+PETSC_EXTERN PetscErrorCode DMCreate_Product(DM dm) {
   DM_Product *product;
   PetscInt    d;
 
   PetscFunctionBegin;
   PetscValidPointer(dm, 1);
-  PetscCall(PetscNew(&product));
+  PetscCall(PetscNewLog(dm, &product));
   dm->data = product;
 
   for (d = 0; d < DMPRODUCT_MAX_DIM; ++d) product->dm[d] = NULL;

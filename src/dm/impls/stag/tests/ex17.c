@@ -3,8 +3,7 @@ static char help[] = "Test DMStag IS computation\n\n";
 #include <petscdm.h>
 #include <petscdmstag.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM        dm;
   PetscInt  dim, dof0, dof1, dof2, dof3;
   PetscBool flg;

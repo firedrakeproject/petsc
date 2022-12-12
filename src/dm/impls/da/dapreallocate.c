@@ -6,22 +6,19 @@
   DMDASetPreallocationCenterDimension - Determine the topology used to determine adjacency
 
   Input Parameters:
-+ dm - The `DMDA` object
++ dm - The DM object
 - preallocCenterDim - The dimension of points which connect adjacent entries
 
   Level: developer
 
   Notes:
-.vb
-     FEM:   Two points p and q are adjacent if q \in closure(star(p)), preallocCenterDim = dim
-     FVM:   Two points p and q are adjacent if q \in star(cone(p)),    preallocCenterDim = dim-1
-     FVM++: Two points p and q are adjacent if q \in star(closure(p)), preallocCenterDim = 0
-.ve
+$     FEM:   Two points p and q are adjacent if q \in closure(star(p)), preallocCenterDim = dim
+$     FVM:   Two points p and q are adjacent if q \in star(cone(p)),    preallocCenterDim = dim-1
+$     FVM++: Two points p and q are adjacent if q \in star(closure(p)), preallocCenterDim = 0
 
-.seealso: `DM`, `DMDA`, `DMCreateMatrix()`, `DMDAPreallocateOperator()`
+.seealso: `DMCreateMatrix()`, `DMDAPreallocateOperator()`
 @*/
-PetscErrorCode DMDASetPreallocationCenterDimension(DM dm, PetscInt preallocCenterDim)
-{
+PetscErrorCode DMDASetPreallocationCenterDimension(DM dm, PetscInt preallocCenterDim) {
   DM_DA *mesh = (DM_DA *)dm->data;
 
   PetscFunctionBegin;
@@ -34,7 +31,7 @@ PetscErrorCode DMDASetPreallocationCenterDimension(DM dm, PetscInt preallocCente
   DMDAGetPreallocationCenterDimension - Return the topology used to determine adjacency
 
   Input Parameter:
-. dm - The `DMDA` object
+. dm - The DM object
 
   Output Parameter:
 . preallocCenterDim - The dimension of points which connect adjacent entries
@@ -42,16 +39,13 @@ PetscErrorCode DMDASetPreallocationCenterDimension(DM dm, PetscInt preallocCente
   Level: developer
 
   Notes:
-.vb
-     FEM:   Two points p and q are adjacent if q \in closure(star(p)), preallocCenterDim = dim
-     FVM:   Two points p and q are adjacent if q \in star(cone(p)),    preallocCenterDim = dim-1
-     FVM++: Two points p and q are adjacent if q \in star(closure(p)), preallocCenterDim = 0
-.ve
+$     FEM:   Two points p and q are adjacent if q \in closure(star(p)), preallocCenterDim = dim
+$     FVM:   Two points p and q are adjacent if q \in star(cone(p)),    preallocCenterDim = dim-1
+$     FVM++: Two points p and q are adjacent if q \in star(closure(p)), preallocCenterDim = 0
 
-.seealso: `DM`, `DMDA`, `DMCreateMatrix()`, `DMDAPreallocateOperator()`, `DMDASetPreallocationCenterDimension()`
+.seealso: `DMCreateMatrix()`, `DMDAPreallocateOperator()`, `DMDASetPreallocationCenterDimension()`
 @*/
-PetscErrorCode DMDAGetPreallocationCenterDimension(DM dm, PetscInt *preallocCenterDim)
-{
+PetscErrorCode DMDAGetPreallocationCenterDimension(DM dm, PetscInt *preallocCenterDim) {
   DM_DA *mesh = (DM_DA *)dm->data;
 
   PetscFunctionBegin;

@@ -6,8 +6,7 @@
 */
 #include <../src/ksp/pc/impls/factor/qr/qr.h> /*I "petscpc.h" I*/
 
-static PetscErrorCode PCSetUp_QR(PC pc)
-{
+static PetscErrorCode PCSetUp_QR(PC pc) {
   PC_QR         *dir = (PC_QR *)pc->data;
   MatSolverType  stype;
   MatFactorError err;
@@ -37,7 +36,10 @@ static PetscErrorCode PCSetUp_QR(PC pc)
     MatInfo info;
 
     if (!pc->setupcalled) {
-      if (!((PC_Factor *)dir)->fact) { PetscCall(MatGetFactor(pc->pmat, ((PC_Factor *)dir)->solvertype, MAT_FACTOR_QR, &((PC_Factor *)dir)->fact)); }
+      if (!((PC_Factor *)dir)->fact) {
+        PetscCall(MatGetFactor(pc->pmat, ((PC_Factor *)dir)->solvertype, MAT_FACTOR_QR, &((PC_Factor *)dir)->fact));
+        PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)((PC_Factor *)dir)->fact));
+      }
       PetscCall(MatQRFactorSymbolic(((PC_Factor *)dir)->fact, pc->pmat, dir->col, &((PC_Factor *)dir)->info));
       PetscCall(MatGetInfo(((PC_Factor *)dir)->fact, MAT_LOCAL, &info));
       dir->hdr.actualfill = info.fill_ratio_needed;
@@ -70,8 +72,7 @@ static PetscErrorCode PCSetUp_QR(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCReset_QR(PC pc)
-{
+static PetscErrorCode PCReset_QR(PC pc) {
   PC_QR *dir = (PC_QR *)pc->data;
 
   PetscFunctionBegin;
@@ -80,8 +81,7 @@ static PetscErrorCode PCReset_QR(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDestroy_QR(PC pc)
-{
+static PetscErrorCode PCDestroy_QR(PC pc) {
   PC_QR *dir = (PC_QR *)pc->data;
 
   PetscFunctionBegin;
@@ -93,8 +93,7 @@ static PetscErrorCode PCDestroy_QR(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApply_QR(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApply_QR(PC pc, Vec x, Vec y) {
   PC_QR *dir = (PC_QR *)pc->data;
   Mat    fact;
 
@@ -104,8 +103,7 @@ static PetscErrorCode PCApply_QR(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCMatApply_QR(PC pc, Mat X, Mat Y)
-{
+static PetscErrorCode PCMatApply_QR(PC pc, Mat X, Mat Y) {
   PC_QR *dir = (PC_QR *)pc->data;
   Mat    fact;
 
@@ -115,8 +113,7 @@ static PetscErrorCode PCMatApply_QR(PC pc, Mat X, Mat Y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApplyTranspose_QR(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApplyTranspose_QR(PC pc, Vec x, Vec y) {
   PC_QR *dir = (PC_QR *)pc->data;
   Mat    fact;
 
@@ -126,29 +123,30 @@ static PetscErrorCode PCApplyTranspose_QR(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
+/* -----------------------------------------------------------------------------------*/
+
 /*MC
    PCQR - Uses a direct solver, based on QR factorization, as a preconditioner
 
    Level: beginner
 
-   Note:
-   Usually this will compute an "exact" solution in one iteration and does
-   not need a Krylov method (i.e. you can use -ksp_type preonly, or
-   `KSPSetType`(ksp,`KSPPREONLY`) for the Krylov method
+   Notes:
+    Usually this will compute an "exact" solution in one iteration and does
+          not need a Krylov method (i.e. you can use -ksp_type preonly, or
+          KSPSetType(ksp,KSPPREONLY) for the Krylov method
 
-.seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCSVD`,
+.seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`,
           `PCILU`, `PCLU`, `PCCHOLESKY`, `PCICC`, `PCFactorSetReuseOrdering()`, `PCFactorSetReuseFill()`, `PCFactorGetMatrix()`,
           `PCFactorSetFill()`, `PCFactorSetUseInPlace()`, `PCFactorSetMatOrderingType()`, `PCFactorSetColumnPivot()`,
           `PCFactorSetPivotingInBlocks()`, `PCFactorSetShiftType()`, `PCFactorSetShiftAmount()`
           `PCFactorReorderForNonzeroDiagonal()`
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_QR(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_QR(PC pc) {
   PC_QR *dir;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&dir));
+  PetscCall(PetscNewLog(pc, &dir));
   pc->data = (void *)dir;
   PetscCall(PCFactorInitialize(pc, MAT_FACTOR_QR));
 

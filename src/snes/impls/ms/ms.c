@@ -29,16 +29,15 @@ typedef struct {
 } SNES_MS;
 
 /*@C
-  SNESMSRegisterAll - Registers all of the multi-stage methods in `SNESMS`
+  SNESMSRegisterAll - Registers all of the multi-stage methods in SNESMS
 
-  Logically Collective
+  Not Collective, but should be called by all processes which will need the schemes to be registered
 
-  Level: developer
+  Level: advanced
 
-.seealso: `SNES`, `SNESMS`, `SNESMSRegisterDestroy()`
+.seealso: `SNESMSRegisterDestroy()`
 @*/
-PetscErrorCode SNESMSRegisterAll(void)
-{
+PetscErrorCode SNESMSRegisterAll(void) {
   PetscFunctionBegin;
   if (SNESMSRegisterAllCalled) PetscFunctionReturn(0);
   SNESMSRegisterAllCalled = PETSC_TRUE;
@@ -92,16 +91,15 @@ PetscErrorCode SNESMSRegisterAll(void)
 }
 
 /*@C
-   SNESMSRegisterDestroy - Frees the list of schemes that were registered by `SNESMSRegister()`.
+   SNESMSRegisterDestroy - Frees the list of schemes that were registered by SNESMSRegister().
 
    Not Collective
 
-   Level: developer
+   Level: advanced
 
 .seealso: `SNESMSRegister()`, `SNESMSRegisterAll()`
 @*/
-PetscErrorCode SNESMSRegisterDestroy(void)
-{
+PetscErrorCode SNESMSRegisterDestroy(void) {
   SNESMSTableauLink link;
 
   PetscFunctionBegin;
@@ -120,15 +118,14 @@ PetscErrorCode SNESMSRegisterDestroy(void)
 }
 
 /*@C
-  SNESMSInitializePackage - This function initializes everything in the `SNESMS` package. It is called
-  from `SNESInitializePackage()`.
+  SNESMSInitializePackage - This function initializes everything in the SNESMS package. It is called
+  from SNESInitializePackage().
 
   Level: developer
 
 .seealso: `PetscInitialize()`
 @*/
-PetscErrorCode SNESMSInitializePackage(void)
-{
+PetscErrorCode SNESMSInitializePackage(void) {
   PetscFunctionBegin;
   if (SNESMSPackageInitialized) PetscFunctionReturn(0);
   SNESMSPackageInitialized = PETSC_TRUE;
@@ -139,15 +136,14 @@ PetscErrorCode SNESMSInitializePackage(void)
 }
 
 /*@C
-  SNESMSFinalizePackage - This function destroys everything in the `SNESMS` package. It is
-  called from `PetscFinalize()`.
+  SNESMSFinalizePackage - This function destroys everything in the SNESMS package. It is
+  called from PetscFinalize().
 
   Level: developer
 
 .seealso: `PetscFinalize()`
 @*/
-PetscErrorCode SNESMSFinalizePackage(void)
-{
+PetscErrorCode SNESMSFinalizePackage(void) {
   PetscFunctionBegin;
   SNESMSPackageInitialized = PETSC_FALSE;
 
@@ -156,9 +152,9 @@ PetscErrorCode SNESMSFinalizePackage(void)
 }
 
 /*@C
-   SNESMSRegister - register a multistage scheme for `SNESMS`
+   SNESMSRegister - register a multistage scheme
 
-   Logically Collective
+   Not Collective, but the same schemes should be registered on all processes on which they will be used
 
    Input Parameters:
 +  name - identifier for method
@@ -185,8 +181,7 @@ PetscErrorCode SNESMSFinalizePackage(void)
 
 .seealso: `SNESMS`
 @*/
-PetscErrorCode SNESMSRegister(SNESMSType name, PetscInt nstages, PetscInt nregisters, PetscReal stability, const PetscReal gamma[], const PetscReal delta[], const PetscReal betasub[])
-{
+PetscErrorCode SNESMSRegister(SNESMSType name, PetscInt nstages, PetscInt nregisters, PetscReal stability, const PetscReal gamma[], const PetscReal delta[], const PetscReal betasub[]) {
   SNESMSTableauLink link;
   SNESMSTableau     t;
 
@@ -228,25 +223,37 @@ PetscErrorCode SNESMSRegister(SNESMSType name, PetscInt nstages, PetscInt nregis
   X - initial state, updated in-place.
   F - residual, computed at the initial X on input
 */
-static PetscErrorCode SNESMSStep_3Sstar(SNES snes, Vec X, Vec F)
-{
-  SNES_MS         *ms      = (SNES_MS *)snes->data;
-  SNESMSTableau    t       = ms->tableau;
-  const PetscInt   nstages = t->nstages;
+static PetscErrorCode SNESMSStep_3Sstar(SNES snes, Vec X, Vec F) {
+  SNES_MS         *ms    = (SNES_MS *)snes->data;
+  SNESMSTableau    t     = ms->tableau;
   const PetscReal *gamma = t->gamma, *delta = t->delta, *betasub = t->betasub;
-  Vec              S1 = X, S2 = snes->work[1], S3 = snes->work[2], Y = snes->work[0], S1copy = snes->work[3];
+  Vec              S1, S2, S3, Y;
+  PetscInt         i, nstages = t->nstages;
 
   PetscFunctionBegin;
+  Y  = snes->work[0];
+  S1 = X;
+  S2 = snes->work[1];
+  S3 = snes->work[2];
   PetscCall(VecZeroEntries(S2));
   PetscCall(VecCopy(X, S3));
-  for (PetscInt i = 0; i < nstages; i++) {
-    Vec               Ss[]     = {S1copy, S2, S3, Y};
-    const PetscScalar scoeff[] = {gamma[0 * nstages + i] - 1, gamma[1 * nstages + i], gamma[2 * nstages + i], -betasub[i] * ms->damping};
+  for (i = 0; i < nstages; i++) {
+    Vec         Ss[4];
+    PetscScalar scoeff[4];
+
+    Ss[0] = S1;
+    Ss[1] = S2;
+    Ss[2] = S3;
+    Ss[3] = Y;
+
+    scoeff[0] = gamma[0 * nstages + i] - 1;
+    scoeff[1] = gamma[1 * nstages + i];
+    scoeff[2] = gamma[2 * nstages + i];
+    scoeff[3] = -betasub[i] * ms->damping;
 
     PetscCall(VecAXPY(S2, delta[i], S1));
     if (i > 0) PetscCall(SNESComputeFunction(snes, S1, F));
     PetscCall(KSPSolve(snes->ksp, F, Y));
-    PetscCall(VecCopy(S1, S1copy));
     PetscCall(VecMAXPY(S1, 4, scoeff, Ss));
   }
   PetscFunctionReturn(0);
@@ -256,8 +263,7 @@ static PetscErrorCode SNESMSStep_3Sstar(SNES snes, Vec X, Vec F)
   X - initial state, updated in-place.
   F - residual, computed at the initial X on input
 */
-static PetscErrorCode SNESMSStep_Basic(SNES snes, Vec X, Vec F)
-{
+static PetscErrorCode SNESMSStep_Basic(SNES snes, Vec X, Vec F) {
   SNES_MS         *ms    = (SNES_MS *)snes->data;
   SNESMSTableau    tab   = ms->tableau;
   const PetscReal *alpha = tab->betasub, h = ms->damping;
@@ -274,8 +280,7 @@ static PetscErrorCode SNESMSStep_Basic(SNES snes, Vec X, Vec F)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESMSStep_Step(SNES snes, Vec X, Vec F)
-{
+static PetscErrorCode SNESMSStep_Step(SNES snes, Vec X, Vec F) {
   SNES_MS      *ms  = (SNES_MS *)snes->data;
   SNESMSTableau tab = ms->tableau;
 
@@ -288,8 +293,7 @@ static PetscErrorCode SNESMSStep_Step(SNES snes, Vec X, Vec F)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESMSStep_Norms(SNES snes, PetscInt iter, Vec F)
-{
+static PetscErrorCode SNESMSStep_Norms(SNES snes, PetscInt iter, Vec F) {
   SNES_MS  *ms = (SNES_MS *)snes->data;
   PetscReal fnorm;
 
@@ -314,8 +318,7 @@ static PetscErrorCode SNESMSStep_Norms(SNES snes, PetscInt iter, Vec F)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESSolve_MS(SNES snes)
-{
+static PetscErrorCode SNESSolve_MS(SNES snes) {
   SNES_MS *ms = (SNES_MS *)snes->data;
   Vec      X = snes->vec_sol, F = snes->vec_func;
   PetscInt i;
@@ -359,12 +362,10 @@ static PetscErrorCode SNESSolve_MS(SNES snes)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESSetUp_MS(SNES snes)
-{
+static PetscErrorCode SNESSetUp_MS(SNES snes) {
   SNES_MS      *ms    = (SNES_MS *)snes->data;
   SNESMSTableau tab   = ms->tableau;
-  PetscInt      nwork = tab->nregisters + 1; // +1 because VecMAXPY() in SNESMSStep_3Sstar()
-                                             // needs an extra work vec
+  PetscInt      nwork = tab->nregisters;
 
   PetscFunctionBegin;
   PetscCall(SNESSetWorkVecs(snes, nwork));
@@ -372,14 +373,12 @@ static PetscErrorCode SNESSetUp_MS(SNES snes)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESReset_MS(SNES snes)
-{
+static PetscErrorCode SNESReset_MS(SNES snes) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESDestroy_MS(SNES snes)
-{
+static PetscErrorCode SNESDestroy_MS(SNES snes) {
   PetscFunctionBegin;
   PetscCall(SNESReset_MS(snes));
   PetscCall(PetscFree(snes->data));
@@ -390,8 +389,7 @@ static PetscErrorCode SNESDestroy_MS(SNES snes)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESView_MS(SNES snes, PetscViewer viewer)
-{
+static PetscErrorCode SNESView_MS(SNES snes, PetscViewer viewer) {
   PetscBool     iascii;
   SNES_MS      *ms  = (SNES_MS *)snes->data;
   SNESMSTableau tab = ms->tableau;
@@ -402,8 +400,7 @@ static PetscErrorCode SNESView_MS(SNES snes, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESSetFromOptions_MS(SNES snes, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode SNESSetFromOptions_MS(SNES snes, PetscOptionItems *PetscOptionsObject) {
   SNES_MS *ms = (SNES_MS *)snes->data;
 
   PetscFunctionBegin;
@@ -433,8 +430,7 @@ static PetscErrorCode SNESSetFromOptions_MS(SNES snes, PetscOptionItems *PetscOp
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESMSGetType_MS(SNES snes, SNESMSType *mstype)
-{
+static PetscErrorCode SNESMSGetType_MS(SNES snes, SNESMSType *mstype) {
   SNES_MS      *ms  = (SNES_MS *)snes->data;
   SNESMSTableau tab = ms->tableau;
 
@@ -443,8 +439,7 @@ static PetscErrorCode SNESMSGetType_MS(SNES snes, SNESMSType *mstype)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESMSSetType_MS(SNES snes, SNESMSType mstype)
-{
+static PetscErrorCode SNESMSSetType_MS(SNES snes, SNESMSType mstype) {
   SNES_MS          *ms = (SNES_MS *)snes->data;
   SNESMSTableauLink link;
   PetscBool         match;
@@ -467,7 +462,7 @@ static PetscErrorCode SNESMSSetType_MS(SNES snes, SNESMSType mstype)
 }
 
 /*@C
-  SNESMSGetType - Get the type of multistage smoother `SNESMS`
+  SNESMSGetType - Get the type of multistage smoother
 
   Not collective
 
@@ -477,12 +472,11 @@ static PetscErrorCode SNESMSSetType_MS(SNES snes, SNESMSType mstype)
   Output Parameter:
 .  mstype - type of multistage method
 
-  Level: advanced
+  Level: beginner
 
-.seealso: `SNESMS`, `SNESMSSetType()`, `SNESMSType`, `SNESMS`
+.seealso: `SNESMSSetType()`, `SNESMSType`, `SNESMS`
 @*/
-PetscErrorCode SNESMSGetType(SNES snes, SNESMSType *mstype)
-{
+PetscErrorCode SNESMSGetType(SNES snes, SNESMSType *mstype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   PetscValidPointer(mstype, 2);
@@ -491,7 +485,7 @@ PetscErrorCode SNESMSGetType(SNES snes, SNESMSType *mstype)
 }
 
 /*@C
-  SNESMSSetType - Set the type of multistage smoother `SNESMS`
+  SNESMSSetType - Set the type of multistage smoother
 
   Logically collective
 
@@ -499,12 +493,11 @@ PetscErrorCode SNESMSGetType(SNES snes, SNESMSType *mstype)
 +  snes - nonlinear solver context
 -  mstype - type of multistage method
 
-  Level: advanced
+  Level: beginner
 
-.seealso: `SNESMS`, `SNESMSGetType()`, `SNESMSType`, `SNESMS`
+.seealso: `SNESMSGetType()`, `SNESMSType`, `SNESMS`
 @*/
-PetscErrorCode SNESMSSetType(SNES snes, SNESMSType mstype)
-{
+PetscErrorCode SNESMSSetType(SNES snes, SNESMSType mstype) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   PetscValidCharPointer(mstype, 2);
@@ -512,8 +505,7 @@ PetscErrorCode SNESMSSetType(SNES snes, SNESMSType mstype)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESMSGetDamping_MS(SNES snes, PetscReal *damping)
-{
+static PetscErrorCode SNESMSGetDamping_MS(SNES snes, PetscReal *damping) {
   SNES_MS *ms = (SNES_MS *)snes->data;
 
   PetscFunctionBegin;
@@ -521,8 +513,7 @@ static PetscErrorCode SNESMSGetDamping_MS(SNES snes, PetscReal *damping)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESMSSetDamping_MS(SNES snes, PetscReal damping)
-{
+static PetscErrorCode SNESMSSetDamping_MS(SNES snes, PetscReal damping) {
   SNES_MS *ms = (SNES_MS *)snes->data;
 
   PetscFunctionBegin;
@@ -531,7 +522,7 @@ static PetscErrorCode SNESMSSetDamping_MS(SNES snes, PetscReal damping)
 }
 
 /*@C
-  SNESMSGetDamping - Get the damping parameter of `SNESMS` multistage scheme
+  SNESMSGetDamping - Get the damping parameter
 
   Not collective
 
@@ -545,8 +536,7 @@ static PetscErrorCode SNESMSSetDamping_MS(SNES snes, PetscReal damping)
 
 .seealso: `SNESMSSetDamping()`, `SNESMS`
 @*/
-PetscErrorCode SNESMSGetDamping(SNES snes, PetscReal *damping)
-{
+PetscErrorCode SNESMSGetDamping(SNES snes, PetscReal *damping) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   PetscValidRealPointer(damping, 2);
@@ -555,7 +545,7 @@ PetscErrorCode SNESMSGetDamping(SNES snes, PetscReal *damping)
 }
 
 /*@C
-  SNESMSSetDamping - Set the damping parameter for a `SNESMS` multistage scheme
+  SNESMSSetDamping - Set the damping parameter
 
   Logically collective
 
@@ -567,8 +557,7 @@ PetscErrorCode SNESMSGetDamping(SNES snes, PetscReal *damping)
 
 .seealso: `SNESMSGetDamping()`, `SNESMS`
 @*/
-PetscErrorCode SNESMSSetDamping(SNES snes, PetscReal damping)
-{
+PetscErrorCode SNESMSSetDamping(SNES snes, PetscReal damping) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   PetscValidLogicalCollectiveReal(snes, damping, 2);
@@ -576,10 +565,12 @@ PetscErrorCode SNESMSSetDamping(SNES snes, PetscReal damping)
   PetscFunctionReturn(0);
 }
 
+/* -------------------------------------------------------------------------- */
 /*MC
       SNESMS - multi-stage smoothers
 
-      Options Database Keys:
+      Options Database:
+
 +     -snes_ms_type - type of multi-stage smoother
 -     -snes_ms_damping - damping for multi-stage method
 
@@ -589,7 +580,7 @@ PetscErrorCode SNESMSSetDamping(SNES snes, PetscReal damping)
 
       Multi-stage smoothers should usually be preconditioned by point-block Jacobi to ensure proper scaling and to normalize the wave speeds.
 
-      The methods are specified in low storage form (Ketcheson 2010). New methods can be registered with `SNESMSRegister()`.
+      The methods are specified in low storage form (Ketcheson 2010). New methods can be registered with SNESMSRegister().
 
       References:
 +     * - Ketcheson (2010) Runge Kutta methods with minimum storage implementations (https://doi.org/10.1016/j.jcp.2009.11.006).
@@ -597,13 +588,12 @@ PetscErrorCode SNESMSSetDamping(SNES snes, PetscReal damping)
 .     * - Pierce and Giles (1997) Preconditioned multigrid methods for compressible flow calculations on stretched meshes (https://doi.org/10.1006/jcph.1997.5772).
 -     * - Van Leer, Tai, and Powell (1989) Design of optimally smoothing multi-stage schemes for the Euler equations (https://doi.org/10.2514/6.1989-1933).
 
-      Level: advanced
+      Level: beginner
 
 .seealso: `SNESCreate()`, `SNES`, `SNESSetType()`, `SNESMS`, `SNESFAS`, `KSPCHEBYSHEV`
 
 M*/
-PETSC_EXTERN PetscErrorCode SNESCreate_MS(SNES snes)
-{
+PETSC_EXTERN PetscErrorCode SNESCreate_MS(SNES snes) {
   SNES_MS *ms;
 
   PetscFunctionBegin;
@@ -621,7 +611,7 @@ PETSC_EXTERN PetscErrorCode SNESCreate_MS(SNES snes)
 
   snes->alwayscomputesfinalresidual = PETSC_FALSE;
 
-  PetscCall(PetscNew(&ms));
+  PetscCall(PetscNewLog(snes, &ms));
   snes->data  = (void *)ms;
   ms->damping = 0.9;
   ms->norms   = PETSC_FALSE;

@@ -4,16 +4,15 @@ PETSC_EXTERN PetscErrorCode AOCreate_Basic(AO ao);
 PETSC_EXTERN PetscErrorCode AOCreate_MemoryScalable(AO ao);
 
 /*@C
-  AORegisterAll - Registers all of the application ordering components in the `AO` package.
+  AORegisterAll - Registers all of the application ordering components in the AO package.
 
   Not Collective
 
   Level: advanced
 
-.seealso: `AO`, `AOType`, `AORegister()`, `AORegisterDestroy()`
+.seealso: `AORegister()`, `AORegisterDestroy()`
 @*/
-PetscErrorCode AORegisterAll(void)
-{
+PetscErrorCode AORegisterAll(void) {
   PetscFunctionBegin;
   if (AORegisterAllCalled) PetscFunctionReturn(0);
   AORegisterAllCalled = PETSC_TRUE;

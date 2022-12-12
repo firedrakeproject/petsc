@@ -8,8 +8,7 @@ typedef struct {
   PetscScalar scale;
 } Mat_Normal;
 
-PetscErrorCode MatScale_Normal(Mat inA, PetscScalar scale)
-{
+PetscErrorCode MatScale_Normal(Mat inA, PetscScalar scale) {
   Mat_Normal *a = (Mat_Normal *)inA->data;
 
   PetscFunctionBegin;
@@ -17,8 +16,7 @@ PetscErrorCode MatScale_Normal(Mat inA, PetscScalar scale)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDiagonalScale_Normal(Mat inA, Vec left, Vec right)
-{
+PetscErrorCode MatDiagonalScale_Normal(Mat inA, Vec left, Vec right) {
   Mat_Normal *a = (Mat_Normal *)inA->data;
 
   PetscFunctionBegin;
@@ -41,8 +39,7 @@ PetscErrorCode MatDiagonalScale_Normal(Mat inA, Vec left, Vec right)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatIncreaseOverlap_Normal(Mat A, PetscInt is_max, IS is[], PetscInt ov)
-{
+PetscErrorCode MatIncreaseOverlap_Normal(Mat A, PetscInt is_max, IS is[], PetscInt ov) {
   Mat_Normal *a = (Mat_Normal *)A->data;
   Mat         pattern;
 
@@ -57,8 +54,7 @@ PetscErrorCode MatIncreaseOverlap_Normal(Mat A, PetscInt is_max, IS is[], PetscI
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatCreateSubMatrices_Normal(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[])
-{
+PetscErrorCode MatCreateSubMatrices_Normal(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[]) {
   Mat_Normal *a = (Mat_Normal *)mat->data;
   Mat         B = a->A, *suba;
   IS         *row;
@@ -83,8 +79,7 @@ PetscErrorCode MatCreateSubMatrices_Normal(Mat mat, PetscInt n, const IS irow[],
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatPermute_Normal(Mat A, IS rowp, IS colp, Mat *B)
-{
+PetscErrorCode MatPermute_Normal(Mat A, IS rowp, IS colp, Mat *B) {
   Mat_Normal *a = (Mat_Normal *)A->data;
   Mat         C, Aa = a->A;
   IS          row;
@@ -100,8 +95,7 @@ PetscErrorCode MatPermute_Normal(Mat A, IS rowp, IS colp, Mat *B)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDuplicate_Normal(Mat A, MatDuplicateOption op, Mat *B)
-{
+PetscErrorCode MatDuplicate_Normal(Mat A, MatDuplicateOption op, Mat *B) {
   Mat_Normal *a = (Mat_Normal *)A->data;
   Mat         C;
 
@@ -114,8 +108,7 @@ PetscErrorCode MatDuplicate_Normal(Mat A, MatDuplicateOption op, Mat *B)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatCopy_Normal(Mat A, Mat B, MatStructure str)
-{
+PetscErrorCode MatCopy_Normal(Mat A, Mat B, MatStructure str) {
   Mat_Normal *a = (Mat_Normal *)A->data, *b = (Mat_Normal *)B->data;
 
   PetscFunctionBegin;
@@ -129,8 +122,7 @@ PetscErrorCode MatCopy_Normal(Mat A, Mat B, MatStructure str)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMult_Normal(Mat N, Vec x, Vec y)
-{
+PetscErrorCode MatMult_Normal(Mat N, Vec x, Vec y) {
   Mat_Normal *Na = (Mat_Normal *)N->data;
   Vec         in;
 
@@ -148,8 +140,7 @@ PetscErrorCode MatMult_Normal(Mat N, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultAdd_Normal(Mat N, Vec v1, Vec v2, Vec v3)
-{
+PetscErrorCode MatMultAdd_Normal(Mat N, Vec v1, Vec v2, Vec v3) {
   Mat_Normal *Na = (Mat_Normal *)N->data;
   Vec         in;
 
@@ -172,8 +163,7 @@ PetscErrorCode MatMultAdd_Normal(Mat N, Vec v1, Vec v2, Vec v3)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTranspose_Normal(Mat N, Vec x, Vec y)
-{
+PetscErrorCode MatMultTranspose_Normal(Mat N, Vec x, Vec y) {
   Mat_Normal *Na = (Mat_Normal *)N->data;
   Vec         in;
 
@@ -191,8 +181,7 @@ PetscErrorCode MatMultTranspose_Normal(Mat N, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultTransposeAdd_Normal(Mat N, Vec v1, Vec v2, Vec v3)
-{
+PetscErrorCode MatMultTransposeAdd_Normal(Mat N, Vec v1, Vec v2, Vec v3) {
   Mat_Normal *Na = (Mat_Normal *)N->data;
   Vec         in;
 
@@ -215,8 +204,7 @@ PetscErrorCode MatMultTransposeAdd_Normal(Mat N, Vec v1, Vec v2, Vec v3)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDestroy_Normal(Mat N)
-{
+PetscErrorCode MatDestroy_Normal(Mat N) {
   Mat_Normal *Na = (Mat_Normal *)N->data;
 
   PetscFunctionBegin;
@@ -240,8 +228,7 @@ PetscErrorCode MatDestroy_Normal(Mat N)
 /*
       Slow, nonscalable version
 */
-PetscErrorCode MatGetDiagonal_Normal(Mat N, Vec v)
-{
+PetscErrorCode MatGetDiagonal_Normal(Mat N, Vec v) {
   Mat_Normal        *Na = (Mat_Normal *)N->data;
   Mat                A  = Na->A;
   PetscInt           i, j, rstart, rend, nnz;
@@ -269,8 +256,7 @@ PetscErrorCode MatGetDiagonal_Normal(Mat N, Vec v)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatGetDiagonalBlock_Normal(Mat N, Mat *D)
-{
+PetscErrorCode MatGetDiagonalBlock_Normal(Mat N, Mat *D) {
   Mat_Normal *Na = (Mat_Normal *)N->data;
   Mat         M, A = Na->A;
 
@@ -281,8 +267,7 @@ PetscErrorCode MatGetDiagonalBlock_Normal(Mat N, Mat *D)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatNormalGetMat_Normal(Mat A, Mat *M)
-{
+PetscErrorCode MatNormalGetMat_Normal(Mat A, Mat *M) {
   Mat_Normal *Aa = (Mat_Normal *)A->data;
 
   PetscFunctionBegin;
@@ -305,8 +290,7 @@ PetscErrorCode MatNormalGetMat_Normal(Mat A, Mat *M)
 
 .seealso: `MATNORMAL`, `MATNORMALHERMITIAN`, `MatCreateNormal()`
 @*/
-PetscErrorCode MatNormalGetMat(Mat A, Mat *M)
-{
+PetscErrorCode MatNormalGetMat(Mat A, Mat *M) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -315,8 +299,7 @@ PetscErrorCode MatNormalGetMat(Mat A, Mat *M)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatConvert_Normal_AIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+PetscErrorCode MatConvert_Normal_AIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat_Normal *Aa = (Mat_Normal *)A->data;
   Mat         B;
   PetscInt    m, n, M, N;
@@ -346,8 +329,7 @@ typedef struct {
   Mat work[2];
 } Normal_Dense;
 
-PetscErrorCode MatProductNumeric_Normal_Dense(Mat C)
-{
+PetscErrorCode MatProductNumeric_Normal_Dense(Mat C) {
   Mat           A, B;
   Normal_Dense *contents;
   Mat_Normal   *a;
@@ -377,8 +359,7 @@ PetscErrorCode MatProductNumeric_Normal_Dense(Mat C)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatNormal_DenseDestroy(void *ctx)
-{
+PetscErrorCode MatNormal_DenseDestroy(void *ctx) {
   Normal_Dense *contents = (Normal_Dense *)ctx;
 
   PetscFunctionBegin;
@@ -388,8 +369,7 @@ PetscErrorCode MatNormal_DenseDestroy(void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatProductSymbolic_Normal_Dense(Mat C)
-{
+PetscErrorCode MatProductSymbolic_Normal_Dense(Mat C) {
   Mat           A, B;
   Normal_Dense *contents = NULL;
   Mat_Normal   *a;
@@ -437,15 +417,13 @@ PetscErrorCode MatProductSymbolic_Normal_Dense(Mat C)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatProductSetFromOptions_Normal_Dense_AB(Mat C)
-{
+PetscErrorCode MatProductSetFromOptions_Normal_Dense_AB(Mat C) {
   PetscFunctionBegin;
   C->ops->productsymbolic = MatProductSymbolic_Normal_Dense;
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatProductSetFromOptions_Normal_Dense(Mat C)
-{
+PetscErrorCode MatProductSetFromOptions_Normal_Dense(Mat C) {
   Mat_Product *product = C->product;
 
   PetscFunctionBegin;
@@ -473,8 +451,7 @@ PetscErrorCode MatProductSetFromOptions_Normal_Dense(Mat C)
 
 .seealso: `MATNORMAL`, `MatMult()`, `MatNormalGetMat()`, `MATNORMALHERMITIAN`,
 @*/
-PetscErrorCode MatCreateNormal(Mat A, Mat *N)
-{
+PetscErrorCode MatCreateNormal(Mat A, Mat *N) {
   PetscInt    n, nn;
   Mat_Normal *Na;
   VecType     vtype;
@@ -488,7 +465,7 @@ PetscErrorCode MatCreateNormal(Mat A, Mat *N)
   PetscCall(PetscLayoutReference(A->cmap, &(*N)->rmap));
   PetscCall(PetscLayoutReference(A->cmap, &(*N)->cmap));
 
-  PetscCall(PetscNew(&Na));
+  PetscCall(PetscNewLog(*N, &Na));
   (*N)->data = (void *)Na;
   PetscCall(PetscObjectReference((PetscObject)A));
   Na->A     = A;

@@ -2,8 +2,7 @@ static char help[] = "Test ViennaCL Matrix Conversions";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscMPIInt rank, size;
 
   PetscFunctionBeginUser;

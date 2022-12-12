@@ -1,4 +1,4 @@
--include ../../../../petscdir.mk
+-include ../../../../petsckdir.mk
 
 DIRS     = none basic dsp cfl glee history
 LOCDIR   = src/ts/adapt/impls/

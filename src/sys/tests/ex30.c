@@ -3,8 +3,7 @@ static char help[] = "Tests nested events.\n\n";
 
 #include <petscsys.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   int event1, event2, event3;
 
   PetscFunctionBeginUser;

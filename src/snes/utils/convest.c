@@ -4,8 +4,7 @@
 
 #include <petsc/private/petscconvestimpl.h>
 
-static PetscErrorCode zero_private(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
-{
+static PetscErrorCode zero_private(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx) {
   PetscInt c;
   for (c = 0; c < Nc; ++c) u[c] = 0.0;
   return 0;
@@ -14,7 +13,7 @@ static PetscErrorCode zero_private(PetscInt dim, PetscReal time, const PetscReal
 /*@
   PetscConvEstDestroy - Destroys a PetscConvEst object
 
-  Collective on ce
+  Collective on PetscConvEst
 
   Input Parameter:
 . ce - The PetscConvEst object
@@ -23,8 +22,7 @@ static PetscErrorCode zero_private(PetscInt dim, PetscReal time, const PetscReal
 
 .seealso: `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`
 @*/
-PetscErrorCode PetscConvEstDestroy(PetscConvEst *ce)
-{
+PetscErrorCode PetscConvEstDestroy(PetscConvEst *ce) {
   PetscFunctionBegin;
   if (!*ce) PetscFunctionReturn(0);
   PetscValidHeaderSpecific((*ce), PETSC_OBJECT_CLASSID, 1);
@@ -41,7 +39,7 @@ PetscErrorCode PetscConvEstDestroy(PetscConvEst *ce)
 /*@
   PetscConvEstSetFromOptions - Sets a PetscConvEst object from options
 
-  Collective on ce
+  Collective on PetscConvEst
 
   Input Parameters:
 . ce - The PetscConvEst object
@@ -50,8 +48,7 @@ PetscErrorCode PetscConvEstDestroy(PetscConvEst *ce)
 
 .seealso: `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`
 @*/
-PetscErrorCode PetscConvEstSetFromOptions(PetscConvEst ce)
-{
+PetscErrorCode PetscConvEstSetFromOptions(PetscConvEst ce) {
   PetscFunctionBegin;
   PetscOptionsBegin(PetscObjectComm((PetscObject)ce), "", "Convergence Estimator Options", "PetscConvEst");
   PetscCall(PetscOptionsInt("-convest_num_refine", "The number of refinements for the convergence check", "PetscConvEst", ce->Nr, &ce->Nr, NULL));
@@ -65,7 +62,7 @@ PetscErrorCode PetscConvEstSetFromOptions(PetscConvEst ce)
 /*@
   PetscConvEstView - Views a PetscConvEst object
 
-  Collective on ce
+  Collective on PetscConvEst
 
   Input Parameters:
 + ce     - The PetscConvEst object
@@ -75,8 +72,7 @@ PetscErrorCode PetscConvEstSetFromOptions(PetscConvEst ce)
 
 .seealso: `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`
 @*/
-PetscErrorCode PetscConvEstView(PetscConvEst ce, PetscViewer viewer)
-{
+PetscErrorCode PetscConvEstView(PetscConvEst ce, PetscViewer viewer) {
   PetscFunctionBegin;
   PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)ce, viewer));
   PetscCall(PetscViewerASCIIPrintf(viewer, "ConvEst with %" PetscInt_FMT " levels\n", ce->Nr + 1));
@@ -98,8 +94,7 @@ PetscErrorCode PetscConvEstView(PetscConvEst ce, PetscViewer viewer)
 
 .seealso: `PetscConvEstSetSolver()`, `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`
 @*/
-PetscErrorCode PetscConvEstGetSolver(PetscConvEst ce, PetscObject *solver)
-{
+PetscErrorCode PetscConvEstGetSolver(PetscConvEst ce, PetscObject *solver) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ce, PETSC_OBJECT_CLASSID, 1);
   PetscValidPointer(solver, 2);
@@ -122,8 +117,7 @@ PetscErrorCode PetscConvEstGetSolver(PetscConvEst ce, PetscObject *solver)
 
 .seealso: `PetscConvEstGetSNES()`, `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`
 @*/
-PetscErrorCode PetscConvEstSetSolver(PetscConvEst ce, PetscObject solver)
-{
+PetscErrorCode PetscConvEstSetSolver(PetscConvEst ce, PetscObject solver) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ce, PETSC_OBJECT_CLASSID, 1);
   PetscValidHeader(solver, 2);
@@ -135,7 +129,7 @@ PetscErrorCode PetscConvEstSetSolver(PetscConvEst ce, PetscObject solver)
 /*@
   PetscConvEstSetUp - After the solver is specified, we create structures for estimating convergence
 
-  Collective on ce
+  Collective on PetscConvEst
 
   Input Parameters:
 . ce - The PetscConvEst object
@@ -144,8 +138,7 @@ PetscErrorCode PetscConvEstSetSolver(PetscConvEst ce, PetscObject solver)
 
 .seealso: `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`
 @*/
-PetscErrorCode PetscConvEstSetUp(PetscConvEst ce)
-{
+PetscErrorCode PetscConvEstSetUp(PetscConvEst ce) {
   PetscInt Nf, f, Nds, s;
 
   PetscFunctionBegin;
@@ -175,8 +168,7 @@ PetscErrorCode PetscConvEstSetUp(PetscConvEst ce)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscConvEstComputeInitialGuess(PetscConvEst ce, PetscInt r, DM dm, Vec u)
-{
+PetscErrorCode PetscConvEstComputeInitialGuess(PetscConvEst ce, PetscInt r, DM dm, Vec u) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ce, PETSC_OBJECT_CLASSID, 1);
   if (dm) PetscValidHeaderSpecific(dm, DM_CLASSID, 3);
@@ -185,8 +177,7 @@ PetscErrorCode PetscConvEstComputeInitialGuess(PetscConvEst ce, PetscInt r, DM d
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PetscConvEstComputeError(PetscConvEst ce, PetscInt r, DM dm, Vec u, PetscReal errors[])
-{
+PetscErrorCode PetscConvEstComputeError(PetscConvEst ce, PetscInt r, DM dm, Vec u, PetscReal errors[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ce, PETSC_OBJECT_CLASSID, 1);
   if (dm) PetscValidHeaderSpecific(dm, DM_CLASSID, 3);
@@ -199,10 +190,10 @@ PetscErrorCode PetscConvEstComputeError(PetscConvEst ce, PetscInt r, DM dm, Vec 
 /*@
   PetscConvEstMonitorDefault - Monitors the convergence estimation loop
 
-  Collective on ce
+  Collective on PetscConvEst
 
   Input Parameters:
-+ ce - The `PetscConvEst` object
++ ce - The PetscConvEst object
 - r  - The refinement level
 
   Options database keys:
@@ -210,10 +201,9 @@ PetscErrorCode PetscConvEstComputeError(PetscConvEst ce, PetscInt r, DM dm, Vec 
 
   Level: intermediate
 
-.seealso: `PetscConvEst`, `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`, `SNESSolve()`, `TSSolve()`
+.seealso: `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`, `SNESSolve()`, `TSSolve()`
 @*/
-PetscErrorCode PetscConvEstMonitorDefault(PetscConvEst ce, PetscInt r)
-{
+PetscErrorCode PetscConvEstMonitorDefault(PetscConvEst ce, PetscInt r) {
   MPI_Comm comm;
   PetscInt f;
 
@@ -244,8 +234,7 @@ PetscErrorCode PetscConvEstMonitorDefault(PetscConvEst ce, PetscInt r)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstSetSNES_Private(PetscConvEst ce, PetscObject solver)
-{
+static PetscErrorCode PetscConvEstSetSNES_Private(PetscConvEst ce, PetscObject solver) {
   PetscClassId id;
 
   PetscFunctionBegin;
@@ -255,22 +244,19 @@ static PetscErrorCode PetscConvEstSetSNES_Private(PetscConvEst ce, PetscObject s
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstInitGuessSNES_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u)
-{
+static PetscErrorCode PetscConvEstInitGuessSNES_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u) {
   PetscFunctionBegin;
   PetscCall(DMProjectFunction(dm, 0.0, ce->initGuess, ce->ctxs, INSERT_VALUES, u));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstComputeErrorSNES_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u, PetscReal errors[])
-{
+static PetscErrorCode PetscConvEstComputeErrorSNES_Private(PetscConvEst ce, PetscInt r, DM dm, Vec u, PetscReal errors[]) {
   PetscFunctionBegin;
   PetscCall(DMComputeL2FieldDiff(dm, 0.0, ce->exactSol, ce->ctxs, u, errors));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstSetJacobianNullSpace_Private(PetscConvEst ce, SNES snes)
-{
+static PetscErrorCode PetscConvEstSetJacobianNullspace_Private(PetscConvEst ce, SNES snes) {
   DM       dm;
   PetscInt f;
 
@@ -295,8 +281,7 @@ static PetscErrorCode PetscConvEstSetJacobianNullSpace_Private(PetscConvEst ce, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscConvEstGetConvRateSNES_Private(PetscConvEst ce, PetscReal alpha[])
-{
+static PetscErrorCode PetscConvEstGetConvRateSNES_Private(PetscConvEst ce, PetscReal alpha[]) {
   SNES        snes = (SNES)ce->solver;
   DM         *dm;
   PetscObject disc;
@@ -362,7 +347,7 @@ static PetscErrorCode PetscConvEstGetConvRateSNES_Private(PetscConvEst ce, Petsc
     PetscCall(DMPlexSetSNESLocalFEM(dm[r], ctx, ctx, ctx));
     PetscCall(SNESSetFromOptions(snes));
     /* Set nullspace for Jacobian */
-    PetscCall(PetscConvEstSetJacobianNullSpace_Private(ce, snes));
+    PetscCall(PetscConvEstSetJacobianNullspace_Private(ce, snes));
     /* Create initial guess */
     PetscCall(PetscConvEstComputeInitialGuess(ce, r, dm[r], u));
     PetscCall(SNESSolve(snes, NULL, u));
@@ -425,7 +410,7 @@ static PetscErrorCode PetscConvEstGetConvRateSNES_Private(PetscConvEst ce, Petsc
   PetscCall(SNESSetDM(snes, ce->idm));
   PetscCall(DMPlexSetSNESLocalFEM(ce->idm, ctx, ctx, ctx));
   PetscCall(SNESSetFromOptions(snes));
-  PetscCall(PetscConvEstSetJacobianNullSpace_Private(ce, snes));
+  PetscCall(PetscConvEstSetJacobianNullspace_Private(ce, snes));
   PetscFunctionReturn(0);
 }
 
@@ -435,30 +420,28 @@ static PetscErrorCode PetscConvEstGetConvRateSNES_Private(PetscConvEst ce, Petsc
   Not collective
 
   Input Parameter:
-. ce   - The `PetscConvEst` object
+. ce   - The PetscConvEst object
 
   Output Parameter:
 . alpha - The convergence rate for each field
 
-  Options database keys:
-+ -snes_convergence_estimate - Execute convergence estimation inside `SNESSolve()` and print out the rate
-- -ts_convergence_estimate - Execute convergence estimation inside `TSSolve()` and print out the rate
-
-  Notes:
-  The convergence rate alpha is defined by
+  Note: The convergence rate alpha is defined by
 $ || u_\Delta - u_exact || < C \Delta^alpha
-  where u_\Delta is the discrete solution, and Delta is a measure of the discretization size. We usually use h for the
-  spatial resolution and \Delta t for the temporal resolution.
+where u_\Delta is the discrete solution, and Delta is a measure of the discretization size. We usually use h for the
+spatial resolution and \Delta t for the temporal resolution.
 
-  We solve a series of problems using increasing resolution (refined meshes or decreased timesteps), calculate an error
-  based upon the exact solution in the DS, and then fit the result to our model above using linear regression.
+We solve a series of problems using increasing resolution (refined meshes or decreased timesteps), calculate an error
+based upon the exact solution in the DS, and then fit the result to our model above using linear regression.
+
+  Options database keys:
++ -snes_convergence_estimate - Execute convergence estimation inside SNESSolve() and print out the rate
+- -ts_convergence_estimate - Execute convergence estimation inside TSSolve() and print out the rate
 
   Level: intermediate
 
 .seealso: `PetscConvEstSetSolver()`, `PetscConvEstCreate()`, `PetscConvEstGetConvRate()`, `SNESSolve()`, `TSSolve()`
 @*/
-PetscErrorCode PetscConvEstGetConvRate(PetscConvEst ce, PetscReal alpha[])
-{
+PetscErrorCode PetscConvEstGetConvRate(PetscConvEst ce, PetscReal alpha[]) {
   PetscInt f;
 
   PetscFunctionBegin;
@@ -471,10 +454,10 @@ PetscErrorCode PetscConvEstGetConvRate(PetscConvEst ce, PetscReal alpha[])
 /*@
   PetscConvEstRateView - Displays the convergence rate to a viewer
 
-   Collective on snes
+   Collective on SNES
 
    Parameter:
-+  snes - iterative context obtained from `SNESCreate()`
++  snes - iterative context obtained from SNESCreate()
 .  alpha - the convergence rate for each field
 -  viewer - the viewer to display the reason
 
@@ -483,10 +466,9 @@ PetscErrorCode PetscConvEstGetConvRate(PetscConvEst ce, PetscReal alpha[])
 
    Level: developer
 
-.seealso: `PetscConvEst`, `PetscConvEstGetRate()`
+.seealso: `PetscConvEstGetRate()`
 @*/
-PetscErrorCode PetscConvEstRateView(PetscConvEst ce, const PetscReal alpha[], PetscViewer viewer)
-{
+PetscErrorCode PetscConvEstRateView(PetscConvEst ce, const PetscReal alpha[], PetscViewer viewer) {
   PetscBool isAscii;
 
   PetscFunctionBegin;
@@ -509,22 +491,21 @@ PetscErrorCode PetscConvEstRateView(PetscConvEst ce, const PetscReal alpha[], Pe
 }
 
 /*@
-  PetscConvEstCreate - Create a `PetscConvEst` object
+  PetscConvEstCreate - Create a PetscConvEst object
 
   Collective
 
   Input Parameter:
-. comm - The communicator for the `PetscConvEst` object
+. comm - The communicator for the PetscConvEst object
 
   Output Parameter:
-. ce   - The `PetscConvEst` object
+. ce   - The PetscConvEst object
 
   Level: beginner
 
-.seealso: `PetscConvEst`, `PetscConvEstDestroy()`, `PetscConvEstGetConvRate()`
+.seealso: `PetscConvEstDestroy()`, `PetscConvEstGetConvRate()`
 @*/
-PetscErrorCode PetscConvEstCreate(MPI_Comm comm, PetscConvEst *ce)
-{
+PetscErrorCode PetscConvEstCreate(MPI_Comm comm, PetscConvEst *ce) {
   PetscFunctionBegin;
   PetscValidPointer(ce, 2);
   PetscCall(PetscSysInitializePackage());

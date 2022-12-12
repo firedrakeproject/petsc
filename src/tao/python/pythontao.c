@@ -16,8 +16,7 @@
 
 .seealso: `TaoCreate()`, `TaoSetType()`, `TAOPYTHON`, `PetscPythonInitialize()`
 @*/
-PetscErrorCode TaoPythonSetType(Tao tao, const char pyname[])
-{
+PetscErrorCode TaoPythonSetType(Tao tao, const char pyname[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidCharPointer(pyname, 2);
@@ -40,8 +39,7 @@ PetscErrorCode TaoPythonSetType(Tao tao, const char pyname[])
 
 .seealso: `TaoCreate()`, `TaoSetType()`, `TaoPYTHON`, `PetscPythonInitialize()`, `TaoPythonSetType()`
 @*/
-PetscErrorCode TaoPythonGetType(Tao tao, const char *pyname[])
-{
+PetscErrorCode TaoPythonGetType(Tao tao, const char *pyname[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
   PetscValidPointer(pyname, 2);

@@ -2,8 +2,7 @@ static char help[] = "Test MatMatMult() for AIJ and Dense matrices.\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat         A, B, C;
   PetscInt    M = 10, N = 5;
   PetscRandom r;

@@ -6,8 +6,7 @@
   generated below just for these routines.
 */
 
-PETSC_INTERN PetscErrorCode PetscSequentialPhaseBegin_Private(MPI_Comm comm, int ng)
-{
+PETSC_INTERN PetscErrorCode PetscSequentialPhaseBegin_Private(MPI_Comm comm, int ng) {
   PetscMPIInt rank, size, tag = 0;
   MPI_Status  status;
 
@@ -21,8 +20,7 @@ PETSC_INTERN PetscErrorCode PetscSequentialPhaseBegin_Private(MPI_Comm comm, int
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode PetscSequentialPhaseEnd_Private(MPI_Comm comm, int ng)
-{
+PETSC_INTERN PetscErrorCode PetscSequentialPhaseEnd_Private(MPI_Comm comm, int ng) {
   PetscMPIInt rank, size, tag = 0;
   MPI_Status  status;
 
@@ -68,10 +66,9 @@ PetscMPIInt Petsc_Seq_keyval = MPI_KEYVAL_INVALID;
 
    You should use `PetscSynchronizedPrintf()` to ensure output between MPI ranks is properly order and not these routines.
 
-.seealso: `PetscSequentialPhaseEnd()`, `PetscSynchronizedPrintf()`
+.seealso: `PetscSequentialPhaseEnd()`,`PetscSynchronizedPrintf()`
 @*/
-PetscErrorCode PetscSequentialPhaseBegin(MPI_Comm comm, int ng)
-{
+PetscErrorCode PetscSequentialPhaseBegin(MPI_Comm comm, int ng) {
   PetscMPIInt size;
   MPI_Comm    local_comm, *addr_local_comm;
 
@@ -110,8 +107,7 @@ PetscErrorCode PetscSequentialPhaseBegin(MPI_Comm comm, int ng)
 
 .seealso: `PetscSequentialPhaseBegin()`
 @*/
-PetscErrorCode PetscSequentialPhaseEnd(MPI_Comm comm, int ng)
-{
+PetscErrorCode PetscSequentialPhaseEnd(MPI_Comm comm, int ng) {
   PetscMPIInt size, flag;
   MPI_Comm    local_comm, *addr_local_comm;
 
@@ -146,8 +142,7 @@ PetscErrorCode PetscSequentialPhaseEnd(MPI_Comm comm, int ng)
 
 .seealso: `PetscSplitOwnership()`, `PetscGlobalMinMaxReal()`
 @*/
-PetscErrorCode PetscGlobalMinMaxInt(MPI_Comm comm, const PetscInt minMaxVal[2], PetscInt minMaxValGlobal[2])
-{
+PetscErrorCode PetscGlobalMinMaxInt(MPI_Comm comm, const PetscInt minMaxVal[2], PetscInt minMaxValGlobal[2]) {
   PetscInt sendbuf[3], recvbuf[3];
 
   PetscFunctionBegin;
@@ -175,8 +170,7 @@ PetscErrorCode PetscGlobalMinMaxInt(MPI_Comm comm, const PetscInt minMaxVal[2], 
 
 .seealso: `PetscSplitOwnership()`, `PetscGlobalMinMaxInt()`
 @*/
-PetscErrorCode PetscGlobalMinMaxReal(MPI_Comm comm, const PetscReal minMaxVal[2], PetscReal minMaxValGlobal[2])
-{
+PetscErrorCode PetscGlobalMinMaxReal(MPI_Comm comm, const PetscReal minMaxVal[2], PetscReal minMaxValGlobal[2]) {
   PetscReal sendbuf[2];
 
   PetscFunctionBegin;

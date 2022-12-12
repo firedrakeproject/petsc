@@ -3,8 +3,7 @@ static char help[] = "Tests MPI parallel matrix creation. Test MatCreateRedundan
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         C, Credundant;
   MatInfo     info;
   PetscMPIInt rank, size, subsize;

@@ -3,8 +3,7 @@ static char help[] = "Tests ISSortGlobal().\n\n";
 
 #include <petscis.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   IS          is;
   PetscInt    n, i, first, last, nmax = 100;
   PetscMPIInt rank;

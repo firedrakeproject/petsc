@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-import os
-import sys
-import pickle
-import traceback
+import os, sys
 
 extraLogs  = []
 petsc_arch = ''
@@ -21,6 +18,7 @@ def fixLang(lang):
 
 fixLang('LC_LOCAL')
 fixLang('LANG')
+
 
 def check_for_option_mistakes(opts):
   for opt in opts[1:]:
@@ -48,7 +46,7 @@ def check_for_unsupported_combinations(opts):
     sys.exit(ValueError('PETSc does not support single precision complex with C++ clanguage, run with --with-clanguage=c'))
 
 def check_for_option_changed(opts):
-# Document changes in command line options here. (matlab-engine is deprecated, no longer needed but still allowed)
+# Document changes in command line options here.
   optMap = [('with-64bit-indices','with-64-bit-indices'),
             ('with-mpi-exec','with-mpiexec'),
             ('c-blas-lapack','f2cblaslapack'),
@@ -390,24 +388,23 @@ def petsc_configure(configure_options):
   except:
     pass
 
-  # Should be run from the toplevel
-  configDir = os.path.abspath('config')
-  bsDir     = os.path.join(configDir, 'BuildSystem')
-  if not os.path.isdir(configDir):
-    raise RuntimeError('Run configure from $PETSC_DIR, not '+os.path.abspath('.'))
-  sys.path.insert(0, bsDir)
-  sys.path.insert(0, configDir)
-  import logger
-  import config.base
-  import config.framework
-
   try:
     # Command line arguments take precedence (but don't destroy argv[0])
     sys.argv = sys.argv[:1] + configure_options + sys.argv[1:]
     check_for_option_mistakes(sys.argv)
     check_for_option_changed(sys.argv)
   except (TypeError, ValueError) as e:
-    msg = logger.build_multiline_error_message('ERROR in COMMAND LINE ARGUMENT to ./configure', str(e))
+    emsg = str(e)
+    if not emsg.endswith('\n'): emsg = emsg+'\n'
+    banner_line = banner_length*'*'
+    msg = '\n'.join([
+      banner_line,
+      'ERROR in COMMAND LINE ARGUMENT to ./configure'.center(banner_length),
+      banner_length*'-',
+      emsg,
+      banner_line,
+      '' # to add an additional newline at the end
+    ])
     sys.exit(msg)
   # check PETSC_ARCH
   check_for_unsupported_combinations(sys.argv)
@@ -439,6 +436,18 @@ def petsc_configure(configure_options):
       break
 
 
+  # Should be run from the toplevel
+  configDir = os.path.abspath('config')
+  bsDir     = os.path.join(configDir, 'BuildSystem')
+  if not os.path.isdir(configDir):
+    raise RuntimeError('Run configure from $PETSC_DIR, not '+os.path.abspath('.'))
+  sys.path.insert(0, bsDir)
+  sys.path.insert(0, configDir)
+  import config.base
+  import config.framework
+  import pickle
+  import traceback
+
   # Check Cray without modules
   check_cray_modules()
 
@@ -465,21 +474,41 @@ def petsc_configure(configure_options):
     return 0
   except (RuntimeError, config.base.ConfigureSetupError) as e:
     tbo = sys.exc_info()[2]
-    msg = logger.build_multiline_error_message('UNABLE to CONFIGURE with GIVEN OPTIONS (see configure.log for details):', str(e))
+    emsg = str(e)
+    if not emsg.endswith('\n'): emsg = emsg+'\n'
+    msg ='*******************************************************************************\n'\
+    +'         UNABLE to CONFIGURE with GIVEN OPTIONS    (see configure.log for details):\n' \
+    +'-------------------------------------------------------------------------------\n'  \
+    +emsg+'*******************************************************************************\n'
     se = ''
   except (TypeError, ValueError) as e:
     # this exception is automatically deleted by Python so we need to save it to print below
     tbo = sys.exc_info()[2]
-    msg = logger.build_multiline_error_message('TypeError or ValueError possibly related to ERROR in COMMAND LINE ARGUMENT while running ./configure', str(e))
+    emsg = str(e)
+    if not emsg.endswith('\n'): emsg = emsg+'\n'
+    msg ='*******************************************************************************\n'\
+    +'    TypeError or ValueError possibly related to ERROR in COMMAND LINE ARGUMENT while running ./configure \n' \
+    +'-------------------------------------------------------------------------------\n'  \
+    +emsg+'*******************************************************************************\n'
     se = ''
   except ImportError as e :
     # this exception is automatically deleted by Python so we need to save it to print below
     tbo = sys.exc_info()[2]
-    msg = logger.build_multiline_error_message('ImportError while running ./configure', str(e))
+    emsg = str(e)
+    if not emsg.endswith('\n'): emsg = emsg+'\n'
+    msg ='*******************************************************************************\n'\
+    +'                     ImportError while runing ./configure \n' \
+    +'-------------------------------------------------------------------------------\n'  \
+    +emsg+'*******************************************************************************\n'
     se = ''
   except OSError as e :
     tbo = sys.exc_info()[2]
-    msg = logger.build_multiline_error_message('OSError while running ./configure', str(e))
+    emsg = str(e)
+    if not emsg.endswith('\n'): emsg = emsg+'\n'
+    msg ='*******************************************************************************\n'\
+    +'                    OSError while running ./configure \n' \
+    +'-------------------------------------------------------------------------------\n'  \
+    +emsg+'*******************************************************************************\n'
     se = ''
   except SystemExit as e:
     tbo = sys.exc_info()[2]
@@ -487,14 +516,18 @@ def petsc_configure(configure_options):
       return
     if e.code == 10:
       sys.exit(10)
-    msg = logger.build_multiline_error_message('CONFIGURATION FAILURE (Please send configure.log to petsc-maint@mcs.anl.gov)', str(e))
+    msg ='*******************************************************************************\n'\
+    +'         CONFIGURATION FAILURE  (Please send configure.log to petsc-maint@mcs.anl.gov)\n' \
+    +'*******************************************************************************\n'
     se  = str(e)
   except Exception as e:
     tbo = sys.exc_info()[2]
-    msg = logger.build_multiline_error_message('CONFIGURATION CRASH (Please send configure.log to petsc-maint@mcs.anl.gov)', str(e))
+    msg ='*******************************************************************************\n'\
+    +'        CONFIGURATION CRASH  (Please send configure.log to petsc-maint@mcs.anl.gov)\n' \
+    +'*******************************************************************************\n'
     se  = str(e)
 
-  print('\n'+msg)
+  print(msg)
   if not framework is None:
     framework.logClear()
     if hasattr(framework, 'log'):

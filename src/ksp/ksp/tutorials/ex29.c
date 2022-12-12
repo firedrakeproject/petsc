@@ -39,8 +39,7 @@ typedef struct {
   BCType    bcType;
 } UserContext;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   KSP         ksp;
   DM          da;
   UserContext user;
@@ -100,8 +99,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-PetscErrorCode ComputeRHS(KSP ksp, Vec b, void *ctx)
-{
+PetscErrorCode ComputeRHS(KSP ksp, Vec b, void *ctx) {
   UserContext  *user = (UserContext *)ctx;
   PetscInt      i, j, mx, my, xm, ym, xs, ys;
   PetscScalar   Hx, Hy;
@@ -134,8 +132,7 @@ PetscErrorCode ComputeRHS(KSP ksp, Vec b, void *ctx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ComputeRho(PetscInt i, PetscInt j, PetscInt mx, PetscInt my, PetscReal centerRho, PetscReal *rho)
-{
+PetscErrorCode ComputeRho(PetscInt i, PetscInt j, PetscInt mx, PetscInt my, PetscReal centerRho, PetscReal *rho) {
   PetscFunctionBeginUser;
   if ((i > mx / 3.0) && (i < 2.0 * mx / 3.0) && (j > my / 3.0) && (j < 2.0 * my / 3.0)) {
     *rho = centerRho;
@@ -145,8 +142,7 @@ PetscErrorCode ComputeRho(PetscInt i, PetscInt j, PetscInt mx, PetscInt my, Pets
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode ComputeMatrix(KSP ksp, Mat J, Mat jac, void *ctx)
-{
+PetscErrorCode ComputeMatrix(KSP ksp, Mat J, Mat jac, void *ctx) {
   UserContext *user = (UserContext *)ctx;
   PetscReal    centerRho;
   PetscInt     i, j, mx, my, xm, ym, xs, ys;

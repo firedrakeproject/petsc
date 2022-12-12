@@ -3,8 +3,7 @@ static char help[] = "Tests MatReorderForNonzeroDiagonal().\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Mat         mat, B, C;
   PetscInt    i, j;
   PetscMPIInt size;

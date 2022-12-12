@@ -1,5 +1,5 @@
 
-#ifndef MPIADJ_H
+#if !defined(MPIADJ_H)
 #define MPIADJ_H
 #include <petsc/private/matimpl.h>
 #include <petsc/private/hashsetij.h>

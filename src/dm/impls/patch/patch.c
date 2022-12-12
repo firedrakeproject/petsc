@@ -38,8 +38,7 @@ Solver loop to update \tau:
 
 .seealso: `DMPatchSolve()`, `DMDACreatePatchIS()`
 @*/
-PetscErrorCode DMPatchZoom(DM dm, MatStencil lower, MatStencil upper, MPI_Comm commz, DM *dmz, PetscSF *sfz, PetscSF *sfzr)
-{
+PetscErrorCode DMPatchZoom(DM dm, MatStencil lower, MatStencil upper, MPI_Comm commz, DM *dmz, PetscSF *sfz, PetscSF *sfzr) {
   DMDAStencilType st;
   MatStencil      blower, bupper, loclower, locupper;
   IS              is;
@@ -180,8 +179,7 @@ typedef enum {
   PATCH_COMM_TYPE_SELF  = 1
 } PatchCommType;
 
-PetscErrorCode DMPatchSolve(DM dm)
-{
+PetscErrorCode DMPatchSolve(DM dm) {
   MPI_Comm    comm;
   MPI_Comm    commz;
   DM          dmc;
@@ -308,8 +306,7 @@ PetscErrorCode DMPatchSolve(DM dm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMPatchView_ASCII(DM dm, PetscViewer viewer)
-{
+PetscErrorCode DMPatchView_ASCII(DM dm, PetscViewer viewer) {
   DM_Patch         *mesh = (DM_Patch *)dm->data;
   PetscViewerFormat format;
   const char       *name;
@@ -326,8 +323,7 @@ PetscErrorCode DMPatchView_ASCII(DM dm, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMView_Patch(DM dm, PetscViewer viewer)
-{
+PetscErrorCode DMView_Patch(DM dm, PetscViewer viewer) {
   PetscBool iascii, isbinary;
 
   PetscFunctionBegin;
@@ -339,8 +335,7 @@ PetscErrorCode DMView_Patch(DM dm, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMDestroy_Patch(DM dm)
-{
+PetscErrorCode DMDestroy_Patch(DM dm) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -351,8 +346,7 @@ PetscErrorCode DMDestroy_Patch(DM dm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMSetUp_Patch(DM dm)
-{
+PetscErrorCode DMSetUp_Patch(DM dm) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -361,8 +355,7 @@ PetscErrorCode DMSetUp_Patch(DM dm)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateGlobalVector_Patch(DM dm, Vec *g)
-{
+PetscErrorCode DMCreateGlobalVector_Patch(DM dm, Vec *g) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -371,8 +364,7 @@ PetscErrorCode DMCreateGlobalVector_Patch(DM dm, Vec *g)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateLocalVector_Patch(DM dm, Vec *l)
-{
+PetscErrorCode DMCreateLocalVector_Patch(DM dm, Vec *l) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -381,13 +373,11 @@ PetscErrorCode DMCreateLocalVector_Patch(DM dm, Vec *l)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMCreateSubDM_Patch(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm)
-{
+PetscErrorCode DMCreateSubDM_Patch(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm) {
   SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "Tell me to code this");
 }
 
-PetscErrorCode DMPatchGetCoarse(DM dm, DM *dmCoarse)
-{
+PetscErrorCode DMPatchGetCoarse(DM dm, DM *dmCoarse) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -396,8 +386,7 @@ PetscErrorCode DMPatchGetCoarse(DM dm, DM *dmCoarse)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMPatchGetPatchSize(DM dm, MatStencil *patchSize)
-{
+PetscErrorCode DMPatchGetPatchSize(DM dm, MatStencil *patchSize) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -407,8 +396,7 @@ PetscErrorCode DMPatchGetPatchSize(DM dm, MatStencil *patchSize)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMPatchSetPatchSize(DM dm, MatStencil patchSize)
-{
+PetscErrorCode DMPatchSetPatchSize(DM dm, MatStencil patchSize) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -417,8 +405,7 @@ PetscErrorCode DMPatchSetPatchSize(DM dm, MatStencil patchSize)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMPatchGetCommSize(DM dm, MatStencil *commSize)
-{
+PetscErrorCode DMPatchGetCommSize(DM dm, MatStencil *commSize) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;
@@ -428,8 +415,7 @@ PetscErrorCode DMPatchGetCommSize(DM dm, MatStencil *commSize)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode DMPatchSetCommSize(DM dm, MatStencil commSize)
-{
+PetscErrorCode DMPatchSetCommSize(DM dm, MatStencil commSize) {
   DM_Patch *mesh = (DM_Patch *)dm->data;
 
   PetscFunctionBegin;

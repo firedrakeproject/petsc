@@ -29,12 +29,9 @@ PetscClassId MATLABENGINE_CLASSID = -1;
 .    -matlab_engine_host - hostname, machine to run the MATLAB engine on
 -    -info - print out all requests to MATLAB and all if its responses (for debugging)
 
-   Notes:
+   Note:
    If a host string is passed in, any MATLAB scripts that need to run in the
    engine must be available via MATLABPATH on that machine.
-
-   One must `./configure` PETSc with  `--with-matlab [-with-matlab-dir=matlab_root_directory]` to
-   use this capability
 
    Level: advanced
 
@@ -42,8 +39,7 @@ PetscClassId MATLABENGINE_CLASSID = -1;
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEngineCreate(MPI_Comm comm, const char host[], PetscMatlabEngine *mengine)
-{
+PetscErrorCode PetscMatlabEngineCreate(MPI_Comm comm, const char host[], PetscMatlabEngine *mengine) {
   PetscMPIInt       rank, size;
   char              buffer[256];
   PetscMatlabEngine e;
@@ -84,8 +80,6 @@ PetscErrorCode PetscMatlabEngineCreate(MPI_Comm comm, const char host[], PetscMa
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   PetscCallMPI(MPI_Comm_size(comm, &size));
   PetscCall(PetscMatlabEngineEvaluate(e, "MPI_Comm_rank = %d; MPI_Comm_size = %d;\n", rank, size));
-  /* work around bug in MATLAB R2021b https://www.mathworks.com/matlabcentral/answers/1566246-got-error-using-exit-in-nodesktop-mode */
-  PetscCall(PetscMatlabEngineEvaluate(e, "settings"));
   *mengine = e;
   PetscFunctionReturn(0);
 }
@@ -104,8 +98,7 @@ PetscErrorCode PetscMatlabEngineCreate(MPI_Comm comm, const char host[], PetscMa
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEngineDestroy(PetscMatlabEngine *v)
-{
+PetscErrorCode PetscMatlabEngineDestroy(PetscMatlabEngine *v) {
   int err;
 
   PetscFunctionBegin;
@@ -140,8 +133,7 @@ PetscErrorCode PetscMatlabEngineDestroy(PetscMatlabEngine *v)
           `PetscMatlabEngineCreate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEngineEvaluate(PetscMatlabEngine mengine, const char string[], ...)
-{
+PetscErrorCode PetscMatlabEngineEvaluate(PetscMatlabEngine mengine, const char string[], ...) {
   va_list Argp;
   char    buffer[1024];
   size_t  fullLength;
@@ -181,8 +173,7 @@ PetscErrorCode PetscMatlabEngineEvaluate(PetscMatlabEngine mengine, const char s
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineCreate()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEngineGetOutput(PetscMatlabEngine mengine, char **string)
-{
+PetscErrorCode PetscMatlabEngineGetOutput(PetscMatlabEngine mengine, char **string) {
   PetscFunctionBegin;
   PetscCheck(mengine, PETSC_COMM_SELF, PETSC_ERR_ARG_NULL, "Null argument: probably PETSC_MATLAB_ENGINE_() failed");
   *string = mengine->buffer;
@@ -204,8 +195,7 @@ PetscErrorCode PetscMatlabEngineGetOutput(PetscMatlabEngine mengine, char **stri
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEngineCreate()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEnginePrintOutput(PetscMatlabEngine mengine, FILE *fd)
-{
+PetscErrorCode PetscMatlabEnginePrintOutput(PetscMatlabEngine mengine, FILE *fd) {
   PetscMPIInt rank;
 
   PetscFunctionBegin;
@@ -236,8 +226,7 @@ PetscErrorCode PetscMatlabEnginePrintOutput(PetscMatlabEngine mengine, FILE *fd)
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEnginePut(PetscMatlabEngine mengine, PetscObject obj)
-{
+PetscErrorCode PetscMatlabEnginePut(PetscMatlabEngine mengine, PetscObject obj) {
   PetscErrorCode (*put)(PetscObject, void *);
 
   PetscFunctionBegin;
@@ -269,8 +258,7 @@ PetscErrorCode PetscMatlabEnginePut(PetscMatlabEngine mengine, PetscObject obj)
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEngineGet(PetscMatlabEngine mengine, PetscObject obj)
-{
+PetscErrorCode PetscMatlabEngineGet(PetscMatlabEngine mengine, PetscObject obj) {
   PetscErrorCode (*get)(PetscObject, void *);
 
   PetscFunctionBegin;
@@ -313,8 +301,7 @@ $      PetscMatlabEngineYYY(XXX object,PETSC_MATLAB_ENGINE_(comm));
           `PetscMatlabEngineCreate()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`,
           `PETSC_MATLAB_ENGINE_WORLD`, `PETSC_MATLAB_ENGINE_SELF`
 @*/
-PetscMatlabEngine PETSC_MATLAB_ENGINE_(MPI_Comm comm)
-{
+PetscMatlabEngine PETSC_MATLAB_ENGINE_(MPI_Comm comm) {
   PetscErrorCode    ierr;
   PetscBool         flg;
   PetscMatlabEngine mengine;
@@ -370,8 +357,7 @@ PetscMatlabEngine PETSC_MATLAB_ENGINE_(MPI_Comm comm)
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePut()`, `PetscMatlabEngineGetArray()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEnginePutArray(PetscMatlabEngine mengine, int m, int n, const PetscScalar *array, const char name[])
-{
+PetscErrorCode PetscMatlabEnginePutArray(PetscMatlabEngine mengine, int m, int n, const PetscScalar *array, const char name[]) {
   mxArray *mat;
 
   PetscFunctionBegin;
@@ -406,8 +392,7 @@ PetscErrorCode PetscMatlabEnginePutArray(PetscMatlabEngine mengine, int m, int n
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,
           `PETSC_MATLAB_ENGINE_()`, `PetscMatlabEnginePutArray()`, `PetscMatlabEngineGet()`, `PetscMatlabEngine`
 @*/
-PetscErrorCode PetscMatlabEngineGetArray(PetscMatlabEngine mengine, int m, int n, PetscScalar *array, const char name[])
-{
+PetscErrorCode PetscMatlabEngineGetArray(PetscMatlabEngine mengine, int m, int n, PetscScalar *array, const char name[]) {
   mxArray *mat;
 
   PetscFunctionBegin;

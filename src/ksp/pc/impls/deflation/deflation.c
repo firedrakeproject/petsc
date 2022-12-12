@@ -2,8 +2,7 @@
 
 const char *const PCDeflationSpaceTypes[] = {"haar", "db2", "db4", "db8", "db16", "biorth22", "meyer", "aggregation", "user", "PCDeflationSpaceType", "PC_DEFLATION_SPACE_", NULL};
 
-static PetscErrorCode PCDeflationSetInitOnly_Deflation(PC pc, PetscBool flg)
-{
+static PetscErrorCode PCDeflationSetInitOnly_Deflation(PC pc, PetscBool flg) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -20,17 +19,16 @@ static PetscErrorCode PCDeflationSetInitOnly_Deflation(PC pc, PetscBool flg)
 
    Input Parameters:
 +  pc  - the preconditioner context
--  flg - default `PETSC_FALSE`
+-  flg - default PETSC_FALSE
 
-   Options Database Key:
+   Options Database Keys:
 .    -pc_deflation_init_only <false> - if true computes only the special guess
 
    Level: intermediate
 
 .seealso: `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetInitOnly(PC pc, PetscBool flg)
-{
+PetscErrorCode PCDeflationSetInitOnly(PC pc, PetscBool flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidLogicalCollectiveBool(pc, flg, 2);
@@ -38,8 +36,7 @@ PetscErrorCode PCDeflationSetInitOnly(PC pc, PetscBool flg)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationSetLevels_Deflation(PC pc, PetscInt current, PetscInt max)
-{
+static PetscErrorCode PCDeflationSetLevels_Deflation(PC pc, PetscInt current, PetscInt max) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -57,15 +54,14 @@ static PetscErrorCode PCDeflationSetLevels_Deflation(PC pc, PetscInt current, Pe
 +  pc  - the preconditioner context
 -  max - maximum deflation level
 
-   Options Database Key:
+   Options Database Keys:
 .    -pc_deflation_max_lvl <0> - maximum number of levels for multilevel deflation
 
    Level: intermediate
 
 .seealso: `PCDeflationSetSpaceToCompute()`, `PCDeflationSetSpace()`, `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetLevels(PC pc, PetscInt max)
-{
+PetscErrorCode PCDeflationSetLevels(PC pc, PetscInt max) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidLogicalCollectiveInt(pc, max, 2);
@@ -73,8 +69,7 @@ PetscErrorCode PCDeflationSetLevels(PC pc, PetscInt max)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationSetReductionFactor_Deflation(PC pc, PetscInt red)
-{
+static PetscErrorCode PCDeflationSetReductionFactor_Deflation(PC pc, PetscInt red) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -83,26 +78,25 @@ static PetscErrorCode PCDeflationSetReductionFactor_Deflation(PC pc, PetscInt re
 }
 
 /*@
-   PCDeflationSetReductionFactor - Set reduction factor for the `PCDEFLATION`
+   PCDeflationSetReductionFactor - Set reduction factor for the bottom PCTELESCOPE coarse problem solver.
 
    Logically Collective
 
    Input Parameters:
 +  pc  - the preconditioner context
--  red - reduction factor (or `PETSC_DETERMINE`)
+-  red - reduction factor (or PETSC_DETERMINE)
 
-   Options Database Key:
-.    -pc_deflation_reduction_factor <\-1> - reduction factor on bottom level coarse problem for `PCDEFLATION`
+   Options Database Keys:
+.    -pc_deflation_reduction_factor <\-1> - reduction factor on bottom level coarse problem for PCTELESCOPE
 
-   Note:
-   Default is computed based on the size of the coarse problem.
+   Notes:
+     Default is computed based on the size of the coarse problem.
 
    Level: intermediate
 
-.seealso: `PCTELESCOPE`, `PCDEFLATION`, `PCDeflationSetLevels()`
+.seealso: `PCTELESCOPE`, `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetReductionFactor(PC pc, PetscInt red)
-{
+PetscErrorCode PCDeflationSetReductionFactor(PC pc, PetscInt red) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidLogicalCollectiveInt(pc, red, 2);
@@ -110,8 +104,7 @@ PetscErrorCode PCDeflationSetReductionFactor(PC pc, PetscInt red)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationSetCorrectionFactor_Deflation(PC pc, PetscScalar fact)
-{
+static PetscErrorCode PCDeflationSetCorrectionFactor_Deflation(PC pc, PetscScalar fact) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -124,7 +117,7 @@ static PetscErrorCode PCDeflationSetCorrectionFactor_Deflation(PC pc, PetscScala
 
 /*@
    PCDeflationSetCorrectionFactor - Set coarse problem correction factor.
-    The preconditioner becomes P*M^{-1} + fact*Q.
+    The Preconditioner becomes P*M^{-1} + fact*Q.
 
    Logically Collective
 
@@ -136,15 +129,14 @@ static PetscErrorCode PCDeflationSetCorrectionFactor_Deflation(PC pc, PetscScala
 +    -pc_deflation_correction        <false> - if true apply coarse problem correction
 -    -pc_deflation_correction_factor <1.0>   - sets coarse problem correction factor
 
-   Note:
+   Notes:
     Any non-zero fact enables the coarse problem correction.
 
    Level: intermediate
 
-.seealso: `PCDEFLATION`, `PCDeflationSetLevels()`, `PCDeflationSetReductionFactor()`
+.seealso: `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetCorrectionFactor(PC pc, PetscScalar fact)
-{
+PetscErrorCode PCDeflationSetCorrectionFactor(PC pc, PetscScalar fact) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidLogicalCollectiveScalar(pc, fact, 2);
@@ -152,8 +144,7 @@ PetscErrorCode PCDeflationSetCorrectionFactor(PC pc, PetscScalar fact)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationSetSpaceToCompute_Deflation(PC pc, PCDeflationSpaceType type, PetscInt size)
-{
+static PetscErrorCode PCDeflationSetSpaceToCompute_Deflation(PC pc, PCDeflationSpaceType type, PetscInt size) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -169,24 +160,23 @@ static PetscErrorCode PCDeflationSetSpaceToCompute_Deflation(PC pc, PCDeflationS
 
    Input Parameters:
 +  pc   - the preconditioner context
-.  type - deflation space type to compute (or `PETSC_IGNORE`)
--  size - size of the space to compute (or `PETSC_DEFAULT`)
+.  type - deflation space type to compute (or PETSC_IGNORE)
+-  size - size of the space to compute (or PETSC_DEFAULT)
 
    Options Database Keys:
-+    -pc_deflation_compute_space      <haar> - compute `PCDeflationSpaceType` deflation space
++    -pc_deflation_compute_space      <haar> - compute PCDeflationSpaceType deflation space
 -    -pc_deflation_compute_space_size <1>    - size of the deflation space
 
    Notes:
     For wavelet-based deflation, size represents number of levels.
 
-    The deflation space is computed in `PCSetUp()`.
+    The deflation space is computed in PCSetUp().
 
    Level: intermediate
 
 .seealso: `PCDeflationSetLevels()`, `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetSpaceToCompute(PC pc, PCDeflationSpaceType type, PetscInt size)
-{
+PetscErrorCode PCDeflationSetSpaceToCompute(PC pc, PCDeflationSpaceType type, PetscInt size) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   if (type) PetscValidLogicalCollectiveEnum(pc, type, 2);
@@ -195,8 +185,7 @@ PetscErrorCode PCDeflationSetSpaceToCompute(PC pc, PCDeflationSpaceType type, Pe
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationSetSpace_Deflation(PC pc, Mat W, PetscBool transpose)
-{
+static PetscErrorCode PCDeflationSetSpace_Deflation(PC pc, Mat W, PetscBool transpose) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -223,7 +212,7 @@ static PetscErrorCode PCDeflationSetSpace_Deflation(PC pc, Mat W, PetscBool tran
 -  transpose - indicates that W is an explicit transpose of the deflation matrix
 
    Notes:
-    Setting W as a multipliplicative `MATCOMPOSITE` enables use of the multilevel
+    Setting W as a multipliplicative MATCOMPOSITE enables use of the multilevel
     deflation. If W = W0*W1*W2*...*Wn, W0 is taken as the first deflation space and
     the coarse problem (W0'*A*W0)^{-1} is again preconditioned by deflation with
     W1 as the deflation matrix. This repeats until the maximum level set by
@@ -233,10 +222,9 @@ static PetscErrorCode PCDeflationSetSpace_Deflation(PC pc, Mat W, PetscBool tran
 
    Level: intermediate
 
-.seealso: `PCDeflationSetLevels()`, `PCDEFLATION`, `PCDeflationSetProjectionNullSpaceMat()`
+.seealso: `PCDeflationSetLevels()`, `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetSpace(PC pc, Mat W, PetscBool transpose)
-{
+PetscErrorCode PCDeflationSetSpace(PC pc, Mat W, PetscBool transpose) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidHeaderSpecific(W, MAT_CLASSID, 2);
@@ -245,14 +233,14 @@ PetscErrorCode PCDeflationSetSpace(PC pc, Mat W, PetscBool transpose)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationSetProjectionNullSpaceMat_Deflation(PC pc, Mat mat)
-{
+static PetscErrorCode PCDeflationSetProjectionNullSpaceMat_Deflation(PC pc, Mat mat) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectReference((PetscObject)mat));
   PetscCall(MatDestroy(&def->WtA));
   def->WtA = mat;
+  PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)def->WtA));
   PetscFunctionReturn(0);
 }
 
@@ -267,10 +255,9 @@ static PetscErrorCode PCDeflationSetProjectionNullSpaceMat_Deflation(PC pc, Mat 
 
    Level: developer
 
-.seealso: `PCDEFLATION`, `PCDeflationSetSpace()`
+.seealso: `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetProjectionNullSpaceMat(PC pc, Mat mat)
-{
+PetscErrorCode PCDeflationSetProjectionNullSpaceMat(PC pc, Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 2);
@@ -278,19 +265,19 @@ PetscErrorCode PCDeflationSetProjectionNullSpaceMat(PC pc, Mat mat)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationSetCoarseMat_Deflation(PC pc, Mat mat)
-{
+static PetscErrorCode PCDeflationSetCoarseMat_Deflation(PC pc, Mat mat) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectReference((PetscObject)mat));
   PetscCall(MatDestroy(&def->WtAW));
   def->WtAW = mat;
+  PetscCall(PetscLogObjectParent((PetscObject)pc, (PetscObject)def->WtAW));
   PetscFunctionReturn(0);
 }
 
 /*@
-   PCDeflationSetCoarseMat - Set the coarse problem `Mat`.
+   PCDeflationSetCoarseMat - Set the coarse problem Mat.
 
    Collective
 
@@ -300,10 +287,9 @@ static PetscErrorCode PCDeflationSetCoarseMat_Deflation(PC pc, Mat mat)
 
    Level: developer
 
-.seealso: `PCDEFLATION`, `PCDeflationGetCoarseKSP()`
+.seealso: `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationSetCoarseMat(PC pc, Mat mat)
-{
+PetscErrorCode PCDeflationSetCoarseMat(PC pc, Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 2);
@@ -311,8 +297,7 @@ PetscErrorCode PCDeflationSetCoarseMat(PC pc, Mat mat)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationGetCoarseKSP_Deflation(PC pc, KSP *ksp)
-{
+static PetscErrorCode PCDeflationGetCoarseKSP_Deflation(PC pc, KSP *ksp) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -321,22 +306,21 @@ static PetscErrorCode PCDeflationGetCoarseKSP_Deflation(PC pc, KSP *ksp)
 }
 
 /*@
-   PCDeflationGetCoarseKSP - Returns the coarse problem `KSP`.
+   PCDeflationGetCoarseKSP - Returns the coarse problem KSP.
 
    Not Collective
 
-   Input Parameter:
+   Input Parameters:
 .  pc - preconditioner context
 
-   Output Parameter:
-.  ksp - coarse problem `KSP` context
+   Output Parameters:
+.  ksp - coarse problem KSP context
 
    Level: advanced
 
-.seealso: `PCDEFLATION`, `PCDeflationSetCoarseMat()`
+.seealso: `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationGetCoarseKSP(PC pc, KSP *ksp)
-{
+PetscErrorCode PCDeflationGetCoarseKSP(PC pc, KSP *ksp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidPointer(ksp, 2);
@@ -344,8 +328,7 @@ PetscErrorCode PCDeflationGetCoarseKSP(PC pc, KSP *ksp)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDeflationGetPC_Deflation(PC pc, PC *apc)
-{
+static PetscErrorCode PCDeflationGetPC_Deflation(PC pc, PC *apc) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -358,18 +341,17 @@ static PetscErrorCode PCDeflationGetPC_Deflation(PC pc, PC *apc)
 
    Not Collective
 
-   Input Parameter:
+   Input Parameters:
 .  pc  - the preconditioner context
 
-   Output Parameter:
+   Output Parameters:
 .  apc - additional preconditioner
 
    Level: advanced
 
-.seealso: `PCDEFLATION`, `PCDeflationGetCoarseKSP()`
+.seealso: `PCDEFLATION`
 @*/
-PetscErrorCode PCDeflationGetPC(PC pc, PC *apc)
-{
+PetscErrorCode PCDeflationGetPC(PC pc, PC *apc) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidPointer(pc, 1);
@@ -380,8 +362,7 @@ PetscErrorCode PCDeflationGetPC(PC pc, PC *apc)
 /*
   x <- x + W*(W'*A*W)^{-1}*W'*r  = x + Q*r
 */
-static PetscErrorCode PCPreSolve_Deflation(PC pc, KSP ksp, Vec b, Vec x)
-{
+static PetscErrorCode PCPreSolve_Deflation(PC pc, KSP ksp, Vec b, Vec x) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
   Mat           A;
   Vec           r, w1, w2;
@@ -420,8 +401,7 @@ static PetscErrorCode PCPreSolve_Deflation(PC pc, KSP ksp, Vec b, Vec x)
     z <- M^{-1}*r - W*(W'*A*W)^{-1}*W'*A*M{-1}*r = P*M^{-1}*r
   }
 */
-static PetscErrorCode PCApply_Deflation(PC pc, Vec r, Vec z)
-{
+static PetscErrorCode PCApply_Deflation(PC pc, Vec r, Vec z) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
   Mat           A;
   Vec           u, w1, w2;
@@ -450,8 +430,7 @@ static PetscErrorCode PCApply_Deflation(PC pc, Vec r, Vec z)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetUp_Deflation(PC pc)
-{
+static PetscErrorCode PCSetUp_Deflation(PC pc) {
   PC_Deflation    *def = (PC_Deflation *)pc->data;
   KSP              innerksp;
   PC               pcinner;
@@ -670,8 +649,7 @@ static PetscErrorCode PCSetUp_Deflation(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCReset_Deflation(PC pc)
-{
+static PetscErrorCode PCReset_Deflation(PC pc) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -686,8 +664,7 @@ static PetscErrorCode PCReset_Deflation(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDestroy_Deflation(PC pc)
-{
+static PetscErrorCode PCDestroy_Deflation(PC pc) {
   PetscFunctionBegin;
   PetscCall(PCReset_Deflation(pc));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCDeflationSetInitOnly_C", NULL));
@@ -704,8 +681,7 @@ static PetscErrorCode PCDestroy_Deflation(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCView_Deflation(PC pc, PetscViewer viewer)
-{
+static PetscErrorCode PCView_Deflation(PC pc, PetscViewer viewer) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
   PetscInt      its;
   PetscBool     iascii;
@@ -731,8 +707,7 @@ static PetscErrorCode PCView_Deflation(PC pc, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_Deflation(PC pc, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode PCSetFromOptions_Deflation(PC pc, PetscOptionItems *PetscOptionsObject) {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 
   PetscFunctionBegin;
@@ -766,7 +741,7 @@ static PetscErrorCode PCSetFromOptions_Deflation(PC pc, PetscOptionItems *PetscO
     preconditioner uses projections Q = W*(W'*A*W)^{-1}*W' and P = I - Q*A, where A is pmat.
 
     The deflation computes initial guess x0 = x_{-1} - Q*r_{-1}, which is the solution on the deflation space.
-    If `PCDeflationSetInitOnly()` or -pc_deflation_init_only is set to `PETSC_TRUE` (InitDef scheme), the application of the
+    If PCDeflationSetInitOnly() or -pc_deflation_init_only is set to PETSC_TRUE (InitDef scheme), the application of the
     preconditioner consists only of application of the additional preconditioner M^{-1}. Otherwise, the preconditioner
     application consists of P*M^{-1} + factor*Q. The first part of the preconditioner (PM^{-1}) shifts some eigenvalues
     to zero while the addition of the coarse problem correction (factor*Q) makes the preconditioner to shift some
@@ -774,40 +749,41 @@ static PetscErrorCode PCSetFromOptions_Deflation(PC pc, PetscOptionItems *PetscO
     of eigenvectors of A when it exhibits similar convergence to the full deflation but is cheaper.
 
     The deflation matrix is by default automatically computed. The type of deflation matrix and its size to compute can
-    be controlled by `PCDeflationSetSpaceToCompute()` or -pc_deflation_compute_space and -pc_deflation_compute_space_size.
-    User can set an arbitrary deflation space matrix with `PCDeflationSetSpace()`. If the deflation matrix
-    is a multiplicative `MATCOMPOSITE`, a multilevel deflation [3] is used. The first matrix in the composite is used as the
-    deflation matrix, and the coarse problem (W'*A*W)^{-1} is solved by `KSPFCG` (if A is `MAT_SPD`) or `KSPFGMRES` preconditioned
-    by deflation with deflation matrix being the next matrix in the `MATCOMPOSITE`. This scheme repeats until the maximum
+    be controlled by PCDeflationSetSpaceToCompute() or -pc_deflation_compute_space and -pc_deflation_compute_space_size.
+    User can set an arbitrary deflation space matrix with PCDeflationSetSpace(). If the deflation matrix
+    is a multiplicative MATCOMPOSITE, a multilevel deflation [3] is used. The first matrix in the composite is used as the
+    deflation matrix, and the coarse problem (W'*A*W)^{-1} is solved by KSPFCG (if A is MAT_SPD) or KSPFGMRES preconditioned
+    by deflation with deflation matrix being the next matrix in the MATCOMPOSITE. This scheme repeats until the maximum
     level is reached or there are no more matrices. If the maximum level is reached, the remaining matrices are merged
     (multiplied) to create the last deflation matrix. The maximum level defaults to 0 and can be set by
-    `PCDeflationSetLevels()` or by -pc_deflation_levels.
+    PCDeflationSetLevels() or by -pc_deflation_levels.
 
-    The coarse problem `KSP` can be controlled from the command line with prefix -deflation_ for the first level and -deflation_[lvl-1]
+    The coarse problem KSP can be controlled from the command line with prefix -deflation_ for the first level and -deflation_[lvl-1]
     from the second level onward. You can also use
-    `PCDeflationGetCoarseKSP()` to control it from code. The bottom level KSP defaults to
-    `KSPPREONLY` with `PCLU` direct solver (`MATSOLVERSUPERLU`/`MATSOLVERSUPERLU_DIST` if available) wrapped into `PCTELESCOPE`.
-    For convenience, the reduction factor can be set by `PCDeflationSetReductionFactor()`
+    PCDeflationGetCoarseKSP() to control it from code. The bottom level KSP defaults to
+    KSPPREONLY with PCLU direct solver (MATSOLVERSUPERLU/MATSOLVERSUPERLU_DIST if available) wrapped into PCTELESCOPE.
+    For convenience, the reduction factor can be set by PCDeflationSetReductionFactor()
     or -pc_deflation_recduction_factor. The default is chosen heuristically based on the coarse problem size.
 
     The additional preconditioner can be controlled from command line with prefix -deflation_[lvl]_pc (same rules used for
-    coarse problem `KSP` apply for [lvl]_ part of prefix), e.g., -deflation_1_pc_pc_type bjacobi. You can also use
-    `PCDeflationGetPC()` to control the additional preconditioner from code. It defaults to `PCNONE`.
+    coarse problem KSP apply for [lvl]_ part of prefix), e.g., -deflation_1_pc_pc_type bjacobi. You can also use
+    PCDeflationGetPC() to control the additional preconditioner from code. It defaults to PCNONE.
 
     The coarse problem correction term (factor*Q) can be turned on by -pc_deflation_correction and the factor value can
-    be set by pc_deflation_correction_factor or by `PCDeflationSetCorrectionFactor()`. The coarse problem can
+    be set by pc_deflation_correction_factor or by PCDeflationSetCorrectionFactor(). The coarse problem can
     significantly improve convergence when the deflation coarse problem is not solved with high enough accuracy. We
     recommend setting factor to some eigenvalue, e.g., the largest eigenvalue so that the preconditioner does not create
     an isolated eigenvalue.
 
     The options are automatically inherited from the previous deflation level.
 
-    The preconditioner supports `KSPMonitorDynamicTolerance()`. This is useful for the multilevel scheme for which we also
+    The preconditioner supports KSPMonitorDynamicTolerance(). This is useful for the multilevel scheme for which we also
     recommend limiting the number of iterations for the coarse problems.
 
     See section 3 of [4] for additional references and decription of the algorithm when used for conjugate gradients.
     Section 4 describes some possible choices for the deflation space.
 
+   Developer Notes:
      Contributed by Jakub Kruzik (PERMON), Institute of Geonics of the Czech
      Academy of Sciences and VSB - TU Ostrava.
 
@@ -829,12 +805,11 @@ static PetscErrorCode PCSetFromOptions_Deflation(PC pc, PetscOptionItems *PetscO
           `PCDeflationSetCoarseMat()`, `PCDeflationGetCoarseKSP()`, `PCDeflationGetPC()`
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_Deflation(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_Deflation(PC pc) {
   PC_Deflation *def;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&def));
+  PetscCall(PetscNewLog(pc, &def));
   pc->data = (void *)def;
 
   def->init          = PETSC_FALSE;

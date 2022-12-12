@@ -29,8 +29,7 @@ extern PetscErrorCode FormFunction(TS, PetscReal, Vec, Vec, void *), FormInitial
 extern PetscErrorCode MyTSMonitor(TS, PetscInt, PetscReal, Vec, void *);
 extern PetscErrorCode MySNESMonitor(SNES, PetscInt, PetscReal, PetscViewerAndFormat *);
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   TS                    ts;    /* nonlinear solver */
   Vec                   x, r;  /* solution, residual vectors */
   PetscInt              steps; /* iterations for convergence */
@@ -128,8 +127,7 @@ int main(int argc, char **argv)
    Output Parameter:
 .  F - function vector
  */
-PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr)
-{
+PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr) {
   DM          da = (DM)ptr;
   PetscInt    i, j, Mx, My, xs, ys, xm, ym;
   PetscReal   hx, hy, /*hxdhy,hydhx,*/ sx, sy;
@@ -197,8 +195,7 @@ PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr)
 }
 
 /* ------------------------------------------------------------------- */
-PetscErrorCode FormInitialSolution(DM da, Vec U)
-{
+PetscErrorCode FormInitialSolution(DM da, Vec U) {
   PetscInt       i, j, xs, ys, xm, ym, Mx, My;
   PetscScalar ***u;
   PetscReal      hx, hy, x, y, r;
@@ -244,8 +241,7 @@ PetscErrorCode FormInitialSolution(DM da, Vec U)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MyTSMonitor(TS ts, PetscInt step, PetscReal ptime, Vec v, void *ctx)
-{
+PetscErrorCode MyTSMonitor(TS ts, PetscInt step, PetscReal ptime, Vec v, void *ctx) {
   PetscReal norm;
   MPI_Comm  comm;
 
@@ -267,8 +263,7 @@ PetscErrorCode MyTSMonitor(TS ts, PetscInt step, PetscReal ptime, Vec v, void *c
      ctx - optional user-defined context for private data for the
          monitor routine, as set by SNESMonitorSet()
  */
-PetscErrorCode MySNESMonitor(SNES snes, PetscInt its, PetscReal fnorm, PetscViewerAndFormat *vf)
-{
+PetscErrorCode MySNESMonitor(SNES snes, PetscInt its, PetscReal fnorm, PetscViewerAndFormat *vf) {
   PetscFunctionBeginUser;
   PetscCall(SNESMonitorDefaultShort(snes, its, fnorm, vf));
   PetscFunctionReturn(0);

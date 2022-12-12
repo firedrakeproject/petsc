@@ -3,20 +3,17 @@
 /*@
    SNESFASGetGalerkin - Gets if the coarse problems are formed by projection to the fine problem
 
-   Not collective but the result would be the same on all MPI ranks
-
    Input Parameter:
-.  snes - the `SNESFAS` nonlinear solver context
+.  snes - the nonlinear solver context
 
    Output parameter:
-.  flg - `PETSC_TRUE` if the coarse problem is formed by projection
+.  flg - the status of the galerkin problem
 
    Level: advanced
 
-.seealso: `SNESFAS`, `SNESFASSetLevels()`, `SNESFASSetGalerkin()`
+.seealso: `SNESFASSetLevels()`, `SNESFASSetGalerkin()`
 @*/
-PetscErrorCode SNESFASGetGalerkin(SNES snes, PetscBool *flg)
-{
+PetscErrorCode SNESFASGetGalerkin(SNES snes, PetscBool *flg) {
   SNES_FAS *fas;
 
   PetscFunctionBegin;
@@ -29,18 +26,15 @@ PetscErrorCode SNESFASGetGalerkin(SNES snes, PetscBool *flg)
 /*@
    SNESFASSetGalerkin - Sets coarse problems as formed by projection to the fine problem
 
-   Collective on snes
-
    Input Parameters:
-+  snes - the `SNESFAS` nonlinear solver context
--  flg - `PETSC_TRUE` to use the projection process
++  snes - the nonlinear solver context
+-  flg - the status of the galerkin problem
 
    Level: advanced
 
-.seealso: `SNESFAS`, `SNESFASSetLevels()`, `SNESFASGetGalerkin()`
+.seealso: `SNESFASSetLevels()`, `SNESFASGetGalerkin()`
 @*/
-PetscErrorCode SNESFASSetGalerkin(SNES snes, PetscBool flg)
-{
+PetscErrorCode SNESFASSetGalerkin(SNES snes, PetscBool flg) {
   SNES_FAS *fas;
 
   PetscFunctionBegin;
@@ -54,26 +48,23 @@ PetscErrorCode SNESFASSetGalerkin(SNES snes, PetscBool flg)
 /*@C
    SNESFASGalerkinFunctionDefault - Computes the Galerkin FAS function
 
-   Collective on snes
-
    Input Parameters:
-+  snes - the `SNESFAS` nonlinear solver context
++  snes - the nonlinear solver context
 .  X - input vector
--  ctx - the application context
+-  ctx - the FAS context
 
    Output Parameter:
 .  F - output vector
 
-   Note:
+   Notes:
    The Galerkin FAS function evalutation is defined as
 $  F^l(x^l) = I^l_0 F^0(P^0_l x^l)
 
    Level: developer
 
-.seealso: `SNESFAS`, `SNESFASGetGalerkin()`, `SNESFASSetGalerkin()`
+.seealso: `SNESFASGetGalerkin()`, `SNESFASSetGalerkin()`
 @*/
-PetscErrorCode SNESFASGalerkinFunctionDefault(SNES snes, Vec X, Vec F, void *ctx)
-{
+PetscErrorCode SNESFASGalerkinFunctionDefault(SNES snes, Vec X, Vec F, void *ctx) {
   SNES      fassnes;
   SNES_FAS *fas;
   SNES_FAS *prevfas;

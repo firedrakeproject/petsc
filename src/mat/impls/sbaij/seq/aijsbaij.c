@@ -3,8 +3,7 @@
 #include <../src/mat/impls/baij/seq/baij.h>
 #include <../src/mat/impls/sbaij/seq/sbaij.h>
 
-PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_SeqAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_SeqAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat           B;
   Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A->data;
   Mat_SeqAIJ   *b;
@@ -122,8 +121,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_SeqAIJ(Mat A, MatType newtype, M
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqSBAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqSBAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat           B;
   Mat_SeqAIJ   *a = (Mat_SeqAIJ *)A->data;
   Mat_SeqSBAIJ *b;
@@ -192,8 +190,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqSBAIJ(Mat A, MatType newtype, M
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_SeqBAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_SeqBAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat           B;
   Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A->data;
   Mat_SeqBAIJ  *b;
@@ -291,8 +288,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_SeqBAIJ(Mat A, MatType newtype, 
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatConvert_SeqBAIJ_SeqSBAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
-{
+PETSC_INTERN PetscErrorCode MatConvert_SeqBAIJ_SeqSBAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat) {
   Mat           B;
   Mat_SeqBAIJ  *a = (Mat_SeqBAIJ *)A->data;
   Mat_SeqSBAIJ *b;

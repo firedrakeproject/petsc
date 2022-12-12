@@ -4,8 +4,7 @@ static char help[] = "Tests PetscGetFullPath().\n\n";
 #include <petscsys.h>
 
 /* for windows - fix up path - so that we can do diff test */
-PetscErrorCode path_to_unix(char filein[])
-{
+PetscErrorCode path_to_unix(char filein[]) {
   size_t i, n;
 
   PetscFunctionBegin;
@@ -16,8 +15,7 @@ PetscErrorCode path_to_unix(char filein[])
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   char fpath[PETSC_MAX_PATH_LEN];
 
   PetscFunctionBeginUser;

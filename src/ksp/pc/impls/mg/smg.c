@@ -4,8 +4,7 @@
 */
 #include <petsc/private/pcmgimpl.h>
 
-PetscErrorCode PCMGACycle_Private(PC pc, PC_MG_Levels **mglevels, PetscBool transpose, PetscBool matapp)
-{
+PetscErrorCode PCMGACycle_Private(PC pc, PC_MG_Levels **mglevels, PetscBool transpose, PetscBool matapp) {
   PetscInt i, l = mglevels[0]->levels;
 
   PetscFunctionBegin;

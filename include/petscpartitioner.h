@@ -1,4 +1,4 @@
-#ifndef PETSCPARTITIONER_H
+#if !defined(PETSCPARTITIONER_H)
 #define PETSCPARTITIONER_H
 
 #include <petscsection.h>

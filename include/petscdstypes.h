@@ -1,4 +1,4 @@
-#ifndef PETSCDSTYPES_H
+#if !defined(PETSCDSTYPES_H)
 #define PETSCDSTYPES_H
 
 #include <petscdmlabel.h>

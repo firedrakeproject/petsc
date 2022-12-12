@@ -8,8 +8,7 @@ typedef PetscSF_Allgatherv PetscSF_Alltoall;
 /*===================================================================================*/
 /*              Implementations of SF public APIs                                    */
 /*===================================================================================*/
-static PetscErrorCode PetscSFGetGraph_Alltoall(PetscSF sf, PetscInt *nroots, PetscInt *nleaves, const PetscInt **ilocal, const PetscSFNode **iremote)
-{
+static PetscErrorCode PetscSFGetGraph_Alltoall(PetscSF sf, PetscInt *nroots, PetscInt *nleaves, const PetscInt **ilocal, const PetscSFNode **iremote) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -30,8 +29,7 @@ static PetscErrorCode PetscSFGetGraph_Alltoall(PetscSF sf, PetscInt *nroots, Pet
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFBcastBegin_Alltoall(PetscSF sf, MPI_Datatype unit, PetscMemType rootmtype, const void *rootdata, PetscMemType leafmtype, void *leafdata, MPI_Op op)
-{
+static PetscErrorCode PetscSFBcastBegin_Alltoall(PetscSF sf, MPI_Datatype unit, PetscMemType rootmtype, const void *rootdata, PetscMemType leafmtype, void *leafdata, MPI_Op op) {
   PetscSFLink  link;
   MPI_Comm     comm;
   void        *rootbuf = NULL, *leafbuf = NULL; /* buffer used by MPI */
@@ -48,8 +46,7 @@ static PetscErrorCode PetscSFBcastBegin_Alltoall(PetscSF sf, MPI_Datatype unit, 
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFReduceBegin_Alltoall(PetscSF sf, MPI_Datatype unit, PetscMemType leafmtype, const void *leafdata, PetscMemType rootmtype, void *rootdata, MPI_Op op)
-{
+static PetscErrorCode PetscSFReduceBegin_Alltoall(PetscSF sf, MPI_Datatype unit, PetscMemType leafmtype, const void *leafdata, PetscMemType rootmtype, void *rootdata, MPI_Op op) {
   PetscSFLink  link;
   MPI_Comm     comm;
   void        *rootbuf = NULL, *leafbuf = NULL; /* buffer used by MPI */
@@ -66,8 +63,7 @@ static PetscErrorCode PetscSFReduceBegin_Alltoall(PetscSF sf, MPI_Datatype unit,
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFCreateLocalSF_Alltoall(PetscSF sf, PetscSF *out)
-{
+static PetscErrorCode PetscSFCreateLocalSF_Alltoall(PetscSF sf, PetscSF *out) {
   PetscInt     nroots = 1, nleaves = 1, *ilocal;
   PetscSFNode *iremote = NULL;
   PetscSF      lsf;
@@ -90,8 +86,7 @@ static PetscErrorCode PetscSFCreateLocalSF_Alltoall(PetscSF sf, PetscSF *out)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PetscSFCreateEmbeddedRootSF_Alltoall(PetscSF sf, PetscInt nselected, const PetscInt *selected, PetscSF *newsf)
-{
+static PetscErrorCode PetscSFCreateEmbeddedRootSF_Alltoall(PetscSF sf, PetscInt nselected, const PetscInt *selected, PetscSF *newsf) {
   PetscInt       i, *tmproots, *ilocal, ndranks, ndiranks;
   PetscSFNode   *iremote;
   PetscMPIInt    nroots, *roots, nleaves, *leaves, rank;
@@ -190,8 +185,7 @@ static PetscErrorCode PetscSFCreateEmbeddedRootSF_Alltoall(PetscSF sf, PetscInt 
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode PetscSFCreate_Alltoall(PetscSF sf)
-{
+PETSC_INTERN PetscErrorCode PetscSFCreate_Alltoall(PetscSF sf) {
   PetscSF_Alltoall *dat = (PetscSF_Alltoall *)sf->data;
 
   PetscFunctionBegin;
@@ -218,7 +212,7 @@ PETSC_INTERN PetscErrorCode PetscSFCreate_Alltoall(PetscSF sf)
   sf->ops->CreateLocalSF        = PetscSFCreateLocalSF_Alltoall;
   sf->ops->CreateEmbeddedRootSF = PetscSFCreateEmbeddedRootSF_Alltoall;
 
-  PetscCall(PetscNew(&dat));
+  PetscCall(PetscNewLog(sf, &dat));
   sf->data = (void *)dat;
   PetscFunctionReturn(0);
 }

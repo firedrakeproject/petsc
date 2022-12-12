@@ -9,7 +9,7 @@ typedef struct {
 } ex1Ctx;
 
 /*
- call back method for DMPlexLandauAccess:
+ call back method for DMPlexLandauAddToFunction:
 
 Input Parameters:
  .   dm - a DM for this field
@@ -22,31 +22,26 @@ Input Parameters:
  +   x - Vector to data to
 
  */
-PetscErrorCode landau_field_print_access_callback(DM dm, Vec x, PetscInt local_field, PetscInt grid, PetscInt b_id, void *vctx)
-{
-  ex1Ctx    *user = (ex1Ctx *)vctx;
-  LandauCtx *ctx;
+PetscErrorCode landau_field_add_to_callback(DM dm, Vec x, PetscInt local_field, PetscInt grid, PetscInt b_id, void *vctx) {
+  ex1Ctx *user = (ex1Ctx *)vctx;
 
   PetscFunctionBegin;
-  PetscCall(DMGetApplicationContext(dm, &ctx));
   if (grid == user->grid_target && b_id == user->batch_target && local_field == user->field_target) {
-    PetscScalar one = 1.0e10;
-
+    PetscScalar one = 1.0;
     PetscCall(VecSet(x, one));
     if (!user->init) {
       PetscCall(PetscObjectSetName((PetscObject)dm, "single"));
-      PetscCall(DMViewFromOptions(dm, NULL, "-ex1_dm_view")); // DMCreateSubDM does seem to give the DM's fild the name from the original DM
+      PetscCall(DMViewFromOptions(dm, NULL, "-ex1_dm_view"));
       user->init = PETSC_TRUE;
     }
-    PetscCall(PetscObjectSetName((PetscObject)x, "u"));      // this gives the vector a nicer name, DMCreateSubDM could do this for us and get the correct name
+    PetscCall(PetscObjectSetName((PetscObject)x, "u"));
     PetscCall(VecViewFromOptions(x, NULL, "-ex1_vec_view")); // this causes diffs with Kokkos, etc
-    PetscCall(PetscInfo(dm, "DMPlexLandauAccess user 'add' method to grid %" PetscInt_FMT ", batch %" PetscInt_FMT " and species %" PetscInt_FMT "\n", grid, b_id, ctx->species_offset[grid] + local_field));
+    PetscCall(PetscInfo(dm, "DMPlexLandauAddToFunction user 'add' method to grid %" PetscInt_FMT ", batch %" PetscInt_FMT " and local field %" PetscInt_FMT "\n", grid, b_id, local_field));
   }
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM             pack;
   Vec            X, X_0;
   PetscInt       dim = 2;
@@ -87,13 +82,11 @@ int main(int argc, char **argv)
   PetscCall(DMSetOutputSequenceNumber(pack, 1, time));
   PetscCall(VecAXPY(X, -1, X_0));
   { /* test add field method */
-    ex1Ctx    *user;
-    LandauCtx *ctx;
-    PetscCall(DMGetApplicationContext(pack, &ctx));
+    ex1Ctx *user;
     PetscCall(PetscNew(&user));
     user->grid_target  = 1; // 2nd ion species
     user->field_target = 1;
-    PetscCall(DMPlexLandauAccess(pack, X, landau_field_print_access_callback, user));
+    PetscCall(DMPlexLandauAddToFunction(pack, X, landau_field_add_to_callback, user));
     PetscCall(PetscFree(user));
   }
   /* clean up */

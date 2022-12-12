@@ -4,8 +4,7 @@ Tests where the local part of the scatter is a copy.\n\n";
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt size, rank;
   PetscInt    n = 5, i, *blks, bs = 1, m = 2;
   PetscScalar value;

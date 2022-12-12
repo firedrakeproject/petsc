@@ -5,20 +5,20 @@
 /*@
    ISEqual  - Compares if two index sets have the same set of indices.
 
-   Collective on is1
+   Collective on IS
 
    Input Parameters:
 .  is1, is2 - The index sets being compared
 
    Output Parameters:
-.  flg - output flag, either `PETSC_TRUE` (if both index sets have the
-         same indices), or `PETSC_FALSE` if the index sets differ by size
+.  flg - output flag, either PETSC_TRUE (if both index sets have the
+         same indices), or PETSC_FALSE if the index sets differ by size
          or by the set of indices)
 
    Level: intermediate
 
    Note:
-   Unlike `ISEqualUnsorted()`, this routine sorts the contents of the index sets (only within each MPI rank) before
+   Unlike ISEqualUnsorted(), this routine sorts the contents of the index sets before
    the comparison is made, so the order of the indices on a processor is immaterial.
 
    Each processor has to have the same indices in the two sets, for example,
@@ -28,10 +28,9 @@ $    is1 = {0, 1} {2, 3}
 $    is2 = {2, 3} {0, 1}
    will return false.
 
-.seealso: [](sec_scatter), `IS`, `ISEqualUnsorted()`
+.seealso: `ISEqualUnsorted()`
 @*/
-PetscErrorCode ISEqual(IS is1, IS is2, PetscBool *flg)
-{
+PetscErrorCode ISEqual(IS is1, IS is2, PetscBool *flg) {
   PetscInt        sz1, sz2, *a1, *a2;
   const PetscInt *ptr1, *ptr2;
   PetscBool       flag;
@@ -91,14 +90,14 @@ PetscErrorCode ISEqual(IS is1, IS is2, PetscBool *flg)
 /*@
    ISEqualUnsorted  - Compares if two index sets have the same indices.
 
-   Collective on is1
+   Collective on IS
 
    Input Parameters:
 .  is1, is2 - The index sets being compared
 
    Output Parameters:
-.  flg - output flag, either `PETSC_TRUE` (if both index sets have the
-         same indices), or `PETSC_FALSE` if the index sets differ by size
+.  flg - output flag, either PETSC_TRUE (if both index sets have the
+         same indices), or PETSC_FALSE if the index sets differ by size
          or by the set of indices)
 
    Level: intermediate
@@ -107,12 +106,9 @@ PetscErrorCode ISEqual(IS is1, IS is2, PetscBool *flg)
    Unlike ISEqual(), this routine does NOT sort the contents of the index sets before
    the comparison is made, i.e., the order of indices is important.
 
-   Each MPI rank must have the same indices.
-
-.seealso: [](sec_scatter), `IS`, `ISEqual()`
+.seealso: `ISEqual()`
 @*/
-PetscErrorCode ISEqualUnsorted(IS is1, IS is2, PetscBool *flg)
-{
+PetscErrorCode ISEqualUnsorted(IS is1, IS is2, PetscBool *flg) {
   PetscInt        sz1, sz2;
   const PetscInt *ptr1, *ptr2;
   PetscBool       flag;

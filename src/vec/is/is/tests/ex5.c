@@ -3,8 +3,7 @@ static char help[] = "Tests ISLocalToGlobalMappingGetInfo.()\n\n";
 
 #include <petscis.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt            size, rank;
   PetscInt               nlocal, local[5], nneigh, *neigh, **ineigh, *numneigh;
   ISLocalToGlobalMapping mapping;

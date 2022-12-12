@@ -1,4 +1,4 @@
-#ifndef _FORESTIMPL_H
+#if !defined(_FORESTIMPL_H)
 #define _FORESTIMPL_H
 
 #include <petscmat.h>      /*I      "petscmat.h"          I*/

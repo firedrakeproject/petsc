@@ -5,8 +5,7 @@
 */
 #include <../src/mat/impls/aij/seq/aij.h>
 
-static PetscErrorCode MatCreateColInode_Private(Mat A, PetscInt *size, PetscInt **ns)
-{
+static PetscErrorCode MatCreateColInode_Private(Mat A, PetscInt *size, PetscInt **ns) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
   PetscInt    i, count, m, n, min_mn, *ns_row, *ns_col;
 
@@ -49,8 +48,7 @@ static PetscErrorCode MatCreateColInode_Private(Mat A, PetscInt *size, PetscInt 
 /*
       This builds symmetric version of nonzero structure,
 */
-static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode_Symmetric(Mat A, const PetscInt *iia[], const PetscInt *jja[], PetscInt ishift, PetscInt oshift)
-{
+static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode_Symmetric(Mat A, const PetscInt *iia[], const PetscInt *jja[], PetscInt ishift, PetscInt oshift) {
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
   PetscInt       *work, *ia, *ja, nz, nslim_row, nslim_col, m, row, col, n;
   PetscInt       *tns, *tvc, *ns_row = a->inode.size, *ns_col, nsz, i1, i2;
@@ -134,8 +132,7 @@ static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode_Symmetric(Mat A, const PetscInt *
 /*
       This builds nonsymmetric version of nonzero structure,
 */
-static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode_Nonsymmetric(Mat A, const PetscInt *iia[], const PetscInt *jja[], PetscInt ishift, PetscInt oshift)
-{
+static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode_Nonsymmetric(Mat A, const PetscInt *iia[], const PetscInt *jja[], PetscInt ishift, PetscInt oshift) {
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
   PetscInt       *work, *ia, *ja, nz, nslim_row, n, row, col, *ns_col, nslim_col;
   PetscInt       *tns, *tvc, nsz, i1, i2;
@@ -210,12 +207,11 @@ static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode_Nonsymmetric(Mat A, const PetscIn
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
   PetscFunctionBegin;
-  if (n) *n = a->inode.node_count;
+  *n = a->inode.node_count;
   if (!ia) PetscFunctionReturn(0);
   if (!blockcompressed) {
     PetscCall(MatGetRowIJ_SeqAIJ(A, oshift, symmetric, blockcompressed, n, ia, ja, done));
@@ -227,8 +223,7 @@ static PetscErrorCode MatGetRowIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatRestoreRowIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+static PetscErrorCode MatRestoreRowIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   PetscFunctionBegin;
   if (!ia) PetscFunctionReturn(0);
 
@@ -243,8 +238,7 @@ static PetscErrorCode MatRestoreRowIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, Petsc
 
 /* ----------------------------------------------------------- */
 
-static PetscErrorCode MatGetColumnIJ_SeqAIJ_Inode_Nonsymmetric(Mat A, const PetscInt *iia[], const PetscInt *jja[], PetscInt ishift, PetscInt oshift)
-{
+static PetscErrorCode MatGetColumnIJ_SeqAIJ_Inode_Nonsymmetric(Mat A, const PetscInt *iia[], const PetscInt *jja[], PetscInt ishift, PetscInt oshift) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
   PetscInt   *work, *ia, *ja, *j, nz, nslim_row, n, row, col, *ns_col, nslim_col;
   PetscInt   *tns, *tvc, *ns_row = a->inode.size, nsz, i1, i2, *ai = a->i, *aj = a->j;
@@ -318,8 +312,7 @@ static PetscErrorCode MatGetColumnIJ_SeqAIJ_Inode_Nonsymmetric(Mat A, const Pets
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatGetColumnIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+static PetscErrorCode MatGetColumnIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   PetscFunctionBegin;
   PetscCall(MatCreateColInode_Private(A, n, NULL));
   if (!ia) PetscFunctionReturn(0);
@@ -335,8 +328,7 @@ static PetscErrorCode MatGetColumnIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscB
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatRestoreColumnIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+static PetscErrorCode MatRestoreColumnIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   PetscFunctionBegin;
   if (!ia) PetscFunctionReturn(0);
   if (!blockcompressed) {
@@ -350,8 +342,7 @@ static PetscErrorCode MatRestoreColumnIJ_SeqAIJ_Inode(Mat A, PetscInt oshift, Pe
 
 /* ----------------------------------------------------------- */
 
-PetscErrorCode MatMult_SeqAIJ_Inode(Mat A, Vec xx, Vec yy)
-{
+PetscErrorCode MatMult_SeqAIJ_Inode(Mat A, Vec xx, Vec yy) {
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)A->data;
   PetscScalar        sum1, sum2, sum3, sum4, sum5, tmp0, tmp1;
   PetscScalar       *y;
@@ -361,7 +352,7 @@ PetscErrorCode MatMult_SeqAIJ_Inode(Mat A, Vec xx, Vec yy)
   const PetscInt    *idx, *ns, *ii;
 
 #if defined(PETSC_HAVE_PRAGMA_DISJOINT)
-  #pragma disjoint(*x, *y, *v1, *v2, *v3, *v4, *v5)
+#pragma disjoint(*x, *y, *v1, *v2, *v3, *v4, *v5)
 #endif
 
   PetscFunctionBegin;
@@ -543,8 +534,7 @@ PetscErrorCode MatMult_SeqAIJ_Inode(Mat A, Vec xx, Vec yy)
       v1       = v5; /* Since the next block to be processed starts there */
       idx += 4 * sz;
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported");
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported");
     }
   }
   PetscCall(VecRestoreArrayRead(xx, &x));
@@ -554,8 +544,7 @@ PetscErrorCode MatMult_SeqAIJ_Inode(Mat A, Vec xx, Vec yy)
 }
 /* ----------------------------------------------------------- */
 /* Almost same code as the MatMult_SeqAIJ_Inode() */
-PetscErrorCode MatMultAdd_SeqAIJ_Inode(Mat A, Vec xx, Vec zz, Vec yy)
-{
+PetscErrorCode MatMultAdd_SeqAIJ_Inode(Mat A, Vec xx, Vec zz, Vec yy) {
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)A->data;
   PetscScalar        sum1, sum2, sum3, sum4, sum5, tmp0, tmp1;
   const MatScalar   *v1, *v2, *v3, *v4, *v5;
@@ -743,8 +732,7 @@ PetscErrorCode MatMultAdd_SeqAIJ_Inode(Mat A, Vec xx, Vec zz, Vec yy)
       v1       = v5; /* Since the next block to be processed starts there */
       idx += 4 * sz;
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported");
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported");
     }
   }
   PetscCall(VecRestoreArrayRead(xx, &x));
@@ -754,8 +742,7 @@ PetscErrorCode MatMultAdd_SeqAIJ_Inode(Mat A, Vec xx, Vec zz, Vec yy)
 }
 
 /* ----------------------------------------------------------- */
-PetscErrorCode MatSolve_SeqAIJ_Inode_inplace(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqAIJ_Inode_inplace(Mat A, Vec bb, Vec xx) {
   Mat_SeqAIJ        *a     = (Mat_SeqAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *rout, *cout;
@@ -977,8 +964,7 @@ PetscErrorCode MatSolve_SeqAIJ_Inode_inplace(Mat A, Vec bb, Vec xx)
       tmp[row++] = sum4;
       tmp[row++] = sum5;
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
     }
   }
   /* backward solve the upper triangular */
@@ -1175,8 +1161,7 @@ PetscErrorCode MatSolve_SeqAIJ_Inode_inplace(Mat A, Vec bb, Vec xx)
       x[*c--] = tmp[row] = sum5 * a_a[ad[row]];
       row--;
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
     }
   }
   PetscCall(ISRestoreIndices(isrow, &rout));
@@ -1187,8 +1172,7 @@ PetscErrorCode MatSolve_SeqAIJ_Inode_inplace(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo *info) {
   Mat              C = B;
   Mat_SeqAIJ      *a = (Mat_SeqAIJ *)A->data, *b = (Mat_SeqAIJ *)C->data;
   IS               isrow = b->row, isicol = b->icol;
@@ -1415,7 +1399,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished row i; check zero pivot, then stick row i into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc1 = b->a + bi[i];
         pj  = b->j + bi[i];
@@ -1457,7 +1441,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished row i+1; check zero pivot, then stick row i+1 into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc2 = b->a + bi[i + 1];
         pj  = b->j + bi[i + 1];
@@ -1557,7 +1541,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished row i; check zero pivot, then stick row i into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc1 = b->a + bi[i];
         pj  = b->j + bi[i];
@@ -1603,7 +1587,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished row i+1; check zero pivot, then stick row i+1 into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc2 = b->a + bi[i + 1];
         pj  = b->j + bi[i + 1];
@@ -1645,7 +1629,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished i+2; check zero pivot, then stick row i+2 into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc3 = b->a + bi[i + 2];
         pj  = b->j + bi[i + 2];
@@ -1753,7 +1737,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished row i; check zero pivot, then stick row i into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc1 = b->a + bi[i];
         pj  = b->j + bi[i];
@@ -1803,7 +1787,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished row i+1; check zero pivot, then stick row i+1 into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc2 = b->a + bi[i + 1];
         pj  = b->j + bi[i + 1];
@@ -1849,7 +1833,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished i+2; check zero pivot, then stick row i+2 into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc3 = b->a + bi[i + 2];
         pj  = b->j + bi[i + 2];
@@ -1891,7 +1875,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         }
 
         /* finished i+3; check zero pivot, then stick row i+3 into b->a */
-        rs = 0.0;
+        rs  = 0.0;
         /* L part */
         pc4 = b->a + bi[i + 3];
         pj  = b->j + bi[i + 3];
@@ -1919,8 +1903,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
         *pc4 = 1.0 / sctx.pv; /* Mark diag[i+3] */
         break;
 
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Node size not yet supported ");
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Node size not yet supported ");
       }
       if (sctx.newshift) break; /* break for (inod=0,i=0; inod<node_max; inod++) */
       i += nodesz;              /* Update the row */
@@ -1972,8 +1955,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode(Mat B, Mat A, const MatFactorInfo
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode_inplace(Mat B, Mat A, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode_inplace(Mat B, Mat A, const MatFactorInfo *info) {
   Mat              C = B;
   Mat_SeqAIJ      *a = (Mat_SeqAIJ *)A->data, *b = (Mat_SeqAIJ *)C->data;
   IS               iscol = b->col, isrow = b->row, isicol = b->icol;
@@ -2360,8 +2342,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode_inplace(Mat B, Mat A, const MatFa
         if (sctx.newshift) goto endofwhile;
         break;
 
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Node size not yet supported ");
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Node size not yet supported ");
       }
       row += nodesz; /* Update the row */
     }
@@ -2373,7 +2354,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode_inplace(Mat B, Mat A, const MatFa
   PetscCall(ISRestoreIndices(isrow, &r));
   PetscCall(ISRestoreIndices(iscol, &c));
 
-  (B)->ops->solve = MatSolve_SeqAIJ_inplace;
+  (B)->ops->solve           = MatSolve_SeqAIJ_inplace;
   /* do not set solve add, since MatSolve_Inode + Add is faster */
   C->ops->solvetranspose    = MatSolveTranspose_SeqAIJ_inplace;
   C->ops->solvetransposeadd = MatSolveTransposeAdd_SeqAIJ_inplace;
@@ -2392,8 +2373,7 @@ PetscErrorCode MatLUFactorNumeric_SeqAIJ_Inode_inplace(Mat B, Mat A, const MatFa
 }
 
 /* ----------------------------------------------------------- */
-PetscErrorCode MatSolve_SeqAIJ_Inode(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatSolve_SeqAIJ_Inode(Mat A, Vec bb, Vec xx) {
   Mat_SeqAIJ        *a     = (Mat_SeqAIJ *)A->data;
   IS                 iscol = a->col, isrow = a->row;
   const PetscInt    *r, *c, *rout, *cout;
@@ -2593,8 +2573,7 @@ PetscErrorCode MatSolve_SeqAIJ_Inode(Mat A, Vec bb, Vec xx)
       tmp[row++] = sum4;
       tmp[row++] = sum5;
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
     }
   }
   /* backward solve the upper triangular */
@@ -2779,8 +2758,7 @@ PetscErrorCode MatSolve_SeqAIJ_Inode(Mat A, Vec bb, Vec xx)
       x[c[row]] = tmp[row] = sum5 * v5[nz + 4];
       row--;
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_COR, "Node size not yet supported ");
     }
   }
   PetscCall(ISRestoreIndices(isrow, &rout));
@@ -2794,8 +2772,7 @@ PetscErrorCode MatSolve_SeqAIJ_Inode(Mat A, Vec bb, Vec xx)
 /*
      Makes a longer coloring[] array and calls the usual code with that
 */
-PetscErrorCode MatColoringPatch_SeqAIJ_Inode(Mat mat, PetscInt ncolors, PetscInt nin, ISColoringValue coloring[], ISColoring *iscoloring)
-{
+PetscErrorCode MatColoringPatch_SeqAIJ_Inode(Mat mat, PetscInt ncolors, PetscInt nin, ISColoringValue coloring[], ISColoring *iscoloring) {
   Mat_SeqAIJ      *a = (Mat_SeqAIJ *)mat->data;
   PetscInt         n = mat->cmap->n, m = a->inode.node_count, j, *ns = a->inode.size, row;
   PetscInt        *colorused, i;
@@ -2825,8 +2802,7 @@ PetscErrorCode MatColoringPatch_SeqAIJ_Inode(Mat mat, PetscInt ncolors, PetscInt
 
 #include <petsc/private/kernels/blockinvert.h>
 
-PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType flag, PetscReal fshift, PetscInt its, PetscInt lits, Vec xx)
-{
+PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType flag, PetscReal fshift, PetscInt its, PetscInt lits, Vec xx) {
   Mat_SeqAIJ        *a    = (Mat_SeqAIJ *)A->data;
   PetscScalar        sum1 = 0.0, sum2 = 0.0, sum3 = 0.0, sum4 = 0.0, sum5 = 0.0, tmp0, tmp1, tmp2, tmp3;
   MatScalar         *ibdiag, *bdiag, work[25], *t;
@@ -2893,8 +2869,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
         PetscCall(PetscKernel_A_gets_inverse_A_5(ibdiag + cnt, ipvt, work, shift, allowzeropivot, &zeropivotdetected));
         if (zeropivotdetected) A->factorerrortype = MAT_FACTOR_NUMERIC_ZEROPIVOT;
         break;
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
       }
       cnt += sizes[i] * sizes[i];
       row += sizes[i];
@@ -3087,8 +3062,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
           x[row++]   = sum1 * ibdiag[4] + sum2 * ibdiag[9] + sum3 * ibdiag[14] + sum4 * ibdiag[19] + sum5 * ibdiag[24];
           ibdiag += 25;
           break;
-        default:
-          SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+        default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
         }
       }
 
@@ -3130,7 +3104,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
           sum1 = xb[row];
           sum2 = xb[row - 1];
           /* note that sum1 is associated with the second of the two rows */
-          v2 = a->a + diag[row - 1] + 2;
+          v2   = a->a + diag[row - 1] + 2;
           for (n = 0; n < sz - 1; n += 2) {
             i1 = idx[0];
             i2 = idx[1];
@@ -3262,8 +3236,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
           x[row--] = sum5 * ibdiag[1] + sum4 * ibdiag[6] + sum3 * ibdiag[11] + sum2 * ibdiag[16] + sum1 * ibdiag[21];
           x[row--] = sum5 * ibdiag[0] + sum4 * ibdiag[5] + sum3 * ibdiag[10] + sum2 * ibdiag[15] + sum1 * ibdiag[20];
           break;
-        default:
-          SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+        default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
         }
       }
 
@@ -3583,8 +3556,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
           x[row + 3] = sum1 * ibdiag[3] + sum2 * ibdiag[8] + sum3 * ibdiag[13] + sum4 * ibdiag[18] + sum5 * ibdiag[23];
           x[row + 4] = sum1 * ibdiag[4] + sum2 * ibdiag[9] + sum3 * ibdiag[14] + sum4 * ibdiag[19] + sum5 * ibdiag[24];
           break;
-        default:
-          SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+        default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
         }
       }
       xb = t;
@@ -3602,47 +3574,31 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
           sz  = ii[row + 1] - ii[row];
           idx = a->j + ii[row];
           switch (sizes[i]) {
-          case 5:
-            v5 = a->a + ii[row - 4]; /* fall through */
-          case 4:
-            v4 = a->a + ii[row - 3]; /* fall through */
-          case 3:
-            v3 = a->a + ii[row - 2]; /* fall through */
-          case 2:
-            v2 = a->a + ii[row - 1]; /* fall through */
-          case 1:
-            v1 = a->a + ii[row];
-            break;
-          default:
-            SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+          case 5: v5 = a->a + ii[row - 4];
+          case 4: /* fall through */ v4 = a->a + ii[row - 3];
+          case 3: v3 = a->a + ii[row - 2];
+          case 2: v2 = a->a + ii[row - 1];
+          case 1: v1 = a->a + ii[row]; break;
+          default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
           }
         } else {
           /* upper, no diag */
           sz  = ii[row + 1] - diag[row] - 1;
           idx = a->j + diag[row] + 1;
           switch (sizes[i]) {
-          case 5:
-            v5 = a->a + diag[row - 4] + 5; /* fall through */
-          case 4:
-            v4 = a->a + diag[row - 3] + 4; /* fall through */
-          case 3:
-            v3 = a->a + diag[row - 2] + 3; /* fall through */
-          case 2:
-            v2 = a->a + diag[row - 1] + 2; /* fall through */
-          case 1:
-            v1 = a->a + diag[row] + 1;
+          case 5: v5 = a->a + diag[row - 4] + 5;
+          case 4: /* fall through */ v4 = a->a + diag[row - 3] + 4;
+          case 3: v3 = a->a + diag[row - 2] + 3;
+          case 2: v2 = a->a + diag[row - 1] + 2;
+          case 1: v1 = a->a + diag[row] + 1;
           }
         }
         /* set sum */
         switch (sizes[i]) {
-        case 5:
-          sum5 = xb[row - 4]; /* fall through */
-        case 4:
-          sum4 = xb[row - 3]; /* fall through */
-        case 3:
-          sum3 = xb[row - 2]; /* fall through */
-        case 2:
-          sum2 = xb[row - 1]; /* fall through */
+        case 5: sum5 = xb[row - 4];
+        case 4: /* fall through */ sum4 = xb[row - 3];
+        case 3: sum3 = xb[row - 2];
+        case 2: sum2 = xb[row - 1];
         case 1:
           /* note that sum1 is associated with the last row */
           sum1 = xb[row];
@@ -3655,37 +3611,22 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
           tmp0 = x[i1];
           tmp1 = x[i2];
           switch (sizes[i]) {
-          case 5:
-            sum5 -= v5[0] * tmp0 + v5[1] * tmp1;
-            v5 += 2; /* fall through */
-          case 4:
-            sum4 -= v4[0] * tmp0 + v4[1] * tmp1;
-            v4 += 2; /* fall through */
-          case 3:
-            sum3 -= v3[0] * tmp0 + v3[1] * tmp1;
-            v3 += 2; /* fall through */
-          case 2:
-            sum2 -= v2[0] * tmp0 + v2[1] * tmp1;
-            v2 += 2; /* fall through */
-          case 1:
-            sum1 -= v1[0] * tmp0 + v1[1] * tmp1;
-            v1 += 2;
+          case 5: sum5 -= v5[0] * tmp0 + v5[1] * tmp1; v5 += 2;
+          case 4: /* fall through */ sum4 -= v4[0] * tmp0 + v4[1] * tmp1; v4 += 2;
+          case 3: sum3 -= v3[0] * tmp0 + v3[1] * tmp1; v3 += 2;
+          case 2: sum2 -= v2[0] * tmp0 + v2[1] * tmp1; v2 += 2;
+          case 1: sum1 -= v1[0] * tmp0 + v1[1] * tmp1; v1 += 2;
           }
         }
         /* ragged edge */
         if (n == sz - 1) {
           tmp0 = x[*idx];
           switch (sizes[i]) {
-          case 5:
-            sum5 -= *v5 * tmp0; /* fall through */
-          case 4:
-            sum4 -= *v4 * tmp0; /* fall through */
-          case 3:
-            sum3 -= *v3 * tmp0; /* fall through */
-          case 2:
-            sum2 -= *v2 * tmp0; /* fall through */
-          case 1:
-            sum1 -= *v1 * tmp0;
+          case 5: sum5 -= *v5 * tmp0;
+          case 4: /* fall through */ sum4 -= *v4 * tmp0;
+          case 3: sum3 -= *v3 * tmp0;
+          case 2: sum2 -= *v2 * tmp0;
+          case 1: sum1 -= *v1 * tmp0;
           }
         }
         /* update */
@@ -3714,9 +3655,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
             x[row--] += sum2 * ibdiag[1] + sum1 * ibdiag[3];
             x[row--] += sum2 * ibdiag[0] + sum1 * ibdiag[2];
             break;
-          case 1:
-            x[row--] += sum1 * (*ibdiag);
-            break;
+          case 1: x[row--] += sum1 * (*ibdiag); break;
           }
         } else {
           /* no diag so set =  */
@@ -3743,9 +3682,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
             x[row--] = sum2 * ibdiag[1] + sum1 * ibdiag[3];
             x[row--] = sum2 * ibdiag[0] + sum1 * ibdiag[2];
             break;
-          case 1:
-            x[row--] = sum1 * (*ibdiag);
-            break;
+          case 1: x[row--] = sum1 * (*ibdiag); break;
           }
         }
       }
@@ -3794,7 +3731,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
         sum1 = b[row];
         sum2 = b[row - 1];
         /* note that sum1 is associated with the second of the two rows */
-        v2 = a->a + diag[row - 1] + 2;
+        v2   = a->a + diag[row - 1] + 2;
         for (n = 0; n < sz - 1; n += 2) {
           i1 = idx[0];
           i2 = idx[1];
@@ -3930,8 +3867,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
         x[row - 4] = sum5 * ibdiag[0] + sum4 * ibdiag[5] + sum3 * ibdiag[10] + sum2 * ibdiag[15] + sum1 * ibdiag[20];
         row -= 5;
         break;
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
       }
     }
     PetscCall(PetscLogFlops(a->nz));
@@ -4004,8 +3940,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
         row += 5;
         cnt += 25;
         break;
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
       }
     }
     PetscCall(PetscLogFlops(m));
@@ -4179,8 +4114,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
         ibdiag += 25;
         row += 5;
         break;
-      default:
-        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+      default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
       }
     }
     PetscCall(PetscLogFlops(a->nz));
@@ -4190,8 +4124,7 @@ PetscErrorCode MatSOR_SeqAIJ_Inode(Mat A, Vec bb, PetscReal omega, MatSORType fl
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatMultDiagonalBlock_SeqAIJ_Inode(Mat A, Vec bb, Vec xx)
-{
+PetscErrorCode MatMultDiagonalBlock_SeqAIJ_Inode(Mat A, Vec bb, Vec xx) {
   Mat_SeqAIJ        *a = (Mat_SeqAIJ *)A->data;
   PetscScalar       *x, tmp1, tmp2, tmp3, tmp4, tmp5, x1, x2, x3, x4, x5;
   const MatScalar   *bdiag = a->inode.bdiag;
@@ -4264,8 +4197,7 @@ PetscErrorCode MatMultDiagonalBlock_SeqAIJ_Inode(Mat A, Vec bb, Vec xx)
       x[row++] = tmp5;
       cnt += 25;
       break;
-    default:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
+    default: SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Inode size %" PetscInt_FMT " not supported", sizes[i]);
     }
   }
   PetscCall(PetscLogFlops(2.0 * cnt));
@@ -4274,8 +4206,7 @@ PetscErrorCode MatMultDiagonalBlock_SeqAIJ_Inode(Mat A, Vec bb, Vec xx)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatSeqAIJ_Inode_ResetOps(Mat A)
-{
+static PetscErrorCode MatSeqAIJ_Inode_ResetOps(Mat A) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -4297,8 +4228,7 @@ static PetscErrorCode MatSeqAIJ_Inode_ResetOps(Mat A)
     samestructure indicates that the matrix has not changed its nonzero structure so we
     do not need to recompute the inodes
 */
-PetscErrorCode MatSeqAIJCheckInode(Mat A)
-{
+PetscErrorCode MatSeqAIJCheckInode(Mat A) {
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
   PetscInt        i, j, m, nzx, nzy, *ns, node_count, blk_size;
   PetscBool       flag;
@@ -4361,8 +4291,7 @@ PetscErrorCode MatSeqAIJCheckInode(Mat A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatDuplicate_SeqAIJ_Inode(Mat A, MatDuplicateOption cpvalues, Mat *C)
-{
+PetscErrorCode MatDuplicate_SeqAIJ_Inode(Mat A, MatDuplicateOption cpvalues, Mat *C) {
   Mat         B = *C;
   Mat_SeqAIJ *c = (Mat_SeqAIJ *)B->data, *a = (Mat_SeqAIJ *)A->data;
   PetscInt    m = A->rmap->n;
@@ -4402,8 +4331,7 @@ PetscErrorCode MatDuplicate_SeqAIJ_Inode(Mat A, MatDuplicateOption cpvalues, Mat
   PetscFunctionReturn(0);
 }
 
-static inline PetscErrorCode MatGetRow_FactoredLU(PetscInt *cols, PetscInt nzl, PetscInt nzu, PetscInt nz, const PetscInt *ai, const PetscInt *aj, const PetscInt *adiag, PetscInt row)
-{
+static inline PetscErrorCode MatGetRow_FactoredLU(PetscInt *cols, PetscInt nzl, PetscInt nzu, PetscInt nz, const PetscInt *ai, const PetscInt *aj, const PetscInt *adiag, PetscInt row) {
   PetscInt        k;
   const PetscInt *vi;
 
@@ -4424,8 +4352,7 @@ static inline PetscErrorCode MatGetRow_FactoredLU(PetscInt *cols, PetscInt nzl, 
 .  Mat A - ILU or LU matrix factor
 
 */
-PetscErrorCode MatSeqAIJCheckInode_FactorLU(Mat A)
-{
+PetscErrorCode MatSeqAIJCheckInode_FactorLU(Mat A) {
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
   PetscInt        i, j, m, nzl1, nzu1, nzl2, nzu2, nzx, nzy, node_count, blk_size;
   PetscInt       *cols1, *cols2, *ns;
@@ -4491,8 +4418,7 @@ PetscErrorCode MatSeqAIJCheckInode_FactorLU(Mat A)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSeqAIJInvalidateDiagonal_Inode(Mat A)
-{
+PetscErrorCode MatSeqAIJInvalidateDiagonal_Inode(Mat A) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
   PetscFunctionBegin;
@@ -4505,15 +4431,13 @@ PetscErrorCode MatSeqAIJInvalidateDiagonal_Inode(Mat A)
   permutations with ones that correspond to rows/cols of the matrix
   rather then inode blocks
 */
-PetscErrorCode MatInodeAdjustForInodes(Mat A, IS *rperm, IS *cperm)
-{
+PetscErrorCode MatInodeAdjustForInodes(Mat A, IS *rperm, IS *cperm) {
   PetscFunctionBegin;
   PetscTryMethod(A, "MatInodeAdjustForInodes_C", (Mat, IS *, IS *), (A, rperm, cperm));
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatInodeAdjustForInodes_SeqAIJ_Inode(Mat A, IS *rperm, IS *cperm)
-{
+PetscErrorCode MatInodeAdjustForInodes_SeqAIJ_Inode(Mat A, IS *rperm, IS *cperm) {
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
   PetscInt        m = A->rmap->n, n = A->cmap->n, i, j, nslim_row = a->inode.node_count;
   const PetscInt *ridx, *cidx;
@@ -4594,8 +4518,7 @@ PetscErrorCode MatInodeAdjustForInodes_SeqAIJ_Inode(Mat A, IS *rperm, IS *cperm)
 
 .seealso: `MatGetInfo()`
 @*/
-PetscErrorCode MatInodeGetInodeSizes(Mat A, PetscInt *node_count, PetscInt *sizes[], PetscInt *limit)
-{
+PetscErrorCode MatInodeGetInodeSizes(Mat A, PetscInt *node_count, PetscInt *sizes[], PetscInt *limit) {
   PetscErrorCode (*f)(Mat, PetscInt *, PetscInt **, PetscInt *);
 
   PetscFunctionBegin;
@@ -4605,8 +4528,7 @@ PetscErrorCode MatInodeGetInodeSizes(Mat A, PetscInt *node_count, PetscInt *size
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatInodeGetInodeSizes_SeqAIJ_Inode(Mat A, PetscInt *node_count, PetscInt *sizes[], PetscInt *limit)
-{
+PetscErrorCode MatInodeGetInodeSizes_SeqAIJ_Inode(Mat A, PetscInt *node_count, PetscInt *sizes[], PetscInt *limit) {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
   PetscFunctionBegin;

@@ -3,8 +3,7 @@ static char help[] = "Tests the various sequential routines in MATSEQSBAIJ forma
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   PetscMPIInt   size;
   Vec           x, y, b, s1, s2;
   Mat           A;                     /* linear system matrix */

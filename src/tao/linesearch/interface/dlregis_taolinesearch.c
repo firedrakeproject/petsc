@@ -14,8 +14,7 @@ static PetscBool            TaoLineSearchPackageInitialized = PETSC_FALSE;
 
   Level: developer
 @*/
-PetscErrorCode TaoLineSearchFinalizePackage(void)
-{
+PetscErrorCode TaoLineSearchFinalizePackage(void) {
   PetscFunctionBegin;
   PetscCall(PetscFunctionListDestroy(&TaoLineSearchList));
   TaoLineSearchPackageInitialized = PETSC_FALSE;
@@ -32,8 +31,7 @@ PetscErrorCode TaoLineSearchFinalizePackage(void)
 
 .seealso: `TaoLineSearchCreate()`
 @*/
-PetscErrorCode TaoLineSearchInitializePackage(void)
-{
+PetscErrorCode TaoLineSearchInitializePackage(void) {
   PetscFunctionBegin;
   if (TaoLineSearchPackageInitialized) PetscFunctionReturn(0);
   TaoLineSearchPackageInitialized = PETSC_TRUE;

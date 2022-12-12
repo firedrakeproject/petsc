@@ -3,8 +3,7 @@ static char help[] = "Test VecGetArray4d()\n";
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscInt        cnt, i, j, k, l, m = 2, n = 3, p = 4, q = 5;
   Vec             x;
   PetscScalar ****xx;

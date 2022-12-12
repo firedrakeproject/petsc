@@ -16,8 +16,7 @@ Input parameters include:\n\
 */
 #include <petscksp.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Vec         x, b, u; /* approx solution, RHS, exact solution */
   Mat         A;       /* linear system matrix */
   KSP         ksp;     /* linear solver context */
@@ -175,7 +174,7 @@ int main(int argc, char **args)
     Mat Aperm;
     PetscCall(MatGetOrdering(A, ordering, &rowperm, &colperm));
     PetscCall(MatPermute(A, rowperm, colperm, &Aperm));
-    PetscCall(VecPermute(b, rowperm, PETSC_FALSE));
+    PetscCall(VecPermute(b, colperm, PETSC_FALSE));
     PetscCall(MatDestroy(&A));
     A = Aperm; /* Replace original operator with permuted version */
   }
@@ -226,7 +225,7 @@ int main(int argc, char **args)
                       Check solution and clean up
      - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-  if (permute) PetscCall(VecPermute(x, colperm, PETSC_TRUE));
+  if (permute) PetscCall(VecPermute(x, rowperm, PETSC_TRUE));
 
   /*
      Check the error

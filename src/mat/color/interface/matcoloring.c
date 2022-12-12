@@ -27,8 +27,7 @@ $     -mat_coloring_type my_color
 
 .seealso: `MatColoringType`, `MatColoringRegisterDestroy()`, `MatColoringRegisterAll()`
 @*/
-PetscErrorCode MatColoringRegister(const char sname[], PetscErrorCode (*function)(MatColoring))
-{
+PetscErrorCode MatColoringRegister(const char sname[], PetscErrorCode (*function)(MatColoring)) {
   PetscFunctionBegin;
   PetscCall(MatInitializePackage());
   PetscCall(PetscFunctionListAdd(&MatColoringList, sname, function));
@@ -68,8 +67,7 @@ PetscErrorCode MatColoringRegister(const char sname[], PetscErrorCode (*function
 
 .seealso: `MatColoringSetFromOptions()`, `MatColoring`, `MatColoringApply()`, `MatFDColoringCreate()`, `DMCreateColoring()`, `MatColoringType`
 @*/
-PetscErrorCode MatColoringCreate(Mat m, MatColoring *mcptr)
-{
+PetscErrorCode MatColoringCreate(Mat m, MatColoring *mcptr) {
   MatColoring mc;
 
   PetscFunctionBegin;
@@ -103,8 +101,7 @@ PetscErrorCode MatColoringCreate(Mat m, MatColoring *mcptr)
 
 .seealso: `MatColoring`, `MatColoringCreate()`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringDestroy(MatColoring *mc)
-{
+PetscErrorCode MatColoringDestroy(MatColoring *mc) {
   PetscFunctionBegin;
   if (--((PetscObject)(*mc))->refct > 0) {
     *mc = NULL;
@@ -139,8 +136,7 @@ PetscErrorCode MatColoringDestroy(MatColoring *mc)
 
 .seealso: `MatColoring`, `MatColoringSetFromOptions()`, `MatColoringType`, `MatColoringCreate()`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringSetType(MatColoring mc, MatColoringType type)
-{
+PetscErrorCode MatColoringSetType(MatColoring mc, MatColoringType type) {
   PetscBool match;
   PetscErrorCode (*r)(MatColoring);
 
@@ -185,8 +181,7 @@ PetscErrorCode MatColoringSetType(MatColoring mc, MatColoringType type)
 
 .seealso: `MatColoring`, `MatColoringApply()`, `MatColoringSetDistance()`, `MatColoringSetType()`, `SNESComputeJacobianDefaultColor()`, `MatColoringType`
 @*/
-PetscErrorCode MatColoringSetFromOptions(MatColoring mc)
-{
+PetscErrorCode MatColoringSetFromOptions(MatColoring mc) {
   PetscBool       flg;
   MatColoringType deft = MATCOLORINGSL;
   char            type[256];
@@ -243,8 +238,7 @@ PetscErrorCode MatColoringSetFromOptions(MatColoring mc)
 
 .seealso: `MatColoring`, `MatColoringSetFromOptions()`, `MatColoringGetDistance()`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringSetDistance(MatColoring mc, PetscInt dist)
-{
+PetscErrorCode MatColoringSetDistance(MatColoring mc, PetscInt dist) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mc, MAT_COLORING_CLASSID, 1);
   mc->dist = dist;
@@ -273,8 +267,7 @@ PetscErrorCode MatColoringSetDistance(MatColoring mc, PetscInt dist)
 
 .seealso: `MatColoring`, `MatColoringSetDistance()`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringGetDistance(MatColoring mc, PetscInt *dist)
-{
+PetscErrorCode MatColoringGetDistance(MatColoring mc, PetscInt *dist) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mc, MAT_COLORING_CLASSID, 1);
   if (dist) *dist = mc->dist;
@@ -304,8 +297,7 @@ PetscErrorCode MatColoringGetDistance(MatColoring mc, PetscInt *dist)
 
 .seealso: `MatColoring`, `MatColoringGetMaxColors()`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringSetMaxColors(MatColoring mc, PetscInt maxcolors)
-{
+PetscErrorCode MatColoringSetMaxColors(MatColoring mc, PetscInt maxcolors) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mc, MAT_COLORING_CLASSID, 1);
   mc->maxcolors = maxcolors;
@@ -327,8 +319,7 @@ PetscErrorCode MatColoringSetMaxColors(MatColoring mc, PetscInt maxcolors)
 
 .seealso: `MatColoring`, `MatColoringSetMaxColors()`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringGetMaxColors(MatColoring mc, PetscInt *maxcolors)
-{
+PetscErrorCode MatColoringGetMaxColors(MatColoring mc, PetscInt *maxcolors) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mc, MAT_COLORING_CLASSID, 1);
   if (maxcolors) *maxcolors = mc->maxcolors;
@@ -352,8 +343,7 @@ PetscErrorCode MatColoringGetMaxColors(MatColoring mc, PetscInt *maxcolors)
 
 .seealso: `ISColoring`, `MatColoring`, `MatColoringCreate()`
 @*/
-PetscErrorCode MatColoringApply(MatColoring mc, ISColoring *coloring)
-{
+PetscErrorCode MatColoringApply(MatColoring mc, ISColoring *coloring) {
   PetscBool         flg;
   PetscViewerFormat format;
   PetscViewer       viewer;
@@ -399,8 +389,7 @@ PetscErrorCode MatColoringApply(MatColoring mc, ISColoring *coloring)
 
 .seealso: `PetscViewer`, `MatColoring`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringView(MatColoring mc, PetscViewer viewer)
-{
+PetscErrorCode MatColoringView(MatColoring mc, PetscViewer viewer) {
   PetscBool iascii;
 
   PetscFunctionBegin;
@@ -435,8 +424,7 @@ PetscErrorCode MatColoringView(MatColoring mc, PetscViewer viewer)
 
 .seealso: `MatColoring`, `MatColoringWeightType`, `MatColoringApply()`
 @*/
-PetscErrorCode MatColoringSetWeightType(MatColoring mc, MatColoringWeightType wt)
-{
+PetscErrorCode MatColoringSetWeightType(MatColoring mc, MatColoringWeightType wt) {
   PetscFunctionBegin;
   mc->weight_type = wt;
   PetscFunctionReturn(0);

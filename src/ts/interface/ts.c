@@ -14,8 +14,7 @@ PetscLogEvent TS_Step, TS_PseudoComputeTimeStep, TS_FunctionEval, TS_JacobianEva
 
 const char *const TSExactFinalTimeOptions[] = {"UNSPECIFIED", "STEPOVER", "INTERPOLATE", "MATCHSTEP", "TSExactFinalTimeOption", "TS_EXACTFINALTIME_", NULL};
 
-static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt, TSAdaptType default_type)
-{
+static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt, TSAdaptType default_type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(adapt, TSADAPT_CLASSID, 1);
   PetscValidCharPointer(default_type, 2);
@@ -24,15 +23,15 @@ static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt, TSAdaptType default_t
 }
 
 /*@
-   TSSetFromOptions - Sets various `TS` parameters from user options.
+   TSSetFromOptions - Sets various TS parameters from user options.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Options Database Keys:
-+  -ts_type <type> - EULER, BEULER, SUNDIALS, PSEUDO, CN, RK, THETA, ALPHA, GLLE,  SSP, GLEE, BSYMP, IRK
++  -ts_type <type> - TSEULER, TSBEULER, TSSUNDIALS, TSPSEUDO, TSCN, TSRK, TSTHETA, TSALPHA, TSGLLE, TSSSP, TSGLEE, TSBSYMP, TSIRK
 .  -ts_save_trajectory - checkpoint the solution at each time-step
 .  -ts_max_time <time> - maximum time to compute to
 .  -ts_time_span <t0,...tf> - sets the time span, solutions are computed and stored for each indicated time
@@ -64,26 +63,24 @@ static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt, TSAdaptType default_t
 .  -ts_monitor_draw_solution_phase  <xleft,yleft,xright,yright> - Monitor solution graphically with phase diagram, requires problem with exactly 2 degrees of freedom
 .  -ts_monitor_draw_error - Monitor error graphically, requires use to have provided TSSetSolutionFunction()
 .  -ts_monitor_solution [ascii binary draw][:filename][:viewerformat] - monitors the solution at each timestep
-   -ts_monitor_solution_interval <interval> - output once every interval (default=1) time steps; used with -ts_monitor_solution
 .  -ts_monitor_solution_vtk <filename.vts,filename.vtu> - Save each time step to a binary file, use filename-%%03" PetscInt_FMT ".vts (filename-%%03" PetscInt_FMT ".vtu)
 -  -ts_monitor_envelope - determine maximum and minimum value of each component of the solution over the solution time
 
-   Level: beginner
-
    Notes:
-     See `SNESSetFromOptions()` and `KSPSetFromOptions()` for how to control the nonlinear and linear solves used by the time-stepper.
+     See SNESSetFromOptions() and KSPSetFromOptions() for how to control the nonlinear and linear solves used by the time-stepper.
 
-     Certain `SNES` options get reset for each new nonlinear solver, for example -snes_lag_jacobian <its> and -snes_lag_preconditioner <its>, in order
+     Certain SNES options get reset for each new nonlinear solver, for example -snes_lag_jacobian <its> and -snes_lag_preconditioner <its>, in order
      to retain them over the multiple nonlinear solves that TS uses you mush also provide -snes_lag_jacobian_persists true and
      -snes_lag_preconditioner_persists true
 
    Developer Note:
      We should unify all the -ts_monitor options in the way that -xxx_view has been unified
 
-.seealso: [](chapter_ts), `TS`, `TSGetType()`
+   Level: beginner
+
+.seealso: `TSGetType()`
 @*/
-PetscErrorCode TSSetFromOptions(TS ts)
-{
+PetscErrorCode TSSetFromOptions(TS ts) {
   PetscBool              opt, flg, tflg;
   char                   monfilename[PETSC_MAX_PATH_LEN];
   PetscReal              time_step, tspan[100];
@@ -368,7 +365,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
   if (opt && flg) PetscCall(TSMonitorCancel(ts));
 
   flg = PETSC_FALSE;
-  PetscCall(PetscOptionsBool("-ts_fd_color", "Use finite differences with coloring to compute IJacobian", "TSComputeIJacobianDefaultColor", flg, &flg, NULL));
+  PetscCall(PetscOptionsBool("-ts_fd_color", "Use finite differences with coloring to compute IJacobian", "TSComputeJacobianDefaultColor", flg, &flg, NULL));
   if (flg) {
     DM dm;
 
@@ -410,25 +407,24 @@ PetscErrorCode TSSetFromOptions(TS ts)
 }
 
 /*@
-   TSGetTrajectory - Gets the trajectory from a `TS` if it exists
+   TSGetTrajectory - Gets the trajectory from a TS if it exists
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameters:
-.  tr - the `TSTrajectory` object, if it exists
+.  tr - the TSTrajectory object, if it exists
+
+   Note: This routine should be called after all TS options have been set
 
    Level: advanced
 
-   Note:
-   This routine should be called after all `TS` options have been set
+.seealso: `TSGetTrajectory()`, `TSAdjointSolve()`, `TSTrajectory`, `TSTrajectoryCreate()`
 
-.seealso: [](chapter_ts), `TSTrajectory`, `TSAdjointSolve()`, `TSTrajectory`, `TSTrajectoryCreate()`
 @*/
-PetscErrorCode TSGetTrajectory(TS ts, TSTrajectory *tr)
-{
+PetscErrorCode TSGetTrajectory(TS ts, TSTrajectory *tr) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   *tr = ts->trajectory;
@@ -436,29 +432,28 @@ PetscErrorCode TSGetTrajectory(TS ts, TSTrajectory *tr)
 }
 
 /*@
-   TSSetSaveTrajectory - Causes the `TS` to save its solutions as it iterates forward in time in a `TSTrajectory` object
+   TSSetSaveTrajectory - Causes the TS to save its solutions as it iterates forward in time in a TSTrajectory object
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
-   Options Database Keys:
+   Options Database:
 +  -ts_save_trajectory - saves the trajectory to a file
 -  -ts_trajectory_type type - set trajectory type
 
-   Level: intermediate
+Note: This routine should be called after all TS options have been set
 
-   Notes:
-   This routine should be called after all `TS` options have been set
-
-   The `TSTRAJECTORYVISUALIZATION` files can be loaded into Python with $PETSC_DIR/lib/petsc/bin/PetscBinaryIOTrajectory.py and
+    The TSTRAJECTORYVISUALIZATION files can be loaded into Python with $PETSC_DIR/lib/petsc/bin/PetscBinaryIOTrajectory.py and
    MATLAB with $PETSC_DIR/share/petsc/matlab/PetscReadBinaryTrajectory.m
 
-.seealso: [](chapter_ts), `TSTrajectory`, `TSGetTrajectory()`, `TSAdjointSolve()`
+   Level: intermediate
+
+.seealso: `TSGetTrajectory()`, `TSAdjointSolve()`
+
 @*/
-PetscErrorCode TSSetSaveTrajectory(TS ts)
-{
+PetscErrorCode TSSetSaveTrajectory(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (!ts->trajectory) PetscCall(TSTrajectoryCreate(PetscObjectComm((PetscObject)ts), &ts->trajectory));
@@ -466,19 +461,19 @@ PetscErrorCode TSSetSaveTrajectory(TS ts)
 }
 
 /*@
-   TSResetTrajectory - Destroys and recreates the internal `TSTrajectory` object
+   TSResetTrajectory - Destroys and recreates the internal TSTrajectory object
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TSTrajectory`, `TSGetTrajectory()`, `TSAdjointSolve()`, `TSRemoveTrajectory()`
+.seealso: `TSGetTrajectory()`, `TSAdjointSolve()`, `TSRemoveTrajectory()`
+
 @*/
-PetscErrorCode TSResetTrajectory(TS ts)
-{
+PetscErrorCode TSResetTrajectory(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->trajectory) {
@@ -489,19 +484,19 @@ PetscErrorCode TSResetTrajectory(TS ts)
 }
 
 /*@
-   TSRemoveTrajectory - Destroys and removes the internal `TSTrajectory` object from TS
+   TSRemoveTrajectory - Destroys and removes the internal TSTrajectory object from TS
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TSTrajectory`, `TSResetTrajectory()`, `TSAdjointSolve()`
+.seealso: `TSResetTrajectory()`, `TSAdjointSolve()`
+
 @*/
-PetscErrorCode TSRemoveTrajectory(TS ts)
-{
+PetscErrorCode TSRemoveTrajectory(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->trajectory) PetscCall(TSTrajectoryDestroy(&ts->trajectory));
@@ -510,12 +505,12 @@ PetscErrorCode TSRemoveTrajectory(TS ts)
 
 /*@
    TSComputeRHSJacobian - Computes the Jacobian matrix that has been
-      set with `TSSetRHSJacobian()`.
+      set with TSSetRHSJacobian().
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 .  t - current timestep
 -  U - input vector
 
@@ -523,16 +518,15 @@ PetscErrorCode TSRemoveTrajectory(TS ts)
 +  A - Jacobian matrix
 -  B - optional preconditioning matrix
 
-   Level: developer
-
-   Note:
+   Notes:
    Most users should not need to explicitly call this routine, as it
    is used internally within the nonlinear solvers.
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSJacobian()`, `KSPSetOperators()`
+   Level: developer
+
+.seealso: `TSSetRHSJacobian()`, `KSPSetOperators()`
 @*/
-PetscErrorCode TSComputeRHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B)
-{
+PetscErrorCode TSComputeRHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B) {
   PetscObjectState Ustate;
   PetscObjectId    Uid;
   DM               dm;
@@ -573,28 +567,27 @@ PetscErrorCode TSComputeRHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B)
 }
 
 /*@
-   TSComputeRHSFunction - Evaluates the right-hand-side function for a `TS`
+   TSComputeRHSFunction - Evaluates the right-hand-side function.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 .  t - current time
 -  U - state vector
 
    Output Parameter:
 .  y - right hand side
 
-   Level: developer
-
    Note:
    Most users should not need to explicitly call this routine, as it
    is used internally within the nonlinear solvers.
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSFunction()`, `TSComputeIFunction()`
+   Level: developer
+
+.seealso: `TSSetRHSFunction()`, `TSComputeIFunction()`
 @*/
-PetscErrorCode TSComputeRHSFunction(TS ts, PetscReal t, Vec U, Vec y)
-{
+PetscErrorCode TSComputeRHSFunction(TS ts, PetscReal t, Vec U, Vec y) {
   TSRHSFunction rhsfunction;
   TSIFunction   ifunction;
   void         *ctx;
@@ -624,21 +617,24 @@ PetscErrorCode TSComputeRHSFunction(TS ts, PetscReal t, Vec U, Vec y)
 /*@
    TSComputeSolutionFunction - Evaluates the solution function.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 -  t - current time
 
    Output Parameter:
 .  U - the solution
 
+   Note:
+   Most users should not need to explicitly call this routine, as it
+   is used internally within the nonlinear solvers.
+
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSSetSolutionFunction()`, `TSSetRHSFunction()`, `TSComputeIFunction()`
+.seealso: `TSSetSolutionFunction()`, `TSSetRHSFunction()`, `TSComputeIFunction()`
 @*/
-PetscErrorCode TSComputeSolutionFunction(TS ts, PetscReal t, Vec U)
-{
+PetscErrorCode TSComputeSolutionFunction(TS ts, PetscReal t, Vec U) {
   TSSolutionFunction solutionfunction;
   void              *ctx;
   DM                 dm;
@@ -648,27 +644,31 @@ PetscErrorCode TSComputeSolutionFunction(TS ts, PetscReal t, Vec U)
   PetscValidHeaderSpecific(U, VEC_CLASSID, 3);
   PetscCall(TSGetDM(ts, &dm));
   PetscCall(DMTSGetSolutionFunction(dm, &solutionfunction, &ctx));
+
   if (solutionfunction) PetscCallBack("TS callback solution", (*solutionfunction)(ts, t, U, ctx));
   PetscFunctionReturn(0);
 }
 /*@
    TSComputeForcingFunction - Evaluates the forcing function.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 -  t - current time
 
    Output Parameter:
 .  U - the function value
 
+   Note:
+   Most users should not need to explicitly call this routine, as it
+   is used internally within the nonlinear solvers.
+
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSSetSolutionFunction()`, `TSSetRHSFunction()`, `TSComputeIFunction()`
+.seealso: `TSSetSolutionFunction()`, `TSSetRHSFunction()`, `TSComputeIFunction()`
 @*/
-PetscErrorCode TSComputeForcingFunction(TS ts, PetscReal t, Vec U)
-{
+PetscErrorCode TSComputeForcingFunction(TS ts, PetscReal t, Vec U) {
   void             *ctx;
   DM                dm;
   TSForcingFunction forcing;
@@ -683,8 +683,7 @@ PetscErrorCode TSComputeForcingFunction(TS ts, PetscReal t, Vec U)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSGetRHSVec_Private(TS ts, Vec *Frhs)
-{
+static PetscErrorCode TSGetRHSVec_Private(TS ts, Vec *Frhs) {
   Vec F;
 
   PetscFunctionBegin;
@@ -695,8 +694,7 @@ static PetscErrorCode TSGetRHSVec_Private(TS ts, Vec *Frhs)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TSGetRHSMats_Private(TS ts, Mat *Arhs, Mat *Brhs)
-{
+PetscErrorCode TSGetRHSMats_Private(TS ts, Mat *Arhs, Mat *Brhs) {
   Mat         A, B;
   TSIJacobian ijacobian;
 
@@ -747,19 +745,17 @@ PetscErrorCode TSGetRHSMats_Private(TS ts, Mat *Arhs, Mat *Brhs)
 /*@
    TSComputeIFunction - Evaluates the DAE residual written in implicit form F(t,U,Udot)=0
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 .  t - current time
 .  U - state vector
 .  Udot - time derivative of state vector
--  imex - flag indicates if the method is `TSIMEX` so that the RHSFunction should be kept separate
+-  imex - flag indicates if the method is IMEX so that the RHSFunction should be kept separate
 
    Output Parameter:
 .  Y - right hand side
-
-   Level: developer
 
    Note:
    Most users should not need to explicitly call this routine, as it
@@ -768,10 +764,11 @@ PetscErrorCode TSGetRHSMats_Private(TS ts, Mat *Arhs, Mat *Brhs)
    If the user did did not write their equations in implicit form, this
    function recasts them in implicit form.
 
-.seealso: [](chapter_ts), `TS`, `TSSetIFunction()`, `TSComputeRHSFunction()`
+   Level: developer
+
+.seealso: `TSSetIFunction()`, `TSComputeRHSFunction()`
 @*/
-PetscErrorCode TSComputeIFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec Y, PetscBool imex)
-{
+PetscErrorCode TSComputeIFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec Y, PetscBool imex) {
   TSIFunction   ifunction;
   TSRHSFunction rhsfunction;
   void         *ctx;
@@ -818,8 +815,7 @@ PetscErrorCode TSComputeIFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec Y, Pe
    This routine is needed when one switches from TSComputeIJacobian() to TSComputeRHSJacobian() because the Jacobian matrix may be shifted or scaled in TSComputeIJacobian().
 
 */
-static PetscErrorCode TSRecoverRHSJacobian(TS ts, Mat A, Mat B)
-{
+static PetscErrorCode TSRecoverRHSJacobian(TS ts, Mat A, Mat B) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscCheck(A == ts->Arhs, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "Invalid Amat");
@@ -839,22 +835,20 @@ static PetscErrorCode TSRecoverRHSJacobian(TS ts, Mat A, Mat B)
 /*@
    TSComputeIJacobian - Evaluates the Jacobian of the DAE
 
-   Collective on ts
+   Collective on TS
 
    Input
       Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 .  t - current timestep
 .  U - state vector
 .  Udot - time derivative of state vector
 .  shift - shift to apply, see note below
--  imex - flag indicates if the method is `TSIMEX` so that the RHSJacobian should be kept separate
+-  imex - flag indicates if the method is IMEX so that the RHSJacobian should be kept separate
 
    Output Parameters:
 +  A - Jacobian matrix
 -  B - matrix from which the preconditioner is constructed; often the same as A
-
-   Level: developer
 
    Notes:
    If F(t,U,Udot)=0 is the DAE, the required Jacobian is
@@ -864,10 +858,11 @@ static PetscErrorCode TSRecoverRHSJacobian(TS ts, Mat A, Mat B)
    Most users should not need to explicitly call this routine, as it
    is used internally within the nonlinear solvers.
 
-.seealso: [](chapter_ts), `TS`, `TSSetIJacobian()`
+   Level: developer
+
+.seealso: `TSSetIJacobian()`
 @*/
-PetscErrorCode TSComputeIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal shift, Mat A, Mat B, PetscBool imex)
-{
+PetscErrorCode TSComputeIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal shift, Mat A, Mat B, PetscBool imex) {
   TSIJacobian   ijacobian;
   TSRHSJacobian rhsjacobian;
   DM            dm;
@@ -983,10 +978,10 @@ PetscErrorCode TSComputeIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal
     TSSetRHSFunction - Sets the routine for evaluating the function,
     where U_t = G(t,u).
 
-    Logically Collective on ts
+    Logically Collective on TS
 
     Input Parameters:
-+   ts - the `TS` context obtained from `TSCreate()`
++   ts - the TS context obtained from TSCreate()
 .   r - vector to put the computed right hand side (or NULL to have it created)
 .   f - routine for evaluating the right-hand-side function
 -   ctx - [optional] user-defined context for private data for the
@@ -1003,13 +998,12 @@ $     PetscErrorCode f(TS ts,PetscReal t,Vec u,Vec F,void *ctx);
 
     Level: beginner
 
-    Note:
-    You must call this function or `TSSetIFunction()` to define your ODE. You cannot use this function when solving a DAE.
+    Notes:
+    You must call this function or TSSetIFunction() to define your ODE. You cannot use this function when solving a DAE.
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSJacobian()`, `TSSetIJacobian()`, `TSSetIFunction()`
+.seealso: `TSSetRHSJacobian()`, `TSSetIJacobian()`, `TSSetIFunction()`
 @*/
-PetscErrorCode TSSetRHSFunction(TS ts, Vec r, PetscErrorCode (*f)(TS, PetscReal, Vec, Vec, void *), void *ctx)
-{
+PetscErrorCode TSSetRHSFunction(TS ts, Vec r, PetscErrorCode (*f)(TS, PetscReal, Vec, Vec, void *), void *ctx) {
   SNES snes;
   Vec  ralloc = NULL;
   DM   dm;
@@ -1033,10 +1027,10 @@ PetscErrorCode TSSetRHSFunction(TS ts, Vec r, PetscErrorCode (*f)(TS, PetscReal,
 /*@C
     TSSetSolutionFunction - Provide a function that computes the solution of the ODE or DAE
 
-    Logically Collective on ts
+    Logically Collective on TS
 
     Input Parameters:
-+   ts - the `TS` context obtained from `TSCreate()`
++   ts - the TS context obtained from TSCreate()
 .   f - routine for evaluating the solution
 -   ctx - [optional] user-defined context for private data for the
           function evaluation routine (may be NULL)
@@ -1048,23 +1042,22 @@ $     PetscErrorCode f(TS ts,PetscReal t,Vec u,void *ctx);
 .   u - output vector
 -   ctx - [optional] user-defined function context
 
-    Options Database Keys:
-+  -ts_monitor_lg_error - create a graphical monitor of error history, requires user to have provided `TSSetSolutionFunction()`
--  -ts_monitor_draw_error - Monitor error graphically, requires user to have provided `TSSetSolutionFunction()`
-
-    Level: intermediate
+    Options Database:
++  -ts_monitor_lg_error - create a graphical monitor of error history, requires user to have provided TSSetSolutionFunction()
+-  -ts_monitor_draw_error - Monitor error graphically, requires user to have provided TSSetSolutionFunction()
 
     Notes:
     This routine is used for testing accuracy of time integration schemes when you already know the solution.
     If analytic solutions are not known for your system, consider using the Method of Manufactured Solutions to
     create closed-form solutions with non-physical forcing terms.
 
-    For low-dimensional problems solved in serial, such as small discrete systems, `TSMonitorLGError()` can be used to monitor the error history.
+    For low-dimensional problems solved in serial, such as small discrete systems, TSMonitorLGError() can be used to monitor the error history.
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSJacobian()`, `TSSetIJacobian()`, `TSComputeSolutionFunction()`, `TSSetForcingFunction()`, `TSSetSolution()`, `TSGetSolution()`, `TSMonitorLGError()`, `TSMonitorDrawError()`
+    Level: beginner
+
+.seealso: `TSSetRHSJacobian()`, `TSSetIJacobian()`, `TSComputeSolutionFunction()`, `TSSetForcingFunction()`, `TSSetSolution()`, `TSGetSolution()`, `TSMonitorLGError()`, `TSMonitorDrawError()`
 @*/
-PetscErrorCode TSSetSolutionFunction(TS ts, PetscErrorCode (*f)(TS, PetscReal, Vec, void *), void *ctx)
-{
+PetscErrorCode TSSetSolutionFunction(TS ts, PetscErrorCode (*f)(TS, PetscReal, Vec, void *), void *ctx) {
   DM dm;
 
   PetscFunctionBegin;
@@ -1077,10 +1070,10 @@ PetscErrorCode TSSetSolutionFunction(TS ts, PetscErrorCode (*f)(TS, PetscReal, V
 /*@C
     TSSetForcingFunction - Provide a function that computes a forcing term for a ODE or PDE
 
-    Logically Collective on ts
+    Logically Collective on TS
 
     Input Parameters:
-+   ts - the `TS` context obtained from `TSCreate()`
++   ts - the TS context obtained from TSCreate()
 .   func - routine for evaluating the forcing function
 -   ctx - [optional] user-defined context for private data for the
           function evaluation routine (may be NULL)
@@ -1092,8 +1085,6 @@ $     PetscErrorCode func (TS ts,PetscReal t,Vec f,void *ctx);
 .   f - output vector
 -   ctx - [optional] user-defined function context
 
-    Level: intermediate
-
     Notes:
     This routine is useful for testing accuracy of time integration schemes when using the Method of Manufactured Solutions to
     create closed-form solutions with a non-physical forcing term. It allows you to use the Method of Manufactored Solution without directly editing the
@@ -1104,12 +1095,13 @@ $     PetscErrorCode func (TS ts,PetscReal t,Vec f,void *ctx);
     This forcing function does not depend on the solution to the equations, it can only depend on spatial location, time, and possibly parameters, the
     parameters can be passed in the ctx variable.
 
-    For low-dimensional problems solved in serial, such as small discrete systems, `TSMonitorLGError()` can be used to monitor the error history.
+    For low-dimensional problems solved in serial, such as small discrete systems, TSMonitorLGError() can be used to monitor the error history.
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSJacobian()`, `TSSetIJacobian()`, `TSComputeSolutionFunction()`, `TSSetSolutionFunction()`
+    Level: beginner
+
+.seealso: `TSSetRHSJacobian()`, `TSSetIJacobian()`, `TSComputeSolutionFunction()`, `TSSetSolutionFunction()`
 @*/
-PetscErrorCode TSSetForcingFunction(TS ts, TSForcingFunction func, void *ctx)
-{
+PetscErrorCode TSSetForcingFunction(TS ts, TSForcingFunction func, void *ctx) {
   DM dm;
 
   PetscFunctionBegin;
@@ -1123,10 +1115,10 @@ PetscErrorCode TSSetForcingFunction(TS ts, TSForcingFunction func, void *ctx)
    TSSetRHSJacobian - Sets the function to compute the Jacobian of G,
    where U_t = G(U,t), as well as the location to store the matrix.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts  - the `TS` context obtained from `TSCreate()`
++  ts  - the TS context obtained from TSCreate()
 .  Amat - (approximate) Jacobian matrix
 .  Pmat - matrix from which preconditioner is to be constructed (usually the same as Amat)
 .  f   - the Jacobian evaluation routine
@@ -1142,18 +1134,18 @@ $     PetscErrorCode f(TS ts,PetscReal t,Vec u,Mat A,Mat B,void *ctx);
 .  Pmat - matrix from which preconditioner is to be constructed (usually the same as Amat)
 -  ctx - [optional] user-defined context for matrix evaluation routine
 
-   Level: beginner
-
    Notes:
    You must set all the diagonal entries of the matrices, if they are zero you must still set them with a zero value
 
-   The `TS` solver may modify the nonzero structure and the entries of the matrices Amat and Pmat between the calls to f()
+   The TS solver may modify the nonzero structure and the entries of the matrices Amat and Pmat between the calls to f()
    You should not assume the values are the same in the next call to f() as you set them in the previous call.
 
-.seealso: [](chapter_ts), `TS`, `SNESComputeJacobianDefaultColor()`, `TSSetRHSFunction()`, `TSRHSJacobianSetReuse()`, `TSSetIJacobian()`
+   Level: beginner
+
+.seealso: `SNESComputeJacobianDefaultColor()`, `TSSetRHSFunction()`, `TSRHSJacobianSetReuse()`, `TSSetIJacobian()`
+
 @*/
-PetscErrorCode TSSetRHSJacobian(TS ts, Mat Amat, Mat Pmat, TSRHSJacobian f, void *ctx)
-{
+PetscErrorCode TSSetRHSJacobian(TS ts, Mat Amat, Mat Pmat, TSRHSJacobian f, void *ctx) {
   SNES        snes;
   DM          dm;
   TSIJacobian ijacobian;
@@ -1186,10 +1178,10 @@ PetscErrorCode TSSetRHSJacobian(TS ts, Mat Amat, Mat Pmat, TSRHSJacobian f, void
 /*@C
    TSSetIFunction - Set the function to compute F(t,U,U_t) where F() = 0 is the DAE to be solved.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts  - the `TS` context obtained from `TSCreate()`
++  ts  - the TS context obtained from TSCreate()
 .  r   - vector to hold the residual (or NULL to have it created internally)
 .  f   - the function evaluation routine
 -  ctx - user-defined context for private data for the function evaluation routine (may be NULL)
@@ -1203,15 +1195,14 @@ $     PetscErrorCode f(TS ts,PetscReal t,Vec u,Vec u_t,Vec F,ctx);
 .  F   - function vector
 -  ctx - [optional] user-defined context for matrix evaluation routine
 
+   Important:
+   The user MUST call either this routine or TSSetRHSFunction() to define the ODE.  When solving DAEs you must use this function.
+
    Level: beginner
 
-   Note:
-   The user MUST call either this routine or `TSSetRHSFunction()` to define the ODE.  When solving DAEs you must use this function.
-
-.seealso: [](chapter_ts), `TS`, `TSSetRHSJacobian()`, `TSSetRHSFunction()`, `TSSetIJacobian()`
+.seealso: `TSSetRHSJacobian()`, `TSSetRHSFunction()`, `TSSetIJacobian()`
 @*/
-PetscErrorCode TSSetIFunction(TS ts, Vec r, TSIFunction f, void *ctx)
-{
+PetscErrorCode TSSetIFunction(TS ts, Vec r, TSIFunction f, void *ctx) {
   SNES snes;
   Vec  ralloc = NULL;
   DM   dm;
@@ -1239,7 +1230,7 @@ PetscErrorCode TSSetIFunction(TS ts, Vec r, TSIFunction f, void *ctx)
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context
+.  ts - the TS context
 
    Output Parameters:
 +  r - vector to hold residual (or NULL)
@@ -1248,10 +1239,9 @@ PetscErrorCode TSSetIFunction(TS ts, Vec r, TSIFunction f, void *ctx)
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSSetIFunction()`, `SNESGetFunction()`
+.seealso: `TSSetIFunction()`, `SNESGetFunction()`
 @*/
-PetscErrorCode TSGetIFunction(TS ts, Vec *r, TSIFunction *func, void **ctx)
-{
+PetscErrorCode TSGetIFunction(TS ts, Vec *r, TSIFunction *func, void **ctx) {
   SNES snes;
   DM   dm;
 
@@ -1270,7 +1260,7 @@ PetscErrorCode TSGetIFunction(TS ts, Vec *r, TSIFunction *func, void **ctx)
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context
+.  ts - the TS context
 
    Output Parameters:
 +  r - vector to hold computed right hand side (or NULL)
@@ -1279,10 +1269,9 @@ PetscErrorCode TSGetIFunction(TS ts, Vec *r, TSIFunction *func, void **ctx)
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSFunction()`, `SNESGetFunction()`
+.seealso: `TSSetRHSFunction()`, `SNESGetFunction()`
 @*/
-PetscErrorCode TSGetRHSFunction(TS ts, Vec *r, TSRHSFunction *func, void **ctx)
-{
+PetscErrorCode TSGetRHSFunction(TS ts, Vec *r, TSRHSFunction *func, void **ctx) {
   SNES snes;
   DM   dm;
 
@@ -1297,12 +1286,12 @@ PetscErrorCode TSGetRHSFunction(TS ts, Vec *r, TSRHSFunction *func, void **ctx)
 
 /*@C
    TSSetIJacobian - Set the function to compute the matrix dF/dU + a*dF/dU_t where F(t,U,U_t) is the function
-        provided with `TSSetIFunction()`.
+        provided with TSSetIFunction().
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts  - the `TS` context obtained from `TSCreate()`
++  ts  - the TS context obtained from TSCreate()
 .  Amat - (approximate) Jacobian matrix
 .  Pmat - matrix used to compute preconditioner (usually the same as Amat)
 .  f   - the Jacobian evaluation routine
@@ -1319,13 +1308,11 @@ $    PetscErrorCode f(TS ts,PetscReal t,Vec U,Vec U_t,PetscReal a,Mat Amat,Mat P
 .  Pmat - matrix used for constructing preconditioner, usually the same as Amat
 -  ctx  - [optional] user-defined context for matrix evaluation routine
 
-   Level: beginner
-
    Notes:
-   The matrices Amat and Pmat are exactly the matrices that are used by `SNES` for the nonlinear solve.
+   The matrices Amat and Pmat are exactly the matrices that are used by SNES for the nonlinear solve.
 
-   If you know the operator Amat has a null space you can use `MatSetNullSpace()` and `MatSetTransposeNullSpace()` to supply the null
-   space to Amat and the `KSP` solvers will automatically use that null space as needed during the solution process.
+   If you know the operator Amat has a null space you can use MatSetNullSpace() and MatSetTransposeNullSpace() to supply the null
+   space to Amat and the KSP solvers will automatically use that null space as needed during the solution process.
 
    The matrix dF/dU + a*dF/dU_t you provide turns out to be
    the Jacobian of F(t,U,W+a*U) where F(t,U,U_t) = 0 is the DAE to be solved.
@@ -1339,10 +1326,12 @@ $    PetscErrorCode f(TS ts,PetscReal t,Vec U,Vec U_t,PetscReal a,Mat Amat,Mat P
    The TS solver may modify the nonzero structure and the entries of the matrices Amat and Pmat between the calls to f()
    You should not assume the values are the same in the next call to f() as you set them in the previous call.
 
-.seealso: [](chapter_ts), `TS`, `TSSetIFunction()`, `TSSetRHSJacobian()`, `SNESComputeJacobianDefaultColor()`, `SNESComputeJacobianDefault()`, `TSSetRHSFunction()`
+   Level: beginner
+
+.seealso: `TSSetIFunction()`, `TSSetRHSJacobian()`, `SNESComputeJacobianDefaultColor()`, `SNESComputeJacobianDefault()`, `TSSetRHSFunction()`
+
 @*/
-PetscErrorCode TSSetIJacobian(TS ts, Mat Amat, Mat Pmat, TSIJacobian f, void *ctx)
-{
+PetscErrorCode TSSetIJacobian(TS ts, Mat Amat, Mat Pmat, TSIJacobian f, void *ctx) {
   SNES snes;
   DM   dm;
 
@@ -1362,7 +1351,7 @@ PetscErrorCode TSSetIJacobian(TS ts, Mat Amat, Mat Pmat, TSIJacobian f, void *ct
 }
 
 /*@
-   TSRHSJacobianSetReuse - restore RHS Jacobian before re-evaluating.  Without this flag, `TS` will change the sign and
+   TSRHSJacobianSetReuse - restore RHS Jacobian before re-evaluating.  Without this flag, TS will change the sign and
    shift the RHS Jacobian for a finite-time-step implicit solve, in which case the user function will need to recompute
    the entire Jacobian.  The reuse flag must be set if the evaluation function will assume that the matrix entries have
    not been changed by the TS.
@@ -1370,15 +1359,14 @@ PetscErrorCode TSSetIJacobian(TS ts, Mat Amat, Mat Pmat, TSIJacobian f, void *ct
    Logically Collective
 
    Input Parameters:
-+  ts - `TS` context obtained from `TSCreate()`
--  reuse - `PETSC_TRUE` if the RHS Jacobian
++  ts - TS context obtained from TSCreate()
+-  reuse - PETSC_TRUE if the RHS Jacobian
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSJacobian()`, `TSComputeRHSJacobianConstant()`
+.seealso: `TSSetRHSJacobian()`, `TSComputeRHSJacobianConstant()`
 @*/
-PetscErrorCode TSRHSJacobianSetReuse(TS ts, PetscBool reuse)
-{
+PetscErrorCode TSRHSJacobianSetReuse(TS ts, PetscBool reuse) {
   PetscFunctionBegin;
   ts->rhsjacobian.reuse = reuse;
   PetscFunctionReturn(0);
@@ -1387,10 +1375,10 @@ PetscErrorCode TSRHSJacobianSetReuse(TS ts, PetscBool reuse)
 /*@C
    TSSetI2Function - Set the function to compute F(t,U,U_t,U_tt) where F = 0 is the DAE to be solved.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts  - the `TS` context obtained from `TSCreate()`
++  ts  - the TS context obtained from TSCreate()
 .  F   - vector to hold the residual (or NULL to have it created internally)
 .  fun - the function evaluation routine
 -  ctx - user-defined context for private data for the function evaluation routine (may be NULL)
@@ -1407,10 +1395,9 @@ $     PetscErrorCode fun(TS ts,PetscReal t,Vec U,Vec U_t,Vec U_tt,Vec F,ctx);
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`, `TSSetI2Jacobian()`, `TSSetIFunction()`, `TSCreate()`, `TSSetRHSFunction()`
+.seealso: `TSSetI2Jacobian()`, `TSSetIFunction()`, `TSCreate()`, `TSSetRHSFunction()`
 @*/
-PetscErrorCode TSSetI2Function(TS ts, Vec F, TSI2Function fun, void *ctx)
-{
+PetscErrorCode TSSetI2Function(TS ts, Vec F, TSI2Function fun, void *ctx) {
   DM dm;
 
   PetscFunctionBegin;
@@ -1428,7 +1415,7 @@ PetscErrorCode TSSetI2Function(TS ts, Vec F, TSI2Function fun, void *ctx)
   Not Collective
 
   Input Parameter:
-. ts - the `TS` context
+. ts - the TS context
 
   Output Parameters:
 + r - vector to hold residual (or NULL)
@@ -1437,10 +1424,9 @@ PetscErrorCode TSSetI2Function(TS ts, Vec F, TSI2Function fun, void *ctx)
 
   Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSSetIFunction()`, `SNESGetFunction()`, `TSCreate()`
+.seealso: `TSSetIFunction()`, `SNESGetFunction()`, `TSCreate()`
 @*/
-PetscErrorCode TSGetI2Function(TS ts, Vec *r, TSI2Function *fun, void **ctx)
-{
+PetscErrorCode TSGetI2Function(TS ts, Vec *r, TSI2Function *fun, void **ctx) {
   SNES snes;
   DM   dm;
 
@@ -1455,12 +1441,12 @@ PetscErrorCode TSGetI2Function(TS ts, Vec *r, TSI2Function *fun, void **ctx)
 
 /*@C
    TSSetI2Jacobian - Set the function to compute the matrix dF/dU + v*dF/dU_t  + a*dF/dU_tt
-        where F(t,U,U_t,U_tt) is the function you provided with `TSSetI2Function()`.
+        where F(t,U,U_t,U_tt) is the function you provided with TSSetI2Function().
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts  - the `TS` context obtained from `TSCreate()`
++  ts  - the TS context obtained from TSCreate()
 .  J   - Jacobian matrix
 .  P   - preconditioning matrix for J (may be same as J)
 .  jac - the Jacobian evaluation routine
@@ -1479,20 +1465,19 @@ $    PetscErrorCode jac(TS ts,PetscReal t,Vec U,Vec U_t,Vec U_tt,PetscReal v,Pet
 .  P    - preconditioning matrix for J, may be same as J
 -  ctx  - [optional] user-defined context for matrix evaluation routine
 
-   Level: beginner
-
    Notes:
-   The matrices J and P are exactly the matrices that are used by `SNES` for the nonlinear solve.
+   The matrices J and P are exactly the matrices that are used by SNES for the nonlinear solve.
 
    The matrix dF/dU + v*dF/dU_t + a*dF/dU_tt you provide turns out to be
    the Jacobian of G(U) = F(t,U,W+v*U,W'+a*U) where F(t,U,U_t,U_tt) = 0 is the DAE to be solved.
    The time integrator internally approximates U_t by W+v*U and U_tt by W'+a*U  where the positive "shift"
    parameters 'v' and 'a' and vectors W, W' depend on the integration method, step size, and past states.
 
-.seealso: [](chapter_ts), `TS`, `TSSetI2Function()`, `TSGetI2Jacobian()`
+   Level: beginner
+
+.seealso: `TSSetI2Function()`, `TSGetI2Jacobian()`
 @*/
-PetscErrorCode TSSetI2Jacobian(TS ts, Mat J, Mat P, TSI2Jacobian jac, void *ctx)
-{
+PetscErrorCode TSSetI2Jacobian(TS ts, Mat J, Mat P, TSI2Jacobian jac, void *ctx) {
   DM dm;
 
   PetscFunctionBegin;
@@ -1508,10 +1493,10 @@ PetscErrorCode TSSetI2Jacobian(TS ts, Mat J, Mat P, TSI2Jacobian jac, void *ctx)
 /*@C
   TSGetI2Jacobian - Returns the implicit Jacobian at the present timestep.
 
-  Not Collective, but parallel objects are returned if `TS` is parallel
+  Not Collective, but parallel objects are returned if TS is parallel
 
   Input Parameter:
-. ts  - The `TS` context obtained from `TSCreate()`
+. ts  - The TS context obtained from TSCreate()
 
   Output Parameters:
 + J  - The (approximate) Jacobian of F(t,U,U_t,U_tt)
@@ -1519,15 +1504,15 @@ PetscErrorCode TSSetI2Jacobian(TS ts, Mat J, Mat P, TSI2Jacobian jac, void *ctx)
 . jac - The function to compute the Jacobian matrices
 - ctx - User-defined context for Jacobian evaluation routine
 
-  Level: advanced
-
   Notes:
     You can pass in NULL for any return argument you do not need.
 
-.seealso: [](chapter_ts), `TS`, `TSGetTimeStep()`, `TSGetMatrices()`, `TSGetTime()`, `TSGetStepNumber()`, `TSSetI2Jacobian()`, `TSGetI2Function()`, `TSCreate()`
+  Level: advanced
+
+.seealso: `TSGetTimeStep()`, `TSGetMatrices()`, `TSGetTime()`, `TSGetStepNumber()`, `TSSetI2Jacobian()`, `TSGetI2Function()`, `TSCreate()`
+
 @*/
-PetscErrorCode TSGetI2Jacobian(TS ts, Mat *J, Mat *P, TSI2Jacobian *jac, void **ctx)
-{
+PetscErrorCode TSGetI2Jacobian(TS ts, Mat *J, Mat *P, TSI2Jacobian *jac, void **ctx) {
   SNES snes;
   DM   dm;
 
@@ -1543,10 +1528,10 @@ PetscErrorCode TSGetI2Jacobian(TS ts, Mat *J, Mat *P, TSI2Jacobian *jac, void **
 /*@
   TSComputeI2Function - Evaluates the DAE residual written in implicit form F(t,U,U_t,U_tt) = 0
 
-  Collective on ts
+  Collective on TS
 
   Input Parameters:
-+ ts - the `TS` context
++ ts - the TS context
 . t - current time
 . U - state vector
 . V - time derivative of state vector (U_t)
@@ -1555,16 +1540,15 @@ PetscErrorCode TSGetI2Jacobian(TS ts, Mat *J, Mat *P, TSI2Jacobian *jac, void **
   Output Parameter:
 . F - the residual vector
 
-  Level: developer
-
   Note:
   Most users should not need to explicitly call this routine, as it
   is used internally within the nonlinear solvers.
 
-.seealso: [](chapter_ts), `TS`, `TSSetI2Function()`, `TSGetI2Function()`
+  Level: developer
+
+.seealso: `TSSetI2Function()`, `TSGetI2Function()`
 @*/
-PetscErrorCode TSComputeI2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F)
-{
+PetscErrorCode TSComputeI2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F) {
   DM            dm;
   TSI2Function  I2Function;
   void         *ctx;
@@ -1604,10 +1588,10 @@ PetscErrorCode TSComputeI2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec 
 /*@
   TSComputeI2Jacobian - Evaluates the Jacobian of the DAE
 
-  Collective on ts
+  Collective on TS
 
   Input Parameters:
-+ ts - the `TS` context
++ ts - the TS context
 . t - current timestep
 . U - state vector
 . V - time derivative of state vector
@@ -1619,8 +1603,6 @@ PetscErrorCode TSComputeI2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec 
 + J - Jacobian matrix
 - P - optional preconditioning matrix
 
-  Level: developer
-
   Notes:
   If F(t,U,V,A)=0 is the DAE, the required Jacobian is
 
@@ -1629,10 +1611,11 @@ PetscErrorCode TSComputeI2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec 
   Most users should not need to explicitly call this routine, as it
   is used internally within the nonlinear solvers.
 
-.seealso: [](chapter_ts), `TS`, `TSSetI2Jacobian()`
+  Level: developer
+
+.seealso: `TSSetI2Jacobian()`
 @*/
-PetscErrorCode TSComputeI2Jacobian(TS ts, PetscReal t, Vec U, Vec V, Vec A, PetscReal shiftV, PetscReal shiftA, Mat J, Mat P)
-{
+PetscErrorCode TSComputeI2Jacobian(TS ts, PetscReal t, Vec U, Vec V, Vec A, PetscReal shiftV, PetscReal shiftA, Mat J, Mat P) {
   DM            dm;
   TSI2Jacobian  I2Jacobian;
   void         *ctx;
@@ -1690,7 +1673,7 @@ $     PetscErrorCode tvar(TS ts,Vec p,Vec c,void *ctx);
    Level: advanced
 
    Notes:
-   This is typically used to transform from primitive to conservative variables so that a time integrator (e.g., `TSBDF`)
+   This is typically used to transform from primitive to conservative variables so that a time integrator (e.g., TSBDF)
    can be conservative.  In this context, primitive variables P are used to model the state (e.g., because they lead to
    well-conditioned formulations even in limiting cases such as low-Mach or zero porosity).  The transient variable is
    C(P), specified by calling this function.  An IFunction thus receives arguments (P, Cdot) and the IJacobian must be
@@ -1698,10 +1681,9 @@ $     PetscErrorCode tvar(TS ts,Vec p,Vec c,void *ctx);
 
      dF/dP + shift * dF/dCdot dC/dP.
 
-.seealso: [](chapter_ts), `TS`, `TSBDF`, `DMTSSetTransientVariable()`, `DMTSGetTransientVariable()`, `TSSetIFunction()`, `TSSetIJacobian()`
+.seealso: `DMTSSetTransientVariable()`, `DMTSGetTransientVariable()`, `TSSetIFunction()`, `TSSetIJacobian()`
 @*/
-PetscErrorCode TSSetTransientVariable(TS ts, TSTransientVariable tvar, void *ctx)
-{
+PetscErrorCode TSSetTransientVariable(TS ts, TSTransientVariable tvar, void *ctx) {
   DM dm;
 
   PetscFunctionBegin;
@@ -1723,17 +1705,16 @@ PetscErrorCode TSSetTransientVariable(TS ts, TSTransientVariable tvar, void *ctx
    Output Parameters:
 .  C - transient (conservative) variable
 
-   Level: developer
-
-   Developer Note:
-   If `DMTSSetTransientVariable()` has not been called, then C is not modified in this routine and C = NULL is allowed.
-   This makes it safe to call without a guard.  One can use `TSHasTransientVariable()` to check if transient variables are
+   Developer Notes:
+   If DMTSSetTransientVariable() has not been called, then C is not modified in this routine and C=NULL is allowed.
+   This makes it safe to call without a guard.  One can use TSHasTransientVariable() to check if transient variables are
    being used.
 
-.seealso: [](chapter_ts), `TS`, `TSBDF`, `DMTSSetTransientVariable()`, `TSComputeIFunction()`, `TSComputeIJacobian()`
+   Level: developer
+
+.seealso: `DMTSSetTransientVariable()`, `TSComputeIFunction()`, `TSComputeIJacobian()`
 @*/
-PetscErrorCode TSComputeTransientVariable(TS ts, Vec U, Vec C)
-{
+PetscErrorCode TSComputeTransientVariable(TS ts, Vec U, Vec C) {
   DM   dm;
   DMTS dmts;
 
@@ -1758,14 +1739,13 @@ PetscErrorCode TSComputeTransientVariable(TS ts, Vec U, Vec C)
 .  ts - TS on which to compute
 
    Output Parameters:
-.  has - `PETSC_TRUE` if transient variables have been set
+.  has - PETSC_TRUE if transient variables have been set
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSBDF`, `DMTSSetTransientVariable()`, `TSComputeTransientVariable()`
+.seealso: `DMTSSetTransientVariable()`, `TSComputeTransientVariable()`
 @*/
-PetscErrorCode TSHasTransientVariable(TS ts, PetscBool *has)
-{
+PetscErrorCode TSHasTransientVariable(TS ts, PetscBool *has) {
   DM   dm;
   DMTS dmts;
 
@@ -1779,21 +1759,19 @@ PetscErrorCode TSHasTransientVariable(TS ts, PetscBool *has)
 
 /*@
    TS2SetSolution - Sets the initial solution and time derivative vectors
-   for use by the `TS` routines handling second order equations.
+   for use by the TS routines handling second order equations.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
++  ts - the TS context obtained from TSCreate()
 .  u - the solution vector
 -  v - the time derivative vector
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`
 @*/
-PetscErrorCode TS2SetSolution(TS ts, Vec u, Vec v)
-{
+PetscErrorCode TS2SetSolution(TS ts, Vec u, Vec v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidHeaderSpecific(u, VEC_CLASSID, 2);
@@ -1811,10 +1789,10 @@ PetscErrorCode TS2SetSolution(TS ts, Vec u, Vec v)
    that you are evaluating in order to move to the new timestep. This vector not
    changed until the solution at the next timestep has been calculated.
 
-   Not Collective, but Vec returned is parallel if `TS` is parallel
+   Not Collective, but Vec returned is parallel if TS is parallel
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameters:
 +  u - the vector containing the solution
@@ -1822,10 +1800,10 @@ PetscErrorCode TS2SetSolution(TS ts, Vec u, Vec v)
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TS2SetSolution()`, `TSGetTimeStep()`, `TSGetTime()`
+.seealso: `TS2SetSolution()`, `TSGetTimeStep()`, `TSGetTime()`
+
 @*/
-PetscErrorCode TS2GetSolution(TS ts, Vec *u, Vec *v)
-{
+PetscErrorCode TS2GetSolution(TS ts, Vec *u, Vec *v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (u) PetscValidPointer(u, 2);
@@ -1836,24 +1814,32 @@ PetscErrorCode TS2GetSolution(TS ts, Vec *u, Vec *v)
 }
 
 /*@C
-  TSLoad - Loads a `TS` that has been stored in binary  with `TSView()`.
+  TSLoad - Loads a KSP that has been stored in binary  with KSPView().
 
   Collective on PetscViewer
 
   Input Parameters:
-+ newdm - the newly loaded `TS`, this needs to have been created with `TSCreate()` or
-           some related function before a call to `TSLoad()`.
-- viewer - binary file viewer, obtained from `PetscViewerBinaryOpen()`
++ newdm - the newly loaded TS, this needs to have been created with TSCreate() or
+           some related function before a call to TSLoad().
+- viewer - binary file viewer, obtained from PetscViewerBinaryOpen()
 
    Level: intermediate
 
-  Note:
- The type is determined by the data in the file, any type set into the `TS` before this call is ignored.
+  Notes:
+   The type is determined by the data in the file, any type set into the TS before this call is ignored.
 
-.seealso: [](chapter_ts), `TS`, `PetscViewer`, `PetscViewerBinaryOpen()`, `TSView()`, `MatLoad()`, `VecLoad()`
+  Notes for advanced users:
+  Most users should not need to know the details of the binary storage
+  format, since TSLoad() and TSView() completely hide these details.
+  But for anyone who's interested, the standard binary matrix storage
+  format is
+.vb
+     has not yet been determined
+.ve
+
+.seealso: `PetscViewerBinaryOpen()`, `TSView()`, `MatLoad()`, `VecLoad()`
 @*/
-PetscErrorCode TSLoad(TS ts, PetscViewer viewer)
-{
+PetscErrorCode TSLoad(TS ts, PetscViewer viewer) {
   PetscBool isbinary;
   PetscInt  classid;
   char      type[256];
@@ -1883,62 +1869,59 @@ PetscErrorCode TSLoad(TS ts, PetscViewer viewer)
 
 #include <petscdraw.h>
 #if defined(PETSC_HAVE_SAWS)
-  #include <petscviewersaws.h>
+#include <petscviewersaws.h>
 #endif
 
 /*@C
-   TSViewFromOptions - View a `TS` based on values in the options database
+   TSViewFromOptions - View from Options
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
-.  obj - Optional object that provides the prefix for the options database keys
--  name - command line option string to be passed by user
++  A - the application ordering context
+.  obj - Optional object
+-  name - command line option
 
    Level: intermediate
-
-.seealso: [](chapter_ts), `TS`, `TSView`, `PetscObjectViewFromOptions()`, `TSCreate()`
+.seealso: `TS`, `TSView`, `PetscObjectViewFromOptions()`, `TSCreate()`
 @*/
-PetscErrorCode TSViewFromOptions(TS ts, PetscObject obj, const char name[])
-{
+PetscErrorCode TSViewFromOptions(TS A, PetscObject obj, const char name[]) {
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
-  PetscCall(PetscObjectViewFromOptions((PetscObject)ts, obj, name));
+  PetscValidHeaderSpecific(A, TS_CLASSID, 1);
+  PetscCall(PetscObjectViewFromOptions((PetscObject)A, obj, name));
   PetscFunctionReturn(0);
 }
 
 /*@C
-    TSView - Prints the `TS` data structure.
+    TSView - Prints the TS data structure.
 
-    Collective on ts
+    Collective on TS
 
     Input Parameters:
-+   ts - the `TS` context obtained from `TSCreate()`
++   ts - the TS context obtained from TSCreate()
 -   viewer - visualization context
 
     Options Database Key:
-.   -ts_view - calls `TSView()` at end of `TSStep()`
-
-    Level: beginner
+.   -ts_view - calls TSView() at end of TSStep()
 
     Notes:
     The available visualization contexts include
-+     `PETSC_VIEWER_STDOUT_SELF` - standard output (default)
--     `PETSC_VIEWER_STDOUT_WORLD` - synchronized standard
++     PETSC_VIEWER_STDOUT_SELF - standard output (default)
+-     PETSC_VIEWER_STDOUT_WORLD - synchronized standard
          output where only the first processor opens
          the file.  All other processors send their
          data to the first processor to print.
 
     The user can open an alternative visualization context with
-    `PetscViewerASCIIOpen()` - output to a specified file.
+    PetscViewerASCIIOpen() - output to a specified file.
 
-    In the debugger you can do call `TSView`(ts,0) to display the `TS` solver. (The same holds for any PETSc object viewer).
+    In the debugger you can do "call TSView(ts,0)" to display the TS solver. (The same holds for any PETSc object viewer).
 
-.seealso: [](chapter_ts), `TS`, `PetscViewer`, `PetscViewerASCIIOpen()`
+    Level: beginner
+
+.seealso: `PetscViewerASCIIOpen()`
 @*/
-PetscErrorCode TSView(TS ts, PetscViewer viewer)
-{
+PetscErrorCode TSView(TS ts, PetscViewer viewer) {
   TSType    type;
   PetscBool iascii, isstring, isundials, isbinary, isdraw;
   DMTS      sdm;
@@ -2063,22 +2046,21 @@ PetscErrorCode TSView(TS ts, PetscViewer viewer)
    TSSetApplicationContext - Sets an optional user-defined context for
    the timesteppers.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
--  usrP -  user context
++  ts - the TS context obtained from TSCreate()
+-  usrP - optional user context
 
-   Level: intermediate
-
-   Fortran Note:
+   Fortran Notes:
     To use this from Fortran you must write a Fortran interface definition for this
     function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
 
-.seealso: [](chapter_ts), `TS`, `TSGetApplicationContext()`
+   Level: intermediate
+
+.seealso: `TSGetApplicationContext()`
 @*/
-PetscErrorCode TSSetApplicationContext(TS ts, void *usrP)
-{
+PetscErrorCode TSSetApplicationContext(TS ts, void *usrP) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->user = usrP;
@@ -2087,26 +2069,25 @@ PetscErrorCode TSSetApplicationContext(TS ts, void *usrP)
 
 /*@
     TSGetApplicationContext - Gets the user-defined context for the
-    timestepper that was set with `TSSetApplicationContext()`
+    timestepper.
 
     Not Collective
 
     Input Parameter:
-.   ts - the `TS` context obtained from `TSCreate()`
+.   ts - the TS context obtained from TSCreate()
 
     Output Parameter:
 .   usrP - user context
 
-    Level: intermediate
-
-    Fortran Note:
+   Fortran Notes:
     To use this from Fortran you must write a Fortran interface definition for this
     function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
 
-.seealso: [](chapter_ts), `TS`, `TSSetApplicationContext()`
+    Level: intermediate
+
+.seealso: `TSSetApplicationContext()`
 @*/
-PetscErrorCode TSGetApplicationContext(TS ts, void *usrP)
-{
+PetscErrorCode TSGetApplicationContext(TS ts, void *usrP) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   *(void **)usrP = ts->user;
@@ -2114,22 +2095,21 @@ PetscErrorCode TSGetApplicationContext(TS ts, void *usrP)
 }
 
 /*@
-   TSGetStepNumber - Gets the number of time steps completed.
+   TSGetStepNumber - Gets the number of steps completed.
 
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  steps - number of steps completed so far
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSGetTime()`, `TSGetTimeStep()`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostStage()`, `TSSetPostStep()`
+.seealso: `TSGetTime()`, `TSGetTimeStep()`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostStage()`, `TSSetPostStep()`
 @*/
-PetscErrorCode TSGetStepNumber(TS ts, PetscInt *steps)
-{
+PetscErrorCode TSGetStepNumber(TS ts, PetscInt *steps) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidIntPointer(steps, 2);
@@ -2140,28 +2120,27 @@ PetscErrorCode TSGetStepNumber(TS ts, PetscInt *steps)
 /*@
    TSSetStepNumber - Sets the number of steps completed.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 -  steps - number of steps completed so far
 
-   Level: developer
-
-   Note:
-   For most uses of the `TS` solvers the user need not explicitly call
-   `TSSetStepNumber()`, as the step counter is appropriately updated in
-   `TSSolve()`/`TSStep()`/`TSRollBack()`. Power users may call this routine to
+   Notes:
+   For most uses of the TS solvers the user need not explicitly call
+   TSSetStepNumber(), as the step counter is appropriately updated in
+   TSSolve()/TSStep()/TSRollBack(). Power users may call this routine to
    reinitialize timestepping by setting the step counter to zero (and time
    to the initial time) to solve a similar problem with different initial
    conditions or parameters. Other possible use case is to continue
    timestepping from a previously interrupted run in such a way that TS
    monitors will be called with a initial nonzero step counter.
 
-.seealso: [](chapter_ts), `TS`, `TSGetStepNumber()`, `TSSetTime()`, `TSSetTimeStep()`, `TSSetSolution()`
+   Level: advanced
+
+.seealso: `TSGetStepNumber()`, `TSSetTime()`, `TSSetTimeStep()`, `TSSetSolution()`
 @*/
-PetscErrorCode TSSetStepNumber(TS ts, PetscInt steps)
-{
+PetscErrorCode TSSetStepNumber(TS ts, PetscInt steps) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidLogicalCollectiveInt(ts, steps, 2);
@@ -2174,18 +2153,18 @@ PetscErrorCode TSSetStepNumber(TS ts, PetscInt steps)
    TSSetTimeStep - Allows one to reset the timestep at any time,
    useful for simple pseudo-timestepping codes.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
++  ts - the TS context obtained from TSCreate()
 -  time_step - the size of the timestep
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSPSEUDO`, `TSGetTimeStep()`, `TSSetTime()`
+.seealso: `TSGetTimeStep()`, `TSSetTime()`
+
 @*/
-PetscErrorCode TSSetTimeStep(TS ts, PetscReal time_step)
-{
+PetscErrorCode TSSetTimeStep(TS ts, PetscReal time_step) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidLogicalCollectiveReal(ts, time_step, 2);
@@ -2196,32 +2175,29 @@ PetscErrorCode TSSetTimeStep(TS ts, PetscReal time_step)
 /*@
    TSSetExactFinalTime - Determines whether to adapt the final time step to
      match the exact final time, interpolate solution to the exact final time,
-     or just return at the final time `TS` computed.
+     or just return at the final time TS computed.
 
-  Logically Collective on ts
+  Logically Collective on TS
 
    Input Parameters:
 +   ts - the time-step context
 -   eftopt - exact final time option
-.vb
-  TS_EXACTFINALTIME_STEPOVER    - Don't do anything if final time is exceeded
-  TS_EXACTFINALTIME_INTERPOLATE - Interpolate back to final time
-  TS_EXACTFINALTIME_MATCHSTEP - Adapt final time step to match the final time
-.ve
 
-   Options Database Key:
+$  TS_EXACTFINALTIME_STEPOVER    - Don't do anything if final time is exceeded
+$  TS_EXACTFINALTIME_INTERPOLATE - Interpolate back to final time
+$  TS_EXACTFINALTIME_MATCHSTEP - Adapt final time step to match the final time
+
+   Options Database:
 .   -ts_exact_final_time <stepover,interpolate,matchstep> - select the final step at runtime
+
+   Warning: If you use the option TS_EXACTFINALTIME_STEPOVER the solution may be at a very different time
+    then the final time you selected.
 
    Level: beginner
 
-   Note:
-   If you use the option `TS_EXACTFINALTIME_STEPOVER` the solution may be at a very different time
-   then the final time you selected.
-
-.seealso: [](chapter_ts), `TS`, `TSExactFinalTimeOption`, `TSGetExactFinalTime()`
+.seealso: `TSExactFinalTimeOption`, `TSGetExactFinalTime()`
 @*/
-PetscErrorCode TSSetExactFinalTime(TS ts, TSExactFinalTimeOption eftopt)
-{
+PetscErrorCode TSSetExactFinalTime(TS ts, TSExactFinalTimeOption eftopt) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidLogicalCollectiveEnum(ts, eftopt, 2);
@@ -2230,22 +2206,21 @@ PetscErrorCode TSSetExactFinalTime(TS ts, TSExactFinalTimeOption eftopt)
 }
 
 /*@
-   TSGetExactFinalTime - Gets the exact final time option set with `TSSetExactFinalTime()`
+   TSGetExactFinalTime - Gets the exact final time option.
 
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context
+.  ts - the TS context
 
    Output Parameter:
 .  eftopt - exact final time option
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`, `TSExactFinalTimeOption`, `TSSetExactFinalTime()`
+.seealso: `TSExactFinalTimeOption`, `TSSetExactFinalTime()`
 @*/
-PetscErrorCode TSGetExactFinalTime(TS ts, TSExactFinalTimeOption *eftopt)
-{
+PetscErrorCode TSGetExactFinalTime(TS ts, TSExactFinalTimeOption *eftopt) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(eftopt, 2);
@@ -2259,17 +2234,17 @@ PetscErrorCode TSGetExactFinalTime(TS ts, TSExactFinalTimeOption *eftopt)
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  dt - the current timestep size
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSSetTimeStep()`, `TSGetTime()`
+.seealso: `TSSetTimeStep()`, `TSGetTime()`
+
 @*/
-PetscErrorCode TSGetTimeStep(TS ts, PetscReal *dt)
-{
+PetscErrorCode TSGetTimeStep(TS ts, PetscReal *dt) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidRealPointer(dt, 2);
@@ -2283,24 +2258,23 @@ PetscErrorCode TSGetTimeStep(TS ts, PetscReal *dt)
    in order to move to the new timestep. This vector not changed until
    the solution at the next timestep has been calculated.
 
-   Not Collective, but v returned is parallel if ts is parallel
+   Not Collective, but Vec returned is parallel if TS is parallel
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  v - the vector containing the solution
 
-   Level: intermediate
-
-   Note:
-   If you used `TSSetExactFinalTime`(ts,`TS_EXACTFINALTIME_MATCHSTEP`); this does not return the solution at the requested
+   Note: If you used TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP); this does not return the solution at the requested
    final time. It returns the solution at the next timestep.
 
-.seealso: [](chapter_ts), `TS`, `TSGetTimeStep()`, `TSGetTime()`, `TSGetSolveTime()`, `TSGetSolutionComponents()`, `TSSetSolutionFunction()`
+   Level: intermediate
+
+.seealso: `TSGetTimeStep()`, `TSGetTime()`, `TSGetSolveTime()`, `TSGetSolutionComponents()`, `TSSetSolutionFunction()`
+
 @*/
-PetscErrorCode TSGetSolution(TS ts, Vec *v)
-{
+PetscErrorCode TSGetSolution(TS ts, Vec *v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(v, 2);
@@ -2314,10 +2288,10 @@ PetscErrorCode TSGetSolution(TS ts, Vec *v)
    Solution components are quantities that share the same size and
    structure as the solution vector.
 
-   Not Collective, but v returned is parallel if ts is parallel
+   Not Collective, but Vec returned is parallel if TS is parallel
 
    Parameters :
-+  ts - the `TS` context obtained from `TSCreate()` (input parameter).
++  ts - the TS context obtained from TSCreate() (input parameter).
 .  n - If v is PETSC_NULL, then the number of solution components is
        returned through n, else the n-th solution component is
        returned in v.
@@ -2327,10 +2301,10 @@ PetscErrorCode TSGetSolution(TS ts, Vec *v)
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSGetSolution()`
+.seealso: `TSGetSolution()`
+
 @*/
-PetscErrorCode TSGetSolutionComponents(TS ts, PetscInt *n, Vec *v)
-{
+PetscErrorCode TSGetSolutionComponents(TS ts, PetscInt *n, Vec *v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (!ts->ops->getsolutioncomponents) *n = 0;
@@ -2342,18 +2316,18 @@ PetscErrorCode TSGetSolutionComponents(TS ts, PetscInt *n, Vec *v)
    TSGetAuxSolution - Returns an auxiliary solution at the present
    timestep, if available for the time integration method being used.
 
-   Not Collective, but v returned is parallel if ts is parallel
+   Not Collective, but Vec returned is parallel if TS is parallel
 
    Parameters :
-+  ts - the `TS` context obtained from `TSCreate()` (input parameter).
++  ts - the TS context obtained from TSCreate() (input parameter).
 -  v - the vector containing the auxiliary solution
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSGetSolution()`
+.seealso: `TSGetSolution()`
+
 @*/
-PetscErrorCode TSGetAuxSolution(TS ts, Vec *v)
-{
+PetscErrorCode TSGetAuxSolution(TS ts, Vec *v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->ops->getauxsolution) PetscUseTypeMethod(ts, getauxsolution, v);
@@ -2363,24 +2337,23 @@ PetscErrorCode TSGetAuxSolution(TS ts, Vec *v)
 
 /*@
    TSGetTimeError - Returns the estimated error vector, if the chosen
-   `TSType` has an error estimation functionality and `TSSetTimeError()` was called
+   TSType has an error estimation functionality.
 
-   Not Collective, but v returned is parallel if ts is parallel
+   Not Collective, but Vec returned is parallel if TS is parallel
+
+   Note: MUST call after TSSetUp()
 
    Parameters :
-+  ts - the `TS` context obtained from `TSCreate()` (input parameter).
++  ts - the TS context obtained from TSCreate() (input parameter).
 .  n - current estimate (n=0) or previous one (n=-1)
 -  v - the vector containing the error (same size as the solution).
 
    Level: intermediate
 
-   Note:
-   MUST call after `TSSetUp()`
+.seealso: `TSGetSolution()`, `TSSetTimeError()`
 
-.seealso: [](chapter_ts), `TSGetSolution()`, `TSSetTimeError()`
 @*/
-PetscErrorCode TSGetTimeError(TS ts, PetscInt n, Vec *v)
-{
+PetscErrorCode TSGetTimeError(TS ts, PetscInt n, Vec *v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->ops->gettimeerror) PetscUseTypeMethod(ts, gettimeerror, n, v);
@@ -2390,21 +2363,21 @@ PetscErrorCode TSGetTimeError(TS ts, PetscInt n, Vec *v)
 
 /*@
    TSSetTimeError - Sets the estimated error vector, if the chosen
-   `TSType` has an error estimation functionality. This can be used
+   TSType has an error estimation functionality. This can be used
    to restart such a time integrator with a given error vector.
 
-   Not Collective, but v returned is parallel if ts is parallel
+   Not Collective, but Vec returned is parallel if TS is parallel
 
    Parameters :
-+  ts - the `TS` context obtained from `TSCreate()` (input parameter).
++  ts - the TS context obtained from TSCreate() (input parameter).
 -  v - the vector containing the error (same size as the solution).
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSSetSolution()`, `TSGetTimeError)`
+.seealso: `TSSetSolution()`, `TSGetTimeError)`
+
 @*/
-PetscErrorCode TSSetTimeError(TS ts, Vec v)
-{
+PetscErrorCode TSSetTimeError(TS ts, Vec v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscCheck(ts->setupcalled, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Must call TSSetUp() first");
@@ -2419,8 +2392,8 @@ PetscErrorCode TSSetTimeError(TS ts, Vec v)
   Not collective
 
   Input Parameters:
-+ ts   - The `TS`
-- type - One of `TS_LINEAR`, `TS_NONLINEAR` where these types refer to problems of the forms
++ ts   - The TS
+- type - One of TS_LINEAR, TS_NONLINEAR where these types refer to problems of the forms
 .vb
          U_t - A U = 0      (linear)
          U_t - A(t) U = 0   (linear)
@@ -2429,10 +2402,9 @@ PetscErrorCode TSSetTimeError(TS ts, Vec v)
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TSSetUp()`, `TSProblemType`, `TS`
+.seealso: `TSSetUp()`, `TSProblemType`, `TS`
 @*/
-PetscErrorCode TSSetProblemType(TS ts, TSProblemType type)
-{
+PetscErrorCode TSSetProblemType(TS ts, TSProblemType type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->problem_type = type;
@@ -2450,10 +2422,10 @@ PetscErrorCode TSSetProblemType(TS ts, TSProblemType type)
   Not collective
 
   Input Parameter:
-. ts   - The `TS`
+. ts   - The TS
 
   Output Parameter:
-. type - One of `TS_LINEAR`, `TS_NONLINEAR` where these types refer to problems of the forms
+. type - One of TS_LINEAR, TS_NONLINEAR where these types refer to problems of the forms
 .vb
          M U_t = A U
          M(t) U_t = A(t) U
@@ -2462,10 +2434,9 @@ PetscErrorCode TSSetProblemType(TS ts, TSProblemType type)
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TSSetUp()`, `TSProblemType`, `TS`
+.seealso: `TSSetUp()`, `TSProblemType`, `TS`
 @*/
-PetscErrorCode TSGetProblemType(TS ts, TSProblemType *type)
-{
+PetscErrorCode TSGetProblemType(TS ts, TSProblemType *type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidIntPointer(type, 2);
@@ -2476,8 +2447,7 @@ PetscErrorCode TSGetProblemType(TS ts, TSProblemType *type)
 /*
     Attempt to check/preset a default value for the exact final time option. This is needed at the beginning of TSSolve() and in TSSetUp()
 */
-static PetscErrorCode TSSetExactFinalTimeDefault(TS ts)
-{
+static PetscErrorCode TSSetExactFinalTimeDefault(TS ts) {
   PetscBool isnone;
 
   PetscFunctionBegin;
@@ -2493,24 +2463,23 @@ static PetscErrorCode TSSetExactFinalTimeDefault(TS ts)
 /*@
    TSSetUp - Sets up the internal data structures for the later use of a timestepper.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
+
+   Notes:
+   For basic use of the TS solvers the user need not explicitly call
+   TSSetUp(), since these actions will automatically occur during
+   the call to TSStep() or TSSolve().  However, if one wishes to control this
+   phase separately, TSSetUp() should be called after TSCreate()
+   and optional routines of the form TSSetXXX(), but before TSStep() and TSSolve().
 
    Level: advanced
 
-   Note:
-   For basic use of the `TS` solvers the user need not explicitly call
-   `TSSetUp()`, since these actions will automatically occur during
-   the call to `TSStep()` or `TSSolve()`.  However, if one wishes to control this
-   phase separately, `TSSetUp()` should be called after `TSCreate()`
-   and optional routines of the form TSSetXXX(), but before `TSStep()` and `TSSolve()`.
-
-.seealso: [](chapter_ts), `TSCreate()`, `TS`, `TSStep()`, `TSDestroy()`, `TSSolve()`
+.seealso: `TSCreate()`, `TSStep()`, `TSDestroy()`, `TSSolve()`
 @*/
-PetscErrorCode TSSetUp(TS ts)
-{
+PetscErrorCode TSSetUp(TS ts) {
   DM dm;
   PetscErrorCode (*func)(SNES, Vec, Vec, void *);
   PetscErrorCode (*jac)(SNES, Vec, Mat, Mat, void *);
@@ -2599,19 +2568,18 @@ PetscErrorCode TSSetUp(TS ts)
 }
 
 /*@
-   TSReset - Resets a `TS` context and removes any allocated `Vec`s and `Mat`s.
+   TSReset - Resets a TS context and removes any allocated Vecs and Mats.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`, `TSCreate()`, `TSSetup()`, `TSDestroy()`
+.seealso: `TSCreate()`, `TSSetup()`, `TSDestroy()`
 @*/
-PetscErrorCode TSReset(TS ts)
-{
+PetscErrorCode TSReset(TS ts) {
   TS_RHSSplitLink ilink = ts->tsrhssplit, next;
 
   PetscFunctionBegin;
@@ -2658,19 +2626,18 @@ PetscErrorCode TSReset(TS ts)
 
 /*@C
    TSDestroy - Destroys the timestepper context that was created
-   with `TSCreate()`.
+   with TSCreate().
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`, `TSCreate()`, `TSSetUp()`, `TSSolve()`
+.seealso: `TSCreate()`, `TSSetUp()`, `TSSolve()`
 @*/
-PetscErrorCode TSDestroy(TS *ts)
-{
+PetscErrorCode TSDestroy(TS *ts) {
   PetscFunctionBegin;
   if (!*ts) PetscFunctionReturn(0);
   PetscValidHeaderSpecific(*ts, TS_CLASSID, 1);
@@ -2703,31 +2670,29 @@ PetscErrorCode TSDestroy(TS *ts)
 }
 
 /*@
-   TSGetSNES - Returns the `SNES` (nonlinear solver) associated with
-   a `TS` (timestepper) context. Valid only for nonlinear problems.
+   TSGetSNES - Returns the SNES (nonlinear solver) associated with
+   a TS (timestepper) context. Valid only for nonlinear problems.
 
-   Not Collective, but snes is parallel if ts is parallel
+   Not Collective, but SNES is parallel if TS is parallel
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  snes - the nonlinear solver context
 
+   Notes:
+   The user can then directly manipulate the SNES context to set various
+   options, etc.  Likewise, the user can then extract and manipulate the
+   KSP, KSP, and PC contexts as well.
+
+   TSGetSNES() does not work for integrators that do not use SNES; in
+   this case TSGetSNES() returns NULL in snes.
+
    Level: beginner
 
-   Notes:
-   The user can then directly manipulate the `SNES` context to set various
-   options, etc.  Likewise, the user can then extract and manipulate the
-   `KSP`, and `PC` contexts as well.
-
-   `TSGetSNES()` does not work for integrators that do not use `SNES`; in
-   this case `TSGetSNES()` returns NULL in snes.
-
-.seealso: [](chapter_ts), `TS`, `SNES`, `TSCreate()`, `TSSetUp()`, `TSSolve()`
 @*/
-PetscErrorCode TSGetSNES(TS ts, SNES *snes)
-{
+PetscErrorCode TSGetSNES(TS ts, SNES *snes) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(snes, 2);
@@ -2735,6 +2700,7 @@ PetscErrorCode TSGetSNES(TS ts, SNES *snes)
     PetscCall(SNESCreate(PetscObjectComm((PetscObject)ts), &ts->snes));
     PetscCall(PetscObjectSetOptions((PetscObject)ts->snes, ((PetscObject)ts)->options));
     PetscCall(SNESSetFunction(ts->snes, NULL, SNESTSFormFunction, ts));
+    PetscCall(PetscLogObjectParent((PetscObject)ts, (PetscObject)ts->snes));
     PetscCall(PetscObjectIncrementTabLevel((PetscObject)ts->snes, (PetscObject)ts, 1));
     if (ts->dm) PetscCall(SNESSetDM(ts->snes, ts->dm));
     if (ts->problem_type == TS_LINEAR) PetscCall(SNESSetType(ts->snes, SNESKSPONLY));
@@ -2744,23 +2710,21 @@ PetscErrorCode TSGetSNES(TS ts, SNES *snes)
 }
 
 /*@
-   TSSetSNES - Set the `SNES` (nonlinear solver) to be used by the timestepping context
+   TSSetSNES - Set the SNES (nonlinear solver) to be used by the timestepping context
 
    Collective
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
++  ts - the TS context obtained from TSCreate()
 -  snes - the nonlinear solver context
+
+   Notes:
+   Most users should have the TS created by calling TSGetSNES()
 
    Level: developer
 
-   Note:
-   Most users should have the `TS` created by calling `TSGetSNES()`
-
-.seealso: [](chapter_ts), `TS`, `SNES`, `TSCreate()`, `TSSetUp()`, `TSSolve()`, `TSGetSNES()`
 @*/
-PetscErrorCode TSSetSNES(TS ts, SNES snes)
-{
+PetscErrorCode TSSetSNES(TS ts, SNES snes) {
   PetscErrorCode (*func)(SNES, Vec, Mat, Mat, void *);
 
   PetscFunctionBegin;
@@ -2778,31 +2742,29 @@ PetscErrorCode TSSetSNES(TS ts, SNES snes)
 }
 
 /*@
-   TSGetKSP - Returns the `KSP` (linear solver) associated with
-   a `TS` (timestepper) context.
+   TSGetKSP - Returns the KSP (linear solver) associated with
+   a TS (timestepper) context.
 
-   Not Collective, but ksp is parallel if ts is parallel
+   Not Collective, but KSP is parallel if TS is parallel
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  ksp - the nonlinear solver context
 
+   Notes:
+   The user can then directly manipulate the KSP context to set various
+   options, etc.  Likewise, the user can then extract and manipulate the
+   KSP and PC contexts as well.
+
+   TSGetKSP() does not work for integrators that do not use KSP;
+   in this case TSGetKSP() returns NULL in ksp.
+
    Level: beginner
 
-   Notes:
-   The user can then directly manipulate the `KSP` context to set various
-   options, etc.  Likewise, the user can then extract and manipulate the
-   `PC` context as well.
-
-   `TSGetKSP()` does not work for integrators that do not use `KSP`;
-   in this case `TSGetKSP()` returns NULL in ksp.
-
-.seealso: [](chapter_ts), `TS`, `SNES`, `KSP`, `TSCreate()`, `TSSetUp()`, `TSSolve()`, `TSGetSNES()`
 @*/
-PetscErrorCode TSGetKSP(TS ts, KSP *ksp)
-{
+PetscErrorCode TSGetKSP(TS ts, KSP *ksp) {
   SNES snes;
 
   PetscFunctionBegin;
@@ -2820,24 +2782,23 @@ PetscErrorCode TSGetKSP(TS ts, KSP *ksp)
 /*@
    TSSetMaxSteps - Sets the maximum number of steps to use.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
++  ts - the TS context obtained from TSCreate()
 -  maxsteps - maximum number of steps to use
 
-   Options Database Key:
+   Options Database Keys:
 .  -ts_max_steps <maxsteps> - Sets maxsteps
+
+   Notes:
+   The default maximum number of steps is 5000
 
    Level: intermediate
 
-   Note:
-   The default maximum number of steps is 5000
-
-.seealso: [](chapter_ts), `TS`, `TSGetMaxSteps()`, `TSSetMaxTime()`, `TSSetExactFinalTime()`
+.seealso: `TSGetMaxSteps()`, `TSSetMaxTime()`, `TSSetExactFinalTime()`
 @*/
-PetscErrorCode TSSetMaxSteps(TS ts, PetscInt maxsteps)
-{
+PetscErrorCode TSSetMaxSteps(TS ts, PetscInt maxsteps) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidLogicalCollectiveInt(ts, maxsteps, 2);
@@ -2852,17 +2813,16 @@ PetscErrorCode TSSetMaxSteps(TS ts, PetscInt maxsteps)
    Not Collective
 
    Input Parameters:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  maxsteps - maximum number of steps to use
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSSetMaxSteps()`, `TSGetMaxTime()`, `TSSetMaxTime()`
+.seealso: `TSSetMaxSteps()`, `TSGetMaxTime()`, `TSSetMaxTime()`
 @*/
-PetscErrorCode TSGetMaxSteps(TS ts, PetscInt *maxsteps)
-{
+PetscErrorCode TSGetMaxSteps(TS ts, PetscInt *maxsteps) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidIntPointer(maxsteps, 2);
@@ -2873,24 +2833,23 @@ PetscErrorCode TSGetMaxSteps(TS ts, PetscInt *maxsteps)
 /*@
    TSSetMaxTime - Sets the maximum (or final) time for timestepping.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
++  ts - the TS context obtained from TSCreate()
 -  maxtime - final time to step to
 
-   Options Database Key:
+   Options Database Keys:
 .  -ts_max_time <maxtime> - Sets maxtime
-
-   Level: intermediate
 
    Notes:
    The default maximum time is 5.0
 
-.seealso: [](chapter_ts), `TS`, `TSGetMaxTime()`, `TSSetMaxSteps()`, `TSSetExactFinalTime()`
+   Level: intermediate
+
+.seealso: `TSGetMaxTime()`, `TSSetMaxSteps()`, `TSSetExactFinalTime()`
 @*/
-PetscErrorCode TSSetMaxTime(TS ts, PetscReal maxtime)
-{
+PetscErrorCode TSSetMaxTime(TS ts, PetscReal maxtime) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidLogicalCollectiveReal(ts, maxtime, 2);
@@ -2904,17 +2863,16 @@ PetscErrorCode TSSetMaxTime(TS ts, PetscReal maxtime)
    Not Collective
 
    Input Parameters:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  maxtime - final time to step to
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSSetMaxTime()`, `TSGetMaxSteps()`, `TSSetMaxSteps()`
+.seealso: `TSSetMaxTime()`, `TSGetMaxSteps()`, `TSSetMaxSteps()`
 @*/
-PetscErrorCode TSGetMaxTime(TS ts, PetscReal *maxtime)
-{
+PetscErrorCode TSGetMaxTime(TS ts, PetscReal *maxtime) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidRealPointer(maxtime, 2);
@@ -2923,13 +2881,12 @@ PetscErrorCode TSGetMaxTime(TS ts, PetscReal *maxtime)
 }
 
 /*@
-   TSSetInitialTimeStep - Deprecated, use `TSSetTime()` and `TSSetTimeStep()`.
+   TSSetInitialTimeStep - Deprecated, use TSSetTime() and TSSetTimeStep().
 
    Level: deprecated
 
 @*/
-PetscErrorCode TSSetInitialTimeStep(TS ts, PetscReal initial_time, PetscReal time_step)
-{
+PetscErrorCode TSSetInitialTimeStep(TS ts, PetscReal initial_time, PetscReal time_step) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscCall(TSSetTime(ts, initial_time));
@@ -2938,13 +2895,12 @@ PetscErrorCode TSSetInitialTimeStep(TS ts, PetscReal initial_time, PetscReal tim
 }
 
 /*@
-   TSGetDuration - Deprecated, use `TSGetMaxSteps()` and `TSGetMaxTime()`.
+   TSGetDuration - Deprecated, use TSGetMaxSteps() and TSGetMaxTime().
 
    Level: deprecated
 
 @*/
-PetscErrorCode TSGetDuration(TS ts, PetscInt *maxsteps, PetscReal *maxtime)
-{
+PetscErrorCode TSGetDuration(TS ts, PetscInt *maxsteps, PetscReal *maxtime) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (maxsteps) {
@@ -2959,13 +2915,12 @@ PetscErrorCode TSGetDuration(TS ts, PetscInt *maxsteps, PetscReal *maxtime)
 }
 
 /*@
-   TSSetDuration - Deprecated, use `TSSetMaxSteps()` and `TSSetMaxTime()`.
+   TSSetDuration - Deprecated, use TSSetMaxSteps() and TSSetMaxTime().
 
    Level: deprecated
 
 @*/
-PetscErrorCode TSSetDuration(TS ts, PetscInt maxsteps, PetscReal maxtime)
-{
+PetscErrorCode TSSetDuration(TS ts, PetscInt maxsteps, PetscReal maxtime) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidLogicalCollectiveInt(ts, maxsteps, 2);
@@ -2976,43 +2931,40 @@ PetscErrorCode TSSetDuration(TS ts, PetscInt maxsteps, PetscReal maxtime)
 }
 
 /*@
-   TSGetTimeStepNumber - Deprecated, use `TSGetStepNumber()`.
+   TSGetTimeStepNumber - Deprecated, use TSGetStepNumber().
 
    Level: deprecated
 
 @*/
-PetscErrorCode TSGetTimeStepNumber(TS ts, PetscInt *steps)
-{
+PetscErrorCode TSGetTimeStepNumber(TS ts, PetscInt *steps) {
   return TSGetStepNumber(ts, steps);
 }
 
 /*@
-   TSGetTotalSteps - Deprecated, use `TSGetStepNumber()`.
+   TSGetTotalSteps - Deprecated, use TSGetStepNumber().
 
    Level: deprecated
 
 @*/
-PetscErrorCode TSGetTotalSteps(TS ts, PetscInt *steps)
-{
+PetscErrorCode TSGetTotalSteps(TS ts, PetscInt *steps) {
   return TSGetStepNumber(ts, steps);
 }
 
 /*@
    TSSetSolution - Sets the initial solution vector
-   for use by the `TS` routines.
+   for use by the TS routines.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
++  ts - the TS context obtained from TSCreate()
 -  u - the solution vector
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`, `TSSetSolutionFunction()`, `TSGetSolution()`, `TSCreate()`
+.seealso: `TSSetSolutionFunction()`, `TSGetSolution()`, `TSCreate()`
 @*/
-PetscErrorCode TSSetSolution(TS ts, Vec u)
-{
+PetscErrorCode TSSetSolution(TS ts, Vec u) {
   DM dm;
 
   PetscFunctionBegin;
@@ -3031,10 +2983,10 @@ PetscErrorCode TSSetSolution(TS ts, Vec u)
   TSSetPreStep - Sets the general-purpose function
   called once at the beginning of each time step.
 
-  Logically Collective on ts
+  Logically Collective on TS
 
   Input Parameters:
-+ ts   - The `TS` context obtained from `TSCreate()`
++ ts   - The TS context obtained from TSCreate()
 - func - The function
 
   Calling sequence of func:
@@ -3044,10 +2996,9 @@ PetscErrorCode TSSetSolution(TS ts, Vec u)
 
   Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSSetPreStage()`, `TSSetPostStage()`, `TSSetPostStep()`, `TSStep()`, `TSRestartStep()`
+.seealso: `TSSetPreStage()`, `TSSetPostStage()`, `TSSetPostStep()`, `TSStep()`, `TSRestartStep()`
 @*/
-PetscErrorCode TSSetPreStep(TS ts, PetscErrorCode (*func)(TS))
-{
+PetscErrorCode TSSetPreStep(TS ts, PetscErrorCode (*func)(TS)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->prestep = func;
@@ -3055,23 +3006,22 @@ PetscErrorCode TSSetPreStep(TS ts, PetscErrorCode (*func)(TS))
 }
 
 /*@
-  TSPreStep - Runs the user-defined pre-step function provided with `TSSetPreStep()`
+  TSPreStep - Runs the user-defined pre-step function.
 
-  Collective on ts
+  Collective on TS
 
   Input Parameters:
-. ts   - The `TS` context obtained from `TSCreate()`
+. ts   - The TS context obtained from TSCreate()
+
+  Notes:
+  TSPreStep() is typically used within time stepping implementations,
+  so most users would not generally call this routine themselves.
 
   Level: developer
 
-  Note:
-  `TSPreStep()` is typically used within time stepping implementations,
-  so most users would not generally call this routine themselves.
-
-.seealso: [](chapter_ts), `TS`, `TSSetPreStep()`, `TSPreStage()`, `TSPostStage()`, `TSPostStep()`
+.seealso: `TSSetPreStep()`, `TSPreStage()`, `TSPostStage()`, `TSPostStep()`
 @*/
-PetscErrorCode TSPreStep(TS ts)
-{
+PetscErrorCode TSPreStep(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->prestep) {
@@ -3096,10 +3046,10 @@ PetscErrorCode TSPreStep(TS ts)
   TSSetPreStage - Sets the general-purpose function
   called once at the beginning of each stage.
 
-  Logically Collective on ts
+  Logically Collective on TS
 
   Input Parameters:
-+ ts   - The `TS` context obtained from `TSCreate()`
++ ts   - The TS context obtained from TSCreate()
 - func - The function
 
   Calling sequence of func:
@@ -3111,13 +3061,12 @@ PetscErrorCode TSPreStep(TS ts)
 
   Note:
   There may be several stages per time step. If the solve for a given stage fails, the step may be rejected and retried.
-  The time step number being computed can be queried using `TSGetStepNumber()` and the total size of the step being
-  attempted can be obtained using `TSGetTimeStep()`. The time at the start of the step is available via `TSGetTime()`.
+  The time step number being computed can be queried using TSGetStepNumber() and the total size of the step being
+  attempted can be obtained using TSGetTimeStep(). The time at the start of the step is available via TSGetTime().
 
-.seealso: [](chapter_ts), `TS`, `TSSetPostStage()`, `TSSetPreStep()`, `TSSetPostStep()`, `TSGetApplicationContext()`
+.seealso: `TSSetPostStage()`, `TSSetPreStep()`, `TSSetPostStep()`, `TSGetApplicationContext()`
 @*/
-PetscErrorCode TSSetPreStage(TS ts, PetscErrorCode (*func)(TS, PetscReal))
-{
+PetscErrorCode TSSetPreStage(TS ts, PetscErrorCode (*func)(TS, PetscReal)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->prestage = func;
@@ -3125,13 +3074,13 @@ PetscErrorCode TSSetPreStage(TS ts, PetscErrorCode (*func)(TS, PetscReal))
 }
 
 /*@C
-  TSSetPostStage - Sets the general-purpose function, provided with `TSSetPostStep()`,
+  TSSetPostStage - Sets the general-purpose function
   called once at the end of each stage.
 
-  Logically Collective on ts
+  Logically Collective on TS
 
   Input Parameters:
-+ ts   - The `TS` context obtained from `TSCreate()`
++ ts   - The TS context obtained from TSCreate()
 - func - The function
 
   Calling sequence of func:
@@ -3143,13 +3092,12 @@ PetscErrorCode TSSetPreStage(TS ts, PetscErrorCode (*func)(TS, PetscReal))
 
   Note:
   There may be several stages per time step. If the solve for a given stage fails, the step may be rejected and retried.
-  The time step number being computed can be queried using `TSGetStepNumber()` and the total size of the step being
-  attempted can be obtained using `TSGetTimeStep()`. The time at the start of the step is available via `TSGetTime()`.
+  The time step number being computed can be queried using TSGetStepNumber() and the total size of the step being
+  attempted can be obtained using TSGetTimeStep(). The time at the start of the step is available via TSGetTime().
 
-.seealso: [](chapter_ts), `TS`, `TSSetPreStage()`, `TSSetPreStep()`, `TSSetPostStep()`, `TSGetApplicationContext()`
+.seealso: `TSSetPreStage()`, `TSSetPreStep()`, `TSSetPostStep()`, `TSGetApplicationContext()`
 @*/
-PetscErrorCode TSSetPostStage(TS ts, PetscErrorCode (*func)(TS, PetscReal, PetscInt, Vec *))
-{
+PetscErrorCode TSSetPostStage(TS ts, PetscErrorCode (*func)(TS, PetscReal, PetscInt, Vec *)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->poststage = func;
@@ -3160,10 +3108,10 @@ PetscErrorCode TSSetPostStage(TS ts, PetscErrorCode (*func)(TS, PetscReal, Petsc
   TSSetPostEvaluate - Sets the general-purpose function
   called once at the end of each step evaluation.
 
-  Logically Collective on ts
+  Logically Collective on TS
 
   Input Parameters:
-+ ts   - The `TS` context obtained from `TSCreate()`
++ ts   - The TS context obtained from TSCreate()
 - func - The function
 
   Calling sequence of func:
@@ -3174,16 +3122,15 @@ PetscErrorCode TSSetPostStage(TS ts, PetscErrorCode (*func)(TS, PetscReal, Petsc
   Level: intermediate
 
   Note:
-  Semantically, `TSSetPostEvaluate()` differs from `TSSetPostStep()` since the function it sets is called before event-handling
-  thus guaranteeing the same solution (computed by the time-stepper) will be passed to it. On the other hand, `TSPostStep()`
-  may be passed a different solution, possibly changed by the event handler. `TSPostEvaluate()` is called after the next step
-  solution is evaluated allowing to modify it, if need be. The solution can be obtained with `TSGetSolution()`, the time step
-  with `TSGetTimeStep()`, and the time at the start of the step is available via `TSGetTime()`
+  Semantically, TSSetPostEvaluate() differs from TSSetPostStep() since the function it sets is called before event-handling
+  thus guaranteeing the same solution (computed by the time-stepper) will be passed to it. On the other hand, TSPostStep()
+  may be passed a different solution, possibly changed by the event handler. TSPostEvaluate() is called after the next step
+  solution is evaluated allowing to modify it, if need be. The solution can be obtained with TSGetSolution(), the time step
+  with TSGetTimeStep(), and the time at the start of the step is available via TSGetTime()
 
-.seealso: [](chapter_ts), `TS`, `TSSetPreStage()`, `TSSetPreStep()`, `TSSetPostStep()`, `TSGetApplicationContext()`
+.seealso: `TSSetPreStage()`, `TSSetPreStep()`, `TSSetPostStep()`, `TSGetApplicationContext()`
 @*/
-PetscErrorCode TSSetPostEvaluate(TS ts, PetscErrorCode (*func)(TS))
-{
+PetscErrorCode TSSetPostEvaluate(TS ts, PetscErrorCode (*func)(TS)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->postevaluate = func;
@@ -3191,24 +3138,23 @@ PetscErrorCode TSSetPostEvaluate(TS ts, PetscErrorCode (*func)(TS))
 }
 
 /*@
-  TSPreStage - Runs the user-defined pre-stage function set using `TSSetPreStage()`
+  TSPreStage - Runs the user-defined pre-stage function set using TSSetPreStage()
 
-  Collective on ts
+  Collective on TS
 
   Input Parameters:
-. ts          - The `TS` context obtained from `TSCreate()`
+. ts          - The TS context obtained from TSCreate()
   stagetime   - The absolute time of the current stage
+
+  Notes:
+  TSPreStage() is typically used within time stepping implementations,
+  most users would not generally call this routine themselves.
 
   Level: developer
 
-  Note:
-  `TSPreStage()` is typically used within time stepping implementations,
-  most users would not generally call this routine themselves.
-
-.seealso: [](chapter_ts), `TS`, `TSPostStage()`, `TSSetPreStep()`, `TSPreStep()`, `TSPostStep()`
+.seealso: `TSPostStage()`, `TSSetPreStep()`, `TSPreStep()`, `TSPostStep()`
 @*/
-PetscErrorCode TSPreStage(TS ts, PetscReal stagetime)
-{
+PetscErrorCode TSPreStage(TS ts, PetscReal stagetime) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->prestage) PetscCallBack("TS callback prestage", (*ts->prestage)(ts, stagetime));
@@ -3216,27 +3162,26 @@ PetscErrorCode TSPreStage(TS ts, PetscReal stagetime)
 }
 
 /*@
-  TSPostStage - Runs the user-defined post-stage function set using `TSSetPostStage()`
+  TSPostStage - Runs the user-defined post-stage function set using TSSetPostStage()
 
-  Collective on ts
+  Collective on TS
 
   Input Parameters:
-. ts          - The `TS` context obtained from `TSCreate()`
+. ts          - The TS context obtained from TSCreate()
   stagetime   - The absolute time of the current stage
   stageindex  - Stage number
   Y           - Array of vectors (of size = total number
                 of stages) with the stage solutions
 
-  Level: developer
-
-  Note:
-  `TSPostStage()` is typically used within time stepping implementations,
+  Notes:
+  TSPostStage() is typically used within time stepping implementations,
   most users would not generally call this routine themselves.
 
-.seealso: [](chapter_ts), `TS`, `TSPreStage()`, `TSSetPreStep()`, `TSPreStep()`, `TSPostStep()`
+  Level: developer
+
+.seealso: `TSPreStage()`, `TSSetPreStep()`, `TSPreStep()`, `TSPostStep()`
 @*/
-PetscErrorCode TSPostStage(TS ts, PetscReal stagetime, PetscInt stageindex, Vec *Y)
-{
+PetscErrorCode TSPostStage(TS ts, PetscReal stagetime, PetscInt stageindex, Vec *Y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->poststage) PetscCallBack("TS callback poststage", (*ts->poststage)(ts, stagetime, stageindex, Y));
@@ -3244,23 +3189,22 @@ PetscErrorCode TSPostStage(TS ts, PetscReal stagetime, PetscInt stageindex, Vec 
 }
 
 /*@
-  TSPostEvaluate - Runs the user-defined post-evaluate function set using `TSSetPostEvaluate()`
+  TSPostEvaluate - Runs the user-defined post-evaluate function set using TSSetPostEvaluate()
 
-  Collective on ts
+  Collective on TS
 
   Input Parameters:
-. ts - The `TS` context obtained from `TSCreate()`
+. ts          - The TS context obtained from TSCreate()
+
+  Notes:
+  TSPostEvaluate() is typically used within time stepping implementations,
+  most users would not generally call this routine themselves.
 
   Level: developer
 
-  Note:
-  `TSPostEvaluate()` is typically used within time stepping implementations,
-  most users would not generally call this routine themselves.
-
-.seealso: [](chapter_ts), `TS`, `TSSetPostEvaluate()`, `TSSetPreStep()`, `TSPreStep()`, `TSPostStep()`
+.seealso: `TSSetPostEvaluate()`, `TSSetPreStep()`, `TSPreStep()`, `TSPostStep()`
 @*/
-PetscErrorCode TSPostEvaluate(TS ts)
-{
+PetscErrorCode TSPostEvaluate(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->postevaluate) {
@@ -3280,26 +3224,25 @@ PetscErrorCode TSPostEvaluate(TS ts)
   TSSetPostStep - Sets the general-purpose function
   called once at the end of each time step.
 
-  Logically Collective on ts
+  Logically Collective on TS
 
   Input Parameters:
-+ ts   - The `TS` context obtained from `TSCreate()`
++ ts   - The TS context obtained from TSCreate()
 - func - The function
 
   Calling sequence of func:
 $ func (TS ts);
 
+  Notes:
+  The function set by TSSetPostStep() is called after each successful step. The solution vector X
+  obtained by TSGetSolution() may be different than that computed at the step end if the event handler
+  locates an event and TSPostEvent() modifies it. Use TSSetPostEvaluate() if an unmodified solution is needed instead.
+
   Level: intermediate
 
-  Note:
-  The function set by `TSSetPostStep()` is called after each successful step. The solution vector X
-  obtained by `TSGetSolution()` may be different than that computed at the step end if the event handler
-  locates an event and `TSPostEvent()` modifies it. Use `TSSetPostEvaluate()` if an unmodified solution is needed instead.
-
-.seealso: [](chapter_ts), `TS`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostEvaluate()`, `TSGetTimeStep()`, `TSGetStepNumber()`, `TSGetTime()`, `TSRestartStep()`
+.seealso: `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostEvaluate()`, `TSGetTimeStep()`, `TSGetStepNumber()`, `TSGetTime()`, `TSRestartStep()`
 @*/
-PetscErrorCode TSSetPostStep(TS ts, PetscErrorCode (*func)(TS))
-{
+PetscErrorCode TSSetPostStep(TS ts, PetscErrorCode (*func)(TS)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->poststep = func;
@@ -3307,23 +3250,21 @@ PetscErrorCode TSSetPostStep(TS ts, PetscErrorCode (*func)(TS))
 }
 
 /*@
-  TSPostStep - Runs the user-defined post-step function that was set with `TSSetPotsStep()`
+  TSPostStep - Runs the user-defined post-step function.
 
-  Collective on ts
+  Collective on TS
 
   Input Parameters:
-. ts   - The `TS` context obtained from `TSCreate()`
+. ts   - The TS context obtained from TSCreate()
 
-  Note:
-  `TSPostStep()` is typically used within time stepping implementations,
+  Notes:
+  TSPostStep() is typically used within time stepping implementations,
   so most users would not generally call this routine themselves.
 
   Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostEvaluate()`, `TSGetTimeStep()`, `TSGetStepNumber()`, `TSGetTime()`, `TSSetPotsStep()`
 @*/
-PetscErrorCode TSPostStep(TS ts)
-{
+PetscErrorCode TSPostStep(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ts->poststep) {
@@ -3347,7 +3288,7 @@ PetscErrorCode TSPostStep(TS ts)
 /*@
    TSInterpolate - Interpolate the solution computed during the previous step to an arbitrary location in the interval
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -3358,13 +3299,12 @@ PetscErrorCode TSPostStep(TS ts)
 
    Level: intermediate
 
-   Developer Note:
-   `TSInterpolate()` and the storing of previous steps/stages should be generalized to support delay differential equations and continuous adjoints.
+   Developer Notes:
+   TSInterpolate() and the storing of previous steps/stages should be generalized to support delay differential equations and continuous adjoints.
 
-.seealso: [](chapter_ts), `TS`, `TSSetExactFinalTime()`, `TSSolve()`
+.seealso: `TSSetExactFinalTime()`, `TSSolve()`
 @*/
-PetscErrorCode TSInterpolate(TS ts, PetscReal t, Vec U)
-{
+PetscErrorCode TSInterpolate(TS ts, PetscReal t, Vec U) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidHeaderSpecific(U, VEC_CLASSID, 3);
@@ -3376,26 +3316,25 @@ PetscErrorCode TSInterpolate(TS ts, PetscReal t, Vec U)
 /*@
    TSStep - Steps one time step
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Level: developer
 
    Notes:
-   The public interface for the ODE/DAE solvers is `TSSolve()`, you should almost for sure be using that routine and not this routine.
+   The public interface for the ODE/DAE solvers is TSSolve(), you should almost for sure be using that routine and not this routine.
 
-   The hook set using `TSSetPreStep()` is called before each attempt to take the step. In general, the time step size may
+   The hook set using TSSetPreStep() is called before each attempt to take the step. In general, the time step size may
    be changed due to adaptive error controller or solve failures. Note that steps may contain multiple stages.
 
-   This may over-step the final time provided in `TSSetMaxTime()` depending on the time-step used. `TSSolve()` interpolates to exactly the
-   time provided in `TSSetMaxTime()`. One can use `TSInterpolate()` to determine an interpolated solution within the final timestep.
+   This may over-step the final time provided in TSSetMaxTime() depending on the time-step used. TSSolve() interpolates to exactly the
+   time provided in TSSetMaxTime(). One can use TSInterpolate() to determine an interpolated solution within the final timestep.
 
-.seealso: [](chapter_ts), `TS`, `TSCreate()`, `TSSetUp()`, `TSDestroy()`, `TSSolve()`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostStage()`, `TSInterpolate()`
+.seealso: `TSCreate()`, `TSSetUp()`, `TSDestroy()`, `TSSolve()`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostStage()`, `TSInterpolate()`
 @*/
-PetscErrorCode TSStep(TS ts)
-{
+PetscErrorCode TSStep(TS ts) {
   static PetscBool cite = PETSC_FALSE;
   PetscReal        ptime;
 
@@ -3447,14 +3386,14 @@ PetscErrorCode TSStep(TS ts)
    TSEvaluateWLTE - Evaluate the weighted local truncation error norm
    at the end of a time step with a given order of accuracy.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
--  wnormtype - norm type, either `NORM_2` or `NORM_INFINITY`
+-  wnormtype - norm type, either NORM_2 or NORM_INFINITY
 
    Input/Output Parameter:
-.  order - optional, desired order for the error evaluation or `PETSC_DECIDE`;
+.  order - optional, desired order for the error evaluation or PETSC_DECIDE;
            on output, the actual order of the error evaluation
 
    Output Parameter:
@@ -3462,15 +3401,14 @@ PetscErrorCode TSStep(TS ts)
 
    Level: advanced
 
-   Note:
+   Notes:
    If the timestepper cannot evaluate the error in a particular step
    (eg. in the first step or restart steps after event handling),
    this routine returns wlte=-1.0 .
 
-.seealso: [](chapter_ts), `TS`, `TSStep()`, `TSAdapt`, `TSErrorWeightedNorm()`
+.seealso: `TSStep()`, `TSAdapt`, `TSErrorWeightedNorm()`
 @*/
-PetscErrorCode TSEvaluateWLTE(TS ts, NormType wnormtype, PetscInt *order, PetscReal *wlte)
-{
+PetscErrorCode TSEvaluateWLTE(TS ts, NormType wnormtype, PetscInt *order, PetscReal *wlte) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidType(ts, 1);
@@ -3486,7 +3424,7 @@ PetscErrorCode TSEvaluateWLTE(TS ts, NormType wnormtype, PetscInt *order, PetscR
 /*@
    TSEvaluateStep - Evaluate the solution at the end of a time step with a given order of accuracy.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -3500,13 +3438,11 @@ PetscErrorCode TSEvaluateWLTE(TS ts, NormType wnormtype, PetscInt *order, PetscR
 
    Notes:
    This function cannot be called until all stages have been evaluated.
+   It is normally called by adaptive controllers before a step has been accepted and may also be called by the user after TSStep() has returned.
 
-   It is normally called by adaptive controllers before a step has been accepted and may also be called by the user after `TSStep()` has returned.
-
-.seealso: [](chapter_ts), `TS`, `TSStep()`, `TSAdapt`
+.seealso: `TSStep()`, `TSAdapt`
 @*/
-PetscErrorCode TSEvaluateStep(TS ts, PetscInt order, Vec U, PetscBool *done)
-{
+PetscErrorCode TSEvaluateStep(TS ts, PetscInt order, Vec U, PetscBool *done) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidType(ts, 1);
@@ -3521,24 +3457,22 @@ PetscErrorCode TSEvaluateStep(TS ts, PetscInt order, Vec U, PetscBool *done)
   Not collective
 
   Input Parameter:
-. ts - time stepping context
+. ts        - time stepping context
 
   Output Parameter:
 . initConditions - The function which computes an initial condition
 
-  The calling sequence for the function is
-.vb
- initCondition(TS ts, Vec u)
- ts - The timestepping context
- u  - The input vector in which the initial condition is stored
-.ve
-
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSSetComputeInitialCondition()`, `TSComputeInitialCondition()`
+   Notes:
+   The calling sequence for the function is
+$ initCondition(TS ts, Vec u)
+$ ts - The timestepping context
+$ u  - The input vector in which the initial condition is stored
+
+.seealso: `TSSetComputeInitialCondition()`, `TSComputeInitialCondition()`
 @*/
-PetscErrorCode TSGetComputeInitialCondition(TS ts, PetscErrorCode (**initCondition)(TS, Vec))
-{
+PetscErrorCode TSGetComputeInitialCondition(TS ts, PetscErrorCode (**initCondition)(TS, Vec)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(initCondition, 2);
@@ -3552,20 +3486,20 @@ PetscErrorCode TSGetComputeInitialCondition(TS ts, PetscErrorCode (**initConditi
   Logically collective on ts
 
   Input Parameters:
-+ ts  - time stepping context
++ ts        - time stepping context
 - initCondition - The function which computes an initial condition
-
-  Calling sequence for initCondition:
-$ PetscErrorCode initCondition(TS ts, Vec u)
-+ ts - The timestepping context
-- u  - The input vector in which the initial condition is to be stored
 
   Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSGetComputeInitialCondition()`, `TSComputeInitialCondition()`
+  Calling sequence for initCondition:
+$ PetscErrorCode initCondition(TS ts, Vec u)
+
++ ts - The timestepping context
+- u  - The input vector in which the initial condition is to be stored
+
+.seealso: `TSGetComputeInitialCondition()`, `TSComputeInitialCondition()`
 @*/
-PetscErrorCode TSSetComputeInitialCondition(TS ts, PetscErrorCode (*initCondition)(TS, Vec))
-{
+PetscErrorCode TSSetComputeInitialCondition(TS ts, PetscErrorCode (*initCondition)(TS, Vec)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidFunction(initCondition, 2);
@@ -3574,20 +3508,19 @@ PetscErrorCode TSSetComputeInitialCondition(TS ts, PetscErrorCode (*initConditio
 }
 
 /*@
-  TSComputeInitialCondition - Compute an initial condition for the timestepping using the function previously set with `TSSetComputeInitialCondition()`
+  TSComputeInitialCondition - Compute an initial condition for the timestepping using the function previously set.
 
   Collective on ts
 
   Input Parameters:
 + ts - time stepping context
-- u  - The `Vec` to store the condition in which will be used in `TSSolve()`
+- u  - The Vec to store the condition in which will be used in TSSolve()
 
   Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSGetComputeInitialCondition()`, `TSSetComputeInitialCondition()`, `TSSolve()`
+.seealso: `TSGetComputeInitialCondition()`, `TSSetComputeInitialCondition()`, `TSSolve()`
 @*/
-PetscErrorCode TSComputeInitialCondition(TS ts, Vec u)
-{
+PetscErrorCode TSComputeInitialCondition(TS ts, Vec u) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidHeaderSpecific(u, VEC_CLASSID, 2);
@@ -3601,23 +3534,23 @@ PetscErrorCode TSComputeInitialCondition(TS ts, Vec u)
   Not collective
 
   Input Parameter:
-. ts - time stepping context
+. ts         - time stepping context
 
   Output Parameter:
 . exactError - The function which computes the solution error
 
+  Level: advanced
+
   Calling sequence for exactError:
 $ PetscErrorCode exactError(TS ts, Vec u)
+
 + ts - The timestepping context
 . u  - The approximate solution vector
 - e  - The input vector in which the error is stored
 
-  Level: advanced
-
-.seealso: [](chapter_ts), `TS`, `TSGetComputeExactError()`, `TSComputeExactError()`
+.seealso: `TSGetComputeExactError()`, `TSComputeExactError()`
 @*/
-PetscErrorCode TSGetComputeExactError(TS ts, PetscErrorCode (**exactError)(TS, Vec, Vec))
-{
+PetscErrorCode TSGetComputeExactError(TS ts, PetscErrorCode (**exactError)(TS, Vec, Vec)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(exactError, 2);
@@ -3631,21 +3564,21 @@ PetscErrorCode TSGetComputeExactError(TS ts, PetscErrorCode (**exactError)(TS, V
   Logically collective on ts
 
   Input Parameters:
-+ ts - time stepping context
++ ts         - time stepping context
 - exactError - The function which computes the solution error
+
+  Level: advanced
 
   Calling sequence for exactError:
 $ PetscErrorCode exactError(TS ts, Vec u)
+
 + ts - The timestepping context
 . u  - The approximate solution vector
 - e  - The input vector in which the error is stored
 
-  Level: advanced
-
-.seealso: [](chapter_ts), `TS`, `TSGetComputeExactError()`, `TSComputeExactError()`
+.seealso: `TSGetComputeExactError()`, `TSComputeExactError()`
 @*/
-PetscErrorCode TSSetComputeExactError(TS ts, PetscErrorCode (*exactError)(TS, Vec, Vec))
-{
+PetscErrorCode TSSetComputeExactError(TS ts, PetscErrorCode (*exactError)(TS, Vec, Vec)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidFunction(exactError, 2);
@@ -3654,21 +3587,20 @@ PetscErrorCode TSSetComputeExactError(TS ts, PetscErrorCode (*exactError)(TS, Ve
 }
 
 /*@
-  TSComputeExactError - Compute the solution error for the timestepping using the function previously set with `TSSetComputeExactError()`
+  TSComputeExactError - Compute the solution error for the timestepping using the function previously set.
 
   Collective on ts
 
   Input Parameters:
 + ts - time stepping context
 . u  - The approximate solution
-- e  - The `Vec` used to store the error
+- e  - The Vec used to store the error
 
   Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSGetComputeInitialCondition()`, `TSSetComputeInitialCondition()`, `TSSolve()`
+.seealso: `TSGetComputeInitialCondition()`, `TSSetComputeInitialCondition()`, `TSSolve()`
 @*/
-PetscErrorCode TSComputeExactError(TS ts, Vec u, Vec e)
-{
+PetscErrorCode TSComputeExactError(TS ts, Vec u, Vec e) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidHeaderSpecific(u, VEC_CLASSID, 2);
@@ -3680,24 +3612,23 @@ PetscErrorCode TSComputeExactError(TS ts, Vec u, Vec e)
 /*@
    TSSolve - Steps the requested number of timesteps.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
--  u - the solution vector  (can be null if `TSSetSolution()` was used and `TSSetExactFinalTime`(ts,`TS_EXACTFINALTIME_MATCHSTEP`) was not used,
++  ts - the TS context obtained from TSCreate()
+-  u - the solution vector  (can be null if TSSetSolution() was used and TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP) was not used,
                              otherwise must contain the initial conditions and will contain the solution at the final requested time
 
    Level: beginner
 
    Notes:
    The final time returned by this function may be different from the time of the internally
-   held state accessible by `TSGetSolution()` and `TSGetTime()` because the method may have
+   held state accessible by TSGetSolution() and TSGetTime() because the method may have
    stepped over the final time.
 
-.seealso: [](chapter_ts), `TS`, `TSCreate()`, `TSSetSolution()`, `TSStep()`, `TSGetTime()`, `TSGetSolveTime()`
+.seealso: `TSCreate()`, `TSSetSolution()`, `TSStep()`, `TSGetTime()`, `TSGetSolveTime()`
 @*/
-PetscErrorCode TSSolve(TS ts, Vec u)
-{
+PetscErrorCode TSSolve(TS ts, Vec u) {
   Vec solution;
 
   PetscFunctionBegin;
@@ -3860,21 +3791,21 @@ PetscErrorCode TSSolve(TS ts, Vec u)
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
-.  t  - the current time. This time may not corresponds to the final time set with `TSSetMaxTime()`, use `TSGetSolveTime()`.
+.  t  - the current time. This time may not corresponds to the final time set with TSSetMaxTime(), use TSGetSolveTime().
 
    Level: beginner
 
    Note:
-   When called during time step evaluation (e.g. during residual evaluation or via hooks set using `TSSetPreStep()`,
-   `TSSetPreStage()`, `TSSetPostStage()`, or `TSSetPostStep()`), the time is the time at the start of the step being evaluated.
+   When called during time step evaluation (e.g. during residual evaluation or via hooks set using TSSetPreStep(),
+   TSSetPreStage(), TSSetPostStage(), or TSSetPostStep()), the time is the time at the start of the step being evaluated.
 
-.seealso: [](chapter_ts), TS`, ``TSGetSolveTime()`, `TSSetTime()`, `TSGetTimeStep()`, `TSGetStepNumber()`
+.seealso: `TSGetSolveTime()`, `TSSetTime()`, `TSGetTimeStep()`, `TSGetStepNumber()`
+
 @*/
-PetscErrorCode TSGetTime(TS ts, PetscReal *t)
-{
+PetscErrorCode TSGetTime(TS ts, PetscReal *t) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidRealPointer(t, 2);
@@ -3888,17 +3819,17 @@ PetscErrorCode TSGetTime(TS ts, PetscReal *t)
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameter:
 .  t  - the previous time
 
    Level: beginner
 
-.seealso: [](chapter_ts), TS`, ``TSGetTime()`, `TSGetSolveTime()`, `TSGetTimeStep()`
+.seealso: `TSGetTime()`, `TSGetSolveTime()`, `TSGetTimeStep()`
+
 @*/
-PetscErrorCode TSGetPrevTime(TS ts, PetscReal *t)
-{
+PetscErrorCode TSGetPrevTime(TS ts, PetscReal *t) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidRealPointer(t, 2);
@@ -3909,18 +3840,18 @@ PetscErrorCode TSGetPrevTime(TS ts, PetscReal *t)
 /*@
    TSSetTime - Allows one to reset the time.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context obtained from `TSCreate()`
++  ts - the TS context obtained from TSCreate()
 -  time - the time
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSGetTime()`, `TSSetMaxSteps()`
+.seealso: `TSGetTime()`, `TSSetMaxSteps()`
+
 @*/
-PetscErrorCode TSSetTime(TS ts, PetscReal t)
-{
+PetscErrorCode TSSetTime(TS ts, PetscReal t) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidLogicalCollectiveReal(ts, t, 2);
@@ -3932,23 +3863,23 @@ PetscErrorCode TSSetTime(TS ts, PetscReal t)
    TSSetOptionsPrefix - Sets the prefix used for searching for all
    TS options in the database.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts     - The `TS` context
++  ts     - The TS context
 -  prefix - The prefix to prepend to all option names
 
-   Level: advanced
-
-   Note:
+   Notes:
    A hyphen (-) must NOT be given at the beginning of the prefix name.
    The first character of all runtime options is AUTOMATICALLY the
    hyphen.
 
-.seealso: [](chapter_ts), `TS`, `TSSetFromOptions()`, `TSAppendOptionsPrefix()`
+   Level: advanced
+
+.seealso: `TSSetFromOptions()`
+
 @*/
-PetscErrorCode TSSetOptionsPrefix(TS ts, const char prefix[])
-{
+PetscErrorCode TSSetOptionsPrefix(TS ts, const char prefix[]) {
   SNES snes;
 
   PetscFunctionBegin;
@@ -3963,23 +3894,23 @@ PetscErrorCode TSSetOptionsPrefix(TS ts, const char prefix[])
    TSAppendOptionsPrefix - Appends to the prefix used for searching for all
    TS options in the database.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
-+  ts     - The `TS` context
++  ts     - The TS context
 -  prefix - The prefix to prepend to all option names
 
-   Level: advanced
-
-   Note:
+   Notes:
    A hyphen (-) must NOT be given at the beginning of the prefix name.
    The first character of all runtime options is AUTOMATICALLY the
    hyphen.
 
-.seealso: [](chapter_ts), `TS`, `TSGetOptionsPrefix()`, `TSSetOptionsPrefix()`, `TSSetFromOptions()`
+   Level: advanced
+
+.seealso: `TSGetOptionsPrefix()`
+
 @*/
-PetscErrorCode TSAppendOptionsPrefix(TS ts, const char prefix[])
-{
+PetscErrorCode TSAppendOptionsPrefix(TS ts, const char prefix[]) {
   SNES snes;
 
   PetscFunctionBegin;
@@ -3992,26 +3923,25 @@ PetscErrorCode TSAppendOptionsPrefix(TS ts, const char prefix[])
 
 /*@C
    TSGetOptionsPrefix - Sets the prefix used for searching for all
-   `TS` options in the database.
+   TS options in the database.
 
    Not Collective
 
    Input Parameter:
-.  ts - The `TS` context
+.  ts - The TS context
 
    Output Parameter:
 .  prefix - A pointer to the prefix string used
 
-   Level: intermediate
-
-   Fortran Note:
-   On the fortran side, the user should pass in a string 'prefix' of
+   Notes:
+    On the fortran side, the user should pass in a string 'prifix' of
    sufficient length to hold the prefix.
 
-.seealso: [](chapter_ts), `TS`, `TSAppendOptionsPrefix()`, `TSSetFromOptions()`
+   Level: intermediate
+
+.seealso: `TSAppendOptionsPrefix()`
 @*/
-PetscErrorCode TSGetOptionsPrefix(TS ts, const char *prefix[])
-{
+PetscErrorCode TSGetOptionsPrefix(TS ts, const char *prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(prefix, 2);
@@ -4022,10 +3952,10 @@ PetscErrorCode TSGetOptionsPrefix(TS ts, const char *prefix[])
 /*@C
    TSGetRHSJacobian - Returns the Jacobian J at the present timestep.
 
-   Not Collective, but parallel objects are returned if ts is parallel
+   Not Collective, but parallel objects are returned if TS is parallel
 
    Input Parameter:
-.  ts  - The `TS` context obtained from `TSCreate()`
+.  ts  - The TS context obtained from TSCreate()
 
    Output Parameters:
 +  Amat - The (approximate) Jacobian J of G, where U_t = G(U,t)  (or NULL)
@@ -4033,16 +3963,15 @@ PetscErrorCode TSGetOptionsPrefix(TS ts, const char *prefix[])
 .  func - Function to compute the Jacobian of the RHS  (or NULL)
 -  ctx - User-defined context for Jacobian evaluation routine  (or NULL)
 
-   Level: intermediate
-
-   Note:
+   Notes:
     You can pass in NULL for any return argument you do not need.
 
-.seealso: [](chapter_ts), `TS`, `TSGetTimeStep()`, `TSGetMatrices()`, `TSGetTime()`, `TSGetStepNumber()`
+   Level: intermediate
+
+.seealso: `TSGetTimeStep()`, `TSGetMatrices()`, `TSGetTime()`, `TSGetStepNumber()`
 
 @*/
-PetscErrorCode TSGetRHSJacobian(TS ts, Mat *Amat, Mat *Pmat, TSRHSJacobian *func, void **ctx)
-{
+PetscErrorCode TSGetRHSJacobian(TS ts, Mat *Amat, Mat *Pmat, TSRHSJacobian *func, void **ctx) {
   DM dm;
 
   PetscFunctionBegin;
@@ -4060,10 +3989,10 @@ PetscErrorCode TSGetRHSJacobian(TS ts, Mat *Amat, Mat *Pmat, TSRHSJacobian *func
 /*@C
    TSGetIJacobian - Returns the implicit Jacobian at the present timestep.
 
-   Not Collective, but parallel objects are returned if ts is parallel
+   Not Collective, but parallel objects are returned if TS is parallel
 
    Input Parameter:
-.  ts  - The `TS` context obtained from `TSCreate()`
+.  ts  - The TS context obtained from TSCreate()
 
    Output Parameters:
 +  Amat  - The (approximate) Jacobian of F(t,U,U_t)
@@ -4071,16 +4000,15 @@ PetscErrorCode TSGetRHSJacobian(TS ts, Mat *Amat, Mat *Pmat, TSRHSJacobian *func
 .  f   - The function to compute the matrices
 - ctx - User-defined context for Jacobian evaluation routine
 
-   Level: advanced
-
-   Note:
+   Notes:
     You can pass in NULL for any return argument you do not need.
 
-.seealso: [](chapter_ts), `TS`, `TSGetTimeStep()`, `TSGetRHSJacobian()`, `TSGetMatrices()`, `TSGetTime()`, `TSGetStepNumber()`
+   Level: advanced
+
+.seealso: `TSGetTimeStep()`, `TSGetRHSJacobian()`, `TSGetMatrices()`, `TSGetTime()`, `TSGetStepNumber()`
 
 @*/
-PetscErrorCode TSGetIJacobian(TS ts, Mat *Amat, Mat *Pmat, TSIJacobian *f, void **ctx)
-{
+PetscErrorCode TSGetIJacobian(TS ts, Mat *Amat, Mat *Pmat, TSIJacobian *f, void **ctx) {
   DM dm;
 
   PetscFunctionBegin;
@@ -4097,25 +4025,24 @@ PetscErrorCode TSGetIJacobian(TS ts, Mat *Amat, Mat *Pmat, TSIJacobian *f, void 
 
 #include <petsc/private/dmimpl.h>
 /*@
-   TSSetDM - Sets the `DM` that may be used by some nonlinear solvers or preconditioners under the `TS`
+   TSSetDM - Sets the DM that may be used by some nonlinear solvers or preconditioners under the TS
 
    Logically Collective on ts
 
    Input Parameters:
-+  ts - the `TS` integrator object
++  ts - the ODE integrator object
 -  dm - the dm, cannot be NULL
+
+   Notes:
+   A DM can only be used for solving one problem at a time because information about the problem is stored on the DM,
+   even when not using interfaces like DMTSSetIFunction().  Use DMClone() to get a distinct DM when solving
+   different problems using the same function space.
 
    Level: intermediate
 
-   Notes:
-   A `DM` can only be used for solving one problem at a time because information about the problem is stored on the `DM`,
-   even when not using interfaces like `DMTSSetIFunction()`.  Use `DMClone()` to get a distinct `DM` when solving
-   different problems using the same function space.
-
-.seealso: [](chapter_ts), `TS`, `DM`, `TSGetDM()`, `SNESSetDM()`, `SNESGetDM()`
+.seealso: `TSGetDM()`, `SNESSetDM()`, `SNESGetDM()`
 @*/
-PetscErrorCode TSSetDM(TS ts, DM dm)
-{
+PetscErrorCode TSSetDM(TS ts, DM dm) {
   SNES snes;
   DMTS tsdm;
 
@@ -4140,22 +4067,21 @@ PetscErrorCode TSSetDM(TS ts, DM dm)
 }
 
 /*@
-   TSGetDM - Gets the `DM` that may be used by some preconditioners
+   TSGetDM - Gets the DM that may be used by some preconditioners
 
    Not Collective
 
    Input Parameter:
-. ts - the `TS`
+. ts - the preconditioner context
 
    Output Parameter:
 .  dm - the dm
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `DM`, `TSSetDM()`, `SNESSetDM()`, `SNESGetDM()`
+.seealso: `TSSetDM()`, `SNESSetDM()`, `SNESGetDM()`
 @*/
-PetscErrorCode TSGetDM(TS ts, DM *dm)
-{
+PetscErrorCode TSGetDM(TS ts, DM *dm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (!ts->dm) {
@@ -4169,7 +4095,7 @@ PetscErrorCode TSGetDM(TS ts, DM *dm)
 /*@
    SNESTSFormFunction - Function to evaluate nonlinear residual
 
-   Logically Collective on snes
+   Logically Collective on SNES
 
    Input Parameters:
 + snes - nonlinear solver
@@ -4179,16 +4105,15 @@ PetscErrorCode TSGetDM(TS ts, DM *dm)
    Output Parameter:
 . F - the nonlinear residual
 
+   Notes:
+   This function is not normally called by users and is automatically registered with the SNES used by TS.
+   It is most frequently passed to MatFDColoringSetFunction().
+
    Level: advanced
 
-   Note:
-   This function is not normally called by users and is automatically registered with the `SNES` used by `TS`.
-   It is most frequently passed to `MatFDColoringSetFunction()`.
-
-.seealso: [](chapter_ts), `SNESSetFunction()`, `MatFDColoringSetFunction()`
+.seealso: `SNESSetFunction()`, `MatFDColoringSetFunction()`
 @*/
-PetscErrorCode SNESTSFormFunction(SNES snes, Vec U, Vec F, void *ctx)
-{
+PetscErrorCode SNESTSFormFunction(SNES snes, Vec U, Vec F, void *ctx) {
   TS ts = (TS)ctx;
 
   PetscFunctionBegin;
@@ -4203,26 +4128,25 @@ PetscErrorCode SNESTSFormFunction(SNES snes, Vec U, Vec F, void *ctx)
 /*@
    SNESTSFormJacobian - Function to evaluate the Jacobian
 
-   Collective on snes
+   Collective on SNES
 
    Input Parameters:
 + snes - nonlinear solver
 . U - the current state at which to evaluate the residual
-- ctx - user context, must be a `TS`
+- ctx - user context, must be a TS
 
    Output Parameters:
 + A - the Jacobian
 - B - the preconditioning matrix (may be the same as A)
 
+   Notes:
+   This function is not normally called by users and is automatically registered with the SNES used by TS.
+
    Level: developer
 
-   Note:
-   This function is not normally called by users and is automatically registered with the `SNES` used by `TS`.
-
-.seealso: [](chapter_ts), `SNESSetJacobian()`
+.seealso: `SNESSetJacobian()`
 @*/
-PetscErrorCode SNESTSFormJacobian(SNES snes, Vec U, Mat A, Mat B, void *ctx)
-{
+PetscErrorCode SNESTSFormJacobian(SNES snes, Vec U, Mat A, Mat B, void *ctx) {
   TS ts = (TS)ctx;
 
   PetscFunctionBegin;
@@ -4240,7 +4164,7 @@ PetscErrorCode SNESTSFormJacobian(SNES snes, Vec U, Mat A, Mat B, void *ctx)
 /*@C
    TSComputeRHSFunctionLinear - Evaluate the right hand side via the user-provided Jacobian, for linear problems Udot = A U only
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -4253,14 +4177,13 @@ PetscErrorCode SNESTSFormJacobian(SNES snes, Vec U, Mat A, Mat B, void *ctx)
 
    Level: intermediate
 
-   Note:
-   This function is intended to be passed to `TSSetRHSFunction()` to evaluate the right hand side for linear problems.
-   The matrix (and optionally the evaluation context) should be passed to `TSSetRHSJacobian()`.
+   Notes:
+   This function is intended to be passed to TSSetRHSFunction() to evaluate the right hand side for linear problems.
+   The matrix (and optionally the evaluation context) should be passed to TSSetRHSJacobian().
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSFunction()`, `TSSetRHSJacobian()`, `TSComputeRHSJacobianConstant()`
+.seealso: `TSSetRHSFunction()`, `TSSetRHSJacobian()`, `TSComputeRHSJacobianConstant()`
 @*/
-PetscErrorCode TSComputeRHSFunctionLinear(TS ts, PetscReal t, Vec U, Vec F, void *ctx)
-{
+PetscErrorCode TSComputeRHSFunctionLinear(TS ts, PetscReal t, Vec U, Vec F, void *ctx) {
   Mat Arhs, Brhs;
 
   PetscFunctionBegin;
@@ -4275,7 +4198,7 @@ PetscErrorCode TSComputeRHSFunctionLinear(TS ts, PetscReal t, Vec U, Vec F, void
 /*@C
    TSComputeRHSJacobianConstant - Reuses a Jacobian that is time-independent.
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -4289,13 +4212,12 @@ PetscErrorCode TSComputeRHSFunctionLinear(TS ts, PetscReal t, Vec U, Vec F, void
 
    Level: intermediate
 
-   Note:
-   This function is intended to be passed to `TSSetRHSJacobian()` to evaluate the Jacobian for linear time-independent problems.
+   Notes:
+   This function is intended to be passed to TSSetRHSJacobian() to evaluate the Jacobian for linear time-independent problems.
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSFunction()`, `TSSetRHSJacobian()`, `TSComputeRHSFunctionLinear()`
+.seealso: `TSSetRHSFunction()`, `TSSetRHSJacobian()`, `TSComputeRHSFunctionLinear()`
 @*/
-PetscErrorCode TSComputeRHSJacobianConstant(TS ts, PetscReal t, Vec U, Mat A, Mat B, void *ctx)
-{
+PetscErrorCode TSComputeRHSJacobianConstant(TS ts, PetscReal t, Vec U, Mat A, Mat B, void *ctx) {
   PetscFunctionBegin;
   PetscFunctionReturn(0);
 }
@@ -4303,7 +4225,7 @@ PetscErrorCode TSComputeRHSJacobianConstant(TS ts, PetscReal t, Vec U, Mat A, Ma
 /*@C
    TSComputeIFunctionLinear - Evaluate the left hand side via the user-provided Jacobian, for linear problems only
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -4319,16 +4241,15 @@ PetscErrorCode TSComputeRHSJacobianConstant(TS ts, PetscReal t, Vec U, Mat A, Ma
 
    Notes:
    The assumption here is that the left hand side is of the form A*Udot (and not A*Udot + B*U). For other cases, the
-   user is required to write their own `TSComputeIFunction()`.
-   This function is intended to be passed to `TSSetIFunction()` to evaluate the left hand side for linear problems.
-   The matrix (and optionally the evaluation context) should be passed to `TSSetIJacobian()`.
+   user is required to write their own TSComputeIFunction.
+   This function is intended to be passed to TSSetIFunction() to evaluate the left hand side for linear problems.
+   The matrix (and optionally the evaluation context) should be passed to TSSetIJacobian().
 
-   Note that using this function is NOT equivalent to using `TSComputeRHSFunctionLinear()` since that solves Udot = A U
+   Note that using this function is NOT equivalent to using TSComputeRHSFunctionLinear() since that solves Udot = A U
 
-.seealso: [](chapter_ts), `TS`, `TSSetIFunction()`, `TSSetIJacobian()`, `TSComputeIJacobianConstant()`, `TSComputeRHSFunctionLinear()`
+.seealso: `TSSetIFunction()`, `TSSetIJacobian()`, `TSComputeIJacobianConstant()`, `TSComputeRHSFunctionLinear()`
 @*/
-PetscErrorCode TSComputeIFunctionLinear(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, void *ctx)
-{
+PetscErrorCode TSComputeIFunctionLinear(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, void *ctx) {
   Mat A, B;
 
   PetscFunctionBegin;
@@ -4341,7 +4262,7 @@ PetscErrorCode TSComputeIFunctionLinear(TS ts, PetscReal t, Vec U, Vec Udot, Vec
 /*@C
    TSComputeIJacobianConstant - Reuses a time-independent for a semi-implicit DAE or ODE
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -4358,14 +4279,14 @@ PetscErrorCode TSComputeIFunctionLinear(TS ts, PetscReal t, Vec U, Vec Udot, Vec
    Level: advanced
 
    Notes:
-   This function is intended to be passed to `TSSetIJacobian()` to evaluate the Jacobian for linear time-independent problems.
+   This function is intended to be passed to TSSetIJacobian() to evaluate the Jacobian for linear time-independent problems.
 
    It is only appropriate for problems of the form
 
 $     M Udot = F(U,t)
 
-  where M is constant and F is non-stiff.  The user must pass M to `TSSetIJacobian()`.  The current implementation only
-  works with IMEX time integration methods such as `TSROSW` and `TSARKIMEX`, since there is no support for de-constructing
+  where M is constant and F is non-stiff.  The user must pass M to TSSetIJacobian().  The current implementation only
+  works with IMEX time integration methods such as TSROSW and TSARKIMEX, since there is no support for de-constructing
   an implicit operator of the form
 
 $    shift*M + J
@@ -4373,10 +4294,9 @@ $    shift*M + J
   where J is the Jacobian of -F(U).  Support may be added in a future version of PETSc, but for now, the user must store
   a copy of M or reassemble it when requested.
 
-.seealso: [](chapter_ts), `TS`, `TSROSW`, `TSARKIMEX`, `TSSetIFunction()`, `TSSetIJacobian()`, `TSComputeIFunctionLinear()`
+.seealso: `TSSetIFunction()`, `TSSetIJacobian()`, `TSComputeIFunctionLinear()`
 @*/
-PetscErrorCode TSComputeIJacobianConstant(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal shift, Mat A, Mat B, void *ctx)
-{
+PetscErrorCode TSComputeIJacobianConstant(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal shift, Mat A, Mat B, void *ctx) {
   PetscFunctionBegin;
   PetscCall(MatScale(A, shift / ts->ijacobian.shift));
   ts->ijacobian.shift = shift;
@@ -4384,22 +4304,21 @@ PetscErrorCode TSComputeIJacobianConstant(TS ts, PetscReal t, Vec U, Vec Udot, P
 }
 
 /*@
-   TSGetEquationType - Gets the type of the equation that `TS` is solving.
+   TSGetEquationType - Gets the type of the equation that TS is solving.
 
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context
+.  ts - the TS context
 
    Output Parameter:
-.  equation_type - see `TSEquationType`
+.  equation_type - see TSEquationType
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`, `TSSetEquationType()`, `TSEquationType`
+.seealso: `TSSetEquationType()`, `TSEquationType`
 @*/
-PetscErrorCode TSGetEquationType(TS ts, TSEquationType *equation_type)
-{
+PetscErrorCode TSGetEquationType(TS ts, TSEquationType *equation_type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(equation_type, 2);
@@ -4408,20 +4327,19 @@ PetscErrorCode TSGetEquationType(TS ts, TSEquationType *equation_type)
 }
 
 /*@
-   TSSetEquationType - Sets the type of the equation that `TS` is solving.
+   TSSetEquationType - Sets the type of the equation that TS is solving.
 
    Not Collective
 
    Input Parameters:
-+  ts - the `TS` context
--  equation_type - see `TSEquationType`
++  ts - the TS context
+-  equation_type - see TSEquationType
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSGetEquationType()`, `TSEquationType`
+.seealso: `TSGetEquationType()`, `TSEquationType`
 @*/
-PetscErrorCode TSSetEquationType(TS ts, TSEquationType equation_type)
-{
+PetscErrorCode TSSetEquationType(TS ts, TSEquationType equation_type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->equation_type = equation_type;
@@ -4429,26 +4347,25 @@ PetscErrorCode TSSetEquationType(TS ts, TSEquationType equation_type)
 }
 
 /*@
-   TSGetConvergedReason - Gets the reason the `TS` iteration was stopped.
+   TSGetConvergedReason - Gets the reason the TS iteration was stopped.
 
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context
+.  ts - the TS context
 
    Output Parameter:
-.  reason - negative value indicates diverged, positive value converged, see `TSConvergedReason` or the
+.  reason - negative value indicates diverged, positive value converged, see TSConvergedReason or the
             manual pages for the individual convergence tests for complete lists
 
    Level: beginner
 
-   Note:
-   Can only be called after the call to `TSSolve()` is complete.
+   Notes:
+   Can only be called after the call to TSSolve() is complete.
 
-.seealso: [](chapter_ts), `TS`, `TSSolve()`, `TSSetConvergenceTest()`, `TSConvergedReason`
+.seealso: `TSSetConvergenceTest()`, `TSConvergedReason`
 @*/
-PetscErrorCode TSGetConvergedReason(TS ts, TSConvergedReason *reason)
-{
+PetscErrorCode TSGetConvergedReason(TS ts, TSConvergedReason *reason) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(reason, 2);
@@ -4457,24 +4374,23 @@ PetscErrorCode TSGetConvergedReason(TS ts, TSConvergedReason *reason)
 }
 
 /*@
-   TSSetConvergedReason - Sets the reason for handling the convergence of `TSSolve()`.
+   TSSetConvergedReason - Sets the reason for handling the convergence of TSSolve.
 
    Logically Collective; reason must contain common value
 
    Input Parameters:
-+  ts - the `TS` context
--  reason - negative value indicates diverged, positive value converged, see `TSConvergedReason` or the
++  ts - the TS context
+-  reason - negative value indicates diverged, positive value converged, see TSConvergedReason or the
             manual pages for the individual convergence tests for complete lists
 
    Level: advanced
 
-   Note:
-   Can only be called while `TSSolve()` is active.
+   Notes:
+   Can only be called while TSSolve() is active.
 
-.seealso: [](chapter_ts), `TS`, `TSSolve()`, `TSConvergedReason`
+.seealso: `TSConvergedReason`
 @*/
-PetscErrorCode TSSetConvergedReason(TS ts, TSConvergedReason reason)
-{
+PetscErrorCode TSSetConvergedReason(TS ts, TSConvergedReason reason) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->reason = reason;
@@ -4482,25 +4398,24 @@ PetscErrorCode TSSetConvergedReason(TS ts, TSConvergedReason reason)
 }
 
 /*@
-   TSGetSolveTime - Gets the time after a call to `TSSolve()`
+   TSGetSolveTime - Gets the time after a call to TSSolve()
 
    Not Collective
 
    Input Parameter:
-.  ts - the `TS` context
+.  ts - the TS context
 
    Output Parameter:
-.  ftime - the final time. This time corresponds to the final time set with `TSSetMaxTime()`
+.  ftime - the final time. This time corresponds to the final time set with TSSetMaxTime()
 
    Level: beginner
 
-   Note:
-   Can only be called after the call to `TSSolve()` is complete.
+   Notes:
+   Can only be called after the call to TSSolve() is complete.
 
-.seealso: [](chapter_ts), `TS`, `TSSolve()`, `TSSetConvergenceTest()`, `TSConvergedReason`
+.seealso: `TSSetConvergenceTest()`, `TSConvergedReason`
 @*/
-PetscErrorCode TSGetSolveTime(TS ts, PetscReal *ftime)
-{
+PetscErrorCode TSGetSolveTime(TS ts, PetscReal *ftime) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidRealPointer(ftime, 2);
@@ -4515,20 +4430,19 @@ PetscErrorCode TSGetSolveTime(TS ts, PetscReal *ftime)
    Not Collective
 
    Input Parameter:
-.  ts - `TS` context
+.  ts - TS context
 
    Output Parameter:
 .  nits - number of nonlinear iterations
 
+   Notes:
+   This counter is reset to zero for each successive call to TSSolve().
+
    Level: intermediate
 
-   Notes:
-   This counter is reset to zero for each successive call to `TSSolve()`.
-
-.seealso: [](chapter_ts), `TS`, `TSSolve()`, `TSGetKSPIterations()`
+.seealso: `TSGetKSPIterations()`
 @*/
-PetscErrorCode TSGetSNESIterations(TS ts, PetscInt *nits)
-{
+PetscErrorCode TSGetSNESIterations(TS ts, PetscInt *nits) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidIntPointer(nits, 2);
@@ -4543,20 +4457,19 @@ PetscErrorCode TSGetSNESIterations(TS ts, PetscInt *nits)
    Not Collective
 
    Input Parameter:
-.  ts - `TS` context
+.  ts - TS context
 
    Output Parameter:
 .  lits - number of linear iterations
 
+   Notes:
+   This counter is reset to zero for each successive call to TSSolve().
+
    Level: intermediate
 
-   Note:
-   This counter is reset to zero for each successive call to `TSSolve()`.
-
-.seealso: [](chapter_ts), `TS`, `TSSolve()`, `TSGetSNESIterations()`, `SNESGetKSPIterations()`
+.seealso: `TSGetSNESIterations()`, `SNESGetKSPIterations()`
 @*/
-PetscErrorCode TSGetKSPIterations(TS ts, PetscInt *lits)
-{
+PetscErrorCode TSGetKSPIterations(TS ts, PetscInt *lits) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidIntPointer(lits, 2);
@@ -4570,20 +4483,19 @@ PetscErrorCode TSGetKSPIterations(TS ts, PetscInt *lits)
    Not Collective
 
    Input Parameter:
-.  ts - `TS` context
+.  ts - TS context
 
    Output Parameter:
 .  rejects - number of steps rejected
 
+   Notes:
+   This counter is reset to zero for each successive call to TSSolve().
+
    Level: intermediate
 
-   Note:
-   This counter is reset to zero for each successive call to `TSSolve()`.
-
-.seealso: [](chapter_ts), `TS`, `TSSolve()`, `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetSNESFailures()`, `TSSetMaxSNESFailures()`, `TSSetErrorIfStepFails()`
+.seealso: `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetSNESFailures()`, `TSSetMaxSNESFailures()`, `TSSetErrorIfStepFails()`
 @*/
-PetscErrorCode TSGetStepRejections(TS ts, PetscInt *rejects)
-{
+PetscErrorCode TSGetStepRejections(TS ts, PetscInt *rejects) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidIntPointer(rejects, 2);
@@ -4592,25 +4504,24 @@ PetscErrorCode TSGetStepRejections(TS ts, PetscInt *rejects)
 }
 
 /*@
-   TSGetSNESFailures - Gets the total number of failed `SNES` solves in a `TS`
+   TSGetSNESFailures - Gets the total number of failed SNES solves
 
    Not Collective
 
    Input Parameter:
-.  ts - `TS` context
+.  ts - TS context
 
    Output Parameter:
 .  fails - number of failed nonlinear solves
 
+   Notes:
+   This counter is reset to zero for each successive call to TSSolve().
+
    Level: intermediate
 
-   Note:
-   This counter is reset to zero for each successive call to `TSSolve()`.
-
-.seealso: [](chapter_ts), `TS`, `TSSolve()`, `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetStepRejections()`, `TSSetMaxSNESFailures()`
+.seealso: `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetStepRejections()`, `TSSetMaxSNESFailures()`
 @*/
-PetscErrorCode TSGetSNESFailures(TS ts, PetscInt *fails)
-{
+PetscErrorCode TSGetSNESFailures(TS ts, PetscInt *fails) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidIntPointer(fails, 2);
@@ -4619,23 +4530,25 @@ PetscErrorCode TSGetSNESFailures(TS ts, PetscInt *fails)
 }
 
 /*@
-   TSSetMaxStepRejections - Sets the maximum number of step rejections before a time step fails
+   TSSetMaxStepRejections - Sets the maximum number of step rejections before a step fails
 
    Not Collective
 
    Input Parameters:
-+  ts - `TS` context
++  ts - TS context
 -  rejects - maximum number of rejected steps, pass -1 for unlimited
+
+   Notes:
+   The counter is reset to zero for each step
 
    Options Database Key:
 .  -ts_max_reject - Maximum number of step rejections before a step fails
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `SNES`, `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxSNESFailures()`, `TSGetStepRejections()`, `TSGetSNESFailures()`, `TSSetErrorIfStepFails()`, `TSGetConvergedReason()`
+.seealso: `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxSNESFailures()`, `TSGetStepRejections()`, `TSGetSNESFailures()`, `TSSetErrorIfStepFails()`, `TSGetConvergedReason()`
 @*/
-PetscErrorCode TSSetMaxStepRejections(TS ts, PetscInt rejects)
-{
+PetscErrorCode TSSetMaxStepRejections(TS ts, PetscInt rejects) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->max_reject = rejects;
@@ -4643,23 +4556,25 @@ PetscErrorCode TSSetMaxStepRejections(TS ts, PetscInt rejects)
 }
 
 /*@
-   TSSetMaxSNESFailures - Sets the maximum number of failed `SNES` solves
+   TSSetMaxSNESFailures - Sets the maximum number of failed SNES solves
 
    Not Collective
 
    Input Parameters:
-+  ts - `TS` context
++  ts - TS context
 -  fails - maximum number of failed nonlinear solves, pass -1 for unlimited
+
+   Notes:
+   The counter is reset to zero for each successive call to TSSolve().
 
    Options Database Key:
 .  -ts_max_snes_failures - Maximum number of nonlinear solve failures
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `SNES`, `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetStepRejections()`, `TSGetSNESFailures()`, `SNESGetConvergedReason()`, `TSGetConvergedReason()`
+.seealso: `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetStepRejections()`, `TSGetSNESFailures()`, `SNESGetConvergedReason()`, `TSGetConvergedReason()`
 @*/
-PetscErrorCode TSSetMaxSNESFailures(TS ts, PetscInt fails)
-{
+PetscErrorCode TSSetMaxSNESFailures(TS ts, PetscInt fails) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->max_snes_failures = fails;
@@ -4667,23 +4582,22 @@ PetscErrorCode TSSetMaxSNESFailures(TS ts, PetscInt fails)
 }
 
 /*@
-   TSSetErrorIfStepFails - Immediately error if no step succeeds
+   TSSetErrorIfStepFails - Error if no step succeeds
 
    Not Collective
 
    Input Parameters:
-+  ts - `TS` context
--  err - `PETSC_TRUE` to error if no step succeeds, `PETSC_FALSE` to return without failure
++  ts - TS context
+-  err - PETSC_TRUE to error if no step succeeds, PETSC_FALSE to return without failure
 
    Options Database Key:
 .  -ts_error_if_step_fails - Error if no step succeeds
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetStepRejections()`, `TSGetSNESFailures()`, `TSSetErrorIfStepFails()`, `TSGetConvergedReason()`
+.seealso: `TSGetSNESIterations()`, `TSGetKSPIterations()`, `TSSetMaxStepRejections()`, `TSGetStepRejections()`, `TSGetSNESFailures()`, `TSSetErrorIfStepFails()`, `TSGetConvergedReason()`
 @*/
-PetscErrorCode TSSetErrorIfStepFails(TS ts, PetscBool err)
-{
+PetscErrorCode TSSetErrorIfStepFails(TS ts, PetscBool err) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->errorifstepfailed = err;
@@ -4693,7 +4607,7 @@ PetscErrorCode TSSetErrorIfStepFails(TS ts, PetscBool err)
 /*@
    TSGetAdapt - Get the adaptive controller context for the current method
 
-   Collective on ts if controller has not been created yet
+   Collective on TS if controller has not been created yet
 
    Input Parameter:
 .  ts - time stepping context
@@ -4703,15 +4617,15 @@ PetscErrorCode TSSetErrorIfStepFails(TS ts, PetscBool err)
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSAdapt`, `TSAdaptSetType()`, `TSAdaptChoose()`
+.seealso: `TSAdapt`, `TSAdaptSetType()`, `TSAdaptChoose()`
 @*/
-PetscErrorCode TSGetAdapt(TS ts, TSAdapt *adapt)
-{
+PetscErrorCode TSGetAdapt(TS ts, TSAdapt *adapt) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscValidPointer(adapt, 2);
   if (!ts->adapt) {
     PetscCall(TSAdaptCreate(PetscObjectComm((PetscObject)ts), &ts->adapt));
+    PetscCall(PetscLogObjectParent((PetscObject)ts, (PetscObject)ts->adapt));
     PetscCall(PetscObjectIncrementTabLevel((PetscObject)ts->adapt, (PetscObject)ts, 1));
   }
   *adapt = ts->adapt;
@@ -4725,16 +4639,14 @@ PetscErrorCode TSGetAdapt(TS ts, TSAdapt *adapt)
 
    Input Parameters:
 +  ts - time integration context
-.  atol - scalar absolute tolerances, `PETSC_DECIDE` to leave current value
+.  atol - scalar absolute tolerances, PETSC_DECIDE to leave current value
 .  vatol - vector of absolute tolerances or NULL, used in preference to atol if present
-.  rtol - scalar relative tolerances, `PETSC_DECIDE` to leave current value
+.  rtol - scalar relative tolerances, PETSC_DECIDE to leave current value
 -  vrtol - vector of relative tolerances or NULL, used in preference to atol if present
 
    Options Database keys:
 +  -ts_rtol <rtol> - relative tolerance for local truncation error
 -  -ts_atol <atol> - Absolute tolerance for local truncation error
-
-   Level: beginner
 
    Notes:
    With PETSc's implicit schemes for DAE problems, the calculation of the local truncation error
@@ -4744,10 +4656,11 @@ PetscErrorCode TSGetAdapt(TS ts, TSAdapt *adapt)
    differential part and infinity for the algebraic part, the LTE calculation will include only the
    differential variables.
 
-.seealso: [](chapter_ts), `TS`, `TSAdapt`, `TSErrorWeightedNorm()`, `TSGetTolerances()`
+   Level: beginner
+
+.seealso: `TS`, `TSAdapt`, `TSErrorWeightedNorm()`, `TSGetTolerances()`
 @*/
-PetscErrorCode TSSetTolerances(TS ts, PetscReal atol, Vec vatol, PetscReal rtol, Vec vrtol)
-{
+PetscErrorCode TSSetTolerances(TS ts, PetscReal atol, Vec vatol, PetscReal rtol, Vec vrtol) {
   PetscFunctionBegin;
   if (atol != PETSC_DECIDE && atol != PETSC_DEFAULT) ts->atol = atol;
   if (vatol) {
@@ -4780,10 +4693,9 @@ PetscErrorCode TSSetTolerances(TS ts, PetscReal atol, Vec vatol, PetscReal rtol,
 
    Level: beginner
 
-.seealso: [](chapter_ts), `TS`, `TSAdapt`, `TSErrorWeightedNorm()`, `TSSetTolerances()`
+.seealso: `TS`, `TSAdapt`, `TSErrorWeightedNorm()`, `TSSetTolerances()`
 @*/
-PetscErrorCode TSGetTolerances(TS ts, PetscReal *atol, Vec *vatol, PetscReal *rtol, Vec *vrtol)
-{
+PetscErrorCode TSGetTolerances(TS ts, PetscReal *atol, Vec *vatol, PetscReal *rtol, Vec *vrtol) {
   PetscFunctionBegin;
   if (atol) *atol = ts->atol;
   if (vatol) *vatol = ts->vatol;
@@ -4795,7 +4707,7 @@ PetscErrorCode TSGetTolerances(TS ts, PetscReal *atol, Vec *vatol, PetscReal *rt
 /*@
    TSErrorWeightedNorm2 - compute a weighted 2-norm of the difference between two state vectors
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -4809,10 +4721,9 @@ PetscErrorCode TSGetTolerances(TS ts, PetscReal *atol, Vec *vatol, PetscReal *rt
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSErrorWeightedNorm()`, `TSErrorWeightedNormInfinity()`
+.seealso: `TSErrorWeightedNorm()`, `TSErrorWeightedNormInfinity()`
 @*/
-PetscErrorCode TSErrorWeightedNorm2(TS ts, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr)
-{
+PetscErrorCode TSErrorWeightedNorm2(TS ts, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr) {
   PetscInt           i, n, N, rstart;
   PetscInt           n_loc, na_loc, nr_loc;
   PetscReal          n_glb, na_glb, nr_glb;
@@ -4971,7 +4882,7 @@ PetscErrorCode TSErrorWeightedNorm2(TS ts, Vec U, Vec Y, PetscReal *norm, PetscR
 /*@
    TSErrorWeightedNormInfinity - compute a weighted infinity-norm of the difference between two state vectors
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -4985,10 +4896,9 @@ PetscErrorCode TSErrorWeightedNorm2(TS ts, Vec U, Vec Y, PetscReal *norm, PetscR
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSErrorWeightedNorm()`, `TSErrorWeightedNorm2()`
+.seealso: `TSErrorWeightedNorm()`, `TSErrorWeightedNorm2()`
 @*/
-PetscErrorCode TSErrorWeightedNormInfinity(TS ts, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr)
-{
+PetscErrorCode TSErrorWeightedNormInfinity(TS ts, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr) {
   PetscInt           i, n, N, rstart;
   const PetscScalar *u, *y;
   PetscReal          max, gmax, maxa, gmaxa, maxr, gmaxr;
@@ -5098,28 +5008,27 @@ PetscErrorCode TSErrorWeightedNormInfinity(TS ts, Vec U, Vec Y, PetscReal *norm,
 /*@
    TSErrorWeightedNorm - compute a weighted norm of the difference between two state vectors based on supplied absolute and relative tolerances
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
 .  U - state vector, usually ts->vec_sol
 .  Y - state vector to be compared to U
--  wnormtype - norm type, either `NORM_2` or `NORM_INFINITY`
+-  wnormtype - norm type, either NORM_2 or NORM_INFINITY
 
    Output Parameters:
 +  norm  - weighted norm, a value of 1.0 achieves a balance between absolute and relative tolerances
 .  norma - weighted norm, a value of 1.0 means that the error meets the absolute tolerance set by the user
 -  normr - weighted norm, a value of 1.0 means that the error meets the relative tolerance set by the user
 
-   Options Database Key:
+   Options Database Keys:
 .  -ts_adapt_wnormtype <wnormtype> - 2, INFINITY
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSErrorWeightedNormInfinity()`, `TSErrorWeightedNorm2()`, `TSErrorWeightedENorm`
+.seealso: `TSErrorWeightedNormInfinity()`, `TSErrorWeightedNorm2()`, `TSErrorWeightedENorm`
 @*/
-PetscErrorCode TSErrorWeightedNorm(TS ts, Vec U, Vec Y, NormType wnormtype, PetscReal *norm, PetscReal *norma, PetscReal *normr)
-{
+PetscErrorCode TSErrorWeightedNorm(TS ts, Vec U, Vec Y, NormType wnormtype, PetscReal *norm, PetscReal *norma, PetscReal *normr) {
   PetscFunctionBegin;
   if (wnormtype == NORM_2) PetscCall(TSErrorWeightedNorm2(ts, U, Y, norm, norma, normr));
   else if (wnormtype == NORM_INFINITY) PetscCall(TSErrorWeightedNormInfinity(ts, U, Y, norm, norma, normr));
@@ -5130,7 +5039,7 @@ PetscErrorCode TSErrorWeightedNorm(TS ts, Vec U, Vec Y, NormType wnormtype, Pets
 /*@
    TSErrorWeightedENorm2 - compute a weighted 2 error norm based on supplied absolute and relative tolerances
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -5145,10 +5054,9 @@ PetscErrorCode TSErrorWeightedNorm(TS ts, Vec U, Vec Y, NormType wnormtype, Pets
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSErrorWeightedENorm()`, `TSErrorWeightedENormInfinity()`
+.seealso: `TSErrorWeightedENorm()`, `TSErrorWeightedENormInfinity()`
 @*/
-PetscErrorCode TSErrorWeightedENorm2(TS ts, Vec E, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr)
-{
+PetscErrorCode TSErrorWeightedENorm2(TS ts, Vec E, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr) {
   PetscInt           i, n, N, rstart;
   PetscInt           n_loc, na_loc, nr_loc;
   PetscReal          n_glb, na_glb, nr_glb;
@@ -5310,8 +5218,7 @@ PetscErrorCode TSErrorWeightedENorm2(TS ts, Vec E, Vec U, Vec Y, PetscReal *norm
 
 /*@
    TSErrorWeightedENormInfinity - compute a weighted infinity error norm based on supplied absolute and relative tolerances
-
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -5326,10 +5233,9 @@ PetscErrorCode TSErrorWeightedENorm2(TS ts, Vec E, Vec U, Vec Y, PetscReal *norm
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSErrorWeightedENorm()`, `TSErrorWeightedENorm2()`
+.seealso: `TSErrorWeightedENorm()`, `TSErrorWeightedENorm2()`
 @*/
-PetscErrorCode TSErrorWeightedENormInfinity(TS ts, Vec E, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr)
-{
+PetscErrorCode TSErrorWeightedENormInfinity(TS ts, Vec E, Vec U, Vec Y, PetscReal *norm, PetscReal *norma, PetscReal *normr) {
   PetscInt           i, n, N, rstart;
   const PetscScalar *e, *u, *y;
   PetscReal          err, max, gmax, maxa, gmaxa, maxr, gmaxr;
@@ -5443,29 +5349,28 @@ PetscErrorCode TSErrorWeightedENormInfinity(TS ts, Vec E, Vec U, Vec Y, PetscRea
 /*@
    TSErrorWeightedENorm - compute a weighted error norm based on supplied absolute and relative tolerances
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
 .  E - error vector
 .  U - state vector, usually ts->vec_sol
 .  Y - state vector, previous time step
--  wnormtype - norm type, either `NORM_2` or `NORM_INFINITY`
+-  wnormtype - norm type, either NORM_2 or NORM_INFINITY
 
    Output Parameters:
 +  norm  - weighted norm, a value of 1.0 achieves a balance between absolute and relative tolerances
 .  norma - weighted norm, a value of 1.0 means that the error meets the absolute tolerance set by the user
 -  normr - weighted norm, a value of 1.0 means that the error meets the relative tolerance set by the user
 
-   Options Database Key:
+   Options Database Keys:
 .  -ts_adapt_wnormtype <wnormtype> - 2, INFINITY
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSErrorWeightedENormInfinity()`, `TSErrorWeightedENorm2()`, `TSErrorWeightedNormInfinity()`, `TSErrorWeightedNorm2()`
+.seealso: `TSErrorWeightedENormInfinity()`, `TSErrorWeightedENorm2()`, `TSErrorWeightedNormInfinity()`, `TSErrorWeightedNorm2()`
 @*/
-PetscErrorCode TSErrorWeightedENorm(TS ts, Vec E, Vec U, Vec Y, NormType wnormtype, PetscReal *norm, PetscReal *norma, PetscReal *normr)
-{
+PetscErrorCode TSErrorWeightedENorm(TS ts, Vec E, Vec U, Vec Y, NormType wnormtype, PetscReal *norm, PetscReal *norma, PetscReal *normr) {
   PetscFunctionBegin;
   if (wnormtype == NORM_2) PetscCall(TSErrorWeightedENorm2(ts, E, U, Y, norm, norma, normr));
   else if (wnormtype == NORM_INFINITY) PetscCall(TSErrorWeightedENormInfinity(ts, E, U, Y, norm, norma, normr));
@@ -5476,7 +5381,7 @@ PetscErrorCode TSErrorWeightedENorm(TS ts, Vec E, Vec U, Vec Y, NormType wnormty
 /*@
    TSSetCFLTimeLocal - Set the local CFL constraint relative to forward Euler
 
-   Logically Collective on ts
+   Logically Collective on TS
 
    Input Parameters:
 +  ts - time stepping context
@@ -5487,10 +5392,9 @@ PetscErrorCode TSErrorWeightedENorm(TS ts, Vec E, Vec U, Vec Y, NormType wnormty
 
    Level: intermediate
 
-.seealso: [](chapter_ts), `TSGetCFLTime()`, `TSADAPTCFL`
+.seealso: `TSGetCFLTime()`, `TSADAPTCFL`
 @*/
-PetscErrorCode TSSetCFLTimeLocal(TS ts, PetscReal cfltime)
-{
+PetscErrorCode TSSetCFLTimeLocal(TS ts, PetscReal cfltime) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->cfltime_local = cfltime;
@@ -5501,7 +5405,7 @@ PetscErrorCode TSSetCFLTimeLocal(TS ts, PetscReal cfltime)
 /*@
    TSGetCFLTime - Get the maximum stable time step according to CFL criteria applied to forward Euler
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
 .  ts - time stepping context
@@ -5511,10 +5415,9 @@ PetscErrorCode TSSetCFLTimeLocal(TS ts, PetscReal cfltime)
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TSSetCFLTimeLocal()`
+.seealso: `TSSetCFLTimeLocal()`
 @*/
-PetscErrorCode TSGetCFLTime(TS ts, PetscReal *cfltime)
-{
+PetscErrorCode TSGetCFLTime(TS ts, PetscReal *cfltime) {
   PetscFunctionBegin;
   if (ts->cfltime < 0) PetscCall(MPIU_Allreduce(&ts->cfltime_local, &ts->cfltime, 1, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)ts)));
   *cfltime = ts->cfltime;
@@ -5525,20 +5428,18 @@ PetscErrorCode TSGetCFLTime(TS ts, PetscReal *cfltime)
    TSVISetVariableBounds - Sets the lower and upper bounds for the solution vector. xl <= x <= xu
 
    Input Parameters:
-+  ts   - the `TS` context.
++  ts   - the TS context.
 .  xl   - lower bound.
 -  xu   - upper bound.
 
+   Notes:
+   If this routine is not called then the lower and upper bounds are set to
+   PETSC_NINFINITY and PETSC_INFINITY respectively during SNESSetUp().
+
    Level: advanced
 
-   Note:
-   If this routine is not called then the lower and upper bounds are set to
-   `PETSC_NINFINITY` and `PETSC_INFINITY` respectively during `SNESSetUp()`.
-
-.seealso: [](chapter_ts), `TS`
 @*/
-PetscErrorCode TSVISetVariableBounds(TS ts, Vec xl, Vec xu)
-{
+PetscErrorCode TSVISetVariableBounds(TS ts, Vec xl, Vec xu) {
   SNES snes;
 
   PetscFunctionBegin;
@@ -5550,10 +5451,10 @@ PetscErrorCode TSVISetVariableBounds(TS ts, Vec xl, Vec xu)
 /*@
    TSComputeLinearStability - computes the linear stability function at a point
 
-   Collective on ts
+   Collective on TS
 
    Input Parameters:
-+  ts - the `TS` context
++  ts - the TS context
 -  xr,xi - real and imaginary part of input arguments
 
    Output Parameters:
@@ -5561,10 +5462,9 @@ PetscErrorCode TSVISetVariableBounds(TS ts, Vec xl, Vec xu)
 
    Level: developer
 
-.seealso: [](chapter_ts), `TS`, `TSSetRHSFunction()`, `TSComputeIFunction()`
+.seealso: `TSSetRHSFunction()`, `TSComputeIFunction()`
 @*/
-PetscErrorCode TSComputeLinearStability(TS ts, PetscReal xr, PetscReal xi, PetscReal *yr, PetscReal *yi)
-{
+PetscErrorCode TSComputeLinearStability(TS ts, PetscReal xr, PetscReal xi, PetscReal *yr, PetscReal *yi) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscUseTypeMethod(ts, linearstability, xr, xi, yr, yi);
@@ -5574,25 +5474,24 @@ PetscErrorCode TSComputeLinearStability(TS ts, PetscReal xr, PetscReal xi, Petsc
 /*@
    TSRestartStep - Flags the solver to restart the next step
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Level: advanced
 
    Notes:
-   Multistep methods like `TSBDF` or Runge-Kutta methods with FSAL property require restarting the solver in the event of
+   Multistep methods like BDF or Runge-Kutta methods with FSAL property require restarting the solver in the event of
    discontinuities. These discontinuities may be introduced as a consequence of explicitly modifications to the solution
    vector (which PETSc attempts to detect and handle) or problem coefficients (which PETSc is not able to detect). For
-   the sake of correctness and maximum safety, users are expected to call `TSRestart()` whenever they introduce
+   the sake of correctness and maximum safety, users are expected to call TSRestart() whenever they introduce
    discontinuities in callback routines (e.g. prestep and poststep routines, or implicit/rhs function routines with
    discontinuous source terms).
 
-.seealso: [](chapter_ts), `TS`, `TSBDF`, `TSSolve()`, `TSSetPreStep()`, `TSSetPostStep()`
+.seealso: `TSSolve()`, `TSSetPreStep()`, `TSSetPostStep()`
 @*/
-PetscErrorCode TSRestartStep(TS ts)
-{
+PetscErrorCode TSRestartStep(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->steprestart = PETSC_TRUE;
@@ -5602,17 +5501,16 @@ PetscErrorCode TSRestartStep(TS ts)
 /*@
    TSRollBack - Rolls back one time step
 
-   Collective on ts
+   Collective on TS
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Level: advanced
 
-.seealso: [](chapter_ts), `TS`, `TSCreate()`, `TSSetUp()`, `TSDestroy()`, `TSSolve()`, `TSSetPreStep()`, `TSSetPreStage()`, `TSInterpolate()`
+.seealso: `TSCreate()`, `TSSetUp()`, `TSDestroy()`, `TSSolve()`, `TSSetPreStep()`, `TSSetPreStage()`, `TSInterpolate()`
 @*/
-PetscErrorCode TSRollBack(TS ts)
-{
+PetscErrorCode TSRollBack(TS ts) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscCheck(!ts->steprollback, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "TSRollBack already called");
@@ -5629,7 +5527,7 @@ PetscErrorCode TSRollBack(TS ts)
    TSGetStages - Get the number of stages and stage values
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameters:
 +  ns - the number of stages
@@ -5637,13 +5535,11 @@ PetscErrorCode TSRollBack(TS ts)
 
    Level: advanced
 
-   Note:
-   Both ns and Y can be NULL.
+   Notes: Both ns and Y can be NULL.
 
-.seealso: [](chapter_ts), `TS`, `TSCreate()`
+.seealso: `TSCreate()`
 @*/
-PetscErrorCode TSGetStages(TS ts, PetscInt *ns, Vec **Y)
-{
+PetscErrorCode TSGetStages(TS ts, PetscInt *ns, Vec **Y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (ns) PetscValidIntPointer(ns, 2);
@@ -5658,10 +5554,10 @@ PetscErrorCode TSGetStages(TS ts, PetscInt *ns, Vec **Y)
 /*@C
   TSComputeIJacobianDefaultColor - Computes the Jacobian using finite differences and coloring to exploit matrix sparsity.
 
-  Collective on ts
+  Collective on SNES
 
   Input Parameters:
-+ ts - the `TS` context
++ ts - the TS context
 . t - current timestep
 . U - state vector
 . Udot - time derivative of state vector
@@ -5682,14 +5578,13 @@ PetscErrorCode TSGetStages(TS ts, PetscInt *ns, Vec **Y)
   Most users should not need to explicitly call this routine, as it
   is used internally within the nonlinear solvers.
 
-  This will first try to get the coloring from the `DM`.  If the `DM` type has no coloring
+  This will first try to get the coloring from the DM.  If the DM type has no coloring
   routine, then it will try to get the coloring from the matrix.  This requires that the
   matrix have nonzero entries precomputed.
 
-.seealso: [](chapter_ts), `TS`, `TSSetIJacobian()`, `MatFDColoringCreate()`, `MatFDColoringSetFunction()`
+.seealso: `TSSetIJacobian()`, `MatFDColoringCreate()`, `MatFDColoringSetFunction()`
 @*/
-PetscErrorCode TSComputeIJacobianDefaultColor(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal shift, Mat J, Mat B, void *ctx)
-{
+PetscErrorCode TSComputeIJacobianDefaultColor(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal shift, Mat J, Mat B, void *ctx) {
   SNES          snes;
   MatFDColoring color;
   PetscBool     hascolor, matcolor = PETSC_FALSE;
@@ -5741,8 +5636,8 @@ PetscErrorCode TSComputeIJacobianDefaultColor(TS ts, PetscReal t, Vec U, Vec Udo
     TSSetFunctionDomainError - Set a function that tests if the current state vector is valid
 
     Input Parameters:
-+    ts - the `TS` context
--    func - function called within `TSFunctionDomainError()`
++    ts - the TS context
+-    func - function called within TSFunctionDomainError
 
     Calling sequence of func:
 $     PetscErrorCode func(TS ts,PetscReal time,Vec state,PetscBool reject)
@@ -5756,19 +5651,18 @@ $     PetscErrorCode func(TS ts,PetscReal time,Vec state,PetscBool reject)
 
     Notes:
       If an implicit ODE solver is being used then, in addition to providing this routine, the
-      user's code should call `SNESSetFunctionDomainError()` when domain errors occur during
-      function evaluations where the functions are provided by `TSSetIFunction()` or `TSSetRHSFunction()`.
-      Use `TSGetSNES()` to obtain the `SNES` object
+      user's code should call SNESSetFunctionDomainError() when domain errors occur during
+      function evaluations where the functions are provided by TSSetIFunction() or TSSetRHSFunction().
+      Use TSGetSNES() to obtain the SNES object
 
-    Developer Note:
-      The naming of this function is inconsistent with the `SNESSetFunctionDomainError()`
+    Developer Notes:
+      The naming of this function is inconsistent with the SNESSetFunctionDomainError()
       since one takes a function pointer and the other does not.
 
-.seealso: [](chapter_ts), `TSAdaptCheckStage()`, `TSFunctionDomainError()`, `SNESSetFunctionDomainError()`, `TSGetSNES()`
+.seealso: `TSAdaptCheckStage()`, `TSFunctionDomainError()`, `SNESSetFunctionDomainError()`, `TSGetSNES()`
 @*/
 
-PetscErrorCode TSSetFunctionDomainError(TS ts, PetscErrorCode (*func)(TS, PetscReal, Vec, PetscBool *))
-{
+PetscErrorCode TSSetFunctionDomainError(TS ts, PetscErrorCode (*func)(TS, PetscReal, Vec, PetscBool *)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->functiondomainerror = func;
@@ -5779,23 +5673,22 @@ PetscErrorCode TSSetFunctionDomainError(TS ts, PetscErrorCode (*func)(TS, PetscR
     TSFunctionDomainError - Checks if the current state is valid
 
     Input Parameters:
-+    ts - the `TS` context
++    ts - the TS context
 .    stagetime - time of the simulation
 -    Y - state vector to check.
 
     Output Parameter:
-.    accept - Set to `PETSC_FALSE` if the current state vector is valid.
+.    accept - Set to PETSC_FALSE if the current state vector is valid.
+
+    Note:
+    This function is called by the TS integration routines and calls the user provided function (set with TSSetFunctionDomainError())
+    to check if the current state is valid.
 
     Level: developer
 
-    Note:
-    This function is called by the `TS` integration routines and calls the user provided function (set with `TSSetFunctionDomainError()`)
-    to check if the current state is valid.
-
-.seealso: [](chapter_ts), `TS`, `TSSetFunctionDomainError()`
+.seealso: `TSSetFunctionDomainError()`
 @*/
-PetscErrorCode TSFunctionDomainError(TS ts, PetscReal stagetime, Vec Y, PetscBool *accept)
-{
+PetscErrorCode TSFunctionDomainError(TS ts, PetscReal stagetime, Vec Y, PetscBool *accept) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   *accept = PETSC_TRUE;
@@ -5809,23 +5702,21 @@ PetscErrorCode TSFunctionDomainError(TS ts, PetscReal stagetime, Vec Y, PetscBoo
   Collective
 
   Input Parameter:
-. tsin    - The input `TS`
+. tsin    - The input TS
 
   Output Parameter:
-. tsout   - The output `TS` (cloned)
+. tsout   - The output TS (cloned)
+
+  Notes:
+  This function is used to create a clone of a TS object. It is used in ARKIMEX for initializing the slope for first stage explicit methods. It will likely be replaced in the future with a mechanism of switching methods on the fly.
+
+  When using TSDestroy() on a clone the user has to first reset the correct TS reference in the embedded SNES object: e.g.: by running SNES snes_dup=NULL; TSGetSNES(ts,&snes_dup); TSSetSNES(ts,snes_dup);
 
   Level: developer
 
-  Notes:
-  This function is used to create a clone of a `TS` object. It is used in `TSARKIMEX` for initializing the slope for first stage explicit methods.
-  It will likely be replaced in the future with a mechanism of switching methods on the fly.
-
-  When using `TSDestroy()` on a clone the user has to first reset the correct `TS` reference in the embedded `SNES` object: e.g.: by running `SNES` snes_dup=NULL; `TSGetSNES`(ts,&snes_dup); `TSSetSNES`(ts,snes_dup);
-
-.seealso: [](chapter_ts), `TS`, `SNES`, `TSCreate()`, `TSSetType()`, `TSSetUp()`, `TSDestroy()`, `TSSetProblemType()`
+.seealso: `TSCreate()`, `TSSetType()`, `TSSetUp()`, `TSDestroy()`, `TSSetProblemType()`
 @*/
-PetscErrorCode TSClone(TS tsin, TS *tsout)
-{
+PetscErrorCode TSClone(TS tsin, TS *tsout) {
   TS     t;
   SNES   snes_start;
   DM     dm;
@@ -5897,8 +5788,7 @@ PetscErrorCode TSClone(TS tsin, TS *tsout)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode RHSWrapperFunction_TSRHSJacobianTest(void *ctx, Vec x, Vec y)
-{
+static PetscErrorCode RHSWrapperFunction_TSRHSJacobianTest(void *ctx, Vec x, Vec y) {
   TS ts = (TS)ctx;
 
   PetscFunctionBegin;
@@ -5907,28 +5797,27 @@ static PetscErrorCode RHSWrapperFunction_TSRHSJacobianTest(void *ctx, Vec x, Vec
 }
 
 /*@
-    TSRHSJacobianTest - Compares the multiply routine provided to the `MATSHELL` with differencing on the `TS` given RHS function.
+    TSRHSJacobianTest - Compares the multiply routine provided to the MATSHELL with differencing on the TS given RHS function.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
     Input Parameters:
     TS - the time stepping routine
 
    Output Parameter:
-.   flg - `PETSC_TRUE` if the multiply is likely correct
+.   flg - PETSC_TRUE if the multiply is likely correct
 
-   Options Database Key:
+   Options Database:
  .   -ts_rhs_jacobian_test_mult -mat_shell_test_mult_view - run the test at each timestep of the integrator
 
    Level: advanced
 
-   Note:
+   Notes:
     This only works for problems defined only the RHS function and Jacobian NOT IFunction and IJacobian
 
-.seealso: [](chapter_ts), `TS`, `Mat`, `MATSHELL`, `MatCreateShell()`, `MatShellGetContext()`, `MatShellGetOperation()`, `MatShellTestMultTranspose()`, `TSRHSJacobianTestTranspose()`
+.seealso: `MatCreateShell()`, `MatShellGetContext()`, `MatShellGetOperation()`, `MatShellTestMultTranspose()`, `TSRHSJacobianTestTranspose()`
 @*/
-PetscErrorCode TSRHSJacobianTest(TS ts, PetscBool *flg)
-{
+PetscErrorCode TSRHSJacobianTest(TS ts, PetscBool *flg) {
   Mat           J, B;
   TSRHSJacobian func;
   void         *ctx;
@@ -5941,28 +5830,27 @@ PetscErrorCode TSRHSJacobianTest(TS ts, PetscBool *flg)
 }
 
 /*@C
-    TSRHSJacobianTestTranspose - Compares the multiply transpose routine provided to the `MATSHELL` with differencing on the `TS` given RHS function.
+    TSRHSJacobianTestTranspose - Compares the multiply transpose routine provided to the MATSHELL with differencing on the TS given RHS function.
 
-   Logically Collective on ts
+   Logically Collective on TS
 
     Input Parameters:
     TS - the time stepping routine
 
    Output Parameter:
-.   flg - `PETSC_TRUE` if the multiply is likely correct
+.   flg - PETSC_TRUE if the multiply is likely correct
 
-   Options Database Key:
+   Options Database:
 .   -ts_rhs_jacobian_test_mult_transpose -mat_shell_test_mult_transpose_view - run the test at each timestep of the integrator
-
-   Level: advanced
 
    Notes:
     This only works for problems defined only the RHS function and Jacobian NOT IFunction and IJacobian
 
-.seealso: [](chapter_ts), `TS`, `Mat`, `MatCreateShell()`, `MatShellGetContext()`, `MatShellGetOperation()`, `MatShellTestMultTranspose()`, `TSRHSJacobianTest()`
+   Level: advanced
+
+.seealso: `MatCreateShell()`, `MatShellGetContext()`, `MatShellGetOperation()`, `MatShellTestMultTranspose()`, `TSRHSJacobianTest()`
 @*/
-PetscErrorCode TSRHSJacobianTestTranspose(TS ts, PetscBool *flg)
-{
+PetscErrorCode TSRHSJacobianTestTranspose(TS ts, PetscBool *flg) {
   Mat           J, B;
   void         *ctx;
   TSRHSJacobian func;
@@ -5981,20 +5869,19 @@ PetscErrorCode TSRHSJacobianTestTranspose(TS ts, PetscBool *flg)
 
   Input Parameters:
 +  ts - timestepping context
--  use_splitrhsfunction - `PETSC_TRUE` indicates that the split RHSFunction will be used
+-  use_splitrhsfunction - PETSC_TRUE indicates that the split RHSFunction will be used
 
-  Options Database Key:
+  Options Database:
 .   -ts_use_splitrhsfunction - <true,false>
+
+  Notes:
+    This is only useful for multirate methods
 
   Level: intermediate
 
-  Note:
-    This is only useful for multirate methods
-
-.seealso: [](chapter_ts), `TS`, `TSGetUseSplitRHSFunction()`
+.seealso: `TSGetUseSplitRHSFunction()`
 @*/
-PetscErrorCode TSSetUseSplitRHSFunction(TS ts, PetscBool use_splitrhsfunction)
-{
+PetscErrorCode TSSetUseSplitRHSFunction(TS ts, PetscBool use_splitrhsfunction) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->use_splitrhsfunction = use_splitrhsfunction;
@@ -6010,14 +5897,13 @@ PetscErrorCode TSSetUseSplitRHSFunction(TS ts, PetscBool use_splitrhsfunction)
 .  ts - timestepping context
 
   Output Parameter:
-.  use_splitrhsfunction - `PETSC_TRUE` indicates that the split RHSFunction will be used
+.  use_splitrhsfunction - PETSC_TRUE indicates that the split RHSFunction will be used
 
   Level: intermediate
 
-.seealso: [](chapter_ts), `TS`, `TSSetUseSplitRHSFunction()`
+.seealso: `TSSetUseSplitRHSFunction()`
 @*/
-PetscErrorCode TSGetUseSplitRHSFunction(TS ts, PetscBool *use_splitrhsfunction)
-{
+PetscErrorCode TSGetUseSplitRHSFunction(TS ts, PetscBool *use_splitrhsfunction) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   *use_splitrhsfunction = ts->use_splitrhsfunction;
@@ -6031,17 +5917,16 @@ PetscErrorCode TSGetUseSplitRHSFunction(TS ts, PetscBool *use_splitrhsfunction)
 
    Input Parameters:
 +  ts - the time-stepper
--  str - the structure (the default is `UNKNOWN_NONZERO_PATTERN`)
+-  str - the structure (the default is UNKNOWN_NONZERO_PATTERN)
 
    Level: intermediate
 
-   Note:
+   Notes:
      When the relationship between the nonzero structures is known and supplied the solution process can be much faster
 
-.seealso: [](chapter_ts), `TS`, `MatAXPY()`, `MatStructure`
+.seealso: `MatAXPY()`, `MatStructure`
  @*/
-PetscErrorCode TSSetMatStructure(TS ts, MatStructure str)
-{
+PetscErrorCode TSSetMatStructure(TS ts, MatStructure str) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   ts->axpy_pattern = str;
@@ -6049,7 +5934,7 @@ PetscErrorCode TSSetMatStructure(TS ts, MatStructure str)
 }
 
 /*@
-  TSSetTimeSpan - sets the time span. The solution will be computed and stored for each time requested in the span
+  TSSetTimeSpan - sets the time span. The solution will be computed and stored for each time requested.
 
   Collective on ts
 
@@ -6058,21 +5943,20 @@ PetscErrorCode TSSetMatStructure(TS ts, MatStructure str)
 . n - number of the time points (>=2)
 - span_times - array of the time points. The first element and the last element are the initial time and the final time respectively.
 
-  Options Database Key:
+  Options Database Keys:
 . -ts_time_span <t0,...tf> - Sets the time span
 
-  Level: intermediate
+  Level: beginner
 
   Notes:
   The elements in tspan must be all increasing. They correspond to the intermediate points for time integration.
-  `TS_EXACTFINALTIME_MATCHSTEP` must be used to make the last time step in each sub-interval match the intermediate points specified.
-  The intermediate solutions are saved in a vector array that can be accessed with `TSGetTimeSpanSolutions()`. Thus using time span may
+  TS_EXACTFINALTIME_MATCHSTEP must be used to make the last time step in each sub-interval match the intermediate points specified.
+  The intermediate solutions are saved in a vector array that can be accessed with TSGetSolutions(). Thus using time span may
   pressure the memory system when using a large number of span points.
 
-.seealso: [](chapter_ts), `TS`, `TSGetTimeSpan()`, `TSGetTimeSpanSolutions()`
+.seealso: `TSGetTimeSpan()`, `TSGetSolutions()`
  @*/
-PetscErrorCode TSSetTimeSpan(TS ts, PetscInt n, PetscReal *span_times)
-{
+PetscErrorCode TSSetTimeSpan(TS ts, PetscInt n, PetscReal *span_times) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   PetscCheck(n >= 2, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONG, "Minimum time span size is 2 but %" PetscInt_FMT " is provided", n);
@@ -6106,18 +5990,14 @@ PetscErrorCode TSSetTimeSpan(TS ts, PetscInt n, PetscReal *span_times)
 
   Output Parameters:
 + n - number of the time points (>=2)
-- span_times - array of the time points. The first element and the last element are the initial time and the final time respectively.
-  The values are valid until the `TS` object is destroyed.
+- span_times - array of the time points. The first element and the last element are the initial time and the final time respectively. The values are valid until the TS object is destroyed.
 
   Level: beginner
+  Notes: Both n and span_times can be NULL.
 
-  Note:
-  Both n and span_times can be NULL.
-
-.seealso: [](chapter_ts), `TS`, `TSSetTimeSpan()`, `TSGetTimeSpanSolutions()`
+.seealso: `TSSetTimeSpan()`, `TSGetSolutions()`
  @*/
-PetscErrorCode TSGetTimeSpan(TS ts, PetscInt *n, const PetscReal **span_times)
-{
+PetscErrorCode TSGetTimeSpan(TS ts, PetscInt *n, const PetscReal **span_times) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (n) PetscValidIntPointer(n, 2);
@@ -6136,24 +6016,21 @@ PetscErrorCode TSGetTimeSpan(TS ts, PetscInt *n, const PetscReal **span_times)
    TSGetTimeSpanSolutions - Get the number of solutions and the solutions at the time points specified by the time span.
 
    Input Parameter:
-.  ts - the `TS` context obtained from `TSCreate()`
+.  ts - the TS context obtained from TSCreate()
 
    Output Parameters:
 +  nsol - the number of solutions
 -  Sols - the solution vectors
 
-   Level: intermediate
+   Level: beginner
 
    Notes:
     Both nsol and Sols can be NULL.
+    Some time points in the time span may be skipped by TS so that nsol is less than the number of points specified by TSSetTimeSpan(). For example, manipulating the step size, especially with a reduced precision, may cause TS to step over certain points in the span.
 
-    Some time points in the time span may be skipped by TS so that nsol is less than the number of points specified by `TSSetTimeSpan()`.
-    For example, manipulating the step size, especially with a reduced precision, may cause `TS` to step over certain points in the span.
-
-.seealso: [](chapter_ts), `TS`, `TSSetTimeSpan()`
+.seealso: `TSSetTimeSpan()`
 @*/
-PetscErrorCode TSGetTimeSpanSolutions(TS ts, PetscInt *nsol, Vec **Sols)
-{
+PetscErrorCode TSGetTimeSpanSolutions(TS ts, PetscInt *nsol, Vec **Sols) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (nsol) PetscValidIntPointer(nsol, 2);
@@ -6165,55 +6042,5 @@ PetscErrorCode TSGetTimeSpanSolutions(TS ts, PetscInt *nsol, Vec **Sols)
     if (nsol) *nsol = ts->tspan->spanctr;
     if (Sols) *Sols = ts->tspan->vecs_sol;
   }
-  PetscFunctionReturn(0);
-}
-
-/*@C
-  TSPruneIJacobianColor - Remove nondiagonal zeros in the Jacobian matrix and update the `MatMFFD` coloring information.
-
-  Collective on TS
-
-  Input Parameters:
-+ ts - the TS context
-. J - Jacobian matrix (not altered in this routine)
-- B - newly computed Jacobian matrix to use with preconditioner (generally the same as J)
-
-  Level: intermediate
-
-  Notes:
-  This function improves the `MatMFFD` coloring performance when the Jacobian matrix is overallocated or contains
-  many constant zeros entries, which is typically the case when the matrix is generated by a DM
-  and multiple fields are involved.
-
-  Users need to make sure that the Jacobian matrix is properly filled to reflect the sparsity
-  structure. For `MatMFFD` coloring, the values of nonzero entries are not important. So one can
-  usually call `TSComputeIJacobian()` with randomized input vectors to generate a dummy Jacobian.
-  `TSComputeIJacobian()` should be called before `TSSolve()` but after `TSSetUp()`.
-
-.seealso: `TSComputeIJacobianDefaultColor()`, `MatEliminateZeros()`, `MatFDColoringCreate()`, `MatFDColoringSetFunction()`
-@*/
-PetscErrorCode TSPruneIJacobianColor(TS ts, Mat J, Mat B)
-{
-  MatColoring   mc            = NULL;
-  ISColoring    iscoloring    = NULL;
-  MatFDColoring matfdcoloring = NULL;
-
-  PetscFunctionBegin;
-  /* Generate new coloring after eliminating zeros in the matrix */
-  PetscCall(MatEliminateZeros(B));
-  PetscCall(MatColoringCreate(B, &mc));
-  PetscCall(MatColoringSetDistance(mc, 2));
-  PetscCall(MatColoringSetType(mc, MATCOLORINGSL));
-  PetscCall(MatColoringSetFromOptions(mc));
-  PetscCall(MatColoringApply(mc, &iscoloring));
-  PetscCall(MatColoringDestroy(&mc));
-  /* Replace the old coloring with the new one */
-  PetscCall(MatFDColoringCreate(B, iscoloring, &matfdcoloring));
-  PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode(*)(void))SNESTSFormFunction, (void *)ts));
-  PetscCall(MatFDColoringSetFromOptions(matfdcoloring));
-  PetscCall(MatFDColoringSetUp(B, iscoloring, matfdcoloring));
-  PetscCall(PetscObjectCompose((PetscObject)B, "TSMatFDColoring", (PetscObject)matfdcoloring));
-  PetscCall(PetscObjectDereference((PetscObject)matfdcoloring));
-  PetscCall(ISColoringDestroy(&iscoloring));
   PetscFunctionReturn(0);
 }

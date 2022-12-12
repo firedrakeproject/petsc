@@ -1,7 +1,6 @@
 #include <../src/ksp/pc/impls/vpbjacobi/vpbjacobi.h>
 
-static PetscErrorCode PCApply_VPBJacobi(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApply_VPBJacobi(PC pc, Vec x, Vec y) {
   PC_VPBJacobi      *jac = (PC_VPBJacobi *)pc->data;
   PetscInt           i, ncnt = 0;
   const MatScalar   *diag = jac->diag;
@@ -18,9 +17,7 @@ static PetscErrorCode PCApply_VPBJacobi(PC pc, Vec x, Vec y)
   for (i = 0; i < nblocks; i++) {
     bs = bsizes[i];
     switch (bs) {
-    case 1:
-      yy[ncnt] = *diag * xx[ncnt];
-      break;
+    case 1: yy[ncnt] = *diag * xx[ncnt]; break;
     case 2:
       x0           = xx[ncnt];
       x1           = xx[ncnt + 1];
@@ -102,8 +99,7 @@ static PetscErrorCode PCApply_VPBJacobi(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode PCSetUp_VPBJacobi_Host(PC pc)
-{
+PETSC_INTERN PetscErrorCode PCSetUp_VPBJacobi_Host(PC pc) {
   PC_VPBJacobi   *jac = (PC_VPBJacobi *)pc->data;
   Mat             A   = pc->pmat;
   MatFactorError  err;
@@ -126,8 +122,7 @@ PETSC_INTERN PetscErrorCode PCSetUp_VPBJacobi_Host(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetUp_VPBJacobi(PC pc)
-{
+static PetscErrorCode PCSetUp_VPBJacobi(PC pc) {
   PetscFunctionBegin;
   /* In PCCreate_VPBJacobi() pmat might have not been set, so we wait to the last minute to do the dispatch */
 #if defined(PETSC_HAVE_CUDA)
@@ -154,8 +149,7 @@ static PetscErrorCode PCSetUp_VPBJacobi(PC pc)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode PCDestroy_VPBJacobi(PC pc)
-{
+PETSC_INTERN PetscErrorCode PCDestroy_VPBJacobi(PC pc) {
   PC_VPBJacobi *jac = (PC_VPBJacobi *)pc->data;
 
   PetscFunctionBegin;
@@ -170,32 +164,32 @@ PETSC_INTERN PetscErrorCode PCDestroy_VPBJacobi(PC pc)
 /*MC
      PCVPBJACOBI - Variable size point block Jacobi preconditioner
 
-   Level: beginner
-
    Notes:
-     See `PCJACOBI` for point Jacobi preconditioning, `PCPBJACOBI` for fixed point block size, and `PCBJACOBI` for large size blocks
+     See PCJACOBI for point Jacobi preconditioning, PCPBJACOBI for fixed point block size, and PCBJACOBI for large size blocks
 
-     This works for `MATAIJ` matrices
+     This works for AIJ matrices
 
      Uses dense LU factorization with partial pivoting to invert the blocks; if a zero pivot
      is detected a PETSc error is generated.
 
-     One must call `MatSetVariableBlockSizes()` to use this preconditioner
+     One must call MatSetVariableBlockSizes() to use this preconditioner
 
    Developer Notes:
-     This should support the `PCSetErrorIfFailure()` flag set to `PETSC_TRUE` to allow
+     This should support the PCSetErrorIfFailure() flag set to PETSC_TRUE to allow
      the factorization to continue even after a zero pivot is found resulting in a Nan and hence
-     terminating `KSP` with a `KSP_DIVERGED_NANORIF` allowing
+     terminating KSP with a KSP_DIVERGED_NANORIF allowing
      a nonlinear solver/ODE integrator to recover without stopping the program as currently happens.
 
      Perhaps should provide an option that allows generation of a valid preconditioner
-     even if a block is singular as the `PCJACOBI` does.
+     even if a block is singular as the PCJACOBI does.
+
+   Level: beginner
 
 .seealso: `MatSetVariableBlockSizes()`, `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCJACOBI`, `PCPBJACOBI`, `PCBJACOBI`
+
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_VPBJacobi(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_VPBJacobi(PC pc) {
   PC_VPBJacobi *jac;
 
   PetscFunctionBegin;
@@ -203,7 +197,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_VPBJacobi(PC pc)
      Creates the private data structure for this preconditioner and
      attach it to the PC object.
   */
-  PetscCall(PetscNew(&jac));
+  PetscCall(PetscNewLog(pc, &jac));
   pc->data = (void *)jac;
 
   /*

@@ -1,7 +1,7 @@
 -include ../../../../petscdir.mk
 
 LOCDIR		 = src/tao/complementarity/tutorials/
-MANSEC		 = Tao
+MANSEC		 =
 DOCS		 =
 DIRS		 =
 CLEANFILES       = minsurf1 blackscholes

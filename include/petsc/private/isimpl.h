@@ -4,7 +4,7 @@ and matrices.
 
 */
 
-#ifndef _IS_H
+#if !defined(_IS_H)
 #define _IS_H
 
 #include <petscis.h>

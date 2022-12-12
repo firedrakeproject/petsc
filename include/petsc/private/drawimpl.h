@@ -2,7 +2,7 @@
        Abstract data structure and functions for graphics.
 */
 
-#ifndef PETSCDRAWIMPL_H
+#if !defined(PETSCDRAWIMPL_H)
 #define PETSCDRAWIMPL_H
 
 #include <petsc/private/petscimpl.h>

@@ -3,8 +3,6 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.pyver = None
-    self.cyver = None
     self.cython = 0
     self.numpy = 0
     self.skippackagewithoptions = 1
@@ -29,12 +27,13 @@ class Configure(config.package.Package):
     self.found = 1
 
     try:
-      self.pyver,err1,ret1  = config.package.Package.executeShellCommand([self.pyexe,'-c','import sysconfig;print(sysconfig.get_python_version())'],timeout=60, log = self.log)
+      output1,err1,ret1  = config.package.Package.executeShellCommand(self.pyexe + ' --version',timeout=60, log = self.log)
+      self.foundversion = output1.split(' ')[1]
     except:
-      self.logPrint('Unable to determine version of',self.pyexe)
+      self.logPrint('Unable to determine version number of Python')
 
     try:
-      self.cyver,err1,ret1  = config.package.Package.executeShellCommand([self.pyexe,'-c','import cython;print(cython.__version__)'],timeout=60, log = self.log)
+      output1,err1,ret1  = config.package.Package.executeShellCommand(self.pyexe + ' -c "import Cython"',timeout=60, log = self.log)
       self.cython = 1
     except:
       self.logPrint('Python being used '+self.pyexe+' does not have the Cython package')

@@ -4,8 +4,7 @@ users should employ the KSP interface instead of using PC directly.\n\n";
 
 #include <petscksp.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         mat;         /* matrix */
   Vec         b, ustar, u; /* vectors (RHS, exact solution, approx solution) */
   PC          pc;          /* PC context */

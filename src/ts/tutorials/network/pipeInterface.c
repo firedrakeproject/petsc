@@ -12,8 +12,7 @@
    Output Parameter:
 .  pipe - location to put the PIPE context
 */
-PetscErrorCode PipeCreate(MPI_Comm comm, Pipe *pipe)
-{
+PetscErrorCode PipeCreate(MPI_Comm comm, Pipe *pipe) {
   PetscFunctionBegin;
   PetscCall(PetscNew(pipe));
   PetscFunctionReturn(0);
@@ -25,8 +24,7 @@ PetscErrorCode PipeCreate(MPI_Comm comm, Pipe *pipe)
    Input Parameters:
    pipe - Reference to pipe intended to be destroyed.
 */
-PetscErrorCode PipeDestroy(Pipe *pipe)
-{
+PetscErrorCode PipeDestroy(Pipe *pipe) {
   PetscFunctionBegin;
   if (!*pipe) PetscFunctionReturn(0);
 
@@ -47,8 +45,7 @@ PetscErrorCode PipeDestroy(Pipe *pipe)
 .  a -
 -  fric -
 */
-PetscErrorCode PipeSetParameters(Pipe pipe, PetscReal length, PetscReal D, PetscReal a, PetscReal fric)
-{
+PetscErrorCode PipeSetParameters(Pipe pipe, PetscReal length, PetscReal D, PetscReal a, PetscReal fric) {
   PetscFunctionBegin;
   pipe->length = length;
   pipe->D      = D;
@@ -60,8 +57,7 @@ PetscErrorCode PipeSetParameters(Pipe pipe, PetscReal length, PetscReal D, Petsc
 /*
     PipeSetUp - Set up pipe based on set parameters.
 */
-PetscErrorCode PipeSetUp(Pipe pipe)
-{
+PetscErrorCode PipeSetUp(Pipe pipe) {
   DMDALocalInfo info;
 
   PetscFunctionBegin;
@@ -95,8 +91,7 @@ PetscErrorCode PipeSetUp(Pipe pipe)
 
     Level: beginner
 */
-PetscErrorCode PipeCreateJacobian(Pipe pipe, Mat *Jin, Mat *J[])
-{
+PetscErrorCode PipeCreateJacobian(Pipe pipe, Mat *Jin, Mat *J[]) {
   Mat         *Jpipe;
   PetscInt     M, rows[2], cols[2], *nz;
   PetscScalar *aa;
@@ -157,8 +152,7 @@ PetscErrorCode PipeCreateJacobian(Pipe pipe, Mat *Jin, Mat *J[])
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode PipeDestroyJacobian(Pipe pipe)
-{
+PetscErrorCode PipeDestroyJacobian(Pipe pipe) {
   Mat     *Jpipe = pipe->jacobian;
   PetscInt i;
 
@@ -185,8 +179,7 @@ PetscErrorCode PipeDestroyJacobian(Pipe pipe)
 
     Level: beginner
 */
-PetscErrorCode JunctionCreateJacobian(DM dm, PetscInt v, Mat *Jin, Mat *J[])
-{
+PetscErrorCode JunctionCreateJacobian(DM dm, PetscInt v, Mat *Jin, Mat *J[]) {
   Mat            *Jv;
   PetscInt        nedges, e, i, M, N, *rows, *cols;
   PetscBool       isSelf;
@@ -259,8 +252,7 @@ PetscErrorCode JunctionCreateJacobian(DM dm, PetscInt v, Mat *Jin, Mat *J[])
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode JunctionDestroyJacobian(DM dm, PetscInt v, Junction junc)
-{
+PetscErrorCode JunctionDestroyJacobian(DM dm, PetscInt v, Junction junc) {
   Mat            *Jv = junc->jacobian;
   const PetscInt *edges;
   PetscInt        nedges, e;

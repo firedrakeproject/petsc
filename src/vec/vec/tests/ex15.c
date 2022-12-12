@@ -3,8 +3,7 @@ static char help[] = "Tests VecSetValuesBlocked() on sequential vectors.\n\n";
 
 #include <petscvec.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   PetscMPIInt size;
   PetscInt    n = 9, bs = 3, indices[2], i;
   PetscScalar values[6];

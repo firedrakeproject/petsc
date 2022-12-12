@@ -2,8 +2,7 @@ const char help[] = "Test basic creation and evaluation of PETSCSPACEPTRIMMED";
 
 #include <petscfe.h>
 
-static PetscErrorCode test(PetscInt dim, PetscInt formDegree, PetscInt degree, PetscInt nCopies)
-{
+static PetscErrorCode test(PetscInt dim, PetscInt formDegree, PetscInt degree, PetscInt nCopies) {
   MPI_Comm         comm = PETSC_COMM_SELF;
   PetscSpace       sp;
   PetscInt         Nf, Nb;
@@ -53,8 +52,7 @@ static PetscErrorCode test(PetscInt dim, PetscInt formDegree, PetscInt degree, P
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   for (PetscInt dim = 0; dim <= 3; dim++) {

@@ -1,7 +1,6 @@
 #include <../src/tao/complementarity/impls/ssls/ssls.h>
 
-PetscErrorCode TaoSetUp_SSFLS(Tao tao)
-{
+PetscErrorCode TaoSetUp_SSFLS(Tao tao) {
   TAO_SSLS *ssls = (TAO_SSLS *)tao->data;
 
   PetscFunctionBegin;
@@ -18,8 +17,7 @@ PetscErrorCode TaoSetUp_SSFLS(Tao tao)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TaoSolve_SSFLS(Tao tao)
-{
+static PetscErrorCode TaoSolve_SSFLS(Tao tao) {
   TAO_SSLS                    *ssls = (TAO_SSLS *)tao->data;
   PetscReal                    psi, ndpsi, normd, innerd, t = 0;
   PetscReal                    delta, rho;
@@ -86,8 +84,7 @@ static PetscErrorCode TaoSolve_SSFLS(Tao tao)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode TaoDestroy_SSFLS(Tao tao)
-{
+PetscErrorCode TaoDestroy_SSFLS(Tao tao) {
   TAO_SSLS *ssls = (TAO_SSLS *)tao->data;
 
   PetscFunctionBegin;
@@ -115,13 +112,12 @@ PetscErrorCode TaoDestroy_SSFLS(Tao tao)
    Level: beginner
 M*/
 
-PETSC_EXTERN PetscErrorCode TaoCreate_SSFLS(Tao tao)
-{
+PETSC_EXTERN PetscErrorCode TaoCreate_SSFLS(Tao tao) {
   TAO_SSLS   *ssls;
   const char *armijo_type = TAOLINESEARCHARMIJO;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&ssls));
+  PetscCall(PetscNewLog(tao, &ssls));
   tao->data                = (void *)ssls;
   tao->ops->solve          = TaoSolve_SSFLS;
   tao->ops->setup          = TaoSetUp_SSFLS;

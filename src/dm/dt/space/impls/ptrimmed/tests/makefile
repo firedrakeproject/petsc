@@ -1,4 +1,4 @@
--include ../../../../../../../petscdir.mk
+-include ../../../../../../../petsckdir.mk
 
 LOCDIR          = src/dm/dt/space/impls/ptrimmed/tests/
 MANSEC          = DM

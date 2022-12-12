@@ -2,8 +2,7 @@ static char help[] = "Create a Plex sphere from quads and create a P1 section\n\
 
 #include <petscdmplex.h>
 
-static PetscErrorCode SetupSection(DM dm)
-{
+static PetscErrorCode SetupSection(DM dm) {
   PetscSection s;
   PetscInt     vStart, vEnd, v;
 
@@ -23,8 +22,7 @@ static PetscErrorCode SetupSection(DM dm)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM  dm;
   Vec u;
 

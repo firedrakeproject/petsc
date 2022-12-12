@@ -4,8 +4,7 @@ static char help[] = "Tests affine subspaces.\n\n";
 #include <petscdmplex.h>
 #include <petscdmshell.h>
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM             dm;
   PetscFE        fe;
   PetscSpace     space;

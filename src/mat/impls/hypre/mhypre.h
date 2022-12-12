@@ -1,4 +1,4 @@
-#ifndef _MHYPRE_H
+#if !defined(_MHYPRE_H)
 #define _MHYPRE_H
 
 #include <petscsys.h>

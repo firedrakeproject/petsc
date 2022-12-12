@@ -1,4 +1,4 @@
--include ../../../../../../../petscdir.mk
+-include ../../../../../../../petsckdir.mk
 
 LOCDIR          = src/dm/dt/dualspace/impls/lagrange/tutorials/
 MANSEC          = DM

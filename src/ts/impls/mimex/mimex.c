@@ -12,8 +12,7 @@ typedef struct {
   PetscInt  version;
 } TS_Mimex;
 
-static PetscErrorCode TSMimexGetX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
-{
+static PetscErrorCode TSMimexGetX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
 
   PetscFunctionBegin;
@@ -28,8 +27,7 @@ static PetscErrorCode TSMimexGetX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSMimexRestoreX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
-{
+static PetscErrorCode TSMimexRestoreX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot) {
   PetscFunctionBegin;
   if (X0)
     if (dm && dm != ts->dm) PetscCall(DMRestoreNamedGlobalVector(dm, "TSMimex_X0", X0));
@@ -38,16 +36,14 @@ static PetscErrorCode TSMimexRestoreX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSMimexGetXstarAndG(TS ts, DM dm, Vec *Xstar, Vec *G)
-{
+static PetscErrorCode TSMimexGetXstarAndG(TS ts, DM dm, Vec *Xstar, Vec *G) {
   PetscFunctionBegin;
   PetscCall(DMGetNamedGlobalVector(dm, "TSMimex_Xstar", Xstar));
   PetscCall(DMGetNamedGlobalVector(dm, "TSMimex_G", G));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSMimexRestoreXstarAndG(TS ts, DM dm, Vec *Xstar, Vec *G)
-{
+static PetscErrorCode TSMimexRestoreXstarAndG(TS ts, DM dm, Vec *Xstar, Vec *G) {
   PetscFunctionBegin;
   PetscCall(DMRestoreNamedGlobalVector(dm, "TSMimex_Xstar", Xstar));
   PetscCall(DMRestoreNamedGlobalVector(dm, "TSMimex_G", G));
@@ -58,8 +54,7 @@ static PetscErrorCode TSMimexRestoreXstarAndG(TS ts, DM dm, Vec *Xstar, Vec *G)
   This defines the nonlinear equation that is to be solved with SNES
   G(U) = F[t0+dt, U, (U-U0)*shift] = 0
 */
-static PetscErrorCode SNESTSFormFunction_Mimex(SNES snes, Vec x, Vec y, TS ts)
-{
+static PetscErrorCode SNESTSFormFunction_Mimex(SNES snes, Vec x, Vec y, TS ts) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
   DM        dm, dmsave;
   Vec       X0, Xdot;
@@ -119,8 +114,7 @@ static PetscErrorCode SNESTSFormFunction_Mimex(SNES snes, Vec x, Vec y, TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode SNESTSFormJacobian_Mimex(SNES snes, Vec x, Mat A, Mat B, TS ts)
-{
+static PetscErrorCode SNESTSFormJacobian_Mimex(SNES snes, Vec x, Mat A, Mat B, TS ts) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
   DM        dm, dmsave;
   Vec       Xdot;
@@ -140,8 +134,7 @@ static PetscErrorCode SNESTSFormJacobian_Mimex(SNES snes, Vec x, Mat A, Mat B, T
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSStep_Mimex_Split(TS ts)
-{
+static PetscErrorCode TSStep_Mimex_Split(TS ts) {
   TS_Mimex          *mimex = (TS_Mimex *)ts->data;
   DM                 dm;
   PetscDS            prob;
@@ -209,9 +202,8 @@ static PetscErrorCode TSStep_Mimex_Split(TS ts)
   PetscFunctionReturn(0);
 }
 
-/* Evaluate F at U and G at U0 for explicit fields and U for implicit fields */
-static PetscErrorCode TSStep_Mimex_Implicit(TS ts)
-{
+/* Evalute F at U and G at U0 for explicit fields and U for implicit fields */
+static PetscErrorCode TSStep_Mimex_Implicit(TS ts) {
   TS_Mimex *mimex  = (TS_Mimex *)ts->data;
   Vec       sol    = ts->vec_sol;
   Vec       update = mimex->update;
@@ -228,28 +220,21 @@ static PetscErrorCode TSStep_Mimex_Implicit(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSStep_Mimex(TS ts)
-{
+static PetscErrorCode TSStep_Mimex(TS ts) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
 
   PetscFunctionBegin;
   switch (mimex->version) {
-  case 0:
-    PetscCall(TSStep_Mimex_Split(ts));
-    break;
-  case 1:
-    PetscCall(TSStep_Mimex_Implicit(ts));
-    break;
-  default:
-    SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_OUTOFRANGE, "Unknown MIMEX version %" PetscInt_FMT, mimex->version);
+  case 0: PetscCall(TSStep_Mimex_Split(ts)); break;
+  case 1: PetscCall(TSStep_Mimex_Implicit(ts)); break;
+  default: SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_OUTOFRANGE, "Unknown MIMEX version %" PetscInt_FMT, mimex->version);
   }
   PetscFunctionReturn(0);
 }
 
 /*------------------------------------------------------------*/
 
-static PetscErrorCode TSSetUp_Mimex(TS ts)
-{
+static PetscErrorCode TSSetUp_Mimex(TS ts) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
 
   PetscFunctionBegin;
@@ -258,8 +243,7 @@ static PetscErrorCode TSSetUp_Mimex(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSReset_Mimex(TS ts)
-{
+static PetscErrorCode TSReset_Mimex(TS ts) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
 
   PetscFunctionBegin;
@@ -268,8 +252,7 @@ static PetscErrorCode TSReset_Mimex(TS ts)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSDestroy_Mimex(TS ts)
-{
+static PetscErrorCode TSDestroy_Mimex(TS ts) {
   PetscFunctionBegin;
   PetscCall(TSReset_Mimex(ts));
   PetscCall(PetscFree(ts->data));
@@ -277,21 +260,17 @@ static PetscErrorCode TSDestroy_Mimex(TS ts)
 }
 /*------------------------------------------------------------*/
 
-static PetscErrorCode TSSetFromOptions_Mimex(TS ts, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode TSSetFromOptions_Mimex(TS ts, PetscOptionItems *PetscOptionsObject) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
 
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "MIMEX ODE solver options");
-  {
-    PetscCall(PetscOptionsInt("-ts_mimex_version", "Algorithm version", "TSMimexSetVersion", mimex->version, &mimex->version, NULL));
-  }
+  { PetscCall(PetscOptionsInt("-ts_mimex_version", "Algorithm version", "TSMimexSetVersion", mimex->version, &mimex->version, NULL)); }
   PetscOptionsHeadEnd();
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSView_Mimex(TS ts, PetscViewer viewer)
-{
+static PetscErrorCode TSView_Mimex(TS ts, PetscViewer viewer) {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
   PetscBool iascii;
 
@@ -301,8 +280,7 @@ static PetscErrorCode TSView_Mimex(TS ts, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSInterpolate_Mimex(TS ts, PetscReal t, Vec X)
-{
+static PetscErrorCode TSInterpolate_Mimex(TS ts, PetscReal t, Vec X) {
   PetscReal alpha = (ts->ptime - t) / ts->time_step;
 
   PetscFunctionBegin;
@@ -310,8 +288,7 @@ static PetscErrorCode TSInterpolate_Mimex(TS ts, PetscReal t, Vec X)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode TSComputeLinearStability_Mimex(TS ts, PetscReal xr, PetscReal xi, PetscReal *yr, PetscReal *yi)
-{
+static PetscErrorCode TSComputeLinearStability_Mimex(TS ts, PetscReal xr, PetscReal xi, PetscReal *yr, PetscReal *yi) {
   PetscFunctionBegin;
   *yr = 1.0 + xr;
   *yi = xi;
@@ -324,10 +301,10 @@ static PetscErrorCode TSComputeLinearStability_Mimex(TS ts, PetscReal xr, PetscR
 
   Level: beginner
 
-.seealso: [](chapter_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSBEULER`
+.seealso: `TSCreate()`, `TS`, `TSSetType()`, `TSBEULER`
+
 M*/
-PETSC_EXTERN PetscErrorCode TSCreate_Mimex(TS ts)
-{
+PETSC_EXTERN PetscErrorCode TSCreate_Mimex(TS ts) {
   TS_Mimex *mimex;
 
   PetscFunctionBegin;
@@ -343,7 +320,7 @@ PETSC_EXTERN PetscErrorCode TSCreate_Mimex(TS ts)
   ts->ops->snesjacobian    = SNESTSFormJacobian_Mimex;
   ts->default_adapt_type   = TSADAPTNONE;
 
-  PetscCall(PetscNew(&mimex));
+  PetscCall(PetscNewLog(ts, &mimex));
   ts->data = (void *)mimex;
 
   mimex->version = 1;

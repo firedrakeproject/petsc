@@ -5,8 +5,7 @@ static const char help[] = "Tests for Plex transforms, including regular refinem
 
 #include <petsc/private/dmpleximpl.h>
 
-static PetscErrorCode LabelPoints(DM dm)
-{
+static PetscErrorCode LabelPoints(DM dm) {
   DMLabel   label;
   PetscInt  pStart, pEnd, p;
   PetscBool flg = PETSC_FALSE;
@@ -21,8 +20,7 @@ static PetscErrorCode LabelPoints(DM dm)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm)
-{
+static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm) {
   PetscFunctionBegin;
   PetscCall(DMCreate(comm, dm));
   PetscCall(DMSetType(*dm, DMPLEX));
@@ -35,8 +33,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, DM *dm)
   PetscFunctionReturn(0);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   DM dm;
 
   PetscFunctionBeginUser;

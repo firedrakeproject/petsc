@@ -1,7 +1,5 @@
 /*
    This is where the abstract matrix operations are defined
-   Portions of this code are under:
-   Copyright (c) 2022 Advanced Micro Devices, Inc. All rights reserved.
 */
 
 #include <petsc/private/matimpl.h> /*I "petscmat.h" I*/
@@ -35,7 +33,6 @@ PetscLogEvent MAT_GetBrowsOfAocols, MAT_Getlocalmat, MAT_Getlocalmatcondensed, M
 PetscLogEvent MAT_Applypapt, MAT_Applypapt_numeric, MAT_Applypapt_symbolic, MAT_GetSequentialNonzeroStructure;
 PetscLogEvent MAT_GetMultiProcBlock;
 PetscLogEvent MAT_CUSPARSECopyToGPU, MAT_CUSPARSECopyFromGPU, MAT_CUSPARSEGenerateTranspose, MAT_CUSPARSESolveAnalysis;
-PetscLogEvent MAT_HIPSPARSECopyToGPU, MAT_HIPSPARSECopyFromGPU, MAT_HIPSPARSEGenerateTranspose, MAT_HIPSPARSESolveAnalysis;
 PetscLogEvent MAT_PreallCOO, MAT_SetVCOO;
 PetscLogEvent MAT_SetValuesBatch;
 PetscLogEvent MAT_ViennaCLCopyToGPU;
@@ -72,8 +69,7 @@ const char *const MatFactorTypes[] = {"NONE", "LU", "CHOLESKY", "ILU", "ICC", "I
 
 .seealso: `PetscRandom`, `PetscRandomCreate()`, `MatZeroEntries()`, `MatSetValues()`, `PetscRandomCreate()`, `PetscRandomDestroy()`
 @*/
-PetscErrorCode MatSetRandom(Mat x, PetscRandom rctx)
-{
+PetscErrorCode MatSetRandom(Mat x, PetscRandom rctx) {
   PetscRandom randObj = NULL;
 
   PetscFunctionBegin;
@@ -86,7 +82,6 @@ PetscErrorCode MatSetRandom(Mat x, PetscRandom rctx)
     MPI_Comm comm;
     PetscCall(PetscObjectGetComm((PetscObject)x, &comm));
     PetscCall(PetscRandomCreate(comm, &randObj));
-    PetscCall(PetscRandomSetType(randObj, x->defaultrandtype));
     PetscCall(PetscRandomSetFromOptions(randObj));
     rctx = randObj;
   }
@@ -125,8 +120,7 @@ PetscErrorCode MatSetRandom(Mat x, PetscRandom rctx)
 .seealso: `MatZeroEntries()`, `MatFactor()`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactorSymbolic()`, `MatFactorClearError()`, `MatFactorGetErrorZeroPivot()`,
           `MAT_FACTOR_NUMERIC_ZEROPIVOT`
 @*/
-PetscErrorCode MatFactorGetErrorZeroPivot(Mat mat, PetscReal *pivot, PetscInt *row)
-{
+PetscErrorCode MatFactorGetErrorZeroPivot(Mat mat, PetscReal *pivot, PetscInt *row) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidRealPointer(pivot, 2);
@@ -155,8 +149,7 @@ PetscErrorCode MatFactorGetErrorZeroPivot(Mat mat, PetscReal *pivot, PetscInt *r
 .seealso: `MatZeroEntries()`, `MatFactor()`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactorSymbolic()`, `MatFactorClearError()`, `MatFactorGetErrorZeroPivot()`,
           `MatFactorError`
 @*/
-PetscErrorCode MatFactorGetError(Mat mat, MatFactorError *err)
-{
+PetscErrorCode MatFactorGetError(Mat mat, MatFactorError *err) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidPointer(err, 2);
@@ -180,8 +173,7 @@ PetscErrorCode MatFactorGetError(Mat mat, MatFactorError *err)
 .seealso: `MatZeroEntries()`, `MatFactor()`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactorSymbolic()`, `MatFactorGetError()`, `MatFactorGetErrorZeroPivot()`,
           `MatGetErrorCode()`, `MatFactorError`
 @*/
-PetscErrorCode MatFactorClearError(Mat mat)
-{
+PetscErrorCode MatFactorClearError(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   mat->factorerrortype             = MAT_FACTOR_NOERROR;
@@ -190,8 +182,7 @@ PetscErrorCode MatFactorClearError(Mat mat)
   PetscFunctionReturn(0);
 }
 
-PETSC_INTERN PetscErrorCode MatFindNonzeroRowsOrCols_Basic(Mat mat, PetscBool cols, PetscReal tol, IS *nonzero)
-{
+PETSC_INTERN PetscErrorCode MatFindNonzeroRowsOrCols_Basic(Mat mat, PetscBool cols, PetscReal tol, IS *nonzero) {
   Vec                r, l;
   const PetscScalar *al;
   PetscInt           i, nz, gnz, N, n;
@@ -261,8 +252,7 @@ PETSC_INTERN PetscErrorCode MatFindNonzeroRowsOrCols_Basic(Mat mat, PetscBool co
 
 .seealso: `Mat`, `MatFindZeroRows()`
  @*/
-PetscErrorCode MatFindNonzeroRows(Mat mat, IS *keptrows)
-{
+PetscErrorCode MatFindNonzeroRows(Mat mat, IS *keptrows) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -290,8 +280,7 @@ PetscErrorCode MatFindNonzeroRows(Mat mat, IS *keptrows)
 
 .seealso: `Mat`, `MatFindNonzeroRows()`
  @*/
-PetscErrorCode MatFindZeroRows(Mat mat, IS *zerorows)
-{
+PetscErrorCode MatFindZeroRows(Mat mat, IS *zerorows) {
   IS       keptrows;
   PetscInt m, n;
 
@@ -333,8 +322,7 @@ PetscErrorCode MatFindZeroRows(Mat mat, IS *zerorows)
 
 .seelaso: `MatCreateAIJ()`, `MATAIJ`, `MATBAIJ`, `MATSBAIJ`
 @*/
-PetscErrorCode MatGetDiagonalBlock(Mat A, Mat *a)
-{
+PetscErrorCode MatGetDiagonalBlock(Mat A, Mat *a) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -366,8 +354,7 @@ PetscErrorCode MatGetDiagonalBlock(Mat A, Mat *a)
 
 .seealso: `Mat`
 @*/
-PetscErrorCode MatGetTrace(Mat mat, PetscScalar *trace)
-{
+PetscErrorCode MatGetTrace(Mat mat, PetscScalar *trace) {
   Vec diag;
 
   PetscFunctionBegin;
@@ -392,8 +379,7 @@ PetscErrorCode MatGetTrace(Mat mat, PetscScalar *trace)
 
 .seealso: `MatImaginaryPart()`
 @*/
-PetscErrorCode MatRealPart(Mat mat)
-{
+PetscErrorCode MatRealPart(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -423,8 +409,7 @@ PetscErrorCode MatRealPart(Mat mat)
 
 .seealso: `Mat`, `VecCreateGhost()`
 @*/
-PetscErrorCode MatGetGhosts(Mat mat, PetscInt *nghosts, const PetscInt *ghosts[])
-{
+PetscErrorCode MatGetGhosts(Mat mat, PetscInt *nghosts, const PetscInt *ghosts[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -450,8 +435,7 @@ PetscErrorCode MatGetGhosts(Mat mat, PetscInt *nghosts, const PetscInt *ghosts[]
 
 .seealso: `MatRealPart()`
 @*/
-PetscErrorCode MatImaginaryPart(Mat mat)
-{
+PetscErrorCode MatImaginaryPart(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -478,8 +462,7 @@ PetscErrorCode MatImaginaryPart(Mat mat)
 
 .seealso: `Mat`
 @*/
-PetscErrorCode MatMissingDiagonal(Mat mat, PetscBool *missing, PetscInt *dd)
-{
+PetscErrorCode MatMissingDiagonal(Mat mat, PetscBool *missing, PetscInt *dd) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -552,8 +535,7 @@ PetscErrorCode MatMissingDiagonal(Mat mat, PetscBool *missing, PetscInt *dd)
 
 .seealso: `MatRestoreRow()`, `MatSetValues()`, `MatGetValues()`, `MatCreateSubMatrices()`, `MatGetDiagonal()`, `MatGetRowIJ()`, `MatRestoreRowIJ()`
 @*/
-PetscErrorCode MatGetRow(Mat mat, PetscInt row, PetscInt *ncols, const PetscInt *cols[], const PetscScalar *vals[])
-{
+PetscErrorCode MatGetRow(Mat mat, PetscInt row, PetscInt *ncols, const PetscInt *cols[], const PetscScalar *vals[]) {
   PetscInt incols;
 
   PetscFunctionBegin;
@@ -582,8 +564,7 @@ PetscErrorCode MatGetRow(Mat mat, PetscInt row, PetscInt *ncols, const PetscInt 
 
 .seealso: `MatRealPart()`, `MatImaginaryPart()`, `VecConjugate()`, `MatTranspose()`
 @*/
-PetscErrorCode MatConjugate(Mat mat)
-{
+PetscErrorCode MatConjugate(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscCheck(mat->assembled, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Not for unassembled matrix");
@@ -631,8 +612,7 @@ PetscErrorCode MatConjugate(Mat mat)
 
 .seealso: `MatGetRow()`
 @*/
-PetscErrorCode MatRestoreRow(Mat mat, PetscInt row, PetscInt *ncols, const PetscInt *cols[], const PetscScalar *vals[])
-{
+PetscErrorCode MatRestoreRow(Mat mat, PetscInt row, PetscInt *ncols, const PetscInt *cols[], const PetscScalar *vals[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (ncols) PetscValidIntPointer(ncols, 3);
@@ -661,8 +641,7 @@ PetscErrorCode MatRestoreRow(Mat mat, PetscInt row, PetscInt *ncols, const Petsc
 
 .seealso: `MATSBAIJ`, `MatRestoreRowUpperTriangular()`
 @*/
-PetscErrorCode MatGetRowUpperTriangular(Mat mat)
-{
+PetscErrorCode MatGetRowUpperTriangular(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -689,8 +668,7 @@ PetscErrorCode MatGetRowUpperTriangular(Mat mat)
 
 .seealso: `MATSBAIJ`, `MatGetRowUpperTriangular()`
 @*/
-PetscErrorCode MatRestoreRowUpperTriangular(Mat mat)
-{
+PetscErrorCode MatRestoreRowUpperTriangular(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -724,8 +702,7 @@ PetscErrorCode MatRestoreRowUpperTriangular(Mat mat)
 
 .seealso: `MatSetFromOptions()`, `MatSetOptionsPrefixFactor()`
 @*/
-PetscErrorCode MatSetOptionsPrefix(Mat A, const char prefix[])
-{
+PetscErrorCode MatSetOptionsPrefix(Mat A, const char prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscCall(PetscObjectSetOptionsPrefix((PetscObject)A, prefix));
@@ -751,10 +728,9 @@ PetscErrorCode MatSetOptionsPrefix(Mat A, const char prefix[])
 
    Level: developer
 
-.seealso:   [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatSetFromOptions()`, `MatSetOptionsPrefix()`, `MatAppendOptionsPrefixFactor()`
+.seealso: `MatSetFromOptions()`, `MatSetOptionsPrefix()`, `MatAppendOptionsPrefixFactor()`
 @*/
-PetscErrorCode MatSetOptionsPrefixFactor(Mat A, const char prefix[])
-{
+PetscErrorCode MatSetOptionsPrefixFactor(Mat A, const char prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   if (prefix) {
@@ -787,12 +763,11 @@ PetscErrorCode MatSetOptionsPrefixFactor(Mat A, const char prefix[])
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectSetOptionsPrefix()`, `PetscObjectPrependOptionsPrefix()`,
-          `PetscObjectGetOptionsPrefix()`, `TSAppendOptionsPrefix()`, `SNESAppendOptionsPrefix()`, `KSPAppendOptionsPrefix()`, `MatSetOptionsPrefixFactor()`,
-          `MatSetOptionsPrefix()`
+.seealso: `PetscOptionsCreate()`, `PetscOptionsDestroy()`, `PetscObjectSetOptionsPrefix()`, `PetscObjectPrependOptionsPrefix()`,
+             `PetscObjectGetOptionsPrefix()`, `TSAppendOptionsPrefix()`, `SNESAppendOptionsPrefix()`, `KSPAppendOptionsPrefix()`, `MatSetOptionsPrefixFactor()`,
+             `MatSetOptionsPrefix()`
 @*/
-PetscErrorCode MatAppendOptionsPrefixFactor(Mat A, const char prefix[])
-{
+PetscErrorCode MatAppendOptionsPrefixFactor(Mat A, const char prefix[]) {
   char  *buf = A->factorprefix;
   size_t len1, len2;
 
@@ -832,8 +807,7 @@ PetscErrorCode MatAppendOptionsPrefixFactor(Mat A, const char prefix[])
 
 .seealso: `Mat`, `MatGetOptionsPrefix()`, `MatAppendOptionsPrefixFactor()`, `MatSetOptionsPrefix()`
 @*/
-PetscErrorCode MatAppendOptionsPrefix(Mat A, const char prefix[])
-{
+PetscErrorCode MatAppendOptionsPrefix(Mat A, const char prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscCall(PetscObjectAppendOptionsPrefix((PetscObject)A, prefix));
@@ -860,8 +834,7 @@ PetscErrorCode MatAppendOptionsPrefix(Mat A, const char prefix[])
 
 .seealso: `MatAppendOptionsPrefix()`, `MatSetOptionsPrefix()`, `MatAppendOptionsPrefixFactor()`, `MatSetOptionsPrefixFactor()`
 @*/
-PetscErrorCode MatGetOptionsPrefix(Mat A, const char *prefix[])
-{
+PetscErrorCode MatGetOptionsPrefix(Mat A, const char *prefix[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidPointer(prefix, 2);
@@ -888,8 +861,7 @@ PetscErrorCode MatGetOptionsPrefix(Mat A, const char *prefix[])
 
 .seealso: `MatSeqAIJSetPreallocation()`, `MatMPIAIJSetPreallocation()`, `MatXAIJSetPreallocation()`
 @*/
-PetscErrorCode MatResetPreallocation(Mat A)
-{
+PetscErrorCode MatResetPreallocation(Mat A) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -918,8 +890,7 @@ PetscErrorCode MatResetPreallocation(Mat A)
 
 .seealso: `Mat`, `MatMult()`, `MatCreate()`, `MatDestroy()`
 @*/
-PetscErrorCode MatSetUp(Mat A)
-{
+PetscErrorCode MatSetUp(Mat A) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   if (!((PetscObject)A)->type_name) {
@@ -939,7 +910,7 @@ PetscErrorCode MatSetUp(Mat A)
 }
 
 #if defined(PETSC_HAVE_SAWS)
-  #include <petscviewersaws.h>
+#include <petscviewersaws.h>
 #endif
 
 /*@C
@@ -952,7 +923,7 @@ PetscErrorCode MatSetUp(Mat A)
 .  obj - optional additional object that provides the options prefix to use
 -  name - command line option
 
-  Options Database Key:
+  Options Database:
 .  -mat_view [viewertype]:... - the viewer and its options
 
   Notes:
@@ -971,8 +942,7 @@ PetscErrorCode MatSetUp(Mat A)
 
 .seealso: `Mat`, `MatView()`, `PetscObjectViewFromOptions()`, `MatCreate()`
 @*/
-PetscErrorCode MatViewFromOptions(Mat A, PetscObject obj, const char name[])
-{
+PetscErrorCode MatViewFromOptions(Mat A, PetscObject obj, const char name[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscCall(PetscObjectViewFromOptions((PetscObject)A, obj, name));
@@ -1059,8 +1029,7 @@ PetscErrorCode MatViewFromOptions(Mat A, PetscObject obj, const char name[])
 .seealso: `PetscViewerPushFormat()`, `PetscViewerASCIIOpen()`, `PetscViewerDrawOpen()`, `PetscViewer`, `Mat`,
           `PetscViewerSocketOpen()`, `PetscViewerBinaryOpen()`, `MatLoad()`, `MatViewFromOptions()`
 @*/
-PetscErrorCode MatView(Mat mat, PetscViewer viewer)
-{
+PetscErrorCode MatView(Mat mat, PetscViewer viewer) {
   PetscInt          rows, cols, rbs, cbs;
   PetscBool         isascii, isstring, issaws;
   PetscViewerFormat format;
@@ -1072,6 +1041,7 @@ PetscErrorCode MatView(Mat mat, PetscViewer viewer)
   if (!viewer) PetscCall(PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)mat), &viewer));
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCheckSameComm(mat, 1, viewer, 2);
+  MatCheckPreallocated(mat, 1);
 
   PetscCall(PetscViewerGetFormat(viewer, &format));
   PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)mat), &size));
@@ -1084,14 +1054,7 @@ PetscErrorCode MatView(Mat mat, PetscViewer viewer)
 
   PetscCall(PetscLogEventBegin(MAT_View, mat, viewer, 0, 0));
   if (isascii) {
-    if (!mat->preallocated) {
-      PetscCall(PetscViewerASCIIPrintf(viewer, "Matrix has not been preallocated yet\n"));
-      PetscFunctionReturn(0);
-    }
-    if (!mat->assembled) {
-      PetscCall(PetscViewerASCIIPrintf(viewer, "Matrix has not been assembled yet\n"));
-      PetscFunctionReturn(0);
-    }
+    PetscCheck(mat->assembled, PetscObjectComm((PetscObject)mat), PETSC_ERR_ORDER, "Must call MatAssemblyBegin/End() before viewing matrix");
     PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)mat, viewer));
     if (format == PETSC_VIEWER_ASCII_INFO || format == PETSC_VIEWER_ASCII_INFO_DETAIL) {
       MatNullSpace nullsp, transnullsp;
@@ -1156,9 +1119,8 @@ PetscErrorCode MatView(Mat mat, PetscViewer viewer)
 }
 
 #if defined(PETSC_USE_DEBUG)
-  #include <../src/sys/totalview/tv_data_display.h>
-PETSC_UNUSED static int TV_display_type(const struct _p_Mat *mat)
-{
+#include <../src/sys/totalview/tv_data_display.h>
+PETSC_UNUSED static int TV_display_type(const struct _p_Mat *mat) {
   TV_add_row("Local rows", "int", &mat->rmap->n);
   TV_add_row("Local columns", "int", &mat->cmap->n);
   TV_add_row("Global rows", "int", &mat->rmap->N);
@@ -1286,8 +1248,7 @@ $    save example.mat A b -v7.3
 
 .seealso: `PetscViewerBinaryOpen()`, `PetscViewerSetType()`, `MatView()`, `VecLoad()`
  @*/
-PetscErrorCode MatLoad(Mat mat, PetscViewer viewer)
-{
+PetscErrorCode MatLoad(Mat mat, PetscViewer viewer) {
   PetscBool flg;
 
   PetscFunctionBegin;
@@ -1312,8 +1273,7 @@ PetscErrorCode MatLoad(Mat mat, PetscViewer viewer)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatDestroy_Redundant(Mat_Redundant **redundant)
-{
+static PetscErrorCode MatDestroy_Redundant(Mat_Redundant **redundant) {
   Mat_Redundant *redund = *redundant;
 
   PetscFunctionBegin;
@@ -1357,8 +1317,7 @@ static PetscErrorCode MatDestroy_Redundant(Mat_Redundant **redundant)
 
 .seealso: `Mat`, `MatCreate()`
 @*/
-PetscErrorCode MatDestroy(Mat *A)
-{
+PetscErrorCode MatDestroy(Mat *A) {
   PetscFunctionBegin;
   if (!*A) PetscFunctionReturn(0);
   PetscValidHeaderSpecific(*A, MAT_CLASSID, 1);
@@ -1373,7 +1332,6 @@ PetscErrorCode MatDestroy(Mat *A)
 
   PetscCall(PetscFree((*A)->factorprefix));
   PetscCall(PetscFree((*A)->defaultvectype));
-  PetscCall(PetscFree((*A)->defaultrandtype));
   PetscCall(PetscFree((*A)->bsizes));
   PetscCall(PetscFree((*A)->solvertype));
   for (PetscInt i = 0; i < MAT_FACTOR_NUM_TYPES; i++) PetscCall(PetscFree((*A)->preferredordering[i]));
@@ -1435,8 +1393,7 @@ PetscErrorCode MatDestroy(Mat *A)
 .seealso: `Mat`, `MatSetOption()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValuesBlocked()`, `MatSetValuesLocal()`,
           `InsertMode`, `INSERT_VALUES`, `ADD_VALUES`
 @*/
-PetscErrorCode MatSetValues(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt n, const PetscInt idxn[], const PetscScalar v[], InsertMode addv)
-{
+PetscErrorCode MatSetValues(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt n, const PetscInt idxn[], const PetscScalar v[], InsertMode addv) {
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -1523,8 +1480,7 @@ PetscErrorCode MatSetValues(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt
 .seealso: `MatSetOption()`, `MatSetValues()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValuesBlocked()`, `MatSetValuesLocal()`,
           `InsertMode`, `INSERT_VALUES`, `ADD_VALUES`, `MatSetValues()`
 @*/
-PetscErrorCode MatSetValuesIS(Mat mat, IS ism, IS isn, const PetscScalar v[], InsertMode addv)
-{
+PetscErrorCode MatSetValuesIS(Mat mat, IS ism, IS isn, const PetscScalar v[], InsertMode addv) {
   PetscInt        m, n;
   const PetscInt *rows, *cols;
 
@@ -1565,8 +1521,7 @@ PetscErrorCode MatSetValuesIS(Mat mat, IS ism, IS isn, const PetscScalar v[], In
 .seealso: `MatSetOption()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValuesBlocked()`, `MatSetValuesLocal()`,
           `InsertMode`, `INSERT_VALUES`, `ADD_VALUES`, `MatSetValues()`, `MatSetValuesRow()`, `MatSetLocalToGlobalMapping()`
 @*/
-PetscErrorCode MatSetValuesRowLocal(Mat mat, PetscInt row, const PetscScalar v[])
-{
+PetscErrorCode MatSetValuesRowLocal(Mat mat, PetscInt row, const PetscScalar v[]) {
   PetscInt globalrow;
 
   PetscFunctionBegin;
@@ -1603,8 +1558,7 @@ PetscErrorCode MatSetValuesRowLocal(Mat mat, PetscInt row, const PetscScalar v[]
 .seealso: `MatSetValues()`, `MatSetOption()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValuesBlocked()`, `MatSetValuesLocal()`,
           `InsertMode`, `INSERT_VALUES`, `ADD_VALUES`, `MatSetValues()`
 @*/
-PetscErrorCode MatSetValuesRow(Mat mat, PetscInt row, const PetscScalar v[])
-{
+PetscErrorCode MatSetValuesRow(Mat mat, PetscInt row, const PetscScalar v[]) {
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -1691,8 +1645,7 @@ $    idxm(MatStencil_c,1) = c
 .seealso: `Mat`, `DMDA`, `MatSetOption()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValuesBlocked()`, `MatSetValuesLocal()`
           `MatSetValues()`, `MatSetValuesBlockedStencil()`, `MatSetStencil()`, `DMCreateMatrix()`, `DMDAVecGetArray()`, `MatStencil`
 @*/
-PetscErrorCode MatSetValuesStencil(Mat mat, PetscInt m, const MatStencil idxm[], PetscInt n, const MatStencil idxn[], const PetscScalar v[], InsertMode addv)
-{
+PetscErrorCode MatSetValuesStencil(Mat mat, PetscInt m, const MatStencil idxm[], PetscInt n, const MatStencil idxn[], const PetscScalar v[], InsertMode addv) {
   PetscInt  buf[8192], *bufm = NULL, *bufn = NULL, *jdxm, *jdxn;
   PetscInt  j, i, dim = mat->stencil.dim, *dims = mat->stencil.dims + 1, tmp;
   PetscInt *starts = mat->stencil.starts, *dxm = (PetscInt *)idxm, *dxn = (PetscInt *)idxn, sdim = dim - (1 - (PetscInt)mat->stencil.noc);
@@ -1798,8 +1751,7 @@ $    idxm(MatStencil_k,1) = k
           `MatSetValues()`, `MatSetValuesStencil()`, `MatSetStencil()`, `DMCreateMatrix()`, `DMDAVecGetArray()`, `MatStencil`,
           `MatSetBlockSize()`, `MatSetLocalToGlobalMapping()`
 @*/
-PetscErrorCode MatSetValuesBlockedStencil(Mat mat, PetscInt m, const MatStencil idxm[], PetscInt n, const MatStencil idxn[], const PetscScalar v[], InsertMode addv)
-{
+PetscErrorCode MatSetValuesBlockedStencil(Mat mat, PetscInt m, const MatStencil idxm[], PetscInt n, const MatStencil idxn[], const PetscScalar v[], InsertMode addv) {
   PetscInt  buf[8192], *bufm = NULL, *bufn = NULL, *jdxm, *jdxn;
   PetscInt  j, i, dim = mat->stencil.dim, *dims = mat->stencil.dims + 1, tmp;
   PetscInt *starts = mat->stencil.starts, *dxm = (PetscInt *)idxm, *dxn = (PetscInt *)idxn, sdim = dim - (1 - (PetscInt)mat->stencil.noc);
@@ -1870,8 +1822,7 @@ PetscErrorCode MatSetValuesBlockedStencil(Mat mat, PetscInt m, const MatStencil 
 .seealso: `Mat`, `MatStencil`, `MatSetOption()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValuesBlocked()`, `MatSetValuesLocal()`
           `MatSetValues()`, `MatSetValuesBlockedStencil()`, `MatSetValuesStencil()`
 @*/
-PetscErrorCode MatSetStencil(Mat mat, PetscInt dim, const PetscInt dims[], const PetscInt starts[], PetscInt dof)
-{
+PetscErrorCode MatSetStencil(Mat mat, PetscInt dim, const PetscInt dims[], const PetscInt starts[], PetscInt dof) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidIntPointer(dims, 3);
@@ -1953,8 +1904,7 @@ $   v[] = [1,5,9,13,2,6,10,14,3,7,11,15,4,8,12,16]
 
 .seealso: `Mat`, `MatSetBlockSize()`, `MatSetOption()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValues()`, `MatSetValuesBlockedLocal()`
 @*/
-PetscErrorCode MatSetValuesBlocked(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt n, const PetscInt idxn[], const PetscScalar v[], InsertMode addv)
-{
+PetscErrorCode MatSetValuesBlocked(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt n, const PetscInt idxn[], const PetscScalar v[], InsertMode addv) {
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2045,8 +1995,7 @@ PetscErrorCode MatSetValuesBlocked(Mat mat, PetscInt m, const PetscInt idxm[], P
 
 .seealso: `Mat`, `MatGetRow()`, `MatCreateSubMatrices()`, `MatSetValues()`, `MatGetOwnershipRange()`, `MatGetValuesLocal()`, `MatGetValue()`
 @*/
-PetscErrorCode MatGetValues(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt n, const PetscInt idxn[], PetscScalar v[])
-{
+PetscErrorCode MatGetValues(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt n, const PetscInt idxn[], PetscScalar v[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2095,8 +2044,7 @@ PetscErrorCode MatGetValues(Mat mat, PetscInt m, const PetscInt idxm[], PetscInt
 .seealso: `Mat`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValues()`, `MatSetLocalToGlobalMapping()`,
           `MatSetValuesLocal()`, `MatGetValues()`
 @*/
-PetscErrorCode MatGetValuesLocal(Mat mat, PetscInt nrow, const PetscInt irow[], PetscInt ncol, const PetscInt icol[], PetscScalar y[])
-{
+PetscErrorCode MatGetValuesLocal(Mat mat, PetscInt nrow, const PetscInt irow[], PetscInt ncol, const PetscInt icol[], PetscScalar y[]) {
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2155,8 +2103,7 @@ PetscErrorCode MatGetValuesLocal(Mat mat, PetscInt nrow, const PetscInt irow[], 
 .seealso: `Mat`, `Mat`MatSetOption()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValuesBlocked()`, `MatSetValuesLocal()`,
           `InsertMode`, `INSERT_VALUES`, `ADD_VALUES`, `MatSetValues()`, `MatSetPreallocationCOO()`, `MatSetValuesCOO()`
 @*/
-PetscErrorCode MatSetValuesBatch(Mat mat, PetscInt nb, PetscInt bs, PetscInt rows[], const PetscScalar v[])
-{
+PetscErrorCode MatSetValuesBatch(Mat mat, PetscInt nb, PetscInt bs, PetscInt rows[], const PetscScalar v[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2192,8 +2139,7 @@ PetscErrorCode MatSetValuesBatch(Mat mat, PetscInt nb, PetscInt bs, PetscInt row
 
 .seealso: `Mat`, `DM`, `DMCreateMatrix()`, `MatGetLocalToGlobalMapping()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValues()`, `MatSetValuesLocal()`, `MatGetValuesLocal()`
 @*/
-PetscErrorCode MatSetLocalToGlobalMapping(Mat x, ISLocalToGlobalMapping rmapping, ISLocalToGlobalMapping cmapping)
-{
+PetscErrorCode MatSetLocalToGlobalMapping(Mat x, ISLocalToGlobalMapping rmapping, ISLocalToGlobalMapping cmapping) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x, MAT_CLASSID, 1);
   PetscValidType(x, 1);
@@ -2223,8 +2169,7 @@ PetscErrorCode MatSetLocalToGlobalMapping(Mat x, ISLocalToGlobalMapping rmapping
 
 .seealso: `Mat`, `MatSetLocalToGlobalMapping()`, `MatSetValuesLocal()`
 @*/
-PetscErrorCode MatGetLocalToGlobalMapping(Mat A, ISLocalToGlobalMapping *rmapping, ISLocalToGlobalMapping *cmapping)
-{
+PetscErrorCode MatGetLocalToGlobalMapping(Mat A, ISLocalToGlobalMapping *rmapping, ISLocalToGlobalMapping *cmapping) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -2256,8 +2201,7 @@ PetscErrorCode MatGetLocalToGlobalMapping(Mat A, ISLocalToGlobalMapping *rmappin
 
 .seealso: `PetscLayout`, `MatCreateVecs()`, `MatGetLocalToGlobalMapping()`, `MatGetLayouts()`
 @*/
-PetscErrorCode MatSetLayouts(Mat A, PetscLayout rmap, PetscLayout cmap)
-{
+PetscErrorCode MatSetLayouts(Mat A, PetscLayout rmap, PetscLayout cmap) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscCall(PetscLayoutReference(rmap, &A->rmap));
@@ -2279,10 +2223,9 @@ PetscErrorCode MatSetLayouts(Mat A, PetscLayout rmap, PetscLayout cmap)
 
    Level: advanced
 
-.seealso: [Matrix Layouts](sec_matlayout), `PetscLayout`, `MatCreateVecs()`, `MatGetLocalToGlobalMapping()`, `MatSetLayouts()`
+.seealso: `PetscLayout`, `MatCreateVecs()`, `MatGetLocalToGlobalMapping()`, `MatSetLayouts()`
 @*/
-PetscErrorCode MatGetLayouts(Mat A, PetscLayout *rmap, PetscLayout *cmap)
-{
+PetscErrorCode MatGetLayouts(Mat A, PetscLayout *rmap, PetscLayout *cmap) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -2332,8 +2275,7 @@ PetscErrorCode MatGetLayouts(Mat A, PetscLayout *rmap, PetscLayout *cmap)
 .seealso: `MatAssemblyBegin()`, `MatAssemblyEnd()`, `MatSetValues()`, `MatSetLocalToGlobalMapping()`,
           `MatGetValuesLocal()`
 @*/
-PetscErrorCode MatSetValuesLocal(Mat mat, PetscInt nrow, const PetscInt irow[], PetscInt ncol, const PetscInt icol[], const PetscScalar y[], InsertMode addv)
-{
+PetscErrorCode MatSetValuesLocal(Mat mat, PetscInt nrow, const PetscInt irow[], PetscInt ncol, const PetscInt icol[], const PetscScalar y[], InsertMode addv) {
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2418,8 +2360,7 @@ PetscErrorCode MatSetValuesLocal(Mat mat, PetscInt nrow, const PetscInt irow[], 
 .seealso: `Mat`, `MatSetBlockSize()`, `MatSetLocalToGlobalMapping()`, `MatAssemblyBegin()`, `MatAssemblyEnd()`,
           `MatSetValuesLocal()`, `MatSetValuesBlocked()`
 @*/
-PetscErrorCode MatSetValuesBlockedLocal(Mat mat, PetscInt nrow, const PetscInt irow[], PetscInt ncol, const PetscInt icol[], const PetscScalar y[], InsertMode addv)
-{
+PetscErrorCode MatSetValuesBlockedLocal(Mat mat, PetscInt nrow, const PetscInt irow[], PetscInt ncol, const PetscInt icol[], const PetscScalar y[], InsertMode addv) {
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2500,8 +2441,7 @@ PetscErrorCode MatSetValuesBlockedLocal(Mat mat, PetscInt nrow, const PetscInt i
 
 .seealso: `Mat`, `MatMult()`, `MatMultTranspose()`, `MatMultAdd()`, `MatMultTransposeAdd()`
 @*/
-PetscErrorCode MatMultDiagonalBlock(Mat mat, Vec x, Vec y)
-{
+PetscErrorCode MatMultDiagonalBlock(Mat mat, Vec x, Vec y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2539,8 +2479,7 @@ PetscErrorCode MatMultDiagonalBlock(Mat mat, Vec x, Vec y)
 
 .seealso: `Mat`, `MatMultTranspose()`, `MatMultAdd()`, `MatMultTransposeAdd()`
 @*/
-PetscErrorCode MatMult(Mat mat, Vec x, Vec y)
-{
+PetscErrorCode MatMult(Mat mat, Vec x, Vec y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2554,14 +2493,14 @@ PetscErrorCode MatMult(Mat mat, Vec x, Vec y)
   PetscCheck(mat->cmap->n == x->map->n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Mat mat,Vec x: local dim %" PetscInt_FMT " %" PetscInt_FMT, mat->cmap->n, x->map->n);
   PetscCheck(mat->rmap->n == y->map->n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Mat mat,Vec y: local dim %" PetscInt_FMT " %" PetscInt_FMT, mat->rmap->n, y->map->n);
   PetscCall(VecSetErrorIfLocked(y, 3));
-  if (mat->erroriffailure) PetscCall(VecValidValues_Internal(x, 2, PETSC_TRUE));
+  if (mat->erroriffailure) PetscCall(VecValidValues(x, 2, PETSC_TRUE));
   MatCheckPreallocated(mat, 1);
 
   PetscCall(VecLockReadPush(x));
   PetscCall(PetscLogEventBegin(MAT_Mult, mat, x, y, 0));
   PetscUseTypeMethod(mat, mult, x, y);
   PetscCall(PetscLogEventEnd(MAT_Mult, mat, x, y, 0));
-  if (mat->erroriffailure) PetscCall(VecValidValues_Internal(y, 3, PETSC_FALSE));
+  if (mat->erroriffailure) PetscCall(VecValidValues(y, 3, PETSC_FALSE));
   PetscCall(VecLockReadPop(x));
   PetscFunctionReturn(0);
 }
@@ -2589,8 +2528,7 @@ PetscErrorCode MatMult(Mat mat, Vec x, Vec y)
 
 .seealso: `Mat`, `MatMult()`, `MatMultAdd()`, `MatMultTransposeAdd()`, `MatMultHermitianTranspose()`, `MatTranspose()`
 @*/
-PetscErrorCode MatMultTranspose(Mat mat, Vec x, Vec y)
-{
+PetscErrorCode MatMultTranspose(Mat mat, Vec x, Vec y) {
   PetscErrorCode (*op)(Mat, Vec, Vec) = NULL;
 
   PetscFunctionBegin;
@@ -2606,7 +2544,7 @@ PetscErrorCode MatMultTranspose(Mat mat, Vec x, Vec y)
   PetscCheck(mat->rmap->N == x->map->N, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_SIZ, "Mat mat,Vec x: global dim %" PetscInt_FMT " %" PetscInt_FMT, mat->rmap->N, x->map->N);
   PetscCheck(mat->cmap->n == y->map->n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Mat mat,Vec y: local dim %" PetscInt_FMT " %" PetscInt_FMT, mat->cmap->n, y->map->n);
   PetscCheck(mat->rmap->n == x->map->n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Mat mat,Vec x: local dim %" PetscInt_FMT " %" PetscInt_FMT, mat->rmap->n, x->map->n);
-  if (mat->erroriffailure) PetscCall(VecValidValues_Internal(x, 2, PETSC_TRUE));
+  if (mat->erroriffailure) PetscCall(VecValidValues(x, 2, PETSC_TRUE));
   MatCheckPreallocated(mat, 1);
 
   if (!mat->ops->multtranspose) {
@@ -2619,7 +2557,7 @@ PetscErrorCode MatMultTranspose(Mat mat, Vec x, Vec y)
   PetscCall(VecLockReadPop(x));
   PetscCall(PetscLogEventEnd(MAT_MultTranspose, mat, x, y, 0));
   PetscCall(PetscObjectStateIncrease((PetscObject)y));
-  if (mat->erroriffailure) PetscCall(VecValidValues_Internal(y, 3, PETSC_FALSE));
+  if (mat->erroriffailure) PetscCall(VecValidValues(y, 3, PETSC_FALSE));
   PetscFunctionReturn(0);
 }
 
@@ -2647,8 +2585,7 @@ PetscErrorCode MatMultTranspose(Mat mat, Vec x, Vec y)
 
 .seealso: `Mat`, `MatMult()`, `MatMultAdd()`, `MatMultHermitianTransposeAdd()`, `MatMultTranspose()`
 @*/
-PetscErrorCode MatMultHermitianTranspose(Mat mat, Vec x, Vec y)
-{
+PetscErrorCode MatMultHermitianTranspose(Mat mat, Vec x, Vec y) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2708,8 +2645,7 @@ PetscErrorCode MatMultHermitianTranspose(Mat mat, Vec x, Vec y)
 
 .seealso: `Mat`, `MatMultTranspose()`, `MatMult()`, `MatMultTransposeAdd()`
 @*/
-PetscErrorCode MatMultAdd(Mat mat, Vec v1, Vec v2, Vec v3)
-{
+PetscErrorCode MatMultAdd(Mat mat, Vec v1, Vec v2, Vec v3) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2756,8 +2692,7 @@ PetscErrorCode MatMultAdd(Mat mat, Vec v1, Vec v2, Vec v3)
 
 .seealso: `Mat`, `MatMultTranspose()`, `MatMultAdd()`, `MatMult()`
 @*/
-PetscErrorCode MatMultTransposeAdd(Mat mat, Vec v1, Vec v2, Vec v3)
-{
+PetscErrorCode MatMultTransposeAdd(Mat mat, Vec v1, Vec v2, Vec v3) {
   PetscErrorCode (*op)(Mat, Vec, Vec, Vec) = (!mat->ops->multtransposeadd && mat->symmetric) ? mat->ops->multadd : mat->ops->multtransposeadd;
 
   PetscFunctionBegin;
@@ -2805,8 +2740,7 @@ PetscErrorCode MatMultTransposeAdd(Mat mat, Vec v1, Vec v2, Vec v3)
 
 .seealso: `Mat`, `MatMultHermitianTranspose()`, `MatMultTranspose()`, `MatMultAdd()`, `MatMult()`
 @*/
-PetscErrorCode MatMultHermitianTransposeAdd(Mat mat, Vec v1, Vec v2, Vec v3)
-{
+PetscErrorCode MatMultHermitianTransposeAdd(Mat mat, Vec v1, Vec v2, Vec v3) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2860,11 +2794,10 @@ PetscErrorCode MatMultHermitianTransposeAdd(Mat mat, Vec v1, Vec v2, Vec v3)
 
    Level: intermediate
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorType`, `MatGetFactor()`, `MatSetFactorType()`, `MAT_FACTOR_NONE`, `MAT_FACTOR_LU`, `MAT_FACTOR_CHOLESKY`, `MAT_FACTOR_ILU`,
+.seealso: `MatFactorType`, `MatGetFactor()`, `MatSetFactorType()`, `MAT_FACTOR_NONE`, `MAT_FACTOR_LU`, `MAT_FACTOR_CHOLESKY`, `MAT_FACTOR_ILU`,
           `MAT_FACTOR_ICC,MAT_FACTOR_ILUDT`, `MAT_FACTOR_QR`
 @*/
-PetscErrorCode MatGetFactorType(Mat mat, MatFactorType *t)
-{
+PetscErrorCode MatGetFactorType(Mat mat, MatFactorType *t) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2884,11 +2817,10 @@ PetscErrorCode MatGetFactorType(Mat mat, MatFactorType *t)
 
    Level: intermediate
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorType`, `MatGetFactor()`, `MatGetFactorType()`, `MAT_FACTOR_NONE`, `MAT_FACTOR_LU`, `MAT_FACTOR_CHOLESKY`, `MAT_FACTOR_ILU`,
+.seealso: `MatFactorType`, `MatGetFactor()`, `MatGetFactorType()`, `MAT_FACTOR_NONE`, `MAT_FACTOR_LU`, `MAT_FACTOR_CHOLESKY`, `MAT_FACTOR_ILU`,
           `MAT_FACTOR_ICC,MAT_FACTOR_ILUDT`, `MAT_FACTOR_QR`
 @*/
-PetscErrorCode MatSetFactorType(Mat mat, MatFactorType t)
-{
+PetscErrorCode MatSetFactorType(Mat mat, MatFactorType t) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2957,8 +2889,7 @@ $       -info -mat_view ::ascii_info
 
 .seealso: `MatInfo`, `MatStashGetInfo()`
 @*/
-PetscErrorCode MatGetInfo(Mat mat, MatInfoType flag, MatInfo *info)
-{
+PetscErrorCode MatGetInfo(Mat mat, MatInfoType flag, MatInfo *info) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -2972,8 +2903,7 @@ PetscErrorCode MatGetInfo(Mat mat, MatInfoType flag, MatInfo *info)
    This is used by external packages where it is not easy to get the info from the actual
    matrix factorization.
 */
-PetscErrorCode MatGetInfo_External(Mat A, MatInfoType flag, MatInfo *info)
-{
+PetscErrorCode MatGetInfo_External(Mat A, MatInfoType flag, MatInfo *info) {
   PetscFunctionBegin;
   PetscCall(PetscMemzero(info, sizeof(MatInfo)));
   PetscFunctionReturn(0);
@@ -3012,11 +2942,10 @@ $                   Run with the option -info to determine an optimal value to u
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `Mat`, `MatFactorType`, `MatLUFactorSymbolic()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`,
+.seealso: `Mat`, `MatFactorType`, `MatLUFactorSymbolic()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`,
           `MatGetOrdering()`, `MatSetUnfactored()`, `MatFactorInfo`, `MatGetFactor()`
 @*/
-PetscErrorCode MatLUFactor(Mat mat, IS row, IS col, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactor(Mat mat, IS row, IS col, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3070,10 +2999,9 @@ $      1 or 0 - indicating force fill on diagonal (improves robustness for matri
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to MatFactorInfo]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatILUFactorSymbolic()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`, `MatFactorInfo`
+.seealso: `MatILUFactorSymbolic()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`, `MatFactorInfo`
 @*/
-PetscErrorCode MatILUFactor(Mat mat, IS row, IS col, const MatFactorInfo *info)
-{
+PetscErrorCode MatILUFactor(Mat mat, IS row, IS col, const MatFactorInfo *info) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (row) PetscValidHeaderSpecific(row, IS_CLASSID, 2);
@@ -3103,13 +3031,12 @@ PetscErrorCode MatILUFactor(Mat mat, IS row, IS col, const MatFactorInfo *info)
 .  mat - the matrix
 .  row, col - row and column permutations
 -  info - options for factorization, includes
-.vb
-          fill - expected fill as ratio of original fill. Run with the option -info to determine an optimal value to use
-          dtcol - pivot tolerance (0 no pivot, 1 full column pivoting)
-.ve
+$          fill - expected fill as ratio of original fill.
+$          dtcol - pivot tolerance (0 no pivot, 1 full column pivoting)
+$                   Run with the option -info to determine an optimal value to use
 
    Notes:
-    See [Matrix Factorization](sec_matfactor) for additional information about factorizations
+    See Users-Manual: ch_mat for additional information about choosing the fill factor for better efficiency.
 
    Most users should employ the simplified `KSP` interface for linear solvers
    instead of working directly with matrix algebra routines such as this.
@@ -3121,10 +3048,9 @@ PetscErrorCode MatILUFactor(Mat mat, IS row, IS col, const MatFactorInfo *info)
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatLUFactor()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`, `MatFactorInfo`, `MatFactorInfoInitialize()`
+.seealso: `MatGetFactor()`, `MatLUFactor()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`, `MatFactorInfo`, `MatFactorInfoInitialize()`
 @*/
-PetscErrorCode MatLUFactorSymbolic(Mat fact, Mat mat, IS row, IS col, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorSymbolic(Mat fact, Mat mat, IS row, IS col, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3179,10 +3105,9 @@ PetscErrorCode MatLUFactorSymbolic(Mat fact, Mat mat, IS row, IS col, const MatF
     The Fortran interface is not autogenerated as the f90
     interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatFactorInfo`, `MatLUFactorSymbolic()`, `MatLUFactor()`, `MatCholeskyFactor()`
+.seealso: `MatGetFactor()`, `MatFactorInfo`, `MatLUFactorSymbolic()`, `MatLUFactor()`, `MatCholeskyFactor()`
 @*/
-PetscErrorCode MatLUFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info)
-{
+PetscErrorCode MatLUFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3236,11 +3161,10 @@ PetscErrorCode MatLUFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info)
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatFactorInfo`, `MatLUFactor()`, `MatCholeskyFactorSymbolic()`, `MatCholeskyFactorNumeric()`
+.seealso: `MatGetFactor()`, `MatFactorInfo`, `MatLUFactor()`, `MatCholeskyFactorSymbolic()`, `MatCholeskyFactorNumeric()`
           `MatGetOrdering()`
 @*/
-PetscErrorCode MatCholeskyFactor(Mat mat, IS perm, const MatFactorInfo *info)
-{
+PetscErrorCode MatCholeskyFactor(Mat mat, IS perm, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3293,11 +3217,10 @@ $                   Run with the option -info to determine an optimal value to u
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorInfo`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactor()`, `MatCholeskyFactorNumeric()`
+.seealso: `MatFactorInfo`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactor()`, `MatCholeskyFactorNumeric()`
           `MatGetOrdering()`
 @*/
-PetscErrorCode MatCholeskyFactorSymbolic(Mat fact, Mat mat, IS perm, const MatFactorInfo *info)
-{
+PetscErrorCode MatCholeskyFactorSymbolic(Mat fact, Mat mat, IS perm, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3351,10 +3274,9 @@ PetscErrorCode MatCholeskyFactorSymbolic(Mat fact, Mat mat, IS perm, const MatFa
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorInfo`, `MatGetFactor()`, `MatCholeskyFactorSymbolic()`, `MatCholeskyFactor()`, `MatLUFactorNumeric()`
+.seealso: `MatFactorInfo`, `MatGetFactor()`, `MatCholeskyFactorSymbolic()`, `MatCholeskyFactor()`, `MatLUFactorNumeric()`
 @*/
-PetscErrorCode MatCholeskyFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info)
-{
+PetscErrorCode MatCholeskyFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3409,11 +3331,10 @@ $                   Run with the option -info to determine an optimal value to u
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to MatFactorInfo]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorInfo`, `MatGetFactor()`, `MatQRFactorSymbolic()`, `MatQRFactorNumeric()`, `MatLUFactor()`,
+.seealso: `MatFactorInfo`, `MatGetFactor()`, `MatQRFactorSymbolic()`, `MatQRFactorNumeric()`, `MatLUFactor()`,
           `MatSetUnfactored()`, `MatFactorInfo`, `MatGetFactor()`
 @*/
-PetscErrorCode MatQRFactor(Mat mat, IS col, const MatFactorInfo *info)
-{
+PetscErrorCode MatQRFactor(Mat mat, IS col, const MatFactorInfo *info) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (col) PetscValidHeaderSpecific(col, IS_CLASSID, 2);
@@ -3454,10 +3375,9 @@ $                   Run with the option -info to determine an optimal value to u
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatFactorInfo`, `MatQRFactor()`, `MatQRFactorNumeric()`, `MatLUFactor()`, `MatFactorInfo`, `MatFactorInfoInitialize()`
+.seealso: `MatGetFactor()`, `MatFactorInfo`, `MatQRFactor()`, `MatQRFactorNumeric()`, `MatLUFactor()`, `MatFactorInfo`, `MatFactorInfoInitialize()`
 @*/
-PetscErrorCode MatQRFactorSymbolic(Mat fact, Mat mat, IS col, const MatFactorInfo *info)
-{
+PetscErrorCode MatQRFactorSymbolic(Mat fact, Mat mat, IS col, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3505,10 +3425,9 @@ PetscErrorCode MatQRFactorSymbolic(Mat fact, Mat mat, IS col, const MatFactorInf
    The Fortran interface is not autogenerated as the f90
    interface definition cannot be generated correctly [due to `MatFactorInfo`]
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorInfo`, `MatGetFactor()`, `MatQRFactor()`, `MatQRFactorSymbolic()`, `MatLUFactor()`
+.seealso: `MatFactorInfo`, `MatGetFactor()`, `MatQRFactor()`, `MatQRFactorSymbolic()`, `MatLUFactor()`
 @*/
-PetscErrorCode MatQRFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info)
-{
+PetscErrorCode MatQRFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info) {
   MatFactorInfo tinfo;
 
   PetscFunctionBegin;
@@ -3559,10 +3478,9 @@ PetscErrorCode MatQRFactorNumeric(Mat fact, Mat mat, const MatFactorInfo *info)
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatLUFactor()`, `MatSolveAdd()`, `MatSolveTranspose()`, `MatSolveTransposeAdd()`
+.seealso: `MatGetFactor()`, `MatLUFactor()`, `MatSolveAdd()`, `MatSolveTranspose()`, `MatSolveTransposeAdd()`
 @*/
-PetscErrorCode MatSolve(Mat mat, Vec b, Vec x)
-{
+PetscErrorCode MatSolve(Mat mat, Vec b, Vec x) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -3587,8 +3505,7 @@ PetscErrorCode MatSolve(Mat mat, Vec b, Vec x)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatMatSolve_Basic(Mat A, Mat B, Mat X, PetscBool trans)
-{
+static PetscErrorCode MatMatSolve_Basic(Mat A, Mat B, Mat X, PetscBool trans) {
   Vec      b, x;
   PetscInt N, i;
   PetscErrorCode (*f)(Mat, Vec, Vec);
@@ -3607,13 +3524,8 @@ static PetscErrorCode MatMatSolve_Basic(Mat A, Mat B, Mat X, PetscBool trans)
     PetscCall(PetscObjectTypeCompareAny((PetscObject)B, &Bneedconv, MATSEQDENSE, MATMPIDENSE, ""));
     PetscCall(PetscObjectTypeCompareAny((PetscObject)X, &Xneedconv, MATSEQDENSE, MATMPIDENSE, ""));
   }
-#if defined(PETSC_HAVE_CUDA)
   if (Bneedconv) PetscCall(MatConvert(B, MATDENSECUDA, MAT_INPLACE_MATRIX, &B));
   if (Xneedconv) PetscCall(MatConvert(X, MATDENSECUDA, MAT_INPLACE_MATRIX, &X));
-#elif (PETSC_HAVE_HIP)
-  if (Bneedconv) PetscCall(MatConvert(B, MATDENSEHIP, MAT_INPLACE_MATRIX, &B));
-  if (Xneedconv) PetscCall(MatConvert(X, MATDENSEHIP, MAT_INPLACE_MATRIX, &X));
-#endif
   PetscCall(MatGetSize(B, NULL, &N));
   for (i = 0; i < N; i++) {
     PetscCall(MatDenseGetColumnVecRead(B, i, &b));
@@ -3645,10 +3557,9 @@ static PetscErrorCode MatMatSolve_Basic(Mat A, Mat B, Mat X, PetscBool trans)
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatSolve()`, `MatMatSolveTranspose()`, `MatLUFactor()`, `MatCholeskyFactor()`
+.seealso: `MatGetFactor()`, `MatSolve()`, `MatMatSolveTranspose()`, `MatLUFactor()`, `MatCholeskyFactor()`
 @*/
-PetscErrorCode MatMatSolve(Mat A, Mat B, Mat X)
-{
+PetscErrorCode MatMatSolve(Mat A, Mat B, Mat X) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -3691,10 +3602,9 @@ PetscErrorCode MatMatSolve(Mat A, Mat B, Mat X)
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatSolveTranspose()`, `MatMatSolve()`, `MatLUFactor()`, `MatCholeskyFactor()`
+.seealso: `MatGetFactor()`, `MatSolveTranspose()`, `MatMatSolve()`, `MatLUFactor()`, `MatCholeskyFactor()`
 @*/
-PetscErrorCode MatMatSolveTranspose(Mat A, Mat B, Mat X)
-{
+PetscErrorCode MatMatSolveTranspose(Mat A, Mat B, Mat X) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -3739,10 +3649,9 @@ PetscErrorCode MatMatSolveTranspose(Mat A, Mat B, Mat X)
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatMatSolve()`, `MatMatSolveTranspose()`, `MatLUFactor()`, `MatCholeskyFactor()`
+.seealso: `MatMatSolve()`, `MatMatSolveTranspose()`, `MatLUFactor()`, `MatCholeskyFactor()`
 @*/
-PetscErrorCode MatMatTransposeSolve(Mat A, Mat Bt, Mat X)
-{
+PetscErrorCode MatMatTransposeSolve(Mat A, Mat Bt, Mat X) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -3796,8 +3705,7 @@ PetscErrorCode MatMatTransposeSolve(Mat A, Mat Bt, Mat X)
 
 .seealso: `MatBackwardSolve()`, `MatGetFactor()`, `MatSolve()`, `MatBackwardSolve()`
 @*/
-PetscErrorCode MatForwardSolve(Mat mat, Vec b, Vec x)
-{
+PetscErrorCode MatForwardSolve(Mat mat, Vec b, Vec x) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -3849,8 +3757,7 @@ PetscErrorCode MatForwardSolve(Mat mat, Vec b, Vec x)
 
 .seealso: `MatForwardSolve()`, `MatGetFactor()`, `MatSolve()`, `MatForwardSolve()`
 @*/
-PetscErrorCode MatBackwardSolve(Mat mat, Vec b, Vec x)
-{
+PetscErrorCode MatBackwardSolve(Mat mat, Vec b, Vec x) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -3891,10 +3798,9 @@ PetscErrorCode MatBackwardSolve(Mat mat, Vec b, Vec x)
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatSolve()`, `MatGetFactor()`, `MatSolveTranspose()`, `MatSolveTransposeAdd()`
+.seealso: `MatSolve()`, `MatGetFactor()`, `MatSolveTranspose()`, `MatSolveTransposeAdd()`
 @*/
-PetscErrorCode MatSolveAdd(Mat mat, Vec b, Vec y, Vec x)
-{
+PetscErrorCode MatSolveAdd(Mat mat, Vec b, Vec y, Vec x) {
   PetscScalar one = 1.0;
   Vec         tmp;
 
@@ -3929,6 +3835,7 @@ PetscErrorCode MatSolveAdd(Mat mat, Vec b, Vec y, Vec x)
       PetscCall(VecAXPY(x, one, y));
     } else {
       PetscCall(VecDuplicate(x, &tmp));
+      PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)tmp));
       PetscCall(VecCopy(x, tmp));
       PetscCall(MatSolve(mat, b, x));
       PetscCall(VecAXPY(x, one, tmp));
@@ -3964,8 +3871,7 @@ PetscErrorCode MatSolveAdd(Mat mat, Vec b, Vec y, Vec x)
 
 .seealso: `MatGetFactor()`, `KSP`, `MatSolve()`, `MatSolveAdd()`, `MatSolveTransposeAdd()`
 @*/
-PetscErrorCode MatSolveTranspose(Mat mat, Vec b, Vec x)
-{
+PetscErrorCode MatSolveTranspose(Mat mat, Vec b, Vec x) {
   PetscErrorCode (*f)(Mat, Vec, Vec) = (!mat->ops->solvetranspose && mat->symmetric) ? mat->ops->solve : mat->ops->solvetranspose;
 
   PetscFunctionBegin;
@@ -4015,8 +3921,7 @@ PetscErrorCode MatSolveTranspose(Mat mat, Vec b, Vec x)
 
 .seealso: `MatGetFactor()`, `MatSolve()`, `MatSolveAdd()`, `MatSolveTranspose()`
 @*/
-PetscErrorCode MatSolveTransposeAdd(Mat mat, Vec b, Vec y, Vec x)
-{
+PetscErrorCode MatSolveTransposeAdd(Mat mat, Vec b, Vec y, Vec x) {
   PetscScalar one = 1.0;
   Vec         tmp;
   PetscErrorCode (*f)(Mat, Vec, Vec, Vec) = (!mat->ops->solvetransposeadd && mat->symmetric) ? mat->ops->solveadd : mat->ops->solvetransposeadd;
@@ -4051,6 +3956,7 @@ PetscErrorCode MatSolveTransposeAdd(Mat mat, Vec b, Vec y, Vec x)
       PetscCall(VecAXPY(x, one, y));
     } else {
       PetscCall(VecDuplicate(x, &tmp));
+      PetscCall(PetscLogObjectParent((PetscObject)mat, (PetscObject)tmp));
       PetscCall(VecCopy(x, tmp));
       PetscCall(MatSolveTranspose(mat, b, x));
       PetscCall(VecAXPY(x, one, tmp));
@@ -4087,7 +3993,6 @@ PetscErrorCode MatSolveTransposeAdd(Mat mat, Vec b, Vec y, Vec x)
 .     `SOR_LOCAL_FORWARD_SWEEP` - local forward SOR
 .     `SOR_LOCAL_BACKWARD_SWEEP` - local forward SOR
 .     `SOR_LOCAL_SYMMETRIC_SWEEP` - local SSOR
-.     `SOR_EISENSTAT` - SOR with Eisenstat trick
 .     `SOR_APPLY_UPPER`, `SOR_APPLY_LOWER` - applies
          upper/lower triangular part of matrix to
          vector (with omega)
@@ -4121,8 +4026,7 @@ PetscErrorCode MatSolveTransposeAdd(Mat mat, Vec b, Vec y, Vec x)
 
 .seealso: `Mat`, `MatMult()`, `KSP`, `PC`, `MatGetFactor()`
 @*/
-PetscErrorCode MatSOR(Mat mat, Vec b, PetscReal omega, MatSORType flag, PetscReal shift, PetscInt its, PetscInt lits, Vec x)
-{
+PetscErrorCode MatSOR(Mat mat, Vec b, PetscReal omega, MatSORType flag, PetscReal shift, PetscInt its, PetscInt lits, Vec x) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -4150,8 +4054,7 @@ PetscErrorCode MatSOR(Mat mat, Vec b, PetscReal omega, MatSORType flag, PetscRea
 /*
       Default matrix copy routine.
 */
-PetscErrorCode MatCopy_Basic(Mat A, Mat B, MatStructure str)
-{
+PetscErrorCode MatCopy_Basic(Mat A, Mat B, MatStructure str) {
   PetscInt           i, rstart = 0, rend = 0, nz;
   const PetscInt    *cwork;
   const PetscScalar *vwork;
@@ -4196,8 +4099,7 @@ PetscErrorCode MatCopy_Basic(Mat A, Mat B, MatStructure str)
 
 .seealso: `Mat`, `MatConvert()`, `MatDuplicate()`
 @*/
-PetscErrorCode MatCopy(Mat A, Mat B, MatStructure str)
-{
+PetscErrorCode MatCopy(Mat A, Mat B, MatStructure str) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -4260,8 +4162,7 @@ PetscErrorCode MatCopy(Mat A, Mat B, MatStructure str)
 
 .seealso: `Mat`, `MatCopy()`, `MatDuplicate()`, `MAT_INITIAL_MATRIX`, `MAT_REUSE_MATRIX`, `MAT_INPLACE_MATRIX`
 @*/
-PetscErrorCode MatConvert(Mat mat, MatType newtype, MatReuse reuse, Mat *M)
-{
+PetscErrorCode MatConvert(Mat mat, MatType newtype, MatReuse reuse, Mat *M) {
   PetscBool  sametype, issame, flg;
   PetscBool3 issymmetric, ishermitian;
   char       convname[256], mtype[256];
@@ -4426,10 +4327,9 @@ PetscErrorCode MatConvert(Mat mat, MatType newtype, MatReuse reuse, Mat *M)
 
    Level: intermediate
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatSolverType`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`
+.seealso: `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`
 @*/
-PetscErrorCode MatFactorGetSolverType(Mat mat, MatSolverType *type)
-{
+PetscErrorCode MatFactorGetSolverType(Mat mat, MatSolverType *type) {
   PetscErrorCode (*conv)(Mat, MatSolverType *);
 
   PetscFunctionBegin;
@@ -4471,10 +4371,9 @@ static MatSolverTypeHolder MatSolverTypeHolders = NULL;
 
     Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorGetSolverType()`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`
+.seealso: `MatFactorGetSolverType()`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`
 @*/
-PetscErrorCode MatSolverTypeRegister(MatSolverType package, MatType mtype, MatFactorType ftype, PetscErrorCode (*createfactor)(Mat, MatFactorType, Mat *))
-{
+PetscErrorCode MatSolverTypeRegister(MatSolverType package, MatType mtype, MatFactorType ftype, PetscErrorCode (*createfactor)(Mat, MatFactorType, Mat *)) {
   MatSolverTypeHolder         next = MatSolverTypeHolders, prev = NULL;
   PetscBool                   flg;
   MatSolverTypeForSpecifcType inext, iprev = NULL;
@@ -4536,8 +4435,7 @@ PetscErrorCode MatSolverTypeRegister(MatSolverType package, MatType mtype, MatFa
 
 .seealso: `MatFactorType`, `MatType`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatSolverTypeRegister()`, `MatGetFactor()`
 @*/
-PetscErrorCode MatSolverTypeGet(MatSolverType type, MatType mtype, MatFactorType ftype, PetscBool *foundtype, PetscBool *foundmtype, PetscErrorCode (**createfactor)(Mat, MatFactorType, Mat *))
-{
+PetscErrorCode MatSolverTypeGet(MatSolverType type, MatType mtype, MatFactorType ftype, PetscBool *foundtype, PetscBool *foundmtype, PetscErrorCode (**createfactor)(Mat, MatFactorType, Mat *)) {
   MatSolverTypeHolder         next = MatSolverTypeHolders;
   PetscBool                   flg;
   MatSolverTypeForSpecifcType inext;
@@ -4600,8 +4498,7 @@ PetscErrorCode MatSolverTypeGet(MatSolverType type, MatType mtype, MatFactorType
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSolverTypeDestroy(void)
-{
+PetscErrorCode MatSolverTypeDestroy(void) {
   MatSolverTypeHolder         next = MatSolverTypeHolders, prev;
   MatSolverTypeForSpecifcType inext, iprev;
 
@@ -4640,10 +4537,9 @@ PetscErrorCode MatSolverTypeDestroy(void)
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactorSymbolic()`
+.seealso: `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactorSymbolic()`
 @*/
-PetscErrorCode MatFactorGetCanUseOrdering(Mat mat, PetscBool *flg)
-{
+PetscErrorCode MatFactorGetCanUseOrdering(Mat mat, PetscBool *flg) {
   PetscFunctionBegin;
   *flg = mat->canuseordering;
   PetscFunctionReturn(0);
@@ -4662,10 +4558,9 @@ PetscErrorCode MatFactorGetCanUseOrdering(Mat mat, PetscBool *flg)
 
    Level: developer
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatFactorType`, `MatOrderingType`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactorSymbolic()`
+.seealso: `MatFactorType`, `MatOrderingType`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatCholeskyFactorSymbolic()`
 @*/
-PetscErrorCode MatFactorGetPreferredOrdering(Mat mat, MatFactorType ftype, MatOrderingType *otype)
-{
+PetscErrorCode MatFactorGetPreferredOrdering(Mat mat, MatFactorType ftype, MatOrderingType *otype) {
   PetscFunctionBegin;
   *otype = mat->preferredordering[ftype];
   PetscCheck(*otype, PETSC_COMM_SELF, PETSC_ERR_PLIB, "MatFactor did not have a preferred ordering");
@@ -4706,11 +4601,10 @@ PetscErrorCode MatFactorGetPreferredOrdering(Mat mat, MatFactorType ftype, MatOr
 
    Level: intermediate
 
-.seealso: [Matrix Factorization](sec_matfactor), `KSP`, `MatSolverType`, `MatFactorType`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatFactorGetCanUseOrdering()`, `MatSolverTypeRegister()`,
+.seealso: `KSP`, `MatSolverType`, `MatFactorType`, `MatCopy()`, `MatDuplicate()`, `MatGetFactorAvailable()`, `MatFactorGetCanUseOrdering()`, `MatSolverTypeRegister()`,
           `MAT_FACTOR_LU`, `MAT_FACTOR_CHOLESKY`, `MAT_FACTOR_ICC`, `MAT_FACTOR_ILU`, `MAT_FACTOR_QR`
 @*/
-PetscErrorCode MatGetFactor(Mat mat, MatSolverType type, MatFactorType ftype, Mat *f)
-{
+PetscErrorCode MatGetFactor(Mat mat, MatSolverType type, MatFactorType ftype, Mat *f) {
   PetscBool foundtype, foundmtype;
   PetscErrorCode (*conv)(Mat, MatFactorType, Mat *);
 
@@ -4762,11 +4656,10 @@ PetscErrorCode MatGetFactor(Mat mat, MatSolverType type, MatFactorType ftype, Ma
 
    Level: intermediate
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatSolverType`, `MatFactorType`, `MatGetFactor()`, `MatCopy()`, `MatDuplicate()`, `MatGetFactor()`, `MatSolverTypeRegister()`,
+.seealso: `MatSolverType`, `MatFactorType`, `MatGetFactor()`, `MatCopy()`, `MatDuplicate()`, `MatGetFactor()`, `MatSolverTypeRegister()`,
           `MAT_FACTOR_LU`, `MAT_FACTOR_CHOLESKY`, `MAT_FACTOR_ICC`, `MAT_FACTOR_ILU`, `MAT_FACTOR_QR`
 @*/
-PetscErrorCode MatGetFactorAvailable(Mat mat, MatSolverType type, MatFactorType ftype, PetscBool *flg)
-{
+PetscErrorCode MatGetFactorAvailable(Mat mat, MatSolverType type, MatFactorType ftype, PetscBool *flg) {
   PetscErrorCode (*gconv)(Mat, MatFactorType, Mat *);
 
   PetscFunctionBegin;
@@ -4808,8 +4701,7 @@ PetscErrorCode MatGetFactorAvailable(Mat mat, MatSolverType type, MatFactorType 
 
 .seealso: `MatCopy()`, `MatConvert()`, `MatDuplicateOption`
 @*/
-PetscErrorCode MatDuplicate(Mat mat, MatDuplicateOption op, Mat *M)
-{
+PetscErrorCode MatDuplicate(Mat mat, MatDuplicateOption op, Mat *M) {
   Mat         B;
   VecType     vtype;
   PetscInt    i;
@@ -4870,8 +4762,7 @@ PetscErrorCode MatDuplicate(Mat mat, MatDuplicateOption op, Mat *M)
 
 .seealso: `Mat`, `Vec`, `MatGetRow()`, `MatCreateSubMatrices()`, `MatCreateSubMatrix()`, `MatGetRowMaxAbs()`
 @*/
-PetscErrorCode MatGetDiagonal(Mat mat, Vec v)
-{
+PetscErrorCode MatGetDiagonal(Mat mat, Vec v) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -4908,8 +4799,7 @@ PetscErrorCode MatGetDiagonal(Mat mat, Vec v)
 .seealso: `MatGetDiagonal()`, `MatCreateSubMatrices()`, `MatCreateSubMatrix()`, `MatGetRowMaxAbs()`, `MatGetRowMinAbs()`,
           `MatGetRowMax()`
 @*/
-PetscErrorCode MatGetRowMin(Mat mat, Vec v, PetscInt idx[])
-{
+PetscErrorCode MatGetRowMin(Mat mat, Vec v, PetscInt idx[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -4953,8 +4843,7 @@ PetscErrorCode MatGetRowMin(Mat mat, Vec v, PetscInt idx[])
 
 .seealso: `MatGetDiagonal()`, `MatCreateSubMatrices()`, `MatCreateSubMatrix()`, `MatGetRowMax()`, `MatGetRowMaxAbs()`, `MatGetRowMin()`
 @*/
-PetscErrorCode MatGetRowMinAbs(Mat mat, Vec v, PetscInt idx[])
-{
+PetscErrorCode MatGetRowMinAbs(Mat mat, Vec v, PetscInt idx[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5000,8 +4889,7 @@ PetscErrorCode MatGetRowMinAbs(Mat mat, Vec v, PetscInt idx[])
 
 .seealso: `MatGetDiagonal()`, `MatCreateSubMatrices()`, `MatCreateSubMatrix()`, `MatGetRowMaxAbs()`, `MatGetRowMin()`, `MatGetRowMinAbs()`
 @*/
-PetscErrorCode MatGetRowMax(Mat mat, Vec v, PetscInt idx[])
-{
+PetscErrorCode MatGetRowMax(Mat mat, Vec v, PetscInt idx[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5045,8 +4933,7 @@ PetscErrorCode MatGetRowMax(Mat mat, Vec v, PetscInt idx[])
 
 .seealso: `MatGetDiagonal()`, `MatCreateSubMatrices()`, `MatCreateSubMatrix()`, `MatGetRowMax()`, `MatGetRowMin()`, `MatGetRowMinAbs()`
 @*/
-PetscErrorCode MatGetRowMaxAbs(Mat mat, Vec v, PetscInt idx[])
-{
+PetscErrorCode MatGetRowMaxAbs(Mat mat, Vec v, PetscInt idx[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5086,8 +4973,7 @@ PetscErrorCode MatGetRowMaxAbs(Mat mat, Vec v, PetscInt idx[])
 
 .seealso: `MatGetDiagonal()`, `MatCreateSubMatrices()`, `MatCreateSubMatrix()`, `MatGetRowMax()`, `MatGetRowMin()`, `MatGetRowMaxAbs()`, `MatGetRowMinAbs()`
 @*/
-PetscErrorCode MatGetRowSum(Mat mat, Vec v)
-{
+PetscErrorCode MatGetRowSum(Mat mat, Vec v) {
   Vec ones;
 
   PetscFunctionBegin;
@@ -5123,8 +5009,7 @@ PetscErrorCode MatGetRowSum(Mat mat, Vec v)
 
 .seealso: `MatTransposeSymbolic()`, `MatTranspose()`, `MatMultTranspose()`, `MatMultTransposeAdd()`, `MatIsTranspose()`, `MatReuse`, `MAT_INITIAL_MATRIX`, `MAT_REUSE_MATRIX`, `MAT_INPLACE_MATRIX`
 @*/
-PetscErrorCode MatTransposeSetPrecursor(Mat mat, Mat B)
-{
+PetscErrorCode MatTransposeSetPrecursor(Mat mat, Mat B) {
   PetscContainer  rB = NULL;
   MatParentState *rb = NULL;
 
@@ -5172,8 +5057,7 @@ PetscErrorCode MatTransposeSetPrecursor(Mat mat, Mat B)
 .seealso: `MatTransposeSetPrecursor()`, `MatMultTranspose()`, `MatMultTransposeAdd()`, `MatIsTranspose()`, `MatReuse`, `MAT_INITIAL_MATRIX`, `MAT_REUSE_MATRIX`, `MAT_INPLACE_MATRIX`,
           `MatTransposeSymbolic()`
 @*/
-PetscErrorCode MatTranspose(Mat mat, MatReuse reuse, Mat *B)
-{
+PetscErrorCode MatTranspose(Mat mat, MatReuse reuse, Mat *B) {
   PetscContainer  rB = NULL;
   MatParentState *rb = NULL;
 
@@ -5229,8 +5113,7 @@ PetscErrorCode MatTranspose(Mat mat, MatReuse reuse, Mat *B)
 
 .seealso: `MatTransposeSetPrecursor()`, `MatTranspose()`, `MatMultTranspose()`, `MatMultTransposeAdd()`, `MatIsTranspose()`, `MatReuse`, `MAT_INITIAL_MATRIX`, `MAT_REUSE_MATRIX`, `MAT_INPLACE_MATRIX`
 @*/
-PetscErrorCode MatTransposeSymbolic(Mat A, Mat *B)
-{
+PetscErrorCode MatTransposeSymbolic(Mat A, Mat *B) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
@@ -5245,8 +5128,7 @@ PetscErrorCode MatTransposeSymbolic(Mat A, Mat *B)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatTransposeCheckNonzeroState_Private(Mat A, Mat B)
-{
+PetscErrorCode MatTransposeCheckNonzeroState_Private(Mat A, Mat B) {
   PetscContainer  rB;
   MatParentState *rb;
 
@@ -5286,8 +5168,7 @@ PetscErrorCode MatTransposeCheckNonzeroState_Private(Mat A, Mat B)
 
 .seealso: `MatTranspose()`, `MatIsSymmetric()`, `MatIsHermitian()`
 @*/
-PetscErrorCode MatIsTranspose(Mat A, Mat B, PetscReal tol, PetscBool *flg)
-{
+PetscErrorCode MatIsTranspose(Mat A, Mat B, PetscReal tol, PetscBool *flg) {
   PetscErrorCode (*f)(Mat, Mat, PetscReal, PetscBool *), (*g)(Mat, Mat, PetscReal, PetscBool *);
 
   PetscFunctionBegin;
@@ -5325,8 +5206,7 @@ PetscErrorCode MatIsTranspose(Mat A, Mat B, PetscReal tol, PetscBool *flg)
 
 .seealso: `MatTranspose()`, `MatMultTranspose()`, `MatMultTransposeAdd()`, `MatIsTranspose()`, `MatReuse`
 @*/
-PetscErrorCode MatHermitianTranspose(Mat mat, MatReuse reuse, Mat *B)
-{
+PetscErrorCode MatHermitianTranspose(Mat mat, MatReuse reuse, Mat *B) {
   PetscFunctionBegin;
   PetscCall(MatTranspose(mat, reuse, B));
 #if defined(PETSC_USE_COMPLEX)
@@ -5358,8 +5238,7 @@ PetscErrorCode MatHermitianTranspose(Mat mat, MatReuse reuse, Mat *B)
 
 .seealso: `MatTranspose()`, `MatIsSymmetric()`, `MatIsHermitian()`, `MatIsTranspose()`
 @*/
-PetscErrorCode MatIsHermitianTranspose(Mat A, Mat B, PetscReal tol, PetscBool *flg)
-{
+PetscErrorCode MatIsHermitianTranspose(Mat A, Mat B, PetscReal tol, PetscBool *flg) {
   PetscErrorCode (*f)(Mat, Mat, PetscReal, PetscBool *), (*g)(Mat, Mat, PetscReal, PetscBool *);
 
   PetscFunctionBegin;
@@ -5402,8 +5281,7 @@ PetscErrorCode MatIsHermitianTranspose(Mat A, Mat B, PetscReal tol, PetscBool *f
 
 .seealso: `MatGetOrdering()`, `ISAllGather()`, `MatCreateSubMatrix()`
 @*/
-PetscErrorCode MatPermute(Mat mat, IS row, IS col, Mat *B)
-{
+PetscErrorCode MatPermute(Mat mat, IS row, IS col, Mat *B) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5442,8 +5320,7 @@ PetscErrorCode MatPermute(Mat mat, IS row, IS col, Mat *B)
 
 .seealso: `Mat`
 @*/
-PetscErrorCode MatEqual(Mat A, Mat B, PetscBool *flg)
-{
+PetscErrorCode MatEqual(Mat A, Mat B, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidHeaderSpecific(B, MAT_CLASSID, 2);
@@ -5486,8 +5363,7 @@ PetscErrorCode MatEqual(Mat A, Mat B, PetscBool *flg)
 
 .seealso: `Mat`, `MatScale()`, `MatShift()`, `MatDiagonalSet()`
 @*/
-PetscErrorCode MatDiagonalScale(Mat mat, Vec l, Vec r)
-{
+PetscErrorCode MatDiagonalScale(Mat mat, Vec l, Vec r) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5528,8 +5404,7 @@ PetscErrorCode MatDiagonalScale(Mat mat, Vec l, Vec r)
 
 .seealso: `Mat`, `MatDiagonalScale()`
 @*/
-PetscErrorCode MatScale(Mat mat, PetscScalar a)
-{
+PetscErrorCode MatScale(Mat mat, PetscScalar a) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5564,8 +5439,7 @@ PetscErrorCode MatScale(Mat mat, PetscScalar a)
 
 .seealso: `Mat`
 @*/
-PetscErrorCode MatNorm(Mat mat, NormType type, PetscReal *nrm)
-{
+PetscErrorCode MatNorm(Mat mat, NormType type, PetscReal *nrm) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5604,7 +5478,7 @@ static PetscInt MatAssemblyEnd_InUse = 0;
 
    ALL processes that share a matrix MUST call `MatAssemblyBegin()` and `MatAssemblyEnd()` the SAME NUMBER of times, and each time with the
    same flag of `MAT_FLUSH_ASSEMBLY` or `MAT_FINAL_ASSEMBLY` for all processes. Thus you CANNOT locally change from `ADD_VALUES` to `INSERT_VALUES`, that is
-   a global collective operation requiring all processes that share the matrix.
+   a global collective operation requring all processes that share the matrix.
 
    Space for preallocated nonzeros that is not filled by a call to `MatSetValues()` or a related routine are compressed
    out by assembly. If you intend to use that extra space on a subsequent assembly, be sure to insert explicit zeros
@@ -5614,24 +5488,23 @@ static PetscInt MatAssemblyEnd_InUse = 0;
 
 .seealso: `Mat`, `MatAssemblyEnd()`, `MatSetValues()`, `MatAssembled()`
 @*/
-PetscErrorCode MatAssemblyBegin(Mat mat, MatAssemblyType type)
-{
-  PetscFunctionBegin;
-  PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
-  PetscValidType(mat, 1);
-  MatCheckPreallocated(mat, 1);
-  PetscCheck(!mat->factortype, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Not for factored matrix.\nDid you forget to call MatSetUnfactored()?");
-  if (mat->assembled) {
-    mat->was_assembled = PETSC_TRUE;
-    mat->assembled     = PETSC_FALSE;
+PetscErrorCode  MatAssemblyBegin(Mat mat, MatAssemblyType type) {
+   PetscFunctionBegin;
+   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
+   PetscValidType(mat, 1);
+   MatCheckPreallocated(mat, 1);
+   PetscCheck(!mat->factortype, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Not for factored matrix.\nDid you forget to call MatSetUnfactored()?");
+   if (mat->assembled) {
+     mat->was_assembled = PETSC_TRUE;
+     mat->assembled     = PETSC_FALSE;
   }
 
-  if (!MatAssemblyEnd_InUse) {
-    PetscCall(PetscLogEventBegin(MAT_AssemblyBegin, mat, 0, 0, 0));
-    PetscTryTypeMethod(mat, assemblybegin, type);
-    PetscCall(PetscLogEventEnd(MAT_AssemblyBegin, mat, 0, 0, 0));
+   if (!MatAssemblyEnd_InUse) {
+     PetscCall(PetscLogEventBegin(MAT_AssemblyBegin, mat, 0, 0, 0));
+     PetscTryTypeMethod(mat, assemblybegin, type);
+     PetscCall(PetscLogEventEnd(MAT_AssemblyBegin, mat, 0, 0, 0));
   } else PetscTryTypeMethod(mat, assemblybegin, type);
-  PetscFunctionReturn(0);
+   PetscFunctionReturn(0);
 }
 
 /*@
@@ -5650,8 +5523,7 @@ PetscErrorCode MatAssemblyBegin(Mat mat, MatAssemblyType type)
 
 .seealso: `Mat`, `MatAssemblyEnd()`, `MatSetValues()`, `MatAssemblyBegin()`
 @*/
-PetscErrorCode MatAssembled(Mat mat, PetscBool *assembled)
-{
+PetscErrorCode MatAssembled(Mat mat, PetscBool *assembled) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidBoolPointer(assembled, 2);
@@ -5677,7 +5549,7 @@ PetscErrorCode MatAssembled(Mat mat, PetscBool *assembled)
 .  -mat_view draw - draws nonzero structure of matrix, using `MatView()` and `PetscDrawOpenX()`.
 .  -display <name> - Sets display name (default is host)
 .  -draw_pause <sec> - Sets number of seconds to pause after display
-.  -mat_view socket - Sends matrix to socket, can be accessed from Matlab (See [Using MATLAB with PETSc](ch_matlab))
+.  -mat_view socket - Sends matrix to socket, can be accessed from Matlab (See Users-Manual: ch_matlab)
 .  -viewer_socket_machine <machine> - Machine to use for socket
 .  -viewer_socket_port <port> - Port number to use for socket
 -  -mat_view binary:filename[:append] - Save matrix to file in binary format
@@ -5686,8 +5558,7 @@ PetscErrorCode MatAssembled(Mat mat, PetscBool *assembled)
 
 .seealso: `Mat`, `MatAssemblyBegin()`, `MatSetValues()`, `PetscDrawOpenX()`, `PetscDrawCreate()`, `MatView()`, `MatAssembled()`, `PetscViewerSocketOpen()`
 @*/
-PetscErrorCode MatAssemblyEnd(Mat mat, MatAssemblyType type)
-{
+PetscErrorCode MatAssemblyEnd(Mat mat, MatAssemblyType type) {
   static PetscInt inassm = 0;
   PetscBool       flg    = PETSC_FALSE;
 
@@ -5856,8 +5727,7 @@ PetscErrorCode MatAssemblyEnd(Mat mat, MatAssemblyType type)
 
 .seealso: `MatOption`, `Mat`, `MatGetOption()`
 @*/
-PetscErrorCode MatSetOption(Mat mat, MatOption op, PetscBool flg)
-{
+PetscErrorCode MatSetOption(Mat mat, MatOption op, PetscBool flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (op > 0) {
@@ -5868,12 +5738,8 @@ PetscErrorCode MatSetOption(Mat mat, MatOption op, PetscBool flg)
   PetscCheck(((int)op) > MAT_OPTION_MIN && ((int)op) < MAT_OPTION_MAX, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_OUTOFRANGE, "Options %d is out of range", (int)op);
 
   switch (op) {
-  case MAT_FORCE_DIAGONAL_ENTRIES:
-    mat->force_diagonals = flg;
-    PetscFunctionReturn(0);
-  case MAT_NO_OFF_PROC_ENTRIES:
-    mat->nooffprocentries = flg;
-    PetscFunctionReturn(0);
+  case MAT_FORCE_DIAGONAL_ENTRIES: mat->force_diagonals = flg; PetscFunctionReturn(0);
+  case MAT_NO_OFF_PROC_ENTRIES: mat->nooffprocentries = flg; PetscFunctionReturn(0);
   case MAT_SUBSET_OFF_PROC_ENTRIES:
     mat->assembly_subset = flg;
     if (!mat->assembly_subset) { /* See the same logic in VecAssembly wrt VEC_SUBSET_OFF_PROC_ENTRIES */
@@ -5883,9 +5749,7 @@ PetscErrorCode MatSetOption(Mat mat, MatOption op, PetscBool flg)
       mat->stash.first_assembly_done = PETSC_FALSE;
     }
     PetscFunctionReturn(0);
-  case MAT_NO_OFF_PROC_ZERO_ROWS:
-    mat->nooffproczerorows = flg;
-    PetscFunctionReturn(0);
+  case MAT_NO_OFF_PROC_ZERO_ROWS: mat->nooffproczerorows = flg; PetscFunctionReturn(0);
   case MAT_SPD:
     if (flg) {
       mat->spd                    = PETSC_BOOL3_TRUE;
@@ -5909,9 +5773,7 @@ PetscErrorCode MatSetOption(Mat mat, MatOption op, PetscBool flg)
     mat->symmetric = flg ? PETSC_BOOL3_TRUE : PETSC_BOOL3_FALSE;
 #endif
     break;
-  case MAT_STRUCTURALLY_SYMMETRIC:
-    mat->structurally_symmetric = flg ? PETSC_BOOL3_TRUE : PETSC_BOOL3_FALSE;
-    break;
+  case MAT_STRUCTURALLY_SYMMETRIC: mat->structurally_symmetric = flg ? PETSC_BOOL3_TRUE : PETSC_BOOL3_FALSE; break;
   case MAT_SYMMETRY_ETERNAL:
     PetscCheck(mat->symmetric != PETSC_BOOL3_UNKNOWN, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Cannot set MAT_SYMMETRY_ETERNAL without first setting MAT_SYMMETRIC to true or false");
     mat->symmetry_eternal = flg;
@@ -5929,14 +5791,9 @@ PetscErrorCode MatSetOption(Mat mat, MatOption op, PetscBool flg)
       mat->symmetry_eternal            = PETSC_TRUE;
     }
     break;
-  case MAT_STRUCTURE_ONLY:
-    mat->structure_only = flg;
-    break;
-  case MAT_SORTED_FULL:
-    mat->sortedfull = flg;
-    break;
-  default:
-    break;
+  case MAT_STRUCTURE_ONLY: mat->structure_only = flg; break;
+  case MAT_SORTED_FULL: mat->sortedfull = flg; break;
+  default: break;
   }
   PetscTryTypeMethod(mat, setoption, op, flg);
   PetscFunctionReturn(0);
@@ -5957,16 +5814,15 @@ PetscErrorCode MatSetOption(Mat mat, MatOption op, PetscBool flg)
     Notes:
     Can only be called after `MatSetSizes()` and `MatSetType()` have been set.
 
-    Certain option values may be unknown, for those use the routines `MatIsSymmetric()`, `MatIsHermitian()`, `MatIsStructurallySymmetric()`, or
-    `MatIsSymmetricKnown()`, `MatIsHermitianKnown()`, `MatIsStructurallySymmetricKnown()`
+    Certain option values may be unknown, for those use the routines `MatIsSymmetric()`, `MatIsHermitian()`,  `MatIsStructurallySymmetric()`, or
+    `MatIsSymmetricKnown()`, `MatIsHermitianKnown()`,  `MatIsStructurallySymmetricKnown()`
 
    Level: intermediate
 
-.seealso: `MatOption`, `MatSetOption()`, `MatIsSymmetric()`, `MatIsHermitian()`, `MatIsStructurallySymmetric()`,
-    `MatIsSymmetricKnown()`, `MatIsHermitianKnown()`, `MatIsStructurallySymmetricKnown()`
+.seealso: `MatOption`, `MatSetOption()`, `MatIsSymmetric()`, `MatIsHermitian()`,  `MatIsStructurallySymmetric()`,
+    `MatIsSymmetricKnown()`, `MatIsHermitianKnown()`,  `MatIsStructurallySymmetricKnown()`
 @*/
-PetscErrorCode MatGetOption(Mat mat, MatOption op, PetscBool *flg)
-{
+PetscErrorCode MatGetOption(Mat mat, MatOption op, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -5975,32 +5831,15 @@ PetscErrorCode MatGetOption(Mat mat, MatOption op, PetscBool *flg)
   PetscCheck(((PetscObject)mat)->type_name, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_TYPENOTSET, "Cannot get options until type and size have been set, see MatSetType() and MatSetSizes()");
 
   switch (op) {
-  case MAT_NO_OFF_PROC_ENTRIES:
-    *flg = mat->nooffprocentries;
-    break;
-  case MAT_NO_OFF_PROC_ZERO_ROWS:
-    *flg = mat->nooffproczerorows;
-    break;
-  case MAT_SYMMETRIC:
-    SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsSymmetric() or MatIsSymmetricKnown()");
-    break;
-  case MAT_HERMITIAN:
-    SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsHermitian() or MatIsHermitianKnown()");
-    break;
-  case MAT_STRUCTURALLY_SYMMETRIC:
-    SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsStructurallySymmetric() or MatIsStructurallySymmetricKnown()");
-    break;
-  case MAT_SPD:
-    SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsSPDKnown()");
-    break;
-  case MAT_SYMMETRY_ETERNAL:
-    *flg = mat->symmetry_eternal;
-    break;
-  case MAT_STRUCTURAL_SYMMETRY_ETERNAL:
-    *flg = mat->symmetry_eternal;
-    break;
-  default:
-    break;
+  case MAT_NO_OFF_PROC_ENTRIES: *flg = mat->nooffprocentries; break;
+  case MAT_NO_OFF_PROC_ZERO_ROWS: *flg = mat->nooffproczerorows; break;
+  case MAT_SYMMETRIC: SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsSymmetric() or MatIsSymmetricKnown()"); break;
+  case MAT_HERMITIAN: SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsHermitian() or MatIsHermitianKnown()"); break;
+  case MAT_STRUCTURALLY_SYMMETRIC: SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsStructurallySymmetric() or MatIsStructurallySymmetricKnown()"); break;
+  case MAT_SPD: SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Use MatIsSPDKnown()"); break;
+  case MAT_SYMMETRY_ETERNAL: *flg = mat->symmetry_eternal; break;
+  case MAT_STRUCTURAL_SYMMETRY_ETERNAL: *flg = mat->symmetry_eternal; break;
+  default: break;
   }
   PetscFunctionReturn(0);
 }
@@ -6022,8 +5861,7 @@ PetscErrorCode MatGetOption(Mat mat, MatOption op, PetscBool *flg)
 
 .seealso: `Mat`, `MatZeroRows()`, `MatZeroRowsColumns()`
 @*/
-PetscErrorCode MatZeroEntries(Mat mat)
-{
+PetscErrorCode MatZeroEntries(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6078,8 +5916,7 @@ PetscErrorCode MatZeroEntries(Mat mat)
 .seealso: `MatZeroRowsIS()`, `MatZeroRows()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsColumns(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsColumns(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6115,8 +5952,7 @@ PetscErrorCode MatZeroRowsColumns(Mat mat, PetscInt numRows, const PetscInt rows
 .seealso: `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRows()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsColumnsIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsColumnsIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b) {
   PetscInt        numRows;
   const PetscInt *rows;
 
@@ -6185,8 +6021,7 @@ PetscErrorCode MatZeroRowsColumnsIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec
 .seealso: `Mat`, `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`, `PCREDISTRIBUTE`
 @*/
-PetscErrorCode MatZeroRows(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRows(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6222,8 +6057,7 @@ PetscErrorCode MatZeroRows(Mat mat, PetscInt numRows, const PetscInt rows[], Pet
 .seealso: `MatZeroRows()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b) {
   PetscInt        numRows = 0;
   const PetscInt *rows    = NULL;
 
@@ -6281,8 +6115,7 @@ $    idxm(MatStencil_c,1) = c
 .seealso: `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsl()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsStencil(Mat mat, PetscInt numRows, const MatStencil rows[], PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsStencil(Mat mat, PetscInt numRows, const MatStencil rows[], PetscScalar diag, Vec x, Vec b) {
   PetscInt  dim    = mat->stencil.dim;
   PetscInt  sdim   = dim - (1 - (PetscInt)mat->stencil.noc);
   PetscInt *dims   = mat->stencil.dims + 1;
@@ -6359,8 +6192,7 @@ $    idxm(MatStencil_c,1) = c
 .seealso: `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRows()`
 @*/
-PetscErrorCode MatZeroRowsColumnsStencil(Mat mat, PetscInt numRows, const MatStencil rows[], PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsColumnsStencil(Mat mat, PetscInt numRows, const MatStencil rows[], PetscScalar diag, Vec x, Vec b) {
   PetscInt  dim    = mat->stencil.dim;
   PetscInt  sdim   = dim - (1 - (PetscInt)mat->stencil.noc);
   PetscInt *dims   = mat->stencil.dims + 1;
@@ -6421,8 +6253,7 @@ PetscErrorCode MatZeroRowsColumnsStencil(Mat mat, PetscInt numRows, const MatSte
 .seealso: `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRows()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsLocal(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsLocal(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6474,8 +6305,7 @@ PetscErrorCode MatZeroRowsLocal(Mat mat, PetscInt numRows, const PetscInt rows[]
 .seealso: `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRows()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsLocalIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsLocalIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b) {
   PetscInt        numRows;
   const PetscInt *rows;
 
@@ -6519,8 +6349,7 @@ PetscErrorCode MatZeroRowsLocalIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b
 .seealso: `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRows()`, `MatZeroRowsColumnsLocalIS()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsColumnsLocal(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsColumnsLocal(Mat mat, PetscInt numRows, const PetscInt rows[], PetscScalar diag, Vec x, Vec b) {
   IS              is, newis;
   const PetscInt *newRows;
 
@@ -6568,8 +6397,7 @@ PetscErrorCode MatZeroRowsColumnsLocal(Mat mat, PetscInt numRows, const PetscInt
 .seealso: `MatZeroRowsIS()`, `MatZeroRowsColumns()`, `MatZeroRowsLocalIS()`, `MatZeroRowsStencil()`, `MatZeroEntries()`, `MatZeroRowsLocal()`, `MatSetOption()`,
           `MatZeroRowsColumnsLocal()`, `MatZeroRows()`, `MatZeroRowsColumnsIS()`, `MatZeroRowsColumnsStencil()`
 @*/
-PetscErrorCode MatZeroRowsColumnsLocalIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b)
-{
+PetscErrorCode MatZeroRowsColumnsLocalIS(Mat mat, IS is, PetscScalar diag, Vec x, Vec b) {
   PetscInt        numRows;
   const PetscInt *rows;
 
@@ -6606,8 +6434,7 @@ PetscErrorCode MatZeroRowsColumnsLocalIS(Mat mat, IS is, PetscScalar diag, Vec x
 
 .seealso: `Mat`, `MatSetSizes()`, `MatGetLocalSize()`
 @*/
-PetscErrorCode MatGetSize(Mat mat, PetscInt *m, PetscInt *n)
-{
+PetscErrorCode MatGetSize(Mat mat, PetscInt *m, PetscInt *n) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (m) *m = mat->rmap->N;
@@ -6632,8 +6459,7 @@ PetscErrorCode MatGetSize(Mat mat, PetscInt *m, PetscInt *n)
 
 .seealso: `Mat`, `MatSetSizes()`, `MatGetSize()`
 @*/
-PetscErrorCode MatGetLocalSize(Mat mat, PetscInt *m, PetscInt *n)
-{
+PetscErrorCode MatGetLocalSize(Mat mat, PetscInt *m, PetscInt *n) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (m) PetscValidIntPointer(m, 2);
@@ -6660,8 +6486,7 @@ PetscErrorCode MatGetLocalSize(Mat mat, PetscInt *m, PetscInt *n)
 
 .seealso: `Mat`, `MatGetOwnershipRange()`, `MatGetOwnershipRanges()`, `MatGetOwnershipRangesColumn()`, `PetscLayout`
 @*/
-PetscErrorCode MatGetOwnershipRangeColumn(Mat mat, PetscInt *m, PetscInt *n)
-{
+PetscErrorCode MatGetOwnershipRangeColumn(Mat mat, PetscInt *m, PetscInt *n) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6697,8 +6522,7 @@ PetscErrorCode MatGetOwnershipRangeColumn(Mat mat, PetscInt *m, PetscInt *n)
 .seealso: `MatGetOwnershipRanges()`, `MatGetOwnershipRangeColumn()`, `MatGetOwnershipRangesColumn()`, `PetscSplitOwnership()`, `PetscSplitOwnershipBlock()`,
           `PetscLayout`
 @*/
-PetscErrorCode MatGetOwnershipRange(Mat mat, PetscInt *m, PetscInt *n)
-{
+PetscErrorCode MatGetOwnershipRange(Mat mat, PetscInt *m, PetscInt *n) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6727,8 +6551,7 @@ PetscErrorCode MatGetOwnershipRange(Mat mat, PetscInt *m, PetscInt *n)
 
 .seealso: `Mat`, `MatGetOwnershipRange()`, `MatGetOwnershipRangeColumn()`, `MatGetOwnershipRangesColumn()`, `PetscLayout`
 @*/
-PetscErrorCode MatGetOwnershipRanges(Mat mat, const PetscInt **ranges)
-{
+PetscErrorCode MatGetOwnershipRanges(Mat mat, const PetscInt **ranges) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6753,8 +6576,7 @@ PetscErrorCode MatGetOwnershipRanges(Mat mat, const PetscInt **ranges)
 
 .seealso: `Mat`, `MatGetOwnershipRange()`, `MatGetOwnershipRangeColumn()`, `MatGetOwnershipRanges()`
 @*/
-PetscErrorCode MatGetOwnershipRangesColumn(Mat mat, const PetscInt **ranges)
-{
+PetscErrorCode MatGetOwnershipRangesColumn(Mat mat, const PetscInt **ranges) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -6781,8 +6603,7 @@ PetscErrorCode MatGetOwnershipRangesColumn(Mat mat, const PetscInt **ranges)
 
 .seealso: `MatGetOwnershipRange()`, `MatGetOwnershipRangeColumn()`, `MatSetValues()`, ``MATELEMENTAL``, ``MATSCALAPACK``
 @*/
-PetscErrorCode MatGetOwnershipIS(Mat A, IS *rows, IS *cols)
-{
+PetscErrorCode MatGetOwnershipIS(Mat A, IS *rows, IS *cols) {
   PetscErrorCode (*f)(Mat, IS *, IS *);
 
   PetscFunctionBegin;
@@ -6821,7 +6642,7 @@ $      1 or 0 - indicating force fill on diagonal (improves robustness for matri
    Level: developer
 
    Notes:
-   See [Matrix Factorization](sec_matfactor) for additional information.
+   See Users-Manual: ch_mat for additional information about choosing the fill factor for better efficiency.
 
    Most users should employ the `KSP` interface for linear solvers
    instead of working directly with matrix algebra routines such as this.
@@ -6836,11 +6657,10 @@ $      1 or 0 - indicating force fill on diagonal (improves robustness for matri
    References:
 .  * - Y. Saad, Iterative methods for sparse linear systems Philadelphia: Society for Industrial and Applied Mathematics, 2003
 
-.seealso: [Matrix Factorization](sec_matfactor), `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`
+.seealso: `MatGetFactor()`, `MatLUFactorSymbolic()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`
           `MatGetOrdering()`, `MatFactorInfo`
 @*/
-PetscErrorCode MatILUFactorSymbolic(Mat fact, Mat mat, IS row, IS col, const MatFactorInfo *info)
-{
+PetscErrorCode MatILUFactorSymbolic(Mat fact, Mat mat, IS row, IS col, const MatFactorInfo *info) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 2);
   PetscValidType(mat, 2);
@@ -6901,8 +6721,7 @@ $      expected fill - as ratio of original fill.
 
 .seealso: `MatGetFactor()`, `MatCholeskyFactorNumeric()`, `MatCholeskyFactor()`, `MatFactorInfo`
 @*/
-PetscErrorCode MatICCFactorSymbolic(Mat fact, Mat mat, IS perm, const MatFactorInfo *info)
-{
+PetscErrorCode MatICCFactorSymbolic(Mat fact, Mat mat, IS perm, const MatFactorInfo *info) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 2);
   PetscValidType(mat, 2);
@@ -6978,8 +6797,7 @@ PetscErrorCode MatICCFactorSymbolic(Mat fact, Mat mat, IS perm, const MatFactorI
 
 .seealso: `Mat`, `MatDestroySubMatrices()`, `MatCreateSubMatrix()`, `MatGetRow()`, `MatGetDiagonal()`, `MatReuse`
 @*/
-PetscErrorCode MatCreateSubMatrices(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[])
-{
+PetscErrorCode MatCreateSubMatrices(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[]) {
   PetscInt  i;
   PetscBool eq;
 
@@ -7007,7 +6825,7 @@ PetscErrorCode MatCreateSubMatrices(Mat mat, PetscInt n, const IS irow[], const 
     (*submat)[i]->factortype = MAT_FACTOR_NONE; /* in case in place factorization was previously done on submatrix */
     PetscCall(ISEqualUnsorted(irow[i], icol[i], &eq));
     if (eq) PetscCall(MatPropagateSymmetryOptions(mat, (*submat)[i]));
-#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA) || defined(PETSC_HAVE_HIP)
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
     if (mat->boundtocpu && mat->bindingpropagates) {
       PetscCall(MatBindToCPU((*submat)[i], PETSC_TRUE));
       PetscCall(MatSetBindingPropagates((*submat)[i], PETSC_TRUE));
@@ -7038,8 +6856,7 @@ PetscErrorCode MatCreateSubMatrices(Mat mat, PetscInt n, const IS irow[], const 
 
 .seealso: `PCGASM`, `MatCreateSubMatrices()`, `MatCreateSubMatrix()`, `MatGetRow()`, `MatGetDiagonal()`, `MatReuse`
 @*/
-PetscErrorCode MatCreateSubMatricesMPI(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[])
-{
+PetscErrorCode MatCreateSubMatricesMPI(Mat mat, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[]) {
   PetscInt  i;
   PetscBool eq;
 
@@ -7088,8 +6905,7 @@ PetscErrorCode MatCreateSubMatricesMPI(Mat mat, PetscInt n, const IS irow[], con
 
 .seealso: `Mat`, `MatCreateSubMatrices()` `MatDestroySubMatrices()`
 @*/
-PetscErrorCode MatDestroyMatrices(PetscInt n, Mat *mat[])
-{
+PetscErrorCode MatDestroyMatrices(PetscInt n, Mat *mat[]) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -7122,8 +6938,7 @@ PetscErrorCode MatDestroyMatrices(PetscInt n, Mat *mat[])
 
 .seealso: `MatCreateSubMatrices()`, `MatDestroyMatrices()`
 @*/
-PetscErrorCode MatDestroySubMatrices(PetscInt n, Mat *mat[])
-{
+PetscErrorCode MatDestroySubMatrices(PetscInt n, Mat *mat[]) {
   Mat mat0;
 
   PetscFunctionBegin;
@@ -7156,8 +6971,7 @@ PetscErrorCode MatDestroySubMatrices(PetscInt n, Mat *mat[])
 
 .seealso: `Mat`, `MatDestroySeqNonzeroStructure()`, `MatCreateSubMatrices()`, `MatDestroyMatrices()`
 @*/
-PetscErrorCode MatGetSeqNonzeroStructure(Mat mat, Mat *matstruct)
-{
+PetscErrorCode MatGetSeqNonzeroStructure(Mat mat, Mat *matstruct) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidPointer(matstruct, 2);
@@ -7188,8 +7002,7 @@ PetscErrorCode MatGetSeqNonzeroStructure(Mat mat, Mat *matstruct)
 
 .seealso: `Mat`, `MatGetSeqNonzeroStructure()`
 @*/
-PetscErrorCode MatDestroySeqNonzeroStructure(Mat *mat)
-{
+PetscErrorCode MatDestroySeqNonzeroStructure(Mat *mat) {
   PetscFunctionBegin;
   PetscValidPointer(mat, 1);
   PetscCall(MatDestroy(mat));
@@ -7209,7 +7022,7 @@ PetscErrorCode MatDestroySeqNonzeroStructure(Mat *mat)
 .  is  - the array of index sets (these index sets will changed during the call)
 -  ov  - the additional overlap requested
 
-   Options Database Key:
+   Options Database:
 .  -mat_increase_overlap_scalable - use a scalable algorithm to compute the overlap (supported by MPIAIJ matrix)
 
    Level: developer
@@ -7219,8 +7032,7 @@ PetscErrorCode MatDestroySeqNonzeroStructure(Mat *mat)
 
 .seealso: `Mat`, `PCASM`, `MatIncreaseOverlapSplit()`, `MatCreateSubMatrices()`
 @*/
-PetscErrorCode MatIncreaseOverlap(Mat mat, PetscInt n, IS is[], PetscInt ov)
-{
+PetscErrorCode MatIncreaseOverlap(Mat mat, PetscInt n, IS is[], PetscInt ov) {
   PetscInt i, bs, cbs;
 
   PetscFunctionBegin;
@@ -7262,15 +7074,14 @@ PetscErrorCode MatIncreaseOverlapSplit_Single(Mat, IS *, PetscInt);
 .  is  - the array of index sets (these index sets will changed during the call)
 -  ov  - the additional overlap requested
 
-`   Options Database Key:
+`   Options Database:
 .  -mat_increase_overlap_scalable - use a scalable algorithm to compute the overlap (supported by MPIAIJ matrix)
 
    Level: developer
 
 .seealso: `MatCreateSubMatrices()`, `MatIncreaseOverlap()`
 @*/
-PetscErrorCode MatIncreaseOverlapSplit(Mat mat, PetscInt n, IS is[], PetscInt ov)
-{
+PetscErrorCode MatIncreaseOverlapSplit(Mat mat, PetscInt n, IS is[], PetscInt ov) {
   PetscInt i;
 
   PetscFunctionBegin;
@@ -7311,8 +7122,7 @@ PetscErrorCode MatIncreaseOverlapSplit(Mat mat, PetscInt n, IS is[], PetscInt ov
 
 .seealso: `MATBAIJ`, `MATSBAIJ`, `MatCreateSeqBAIJ()`, `MatCreateBAIJ()`, `MatGetBlockSizes()`
 @*/
-PetscErrorCode MatGetBlockSize(Mat mat, PetscInt *bs)
-{
+PetscErrorCode MatGetBlockSize(Mat mat, PetscInt *bs) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidIntPointer(bs, 2);
@@ -7342,8 +7152,7 @@ PetscErrorCode MatGetBlockSize(Mat mat, PetscInt *bs)
 
 .seealso: `MATBAIJ`, `MATSBAIJ`, `MatCreateSeqBAIJ()`, `MatCreateBAIJ()`, `MatGetBlockSize()`, `MatSetBlockSize()`, `MatSetBlockSizes()`
 @*/
-PetscErrorCode MatGetBlockSizes(Mat mat, PetscInt *rbs, PetscInt *cbs)
-{
+PetscErrorCode MatGetBlockSizes(Mat mat, PetscInt *rbs, PetscInt *cbs) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (rbs) PetscValidIntPointer(rbs, 2);
@@ -7373,8 +7182,7 @@ PetscErrorCode MatGetBlockSizes(Mat mat, PetscInt *rbs, PetscInt *cbs)
 
 .seealso:  `MATBAIJ`, `MATSBAIJ`, `MATAIJ`, `MatCreateSeqBAIJ()`, `MatCreateBAIJ()`, `MatGetBlockSize()`, `MatSetBlockSizes()`, `MatGetBlockSizes()`
 @*/
-PetscErrorCode MatSetBlockSize(Mat mat, PetscInt bs)
-{
+PetscErrorCode MatSetBlockSize(Mat mat, PetscInt bs) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidLogicalCollectiveInt(mat, bs, 2);
@@ -7390,8 +7198,7 @@ typedef struct {
   Mat              C;
 } EnvelopeData;
 
-static PetscErrorCode EnvelopeDataDestroy(EnvelopeData *edata)
-{
+static PetscErrorCode EnvelopeDataDestroy(EnvelopeData *edata) {
   for (PetscInt i = 0; i < edata->n; i++) PetscCall(ISDestroy(&edata->is[i]));
   PetscCall(PetscFree(edata->is));
   PetscCall(PetscFree(edata));
@@ -7414,8 +7221,7 @@ static PetscErrorCode EnvelopeDataDestroy(EnvelopeData *edata)
 
 .seealso: `Mat`, `MatInvertVariableBlockEnvelope()`, `MatSetVariableBlockSizes()`
 */
-static PetscErrorCode MatComputeVariableBlockEnvelope(Mat mat)
-{
+static PetscErrorCode MatComputeVariableBlockEnvelope(Mat mat) {
   PetscInt           n, *sizes, *starts, i = 0, env = 0, tbs = 0, lblocks = 0, rstart, II, ln = 0, cnt = 0, cstart, cend;
   PetscInt          *diag, *odiag, sc;
   VecScatter         scatter;
@@ -7573,8 +7379,7 @@ static PetscErrorCode MatComputeVariableBlockEnvelope(Mat mat)
 
 .seealso: `MatInvertBlockDiagonal()`, `MatComputeBlockDiagonal()`
 @*/
-PetscErrorCode MatInvertVariableBlockEnvelope(Mat A, MatReuse reuse, Mat *C)
-{
+PetscErrorCode MatInvertVariableBlockEnvelope(Mat A, MatReuse reuse, Mat *C) {
   PetscContainer   container;
   EnvelopeData    *edata;
   PetscObjectState nonzerostate;
@@ -7630,8 +7435,7 @@ PetscErrorCode MatInvertVariableBlockEnvelope(Mat A, MatReuse reuse, Mat *C)
 .seealso: `MatCreateSeqBAIJ()`, `MatCreateBAIJ()`, `MatGetBlockSize()`, `MatSetBlockSizes()`, `MatGetBlockSizes()`, `MatGetVariableBlockSizes()`,
           `MatComputeVariableBlockEnvelope()`, `PCVPBJACOBI`
 @*/
-PetscErrorCode MatSetVariableBlockSizes(Mat mat, PetscInt nblocks, PetscInt *bsizes)
-{
+PetscErrorCode MatSetVariableBlockSizes(Mat mat, PetscInt nblocks, PetscInt *bsizes) {
   PetscInt i, ncnt = 0, nlocal;
 
   PetscFunctionBegin;
@@ -7666,8 +7470,7 @@ PetscErrorCode MatSetVariableBlockSizes(Mat mat, PetscInt nblocks, PetscInt *bsi
 
 .seealso: `MatCreateSeqBAIJ()`, `MatCreateBAIJ()`, `MatGetBlockSize()`, `MatSetBlockSizes()`, `MatGetBlockSizes()`, `MatSetVariableBlockSizes()`, `MatComputeVariableBlockEnvelope()`
 @*/
-PetscErrorCode MatGetVariableBlockSizes(Mat mat, PetscInt *nblocks, const PetscInt **bsizes)
-{
+PetscErrorCode MatGetVariableBlockSizes(Mat mat, PetscInt *nblocks, const PetscInt **bsizes) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   *nblocks = mat->nblocks;
@@ -7699,8 +7502,7 @@ PetscErrorCode MatGetVariableBlockSizes(Mat mat, PetscInt *nblocks, const PetscI
 
 .seealso: `MatCreateSeqBAIJ()`, `MatCreateBAIJ()`, `MatGetBlockSize()`, `MatSetBlockSize()`, `MatGetBlockSizes()`
 @*/
-PetscErrorCode MatSetBlockSizes(Mat mat, PetscInt rbs, PetscInt cbs)
-{
+PetscErrorCode MatSetBlockSizes(Mat mat, PetscInt rbs, PetscInt cbs) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidLogicalCollectiveInt(mat, rbs, 2);
@@ -7745,8 +7547,7 @@ PetscErrorCode MatSetBlockSizes(Mat mat, PetscInt rbs, PetscInt cbs)
 
 .seealso: `MatCreateSeqBAIJ()`, `MatCreateBAIJ()`, `MatGetBlockSize()`, `MatSetBlockSizes()`
 @*/
-PetscErrorCode MatSetBlockSizesFromMats(Mat mat, Mat fromRow, Mat fromCol)
-{
+PetscErrorCode MatSetBlockSizesFromMats(Mat mat, Mat fromRow, Mat fromCol) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidHeaderSpecific(fromRow, MAT_CLASSID, 2);
@@ -7773,8 +7574,7 @@ PetscErrorCode MatSetBlockSizesFromMats(Mat mat, Mat fromRow, Mat fromCol)
 
 .seealso: `Mat`, `MatMult()`, `MatMultAdd()`, `PCMGSetResidual()`
 @*/
-PetscErrorCode MatResidual(Mat mat, Vec b, Vec x, Vec r)
-{
+PetscErrorCode MatResidual(Mat mat, Vec b, Vec x, Vec r) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidHeaderSpecific(b, VEC_CLASSID, 2);
@@ -7807,9 +7607,9 @@ PetscErrorCode MatResidual(Mat mat, Vec b, Vec x, Vec r)
                  always used.
 
     Output Parameters:
-+   n - number of local rows in the (possibly compressed) matrix, use NULL if not needed
-.   ia - the row pointers; that is ia[0] = 0, ia[row] = ia[row-1] + number of elements in that row of the matrix, use NULL if not needed
-.   ja - the column indices, use NULL if not needed
++   n - number of local rows in the (possibly compressed) matrix
+.   ia - the row pointers; that is ia[0] = 0, ia[row] = ia[row-1] + number of elements in that row of the matrix
+.   ja - the column indices
 -   done - indicates if the routine actually worked and returned appropriate ia[] and ja[] arrays; callers
            are responsible for handling the case when done == `PETSC_FALSE` and ia and ja are not set
 
@@ -7836,8 +7636,7 @@ $    ! Access the ith and jth entries via ia(i) and ja(j)
 
 .seealso: `Mat`, `MATAIJ`, `MatGetColumnIJ()`, `MatRestoreRowIJ()`, `MatSeqAIJGetArray()`
 @*/
-PetscErrorCode MatGetRowIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+PetscErrorCode MatGetRowIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -7880,8 +7679,7 @@ PetscErrorCode MatGetRowIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBo
 
 .seealso: `MatGetRowIJ()`, `MatRestoreColumnIJ()`
 @*/
-PetscErrorCode MatGetColumnIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+PetscErrorCode MatGetColumnIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -7926,8 +7724,7 @@ PetscErrorCode MatGetColumnIJ(Mat mat, PetscInt shift, PetscBool symmetric, Pets
 
 .seealso: `MatGetRowIJ()`, `MatRestoreColumnIJ()`
 @*/
-PetscErrorCode MatRestoreRowIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+PetscErrorCode MatRestoreRowIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -7970,8 +7767,7 @@ PetscErrorCode MatRestoreRowIJ(Mat mat, PetscInt shift, PetscBool symmetric, Pet
 
 .seealso: `MatGetColumnIJ()`, `MatRestoreRowIJ()`
 @*/
-PetscErrorCode MatRestoreColumnIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done)
-{
+PetscErrorCode MatRestoreColumnIJ(Mat mat, PetscInt shift, PetscBool symmetric, PetscBool inodecompressed, PetscInt *n, const PetscInt *ia[], const PetscInt *ja[], PetscBool *done) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8009,8 +7805,7 @@ PetscErrorCode MatRestoreColumnIJ(Mat mat, PetscInt shift, PetscBool symmetric, 
 
 .seealso: `MatGetRowIJ()`, `MatGetColumnIJ()`
 @*/
-PetscErrorCode MatColoringPatch(Mat mat, PetscInt ncolors, PetscInt n, ISColoringValue colorarray[], ISColoring *iscoloring)
-{
+PetscErrorCode MatColoringPatch(Mat mat, PetscInt ncolors, PetscInt n, ISColoringValue colorarray[], ISColoring *iscoloring) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8061,8 +7856,7 @@ PetscErrorCode MatColoringPatch(Mat mat, PetscInt ncolors, PetscInt n, ISColorin
 
 .seealso: `PCFactorSetUseInPlace()`, `PCFactorGetUseInPlace()`
 @*/
-PetscErrorCode MatSetUnfactored(Mat mat)
-{
+PetscErrorCode MatSetUnfactored(Mat mat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8216,8 +8010,7 @@ M*/
     The submatrix will be able to be multiplied with vectors using the same layout as iscol.
 
     Some matrix types place restrictions on the row and column indices, such
-    as that they be sorted or that they be equal to each other. For `MATBAIJ` and `MATSBAIJ` matrices the indices must include all rows/columns of a block;
-    for example, if the block size is 3 one cannot select the 0 and 2 rows without selecting the 1 row.
+    as that they be sorted or that they be equal to each other.
 
     The index sets may not have duplicate entries.
 
@@ -8265,8 +8058,7 @@ M*/
 
 .seealso: `Mat`, `MatCreateSubMatrices()`, `MatCreateSubMatricesMPI()`, `MatCreateSubMatrixVirtual()`, `MatSubMatrixVirtualUpdate()`
 @*/
-PetscErrorCode MatCreateSubMatrix(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat *newmat)
-{
+PetscErrorCode MatCreateSubMatrix(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat *newmat) {
   PetscMPIInt size;
   Mat        *local;
   IS          iscoltmp;
@@ -8330,14 +8122,9 @@ PetscErrorCode MatCreateSubMatrix(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat
     /* Create a new matrix type that implements the operation using the full matrix */
     PetscCall(PetscLogEventBegin(MAT_CreateSubMat, mat, 0, 0, 0));
     switch (cll) {
-    case MAT_INITIAL_MATRIX:
-      PetscCall(MatCreateSubMatrixVirtual(mat, isrow, iscoltmp, newmat));
-      break;
-    case MAT_REUSE_MATRIX:
-      PetscCall(MatSubMatrixVirtualUpdate(*newmat, mat, isrow, iscoltmp));
-      break;
-    default:
-      SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_OUTOFRANGE, "Invalid MatReuse, must be either MAT_INITIAL_MATRIX or MAT_REUSE_MATRIX");
+    case MAT_INITIAL_MATRIX: PetscCall(MatCreateSubMatrixVirtual(mat, isrow, iscoltmp, newmat)); break;
+    case MAT_REUSE_MATRIX: PetscCall(MatSubMatrixVirtualUpdate(*newmat, mat, isrow, iscoltmp)); break;
+    default: SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_OUTOFRANGE, "Invalid MatReuse, must be either MAT_INITIAL_MATRIX or MAT_REUSE_MATRIX");
     }
     PetscCall(PetscLogEventEnd(MAT_CreateSubMat, mat, 0, 0, 0));
     goto setproperties;
@@ -8371,8 +8158,7 @@ setproperties:
 
 .seealso: `MatSetOption()`, `MatIsSymmetricKnown()`, `MatIsSPDKnown()`, `MatIsHermitianKnown()`, MatIsStructurallySymmetricKnown()`
 @*/
-PetscErrorCode MatPropagateSymmetryOptions(Mat A, Mat B)
-{
+PetscErrorCode MatPropagateSymmetryOptions(Mat A, Mat B) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidHeaderSpecific(B, MAT_CLASSID, 2);
@@ -8415,8 +8201,7 @@ PetscErrorCode MatPropagateSymmetryOptions(Mat A, Mat B)
 
 .seealso: `MatAssemblyBegin()`, `MatAssemblyEnd()`, `Mat`, `MatStashGetInfo()`
 @*/
-PetscErrorCode MatStashSetInitialSize(Mat mat, PetscInt size, PetscInt bsize)
-{
+PetscErrorCode MatStashSetInitialSize(Mat mat, PetscInt size, PetscInt bsize) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8446,8 +8231,7 @@ PetscErrorCode MatStashSetInitialSize(Mat mat, PetscInt size, PetscInt bsize)
 
 .seealso: `MatMultAdd()`, `MatMultTransposeAdd()`, `MatRestrict()`, `PCMG`
 @*/
-PetscErrorCode MatInterpolateAdd(Mat A, Vec x, Vec y, Vec w)
-{
+PetscErrorCode MatInterpolateAdd(Mat A, Vec x, Vec y, Vec w) {
   PetscInt M, N, Ny;
 
   PetscFunctionBegin;
@@ -8483,8 +8267,7 @@ PetscErrorCode MatInterpolateAdd(Mat A, Vec x, Vec y, Vec w)
 
 .seealso: `MatMultAdd()`, `MatMultTransposeAdd()`, `MatRestrict()`, `PCMG`
 @*/
-PetscErrorCode MatInterpolate(Mat A, Vec x, Vec y)
-{
+PetscErrorCode MatInterpolate(Mat A, Vec x, Vec y) {
   PetscInt M, N, Ny;
 
   PetscFunctionBegin;
@@ -8518,8 +8301,7 @@ PetscErrorCode MatInterpolate(Mat A, Vec x, Vec y)
 
 .seealso: `MatMultAdd()`, `MatMultTransposeAdd()`, `MatInterpolate()`, `PCMG`
 @*/
-PetscErrorCode MatRestrict(Mat A, Vec x, Vec y)
-{
+PetscErrorCode MatRestrict(Mat A, Vec x, Vec y) {
   PetscInt M, N, Ny;
 
   PetscFunctionBegin;
@@ -8557,8 +8339,7 @@ PetscErrorCode MatRestrict(Mat A, Vec x, Vec y)
 
 .seealso: `MatInterpolateAdd()`, `MatMatInterpolate()`, `MatMatRestrict()`, `PCMG`
 @*/
-PetscErrorCode MatMatInterpolateAdd(Mat A, Mat x, Mat w, Mat *y)
-{
+PetscErrorCode MatMatInterpolateAdd(Mat A, Mat x, Mat w, Mat *y) {
   PetscInt  M, N, Mx, Nx, Mo, My = 0, Ny = 0;
   PetscBool trans = PETSC_TRUE;
   MatReuse  reuse = MAT_INITIAL_MATRIX;
@@ -8599,6 +8380,7 @@ PetscErrorCode MatMatInterpolateAdd(Mat A, Mat x, Mat w, Mat *y)
     if (!w) {
       PetscCall(MatDuplicate(*y, MAT_COPY_VALUES, &w));
       PetscCall(PetscObjectCompose((PetscObject)*y, "__MatMatIntAdd_w", (PetscObject)w));
+      PetscCall(PetscLogObjectParent((PetscObject)*y, (PetscObject)w));
       PetscCall(PetscObjectDereference((PetscObject)w));
     } else {
       PetscCall(MatCopy(*y, w, UNKNOWN_NONZERO_PATTERN));
@@ -8634,8 +8416,7 @@ PetscErrorCode MatMatInterpolateAdd(Mat A, Mat x, Mat w, Mat *y)
 
 .seealso: `MatInterpolate()`, `MatRestrict()`, `MatMatRestrict()`, `PCMG`
 @*/
-PetscErrorCode MatMatInterpolate(Mat A, Mat x, Mat *y)
-{
+PetscErrorCode MatMatInterpolate(Mat A, Mat x, Mat *y) {
   PetscFunctionBegin;
   PetscCall(MatMatInterpolateAdd(A, x, NULL, y));
   PetscFunctionReturn(0);
@@ -8662,8 +8443,7 @@ PetscErrorCode MatMatInterpolate(Mat A, Mat x, Mat *y)
 
 .seealso: `MatRestrict()`, `MatInterpolate()`, `MatMatInterpolate()`, `PCMG`
 @*/
-PetscErrorCode MatMatRestrict(Mat A, Mat x, Mat *y)
-{
+PetscErrorCode MatMatRestrict(Mat A, Mat x, Mat *y) {
   PetscFunctionBegin;
   PetscCall(MatMatInterpolateAdd(A, x, NULL, y));
   PetscFunctionReturn(0);
@@ -8682,8 +8462,7 @@ PetscErrorCode MatMatRestrict(Mat A, Mat x, Mat *y)
 
 .seealso: `MatCreate()`, `MatNullSpaceCreate()`, `MatSetNearNullSpace()`, `MatSetNullSpace()`, `MatNullSpace`
 @*/
-PetscErrorCode MatGetNullSpace(Mat mat, MatNullSpace *nullsp)
-{
+PetscErrorCode MatGetNullSpace(Mat mat, MatNullSpace *nullsp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidPointer(nullsp, 2);
@@ -8726,8 +8505,7 @@ PetscErrorCode MatGetNullSpace(Mat mat, MatNullSpace *nullsp)
 .seealso: `MatCreate()`, `MatNullSpaceCreate()`, `MatSetNearNullSpace()`, `MatGetNullSpace()`, `MatSetTransposeNullSpace()`, `MatGetTransposeNullSpace()`, `MatNullSpaceRemove()`,
           `KSPSetPCSide()`
 @*/
-PetscErrorCode MatSetNullSpace(Mat mat, MatNullSpace nullsp)
-{
+PetscErrorCode MatSetNullSpace(Mat mat, MatNullSpace nullsp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (nullsp) PetscValidHeaderSpecific(nullsp, MAT_NULLSPACE_CLASSID, 2);
@@ -8751,8 +8529,7 @@ PetscErrorCode MatSetNullSpace(Mat mat, MatNullSpace nullsp)
 
 .seealso: `MatNullSpace`, `MatCreate()`, `MatNullSpaceCreate()`, `MatSetNearNullSpace()`, `MatSetTransposeNullSpace()`, `MatSetNullSpace()`, `MatGetNullSpace()`
 @*/
-PetscErrorCode MatGetTransposeNullSpace(Mat mat, MatNullSpace *nullsp)
-{
+PetscErrorCode MatGetTransposeNullSpace(Mat mat, MatNullSpace *nullsp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8779,8 +8556,7 @@ PetscErrorCode MatGetTransposeNullSpace(Mat mat, MatNullSpace *nullsp)
 
 .seealso: `MatNullSpace`, `MatCreate()`, `MatNullSpaceCreate()`, `MatSetNearNullSpace()`, `MatGetNullSpace()`, `MatSetNullSpace()`, `MatGetTransposeNullSpace()`, `MatNullSpaceRemove()`, `KSPSetPCSide()`
 @*/
-PetscErrorCode MatSetTransposeNullSpace(Mat mat, MatNullSpace nullsp)
-{
+PetscErrorCode MatSetTransposeNullSpace(Mat mat, MatNullSpace nullsp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (nullsp) PetscValidHeaderSpecific(nullsp, MAT_NULLSPACE_CLASSID, 2);
@@ -8809,8 +8585,7 @@ PetscErrorCode MatSetTransposeNullSpace(Mat mat, MatNullSpace nullsp)
 
 .seealso: `MatNullSpace`, `MatCreate()`, `MatNullSpaceCreate()`, `MatSetNullSpace()`, `MatNullSpaceCreateRigidBody()`, `MatGetNearNullSpace()`
 @*/
-PetscErrorCode MatSetNearNullSpace(Mat mat, MatNullSpace nullsp)
-{
+PetscErrorCode MatSetNearNullSpace(Mat mat, MatNullSpace nullsp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8837,8 +8612,7 @@ PetscErrorCode MatSetNearNullSpace(Mat mat, MatNullSpace nullsp)
 
 .seealso: `MatNullSpace`, `MatSetNearNullSpace()`, `MatGetNullSpace()`, `MatNullSpaceCreate()`
 @*/
-PetscErrorCode MatGetNearNullSpace(Mat mat, MatNullSpace *nullsp)
-{
+PetscErrorCode MatGetNearNullSpace(Mat mat, MatNullSpace *nullsp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8875,8 +8649,7 @@ PetscErrorCode MatGetNearNullSpace(Mat mat, MatNullSpace *nullsp)
 
 .seealso: `MatGetFactor()`, `MatICCFactorSymbolic()`, `MatLUFactorNumeric()`, `MatCholeskyFactor()`
 @*/
-PetscErrorCode MatICCFactor(Mat mat, IS row, const MatFactorInfo *info)
-{
+PetscErrorCode MatICCFactor(Mat mat, IS row, const MatFactorInfo *info) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8910,8 +8683,7 @@ PetscErrorCode MatICCFactor(Mat mat, IS row, const MatFactorInfo *info)
 
 .seealso: `MatDiagonalScale()`
 @*/
-PetscErrorCode MatDiagonalScaleLocal(Mat mat, Vec diag)
-{
+PetscErrorCode MatDiagonalScaleLocal(Mat mat, Vec diag) {
   PetscMPIInt size;
 
   PetscFunctionBegin;
@@ -8926,8 +8698,9 @@ PetscErrorCode MatDiagonalScaleLocal(Mat mat, Vec diag)
     PetscInt n, m;
     PetscCall(VecGetSize(diag, &n));
     PetscCall(MatGetSize(mat, NULL, &m));
-    PetscCheck(m == n, PETSC_COMM_SELF, PETSC_ERR_SUP, "Only supported for sequential matrices when no ghost points/periodic conditions");
-    PetscCall(MatDiagonalScale(mat, NULL, diag));
+    if (m == n) {
+      PetscCall(MatDiagonalScale(mat, NULL, diag));
+    } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Only supported for sequential matrices when no ghost points/periodic conditions");
   } else {
     PetscUseMethod(mat, "MatDiagonalScaleLocal_C", (Mat, Vec), (mat, diag));
   }
@@ -8956,8 +8729,7 @@ PetscErrorCode MatDiagonalScaleLocal(Mat mat, Vec diag)
 
 .seealso: `MatGetFactor()`, `MatCholeskyFactor()`
 @*/
-PetscErrorCode MatGetInertia(Mat mat, PetscInt *nneg, PetscInt *nzero, PetscInt *npos)
-{
+PetscErrorCode MatGetInertia(Mat mat, PetscInt *nneg, PetscInt *nzero, PetscInt *npos) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -8988,8 +8760,7 @@ PetscErrorCode MatGetInertia(Mat mat, PetscInt *nneg, PetscInt *nzero, PetscInt 
 
 .seealso: `Vecs`, `MatSolveAdd()`, `MatSolveTranspose()`, `MatSolveTransposeAdd()`, `MatSolve()`
 @*/
-PetscErrorCode MatSolves(Mat mat, Vecs b, Vecs x)
-{
+PetscErrorCode MatSolves(Mat mat, Vecs b, Vecs x) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -9029,8 +8800,7 @@ PetscErrorCode MatSolves(Mat mat, Vecs b, Vecs x)
 .seealso: `MatTranspose()`, `MatIsTranspose()`, `MatIsHermitian()`, `MatIsStructurallySymmetric()`, `MatSetOption()`, `MatIsSymmetricKnown()`,
           `MAT_SYMMETRIC`, `MAT_SYMMETRY_ETERNAL`, `MatSetOption()`
 @*/
-PetscErrorCode MatIsSymmetric(Mat A, PetscReal tol, PetscBool *flg)
-{
+PetscErrorCode MatIsSymmetric(Mat A, PetscReal tol, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidBoolPointer(flg, 3);
@@ -9074,8 +8844,7 @@ PetscErrorCode MatIsSymmetric(Mat A, PetscReal tol, PetscBool *flg)
 .seealso: `MatTranspose()`, `MatIsTranspose()`, `MatIsHermitianKnown()`, `MatIsStructurallySymmetric()`, `MatSetOption()`,
           `MatIsSymmetricKnown()`, `MatIsSymmetric()`, `MAT_HERMITIAN`, `MAT_SYMMETRY_ETERNAL`, `MatSetOption()`
 @*/
-PetscErrorCode MatIsHermitian(Mat A, PetscReal tol, PetscBool *flg)
-{
+PetscErrorCode MatIsHermitian(Mat A, PetscReal tol, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidBoolPointer(flg, 3);
@@ -9117,8 +8886,7 @@ PetscErrorCode MatIsHermitian(Mat A, PetscReal tol, PetscBool *flg)
 
 .seealso: `MAT_SYMMETRY_ETERNAL`, `MatTranspose()`, `MatIsTranspose()`, `MatIsHermitian()`, `MatIsStructurallySymmetric()`, `MatSetOption()`, `MatIsSymmetric()`, `MatIsHermitianKnown()`
 @*/
-PetscErrorCode MatIsSymmetricKnown(Mat A, PetscBool *set, PetscBool *flg)
-{
+PetscErrorCode MatIsSymmetricKnown(Mat A, PetscBool *set, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidBoolPointer(set, 2);
@@ -9154,8 +8922,7 @@ PetscErrorCode MatIsSymmetricKnown(Mat A, PetscBool *set, PetscBool *flg)
 
 .seealso: `MAT_SPD_ETERNAL`, `MAT_SPD`, `MatTranspose()`, `MatIsTranspose()`, `MatIsHermitian()`, `MatIsStructurallySymmetric()`, `MatSetOption()`, `MatIsSymmetric()`, `MatIsHermitianKnown()`
 @*/
-PetscErrorCode MatIsSPDKnown(Mat A, PetscBool *set, PetscBool *flg)
-{
+PetscErrorCode MatIsSPDKnown(Mat A, PetscBool *set, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidBoolPointer(set, 2);
@@ -9192,8 +8959,7 @@ PetscErrorCode MatIsSPDKnown(Mat A, PetscBool *set, PetscBool *flg)
 
 .seealso: `MAT_SYMMETRY_ETERNAL`, `MAT_HERMITIAN`, `MatTranspose()`, `MatIsTranspose()`, `MatIsHermitian()`, `MatIsStructurallySymmetric()`, `MatSetOption()`, `MatIsSymmetric()`
 @*/
-PetscErrorCode MatIsHermitianKnown(Mat A, PetscBool *set, PetscBool *flg)
-{
+PetscErrorCode MatIsHermitianKnown(Mat A, PetscBool *set, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidBoolPointer(set, 2);
@@ -9228,8 +8994,7 @@ PetscErrorCode MatIsHermitianKnown(Mat A, PetscBool *set, PetscBool *flg)
 
 .seealso: `MAT_STRUCTURALLY_SYMMETRIC`, `MAT_STRUCTURAL_SYMMETRY_ETERNAL`, `MatTranspose()`, `MatIsTranspose()`, `MatIsHermitian()`, `MatIsSymmetric()`, `MatSetOption()`, `MatIsStructurallySymmetricKnown()`
 @*/
-PetscErrorCode MatIsStructurallySymmetric(Mat A, PetscBool *flg)
-{
+PetscErrorCode MatIsStructurallySymmetric(Mat A, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidBoolPointer(flg, 2);
@@ -9264,8 +9029,7 @@ PetscErrorCode MatIsStructurallySymmetric(Mat A, PetscBool *flg)
 
 .seealso: `MAT_STRUCTURALLY_SYMMETRIC`, `MatTranspose()`, `MatIsTranspose()`, `MatIsHermitian()`, `MatIsStructurallySymmetric()`, `MatSetOption()`, `MatIsSymmetric()`, `MatIsHermitianKnown()`
 @*/
-PetscErrorCode MatIsStructurallySymmetricKnown(Mat A, PetscBool *set, PetscBool *flg)
-{
+PetscErrorCode MatIsStructurallySymmetricKnown(Mat A, PetscBool *set, PetscBool *flg) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidBoolPointer(set, 2);
@@ -9298,8 +9062,7 @@ PetscErrorCode MatIsStructurallySymmetricKnown(Mat A, PetscBool *set, PetscBool 
 
 .seealso: `MatAssemblyBegin()`, `MatAssemblyEnd()`, `Mat`, `MatStashSetInitialSize()`
 @*/
-PetscErrorCode MatStashGetInfo(Mat mat, PetscInt *nstash, PetscInt *reallocs, PetscInt *bnstash, PetscInt *breallocs)
-{
+PetscErrorCode MatStashGetInfo(Mat mat, PetscInt *nstash, PetscInt *reallocs, PetscInt *bnstash, PetscInt *breallocs) {
   PetscFunctionBegin;
   PetscCall(MatStashGetInfo_Private(&mat->stash, nstash, reallocs));
   PetscCall(MatStashGetInfo_Private(&mat->bstash, bnstash, breallocs));
@@ -9328,8 +9091,7 @@ PetscErrorCode MatStashGetInfo(Mat mat, PetscInt *nstash, PetscInt *reallocs, Pe
 
 .seealso: `Mat`, `Vec`, `VecCreate()`, `VecDestroy()`, `DMCreateGlobalVector()`
 @*/
-PetscErrorCode MatCreateVecs(Mat mat, Vec *right, Vec *left)
-{
+PetscErrorCode MatCreateVecs(Mat mat, Vec *right, Vec *left) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -9344,7 +9106,7 @@ PetscErrorCode MatCreateVecs(Mat mat, Vec *right, Vec *left)
       PetscCall(VecSetSizes(*right, mat->cmap->n, PETSC_DETERMINE));
       PetscCall(VecSetBlockSize(*right, cbs));
       PetscCall(VecSetType(*right, mat->defaultvectype));
-#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA) || defined(PETSC_HAVE_HIP)
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
       if (mat->boundtocpu && mat->bindingpropagates) {
         PetscCall(VecSetBindingPropagates(*right, PETSC_TRUE));
         PetscCall(VecBindToCPU(*right, PETSC_TRUE));
@@ -9358,7 +9120,7 @@ PetscErrorCode MatCreateVecs(Mat mat, Vec *right, Vec *left)
       PetscCall(VecSetSizes(*left, mat->rmap->n, PETSC_DETERMINE));
       PetscCall(VecSetBlockSize(*left, rbs));
       PetscCall(VecSetType(*left, mat->defaultvectype));
-#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA) || defined(PETSC_HAVE_HIP)
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
       if (mat->boundtocpu && mat->bindingpropagates) {
         PetscCall(VecSetBindingPropagates(*left, PETSC_TRUE));
         PetscCall(VecBindToCPU(*left, PETSC_TRUE));
@@ -9393,8 +9155,7 @@ PetscErrorCode MatCreateVecs(Mat mat, Vec *right, Vec *left)
 
 .seealso: `MatGetFactor()`, `MatFactorInfo`
 @*/
-PetscErrorCode MatFactorInfoInitialize(MatFactorInfo *info)
-{
+PetscErrorCode MatFactorInfoInitialize(MatFactorInfo *info) {
   PetscFunctionBegin;
   PetscCall(PetscMemzero(info, sizeof(MatFactorInfo)));
   PetscFunctionReturn(0);
@@ -9422,8 +9183,7 @@ PetscErrorCode MatFactorInfoInitialize(MatFactorInfo *info)
           `MatFactorSolveSchurComplementTranspose()`, `MatFactorSolveSchurComplement()`, `MATSOLVERMUMPS`, `MATSOLVERMKL_PARDISO`
 
 @*/
-PetscErrorCode MatFactorSetSchurIS(Mat mat, IS is)
-{
+PetscErrorCode MatFactorSetSchurIS(Mat mat, IS is) {
   PetscErrorCode (*f)(Mat, IS);
 
   PetscFunctionBegin;
@@ -9472,8 +9232,7 @@ PetscErrorCode MatFactorSetSchurIS(Mat mat, IS is)
 
 .seealso: `MatGetFactor()`, `MatFactorSetSchurIS()`, `MatFactorGetSchurComplement()`, `MatFactorSchurStatus`, `MATSOLVERMUMPS`, `MATSOLVERMKL_PARDISO`
 @*/
-PetscErrorCode MatFactorCreateSchurComplement(Mat F, Mat *S, MatFactorSchurStatus *status)
-{
+PetscErrorCode MatFactorCreateSchurComplement(Mat F, Mat *S, MatFactorSchurStatus *status) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(F, MAT_CLASSID, 1);
   if (S) PetscValidPointer(S, 2);
@@ -9521,8 +9280,7 @@ PetscErrorCode MatFactorCreateSchurComplement(Mat F, Mat *S, MatFactorSchurStatu
 
 .seealso: `MatGetFactor()`, `MatFactorSetSchurIS()`, `MatFactorRestoreSchurComplement()`, `MatFactorCreateSchurComplement()`, `MatFactorSchurStatus`
 @*/
-PetscErrorCode MatFactorGetSchurComplement(Mat F, Mat *S, MatFactorSchurStatus *status)
-{
+PetscErrorCode MatFactorGetSchurComplement(Mat F, Mat *S, MatFactorSchurStatus *status) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(F, MAT_CLASSID, 1);
   if (S) PetscValidPointer(S, 2);
@@ -9546,8 +9304,7 @@ PetscErrorCode MatFactorGetSchurComplement(Mat F, Mat *S, MatFactorSchurStatus *
 
 .seealso: `MatGetFactor()`, `MatFactorSetSchurIS()`, `MatFactorRestoreSchurComplement()`, `MatFactorCreateSchurComplement()`, `MatFactorSchurStatus`
 @*/
-PetscErrorCode MatFactorRestoreSchurComplement(Mat F, Mat *S, MatFactorSchurStatus status)
-{
+PetscErrorCode MatFactorRestoreSchurComplement(Mat F, Mat *S, MatFactorSchurStatus status) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(F, MAT_CLASSID, 1);
   if (S) {
@@ -9578,8 +9335,7 @@ PetscErrorCode MatFactorRestoreSchurComplement(Mat F, Mat *S, MatFactorSchurStat
 
 .seealso: `MatGetFactor()`, `MatFactorSetSchurIS()`, `MatFactorSolveSchurComplement()`
 @*/
-PetscErrorCode MatFactorSolveSchurComplementTranspose(Mat F, Vec rhs, Vec sol)
-{
+PetscErrorCode MatFactorSolveSchurComplementTranspose(Mat F, Vec rhs, Vec sol) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscValidType(rhs, 2);
@@ -9591,14 +9347,9 @@ PetscErrorCode MatFactorSolveSchurComplementTranspose(Mat F, Vec rhs, Vec sol)
   PetscCheckSameComm(F, 1, sol, 3);
   PetscCall(MatFactorFactorizeSchurComplement(F));
   switch (F->schur_status) {
-  case MAT_FACTOR_SCHUR_FACTORED:
-    PetscCall(MatSolveTranspose(F->schur, rhs, sol));
-    break;
-  case MAT_FACTOR_SCHUR_INVERTED:
-    PetscCall(MatMultTranspose(F->schur, rhs, sol));
-    break;
-  default:
-    SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
+  case MAT_FACTOR_SCHUR_FACTORED: PetscCall(MatSolveTranspose(F->schur, rhs, sol)); break;
+  case MAT_FACTOR_SCHUR_INVERTED: PetscCall(MatMultTranspose(F->schur, rhs, sol)); break;
+  default: SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
   }
   PetscFunctionReturn(0);
 }
@@ -9622,8 +9373,7 @@ PetscErrorCode MatFactorSolveSchurComplementTranspose(Mat F, Vec rhs, Vec sol)
 
 .seealso: `MatGetFactor()`, `MatFactorSetSchurIS()`, `MatFactorSolveSchurComplementTranspose()`
 @*/
-PetscErrorCode MatFactorSolveSchurComplement(Mat F, Vec rhs, Vec sol)
-{
+PetscErrorCode MatFactorSolveSchurComplement(Mat F, Vec rhs, Vec sol) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscValidType(rhs, 2);
@@ -9635,14 +9385,9 @@ PetscErrorCode MatFactorSolveSchurComplement(Mat F, Vec rhs, Vec sol)
   PetscCheckSameComm(F, 1, sol, 3);
   PetscCall(MatFactorFactorizeSchurComplement(F));
   switch (F->schur_status) {
-  case MAT_FACTOR_SCHUR_FACTORED:
-    PetscCall(MatSolve(F->schur, rhs, sol));
-    break;
-  case MAT_FACTOR_SCHUR_INVERTED:
-    PetscCall(MatMult(F->schur, rhs, sol));
-    break;
-  default:
-    SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
+  case MAT_FACTOR_SCHUR_FACTORED: PetscCall(MatSolve(F->schur, rhs, sol)); break;
+  case MAT_FACTOR_SCHUR_INVERTED: PetscCall(MatMult(F->schur, rhs, sol)); break;
+  default: SETERRQ(PetscObjectComm((PetscObject)F), PETSC_ERR_SUP, "Unhandled MatFactorSchurStatus %d", F->schur_status);
   }
   PetscFunctionReturn(0);
 }
@@ -9664,8 +9409,7 @@ PetscErrorCode MatFactorSolveSchurComplement(Mat F, Vec rhs, Vec sol)
 
 .seealso: `MatGetFactor()`, `MatFactorSetSchurIS()`, `MatFactorGetSchurComplement()`, `MatFactorCreateSchurComplement()`
 @*/
-PetscErrorCode MatFactorInvertSchurComplement(Mat F)
-{
+PetscErrorCode MatFactorInvertSchurComplement(Mat F) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscValidHeaderSpecific(F, MAT_CLASSID, 1);
@@ -9691,8 +9435,7 @@ PetscErrorCode MatFactorInvertSchurComplement(Mat F)
 
 .seealso: `MatGetFactor()`, `MatFactorSetSchurIS()`, `MatFactorInvertSchurComplement()`
 @*/
-PetscErrorCode MatFactorFactorizeSchurComplement(Mat F)
-{
+PetscErrorCode MatFactorFactorizeSchurComplement(Mat F) {
   PetscFunctionBegin;
   PetscValidType(F, 1);
   PetscValidHeaderSpecific(F, MAT_CLASSID, 1);
@@ -9729,8 +9472,7 @@ PetscErrorCode MatFactorFactorizeSchurComplement(Mat F)
 
 .seealso: `MatProductCreate()`, `MatMatMult()`, `MatRARt()`
 @*/
-PetscErrorCode MatPtAP(Mat A, Mat P, MatReuse scall, PetscReal fill, Mat *C)
-{
+PetscErrorCode MatPtAP(Mat A, Mat P, MatReuse scall, PetscReal fill, Mat *C) {
   PetscFunctionBegin;
   if (scall == MAT_REUSE_MATRIX) MatCheckProduct(*C, 5);
   PetscCheck(scall != MAT_INPLACE_MATRIX, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Inplace product not supported");
@@ -9784,8 +9526,7 @@ PetscErrorCode MatPtAP(Mat A, Mat P, MatReuse scall, PetscReal fill, Mat *C)
 
 .seealso: `MatProductCreate()`, `MatMatMult()`, `MatPtAP()`
 @*/
-PetscErrorCode MatRARt(Mat A, Mat R, MatReuse scall, PetscReal fill, Mat *C)
-{
+PetscErrorCode MatRARt(Mat A, Mat R, MatReuse scall, PetscReal fill, Mat *C) {
   PetscFunctionBegin;
   if (scall == MAT_REUSE_MATRIX) MatCheckProduct(*C, 5);
   PetscCheck(scall != MAT_INPLACE_MATRIX, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Inplace product not supported");
@@ -9809,8 +9550,7 @@ PetscErrorCode MatRARt(Mat A, Mat R, MatReuse scall, PetscReal fill, Mat *C)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatProduct_Private(Mat A, Mat B, MatReuse scall, PetscReal fill, MatProductType ptype, Mat *C)
-{
+static PetscErrorCode MatProduct_Private(Mat A, Mat B, MatReuse scall, PetscReal fill, MatProductType ptype, Mat *C) {
   PetscFunctionBegin;
   PetscCheck(scall != MAT_INPLACE_MATRIX, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Inplace product not supported");
 
@@ -9835,17 +9575,18 @@ static PetscErrorCode MatProduct_Private(Mat A, Mat B, MatReuse scall, PetscReal
     }
     PetscCall(PetscInfo(A, "Calling MatProduct API with MAT_REUSE_MATRIX %s product present and product type %s\n", product ? "with" : "without", MatProductTypes[ptype]));
     if (!product) { /* user provide the dense matrix *C without calling MatProductCreate() or reusing it from previous calls */
-      PetscCheck(isdense, PetscObjectComm((PetscObject)(*C)), PETSC_ERR_SUP, "Call MatProductCreate() first");
-      PetscCall(MatProductCreate_Private(A, B, NULL, *C));
-      product           = (*C)->product;
-      product->fill     = fill;
-      product->api_user = PETSC_TRUE;
-      product->clear    = PETSC_TRUE;
+      if (isdense) {
+        PetscCall(MatProductCreate_Private(A, B, NULL, *C));
+        product           = (*C)->product;
+        product->fill     = fill;
+        product->api_user = PETSC_TRUE;
+        product->clear    = PETSC_TRUE;
 
-      PetscCall(MatProductSetType(*C, ptype));
-      PetscCall(MatProductSetFromOptions(*C));
-      PetscCheck((*C)->ops->productsymbolic, PetscObjectComm((PetscObject)(*C)), PETSC_ERR_SUP, "MatProduct %s not supported for %s and %s", MatProductTypes[ptype], ((PetscObject)A)->type_name, ((PetscObject)B)->type_name);
-      PetscCall(MatProductSymbolic(*C));
+        PetscCall(MatProductSetType(*C, ptype));
+        PetscCall(MatProductSetFromOptions(*C));
+        PetscCheck((*C)->ops->productsymbolic, PetscObjectComm((PetscObject)(*C)), PETSC_ERR_SUP, "MatProduct %s not supported for %s and %s", MatProductTypes[ptype], ((PetscObject)A)->type_name, ((PetscObject)B)->type_name);
+        PetscCall(MatProductSymbolic(*C));
+      } else SETERRQ(PetscObjectComm((PetscObject)(*C)), PETSC_ERR_SUP, "Call MatProductCreate() first");
     } else { /* user may change input matrices A or B when REUSE */
       PetscCall(MatProductReplaceMats(A, B, NULL, *C));
     }
@@ -9896,8 +9637,7 @@ static PetscErrorCode MatProduct_Private(Mat A, Mat B, MatReuse scall, PetscReal
 
 .seealso: `MatProductType`, `MATPRODUCT_AB`, `MatTransposeMatMult()`, `MatMatTransposeMult()`, `MatPtAP()`, `MatProductCreate()`, `MatProductSymbolic()`, `MatProductReplaceMats()`, `MatProductNumeric()`
 @*/
-PetscErrorCode MatMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C)
-{
+PetscErrorCode MatMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C) {
   PetscFunctionBegin;
   PetscCall(MatProduct_Private(A, B, scall, fill, MATPRODUCT_AB, C));
   PetscFunctionReturn(0);
@@ -9939,8 +9679,7 @@ PetscErrorCode MatMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C)
 
 .seealso: `MatProductCreate()`, `MATPRODUCT_ABt`, `MatMatMult()`, `MatTransposeMatMult()` `MatPtAP()`, `MatProductCreate()`, `MatProductAlgorithm`, `MatProductType`, `MATPRODUCT_ABt`
 @*/
-PetscErrorCode MatMatTransposeMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C)
-{
+PetscErrorCode MatMatTransposeMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C) {
   PetscFunctionBegin;
   PetscCall(MatProduct_Private(A, B, scall, fill, MATPRODUCT_ABt, C));
   if (A == B) PetscCall(MatSetOption(*C, MAT_SYMMETRIC, PETSC_TRUE));
@@ -9978,8 +9717,7 @@ PetscErrorCode MatMatTransposeMult(Mat A, Mat B, MatReuse scall, PetscReal fill,
 
 .seealso: `MatProductCreate()`, `MATPRODUCT_AtB`, `MatMatMult()`, `MatMatTransposeMult()`, `MatPtAP()`
 @*/
-PetscErrorCode MatTransposeMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C)
-{
+PetscErrorCode MatTransposeMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C) {
   PetscFunctionBegin;
   PetscCall(MatProduct_Private(A, B, scall, fill, MATPRODUCT_AtB, C));
   PetscFunctionReturn(0);
@@ -10018,8 +9756,7 @@ PetscErrorCode MatTransposeMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill,
 
 .seealso: `MatProductCreate()`, `MATPRODUCT_ABC`, `MatMatMult`, `MatPtAP()`, `MatMatTransposeMult()`, `MatTransposeMatMult()`
 @*/
-PetscErrorCode MatMatMatMult(Mat A, Mat B, Mat C, MatReuse scall, PetscReal fill, Mat *D)
-{
+PetscErrorCode MatMatMatMult(Mat A, Mat B, Mat C, MatReuse scall, PetscReal fill, Mat *D) {
   PetscFunctionBegin;
   if (scall == MAT_REUSE_MATRIX) MatCheckProduct(*D, 6);
   PetscCheck(scall != MAT_INPLACE_MATRIX, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Inplace product not supported");
@@ -10069,8 +9806,7 @@ PetscErrorCode MatMatMatMult(Mat A, Mat B, Mat C, MatReuse scall, PetscReal fill
 
 .seealso: `MatDestroy()`, `PetscSubcommCreate()`, `PetscSubComm`
 @*/
-PetscErrorCode MatCreateRedundantMatrix(Mat mat, PetscInt nsubcomm, MPI_Comm subcomm, MatReuse reuse, Mat *matredundant)
-{
+PetscErrorCode MatCreateRedundantMatrix(Mat mat, PetscInt nsubcomm, MPI_Comm subcomm, MatReuse reuse, Mat *matredundant) {
   MPI_Comm       comm;
   PetscMPIInt    size;
   PetscInt       mloc_sub, nloc_sub, rstart, rend, M = mat->rmap->N, N = mat->cmap->N, bs = mat->rmap->bs;
@@ -10150,7 +9886,7 @@ PetscErrorCode MatCreateRedundantMatrix(Mat mat, PetscInt nsubcomm, MPI_Comm sub
     PetscCall(MatCreateMPIMatConcatenateSeqMat(subcomm, matseq[0], nloc_sub, reuse, matredundant));
 
     /* create a supporting struct and attach it to C for reuse */
-    PetscCall(PetscNew(&redund));
+    PetscCall(PetscNewLog(*matredundant, &redund));
     (*matredundant)->redundant = redund;
     redund->isrow              = isrow;
     redund->iscol              = iscol;
@@ -10163,7 +9899,7 @@ PetscErrorCode MatCreateRedundantMatrix(Mat mat, PetscInt nsubcomm, MPI_Comm sub
   } else {
     PetscCall(MatCreateMPIMatConcatenateSeqMat(subcomm, matseq[0], PETSC_DECIDE, reuse, matredundant));
   }
-#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA) || defined(PETSC_HAVE_HIP)
+#if defined(PETSC_HAVE_VIENNACL) || defined(PETSC_HAVE_CUDA)
   if (matseq[0]->boundtocpu && matseq[0]->bindingpropagates) {
     PetscCall(MatBindToCPU(*matredundant, PETSC_TRUE));
     PetscCall(MatSetBindingPropagates(*matredundant, PETSC_TRUE));
@@ -10205,8 +9941,7 @@ PetscErrorCode MatCreateRedundantMatrix(Mat mat, PetscInt nsubcomm, MPI_Comm sub
 
 .seealso: `MatCreateRedundantMatrix()`, `MatCreateSubMatrices()`, `PCBJACOBI`
 @*/
-PetscErrorCode MatGetMultiProcBlock(Mat mat, MPI_Comm subComm, MatReuse scall, Mat *subMat)
-{
+PetscErrorCode MatGetMultiProcBlock(Mat mat, MPI_Comm subComm, MatReuse scall, Mat *subMat) {
   PetscMPIInt commsize, subCommSize;
 
   PetscFunctionBegin;
@@ -10250,8 +9985,7 @@ PetscErrorCode MatGetMultiProcBlock(Mat mat, MPI_Comm subComm, MatReuse scall, M
 
 .seealso: `MatRestoreLocalSubMatrix()`, `MatCreateLocalRef()`, `MatSetLocalToGlobalMapping()`
 @*/
-PetscErrorCode MatGetLocalSubMatrix(Mat mat, IS isrow, IS iscol, Mat *submat)
-{
+PetscErrorCode MatGetLocalSubMatrix(Mat mat, IS isrow, IS iscol, Mat *submat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidHeaderSpecific(isrow, IS_CLASSID, 2);
@@ -10283,8 +10017,7 @@ PetscErrorCode MatGetLocalSubMatrix(Mat mat, IS isrow, IS iscol, Mat *submat)
 
 .seealso: `MatGetLocalSubMatrix()`
 @*/
-PetscErrorCode MatRestoreLocalSubMatrix(Mat mat, IS isrow, IS iscol, Mat *submat)
-{
+PetscErrorCode MatRestoreLocalSubMatrix(Mat mat, IS isrow, IS iscol, Mat *submat) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidHeaderSpecific(isrow, IS_CLASSID, 2);
@@ -10318,8 +10051,7 @@ PetscErrorCode MatRestoreLocalSubMatrix(Mat mat, IS isrow, IS iscol, Mat *submat
 
 .seealso: `MatMultTranspose()`, `MatMultAdd()`, `MatMultTransposeAdd()`
 @*/
-PetscErrorCode MatFindZeroDiagonals(Mat mat, IS *is)
-{
+PetscErrorCode MatFindZeroDiagonals(Mat mat, IS *is) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -10366,8 +10098,7 @@ PetscErrorCode MatFindZeroDiagonals(Mat mat, IS *is)
 
 .seealso: `MatMultTranspose()`, `MatMultAdd()`, `MatMultTransposeAdd()`
 @*/
-PetscErrorCode MatFindOffBlockDiagonalEntries(Mat mat, IS *is)
-{
+PetscErrorCode MatFindOffBlockDiagonalEntries(Mat mat, IS *is) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -10403,8 +10134,7 @@ PetscErrorCode MatFindOffBlockDiagonalEntries(Mat mat, IS *is)
 
 .seealso: `MatInvertVariableBlockEnvelope()`, `MatInvertBlockDiagonalMat()`
 @*/
-PetscErrorCode MatInvertBlockDiagonal(Mat mat, const PetscScalar **values)
-{
+PetscErrorCode MatInvertBlockDiagonal(Mat mat, const PetscScalar **values) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscCheck(mat->assembled, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Not for unassembled matrix");
@@ -10438,8 +10168,7 @@ PetscErrorCode MatInvertBlockDiagonal(Mat mat, const PetscScalar **values)
 
 .seealso: `MatInvertBlockDiagonal()`, `MatSetVariableBlockSizes()`, `MatInvertVariableBlockEnvelope()`
 @*/
-PetscErrorCode MatInvertVariableBlockDiagonal(Mat mat, PetscInt nblocks, const PetscInt *bsizes, PetscScalar *values)
-{
+PetscErrorCode MatInvertVariableBlockDiagonal(Mat mat, PetscInt nblocks, const PetscInt *bsizes, PetscScalar *values) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscCheck(mat->assembled, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Not for unassembled matrix");
@@ -10464,8 +10193,7 @@ PetscErrorCode MatInvertVariableBlockDiagonal(Mat mat, PetscInt nblocks, const P
 
 .seealso: `MatInvertBlockDiagonal()`
 @*/
-PetscErrorCode MatInvertBlockDiagonalMat(Mat A, Mat C)
-{
+PetscErrorCode MatInvertBlockDiagonalMat(Mat A, Mat C) {
   const PetscScalar *vals;
   PetscInt          *dnnz;
   PetscInt           m, rstart, rend, bs, i, j;
@@ -10501,8 +10229,7 @@ PetscErrorCode MatInvertBlockDiagonalMat(Mat A, Mat C)
 
 .seealso: `MatTransposeColoringCreate()`
 @*/
-PetscErrorCode MatTransposeColoringDestroy(MatTransposeColoring *c)
-{
+PetscErrorCode MatTransposeColoringDestroy(MatTransposeColoring *c) {
   MatTransposeColoring matcolor = *c;
 
   PetscFunctionBegin;
@@ -10545,8 +10272,7 @@ PetscErrorCode MatTransposeColoringDestroy(MatTransposeColoring *c)
 .seealso: `MatTransposeColoringCreate()`, `MatTransposeColoringDestroy()`, `MatTransColoringApplyDenToSp()`
 
 @*/
-PetscErrorCode MatTransColoringApplySpToDen(MatTransposeColoring coloring, Mat B, Mat Btdense)
-{
+PetscErrorCode MatTransColoringApplySpToDen(MatTransposeColoring coloring, Mat B, Mat Btdense) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(B, MAT_CLASSID, 2);
   PetscValidHeaderSpecific(Btdense, MAT_CLASSID, 3);
@@ -10579,8 +10305,7 @@ PetscErrorCode MatTransColoringApplySpToDen(MatTransposeColoring coloring, Mat B
 .seealso: `MatTransposeColoringCreate()`, `MatTransposeColoringDestroy()`, `MatTransColoringApplySpToDen()`
 
 @*/
-PetscErrorCode MatTransColoringApplyDenToSp(MatTransposeColoring matcoloring, Mat Cden, Mat Csp)
-{
+PetscErrorCode MatTransColoringApplyDenToSp(MatTransposeColoring matcoloring, Mat Cden, Mat Csp) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(matcoloring, MAT_TRANSPOSECOLORING_CLASSID, 1);
   PetscValidHeaderSpecific(Cden, MAT_CLASSID, 2);
@@ -10609,8 +10334,7 @@ PetscErrorCode MatTransColoringApplyDenToSp(MatTransposeColoring matcoloring, Ma
 .seealso: `MatTransposeColoringDestroy()`, `MatTransColoringApplySpToDen()`,
           `MatTransColoringApplyDenToSp()`
 @*/
-PetscErrorCode MatTransposeColoringCreate(Mat mat, ISColoring iscoloring, MatTransposeColoring *color)
-{
+PetscErrorCode MatTransposeColoringCreate(Mat mat, ISColoring iscoloring, MatTransposeColoring *color) {
   MatTransposeColoring c;
   MPI_Comm             comm;
 
@@ -10620,7 +10344,9 @@ PetscErrorCode MatTransposeColoringCreate(Mat mat, ISColoring iscoloring, MatTra
   PetscCall(PetscHeaderCreate(c, MAT_TRANSPOSECOLORING_CLASSID, "MatTransposeColoring", "Matrix product C=A*B^T via coloring", "Mat", comm, MatTransposeColoringDestroy, NULL));
 
   c->ctype = iscoloring->ctype;
-  PetscUseTypeMethod(mat, transposecoloringcreate, iscoloring, c);
+  if (mat->ops->transposecoloringcreate) {
+    PetscUseTypeMethod(mat, transposecoloringcreate, iscoloring, c);
+  } else SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "Code not yet written for matrix type %s", ((PetscObject)mat)->type_name);
 
   *color = c;
   PetscCall(PetscLogEventEnd(MAT_TransposeColoringCreate, mat, 0, 0, 0));
@@ -10652,8 +10378,7 @@ PetscErrorCode MatTransposeColoringCreate(Mat mat, ISColoring iscoloring, MatTra
 
 .seealso: `PetscObjectStateGet()`, `PetscObjectGetId()`
 @*/
-PetscErrorCode MatGetNonzeroState(Mat mat, PetscObjectState *state)
-{
+PetscErrorCode MatGetNonzeroState(Mat mat, PetscObjectState *state) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   *state = mat->nonzerostate;
@@ -10682,8 +10407,7 @@ PetscErrorCode MatGetNonzeroState(Mat mat, PetscObjectState *state)
 
 .seealso: `Mat`
 @*/
-PetscErrorCode MatCreateMPIMatConcatenateSeqMat(MPI_Comm comm, Mat seqmat, PetscInt n, MatReuse reuse, Mat *mpimat)
-{
+PetscErrorCode MatCreateMPIMatConcatenateSeqMat(MPI_Comm comm, Mat seqmat, PetscInt n, MatReuse reuse, Mat *mpimat) {
   PetscMPIInt size;
 
   PetscFunctionBegin;
@@ -10725,8 +10449,7 @@ PetscErrorCode MatCreateMPIMatConcatenateSeqMat(MPI_Comm comm, Mat seqmat, Petsc
 
 .seealso: `Mat`, `IS`
 @*/
-PetscErrorCode MatSubdomainsCreateCoalesce(Mat A, PetscInt N, PetscInt *n, IS *iss[])
-{
+PetscErrorCode MatSubdomainsCreateCoalesce(Mat A, PetscInt N, PetscInt *n, IS *iss[]) {
   MPI_Comm    comm, subcomm;
   PetscMPIInt size, rank, color;
   PetscInt    rstart, rend, k;
@@ -10774,8 +10497,7 @@ PetscErrorCode MatSubdomainsCreateCoalesce(Mat A, PetscInt N, PetscInt *n, IS *i
 
 .seealso: `MatPtAP()`, `MatMatMatMult()`
 @*/
-PetscErrorCode MatGalerkin(Mat restrct, Mat dA, Mat interpolate, MatReuse reuse, PetscReal fill, Mat *A)
-{
+PetscErrorCode MatGalerkin(Mat restrct, Mat dA, Mat interpolate, MatReuse reuse, PetscReal fill, Mat *A) {
   IS  zerorows;
   Vec diag;
 
@@ -10842,8 +10564,7 @@ $       MatMult(Mat,Vec,Vec) -> usermult(Mat,Vec,Vec)
 
 .seealso: `MatGetOperation()`, `MatCreateShell()`, `MatShellSetContext()`, `MatShellSetOperation()`
 @*/
-PetscErrorCode MatSetOperation(Mat mat, MatOperation op, void (*f)(void))
-{
+PetscErrorCode MatSetOperation(Mat mat, MatOperation op, void (*f)(void)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   if (op == MATOP_VIEW && !mat->ops->viewnative && f != (void (*)(void))(mat->ops->view)) mat->ops->viewnative = mat->ops->view;
@@ -10879,8 +10600,7 @@ $      MatGetOperation(A,MATOP_MULT,(void(**)(void))&usermult);
 
 .seealso: `MatSetOperation()`, `MatCreateShell()`, `MatShellGetContext()`, `MatShellGetOperation()`
 @*/
-PetscErrorCode MatGetOperation(Mat mat, MatOperation op, void (**f)(void))
-{
+PetscErrorCode MatGetOperation(Mat mat, MatOperation op, void (**f)(void)) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   *f = (((void (**)(void))mat->ops)[op]);
@@ -10909,8 +10629,7 @@ PetscErrorCode MatGetOperation(Mat mat, MatOperation op, void (**f)(void))
 
 .seealso: `MatCreateShell()`, `MatGetOperation()`, `MatSetOperation()`
 @*/
-PetscErrorCode MatHasOperation(Mat mat, MatOperation op, PetscBool *has)
-{
+PetscErrorCode MatHasOperation(Mat mat, MatOperation op, PetscBool *has) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidBoolPointer(has, 3);
@@ -10946,8 +10665,7 @@ PetscErrorCode MatHasOperation(Mat mat, MatOperation op, PetscBool *has)
 
 .seealso: `MatCreate()`, `MatSetSizes()`, `PetscLayout`
 @*/
-PetscErrorCode MatHasCongruentLayouts(Mat mat, PetscBool *cong)
-{
+PetscErrorCode MatHasCongruentLayouts(Mat mat, PetscBool *cong) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidType(mat, 1);
@@ -10966,63 +10684,61 @@ PetscErrorCode MatHasCongruentLayouts(Mat mat, PetscBool *cong)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatSetInf(Mat A)
-{
+PetscErrorCode MatSetInf(Mat A) {
   PetscFunctionBegin;
   PetscUseTypeMethod(A, setinf);
   PetscFunctionReturn(0);
 }
 
-/*@C
+/*C
    MatCreateGraph - create a scalar matrix (that is a matrix with one vertex for each block vertex in the original matrix), for use in graph algorithms
-   and possibly removes small values from the graph structure.
 
    Collective on mat
 
    Input Parameters:
 +  A - the matrix
-.  sym - `PETSC_TRUE` indicates that the graph should be symmetrized
-.  scale - `PETSC_TRUE` indicates that the graph edge weights should be symmetrically scaled with the diagonal entry
--  filter - filter value - < 0: does nothing; == 0: removes only 0.0 entries; otherwise: removes entries with abs(entries) <= value
+-  sym - `PETSC_TRUE` indicates that the graph will be symmetrized
+.  scale - `PETSC_TRUE` indicates that the graph will be scaled with the diagonal
 
    Output Parameter:
 .  graph - the resulting graph
 
    Level: advanced
 
-.seealso: `MatCreate()`, `PCGAMG`
-@*/
-PetscErrorCode MatCreateGraph(Mat A, PetscBool sym, PetscBool scale, PetscReal filter, Mat *graph)
-{
+.seealso: `MatCreate()`, `MatFilter()`
+*/
+PETSC_EXTERN PetscErrorCode MatCreateGraph(Mat A, PetscBool sym, PetscBool scale, Mat *graph) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscValidType(A, 1);
-  PetscValidLogicalCollectiveBool(A, scale, 3);
-  PetscValidPointer(graph, 5);
-  PetscUseTypeMethod(A, creategraph, sym, scale, filter, graph);
+  PetscValidPointer(graph, 3);
+  PetscUseTypeMethod(A, creategraph, sym, scale, graph);
   PetscFunctionReturn(0);
 }
 
-/*@
-  MatEliminateZeros - eliminate the nondiagonal zero entries in place from the nonzero structure of a sparse `Mat` in place,
-  meaning the same memory is used for the matrix, and no new memory is allocated.
+/*C
+   MatFilter - filters a matrices values with an absolut value equal to or below a give threshold
 
-  Collective on mat
+   Collective on mat
 
-  Input Parameter:
-. A - the matrix
+   Input Parameter:
+.  value - filter value - < 0: does nothing; == 0: removes only 0.0 entries; otherwise: removes entries <= value
 
-  Output Parameter:
-. A - the matrix
+   Input/Output Parameter:
+.  A - the `Mat` to filter in place
 
-  Level: intermediate
+   Level: developer
 
-.seealso: `Mat`, `MatCreate()`, `MatCreateGraph()`, `MatChop()`
-@*/
-PetscErrorCode MatEliminateZeros(Mat A)
-{
+   Note:
+   This is called before graph coarsers are called in `PCGAMG`
+
+.seealso: `MatCreate()`, `MatCreateGraph()`
+*/
+PETSC_EXTERN PetscErrorCode MatFilter(Mat G, PetscReal value, Mat *F) {
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
-  PetscUseTypeMethod(A, eliminatezeros);
+  PetscValidHeaderSpecific(G, MAT_CLASSID, 1);
+  PetscValidType(G, 1);
+  PetscValidPointer(F, 3);
+  if (value >= 0.0) PetscCall((G->ops->filter)(G, value, F));
   PetscFunctionReturn(0);
 }

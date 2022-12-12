@@ -66,10 +66,9 @@ const char **TaoConvergedReasons           = TaoConvergedReasons_Shifted - TAO_D
 
   Level: developer
 
-.seealso: `Tao`, `TaoRegister()`, `TaoRegisterDestroy()`
+.seealso `TaoRegister()`, `TaoRegisterDestroy()`
 @*/
-PetscErrorCode TaoRegisterAll(void)
-{
+PetscErrorCode TaoRegisterAll(void) {
 #if !defined(PETSC_USE_COMPLEX)
 #endif
 

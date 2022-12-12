@@ -9,8 +9,7 @@ typedef struct {
   Mat       L; /* keep a copy to reuse when obtained with L = A10*A01 */
 } PC_LSC;
 
-static PetscErrorCode PCLSCAllocate_Private(PC pc)
-{
+static PetscErrorCode PCLSCAllocate_Private(PC pc) {
   PC_LSC *lsc = (PC_LSC *)pc->data;
   Mat     A;
 
@@ -30,8 +29,7 @@ static PetscErrorCode PCLSCAllocate_Private(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetUp_LSC(PC pc)
-{
+static PetscErrorCode PCSetUp_LSC(PC pc) {
   PC_LSC *lsc = (PC_LSC *)pc->data;
   Mat     L, Lp, B, C;
 
@@ -61,8 +59,7 @@ static PetscErrorCode PCSetUp_LSC(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCApply_LSC(PC pc, Vec x, Vec y)
-{
+static PetscErrorCode PCApply_LSC(PC pc, Vec x, Vec y) {
   PC_LSC *lsc = (PC_LSC *)pc->data;
   Mat     A, B, C;
 
@@ -80,8 +77,7 @@ static PetscErrorCode PCApply_LSC(PC pc, Vec x, Vec y)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCReset_LSC(PC pc)
-{
+static PetscErrorCode PCReset_LSC(PC pc) {
   PC_LSC *lsc = (PC_LSC *)pc->data;
 
   PetscFunctionBegin;
@@ -94,29 +90,24 @@ static PetscErrorCode PCReset_LSC(PC pc)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCDestroy_LSC(PC pc)
-{
+static PetscErrorCode PCDestroy_LSC(PC pc) {
   PetscFunctionBegin;
   PetscCall(PCReset_LSC(pc));
   PetscCall(PetscFree(pc->data));
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCSetFromOptions_LSC(PC pc, PetscOptionItems *PetscOptionsObject)
-{
+static PetscErrorCode PCSetFromOptions_LSC(PC pc, PetscOptionItems *PetscOptionsObject) {
   PC_LSC *lsc = (PC_LSC *)pc->data;
 
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "LSC options");
-  {
-    PetscCall(PetscOptionsBool("-pc_lsc_scale_diag", "Use diagonal of velocity block (A) for scaling", "None", lsc->scalediag, &lsc->scalediag, NULL));
-  }
+  { PetscCall(PetscOptionsBool("-pc_lsc_scale_diag", "Use diagonal of velocity block (A) for scaling", "None", lsc->scalediag, &lsc->scalediag, NULL)); }
   PetscOptionsHeadEnd();
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode PCView_LSC(PC pc, PetscViewer viewer)
-{
+static PetscErrorCode PCView_LSC(PC pc, PetscViewer viewer) {
   PC_LSC   *jac = (PC_LSC *)pc->data;
   PetscBool iascii;
 
@@ -143,14 +134,14 @@ static PetscErrorCode PCView_LSC(PC pc, PetscViewer viewer)
    Level: intermediate
 
    Notes:
-   This preconditioner will normally be used with `PCFIELDSPLIT` to precondition the Schur complement, but
+   This preconditioner will normally be used with PCFieldSplit to precondition the Schur complement, but
    it can be used for any Schur complement system.  Consider the Schur complement
 
 .vb
    S = A11 - A10 inv(A00) A01
 .ve
 
-   `PCLSC` currently doesn't do anything with A11, so let's assume it is 0.  The idea is that a good approximation to
+   PCLSC currently doesn't do anything with A11, so let's assume it is 0.  The idea is that a good approximation to
    inv(S) is given by
 
 .vb
@@ -161,8 +152,8 @@ static PetscErrorCode PCView_LSC(PC pc, PetscViewer viewer)
    usually more efficient anyway).  In the case of incompressible flow, A10 A01 is a Laplacian; call it L.  The current
    interface is to hang L and a preconditioning matrix Lp on the preconditioning matrix.
 
-   If you had called `KSPSetOperators`(ksp,S,Sp), S should have type `MATSCHURCOMPLEMENT` and Sp can be any type you
-   like (`PCLSC` doesn't use it directly) but should have matrices composed with it, under the names "LSC_L" and "LSC_Lp".
+   If you had called KSPSetOperators(ksp,S,Sp), S should have type MATSCHURCOMPLEMENT and Sp can be any type you
+   like (PCLSC doesn't use it directly) but should have matrices composed with it, under the names "LSC_L" and "LSC_Lp".
    For example, you might have setup code like this
 
 .vb
@@ -193,16 +184,14 @@ static PetscErrorCode PCView_LSC(PC pc, PetscViewer viewer)
 
 .seealso: `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `Block_Preconditioners`, `PCFIELDSPLIT`,
           `PCFieldSplitGetSubKSP()`, `PCFieldSplitSetFields()`, `PCFieldSplitSetType()`, `PCFieldSplitSetIS()`, `PCFieldSplitSetSchurPre()`,
-          `MatCreateSchurComplement()`, `MatCreateSchurComplement()`, `MatSchurComplementSetSubMatrices()`, `MatSchurComplementUpdateSubMatrices()`,
-          `MatSchurComplementSetAinvType()`, `MatGetSchurComplement()`
+          `MatCreateSchurComplement()`
 M*/
 
-PETSC_EXTERN PetscErrorCode PCCreate_LSC(PC pc)
-{
+PETSC_EXTERN PetscErrorCode PCCreate_LSC(PC pc) {
   PC_LSC *lsc;
 
   PetscFunctionBegin;
-  PetscCall(PetscNew(&lsc));
+  PetscCall(PetscNewLog(pc, &lsc));
   pc->data = (void *)lsc;
 
   pc->ops->apply           = PCApply_LSC;

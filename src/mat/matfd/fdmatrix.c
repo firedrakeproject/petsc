@@ -7,8 +7,7 @@
 #include <petsc/private/matimpl.h> /*I "petscmat.h" I*/
 #include <petsc/private/isimpl.h>
 
-PetscErrorCode MatFDColoringSetF(MatFDColoring fd, Vec F)
-{
+PetscErrorCode MatFDColoringSetF(MatFDColoring fd, Vec F) {
   PetscFunctionBegin;
   if (F) {
     PetscCall(VecCopy(F, fd->w1));
@@ -20,8 +19,7 @@ PetscErrorCode MatFDColoringSetF(MatFDColoring fd, Vec F)
 }
 
 #include <petscdraw.h>
-static PetscErrorCode MatFDColoringView_Draw_Zoom(PetscDraw draw, void *Aa)
-{
+static PetscErrorCode MatFDColoringView_Draw_Zoom(PetscDraw draw, void *Aa) {
   MatFDColoring fd = (MatFDColoring)Aa;
   PetscInt      i, j, nz, row;
   PetscReal     x, y;
@@ -41,8 +39,7 @@ static PetscErrorCode MatFDColoringView_Draw_Zoom(PetscDraw draw, void *Aa)
   PetscFunctionReturn(0);
 }
 
-static PetscErrorCode MatFDColoringView_Draw(MatFDColoring fd, PetscViewer viewer)
-{
+static PetscErrorCode MatFDColoringView_Draw(MatFDColoring fd, PetscViewer viewer) {
   PetscBool isnull;
   PetscDraw draw;
   PetscReal xr, yr, xl, yl, h, w;
@@ -94,8 +91,7 @@ static PetscErrorCode MatFDColoringView_Draw(MatFDColoring fd, PetscViewer viewe
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`
 @*/
-PetscErrorCode MatFDColoringView(MatFDColoring c, PetscViewer viewer)
-{
+PetscErrorCode MatFDColoringView(MatFDColoring c, PetscViewer viewer) {
   PetscInt          i, j;
   PetscBool         isdraw, iascii;
   PetscViewerFormat format;
@@ -166,8 +162,7 @@ PetscErrorCode MatFDColoringView(MatFDColoring c, PetscViewer viewer)
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringSetFromOptions()`
 @*/
-PetscErrorCode MatFDColoringSetParameters(MatFDColoring matfd, PetscReal error, PetscReal umin)
-{
+PetscErrorCode MatFDColoringSetParameters(MatFDColoring matfd, PetscReal error, PetscReal umin) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(matfd, MAT_FDCOLORING_CLASSID, 1);
   PetscValidLogicalCollectiveReal(matfd, error, 2);
@@ -191,8 +186,7 @@ PetscErrorCode MatFDColoringSetParameters(MatFDColoring matfd, PetscReal error, 
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringSetFromOptions()`
 @*/
-PetscErrorCode MatFDColoringSetBlockSize(MatFDColoring matfd, PetscInt brows, PetscInt bcols)
-{
+PetscErrorCode MatFDColoringSetBlockSize(MatFDColoring matfd, PetscInt brows, PetscInt bcols) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(matfd, MAT_FDCOLORING_CLASSID, 1);
   PetscValidLogicalCollectiveInt(matfd, brows, 2);
@@ -219,8 +213,7 @@ PetscErrorCode MatFDColoringSetBlockSize(MatFDColoring matfd, PetscInt brows, Pe
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringDestroy()`
 @*/
-PetscErrorCode MatFDColoringSetUp(Mat mat, ISColoring iscoloring, MatFDColoring color)
-{
+PetscErrorCode MatFDColoringSetUp(Mat mat, ISColoring iscoloring, MatFDColoring color) {
   PetscBool eq;
 
   PetscFunctionBegin;
@@ -254,8 +247,7 @@ PetscErrorCode MatFDColoringSetUp(Mat mat, ISColoring iscoloring, MatFDColoring 
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringSetFunction()`, `MatFDColoringSetFromOptions()`
 @*/
-PetscErrorCode MatFDColoringGetFunction(MatFDColoring matfd, PetscErrorCode (**f)(void), void **fctx)
-{
+PetscErrorCode MatFDColoringGetFunction(MatFDColoring matfd, PetscErrorCode (**f)(void), void **fctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(matfd, MAT_FDCOLORING_CLASSID, 1);
   if (f) *f = matfd->f;
@@ -290,8 +282,7 @@ PetscErrorCode MatFDColoringGetFunction(MatFDColoring matfd, PetscErrorCode (**f
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringGetFunction()`, `MatFDColoringSetFromOptions()`
 @*/
-PetscErrorCode MatFDColoringSetFunction(MatFDColoring matfd, PetscErrorCode (*f)(void), void *fctx)
-{
+PetscErrorCode MatFDColoringSetFunction(MatFDColoring matfd, PetscErrorCode (*f)(void), void *fctx) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(matfd, MAT_FDCOLORING_CLASSID, 1);
   matfd->f    = f;
@@ -328,8 +319,7 @@ PetscErrorCode MatFDColoringSetFunction(MatFDColoring matfd, PetscErrorCode (*f)
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringView()`, `MatFDColoringSetParameters()`
 @*/
-PetscErrorCode MatFDColoringSetFromOptions(MatFDColoring matfd)
-{
+PetscErrorCode MatFDColoringSetFromOptions(MatFDColoring matfd) {
   PetscBool flg;
   char      value[3];
 
@@ -379,8 +369,7 @@ PetscErrorCode MatFDColoringSetFromOptions(MatFDColoring matfd)
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringView()`, `MatFDColoringSetParameters()`
 @*/
-PetscErrorCode MatFDColoringSetType(MatFDColoring matfd, MatMFFDType type)
-{
+PetscErrorCode MatFDColoringSetType(MatFDColoring matfd, MatMFFDType type) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(matfd, MAT_FDCOLORING_CLASSID, 1);
   /*
@@ -393,8 +382,7 @@ PetscErrorCode MatFDColoringSetType(MatFDColoring matfd, MatMFFDType type)
   PetscFunctionReturn(0);
 }
 
-PetscErrorCode MatFDColoringViewFromOptions(MatFDColoring fd, const char prefix[], const char optionname[])
-{
+PetscErrorCode MatFDColoringViewFromOptions(MatFDColoring fd, const char prefix[], const char optionname[]) {
   PetscBool         flg;
   PetscViewer       viewer;
   PetscViewerFormat format;
@@ -433,8 +421,7 @@ PetscErrorCode MatFDColoringViewFromOptions(MatFDColoring fd, const char prefix[
           `MatFDColoringSetFunction()`, `MatFDColoringSetFromOptions()`, `MatFDColoringApply()`,
           `MatFDColoringView()`, `MatFDColoringSetParameters()`, `MatColoringCreate()`, `DMCreateColoring()`, `MatFDColoringSetValues()`
 @*/
-PetscErrorCode MatFDColoringCreate(Mat mat, ISColoring iscoloring, MatFDColoring *color)
-{
+PetscErrorCode MatFDColoringCreate(Mat mat, ISColoring iscoloring, MatFDColoring *color) {
   MatFDColoring c;
   MPI_Comm      comm;
   PetscInt      M, N;
@@ -456,9 +443,11 @@ PetscErrorCode MatFDColoringCreate(Mat mat, ISColoring iscoloring, MatFDColoring
   PetscCall(MatCreateVecs(mat, NULL, &c->w1));
   /* Vec is used intensively in particular piece of scalar CPU code; won't benefit from bouncing back and forth to the GPU */
   PetscCall(VecBindToCPU(c->w1, PETSC_TRUE));
+  PetscCall(PetscLogObjectParent((PetscObject)c, (PetscObject)c->w1));
   PetscCall(VecDuplicate(c->w1, &c->w2));
   /* Vec is used intensively in particular piece of scalar CPU code; won't benefit from bouncing back and forth to the GPU */
   PetscCall(VecBindToCPU(c->w2, PETSC_TRUE));
+  PetscCall(PetscLogObjectParent((PetscObject)c, (PetscObject)c->w2));
 
   c->error_rel    = PETSC_SQRT_MACHINE_EPSILON;
   c->umin         = 100.0 * PETSC_SQRT_MACHINE_EPSILON;
@@ -486,8 +475,7 @@ PetscErrorCode MatFDColoringCreate(Mat mat, ISColoring iscoloring, MatFDColoring
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`
 @*/
-PetscErrorCode MatFDColoringDestroy(MatFDColoring *c)
-{
+PetscErrorCode MatFDColoringDestroy(MatFDColoring *c) {
   PetscInt      i;
   MatFDColoring color = *c;
 
@@ -548,8 +536,7 @@ $          call MatFDColoringRestorePerturbedColumnsF90(i,array,ierr)
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringDestroy()`, `MatFDColoringView()`, `MatFDColoringApply()`
 @*/
-PetscErrorCode MatFDColoringGetPerturbedColumns(MatFDColoring coloring, PetscInt *n, const PetscInt *cols[])
-{
+PetscErrorCode MatFDColoringGetPerturbedColumns(MatFDColoring coloring, PetscInt *n, const PetscInt *cols[]) {
   PetscFunctionBegin;
   if (coloring->currentcolor >= 0) {
     *n    = coloring->ncolumns[coloring->currentcolor];
@@ -582,8 +569,7 @@ PetscErrorCode MatFDColoringGetPerturbedColumns(MatFDColoring coloring, PetscInt
 
 .seealso: `MatFDColoring`, `MatFDColoringCreate()`, `MatFDColoringDestroy()`, `MatFDColoringView()`, `MatFDColoringSetFunction()`, `MatFDColoringSetValues()`
 @*/
-PetscErrorCode MatFDColoringApply(Mat J, MatFDColoring coloring, Vec x1, void *sctx)
-{
+PetscErrorCode MatFDColoringApply(Mat J, MatFDColoring coloring, Vec x1, void *sctx) {
   PetscBool eq;
 
   PetscFunctionBegin;

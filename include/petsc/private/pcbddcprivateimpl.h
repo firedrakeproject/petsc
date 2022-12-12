@@ -1,6 +1,6 @@
 /* prototypes of all BDDC private functions */
-#ifndef PETSC_PCBDDCPRIVATEIMPL_H
-#define PETSC_PCBDDCPRIVATEIMPL_H
+#if !defined(__pcbddc_private_h)
+#define __pcbddc_private_h
 
 #include <petsc/private/pcbddcstructsimpl.h>
 
@@ -101,4 +101,4 @@ PETSC_EXTERN PetscErrorCode PCBDDCSubSchursReset(PCBDDCSubSchurs);
 PETSC_EXTERN PetscErrorCode PCBDDCSubSchursDestroy(PCBDDCSubSchurs *);
 PETSC_EXTERN PetscErrorCode PCBDDCSubSchursSetUp(PCBDDCSubSchurs, Mat, Mat, PetscBool, PetscInt[], PetscInt[], PetscInt, Vec, PetscBool, PetscBool, PetscBool, PetscInt, PetscInt[], IS[], Mat, IS);
 
-#endif // PETSC_PCBDDCPRIVATEIMPL_H
+#endif

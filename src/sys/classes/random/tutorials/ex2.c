@@ -29,8 +29,7 @@ PetscInt       divWork(PetscMPIInt, PetscInt, PetscMPIInt);
      mpiexec -n 4 ./ex2 -num_of_stocks 30 -interest_rate 0.4 -time_interval 0.01 -num_of_simulations 10000
 */
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
   PetscReal     r, dt;
   PetscInt      n;
   unsigned long i, myNumSim, totalNumSim, numdim;
@@ -92,8 +91,7 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-PetscErrorCode stdNormalArray(PetscReal *eps, PetscInt numdim, PetscRandom ran)
-{
+PetscErrorCode stdNormalArray(PetscReal *eps, PetscInt numdim, PetscRandom ran) {
   PetscInt    i;
   PetscScalar u1, u2;
   PetscReal   t;
@@ -110,8 +108,7 @@ PetscErrorCode stdNormalArray(PetscReal *eps, PetscInt numdim, PetscRandom ran)
   PetscFunctionReturn(0);
 }
 
-PetscReal basketPayoff(PetscReal vol[], PetscReal St0[], PetscInt n, PetscReal r, PetscReal dt, PetscReal eps[])
-{
+PetscReal basketPayoff(PetscReal vol[], PetscReal St0[], PetscInt n, PetscReal r, PetscReal dt, PetscReal eps[]) {
   PetscReal Stk[PETSC_MAXBSIZE], temp;
   PetscReal payoff;
   PetscInt  maxk, i, j;
@@ -138,8 +135,7 @@ PetscReal basketPayoff(PetscReal vol[], PetscReal St0[], PetscInt n, PetscReal r
   return payoff;
 }
 
-PetscErrorCode readData(MPI_Comm comm, himaInfo *hinfo)
-{
+PetscErrorCode readData(MPI_Comm comm, himaInfo *hinfo) {
   PetscInt    i;
   FILE       *fd;
   char        temp[50];
@@ -164,8 +160,7 @@ PetscErrorCode readData(MPI_Comm comm, himaInfo *hinfo)
   PetscFunctionReturn(0);
 }
 
-void exchangeVal(PetscReal *a, PetscReal *b)
-{
+void exchangeVal(PetscReal *a, PetscReal *b) {
   PetscReal t;
 
   t  = *a;
@@ -173,13 +168,11 @@ void exchangeVal(PetscReal *a, PetscReal *b)
   *b = t;
 }
 
-PetscReal mcVal(PetscReal St, PetscReal r, PetscReal vol, PetscReal dt, PetscReal eps)
-{
+PetscReal mcVal(PetscReal St, PetscReal r, PetscReal vol, PetscReal dt, PetscReal eps) {
   return (St * PetscExpReal((r - 0.5 * vol * vol) * dt + vol * PetscSqrtReal(dt) * eps));
 }
 
-PetscInt divWork(PetscMPIInt id, PetscInt num, PetscMPIInt size)
-{
+PetscInt divWork(PetscMPIInt id, PetscInt num, PetscMPIInt size) {
   PetscInt numit;
 
   numit = (PetscInt)(((PetscReal)num) / size);

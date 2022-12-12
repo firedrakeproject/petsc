@@ -1,4 +1,4 @@
-#ifndef __KSP_PIPEFCG_H
+#if !defined(__KSP_PIPEFCG_H)
 #define __KSP_PIPEFCG_H
 
 #include <petsc/private/kspimpl.h> /*I "petscksp.h" I*/

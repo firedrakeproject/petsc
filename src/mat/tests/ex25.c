@@ -3,8 +3,7 @@ static char help[] = "Tests MatTranspose()\n\n";
 
 #include <petscmat.h>
 
-int main(int argc, char **args)
-{
+int main(int argc, char **args) {
   Mat         C, A;
   PetscScalar v;
   PetscInt    i, j, m = 4, n = 4, Ii, J, Istart, Iend;

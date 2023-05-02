@@ -331,7 +331,7 @@ PetscErrorCode KSPMonitorRange_Private(KSP ksp, PetscInt it, PetscReal *per)
   This is not called directly by users, rather one calls `KSPMonitorSet()`, with this function as an argument, to cause the monitor
   to be used during the `KSP` solve.
 
- .seealso: [](chapter_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorResidual()`
+.seealso: [](chapter_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorResidual()`
 @*/
 PetscErrorCode KSPMonitorResidualRange(KSP ksp, PetscInt it, PetscReal rnorm, PetscViewerAndFormat *vf)
 {
@@ -1568,7 +1568,7 @@ PetscErrorCode KSPConvergedDefault(KSP ksp, PetscInt n, PetscReal rnorm, KSPConv
     PetscInt       sendbuf, recvbuf;
     PetscCall(PCGetFailedReasonRank(ksp->pc, &pcreason));
     sendbuf = (PetscInt)pcreason;
-    PetscCallMPI(MPI_Allreduce(&sendbuf, &recvbuf, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)ksp)));
+    PetscCall(MPIU_Allreduce(&sendbuf, &recvbuf, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)ksp)));
     if (recvbuf) {
       *reason = KSP_DIVERGED_PC_FAILED;
       PetscCall(PCSetFailedReason(ksp->pc, (PCFailedReason)recvbuf));

@@ -1076,7 +1076,7 @@ PetscErrorCode MatSeqSBAIJSetColumnIndices_SeqSBAIJ(Mat mat, PetscInt *indices)
 
   MUST be called before any calls to `MatSetValues()`
 
- .seealso: [](chapter_matrices), `Mat`, `MATSEQSBAIJ`, `MatCreateSeqSBAIJ`
+.seealso: [](chapter_matrices), `Mat`, `MATSEQSBAIJ`, `MatCreateSeqSBAIJ`
 @*/
 PetscErrorCode MatSeqSBAIJSetColumnIndices(Mat mat, PetscInt *indices)
 {
@@ -1821,7 +1821,11 @@ PETSC_INTERN PetscErrorCode MatGetFactor_seqsbaij_petsc(Mat A, MatFactorType fty
 
   PetscFunctionBegin;
 #if defined(PETSC_USE_COMPLEX)
-  PetscCheck(A->hermitian != PETSC_BOOL3_TRUE || A->symmetric == PETSC_BOOL3_TRUE || (ftype != MAT_FACTOR_CHOLESKY && ftype != MAT_FACTOR_ICC), PETSC_COMM_SELF, PETSC_ERR_SUP, "Hermitian CHOLESKY or ICC Factor is not supported");
+  if ((ftype == MAT_FACTOR_CHOLESKY || ftype == MAT_FACTOR_ICC) && A->hermitian == PETSC_BOOL3_TRUE && A->symmetric != PETSC_BOOL3_TRUE) {
+    PetscCall(PetscInfo(A, "Hermitian MAT_FACTOR_CHOLESKY or MAT_FACTOR_ICC are not supported. Use MAT_FACTOR_LU instead.\n"));
+    *B = NULL;
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
 #endif
 
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), B));
@@ -1905,7 +1909,7 @@ PetscErrorCode MatSeqSBAIJRestoreArray(Mat A, PetscScalar **array)
 
     The number of rows in the matrix must be less than or equal to the number of columns
 
-  .seealso: [](chapter_matrices), `Mat`, `MATSEQSBAIJ`, `MatCreateSeqSBAIJ()`, `MatType`, `MATMPISBAIJ`
+.seealso: [](chapter_matrices), `Mat`, `MATSEQSBAIJ`, `MatCreateSeqSBAIJ()`, `MatType`, `MATMPISBAIJ`
 M*/
 PETSC_EXTERN PetscErrorCode MatCreate_SeqSBAIJ(Mat B)
 {

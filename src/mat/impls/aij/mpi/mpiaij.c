@@ -2641,8 +2641,11 @@ PetscErrorCode MatMPIAIJGetNumberNonzeros(Mat A, PetscCount *nz)
 {
   Mat_MPIAIJ *maij = (Mat_MPIAIJ *)A->data;
   Mat_SeqAIJ *aaij = (Mat_SeqAIJ *)maij->A->data, *baij = (Mat_SeqAIJ *)maij->B->data;
+  PetscBool   isaij;
 
   PetscFunctionBegin;
+  PetscCall(PetscObjectBaseTypeCompare((PetscObject)A, MATMPIAIJ, &isaij));
+  PetscCheck(isaij, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Not for type %s", ((PetscObject)A)->type_name);
   *nz = aaij->i[A->rmap->n] + baij->i[A->rmap->n];
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -5115,7 +5118,7 @@ PetscErrorCode MatCreateMPIAIJSumSeqAIJSymbolic(MPI_Comm comm, Mat seqmat, Petsc
      The input seqmat is included into the container "Mat_Merge_SeqsToMPI", and will be
      destroyed when mpimat is destroyed. Call `PetscObjectQuery()` to access seqmat.
 
-seealso: [](chapter_matrices), `Mat`, `MatCreateAIJ()`
+.seealso: [](chapter_matrices), `Mat`, `MatCreateAIJ()`
 @*/
 PetscErrorCode MatCreateMPIAIJSumSeqAIJ(MPI_Comm comm, Mat seqmat, PetscInt m, PetscInt n, MatReuse scall, Mat *mpimat)
 {

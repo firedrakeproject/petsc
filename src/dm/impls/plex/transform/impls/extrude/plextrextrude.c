@@ -104,7 +104,7 @@ static PetscErrorCode DMPlexTransformExtrudeComputeExtrusionDim(DMPlexTransform 
     PetscCall(ISRestoreIndices(valueIS, &values));
     PetscCall(ISDestroy(&valueIS));
   } else dimExtPoint = dim;
-  PetscCallMPI(MPI_Allreduce(&dimExtPoint, &dimExtPointG, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)tr)));
+  PetscCall(MPIU_Allreduce(&dimExtPoint, &dimExtPointG, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)tr)));
   ex->dimEx  = PetscMax(dim, dimExtPointG + 1);
   ex->cdimEx = ex->cdim == dimExtPointG ? ex->cdim + 1 : ex->cdim;
   PetscCheck(ex->dimEx <= 3, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Topological dimension for extruded mesh %" PetscInt_FMT " must not exceed 3", ex->dimEx);
@@ -588,7 +588,7 @@ static PetscErrorCode DMPlexTransformMapCoordinates_Extrude(DMPlexTransform tr, 
     PetscInt *closure = NULL;
     PetscInt  closureSize, cl;
 
-    PetscCall(DMPlexGetSimplexOrBoxCells(dm, 0, &cStart, &cEnd));
+    PetscCall(DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd));
     PetscCall(DMPlexGetTransitiveClosure(dm, p, PETSC_FALSE, &closureSize, &closure));
     for (cl = 0; cl < closureSize * 2; cl += 2) {
       if ((closure[cl] >= cStart) && (closure[cl] < cEnd)) {

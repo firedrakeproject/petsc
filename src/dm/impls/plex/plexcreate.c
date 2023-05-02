@@ -7,7 +7,7 @@
 #include <petsc/private/kernels/blockmatmult.h>
 #include <petsc/private/kernels/blockinvert.h>
 
-PetscLogEvent DMPLEX_CreateFromFile, DMPLEX_BuildFromCellList, DMPLEX_BuildCoordinatesFromCellList;
+PetscLogEvent DMPLEX_CreateFromFile, DMPLEX_CreateFromOptions, DMPLEX_BuildFromCellList, DMPLEX_BuildCoordinatesFromCellList;
 
 /* External function declarations here */
 static PetscErrorCode DMInitialize_Plex(DM dm);
@@ -220,7 +220,7 @@ PetscErrorCode DMPlexCreateCoordinateSpace(DM dm, PetscInt degree, PetscPointFun
       if (cEnd > cStart) PetscCall(DMPlexGetCellType(dm, cStart, &ct));
       else ct = DM_POLYTOPE_UNKNOWN;
       ctTmp = (PetscInt)ct;
-      PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, &ctTmp, 1, MPIU_INT, MPI_MIN, PetscObjectComm((PetscObject)dm)));
+      PetscCall(MPIU_Allreduce(MPI_IN_PLACE, &ctTmp, 1, MPIU_INT, MPI_MIN, PetscObjectComm((PetscObject)dm)));
       ct = (DMPolytopeType)ctTmp;
       // Work around current bug
       if (ct == DM_POLYTOPE_SEG_PRISM_TENSOR || ct == DM_POLYTOPE_TRI_PRISM_TENSOR || ct == DM_POLYTOPE_QUAD_PRISM_TENSOR) fe = NULL;
@@ -1678,7 +1678,7 @@ static PetscErrorCode DMPlexCreateHypercubicMesh_Internal(DM dm, PetscInt dim, c
  18--0-19--2-20--4-18
 .ve
 
-.seealso: DMSetFromOptions(), DMPlexCreateFromFile(), DMPlexCreateHexCylinderMesh(), DMSetType(), DMCreate()
+.seealso: `DMSetFromOptions()`, `DMPlexCreateFromFile()`, `DMPlexCreateHexCylinderMesh()`, `DMSetType()`, `DMCreate()`
 @*/
 PetscErrorCode DMPlexCreateHypercubicMesh(MPI_Comm comm, PetscInt dim, const PetscInt edges[], const PetscReal lower[], const PetscReal upper[], DM *dm)
 {
@@ -3832,6 +3832,7 @@ static PetscErrorCode DMPlexCreateFromOptions_Internal(PetscOptionItems *PetscOp
   char           plexname[PETSC_MAX_PATH_LEN]   = "";
 
   PetscFunctionBegin;
+  PetscCall(PetscLogEventBegin(DMPLEX_CreateFromOptions, dm, 0, 0, 0));
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   /* TODO Turn this into a registration interface */
   PetscCall(PetscOptionsString("-dm_plex_filename", "File containing a mesh", "DMPlexCreateFromFile", filename, filename, sizeof(filename), &fflg));
@@ -4044,6 +4045,7 @@ static PetscErrorCode DMPlexCreateFromOptions_Internal(PetscOptionItems *PetscOp
   }
   PetscCall(DMPlexSetRefinementUniform(dm, PETSC_TRUE));
   if (!((PetscObject)dm)->name && nameflg) PetscCall(PetscObjectSetName((PetscObject)dm, plexname));
+  PetscCall(PetscLogEventEnd(DMPLEX_CreateFromOptions, dm, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -4734,7 +4736,7 @@ PetscErrorCode DMPlexBuildFromCellListParallel(DM dm, PetscInt numCells, PetscIn
     for (i = 0; i < len; i++)
       if (cells[i] > NVerticesInCells) NVerticesInCells = cells[i];
     ++NVerticesInCells;
-    PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, &NVerticesInCells, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)dm)));
+    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, &NVerticesInCells, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)dm)));
 
     if (numVertices == PETSC_DECIDE && NVertices == PETSC_DECIDE) NVertices = NVerticesInCells;
     else

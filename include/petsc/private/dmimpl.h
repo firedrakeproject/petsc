@@ -24,7 +24,7 @@ typedef struct _PetscHashAuxKey {
 
 #define PetscHashAuxKeyEqual(k1, k2) (((k1).label == (k2).label) ? (((k1).value == (k2).value) ? ((k1).part == (k2).part) : 0) : 0)
 
-PETSC_HASH_MAP(HMapAux, PetscHashAuxKey, Vec, PetscHashAuxKeyHash, PetscHashAuxKeyEqual, NULL)
+PETSC_HASH_MAP(HMapAux, PetscHashAuxKey, Vec, PetscHashAuxKeyHash, PetscHashAuxKeyEqual, PETSC_NULLPTR)
 
 struct _n_DMGeneratorFunctionList {
   PetscErrorCode (*generate)(DM, PetscBool, DM *);
@@ -336,6 +336,7 @@ PETSC_EXTERN PetscLogEvent DM_CreateMatrix;
 PETSC_EXTERN PetscLogEvent DM_CreateMassMatrix;
 PETSC_EXTERN PetscLogEvent DM_Load;
 PETSC_EXTERN PetscLogEvent DM_AdaptInterpolator;
+PETSC_EXTERN PetscLogEvent DM_ProjectFunction;
 
 PETSC_EXTERN PetscErrorCode DMCreateGlobalVector_Section_Private(DM, Vec *);
 PETSC_EXTERN PetscErrorCode DMCreateLocalVector_Section_Private(DM, Vec *);

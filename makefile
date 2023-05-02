@@ -50,6 +50,9 @@ all:
              printf ${PETSC_TEXT_HILIGHT}"**************************ERROR*************************************\n" 2>&1 | tee -a ${PETSC_ARCH}/lib/petsc/conf/make.log; \
              echo "  Error during compile, check ${PETSC_ARCH}/lib/petsc/conf/make.log" 2>&1 | tee -a ${PETSC_ARCH}/lib/petsc/conf/make.log; \
              echo "  Send it and ${PETSC_ARCH}/lib/petsc/conf/configure.log to petsc-maint@mcs.anl.gov" 2>&1 | tee -a ${PETSC_ARCH}/lib/petsc/conf/make.log;\
+             if [ "X${CONDA_ACTIVE}" != "X" ]; then \
+               echo "  Having Conda in your shell may have caused this problem, consider turning off Conda." 2>&1 | tee -a ${PETSC_ARCH}/lib/petsc/conf/make.log;\
+             fi ; \
              printf "********************************************************************"${PETSC_TEXT_NORMAL}"\n" 2>&1 | tee -a ${PETSC_ARCH}/lib/petsc/conf/make.log;\
            fi \
 	 else \
@@ -559,7 +562,7 @@ manimplementations:
             sed "s?\(.*\.[ch]x*u*\).*\($${itemName}.*\)(.*)?<A HREF=\"PETSC_DOC_OUT_ROOT_PLACEHOLDER/\1.html#\2\">\2 in \1</A><BR>?" implsFunc.txt >> $$i ; \
           fi ; \
           if [ -s implsClass.txt ] ; then \
-            sed "s?\(.*\.[ch]x*u*\):.*\(_p_$${itemName}\)\b.*{?<A HREF=\"PETSC_DOC_OUT_ROOT_PLACEHOLDER/\1.html#\2\">\2 in \1</A><BR>?" implsClass.txt >> $$i ; \
+            sed "s?\(.*\.[ch]x*u*\):.*struct.*\(_p_$${itemName}\).*{?<A HREF=\"PETSC_DOC_OUT_ROOT_PLACEHOLDER/\1.html#\2\">\2 in \1</A><BR>?" implsClass.txt >> $$i ; \
           fi ; \
           ${RM} implsFunc.txt implsClass.txt; \
        fi ; \

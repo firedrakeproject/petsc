@@ -22,7 +22,7 @@ FILE *PETSC_STDOUT = NULL;
 FILE *PETSC_STDERR = NULL;
 
 /*@C
-     PetscFormatConvertGetSize - Gets the length of a string needed to hold format converted with `PetscFormatConvert()`
+     PetscFormatConvertGetSize - Gets the length of a string needed to hold data converted with `PetscFormatConvert()` based on format
 
    No Fortran Support
 
@@ -277,14 +277,11 @@ PetscErrorCode PetscVSNPrintf(char *str, size_t len, const char *format, size_t 
 @*/
 PetscErrorCode PetscFFlush(FILE *fd)
 {
-  int ret;
-
   PetscFunctionBegin;
   if (fd) PetscValidPointer(fd, 1);
-  ret = fflush(fd);
   // could also use PetscCallExternal() here, but since we can get additional error explanation
   // from strerror() we opted for a manual check
-  PetscCheck(ret == 0, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE, "Error in fflush(): error code %d (%s)", ret, strerror(errno));
+  PetscCheck(0 == fflush(fd), PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE, "Error in fflush() due to \"%s\"", strerror(errno));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -418,8 +415,6 @@ PetscErrorCode PetscSNPrintfCount(char *str, size_t len, const char format[], si
   va_end(Argp);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* ----------------------------------------------------------------------- */
 
 PrintfQueue petsc_printfqueue = NULL, petsc_printfqueuebase = NULL;
 int         petsc_printfqueuelength = 0;
@@ -621,8 +616,6 @@ PetscErrorCode PetscSynchronizedFlush(MPI_Comm comm, FILE *fd)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------------------------------------*/
-
 /*@C
     PetscFPrintf - Prints to a file, only from the first
     processor in the communicator.
@@ -662,7 +655,7 @@ PetscErrorCode PetscFPrintf(MPI_Comm comm, FILE *fd, const char format[], ...)
 
     Input Parameters:
 +   comm - the communicator
--   format - the usual printf() format string
+-   format - the usual `printf()` format string
 
     Level: intermediate
 
@@ -698,8 +691,6 @@ PetscErrorCode PetscHelpPrintfDefault(MPI_Comm comm, const char format[], ...)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------------------------------------*/
-
 /*@C
     PetscSynchronizedFGets - Several processors all get the same line from a file.
 
@@ -727,7 +718,7 @@ PetscErrorCode PetscSynchronizedFGets(MPI_Comm comm, FILE *fp, size_t len, char 
   if (rank != 0) PetscFunctionReturn(PETSC_SUCCESS);
   if (!fgets(string, len, fp)) {
     string[0] = 0;
-    PetscCheck(feof(fp), PETSC_COMM_SELF, PETSC_ERR_FILE_READ, "Error reading from file: %d", errno);
+    PetscCheck(feof(fp), PETSC_COMM_SELF, PETSC_ERR_FILE_READ, "Error reading from file due to \"%s\"", strerror(errno));
   }
   PetscCallMPI(MPI_Bcast(string, len, MPI_BYTE, 0, comm));
   PetscFunctionReturn(PETSC_SUCCESS);

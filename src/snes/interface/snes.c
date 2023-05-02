@@ -452,7 +452,7 @@ PetscErrorCode SNESView(SNES snes, PetscViewer viewer)
       } else {
         PetscCall(PetscViewerASCIIPrintf(viewer, "  %sJacobian is built using a DMDA local Jacobian\n", pre));
       }
-    } else if (snes->mf) {
+    } else if (snes->mf && !snes->mf_operator) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "  Jacobian is applied matrix-free with differencing, no explicit Jacobian\n"));
     }
   } else if (isstring) {
@@ -2545,13 +2545,10 @@ PetscErrorCode SNESTestJacobian(SNES snes)
   PetscObjectOptionsBegin((PetscObject)snes);
   PetscCall(PetscOptionsName("-snes_test_jacobian", "Compare hand-coded and finite difference Jacobians", "None", &test));
   PetscCall(PetscOptionsReal("-snes_test_jacobian", "Threshold for element difference between hand-coded and finite difference being meaningful", "None", threshold, &threshold, NULL));
+  PetscCall(PetscOptionsDeprecated("-snes_test_jacobian_display", "-snes_test_jacobian_view", "3.13", NULL));
   PetscCall(PetscOptionsViewer("-snes_test_jacobian_view", "View difference between hand-coded and finite difference Jacobians element entries", "None", &mviewer, &format, &complete_print));
-  if (!complete_print) {
-    PetscCall(PetscOptionsDeprecated("-snes_test_jacobian_display", "-snes_test_jacobian_view", "3.13", NULL));
-    PetscCall(PetscOptionsViewer("-snes_test_jacobian_display", "Display difference between hand-coded and finite difference Jacobians", "None", &mviewer, &format, &complete_print));
-  }
-  /* for compatibility with PETSc 3.9 and older. */
   PetscCall(PetscOptionsDeprecated("-snes_test_jacobian_display_threshold", "-snes_test_jacobian", "3.13", "-snes_test_jacobian accepts an optional threshold (since v3.10)"));
+  /* Cannot remove the what otherwise would be redundant call to (PetscOptionsReal("-snes_test_jacobian_display_threshold") below because its usage is different than the replacement usage */
   PetscCall(PetscOptionsReal("-snes_test_jacobian_display_threshold", "Display difference between hand-coded and finite difference Jacobians which exceed input threshold", "None", threshold, &threshold, &threshold_print));
   PetscOptionsEnd();
   if (!test) PetscFunctionReturn(PETSC_SUCCESS);

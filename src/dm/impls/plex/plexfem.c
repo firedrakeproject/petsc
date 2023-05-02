@@ -3574,11 +3574,11 @@ PetscErrorCode DMPlexGetHybridCellFields(DM dm, IS cellIS, Vec locX, Vec locX_t,
 . x       - An array of field values, indexed by s
 
   Note:
-  The arrays in x will be allocated using DMGetWorkArray(), and must be returned using DMPlexRestoreHybridFields().
+  The arrays in `x` will be allocated using `DMGetWorkArray()`, and must be returned using `DMPlexRestoreHybridFields()`.
 
   Level: advanced
 
-.seealso: DMPlexRestoreHybridFields(), DMGetWorkArray()
+.seealso: `DMPlexRestoreHybridFields()`, `DMGetWorkArray()`
 */
 static PetscErrorCode DMPlexGetHybridFields(DM dm, DM dmX[], PetscDS dsX[], IS cellIS, Vec locX[], PetscBool useCell, PetscScalar *x[])
 {
@@ -5712,7 +5712,7 @@ PetscErrorCode DMPlexComputeJacobian_Internal(DM dm, PetscFormKey key, IS cellIS
 end : {
   PetscBool assOp = hasJac && hasPrec ? PETSC_TRUE : PETSC_FALSE, gassOp;
 
-  PetscCallMPI(MPI_Allreduce(&assOp, &gassOp, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
+  PetscCall(MPIU_Allreduce(&assOp, &gassOp, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
   if (hasJac && hasPrec) {
     PetscCall(MatAssemblyBegin(Jac, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(Jac, MAT_FINAL_ASSEMBLY));

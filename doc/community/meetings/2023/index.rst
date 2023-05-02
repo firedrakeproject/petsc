@@ -15,7 +15,7 @@ Easy access from the hotels via the Chicago Elevated `Green <https://www.transit
 Please test for Covid before attending the meeting and
 mask while traveling to the meeting.
 
-In addition to a newbie user tutorial and newbie developer workshop the meeting will include a "speed dating" session where users can ask questions of developers (and each other) about technical details of their particular simulations. Finally the meeting will be interspersed with short mini tutorials that will dive down into particular aspects of PETSc that users may not be familiar with.
+In addition to a newbie user tutorial and a :any:`newbie_developer_workshop`, the meeting will include a "speed dating" session where users can ask questions of developers (and each other) about technical details of their particular simulations. Finally the meeting will be interspersed with short mini tutorials that will dive down into particular aspects of PETSc that users may not be familiar with.
 
 Meeting times
 -------------
@@ -27,18 +27,24 @@ PETSc newbie user lightning tutorial:
 
 * Monday June 5: 10 am to 12 pm
 
-PETSc newbie developer workshop:
+PETSc :any:`newbie_developer_workshop`
 
 * Tuesday June 6: 9 am to 10 am
 
 
 Registration
 ------------
-Please register at `EventBrite <https://www.eventbrite.com/e/petsc-2023-user-meeting-tickets-494165441137>`__ to save your seat. 100 dollar registration fee for breaks and lunchs; this can be skipped if you cannot afford it.
+Please register at `EventBrite <https://www.eventbrite.com/e/petsc-2023-user-meeting-tickets-494165441137>`__ to save your seat. 100 dollar registration fee for breaks and lunches; this can be skipped if you cannot afford it.
 
 Submit a presentation
 ---------------------
-`Submit an abstract  <https://docs.google.com/forms/d/e/1FAIpQLSesh47RGVb9YD9F1qu4obXSe1X6fn7vVmjewllePBDxBItfOw/viewform>`__ by May 1st (but preferably now) to be included in the schedule.
+`Submit an abstract  <https://docs.google.com/forms/d/e/1FAIpQLSesh47RGVb9YD9F1qu4obXSe1X6fn7vVmjewllePBDxBItfOw/viewform>`__ by May 1st (but preferably now) to be included in the schedule.  We welcome talks from all perspectives, including those who
+
+* contribute to PETSc,
+* use PETSc in their applications or libraries,
+* develop the libraries and packages `called from PETSc <https://petsc.org/release/install/external_software/>`, and even
+* those who are curious about using PETSc in their applications (see the special "Potential User Group" of talks on Monday afternoon in the schedule below).
+
 
 Suggested hotels
 ----------------
@@ -95,7 +101,7 @@ Sample Detailed Agenda
 +------------+------------+-----------+------------------------------------------------+--------------+
 | Tuesday    |            |                                                            |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
-|            | 9 am       | Newbie developer workshop (optional)                       |              |
+|            | 9 am       | Newbie Developer Workshop (optional)                       |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
 |            | 10         | Break                                                      |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
@@ -117,11 +123,11 @@ Sample Detailed Agenda
 +------------+------------+-----------+------------------------------------------------+--------------+
 |            | 2:30       | Break                                                      |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
-|            | 3          | Presentation                                               |              |
+|            | 3          | Presentation (Potential User Group)                        |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
-|            | 3:30       | Presentation                                               |              |
+|            | 3:30       | Presentation (Potential User Group)                        |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
-|            | 4          | Presentation                                               |              |
+|            | 4          | Presentation (Potential User Group)                        |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
 |            | 4:30       | Mini tutorial                                              |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
@@ -156,3 +162,33 @@ Sample Detailed Agenda
 |            | 3          | End of meeting                                             |              |
 +------------+------------+-----------+------------------------------------------------+--------------+
 
+.. _newbie_developer_workshop:
+
+Newbie Developer Workshop
+-------------------------
+
+Tuesday June 6, at 9 am. Some of the topics to be covered.
+
+* Exploring the developer documentation https://petsc.org/main/developers
+
+* Preparing a contribution, PETSc style and git commit organization,
+
+  * for source code
+
+  * for documentation
+
+* Submitting and monitoring a merge request (MR)
+
+* Reviewing some one elses MR
+
+* Adding new Fortran and Python function bindings
+
+* PETSc's
+
+  * configure system
+
+  * compiler system, and
+
+  * testing system including the GitLab CI
+
+* Any other topics requested by potential contributors

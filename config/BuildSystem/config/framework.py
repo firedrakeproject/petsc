@@ -195,7 +195,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     '''Change titles and setup all children'''
     argDB = script.Script.setupArguments(self, argDB)
 
-    self.help.title = 'Configure Help\n   Comma separated lists should be given between [] (use \\[ \\] in tcsh/csh)\n      For example: --with-mpi-lib=\\[/usr/local/lib/libmpich.a,/usr/local/lib/libpmpich.a\\]\n   Options beginning with --known- are to provide values you already know\n    Options beginning with --with- indicate that you are requesting something\n      For example: --with-clanguage=c++\n   <prog> means a program name or a full path to a program\n      For example:--with-cmake=/Users/bsmith/bin/cmake\n   <bool> means a boolean, use either 0 or 1\n   <dir> means a directory\n      For example: --with-packages-download-dir=/Users/bsmith/Downloads\n   For packages use --with-PACKAGE-dir=<dir> OR\n      --with-PACKAGE-include=<dir> --with-PACKAGE-lib=<lib> OR --download-PACKAGE'
+    self.help.title = 'Configure Help\n   Comma separated lists should be given between [] (use \\[ \\] in tcsh/csh)\n      For example: --with-mpi-lib=\\[/usr/local/lib/libmpich.a,/usr/local/lib/libpmpich.a\\]\n   Options beginning with --known- are to provide values you already know\n    Options beginning with --with- indicate that you are requesting something\n      For example: --with-clanguage=c++\n   <prog> means a program name or a full path to a program\n      For example:--with-cmake-exec=/Users/bsmith/bin/cmake\n   <bool> means a boolean, use either 0 or 1\n   <dir> means a directory\n      For example: --with-packages-download-dir=/Users/bsmith/Downloads\n   For packages use --with-PACKAGE-dir=<dir> OR\n      --with-PACKAGE-include=<dir> --with-PACKAGE-lib=<lib> OR --download-PACKAGE'
     self.actions.title = 'Configure Actions\n   These are the actions performed by configure on the filesystem'
 
     for child in self.childGraph.vertices:
@@ -203,6 +203,10 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     return argDB
 
   def outputBasics(self):
+    if 'CONDA_PREFIX' in os.environ and os.environ['CONDA_PREFIX'] is not None:
+      self.conda_active = True
+      self.addMakeMacro('CONDA_ACTIVE',1)
+
     buf = 'Environmental variables'
     for key,val in os.environ.items():
       buf += '\n'+str(key)+'='+str(val)
@@ -1321,20 +1325,21 @@ class Framework(config.base.Configure, script.LanguageProcessor):
       return moduleList[0]
 
     def checkChildCxxDialectBounds(child,minCxx,maxCxx):
-      if child.minCxxVersion > minCxx:
+      def assign_blame(key, blame_list, name):
+        if key not in blame_list:
+          blame_list[key] = set()
+        blame_list[key].add(name)
+        return
+
+      child_name = child.name
+      if child.minCxxVersion > minCxx or 'Cxx' in child.buildLanguages:
         minCxx = child.minCxxVersion
-        self.logPrint('serialEvaluation: child {child} raised minimum cxx dialect version to {minver}'.format(child=child.name,minver=minCxx))
-        try:
-          minCxxVersionBlameList[minCxx].add([child.name])
-        except KeyError:
-          minCxxVersionBlameList[minCxx] = set([child.name])
+        self.logPrint('serialEvaluation: child {child} raised minimum cxx dialect version to {minver}'.format(child=child_name,minver=minCxx))
+        assign_blame(minCxx, minCxxVersionBlameList, child_name)
       if child.maxCxxVersion < maxCxx:
         maxCxx = child.maxCxxVersion
-        self.logPrint('serialEvaluation: child {child} decreased maximum cxx dialect version to {maxver}'.format(child=child.name,maxver=maxCxx))
-        try:
-          maxCxxVersionBlameList[maxCxx].add([child.name])
-        except KeyError:
-          maxCxxVersionBlameList[maxCxx] = set([child.name])
+        self.logPrint('serialEvaluation: child {child} decreased maximum cxx dialect version to {maxver}'.format(child=child_name,maxver=maxCxx))
+        assign_blame(maxCxx, maxCxxVersionBlameList, child_name)
       return minCxx,maxCxx
 
     ndepGraph     = list(graph.DirectedGraph.topologicalSort(depGraph))
@@ -1388,7 +1393,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
       loPack = ', '.join(minCxxVersionBlameList[minCxx])
       # high water mark
       hiPack = ', '.join(maxCxxVersionBlameList[maxCxx])
-      raise RuntimeError('Requested package(s) have incompatible C++ requirements. Package(s) {loPacks} require at least {mincxx} but package(s) {hiPack} require at most {maxcxx}'.format(loPack=loPack,mincxx=minCxx,hiPack=hiPack,maxcxx=maxCxx))
+      raise RuntimeError('Requested package(s) have incompatible C++ requirements. Package(s) {loPack} require at least {mincxx} but package(s) {hiPack} require at most {maxcxx}'.format(loPack=loPack,mincxx=minCxx,hiPack=hiPack,maxcxx=maxCxx))
     setCompilers.cxxDialectPackageRanges = (minCxxVersionBlameList,maxCxxVersionBlameList)
     self.logPrint('serialEvaluation: new cxxDialectRanges {rng}'.format(rng=(minCxx,maxCxx)))
     depGraph  = graph.DirectedGraph.topologicalSort(depGraph)

@@ -187,7 +187,7 @@ PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *user, DM *dm)
       PetscCall(DMGetPointSF(distributedMesh, &sf));
       PetscCall(PetscSFSetUp(sf));
       PetscCall(DMGetNeighbors(distributedMesh, &nranks, NULL));
-      PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, &nranks, 1, MPIU_INT, MPI_MIN, PetscObjectComm((PetscObject)*dm)));
+      PetscCall(MPIU_Allreduce(MPI_IN_PLACE, &nranks, 1, MPIU_INT, MPI_MIN, PetscObjectComm((PetscObject)*dm)));
       PetscCall(PetscViewerASCIIPrintf(PETSC_VIEWER_STDOUT_(PetscObjectComm((PetscObject)*dm)), "Minimum number of neighbors: %" PetscInt_FMT "\n", nranks));
       PetscCall(DMDestroy(dm));
       *dm = distributedMesh;
@@ -401,7 +401,11 @@ int main(int argc, char **argv)
     test:
       suffix: exo_4
       requires: exodusii
-     args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/simpleblock-100.exo
+      args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/simpleblock-100.exo
+    test:
+      suffix: exo_1d_0
+      requires: exodusii
+      args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/1d-2elems.e
 
   # Gmsh mesh reader tests
   testset:

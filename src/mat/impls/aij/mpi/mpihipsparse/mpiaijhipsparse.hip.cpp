@@ -218,7 +218,7 @@ static PetscErrorCode MatSetPreallocationCOO_MPIAIJHIPSPARSE(Mat mat, PetscCount
     }
   }
   /* All ranks must agree on the value of coo_basic */
-  PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, &coo_basic, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
+  PetscCall(MPIU_Allreduce(MPI_IN_PLACE, &coo_basic, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
   if (coo_basic) {
     PetscCall(MatSetPreallocationCOO_MPIAIJHIPSPARSE_Basic(mat, coo_n, coo_i, coo_j));
   } else {
@@ -738,7 +738,7 @@ PetscErrorCode MatCreateAIJHIPSPARSE(MPI_Comm comm, PetscInt m, PetscInt n, Pets
 
   Level: beginner
 
- .seealso: [](chapter_matrices), `Mat`, `MatCreateAIJHIPSPARSE()`, `MATSEQAIJHIPSPARSE`, `MATMPIAIJHIPSPARSE`, `MatCreateSeqAIJHIPSPARSE()`, `MatHIPSPARSESetFormat()`, `MatHIPSPARSEStorageFormat`, `MatHIPSPARSEFormatOperation`
+.seealso: [](chapter_matrices), `Mat`, `MatCreateAIJHIPSPARSE()`, `MATSEQAIJHIPSPARSE`, `MATMPIAIJHIPSPARSE`, `MatCreateSeqAIJHIPSPARSE()`, `MatHIPSPARSESetFormat()`, `MatHIPSPARSEStorageFormat`, `MatHIPSPARSEFormatOperation`
 M*/
 
 /*MC
@@ -746,7 +746,7 @@ M*/
 
   Level: beginner
 
- .seealso: [](chapter_matrices), `Mat`, `MATAIJHIPSPARSE`, `MATSEQAIJHIPSPARSE`
+.seealso: [](chapter_matrices), `Mat`, `MATAIJHIPSPARSE`, `MATSEQAIJHIPSPARSE`
 M*/
 
 // get GPU pointers to stripped down Mat. For both seq and MPI Mat.

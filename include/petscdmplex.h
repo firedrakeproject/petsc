@@ -259,6 +259,7 @@ PETSC_EXTERN PetscErrorCode DMPlexSetMigrationSF(DM, PetscSF);
 PETSC_EXTERN PetscErrorCode DMPlexGetMigrationSF(DM, PetscSF *);
 PETSC_EXTERN PetscErrorCode DMPlexDistributionSetName(DM, const char[]);
 PETSC_EXTERN PetscErrorCode DMPlexDistributionGetName(DM, const char *[]);
+PETSC_EXTERN PetscErrorCode DMPlexMarkInteriorExteriorFacets(DM, PetscInt, PetscInt, DMLabel, DMLabel);
 
 /*E
    DMPlexReorderDefaultFlag - Flag indicating whether the `DMPLEX` should be reordered by default

@@ -2342,3 +2342,139 @@ PetscErrorCode DMPlexDistributionGetName(DM dm, const char *name[])
   *name = mesh->distributionName;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+/*@C
+  DMPlexMarkInteriorExteriorFacets - Mark interior facets and exterior facets
+
+  Collective
+
+  Input Parameters:
++ dm - The `DM`
+. value_int - The marker value for the interior facets
+- value_ext - The marker value for the exterior facets
+
+  Output Parameter:
++ label_int - The `DMLabel` marking interior facets with the given value, or NULL if not needed
+- label_ext - The `DMLabel` marking exterior facets with the given value, or NULL if not needed
+
+  Level: developer
+
+.seealso: [](chapter_unstructured), `DM`, `DMPLEX`, `DMLabelCreate()`, `DMCreateLabel()`, `DMPlexMarkBoundaryFaces()`
+@*/
+PetscErrorCode DMPlexMarkInteriorExteriorFacets(DM dm, PetscInt value_int, PetscInt value_ext, DMLabel label_int, DMLabel label_ext)
+{
+  PetscInt               fStart, fEnd, f, supportSize;
+  PetscMPIInt            size, rank;
+  DMPlexInterpolatedFlag flg;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
+  PetscCall(DMPlexIsInterpolated(dm, &flg));
+  PetscCheck(flg == DMPLEX_INTERPOLATED_FULL, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "DM is not fully interpolated on this rank");
+  PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)dm), &size));
+  PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)dm), &rank));
+  PetscCall(DMPlexGetHeightStratum(dm, 1, &fStart, &fEnd));
+  if (size == 1) {
+    if (label_int) {
+      for (f = fStart; f < fEnd; ++f) {
+        PetscCall(DMPlexGetSupportSize(dm, f, &supportSize));
+        if (supportSize == 2) { PetscCall(DMLabelSetValue(label_int, f, value_int)); }
+      }
+    }
+    if (label_ext) {
+      for (f = fStart; f < fEnd; ++f) {
+        PetscCall(DMPlexGetSupportSize(dm, f, &supportSize));
+        if (supportSize == 1) { PetscCall(DMLabelSetValue(label_ext, f, value_ext)); }
+      }
+    }
+  } else {
+    PetscInt           pStart, pEnd, p, cStart, cEnd, c;
+    PetscSF            pointSF;
+    PetscInt           nroots, nleaves, i;
+    const PetscInt    *ilocal;
+    const PetscSFNode *iremote;
+    PetscInt          *leafBuffer, *rootBuffer, *maxSuppRanks, *minSuppRanks, *cellOwners;
+    const PetscInt    *support = NULL;
+
+    /* A facet is an interior facet in the following two cases:                     */
+    /* 1. The support is of size 2 on at least one rank.                            */
+    /* 2. The support is of size 1 on all ranks on which this facet is visible, but */
+    /*    this facet is on a partition boundary. This happens only when we use      */
+    /*    the simplest adjacency rule.                                              */
+    PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
+    PetscCall(DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd));
+    PetscCall(DMGetPointSF(dm, &pointSF));
+    PetscCall(PetscSFGetGraph(pointSF, &nroots, &nleaves, &ilocal, &iremote));
+    PetscCall(PetscMalloc5(pEnd - pStart, &leafBuffer, pEnd - pStart, &rootBuffer, fEnd - fStart, &maxSuppRanks, fEnd - fStart, &minSuppRanks, cEnd - cStart, &cellOwners));
+    leafBuffer -= pStart;
+    rootBuffer -= pStart;
+    for (p = pStart; p < pEnd; ++p) {
+      leafBuffer[p] = -1;
+      rootBuffer[p] = -1;
+    }
+    /* Handle Case 2 first */
+    for (c = cStart; c < cEnd; ++c) { cellOwners[c - cStart] = (PetscInt)rank; }
+    for (i = 0; i < nleaves; ++i) {
+      c = ilocal ? ilocal[i] : i;
+      if (c >= cStart && c < cEnd) { cellOwners[c - cStart] = iremote[i].rank; }
+    }
+    for (f = fStart; f < fEnd; ++f) {
+      PetscCall(DMPlexGetSupportSize(dm, f, &supportSize));
+      if (supportSize == 1) {
+        PetscCall(DMPlexGetSupport(dm, f, &support));
+        leafBuffer[f] = cellOwners[support[0] - cStart];
+      } else {
+        /* Will identify this facet as interior later */
+        PetscCheck(supportSize == 2, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid facet support size (%" PetscInt_FMT ")", supportSize);
+      }
+    }
+    for (f = fStart; f < fEnd; ++f) { rootBuffer[f] = leafBuffer[f]; }
+    PetscCall(PetscSFReduceBegin(pointSF, MPIU_INT, leafBuffer, rootBuffer, MPI_MAX));
+    PetscCall(PetscSFReduceEnd(pointSF, MPIU_INT, leafBuffer, rootBuffer, MPI_MAX));
+    for (f = fStart; f < fEnd; ++f) { maxSuppRanks[f - fStart] = rootBuffer[f]; }
+    for (f = fStart; f < fEnd; ++f) { rootBuffer[f] = leafBuffer[f]; }
+    PetscCall(PetscSFReduceBegin(pointSF, MPIU_INT, leafBuffer, rootBuffer, MPI_MIN));
+    PetscCall(PetscSFReduceEnd(pointSF, MPIU_INT, leafBuffer, rootBuffer, MPI_MIN));
+    for (f = fStart; f < fEnd; ++f) { minSuppRanks[f - fStart] = rootBuffer[f]; }
+    /* Handle Case 1 */
+    for (f = fStart; f < fEnd; ++f) {
+      PetscCall(DMPlexGetSupportSize(dm, f, &supportSize));
+      rootBuffer[f] = supportSize;
+      leafBuffer[f] = supportSize;
+    }
+    PetscCall(PetscSFReduceBegin(pointSF, MPIU_INT, leafBuffer, rootBuffer, MPI_MAX));
+    PetscCall(PetscSFReduceEnd(pointSF, MPIU_INT, leafBuffer, rootBuffer, MPI_MAX));
+    /* Combine Case 1 and 2 */
+    for (f = fStart; f < fEnd; ++f) {
+      /* minSuppRanks[f - fStart] < maxSuppRanks[f - fStart] means that f is on a partition boundary */
+      rootBuffer[f] = (rootBuffer[f] == 2 || (minSuppRanks[f - fStart] < maxSuppRanks[f - fStart])) ? 2 : 1;
+    }
+    for (f = fStart; f < fEnd; ++f) { leafBuffer[f] = rootBuffer[f]; }
+    PetscCall(PetscSFBcastBegin(pointSF, MPIU_INT, rootBuffer, leafBuffer, MPI_REPLACE));
+    PetscCall(PetscSFBcastEnd(pointSF, MPIU_INT, rootBuffer, leafBuffer, MPI_REPLACE));
+    /* Mark interior facets */
+    if (label_int) {
+      for (f = fStart; f < fEnd; ++f) {
+        if (leafBuffer[f] == 2) {
+          PetscCall(DMLabelSetValue(label_int, f, value_int));
+        } else {
+          PetscCheck(leafBuffer[f] == 1, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid facet support size (%" PetscInt_FMT ")", leafBuffer[f]);
+        }
+      }
+    }
+    /* Mark exterior facets */
+    if (label_ext) {
+      for (f = fStart; f < fEnd; ++f) {
+        if (leafBuffer[f] == 1) {
+          PetscCall(DMLabelSetValue(label_ext, f, value_ext));
+        } else {
+          PetscCheck(leafBuffer[f] == 2, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Invalid facet support size (%" PetscInt_FMT ")", leafBuffer[f]);
+        }
+      }
+    }
+    leafBuffer += pStart;
+    rootBuffer += pStart;
+    PetscCall(PetscFree5(leafBuffer, rootBuffer, maxSuppRanks, minSuppRanks, cellOwners));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}

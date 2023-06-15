@@ -3512,7 +3512,7 @@ static PetscErrorCode DMPlexSubmeshSetSubpointSF_Static(DM dm, DM subdm, PetscSF
 {
   PetscSF            sf, subsf;
   PetscMPIInt        rank, size, subsize;
-  PetscInt           pStart, pEnd, subStart, subEnd, p, point, nroots, nleaves, nsubleaves, nsubpoints = 0;
+  PetscInt           pStart, pEnd, subStart, subEnd, p, point, nroots, nleaves, nsubleaves, i, nsubpoints = 0;
   IS                 subpointIS;
   const PetscInt    *subpoints, *ilocal;
   const PetscSFNode *iremote;
@@ -3553,14 +3553,55 @@ static PetscErrorCode DMPlexSubmeshSetSubpointSF_Static(DM dm, DM subdm, PetscSF
     newOwners[point - pStart].rank  = rank;
     newOwners[point - pStart].index = p;
   }
+  {
+    PetscInt  subdim, cStart, cEnd, c, clSize, cl;
+    PetscInt *ownedCells, *closure = NULL;
+
+    PetscCall(DMGetDimension(subdm, &subdim));
+    PetscCall(DMPlexGetDepthStratum(dm, subdim, &cStart, &cEnd));
+    PetscCall(PetscMalloc1(cEnd - cStart, &ownedCells));
+    for (c = cStart; c < cEnd; ++c) { ownedCells[c - cStart] = 0; }
+    for (p = 0; p < nsubpoints; ++p) {
+      c = subpoints[p];
+      if (c >= cStart && c < cEnd) { ownedCells[c - cStart] = 1; }
+    }
+    for (i = 0; i < nleaves; ++i) {
+      c = ilocal ? ilocal[i] : i;
+      if (c >= cStart && c < cEnd) { ownedCells[c - cStart] = 0; }
+    }
+    for (c = cStart; c < cEnd; ++c) {
+      if (ownedCells[c - cStart] == 0) continue;
+      PetscCall(DMPlexGetTransitiveClosure(dm, c, PETSC_TRUE, &clSize, &closure));
+      for (cl = 0; cl < clSize * 2; cl += 2) {
+        /* This point must have already been added.                           */
+        /* If another process simply owns this point, but no owned cells have */
+        /* this point in their closure, this process wins.                    */
+        point = closure[cl];
+        if (newOwners[point - pStart].rank < size) { newOwners[point - pStart].rank += size; }
+      }
+      PetscCall(DMPlexRestoreTransitiveClosure(dm, c, PETSC_TRUE, &clSize, &closure));
+    }
+    PetscCall(PetscFree(ownedCells));
+  }
+  for (i = 0; i < nroots; ++i) {
+    newOwnersReduced[i].rank  = newOwners[i].rank;
+    newOwnersReduced[i].index = newOwners[i].index;
+  }
   PetscCall(PetscSFReduceBegin(sf, MPIU_2INT, newOwners, newOwnersReduced, MPI_MAXLOC));
   PetscCall(PetscSFReduceEnd(sf, MPIU_2INT, newOwners, newOwnersReduced, MPI_MAXLOC));
+  for (i = 0; i < nroots; ++i) {
+    if (newOwnersReduced[i].rank >= size) { newOwnersReduced[i].rank -= size; }
+  }
+  for (i = 0; i < nroots; ++i) {
+    newOwners[i].rank  = newOwnersReduced[i].rank;
+    newOwners[i].index = newOwnersReduced[i].index;
+  }
   /* claim back ownership: PetscSFBcast guarantees that this process wins */
-  for (p = 0; p < nsubpoints; ++p) {
+  /*for (p = 0; p < nsubpoints; ++p) {
     point                                  = subpoints[p];
     newOwnersReduced[point - pStart].rank  = rank;
     newOwnersReduced[point - pStart].index = p;
-  }
+  }*/
   if (ownershipTransferSF) {
     PetscSFNode *iremote1 = NULL, *newOwnersReduced1 = NULL;
     PetscInt    *ilocal1 = NULL;
@@ -3596,11 +3637,11 @@ static PetscErrorCode DMPlexSubmeshSetSubpointSF_Static(DM dm, DM subdm, PetscSF
     PetscCall(PetscSFSetFromOptions(*ownershipTransferSF));
     PetscCall(PetscSFSetGraph(*ownershipTransferSF, pEnd - pStart, nleaves1, ilocal1, PETSC_OWN_POINTER, iremote1, PETSC_OWN_POINTER));
   }
-  for (p = 0; p < nsubpoints; ++p) {
+  /*for (p = 0; p < nsubpoints; ++p) {
     point                           = subpoints[p];
     newOwners[point - pStart].rank  = -1;
     newOwners[point - pStart].index = -1;
-  }
+  }*/
   PetscCall(PetscSFBcastBegin(sf, MPIU_2INT, newOwnersReduced, newOwners, MPI_REPLACE));
   PetscCall(PetscSFBcastEnd(sf, MPIU_2INT, newOwnersReduced, newOwners, MPI_REPLACE));
   /* set subsf */

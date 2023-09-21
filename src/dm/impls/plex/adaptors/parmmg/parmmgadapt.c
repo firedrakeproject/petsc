@@ -10,6 +10,9 @@ const char ParMmgCitation[] = "@techreport{cirrottola:hal-02386837,\n"
                               "  note        = {\\url{https://hal.inria.fr/hal-02386837}},\n"
                               "  year        = {2019}\n}\n";
 
+/*
+ Coupling code for the ParMmg metric-based mesh adaptation package.
+*/
 PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLabel rgLabel, DM *dmNew)
 {
   MPI_Comm           comm;
@@ -40,6 +43,9 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscMPIInt        numProcs, rank;
   PMMG_pParMesh      parmesh = NULL;
 
+  // DEVELOPER NOTE: ParMmg wants to know the rank of every process which is sharing a given point and
+  //                 for this information to be conveyed to every process that is sharing that point.
+
   PetscFunctionBegin;
   PetscCall(PetscCitationsRegister(ParMmgCitation, &ParMmgCite));
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
@@ -68,7 +74,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   numCells    = cEnd - cStart;
   numVertices = vEnd - vStart;
 
-  /* Get paralel data; work out which cells are owned and which are leaves */
+  /* Get parallel data; work out which cells are owned and which are leaves */
   PetscCall(PetscCalloc1(numCells, &cIsLeaf));
   numCellsNotShared = numCells;
   niranks = nrranks = 0;

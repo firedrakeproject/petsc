@@ -10,6 +10,12 @@ const char ParMmgCitation[] = "@techreport{cirrottola:hal-02386837,\n"
                               "  note        = {\\url{https://hal.inria.fr/hal-02386837}},\n"
                               "  year        = {2019}\n}\n";
 
+/*
+ Coupling code for the ParMmg metric-based mesh adaptation package.
+
+ DEVELOPER NOTE: ParMmg wants to know the rank of every process which is sharing a given point and
+                 for this information to be conveyed to every process that is sharing that point.
+*/
 PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLabel rgLabel, DM *dmNew)
 {
   MPI_Comm           comm;

@@ -34,7 +34,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscInt          *bdFaces, *faceTags, *facesNew, *faceTagsNew;
   PetscInt          *corners, *requiredCells, *requiredVer, *ridges, *requiredFaces;
   PetscInt           cStart, cEnd, c, numCells, fStart, fEnd, f, numFaceTags, vStart, vEnd, v, numVertices;
-  PetscInt           numOwnedCells, *cIsLeave, numUsedVertices, *vertexNumber, *fIsIncluded;
+  PetscInt           numCellsNotShared, *cIsShared, numUsedVertices, *vertexNumber, *fIsIncluded;
   PetscInt           dim, off, coff, maxConeSize, bdSize, i, j, k, Neq, verbosity, numIter;
   PetscInt           *interfaces_lv, *interfaces_gv, *interfacesOffset;
   PetscInt           niranks, nrranks, numNgbRanks, r, lv, gv;
@@ -75,8 +75,8 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   numVertices = vEnd - vStart;
 
   /* Get paralel data; work out which cells are owned and which are leaves */
-  PetscCall(PetscCalloc1(numCells, &cIsLeave));
-  numOwnedCells = numCells;
+  PetscCall(PetscCalloc1(numCells, &cIsShared));
+  numCellsNotShared = numCells;
   niranks = nrranks = 0;
   if (numProcs > 1) {
     PetscCall(DMGetPointSF(dm, &sf));
@@ -86,8 +86,8 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     for (r = 0; r < nrranks; ++r) {
       for (i=roffset[r]; i<roffset[r+1]; ++i) {
         if (rmine[i] >= cStart && rmine[i] < cEnd) {
-          cIsLeave[rmine[i] - cStart] = 1;
-          numOwnedCells--;
+          cIsShared[rmine[i] - cStart] = 1;
+          numCellsNotShared--;
         }
       }
     }
@@ -97,12 +97,12 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   numUsedVertices = 0;
   PetscCall(PetscCalloc1(numVertices, &vertexNumber));
   /* Using this numbering, create cells */
-  PetscCall(PetscMalloc1(numOwnedCells*maxConeSize, &cells));
+  PetscCall(PetscMalloc1(numCellsNotShared*maxConeSize, &cells));
   for (c = 0, coff = 0; c < numCells; ++c) {
     const PetscInt *cone;
     PetscInt        coneSize, cl;
 
-    if (!cIsLeave[c]) {
+    if (!cIsShared[c]) {
       PetscCall(DMPlexGetConeSize(udm, cStart + c, &coneSize));
       PetscCall(DMPlexGetCone(udm, cStart + c, &cone));
       for (cl = 0; cl < coneSize; ++cl) {
@@ -146,7 +146,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     const PetscInt *nbrs;
     PetscCall(DMPlexGetSupportSize(dm, f, &nnbrs));
     PetscCall(DMPlexGetSupport(dm, f, &nbrs));
-    for (c = 0; c<nnbrs; ++c) fIsIncluded[f-pStart] = fIsIncluded[f-pStart] || !cIsLeave[nbrs[c]];
+    for (c = 0; c<nnbrs; ++c) fIsIncluded[f-pStart] = fIsIncluded[f-pStart] || !cIsShared[nbrs[c]];
     if (!fIsIncluded[f-pStart]) continue;
 
     numFaceTags++;
@@ -173,15 +173,15 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscCall(PetscFree(fIsIncluded));
 
   /* Get cell tags */
-  PetscCall(PetscCalloc2(numUsedVertices, &verTags, numOwnedCells, &cellTags));
+  PetscCall(PetscCalloc2(numUsedVertices, &verTags, numCellsNotShared, &cellTags));
   if (rgLabel) {
     for (c = cStart, coff=0; c < cEnd; ++c) {
-      if (!cIsLeave[c-cStart]) {
+      if (!cIsShared[c-cStart]) {
         PetscCall(DMLabelGetValue(rgLabel, c, &cellTags[coff++]));
       }
     }
   }
-  PetscCall(PetscFree(cIsLeave));
+  PetscCall(PetscFree(cIsShared));
 
   /* Get metric */
   PetscCall(VecViewFromOptions(vertexMetric, NULL, "-adapt_metric_view"));
@@ -346,7 +346,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscCall(DMPlexMetricGetGradationFactor(dm, &gradationFactor));
   PetscCall(DMPlexMetricGetHausdorffNumber(dm, &hausdorffNumber));
   PetscCallMMG_NONSTANDARD(PMMG_Init_parMesh(PMMG_ARG_start, PMMG_ARG_ppParMesh, &parmesh, PMMG_ARG_pMesh, PMMG_ARG_pMet, PMMG_ARG_dim, 3, PMMG_ARG_MPIComm, comm, PMMG_ARG_end));
-  PetscCallMMG_NONSTANDARD(PMMG_Set_meshSize(parmesh, numUsedVertices, numOwnedCells, 0, numFaceTags, 0, 0));
+  PetscCallMMG_NONSTANDARD(PMMG_Set_meshSize(parmesh, numUsedVertices, numCellsNotShared, 0, numFaceTags, 0, 0));
   PetscCallMMG_NONSTANDARD(PMMG_Set_iparameter(parmesh, PMMG_IPARAM_APImode, PMMG_APIDISTRIB_nodes));
   PetscCallMMG_NONSTANDARD(PMMG_Set_iparameter(parmesh, PMMG_IPARAM_noinsert, noInsert));
   PetscCallMMG_NONSTANDARD(PMMG_Set_iparameter(parmesh, PMMG_IPARAM_noswap, noSwap));

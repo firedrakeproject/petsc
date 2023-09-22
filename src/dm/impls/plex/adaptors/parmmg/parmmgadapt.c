@@ -275,6 +275,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
     PetscCall(PetscFree(rankOfUsedMultiRootLeaves));
     PetscCall(PetscFree(usedCopies));
+    PetscCall(PetscSectionDestroy(&rankGlobalSection));
 
     /*
       Broadcast the array of ranks.
@@ -288,6 +289,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(PetscMalloc1(s, &rankArray));
     PetscCall(PetscSFBcastBegin(rankSF, MPI_INT, rankGlobalArray, rankArray, MPI_REPLACE));
     PetscCall(PetscSFBcastEnd(rankSF, MPI_INT, rankGlobalArray, rankArray, MPI_REPLACE));
+    PetscCall(PetscFree(rankGlobalArray));
     PetscCall(DMDestroy(&rankdm));
 
     /* Count the number of interfaces per rank, not including those on the root */
@@ -334,11 +336,9 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
       }
     }
     PetscCall(PetscFree(interfacesPerRank));
-    PetscCall(PetscFree(rankGlobalArray));
     PetscCall(PetscFree(rankArray));
     PetscCall(ISRestoreIndices(globalVertexNum, &gV));
     PetscCall(PetscSectionDestroy(&rankSection));
-    PetscCall(PetscSectionDestroy(&rankGlobalSection));
   }
   PetscCall(DMDestroy(&udm));
   PetscCall(PetscFree(vertexNumber));

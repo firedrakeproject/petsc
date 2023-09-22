@@ -74,22 +74,33 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   numCells    = cEnd - cStart;
   numVertices = vEnd - vStart;
 
-  /* Get paralel data; work out which cells are owned and which are leaves */
+  /* Get parallel data; work out which cells are shared. */
   PetscCall(PetscCalloc1(numCells, &cIsShared));
   numCellsNotShared = numCells;
   niranks = nrranks = 0;
   if (numProcs > 1) {
+    const PetscInt *degree, *leaves;
+    PetscInt        nleaves, l;
+
     PetscCall(DMGetPointSF(dm, &sf));
     PetscCall(PetscSFSetUp(sf));
     PetscCall(PetscSFGetLeafRanks(sf, &niranks, &iranks, &ioffset, &irootloc));
     PetscCall(PetscSFGetRootRanks(sf, &nrranks, &rranks, &roffset, &rmine, &rremote));
-    for (r = 0; r < nrranks; ++r) {
-      for (i=roffset[r]; i<roffset[r+1]; ++i) {
-        if (rmine[i] >= cStart && rmine[i] < cEnd) {
-          cIsShared[rmine[i] - cStart] = 1;
-          numCellsNotShared--;
-        }
-      }
+    PetscCall(PetscSFComputeDegreeBegin(sf, &degree));
+    PetscCall(PetscSFComputeDegreeEnd(sf, &degree));
+    /* First, consider the case where we have a root and someone points to a leaf */
+    for (c = cStart; c < cEnd; ++c) {
+      if (degree[c] > 0) cIsShared[c - cStart] = 1;
+    }
+    PetscCall(PetscSFGetGraph(sf, NULL, &nleaves, &leaves, NULL));
+    /* Now, consider the case where we have a leaf */
+    for (l = 0; l < nleaves; ++l) {
+      const PetscInt leaf = leaves[l];
+
+      if (leaf >= cStart && leaf < cEnd) cIsShared[leaf - cStart] = 1;
+    }
+    for (c = 0; c < numCells; ++c) {
+      if (cIsShared[c]) numCellsNotShared--;
     }
   }
 

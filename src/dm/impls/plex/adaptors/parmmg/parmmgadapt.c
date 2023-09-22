@@ -293,6 +293,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(PetscSFBcastEnd(rankSF, MPI_INT, rankGlobalArray, rankArray, MPI_REPLACE));
     PetscCall(DMDestroy(&rankdm));
 
+    /* Count the number of interfaces per rank, not including those on the root */
     PetscCall(PetscCalloc1(numProcs, &interfacesPerRank));
     for (v=vStart; v<vEnd; v++) {
       if (vertexNumber[v-vStart]) {
@@ -305,10 +306,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
         }
       }
     }
-    /* don't count our own entries */
-    interfacesPerRank[rank] = 0;
-    k = 0;
-    for (r=0; r<numProcs; r++) k += interfacesPerRank[r];
+    for (r=0, k = 0, interfacesPerRank[rank] = 0; r<numProcs; r++) k += interfacesPerRank[r];
 
     PetscCall(PetscMalloc3(k, &interfaces_lv, k, &interfaces_gv, numProcs+1, &interfacesOffset));
     interfacesOffset[0] = 0;

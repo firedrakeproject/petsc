@@ -93,10 +93,12 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
   }
 
-  /* Create vertex numbering for parmmg starting at 1. Vertices not included in any owned cell remain 0 and will be removed */
+  /*
+    Create a vertex numbering for ParMmg starting at 1. Vertices not included in any
+    owned cell remain 0 and will be removed. Using this numbering, create cells.
+  */
   numUsedVertices = 0;
   PetscCall(PetscCalloc1(numVertices, &vertexNumber));
-  /* Using this numbering, create cells */
   PetscCall(PetscMalloc1(numCellsNotShared*maxConeSize, &cells));
   for (c = 0, coff = 0; c < numCells; ++c) {
     const PetscInt *cone;
@@ -112,7 +114,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
   }
 
-  /* Get vertex coordinate array */
+  /* Get array of vertex coordinates */
   PetscCall(DMGetCoordinateDM(dm, &cdm));
   PetscCall(DMGetLocalSection(cdm, &coordSection));
   PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
@@ -141,7 +143,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(DMLabelHasPoint(bdLabel, f, &hasPoint));
     if ((!hasPoint) || (f < fStart) || (f >= fEnd)) continue;
 
-    /* Only faces adjecent to an owned (non-leaf) cell are included */
+    /* Only faces adjacent to an owned (non-leaf) cell are included */
     PetscInt nnbrs;
     const PetscInt *nbrs;
     PetscCall(DMPlexGetSupportSize(dm, f, &nnbrs));
@@ -183,7 +185,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   }
   PetscCall(PetscFree(cIsShared));
 
-  /* Get metric */
+  /* Get metric, using only the upper triangular part */
   PetscCall(VecViewFromOptions(vertexMetric, NULL, "-adapt_metric_view"));
   PetscCall(VecGetArrayRead(vertexMetric, &met));
   PetscCall(DMPlexMetricIsIsotropic(dm, &isotropic));
@@ -204,7 +206,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   }
   PetscCall(VecRestoreArrayRead(vertexMetric, &met));
 
-  /* Build ParMMG communicators: the list of vertices between two partitions  */
+  /* Build ParMmg communicators: the list of vertices between two partitions  */
   numNgbRanks = 0;
   if (numProcs > 1) {
     DM rankdm;
@@ -245,7 +247,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(PetscSFBcastBegin(sf, MPIU_INT, usedCopies, usedCopies, MPI_REPLACE));
     PetscCall(PetscSFBcastEnd(sf, MPIU_INT, usedCopies, usedCopies, MPI_REPLACE));
 
-    /* section to store ranks of vertices shared by more than one process */
+    /* Create a section to store ranks of vertices shared by more than one process */
     PetscCall(PetscSectionCreate(comm, &rankSection));
     PetscCall(PetscSectionSetNumFields(rankSection, 1));
     PetscCall(PetscSectionSetChart(rankSection, pStart, pEnd));
@@ -274,6 +276,11 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(PetscFree(rankOfUsedMultiRootLeafs));
     PetscCall(PetscFree(usedCopies));
 
+    /*
+      Broadcast the array of ranks.
+        (We want all processes to know all the ranks that are looking at each point.
+        Above, we tell the roots. Here, the roots tell the leaves.)
+    */
     PetscCall(DMClone(dm, &rankdm));
     PetscCall(DMSetLocalSection(rankdm, rankSection));
     PetscCall(DMGetSectionSF(rankdm, &rankSF));
@@ -300,6 +307,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     k = 0;
     for (r=0; r<numProcs; r++) k += interfacesPerRank[r];
 
+    /* Get the degree of the vertex */
     PetscCall(PetscMalloc3(k, &interfaces_lv, k, &interfaces_gv, numProcs+1, &interfacesOffset));
     interfacesOffset[0] = 0;
     for (r=0; r<numProcs; r++) interfacesOffset[r+1] = interfacesOffset[r] + interfacesPerRank[r];
@@ -308,6 +316,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
     for (r=0; r<numProcs; r++) interfacesPerRank[r] = 0;
 
+    /* Get the local and global vertex numbers at interfaces */
     PetscCall(DMPlexGetVertexNumbering(dm, &globalVertexNum));
     PetscCall(ISGetIndices(globalVertexNum, &gV));
     for (v=vStart; v<vEnd; v++) {

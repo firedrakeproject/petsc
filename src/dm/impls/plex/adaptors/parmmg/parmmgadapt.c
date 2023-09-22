@@ -209,13 +209,13 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   /* Build ParMmg communicators: the list of vertices between two partitions  */
   numNgbRanks = 0;
   if (numProcs > 1) {
-    DM rankdm;
+    DM           rankdm;
     PetscSection rankSection, rankGlobalSection;
-    PetscSF rankSF;
-    const PetscInt *degree;
-    PetscInt *rankOfUsedVertices, *rankOfUsedMultiRootLeafs, *usedCopies;
-    PetscInt *rankArray, *rankGlobalArray, *interfacesPerRank;
-    PetscInt offset, mrl, rootDegreeCnt, s, shareCnt, gv;
+    PetscSF      rankSF;
+    const        PetscInt *degree;
+    PetscInt    *rankOfUsedVertices, *rankOfUsedMultiRootLeafs, *usedCopies;
+    PetscInt    *rankArray, *rankGlobalArray, *interfacesPerRank;
+    PetscInt     offset, mrl, rootDegreeCnt, s, shareCnt, gv;
 
     PetscCall(PetscSFComputeDegreeBegin(sf, &degree));
     PetscCall(PetscSFComputeDegreeEnd(sf, &degree));

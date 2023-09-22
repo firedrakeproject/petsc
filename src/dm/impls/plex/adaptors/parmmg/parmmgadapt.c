@@ -220,24 +220,22 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   /* Build ParMmg communicators: the list of vertices between two partitions  */
   numNgbRanks = 0;
   if (numProcs > 1) {
-    DM rankdm;
+    DM           rankdm;
     PetscSection rankSection, rankGlobalSection;
-    PetscSF rankSF;
-    PetscInt *rankOfUsedVertices, *rankOfUsedMultiRootLeafs, *usedCopies;
-    PetscInt *rankArray, *rankGlobalArray, *interfacesPerRank;
-    PetscInt offset, mrl, rootDegreeCnt, s, shareCnt, gv;
-
-    PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
-    rootDegreeCnt = 0;
-    for (i=0; i<pEnd-pStart; ++i) rootDegreeCnt += degree[i];
+    PetscSF      rankSF;
+    PetscInt    *rankOfUsedVertices, *rankOfUsedMultiRootLeafs, *usedCopies;
+    PetscInt    *rankArray, *rankGlobalArray, *interfacesPerRank;
+    PetscInt     offset, mrl, rootDegreeCnt, s, shareCnt, gv;
 
     /* rankOfUsedVertices, point-array: rank+1 if vertex and in use */
+    PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
     PetscCall(PetscCalloc1(pEnd-pStart, &rankOfUsedVertices));
     for (i=vStart; i<vEnd; ++i) {
       if (vertexNumber[i-vStart]) rankOfUsedVertices[i] = rank+1;
     }
 
     /* rankOfUsedMultiRootLeafs, multiroot-array: rank+1 if vertex and in use */
+    for (i=0, rootDegreeCnt = 0; i<pEnd-pStart; ++i) rootDegreeCnt += degree[i];
     PetscCall(PetscMalloc1(rootDegreeCnt, &rankOfUsedMultiRootLeafs));
     PetscCall(PetscSFGatherBegin(sf, MPIU_INT, rankOfUsedVertices, rankOfUsedMultiRootLeafs));
     PetscCall(PetscSFGatherEnd(sf, MPIU_INT, rankOfUsedVertices, rankOfUsedMultiRootLeafs));

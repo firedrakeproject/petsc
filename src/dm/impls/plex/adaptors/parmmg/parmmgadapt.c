@@ -154,7 +154,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(DMLabelHasPoint(bdLabel, f, &hasPoint));
     if ((!hasPoint) || (f < fStart) || (f >= fEnd)) continue;
 
-    /* Only faces adjecent to an owned (non-leaf) cell are included */
+    /* Only faces adjacent to an owned (non-leaf) cell are included */
     PetscInt nnbrs;
     const PetscInt *nbrs;
     PetscCall(DMPlexGetSupportSize(dm, f, &nnbrs));
@@ -284,6 +284,11 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(PetscFree(rankOfUsedMultiRootLeafs));
     PetscCall(PetscFree(usedCopies));
 
+    /*
+      Broadcast the array of ranks.
+        (We want all processes to know all the ranks that are looking at each point.
+        Above, we tell the roots. Here, the roots tell the leaves.)
+    */
     PetscCall(DMClone(dm, &rankdm));
     PetscCall(DMSetLocalSection(rankdm, rankSection));
     PetscCall(DMGetSectionSF(rankdm, &rankSF));
@@ -308,6 +313,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
     for (r=0, k = 0, interfacesPerRank[rank] = 0; r<numProcs; r++) k += interfacesPerRank[r];
 
+    /* Get the degree of the vertex */
     PetscCall(PetscMalloc3(k, &interfaces_lv, k, &interfaces_gv, numProcs+1, &interfacesOffset));
     interfacesOffset[0] = 0;
     for (r=0; r<numProcs; r++) interfacesOffset[r+1] = interfacesOffset[r] + interfacesPerRank[r];
@@ -316,6 +322,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
     for (r=0; r<numProcs; r++) interfacesPerRank[r] = 0;
 
+    /* Get the local and global vertex numbers at interfaces */
     PetscCall(DMPlexGetVertexNumbering(dm, &globalVertexNum));
     PetscCall(ISGetIndices(globalVertexNum, &gV));
     for (v=vStart; v<vEnd; v++) {

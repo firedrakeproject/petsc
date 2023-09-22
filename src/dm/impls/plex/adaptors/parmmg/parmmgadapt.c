@@ -223,22 +223,23 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     DM           rankdm;
     PetscSection rankSection, rankGlobalSection;
     PetscSF      rankSF;
-    PetscInt    *rankOfUsedVertices, *rankOfUsedMultiRootLeafs, *usedCopies;
+    PetscInt    *rankOfUsedVertices, *rankOfUsedMultiRootLeaves, *usedCopies;
     PetscInt    *rankArray, *rankGlobalArray, *interfacesPerRank;
     PetscInt     offset, mrl, rootDegreeCnt, s, shareCnt, gv;
 
-    /* rankOfUsedVertices, point-array: rank+1 if vertex and in use */
+    /* rankOfUsedVertices, point-array: rank if vertex and in use, else -1 */
     PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
-    PetscCall(PetscCalloc1(pEnd-pStart, &rankOfUsedVertices));
+    PetscCall(PetscMalloc1(pEnd-pStart, &rankOfUsedVertices));
+    for (i=0; i<pEnd-pStart; ++i) rankOfUsedVertices[i] = -1;
     for (i=vStart; i<vEnd; ++i) {
-      if (vertexNumber[i-vStart]) rankOfUsedVertices[i] = rank+1;
+      if (vertexNumber[i-vStart]) rankOfUsedVertices[i] = rank;
     }
 
-    /* rankOfUsedMultiRootLeafs, multiroot-array: rank+1 if vertex and in use */
+    /* rankOfUsedMultiRootLeaves, multiroot-array: rank if vertex and in use, else -1 */
     for (i=0, rootDegreeCnt = 0; i<pEnd-pStart; ++i) rootDegreeCnt += degree[i];
-    PetscCall(PetscMalloc1(rootDegreeCnt, &rankOfUsedMultiRootLeafs));
-    PetscCall(PetscSFGatherBegin(sf, MPIU_INT, rankOfUsedVertices, rankOfUsedMultiRootLeafs));
-    PetscCall(PetscSFGatherEnd(sf, MPIU_INT, rankOfUsedVertices, rankOfUsedMultiRootLeafs));
+    PetscCall(PetscMalloc1(rootDegreeCnt, &rankOfUsedMultiRootLeaves));
+    PetscCall(PetscSFGatherBegin(sf, MPIU_INT, rankOfUsedVertices, rankOfUsedMultiRootLeaves));
+    PetscCall(PetscSFGatherEnd(sf, MPIU_INT, rankOfUsedVertices, rankOfUsedMultiRootLeaves));
     PetscCall(PetscFree(rankOfUsedVertices));
 
     /* usedCopies, point-array: if vertex, shared by how many processes */
@@ -246,7 +247,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     for (i=0, mrl=0; i<vStart-pStart; i++) mrl += degree[i];
     for (i=vStart-pStart; i<vEnd-pStart; ++i) {
       for (j=0; j<degree[i]; j++, mrl++) {
-        if (rankOfUsedMultiRootLeafs[mrl]) usedCopies[i]++;
+        if (rankOfUsedMultiRootLeaves[mrl] != -1) usedCopies[i]++;
       }
       if (vertexNumber[i-vStart+pStart]) usedCopies[i]++;
     }
@@ -273,13 +274,13 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
         PetscCall(PetscSectionGetOffset(rankSection, k, &offset));
         if (vertexNumber[i-vStart+pStart]) rankGlobalArray[k++] = rank;
         for (j=0; j<degree[i]; j++, mrl++) {
-          if (rankOfUsedMultiRootLeafs[mrl]) {
-            rankGlobalArray[k++] = rankOfUsedMultiRootLeafs[mrl] - 1;
+          if (rankOfUsedMultiRootLeaves[mrl] != -1) {
+            rankGlobalArray[k++] = rankOfUsedMultiRootLeaves[mrl];
           }
         }
       } else mrl += degree[i];
     }
-    PetscCall(PetscFree(rankOfUsedMultiRootLeafs));
+    PetscCall(PetscFree(rankOfUsedMultiRootLeaves));
     PetscCall(PetscFree(usedCopies));
 
     /*

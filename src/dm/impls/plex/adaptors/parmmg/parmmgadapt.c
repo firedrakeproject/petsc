@@ -255,7 +255,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     PetscCall(PetscSFBcastBegin(sf, MPIU_INT, usedCopies, usedCopies, MPI_REPLACE));
     PetscCall(PetscSFBcastEnd(sf, MPIU_INT, usedCopies, usedCopies, MPI_REPLACE));
 
-    /* section to store ranks of vertices shared by more than one process */
+    /* Create a section to store ranks of vertices shared by more than one process */
     PetscCall(PetscSectionCreate(comm, &rankSection));
     PetscCall(PetscSectionSetNumFields(rankSection, 1));
     PetscCall(PetscSectionSetChart(rankSection, pStart, pEnd));

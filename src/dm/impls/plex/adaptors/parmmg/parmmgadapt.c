@@ -104,10 +104,12 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
   }
 
-  /* Create vertex numbering for parmmg starting at 1. Vertices not included in any owned cell remain 0 and will be removed */
+  /*
+    Create a vertex numbering for ParMmg starting at 1. Vertices not included in any
+    owned cell remain 0 and will be removed. Using this numbering, create cells.
+  */
   numUsedVertices = 0;
   PetscCall(PetscCalloc1(numVertices, &vertexNumber));
-  /* Using this numbering, create cells */
   PetscCall(PetscMalloc1(numCellsNotShared*maxConeSize, &cells));
   for (c = 0, coff = 0; c < numCells; ++c) {
     const PetscInt *cone;
@@ -123,7 +125,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     }
   }
 
-  /* Get vertex coordinate array */
+  /* Get array of vertex coordinates */
   PetscCall(DMGetCoordinateDM(dm, &cdm));
   PetscCall(DMGetLocalSection(cdm, &coordSection));
   PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
@@ -194,7 +196,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   }
   PetscCall(PetscFree(cIsShared));
 
-  /* Get metric */
+  /* Get metric, using only the upper triangular part */
   PetscCall(VecViewFromOptions(vertexMetric, NULL, "-adapt_metric_view"));
   PetscCall(VecGetArrayRead(vertexMetric, &met));
   PetscCall(DMPlexMetricIsIsotropic(dm, &isotropic));
@@ -215,7 +217,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   }
   PetscCall(VecRestoreArrayRead(vertexMetric, &met));
 
-  /* Build ParMMG communicators: the list of vertices between two partitions  */
+  /* Build ParMmg communicators: the list of vertices between two partitions  */
   numNgbRanks = 0;
   if (numProcs > 1) {
     DM rankdm;

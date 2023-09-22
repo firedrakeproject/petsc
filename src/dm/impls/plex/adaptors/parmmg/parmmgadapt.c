@@ -40,7 +40,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscInt           niranks, nrranks, numNgbRanks, r, lv, gv;
   PetscInt          *gv_new, *owners, *verticesNewSorted, pStart, pEnd;
   PetscInt           numCellsNew, numVerticesNew, numCornersNew, numFacesNew, numVerticesNewLoc;
-  const PetscInt    *gV, *ioffset, *irootloc, *roffset, *rmine, *rremote;
+  const PetscInt    *gV, *ioffset, *irootloc, *roffset, *rmine, *rremote, *degree;
   PetscBool          flg = PETSC_FALSE, noInsert, noSwap, noMove, noSurf, isotropic, uniform;
   const PetscMPIInt *iranks, *rranks;
   PetscMPIInt        numProcs, rank;
@@ -79,7 +79,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   numCellsNotShared = numCells;
   niranks = nrranks = 0;
   if (numProcs > 1) {
-    const PetscInt *degree, *leaves;
+    const PetscInt *leaves;
     PetscInt        nleaves, l;
 
     PetscCall(DMGetPointSF(dm, &sf));
@@ -223,13 +223,10 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     DM rankdm;
     PetscSection rankSection, rankGlobalSection;
     PetscSF rankSF;
-    const PetscInt *degree;
     PetscInt *rankOfUsedVertices, *rankOfUsedMultiRootLeafs, *usedCopies;
     PetscInt *rankArray, *rankGlobalArray, *interfacesPerRank;
     PetscInt offset, mrl, rootDegreeCnt, s, shareCnt, gv;
 
-    PetscCall(PetscSFComputeDegreeBegin(sf, &degree));
-    PetscCall(PetscSFComputeDegreeEnd(sf, &degree));
     PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
     rootDegreeCnt = 0;
     for (i=0; i<pEnd-pStart; ++i) rootDegreeCnt += degree[i];

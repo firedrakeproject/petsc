@@ -2277,16 +2277,18 @@ static PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec X, IS cellIS, Pe
   }
   /* Read out data from inputs */
   for (c = cStart; c < cEnd; ++c) {
+    const PetscInt cell = cells ? cells[c] : c;
+    const PetscInt cind = c - cStart;
     PetscScalar *x = NULL;
     PetscInt     i;
 
-    PetscCall(DMPlexVecGetClosure(dm, section, locX, c, NULL, &x));
-    for (i = 0; i < totDim; ++i) u[c * totDim + i] = x[i];
-    PetscCall(DMPlexVecRestoreClosure(dm, section, locX, c, NULL, &x));
+    PetscCall(DMPlexVecGetClosure(dm, section, locX, cell, NULL, &x));
+    for (i = 0; i < totDim; ++i) u[cind * totDim + i] = x[i];
+    PetscCall(DMPlexVecRestoreClosure(dm, section, locX, cell, NULL, &x));
     if (dmAux) {
-      PetscCall(DMPlexVecGetClosure(dmAux, sectionAux, locA, c, NULL, &x));
-      for (i = 0; i < totDimAux; ++i) a[c * totDimAux + i] = x[i];
-      PetscCall(DMPlexVecRestoreClosure(dmAux, sectionAux, locA, c, NULL, &x));
+      PetscCall(DMPlexVecGetClosure(dmAux, sectionAux, locA, cell, NULL, &x));
+      for (i = 0; i < totDimAux; ++i) a[cind * totDimAux + i] = x[i];
+      PetscCall(DMPlexVecRestoreClosure(dmAux, sectionAux, locA, cell, NULL, &x));
     }
   }
   /* Do integration for each field */

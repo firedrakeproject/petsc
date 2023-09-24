@@ -2196,7 +2196,7 @@ static PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec X, IS cellIS, Pe
   if (!cellIS) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(ISGetPointRange(cellIS, &cStart, &cEnd, &cells));
   numCells = cEnd - cStart;
-  PetscCall(DMGetDS(dm, &prob));
+  PetscCall(DMGetCellDS(dm, cells ? cells[cStart] : cStart, &prob, NULL));
   PetscCall(DMGetDimension(dm, &dim));
   PetscCall(DMGetLocalSection(dm, &section));
   PetscCall(DMGetNumFields(dm, &Nf));
@@ -2339,6 +2339,7 @@ static PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec X, IS cellIS, Pe
       }
     } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %" PetscInt_FMT, f);
   }
+  PetscCall(ISRestorePointRange(cellIS, &cStart, &cEnd, &cells));
   /* Cleanup data arrays */
   if (useFVM) {
     PetscCall(VecRestoreArrayRead(locGrad, &lgrad));

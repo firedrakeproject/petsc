@@ -2701,6 +2701,10 @@ static PetscErrorCode PCApply_PATCH_Linear(PC pc, PetscInt i, Vec x, Vec y)
   y->map->n = n;
   x->map->N = m;
   y->map->N = n;
+  x->map->oldn = m;
+  y->map->oldn = n;
+  x->map->oldN = m;
+  y->map->oldN = n;
   PetscCall(KSPSolve(ksp, x, y));
   PetscCall(KSPCheckSolve(ksp, pc, y));
   PetscCall(PetscLogEventEnd(PC_Patch_Solve, pc, 0, 0, 0));

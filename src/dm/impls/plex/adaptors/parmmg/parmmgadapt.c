@@ -34,7 +34,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscInt          *bdFaces, *faceTags, *facesNew, *faceTagsNew;
   PetscInt          *corners, *requiredCells, *requiredVer, *ridges, *requiredFaces;
   PetscInt           cStart, cEnd, c, numCells, fStart, fEnd, f, numFaceTags, vStart, vEnd, v, numVertices;
-  PetscInt           numCellsNotShared, *cIsShared, numUsedVertices, *vertexNumber, *fIsIncluded;
+  PetscInt           numCellsNotShared, *cIsLeaf, numUsedVertices, *vertexNumber, *fIsIncluded;
   PetscInt           dim, off, coff, maxConeSize, bdSize, i, j, k, Neq, verbosity, numIter;
   PetscInt           *interfaces_lv, *interfaces_gv, *interfacesOffset;
   PetscInt           niranks, nrranks, numNgbRanks, r, lv, gv;
@@ -75,7 +75,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   numVertices = vEnd - vStart;
 
   /* Get paralel data; work out which cells are owned and which are leaves */
-  PetscCall(PetscCalloc1(numCells, &cIsShared));
+  PetscCall(PetscCalloc1(numCells, &cIsLeaf));
   numCellsNotShared = numCells;
   niranks = nrranks = 0;
   if (numProcs > 1) {
@@ -86,7 +86,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     for (r = 0; r < nrranks; ++r) {
       for (i=roffset[r]; i<roffset[r+1]; ++i) {
         if (rmine[i] >= cStart && rmine[i] < cEnd) {
-          cIsShared[rmine[i] - cStart] = 1;
+          cIsLeaf[rmine[i] - cStart] = 1;
           numCellsNotShared--;
         }
       }
@@ -104,7 +104,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     const PetscInt *cone;
     PetscInt        coneSize, cl;
 
-    if (!cIsShared[c]) {
+    if (!cIsLeaf[c]) {
       PetscCall(DMPlexGetConeSize(udm, cStart + c, &coneSize));
       PetscCall(DMPlexGetCone(udm, cStart + c, &cone));
       for (cl = 0; cl < coneSize; ++cl) {
@@ -148,7 +148,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     const PetscInt *nbrs;
     PetscCall(DMPlexGetSupportSize(dm, f, &nnbrs));
     PetscCall(DMPlexGetSupport(dm, f, &nbrs));
-    for (c = 0; c<nnbrs; ++c) fIsIncluded[f-pStart] = fIsIncluded[f-pStart] || !cIsShared[nbrs[c]];
+    for (c = 0; c<nnbrs; ++c) fIsIncluded[f-pStart] = fIsIncluded[f-pStart] || !cIsLeaf[nbrs[c]];
     if (!fIsIncluded[f-pStart]) continue;
 
     numFaceTags++;
@@ -178,12 +178,12 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscCall(PetscCalloc2(numUsedVertices, &verTags, numCellsNotShared, &cellTags));
   if (rgLabel) {
     for (c = cStart, coff=0; c < cEnd; ++c) {
-      if (!cIsShared[c-cStart]) {
+      if (!cIsLeaf[c-cStart]) {
         PetscCall(DMLabelGetValue(rgLabel, c, &cellTags[coff++]));
       }
     }
   }
-  PetscCall(PetscFree(cIsShared));
+  PetscCall(PetscFree(cIsLeaf));
 
   /* Get metric, using only the upper triangular part */
   PetscCall(VecViewFromOptions(vertexMetric, NULL, "-adapt_metric_view"));

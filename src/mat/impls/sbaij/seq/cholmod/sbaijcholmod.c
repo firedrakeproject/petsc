@@ -374,6 +374,7 @@ static PetscErrorCode MatSolve_CHOLMOD(Mat F, Vec B, Vec X)
   cholmod_dense cholB, cholX, *X_handle, *Y_handle = NULL, *E_handle = NULL;
 
   PetscFunctionBegin;
+  if (!F->rmap->n) PetscFunctionReturn(PETSC_SUCCESS);
   static_F = F;
   PetscCall(VecWrapCholmod(B, GET_ARRAY_READ, &cholB));
   PetscCall(VecWrapCholmod(X, GET_ARRAY_WRITE, &cholX));
@@ -414,6 +415,7 @@ static PetscErrorCode MatCholeskyFactorNumeric_CHOLMOD(Mat F, Mat A, const MatFa
   int            err;
 
   PetscFunctionBegin;
+  if (!A->rmap->n) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall((*chol->Wrap)(A, PETSC_TRUE, &cholA, &aijalloc, &valloc));
   static_F = F;
   err      = !cholmod_X_factorize(&cholA, chol->factor, chol->common);
@@ -444,6 +446,8 @@ PETSC_INTERN PetscErrorCode MatCholeskyFactorSymbolic_CHOLMOD(Mat F, Mat A, IS p
   size_t         fsize = 0;
 
   PetscFunctionBegin;
+  F->ops->choleskyfactornumeric = MatCholeskyFactorNumeric_CHOLMOD;
+  if (!A->rmap->n) PetscFunctionReturn(PETSC_SUCCESS);
   /* Set options to F */
   PetscCall(CholmodSetOptions(F));
 
@@ -465,8 +469,6 @@ PETSC_INTERN PetscErrorCode MatCholeskyFactorSymbolic_CHOLMOD(Mat F, Mat A, IS p
 
   if (aijalloc) PetscCall(PetscFree2(cholA.p, cholA.i));
   if (valloc) PetscCall(PetscFree(cholA.x));
-
-  F->ops->choleskyfactornumeric = MatCholeskyFactorNumeric_CHOLMOD;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

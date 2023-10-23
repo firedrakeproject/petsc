@@ -2170,13 +2170,13 @@ PetscErrorCode DMPlexComputeGradientClementInterpolant(DM dm, Vec locX, Vec locC
 
 static PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec X, IS cellIS, PetscScalar *cintegral, void *user)
 {
-  DM                 dmAux = NULL;
-  PetscDS            prob, probAux = NULL;
-  PetscSection       section, sectionAux;
-  Vec                locX, locA;
-  PetscInt           dim, numCells, c, cStart, cEnd, f;
-  const PetscInt    *cells;
-  PetscBool          useFVM = PETSC_FALSE;
+  DM              dmAux = NULL;
+  PetscDS         prob, probAux = NULL;
+  PetscSection    section, sectionAux;
+  Vec             locX, locA;
+  PetscInt        dim, numCells, c, cStart, cEnd, f;
+  const PetscInt *cells;
+  PetscBool       useFVM = PETSC_FALSE;
   /* DS */
   PetscInt           Nf, totDim, *uOff, *uOff_x, numConstants;
   PetscInt           NfAux, totDimAux, *aOff;
@@ -2279,8 +2279,8 @@ static PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec X, IS cellIS, Pe
   for (c = cStart; c < cEnd; ++c) {
     const PetscInt cell = cells ? cells[c] : c;
     const PetscInt cind = c - cStart;
-    PetscScalar *x = NULL;
-    PetscInt     i;
+    PetscScalar   *x = NULL;
+    PetscInt       i;
 
     PetscCall(DMPlexVecGetClosure(dm, section, locX, cell, NULL, &x));
     for (i = 0; i < totDim; ++i) u[cind * totDim + i] = x[i];

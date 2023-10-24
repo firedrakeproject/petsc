@@ -304,11 +304,11 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
     /* Get the degree of the vertex */
     PetscCall(PetscMalloc3(k, &interfaces_lv, k, &interfaces_gv, numProcs + 1, &interfacesOffset));
     interfacesOffset[0] = 0;
-    for (r = 0; r < numProcs; r++) interfacesOffset[r + 1] = interfacesOffset[r] + interfacesPerRank[r];
     for (r = 0; r < numProcs; r++) {
+      interfacesOffset[r + 1] = interfacesOffset[r] + interfacesPerRank[r];
       if (interfacesPerRank[r]) numNgbRanks++;
+      interfacesPerRank[r] = 0;
     }
-    for (r = 0; r < numProcs; r++) interfacesPerRank[r] = 0;
 
     /* Get the local and global vertex numbers at interfaces */
     PetscCall(DMPlexGetVertexNumbering(dm, &globalVertexNum));

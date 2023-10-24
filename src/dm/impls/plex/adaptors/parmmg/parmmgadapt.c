@@ -178,9 +178,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM dm, Vec vertexMetric, D
   PetscCall(PetscCalloc2(numUsedVertices, &verTags, numCellsNotShared, &cellTags));
   if (rgLabel) {
     for (c = cStart, coff = 0; c < cEnd; ++c) {
-      if (!cIsLeaf[c - cStart]) {
-        PetscCall(DMLabelGetValue(rgLabel, c, &cellTags[coff++]));
-      }
+      if (!cIsLeaf[c - cStart]) { PetscCall(DMLabelGetValue(rgLabel, c, &cellTags[coff++])); }
     }
   }
   PetscCall(PetscFree(cIsLeaf));

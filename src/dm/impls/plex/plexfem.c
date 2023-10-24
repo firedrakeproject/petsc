@@ -2279,7 +2279,7 @@ static PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec X, IS cellIS, Pe
   for (c = cStart; c < cEnd; ++c) {
     const PetscInt cell = cells ? cells[c] : c;
     const PetscInt cind = c - cStart;
-    PetscScalar   *x = NULL;
+    PetscScalar   *x    = NULL;
     PetscInt       i;
 
     PetscCall(DMPlexVecGetClosure(dm, section, locX, cell, NULL, &x));

@@ -62,6 +62,8 @@ Changes: Development
 
 .. rubric:: DMPlex:
 
+- Add ownershipTransferSF as an output argument to ``DMPlexFilter()``
+
 .. rubric:: FE/FV:
 
 .. rubric:: DMNetwork:

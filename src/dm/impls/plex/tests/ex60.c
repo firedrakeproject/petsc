@@ -242,8 +242,8 @@ int main(int argc, char **argv)
       PetscCall(VecNorm(metric2, NORM_2, &errornorm));
       errornorm /= norm;
       PetscCall(PetscPrintf(comm, "Metric normalization L2 error: %.4f%%\n", (double)(100 * errornorm)));
-      // fails with overlapping halos:
-      // PetscCheck(errornorm < tol, comm, PETSC_ERR_ARG_OUTOFRANGE, "Metric normalization test failed");
+      // FIXME: fails with overlapping halos:
+      PetscCheck(errornorm < tol, comm, PETSC_ERR_ARG_OUTOFRANGE, "Metric normalization test failed");
     }
     PetscCall(VecDestroy(&determinant));
     PetscCall(DMDestroy(&dmDet));

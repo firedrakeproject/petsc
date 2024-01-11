@@ -930,6 +930,31 @@ cdef class Mat(Object):
         Mat_AllocAIJ_CSR(self.mat, csr)
         return self
 
+    def preallocateWithMatPreallocator(
+        self,
+        Mat preallocator,
+        fill_with_zeros: bool = True,
+    ) -> None:
+        """Preallocate memory for the matrix using a preallocator matrix.
+
+        Collective.
+
+        Parameters
+        ----------
+        preallocator
+            The preallocator matrix. It must be of type `Type.PREALLOCATOR`.
+        fill_with_zeros
+            Flag indicating whether or not to insert zeros into
+            the newly allocated matrix, defaults to True.
+
+        See Also
+        --------
+        petsc.MatPreallocatorPreallocate
+
+        """
+        cdef PetscBool fill = asBool(fill_with_zeros)
+        CHKERR(MatPreallocatorPreallocate(preallocator.mat, fill, self.mat))
+
     def createAIJWithArrays(
         self,
         size: MatSizeSpec,

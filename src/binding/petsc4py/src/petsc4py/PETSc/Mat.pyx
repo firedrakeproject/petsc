@@ -5544,6 +5544,23 @@ cdef class Mat(Object):
         CHKERR(PetscINCREF(submat.obj))
         return submat
 
+    # Preallocator
+
+    def preallocateWithMatPreallocator(
+        self,
+        Mat preallocator,
+        fill_with_zeros: bool = True,
+    ) -> None:
+        """TODO
+
+        See Also
+        --------
+        petsc.MatPreallocatorPreallocate
+
+        """
+        cdef PetscBool fill = asBool(fill_with_zeros)
+        CHKERR( MatPreallocatorPreallocate(preallocator.mat, fill, self.mat) )
+
     # DM
 
     def getDM(self) -> DM:

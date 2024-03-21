@@ -51,6 +51,7 @@ cdef extern from * nogil:
     PetscErrorCode DMPlexStratify(PetscDM)
     #int DMPlexEqual(PetscDM,PetscDM,PetscBool*)
     PetscErrorCode DMPlexOrient(PetscDM)
+    PetscErrorCode DMPlexOrientPoint(PetscDM,PetscInt,PetscInt)
     PetscErrorCode DMPlexInterpolate(PetscDM,PetscDM*)
     PetscErrorCode DMPlexUninterpolate(PetscDM,PetscDM*)
     #int DMPlexLoad(PetscViewer,PetscDM)

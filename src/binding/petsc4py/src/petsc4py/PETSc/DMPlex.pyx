@@ -878,6 +878,12 @@ cdef class DMPlex(DM):
         """
         CHKERR( DMPlexOrient(self.dm) )
 
+    def orientPoint(self, p: int, o: int) -> None:
+        """TODO."""
+        cdef PetscInt cp = asInt(p)
+        cdef PetscInt co = asInt(o)
+        CHKERR( DMPlexOrientPoint(self.dm, cp, co) )
+
     def getCellNumbering(self) -> IS:
         """Return a global cell numbering for all cells on this process.
 

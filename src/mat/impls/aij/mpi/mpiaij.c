@@ -2155,7 +2155,7 @@ static PetscErrorCode MatGetRowMaxAbs_MPIAIJ(Mat A, Vec v, PetscInt idx[])
   const PetscScalar *vb;
 
   PetscFunctionBegin;
-  PetscCall(VecCreateSeq(PETSC_COMM_SELF, m, &vA));
+  PetscCall(MatCreateVecs(a->A, NULL, &vA));
   PetscCall(MatGetRowMaxAbs(a->A, vA, idx));
 
   PetscCall(VecGetArrayWrite(vA, &va));
@@ -2165,7 +2165,7 @@ static PetscErrorCode MatGetRowMaxAbs_MPIAIJ(Mat A, Vec v, PetscInt idx[])
     }
   }
 
-  PetscCall(VecCreateSeq(PETSC_COMM_SELF, m, &vB));
+  PetscCall(MatCreateVecs(a->B, NULL, &vB));
   PetscCall(PetscMalloc1(m, &idxb));
   PetscCall(MatGetRowMaxAbs(a->B, vB, idxb));
 
@@ -2192,13 +2192,12 @@ static PetscErrorCode MatGetRowMaxAbs_MPIAIJ(Mat A, Vec v, PetscInt idx[])
 static PetscErrorCode MatGetRowSumAbs_MPIAIJ(Mat A, Vec v)
 {
   Mat_MPIAIJ *a = (Mat_MPIAIJ *)A->data;
-  PetscInt    m = A->rmap->n;
   Vec         vB, vA;
 
   PetscFunctionBegin;
-  PetscCall(VecCreateSeq(PETSC_COMM_SELF, m, &vA));
+  PetscCall(MatCreateVecs(a->A, NULL, &vA));
   PetscCall(MatGetRowSumAbs(a->A, vA));
-  PetscCall(VecCreateSeq(PETSC_COMM_SELF, m, &vB));
+  PetscCall(MatCreateVecs(a->B, NULL, &vB));
   PetscCall(MatGetRowSumAbs(a->B, vB));
   PetscCall(VecAXPY(vA, 1.0, vB));
   PetscCall(VecDestroy(&vB));
@@ -4171,8 +4170,8 @@ PetscErrorCode MatMPIAIJSetPreallocation(Mat B, PetscInt d_nz, const PetscInt d_
 
   Notes:
   The `i`, `j`, and `a` arrays ARE copied by this routine into the internal format used by PETSc;
-  thus you CANNOT change the matrix entries by changing the values of a[] after you have
-  called this routine. Use `MatCreateMPIAIJWithSplitArray()` to avoid needing to copy the arrays.
+  thus you CANNOT change the matrix entries by changing the values of `a[]` after you have
+  called this routine. Use `MatCreateMPIAIJWithSplitArrays()` to avoid needing to copy the arrays.
 
   The `i` and `j` indices are 0 based, and `i` indices are indices corresponding to the local `j` array.
 
@@ -4182,7 +4181,7 @@ PetscErrorCode MatMPIAIJSetPreallocation(Mat B, PetscInt d_nz, const PetscInt d_
   `MatUpdateMPIAIJWithArrays()`, the column indices **must** be sorted.
 
   The format which is used for the sparse matrix input, is equivalent to a
-  row-major ordering.. i.e for the following matrix, the input data expected is
+  row-major ordering, i.e., for the following matrix, the input data expected is
   as shown
 .vb
         1 0 0
@@ -4201,7 +4200,7 @@ PetscErrorCode MatMPIAIJSetPreallocation(Mat B, PetscInt d_nz, const PetscInt d_
         v =  {4,5,6}  [size = 3]
 .ve
 
-.seealso: [](ch_matrices), `Mat`, `MATMPIAIK`, `MatCreate()`, `MatCreateSeqAIJ()`, `MatSetValues()`, `MatMPIAIJSetPreallocation()`, `MatMPIAIJSetPreallocationCSR()`,
+.seealso: [](ch_matrices), `Mat`, `MatCreate()`, `MatCreateSeqAIJ()`, `MatSetValues()`, `MatMPIAIJSetPreallocation()`, `MatMPIAIJSetPreallocationCSR()`,
           `MATMPIAIJ`, `MatCreateAIJ()`, `MatCreateMPIAIJWithSplitArrays()`, `MatUpdateMPIAIJWithArray()`, `MatSetPreallocationCOO()`, `MatSetValuesCOO()`
 @*/
 PetscErrorCode MatCreateMPIAIJWithArrays(MPI_Comm comm, PetscInt m, PetscInt n, PetscInt M, PetscInt N, const PetscInt i[], const PetscInt j[], const PetscScalar a[], Mat *mat)
@@ -5064,7 +5063,7 @@ PetscErrorCode MatCreateMPIAIJSumSeqAIJSymbolic(MPI_Comm comm, Mat seqmat, Petsc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatCreateMPIAIJSumSeqAIJ - Creates a `MATMPIAIJ` matrix by adding sequential
   matrices from each processor
 
@@ -5085,7 +5084,7 @@ PetscErrorCode MatCreateMPIAIJSumSeqAIJSymbolic(MPI_Comm comm, Mat seqmat, Petsc
   Note:
   The dimensions of the sequential matrix in each processor MUST be the same.
   The input seqmat is included into the container "Mat_Merge_SeqsToMPI", and will be
-  destroyed when mpimat is destroyed. Call `PetscObjectQuery()` to access seqmat.
+  destroyed when `mpimat` is destroyed. Call `PetscObjectQuery()` to access `seqmat`.
 
 .seealso: [](ch_matrices), `Mat`, `MatCreateAIJ()`
 @*/
@@ -6548,10 +6547,14 @@ PetscErrorCode MatSetPreallocationCOO_MPIAIJ(Mat mat, PetscCount coo_n, PetscInt
   PetscInt    n2 = nroots, *i2, *j2; /* Buffers for received COOs from other ranks, along with a permutation array */
   PetscCount *perm2;                 /* Though PetscInt is enough for remote entries, we use PetscCount here as we want to reuse MatSplitEntries_Internal() */
   PetscCall(PetscMalloc3(n2, &i2, n2, &j2, n2, &perm2));
-  PetscCall(PetscSFReduceWithMemTypeBegin(sf2, MPIU_INT, PETSC_MEMTYPE_HOST, i1 + rem, PETSC_MEMTYPE_HOST, i2, MPI_REPLACE));
-  PetscCall(PetscSFReduceEnd(sf2, MPIU_INT, i1 + rem, i2, MPI_REPLACE));
-  PetscCall(PetscSFReduceWithMemTypeBegin(sf2, MPIU_INT, PETSC_MEMTYPE_HOST, j1 + rem, PETSC_MEMTYPE_HOST, j2, MPI_REPLACE));
-  PetscCall(PetscSFReduceEnd(sf2, MPIU_INT, j1 + rem, j2, MPI_REPLACE));
+  PetscAssert(rem == 0 || i1 != NULL, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Cannot add nonzero offset to null");
+  PetscAssert(rem == 0 || j1 != NULL, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Cannot add nonzero offset to null");
+  PetscInt *i1prem = i1 ? i1 + rem : NULL; /* silence ubsan warnings about pointer arithmetic on null pointer */
+  PetscInt *j1prem = j1 ? j1 + rem : NULL;
+  PetscCall(PetscSFReduceWithMemTypeBegin(sf2, MPIU_INT, PETSC_MEMTYPE_HOST, i1prem, PETSC_MEMTYPE_HOST, i2, MPI_REPLACE));
+  PetscCall(PetscSFReduceEnd(sf2, MPIU_INT, i1prem, i2, MPI_REPLACE));
+  PetscCall(PetscSFReduceWithMemTypeBegin(sf2, MPIU_INT, PETSC_MEMTYPE_HOST, j1prem, PETSC_MEMTYPE_HOST, j2, MPI_REPLACE));
+  PetscCall(PetscSFReduceEnd(sf2, MPIU_INT, j1prem, j2, MPI_REPLACE));
 
   PetscCall(PetscFree(offsets));
   PetscCall(PetscFree2(sendto, nentries));
@@ -6562,8 +6565,10 @@ PetscErrorCode MatSetPreallocationCOO_MPIAIJ(Mat mat, PetscCount coo_n, PetscInt
 
   /* sf2 only sends contiguous leafdata to contiguous rootdata. We record the permutation which will be used to fill leafdata */
   PetscCount *Cperm1;
+  PetscAssert(rem == 0 || perm1 != NULL, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Cannot add nonzero offset to null");
+  PetscCount *perm1prem = perm1 ? perm1 + rem : NULL;
   PetscCall(PetscMalloc1(nleaves, &Cperm1));
-  PetscCall(PetscArraycpy(Cperm1, perm1 + rem, nleaves));
+  PetscCall(PetscArraycpy(Cperm1, perm1prem, nleaves));
 
   /* Support for HYPRE matrices, kind of a hack.
      Swap min column with diagonal so that diagonal values will go first */

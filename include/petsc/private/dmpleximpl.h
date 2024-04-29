@@ -216,11 +216,12 @@ typedef struct {
   // Periodicity
   struct {
     // Specified by the user
-    PetscScalar transform[4][4]; // geometric transform
-    PetscSF     face_sf;         // root(donor faces) <-- leaf(local faces)
+    PetscInt num_face_sfs;          // number of face_sfs
+    PetscSF *face_sfs;              // root(donor faces) <-- leaf(local faces)
+    PetscScalar (*transform)[4][4]; // geometric transform
     // Created eagerly (depends on points)
     PetscSF composed_sf; // root(non-periodic global points) <-- leaf(local points)
-    IS      periodic_points;
+    IS     *periodic_points;
   } periodic;
 
   /* Projection */
@@ -357,8 +358,9 @@ PETSC_INTERN PetscErrorCode DMPlexAnchorsModifyMat(DM, PetscSection, PetscInt, P
 PETSC_INTERN PetscErrorCode DMPlexAnchorsModifyMat_Internal(DM, PetscSection, PetscInt, PetscInt, const PetscInt[], const PetscInt ***, PetscInt, PetscInt, const PetscScalar[], PetscInt *, PetscInt *, PetscInt *[], PetscScalar *[], PetscInt[], PetscBool, PetscBool);
 PETSC_INTERN PetscErrorCode DMPlexAnchorsGetSubMatModification(DM, PetscSection, PetscInt, PetscInt, const PetscInt[], const PetscInt ***, PetscInt *, PetscInt *, PetscInt *[], PetscInt[], PetscScalar *[]);
 PETSC_INTERN PetscErrorCode DMPlexLocatePoint_Internal(DM, PetscInt, const PetscScalar[], PetscInt, PetscInt *);
-/* these two are PETSC_EXTERN just because of src/dm/impls/plex/tests/ex18.c */
+/* this is PETSC_EXTERN just because of src/dm/impls/plex/tests/ex18.c */
 PETSC_EXTERN PetscErrorCode DMPlexOrientInterface_Internal(DM);
+PETSC_INTERN PetscErrorCode DMPlexOrientCells_Internal(DM, IS, IS);
 
 /* Applications may use this function */
 PETSC_EXTERN PetscErrorCode DMPlexCreateNumbering_Plex(DM, PetscInt, PetscInt, PetscInt, PetscInt *, PetscSF, IS *);

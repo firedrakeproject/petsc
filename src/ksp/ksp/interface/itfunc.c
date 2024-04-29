@@ -460,7 +460,7 @@ PetscErrorCode KSPConvergedReasonView(KSP ksp, PetscViewer viewer)
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isAscii));
   if (isAscii) {
     PetscCall(PetscViewerGetFormat(viewer, &format));
-    PetscCall(PetscViewerASCIIAddTab(viewer, ((PetscObject)ksp)->tablevel));
+    PetscCall(PetscViewerASCIIAddTab(viewer, ((PetscObject)ksp)->tablevel + 1));
     if (ksp->reason > 0 && format != PETSC_VIEWER_FAILED) {
       if (((PetscObject)ksp)->prefix) {
         PetscCall(PetscViewerASCIIPrintf(viewer, "Linear %s solve converged due to %s iterations %" PetscInt_FMT "\n", ((PetscObject)ksp)->prefix, KSPConvergedReasons[ksp->reason], ksp->its));
@@ -479,7 +479,7 @@ PetscErrorCode KSPConvergedReasonView(KSP ksp, PetscViewer viewer)
         PetscCall(PetscViewerASCIIPrintf(viewer, "               PC failed due to %s \n", PCFailedReasons[reason]));
       }
     }
-    PetscCall(PetscViewerASCIISubtractTab(viewer, ((PetscObject)ksp)->tablevel));
+    PetscCall(PetscViewerASCIISubtractTab(viewer, ((PetscObject)ksp)->tablevel + 1));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -2110,7 +2110,7 @@ PETSC_INTERN PetscErrorCode PCCreate_MPI(PC);
 /*@C
    KSPCheckPCMPI - Checks if `-mpi_linear_solver_server` is active and the `PC` should be changed to `PCMPI`
 
-   Collective
+   Collective, No Fortran Support
 
    Input Parameter:
 .  ksp - iterative context obtained from `KSPCreate()`
@@ -2736,7 +2736,7 @@ PetscErrorCode KSPGetConvergenceContext(KSP ksp, void *ctx)
 
   Output Parameter:
    Provide exactly one of
-+ v - location to stash solution.
++ v - location to stash solution, optional, otherwise pass `NULL`
 - V - the solution is returned in this location. This vector is created internally. This vector should NOT be destroyed by the user with `VecDestroy()`.
 
   Level: developer
@@ -2778,8 +2778,7 @@ PetscErrorCode KSPBuildSolution(KSP ksp, Vec v, Vec *V)
 . ksp - iterative context obtained from `KSPCreate()`
 
   Output Parameters:
-+ v - optional location to stash residual.  If `v` is not provided,
-      then a location is generated.
++ v - optional location to stash residual.  If `v` is not provided, then a location is generated.
 . t - work vector.  If not provided then one is generated.
 - V - the residual
 
@@ -2974,7 +2973,7 @@ PetscErrorCode KSPSetComputeOperators(KSP ksp, KSPComputeOperatorsFn *func, void
 
   Input Parameters:
 + ksp  - the `KSP` context
-. func - function to compute the right-hand side, see `KSPComputeRHSFn` for the calling squence
+. func - function to compute the right-hand side, see `KSPComputeRHSFn` for the calling sequence
 - ctx  - optional context
 
   Level: beginner

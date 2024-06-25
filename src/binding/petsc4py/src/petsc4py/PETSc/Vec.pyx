@@ -3513,7 +3513,7 @@ cdef class Vec(Object):
 
     #
 
-    def concatenate(self, vecs: Sequence[Vec], isets: Sequence[IS] = None) -> tuple[Self, list[Vec]]
+    def concatenate(self, vecs: Sequence[Vec], isets: Sequence[IS] = None) -> tuple[Self, list[Vec]]:
         """Create a new vector (`self`) with a vertical concatenation of all
         given array vectors.
 
@@ -3535,21 +3535,21 @@ cdef class Vec(Object):
             isets = None
         vecs = list(vecs)
         cdef Py_ssize_t i, m = len(vecs)
-        cdef PetscInt nx = <PetscInt>m
+        cdef PetscInt n = <PetscInt>m
         cdef PetscVec newvec = NULL
+        cdef PetscVec *cvecs  = NULL
         cdef PetscIS  *cisets = NULL
         cdef object unused1, unused2
 
         unused1 = oarray_p(empty_p(n), NULL, <void**>&cvecs)
-        for i from 0 <= i < m: cvecs[i] = (<Vec?>vecs[i]).vec
+        
+        for i from 0 <= i < m:
+            vec = vecs[i]
+            cvecs[i] = (<Vec?>vec).vec if vec is not None else NULL
 
-        if isets is not None:
-            unused2 = oarray_p(empty_p(n), NULL, <void**>&cisets)
-            for i from 0 <= i < m: cisets[i] = (<IS?>isets[i]).iset
-
-        CHKERR(VecConcatenate(nx, cvecs, &newvec, &ciset)
+        CHKERR(VecConcatenate(n, cvecs, &newvec, &cisets))
         CHKERR(PetscCLEAR(self.obj)); self.vec = newvec
-        return (self, ciset)
+        return self
 
 
 

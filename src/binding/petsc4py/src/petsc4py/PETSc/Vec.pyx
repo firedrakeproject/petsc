@@ -3513,6 +3513,95 @@ cdef class Vec(Object):
 
     #
 
+    def concatenate(self, vecs: Sequence[Vec], isets: Sequence[IS] = None) -> tuple[Self, list[Vec]]
+        """Create a new vector (`self`) with a vertical concatenation of all
+        given array vectors.
+
+        Parameters
+        ----------
+        nx
+            Number of vectors to be concatenated.
+        X
+            A list constained the vectors to be concatenated.
+
+        See Also
+        --------
+        petsc.VecConcatenate
+        """
+        if isets:
+            isets = list(isets)
+            assert len(isets) == len(vecs)
+        else:
+            isets = None
+        vecs = list(vecs)
+        cdef Py_ssize_t i, m = len(vecs)
+        cdef PetscInt nx = <PetscInt>m
+        cdef PetscVec newvec = NULL
+        cdef PetscIS  *cisets = NULL
+        cdef object unused1, unused2
+
+        unused1 = oarray_p(empty_p(n), NULL, <void**>&cvecs)
+        for i from 0 <= i < m: cvecs[i] = (<Vec?>vecs[i]).vec
+
+        if isets is not None:
+            unused2 = oarray_p(empty_p(n), NULL, <void**>&cisets)
+            for i from 0 <= i < m: cisets[i] = (<IS?>isets[i]).iset
+
+        CHKERR(VecConcatenate(nx, cvecs, &newvec, &ciset)
+        CHKERR(PetscCLEAR(self.obj)); self.vec = newvec
+        return (self, ciset)
+
+
+
+    def createNest(
+        self,
+        vecs: Sequence[Vec],
+        isets: Sequence[IS] = None,
+        comm: Comm | None = None) -> Self:
+        """Create a `Type.NEST` vector containing multiple nested subvectors.
+
+        Collective.
+
+        Parameters
+        ----------
+        vecs
+            Iterable of subvectors.
+        isets
+            Iterable of index sets for each nested subvector.
+            Defaults to contiguous ordering.
+        comm
+            MPI communicator, defaults to `Sys.getDefaultComm`.
+
+        See Also
+        --------
+        petsc.VecCreateNest
+
+        """
+        vecs = list(vecs)
+        if isets:
+            isets = list(isets)
+            assert len(isets) == len(vecs)
+        else:
+            isets = None
+        cdef MPI_Comm ccomm = def_Comm(comm, PETSC_COMM_DEFAULT)
+        cdef Py_ssize_t i, m = len(vecs)
+        cdef PetscInt n = <PetscInt>m
+        cdef PetscVec *cvecs  = NULL
+        cdef PetscIS  *cisets = NULL
+        cdef object unused1, unused2
+        unused1 = oarray_p(empty_p(n), NULL, <void**>&cvecs)
+        for i from 0 <= i < m: cvecs[i] = (<Vec?>vecs[i]).vec
+        if isets is not None:
+            unused2 = oarray_p(empty_p(n), NULL, <void**>&cisets)
+            for i from 0 <= i < m: cisets[i] = (<IS?>isets[i]).iset
+        cdef PetscVec newvec = NULL
+        CHKERR(VecCreateNest(ccomm, n, cisets, cvecs, &newvec))
+        CHKERR(PetscCLEAR(self.obj)); self.vec = newvec
+        return self
+
+
+
+
     property sizes:
         """The local and global vector sizes."""
         def __get__(self) -> LayoutSizeSpec:

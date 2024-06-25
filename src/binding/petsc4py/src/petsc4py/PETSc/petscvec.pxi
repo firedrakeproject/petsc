@@ -61,6 +61,7 @@ cdef extern from * nogil:
     PetscErrorCode VecGetBlockSize(PetscVec, PetscInt*)
     PetscErrorCode VecGetOwnershipRange(PetscVec, PetscInt*, PetscInt*)
     PetscErrorCode VecGetOwnershipRanges(PetscVec, const PetscInt*[])
+    PetscErrorCode VecConcatenate(PetscInt nx, const PetscVec, PetscVec*, PetscIS*[])
 
     PetscErrorCode VecCreateLocalVector(PetscVec, PetscVec*)
     PetscErrorCode VecGetLocalVector(PetscVec, PetscVec)

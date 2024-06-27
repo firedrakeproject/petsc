@@ -3519,8 +3519,6 @@ cdef class Vec(Object):
 
         Parameters
         ----------
-        nx
-            Number of vectors to be concatenated.
         X
             A list constained the vectors to be concatenated.
 
@@ -3528,11 +3526,6 @@ cdef class Vec(Object):
         --------
         petsc.VecConcatenate
         """
-        if isets:
-            isets = list(isets)
-            assert len(isets) == len(vecs)
-        else:
-            isets = None
         vecs = list(vecs)
         cdef Py_ssize_t i, m = len(vecs)
         cdef PetscInt n = <PetscInt>m
@@ -3540,16 +3533,19 @@ cdef class Vec(Object):
         cdef PetscVec *cvecs  = NULL
         cdef PetscIS  *cisets = NULL
         cdef object unused1, unused2
-
+        output_ises = [IS() for _ in range(n)]
+        cdef object vecs_is = []
         unused1 = oarray_p(empty_p(n), NULL, <void**>&cvecs)
-        
         for i from 0 <= i < m:
             vec = vecs[i]
             cvecs[i] = (<Vec?>vec).vec if vec is not None else NULL
-
         CHKERR(VecConcatenate(n, cvecs, &newvec, &cisets))
-        CHKERR(PetscCLEAR(self.obj)); self.vec = newvec
-        return self
+        CHKERR(PetscCLEAR(self.obj)); self.vec = newvec 
+        for i from 0 <= i < m:
+            temp = IS()
+            temp.iset = cisets[i]
+            vecs_is.append(temp)
+        return self, vecs_is
 
 
 

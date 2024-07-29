@@ -22,10 +22,15 @@ Changes: Development
 - Deprecate ``PetscOptionsGetViewer()``, and ``PetscOptionsGetViewers()`` in favor of ``PetscOptionsCreateViewer()`` and ``PetscOptionsCreateViewers()``
 - Deprecate ``PetscOptionsPushGetViewerOff()``, ``PetscOptionsPopGetViewerOff()``, and ``PetscOptionsGetViewerOff()`` in favor of
   ``PetscOptionsPushCreateViewerOff()``, ``PetscOptionsPopCreateViewerOff()``, and ``PetscOptionsGetCreateViewerOff()``
+- Add ``PetscObjectContainerCompose()``, and ``PetscObjectContainerQuery()``
+- Add ``size_t`` argument to ``PetscMPIErrorString()``
 
 .. rubric:: Event Logging:
 
 .. rubric:: PetscViewer:
+
+- Add ``PetscViewerASCIIStdoutSetFileUnit()``
+- Add ``PetscShmgetAllocateArrayScalar()``, ``PetscShmgetDeallocateArrayScalar()``, ``PetscShmgetAllocateArrayInt()``, and ``PetscShmgetDeallocateArrayInt()`` for Fortran
 
 .. rubric:: PetscDraw:
 
@@ -65,8 +70,13 @@ Changes: Development
 
 .. rubric:: KSP:
 
+- Add support for ``PETSC_DETERMINE`` as an argument to ``KSPSetTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``KSPSetTolerances()``
+
 .. rubric:: SNES:
 
+- Add support for ``PETSC_DETERMINE`` as an argument to ``SNESSetTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``SNESSetTolerances()``
 - Add ``DMAdaptorMonitor()``, ``DMAdaptorMonitorSet()``,  ``DMAdaptorMonitorCancel()``, ``DMAdaptorMonitorSetFromOptions()``
 - Add ``DMAdaptorMonitorSize()``, ``DMAdaptorMonitorError()``, ``DMAdaptorMonitorErrorDraw()``, ``DMAdaptorMonitorErrorDrawLGCreate()``, ``DMAdaptorMonitorErrorDrawLG()``
 - Add ``DMAdaptorMonitorRegister()``, ``DMAdaptorMonitorRegisterAll()``, ``DMAdaptorMonitorRegisterDestroy()``
@@ -77,8 +87,17 @@ Changes: Development
 .. rubric:: TS:
 
 - Add Rosenbrock-W methods from :cite:`rang2015improved` with :math:`B_{PR}` stability: ``TSROSWR34PRW``, ``TSROSWR3PRL2``, ``TSROSWRODASPR``, and ``TSROSWRODASPR2``
+- Add support for ``PETSC_DETERMINE`` as an argument to ``TSSetTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``TSSetTolerances()``
+- Add support for ``PETSC_DETERMINE`` as an argument to ``TSSetMaxSteps()`` and ``TSSetMaxTime()``
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetSafety()``
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetClip()``
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetStepLimits()``
 
 .. rubric:: TAO:
+
+- Add support for ``PETSC_DETERMINE`` as an argument to ``TaoSetTolerances()`` and ``TaoSetConstraintTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``TaoSetTolerances()`` and ``TaoSetConstraintTolerances()``
 
 .. rubric:: DM/DA:
 
@@ -100,6 +119,7 @@ Changes: Development
 - Add ``DMPlexComputeL2FluxDiffVec()`` and ``DMPlexComputeL2FluxDiffVecLocal()``
 - Add ``DMAdaptorSetType()``, ``DMAdaptorGetType()``, ``DMAdaptorRegister()``, ``DMAdaptorRegisterAll()``, ``DMAdaptorRegisterDestroy()``
 - Add ``DMAdaptorGetMixedSetupFunction()`` and ``DMAdaptorSetMixedSetupFunction()``
+- Add ``DMPlexCreateCellNumbering()``
 
 .. rubric:: FE/FV:
 

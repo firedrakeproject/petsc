@@ -290,10 +290,7 @@ static PetscErrorCode MatDuplicate_Transpose(Mat N, MatDuplicateOption op, Mat *
   PetscCall(MatShellGetContext(N, &A));
   PetscCall(MatDuplicate(A, op, &C));
   PetscCall(MatCreateTranspose(C, m));
-  if (op == MAT_COPY_VALUES) {
-    PetscCall(MatCopy(N, *m, SAME_NONZERO_PATTERN));
-    PetscCall(MatPropagateSymmetryOptions(A, C));
-  }
+  if (op == MAT_COPY_VALUES) PetscCall(MatCopy(N, *m, SAME_NONZERO_PATTERN));
   PetscCall(MatDestroy(&C));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -313,7 +310,7 @@ static PetscErrorCode MatHasOperation_Transpose(Mat mat, MatOperation op, PetscB
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PETSC_INTERN PetscErrorCode MatProductSetFromOptions_Transpose(Mat D)
+static PetscErrorCode MatProductSetFromOptions_Transpose(Mat D)
 {
   Mat            A, B, C, Ain, Bin, Cin;
   PetscBool      Aistrans, Bistrans, Cistrans;

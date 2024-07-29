@@ -8,6 +8,7 @@
 #include <../src/mat/impls/dense/mpi/mpidense.h>
 #include <petscblaslapack.h>
 #include <../src/mat/impls/aij/seq/aij.h>
+#include <petsc/private/vecimpl.h>
 
 PetscErrorCode MatSeqDenseSymmetrize_Private(Mat A, PetscBool hermitian)
 {
@@ -384,6 +385,7 @@ PetscErrorCode MatDuplicateNoCreate_SeqDense(Mat newi, Mat A, MatDuplicateOption
     }
     PetscCall(MatDenseRestoreArrayWrite(newi, &v));
     PetscCall(MatDenseRestoreArrayRead(A, &av));
+    PetscCall(MatPropagateSymmetryOptions(A, newi));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -3488,6 +3490,7 @@ PetscErrorCode MatDenseRestoreColumnVec_SeqDense(Mat A, PetscInt col, Vec *v)
   PetscFunctionBegin;
   PetscCheck(a->vecinuse, PETSC_COMM_SELF, PETSC_ERR_ORDER, "Need to call MatDenseGetColumnVec() first");
   PetscCheck(a->cvec, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing internal column vector");
+  VecCheckAssembled(a->cvec);
   a->vecinuse = 0;
   PetscCall(MatDenseRestoreArray(A, (PetscScalar **)&a->ptrinuse));
   PetscCall(VecResetArray(a->cvec));
@@ -3518,6 +3521,7 @@ PetscErrorCode MatDenseRestoreColumnVecRead_SeqDense(Mat A, PetscInt col, Vec *v
   PetscFunctionBegin;
   PetscCheck(a->vecinuse, PETSC_COMM_SELF, PETSC_ERR_ORDER, "Need to call MatDenseGetColumnVec() first");
   PetscCheck(a->cvec, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing internal column vector");
+  VecCheckAssembled(a->cvec);
   a->vecinuse = 0;
   PetscCall(MatDenseRestoreArrayRead(A, &a->ptrinuse));
   PetscCall(VecLockReadPop(a->cvec));
@@ -3548,6 +3552,7 @@ PetscErrorCode MatDenseRestoreColumnVecWrite_SeqDense(Mat A, PetscInt col, Vec *
   PetscFunctionBegin;
   PetscCheck(a->vecinuse, PETSC_COMM_SELF, PETSC_ERR_ORDER, "Need to call MatDenseGetColumnVec() first");
   PetscCheck(a->cvec, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing internal column vector");
+  VecCheckAssembled(a->cvec);
   a->vecinuse = 0;
   PetscCall(MatDenseRestoreArrayWrite(A, (PetscScalar **)&a->ptrinuse));
   PetscCall(VecResetArray(a->cvec));

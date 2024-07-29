@@ -1065,12 +1065,22 @@ static PetscErrorCode KSPSolve_Private(KSP ksp, Vec b, Vec x)
 @*/
 PetscErrorCode KSPSolve(KSP ksp, Vec b, Vec x)
 {
+  PetscBool isPCMPI;
+
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   if (b) PetscValidHeaderSpecific(b, VEC_CLASSID, 2);
   if (x) PetscValidHeaderSpecific(x, VEC_CLASSID, 3);
   ksp->transpose_solve = PETSC_FALSE;
   PetscCall(KSPSolve_Private(ksp, b, x));
+  PetscCall(PetscObjectTypeCompare((PetscObject)ksp->pc, PCMPI, &isPCMPI));
+  if (PCMPIServerActive && isPCMPI) {
+    KSP subksp;
+
+    PetscCall(PCMPIGetKSP(ksp->pc, &subksp));
+    ksp->its    = subksp->its;
+    ksp->reason = subksp->reason;
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1609,10 +1619,19 @@ PetscErrorCode KSPGetTolerances(KSP ksp, PetscReal *rtol, PetscReal *abstol, Pet
   Level: intermediate
 
   Notes:
-  Use `PETSC_DEFAULT` to retain the default value of any of the tolerances.
+  All parameters must be non-negative.
+
+  Use `PETSC_CURRENT` to retain the current value of any of the parameters. The deprecated `PETSC_DEFAULT` also retains the current value (though the name is confusing).
+
+  Use `PETSC_DETERMINE` to use the default value for the given `KSP`. The default value is the value when the object's type is set.
+
+  For `dtol` and `maxits` use `PETSC_UMLIMITED` to indicate there is no upper bound on these values
 
   See `KSPConvergedDefault()` for details how these parameters are used in the default convergence test.  See also `KSPSetConvergenceTest()`
   for setting user-defined stopping criteria.
+
+  Fortran Note:
+  Use `PETSC_CURRENT_INTEGER`, `PETSC_CURRENT_REAL`, `PETSC_DETERMINE_INTEGER`, or `PETSC_DETERMINE_REAL`
 
 .seealso: [](ch_ksp), `KSPGetTolerances()`, `KSPConvergedDefault()`, `KSPSetConvergenceTest()`, `KSP`, `KSPSetMinimumIterations()`
 @*/
@@ -1625,19 +1644,31 @@ PetscErrorCode KSPSetTolerances(KSP ksp, PetscReal rtol, PetscReal abstol, Petsc
   PetscValidLogicalCollectiveReal(ksp, dtol, 4);
   PetscValidLogicalCollectiveInt(ksp, maxits, 5);
 
-  if (rtol != (PetscReal)PETSC_DEFAULT) {
+  if (rtol == (PetscReal)PETSC_DETERMINE) {
+    ksp->rtol = ksp->default_rtol;
+  } else if (rtol != (PetscReal)PETSC_CURRENT) {
     PetscCheck(rtol >= 0.0 && rtol < 1.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Relative tolerance %g must be non-negative and less than 1.0", (double)rtol);
     ksp->rtol = rtol;
   }
-  if (abstol != (PetscReal)PETSC_DEFAULT) {
+  if (abstol == (PetscReal)PETSC_DETERMINE) {
+    ksp->abstol = ksp->default_abstol;
+  } else if (abstol != (PetscReal)PETSC_CURRENT) {
     PetscCheck(abstol >= 0.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Absolute tolerance %g must be non-negative", (double)abstol);
     ksp->abstol = abstol;
   }
-  if (dtol != (PetscReal)PETSC_DEFAULT) {
+  if (dtol == (PetscReal)PETSC_DETERMINE) {
+    ksp->divtol = ksp->default_divtol;
+  } else if (dtol == (PetscReal)PETSC_UNLIMITED) {
+    ksp->divtol = PETSC_MAX_REAL;
+  } else if (dtol != (PetscReal)PETSC_CURRENT) {
     PetscCheck(dtol >= 0.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Divergence tolerance %g must be larger than 1.0", (double)dtol);
     ksp->divtol = dtol;
   }
-  if (maxits != PETSC_DEFAULT) {
+  if (maxits == (PetscInt)PETSC_DETERMINE) {
+    ksp->max_it = ksp->default_max_it;
+  } else if (maxits == (PetscInt)PETSC_UNLIMITED) {
+    ksp->max_it = PETSC_INT_MAX;
+  } else if (maxits != (PetscInt)PETSC_CURRENT) {
     PetscCheck(maxits >= 0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Maximum number of iterations %" PetscInt_FMT " must be non-negative", maxits);
     ksp->max_it = maxits;
   }
@@ -2131,14 +2162,14 @@ PETSC_INTERN PetscErrorCode KSPCheckPCMPI(KSP ksp)
     PetscCall(KSPGetOptionsPrefix(ksp, &prefix));
     if (prefix) PetscCall(PetscStrstr(prefix, "mpi_linear_solver_server_", &found));
     if (!found) PetscCall(KSPAppendOptionsPrefix(ksp, "mpi_linear_solver_server_"));
+    PetscCall(PetscInfo(NULL, "In MPI Linear Solver Server and detected (root) PC that must be changed to PCMPI\n"));
     PetscCall(PCSetType(ksp->pc, PCMPI));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  KSPGetPC - Returns a pointer to the preconditioner context
-  set with `KSPSetPC()`.
+  KSPGetPC - Returns a pointer to the preconditioner context with the `KSP`
 
   Not Collective
 
@@ -2149,6 +2180,12 @@ PETSC_INTERN PetscErrorCode KSPCheckPCMPI(KSP ksp)
 . pc - preconditioner context
 
   Level: developer
+
+  Note:
+  The `PC` is created if it does not already exist.
+
+  Developer Note:
+  Calls `KSPCheckPCMPI()` to check if the `KSP` is effected by `-mpi_linear_solver_server`
 
 .seealso: [](ch_ksp), `KSPSetPC()`, `KSP`, `PC`
 @*/
@@ -2335,8 +2372,8 @@ PetscErrorCode KSPGetMonitorContext(KSP ksp, void *ctx)
 
   Notes:
   If provided, `a` is NOT freed by PETSc so the user needs to keep track of it and destroy once the `KSP` object is destroyed.
-  If 'a' is `NULL` then space is allocated for the history. If 'na' `PETSC_DECIDE` or `PETSC_DEFAULT` then a
-  default array of length 10000 is allocated.
+  If 'a' is `NULL` then space is allocated for the history. If 'na' `PETSC_DECIDE` or (deprecated) `PETSC_DEFAULT` then a
+  default array of length 10,000 is allocated.
 
   If the array is not long enough then once the iterations is longer than the array length `KSPSolve()` stops recording the history
 
@@ -2428,7 +2465,7 @@ PetscErrorCode KSPGetResidualHistory(KSP ksp, const PetscReal *a[], PetscInt *na
 
   Notes:
   If provided, `a` is NOT freed by PETSc so the user needs to keep track of it and destroy once the `KSP` object is destroyed.
-  If 'a' is `NULL` then space is allocated for the history. If 'na' is `PETSC_DECIDE` or `PETSC_DEFAULT` then a default array of length 10000 is allocated.
+  If 'a' is `NULL` then space is allocated for the history. If 'na' is `PETSC_DECIDE` or (deprecated) `PETSC_DEFAULT` then a default array of length 1,0000 is allocated.
 
   If the array is not long enough then once the iterations is longer than the array length `KSPSolve()` stops recording the history
 

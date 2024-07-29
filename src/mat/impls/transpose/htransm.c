@@ -1,6 +1,6 @@
 #include <../src/mat/impls/shell/shell.h> /*I "petscmat.h" I*/
 
-PETSC_INTERN PetscErrorCode MatProductSetFromOptions_HT(Mat D)
+static PetscErrorCode MatProductSetFromOptions_HT(Mat D)
 {
   Mat            A, B, C, Ain, Bin, Cin;
   PetscBool      Aistrans, Bistrans, Cistrans;
@@ -360,10 +360,7 @@ static PetscErrorCode MatDuplicate_HT(Mat N, MatDuplicateOption op, Mat *m)
   PetscCall(MatShellGetContext(N, &A));
   PetscCall(MatDuplicate(A, op, &C));
   PetscCall(MatCreateHermitianTranspose(C, m));
-  if (op == MAT_COPY_VALUES) {
-    PetscCall(MatCopy(N, *m, SAME_NONZERO_PATTERN));
-    PetscCall(MatPropagateSymmetryOptions(A, C));
-  }
+  if (op == MAT_COPY_VALUES) PetscCall(MatCopy(N, *m, SAME_NONZERO_PATTERN));
   PetscCall(MatDestroy(&C));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

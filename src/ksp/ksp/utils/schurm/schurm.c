@@ -1,5 +1,4 @@
 #include <../src/ksp/ksp/utils/schurm/schurm.h> /*I "petscksp.h" I*/
-#include <../src/mat/impls/shell/shell.h>
 
 const char *const MatSchurComplementAinvTypes[] = {"DIAG", "LUMP", "BLOCKDIAG", "FULL", "MatSchurComplementAinvType", "MAT_SCHUR_COMPLEMENT_AINV_", NULL};
 
@@ -522,7 +521,7 @@ PetscErrorCode MatSchurComplementComputeExplicitOperator(Mat A, Mat *S)
     PetscCall(MatGetSize(D, &M, &N));
     PetscCall(MatCreateDense(PetscObjectComm((PetscObject)A), m, n, M, N, NULL, S));
   }
-  PetscCall(MatMatMult(C, AinvBd, D ? MAT_REUSE_MATRIX : MAT_INITIAL_MATRIX, PETSC_DEFAULT, S));
+  PetscCall(MatMatMult(C, AinvBd, D ? MAT_REUSE_MATRIX : MAT_INITIAL_MATRIX, PETSC_DETERMINE, S));
   if (!set) PetscCall(MatDestroy(&AinvBd));
   else {
     PetscCall(MatScale(AinvBd, -1.0));
@@ -787,12 +786,11 @@ PetscErrorCode MatCreateSchurComplementPmat(Mat A00, Mat A01, Mat A10, Mat A11, 
       }
       if (!flg) PetscCall(MatDuplicate(A01, MAT_COPY_VALUES, &AdB));
       else {
-        PetscCheck(!((Mat_Shell *)A01->data)->zrows && !((Mat_Shell *)A01->data)->zcols, PetscObjectComm((PetscObject)A01), PETSC_ERR_SUP, "Cannot call MatCreateSchurComplementPmat() if MatZeroRows() or MatZeroRowsColumns() has been called on the input Mat");
-        PetscCheck(!((Mat_Shell *)A01->data)->axpy, PetscObjectComm((PetscObject)A01), PETSC_ERR_SUP, "Cannot call MatCreateSchurComplementPmat() if MatAXPY() has been called on the input Mat");
-        PetscCheck(!((Mat_Shell *)A01->data)->left && !((Mat_Shell *)A01->data)->right, PetscObjectComm((PetscObject)A01), PETSC_ERR_SUP, "Cannot call MatCreateSchurComplementPmat() if MatDiagonalScale() has been called on the input Mat");
-        PetscCheck(!((Mat_Shell *)A01->data)->dshift, PetscObjectComm((PetscObject)A01), PETSC_ERR_SUP, "Cannot call MatCreateSchurComplementPmat() if MatDiagonalSet() has been called on the input Mat");
-        PetscCall(MatScale(AdB, ((Mat_Shell *)A01->data)->vscale));
-        PetscCall(MatShift(AdB, ((Mat_Shell *)A01->data)->vshift));
+        PetscScalar shift, scale;
+
+        PetscCall(MatShellGetScalingShifts(A01, &shift, &scale, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
+        PetscCall(MatShift(AdB, shift));
+        PetscCall(MatScale(AdB, scale));
       }
       PetscCall(MatCreateVecs(A00, &diag, NULL));
       if (ainvtype == MAT_SCHUR_COMPLEMENT_AINV_LUMP) {
@@ -813,13 +811,13 @@ PetscErrorCode MatCreateSchurComplementPmat(Mat A00, Mat A01, Mat A10, Mat A11, 
       PetscCall(MatCreate(comm, &A00_inv));
       PetscCall(MatSetType(A00_inv, type));
       PetscCall(MatInvertBlockDiagonalMat(A00, A00_inv));
-      PetscCall(MatMatMult(A00_inv, A01, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &AdB));
+      PetscCall(MatMatMult(A00_inv, A01, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &AdB));
       PetscCall(MatDestroy(&A00_inv));
     } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unknown MatSchurComplementAinvType: %d", ainvtype);
     /* Cannot really reuse Sp in MatMatMult() because of MatAYPX() -->
          MatAXPY() --> MatHeaderReplace() --> MatDestroy_XXX_MatMatMult()  */
     if (preuse == MAT_REUSE_MATRIX) PetscCall(MatDestroy(Sp));
-    PetscCall(MatMatMult(A10, AdB, MAT_INITIAL_MATRIX, PETSC_DEFAULT, Sp));
+    PetscCall(MatMatMult(A10, AdB, MAT_INITIAL_MATRIX, PETSC_DETERMINE, Sp));
     if (!A11) {
       PetscCall(MatScale(*Sp, -1.0));
     } else {
@@ -910,7 +908,7 @@ static PetscErrorCode MatProductNumeric_SchurComplement_Dense(Mat C)
   PetscInt             lda;
 
   PetscFunctionBegin;
-  PetscCall(MatMatMult(Na->B, product->B, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &work1));
+  PetscCall(MatMatMult(Na->B, product->B, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &work1));
   PetscCall(MatDuplicate(work1, MAT_DO_NOT_COPY_VALUES, &work2));
   PetscCall(KSPMatSolve(Na->ksp, work1, work2));
   PetscCall(MatDestroy(&work1));
@@ -918,12 +916,12 @@ static PetscErrorCode MatProductNumeric_SchurComplement_Dense(Mat C)
   PetscCall(MatDenseGetLDA(C, &lda));
   PetscCall(MatCreateDense(PetscObjectComm((PetscObject)C), C->rmap->n, C->cmap->n, C->rmap->N, C->cmap->N, v, &work1));
   PetscCall(MatDenseSetLDA(work1, lda));
-  PetscCall(MatMatMult(Na->C, work2, MAT_REUSE_MATRIX, PETSC_DEFAULT, &work1));
+  PetscCall(MatMatMult(Na->C, work2, MAT_REUSE_MATRIX, PETSC_DETERMINE, &work1));
   PetscCall(MatDenseRestoreArrayWrite(C, &v));
   PetscCall(MatDestroy(&work2));
   PetscCall(MatDestroy(&work1));
   if (Na->D) {
-    PetscCall(MatMatMult(Na->D, product->B, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &work1));
+    PetscCall(MatMatMult(Na->D, product->B, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &work1));
     PetscCall(MatAYPX(C, -1.0, work1, SAME_NONZERO_PATTERN));
     PetscCall(MatDestroy(&work1));
   } else PetscCall(MatScale(C, -1.0));

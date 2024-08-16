@@ -4985,6 +4985,7 @@ PetscErrorCode MatDuplicate(Mat mat, MatDuplicateOption op, Mat *M)
   if (container_h) PetscCall(PetscObjectCompose((PetscObject)B, "__PETSc_MatCOOStruct_Host", container_h));
   PetscCall(PetscObjectQuery((PetscObject)mat, "__PETSc_MatCOOStruct_Device", &container_d));
   if (container_d) PetscCall(PetscObjectCompose((PetscObject)B, "__PETSc_MatCOOStruct_Device", container_d));
+  if (op == MAT_COPY_VALUES) PetscCall(MatPropagateSymmetryOptions(mat, B));
   PetscCall(PetscObjectStateIncrease((PetscObject)B));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -8644,8 +8645,10 @@ PetscErrorCode MatCreateSubMatrix(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat
   PetscCall(PetscLogEventEnd(MAT_CreateSubMat, mat, 0, 0, 0));
 
 setproperties:
-  PetscCall(ISEqualUnsorted(isrow, iscoltmp, &flg));
-  if (flg) PetscCall(MatPropagateSymmetryOptions(mat, *newmat));
+  if ((*newmat)->symmetric == PETSC_BOOL3_UNKNOWN && (*newmat)->structurally_symmetric == PETSC_BOOL3_UNKNOWN && (*newmat)->spd == PETSC_BOOL3_UNKNOWN && (*newmat)->hermitian == PETSC_BOOL3_UNKNOWN) {
+    PetscCall(ISEqualUnsorted(isrow, iscoltmp, &flg));
+    if (flg) PetscCall(MatPropagateSymmetryOptions(mat, *newmat));
+  }
   if (!iscol) PetscCall(ISDestroy(&iscoltmp));
   if (*newmat && cll == MAT_INITIAL_MATRIX) PetscCall(PetscObjectStateIncrease((PetscObject)*newmat));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -8911,9 +8914,9 @@ PetscErrorCode MatMatInterpolateAdd(Mat A, Mat x, Mat w, Mat *y)
     }
   }
   if (!trans) {
-    PetscCall(MatMatMult(A, x, reuse, PETSC_DEFAULT, y));
+    PetscCall(MatMatMult(A, x, reuse, PETSC_DETERMINE, y));
   } else {
-    PetscCall(MatTransposeMatMult(A, x, reuse, PETSC_DEFAULT, y));
+    PetscCall(MatTransposeMatMult(A, x, reuse, PETSC_DETERMINE, y));
   }
   if (w) PetscCall(MatAXPY(*y, 1.0, w, UNKNOWN_NONZERO_PATTERN));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -10142,7 +10145,7 @@ PetscErrorCode MatFactorFactorizeSchurComplement(Mat F)
 + A     - the matrix
 . P     - the projection matrix
 . scall - either `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`
-- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(P)), use `PETSC_DEFAULT` if you do not have a good estimate
+- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(P)), use `PETSC_DETERMINE` or `PETSC_CURRENT` if you do not have a good estimate
           if the result is a dense matrix this is irrelevant
 
   Output Parameter:
@@ -10154,6 +10157,8 @@ PetscErrorCode MatFactorFactorizeSchurComplement(Mat F)
   C will be created and must be destroyed by the user with `MatDestroy()`.
 
   An alternative approach to this function is to use `MatProductCreate()` and set the desired options before the computation is done
+
+  The deprecated `PETSC_DEFAULT` in `fill` also means use the current value
 
   Developer Note:
   For matrix types without special implementation the function fallbacks to `MatMatMult()` followed by `MatTransposeMatMult()`.
@@ -10195,7 +10200,7 @@ PetscErrorCode MatPtAP(Mat A, Mat P, MatReuse scall, PetscReal fill, Mat *C)
 + A     - the matrix
 . R     - the projection matrix
 . scall - either `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`
-- fill  - expected fill as ratio of nnz(C)/nnz(A), use `PETSC_DEFAULT` if you do not have a good estimate
+- fill  - expected fill as ratio of nnz(C)/nnz(A), use `PETSC_DETERMINE` or `PETSC_CURRENT` if you do not have a good estimate
           if the result is a dense matrix this is irrelevant
 
   Output Parameter:
@@ -10204,14 +10209,16 @@ PetscErrorCode MatPtAP(Mat A, Mat P, MatReuse scall, PetscReal fill, Mat *C)
   Level: intermediate
 
   Notes:
-  C will be created and must be destroyed by the user with `MatDestroy()`.
+  `C` will be created and must be destroyed by the user with `MatDestroy()`.
 
   An alternative approach to this function is to use `MatProductCreate()` and set the desired options before the computation is done
 
   This routine is currently only implemented for pairs of `MATAIJ` matrices and classes
   which inherit from `MATAIJ`. Due to PETSc sparse matrix block row distribution among processes,
-  parallel MatRARt is implemented via explicit transpose of R, which could be very expensive.
-  We recommend using MatPtAP().
+  parallel `MatRARt()` is implemented via explicit transpose of `R`, which could be very expensive.
+  We recommend using `MatPtAP()`.
+
+  The deprecated `PETSC_DEFAULT` in `fill` also means use the current value
 
 .seealso: [](ch_matrices), `Mat`, `MatProductCreate()`, `MatMatMult()`, `MatPtAP()`
 @*/
@@ -10290,7 +10297,7 @@ static PetscErrorCode MatProduct_Private(Mat A, Mat B, MatReuse scall, PetscReal
 + A     - the left matrix
 . B     - the right matrix
 . scall - either `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`
-- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(B)), use `PETSC_DEFAULT` if you do not have a good estimate
+- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(B)), use `PETSC_DETERMINE` or `PETSC_CURRENT` if you do not have a good estimate
           if the result is a dense matrix this is irrelevant
 
   Output Parameter:
@@ -10302,10 +10309,12 @@ static PetscErrorCode MatProduct_Private(Mat A, Mat B, MatReuse scall, PetscReal
   `MAT_REUSE_MATRIX` can only be used if the matrices A and B have the same nonzero pattern as in the previous call and C was obtained from a previous
   call to this function with `MAT_INITIAL_MATRIX`.
 
-  To determine the correct fill value, run with -info and search for the string "Fill ratio" to see the value actually needed.
+  To determine the correct fill value, run with `-info` and search for the string "Fill ratio" to see the value actually needed.
 
-  In the special case where matrix B (and hence C) are dense you can create the correctly sized matrix C yourself and then call this routine with `MAT_REUSE_MATRIX`,
-  rather than first having `MatMatMult()` create it for you. You can NEVER do this if the matrix C is sparse.
+  In the special case where matrix `B` (and hence `C`) are dense you can create the correctly sized matrix `C` yourself and then call this routine with `MAT_REUSE_MATRIX`,
+  rather than first having `MatMatMult()` create it for you. You can NEVER do this if the matrix `C` is sparse.
+
+  The deprecated `PETSC_DEFAULT` in `fill` also means use the current value
 
   Example of Usage:
 .vb
@@ -10339,7 +10348,7 @@ PetscErrorCode MatMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C)
 + A     - the left matrix
 . B     - the right matrix
 . scall - either `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`
-- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(B)), use `PETSC_DEFAULT` if not known
+- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(B)), use `PETSC_DETERMINE` or `PETSC_CURRENT` if not known
 
   Output Parameter:
 . C - the product matrix
@@ -10364,6 +10373,8 @@ PetscErrorCode MatMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C)
 
   This routine is shorthand for using `MatProductCreate()` with the `MatProductType` of `MATPRODUCT_ABt`
 
+  The deprecated `PETSC_DEFAULT` in `fill` also means use the current value
+
 .seealso: [](ch_matrices), `Mat`, `MatProductCreate()`, `MATPRODUCT_ABt`, `MatMatMult()`, `MatTransposeMatMult()` `MatPtAP()`, `MatProductAlgorithm`, `MatProductType`
 @*/
 PetscErrorCode MatMatTransposeMult(Mat A, Mat B, MatReuse scall, PetscReal fill, Mat *C)
@@ -10383,7 +10394,7 @@ PetscErrorCode MatMatTransposeMult(Mat A, Mat B, MatReuse scall, PetscReal fill,
 + A     - the left matrix
 . B     - the right matrix
 . scall - either `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`
-- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(B)), use `PETSC_DEFAULT` if not known
+- fill  - expected fill as ratio of nnz(C)/(nnz(A) + nnz(B)), use `PETSC_DETERMINE` or `PETSC_CURRENT` if not known
 
   Output Parameter:
 . C - the product matrix
@@ -10402,6 +10413,8 @@ PetscErrorCode MatMatTransposeMult(Mat A, Mat B, MatReuse scall, PetscReal fill,
 
   This routine is currently implemented for pairs of `MATAIJ` matrices and pairs of `MATSEQDENSE` matrices and classes
   which inherit from `MATSEQAIJ`.  `C` will be of the same type as the input matrices.
+
+  The deprecated `PETSC_DEFAULT` in `fill` also means use the current value
 
 .seealso: [](ch_matrices), `Mat`, `MatProductCreate()`, `MATPRODUCT_AtB`, `MatMatMult()`, `MatMatTransposeMult()`, `MatPtAP()`
 @*/
@@ -10422,7 +10435,7 @@ PetscErrorCode MatTransposeMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill,
 . B     - the middle matrix
 . C     - the right matrix
 . scall - either `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`
-- fill  - expected fill as ratio of nnz(D)/(nnz(A) + nnz(B)+nnz(C)), use `PETSC_DEFAULT` if you do not have a good estimate
+- fill  - expected fill as ratio of nnz(D)/(nnz(A) + nnz(B)+nnz(C)), use `PETSC_DETERMINE` or `PETSC_CURRENT` if you do not have a good estimate
           if the result is a dense matrix this is irrelevant
 
   Output Parameter:
@@ -10442,6 +10455,8 @@ PetscErrorCode MatTransposeMatMult(Mat A, Mat B, MatReuse scall, PetscReal fill,
 
   If you have many matrices with the same non-zero structure to multiply, you
   should use `MAT_REUSE_MATRIX` in all calls but the first
+
+  The deprecated `PETSC_DEFAULT` in `fill` also means use the current value
 
 .seealso: [](ch_matrices), `Mat`, `MatProductCreate()`, `MATPRODUCT_ABC`, `MatMatMult`, `MatPtAP()`, `MatMatTransposeMult()`, `MatTransposeMatMult()`
 @*/
@@ -11179,7 +11194,7 @@ PetscErrorCode MatSubdomainsCreateCoalesce(Mat A, PetscInt N, PetscInt *n, IS *i
 . dA          - fine grid matrix
 . interpolate - interpolation operator
 . reuse       - either `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`
-- fill        - expected fill, use `PETSC_DEFAULT` if you do not have a good estimate
+- fill        - expected fill, use `PETSC_DETERMINE` or `PETSC_DETERMINE` if you do not have a good estimate
 
   Output Parameter:
 . A - the Galerkin coarse matrix
@@ -11188,6 +11203,9 @@ PetscErrorCode MatSubdomainsCreateCoalesce(Mat A, PetscInt N, PetscInt *n, IS *i
 . -pc_mg_galerkin <both,pmat,mat,none> - for what matrices the Galerkin process should be used
 
   Level: developer
+
+  Note:
+  The deprecated `PETSC_DEFAULT` in `fill` also means use the current value
 
 .seealso: [](ch_matrices), `Mat`, `MatPtAP()`, `MatMatMatMult()`
 @*/

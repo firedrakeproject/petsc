@@ -7,6 +7,7 @@
 #include <../src/mat/impls/dense/mpi/mpidense.h> /*I   "petscmat.h"  I*/
 #include <../src/mat/impls/aij/mpi/mpiaij.h>
 #include <petscblaslapack.h>
+#include <petsc/private/vecimpl.h>
 
 /*@
   MatDenseGetLocalMatrix - For a `MATMPIDENSE` or `MATSEQDENSE` matrix returns the sequential
@@ -140,20 +141,20 @@ static PetscErrorCode MatSetValues_MPIDense(Mat mat, PetscInt m, const PetscInt 
     if (idxm[i] >= rstart && idxm[i] < rend) {
       row = idxm[i] - rstart;
       if (roworiented) {
-        PetscCall(MatSetValues(A->A, 1, &row, n, idxn, v ? v + i * n : NULL, addv));
+        PetscCall(MatSetValues(A->A, 1, &row, n, idxn, PetscSafePointerPlusOffset(v, i * n), addv));
       } else {
         for (j = 0; j < n; j++) {
           if (idxn[j] < 0) continue;
           PetscCheck(idxn[j] < mat->cmap->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Column too large");
-          PetscCall(MatSetValues(A->A, 1, &row, 1, &idxn[j], v ? v + i + j * m : NULL, addv));
+          PetscCall(MatSetValues(A->A, 1, &row, 1, &idxn[j], PetscSafePointerPlusOffset(v, i + j * m), addv));
         }
       }
     } else if (!A->donotstash) {
       mat->assembled = PETSC_FALSE;
       if (roworiented) {
-        PetscCall(MatStashValuesRow_Private(&mat->stash, idxm[i], n, idxn, v ? v + i * n : NULL, PETSC_FALSE));
+        PetscCall(MatStashValuesRow_Private(&mat->stash, idxm[i], n, idxn, PetscSafePointerPlusOffset(v, i * n), PETSC_FALSE));
       } else {
-        PetscCall(MatStashValuesCol_Private(&mat->stash, idxm[i], n, idxn, v ? v + i : NULL, m, PETSC_FALSE));
+        PetscCall(MatStashValuesCol_Private(&mat->stash, idxm[i], n, idxn, PetscSafePointerPlusOffset(v, i), m, PETSC_FALSE));
       }
     }
   }
@@ -1542,6 +1543,7 @@ PetscErrorCode MatDenseRestoreColumnVec_MPIDense(Mat A, PetscInt col, Vec *v)
   PetscFunctionBegin;
   PetscCheck(a->vecinuse, PETSC_COMM_SELF, PETSC_ERR_ORDER, "Need to call MatDenseGetColumnVec() first");
   PetscCheck(a->cvec, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing internal column vector");
+  VecCheckAssembled(a->cvec);
   a->vecinuse = 0;
   PetscCall(MatDenseRestoreArray(a->A, (PetscScalar **)&a->ptrinuse));
   PetscCall(VecResetArray(a->cvec));
@@ -1574,6 +1576,7 @@ PetscErrorCode MatDenseRestoreColumnVecRead_MPIDense(Mat A, PetscInt col, Vec *v
   PetscFunctionBegin;
   PetscCheck(a->vecinuse, PetscObjectComm((PetscObject)A), PETSC_ERR_ORDER, "Need to call MatDenseGetColumnVec() first");
   PetscCheck(a->cvec, PetscObjectComm((PetscObject)A), PETSC_ERR_PLIB, "Missing internal column vector");
+  VecCheckAssembled(a->cvec);
   a->vecinuse = 0;
   PetscCall(MatDenseRestoreArrayRead(a->A, &a->ptrinuse));
   PetscCall(VecLockReadPop(a->cvec));
@@ -1606,6 +1609,7 @@ PetscErrorCode MatDenseRestoreColumnVecWrite_MPIDense(Mat A, PetscInt col, Vec *
   PetscFunctionBegin;
   PetscCheck(a->vecinuse, PetscObjectComm((PetscObject)A), PETSC_ERR_ORDER, "Need to call MatDenseGetColumnVec() first");
   PetscCheck(a->cvec, PetscObjectComm((PetscObject)A), PETSC_ERR_PLIB, "Missing internal column vector");
+  VecCheckAssembled(a->cvec);
   a->vecinuse = 0;
   PetscCall(MatDenseRestoreArrayWrite(a->A, (PetscScalar **)&a->ptrinuse));
   PetscCall(VecResetArray(a->cvec));
@@ -2060,7 +2064,7 @@ static PetscErrorCode MatTransposeMatMultNumeric_MPIDense_MPIDense(Mat A, Mat B,
   PetscCallMPI(MPI_Comm_size(comm, &size));
 
   /* compute atbarray = aseq^T * bseq */
-  PetscCall(MatTransposeMatMult(a->A, b->A, atb->atb ? MAT_REUSE_MATRIX : MAT_INITIAL_MATRIX, PETSC_DEFAULT, &atb->atb));
+  PetscCall(MatTransposeMatMult(a->A, b->A, atb->atb ? MAT_REUSE_MATRIX : MAT_INITIAL_MATRIX, PETSC_DETERMINE, &atb->atb));
 
   PetscCall(MatGetOwnershipRanges(C, &ranges));
 

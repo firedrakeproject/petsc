@@ -325,6 +325,7 @@ static PetscErrorCode SNESSetUp_Composite(SNES snes)
   while (next) {
     n++;
     PetscCall(SNESSetDM(next->snes, dm));
+    PetscCall(SNESSetJacobian(next->snes, snes->jacobian, snes->jacobian_pre, NULL, NULL));
     PetscCall(SNESSetApplicationContext(next->snes, snes->user));
     if (snes->xl && snes->xu) {
       if (snes->ops->computevariablebounds) {
@@ -497,6 +498,7 @@ static PetscErrorCode SNESCompositeAddSNES_Composite(SNES snes, SNESType type)
   PetscCall(PetscNew(&ilink));
   ilink->next = NULL;
   PetscCall(SNESCreate(PetscObjectComm((PetscObject)snes), &ilink->snes));
+  PetscCall(PetscObjectIncrementTabLevel((PetscObject)ilink->snes, (PetscObject)snes, 1));
   PetscCall(SNESGetDM(snes, &dm));
   PetscCall(SNESSetDM(ilink->snes, dm));
   PetscCall(SNESSetTolerances(ilink->snes, snes->abstol, snes->rtol, snes->stol, 1, snes->max_funcs));
@@ -519,7 +521,6 @@ static PetscErrorCode SNESCompositeAddSNES_Composite(SNES snes, SNESType type)
   PetscCall(SNESSetOptionsPrefix(ilink->snes, prefix));
   PetscCall(PetscSNPrintf(newprefix, sizeof(newprefix), "sub_%d_", (int)cnt));
   PetscCall(SNESAppendOptionsPrefix(ilink->snes, newprefix));
-  PetscCall(PetscObjectIncrementTabLevel((PetscObject)ilink->snes, (PetscObject)snes, 1));
   PetscCall(SNESSetType(ilink->snes, type));
   PetscCall(SNESSetNormSchedule(ilink->snes, SNES_NORM_FINAL_ONLY));
 
@@ -829,6 +830,8 @@ PETSC_EXTERN PetscErrorCode SNESCreate_Composite(SNES snes)
   snes->usesksp = PETSC_FALSE;
 
   snes->alwayscomputesfinalresidual = PETSC_FALSE;
+
+  PetscCall(SNESParametersInitialize(snes));
 
   snes->data  = (void *)jac;
   jac->type   = SNES_COMPOSITE_ADDITIVEOPTIMAL;

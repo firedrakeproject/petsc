@@ -22,10 +22,15 @@ Changes: Development
 - Deprecate ``PetscOptionsGetViewer()``, and ``PetscOptionsGetViewers()`` in favor of ``PetscOptionsCreateViewer()`` and ``PetscOptionsCreateViewers()``
 - Deprecate ``PetscOptionsPushGetViewerOff()``, ``PetscOptionsPopGetViewerOff()``, and ``PetscOptionsGetViewerOff()`` in favor of
   ``PetscOptionsPushCreateViewerOff()``, ``PetscOptionsPopCreateViewerOff()``, and ``PetscOptionsGetCreateViewerOff()``
+- Add ``PetscObjectContainerCompose()``, and ``PetscObjectContainerQuery()``
+- Add ``size_t`` argument to ``PetscMPIErrorString()``
 
 .. rubric:: Event Logging:
 
 .. rubric:: PetscViewer:
+
+- Add ``PetscViewerASCIIStdoutSetFileUnit()``
+- Add ``PetscShmgetAllocateArrayScalar()``, ``PetscShmgetDeallocateArrayScalar()``, ``PetscShmgetAllocateArrayInt()``, and ``PetscShmgetDeallocateArrayInt()`` for Fortran
 
 .. rubric:: PetscDraw:
 
@@ -50,6 +55,10 @@ Changes: Development
 
 .. rubric:: Mat:
 
+-  Change ``MatProductSetFill()`` to support ``PETSC_DETERMINE`` and ``PETSC_CURRENT``. ``MatMatMult()`` and its friends and relations now accept
+   ``PETSC_DETERMINE`` and ``PETSC_CURRENT`` in the ``fill`` argument. ``PETSC_DEFAULT`` is deprecated for those functions
+- Change the default ``MatType`` of the output ``Mat`` of ``MatSchurComplementComputeExplicitOperator()`` to be ``MATDENSE``. It may be changed from the command line, e.g., ``-fieldsplit_1_explicit_operator_mat_type aij``
+
 .. rubric:: MatCoarsen:
 
 .. rubric:: PC:
@@ -65,20 +74,37 @@ Changes: Development
 
 .. rubric:: KSP:
 
+- Add support for ``PETSC_DETERMINE`` as an argument to ``KSPSetTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``KSPSetTolerances()``
+
 .. rubric:: SNES:
 
+- Add support for ``PETSC_DETERMINE`` as an argument to ``SNESSetTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``SNESSetTolerances()``
 - Add ``DMAdaptorMonitor()``, ``DMAdaptorMonitorSet()``,  ``DMAdaptorMonitorCancel()``, ``DMAdaptorMonitorSetFromOptions()``
 - Add ``DMAdaptorMonitorSize()``, ``DMAdaptorMonitorError()``, ``DMAdaptorMonitorErrorDraw()``, ``DMAdaptorMonitorErrorDrawLGCreate()``, ``DMAdaptorMonitorErrorDrawLG()``
 - Add ``DMAdaptorMonitorRegister()``, ``DMAdaptorMonitorRegisterAll()``, ``DMAdaptorMonitorRegisterDestroy()``
 - Add ``DMAdaptorGetCriterion()`` and ``DMAdaptorSetCriterion()``
+- Add ``DMAdaptorSetOptionsPrefix()``
+- Add Newton's method with arc length continuation: ``SNESNEWTONAL`` with ``SNESNewtonALSetFunction()``, ``SNESNewtonALGetFunction()``, ``SNESNewtonALComputeFunction()``, ``SNESNewtonALGetLoadParameter()``, and ``SNESNewtonALSetCorrectionType()``
 
 .. rubric:: SNESLineSearch:
 
 .. rubric:: TS:
 
 - Add Rosenbrock-W methods from :cite:`rang2015improved` with :math:`B_{PR}` stability: ``TSROSWR34PRW``, ``TSROSWR3PRL2``, ``TSROSWRODASPR``, and ``TSROSWRODASPR2``
+- Add support for ``PETSC_DETERMINE`` as an argument to ``TSSetTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``TSSetTolerances()``
+- Add support for ``PETSC_DETERMINE`` as an argument to ``TSSetMaxSteps()`` and ``TSSetMaxTime()``
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetSafety()``
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetClip()``
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetStepLimits()``
+- Add  ``TSGetStepResize()``
 
 .. rubric:: TAO:
+
+- Add support for ``PETSC_DETERMINE`` as an argument to ``TaoSetTolerances()`` and ``TaoSetConstraintTolerances()`` to set the parameter back to its initial value when the object's type was set
+- Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for  ``TaoSetTolerances()`` and ``TaoSetConstraintTolerances()``
 
 .. rubric:: DM/DA:
 
@@ -100,6 +126,7 @@ Changes: Development
 - Add ``DMPlexComputeL2FluxDiffVec()`` and ``DMPlexComputeL2FluxDiffVecLocal()``
 - Add ``DMAdaptorSetType()``, ``DMAdaptorGetType()``, ``DMAdaptorRegister()``, ``DMAdaptorRegisterAll()``, ``DMAdaptorRegisterDestroy()``
 - Add ``DMAdaptorGetMixedSetupFunction()`` and ``DMAdaptorSetMixedSetupFunction()``
+- Add ``DMPlexCreateCellNumbering()``
 
 .. rubric:: FE/FV:
 

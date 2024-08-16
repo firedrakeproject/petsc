@@ -239,6 +239,9 @@ PETSC_EXTERN MatRootName MatRootNameList;
    Utility private matrix routines used outside Mat
 */
 PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode MatFindNonzeroRowsOrCols_Basic(Mat, PetscBool, PetscReal, IS *);
+PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode MatShellGetScalingShifts(Mat, PetscScalar *, PetscScalar *, Vec *, Vec *, Vec *, Mat *, IS *, IS *);
+
+#define MAT_SHELL_NOT_ALLOWED (void *)-1
 
 /*
    Utility private matrix routines
@@ -246,6 +249,9 @@ PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode MatFindNonzeroRowsOrCols_Basic(Mat, P
 PETSC_INTERN PetscErrorCode MatConvert_Basic(Mat, MatType, MatReuse, Mat *);
 PETSC_INTERN PetscErrorCode MatConvert_Shell(Mat, MatType, MatReuse, Mat *);
 PETSC_INTERN PetscErrorCode MatConvertFrom_Shell(Mat, MatType, MatReuse, Mat *);
+PETSC_INTERN PetscErrorCode MatShellSetContext_Immutable(Mat X, void *ctx);
+PETSC_INTERN PetscErrorCode MatShellSetContextDestroy_Immutable(Mat X, PetscErrorCode (*f)(void *));
+PETSC_INTERN PetscErrorCode MatShellSetManageScalingShifts_Immutable(Mat X);
 PETSC_INTERN PetscErrorCode MatCopy_Basic(Mat, Mat, MatStructure);
 PETSC_INTERN PetscErrorCode MatDiagonalSet_Default(Mat, Vec, InsertMode);
 #if defined(PETSC_HAVE_SCALAPACK)
@@ -443,9 +449,9 @@ typedef struct { /* used by MatProduct() */
   PetscBool      symbolic_used_the_fact_A_is_symmetric; /* Symbolic phase took advantage of the fact that A is symmetric, and optimized e.g. AtB as AB. Then, .. */
   PetscBool      symbolic_used_the_fact_B_is_symmetric; /* .. in the numeric phase, if a new A is not symmetric (but has the same sparsity as the old A therefore .. */
   PetscBool      symbolic_used_the_fact_C_is_symmetric; /* MatMatMult(A,B,MAT_REUSE_MATRIX,..&C) is still legitimate), we need to redo symbolic! */
-  PetscReal      fill;
-  PetscBool      api_user; /* used to distinguish command line options and to indicate the matrix values are ready to be consumed at symbolic phase if needed */
-  PetscBool      setfromoptionscalled;
+  PetscObjectParameterDeclare(PetscReal, fill);
+  PetscBool api_user; /* used to distinguish command line options and to indicate the matrix values are ready to be consumed at symbolic phase if needed */
+  PetscBool setfromoptionscalled;
 
   /* Some products may display the information on the algorithm used */
   PetscErrorCode (*view)(Mat, PetscViewer);

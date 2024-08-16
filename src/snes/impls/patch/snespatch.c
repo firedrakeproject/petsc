@@ -123,12 +123,18 @@ static PetscErrorCode PCApply_PATCH_Nonlinear(PC pc, PetscInt i, Vec patchRHS, V
   PetscCall(PCPatch_ScatterLocal_Private(pc, i + pStart, patch->localState, patch->patchStateWithAll, INSERT_VALUES, SCATTER_FORWARD, SCATTER_WITHALL));
 
   PetscCall(MatGetLocalSize(patch->mat[i], NULL, &n));
-  patch->patchState->map->n = n;
-  patch->patchState->map->N = n;
-  patchUpdate->map->n       = n;
-  patchUpdate->map->N       = n;
-  patchRHS->map->n          = n;
-  patchRHS->map->N          = n;
+  patch->patchState->map->n    = n;
+  patch->patchState->map->N    = n;
+  patchUpdate->map->n          = n;
+  patchUpdate->map->N          = n;
+  patchRHS->map->n             = n;
+  patchRHS->map->N             = n;
+  patch->patchState->map->oldn = n;
+  patch->patchState->map->oldN = n;
+  patchUpdate->map->oldn       = n;
+  patchUpdate->map->oldN       = n;
+  patchRHS->map->oldn          = n;
+  patchRHS->map->oldN          = n;
   /* Set initial guess to be current state*/
   PetscCall(VecCopy(patch->patchState, patchUpdate));
   /* Solve for new state */
@@ -350,6 +356,8 @@ PETSC_EXTERN PetscErrorCode SNESCreate_Patch(SNES snes)
   snes->usesksp = PETSC_FALSE;
 
   snes->alwayscomputesfinalresidual = PETSC_FALSE;
+
+  PetscCall(SNESParametersInitialize(snes));
 
   snes->data = (void *)patch;
   PetscCall(PCCreate(PetscObjectComm((PetscObject)snes), &patch->pc));

@@ -1574,6 +1574,22 @@ cdef class PC(Object):
             CHKERR(PetscFree(p))
         return subksp
 
+    def getFieldSplitSubIS(self, splitname: str) -> IS:
+        """Return the `IS` associated with a given name.
+
+        Not collective.
+
+        See Also
+        --------
+        petsc.PCFieldSplitGetIS
+
+        """
+        cdef PetscIS field = NULL
+        cdef const char *cname = NULL
+        splitname = str2bytes(splitname, &cname)
+        CHKERR(PCFieldSplitGetIS(self.pc, cname, &field))
+        return ref_IS(field)
+
     def setFieldSplitSchurFactType(self, ctype: FieldSplitSchurFactType) -> None:
         """Set the type of approximate block factorization.
 
@@ -2365,6 +2381,17 @@ cdef class PC(Object):
         CHKERR(PCBDDCSetDofsSplittingLocal(self.pc, <PetscInt>n, cisfields))
 
     # --- Patch ---
+    def getPatchSubKSP(self) -> list[KSP]:
+        """Return the local `KSP` object for all blocks on this process.
+
+        Not collective.
+
+        """
+        cdef PetscInt n = 0
+        cdef PetscKSP *p = NULL
+        CHKERR(PCPatchGetSubKSP(self.pc, &n, &p))
+        return [ref_KSP(p[i]) for i from 0 <= i <n]
+
     def setPatchCellNumbering(self, Section sec) -> None:
         """Set the cell numbering."""
         CHKERR(PCPatchSetCellNumbering(self.pc, sec.sec))

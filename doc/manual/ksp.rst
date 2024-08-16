@@ -478,10 +478,11 @@ can be set with the routine
 
    KSPSetTolerances(KSP ksp,PetscReal rtol,PetscReal atol,PetscReal dtol,PetscInt maxits);
 
-The user can retain the default value of any of these parameters by
-specifying ``PETSC_DEFAULT`` as the corresponding tolerance; the
+The user can retain the current value of any of these parameters by
+specifying ``PETSC_CURRENT`` as the corresponding tolerance; the
 defaults are ``rtol=1e-5``, ``atol=1e-50``, ``dtol=1e5``, and
-``maxits=1e4``. These parameters can also be set from the options
+``maxits=1e4``. Using ``PETSC_DETERMINE`` will set the parameters back to their
+initial values when the object's type was set. These parameters can also be set from the options
 database with the commands ``-ksp_rtol`` ``<rtol>``, ``-ksp_atol``
 ``<atol>``, ``-ksp_divtol`` ``<dtol>``, and ``-ksp_max_it`` ``<its>``.
 
@@ -2668,6 +2669,8 @@ Amdahl's law makes clear that parallelizing only a portion of a numerical code c
 in the computation time; thus it is crucial to understand what phases of a computation must be parallelized (via MPI, OpenMP, or some other model)
 to ensure a useful increase in performance. One of the crucial phases is likely the generation of the matrix entries; the
 use of ``MatSetPreallocationCOO()`` and ``MatSetValuesCOO()`` in an OpenMP code allows parallelizing the generation of the matrix.
+
+See :any:`sec_pcmpi_study` for a study of the use of ``PCMPI`` on a specific PETSc application.
 
 
 

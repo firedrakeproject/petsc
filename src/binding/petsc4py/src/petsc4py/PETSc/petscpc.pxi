@@ -234,6 +234,7 @@ cdef extern from * nogil:
     PetscErrorCode PCFieldSplitSetFields(PetscPC, char[], PetscInt, PetscInt*, PetscInt*)
     PetscErrorCode PCFieldSplitSetIS(PetscPC, char[], PetscIS)
     PetscErrorCode PCFieldSplitGetSubKSP(PetscPC, PetscInt*, PetscKSP*[])
+    PetscErrorCode PCFieldSplitGetIS(PetscPC, char[], PetscIS*)
     PetscErrorCode PCFieldSplitSchurGetSubKSP(PetscPC, PetscInt*, PetscKSP*[])
     PetscErrorCode PCFieldSplitSetSchurPre(PetscPC, PetscPCFieldSplitSchurPreType, PetscMat)
     PetscErrorCode PCFieldSplitSetSchurFactType(PetscPC, PetscPCFieldSplitSchurFactType)
@@ -308,6 +309,7 @@ cdef extern from * nogil:
                                                              PetscIS**,
                                                              PetscIS*,
                                                              void*) except PETSC_ERR_PYTHON
+    PetscErrorCode PCPatchGetSubKSP(PetscPC, PetscInt*, PetscKSP*[])
     PetscErrorCode PCPatchSetCellNumbering(PetscPC, PetscSection)
     PetscErrorCode PCPatchSetDiscretisationInfo(PetscPC, PetscInt, PetscDM*, PetscInt*, PetscInt*, const PetscInt**, const PetscInt*, PetscInt, const PetscInt*, PetscInt, const PetscInt*)
     PetscErrorCode PCPatchSetComputeOperator(PetscPC, PetscPCPatchComputeOperator, void*)

@@ -86,7 +86,7 @@ static PetscErrorCode gqtwrap(Tao tao, PetscReal *gnorm, PetscReal *qmin)
     PetscCall(MatAssemblyEnd(mfqP->subH, MAT_FINAL_ASSEMBLY));
 
     PetscCall(TaoResetStatistics(mfqP->subtao));
-    /* PetscCall(TaoSetTolerances(mfqP->subtao,*gnorm,*gnorm,PETSC_DEFAULT)); */
+    /* PetscCall(TaoSetTolerances(mfqP->subtao,*gnorm,*gnorm,PETSC_CURRENT)); */
     /* enforce bound constraints -- experimental */
     if (tao->XU && tao->XL) {
       PetscCall(VecCopy(tao->XU, mfqP->subxu));
@@ -913,7 +913,7 @@ static PetscErrorCode TaoSetUp_POUNDERS(Tao tao)
   PetscCall(VecGetSize(tao->solution, &mfqP->n));
   PetscCall(VecGetSize(tao->ls_res, &mfqP->m));
   mfqP->c1 = PetscSqrtReal((PetscReal)mfqP->n);
-  if (mfqP->npmax == PETSC_DEFAULT) mfqP->npmax = 2 * mfqP->n + 1;
+  if (mfqP->npmax == PETSC_CURRENT) mfqP->npmax = 2 * mfqP->n + 1;
   mfqP->npmax = PetscMin((mfqP->n + 1) * (mfqP->n + 2) / 2, mfqP->npmax);
   mfqP->npmax = PetscMax(mfqP->npmax, mfqP->n + 2);
 
@@ -1155,10 +1155,13 @@ PETSC_EXTERN PetscErrorCode TaoCreate_POUNDERS(Tao tao)
 
   PetscCall(PetscNew(&mfqP));
   tao->data = (void *)mfqP;
+
   /* Override default settings (unless already changed) */
-  if (!tao->max_it_changed) tao->max_it = 2000;
-  if (!tao->max_funcs_changed) tao->max_funcs = 4000;
-  mfqP->npmax      = PETSC_DEFAULT;
+  PetscCall(TaoParametersInitialize(tao));
+  PetscObjectParameterSetDefault(tao, max_it, 2000);
+  PetscObjectParameterSetDefault(tao, max_funcs, 4000);
+
+  mfqP->npmax      = PETSC_CURRENT;
   mfqP->delta0     = 0.1;
   mfqP->delta      = 0.1;
   mfqP->deltamax   = 1e3;

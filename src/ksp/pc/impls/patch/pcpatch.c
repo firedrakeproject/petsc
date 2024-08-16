@@ -2718,10 +2718,14 @@ static PetscErrorCode PCApply_PATCH_Linear(PC pc, PetscInt i, Vec x, Vec y)
   /* Disgusting trick to reuse work vectors */
   PetscCall(KSPGetOperators(ksp, &op, NULL));
   PetscCall(MatGetLocalSize(op, &m, &n));
-  x->map->n = m;
-  y->map->n = n;
-  x->map->N = m;
-  y->map->N = n;
+  x->map->n    = m;
+  y->map->n    = n;
+  x->map->N    = m;
+  y->map->N    = n;
+  x->map->oldn = m;
+  y->map->oldn = n;
+  x->map->oldN = m;
+  y->map->oldN = n;
   PetscCall(KSPSolve(ksp, x, y));
   PetscCall(KSPCheckSolve(ksp, pc, y));
   PetscCall(PetscLogEventEnd(PC_Patch_Solve, pc, 0, 0, 0));
@@ -2759,10 +2763,14 @@ static PetscErrorCode PCUpdateMultiplicative_PATCH_Linear(PC pc, PetscInt i, Pet
   }
   /* Disgusting trick to reuse work vectors */
   PetscCall(MatGetLocalSize(multMat, &m, &n));
-  patch->patchUpdate->map->n            = n;
-  patch->patchRHSWithArtificial->map->n = m;
-  patch->patchUpdate->map->N            = n;
-  patch->patchRHSWithArtificial->map->N = m;
+  patch->patchUpdate->map->n               = n;
+  patch->patchRHSWithArtificial->map->n    = m;
+  patch->patchUpdate->map->N               = n;
+  patch->patchRHSWithArtificial->map->N    = m;
+  patch->patchUpdate->map->oldn            = n;
+  patch->patchRHSWithArtificial->map->oldn = m;
+  patch->patchUpdate->map->oldN            = n;
+  patch->patchRHSWithArtificial->map->oldN = m;
   PetscCall(MatMult(multMat, patch->patchUpdate, patch->patchRHSWithArtificial));
   PetscCall(VecScale(patch->patchRHSWithArtificial, -1.0));
   PetscCall(PCPatch_ScatterLocal_Private(pc, i + pStart, patch->patchRHSWithArtificial, patch->localRHS, ADD_VALUES, SCATTER_REVERSE, SCATTER_WITHARTIFICIAL));

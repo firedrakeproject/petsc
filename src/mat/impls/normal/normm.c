@@ -276,7 +276,7 @@ static PetscErrorCode MatProductNumeric_Normal_Dense(Mat C)
   PetscCall(MatShellGetContext(A, &a));
   contents = (Normal_Dense *)C->product->data;
   PetscCheck(contents, PetscObjectComm((PetscObject)C), PETSC_ERR_PLIB, "Product data empty");
-  PetscCall(MatShellGetScalingShifts(A, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, &scale, (Vec *)MAT_SHELL_NOT_ALLOWED, &right, (Vec *)MAT_SHELL_NOT_ALLOWED, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
+  PetscCall(MatShellGetScalingShifts(A, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, &scale, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, &right, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
   if (right) {
     PetscCall(MatCopy(B, C, SAME_NONZERO_PATTERN));
     PetscCall(MatDiagonalScale(C, right, NULL));
@@ -319,7 +319,7 @@ static PetscErrorCode MatProductSymbolic_Normal_Dense(Mat C)
   PetscCheck(!C->product->data, PetscObjectComm((PetscObject)C), PETSC_ERR_PLIB, "Product data not empty");
   A = C->product->A;
   B = C->product->B;
-  PetscCall(MatShellGetScalingShifts(A, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, &scale, (Vec *)MAT_SHELL_NOT_ALLOWED, &right, (Vec *)MAT_SHELL_NOT_ALLOWED, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
+  PetscCall(MatShellGetScalingShifts(A, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, &scale, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, &right, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
   PetscCall(MatShellGetContext(A, &a));
   PetscCall(MatGetLocalSize(C, &m, &n));
   PetscCall(MatGetSize(C, &M, &N));
@@ -352,19 +352,12 @@ static PetscErrorCode MatProductSymbolic_Normal_Dense(Mat C)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatProductSetFromOptions_Normal_Dense_AB(Mat C)
-{
-  PetscFunctionBegin;
-  C->ops->productsymbolic = MatProductSymbolic_Normal_Dense;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode MatProductSetFromOptions_Normal_Dense(Mat C)
 {
   Mat_Product *product = C->product;
 
   PetscFunctionBegin;
-  if (product->type == MATPRODUCT_AB) PetscCall(MatProductSetFromOptions_Normal_Dense_AB(C));
+  if (product->type == MATPRODUCT_AB) C->ops->productsymbolic = MatProductSymbolic_Normal_Dense;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

@@ -10,7 +10,7 @@ PetscFunctionList SNESList              = NULL;
 
 /* Logging support */
 PetscClassId  SNES_CLASSID, DMSNES_CLASSID;
-PetscLogEvent SNES_Solve, SNES_SetUp, SNES_FunctionEval, SNES_JacobianEval, SNES_NGSEval, SNES_NGSFuncEval, SNES_NPCSolve, SNES_ObjectiveEval;
+PetscLogEvent SNES_Solve, SNES_SetUp, SNES_FunctionEval, SNES_JacobianEval, SNES_NGSEval, SNES_NGSFuncEval, SNES_NewtonALEval, SNES_NPCSolve, SNES_ObjectiveEval;
 
 /*@
   SNESSetErrorIfNotConverged - Causes `SNESSolve()` to generate an error immediately if the solver has not converged.
@@ -4796,10 +4796,13 @@ PetscErrorCode SNESSolve(SNES snes, Vec b, Vec x)
       num = 0;
       PetscCall(PetscOptionsGetInt(NULL, ((PetscObject)snes)->prefix, "-snes_adapt_sequence", &num, NULL));
       if (num) {
-        DMAdaptor adaptor;
+        DMAdaptor   adaptor;
+        const char *prefix;
 
         incall = PETSC_TRUE;
         PetscCall(DMAdaptorCreate(PetscObjectComm((PetscObject)snes), &adaptor));
+        PetscCall(SNESGetOptionsPrefix(snes, &prefix));
+        PetscCall(DMAdaptorSetOptionsPrefix(adaptor, prefix));
         PetscCall(DMAdaptorSetSolver(adaptor, snes));
         PetscCall(DMAdaptorSetSequenceLength(adaptor, num));
         PetscCall(DMAdaptorSetFromOptions(adaptor));

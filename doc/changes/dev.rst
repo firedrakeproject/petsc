@@ -57,6 +57,7 @@ Changes: Development
 
 -  Change ``MatProductSetFill()`` to support ``PETSC_DETERMINE`` and ``PETSC_CURRENT``. ``MatMatMult()`` and its friends and relations now accept
    ``PETSC_DETERMINE`` and ``PETSC_CURRENT`` in the ``fill`` argument. ``PETSC_DEFAULT`` is deprecated for those functions
+- Change the default ``MatType`` of the output ``Mat`` of ``MatSchurComplementComputeExplicitOperator()`` to be ``MATDENSE``. It may be changed from the command line, e.g., ``-fieldsplit_1_explicit_operator_mat_type aij``
 
 .. rubric:: MatCoarsen:
 
@@ -84,6 +85,8 @@ Changes: Development
 - Add ``DMAdaptorMonitorSize()``, ``DMAdaptorMonitorError()``, ``DMAdaptorMonitorErrorDraw()``, ``DMAdaptorMonitorErrorDrawLGCreate()``, ``DMAdaptorMonitorErrorDrawLG()``
 - Add ``DMAdaptorMonitorRegister()``, ``DMAdaptorMonitorRegisterAll()``, ``DMAdaptorMonitorRegisterDestroy()``
 - Add ``DMAdaptorGetCriterion()`` and ``DMAdaptorSetCriterion()``
+- Add ``DMAdaptorSetOptionsPrefix()``
+- Add Newton's method with arc length continuation: ``SNESNEWTONAL`` with ``SNESNewtonALSetFunction()``, ``SNESNewtonALGetFunction()``, ``SNESNewtonALComputeFunction()``, ``SNESNewtonALGetLoadParameter()``, and ``SNESNewtonALSetCorrectionType()``
 
 .. rubric:: SNESLineSearch:
 
@@ -96,6 +99,7 @@ Changes: Development
 - Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetSafety()``
 - Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetClip()``
 - Deprecate ``PETSC_DEFAULT`` in favor of ``PETSC_CURRENT`` for ``TSAdaptSetStepLimits()``
+- Add  ``TSGetStepResize()``
 
 .. rubric:: TAO:
 
@@ -123,6 +127,8 @@ Changes: Development
 - Add ``DMAdaptorSetType()``, ``DMAdaptorGetType()``, ``DMAdaptorRegister()``, ``DMAdaptorRegisterAll()``, ``DMAdaptorRegisterDestroy()``
 - Add ``DMAdaptorGetMixedSetupFunction()`` and ``DMAdaptorSetMixedSetupFunction()``
 - Add ``DMPlexCreateCellNumbering()``
+- Add ``-dm_plex_box_label`` to add "Face Sets" label with current "box" conventions
+- Add "Face Sets" label to simplex meshes using current "box" conventions
 
 .. rubric:: FE/FV:
 

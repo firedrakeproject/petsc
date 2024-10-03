@@ -3,7 +3,7 @@ static char help[] = "Benchmark for MatMatMult() of AIJ matrices using different
 #include <petscmat.h>
 
 /* Converts 3d grid coordinates (i,j,k) for a grid of size m \times n to global indexing. Pass k = 0 for a 2d grid. */
-int global_index(PetscInt i, PetscInt j, PetscInt k, PetscInt m, PetscInt n)
+PetscInt global_index(PetscInt i, PetscInt j, PetscInt k, PetscInt m, PetscInt n)
 {
   return i + j * m + k * m * n;
 }
@@ -18,7 +18,7 @@ int main(int argc, char **argv)
   PetscLogStage fullMatMatMultStage;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-m", &m, NULL));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-n", &n, NULL));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-o", &o, NULL));

@@ -185,10 +185,10 @@ PetscErrorCode KSPComputeRitz(KSP ksp, PetscBool ritz, PetscBool small, PetscInt
   PetscTryTypeMethod(ksp, computeritz, ritz, small, nrit, S, tetar, tetai);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
 /*@
   KSPSetUpOnBlocks - Sets up the preconditioner for each block in
-  the block Jacobi, block Gauss-Seidel, and overlapping Schwarz
-  methods.
+  the block Jacobi, overlapping Schwarz, and fieldsplit methods.
 
   Collective
 
@@ -218,7 +218,7 @@ PetscErrorCode KSPSetUpOnBlocks(KSP ksp)
   level++;
   PetscCall(KSPGetPC(ksp, &pc));
   PetscCall(PCSetUpOnBlocks(pc));
-  PetscCall(PCGetFailedReasonRank(pc, &pcreason));
+  PetscCall(PCGetFailedReason(pc, &pcreason));
   level--;
   /*
      This is tricky since only a subset of MPI ranks may set this; each KSPSolve_*() is responsible for checking
@@ -413,7 +413,7 @@ PetscErrorCode KSPSetUp(KSP ksp)
   PetscCall(PetscLogEventEnd(KSP_SetUp, ksp, ksp->vec_rhs, ksp->vec_sol, 0));
   PetscCall(PCSetErrorIfFailure(ksp->pc, ksp->errorifnotconverged));
   PetscCall(PCSetUp(ksp->pc));
-  PetscCall(PCGetFailedReasonRank(ksp->pc, &pcreason));
+  PetscCall(PCGetFailedReason(ksp->pc, &pcreason));
   /* TODO: this code was wrong and is still wrong, there is no way to propagate the failure to all processes; their is no code to handle a ksp->reason on only some ranks */
   if (pcreason) ksp->reason = KSP_DIVERGED_PC_FAILED;
 
@@ -522,7 +522,7 @@ PetscErrorCode KSPConvergedReasonViewSet(KSP ksp, PetscErrorCode (*f)(KSP, void 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   for (i = 0; i < ksp->numberreasonviews; i++) {
-    PetscCall(PetscMonitorCompare((PetscErrorCode(*)(void))f, vctx, reasonviewdestroy, (PetscErrorCode(*)(void))ksp->reasonview[i], ksp->reasonviewcontext[i], ksp->reasonviewdestroy[i], &identical));
+    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))f, vctx, reasonviewdestroy, (PetscErrorCode (*)(void))ksp->reasonview[i], ksp->reasonviewcontext[i], ksp->reasonviewdestroy[i], &identical));
     if (identical) PetscFunctionReturn(PETSC_SUCCESS);
   }
   PetscCheck(ksp->numberreasonviews < MAXKSPREASONVIEWS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many KSP reasonview set");
@@ -1759,7 +1759,7 @@ PetscErrorCode KSPSetInitialGuessNonzero(KSP ksp, PetscBool flg)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscValidLogicalCollectiveBool(ksp, flg, 2);
-  ksp->guess_zero = (PetscBool) !(int)flg;
+  ksp->guess_zero = (PetscBool)!flg;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2293,7 +2293,7 @@ PetscErrorCode KSPMonitorSet(KSP ksp, PetscErrorCode (*monitor)(KSP ksp, PetscIn
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   for (i = 0; i < ksp->numbermonitors; i++) {
-    PetscCall(PetscMonitorCompare((PetscErrorCode(*)(void))monitor, ctx, monitordestroy, (PetscErrorCode(*)(void))ksp->monitor[i], ksp->monitorcontext[i], ksp->monitordestroy[i], &identical));
+    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))monitor, ctx, monitordestroy, (PetscErrorCode (*)(void))ksp->monitor[i], ksp->monitorcontext[i], ksp->monitordestroy[i], &identical));
     if (identical) PetscFunctionReturn(PETSC_SUCCESS);
   }
   PetscCheck(ksp->numbermonitors < MAXKSPMONITORS, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Too many KSP monitors set");
@@ -2379,7 +2379,7 @@ PetscErrorCode KSPGetMonitorContext(KSP ksp, void *ctx)
 
 .seealso: [](ch_ksp), `KSPGetResidualHistory()`, `KSP`
 @*/
-PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscInt na, PetscBool reset)
+PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscCount na, PetscBool reset)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -2387,7 +2387,7 @@ PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscInt na, PetscB
   PetscCall(PetscFree(ksp->res_hist_alloc));
   if (na != PETSC_DECIDE && na != PETSC_DEFAULT && a) {
     ksp->res_hist     = a;
-    ksp->res_hist_max = (size_t)na;
+    ksp->res_hist_max = na;
   } else {
     if (na != PETSC_DECIDE && na != PETSC_DEFAULT) ksp->res_hist_max = (size_t)na;
     else ksp->res_hist_max = 10000; /* like default ksp->max_it */
@@ -2446,7 +2446,7 @@ PetscErrorCode KSPGetResidualHistory(KSP ksp, const PetscReal *a[], PetscInt *na
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   if (a) *a = ksp->res_hist;
-  if (na) *na = (PetscInt)ksp->res_hist_len;
+  if (na) PetscCall(PetscIntCast(ksp->res_hist_len, na));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2471,7 +2471,7 @@ PetscErrorCode KSPGetResidualHistory(KSP ksp, const PetscReal *a[], PetscInt *na
 
 .seealso: [](ch_ksp), `KSPGetErrorHistory()`, `KSPSetResidualHistory()`, `KSP`
 @*/
-PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscInt na, PetscBool reset)
+PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscCount na, PetscBool reset)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -2479,12 +2479,11 @@ PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscInt na, PetscBool
   PetscCall(PetscFree(ksp->err_hist_alloc));
   if (na != PETSC_DECIDE && na != PETSC_DEFAULT && a) {
     ksp->err_hist     = a;
-    ksp->err_hist_max = (size_t)na;
+    ksp->err_hist_max = na;
   } else {
     if (na != PETSC_DECIDE && na != PETSC_DEFAULT) ksp->err_hist_max = (size_t)na;
     else ksp->err_hist_max = 10000; /* like default ksp->max_it */
     PetscCall(PetscCalloc1(ksp->err_hist_max, &ksp->err_hist_alloc));
-
     ksp->err_hist = ksp->err_hist_alloc;
   }
   ksp->err_hist_len   = 0;
@@ -2526,7 +2525,7 @@ PetscErrorCode KSPGetErrorHistory(KSP ksp, const PetscReal *a[], PetscInt *na)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   if (a) *a = ksp->err_hist;
-  if (na) *na = (PetscInt)ksp->err_hist_len;
+  if (na) PetscCall(PetscIntCast(ksp->err_hist_len, na));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

@@ -187,7 +187,7 @@ static PetscErrorCode TaoPDIPMSetUpBounds(Tao tao)
   sendbuf[3] = pdipm->nxbox;
   sendbuf[4] = pdipm->nxfree;
 
-  PetscCall(MPIU_Allreduce(sendbuf, recvbuf, 5, MPIU_INT, MPI_SUM, comm));
+  PetscCallMPI(MPIU_Allreduce(sendbuf, recvbuf, 5, MPIU_INT, MPI_SUM, comm));
   pdipm->Nxlb    = recvbuf[0];
   pdipm->Nxub    = recvbuf[1];
   pdipm->Nxfixed = recvbuf[2];
@@ -747,7 +747,7 @@ static PetscErrorCode SNESLineSearch_PDIPM(SNESLineSearch linesearch, void *ctx)
   PetscCall(VecRestoreArrayWrite(X, &Xarr));
 
   /* alpha = min(alpha) over all processes */
-  PetscCall(MPIU_Allreduce(alpha, alpha + 2, 2, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)tao)));
+  PetscCallMPI(MPIU_Allreduce(alpha, alpha + 2, 2, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)tao)));
 
   alpha_p = alpha[2];
   alpha_d = alpha[3];
@@ -951,7 +951,7 @@ static PetscErrorCode TaoSetup_PDIPM(Tao tao)
   /* tao->DI which shares local array with X.lambdai_h */
   if (pdipm->Nh) PetscCall(VecCreateMPIWithArray(comm, 1, pdipm->nh, pdipm->Nh, Xarr + pdipm->off_lambdai, &tao->DI));
   PetscCall(VecCreate(comm, &pdipm->lambdai_xb));
-  PetscCall(VecSetSizes(pdipm->lambdai_xb, (pdipm->nci - pdipm->nh), PETSC_DECIDE));
+  PetscCall(VecSetSizes(pdipm->lambdai_xb, pdipm->nci - pdipm->nh, PETSC_DECIDE));
   PetscCall(VecSetFromOptions(pdipm->lambdai_xb));
 
   PetscCall(VecRestoreArrayRead(pdipm->X, &Xarr));

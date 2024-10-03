@@ -102,7 +102,7 @@ int main(int argc, char **argv)
   char      filename_def[PETSC_MAX_PATH_LEN] = "ex16_def.vts";
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(FormElements());
   comm = PETSC_COMM_WORLD;
   PetscCall(SNESCreate(comm, &snes));
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
   PetscCall(DMDASetFieldName(da, 2, "z_disp"));
 
   PetscCall(DMSetApplicationContext(da, &user));
-  PetscCall(DMDASNESSetFunctionLocal(da, INSERT_VALUES, (PetscErrorCode(*)(DMDALocalInfo *, void *, void *, void *))FormFunctionLocal, &user));
+  PetscCall(DMDASNESSetFunctionLocal(da, INSERT_VALUES, (PetscErrorCode (*)(DMDALocalInfo *, void *, void *, void *))FormFunctionLocal, &user));
   PetscCall(DMDASNESSetJacobianLocal(da, (DMDASNESJacobianFn *)FormJacobianLocal, &user));
   PetscCall(SNESSetFromOptions(snes));
   PetscCall(SNESNewtonALSetFunction(snes, TangentLoad, &user));

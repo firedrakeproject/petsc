@@ -275,7 +275,7 @@ static PetscErrorCode SNESCompositeApply_AdditiveOptimal(SNES snes, Vec X, Vec B
     tot += jac->beta[i];
     total += PetscAbsScalar(jac->beta[i]);
   }
-  PetscCall(VecScale(X, (1. - tot)));
+  PetscCall(VecScale(X, 1. - tot));
   PetscCall(VecMAXPY(X, jac->n, jac->beta, Xes));
   PetscCall(SNESComputeFunction(snes, X, F));
 
@@ -354,14 +354,11 @@ static PetscErrorCode SNESSetUp_Composite(SNES snes)
     }
     /* allocate the subspace direct solve area */
     jac->nrhs = 1;
-    jac->lda  = jac->nsnes;
-    jac->ldb  = jac->nsnes;
-    jac->n    = jac->nsnes;
+    jac->lda  = (PetscBLASInt)jac->nsnes;
+    jac->ldb  = (PetscBLASInt)jac->nsnes;
+    jac->n    = (PetscBLASInt)jac->nsnes;
 
-    PetscCall(PetscMalloc1(jac->n * jac->n, &jac->h));
-    PetscCall(PetscMalloc1(jac->n, &jac->beta));
-    PetscCall(PetscMalloc1(jac->n, &jac->s));
-    PetscCall(PetscMalloc1(jac->n, &jac->g));
+    PetscCall(PetscMalloc4(jac->n * jac->n, &jac->h, jac->n, &jac->beta, jac->n, &jac->s, jac->n, &jac->g));
     jac->lwork = 12 * jac->n;
 #if defined(PETSC_USE_COMPLEX)
     PetscCall(PetscMalloc1(jac->lwork, &jac->rwork));
@@ -385,10 +382,7 @@ static PetscErrorCode SNESReset_Composite(SNES snes)
   if (jac->Xes) PetscCall(VecDestroyVecs(jac->nsnes, &jac->Xes));
   if (jac->Fes) PetscCall(VecDestroyVecs(jac->nsnes, &jac->Fes));
   PetscCall(PetscFree(jac->fnorms));
-  PetscCall(PetscFree(jac->h));
-  PetscCall(PetscFree(jac->s));
-  PetscCall(PetscFree(jac->g));
-  PetscCall(PetscFree(jac->beta));
+  PetscCall(PetscFree4(jac->h, jac->beta, jac->s, jac->g));
   PetscCall(PetscFree(jac->work));
   PetscCall(PetscFree(jac->rwork));
   PetscFunctionReturn(PETSC_SUCCESS);

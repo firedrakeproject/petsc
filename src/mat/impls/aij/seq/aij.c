@@ -710,6 +710,7 @@ static PetscErrorCode MatView_SeqAIJ_ASCII(Mat A, PetscViewer viewer)
   }
 
   PetscCall(PetscViewerGetFormat(viewer, &format));
+  // By petsc's rule, even PETSC_VIEWER_ASCII_INFO_DETAIL doesn't print matrix entries
   if (format == PETSC_VIEWER_ASCII_FACTOR_INFO || format == PETSC_VIEWER_ASCII_INFO || format == PETSC_VIEWER_ASCII_INFO_DETAIL) PetscFunctionReturn(PETSC_SUCCESS);
 
   /* trigger copy to CPU if needed */
@@ -2849,7 +2850,7 @@ static PetscErrorCode MatIncreaseOverlap_SeqAIJ(Mat A, PetscInt is_max, IS is[],
           }
         }
       }
-      PetscCall(ISCreateBlock(PETSC_COMM_SELF, bs, isz, nidx, PETSC_COPY_VALUES, (is + i)));
+      PetscCall(ISCreateBlock(PETSC_COMM_SELF, bs, isz, nidx, PETSC_COPY_VALUES, is + i));
     } else {
       /* Enter these into the temp arrays. I.e., mark table[row], enter row into new index */
       for (j = 0; j < n; ++j) {
@@ -2871,7 +2872,7 @@ static PetscErrorCode MatIncreaseOverlap_SeqAIJ(Mat A, PetscInt is_max, IS is[],
           }
         }
       }
-      PetscCall(ISCreateGeneral(PETSC_COMM_SELF, isz, nidx, PETSC_COPY_VALUES, (is + i)));
+      PetscCall(ISCreateGeneral(PETSC_COMM_SELF, isz, nidx, PETSC_COPY_VALUES, is + i));
     }
   }
   PetscCall(PetscBTDestroy(&table));
@@ -3624,6 +3625,8 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqAIJ,
                                        /*150*/ MatTransposeSymbolic_SeqAIJ,
                                        MatEliminateZeros_SeqAIJ,
                                        MatGetRowSumAbs_SeqAIJ,
+                                       NULL,
+                                       NULL,
                                        NULL};
 
 static PetscErrorCode MatSeqAIJSetColumnIndices_SeqAIJ(Mat mat, PetscInt *indices)
@@ -4640,7 +4643,6 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
   Mat_SeqAIJ          *seqaij = (Mat_SeqAIJ *)mat->data;
   MatType              rtype;
   PetscCount          *perm, *jmap;
-  PetscContainer       container;
   MatCOOStruct_SeqAIJ *coo;
   PetscBool            isorted;
   PetscBool            hypre;
@@ -4706,7 +4708,7 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
 
     /* hack for HYPRE: swap min column to diag so that diagonal values will go first */
     if (hypre) {
-      PetscInt  minj    = PETSC_MAX_INT;
+      PetscInt  minj    = PETSC_INT_MAX;
       PetscBool hasdiag = PETSC_FALSE;
 
       if (strictly_sorted) { // fast path to swap the first and the diag
@@ -4743,7 +4745,7 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
         Aj[q]   = j[p];
         jmap[q] = 1;
       }
-      Ai[row] = end - start;
+      PetscCall(PetscIntCast(end - start, Ai + row));
       nnz += Ai[row]; // q is already advanced
     } else {
       /* Find number of unique col entries in this row */
@@ -4806,16 +4808,12 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
 
   // Put the COO struct in a container and then attach that to the matrix
   PetscCall(PetscMalloc1(1, &coo));
-  coo->nz   = nnz;
+  PetscCall(PetscIntCast(nnz, &coo->nz));
   coo->n    = coo_n;
   coo->Atot = coo_n - nneg; // Annz is seqaij->nz, so no need to record that again
   coo->jmap = jmap;         // of length nnz+1
   coo->perm = perm;
-  PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container));
-  PetscCall(PetscContainerSetPointer(container, coo));
-  PetscCall(PetscContainerSetUserDestroy(container, MatCOOStructDestroy_SeqAIJ));
-  PetscCall(PetscObjectCompose((PetscObject)mat, "__PETSc_MatCOOStruct_Host", (PetscObject)container));
-  PetscCall(PetscContainerDestroy(&container));
+  PetscCall(PetscObjectContainerCompose((PetscObject)mat, "__PETSc_MatCOOStruct_Host", coo, MatCOOStructDestroy_SeqAIJ));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

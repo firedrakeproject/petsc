@@ -116,7 +116,7 @@ int main(int argc, char **argv)
      Initialize program and set problem parameters
      - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
 
   /*initialize parameters */
   appctx.param.N     = 10;      /* order of the spectral element */
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
   appctx.param.mu    = 0.00001; /* diffusion coefficient */
   appctx.param.a     = 0.0;     /* advection speed */
   appctx.initial_dt  = 1e-4;
-  appctx.param.steps = PETSC_MAX_INT;
+  appctx.param.steps = PETSC_INT_MAX;
   appctx.param.Tend  = 0.01;
   appctx.ncoeff      = 2;
 
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 
   /* Create the TS solver that solves the ODE and its adjoint; set its options */
   PetscCall(TSCreate(PETSC_COMM_WORLD, &appctx.ts));
-  PetscCall(TSSetSolutionFunction(appctx.ts, (PetscErrorCode(*)(TS, PetscReal, Vec, void *))ComputeReference, &appctx));
+  PetscCall(TSSetSolutionFunction(appctx.ts, (PetscErrorCode (*)(TS, PetscReal, Vec, void *))ComputeReference, &appctx));
   PetscCall(TSSetProblemType(appctx.ts, TS_LINEAR));
   PetscCall(TSSetType(appctx.ts, TSRK));
   PetscCall(TSSetDM(appctx.ts, appctx.da));

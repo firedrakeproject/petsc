@@ -324,6 +324,7 @@ struct _p_TS {
   PetscInt        num_rhs_splits;
   TS_RHSSplitLink tsrhssplit;
   PetscBool       use_splitrhsfunction;
+  SNES            snesrhssplit;
 
   /* ---------------------- Quadrature integration support ---------------------------------*/
   TS quadraturets;
@@ -592,4 +593,9 @@ struct _n_TSMonitorDrawCtx {
   PetscBool   showinitial;
   PetscInt    howoften; /* when > 0 uses step % howoften, when negative only final solution plotted */
   PetscBool   showtimestepandtime;
+};
+
+struct _n_TSMonitorVTKCtx {
+  char    *filenametemplate;
+  PetscInt interval; /* when > 0 uses step % interval, when negative only final solution plotted */
 };

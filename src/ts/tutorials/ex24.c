@@ -23,7 +23,7 @@ int main(int argc, char **argv)
   Ctx          ctx;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   ctx.n = 3;
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-n", &ctx.n, NULL));
   PetscCheck(ctx.n >= 2, PETSC_COMM_WORLD, PETSC_ERR_ARG_OUTOFRANGE, "The dimension specified with -n must be at least 2");
@@ -124,7 +124,7 @@ static PetscErrorCode MonitorObjective(TS ts, PetscInt step, PetscReal t, Vec X,
   PetscCall(TSGetSNES(ts, &snes));
   PetscCall(SNESGetIterationNumber(snes, &snesit));
   PetscCall(SNESGetLinearSolveIterations(snes, &linit));
-  PetscCall(PetscPrintf(PETSC_COMM_WORLD, (ctx->monitor_short ? "%3" PetscInt_FMT " t=%10.1e  dt=%10.1e  f=%10.1e  df=%10.1e  it=(%2" PetscInt_FMT ",%3" PetscInt_FMT ")\n" : "%3" PetscInt_FMT " t=%10.4e  dt=%10.4e  f=%10.4e  df=%10.4e  it=(%2" PetscInt_FMT ",%3" PetscInt_FMT ")\n"), step, (double)t, (double)dt, (double)PetscRealPart(f), (double)gnorm, snesit, linit));
+  PetscCall(PetscPrintf(PETSC_COMM_WORLD, ctx->monitor_short ? "%3" PetscInt_FMT " t=%10.1e  dt=%10.1e  f=%10.1e  df=%10.1e  it=(%2" PetscInt_FMT ",%3" PetscInt_FMT ")\n" : "%3" PetscInt_FMT " t=%10.4e  dt=%10.4e  f=%10.4e  df=%10.4e  it=(%2" PetscInt_FMT ",%3" PetscInt_FMT ")\n", step, (double)t, (double)dt, (double)PetscRealPart(f), (double)gnorm, snesit, linit));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

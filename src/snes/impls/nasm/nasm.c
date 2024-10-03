@@ -204,7 +204,7 @@ static PetscErrorCode SNESView_NASM(SNES snes, PetscViewer viewer)
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   PetscCallMPI(MPI_Comm_size(comm, &size));
-  PetscCall(MPIU_Allreduce(&nasm->n, &N, 1, MPIU_INT, MPI_SUM, comm));
+  PetscCallMPI(MPIU_Allreduce(&nasm->n, &N, 1, MPIU_INT, MPI_SUM, comm));
   if (iascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  total subdomain blocks = %" PetscInt_FMT "\n", N));
     PetscCall(PetscViewerGetFormat(viewer, &format));
@@ -535,7 +535,7 @@ PetscErrorCode SNESNASMSetDamping(SNES snes, PetscReal dmp)
   PetscErrorCode (*f)(SNES, PetscReal);
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectQueryFunction((PetscObject)snes, "SNESNASMSetDamping_C", (void (**)(void)) & f));
+  PetscCall(PetscObjectQueryFunction((PetscObject)snes, "SNESNASMSetDamping_C", (void (**)(void))&f));
   if (f) PetscCall((f)(snes, dmp));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

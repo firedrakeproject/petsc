@@ -133,14 +133,12 @@ static PetscReal Spitzer(PetscReal m_e, PetscReal e, PetscReal Z, PetscReal epsi
   return eta;
 }
 
-/*  */
 static PetscErrorCode testNone(TS ts, Vec X, PetscInt stepi, PetscReal time, PetscBool islast, LandauCtx *ctx, REctx *rectx)
 {
   PetscFunctionBeginUser;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*  */
 static PetscErrorCode testSpitzer(TS ts, Vec X, PetscInt stepi, PetscReal time, PetscBool islast, LandauCtx *ctx, REctx *rectx)
 {
   PetscInt          ii, nDMs;
@@ -262,7 +260,6 @@ static void f0_0_maxwellian_lp(PetscInt dim, PetscInt Nf, PetscInt NfAux, const 
   f0[0]     = PetscPowReal(f_maxwell, ppp);
 }
 
-/*  */
 static PetscErrorCode testStable(TS ts, Vec X, PetscInt stepi, PetscReal time, PetscBool islast, LandauCtx *ctx, REctx *rectx)
 {
   PetscDS     prob;
@@ -548,7 +545,7 @@ static PetscErrorCode ProcessREOptions(REctx *rectx, const LandauCtx *ctx, DM dm
   rectx->imp_idx         = ctx->num_species - 1; /* default ionized impurity as last one */
   rectx->pulse_start     = PETSC_MAX_REAL;
   rectx->pulse_width     = 1;
-  rectx->plotStep        = PETSC_MAX_INT;
+  rectx->plotStep        = PETSC_INT_MAX;
   rectx->pulse_rate      = 1.e-1;
   rectx->current_rate    = 0;
   rectx->plotIdx         = 0;

@@ -458,10 +458,11 @@ static PetscErrorCode MatView_SeqSBAIJ_Draw_Zoom(PetscDraw draw, void *Aa)
 {
   Mat           A = (Mat)Aa;
   Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A->data;
-  PetscInt      row, i, j, k, l, mbs = a->mbs, color, bs = A->rmap->bs, bs2 = a->bs2;
+  PetscInt      row, i, j, k, l, mbs = a->mbs, bs = A->rmap->bs, bs2 = a->bs2;
   PetscReal     xl, yl, xr, yr, x_l, x_r, y_l, y_r;
   MatScalar    *aa;
   PetscViewer   viewer;
+  int           color;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)A, "Zoomviewer", (PetscObject *)&viewer));
@@ -797,7 +798,7 @@ static PetscErrorCode MatAssemblyEnd_SeqSBAIJ(Mat A, MatAssemblyType mode)
       PetscCall(PetscFree(a->jshort));
     }
     PetscCall(PetscMalloc1(a->i[A->rmap->n], &a->jshort));
-    for (i = 0; i < a->i[A->rmap->n]; i++) a->jshort[i] = a->j[i];
+    for (i = 0; i < a->i[A->rmap->n]; i++) a->jshort[i] = (short)a->j[i];
     A->ops->mult   = MatMult_SeqSBAIJ_1_ushort;
     A->ops->sor    = MatSOR_SeqSBAIJ_ushort;
     a->free_jshort = PETSC_TRUE;
@@ -1416,6 +1417,8 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSBAIJ,
                                        NULL,
                                        /*150*/ NULL,
                                        MatEliminateZeros_SeqSBAIJ,
+                                       NULL,
+                                       NULL,
                                        NULL,
                                        NULL};
 
@@ -2107,7 +2110,7 @@ PetscErrorCode MatDuplicate_SeqSBAIJ(Mat A, MatDuplicateOption cpvalues, Mat *B)
     c->ilen           = a->ilen;
     c->free_imax_ilen = PETSC_FALSE;
   } else {
-    PetscCall(PetscMalloc2((mbs + 1), &c->imax, (mbs + 1), &c->ilen));
+    PetscCall(PetscMalloc2(mbs + 1, &c->imax, mbs + 1, &c->ilen));
     for (i = 0; i < mbs; i++) {
       c->imax[i] = a->imax[i];
       c->ilen[i] = a->ilen[i];

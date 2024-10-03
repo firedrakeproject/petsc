@@ -180,12 +180,12 @@ static PetscErrorCode PCApplyRichardson_MG(PC pc, Vec b, Vec x, Vec w, PetscReal
     }
   }
 
-  *reason = (PCRichardsonConvergedReason)0;
+  *reason = PCRICHARDSON_NOT_SET;
   for (i = 0; i < its; i++) {
     PetscCall(PCMGMCycle_Private(pc, mglevels + levels - 1, PETSC_FALSE, PETSC_FALSE, reason));
     if (*reason) break;
   }
-  if (!*reason) *reason = PCRICHARDSON_CONVERGED_ITS;
+  if (*reason == PCRICHARDSON_NOT_SET) *reason = PCRICHARDSON_CONVERGED_ITS;
   *outits = i;
   if (!changed && !changeu) mglevels[levels - 1]->b = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1202,7 +1202,7 @@ PetscErrorCode PCSetUp_MG(PC pc)
   if (mglevels[0]->smoothd->reason) pc->failedreason = PC_SUBPC_ERROR;
   if (mglevels[0]->eventsmoothsetup) PetscCall(PetscLogEventEnd(mglevels[0]->eventsmoothsetup, 0, 0, 0, 0));
 
-    /*
+  /*
      Dump the interpolation/restriction matrices plus the
    Jacobian/stiffness on each level. This allows MATLAB users to
    easily check if the Galerkin condition A_c = R A_f R^T is satisfied.

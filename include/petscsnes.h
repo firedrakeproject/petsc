@@ -138,7 +138,6 @@ PETSC_EXTERN PetscErrorCode SNESSetTolerances(SNES, PetscReal, PetscReal, PetscR
 PETSC_EXTERN PetscErrorCode SNESSetDivergenceTolerance(SNES, PetscReal);
 PETSC_EXTERN PetscErrorCode SNESGetTolerances(SNES, PetscReal *, PetscReal *, PetscReal *, PetscInt *, PetscInt *);
 PETSC_EXTERN PetscErrorCode SNESGetDivergenceTolerance(SNES, PetscReal *);
-PETSC_EXTERN PetscErrorCode SNESSetTrustRegionTolerance(SNES, PetscReal);
 PETSC_EXTERN PetscErrorCode SNESGetForceIteration(SNES, PetscBool *);
 PETSC_EXTERN PetscErrorCode SNESSetForceIteration(SNES, PetscBool);
 PETSC_EXTERN PetscErrorCode SNESGetIterationNumber(SNES, PetscInt *);
@@ -195,6 +194,12 @@ PETSC_EXTERN const char *const SNESNewtonTRQNTypes[];
 
 PETSC_EXTERN PetscErrorCode SNESNewtonTRSetQNType(SNES, SNESNewtonTRQNType);
 
+PETSC_EXTERN PETSC_DEPRECATED_FUNCTION(3, 22, 0, "SNESNewtonTRSetTolerances()", ) PetscErrorCode SNESSetTrustRegionTolerance(SNES, PetscReal);
+PETSC_EXTERN PetscErrorCode SNESNewtonTRSetTolerances(SNES, PetscReal, PetscReal, PetscReal);
+PETSC_EXTERN PetscErrorCode SNESNewtonTRGetTolerances(SNES, PetscReal *, PetscReal *, PetscReal *);
+PETSC_EXTERN PetscErrorCode SNESNewtonTRSetUpdateParameters(SNES, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal);
+PETSC_EXTERN PetscErrorCode SNESNewtonTRGetUpdateParameters(SNES, PetscReal *, PetscReal *, PetscReal *, PetscReal *, PetscReal *);
+
 PETSC_EXTERN PetscErrorCode SNESNewtonTRDCGetRhoFlag(SNES, PetscBool *);
 PETSC_EXTERN PetscErrorCode SNESNewtonTRDCSetPreCheck(SNES, PetscErrorCode (*)(SNES, Vec, Vec, PetscBool *, void *), void *ctx);
 PETSC_EXTERN PetscErrorCode SNESNewtonTRDCGetPreCheck(SNES, PetscErrorCode (**)(SNES, Vec, Vec, PetscBool *, void *), void **ctx);
@@ -220,6 +225,7 @@ PETSC_EXTERN PetscErrorCode SNESGetLinearSolveFailures(SNES, PetscInt *);
 PETSC_EXTERN PetscErrorCode SNESSetMaxLinearSolveFailures(SNES, PetscInt);
 PETSC_EXTERN PetscErrorCode SNESGetMaxLinearSolveFailures(SNES, PetscInt *);
 PETSC_EXTERN PetscErrorCode SNESSetCountersReset(SNES, PetscBool);
+PETSC_EXTERN PetscErrorCode SNESResetCounters(SNES);
 
 PETSC_EXTERN PetscErrorCode SNESKSPSetUseEW(SNES, PetscBool);
 PETSC_EXTERN PetscErrorCode SNESKSPGetUseEW(SNES, PetscBool *);
@@ -1300,7 +1306,7 @@ PETSC_EXTERN PetscErrorCode SNESNewtonALGetLoadParameter(SNES, PetscReal *);
 
    Values:
 +   `SNES_NEWTONAL_CORRECTION_EXACT` - choose the correction which exactly satisfies the constraint
--   `SNES_NEWTONAL_CORRECTION_NORMAL` - choose the correction in the updated normal hyper-surface to the contraint surface
+-   `SNES_NEWTONAL_CORRECTION_NORMAL` - choose the correction in the updated normal hyper-surface to the constraint surface
 
    Options Database Key:
 . -snes_newtonal_correction_type <exact> - select type from <exact,normal>

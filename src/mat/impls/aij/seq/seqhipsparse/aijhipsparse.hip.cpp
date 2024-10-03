@@ -2854,7 +2854,7 @@ finalizesym:
   for (k = 0; k < m; k++) {
     const PetscInt nn = c->i[k + 1] - c->i[k];
     c->ilen[k] = c->imax[k] = nn;
-    c->nonzerorowcnt += (PetscInt) !!nn;
+    c->nonzerorowcnt += (PetscInt)!!nn;
     c->rmax = PetscMax(c->rmax, nn);
   }
   PetscCall(MatMarkDiagonal_SeqAIJ(C));
@@ -3738,7 +3738,7 @@ static PetscErrorCode MatSetPreallocationCOO_SeqAIJHIPSPARSE(Mat mat, PetscCount
   PetscBool            dev_ij = PETSC_FALSE;
   PetscMemType         mtype  = PETSC_MEMTYPE_HOST;
   PetscInt            *i, *j;
-  PetscContainer       container_h, container_d;
+  PetscContainer       container_h;
   MatCOOStruct_SeqAIJ *coo_h, *coo_d;
 
   PetscFunctionBegin;
@@ -3769,11 +3769,7 @@ static PetscErrorCode MatSetPreallocationCOO_SeqAIJHIPSPARSE(Mat mat, PetscCount
   PetscCallHIP(hipMemcpy(coo_d->perm, coo_h->perm, coo_h->Atot * sizeof(PetscCount), hipMemcpyHostToDevice));
 
   // Put the COO struct in a container and then attach that to the matrix
-  PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container_d));
-  PetscCall(PetscContainerSetPointer(container_d, coo_d));
-  PetscCall(PetscContainerSetUserDestroy(container_d, MatCOOStructDestroy_SeqAIJHIPSPARSE));
-  PetscCall(PetscObjectCompose((PetscObject)mat, "__PETSc_MatCOOStruct_Device", (PetscObject)container_d));
-  PetscCall(PetscContainerDestroy(&container_d));
+  PetscCall(PetscObjectContainerCompose((PetscObject)mat, "__PETSc_MatCOOStruct_Device", coo_d, MatCOOStructDestroy_SeqAIJHIPSPARSE));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -4301,7 +4297,7 @@ PetscErrorCode MatSeqAIJHIPSPARSEMergeMats(Mat A, Mat B, MatReuse reuse, Mat *C)
     for (i = 0; i < m; i++) {
       const PetscInt nn = c->i[i + 1] - c->i[i];
       c->ilen[i] = c->imax[i] = nn;
-      c->nonzerorowcnt += (PetscInt) !!nn;
+      c->nonzerorowcnt += (PetscInt)!!nn;
       c->rmax = PetscMax(c->rmax, nn);
     }
     PetscCall(MatMarkDiagonal_SeqAIJ(*C));

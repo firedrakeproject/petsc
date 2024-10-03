@@ -13,7 +13,7 @@ int main(int argc, char **args)
   PetscMPIInt     rank, size;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &args, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &args, NULL, help));
   PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &size));
   PetscCall(PetscOptionsHasName(NULL, NULL, "-mats_view", &mats_view));
@@ -54,7 +54,7 @@ int main(int argc, char **args)
   PetscCall(PetscMalloc1(nrows * ncols, &v));
   for (i = 0; i < nrows; i++) {
     for (j = 0; j < ncols; j++) {
-      /*v[i*ncols+j] = (PetscReal)(rank);*/
+      /*v[i*ncols+j] = (PetscReal)rank;*/
       v[i * ncols + j] = (PetscReal)(rank * 10000 + 100 * rows[i] + cols[j]);
     }
   }

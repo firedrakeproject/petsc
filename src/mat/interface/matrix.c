@@ -36,6 +36,7 @@ PetscLogEvent MAT_GetMultiProcBlock;
 PetscLogEvent MAT_CUSPARSECopyToGPU, MAT_CUSPARSECopyFromGPU, MAT_CUSPARSEGenerateTranspose, MAT_CUSPARSESolveAnalysis;
 PetscLogEvent MAT_HIPSPARSECopyToGPU, MAT_HIPSPARSECopyFromGPU, MAT_HIPSPARSEGenerateTranspose, MAT_HIPSPARSESolveAnalysis;
 PetscLogEvent MAT_PreallCOO, MAT_SetVCOO;
+PetscLogEvent MAT_CreateGraph;
 PetscLogEvent MAT_SetValuesBatch;
 PetscLogEvent MAT_ViennaCLCopyToGPU;
 PetscLogEvent MAT_CUDACopyToGPU, MAT_HIPCopyToGPU;
@@ -226,7 +227,7 @@ PetscErrorCode MatFindNonzeroRowsOrCols_Basic(Mat mat, PetscBool cols, PetscReal
     for (i = 0, nz = 0; i < n; i++)
       if (PetscAbsScalar(al[i]) > tol) nz++;
   }
-  PetscCall(MPIU_Allreduce(&nz, &gnz, 1, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)mat)));
+  PetscCallMPI(MPIU_Allreduce(&nz, &gnz, 1, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)mat)));
   if (gnz != N) {
     PetscInt *nzr;
     PetscCall(PetscMalloc1(nz, &nzr));
@@ -1071,7 +1072,7 @@ PetscErrorCode MatViewFromOptions(Mat A, PetscObject obj, const char name[])
 .    `PETSC_VIEWER_ASCII_INFO` - prints basic information about the matrix
   size and structure (not the matrix entries)
 -    `PETSC_VIEWER_ASCII_INFO_DETAIL` - prints more detailed information about
-  the matrix structure
+  the matrix structure (still not vector or matrix entries)
 
   The ASCII viewers are only recommended for small matrices on at most a moderate number of processes,
   the program will seemingly hang and take hours for larger matrices, for larger matrices one should use the binary format.
@@ -5310,7 +5311,6 @@ PetscErrorCode MatGetRowSum(Mat mat, Vec v)
 @*/
 PetscErrorCode MatTransposeSetPrecursor(Mat mat, Mat B)
 {
-  PetscContainer  rB = NULL;
   MatParentState *rb = NULL;
 
   PetscFunctionBegin;
@@ -5318,11 +5318,7 @@ PetscErrorCode MatTransposeSetPrecursor(Mat mat, Mat B)
   rb->id    = ((PetscObject)mat)->id;
   rb->state = 0;
   PetscCall(MatGetNonzeroState(mat, &rb->nonzerostate));
-  PetscCall(PetscContainerCreate(PetscObjectComm((PetscObject)B), &rB));
-  PetscCall(PetscContainerSetPointer(rB, rb));
-  PetscCall(PetscContainerSetUserDestroy(rB, PetscContainerUserDestroyDefault));
-  PetscCall(PetscObjectCompose((PetscObject)B, "MatTransposeParent", (PetscObject)rB));
-  PetscCall(PetscObjectDereference((PetscObject)rB));
+  PetscCall(PetscObjectContainerCompose((PetscObject)B, "MatTransposeParent", rb, PetscContainerUserDestroyDefault));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -6490,7 +6486,7 @@ PetscErrorCode MatZeroRowsStencil(Mat mat, PetscInt numRows, const MatStencil ro
     /* Loop over remaining dimensions */
     for (j = 0; j < dim - 1; ++j) {
       /* If nonlocal, set index to be negative */
-      if ((*dxm++ - starts[j + 1]) < 0 || tmp < 0) tmp = PETSC_MIN_INT;
+      if ((*dxm++ - starts[j + 1]) < 0 || tmp < 0) tmp = PETSC_INT_MIN;
       /* Update local index */
       else tmp = tmp * dims[j] + *(dxm - 1) - starts[j + 1];
     }
@@ -6571,7 +6567,7 @@ PetscErrorCode MatZeroRowsColumnsStencil(Mat mat, PetscInt numRows, const MatSte
     /* Loop over remaining dimensions */
     for (j = 0; j < dim - 1; ++j) {
       /* If nonlocal, set index to be negative */
-      if ((*dxm++ - starts[j + 1]) < 0 || tmp < 0) tmp = PETSC_MIN_INT;
+      if ((*dxm++ - starts[j + 1]) < 0 || tmp < 0) tmp = PETSC_INT_MIN;
       /* Update local index */
       else tmp = tmp * dims[j] + *(dxm - 1) - starts[j + 1];
     }
@@ -7793,7 +7789,7 @@ PetscErrorCode MatComputeVariableBlockEnvelope(Mat mat)
 
   PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container));
   PetscCall(PetscContainerSetPointer(container, edata));
-  PetscCall(PetscContainerSetUserDestroy(container, (PetscErrorCode(*)(void *))EnvelopeDataDestroy));
+  PetscCall(PetscContainerSetUserDestroy(container, (PetscErrorCode (*)(void *))EnvelopeDataDestroy));
   PetscCall(PetscObjectCompose((PetscObject)mat, "EnvelopeData", (PetscObject)container));
   PetscCall(PetscObjectDereference((PetscObject)container));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -8597,7 +8593,7 @@ PetscErrorCode MatCreateSubMatrix(Mat mat, IS isrow, IS iscol, MatReuse cll, Mat
         }
       }
     }
-    PetscCall(MPIU_Allreduce(&grabentirematrix, &grab, 1, MPI_INT, MPI_MIN, PetscObjectComm((PetscObject)mat)));
+    PetscCallMPI(MPIU_Allreduce(&grabentirematrix, &grab, 1, MPI_INT, MPI_MIN, PetscObjectComm((PetscObject)mat)));
     if (grab) {
       PetscCall(PetscInfo(mat, "Getting entire matrix as submatrix\n"));
       if (cll == MAT_INITIAL_MATRIX) {
@@ -9420,7 +9416,7 @@ PetscErrorCode MatIsSymmetric(Mat A, PetscReal tol, PetscBool *flg)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscAssertPointer(flg, 3);
-  if (A->symmetric != PETSC_BOOL3_UNKNOWN) *flg = PetscBool3ToBool(A->symmetric);
+  if (A->symmetric != PETSC_BOOL3_UNKNOWN && !tol) *flg = PetscBool3ToBool(A->symmetric);
   else {
     if (A->ops->issymmetric) PetscUseTypeMethod(A, issymmetric, tol, flg);
     else PetscCall(MatIsTranspose(A, A, tol, flg));
@@ -9459,7 +9455,7 @@ PetscErrorCode MatIsHermitian(Mat A, PetscReal tol, PetscBool *flg)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscAssertPointer(flg, 3);
-  if (A->hermitian != PETSC_BOOL3_UNKNOWN) *flg = PetscBool3ToBool(A->hermitian);
+  if (A->hermitian != PETSC_BOOL3_UNKNOWN && !tol) *flg = PetscBool3ToBool(A->hermitian);
   else {
     if (A->ops->ishermitian) PetscUseTypeMethod(A, ishermitian, tol, flg);
     else PetscCall(MatIsHermitianTranspose(A, A, tol, flg));
@@ -11441,7 +11437,9 @@ PetscErrorCode MatCreateGraph(Mat A, PetscBool sym, PetscBool scale, PetscReal f
   PetscValidType(A, 1);
   PetscValidLogicalCollectiveBool(A, scale, 3);
   PetscAssertPointer(graph, 7);
+  PetscCall(PetscLogEventBegin(MAT_CreateGraph, A, 0, 0, 0));
   PetscUseTypeMethod(A, creategraph, sym, scale, filter, num_idx, index, graph);
+  PetscCall(PetscLogEventEnd(MAT_CreateGraph, A, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

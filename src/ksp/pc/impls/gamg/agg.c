@@ -14,6 +14,7 @@ typedef struct {
   PetscBool  use_aggressive_square_graph;
   PetscBool  use_minimum_degree_ordering;
   PetscBool  use_low_mem_filter;
+  PetscBool  graph_symmetrize;
   MatCoarsen crs;
 } PC_GAMG_AGG;
 
@@ -186,6 +187,32 @@ PetscErrorCode PCGAMGSetLowMemoryFilter(PC pc, PetscBool b)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@
+  PCGAMGSetGraphSymmetrize - Set the flag to symmetrize the graph used in coarsening
+
+  Logically Collective
+
+  Input Parameters:
++ pc - the preconditioner context
+- b  - default false
+
+  Options Database Key:
+. -pc_gamg_graph_symmetrize <bool,default=false> - Symmetrize the graph
+
+  Level: intermediate
+
+.seealso: [the Users Manual section on PCGAMG](sec_amg), [the Users Manual section on PCMG](sec_mg), `PCGAMG`, `PCGAMGSetThreshold()`, `PCGAMGSetAggressiveLevels()`,
+  `PCGAMGMISkSetAggressive()`, `PCGAMGSetAggressiveSquareGraph()`, `PCGAMGMISkSetMinDegreeOrdering()`
+@*/
+PetscErrorCode PCGAMGSetGraphSymmetrize(PC pc, PetscBool b)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
+  PetscValidLogicalCollectiveBool(pc, b, 2);
+  PetscTryMethod(pc, "PCGAMGSetGraphSymmetrize_C", (PC, PetscBool), (pc, b));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PCGAMGSetAggressiveLevels_AGG(PC pc, PetscInt n)
 {
   PC_MG       *mg          = (PC_MG *)pc->data;
@@ -230,6 +257,17 @@ static PetscErrorCode PCGAMGSetLowMemoryFilter_AGG(PC pc, PetscBool b)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode PCGAMGSetGraphSymmetrize_AGG(PC pc, PetscBool b)
+{
+  PC_MG       *mg          = (PC_MG *)pc->data;
+  PC_GAMG     *pc_gamg     = (PC_GAMG *)mg->innerctx;
+  PC_GAMG_AGG *pc_gamg_agg = (PC_GAMG_AGG *)pc_gamg->subctx;
+
+  PetscFunctionBegin;
+  pc_gamg_agg->graph_symmetrize = b;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PCGAMGMISkSetMinDegreeOrdering_AGG(PC pc, PetscBool b)
 {
   PC_MG       *mg          = (PC_MG *)pc->data;
@@ -266,6 +304,7 @@ static PetscErrorCode PCSetFromOptions_GAMG_AGG(PC pc, PetscOptionItems *PetscOp
   PetscCall(PetscOptionsBool("-pc_gamg_mis_k_minimum_degree_ordering", "Use minimum degree ordering for greedy MIS", "PCGAMGMISkSetMinDegreeOrdering", pc_gamg_agg->use_minimum_degree_ordering, &pc_gamg_agg->use_minimum_degree_ordering, NULL));
   PetscCall(PetscOptionsBool("-pc_gamg_low_memory_threshold_filter", "Use the (built-in) low memory graph/matrix filter", "PCGAMGSetLowMemoryFilter", pc_gamg_agg->use_low_mem_filter, &pc_gamg_agg->use_low_mem_filter, NULL));
   PetscCall(PetscOptionsInt("-pc_gamg_aggressive_mis_k", "Number of levels of multigrid to use.", "PCGAMGMISkSetAggressive", pc_gamg_agg->aggressive_mis_k, &pc_gamg_agg->aggressive_mis_k, NULL));
+  PetscCall(PetscOptionsBool("-pc_gamg_graph_symmetrize", "Symmetrize graph for coarsening", "PCGAMGSetGraphSymmetrize", pc_gamg_agg->graph_symmetrize, &pc_gamg_agg->graph_symmetrize, NULL));
   PetscOptionsHeadEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -285,6 +324,7 @@ static PetscErrorCode PCDestroy_GAMG_AGG(PC pc)
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGMISkSetMinDegreeOrdering_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGSetLowMemoryFilter_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGSetAggressiveSquareGraph_C", NULL));
+  PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGSetGraphSymmetrize_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCSetCoordinates_C", NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -502,12 +542,18 @@ static PetscErrorCode formProl0(PetscCoarsenData *agg_llists, PetscInt bs, Petsc
     if (jj > 0) {
       const PetscInt lid = mm, cgid = my0crs + clid;
       PetscInt       cids[100]; /* max bs */
-      PetscBLASInt   asz = jj, M = asz * bs, N = nSAvec, INFO;
-      PetscBLASInt   Mdata = M + ((N - M > 0) ? N - M : 0), LDA = Mdata, LWORK = N * bs;
+      PetscBLASInt   asz, M, N, INFO;
+      PetscBLASInt   Mdata, LDA, LWORK;
       PetscScalar   *qqc, *qqr, *TAU, *WORK;
       PetscInt      *fids;
       PetscReal     *data;
 
+      PetscCall(PetscBLASIntCast(jj, &asz));
+      PetscCall(PetscBLASIntCast(asz * bs, &M));
+      PetscCall(PetscBLASIntCast(nSAvec, &N));
+      PetscCall(PetscBLASIntCast(M + ((N - M > 0) ? N - M : 0), &Mdata));
+      PetscCall(PetscBLASIntCast(Mdata, &LDA));
+      PetscCall(PetscBLASIntCast(N * bs, &LWORK));
       /* count agg */
       if (asz < minsz) minsz = asz;
 
@@ -657,10 +703,10 @@ static PetscErrorCode PCGAMGCreateGraph_AGG(PC pc, Mat Amat, Mat *a_Gmat)
   PetscCall(MatGetInfo(Amat, MAT_LOCAL, &info0)); /* global reduction */
 
   if (ishem || pc_gamg_agg->use_low_mem_filter) {
-    PetscCall(MatCreateGraph(Amat, PETSC_TRUE, (vfilter >= 0 || ishem) ? PETSC_TRUE : PETSC_FALSE, vfilter, pc_gamg_agg->crs->strength_index_size, pc_gamg_agg->crs->strength_index, a_Gmat));
+    PetscCall(MatCreateGraph(Amat, pc_gamg_agg->graph_symmetrize, (vfilter >= 0 || ishem) ? PETSC_TRUE : PETSC_FALSE, vfilter, pc_gamg_agg->crs->strength_index_size, pc_gamg_agg->crs->strength_index, a_Gmat));
   } else {
-    // make scalar graph, symetrize if not know to be symmetric, scale, but do not filter (expensive)
-    PetscCall(MatCreateGraph(Amat, PETSC_TRUE, PETSC_TRUE, -1, pc_gamg_agg->crs->strength_index_size, pc_gamg_agg->crs->strength_index, a_Gmat));
+    // make scalar graph, symmetrize if not known to be symmetric, scale, but do not filter (expensive)
+    PetscCall(MatCreateGraph(Amat, pc_gamg_agg->graph_symmetrize, PETSC_TRUE, -1, pc_gamg_agg->crs->strength_index_size, pc_gamg_agg->crs->strength_index, a_Gmat));
     if (vfilter >= 0) {
       PetscInt           Istart, Iend, ncols, nnz0, nnz1, NN, MM, nloc;
       Mat                tGmat, Gmat = *a_Gmat;
@@ -841,8 +887,9 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
   }
 
   /* map local to selected local, DELETED means a ghost owns it */
-  for (lid = kk = 0; lid < nloc; lid++) {
+  for (lid = 0; lid < nloc; lid++) {
     NState state = lid_state[lid];
+
     if (IS_SELECTED(state)) {
       PetscCDIntNd *pos;
 
@@ -859,6 +906,7 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
   /* get 'cpcol_1/2_state' & cpcol_2_par_orig - uses mpimat_1/2->lvec for temp space */
   if (isMPI) {
     Vec tempVec;
+
     /* get 'cpcol_1_state' */
     PetscCall(MatCreateVecs(Gmat_1, &tempVec, NULL));
     for (kk = 0, j = my0; kk < nloc; kk++, j++) {
@@ -912,6 +960,7 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
             PetscCall(PetscCDGetHeadPos(aggs_2, slid, &pos));
             while (pos) {
               PetscInt gid;
+
               PetscCall(PetscCDIntNdGetID(pos, &gid));
               if (gid == gidj) {
                 PetscCheck(last, PETSC_COMM_SELF, PETSC_ERR_PLIB, "last cannot be null");
@@ -1032,14 +1081,16 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
     /* look for deleted ghosts and see if they moved - remove it */
     for (lid = 0; lid < nloc; lid++) {
       NState state = lid_state[lid];
+
       if (IS_SELECTED(state)) {
         PetscCDIntNd *pos, *last = NULL;
+
         /* look for deleted ghosts and see if they moved */
         PetscCall(PetscCDGetHeadPos(aggs_2, lid, &pos));
         while (pos) {
           PetscInt gid;
-          PetscCall(PetscCDIntNdGetID(pos, &gid));
 
+          PetscCall(PetscCDIntNdGetID(pos, &gid));
           if (gid < my0 || gid >= Iend) {
             PetscCall(PCGAMGHashTableFind(&gid_cpid, gid, &cpid));
             if (cpid != -1) {
@@ -1530,6 +1581,7 @@ PetscErrorCode PCCreateGAMG_AGG(PC pc)
   pc_gamg_agg->use_minimum_degree_ordering  = PETSC_FALSE;
   pc_gamg_agg->use_low_mem_filter           = PETSC_FALSE;
   pc_gamg_agg->aggressive_mis_k             = 2;
+  pc_gamg_agg->graph_symmetrize             = PETSC_TRUE;
 
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGSetNSmooths_C", PCGAMGSetNSmooths_AGG));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGSetAggressiveLevels_C", PCGAMGSetAggressiveLevels_AGG));
@@ -1537,6 +1589,7 @@ PetscErrorCode PCCreateGAMG_AGG(PC pc)
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGMISkSetMinDegreeOrdering_C", PCGAMGMISkSetMinDegreeOrdering_AGG));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGSetLowMemoryFilter_C", PCGAMGSetLowMemoryFilter_AGG));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGMISkSetAggressive_C", PCGAMGMISkSetAggressive_AGG));
+  PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGAMGSetGraphSymmetrize_C", PCGAMGSetGraphSymmetrize_AGG));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCSetCoordinates_C", PCSetCoordinates_AGG));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

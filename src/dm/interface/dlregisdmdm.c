@@ -77,12 +77,14 @@ PetscErrorCode DMInitializePackage(void)
   PetscCall(PetscLogEventRegister("DMCreateMat", DM_CLASSID, &DM_CreateMatrix));
   PetscCall(PetscLogEventRegister("DMCreateMassMat", DM_CLASSID, &DM_CreateMassMatrix));
   PetscCall(PetscLogEventRegister("DMLoad", DM_CLASSID, &DM_Load));
+  PetscCall(PetscLogEventRegister("DMView", DM_CLASSID, &DM_View));
   PetscCall(PetscLogEventRegister("DMAdaptInterp", DM_CLASSID, &DM_AdaptInterpolator));
   PetscCall(PetscLogEventRegister("DMProjectFunc", DM_CLASSID, &DM_ProjectFunction));
 
   PetscCall(PetscLogEventRegister("DMPlexBuFrCeLi", DM_CLASSID, &DMPLEX_BuildFromCellList));
   PetscCall(PetscLogEventRegister("DMPlexBuCoFrCeLi", DM_CLASSID, &DMPLEX_BuildCoordinatesFromCellList));
   PetscCall(PetscLogEventRegister("DMPlexCreateGmsh", DM_CLASSID, &DMPLEX_CreateGmsh));
+  PetscCall(PetscLogEventRegister("DMPlexCrBoxSFC", DM_CLASSID, &DMPLEX_CreateBoxSFC));
   PetscCall(PetscLogEventRegister("DMPlexCrFromFile", DM_CLASSID, &DMPLEX_CreateFromFile));
   PetscCall(PetscLogEventRegister("DMPlexCrFromOpts", DM_CLASSID, &DMPLEX_CreateFromOptions));
   PetscCall(PetscLogEventRegister("Mesh Partition", DM_CLASSID, &DMPLEX_Partition));

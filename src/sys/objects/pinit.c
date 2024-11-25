@@ -1850,18 +1850,41 @@ PetscMPIInt MPIU_Allreduce_Private(const void *inbuf, void *outbuf, MPIU_Count c
     void      *inbufd, *outbufd;
 
     if (inbuf != MPI_IN_PLACE) {
-      incnt  = *(PetscInt32 *)inbuf;
-      inbufd = &incnt;
+      incnt   = *(PetscInt32 *)inbuf;
+      inbufd  = &incnt;
+      outbufd = &outcnt;
+      err     = MPIU_Allreduce_Count(inbufd, outbufd, count, MPIU_INT64, op, comm);
     } else {
-      outcnt = *(PetscInt32 *)outbuf;
-      inbufd = (void *)MPI_IN_PLACE;
+      outcnt  = *(PetscInt32 *)outbuf;
+      outbufd = &outcnt;
+      err     = MPIU_Allreduce_Count(MPI_IN_PLACE, outbufd, count, MPIU_INT64, op, comm);
     }
-    outbufd = &outcnt;
-    err     = MPIU_Allreduce_Count(inbufd, outbufd, count, MPIU_INT64, op, comm);
     if (!err && outcnt > PETSC_INT_MAX) err = MPI_ERR_OTHER;
     *(PetscInt32 *)outbuf = (PetscInt32)outcnt;
   } else {
     err = MPIU_Allreduce_Count(inbuf, outbuf, count, dtype, op, comm);
   }
   return err;
+}
+
+/*@C
+  PetscCtxDestroyDefault - An implementation of a `PetscCtxDestroyFn` that uses `PetscFree()` to free the context
+
+  Input Parameter:
+. ctx - the context to be destroyed
+
+  Level: intermediate
+
+  Note:
+  This is not called directly, rather it is passed to `DMSetApplicationContextDestroy()`, `PetscContainerSetDestroy()`,
+  `PetscObjectContainterCreate()` and similar routines and then called by the destructor of the associated object.
+
+.seealso: `PetscObject`, `PetscCtxDestroyFn`, `PetscObjectDestroy()`, `DMSetApplicationContextDestroy()`,  `PetscContainerSetDestroy()`,
+           `PetscObjectContainterCreate()`
+@*/
+PETSC_EXTERN PetscErrorCode PetscCtxDestroyDefault(void **ctx)
+{
+  PetscFunctionBegin;
+  PetscCall(PetscFree(*ctx));
+  PetscFunctionReturn(PETSC_SUCCESS);
 }

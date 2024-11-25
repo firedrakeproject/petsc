@@ -75,7 +75,7 @@ PETSC_EXTERN PetscErrorCode PetscOptionsStringToInt(const char[], PetscInt *);
 PETSC_EXTERN PetscErrorCode PetscOptionsStringToReal(const char[], PetscReal *);
 PETSC_EXTERN PetscErrorCode PetscOptionsStringToScalar(const char[], PetscScalar *);
 
-PETSC_EXTERN PetscErrorCode PetscOptionsMonitorSet(PetscErrorCode (*)(const char[], const char[], PetscOptionSource, void *), void *, PetscErrorCode (*)(void **));
+PETSC_EXTERN PetscErrorCode PetscOptionsMonitorSet(PetscErrorCode (*)(const char[], const char[], PetscOptionSource, void *), void *, PetscCtxDestroyFn *);
 PETSC_EXTERN PetscErrorCode PetscOptionsMonitorDefault(const char[], const char[], PetscOptionSource, void *);
 
 PETSC_EXTERN PetscErrorCode PetscObjectSetOptions(PetscObject, PetscOptions);
@@ -232,7 +232,7 @@ M*/
     do { \
       PetscOptionItems  PetscOptionsObjectBase; \
       PetscOptionItems *PetscOptionsObject = &PetscOptionsObjectBase; \
-      PetscOptionsObject->options          = ((PetscObject)obj)->options; \
+      PetscOptionsObject->options          = (obj)->options; \
       for (PetscOptionsObject->count = (PetscOptionsPublish ? -1 : 1); PetscOptionsObject->count < 2; PetscOptionsObject->count++) { \
         PetscCall(PetscObjectOptionsBegin_Private(obj, PetscOptionsObject))
 

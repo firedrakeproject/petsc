@@ -105,6 +105,38 @@ PetscErrorCode MatSetRandom(Mat x, PetscRandom rctx)
 }
 
 /*@
+  MatCopyHashToXAIJ - copy hash table entries into an XAIJ matrix type
+
+  Logically Collective
+
+  Input Parameter:
+. A - A matrix in unassembled, hash table form
+
+  Output Parameter:
+. B - The XAIJ matrix. This can either be `A` or some matrix of equivalent size, e.g. obtained from `A` via `MatDuplicate()`
+
+  Example:
+.vb
+     PetscCall(MatDuplicate(A, MAT_DO_NOT_COPY_VALUES, &B));
+     PetscCall(MatCopyHashToXAIJ(A, B));
+.ve
+
+  Level: advanced
+
+  Notes:
+  If `B` is `A`, then the hash table data structure will be destroyed. `B` is assembled
+
+.seealso: [](ch_matrices), `Mat`, `MAT_USE_HASH_TABLE`
+@*/
+PetscErrorCode MatCopyHashToXAIJ(Mat A, Mat B)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
+  PetscUseTypeMethod(A, copyhashtoxaij, B);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
   MatFactorGetErrorZeroPivot - returns the pivot value that was determined to be zero and the row it occurred in
 
   Logically Collective
@@ -926,6 +958,39 @@ PetscErrorCode MatResetPreallocation(Mat A)
   PetscCheck(A->insertmode == NOT_SET_VALUES, PETSC_COMM_SELF, PETSC_ERR_SUP, "Cannot reset preallocation after setting some values but not yet calling MatAssemblyBegin()/MatAssemblyEnd()");
   if (A->num_ass == 0) PetscFunctionReturn(PETSC_SUCCESS);
   PetscUseMethod(A, "MatResetPreallocation_C", (Mat), (A));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  MatResetHash - Reset the matrix so that it will use a hash table for the next round of `MatSetValues()` and `MatAssemblyBegin()`/`MatAssemblyEnd()`.
+
+  Collective
+
+  Input Parameter:
+. A - the matrix
+
+  Level: intermediate
+
+  Notes:
+  The matrix will again delete the hash table data structures after following calls to `MatAssemblyBegin()`/`MatAssemblyEnd()` with `MAT_FINAL_ASSEMBLY`.
+
+  Currently only supported for `MATAIJ` matrices.
+
+.seealso: [](ch_matrices), `Mat`, `MatResetPreallocation()`
+@*/
+PetscErrorCode MatResetHash(Mat A)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
+  PetscValidType(A, 1);
+  PetscCheck(A->insertmode == NOT_SET_VALUES, PETSC_COMM_SELF, PETSC_ERR_SUP, "Cannot reset to hash state after setting some values but not yet calling MatAssemblyBegin()/MatAssemblyEnd()");
+  if (A->num_ass == 0) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscUseMethod(A, "MatResetHash_C", (Mat), (A));
+  /* These flags are used to determine whether certain setups occur */
+  A->was_assembled = PETSC_FALSE;
+  A->assembled     = PETSC_FALSE;
+  /* Log that the state of this object has changed; this will help guarantee that preconditioners get re-setup */
+  PetscCall(PetscObjectStateIncrease((PetscObject)A));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -5318,7 +5383,7 @@ PetscErrorCode MatTransposeSetPrecursor(Mat mat, Mat B)
   rb->id    = ((PetscObject)mat)->id;
   rb->state = 0;
   PetscCall(MatGetNonzeroState(mat, &rb->nonzerostate));
-  PetscCall(PetscObjectContainerCompose((PetscObject)B, "MatTransposeParent", rb, PetscContainerUserDestroyDefault));
+  PetscCall(PetscObjectContainerCompose((PetscObject)B, "MatTransposeParent", rb, PetscCtxDestroyDefault));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -7625,9 +7690,9 @@ typedef struct {
   Mat              C;
 } EnvelopeData;
 
-static PetscErrorCode EnvelopeDataDestroy(void *ptr)
+static PetscErrorCode EnvelopeDataDestroy(void **ptr)
 {
-  EnvelopeData *edata = (EnvelopeData *)ptr;
+  EnvelopeData *edata = (EnvelopeData *)*ptr;
 
   PetscFunctionBegin;
   for (PetscInt i = 0; i < edata->n; i++) PetscCall(ISDestroy(&edata->is[i]));
@@ -7789,7 +7854,7 @@ PetscErrorCode MatComputeVariableBlockEnvelope(Mat mat)
 
   PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container));
   PetscCall(PetscContainerSetPointer(container, edata));
-  PetscCall(PetscContainerSetUserDestroy(container, (PetscErrorCode (*)(void *))EnvelopeDataDestroy));
+  PetscCall(PetscContainerSetCtxDestroy(container, EnvelopeDataDestroy));
   PetscCall(PetscObjectCompose((PetscObject)mat, "EnvelopeData", (PetscObject)container));
   PetscCall(PetscObjectDereference((PetscObject)container));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -11163,9 +11228,9 @@ PetscErrorCode MatSubdomainsCreateCoalesce(Mat A, PetscInt N, PetscInt *n, IS *i
   PetscCall(PetscObjectGetComm((PetscObject)A, &comm));
   PetscCallMPI(MPI_Comm_size(comm, &size));
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
-  PetscCheck(N >= 1 && N < (PetscInt)size, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "number of subdomains must be > 0 and < %d, got N = %" PetscInt_FMT, size, N);
+  PetscCheck(N >= 1 && N < size, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "number of subdomains must be > 0 and < %d, got N = %" PetscInt_FMT, size, N);
   *n    = 1;
-  k     = ((PetscInt)size) / N + ((PetscInt)size % N > 0); /* There are up to k ranks to a color */
+  k     = size / N + (size % N > 0); /* There are up to k ranks to a color */
   color = rank / k;
   PetscCallMPI(MPI_Comm_split(comm, color, rank, &subcomm));
   PetscCall(PetscMalloc1(1, iss));

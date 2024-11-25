@@ -837,11 +837,11 @@ set:
 .vb
   extern PetscErrorCode usersymbolic(Mat, Mat, Mat, void**);
   extern PetscErrorCode usernumeric(Mat, Mat, Mat, void*);
-  extern PetscErrorCode userdestroy(void*);
+  extern PetscErrorCode ctxdestroy(void*);
 
   MatCreateShell(comm, m, n, M, N, ctx, &A);
   MatShellSetMatProductOperation(
-    A, MATPRODUCT_AB, usersymbolic, usernumeric, userdestroy,MATSEQAIJ, MATDENSE
+    A, MATPRODUCT_AB, usersymbolic, usernumeric, ctxdestroy,MATSEQAIJ, MATDENSE
   );
   // create B of type SEQAIJ etc..
   MatProductCreate(A, B, PETSC_NULLPTR, &C);
@@ -1524,6 +1524,7 @@ static struct _MatOps MatOps_Values = {NULL,
                                        NULL,
                                        NULL,
                                        NULL,
+                                       /*155*/ NULL,
                                        NULL};
 
 static PetscErrorCode MatShellSetContext_Shell(Mat mat, void *ctx)
@@ -1545,12 +1546,12 @@ static PetscErrorCode MatShellSetContext_Shell(Mat mat, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatShellSetContextDestroy_Shell(Mat mat, PetscErrorCode (*f)(void *))
+static PetscErrorCode MatShellSetContextDestroy_Shell(Mat mat, PetscCtxDestroyFn *f)
 {
   Mat_Shell *shell = (Mat_Shell *)mat->data;
 
   PetscFunctionBegin;
-  if (shell->ctxcontainer) PetscCall(PetscContainerSetUserDestroy(shell->ctxcontainer, f));
+  if (shell->ctxcontainer) PetscCall(PetscContainerSetCtxDestroy(shell->ctxcontainer, f));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1561,7 +1562,7 @@ PetscErrorCode MatShellSetContext_Immutable(Mat mat, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MatShellSetContextDestroy_Immutable(Mat mat, PetscErrorCode (*f)(void *))
+PetscErrorCode MatShellSetContextDestroy_Immutable(Mat mat, PetscCtxDestroyFn *f)
 {
   PetscFunctionBegin;
   SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Cannot call MatShellSetContextDestroy() for a %s, it is used internally by the structure", ((PetscObject)mat)->type_name);
@@ -1924,7 +1925,7 @@ PetscErrorCode MatShellSetContext(Mat mat, void *ctx)
 
   Input Parameters:
 + mat - the shell matrix
-- f   - the context destroy function
+- f   - the context destroy function, see `PetscCtxDestroyFn` for calling sequence
 
   Level: advanced
 
@@ -1934,13 +1935,14 @@ PetscErrorCode MatShellSetContext(Mat mat, void *ctx)
   ensures proper reference counting for the user provided context data in the case that
   the `MATSHELL` is duplicated.
 
-.seealso: [](ch_matrices), `Mat`, `MATSHELL`, `MatCreateShell()`, `MatShellSetContext()`
+.seealso: [](ch_matrices), `Mat`, `MATSHELL`, `MatCreateShell()`, `MatShellSetContext()`,
+          `PetscCtxDestroyFn`
 @*/
-PetscErrorCode MatShellSetContextDestroy(Mat mat, PetscErrorCode (*f)(void *))
+PetscErrorCode MatShellSetContextDestroy(Mat mat, PetscCtxDestroyFn *f)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
-  PetscTryMethod(mat, "MatShellSetContextDestroy_C", (Mat, PetscErrorCode (*)(void *)), (mat, f));
+  PetscTryMethod(mat, "MatShellSetContextDestroy_C", (Mat, PetscCtxDestroyFn *), (mat, f));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

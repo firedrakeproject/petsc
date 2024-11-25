@@ -355,7 +355,7 @@ PetscErrorCode KSPMonitorResidualRange(KSP ksp, PetscInt it, PetscReal rnorm, Pe
   PetscCall(KSPMonitorRange_Private(ksp, it, &perc));
   rel  = (prev - rnorm) / prev;
   prev = rnorm;
-  PetscCall(PetscViewerASCIIPrintf(viewer, "%3" PetscInt_FMT " KSP preconditioned resid norm %14.12e Percent values above 20 percent of maximum %5.2f relative decrease %5.2e ratio %5.2e\n", it, (double)rnorm, (double)(100.0 * perc), (double)rel, (double)(rel / perc)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "%3" PetscInt_FMT " KSP preconditioned resid norm %14.12e Percent values above 20 percent of maximum %5.2f relative decrease %5.2e ratio %5.2e\n", it, (double)rnorm, (double)(100 * perc), (double)rel, (double)(rel / perc)));
   PetscCall(PetscViewerASCIISubtractTab(viewer, tablevel));
   PetscCall(PetscViewerPopFormat(viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -2064,7 +2064,7 @@ PetscErrorCode KSPSetApplicationContext(KSP ksp, void *ctx)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  ksp->user = ctx;
+  ksp->ctx = ctx;
   PetscCall(KSPGetPC(ksp, &pc));
   PetscCall(PCSetApplicationContext(pc, ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -2093,7 +2093,7 @@ PetscErrorCode KSPGetApplicationContext(KSP ksp, void *ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  *(void **)ctx = ksp->user;
+  *(void **)ctx = ksp->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

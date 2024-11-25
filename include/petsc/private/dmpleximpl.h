@@ -43,6 +43,7 @@ PETSC_EXTERN PetscLogEvent DMPLEX_InterpolatorFEM;
 PETSC_EXTERN PetscLogEvent DMPLEX_InjectorFEM;
 PETSC_EXTERN PetscLogEvent DMPLEX_IntegralFEM;
 PETSC_EXTERN PetscLogEvent DMPLEX_CreateGmsh;
+PETSC_EXTERN PetscLogEvent DMPLEX_CreateBoxSFC;
 PETSC_EXTERN PetscLogEvent DMPLEX_RebalanceSharedPoints;
 PETSC_EXTERN PetscLogEvent DMPLEX_CreateFromFile;
 PETSC_EXTERN PetscLogEvent DMPLEX_CreateFromOptions;
@@ -256,6 +257,7 @@ typedef struct {
   PetscInt  printFVM;
   PetscInt  printL2;
   PetscInt  printLocate;
+  PetscInt  printProject;
   PetscReal printTol;
 } DM_Plex;
 
@@ -270,6 +272,8 @@ PETSC_EXTERN PetscErrorCode VecLoad_Plex_Local(Vec, PetscViewer);
 PETSC_EXTERN PetscErrorCode VecLoad_Plex_Native(Vec, PetscViewer);
 PETSC_EXTERN PetscErrorCode VecLoad_Plex(Vec, PetscViewer);
 PETSC_INTERN PetscErrorCode DMPlexGetFieldType_Internal(DM, PetscSection, PetscInt, PetscInt *, PetscInt *, PetscViewerVTKFieldType *);
+PETSC_INTERN PetscErrorCode DMPlexGetFieldTypes_Internal(DM, PetscSection, PetscInt, PetscInt *, PetscInt **, PetscInt **, PetscViewerVTKFieldType **);
+PETSC_INTERN PetscErrorCode DMPlexRestoreFieldTypes_Internal(DM, PetscSection, PetscInt, PetscInt *, PetscInt **, PetscInt **, PetscViewerVTKFieldType **);
 PETSC_INTERN PetscErrorCode DMPlexView_GLVis(DM, PetscViewer);
 PETSC_INTERN PetscErrorCode DMSetUpGLVisViewer_Plex(PetscObject, PetscViewer);
 #if defined(PETSC_HAVE_HDF5)
@@ -819,6 +823,8 @@ PETSC_INTERN PetscErrorCode DMPlexBasisTransformApply_Internal(DM, const PetscRe
 PETSC_INTERN PetscErrorCode DMCreateNeumannOverlap_Plex(DM, IS *, Mat *, PetscErrorCode (**)(Mat, PetscReal, Vec, Vec, PetscReal, IS, void *), void **);
 PETSC_INTERN PetscErrorCode DMPlexMarkBoundaryFaces_Internal(DM, PetscInt, PetscInt, DMLabel, PetscBool);
 PETSC_INTERN PetscErrorCode DMPlexDistributeOverlap_Internal(DM, PetscInt, MPI_Comm, const char *, PetscSF *, DM *);
+
+PETSC_INTERN PetscErrorCode DMPlexInterpolateFaces_Internal(DM, PetscInt, DM);
 
 PETSC_INTERN PetscErrorCode DMPlexMarkSubmesh_Interpolated(DM, DMLabel, PetscInt, PetscBool, PetscBool, DMLabel, DM);
 

@@ -955,6 +955,7 @@ PetscErrorCode DMNetworkRegisterComponent(DM dm, const char *name, size_t size, 
   component = &network->component[network->ncomponent];
 
   PetscCall(PetscStrncpy(component->name, name, sizeof(component->name)));
+  PetscCheck((size % sizeof(DMNetworkComponentGenericDataType)) == 0, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Size of datatype must be divisible by sizeof(DMNetworkComponentGenericDataType)");
   PetscCall(PetscIntCast(size / sizeof(DMNetworkComponentGenericDataType), &component->size));
   *key = network->ncomponent;
   network->ncomponent++;
@@ -1430,7 +1431,7 @@ PetscErrorCode DMNetworkAddComponent(DM dm, PetscInt p, PetscInt componentkey, v
   PetscCall(PetscSectionAddDof(network->DataSection, p, component->size));
   header->key[compnum] = componentkey;
   if (compnum != 0) header->offset[compnum] = header->offset[compnum - 1] + header->size[compnum - 1];
-  cvalue->data[compnum] = (void *)compvalue;
+  cvalue->data[compnum] = compvalue;
 
   /* variables */
   header->nvar[compnum] += nvar;

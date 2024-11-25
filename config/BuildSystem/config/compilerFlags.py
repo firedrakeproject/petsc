@@ -117,10 +117,13 @@ class Configure(config.base.Configure):
         elif bopt == '' and flagsName in self.argDB:
           self.logPrint('Ignoring default options which were overridden using --'+flagsName+ ' ' + self.argDB[flagsName])
           flags = []
-        elif bopt == '+' and flagsName+'+' in self.argDB:
-          flags = [self.argDB[flagsName+'+']]
-          userlangflags = 1
-        elif not bopt == '+':
+        elif bopt == '+':
+          if flagsName+'+' in self.argDB:
+            flags = [self.argDB[flagsName+'+']]
+            userlangflags = 1
+          else:
+            continue
+        else:
           flags = options.getCompilerFlags(language, self.setCompilers.getCompiler(), bopt)
 
         for testFlag in flags:
@@ -155,8 +158,10 @@ class Configure(config.base.Configure):
       if out.find('__AVX2__') > -1 and out.find('__FMA__') > -1:
         self.text = self.text + 'Intel instruction sets utilizable by compiler:\n'
         self.text = self.text + '  AVX2\n'
-      if out.find('__AVX512__') > -1:
-        self.text = self.text + '  AVX512\n'
+      if out.find('__AVX512') > -1:
+        self.text = self.text + '  AVX512: '
+        self.text = self.text + ' '.join([i for i in out.split('__') if i.startswith('AVX512')])
+        self.text = self.text + '\n'
     except:
       pass
     for filename in [self.compilerDefines, self.compilerFixes, self.compilerSource, self.compilerObj]:
@@ -176,15 +181,14 @@ class Configure(config.base.Configure):
     try:
       (out, err, ret) = Configure.executeShellCommand('lscpu', log = self.log)
     except:
-      try:
-        (out, err, ret) = Configure.executeShellCommand('sysctl -a', log = self.log)
-        if out.find('hw.optional.avx2_0: 1') > -1 and out.find('hw.optional.fma: 1') > -1:
-          self.text = self.text + 'Intel instruction sets found on CPU:\n'
-          self.text = self.text + '  AVX2\n'
-        if out.find('hw.optional.avx512f: 1') > -1:
-          self.text = self.text + '  AVX512\n'
-      except:
-        pass
+      out = ''
+    if out.find(' avx2 ') > -1 and out.find(' fma ') > -1:
+      self.text = self.text + 'Intel instruction sets found on CPU:\n'
+      self.text = self.text + '  AVX2\n'
+    if out.find(' avx512') > -1:
+      self.text = self.text + '  AVX512: '
+      self.text = self.text + ' '.join([i for i in out.split(' ') if i.startswith('avx512')])
+      self.text = self.text + '\n'
     return
 
   def configure(self):

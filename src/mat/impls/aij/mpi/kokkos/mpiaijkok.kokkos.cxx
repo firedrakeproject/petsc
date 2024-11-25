@@ -226,6 +226,11 @@ static PetscErrorCode MatSetMPIAIJKokkosWithSplitSeqAIJKokkosMatrices(Mat mat, M
 template <class ExecutionSpace>
 static PetscErrorCode MatMergeGetLaunchParameters(PetscInt numRows, PetscInt nnz, PetscInt rows_per_thread, PetscInt &team_size, PetscInt &vector_length, PetscInt &rows_per_team)
 {
+#if PETSC_PKG_KOKKOS_KERNELS_VERSION_LE(4, 4, 1)
+  constexpr bool is_gpu_exec_space = KokkosKernels::Impl::kk_is_gpu_exec_space<ExecutionSpace>();
+#else
+  constexpr bool is_gpu_exec_space = KokkosKernels::Impl::is_gpu_exec_space_v<ExecutionSpace>;
+#endif
   Kokkos::TeamPolicy<ExecutionSpace> teamPolicy(128, Kokkos::AUTO);
 
   PetscFunctionBegin;
@@ -242,7 +247,7 @@ static PetscErrorCode MatMergeGetLaunchParameters(PetscInt numRows, PetscInt nnz
 
   // Determine rows per thread
   if (rows_per_thread < 1) {
-    if (KokkosKernels::Impl::kk_is_gpu_exec_space<ExecutionSpace>()) rows_per_thread = 1;
+    if (is_gpu_exec_space) rows_per_thread = 1;
     else {
       if (nnz_per_row < 20 && nnz > 5000000) {
         rows_per_thread = 256;
@@ -251,7 +256,7 @@ static PetscErrorCode MatMergeGetLaunchParameters(PetscInt numRows, PetscInt nnz
   }
 
   if (team_size < 1) {
-    if (KokkosKernels::Impl::kk_is_gpu_exec_space<ExecutionSpace>()) {
+    if (is_gpu_exec_space) {
       team_size = 256 / vector_length;
     } else {
       team_size = 1;
@@ -1547,10 +1552,10 @@ struct MatCOOStruct_MPIAIJKokkos {
   ~MatCOOStruct_MPIAIJKokkos() { PetscCallVoid(PetscSFDestroy(&sf)); }
 };
 
-static PetscErrorCode MatCOOStructDestroy_MPIAIJKokkos(void *data)
+static PetscErrorCode MatCOOStructDestroy_MPIAIJKokkos(void **data)
 {
   PetscFunctionBegin;
-  PetscCallCXX(delete static_cast<MatCOOStruct_MPIAIJKokkos *>(data));
+  PetscCallCXX(delete static_cast<MatCOOStruct_MPIAIJKokkos *>(*data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1575,7 +1580,7 @@ static PetscErrorCode MatSetPreallocationCOO_MPIAIJKokkos(Mat mat, PetscCount co
   // Put the COO struct in a container and then attach that to the matrix
   PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container_d));
   PetscCall(PetscContainerSetPointer(container_d, coo_d));
-  PetscCall(PetscContainerSetUserDestroy(container_d, MatCOOStructDestroy_MPIAIJKokkos));
+  PetscCall(PetscContainerSetCtxDestroy(container_d, MatCOOStructDestroy_MPIAIJKokkos));
   PetscCall(PetscObjectCompose((PetscObject)mat, "__PETSc_MatCOOStruct_Device", (PetscObject)container_d));
   PetscCall(PetscContainerDestroy(&container_d));
   PetscFunctionReturn(PETSC_SUCCESS);

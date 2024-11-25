@@ -3526,8 +3526,11 @@ cdef class Vec(Object):
         setDM, petsc.VecGetDM
 
         """
-        cdef DM dm = DM()
-        CHKERR(VecGetDM(self.vec, &dm.dm))
+        cdef PetscDM newdm = NULL
+        CHKERR(VecGetDM(self.vec, &newdm))
+        cdef DM dm = subtype_DM(newdm)()
+        dm.dm = newdm
+        CHKERR(PetscINCREF(dm.obj))
         return dm
 
     #

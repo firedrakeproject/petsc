@@ -47,6 +47,13 @@ class Configure(config.package.CMakePackage):
     if not self.ptscotch.found and not self.metis.found:
       raise RuntimeError('PaStiX requires an ordering library: either METIS or SCOTCH')
 
+    if not hasattr(self.programs, 'pkg-config'):
+      self.programs.getExecutable('pkg-config', getFullPath = 1)
+    if hasattr(self.programs, 'pkg-config'):
+      args.append('-DPKG_CONFIG_EXECUTABLE:STRING="'+self.programs.pkg-config+'"')
+    else:
+      raise RuntimeError('PaStiX needs pkg-config installed')
+
     args.append('-DPASTIX_WITH_FORTRAN=OFF')
     args.append('-DPASTIX_LR_TESTINGS=OFF')
 

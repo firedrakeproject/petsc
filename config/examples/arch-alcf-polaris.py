@@ -2,18 +2,24 @@
 
 # Use GNU compilers:
 #
-# module load cudatoolkit-standalone PrgEnv-gnu cray-libsci
-#
 # Note cray-libsci provides BLAS etc. In summary, we have
-#
-# module load cudatoolkit-standalone/11.8.0 PrgEnv-gnu gcc/10.3.0 cray-libsci
+# module use /soft/modulefiles
+# module unload darshan
+# module load PrgEnv-gnu cray-libsci nvhpc-mixed craype-accel-nvidia80 cudatoolkit-standalone/12.4.1
+# export MPICH_GPU_SUPPORT_ENABLED=1
+# export MPICH_GPU_IPC_ENABLED=0
 #
 # $ module list
 # Currently Loaded Modules:
-#   1) craype-x86-rome          5) craype-accel-nvidia80           9) cray-dsmml/0.2.2     13) PrgEnv-gnu/8.3.3
-#   2) libfabric/1.15.2.0       6) cmake/3.23.2                   10) cray-pmi/6.1.10      14) cray-libsci/23.02.1.1
-#   3) craype-network-ofi       7) cudatoolkit-standalone/11.8.0  11) cray-pals/1.2.11     15) gcc/10.3.0
-#   4) perftools-base/23.03.0   8) craype/2.7.20                  12) cray-libpals/1.2.11  16) cray-mpich/8.1.25
+#   1) libfabric/1.15.2.0       7) nghttp2/1.57.0-ciat5hu         13) cray-mpich/8.1.28   19) cray-libsci/23.12.5
+#   2) craype-network-ofi       8) curl/8.4.0-2ztev25             14) cray-pmi/6.1.13     20) nvhpc-mixed/23.9
+#   3) perftools-base/23.12.0   9) cmake/3.27.7                   15) cray-pals/1.3.4     21) craype-accel-nvidia80
+#   4) darshan/3.4.4           10) cudatoolkit-standalone/12.4.1  16) cray-libpals/1.3.4
+#   5) gcc-native/12.3         11) craype/2.7.30                  17) craype-x86-milan
+#   6) spack-pe-base/0.6.1     12) cray-dsmml/0.2.2               18) PrgEnv-gnu/8.5.0
+#
+# With above, Cray-MPICH GPU-aware MPI works on a node but still fail with multiple nodes. In the latter case, you can
+# add the petsc runtime option -use_gpu_aware_mpi 0 as a workaround.
 
 if __name__ == '__main__':
   import sys
@@ -30,6 +36,7 @@ if __name__ == '__main__':
     '--with-cuda-arch=80', # Since there is no easy way to auto-detect the cuda arch on the gpu-less Polaris login nodes, we explicitly set it.
     '--download-kokkos',
     '--download-kokkos-kernels',
+    '--download-hypre',
   ]
   configure.petsc_configure(configure_options)
 

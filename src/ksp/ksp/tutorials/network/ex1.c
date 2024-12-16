@@ -38,13 +38,13 @@ typedef struct {
   PetscInt    id;  /* node id */
   PetscScalar inj; /* current injection (A) */
   PetscBool   gr;  /* boundary node */
-} Node;
+} PETSC_ATTRIBUTEALIGNED(PetscMax(sizeof(PetscInt), sizeof(PetscScalar))) Node;
 
 typedef struct {
   PetscInt    id;  /* branch id */
   PetscScalar r;   /* resistance (ohms) */
   PetscScalar bat; /* battery (V) */
-} Branch;
+} PETSC_ATTRIBUTEALIGNED(PetscMax(sizeof(PetscInt), sizeof(PetscScalar))) Branch;
 
 /*
   read_data: this routine fills data structures with problem data.
@@ -243,7 +243,7 @@ int main(int argc, char **argv)
   PetscInt    nE[1];
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &rank));
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &size));
 
@@ -312,9 +312,11 @@ int main(int argc, char **argv)
       requires: !complex double defined(PETSC_HAVE_ATTRIBUTEALIGNED)
 
    test:
+      diff_args: -j
       args: -ksp_monitor_short
 
    test:
+      diff_args: -j
       suffix: 2
       nsize: 2
       args: -petscpartitioner_type simple -ksp_converged_reason

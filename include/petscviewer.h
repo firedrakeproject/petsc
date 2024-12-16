@@ -73,7 +73,6 @@ PETSC_EXTERN PetscErrorCode PetscViewerDrawGetDrawLG(PetscViewer, PetscInt, Pets
 PETSC_EXTERN PetscErrorCode PetscViewerDrawGetDrawAxis(PetscViewer, PetscInt, PetscDrawAxis *);
 
 PETSC_EXTERN PetscErrorCode PetscViewerMathematicaOpen(MPI_Comm, int, const char[], const char[], PetscViewer *);
-PETSC_EXTERN PetscErrorCode PetscViewerSiloOpen(MPI_Comm, const char[], PetscViewer *);
 PETSC_EXTERN PetscErrorCode PetscViewerMatlabOpen(MPI_Comm, const char[], PetscFileMode, PetscViewer *);
 
 /*E
@@ -127,7 +126,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerCheckWritable(PetscViewer);
 .    `PETSC_VIEWER_ASCII_DENSE`       - print matrix as a dense two dimensiona array
 .    `PETSC_VIEWER_ASCII_IMPL`        - implementation-specific format (which is in many cases the same as the default)
 .    `PETSC_VIEWER_ASCII_INFO`        - basic information about object
-.    `PETSC_VIEWER_ASCII_INFO_DETAIL` - more detailed info about object
+.    `PETSC_VIEWER_ASCII_INFO_DETAIL` - more detailed info about object (but still not vector or matrix entries)
 .    `PETSC_VIEWER_ASCII_COMMON`      - identical output format for all objects of a particular type
 .    `PETSC_VIEWER_ASCII_INDEX`       - (for vectors) prints the vector  element number next to each vector entry
 .    `PETSC_VIEWER_ASCII_SYMMODU`     - print parallel vectors without indicating the MPI process ranges that own the entries
@@ -201,14 +200,38 @@ PETSC_EXTERN PetscErrorCode PetscViewerPopFormat(PetscViewer);
 PETSC_EXTERN PetscErrorCode PetscViewerGetFormat(PetscViewer, PetscViewerFormat *);
 PETSC_EXTERN PetscErrorCode PetscViewerFlush(PetscViewer);
 
-PETSC_EXTERN PetscErrorCode PetscOptionsPushGetViewerOff(PetscBool);
-PETSC_EXTERN PetscErrorCode PetscOptionsPopGetViewerOff(void);
-PETSC_EXTERN PetscErrorCode PetscOptionsGetViewerOff(PetscBool *);
-PETSC_EXTERN PetscErrorCode PetscOptionsGetViewer(MPI_Comm, PetscOptions, const char[], const char[], PetscViewer *, PetscViewerFormat *, PetscBool *);
-PETSC_EXTERN PetscErrorCode PetscOptionsGetViewers(MPI_Comm, PetscOptions, const char[], const char[], PetscInt *, PetscViewer *, PetscViewerFormat *, PetscBool *);
+PETSC_EXTERN PetscErrorCode PetscOptionsPushCreateViewerOff(PetscBool);
+PETSC_EXTERN PetscErrorCode PetscOptionsPopCreateViewerOff(void);
+PETSC_EXTERN PetscErrorCode PetscOptionsGetCreateViewerOff(PetscBool *);
+PETSC_EXTERN PetscErrorCode PetscOptionsCreateViewer(MPI_Comm, PetscOptions, const char[], const char[], PetscViewer *, PetscViewerFormat *, PetscBool *);
+PETSC_EXTERN PetscErrorCode PetscOptionsCreateViewers(MPI_Comm, PetscOptions, const char[], const char[], PetscInt *, PetscViewer *, PetscViewerFormat *, PetscBool *);
 #define PetscOptionsViewer(a, b, c, d, e, f) PetscOptionsViewer_Private(PetscOptionsObject, a, b, c, d, e, f)
 PETSC_EXTERN PetscErrorCode PetscOptionsViewer_Private(PetscOptionItems *, const char[], const char[], const char[], PetscViewer *, PetscViewerFormat *, PetscBool *);
-PETSC_EXTERN PetscErrorCode PetscOptionsRestoreViewer(PetscViewer *);
+
+PETSC_DEPRECATED_FUNCTION(3, 22, 0, "PetscViewerDestroy()", ) static inline PetscErrorCode PetscOptionsRestoreViewer(PetscViewer *viewer)
+{
+  return PetscViewerDestroy(viewer);
+}
+PETSC_DEPRECATED_FUNCTION(3, 22, 0, "PetscOptionsCreateViewer()", ) static inline PetscErrorCode PetscOptionsGetViewer(MPI_Comm comm, PetscOptions op, const char a[], const char b[], PetscViewer *v, PetscViewerFormat *f, PetscBool *fg)
+{
+  return PetscOptionsCreateViewer(comm, op, a, b, v, f, fg);
+}
+PETSC_DEPRECATED_FUNCTION(3, 22, 0, "PetscOptionsCreateViewers()", ) static inline PetscErrorCode PetscOptionsGetViewers(MPI_Comm comm, PetscOptions op, const char a[], const char b[], PetscInt *n, PetscViewer *v, PetscViewerFormat *f, PetscBool *fg)
+{
+  return PetscOptionsCreateViewers(comm, op, a, b, n, v, f, fg);
+}
+PETSC_DEPRECATED_FUNCTION(3, 22, 0, "PetscOptionsGetCreateViewerOff()", ) static inline PetscErrorCode PetscOptionsGetViewerOff(PetscBool *fg)
+{
+  return PetscOptionsGetCreateViewerOff(fg);
+}
+PETSC_DEPRECATED_FUNCTION(3, 22, 0, "PetscOptionsPushCreateViewerOff()", ) static inline PetscErrorCode PetscOptionsPushGetViewerOff(PetscBool fg)
+{
+  return PetscOptionsPushCreateViewerOff(fg);
+}
+PETSC_DEPRECATED_FUNCTION(3, 22, 0, "PetscOptionsPushCreateViewerOff()", ) static inline PetscErrorCode PetscOptionsPopGetViewerOff(void)
+{
+  return PetscOptionsPopCreateViewerOff();
+}
 
 typedef struct {
   PetscViewer       viewer;
@@ -244,8 +267,8 @@ PETSC_EXTERN PetscErrorCode PetscViewerBinaryGetDescriptor(PetscViewer, int *);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryGetInfoPointer(PetscViewer, FILE **);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryRead(PetscViewer, void *, PetscInt, PetscInt *, PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryWrite(PetscViewer, const void *, PetscInt, PetscDataType);
-PETSC_EXTERN PetscErrorCode PetscViewerBinaryReadAll(PetscViewer, void *, PetscInt, PetscInt64, PetscInt64, PetscDataType);
-PETSC_EXTERN PetscErrorCode PetscViewerBinaryWriteAll(PetscViewer, const void *, PetscInt, PetscInt64, PetscInt64, PetscDataType);
+PETSC_EXTERN PetscErrorCode PetscViewerBinaryReadAll(PetscViewer, void *, PetscInt, PetscCount, PetscCount, PetscDataType);
+PETSC_EXTERN PetscErrorCode PetscViewerBinaryWriteAll(PetscViewer, const void *, PetscCount, PetscCount, PetscCount, PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscViewerStringSPrintf(PetscViewer, const char[], ...) PETSC_ATTRIBUTE_FORMAT(2, 3);
 PETSC_EXTERN PetscErrorCode PetscViewerStringSetString(PetscViewer, char[], size_t);
 PETSC_EXTERN PetscErrorCode PetscViewerStringGetStringRead(PetscViewer, const char *[], size_t *);

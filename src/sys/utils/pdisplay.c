@@ -60,7 +60,7 @@ PetscErrorCode PetscOptionsGetenv(MPI_Comm comm, const char name[], char env[], 
         if (str && env) PetscCall(PetscStrncpy(env, str, len));
       }
       PetscCallMPI(MPI_Bcast(&flg, 1, MPIU_BOOL, 0, comm));
-      PetscCallMPI(MPI_Bcast(env, len, MPI_CHAR, 0, comm));
+      PetscCallMPI(MPI_Bcast(env, (PetscMPIInt)len, MPI_CHAR, 0, comm));
       if (flag) *flag = flg;
     }
   } else {
@@ -90,7 +90,7 @@ static PetscErrorCode PetscWorldIsSingleHost(PetscBool *onehost)
 
   localmatch = (PetscMPIInt)flag;
 
-  PetscCall(MPIU_Allreduce(&localmatch, &allmatch, 1, MPI_INT, MPI_LAND, PETSC_COMM_WORLD));
+  PetscCallMPI(MPIU_Allreduce(&localmatch, &allmatch, 1, MPI_INT, MPI_LAND, PETSC_COMM_WORLD));
 
   *onehost = (PetscBool)allmatch;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -119,7 +119,7 @@ PetscErrorCode PetscSetDisplay(void)
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-x_virtual", &flag, NULL));
   if (flag) {
     /*  this is a crude hack, but better than nothing */
-    PetscCall(PetscPOpen(PETSC_COMM_WORLD, NULL, "pkill -9 Xvfb", "r", NULL));
+    PetscCall(PetscPOpen(PETSC_COMM_WORLD, NULL, "pkill -15 Xvfb", "r", NULL));
     PetscCall(PetscSleep(1));
     PetscCall(PetscPOpen(PETSC_COMM_WORLD, NULL, "Xvfb :15 -screen 0 1600x1200x24", "r", NULL));
     PetscCall(PetscSleep(5));

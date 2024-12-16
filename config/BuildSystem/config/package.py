@@ -305,6 +305,7 @@ class Package(config.base.Configure):
     return nargs
 
   def rmArgsStartsWith(self,args,rejectstarts):
+    '''Remove an argument that starts with given strings'''
     rejects = []
     if not isinstance(rejectstarts, list): rejectstarts = [rejectstarts]
     for i in rejectstarts:
@@ -312,6 +313,7 @@ class Package(config.base.Configure):
     return self.rmArgs(args,rejects)
 
   def addArgStartsWith(self,args,sw,value):
+    '''Adds another value with the argument that starts with sw, create sw if it does not exist'''
     keep = []
     found = 0
     for i in args:
@@ -323,13 +325,24 @@ class Package(config.base.Configure):
       keep.append(sw+'="' + value + '"')
     return keep
 
+  def rmValueArgStartsWith(self,args,sw,value):
+    '''Remove a value from arguments that start with sw'''
+    if not isinstance(sw, list): sw = [sw]
+    keep = []
+    for i in args:
+      for j in sw:
+        if i.startswith(j+'="'):
+          i = i.replace(value,'')
+      keep.append(i)
+    return keep
+
   def removeWarningFlags(self,flags):
     flags = self.rmArgs(
       flags,
       {
         '-Werror', '-Wall', '-Wwrite-strings', '-Wno-strict-aliasing', '-Wno-unknown-pragmas',
         '-Wno-unused-variable', '-Wno-unused-dummy-argument', '-std=c89', '-pedantic','--coverage',
-        '-Mfree', '-fdefault-integer-8', '-fsanitize=address', '-fstack-protector'
+        '-Mfree', '-fdefault-integer-8', '-fsanitize=address', '-fstack-protector', '-Wconversion'
       }
     )
     return ['-g' if f == '-g3' else f for f in flags]
@@ -373,6 +386,13 @@ class Package(config.base.Configure):
   def removeCoverageFlag(self, flags, pair_prefix=None):
     """Remove --coverage from flags."""
     return self.__remove_flag_pair(flags, '--coverage', pair_prefix)
+
+  def removeOpenMPFlag(self, flags, pair_prefix=None):
+    """Remove -fopenmp from flags."""
+    if hasattr(self,'openmp') and hasattr(self.openmp,'ompflag'):
+      return self.__remove_flag_pair(flags, self.openmp.ompflag, pair_prefix)
+    else:
+      return flags
 
   def removeStdCxxFlag(self,flags):
     '''Remove the -std=[CXX_VERSION] flag from the list of flags, but only for CMake packages'''
@@ -571,11 +591,11 @@ Now rerun configure''' % (self.installDirProvider.dir, '--download-'+self.packag
       alllibs.append(libs)
     return alllibs
 
-  def getIncludeDirs(self, prefix, includeDir):
-    if isinstance(includeDir, list):
-      iDirs = [inc for inc in includeDir if os.path.isabs(inc)] + [os.path.join(prefix, inc) for inc in includeDir if not os.path.isabs(inc)]
-      return [inc for inc in iDirs if os.path.exists(inc)]
-    return os.path.join(prefix, includeDir)
+  def getIncludeDirs(self, prefix, includeDirs):
+    if not isinstance(includeDirs, list):
+      includeDirs = [includeDirs]
+    iDirs = [inc for inc in includeDirs if os.path.isabs(inc)] + [os.path.join(prefix, inc) for inc in includeDirs if not os.path.isabs(inc)]
+    return [inc for inc in iDirs if os.path.exists(inc)]
 
   def addToArgs(self,args,key,value):
     found = 0
@@ -1200,44 +1220,43 @@ To use currently downloaded (local) git snapshot - use: --download-'+self.packag
     setattr(self.compilers, flagsArg, oldFlags+extraFlags+' '+self.headers.toString(self.dinclude))
     self.compilers.saveLog()
 
-    # X.py uses a weird list of two headers.
+    # Multiple headers are tried in order
     if not isinstance(self.versioninclude,list):
       headerList = [self.versioninclude]
     else:
       headerList = self.versioninclude
 
-    includeLines = ''
     for header in headerList:
-      includeLines += '#include "'+header+'"\n'
-    try:
-      # We once used '#include "'+self.versioninclude+'"\npetscpkgver('+self.versionname+');\n',
-      # but some preprocessors are picky (ex. dpcpp -E), reporting errors on the code above even
-      # it is just supposed to do preprocessing:
-      #
-      #  error: C++ requires a type specifier for all declarations
-      #  petscpkgver(__SYCL_COMPILER_VERSION);
-      #  ^
-      #
-      # So we instead use this compilable code.
-      output = self.outputPreprocess(
+      try:
+        # We once used '#include "'+self.versioninclude+'"\npetscpkgver('+self.versionname+');\n',
+        # but some preprocessors are picky (ex. dpcpp -E), reporting errors on the code above even
+        # it is just supposed to do preprocessing:
+        #
+        #  error: C++ requires a type specifier for all declarations
+        #  petscpkgver(__SYCL_COMPILER_VERSION);
+        #  ^
+        #
+        # So we instead use this compilable code.
+        output = self.outputPreprocess(
 '''
-{x}
+#include "{x}"
 #define  PetscXstr_(s) PetscStr_(s)
 #define  PetscStr_(s)  #s
 const char *ver = "petscpkgver(" PetscXstr_({y}) ")";
-'''.format(x=includeLines, y=self.versionname))
-       # Ex. char *ver = "petscpkgver(" "20211206" ")";
-       # But after stripping spaces, quotes etc below, it becomes char*ver=petscpkgver(20211206);
+'''.format(x=header, y=self.versionname))
+         # Ex. char *ver = "petscpkgver(" "20211206" ")";
+         # But after stripping spaces, quotes etc below, it becomes char*ver=petscpkgver(20211206);
+      except:
+        output = None
       self.logWrite(self.compilers.restoreLog())
-    except:
-      self.log.write('For '+self.package+' unable to run preprocessor to obtain version information, skipping version check\n')
-      self.logWrite(self.compilers.restoreLog())
-      self.popLanguage()
-      setattr(self.compilers, flagsArg,oldFlags)
-      self.version = ''
-      return
+      if output:
+        break
     self.popLanguage()
     setattr(self.compilers, flagsArg,oldFlags)
+    if not output:
+        self.log.write('For '+self.package+' unable to run preprocessor to obtain version information, skipping version check\n')
+        self.version = ''
+        return
     # the preprocessor output might be very long, but the petscpkgver line should be at the end. Therefore, we partition it backwards
     [mid, right] = output.rpartition('petscpkgver')[1:]
     version = ''

@@ -517,12 +517,12 @@ PetscErrorCode PetscPDFSampleConstant3D(const PetscReal p[], const PetscReal dum
   Input Parameters:
 + dim    - The dimension of sample points
 . prefix - The options prefix, or `NULL`
-- name   - The option name for the probability distribution type
+- name   - The options database name for the probability distribution type
 
   Output Parameters:
-+ pdf     - The PDF of this type
-. cdf     - The CDF of this type
-- sampler - The PDF sampler of this type
++ pdf     - The PDF of this type, or `NULL`
+. cdf     - The CDF of this type, or `NULL`
+- sampler - The PDF sampler of this type, or `NULL`
 
   Level: intermediate
 
@@ -630,7 +630,7 @@ EXTERN_C_END
 - cdf - The analytic CDF
 
   Output Parameter:
-. alpha - The KS statisic
+. alpha - The KS statistic
 
   Level: advanced
 
@@ -678,7 +678,7 @@ PetscErrorCode PetscProbComputeKSStatistic(Vec v, PetscProbFunc cdf, PetscReal *
   PetscCall(PetscObjectGetComm((PetscObject)v, &comm));
   PetscCall(PetscObjectGetOptionsPrefix((PetscObject)v, &prefix));
   PetscCall(PetscObjectGetOptions((PetscObject)v, &options));
-  PetscCall(PetscOptionsGetViewer(comm, options, prefix, "-ks_monitor", &viewer, &format, &flg));
+  PetscCall(PetscOptionsCreateViewer(comm, options, prefix, "-ks_monitor", &viewer, &format, &flg));
   if (flg) {
     PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
     PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
@@ -749,7 +749,7 @@ PetscErrorCode PetscProbComputeKSStatistic(Vec v, PetscProbFunc cdf, PetscReal *
   if (viewer) {
     PetscCall(PetscViewerFlush(viewer));
     PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
   *alpha = KSfbar((int)n, (double)Dn);
   PetscFunctionReturn(PETSC_SUCCESS);

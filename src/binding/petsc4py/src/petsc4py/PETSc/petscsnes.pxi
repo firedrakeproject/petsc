@@ -89,6 +89,7 @@ cdef extern from * nogil:
                                                         void*) except PETSC_ERR_PYTHON
 
     PetscErrorCode SNESCreate(MPI_Comm, PetscSNES*)
+    PetscErrorCode SNESParametersInitialize(PetscSNES)
     PetscErrorCode SNESDestroy(PetscSNES*)
     PetscErrorCode SNESView(PetscSNES, PetscViewer)
 
@@ -159,6 +160,8 @@ cdef extern from * nogil:
 
     PetscErrorCode SNESSetTolerances(PetscSNES, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt)
     PetscErrorCode SNESGetTolerances(PetscSNES, PetscReal*, PetscReal*, PetscReal*, PetscInt*, PetscInt*)
+    PetscErrorCode SNESSetDivergenceTolerance(PetscSNES, PetscReal)
+    PetscErrorCode SNESGetDivergenceTolerance(PetscSNES, PetscReal*)
 
     PetscErrorCode SNESConverged(PetscSNES, PetscInt, PetscReal, PetscReal, PetscReal)
     PetscErrorCode SNESSetConvergenceTest(PetscSNES, PetscSNESConvergedFunction, void*, PetscSNESCtxDel*)
@@ -223,12 +226,20 @@ cdef extern from * nogil:
     PetscErrorCode SNESPythonSetType(PetscSNES, char[])
     PetscErrorCode SNESPythonGetType(PetscSNES, char*[])
 
+    PetscErrorCode SNESNewtonTRSetTolerances(PetscSNES, PetscReal, PetscReal, PetscReal)
+    PetscErrorCode SNESNewtonTRGetTolerances(PetscSNES, PetscReal*, PetscReal*, PetscReal*)
+    PetscErrorCode SNESNewtonTRSetUpdateParameters(PetscSNES, PetscReal, PetscReal, PetscReal, PetscReal, PetscReal)
+    PetscErrorCode SNESNewtonTRGetUpdateParameters(PetscSNES, PetscReal*, PetscReal*, PetscReal*, PetscReal*, PetscReal*)
+
 cdef extern from * nogil: # custom.h
     PetscErrorCode SNESSetUseMFFD(PetscSNES, PetscBool)
     PetscErrorCode SNESGetUseMFFD(PetscSNES, PetscBool*)
 
     PetscErrorCode SNESSetUseFDColoring(PetscSNES, PetscBool)
     PetscErrorCode SNESGetUseFDColoring(PetscSNES, PetscBool*)
+
+    PetscErrorCode SNESSetUseKSP(PetscSNES, PetscBool)
+    PetscErrorCode SNESGetUseKSP(PetscSNES, PetscBool*)
 
     PetscErrorCode SNESConvergenceTestCall(PetscSNES, PetscInt,
                                            PetscReal, PetscReal, PetscReal,

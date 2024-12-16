@@ -136,7 +136,7 @@ static PetscErrorCode ISGlobalToLocalMappingSetUp(ISLocalToGlobalMapping mapping
   PetscFunctionBegin;
   if (mapping->data) PetscFunctionReturn(PETSC_SUCCESS);
   end   = 0;
-  start = PETSC_MAX_INT;
+  start = PETSC_INT_MAX;
 
   for (i = 0; i < n; i++) {
     if (idx[i] < 0) continue;
@@ -323,7 +323,7 @@ PetscErrorCode ISLocalToGlobalMappingGetSize(ISLocalToGlobalMapping mapping, Pet
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   ISLocalToGlobalMappingViewFromOptions - View an `ISLocalToGlobalMapping` based on values in the options database
 
   Collective
@@ -338,7 +338,7 @@ PetscErrorCode ISLocalToGlobalMappingGetSize(ISLocalToGlobalMapping mapping, Pet
   Note:
   See `PetscObjectViewFromOptions()` for the available `PetscViewer` and `PetscViewerFormat`
 
-.seealso: [](sec_scatter), `PetscViewer`, ``ISLocalToGlobalMapping`, `ISLocalToGlobalMappingView`, `PetscObjectViewFromOptions()`, `ISLocalToGlobalMappingCreate()`
+.seealso: [](sec_scatter), `PetscViewer`, `ISLocalToGlobalMapping`, `ISLocalToGlobalMappingView`, `PetscObjectViewFromOptions()`, `ISLocalToGlobalMappingCreate()`
 @*/
 PetscErrorCode ISLocalToGlobalMappingViewFromOptions(ISLocalToGlobalMapping A, PetscObject obj, const char name[])
 {
@@ -348,7 +348,7 @@ PetscErrorCode ISLocalToGlobalMappingViewFromOptions(ISLocalToGlobalMapping A, P
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   ISLocalToGlobalMappingView - View a local to global mapping
 
   Collective on viewer
@@ -755,7 +755,7 @@ PetscErrorCode ISLocalToGlobalMappingSetFromOptions(ISLocalToGlobalMapping mappi
   PetscValidHeaderSpecific(mapping, IS_LTOGM_CLASSID, 1);
   PetscCall(ISLocalToGlobalMappingRegisterAll());
   PetscObjectOptionsBegin((PetscObject)mapping);
-  PetscCall(PetscOptionsFList("-islocaltoglobalmapping_type", "ISLocalToGlobalMapping method", "ISLocalToGlobalMappingSetType", ISLocalToGlobalMappingList, (char *)(((PetscObject)mapping)->type_name) ? ((PetscObject)mapping)->type_name : defaulttype, type, 256, &flg));
+  PetscCall(PetscOptionsFList("-islocaltoglobalmapping_type", "ISLocalToGlobalMapping method", "ISLocalToGlobalMappingSetType", ISLocalToGlobalMappingList, ((PetscObject)mapping)->type_name ? ((PetscObject)mapping)->type_name : defaulttype, type, 256, &flg));
   if (flg) PetscCall(ISLocalToGlobalMappingSetType(mapping, type));
   PetscOptionsEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1239,7 +1239,7 @@ static PetscErrorCode ISLocalToGlobalMappingSetUpBlockInfo_Private(ISLocalToGlob
 
   /* Create layout for global indices */
   for (i = 0, m = 0; i < nleaves; i++) m = PetscMax(m, gidxs[i]);
-  PetscCall(MPIU_Allreduce(MPI_IN_PLACE, &m, 1, MPIU_INT, MPI_MAX, comm));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &m, 1, MPIU_INT, MPI_MAX, comm));
   PetscCall(PetscLayoutCreate(comm, &layout));
   PetscCall(PetscLayoutSetSize(layout, m + 1));
   PetscCall(PetscLayoutSetUp(layout));

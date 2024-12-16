@@ -424,21 +424,19 @@ static PetscErrorCode MatMultHermitianTranspose_SeqAIJKokkos(Mat A, Vec xx, Vec 
 static PetscErrorCode MatMultAdd_SeqAIJKokkos(Mat A, Vec xx, Vec yy, Vec zz)
 {
   Mat_SeqAIJKokkos          *aijkok;
-  ConstPetscScalarKokkosView xv, yv;
+  ConstPetscScalarKokkosView xv;
   PetscScalarKokkosView      zv;
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
   PetscCall(MatSeqAIJKokkosSyncDevice(A));
+  if (zz != yy) PetscCall(VecCopy(yy, zz)); // depending on yy's sync flags, zz might get its latest data on host
   PetscCall(VecGetKokkosView(xx, &xv));
-  PetscCall(VecGetKokkosView(yy, &yv));
-  PetscCall(VecGetKokkosViewWrite(zz, &zv));
-  if (zz != yy) Kokkos::deep_copy(zv, yv);
+  PetscCall(VecGetKokkosView(zz, &zv)); // do after VecCopy(yy, zz) to get the latest data on device
   aijkok = static_cast<Mat_SeqAIJKokkos *>(A->spptr);
   PetscCallCXX(KokkosSparse::spmv(PetscGetKokkosExecutionSpace(), "N", 1.0 /*alpha*/, aijkok->csrmat, xv, 1.0 /*beta*/, zv)); /* z = alpha A x + beta z */
   PetscCall(VecRestoreKokkosView(xx, &xv));
-  PetscCall(VecRestoreKokkosView(yy, &yv));
-  PetscCall(VecRestoreKokkosViewWrite(zz, &zv));
+  PetscCall(VecRestoreKokkosView(zz, &zv));
   PetscCall(PetscLogGpuFlops(2.0 * aijkok->csrmat.nnz()));
   PetscCall(PetscLogGpuTimeEnd());
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -449,17 +447,16 @@ static PetscErrorCode MatMultTransposeAdd_SeqAIJKokkos(Mat A, Vec xx, Vec yy, Ve
 {
   Mat_SeqAIJKokkos          *aijkok;
   const char                *mode;
-  ConstPetscScalarKokkosView xv, yv;
+  ConstPetscScalarKokkosView xv;
   PetscScalarKokkosView      zv;
   KokkosCsrMatrix            csrmat;
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
   PetscCall(MatSeqAIJKokkosSyncDevice(A));
+  if (zz != yy) PetscCall(VecCopy(yy, zz));
   PetscCall(VecGetKokkosView(xx, &xv));
-  PetscCall(VecGetKokkosView(yy, &yv));
-  PetscCall(VecGetKokkosViewWrite(zz, &zv));
-  if (zz != yy) Kokkos::deep_copy(zv, yv);
+  PetscCall(VecGetKokkosView(zz, &zv));
   if (A->form_explicit_transpose) {
     PetscCall(MatSeqAIJKokkosGenerateTranspose_Private(A, &csrmat));
     mode = "N";
@@ -470,8 +467,7 @@ static PetscErrorCode MatMultTransposeAdd_SeqAIJKokkos(Mat A, Vec xx, Vec yy, Ve
   }
   PetscCallCXX(KokkosSparse::spmv(PetscGetKokkosExecutionSpace(), mode, 1.0 /*alpha*/, csrmat, xv, 1.0 /*beta*/, zv)); /* z = alpha A^T x + beta z */
   PetscCall(VecRestoreKokkosView(xx, &xv));
-  PetscCall(VecRestoreKokkosView(yy, &yv));
-  PetscCall(VecRestoreKokkosViewWrite(zz, &zv));
+  PetscCall(VecRestoreKokkosView(zz, &zv));
   PetscCall(PetscLogGpuFlops(2.0 * csrmat.nnz()));
   PetscCall(PetscLogGpuTimeEnd());
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -482,17 +478,16 @@ static PetscErrorCode MatMultHermitianTransposeAdd_SeqAIJKokkos(Mat A, Vec xx, V
 {
   Mat_SeqAIJKokkos          *aijkok;
   const char                *mode;
-  ConstPetscScalarKokkosView xv, yv;
+  ConstPetscScalarKokkosView xv;
   PetscScalarKokkosView      zv;
   KokkosCsrMatrix            csrmat;
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
   PetscCall(MatSeqAIJKokkosSyncDevice(A));
+  if (zz != yy) PetscCall(VecCopy(yy, zz));
   PetscCall(VecGetKokkosView(xx, &xv));
-  PetscCall(VecGetKokkosView(yy, &yv));
-  PetscCall(VecGetKokkosViewWrite(zz, &zv));
-  if (zz != yy) Kokkos::deep_copy(zv, yv);
+  PetscCall(VecGetKokkosView(zz, &zv));
   if (A->form_explicit_transpose) {
     PetscCall(MatSeqAIJKokkosGenerateHermitian_Private(A, &csrmat));
     mode = "N";
@@ -503,8 +498,7 @@ static PetscErrorCode MatMultHermitianTransposeAdd_SeqAIJKokkos(Mat A, Vec xx, V
   }
   PetscCallCXX(KokkosSparse::spmv(PetscGetKokkosExecutionSpace(), mode, 1.0 /*alpha*/, csrmat, xv, 1.0 /*beta*/, zv)); /* z = alpha A^H x + beta z */
   PetscCall(VecRestoreKokkosView(xx, &xv));
-  PetscCall(VecRestoreKokkosView(yy, &yv));
-  PetscCall(VecRestoreKokkosViewWrite(zz, &zv));
+  PetscCall(VecRestoreKokkosView(zz, &zv));
   PetscCall(PetscLogGpuFlops(2.0 * csrmat.nnz()));
   PetscCall(PetscLogGpuTimeEnd());
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1314,7 +1308,7 @@ static PetscErrorCode MatSetPreallocationCOO_SeqAIJKokkos(Mat mat, PetscCount co
 {
   Mat_SeqAIJKokkos          *akok;
   Mat_SeqAIJ                *aseq;
-  PetscContainer             container_h, container_d;
+  PetscContainer             container_h;
   MatCOOStruct_SeqAIJ       *coo_h;
   MatCOOStruct_SeqAIJKokkos *coo_d;
 
@@ -1332,11 +1326,7 @@ static PetscErrorCode MatSetPreallocationCOO_SeqAIJKokkos(Mat mat, PetscCount co
   PetscCallCXX(coo_d = new MatCOOStruct_SeqAIJKokkos(coo_h));
 
   // Put the COO struct in a container and then attach that to the matrix
-  PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container_d));
-  PetscCall(PetscContainerSetPointer(container_d, coo_d));
-  PetscCall(PetscContainerSetUserDestroy(container_d, MatCOOStructDestroy_SeqAIJKokkos));
-  PetscCall(PetscObjectCompose((PetscObject)mat, "__PETSc_MatCOOStruct_Device", (PetscObject)container_d));
-  PetscCall(PetscContainerDestroy(&container_d));
+  PetscCall(PetscObjectContainerCompose((PetscObject)mat, "__PETSc_MatCOOStruct_Device", coo_d, MatCOOStructDestroy_SeqAIJKokkos));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1521,21 +1511,20 @@ PETSC_INTERN PetscErrorCode MatSetSeqAIJKokkosWithCSRMatrix(Mat A, Mat_SeqAIJKok
 
   /* Set up data structures of A as a MATSEQAIJ */
   PetscCall(MatSeqAIJSetPreallocation_SeqAIJ(A, MAT_SKIP_ALLOCATION, NULL));
-  aseq = (Mat_SeqAIJ *)(A)->data;
+  aseq = (Mat_SeqAIJ *)A->data;
 
   PetscCallCXX(akok->i_dual.sync_host(exec)); /* We always need sync'ed i, j on host */
   PetscCallCXX(akok->j_dual.sync_host(exec));
   PetscCallCXX(exec.fence());
 
-  aseq->i            = akok->i_host_data();
-  aseq->j            = akok->j_host_data();
-  aseq->a            = akok->a_host_data();
-  aseq->nonew        = -1; /*this indicates that inserting a new value in the matrix that generates a new nonzero is an error*/
-  aseq->singlemalloc = PETSC_FALSE;
-  aseq->free_a       = PETSC_FALSE;
-  aseq->free_ij      = PETSC_FALSE;
-  aseq->nz           = akok->nnz();
-  aseq->maxnz        = aseq->nz;
+  aseq->i       = akok->i_host_data();
+  aseq->j       = akok->j_host_data();
+  aseq->a       = akok->a_host_data();
+  aseq->nonew   = -1; /*this indicates that inserting a new value in the matrix that generates a new nonzero is an error*/
+  aseq->free_a  = PETSC_FALSE;
+  aseq->free_ij = PETSC_FALSE;
+  aseq->nz      = akok->nnz();
+  aseq->maxnz   = aseq->nz;
 
   PetscCall(PetscMalloc1(m, &aseq->imax));
   PetscCall(PetscMalloc1(m, &aseq->ilen));

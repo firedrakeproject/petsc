@@ -33,7 +33,7 @@ static PetscErrorCode GetOptions(MPI_Comm comm, AppCtx *ctx)
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-irregular", &ctx->irregular, NULL));
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-compare_to_reference", &ctx->compare, NULL));
   PetscCall(PetscOptionsGetEnum(NULL, NULL, "-root_mode", PetscSFConcatenateRootModes, (PetscEnum *)&ctx->rootMode, NULL));
-  PetscCall(PetscOptionsGetViewer(comm, NULL, NULL, "-sf_view", &ctx->viewer, &format, NULL));
+  PetscCall(PetscOptionsCreateViewer(comm, NULL, NULL, "-sf_view", &ctx->viewer, &format, NULL));
   if (ctx->viewer) PetscCall(PetscViewerPushFormat(ctx->viewer, format));
   ctx->sparseLeaves = (PetscBool)(ctx->leaveStep != 1);
   PetscCallMPI(MPI_Comm_size(comm, &ctx->size));
@@ -92,8 +92,8 @@ static PetscErrorCode PetscSFCheckEqual_Private(PetscSF sf0, PetscSF sf1)
 
 static PetscErrorCode PetscSFViewCustom(PetscSF sf, PetscViewer viewer)
 {
-  PetscMPIInt        rank;
-  PetscInt           i, nroots, nleaves, nranks;
+  PetscMPIInt        rank, nranks;
+  PetscInt           i, nroots, nleaves;
   const PetscInt    *ilocal;
   const PetscSFNode *iremote;
   PetscLayout        rootLayout;
@@ -114,7 +114,7 @@ static PetscErrorCode PetscSFViewCustom(PetscSF sf, PetscViewer viewer)
   PetscCall(PetscViewerFlush(viewer));
   if (rank == 0) PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "leaves      roots       roots in global numbering\n"));
   for (i = 0; i < nleaves; i++)
-    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "(%2d, %2" PetscInt_FMT ") <- (%2" PetscInt_FMT ", %2" PetscInt_FMT ")  = %3" PetscInt_FMT "\n", rank, ilocal ? ilocal[i] : i, iremote[i].rank, iremote[i].index, gremote[i]));
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "(%2d, %2d) <- (%2d, %2" PetscInt_FMT ")  = %3" PetscInt_FMT "\n", rank, (PetscMPIInt)(ilocal ? ilocal[i] : i), (PetscMPIInt)iremote[i].rank, iremote[i].index, gremote[i]));
   PetscCall(PetscViewerFlush(viewer));
   PetscCall(PetscViewerASCIIPopSynchronized(viewer));
   PetscCall(PetscViewerASCIIPopTab(viewer));
@@ -343,7 +343,7 @@ int main(int argc, char **argv)
   PetscCall(PetscSFDestroy(&sf));
   if (ctx->viewer) {
     PetscCall(PetscViewerPopFormat(ctx->viewer));
-    PetscCall(PetscOptionsRestoreViewer(&ctx->viewer));
+    PetscCall(PetscViewerDestroy(&ctx->viewer));
   }
   PetscCall(PetscFinalize());
   return 0;

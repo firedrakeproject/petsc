@@ -96,7 +96,7 @@ int main(int argc, char **argv)
   PetscInt                           min = 32, max = 32 * 8; /* min and max sizes of the grids to sample */
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, nullptr, help));
   PetscCall(PetscRandomCreate(PETSC_COMM_WORLD, &rctx));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-min", &min, NULL));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-max", &max, NULL));
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     PetscCall(DMDAVecRestoreArrayRead(da, x, &x1));
     PetscCall(DMDAVecRestoreArray(da, y, &y1));
     PetscCall(PetscTime(&tend));
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%4d^3 -- PETSc average time  = %e\n", len, avgTime));
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%4d^3 -- PETSc average time  = %e\n", static_cast<int>(len), avgTime));
 
     /* Access with C multi-dimensional arrays */
     PetscCall(VecSetRandom(x, rctx));
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
     PetscCall(Update2(da, x2, y2, nwarm, nloop, &avgTime));
     PetscCall(VecRestoreArrayRead(x, &x2));
     PetscCall(VecRestoreArray(y, &y2));
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%4d^3 -- C average time      = %e\n", len, avgTime));
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%4d^3 -- C average time      = %e\n", static_cast<int>(len), avgTime));
 
     /* Access with Kokkos multi-dimensional OffsetViews */
     PetscCall(VecSet(y, 0.0));
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     PetscCall(DMDAVecRestoreKokkosOffsetView(da, x, &x3));
     PetscCall(DMDAVecRestoreKokkosOffsetView(da, y, &y3));
     avgTime = (tend - tstart) / nloop;
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%4d^3 -- Kokkos average time = %e\n", len, avgTime));
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%4d^3 -- Kokkos average time = %e\n", static_cast<int>(len), avgTime));
 
     PetscCall(VecDestroy(&x));
     PetscCall(VecDestroy(&y));

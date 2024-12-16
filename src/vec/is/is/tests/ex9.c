@@ -16,13 +16,13 @@ int main(int argc, char **argv)
   ISLocalToGlobalMapping l2g0, l2g1;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   comm = PETSC_COMM_WORLD;
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   PetscCallMPI(MPI_Comm_size(comm, &size));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-n", &nLocal, NULL));
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-auto_offset", &auto_offset, NULL));
-  PetscCall(PetscOptionsGetViewer(comm, NULL, NULL, "-viewer", &viewer, &format, NULL));
+  PetscCall(PetscOptionsCreateViewer(comm, NULL, NULL, "-viewer", &viewer, &format, NULL));
   PetscCall(PetscMalloc1(nLocal, &indices));
   for (i = 0; i < nLocal; i++) indices[i] = i + rank;
   nGlobal = size - 1 + nLocal;
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 
   if (viewer) {
     PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
   PetscCall(ISLocalToGlobalMappingDestroy(&l2g0));
   PetscCall(ISLocalToGlobalMappingDestroy(&l2g1));

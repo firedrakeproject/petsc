@@ -133,7 +133,7 @@ PetscErrorCode PetscViewerDestroy(PetscViewer *viewer)
 PetscErrorCode PetscViewerAndFormatCreate(PetscViewer viewer, PetscViewerFormat format, PetscViewerAndFormat **vf)
 {
   PetscFunctionBegin;
-  if (!((PetscObject)viewer)->persistent) PetscCall(PetscObjectReference((PetscObject)viewer));
+  PetscCall(PetscObjectReference((PetscObject)viewer));
   PetscCall(PetscNew(vf));
   (*vf)->viewer = viewer;
   (*vf)->format = format;
@@ -158,13 +158,13 @@ PetscErrorCode PetscViewerAndFormatCreate(PetscViewer viewer, PetscViewerFormat 
 PetscErrorCode PetscViewerAndFormatDestroy(PetscViewerAndFormat **vf)
 {
   PetscFunctionBegin;
-  if (!((PetscObject)((*vf)->viewer))->persistent) PetscCall(PetscViewerDestroy(&(*vf)->viewer));
+  PetscCall(PetscViewerDestroy(&(*vf)->viewer));
   PetscCall(PetscDrawLGDestroy(&(*vf)->lg));
   PetscCall(PetscFree(*vf));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscViewerGetType - Returns the type of a `PetscViewer`.
 
   Not Collective
@@ -191,7 +191,7 @@ PetscErrorCode PetscViewerGetType(PetscViewer viewer, PetscViewerType *type)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscViewerSetOptionsPrefix - Sets the prefix used for searching for
   `PetscViewer` options in the database during `PetscViewerSetFromOptions()`.
 
@@ -217,7 +217,7 @@ PetscErrorCode PetscViewerSetOptionsPrefix(PetscViewer viewer, const char prefix
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscViewerAppendOptionsPrefix - Appends to the prefix used for searching for
   `PetscViewer` options in the database during `PetscViewerSetFromOptions()`.
 
@@ -296,7 +296,7 @@ PetscErrorCode PetscViewerSetUp(PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscViewerViewFromOptions - View from the viewer based on options in the options database
 
   Collective
@@ -321,7 +321,7 @@ PetscErrorCode PetscViewerViewFromOptions(PetscViewer A, PetscObject obj, const 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscViewerView - Visualizes a viewer object.
 
   Collective

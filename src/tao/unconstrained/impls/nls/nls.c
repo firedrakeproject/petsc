@@ -250,7 +250,10 @@ static PetscErrorCode TaoSolve_NLS(Tao tao)
   /* Have not converged; continue with Newton method */
   while (tao->reason == TAO_CONTINUE_ITERATING) {
     /* Call general purpose update function */
-    PetscTryTypeMethod(tao, update, tao->niter, tao->user_update);
+    if (tao->ops->update) {
+      PetscUseTypeMethod(tao, update, tao->niter, tao->user_update);
+      PetscCall(TaoComputeObjective(tao, tao->solution, &f));
+    }
     ++tao->niter;
     tao->ksp_its = 0;
 
@@ -881,8 +884,9 @@ PETSC_EXTERN PetscErrorCode TaoCreate_NLS(Tao tao)
   tao->ops->destroy        = TaoDestroy_NLS;
 
   /* Override default settings (unless already changed) */
-  if (!tao->max_it_changed) tao->max_it = 50;
-  if (!tao->trust0_changed) tao->trust0 = 100.0;
+  PetscCall(TaoParametersInitialize(tao));
+  PetscObjectParameterSetDefault(tao, max_it, 50);
+  PetscObjectParameterSetDefault(tao, trust0, 100.0);
 
   tao->data = (void *)nlsP;
 

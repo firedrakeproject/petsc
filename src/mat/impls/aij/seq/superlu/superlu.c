@@ -193,9 +193,9 @@ static PetscErrorCode MatSolve_SuperLU(Mat A, Vec b, Vec x)
   trans_t      oldOption;
 
   PetscFunctionBegin;
+  PetscCall(VecFlag(x, A->factorerrortype));
   if (A->factorerrortype) {
     PetscCall(PetscInfo(A, "MatSolve is called with singular matrix factor, skip\n"));
-    PetscCall(VecSetInf(x));
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
@@ -212,9 +212,9 @@ static PetscErrorCode MatSolveTranspose_SuperLU(Mat A, Vec b, Vec x)
   trans_t      oldOption;
 
   PetscFunctionBegin;
+  PetscCall(VecFlag(x, A->factorerrortype));
   if (A->factorerrortype) {
     PetscCall(PetscInfo(A, "MatSolve is called with singular matrix factor, skip\n"));
-    PetscCall(VecSetInf(x));
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
@@ -254,7 +254,7 @@ static PetscErrorCode MatLUFactorNumeric_SuperLU(Mat F, Mat A, const MatFactorIn
   if (lu->A_dup) {
     aa = (Mat_SeqAIJ *)lu->A_dup->data;
   } else {
-    aa = (Mat_SeqAIJ *)(A)->data;
+    aa = (Mat_SeqAIJ *)A->data;
   }
 #if defined(PETSC_USE_COMPLEX)
   #if defined(PETSC_USE_REAL_SINGLE)

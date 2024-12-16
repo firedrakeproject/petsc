@@ -172,7 +172,7 @@ PetscErrorCode PCFactorSetShiftType(PC pc, MatFactorShiftType shifttype)
 
   Level: intermediate
 
-.seealso: [](ch_ksp), `PCCHOLESKY`, `PCLU`, ``PCFactorSetZeroPivot()`, `PCFactorSetShiftType()`
+.seealso: [](ch_ksp), `PCCHOLESKY`, `PCLU`, `PCFactorSetZeroPivot()`, `PCFactorSetShiftType()`
 @*/
 PetscErrorCode PCFactorSetShiftAmount(PC pc, PetscReal shiftamount)
 {
@@ -404,7 +404,7 @@ PetscErrorCode PCFactorGetAllowDiagonalFill(PC pc, PetscBool *flg)
 
   Level: intermediate
 
-.seealso: [](ch_ksp), `PCILU`, `PCICC`, `PCFactorSetFill()`, `PCFactorSetShiftNonzero()`, `PCFactorSetZeroPivot()`, `MatReorderForNonzeroDiagonal()`
+.seealso: [](ch_ksp), `PCILU`, `PCICC`, `PCFactorSetFill()`, `PCFactorSetShiftAmount()`, `PCFactorSetZeroPivot()`, `MatReorderForNonzeroDiagonal()`
 @*/
 PetscErrorCode PCFactorReorderForNonzeroDiagonal(PC pc, PetscReal rtol)
 {
@@ -571,7 +571,7 @@ PetscErrorCode PCFactorGetUseInPlace(PC pc, PetscBool *flg)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PCFactorSetMatOrderingType - Sets the ordering routine (to reduce fill) to
   be used in the `PCLU`, `PCCHOLESKY`, `PCILU`,  or `PCICC` preconditioners
 

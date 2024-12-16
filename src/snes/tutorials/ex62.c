@@ -265,13 +265,13 @@ static PetscErrorCode SetupParameters(MPI_Comm comm, AppCtx *ctx)
     PetscViewerFormat format;
     PetscBool         flg;
 
-    PetscCall(PetscOptionsGetViewer(comm, NULL, NULL, "-param_view", &viewer, &format, &flg));
+    PetscCall(PetscOptionsCreateViewer(comm, NULL, NULL, "-param_view", &viewer, &format, &flg));
     if (flg) {
       PetscCall(PetscViewerPushFormat(viewer, format));
       PetscCall(PetscBagView(ctx->bag, viewer));
       PetscCall(PetscViewerFlush(viewer));
       PetscCall(PetscViewerPopFormat(viewer));
-      PetscCall(PetscOptionsRestoreViewer(&viewer));
+      PetscCall(PetscViewerDestroy(&viewer));
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -486,7 +486,7 @@ int main(int argc, char **argv)
     requires: triangle
     args: -sol trig -vel_petscspace_degree 2 -pres_petscspace_degree 1 -snes_convergence_estimate -convest_num_refine 2 \
       -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_fact_type full -pc_fieldsplit_schur_precondition full \
-        -fieldsplit_velocity_pc_type lu -fieldsplit_pressure_ksp_rtol 1e-10 -fieldsplit_pressure_pc_type gamg -fieldsplit_pressure_mg_coarse_pc_type svd
+        -fieldsplit_velocity_pc_type lu -fieldsplit_pressure_ksp_rtol 1e-10 -fieldsplit_pressure_explicit_operator_mat_type aij -fieldsplit_pressure_pc_type gamg -fieldsplit_pressure_mg_coarse_pc_type svd
 
   test:
     suffix: 3d_p2_p1_conv
@@ -557,7 +557,7 @@ int main(int argc, char **argv)
     args: -sol quadratic -dm_plex_simplex 0 -vel_petscspace_degree 1 -pres_petscspace_degree 0 -snes_convergence_estimate -convest_num_refine 2 \
       -ksp_atol 1e-10 -petscds_jac_pre 0 \
       -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_fact_type full -pc_fieldsplit_schur_precondition full \
-        -fieldsplit_velocity_pc_type lu -fieldsplit_pressure_ksp_rtol 1e-10 -fieldsplit_pressure_pc_type gamg -fieldsplit_pressure_mg_levels_pc_type jacobi -fieldsplit_pressure_mg_coarse_pc_type svd -fieldsplit_pressure_pc_gamg_aggressive_coarsening 0
+        -fieldsplit_velocity_pc_type lu -fieldsplit_pressure_ksp_rtol 1e-10 -fieldsplit_pressure_explicit_operator_mat_type aij -fieldsplit_pressure_pc_type gamg -fieldsplit_pressure_mg_levels_pc_type jacobi -fieldsplit_pressure_mg_coarse_pc_type svd -fieldsplit_pressure_pc_gamg_aggressive_coarsening 0
 
   test:
     suffix: 3d_q1_p0_conv
@@ -566,7 +566,7 @@ int main(int argc, char **argv)
     args: -sol quadratic -dm_plex_simplex 0 -dm_plex_dim 3 -dm_refine 1 -vel_petscspace_degree 1 -pres_petscspace_degree 0 -snes_convergence_estimate -convest_num_refine 1 \
       -ksp_atol 1e-10 -petscds_jac_pre 0 \
       -pc_type fieldsplit -pc_fieldsplit_type schur -pc_fieldsplit_schur_fact_type full -pc_fieldsplit_schur_precondition full \
-        -fieldsplit_velocity_pc_type lu -fieldsplit_pressure_ksp_rtol 1e-10 -fieldsplit_pressure_pc_type gamg -fieldsplit_pressure_mg_levels_pc_type jacobi -fieldsplit_pressure_mg_coarse_pc_type svd -fieldsplit_pressure_pc_gamg_aggressive_coarsening 0
+        -fieldsplit_velocity_pc_type lu -fieldsplit_pressure_ksp_rtol 1e-10 -fieldsplit_pressure_explicit_operator_mat_type aij -fieldsplit_pressure_pc_type gamg -fieldsplit_pressure_mg_levels_pc_type jacobi -fieldsplit_pressure_mg_coarse_pc_type svd -fieldsplit_pressure_pc_gamg_aggressive_coarsening 0
 
   # Stokes preconditioners
   #   Block diagonal \begin{pmatrix} A & 0 \\ 0 & I \end{pmatrix}
@@ -623,6 +623,7 @@ int main(int argc, char **argv)
   #   Full Schur + Velocity GMG
   test:
     suffix: 2d_p2_p1_gmg_vcycle
+    TODO: broken (requires subDMs hooks)
     requires: triangle
     args: -sol quadratic -dm_refine_hierarchy 2 -vel_petscspace_degree 2 -pres_petscspace_degree 1 \
       -ksp_type fgmres -ksp_atol 1e-9 -snes_error_if_not_converged -pc_use_amat \

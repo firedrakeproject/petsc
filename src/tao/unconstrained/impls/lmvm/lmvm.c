@@ -37,7 +37,10 @@ static PetscErrorCode TaoSolve_LMVM(Tao tao)
   /*  Have not converged; continue with Newton method */
   while (tao->reason == TAO_CONTINUE_ITERATING) {
     /* Call general purpose update function */
-    PetscTryTypeMethod(tao, update, tao->niter, tao->user_update);
+    if (tao->ops->update) {
+      PetscUseTypeMethod(tao, update, tao->niter, tao->user_update);
+      PetscCall(TaoComputeObjective(tao, tao->solution, &f));
+    }
 
     /*  Compute direction */
     if (lmP->H0) {
@@ -260,8 +263,9 @@ PETSC_EXTERN PetscErrorCode TaoCreate_LMVM(Tao tao)
 
   tao->data = (void *)lmP;
   /* Override default settings (unless already changed) */
-  if (!tao->max_it_changed) tao->max_it = 2000;
-  if (!tao->max_funcs_changed) tao->max_funcs = 4000;
+  PetscCall(TaoParametersInitialize(tao));
+  PetscObjectParameterSetDefault(tao, max_it, 2000);
+  PetscObjectParameterSetDefault(tao, max_funcs, 4000);
 
   PetscCall(TaoLineSearchCreate(((PetscObject)tao)->comm, &tao->linesearch));
   PetscCall(PetscObjectIncrementTabLevel((PetscObject)tao->linesearch, (PetscObject)tao, 1));

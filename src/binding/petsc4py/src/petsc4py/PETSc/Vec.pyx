@@ -630,8 +630,8 @@ cdef class Vec(Object):
         self.set_attr('__array__', dltensor)
         cdef int64_t* shape_arr = NULL
         cdef int64_t* strides_arr = NULL
-        cdef object s1 = oarray_p(empty_p(ndim), NULL, <void**>&shape_arr)
-        cdef object s2 = oarray_p(empty_p(ndim), NULL, <void**>&strides_arr)
+        cdef object s1 = oarray_p(empty_p(<PetscInt>ndim), NULL, <void**>&shape_arr)
+        cdef object s2 = oarray_p(empty_p(<PetscInt>ndim), NULL, <void**>&strides_arr)
         for i in range(ndim):
             shape_arr[i] = shape[i]
             strides_arr[i] = strides[i]
@@ -797,7 +797,7 @@ cdef class Vec(Object):
             shape_strides[i] = shape[i]
         for i in range(ndim):
             shape_strides[i+ndim] = strides[i]
-        dl_tensor.ndim = ndim
+        dl_tensor.ndim = <int>ndim
         dl_tensor.shape = shape_strides
         dl_tensor.strides = shape_strides + ndim
 
@@ -1916,7 +1916,7 @@ cdef class Vec(Object):
         dot, tDot, mDotBegin, mDotEnd, petsc.VecMDot
 
         """
-        cdef PetscInt nv=len(vecs), no=0
+        cdef PetscInt nv=<PetscInt>len(vecs), no=0
         cdef PetscVec *v=NULL
         cdef PetscScalar *val=NULL
         cdef Py_ssize_t i=0
@@ -1949,7 +1949,7 @@ cdef class Vec(Object):
         mDot, mDotEnd, petsc.VecMDotBegin
 
         """
-        cdef PetscInt nv=len(vecs), no=0
+        cdef PetscInt nv=<PetscInt>len(vecs), no=0
         cdef PetscVec *v=NULL
         cdef PetscScalar *val=NULL
         cdef Py_ssize_t i=0
@@ -1979,7 +1979,7 @@ cdef class Vec(Object):
         mDot, mDotBegin, petsc.VecMDotEnd
 
         """
-        cdef PetscInt nv=len(vecs), no=0
+        cdef PetscInt nv=<PetscInt>len(vecs), no=0
         cdef PetscVec *v=NULL
         cdef PetscScalar *val=NULL
         cdef Py_ssize_t i=0
@@ -2010,7 +2010,7 @@ cdef class Vec(Object):
         tDot, mDot, mtDotBegin, mtDotEnd, petsc.VecMTDot
 
         """
-        cdef PetscInt nv=len(vecs), no=0
+        cdef PetscInt nv=<PetscInt>len(vecs), no=0
         cdef PetscVec *v=NULL
         cdef PetscScalar *val=NULL
         cdef Py_ssize_t i=0
@@ -2043,7 +2043,7 @@ cdef class Vec(Object):
         mtDot, mtDotEnd, petsc.VecMTDotBegin
 
         """
-        cdef PetscInt nv=len(vecs), no=0
+        cdef PetscInt nv=<PetscInt>len(vecs), no=0
         cdef PetscVec *v=NULL
         cdef PetscScalar *val=NULL
         cdef Py_ssize_t i=0
@@ -2073,7 +2073,7 @@ cdef class Vec(Object):
         mtDot, mtDotBegin, petsc.VecMTDotEnd
 
         """
-        cdef PetscInt nv=len(vecs), no=0
+        cdef PetscInt nv=<PetscInt>len(vecs), no=0
         cdef PetscVec *v=NULL
         cdef PetscScalar *val=NULL
         cdef Py_ssize_t i=0
@@ -3382,6 +3382,25 @@ cdef class Vec(Object):
         ghosts = iarray_i(ghosts, &ng, &ig)
         CHKERR(VecMPISetGhost(self.vec, ng, ig))
 
+    def getGhostIS(self) -> IS:
+        """Return ghosting indices of a ghost vector.
+
+        Collective.
+
+        Returns
+        -------
+        IS
+            Indices of ghosts.
+
+        See Also
+        --------
+        petsc.VecGhostGetGhostIS
+
+        """
+        cdef PetscIS indices = NULL
+        CHKERR(VecGhostGetGhostIS(self.vec, &indices))
+        return ref_IS(indices)
+
     #
 
     def getSubVector(self, IS iset, Vec subvec=None) -> Vec:
@@ -3509,9 +3528,54 @@ cdef class Vec(Object):
         """
         cdef DM dm = DM()
         CHKERR(VecGetDM(self.vec, &dm.dm))
+        CHKERR(PetscObjectReference(<PetscObject>dm.dm))
         return dm
 
     #
+
+    @classmethod
+    def concatenate(cls, vecs: Sequence[Vec]) -> tuple[Vec, list[IS]]:
+        """Concatenate vectors into a single vector.
+
+        Collective.
+
+        Parameters
+        ----------
+        vecs
+            The vectors to be concatenated.
+
+        Returns
+        -------
+        vector_out : Vec
+            The concatenated vector.
+        indices_list : list of IS
+            A list of index sets corresponding to the concatenated components.
+
+        See Also
+        --------
+        petsc.VecConcatenate
+
+        """
+        vecs = list(vecs)
+        cdef Py_ssize_t i, m = len(vecs)
+        cdef PetscInt n = <PetscInt>m
+        cdef PetscVec newvec = NULL
+        cdef PetscVec *cvecs  = NULL
+        cdef PetscIS  *cisets = NULL
+        cdef object unused1
+        cdef object vec_index_ises = []
+        unused1 = oarray_p(empty_p(n), NULL, <void**>&cvecs)
+        for i from 0 <= i < m:
+            cvecs[i] = (<Vec?>vecs[i]).vec
+        CHKERR(VecConcatenate(n, cvecs, &newvec, &cisets))
+        cdef Vec self = cls()
+        self.vec = newvec
+        for i from 0 <= i < m:
+            temp = IS()
+            temp.iset = cisets[i]
+            vec_index_ises.append(temp)
+        CHKERR(PetscFree(cisets))
+        return self, vec_index_ises
 
     property sizes:
         """The local and global vector sizes."""

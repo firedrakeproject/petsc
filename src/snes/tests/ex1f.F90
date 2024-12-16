@@ -56,26 +56,6 @@
 #include <petsc/finclude/petscdraw.h>
       use petscsnes
       implicit none
-      interface SNESSetJacobian
-      subroutine SNESSetJacobian1(a,b,c,d,e,z)
-       use petscsnes
-       SNES a
-       Mat b
-       Mat c
-       external d
-       MatFDColoring e
-       PetscErrorCode z
-      end subroutine
-      subroutine SNESSetJacobian2(a,b,c,d,e,z)
-       use petscsnes
-       SNES a
-       Mat b
-       Mat c
-       external d
-       integer e
-       PetscErrorCode z
-      end subroutine
-      end interface
 !
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !                   Variable declarations
@@ -182,7 +162,7 @@
 
       PetscCallA(PetscOptionsHasName(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-snes_mf',matrix_free,ierr))
       if (.not. matrix_free) then
-        PetscCallA(MatCreateSeqAIJ(PETSC_COMM_WORLD,N,N,i5,PETSC_NULL_INTEGER,J,ierr))
+        PetscCallA(MatCreateSeqAIJ(PETSC_COMM_WORLD,N,N,i5,PETSC_NULL_INTEGER_ARRAY,J,ierr))
       endif
 
 !
@@ -221,6 +201,8 @@
 !      to compute Jacobians.
 !
         PetscCallA(SNESSetJacobian(snes,J,J,SNESComputeJacobianDefaultColor,fdcoloring,ierr))
+        PetscCallA(SNESGetJacobian(snes,J,PETSC_NULL_MAT,PETSC_NULL_FUNCTION,PETSC_NULL_INTEGER,ierr))
+        PetscCallA(SNESGetJacobian(snes,J,PETSC_NULL_MAT,PETSC_NULL_FUNCTION,fdcoloring,ierr))
         PetscCallA(ISColoringDestroy(iscoloring,ierr))
 
       else if (.not. matrix_free) then
@@ -644,7 +626,7 @@
             row(1) = row(1) + 1
 !           boundary points
             if (i .eq. 1 .or. j .eq. 1 .or. i .eq. mx .or. j .eq. my) then
-               PetscCallA(MatSetValues(jac_prec,i1,row,i1,row,one,INSERT_VALUES,ierr))
+               PetscCallA(MatSetValues(jac_prec,i1,row,i1,row,[one],INSERT_VALUES,ierr))
 !           interior grid points
             else
                v(1) = -hxdhy

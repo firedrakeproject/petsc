@@ -12,7 +12,7 @@ class CompilerOptions(config.base.Configure):
     import config.setCompilers
 
     if language == 'C':
-      if [s for s in ['mpicc','mpiicc'] if os.path.basename(compiler).find(s)>=0]:
+      if [s for s in ['mpicc','mpiicc','mpiicx'] if os.path.basename(compiler).find(s)>=0]:
         try:
           output = self.executeShellCommand(compiler + ' -show', log = self.log)[0]
           self.framework.addMakeMacro('MPICC_SHOW',output.strip().replace('\n','\\\\n').replace('"','\\"'))
@@ -26,6 +26,9 @@ class CompilerOptions(config.base.Configure):
     if config.setCompilers.Configure.isGNU(compiler, self.log) or config.setCompilers.Configure.isClang(compiler, self.log):
       if bopt == '':
         flags.extend(['-Wall', '-Wwrite-strings', '-Wno-unknown-pragmas', '-Wno-lto-type-mismatch'])
+        if config.setCompilers.Configure.isClang(compiler, self.log):
+          # gcc does not support -Wno-implicit-float-conversion so -Wconversion is always noisy
+          flags.extend(['-Wconversion', '-Wno-sign-conversion', '-Wno-float-conversion', '-Wno-implicit-float-conversion'])
         if config.setCompilers.Configure.isGcc110plus(compiler, self.log):
           flags.extend(['-Wno-stringop-overflow'])
         # skip -fstack-protector for brew gcc - as this gives SEGV
@@ -123,7 +126,7 @@ class CompilerOptions(config.base.Configure):
   def getCxxFlags(self, compiler, bopt, language):
     import config.setCompilers
 
-    if [s for s in ['mpiCC','mpic++','mpicxx','mpiicxx','mpiicpc'] if os.path.basename(compiler).find(s)>=0]:
+    if [s for s in ['mpiCC','mpic++','mpicxx','mpiicxx','mpiicpc','mpiicpx'] if os.path.basename(compiler).find(s)>=0]:
       try:
         output   = self.executeShellCommand(compiler+' -show', log = self.log)[0]
         self.framework.addMakeMacro('MPICXX_SHOW',output.strip().replace('\n','\\\\n'))
@@ -237,8 +240,7 @@ class CompilerOptions(config.base.Configure):
     return flags
 
   def getFortranFlags(self, compiler, bopt):
-
-    if [s for s in ['mpif77','mpif90','mpifort','mpiifort'] if os.path.basename(compiler).find(s)>=0]:
+    if [s for s in ['mpif77','mpif90','mpifort','mpiifort','mpiifx'] if os.path.basename(compiler).find(s)>=0]:
       try:
         output   = self.executeShellCommand(compiler+' -show', log = self.log)[0]
         self.framework.addMakeMacro('MPIFC_SHOW',output.strip().replace('\n','\\\\n'))

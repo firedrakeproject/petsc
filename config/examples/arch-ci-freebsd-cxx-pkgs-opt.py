@@ -8,7 +8,7 @@ configure_options = [
   '--with-clanguage=cxx',
   '--with-debugging=0',
 
-  '--useThreads=0', # for some reason cmake hangs when invoked from configure on bsd?
+  #'--useThreads=0', # for some reason cmake hangs when invoked from configure on bsd?
   #'-download-fblaslapack=1',
   '--download-mpich=1',
   '--download-mpich-device=ch3:sock',
@@ -16,6 +16,7 @@ configure_options = [
   '--download-metis=1',
   '--download-parmetis=1',
   '--download-triangle=1',
+  '--download-triangle-build-exec=1',
   '--download-superlu=1',
   '--download-superlu_dist=1',
   '--download-scalapack=1',
@@ -30,7 +31,7 @@ configure_options = [
   '--download-chaco=1',
   '--download-spai=1',
   '--download-netcdf=1',
-  '--download-moab=1',
+  #'--download-moab=1', # moab-5.5: OS freebsd12.1 is not supported # if needed, use https://web.cels.anl.gov/projects/petsc/download/externalpackages/moab-5.0.0.tar.gz
   '--download-saws',
   '--download-ks',
   '--download-codipack=1',

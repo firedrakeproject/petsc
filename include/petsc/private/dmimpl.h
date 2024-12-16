@@ -55,7 +55,7 @@ struct _DMOps {
   PetscErrorCode (*createinterpolation)(DM, DM, Mat *, Vec *);
   PetscErrorCode (*createrestriction)(DM, DM, Mat *);
   PetscErrorCode (*createmassmatrix)(DM, DM, Mat *);
-  PetscErrorCode (*createmassmatrixlumped)(DM, Vec *);
+  PetscErrorCode (*createmassmatrixlumped)(DM, Vec *, Vec *);
   PetscErrorCode (*hascreateinjection)(DM, PetscBool *);
   PetscErrorCode (*createinjection)(DM, DM, Mat *);
 
@@ -88,6 +88,7 @@ struct _DMOps {
   PetscErrorCode (*getboundingbox)(DM, PetscReal *, PetscReal *);
   PetscErrorCode (*getlocalboundingbox)(DM, PetscReal[], PetscReal[], PetscInt[], PetscInt[]);
   PetscErrorCode (*locatepointssubdomain)(DM, Vec, PetscMPIInt **);
+  PetscErrorCode (*snaptogeommodel)(DM, PetscInt, PetscInt, const PetscScalar[], PetscScalar[]);
 
   PetscErrorCode (*projectfunctionlocal)(DM, PetscReal, PetscErrorCode (**)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **, InsertMode, Vec);
   PetscErrorCode (*projectfunctionlabellocal)(DM, PetscReal, DMLabel, PetscInt, const PetscInt[], PetscInt, const PetscInt[], PetscErrorCode (**)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **, InsertMode, Vec);
@@ -413,7 +414,8 @@ PETSC_EXTERN PetscErrorCode DMView_GLVis(DM, PetscViewer, PetscErrorCode (*)(DM,
 */
 
 #if defined(PETSC_HAVE_HDF5)
-PETSC_EXTERN PetscErrorCode DMSequenceLoad_HDF5_Internal(DM, const char *, PetscInt, PetscScalar *, PetscViewer);
+PETSC_EXTERN PetscErrorCode DMSequenceLoad_HDF5_Internal(DM, const char[], PetscInt, PetscScalar *, PetscViewer);
+PETSC_EXTERN PetscErrorCode DMSequenceGetLength_HDF5_Internal(DM, const char[], PetscInt *, PetscViewer);
 #endif
 
 static inline PetscErrorCode DMGetLocalOffset_Private(DM dm, PetscInt point, PetscInt *start, PetscInt *end)

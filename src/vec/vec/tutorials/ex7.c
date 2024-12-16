@@ -7,7 +7,6 @@ and from Fortran to C\n\n";
   Ugly stuff to insure the function names match between Fortran
   and C. This is out of our PETSc hands to cleanup.
 */
-#include <petsc/private/fortranimpl.h>
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
   #define ex7f_ EX7F
   #define ex7c_ EX7C
@@ -25,7 +24,7 @@ int main(int argc, char **args)
   Vec      vec;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &args, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &args, NULL, help));
   /* This function should be called to be able to use PETSc routines
      from the FORTRAN subroutines needed by this program */
 

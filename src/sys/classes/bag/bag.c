@@ -66,7 +66,7 @@ PetscErrorCode PetscBagRegisterEnum(PetscBag bag, void *addr, const char *const 
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_ENUM;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next  = NULL;
   item->msize = 1;
@@ -119,7 +119,7 @@ PetscErrorCode PetscBagRegisterIntArray(PetscBag bag, void *addr, PetscInt msize
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_INT;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next  = NULL;
   item->msize = msize;
@@ -163,14 +163,14 @@ PetscErrorCode PetscBagRegisterRealArray(PetscBag bag, void *addr, PetscInt msiz
   PetscCall(PetscOptionsHasHelp(NULL, &printhelp));
   if (printhelp) {
     PetscCall((*PetscHelpPrintf)(bag->bagcomm, "  -%s%s <", bag->bagprefix ? bag->bagprefix : "", name));
-    for (i = 0; i < msize; i++) PetscCall((*PetscHelpPrintf)(bag->bagcomm, "%g ", (double)*((PetscReal *)addr) + i));
+    for (i = 0; i < msize; i++) PetscCall((*PetscHelpPrintf)(bag->bagcomm, "%g ", (double)(*((PetscReal *)addr) + i)));
     PetscCall((*PetscHelpPrintf)(bag->bagcomm, ">: %s \n", help));
   }
   PetscCall(PetscOptionsGetRealArray(NULL, bag->bagprefix, nname, (PetscReal *)addr, &tmp, NULL));
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_REAL;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next  = NULL;
   item->msize = msize;
@@ -216,7 +216,7 @@ PetscErrorCode PetscBagRegisterInt(PetscBag bag, void *addr, PetscInt mdefault, 
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_INT;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next        = NULL;
   item->msize       = 1;
@@ -262,7 +262,7 @@ PetscErrorCode PetscBagRegisterInt64(PetscBag bag, void *addr, PetscInt64 mdefau
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_INT;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next          = NULL;
   item->msize         = 1;
@@ -314,7 +314,7 @@ PetscErrorCode PetscBagRegisterBoolArray(PetscBag bag, void *addr, PetscInt msiz
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_BOOL;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next  = NULL;
   item->msize = msize;
@@ -364,7 +364,7 @@ PetscErrorCode PetscBagRegisterString(PetscBag bag, void *addr, PetscInt msize, 
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_CHAR;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next  = NULL;
   item->msize = msize;
@@ -412,7 +412,7 @@ PetscErrorCode PetscBagRegisterReal(PetscBag bag, void *addr, PetscReal mdefault
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_REAL;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next         = NULL;
   item->msize        = 1;
@@ -459,7 +459,7 @@ PetscErrorCode PetscBagRegisterScalar(PetscBag bag, void *addr, PetscScalar mdef
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_SCALAR;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next           = NULL;
   item->msize          = 1;
@@ -508,7 +508,7 @@ PetscErrorCode PetscBagRegisterBool(PetscBag bag, void *addr, PetscBool mdefault
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_BOOL;
-  item->offset = ((char *)addr) - ((char *)bag);
+  item->offset = (PetscInt)(((size_t)addr) - ((size_t)bag));
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next         = NULL;
   item->msize        = 1;
@@ -517,7 +517,7 @@ PetscErrorCode PetscBagRegisterBool(PetscBag bag, void *addr, PetscBool mdefault
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscBagDestroy - Destroys a `PetscBag`
 
   Collective
@@ -626,7 +626,7 @@ PetscErrorCode PetscBagSetFromOptions(PetscBag bag)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscBagView - Views a bag of values as either ASCII text or a binary file
 
   Collective
@@ -729,7 +729,7 @@ PetscErrorCode PetscBagView(PetscBag bag, PetscViewer view)
       /* some Fortran compilers use -1 as boolean */
       if (dtype == PETSC_BOOL && (*(int *)(((char *)bag) + nitem->offset) == -1)) *(int *)(((char *)bag) + nitem->offset) = PETSC_TRUE;
 
-      PetscCall(PetscViewerBinaryWrite(view, (((char *)bag) + nitem->offset), nitem->msize, nitem->dtype));
+      PetscCall(PetscViewerBinaryWrite(view, (char *)bag + nitem->offset, nitem->msize, nitem->dtype));
       if (dtype == PETSC_ENUM) PetscCall(PetscViewerBinaryWriteStringArray(view, (const char *const *)nitem->list));
       nitem = nitem->next;
     }
@@ -747,7 +747,7 @@ PetscErrorCode PetscBagView(PetscBag bag, PetscViewer view)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscBagViewFromOptions - Processes command line options to determine if/how a `PetscBag` is to be viewed.
 
   Collective
@@ -775,19 +775,19 @@ PetscErrorCode PetscBagViewFromOptions(PetscBag bag, PetscObject bobj, const cha
   PetscAssertPointer(bag, 1);
   if (bobj) PetscCall(PetscObjectGetOptionsPrefix(bobj, &bprefix));
   prefix = bobj ? bprefix : bag->bagprefix;
-  PetscCall(PetscOptionsGetViewer(bag->bagcomm, NULL, prefix, optionname, &viewer, &format, &flg));
+  PetscCall(PetscOptionsCreateViewer(bag->bagcomm, NULL, prefix, optionname, &viewer, &format, &flg));
   if (flg) {
     PetscCall(PetscViewerPushFormat(viewer, format));
     PetscCall(PetscBagView(bag, viewer));
     PetscCall(PetscViewerFlush(viewer));
     PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
   incall = PETSC_FALSE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscBagLoad - Loads a bag of values from a binary file
 
   Collective
@@ -879,9 +879,9 @@ PetscErrorCode PetscBagLoad(PetscViewer view, PetscBag bag)
   Notes:
   After creating the bag, for each entry in the C struct call the appropriate `PetscBagRegisterInt()` etc to define the C structs layout
 
-  The size of the A struct must be small enough to fit in a `PetscInt`; by default
+  The size of the struct must be small enough to fit in a `PetscInt`; by default
   `PetscInt` is 4 bytes; this means a bag cannot be larger than 2 gigabytes in length.
-  The warning about casting to a shorter length can be ignored below unless your A struct is too large
+  The warning about casting to a shorter length can be ignored below unless your struct is too large
 
 .seealso: `PetscBag`, `PetscBagGetName()`, `PetscBagView()`, `PetscBagLoad()`, `PetscBagGetData()`
           `PetscBagRegisterReal()`, `PetscBagRegisterInt()`, `PetscBagRegisterBool()`, `PetscBagRegisterScalar()`
@@ -893,10 +893,10 @@ PetscErrorCode PetscBagCreate(MPI_Comm comm, size_t bagsize, PetscBag *bag)
 
   PetscFunctionBegin;
   PetscAssertPointer(bag, 3);
+
   PetscCall(PetscInfo(NULL, "Creating Bag with total size %d\n", (int)totalsize));
   PetscCall(PetscCalloc(totalsize, bag));
-
-  (*bag)->bagsize        = totalsize;
+  PetscCall(PetscIntCast(totalsize, &(*bag)->bagsize));
   (*bag)->bagcomm        = comm;
   (*bag)->bagprefix      = NULL;
   (*bag)->structlocation = (void *)(((char *)(*bag)) + sizeof(PetscScalar) * (sizeof(struct _n_PetscBag) / sizeof(PetscScalar)) + sizeof(PetscScalar));

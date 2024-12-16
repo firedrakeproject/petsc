@@ -10,7 +10,7 @@ PetscClassId  VEC_CLASSID;
 PetscLogEvent VEC_View, VEC_Max, VEC_Min, VEC_Dot, VEC_MDot, VEC_TDot;
 PetscLogEvent VEC_Norm, VEC_Normalize, VEC_Scale, VEC_Shift, VEC_Copy, VEC_Set, VEC_AXPY, VEC_AYPX, VEC_WAXPY;
 PetscLogEvent VEC_MTDot, VEC_MAXPY, VEC_Swap, VEC_AssemblyBegin, VEC_ScatterBegin, VEC_ScatterEnd;
-PetscLogEvent VEC_AssemblyEnd, VEC_PointwiseMult, VEC_SetValues, VEC_Load, VEC_SetPreallocateCOO, VEC_SetValuesCOO;
+PetscLogEvent VEC_AssemblyEnd, VEC_PointwiseMult, VEC_PointwiseDivide, VEC_SetValues, VEC_Load, VEC_SetPreallocateCOO, VEC_SetValuesCOO;
 PetscLogEvent VEC_SetRandom, VEC_ReduceArithmetic, VEC_ReduceCommunication, VEC_ReduceBegin, VEC_ReduceEnd, VEC_Ops;
 PetscLogEvent VEC_DotNorm2, VEC_AXPBYPCZ;
 PetscLogEvent VEC_ViennaCLCopyFromGPU, VEC_ViennaCLCopyToGPU;
@@ -198,8 +198,8 @@ PetscErrorCode VecSetPreallocationCOO(Vec x, PetscCount ncoo, const PetscInt coo
   } else {
     IS is_coo_i;
     /* The default implementation only supports ncoo within limit of PetscInt */
-    PetscCheck(ncoo <= PETSC_MAX_INT, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
-    PetscCall(ISCreateGeneral(PETSC_COMM_SELF, ncoo, coo_i, PETSC_COPY_VALUES, &is_coo_i));
+    PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
+    PetscCall(ISCreateGeneral(PETSC_COMM_SELF, (PetscInt)ncoo, coo_i, PETSC_COPY_VALUES, &is_coo_i));
     PetscCall(PetscObjectCompose((PetscObject)x, "__PETSc_coo_i", (PetscObject)is_coo_i));
     PetscCall(ISDestroy(&is_coo_i));
   }
@@ -243,10 +243,10 @@ PetscErrorCode VecSetPreallocationCOOLocal(Vec x, PetscCount ncoo, PetscInt coo_
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
   PetscValidType(x, 1);
   if (ncoo) PetscAssertPointer(coo_i, 3);
-  PetscCheck(ncoo <= PETSC_MAX_INT, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
+  PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
   PetscCall(PetscLayoutSetUp(x->map));
   PetscCall(VecGetLocalToGlobalMapping(x, &ltog));
-  if (ltog) PetscCall(ISLocalToGlobalMappingApply(ltog, ncoo, coo_i, coo_i));
+  if (ltog) PetscCall(ISLocalToGlobalMappingApply(ltog, (PetscInt)ncoo, coo_i, coo_i));
   PetscCall(VecSetPreallocationCOO(x, ncoo, coo_i));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -448,8 +448,7 @@ PetscErrorCode VecPointwiseMaxAbs(Vec w, Vec x, Vec y)
 PetscErrorCode VecPointwiseDivideAsync_Private(Vec w, Vec x, Vec y, PetscDeviceContext dctx)
 {
   PetscFunctionBegin;
-  // REVIEW ME: no log event?
-  PetscCall(VecPointwiseApply_Private(w, x, y, dctx, 0, VecAsyncFnName(PointwiseDivide), w->ops->pointwisedivide));
+  PetscCall(VecPointwiseApply_Private(w, x, y, dctx, VEC_PointwiseDivide, VecAsyncFnName(PointwiseDivide), w->ops->pointwisedivide));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -552,7 +551,7 @@ PetscErrorCode VecDuplicate(Vec v, Vec *newv)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecDestroy - Destroys a vector.
 
   Collective
@@ -667,7 +666,7 @@ PetscErrorCode VecDestroyVecs(PetscInt m, Vec *vv[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecViewFromOptions - View a vector based on values in the options database
 
   Collective
@@ -692,7 +691,7 @@ PetscErrorCode VecViewFromOptions(Vec A, PetscObject obj, const char name[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecView - Views a vector object.
 
   Collective
@@ -910,10 +909,10 @@ PetscErrorCode VecGetLocalSize(Vec x, PetscInt *size)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecGetOwnershipRange - Returns the range of indices owned by
   this process. The vector is laid out with the
-  first n1 elements on the first processor, next n2 elements on the
+  first `n1` elements on the first processor, next `n2` elements on the
   second, etc.  For certain parallel layouts this range may not be
   well defined.
 
@@ -928,13 +927,19 @@ PetscErrorCode VecGetLocalSize(Vec x, PetscInt *size)
 
   Level: beginner
 
-  Note:
+  Notes:
+  If the `Vec` was obtained from a `DM` with `DMCreateGlobalVector()`, then the range values are determined by the specific `DM`.
+
+  If the `Vec` was created directly the range values are determined by the local size passed to `VecSetSizes()` or `VecCreateMPI()`.
+  If `PETSC_DECIDE` was passed as the local size, then the vector uses default values for the range using `PetscSplitOwnership()`.
+
   The high argument is one more than the last element stored locally.
 
-  Fortran Notes:
-  `PETSC_NULL_INTEGER` should be used instead of NULL
+  For certain `DM`, such as `DMDA`, it is better to use `DM` specific routines, such as `DMDAGetGhostCorners()`, to determine
+  the local values in the vector.
 
-.seealso: [](ch_vectors), `Vec`, `MatGetOwnershipRange()`, `MatGetOwnershipRanges()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `Vec`, `MatGetOwnershipRange()`, `MatGetOwnershipRanges()`, `VecGetOwnershipRanges()`, `PetscSplitOwnership()`,
+          `VecSetSizes()`, `VecCreateMPI()`, `PetscLayout`, `DMDAGetGhostCorners()`, `DM`
 @*/
 PetscErrorCode VecGetOwnershipRange(Vec x, PetscInt *low, PetscInt *high)
 {
@@ -951,7 +956,7 @@ PetscErrorCode VecGetOwnershipRange(Vec x, PetscInt *low, PetscInt *high)
 /*@C
   VecGetOwnershipRanges - Returns the range of indices owned by EACH processor,
   The vector is laid out with the
-  first n1 elements on the first processor, next n2 elements on the
+  first `n1` elements on the first processor, next `n2` elements on the
   second, etc.  For certain parallel layouts this range may not be
   well defined.
 
@@ -961,19 +966,30 @@ PetscErrorCode VecGetOwnershipRange(Vec x, PetscInt *low, PetscInt *high)
 . x - the vector
 
   Output Parameter:
-. ranges - array of length size+1 with the start and end+1 for each process
+. ranges - array of length `size` + 1 with the start and end+1 for each process
 
   Level: beginner
 
   Notes:
+  If the `Vec` was obtained from a `DM` with `DMCreateGlobalVector()`, then the range values are determined by the specific `DM`.
+
+  If the `Vec` was created directly the range values are determined by the local size passed to `VecSetSizes()` or `VecCreateMPI()`.
+  If `PETSC_DECIDE` was passed as the local size, then the vector uses default values for the range using `PetscSplitOwnership()`.
+
   The high argument is one more than the last element stored locally.
 
-  If the ranges are used after all vectors that share the ranges has been destroyed then the program will crash accessing ranges[].
+  For certain `DM`, such as `DMDA`, it is better to use `DM` specific routines, such as `DMDAGetGhostCorners()`, to determine
+  the local values in the vector.
+
+  The high argument is one more than the last element stored locally.
+
+  If `ranges` are used after all vectors that share the ranges has been destroyed, then the program will crash accessing `ranges`.
 
   Fortran Notes:
-  You must PASS in an array of length size+1
+  You must PASS in an array of length `size` + 1, where `size` is the size of the communicator owning the vector
 
-.seealso: [](ch_vectors), `Vec`, `MatGetOwnershipRange()`, `MatGetOwnershipRanges()`, `VecGetOwnershipRange()`
+.seealso: [](ch_vectors), `Vec`, `MatGetOwnershipRange()`, `MatGetOwnershipRanges()`, `VecGetOwnershipRange()`, `PetscSplitOwnership()`,
+          `VecSetSizes()`, `VecCreateMPI()`, `PetscLayout`, `DMDAGetGhostCorners()`, `DM`
 @*/
 PetscErrorCode VecGetOwnershipRanges(Vec x, const PetscInt *ranges[])
 {
@@ -1072,7 +1088,7 @@ PetscErrorCode VecResetArray(Vec vec)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecLoad - Loads a vector that has been stored in binary or HDF5 format
   with `VecView()`.
 
@@ -1132,7 +1148,7 @@ PetscErrorCode VecResetArray(Vec vec)
 @*/
 PetscErrorCode VecLoad(Vec vec, PetscViewer viewer)
 {
-  PetscBool         isbinary, ishdf5, isadios, isexodusii;
+  PetscBool         isbinary, ishdf5, isadios, isexodusii, iscgns;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
@@ -1141,9 +1157,10 @@ PetscErrorCode VecLoad(Vec vec, PetscViewer viewer)
   PetscCheckSameComm(vec, 1, viewer, 2);
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERHDF5, &ishdf5));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERCGNS, &iscgns));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERADIOS, &isadios));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWEREXODUSII, &isexodusii));
-  PetscCheck(isbinary || ishdf5 || isadios || isexodusii, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Invalid viewer; open viewer with PetscViewerBinaryOpen()");
+  PetscCheck(isbinary || ishdf5 || isadios || isexodusii || iscgns, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Invalid viewer; open viewer with PetscViewerBinaryOpen()");
 
   PetscCall(VecSetErrorIfLocked(vec, 1));
   if (!((PetscObject)vec)->type_name && !vec->ops->create) PetscCall(VecSetType(vec, VECSTANDARD));
@@ -1457,7 +1474,11 @@ PetscErrorCode VecSetFromOptions(Vec vec)
 
   If one processor calls this with `N` of `PETSC_DETERMINE` then all processors must, otherwise the program will hang.
 
-.seealso: [](ch_vectors), `Vec`, `VecGetSize()`, `PetscSplitOwnership()`
+  If `n` is not `PETSC_DECIDE`, then the value determines the `PetscLayout` of the vector and the ranges returned by
+  `VecGetOwnershipRange()` and `VecGetOwnershipRanges()`
+
+.seealso: [](ch_vectors), `Vec`, `VecCreate()`, `VecCreateSeq()`, `VecCreateMPI()`, `VecGetSize()`, `PetscSplitOwnership()`, `PetscLayout`,
+          `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`, `MatSetSizes()`
 @*/
 PetscErrorCode VecSetSizes(Vec v, PetscInt n, PetscInt N)
 {
@@ -1832,7 +1853,7 @@ PetscErrorCode VecSwap(Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecStashViewFromOptions - Processes command line options to determine if/how a `VecStash` object is to be viewed.
 
   Collective
@@ -1858,12 +1879,12 @@ PetscErrorCode VecStashViewFromOptions(Vec obj, PetscObject bobj, const char opt
 
   PetscFunctionBegin;
   prefix = bobj ? bobj->prefix : ((PetscObject)obj)->prefix;
-  PetscCall(PetscOptionsGetViewer(PetscObjectComm((PetscObject)obj), ((PetscObject)obj)->options, prefix, optionname, &viewer, &format, &flg));
+  PetscCall(PetscOptionsCreateViewer(PetscObjectComm((PetscObject)obj), ((PetscObject)obj)->options, prefix, optionname, &viewer, &format, &flg));
   if (flg) {
     PetscCall(PetscViewerPushFormat(viewer, format));
     PetscCall(VecStashView(obj, viewer));
     PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -2008,7 +2029,27 @@ PetscErrorCode VecSetLayout(Vec x, PetscLayout map)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode VecSetInf(Vec xin)
+/*@
+  VecFlag - set infinity into the local part of the vector on any subset of MPI processes
+
+  Logically Collective
+
+  Input Parameters:
++ xin - the vector, can be `NULL` but only if on all processes
+- flg - indicates if this processes portion of the vector should be set to infinity
+
+  Level: developer
+
+  Note:
+  This removes the values from the vector norm cache for all processes by calling `PetscObjectIncrease()`.
+
+  This is used for any subset of MPI processes to indicate an failure in a solver, after the next use of `VecNorm()` if
+  `KSPCheckNorm()` detects an infinity and at least one of the MPI processes has a not converged reason then the `KSP`
+  object collectively is labeled as not converged.
+
+.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+@*/
+PetscErrorCode VecFlag(Vec xin, PetscInt flg)
 {
   // use of variables one and zero over just doing 1.0/0.0 is deliberate. MSVC complains that
   // we are dividing by zero in the latter case (ostensibly because dividing by 0 is UB, but
@@ -2017,6 +2058,60 @@ PetscErrorCode VecSetInf(Vec xin)
   PetscScalar       inf;
 
   PetscFunctionBegin;
+  if (!xin) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscValidHeaderSpecific(xin, VEC_CLASSID, 1);
+  PetscCall(PetscObjectStateIncrease((PetscObject)xin));
+  if (flg) {
+    PetscCall(PetscFPTrapPush(PETSC_FP_TRAP_OFF));
+    inf = one / zero;
+    PetscCall(PetscFPTrapPop());
+    if (xin->ops->set) {
+      PetscUseTypeMethod(xin, set, inf);
+    } else {
+      PetscInt     n;
+      PetscScalar *xx;
+
+      PetscCall(VecGetLocalSize(xin, &n));
+      PetscCall(VecGetArrayWrite(xin, &xx));
+      for (PetscInt i = 0; i < n; ++i) xx[i] = inf;
+      PetscCall(VecRestoreArrayWrite(xin, &xx));
+    }
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  VecSetInf - set infinity into the local part of the vector
+
+  Not Collective
+
+  Input Parameters:
+. xin - the vector
+
+  Level: developer
+
+  Note:
+  Deprecated, see  `VecFlag()`
+  This is used for any subset of MPI processes to indicate an failure in a solver, after the next use of `VecNorm()` if
+  `KSPCheckNorm()` detects an infinity and at least one of the MPI processes has a not converged reason then the `KSP`
+  object collectively is labeled as not converged.
+
+  This cannot be called if `xin` has a cached norm available
+
+.seealso: [](ch_vectors), `VecFlag()`, `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+@*/
+PetscErrorCode VecSetInf(Vec xin)
+{
+  // use of variables one and zero over just doing 1.0/0.0 is deliberate. MSVC complains that
+  // we are dividing by zero in the latter case (ostensibly because dividing by 0 is UB, but
+  // only for *integers* not floats).
+  const PetscScalar one = 1.0, zero = 0.0;
+  PetscScalar       inf;
+  PetscBool         flg;
+
+  PetscFunctionBegin;
+  PetscCall(VecNormAvailable(xin, NORM_2, &flg, NULL));
+  PetscCheck(!flg, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Cannot call VecSetInf() if the vector has a cached norm");
   PetscCall(PetscFPTrapPush(PETSC_FP_TRAP_OFF));
   inf = one / zero;
   PetscCall(PetscFPTrapPop());
@@ -2311,10 +2406,10 @@ static PetscErrorCode VecErrorWeightedNorms_Basic(Vec U, Vec Y, Vec E, NormType 
   err_loc[4] = (PetscReal)na_loc;
   err_loc[5] = (PetscReal)nr_loc;
   if (wnormtype == NORM_2) {
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, err_loc, 6, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)U)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, err_loc, 6, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)U)));
   } else {
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, err_loc, 3, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)U)));
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, err_loc + 3, 3, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)U)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, err_loc, 3, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)U)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, err_loc + 3, 3, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)U)));
   }
   if (wnormtype == NORM_2) {
     *norm  = PetscSqrtReal(err_loc[0]);
@@ -2360,7 +2455,7 @@ static PetscErrorCode VecErrorWeightedNorms_Basic(Vec U, Vec Y, Vec E, NormType 
   Notes:
   This is primarily used for computing weighted local truncation errors in ``TS``.
 
-.seealso: [](ch_vectors), `Vec`, `NormType`, ``TSErrorWeightedNorm()``, ``TSErrorWeightedENorm()``
+.seealso: [](ch_vectors), `Vec`, `NormType`, `TSErrorWeightedNorm()`, `TSErrorWeightedENorm()`
 @*/
 PetscErrorCode VecErrorWeightedNorms(Vec U, Vec Y, Vec E, NormType wnormtype, PetscReal atol, Vec vatol, PetscReal rtol, Vec vrtol, PetscReal ignore_max, PetscReal *norm, PetscInt *norm_loc, PetscReal *norma, PetscInt *norma_loc, PetscReal *normr, PetscInt *normr_loc)
 {

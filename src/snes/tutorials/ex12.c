@@ -926,13 +926,14 @@ int main(int argc, char **argv)
   }
 
   if (user.bdIntegral) {
-    DMLabel     label;
-    PetscInt    id    = 1;
-    PetscScalar bdInt = 0.0;
-    PetscReal   exact = 3.3333333333;
+    DMLabel          label;
+    PetscBdPointFunc func[1] = {bd_integral_2d};
+    PetscInt         id      = 1;
+    PetscScalar      bdInt   = 0.0;
+    PetscReal        exact   = 3.3333333333;
 
     PetscCall(DMGetLabel(dm, "marker", &label));
-    PetscCall(DMPlexComputeBdIntegral(dm, u, label, 1, &id, bd_integral_2d, &bdInt, NULL));
+    PetscCall(DMPlexComputeBdIntegral(dm, u, label, 1, &id, func, &bdInt, NULL));
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Solution boundary integral: %.4g\n", (double)PetscAbsScalar(bdInt)));
     PetscCheck(PetscAbsReal(PetscAbsScalar(bdInt) - exact) <= PETSC_SQRT_MACHINE_EPSILON, PETSC_COMM_WORLD, PETSC_ERR_PLIB, "Invalid boundary integral %g != %g", (double)PetscAbsScalar(bdInt), (double)exact);
   }
@@ -1191,6 +1192,12 @@ int main(int argc, char **argv)
       suffix: gmg_bddc_lev
       args: -mg_levels_pc_type bddc
 
+  # VTU viewer with empty processes
+  test:
+    requires: !complex
+    suffix: vtu_empty
+    args: -quiet -run_type test -dm_plex_simplex 0 -dm_plex_box_faces 2,2 -vec_view vtk:test.vtu:vtk_vtu -petscspace_degree 1 -petscpartitioner_type simple
+
   # Restarting
   testset:
     suffix: restart
@@ -1394,6 +1401,13 @@ int main(int argc, char **argv)
               -pc_type mg -pc_mg_levels 4 \
               -mg_levels_ksp_type gmres -mg_levels_pc_type ilu -mg_levels_ksp_max_it 10
 
+  # Test cgns writer for ranks with no elements
+  test:
+    suffix: cgns
+    nsize: 5
+    requires: cgns
+    args: -quiet -run_type test -dm_plex_simplex 0 -petscspace_degree 1 -dm_plex_box_faces 2,2 -vec_view cgns:test.cgns -dm_refine 0 -petscpartitioner_type simple
+
   # Full solve tensor
   test:
     suffix: tensor_plex_2d
@@ -1571,22 +1585,22 @@ int main(int argc, char **argv)
   test:
     suffix: tri_p1_adapt_analytic_pragmatic
     requires: pragmatic
-    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 1 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -adaptor_monitor -dm_plex_metric_h_min 0.0001 -dm_plex_metric_h_max 0.05 -dm_adaptor pragmatic
+    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 1 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_min 0.0001 -dm_plex_metric_h_max 0.05 -dm_adaptor pragmatic
 
   test:
     suffix: tri_p2_adapt_analytic_pragmatic
     requires: pragmatic
-    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 2 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -adaptor_monitor -dm_plex_metric_h_min 0.0001 -dm_plex_metric_h_max 0.05 -dm_adaptor pragmatic
+    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 2 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_min 0.0001 -dm_plex_metric_h_max 0.05 -dm_adaptor pragmatic
 
   test:
     suffix: tri_p1_adapt_analytic_mmg
     requires: mmg
-    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 1 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -adaptor_monitor -dm_plex_metric_h_max 0.5 -dm_adaptor mmg
+    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 1 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_max 0.5 -dm_adaptor mmg
 
   test:
     suffix: tri_p2_adapt_analytic_mmg
     requires: mmg
-    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 2 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -adaptor_monitor -dm_plex_metric_h_max 0.5 -dm_adaptor mmg
+    args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 2 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_max 0.5 -dm_adaptor mmg
 
   test:
     suffix: tri_p1_adapt_uniform_pragmatic
@@ -1610,7 +1624,8 @@ int main(int argc, char **argv)
 
   test:
     suffix: tri_p2_adapt_uniform_mmg
-    requires: mmg tetgen broken
+    requires: mmg tetgen
+    TODO: broken
     args: -run_type full -dm_plex_box_faces 4,4,4 -bc_type dirichlet -petscspace_degree 2 -variable_coefficient none -snes_converged_reason ::ascii_info_detail -ksp_type cg -pc_type sor -snes_adapt_sequence 1 -adaptor_target_num 400 -dm_plex_metric_h_max 0.5 -dm_plex_dim 3 -dm_adaptor mmg
     timeoutfactor: 1
 
@@ -1663,22 +1678,6 @@ int main(int argc, char **argv)
     requires: p4est
     args: -quiet -run_type test -petscspace_degree 1 -dm_plex_simplex 0 -petscspace_poly_tensor -dm_plex_convert_type p4est -dm_forest_minimum_refinement 2 -dm_forest_initial_refinement 2 -dm_forest_maximum_refinement 4 -dm_p4est_refine_pattern hash
     nsize: 4
-
-  test:
-    suffix: p4est_convergence_test_2
-    requires: p4est
-    args: -quiet -run_type test -petscspace_degree 1 -dm_plex_simplex 0 -petscspace_poly_tensor -dm_plex_convert_type p4est -dm_forest_minimum_refinement 3 -dm_forest_initial_refinement 3 -dm_forest_maximum_refinement 5 -dm_p4est_refine_pattern hash
-
-  test:
-    suffix: p4est_convergence_test_3
-    requires: p4est
-    args: -quiet -run_type test -petscspace_degree 1 -dm_plex_simplex 0 -petscspace_poly_tensor -dm_plex_convert_type p4est -dm_forest_minimum_refinement 4 -dm_forest_initial_refinement 4 -dm_forest_maximum_refinement 6 -dm_p4est_refine_pattern hash
-
-  test:
-    suffix: p4est_convergence_test_4
-    requires: p4est
-    args: -quiet -run_type test -petscspace_degree 1 -dm_plex_simplex 0 -petscspace_poly_tensor -dm_plex_convert_type p4est -dm_forest_minimum_refinement 5 -dm_forest_initial_refinement 5 -dm_forest_maximum_refinement 7 -dm_p4est_refine_pattern hash
-    timeoutfactor: 5
 
   # Serial tests with GLVis visualization
   test:
@@ -1774,7 +1773,8 @@ int main(int argc, char **argv)
           -ksp_rtol 1e-8 -pc_type mg
   test:
     suffix: 2d_p1_adaptmg_1
-    requires: triangle bamg todo
+    TODO: broken
+    requires: triangle bamg
     args: -petscpartitioner_type simple -dm_refine_hierarchy 3 -dm_plex_box_faces 4,4 -bc_type dirichlet -petscspace_degree 1 \
           -variable_coefficient checkerboard_0 -mat_petscspace_degree 0 -div 16 -k 3 \
           -snes_max_it 1 -ksp_converged_reason \

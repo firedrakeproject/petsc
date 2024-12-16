@@ -135,7 +135,7 @@ PetscErrorCode DMGenerateRegisterDestroy(void)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMAdaptLabel - Adapt a `DM` based on a `DMLabel` with values interpreted as coarsening and refining flags.  Specific implementations of `DM` maybe have
   specialized flags, but all implementations should accept flag values `DM_ADAPT_DETERMINE`, `DM_ADAPT_KEEP`, `DM_ADAPT_REFINE`, and,
   `DM_ADAPT_COARSEN`.
@@ -183,16 +183,20 @@ PetscErrorCode DMAdaptLabel(DM dm, DMLabel label, DM *dmAdapt)
   }
   PetscCheck(found, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Grid adaptor %s not registered; you may need to add --download-%s to your ./configure options", name, name);
   if (*dmAdapt) {
+    void *ctx;
+
     (*dmAdapt)->prealloc_only = dm->prealloc_only; /* maybe this should go .... */
     PetscCall(PetscFree((*dmAdapt)->vectype));
     PetscCall(PetscStrallocpy(dm->vectype, (char **)&(*dmAdapt)->vectype));
     PetscCall(PetscFree((*dmAdapt)->mattype));
     PetscCall(PetscStrallocpy(dm->mattype, (char **)&(*dmAdapt)->mattype));
+    PetscCall(DMGetApplicationContext(dm, &ctx));
+    PetscCall(DMSetApplicationContext(*dmAdapt, ctx));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMAdaptMetric - Generates a mesh adapted to the specified metric field.
 
   Input Parameters:

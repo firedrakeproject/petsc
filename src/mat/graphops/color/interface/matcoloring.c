@@ -73,9 +73,8 @@ PetscErrorCode MatColoringCreate(Mat m, MatColoring *mcptr)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(m, MAT_CLASSID, 1);
   PetscAssertPointer(mcptr, 2);
-  *mcptr = NULL;
-
   PetscCall(MatInitializePackage());
+
   PetscCall(PetscHeaderCreate(mc, MAT_COLORING_CLASSID, "MatColoring", "Matrix coloring", "MatColoring", PetscObjectComm((PetscObject)m), MatColoringDestroy, MatColoringView));
   PetscCall(PetscObjectReference((PetscObject)m));
   mc->mat          = m;
@@ -185,7 +184,7 @@ PetscErrorCode MatColoringSetType(MatColoring mc, MatColoringType type)
 PetscErrorCode MatColoringSetFromOptions(MatColoring mc)
 {
   PetscBool       flg;
-  MatColoringType deft = MATCOLORINGSL;
+  MatColoringType deft = MATCOLORINGGREEDY;
   char            type[256];
   PetscInt        dist, maxcolors;
 
@@ -193,7 +192,6 @@ PetscErrorCode MatColoringSetFromOptions(MatColoring mc)
   PetscValidHeaderSpecific(mc, MAT_COLORING_CLASSID, 1);
   PetscCall(MatColoringGetDistance(mc, &dist));
   if (dist == 2) deft = MATCOLORINGSL;
-  else deft = MATCOLORINGGREEDY;
   PetscCall(MatColoringGetMaxColors(mc, &maxcolors));
   PetscCall(MatColoringRegisterAll());
   PetscObjectOptionsBegin((PetscObject)mc);
@@ -368,7 +366,7 @@ PetscErrorCode MatColoringApply(MatColoring mc, ISColoring *coloring)
   if (mc->valid_iscoloring) PetscCall(MatISColoringTest(mc->mat, *coloring));
 
   /* view */
-  PetscCall(PetscOptionsGetViewer(PetscObjectComm((PetscObject)mc), ((PetscObject)mc)->options, ((PetscObject)mc)->prefix, "-mat_coloring_view", &viewer, &format, &flg));
+  PetscCall(PetscOptionsCreateViewer(PetscObjectComm((PetscObject)mc), ((PetscObject)mc)->options, ((PetscObject)mc)->prefix, "-mat_coloring_view", &viewer, &format, &flg));
   if (flg && !PetscPreLoadingOn) {
     PetscCall(PetscViewerPushFormat(viewer, format));
     PetscCall(MatColoringView(mc, viewer));
@@ -378,7 +376,7 @@ PetscErrorCode MatColoringApply(MatColoring mc, ISColoring *coloring)
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Number of total columns %" PetscInt_FMT "\n", nc));
     if (nc <= 1000) PetscCall(ISColoringView(*coloring, viewer));
     PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

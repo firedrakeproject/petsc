@@ -41,7 +41,7 @@ static const char citation[] = "@inproceedings{ZhangELLPACK2018,\n"
   #endif
 #endif /* PETSC_HAVE_IMMINTRIN_H */
 
-/*@C
+/*@
   MatSeqSELLSetPreallocation - For good matrix assembly performance
   the user should preallocate the matrix storage by setting the parameter `nz`
   (or the array `nnz`).
@@ -1607,7 +1607,6 @@ PetscErrorCode MatSetValues_SeqSELL(Mat A, PetscInt m, const PetscInt im[], Pets
       *(cp + a->sliceheight * i) = col;
       *(vp + a->sliceheight * i) = value;
       a->nz++;
-      A->nonzerostate++;
 #if defined(PETSC_HAVE_CUPM)
       inserted = PETSC_TRUE;
 #endif
@@ -1943,6 +1942,9 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSELL,
                                        NULL,
                                        NULL,
                                        /*150*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        NULL,
                                        NULL};
 
@@ -2326,7 +2328,7 @@ PetscErrorCode MatDuplicate_SeqSELL(Mat A, MatDuplicateOption cpvalues, Mat *B)
 
    Level: beginner
 
-.seealso: `Mat`, `MatCreateSeqSell()`, `MATSELL`, `MATMPISELL`, `MATSEQAIJ`, `MATAIJ`, `MATMPIAIJ`
+.seealso: `Mat`, `MatCreateSeqSELL()`, `MATSELL`, `MATMPISELL`, `MATSEQAIJ`, `MATAIJ`, `MATMPIAIJ`
 M*/
 
 /*MC
@@ -2377,10 +2379,10 @@ M*/
 
     See `MatMult_SeqSELL()` for how this format is used with the SIMD operations to achieve high performance.
 
-.seealso: `Mat`, `MatCreateSeqSELL()`, `MatCreateSeqAIJ()`, `MatCreateSell()`, `MATSEQSELL`, `MATMPISELL`, `MATSEQAIJ`, `MATMPIAIJ`, `MATAIJ`
+.seealso: `Mat`, `MatCreateSeqSELL()`, `MatCreateSeqAIJ()`, `MatCreateSELL()`, `MATSEQSELL`, `MATMPISELL`, `MATSEQAIJ`, `MATMPIAIJ`, `MATAIJ`
 M*/
 
-/*@C
+/*@
   MatCreateSeqSELL - Creates a sparse matrix in `MATSEQSELL` format.
 
   Collective

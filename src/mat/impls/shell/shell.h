@@ -7,6 +7,7 @@ struct _MatShellOps {
   /*   3 */ PetscErrorCode (*mult)(Mat, Vec, Vec);
   /*   5 */ PetscErrorCode (*multtranspose)(Mat, Vec, Vec);
   /*  17 */ PetscErrorCode (*getdiagonal)(Mat, Vec);
+  /*  32 */ PetscErrorCode (*getdiagonalblock)(Mat, Mat *);
   /*  43 */ PetscErrorCode (*copy)(Mat, Mat, MatStructure);
   /*  60 */ PetscErrorCode (*destroy)(Mat);
   /* 121 */ PetscErrorCode (*multhermitiantranspose)(Mat, Vec, Vec);
@@ -59,6 +60,3 @@ typedef struct {
 } Mat_Shell;
 
 PETSC_INTERN PetscErrorCode MatAssemblyEnd_Shell(Mat X, MatAssemblyType assembly);
-PETSC_INTERN PetscErrorCode MatShellSetContext_Immutable(Mat X, void *ctx);
-PETSC_INTERN PetscErrorCode MatShellSetContextDestroy_Immutable(Mat X, PetscErrorCode (*f)(void *));
-PETSC_INTERN PetscErrorCode MatShellSetManageScalingShifts_Immutable(Mat X);

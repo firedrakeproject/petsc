@@ -12,7 +12,7 @@ PetscErrorCode CreateError(int n)
 int main(int argc, char **argv)
 {
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(PetscFPrintf(PETSC_COMM_WORLD, stdout, "Demonstrates PETSc Error Handlers\n"));
   PetscCall(PetscFPrintf(PETSC_COMM_WORLD, stdout, "The error is a contrived error to test error handling\n"));
   PetscCall(PetscSynchronizedFlush(PETSC_COMM_WORLD, PETSC_STDOUT));
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
 
  # Testing errors so only look for errors
    test:
-     requires: !defined(PETSCTEST_VALGRIND)
+     requires: !defined(PETSCTEST_VALGRIND) !defined(PETSC_HAVE_SANITIZER)
      args: -petsc_ci_portable_error_output -error_output_stdout
      nsize: {{1 2 3}}
      filter: grep -E "(PETSC ERROR)" | egrep "(Error Created|CreateError\(\)|main\(\))"

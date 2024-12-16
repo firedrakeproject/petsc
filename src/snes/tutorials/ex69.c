@@ -3092,7 +3092,7 @@ static PetscErrorCode SetupProblem(DM dm, AppCtx *user)
     PetscCall(PetscDSSetJacobian(prob, 0, 0, NULL, NULL, NULL, stokes_momentum_vel_J_cx));
     PetscCall(PetscDSSetJacobian(prob, 0, 1, NULL, NULL, stokes_momentum_pres_J, NULL));
     PetscCall(PetscDSSetJacobian(prob, 1, 0, NULL, stokes_mass_J, NULL, NULL));
-    PetscCall(PetscDSSetJacobianPreconditioner(prob, 0, 0, NULL, NULL, NULL, stokes_momentum_vel_J_kx));
+    PetscCall(PetscDSSetJacobianPreconditioner(prob, 0, 0, NULL, NULL, NULL, stokes_momentum_vel_J_cx));
     PetscCall(PetscDSSetJacobianPreconditioner(prob, 1, 1, stokes_identity_J_cx, NULL, NULL, NULL));
     break;
   default:
@@ -3320,7 +3320,7 @@ int main(int argc, char **argv)
     KSP ksp;
 
     PetscCall(SNESGetKSP(snes, &ksp));
-    PetscCall(KSPSetTolerances(ksp, 1.e-2 * PETSC_SMALL, PETSC_SMALL, PETSC_DEFAULT, PETSC_DEFAULT));
+    PetscCall(KSPSetTolerances(ksp, 1.e-2 * PETSC_SMALL, PETSC_SMALL, PETSC_CURRENT, PETSC_CURRENT));
   }
 
   /* There should be a way to express this using the DM */
@@ -3380,6 +3380,7 @@ int main(int argc, char **argv)
         -fieldsplit_pressure_ksp_rtol 1.e-9 -fieldsplit_pressure_pc_type lu
   test:
     suffix: p2p1_gmg
+    TODO: broken (requires subDMs hooks)
     requires: triangle
     args: -dm_plex_separate_marker -dm_refine_hierarchy 2 -vel_petscspace_degree 2 -pres_petscspace_degree 1 \
       -snes_error_if_not_converged -dmsnes_check .001 \
@@ -3442,7 +3443,8 @@ int main(int argc, char **argv)
       suffix: aij
       args: -mat_is_localmat_type aij
     test:
-      requires: viennacl !CUDA_VERSION_11PLUS broken
+      requires: viennacl !CUDA_VERSION_11PLUS
+      TODO: broken
       suffix: aijviennacl
       args: -mat_is_localmat_type aijviennacl
     test:

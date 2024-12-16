@@ -10,7 +10,7 @@ int main(int argc, char **args)
   PetscViewer view;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &args, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &args, NULL, help));
   PetscCall(MatCreateSeqAIJ(PETSC_COMM_WORLD, m, n, 20, 0, &A));
 
   for (i = 0; i < n; i++) values[i] = (PetscReal)i;
@@ -19,8 +19,6 @@ int main(int argc, char **args)
     cnt = 0;
     if (i % 2) {
       for (j = 0; j < n; j += 2) js[cnt++] = j;
-    } else {
-      ;
     }
     PetscCall(MatSetValues(A, 1, &i, cnt, js, values, INSERT_VALUES));
   }

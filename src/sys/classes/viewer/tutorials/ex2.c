@@ -1,4 +1,4 @@
-static char help[] = "Demonstrates PetscOptionsGetViewer().\n\n";
+static char help[] = "Demonstrates PetscOptionsCreateViewer().\n\n";
 
 #include <petscviewer.h>
 
@@ -8,12 +8,12 @@ int main(int argc, char **args)
   PetscViewerFormat format;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &args, (char *)0, help));
-  PetscCall(PetscOptionsGetViewer(PETSC_COMM_WORLD, NULL, NULL, "-myviewer", &viewer, &format, NULL));
+  PetscCall(PetscInitialize(&argc, &args, NULL, help));
+  PetscCall(PetscOptionsCreateViewer(PETSC_COMM_WORLD, NULL, NULL, "-myviewer", &viewer, &format, NULL));
   PetscCall(PetscViewerPushFormat(viewer, format));
   PetscCall(PetscViewerView(viewer, PETSC_VIEWER_STDOUT_WORLD));
   PetscCall(PetscViewerPopFormat(viewer));
-  PetscCall(PetscOptionsRestoreViewer(&viewer));
+  PetscCall(PetscViewerDestroy(&viewer));
   PetscCall(PetscFinalize());
   return 0;
 }

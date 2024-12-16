@@ -23,14 +23,14 @@ typedef PetscReal PetscVTUReal;
   #define MPIU_VTUREAL MPIU_REAL
 #endif
 
-static PetscErrorCode TransferWrite(MPI_Comm comm, PetscViewer viewer, FILE *fp, PetscMPIInt srank, PetscMPIInt root, const void *send, void *recv, PetscMPIInt count, MPI_Datatype mpidatatype, PetscMPIInt tag)
+static PetscErrorCode TransferWrite(MPI_Comm comm, PetscViewer viewer, FILE *fp, PetscMPIInt srank, PetscMPIInt root, const void *send, void *recv, PetscCount count, MPI_Datatype mpidatatype, PetscMPIInt tag)
 {
   PetscMPIInt rank;
 
   PetscFunctionBegin;
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   if (rank == srank && rank != root) {
-    PetscCallMPI(MPI_Send((void *)send, count, mpidatatype, root, tag, comm));
+    PetscCallMPI(MPIU_Send((void *)send, count, mpidatatype, root, tag, comm));
   } else if (rank == root) {
     const void *buffer;
     if (root == srank) { /* self */
@@ -38,7 +38,7 @@ static PetscErrorCode TransferWrite(MPI_Comm comm, PetscViewer viewer, FILE *fp,
     } else {
       MPI_Status  status;
       PetscMPIInt nrecv;
-      PetscCallMPI(MPI_Recv(recv, count, mpidatatype, srank, tag, comm, &status));
+      PetscCallMPI(MPIU_Recv(recv, count, mpidatatype, srank, tag, comm, &status));
       PetscCallMPI(MPI_Get_count(&status, mpidatatype, &nrecv));
       PetscCheck(count == nrecv, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Array size mismatch");
       buffer = recv;
@@ -87,29 +87,28 @@ static PetscErrorCode DMPlexGetVTKConnectivity(DM dm, PetscBool localized, Piece
       PetscCall(DMPlexGetTransitiveClosure(dm, c, PETSC_TRUE, &closureSize, &closure));
       for (v = 0; v < closureSize * 2; v += 2) {
         if ((closure[v] >= vStart) && (closure[v] < vEnd)) {
-          if (!localized) conn[countconn++] = closure[v] - vStart;
-          else conn[countconn++] = startoffset + nC;
+          if (!localized) PetscCall(PetscVTKIntCast(closure[v] - vStart, &conn[countconn++]));
+          else PetscCall(PetscVTKIntCast(startoffset + nC, &conn[countconn++]));
           ++nC;
         }
       }
       PetscCall(DMPlexRestoreTransitiveClosure(dm, c, PETSC_TRUE, &closureSize, &closure));
     } else {
-      for (nC = 0; nC < dof / dim; nC++) conn[countconn++] = startoffset + nC;
+      for (nC = 0; nC < dof / dim; nC++) PetscCall(PetscVTKIntCast(startoffset + nC, &conn[countconn++]));
     }
 
     {
       PetscInt n = PetscMin(nC, 8), s = countconn - nC, i, cone[8];
       for (i = 0; i < n; ++i) cone[i] = conn[s + i];
       PetscCall(DMPlexReorderCell(dm, c, cone));
-      for (i = 0; i < n; ++i) conn[s + i] = (int)cone[i];
+      for (i = 0; i < n; ++i) PetscCall(PetscVTKIntCast(cone[i], &conn[s + i]));
     }
-
-    offsets[countcell] = countconn;
+    PetscCall(PetscVTKIntCast(countconn, &offsets[countcell]));
 
     nverts = countconn - startoffset;
     PetscCall(DMPlexVTKGetCellType_Internal(dm, dim, nverts, &celltype));
 
-    types[countcell] = celltype;
+    types[countcell] = (PetscVTKType)celltype;
     countcell++;
   }
   PetscCheck(countcell == piece->ncells, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Inconsistent cell count");
@@ -117,6 +116,47 @@ static PetscErrorCode DMPlexGetVTKConnectivity(DM dm, PetscBool localized, Piece
   *oconn    = conn;
   *ooffsets = offsets;
   *otypes   = types;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PETSC_INTERN PetscErrorCode DMPlexGetNonEmptyComm_Private(DM dm, MPI_Comm *comm)
+{
+  DM_Plex *mesh = (DM_Plex *)dm->data;
+
+  PetscFunctionBegin;
+  if (mesh->nonempty_comm == MPI_COMM_SELF) { /* Not yet setup */
+    PetscInt    cStart, cEnd, cellHeight;
+    MPI_Comm    dmcomm = PetscObjectComm((PetscObject)dm);
+    PetscMPIInt color, rank;
+
+    PetscCall(DMPlexGetVTKCellHeight(dm, &cellHeight));
+    PetscCall(DMPlexGetHeightStratum(dm, cellHeight, &cStart, &cEnd));
+    color = (cStart < cEnd) ? 0 : 1;
+    PetscCallMPI(MPI_Comm_rank(dmcomm, &rank));
+    PetscCallMPI(MPI_Comm_split(dmcomm, color, rank, &mesh->nonempty_comm));
+    if (color == 1) {
+      PetscCallMPI(MPI_Comm_free(&mesh->nonempty_comm));
+      mesh->nonempty_comm = MPI_COMM_NULL;
+    }
+  }
+  *comm = mesh->nonempty_comm;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode DMGetFieldIfFV_Private(DM dm, PetscInt field, PetscFV *fv)
+{
+  PetscObject  f      = NULL;
+  PetscClassId fClass = PETSC_SMALLEST_CLASSID;
+  PetscInt     nf;
+
+  PetscFunctionBegin;
+  *fv = NULL;
+  PetscCall(DMGetNumFields(dm, &nf));
+  if (nf > 0) {
+    PetscCall(DMGetField(dm, field, NULL, &f));
+    PetscCall(PetscObjectGetClassId(f, &fClass));
+    if (fClass == PETSCFV_CLASSID) *fv = (PetscFV)f;
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -132,7 +172,7 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
   PetscViewerVTKObjectLink link;
   FILE                    *fp;
   PetscMPIInt              rank, size, tag;
-  PetscInt                 dimEmbed, cellHeight, cStart, cEnd, vStart, vEnd, numLabelCells, hasLabel, c, v, r, i;
+  PetscInt                 dimEmbed, cellHeight, cStart, cEnd, vStart, vEnd, numLabelCells, hasLabel, c, v, i;
   PetscBool                localized;
   PieceInfo                piece, *gpiece = NULL;
   void                    *buffer     = NULL;
@@ -140,21 +180,6 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
   PetscInt                 loops_per_scalar;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
-#if defined(PETSC_USE_COMPLEX)
-  loops_per_scalar = 2;
-#else
-  loops_per_scalar = 1;
-#endif
-  PetscCallMPI(MPI_Comm_size(comm, &size));
-  PetscCallMPI(MPI_Comm_rank(comm, &rank));
-  PetscCall(PetscCommGetNewTag(comm, &tag));
-
-  PetscCall(PetscFOpen(comm, vtk->filename, "wb", &fp));
-  PetscCall(PetscFPrintf(comm, fp, "<?xml version=\"1.0\"?>\n"));
-  PetscCall(PetscFPrintf(comm, fp, "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"%s\" header_type=\"UInt64\">\n", byte_order));
-  PetscCall(PetscFPrintf(comm, fp, "  <UnstructuredGrid>\n"));
-
   PetscCall(DMGetCoordinateDim(dm, &dimEmbed));
   PetscCall(DMPlexGetVTKCellHeight(dm, &cellHeight));
   PetscCall(DMPlexGetHeightStratum(dm, cellHeight, &cStart, &cEnd));
@@ -163,6 +188,22 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
   PetscCall(DMGetCoordinatesLocalized(dm, &localized));
   PetscCall(DMGetCoordinateSection(dm, &coordSection));
   PetscCall(DMGetCellCoordinateSection(dm, &cellCoordSection));
+  PetscCall(PetscCommGetNewTag(PetscObjectComm((PetscObject)dm), &tag));
+
+  PetscCall(DMPlexGetNonEmptyComm_Private(dm, &comm));
+#if defined(PETSC_USE_COMPLEX)
+  loops_per_scalar = 2;
+#else
+  loops_per_scalar = 1;
+#endif
+  if (comm == MPI_COMM_NULL) goto finalize;
+  PetscCallMPI(MPI_Comm_size(comm, &size));
+  PetscCallMPI(MPI_Comm_rank(comm, &rank));
+
+  PetscCall(PetscFOpen(comm, vtk->filename, "wb", &fp));
+  PetscCall(PetscFPrintf(comm, fp, "<?xml version=\"1.0\"?>\n"));
+  PetscCall(PetscFPrintf(comm, fp, "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"%s\" header_type=\"UInt64\">\n", byte_order));
+  PetscCall(PetscFPrintf(comm, fp, "  <UnstructuredGrid>\n"));
 
   hasLabel        = numLabelCells > 0 ? PETSC_TRUE : PETSC_FALSE;
   piece.nvertices = 0;
@@ -205,7 +246,7 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
   if (rank == 0) {
     PetscInt64 boffset = 0;
 
-    for (r = 0; r < size; r++) {
+    for (PetscMPIInt r = 0; r < size; r++) {
       PetscCall(PetscFPrintf(PETSC_COMM_SELF, fp, "    <Piece NumberOfPoints=\"%" PetscInt_FMT "\" NumberOfCells=\"%" PetscInt_FMT "\">\n", gpiece[r].nvertices, gpiece[r].ncells));
       /* Coordinate positions */
       PetscCall(PetscFPrintf(PETSC_COMM_SELF, fp, "      <Points>\n"));
@@ -251,20 +292,17 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
           nfields = field + 1;
         }
         for (i = 0; field < (nfields ? nfields : 1); field++) {
-          PetscInt     fbs, j;
-          PetscFV      fv = NULL;
-          PetscObject  f;
-          PetscClassId fClass;
-          const char  *fieldname = NULL;
-          char         buf[256];
-          PetscBool    vector;
+          PetscInt    fbs, j;
+          PetscFV     fv        = NULL;
+          const char *fieldname = NULL;
+          char        buf[256];
+          PetscBool   vector;
+
           if (nfields) { /* We have user-defined fields/components */
             PetscCall(PetscSectionGetFieldDof(section, cStart, field, &fbs));
             PetscCall(PetscSectionGetFieldName(section, field, &fieldname));
           } else fbs = bs; /* Say we have one field with 'bs' components */
-          PetscCall(DMGetField(dmX, field, NULL, &f));
-          PetscCall(PetscObjectGetClassId(f, &fClass));
-          if (fClass == PETSCFV_CLASSID) fv = (PetscFV)f;
+          PetscCall(DMGetFieldIfFV_Private(dmX, field, &fv));
           if (nfields && !fieldname) {
             PetscCall(PetscSNPrintf(buf, sizeof(buf), "CellField%" PetscInt_FMT, field));
             fieldname = buf;
@@ -347,7 +385,7 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
           field   = link->field;
           nfields = field + 1;
         }
-        for (i = 0; field < (nfields ? nfields : 1); field++) {
+        for (; field < (nfields ? nfields : 1); field++) {
           PetscInt    fbs, j;
           const char *fieldname = NULL;
           char        buf[256];
@@ -400,14 +438,14 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
 
   if (rank == 0) {
     PetscInt maxsize = 0;
-    for (r = 0; r < size; r++) {
+    for (PetscMPIInt r = 0; r < size; r++) {
       maxsize = PetscMax(maxsize, (PetscInt)(gpiece[r].nvertices * 3 * sizeof(PetscVTUReal)));
       maxsize = PetscMax(maxsize, (PetscInt)(gpiece[r].ncells * 3 * sizeof(PetscVTUReal)));
       maxsize = PetscMax(maxsize, (PetscInt)(gpiece[r].nconn * sizeof(PetscVTKInt)));
     }
     PetscCall(PetscMalloc(maxsize, &buffer));
   }
-  for (r = 0; r < size; r++) {
+  for (PetscMPIInt r = 0; r < size; r++) {
     if (r == rank) {
       PetscInt nsend;
       { /* Position */
@@ -495,8 +533,11 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
       }
       { /* Owners (cell data) */
         PetscVTKInt *owners;
+        PetscMPIInt  orank;
+
+        PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)dm), &orank));
         PetscCall(PetscMalloc1(piece.ncells, &owners));
-        for (i = 0; i < piece.ncells; i++) owners[i] = rank;
+        for (i = 0; i < piece.ncells; i++) owners[i] = orank;
         PetscCall(TransferWrite(comm, viewer, fp, r, 0, owners, buffer, piece.ncells, MPI_INT, tag));
         PetscCall(PetscFree(owners));
       }
@@ -523,18 +564,15 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
         }
         PetscCall(VecGetArrayRead(X, &x));
         PetscCall(PetscMalloc1(piece.ncells * 3, &y));
-        for (i = 0; field < (nfields ? nfields : 1); field++) {
-          PetscInt     fbs, j;
-          PetscFV      fv = NULL;
-          PetscObject  f;
-          PetscClassId fClass;
-          PetscBool    vector;
+        for (; field < (nfields ? nfields : 1); field++) {
+          PetscInt  fbs, j;
+          PetscFV   fv = NULL;
+          PetscBool vector;
+
           if (nfields && cEnd > cStart) { /* We have user-defined fields/components */
             PetscCall(PetscSectionGetFieldDof(section, cStart, field, &fbs));
           } else fbs = bs; /* Say we have one field with 'bs' components */
-          PetscCall(DMGetField(dmX, field, NULL, &f));
-          PetscCall(PetscObjectGetClassId(f, &fClass));
-          if (fClass == PETSCFV_CLASSID) fv = (PetscFV)f;
+          PetscCall(DMGetFieldIfFV_Private(dmX, field, &fv));
           vector = PETSC_FALSE;
           if (link->ft == PETSC_VTK_CELL_VECTOR_FIELD) {
             vector = PETSC_TRUE;
@@ -624,7 +662,7 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
         }
         PetscCall(VecGetArrayRead(X, &x));
         PetscCall(PetscMalloc1(piece.nvertices * 3, &y));
-        for (i = 0; field < (nfields ? nfields : 1); field++) {
+        for (; field < (nfields ? nfields : 1); field++) {
           PetscInt fbs, j;
           if (nfields && vEnd > vStart) { /* We have user-defined fields/components */
             PetscCall(PetscSectionGetFieldDof(section, vStart, field, &fbs));
@@ -751,18 +789,15 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
           field   = link->field;
           nfields = field + 1;
         }
-        for (i = 0; field < (nfields ? nfields : 1); field++) {
-          PetscInt     fbs, j;
-          PetscFV      fv = NULL;
-          PetscObject  f;
-          PetscClassId fClass;
-          PetscBool    vector;
+        for (; field < (nfields ? nfields : 1); field++) {
+          PetscInt  fbs, j;
+          PetscFV   fv = NULL;
+          PetscBool vector;
+
           if (nfields && cEnd > cStart) { /* We have user-defined fields/components */
             PetscCall(PetscSectionGetFieldDof(section, cStart, field, &fbs));
           } else fbs = bs; /* Say we have one field with 'bs' components */
-          PetscCall(DMGetField(dmX, field, NULL, &f));
-          PetscCall(PetscObjectGetClassId(f, &fClass));
-          if (fClass == PETSCFV_CLASSID) fv = (PetscFV)f;
+          PetscCall(DMGetFieldIfFV_Private(dmX, field, &fv));
           vector = PETSC_FALSE;
           if (link->ft == PETSC_VTK_CELL_VECTOR_FIELD) {
             vector = PETSC_TRUE;
@@ -803,7 +838,7 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
           field   = link->field;
           nfields = field + 1;
         }
-        for (i = 0; field < (nfields ? nfields : 1); field++) {
+        for (; field < (nfields ? nfields : 1); field++) {
           PetscInt fbs;
           if (nfields && vEnd > vStart) { /* We have user-defined fields/components */
             PetscCall(PetscSectionGetFieldDof(section, vStart, field, &fbs));
@@ -824,5 +859,12 @@ PetscErrorCode DMPlexVTKWriteAll_VTU(DM dm, PetscViewer viewer)
   PetscCall(PetscFPrintf(comm, fp, "\n  </AppendedData>\n"));
   PetscCall(PetscFPrintf(comm, fp, "</VTKFile>\n"));
   PetscCall(PetscFClose(comm, fp));
+finalize:
+  /* this code sends to rank 0 that writes.
+     It may lead to very unbalanced log_view timings
+     of the next PETSc function logged.
+     Since this call is not performance critical, we
+     issue a barrier here to synchronize the processes */
+  PetscCall(PetscBarrier((PetscObject)viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

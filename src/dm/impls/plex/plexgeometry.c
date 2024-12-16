@@ -620,21 +620,27 @@ PetscErrorCode PetscGridHashEnlarge(PetscGridHash box, const PetscScalar point[]
 static PetscErrorCode DMPlexCreateGridHash(DM dm, PetscGridHash *box)
 {
   Vec                coordinates;
-  const PetscScalar *coords;
-  PetscInt           cdim, N, bs;
+  const PetscScalar *a;
+  PetscInt           cdim, cStart, cEnd;
 
   PetscFunctionBegin;
   PetscCall(DMGetCoordinateDim(dm, &cdim));
+  PetscCall(DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd));
   PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
-  PetscCall(VecGetArrayRead(coordinates, &coords));
-  PetscCall(VecGetLocalSize(coordinates, &N));
-  PetscCall(VecGetBlockSize(coordinates, &bs));
-  PetscCheck(bs == cdim, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Coordinate block size %" PetscInt_FMT " != %" PetscInt_FMT " coordinate dimension", bs, cdim);
 
-  PetscCall(PetscGridHashCreate(PetscObjectComm((PetscObject)dm), cdim, coords, box));
-  for (PetscInt i = 0; i < N; i += cdim) PetscCall(PetscGridHashEnlarge(*box, &coords[i]));
+  PetscCall(VecGetArrayRead(coordinates, &a));
+  PetscCall(PetscGridHashCreate(PetscObjectComm((PetscObject)dm), cdim, a, box));
+  PetscCall(VecRestoreArrayRead(coordinates, &a));
+  for (PetscInt c = cStart; c < cEnd; ++c) {
+    const PetscScalar *array;
+    PetscScalar       *coords = NULL;
+    PetscInt           numCoords;
+    PetscBool          isDG;
 
-  PetscCall(VecRestoreArrayRead(coordinates, &coords));
+    PetscCall(DMPlexGetCellCoordinates(dm, c, &isDG, &numCoords, &array, &coords));
+    for (PetscInt i = 0; i < numCoords / cdim; ++i) PetscCall(PetscGridHashEnlarge(*box, &coords[i * cdim]));
+    PetscCall(DMPlexRestoreCellCoordinates(dm, c, &isDG, &numCoords, &array, &coords));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -710,7 +716,7 @@ PetscErrorCode PetscGridHashGetEnclosingBox(PetscGridHash box, PetscInt numPoint
 
       if (dbox == n[d] && PetscAbsReal(PetscRealPart(points[p * dim + d]) - upper[d]) < 1.0e-9) dbox = n[d] - 1;
       if (dbox == -1 && PetscAbsReal(PetscRealPart(points[p * dim + d]) - lower[d]) < 1.0e-9) dbox = 0;
-      PetscCheck(dbox >= 0 && dbox < n[d], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Input point %" PetscInt_FMT " (%g, %g, %g) is outside of our bounding box", p, (double)PetscRealPart(points[p * dim + 0]), dim > 1 ? (double)PetscRealPart(points[p * dim + 1]) : 0.0, dim > 2 ? (double)PetscRealPart(points[p * dim + 2]) : 0.0);
+      PetscCheck(dbox >= 0 && dbox < n[d], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Input point %" PetscInt_FMT " (%g, %g, %g) is outside of our bounding box (%g, %g, %g) - (%g, %g, %g)", p, (double)PetscRealPart(points[p * dim + 0]), dim > 1 ? (double)PetscRealPart(points[p * dim + 1]) : 0.0, dim > 2 ? (double)PetscRealPart(points[p * dim + 2]) : 0.0, (double)lower[0], (double)lower[1], (double)lower[2], (double)upper[0], (double)upper[1], (double)upper[2]);
       dboxes[p * dim + d] = dbox;
     }
     if (boxes)
@@ -2946,7 +2952,7 @@ PetscErrorCode DMPlexComputeGeometryFVM(DM dm, Vec *cellgeom, Vec *facegeom)
       }
     }
   }
-  PetscCall(MPIU_Allreduce(&minradius, &gminradius, 1, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(&minradius, &gminradius, 1, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)dm)));
   PetscCall(DMPlexSetMinRadius(dm, gminradius));
   /* Compute centroids of ghost cells */
   for (c = cEndInterior; c < cEnd; ++c) {
@@ -3133,8 +3139,8 @@ static PetscErrorCode BuildGradientReconstruction_Internal_Tree(DM dm, PetscFV f
   PetscCall(PetscFVLeastSquaresSetMaxFaces(fvm, maxNumFaces));
   nStart = 0;
   PetscCall(PetscSectionGetStorageSize(neighSec, &nEnd));
-  PetscCall(PetscMalloc1((nEnd - nStart), &neighbors));
-  PetscCall(PetscCalloc1((cEndInterior - cStart), &counter));
+  PetscCall(PetscMalloc1(nEnd - nStart, &neighbors));
+  PetscCall(PetscCalloc1(cEndInterior - cStart, &counter));
   for (f = fStart; f < fEnd; f++) {
     const PetscInt *fcells;
     PetscBool       boundary;
@@ -3365,10 +3371,10 @@ static PetscErrorCode DMPlexCoordinatesToReference_NewtonUpdate(PetscInt dimC, P
 #else
     char transpose = 'T';
 #endif
-    PetscBLASInt m        = dimR;
-    PetscBLASInt n        = dimC;
+    PetscBLASInt m        = (PetscBLASInt)dimR;
+    PetscBLASInt n        = (PetscBLASInt)dimC;
     PetscBLASInt one      = 1;
-    PetscBLASInt worksize = dimR * dimC, info;
+    PetscBLASInt worksize = (PetscBLASInt)(dimR * dimC), info;
 
     for (l = 0; l < dimC; l++) invJ[l] = resNeg[l];
 

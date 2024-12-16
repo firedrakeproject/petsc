@@ -57,6 +57,7 @@ static PetscErrorCode DMFieldView_DS(DMField field, PetscViewer viewer)
 static PetscErrorCode DMFieldDSGetHeightDisc(DMField field, PetscInt height, PetscObject discList[], PetscObject *disc)
 {
   PetscFunctionBegin;
+  PetscCheck(height >= 0, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Height %" PetscInt_FMT " must be non-negative", height);
   if (!discList[height]) {
     PetscClassId id;
 
@@ -268,10 +269,10 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
   }
   PetscCall(PetscMalloc3(gatherSize * dim, &cellPoints, gatherMax * dim, &coordsReal, gatherMax * dimR, &coordsRef));
   PetscCall(PetscMalloc4(gatherMax * dimR, &v, gatherMax * dimR * dimR, &J, gatherMax * dimR * dimR, &invJ, gatherMax, &detJ));
-  if (datatype == PETSC_SCALAR) PetscCall(PetscMalloc3(B ? nc * gatherSize : 0, &cellBs, D ? nc * dim * gatherSize : 0, &cellDs, H ? nc * dim * dim * gatherSize : 0, &cellHs));
-  else PetscCall(PetscMalloc3(B ? nc * gatherSize : 0, &cellBr, D ? nc * dim * gatherSize : 0, &cellDr, H ? nc * dim * dim * gatherSize : 0, &cellHr));
+  if (datatype == PETSC_SCALAR) PetscCall(PetscMalloc3((B ? (size_t)nc * gatherSize : 0), &cellBs, (D ? (size_t)nc * dim * gatherSize : 0), &cellDs, (H ? (size_t)nc * dim * dim * gatherSize : 0), &cellHs));
+  else PetscCall(PetscMalloc3((B ? (size_t)nc * gatherSize : 0), &cellBr, (D ? (size_t)nc * dim * gatherSize : 0), &cellDr, (H ? (size_t)nc * dim * dim * gatherSize : 0), &cellHr));
 
-  PetscCallMPI(MPI_Type_contiguous(dim, MPIU_SCALAR, &pointType));
+  PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)dim, MPIU_SCALAR, &pointType));
   PetscCallMPI(MPI_Type_commit(&pointType));
   PetscCall(VecGetArrayRead(points, &pointsArray));
   PetscCall(PetscSFGatherBegin(cellSF, pointType, pointsArray, cellPoints));
@@ -409,7 +410,7 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
     if (B) {
       MPI_Datatype Btype;
 
-      PetscCallMPI(MPI_Type_contiguous(nc, origtype, &Btype));
+      PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)nc, origtype, &Btype));
       PetscCallMPI(MPI_Type_commit(&Btype));
       PetscCall(PetscSFScatterBegin(cellSF, Btype, (datatype == PETSC_SCALAR) ? (void *)cellBs : (void *)cellBr, B));
       PetscCall(PetscSFScatterEnd(cellSF, Btype, (datatype == PETSC_SCALAR) ? (void *)cellBs : (void *)cellBr, B));
@@ -418,7 +419,7 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
     if (D) {
       MPI_Datatype Dtype;
 
-      PetscCallMPI(MPI_Type_contiguous(nc * dim, origtype, &Dtype));
+      PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)(nc * dim), origtype, &Dtype));
       PetscCallMPI(MPI_Type_commit(&Dtype));
       PetscCall(PetscSFScatterBegin(cellSF, Dtype, (datatype == PETSC_SCALAR) ? (void *)cellDs : (void *)cellDr, D));
       PetscCall(PetscSFScatterEnd(cellSF, Dtype, (datatype == PETSC_SCALAR) ? (void *)cellDs : (void *)cellDr, D));
@@ -427,7 +428,7 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
     if (H) {
       MPI_Datatype Htype;
 
-      PetscCallMPI(MPI_Type_contiguous(nc * dim * dim, origtype, &Htype));
+      PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)(nc * dim * dim), origtype, &Htype));
       PetscCallMPI(MPI_Type_commit(&Htype));
       PetscCall(PetscSFScatterBegin(cellSF, Htype, (datatype == PETSC_SCALAR) ? (void *)cellHs : (void *)cellHr, H));
       PetscCall(PetscSFScatterEnd(cellSF, Htype, (datatype == PETSC_SCALAR) ? (void *)cellHs : (void *)cellHr, H));
@@ -794,10 +795,32 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
     }
   }
   if (maxDegree <= 1) {
-    PetscInt     numCells, offset, *cells;
-    PetscFEGeom *cellGeom;
-    IS           suppIS;
+    PetscQuadrature cellQuad = NULL;
+    PetscInt        numCells, offset, *cells;
+    PetscFEGeom    *cellGeom;
+    IS              suppIS;
 
+    if (quad) {
+      DM         dm;
+      PetscReal *points, *weights;
+      PetscInt   tdim, Nc, Np;
+
+      PetscCall(DMFieldGetDM(field, &dm));
+      PetscCall(DMGetDimension(dm, &tdim));
+      if (tdim > dim) {
+        // Make a compatible cell quadrature (points don't matter since its affine)
+        PetscCall(PetscQuadratureCreate(PETSC_COMM_SELF, &cellQuad));
+        PetscCall(PetscQuadratureGetData(quad, NULL, &Nc, &Np, NULL, NULL));
+        PetscCall(PetscCalloc1((dim + 1) * Np, &points));
+        PetscCall(PetscCalloc1(Nc * Np, &weights));
+        PetscCall(PetscQuadratureSetData(cellQuad, dim + 1, Nc, Np, points, weights));
+      } else {
+        // TODO J will be wrong here, but other things need to be fixed
+        //   This path comes from calling DMProjectBdFieldLabelLocal() in Plex ex5
+        PetscCall(PetscObjectReference((PetscObject)quad));
+        cellQuad = quad;
+      }
+    }
     for (p = 0, numCells = 0; p < numFaces; p++) {
       PetscInt point = points[p];
       PetscInt numSupp, numChildren;
@@ -819,7 +842,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
       for (s = 0; s < numSupp; s++, offset++) cells[offset] = supp[s];
     }
     PetscCall(ISCreateGeneral(PETSC_COMM_SELF, numCells, cells, PETSC_USE_POINTER, &suppIS));
-    PetscCall(DMFieldCreateFEGeom(field, suppIS, quad, PETSC_FALSE, &cellGeom));
+    PetscCall(DMFieldCreateFEGeom(field, suppIS, cellQuad, PETSC_FALSE, &cellGeom));
     for (p = 0, offset = 0; p < numFaces; p++) {
       PetscInt        point = points[p];
       PetscInt        numSupp, s, q;
@@ -836,6 +859,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
       }
     }
     PetscCall(PetscFEGeomDestroy(&cellGeom));
+    PetscCall(PetscQuadratureDestroy(&cellQuad));
     PetscCall(ISDestroy(&suppIS));
     PetscCall(PetscFree(cells));
   } else {
@@ -874,8 +898,8 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
     PetscCall(PetscMalloc1(Nq, &dummyWeights));
     PetscCall(PetscQuadratureCreate(PETSC_COMM_SELF, &cellQuad));
     PetscCall(PetscQuadratureSetData(cellQuad, dE, 1, Nq, cellPoints, dummyWeights));
-    minOrient = PETSC_MAX_INT;
-    maxOrient = PETSC_MIN_INT;
+    minOrient = PETSC_INT_MAX;
+    maxOrient = PETSC_INT_MIN;
     for (p = 0; p < numFaces; p++) { /* record the orientation of the facet wrt the support cells */
       PetscInt        point = points[p];
       PetscInt        numSupp, numChildren;
@@ -1124,7 +1148,7 @@ PetscErrorCode DMFieldCreateDSWithDG(DM dm, DM dmDG, PetscInt fieldNum, Vec vec,
     PetscCall(DMGetDimension(dm, &dim));
     PetscCall(DMPlexGetHeightStratum(dm, cellHeight, &cStart, &cEnd));
     if (cEnd > cStart) PetscCall(DMPlexGetCellType(dm, cStart, &locct));
-    PetscCallMPI(MPI_Allreduce(&locct, &ct, 1, MPI_INT, MPI_MIN, comm));
+    PetscCallMPI(MPIU_Allreduce(&locct, &ct, 1, MPI_INT, MPI_MIN, comm));
     PetscCall(PetscFECreateLagrangeByCell(PETSC_COMM_SELF, dim, numComponents, ct, 1, PETSC_DETERMINE, &fe));
     PetscCall(PetscFEViewFromOptions(fe, NULL, "-field_fe_view"));
     disc = (PetscObject)fe;

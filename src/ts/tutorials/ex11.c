@@ -1011,9 +1011,9 @@ static PetscErrorCode MonitorVTK(TS ts, PetscInt stepnum, PetscReal time, Vec X,
     PetscCall(VecRestoreArrayRead(cellgeom, &cgeom));
     PetscCall(VecRestoreArrayRead(X, &x));
     PetscCall(DMDestroy(&plex));
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, fmin, fcount, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)ts)));
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, fmax, fcount, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)ts)));
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, fintegral, fcount, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)ts)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, fmin, (PetscMPIInt)fcount, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)ts)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, fmax, (PetscMPIInt)fcount, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)ts)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, fintegral, (PetscMPIInt)fcount, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)ts)));
 
     ftablealloc = fcount * 100;
     ftableused  = 0;
@@ -1179,7 +1179,7 @@ static PetscErrorCode adaptToleranceFVMSetUp(TS ts, PetscInt nstep, PetscReal ti
   PetscCall(PetscFVSetComputeGradients(fvm, computeGradient));
   PetscCall(PetscFVSetLimiter(fvm, tctx->limiter));
   minMaxInd[1] = -minMaxInd[1];
-  PetscCall(MPIU_Allreduce(minMaxInd, minMaxIndGlobal, 2, MPIU_REAL, MPI_MIN, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(minMaxInd, minMaxIndGlobal, 2, MPIU_REAL, MPI_MIN, PetscObjectComm((PetscObject)dm)));
   PetscCall(PetscInfo(ts, "error indicator range (%E, %E)\n", (double)minMaxIndGlobal[0], (double)(-minMaxIndGlobal[1])));
   if (nRefine || nCoarsen) { /* at least one cell is over the refinement threshold */
     PetscCall(DMAdaptLabel(dm, adaptLabel, &adaptedDM));
@@ -1216,7 +1216,7 @@ static PetscErrorCode Transfer(TS ts, PetscInt nv, Vec vecsin[], Vec vecsout[], 
   PetscReal minRadius;
 
   PetscCall(DMPlexGetGeometryFVM(tctx->adaptedDM, NULL, NULL, &minRadius));
-  PetscCall(MPIU_Allreduce(&phys->maxspeed, &mod->maxspeed, 1, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)ts)));
+  PetscCallMPI(MPIU_Allreduce(&phys->maxspeed, &mod->maxspeed, 1, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)ts)));
   PetscCheck(mod->maxspeed > 0, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "Physics did not set maxspeed");
 
   PetscReal dt = tctx->cfl * minRadius / mod->maxspeed;
@@ -1250,7 +1250,7 @@ int main(int argc, char **argv)
   TransferCtx       tctx;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   comm = PETSC_COMM_WORLD;
 
   PetscCall(PetscNew(&user));
@@ -1331,7 +1331,7 @@ int main(int argc, char **argv)
     for (i = 0; i < DIM; i++) {
       mod->bounds[2 * i]     = 0.;
       mod->bounds[2 * i + 1] = 1.;
-    };
+    }
     dim = DIM;
     { /* a null name means just do a hex box */
       PetscInt  cells[3] = {1, 1, 1}, n = 3;
@@ -1518,7 +1518,7 @@ int main(int argc, char **argv)
   /* collect max maxspeed from all processes -- todo */
   PetscCall(DMPlexGetGeometryFVM(plex, NULL, NULL, &minRadius));
   PetscCall(DMDestroy(&plex));
-  PetscCall(MPIU_Allreduce(&phys->maxspeed, &mod->maxspeed, 1, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)ts)));
+  PetscCallMPI(MPIU_Allreduce(&phys->maxspeed, &mod->maxspeed, 1, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)ts)));
   PetscCheck(mod->maxspeed > 0, comm, PETSC_ERR_ARG_WRONGSTATE, "Physics '%s' did not set maxspeed", physname);
   dt = cfl * minRadius / mod->maxspeed;
   PetscCall(TSSetTimeStep(ts, dt));
@@ -1527,7 +1527,7 @@ int main(int argc, char **argv)
   /* When using adaptive mesh refinement
      specify callbacks to refine the solution
      and interpolate data from old to new mesh
-     When mesh adaption is requested, the step will be restarted
+     When mesh adaption is requested, the step will be rolled back
   */
   if (useAMR) PetscCall(TSSetResize(ts, PETSC_TRUE, adaptToleranceFVMSetUp, Transfer, &tctx));
   PetscCall(TSSetSolution(ts, X));
@@ -1853,21 +1853,21 @@ int initLinearWave(EulerNode *ux, const PetscReal gamma, const PetscReal coord[]
       requires: exodusii
       args: -ufv_vtk_interval 0 -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/blockcylinder-50.exo -bc_inflow 100,101,200 -bc_outflow 201
 
+    # Run with -dm_forest_maximum_refinement 6 -ts_max_time 0.5 instead to get the full movie
     test:
       suffix: shock_0
       requires: p4est !single !complex
       args: -dm_plex_box_faces 2,1 -grid_bounds -1,1.,0.,1 -grid_skew_60 \
-      -dm_type p4est -dm_forest_partition_overlap 1 -dm_forest_maximum_refinement 6 -dm_forest_minimum_refinement 2 -dm_forest_initial_refinement 2 \
+      -dm_type p4est -dm_forest_partition_overlap 1 -dm_forest_maximum_refinement 2 -dm_forest_minimum_refinement 2 -dm_forest_initial_refinement 2 \
       -ufv_use_amr -refine_vec_tagger_box 0.5,inf -coarsen_vec_tagger_box 0,1.e-2 -refine_tag_view -coarsen_tag_view \
       -bc_wall 1,2,3,4 -physics euler -eu_type iv_shock -ufv_cfl 10 -eu_alpha 60. -eu_gamma 1.4 -eu_amach 2.02 -eu_rho2 3. \
       -petscfv_type leastsquares -petsclimiter_type minmod -petscfv_compute_gradients 0 \
-      -ts_max_time 0.5 -ts_ssp_type rks2 -ts_ssp_nstages 10 \
+      -ts_max_steps 3 -ts_ssp_type rks2 -ts_ssp_nstages 10 \
       -ufv_vtk_basename ${wPETSC_DIR}/ex11 -ufv_vtk_interval 0 -monitor density,energy
-      timeoutfactor: 3
 
     # Test GLVis visualization of PetscFV fields
     test:
-      suffix: glvis_adv_2d_tet
+      suffix: glvis_adv_2d_tri
       args: -ufv_vtk_interval 0 -ufv_vtk_monitor 0 \
             -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square_periodic.msh -dm_plex_gmsh_periodic 0 \
             -ts_monitor_solution glvis: -ts_max_steps 0
@@ -1877,5 +1877,27 @@ int initLinearWave(EulerNode *ux, const PetscReal gamma, const PetscReal coord[]
       args: -ufv_vtk_interval 0 -ufv_vtk_monitor 0 -bc_inflow 1,2,4 -bc_outflow 3 \
             -dm_refine 5 -dm_plex_separate_marker \
             -ts_monitor_solution glvis: -ts_max_steps 0
+
+    # Test CGNS file writing for PetscFV fields
+    test:
+      suffix: cgns_adv_2d_tri
+      requires: cgns
+      args: -ufv_vtk_interval 0 -ufv_vtk_monitor 0 \
+            -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square_periodic.msh -dm_plex_gmsh_periodic 0 \
+            -ts_monitor_solution cgns:sol.cgns -ts_max_steps 0
+
+    test:
+      suffix: cgns_adv_2d_quad
+      requires: cgns
+      args: -ufv_vtk_interval 0 -ufv_vtk_monitor 0 -bc_inflow 1,2,4 -bc_outflow 3 \
+            -dm_refine 5 -dm_plex_separate_marker \
+            -ts_monitor_solution cgns:sol.cgns -ts_max_steps 0
+
+    # Test VTK file writing for PetscFV fields with -ts_monitor_solution_vtk
+    test:
+      suffix: vtk_adv_2d_tri
+      args: -ufv_vtk_interval 0 -ufv_vtk_monitor 0 \
+            -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square_periodic.msh -dm_plex_gmsh_periodic 0 \
+            -ts_monitor_solution_vtk 'bar-%03d.vtu'  -ts_monitor_solution_vtk_interval  2 -ts_max_steps 5
 
 TEST*/

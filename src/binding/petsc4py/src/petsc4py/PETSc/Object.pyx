@@ -154,6 +154,9 @@ cdef class Object:
 
         Collective.
 
+        Classes that do not implement ``setFromOptions`` use this method
+        that, in turn, calls `petsc.PetscObjectSetFromOptions`.
+
         See Also
         --------
         petsc_options, petsc.PetscObjectSetFromOptions
@@ -183,6 +186,42 @@ cdef class Object:
         pobj = objpre.obj[0] if objpre is not None else NULL
         name = str2bytes(name, &cval)
         CHKERR(PetscObjectViewFromOptions(self.obj[0], pobj, cval))
+
+    def setOptionsHandler(self, handler: PetscOptionsHandlerFunction | None) -> None:
+        """Set the callback for processing extra options.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        handler
+            The callback function, called at the end of a ``setFromOptions`` invocation
+            for the given class.
+
+        See Also
+        --------
+        petsc_options, Mat.setFromOptions, KSP.setFromOptions
+        petsc.PetscObjectAddOptionsHandler
+
+        """
+        if handler is not None:
+            CHKERR(PetscObjectAddOptionsHandler(self.obj[0], PetscObjectOptionsHandler_PYTHON, NULL, NULL))
+            self.set_attr('__optshandler__', handler)
+        else:
+            self.set_attr('__optshandler__', None)
+
+    def destroyOptionsHandlers(self) -> None:
+        """Clear all the option handlers.
+
+        Collective.
+
+        See Also
+        --------
+        petsc_options, setOptionsHandler, petsc.PetscObjectDestroyOptionsHandlers
+
+        """
+        self.set_attr('__optshandler__', None)
+        CHKERR(PetscObjectDestroyOptionsHandlers(self.obj[0]))
 
     #
 
@@ -270,6 +309,20 @@ cdef class Object:
         cdef PetscInt refcnt = 0
         CHKERR(PetscObjectGetReference(self.obj[0], &refcnt))
         return toInt(refcnt)
+
+    def getId(self) -> int:
+        """Return the unique identifier of the object.
+
+        Not collective.
+
+        See Also
+        --------
+        petsc.PetscObjectGetId
+
+        """
+        cdef PetscObjectId cid = 0
+        CHKERR(PetscObjectGetId(self.obj[0], &cid))
+        return <long>cid
 
     # --- general support ---
 
@@ -393,6 +446,7 @@ cdef class Object:
         return self.get_dict()
 
     # --- state manipulation ---
+
     def stateIncrease(self) -> None:
         """Increment the PETSc object state.
 
@@ -510,6 +564,11 @@ cdef class Object:
         """The class identifier."""
         def __get__(self) -> int:
             return self.getClassId()
+
+    property id:
+        """The object identifier."""
+        def __get__(self) -> int:
+            return self.getId()
 
     property klass:
         """The class name."""

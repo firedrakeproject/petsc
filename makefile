@@ -134,7 +134,7 @@ check:
            echo "*mpiexec not found*. cannot run make check"; \
         else \
           ${RM} -f check_error;\
-          ${RUN_TEST} PETSC_OPTIONS="${PETSC_OPTIONS} ${PETSC_TEST_OPTIONS}" PATH="${PETSC_DIR}/${PETSC_ARCH}/lib:${PATH}" check_build 2>&1 | tee ./${PETSC_ARCH}/lib/petsc/conf/check.log; \
+          ${RUN_TEST} OMP_NUM_THREADS=1 PETSC_OPTIONS="${PETSC_OPTIONS} ${PETSC_TEST_OPTIONS}" PATH="${PETSC_DIR}/${PETSC_ARCH}/lib:${PATH}" check_build 2>&1 | tee ./${PETSC_ARCH}/lib/petsc/conf/check.log; \
           if [ -f check_error ]; then \
             echo "Error while running make check"; \
             ${RM} -f check_error;\
@@ -155,6 +155,9 @@ check_build:
         fi;
 	+@if [ "`grep -E '^#define PETSC_HAVE_CUDA 1' ${PETSCCONF_H}`" = "#define PETSC_HAVE_CUDA 1" ]; then \
           cd src/snes/tutorials >/dev/null; ${RUN_TEST} runex19_cuda; \
+        fi;
+	+@if [ "`grep -E '^#define PETSC_HAVE_HIP 1' ${PETSCCONF_H}`" = "#define PETSC_HAVE_HIP 1" ]; then \
+          cd src/snes/tutorials >/dev/null; ${RUN_TEST} runex19_hip; \
         fi;
 	+@if [ "${MPI_IS_MPIUNI}" = "" ]; then \
           cd src/snes/tutorials >/dev/null; \
@@ -405,7 +408,7 @@ streams: mpistreams
 # ********  Rules for generating tag files for Emacs/VIM *******************************************************************************************
 
 alletags:
-	-@${PYTHON} lib/petsc/bin/maint/generateetags.py
+	-@${PYTHON} lib/petsc/bin/maint/generateetags.py && cp TAGS ${PETSC_ARCH}/
 	-@find config -type f -name "*.py" |grep -v SCCS | xargs etags -o TAGS_PYTHON
 
 # obtain gtags from https://www.gnu.org/software/global/

@@ -120,11 +120,15 @@ static PetscErrorCode GarbageKeySortedIntersect_Private(PetscInt64 seta[], Petsc
 void PetscGarbageKeySortedIntersect(void *inset, void *inoutset, PetscMPIInt *length, MPI_Datatype *dtype)
 {
   PetscInt64 *seta, *setb;
+  PetscInt    lena = 0, lenb = 0;
 
   seta = (PetscInt64 *)inoutset;
   setb = (PetscInt64 *)inset;
 
-  PetscCallAbort(PETSC_COMM_SELF, GarbageKeySortedIntersect_Private(&seta[1], (PetscInt *)&seta[0], &setb[1], (PetscInt)setb[0]));
+  PetscCallAbort(PETSC_COMM_SELF, PetscIntCast(seta[0], &lena));
+  PetscCallAbort(PETSC_COMM_SELF, PetscIntCast(setb[0], &lenb));
+  PetscCallAbort(PETSC_COMM_SELF, GarbageKeySortedIntersect_Private(seta + 1, &lena, setb + 1, lenb));
+  seta[0] = lena;
 }
 
 /* Performs a collective allreduce intersection of one array per rank */
@@ -133,29 +137,31 @@ PetscErrorCode GarbageKeyAllReduceIntersect_Private(MPI_Comm comm, PetscInt64 *s
   PetscInt     ii, max_entries;
   PetscInt64  *sendset, *recvset;
   MPI_Datatype keyset_type;
+  PetscMPIInt  imax_entries;
 
   PetscFunctionBegin;
   /* Sort keys first for use with `GarbageKeySortedIntersect_Private()`*/
   PetscCall(PetscSortInt64(*entries, set));
 
   /* Get the maximum size of all key sets */
-  PetscCall(MPIU_Allreduce(entries, &max_entries, 1, MPIU_INT, MPI_MAX, comm));
+  PetscCallMPI(MPIU_Allreduce(entries, &max_entries, 1, MPIU_INT, MPI_MAX, comm));
   PetscCall(PetscMalloc1(max_entries + 1, &sendset));
   PetscCall(PetscMalloc1(max_entries + 1, &recvset));
-  sendset[0] = (PetscInt64)*entries;
+  sendset[0] = *entries;
   for (ii = 1; ii < *entries + 1; ii++) sendset[ii] = set[ii - 1];
 
   /* Create a custom data type to hold the set */
-  PetscCallMPI(MPI_Type_contiguous(max_entries + 1, MPIU_INT64, &keyset_type));
+  PetscCall(PetscMPIIntCast(max_entries, &imax_entries));
+  PetscCallMPI(MPI_Type_contiguous(imax_entries + 1, MPIU_INT64, &keyset_type));
   /* PetscCallMPI(MPI_Type_set_name(keyset_type,"PETSc garbage key set type")); */
   PetscCallMPI(MPI_Type_commit(&keyset_type));
 
   /* Perform custom intersect reduce operation over sets */
-  PetscCallMPI(MPI_Allreduce(sendset, recvset, 1, keyset_type, Petsc_Garbage_SetIntersectOp, comm));
+  PetscCallMPI(MPIU_Allreduce(sendset, recvset, 1, keyset_type, Petsc_Garbage_SetIntersectOp, comm));
 
   PetscCallMPI(MPI_Type_free(&keyset_type));
 
-  *entries = (PetscInt)recvset[0];
+  PetscCall(PetscIntCast(recvset[0], entries));
   for (ii = 0; ii < *entries; ii++) set[ii] = recvset[ii + 1];
 
   PetscCall(PetscFree(sendset));

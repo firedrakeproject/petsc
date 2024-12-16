@@ -95,22 +95,22 @@
         j = II - i*n
         if (i.gt.0) then
           JJ = II - n
-          PetscCallA(MatSetValues(A,ione,II,ione,JJ,v,ADD_VALUES,ierr))
+          PetscCallA(MatSetValues(A,ione,[II],ione,[JJ],[v],ADD_VALUES,ierr))
         endif
         if (i.lt.m-1) then
           JJ = II + n
-          PetscCallA(MatSetValues(A,ione,II,ione,JJ,v,ADD_VALUES,ierr))
+          PetscCallA(MatSetValues(A,ione,[II],ione,[JJ],[v],ADD_VALUES,ierr))
         endif
         if (j.gt.0) then
           JJ = II - 1
-          PetscCallA(MatSetValues(A,ione,II,ione,JJ,v,ADD_VALUES,ierr))
+          PetscCallA(MatSetValues(A,ione,[II],ione,[JJ],[v],ADD_VALUES,ierr))
         endif
         if (j.lt.n-1) then
           JJ = II + 1
-          PetscCallA(MatSetValues(A,ione,II,ione,JJ,v,ADD_VALUES,ierr))
+          PetscCallA(MatSetValues(A,ione,[II],ione,[JJ],[v],ADD_VALUES,ierr))
         endif
         v = 4.0
-        PetscCallA( MatSetValues(A,ione,II,ione,II,v,ADD_VALUES,ierr))
+        PetscCallA( MatSetValues(A,ione,[II],ione,[II],[v],ADD_VALUES,ierr))
  10   continue
 
 !  Assemble matrix, using the 2-step process:
@@ -160,7 +160,7 @@
 
       PetscCallA(KSPGetPC(ksp,pc,ierr))
       tol = 1.e-7
-      PetscCallA(KSPSetTolerances(ksp,tol,PETSC_DEFAULT_REAL,PETSC_DEFAULT_REAL,PETSC_DEFAULT_INTEGER,ierr))
+      PetscCallA(KSPSetTolerances(ksp,tol,PETSC_CURRENT_REAL,PETSC_CURRENT_REAL,PETSC_CURRENT_INTEGER,ierr))
 
 !
 !  Set a user-defined shell preconditioner

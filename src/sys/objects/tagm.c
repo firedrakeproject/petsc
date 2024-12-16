@@ -10,7 +10,7 @@
 
 */
 
-/*@C
+/*@
   PetscObjectGetNewTag - Gets a unique new tag from a PETSc object. All
   processors that share the object MUST call this routine EXACTLY the same
   number of times.  This tag should only be used with the current objects
@@ -192,8 +192,7 @@ PetscErrorCode PetscCommRestoreComm(MPI_Comm comm_in, MPI_Comm *comm_out)
   tags have been used to prevent tag conflict. If you pass a non-PETSc communicator into
   a PETSc creation routine it will attach a private communicator for use in the objects communications.
   The internal `MPI_Comm` is used to perform all the MPI calls for PETSc, the outer `MPI_Comm` is a user
-
-  `MPI_Comm` That May Be Performing Communication For The User Or Other Library And So Is Not Used By Petsc.
+  and is not used by PETSc.
 
 .seealso: `PetscObjectGetNewTag()`, `PetscCommGetNewTag()`, `PetscCommDestroy()`
 @*/
@@ -274,6 +273,11 @@ PetscErrorCode PetscCommDuplicate(MPI_Comm comm_in, MPI_Comm *comm_out, PetscMPI
 . comm - the communicator to free
 
   Level: developer
+
+  Notes:
+  Sets `comm` to `NULL`
+
+  The communicator is reference counted so it is only truly removed from the system when its reference count drops to zero
 
 .seealso: `PetscCommDuplicate()`
 @*/
@@ -378,7 +382,7 @@ PetscErrorCode PetscObjectsListGetGlobalNumbering(MPI_Comm comm, PetscInt len, P
   }
   if (count) {
     /* Obtain the sum of all roots -- the global number of distinct subcomms. */
-    PetscCall(MPIU_Allreduce(&roots, count, 1, MPIU_INT, MPI_SUM, comm));
+    PetscCallMPI(MPIU_Allreduce(&roots, count, 1, MPIU_INT, MPI_SUM, comm));
   }
   if (numbering) {
     /* Introduce a global numbering for subcomms, initially known only by subcomm roots. */

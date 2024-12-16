@@ -282,8 +282,7 @@ PetscErrorCode MatPartitioningApplyND(MatPartitioning matp, IS *partitioning)
 . matp - the matrix partitioning object
 
   Output Parameter:
-. partitioning - the partitioning. For each local node this tells the processor
-                   number that that node is assigned to.
+. partitioning - the partitioning. For each local node this tells the MPI rank that that node is assigned to.
 
   Options Database Keys:
 + -mat_partitioning_type <type> - set the partitioning package or algorithm to use
@@ -365,8 +364,7 @@ PetscErrorCode MatPartitioningImprove(MatPartitioning matp, IS *partitioning)
 
   Input Parameters:
 + matp         - the matrix partitioning object
-- partitioning - the partitioning. For each local node this tells the processor
-                   number that that node is assigned to.
+- partitioning - the partitioning. For each local node this tells the MPI rank that that node is assigned to.
 
   Options Database Key:
 . -mat_partitioning_view_balance - view the balance information from the last partitioning
@@ -377,22 +375,23 @@ PetscErrorCode MatPartitioningImprove(MatPartitioning matp, IS *partitioning)
 @*/
 PetscErrorCode MatPartitioningViewImbalance(MatPartitioning matp, IS partitioning)
 {
-  PetscInt        nparts, *subdomainsizes, *subdomainsizes_tmp, nlocal, i, maxsub, minsub, avgsub;
+  PetscMPIInt     nparts;
+  PetscInt       *subdomainsizes, *subdomainsizes_tmp, nlocal, maxsub, minsub, avgsub;
   const PetscInt *indices;
   PetscViewer     viewer;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(matp, MAT_PARTITIONING_CLASSID, 1);
   PetscValidHeaderSpecific(partitioning, IS_CLASSID, 2);
-  nparts = matp->n;
+  PetscCall(PetscMPIIntCast(matp->n, &nparts));
   PetscCall(PetscCalloc2(nparts, &subdomainsizes, nparts, &subdomainsizes_tmp));
   PetscCall(ISGetLocalSize(partitioning, &nlocal));
   PetscCall(ISGetIndices(partitioning, &indices));
-  for (i = 0; i < nlocal; i++) subdomainsizes_tmp[indices[i]] += matp->vertex_weights ? matp->vertex_weights[i] : 1;
-  PetscCall(MPIU_Allreduce(subdomainsizes_tmp, subdomainsizes, nparts, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)matp)));
+  for (PetscInt i = 0; i < nlocal; i++) subdomainsizes_tmp[indices[i]] += matp->vertex_weights ? matp->vertex_weights[i] : 1;
+  PetscCallMPI(MPIU_Allreduce(subdomainsizes_tmp, subdomainsizes, nparts, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)matp)));
   PetscCall(ISRestoreIndices(partitioning, &indices));
-  minsub = PETSC_MAX_INT, maxsub = PETSC_MIN_INT, avgsub = 0;
-  for (i = 0; i < nparts; i++) {
+  minsub = PETSC_INT_MAX, maxsub = PETSC_INT_MIN, avgsub = 0;
+  for (PetscMPIInt i = 0; i < nparts; i++) {
     minsub = PetscMin(minsub, subdomainsizes[i]);
     maxsub = PetscMax(maxsub, subdomainsizes[i]);
     avgsub += subdomainsizes[i];
@@ -475,6 +474,9 @@ PetscErrorCode MatPartitioningDestroy(MatPartitioning *part)
 
   The weights may not be used by some partitioners
 
+  Fortran Note:
+  The array `weights` is copied during this function call.
+
 .seealso: [](ch_matrices), `Mat`, `MatPartitioning`, `MatPartitioningCreate()`, `MatPartitioningSetType()`, `MatPartitioningSetPartitionWeights()`, `MatPartitioningSetNumberVertexWeights()`
 @*/
 PetscErrorCode MatPartitioningSetVertexWeights(MatPartitioning part, const PetscInt weights[])
@@ -494,17 +496,20 @@ PetscErrorCode MatPartitioningSetVertexWeights(MatPartitioning part, const Petsc
   Input Parameters:
 + part    - the partitioning context
 - weights - An array of size nparts that is used to specify the fraction of
-             vertex weight that should be distributed to each sub-domain for
-             the balance constraint. If all of the sub-domains are to be of
-             the same size, then each of the nparts elements should be set
-             to a value of 1/nparts. Note that the sum of all of the weights
-             should be one.
+            vertex weight that should be distributed to each sub-domain for
+            the balance constraint. If all of the sub-domains are to be of
+            the same size, then each of the nparts elements should be set
+            to a value of 1/nparts. Note that the sum of all of the weights
+            should be one.
 
   Level: beginner
 
   Note:
   The array weights is freed by PETSc so the user should not free the array. In C/C++
   the array must be obtained with a call to `PetscMalloc()`, not malloc().
+
+  Fortran Note:
+  The array `weights` is copied during this function call.
 
 .seealso: [](ch_matrices), `Mat`, `MatPartitioning`, `MatPartitioningSetVertexWeights()`, `MatPartitioningCreate()`, `MatPartitioningSetType()`
 @*/
@@ -590,9 +595,9 @@ PetscErrorCode MatPartitioningCreate(MPI_Comm comm, MatPartitioning *newp)
   PetscMPIInt     size;
 
   PetscFunctionBegin;
-  *newp = NULL;
-
+  PetscAssertPointer(newp, 2);
   PetscCall(MatInitializePackage());
+
   PetscCall(PetscHeaderCreate(part, MAT_PARTITIONING_CLASSID, "MatPartitioning", "Matrix/graph partitioning", "MatGraphOperations", comm, MatPartitioningDestroy, MatPartitioningView));
   part->vertex_weights   = NULL;
   part->part_weights     = NULL;
@@ -606,7 +611,7 @@ PetscErrorCode MatPartitioningCreate(MPI_Comm comm, MatPartitioning *newp)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatPartitioningViewFromOptions - View a partitioning context from the options database
 
   Collective
@@ -643,7 +648,7 @@ PetscErrorCode MatPartitioningViewFromOptions(MatPartitioning A, PetscObject obj
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatPartitioningView - Prints the partitioning data structure.
 
   Collective

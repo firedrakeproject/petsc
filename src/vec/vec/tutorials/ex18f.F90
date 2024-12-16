@@ -19,7 +19,7 @@ program main
   PetscScalar :: myResult = 0
   Vec            x,xend
   character(len=PETSC_MAX_PATH_LEN) :: output
-  PetscInt,parameter :: zero = 0, one = 1, two = 2
+  PetscInt,parameter :: one = 1
 
   PetscCallA(PetscInitialize(ierr))
 
@@ -40,12 +40,12 @@ program main
   myResult = 0.5
   if (rank==0) then
     i = 0
-    PetscCallA(VecSetValues(xend,one,i,myResult,INSERT_VALUES,ierr))
+    PetscCallA(VecSetValues(xend,one,[i],[myResult],INSERT_VALUES,ierr))
   endif
 
   if (rank == size-1) then
     i    = N-1
-    PetscCallA(VecSetValues(xend,one,i,myResult,INSERT_VALUES,ierr))
+    PetscCallA(VecSetValues(xend,one,[i],[myResult],INSERT_VALUES,ierr))
   endif
 
   ! Assemble vector, using the 2-step process:

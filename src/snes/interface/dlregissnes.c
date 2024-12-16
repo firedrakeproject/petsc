@@ -1,5 +1,6 @@
 #include <petsc/private/snesimpl.h>
 #include <petsc/private/linesearchimpl.h>
+#include <petsc/private/dmadaptorimpl.h>
 
 static PetscBool SNESPackageInitialized = PETSC_FALSE;
 
@@ -45,9 +46,14 @@ PetscErrorCode SNESInitializePackage(void)
   PetscCall(PetscClassIdRegister("SNES", &SNES_CLASSID));
   PetscCall(PetscClassIdRegister("DMSNES", &DMSNES_CLASSID));
   PetscCall(PetscClassIdRegister("SNESLineSearch", &SNESLINESEARCH_CLASSID));
+  PetscCall(PetscClassIdRegister("DM Adaptor", &DMADAPTOR_CLASSID));
   /* Register Constructors */
   PetscCall(SNESRegisterAll());
   PetscCall(SNESLineSearchRegisterAll());
+  PetscCall(DMAdaptorRegisterAll());
+  PetscCall(PetscRegisterFinalize(DMAdaptorRegisterDestroy));
+  PetscCall(DMAdaptorMonitorRegisterAll());
+  PetscCall(PetscRegisterFinalize(DMAdaptorMonitorRegisterDestroy));
   /* Register Events */
   PetscCall(PetscLogEventRegister("SNESSolve", SNES_CLASSID, &SNES_Solve));
   PetscCall(PetscLogEventRegister("SNESSetUp", SNES_CLASSID, &SNES_SetUp));
@@ -55,6 +61,7 @@ PetscErrorCode SNESInitializePackage(void)
   PetscCall(PetscLogEventRegister("SNESObjectiveEval", SNES_CLASSID, &SNES_ObjectiveEval));
   PetscCall(PetscLogEventRegister("SNESNGSEval", SNES_CLASSID, &SNES_NGSEval));
   PetscCall(PetscLogEventRegister("SNESNGSFuncEval", SNES_CLASSID, &SNES_NGSFuncEval));
+  PetscCall(PetscLogEventRegister("SNESNewtonALEval", SNES_CLASSID, &SNES_NewtonALEval));
   PetscCall(PetscLogEventRegister("SNESJacobianEval", SNES_CLASSID, &SNES_JacobianEval));
   PetscCall(PetscLogEventRegister("SNESNPCSolve", SNES_CLASSID, &SNES_NPCSolve));
   PetscCall(PetscLogEventRegister("SNESLineSearch", SNESLINESEARCH_CLASSID, &SNESLINESEARCH_Apply));

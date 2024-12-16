@@ -50,7 +50,7 @@ PetscErrorCode ISDifference(IS is1, IS is2, IS *isout)
 
   /* Create a bit mask array to contain required values */
   if (n1) {
-    imin = PETSC_MAX_INT;
+    imin = PETSC_INT_MAX;
     imax = 0;
     for (i = 0; i < n1; i++) {
       if (i1[i] < 0) continue;
@@ -119,18 +119,14 @@ PetscErrorCode ISDifference(IS is1, IS is2, IS *isout)
 @*/
 PetscErrorCode ISSum(IS is1, IS is2, IS *is3)
 {
-  MPI_Comm        comm;
   PetscBool       f;
-  PetscMPIInt     size;
   const PetscInt *i1, *i2;
   PetscInt        n1, n2, n3, p1, p2, *iout;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(is1, IS_CLASSID, 1);
   PetscValidHeaderSpecific(is2, IS_CLASSID, 2);
-  PetscCall(PetscObjectGetComm((PetscObject)(is1), &comm));
-  PetscCallMPI(MPI_Comm_size(comm, &size));
-  PetscCheck(size <= 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "Currently only for uni-processor IS");
+  PetscCheckSameComm(is1, 1, is2, 2);
 
   PetscCall(ISSorted(is1, &f));
   PetscCheck(f, PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "Arg 1 is not sorted");
@@ -239,7 +235,7 @@ PetscErrorCode ISSum(IS is1, IS is2, IS *is3)
 
   PetscCall(ISRestoreIndices(is1, &i1));
   PetscCall(ISRestoreIndices(is2, &i2));
-  PetscCall(ISCreateGeneral(comm, n3, iout, PETSC_OWN_POINTER, is3));
+  PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)is1), n3, iout, PETSC_OWN_POINTER, is3));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -273,6 +269,7 @@ PetscErrorCode ISExpand(IS is1, IS is2, IS *isout)
 {
   PetscInt        i, n1, n2, imin, imax, nout, *iout;
   const PetscInt *i1, *i2;
+  PetscBool       sorted1 = PETSC_TRUE, sorted2 = PETSC_TRUE;
   PetscBT         mask;
   MPI_Comm        comm;
 
@@ -297,17 +294,27 @@ PetscErrorCode ISExpand(IS is1, IS is2, IS *isout)
 
   /* Create a bit mask array to contain required values */
   if (n1 || n2) {
-    imin = PETSC_MAX_INT;
+    imin = PETSC_INT_MAX;
     imax = 0;
-    for (i = 0; i < n1; i++) {
-      if (i1[i] < 0) continue;
-      imin = PetscMin(imin, i1[i]);
-      imax = PetscMax(imax, i1[i]);
+    if (n1) {
+      PetscCall(ISSorted(is1, &sorted1));
+      if (sorted1 && i1[0] >= 0) imin = i1[0], imax = i1[n1 - 1];
+      else
+        for (i = 0; i < n1; i++) {
+          if (i1[i] < 0) continue;
+          imin = PetscMin(imin, i1[i]);
+          imax = PetscMax(imax, i1[i]);
+        }
     }
-    for (i = 0; i < n2; i++) {
-      if (i2[i] < 0) continue;
-      imin = PetscMin(imin, i2[i]);
-      imax = PetscMax(imax, i2[i]);
+    if (n2) {
+      PetscCall(ISSorted(is2, &sorted2));
+      if (sorted2 && i2[0] >= 0) imin = PetscMin(imin, i2[0]), imax = PetscMax(imax, i2[n2 - 1]);
+      else
+        for (i = 0; i < n2; i++) {
+          if (i2[i] < 0) continue;
+          imin = PetscMin(imin, i2[i]);
+          imax = PetscMax(imax, i2[i]);
+        }
     }
   } else imin = imax = 0;
 
@@ -319,6 +326,7 @@ PetscErrorCode ISExpand(IS is1, IS is2, IS *isout)
     if (i1[i] < 0) continue;
     if (!PetscBTLookupSet(mask, i1[i] - imin)) iout[nout++] = i1[i];
   }
+  n1 = -nout;
   PetscCall(ISRestoreIndices(is1, &i1));
   /* Put the values from is2 */
   for (i = 0; i < n2; i++) {
@@ -330,7 +338,8 @@ PetscErrorCode ISExpand(IS is1, IS is2, IS *isout)
   /* create the new IS containing the sum */
   PetscCall(PetscObjectGetComm((PetscObject)is1, &comm));
   PetscCall(ISCreateGeneral(comm, nout, iout, PETSC_OWN_POINTER, isout));
-
+  /* no entries of is2 (resp. is1) was inserted, so if is1 (resp. is2) is sorted, then so is isout */
+  if ((-n1 == nout && sorted1) || (n1 == 0 && sorted2)) PetscCall(ISSetInfo(*isout, IS_SORTED, IS_LOCAL, PETSC_FALSE, PETSC_TRUE));
   PetscCall(PetscBTDestroy(&mask));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -386,7 +395,7 @@ PetscErrorCode ISIntersect(IS is1, IS is2, IS *isout)
     n2  = ntemp;
   }
   PetscCall(ISSorted(is1, &lsorted));
-  PetscCall(MPIU_Allreduce(&lsorted, &sorted, 1, MPIU_BOOL, MPI_LAND, comm));
+  PetscCallMPI(MPIU_Allreduce(&lsorted, &sorted, 1, MPIU_BOOL, MPI_LAND, comm));
   if (!sorted) {
     PetscCall(ISDuplicate(is1, &is1sorted));
     PetscCall(ISSort(is1sorted));
@@ -397,7 +406,7 @@ PetscErrorCode ISIntersect(IS is1, IS is2, IS *isout)
     PetscCall(ISGetIndices(is1, &i1));
   }
   PetscCall(ISSorted(is2, &lsorted));
-  PetscCall(MPIU_Allreduce(&lsorted, &sorted, 1, MPIU_BOOL, MPI_LAND, comm));
+  PetscCallMPI(MPIU_Allreduce(&lsorted, &sorted, 1, MPIU_BOOL, MPI_LAND, comm));
   if (!sorted) {
     PetscCall(ISDuplicate(is2, &is2sorted));
     PetscCall(ISSort(is2sorted));
@@ -423,7 +432,7 @@ PetscErrorCode ISIntersect(IS is1, IS is2, IS *isout)
 
   /* create the new IS containing the sum */
   PetscCall(ISCreateGeneral(comm, nout, iout, PETSC_OWN_POINTER, isout));
-
+  PetscCall(ISSetInfo(*isout, IS_SORTED, IS_GLOBAL, PETSC_FALSE, PETSC_TRUE));
   PetscCall(ISRestoreIndices(is2sorted, &i2));
   PetscCall(ISDestroy(&is2sorted));
   PetscCall(ISRestoreIndices(is1sorted, &i1));
@@ -516,7 +525,7 @@ PetscErrorCode ISConcatenate(MPI_Comm comm, PetscInt len, const IS islist[], IS 
 
 /*@
   ISListToPair  - Convert an `IS` list to a pair of `IS` of equal length defining an equivalent integer multimap.
-  Each `IS` on the input list is assigned an integer j so that all of the indices of that `IS` are
+  Each `IS` in `islist` is assigned an integer j so that all of the indices of that `IS` are
   mapped to j.
 
   Collective
@@ -533,11 +542,11 @@ PetscErrorCode ISConcatenate(MPI_Comm comm, PetscInt len, const IS islist[], IS 
   Level: developer
 
   Notes:
-  The global integers assigned to the `IS` of the local input list might not correspond to the
+  The global integers assigned to the `IS` of `islist` might not correspond to the
   local numbers of the `IS` on that list, but the two *orderings* are the same: the global
   integers assigned to the `IS` on the local list form a strictly increasing sequence.
 
-  The `IS` on the input list can belong to subcommunicators of comm, and the subcommunicators
+  The `IS` in `islist` can belong to subcommunicators of `comm`, and the subcommunicators
   on the input `IS` list are assumed to be in a "deadlock-free" order.
 
   Local lists of `PetscObject`s (or their subcomms) on a comm are "deadlock-free" if subcomm1
@@ -549,24 +558,24 @@ PetscErrorCode ISConcatenate(MPI_Comm comm, PetscInt len, const IS islist[], IS 
 @*/
 PetscErrorCode ISListToPair(MPI_Comm comm, PetscInt listlen, IS islist[], IS *xis, IS *yis)
 {
-  PetscInt        ncolors, *colors, i, leni, len, *xinds, *yinds, k, j;
+  PetscInt        ncolors, *colors, leni, len, *xinds, *yinds, k;
   const PetscInt *indsi;
 
   PetscFunctionBegin;
   PetscCall(PetscMalloc1(listlen, &colors));
   PetscCall(PetscObjectsListGetGlobalNumbering(comm, listlen, (PetscObject *)islist, &ncolors, colors));
   len = 0;
-  for (i = 0; i < listlen; ++i) {
+  for (PetscInt i = 0; i < listlen; ++i) {
     PetscCall(ISGetLocalSize(islist[i], &leni));
     len += leni;
   }
   PetscCall(PetscMalloc1(len, &xinds));
   PetscCall(PetscMalloc1(len, &yinds));
   k = 0;
-  for (i = 0; i < listlen; ++i) {
+  for (PetscInt i = 0; i < listlen; ++i) {
     PetscCall(ISGetLocalSize(islist[i], &leni));
     PetscCall(ISGetIndices(islist[i], &indsi));
-    for (j = 0; j < leni; ++j) {
+    for (PetscInt j = 0; j < leni; ++j) {
       xinds[k] = indsi[j];
       yinds[k] = colors[i];
       ++k;
@@ -578,24 +587,24 @@ PetscErrorCode ISListToPair(MPI_Comm comm, PetscInt listlen, IS islist[], IS *xi
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@
+/*@C
   ISPairToList - Convert an `IS` pair encoding an integer map to a list of `IS`.
 
   Collective
 
   Input Parameters:
 + xis - domain `IS`
-- yis - range `IS`
+- yis - range `IS`, the maximum value must be less than `PETSC_MPI_INT_MAX`
 
   Output Parameters:
 + listlen - length of `islist`
-- islist  - list of `IS`s breaking up indis by color
+- islist  - list of `IS`s breaking up indices by color
 
   Level: developer
 
   Notes:
-  Each `IS` on the output list contains the preimage for each index on the second input
-  `IS`. The `IS` on the output list are constructed on the subcommunicators of the input `IS`
+  Each `IS` in `islist` contains the preimage for each index on `yis`.
+  The `IS` in `islist` are constructed on the subcommunicators of the input `IS`
   pair. Each subcommunicator corresponds to the preimage of some index j -- this subcomm
   contains exactly the MPI processes that assign some indices i to j.  This is essentially the inverse
   of `ISListToPair()`.
@@ -641,12 +650,12 @@ PetscErrorCode ISPairToList(IS xis, IS yis, PetscInt *listlen, IS **islist)
   while (lstart < llen) {
     lend = lstart + 1;
     while (lend < llen && colors[lend] == colors[lstart]) ++lend;
-    llow  = PetscMin(llow, colors[lstart]);
-    lhigh = PetscMax(lhigh, colors[lstart]);
+    PetscCall(PetscMPIIntCast(PetscMin(llow, colors[lstart]), &llow));
+    PetscCall(PetscMPIIntCast(PetscMax(lhigh, colors[lstart]), &lhigh));
     ++lcount;
   }
-  PetscCall(MPIU_Allreduce(&llow, &low, 1, MPI_INT, MPI_MIN, comm));
-  PetscCall(MPIU_Allreduce(&lhigh, &high, 1, MPI_INT, MPI_MAX, comm));
+  PetscCallMPI(MPIU_Allreduce(&llow, &low, 1, MPI_INT, MPI_MIN, comm));
+  PetscCallMPI(MPIU_Allreduce(&lhigh, &high, 1, MPI_INT, MPI_MAX, comm));
   *listlen = 0;
   if (low <= high) {
     if (lcount > 0) {
@@ -677,7 +686,7 @@ PetscErrorCode ISPairToList(IS xis, IS yis, PetscInt *listlen, IS **islist)
       }
       color = (PetscMPIInt)(colors[lstart] == l);
       /* Check whether a proper subcommunicator exists. */
-      PetscCall(MPIU_Allreduce(&color, &subsize, 1, MPI_INT, MPI_SUM, comm));
+      PetscCallMPI(MPIU_Allreduce(&color, &subsize, 1, MPI_INT, MPI_SUM, comm));
 
       if (subsize == 1) subcomm = PETSC_COMM_SELF;
       else if (subsize == size) subcomm = comm;

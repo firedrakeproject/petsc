@@ -124,7 +124,6 @@ PETSC_INTERN PetscErrorCode PetscOptionsInsertStringYAML_Private(PetscOptions, c
 static PetscErrorCode PetscOptionsMonitor(PetscOptions options, const char name[], const char value[], PetscOptionSource source)
 {
   PetscFunctionBegin;
-  if (!value) value = "";
   if (options->monitorFromOptions) PetscCall(PetscOptionsMonitorDefault(name, value, source, NULL));
   for (PetscInt i = 0; i < options->numbermonitors; i++) PetscCall((*options->monitor[i])(name, value, source, options->monitorcontext[i]));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -283,7 +282,8 @@ PetscErrorCode PetscOptionsDestroyDefault(void)
 @*/
 PetscErrorCode PetscOptionsValidKey(const char key[], PetscBool *valid)
 {
-  char *ptr;
+  char               *ptr;
+  PETSC_UNUSED double d;
 
   PetscFunctionBegin;
   if (key) PetscAssertPointer(key, 1);
@@ -293,7 +293,7 @@ PetscErrorCode PetscOptionsValidKey(const char key[], PetscBool *valid)
   if (key[0] != '-') PetscFunctionReturn(PETSC_SUCCESS);
   if (key[1] == '-') key++;
   if (!isalpha((int)key[1])) PetscFunctionReturn(PETSC_SUCCESS);
-  (void)strtod(key, &ptr);
+  d = strtod(key, &ptr);
   if (ptr != key && !(*ptr == '_' || isalnum((int)*ptr))) PetscFunctionReturn(PETSC_SUCCESS);
   *valid = PETSC_TRUE;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -353,7 +353,7 @@ static PetscErrorCode PetscOptionsInsertString_Private(PetscOptions options, con
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsInsertString - Inserts options into the database from a string
 
   Logically Collective
@@ -451,7 +451,8 @@ static PetscErrorCode PetscOptionsInsertFilePetsc(MPI_Comm comm, PetscOptions op
 {
   char       *string, *vstring = NULL, *astring = NULL, *packed = NULL;
   char       *tokens[4];
-  size_t      i, len, bytes;
+  PetscCount  bytes;
+  size_t      len;
   FILE       *fd;
   PetscToken  token = NULL;
   int         err;
@@ -488,7 +489,7 @@ static PetscErrorCode PetscOptionsInsertFilePetsc(MPI_Comm comm, PetscOptions op
         if (cmatch) *cmatch = 0;
         PetscCall(PetscStrlen(string, &len));
         /* replace tabs, ^M, \n with " " */
-        for (i = 0; i < len; i++) {
+        for (size_t i = 0; i < len; i++) {
           if (string[i] == '\t' || string[i] == '\r' || string[i] == '\n') string[i] = ' ';
         }
         PetscCall(PetscTokenCreate(string, ' ', &token));
@@ -498,7 +499,7 @@ static PetscErrorCode PetscOptionsInsertFilePetsc(MPI_Comm comm, PetscOptions op
         } else if (!tokens[0][0]) { /* if token 0 is empty (string begins with spaces), redo */
           PetscCall(PetscTokenFind(token, &tokens[0]));
         }
-        for (i = 1; i < 4; i++) PetscCall(PetscTokenFind(token, &tokens[i]));
+        for (PetscInt i = 1; i < 4; i++) PetscCall(PetscTokenFind(token, &tokens[i]));
         if (!tokens[0]) {
           goto destroy;
         } else if (tokens[0][0] == '-') {
@@ -594,7 +595,7 @@ static PetscErrorCode PetscOptionsInsertFilePetsc(MPI_Comm comm, PetscOptions op
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsInsertFile - Inserts options into the database from a file.
 
   Collective
@@ -837,6 +838,8 @@ PetscErrorCode PetscOptionsInsert(PetscOptions options, int *argc, char ***args,
   PetscMPIInt rank;
   PetscBool   hasArgs     = (argc && *argc) ? PETSC_TRUE : PETSC_FALSE;
   PetscBool   skipPetscrc = PETSC_FALSE, skipPetscrcSet = PETSC_FALSE;
+  char       *eoptions = NULL;
+  size_t      len      = 0;
 
   PetscFunctionBegin;
   PetscCheck(!hasArgs || (args && *args), comm, PETSC_ERR_ARG_NULL, "*argc > 1 but *args not given");
@@ -858,6 +861,7 @@ PetscErrorCode PetscOptionsInsert(PetscOptions options, int *argc, char ***args,
   }
   if (!skipPetscrc) {
     char filename[PETSC_MAX_PATH_LEN];
+
     PetscCall(PetscGetHomeDirectory(filename, sizeof(filename)));
     PetscCallMPI(MPI_Bcast(filename, (int)sizeof(filename), MPI_CHAR, 0, comm));
     if (filename[0]) PetscCall(PetscStrlcat(filename, "/.petscrc", sizeof(filename)));
@@ -867,39 +871,31 @@ PetscErrorCode PetscOptionsInsert(PetscOptions options, int *argc, char ***args,
   }
 
   /* insert environment options */
-  {
-    char  *eoptions = NULL;
-    size_t len      = 0;
-    if (rank == 0) {
-      eoptions = (char *)getenv("PETSC_OPTIONS");
-      PetscCall(PetscStrlen(eoptions, &len));
-    }
-    PetscCallMPI(MPI_Bcast(&len, 1, MPIU_SIZE_T, 0, comm));
-    if (len) {
-      if (rank) PetscCall(PetscMalloc1(len + 1, &eoptions));
-      PetscCallMPI(MPI_Bcast(eoptions, len, MPI_CHAR, 0, comm));
-      if (rank) eoptions[len] = 0;
-      PetscCall(PetscOptionsInsertString_Private(options, eoptions, PETSC_OPT_ENVIRONMENT));
-      if (rank) PetscCall(PetscFree(eoptions));
-    }
+  if (rank == 0) {
+    eoptions = (char *)getenv("PETSC_OPTIONS");
+    PetscCall(PetscStrlen(eoptions, &len));
+  }
+  PetscCallMPI(MPI_Bcast(&len, 1, MPIU_SIZE_T, 0, comm));
+  if (len) {
+    if (rank) PetscCall(PetscMalloc1(len + 1, &eoptions));
+    PetscCallMPI(MPI_Bcast(eoptions, (PetscMPIInt)len, MPI_CHAR, 0, comm));
+    if (rank) eoptions[len] = 0;
+    PetscCall(PetscOptionsInsertString_Private(options, eoptions, PETSC_OPT_ENVIRONMENT));
+    if (rank) PetscCall(PetscFree(eoptions));
   }
 
   /* insert YAML environment options */
-  {
-    char  *eoptions = NULL;
-    size_t len      = 0;
-    if (rank == 0) {
-      eoptions = (char *)getenv("PETSC_OPTIONS_YAML");
-      PetscCall(PetscStrlen(eoptions, &len));
-    }
-    PetscCallMPI(MPI_Bcast(&len, 1, MPIU_SIZE_T, 0, comm));
-    if (len) {
-      if (rank) PetscCall(PetscMalloc1(len + 1, &eoptions));
-      PetscCallMPI(MPI_Bcast(eoptions, len, MPI_CHAR, 0, comm));
-      if (rank) eoptions[len] = 0;
-      PetscCall(PetscOptionsInsertStringYAML_Private(options, eoptions, PETSC_OPT_ENVIRONMENT));
-      if (rank) PetscCall(PetscFree(eoptions));
-    }
+  if (rank == 0) {
+    eoptions = (char *)getenv("PETSC_OPTIONS_YAML");
+    PetscCall(PetscStrlen(eoptions, &len));
+  }
+  PetscCallMPI(MPI_Bcast(&len, 1, MPIU_SIZE_T, 0, comm));
+  if (len) {
+    if (rank) PetscCall(PetscMalloc1(len + 1, &eoptions));
+    PetscCallMPI(MPI_Bcast(eoptions, (PetscMPIInt)len, MPI_CHAR, 0, comm));
+    if (rank) eoptions[len] = 0;
+    PetscCall(PetscOptionsInsertStringYAML_Private(options, eoptions, PETSC_OPT_ENVIRONMENT));
+    if (rank) PetscCall(PetscFree(eoptions));
   }
 
   /* insert command line options here because they take precedence over arguments in petscrc/environment */
@@ -922,11 +918,11 @@ static PetscBool PetscCIOption(const char *name)
   return found;
 }
 
-/*@C
+/*@
   PetscOptionsView - Prints the options that have been loaded. This is
   useful for debugging purposes.
 
-  Logically Collective
+  Logically Collective, No Fortran Support
 
   Input Parameters:
 + options - options database, use `NULL` for default global database
@@ -1031,7 +1027,7 @@ PETSC_EXTERN PetscErrorCode PetscOptionsViewError(void)
   return PETSC_SUCCESS;
 }
 
-/*@C
+/*@
   PetscOptionsPrefixPush - Designate a prefix to be used by all options insertions to follow.
 
   Logically Collective
@@ -1080,11 +1076,11 @@ PetscErrorCode PetscOptionsPrefixPush(PetscOptions options, const char prefix[])
   PetscCall(PetscStrlen(prefix, &n));
   PetscCheck(n + 1 <= sizeof(options->prefix) - start, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Maximum prefix length %zu exceeded", sizeof(options->prefix));
   PetscCall(PetscArraycpy(options->prefix + start, prefix, n + 1));
-  options->prefixstack[options->prefixind++] = start + n;
+  options->prefixstack[options->prefixind++] = (int)(start + n);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsPrefixPop - Remove the latest options prefix, see `PetscOptionsPrefixPush()` for details
 
   Logically Collective on the `MPI_Comm` used when called `PetscOptionsPrefixPush()`
@@ -1109,7 +1105,7 @@ PetscErrorCode PetscOptionsPrefixPop(PetscOptions options)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsClear - Removes all options form the database leaving it empty.
 
   Logically Collective
@@ -1124,6 +1120,9 @@ PetscErrorCode PetscOptionsPrefixPop(PetscOptions options)
   have the affect of these options. If some processes that create objects call this routine and others do
   not the code may fail in complicated ways because the same parallel solvers may incorrectly use different options
   on different ranks.
+
+  Developer Note:
+  Uses `free()` directly because the current option values were set with `malloc()`
 
 .seealso: `PetscOptionsInsert()`
 @*/
@@ -1171,7 +1170,7 @@ PetscErrorCode PetscOptionsClear(PetscOptions options)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsSetAlias - Makes a key and alias for another key
 
   Logically Collective
@@ -1189,7 +1188,10 @@ PetscErrorCode PetscOptionsClear(PetscOptions options)
   not the code may fail in complicated ways because the same parallel solvers may incorrectly use different options
   on different ranks.
 
-.seealso: `PetscOptionsGetInt()`, `PetscOptionsGetReal()`, `OptionsHasName()`,
+  Developer Note:
+  Uses `malloc()` directly because PETSc may not be initialized yet.
+
+.seealso: `PetscOptionsGetInt()`, `PetscOptionsGetReal()`, `PetscOptionsHasName()`,
           `PetscOptionsGetString()`, `PetscOptionsGetIntArray()`, `PetscOptionsGetRealArray()`, `PetscOptionsBool()`,
           `PetscOptionsName()`, `PetscOptionsBegin()`, `PetscOptionsEnd()`, `PetscOptionsHeadBegin()`,
           `PetscOptionsStringArray()`, `PetscOptionsRealArray()`, `PetscOptionsScalar()`,
@@ -1237,7 +1239,7 @@ PetscErrorCode PetscOptionsSetAlias(PetscOptions options, const char newname[], 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsSetValue - Sets an option name-value pair in the options
   database, overriding whatever is already present.
 
@@ -1258,8 +1260,8 @@ PetscErrorCode PetscOptionsSetAlias(PetscOptions options, const char newname[], 
   not the code may fail in complicated ways because the same parallel solvers may incorrectly use different options
   on different ranks.
 
-  Developer Notes:
-  Uses malloc() directly because PETSc may not be initialized yet.
+  Developer Note:
+  Uses `malloc()` directly because PETSc may not be initialized yet.
 
 .seealso: `PetscOptionsInsert()`, `PetscOptionsClearValue()`
 @*/
@@ -1377,6 +1379,7 @@ setvalue:
     options->values[n] = (char *)malloc((len + 1) * sizeof(char));
     if (!options->values[n]) return PETSC_ERR_MEM;
     strcpy(options->values[n], value);
+    options->values[n][len] = '\0';
   } else {
     options->values[n] = NULL;
   }
@@ -1389,12 +1392,12 @@ setvalue:
     options->used[n]    = PETSC_TRUE;
   }
 
-  PetscCall(PetscOptionsMonitor(options, name, value, source));
+  PetscCall(PetscOptionsMonitor(options, name, value ? value : "", source));
   if (pos) *pos = n;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsClearValue - Clears an option name-value pair in the options
   database, overriding whatever is already present.
 
@@ -1411,6 +1414,9 @@ setvalue:
   have the affect of these options. If some processes that create objects call this routine and others do
   not the code may fail in complicated ways because the same parallel solvers may incorrectly use different options
   on different ranks.
+
+  Developer Note:
+  Uses `free()` directly because the options have been set with `malloc()`
 
 .seealso: `PetscOptionsInsert()`
 @*/
@@ -1676,7 +1682,7 @@ PETSC_EXTERN PetscErrorCode PetscOptionsFindPairPrefix_Private(PetscOptions opti
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsReject - Generates an error if a certain option is given.
 
   Not Collective
@@ -1689,7 +1695,7 @@ PETSC_EXTERN PetscErrorCode PetscOptionsFindPairPrefix_Private(PetscOptions opti
 
   Level: advanced
 
-.seealso: `PetscOptionsGetInt()`, `PetscOptionsGetReal()`, `OptionsHasName()`,
+.seealso: `PetscOptionsGetInt()`, `PetscOptionsGetReal()`, `PetscOptionsHasName()`,
           `PetscOptionsGetString()`, `PetscOptionsGetIntArray()`, `PetscOptionsGetRealArray()`, `PetscOptionsBool()`,
           `PetscOptionsName()`, `PetscOptionsBegin()`, `PetscOptionsEnd()`, `PetscOptionsHeadBegin()`,
           `PetscOptionsStringArray()`, `PetscOptionsRealArray()`, `PetscOptionsScalar()`,
@@ -1709,7 +1715,7 @@ PetscErrorCode PetscOptionsReject(PetscOptions options, const char pre[], const 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsHasHelp - Determines whether the "-help" option is in the database.
 
   Not Collective
@@ -1742,7 +1748,7 @@ PetscErrorCode PetscOptionsHasHelpIntro_Internal(PetscOptions options, PetscBool
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsHasName - Determines whether a certain option is given in the database. This returns true whether the option is a number, string or Boolean, even
   if its value is set to false.
 
@@ -1832,7 +1838,7 @@ PetscErrorCode PetscOptionsGetAll(PetscOptions options, char *copts[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscOptionsUsed - Indicates if PETSc has used a particular option set in the database
 
   Not Collective
@@ -2108,21 +2114,26 @@ PetscErrorCode PetscOptionsMonitorDefault(const char name[], const char value[],
 
   Calling sequence of `monitor`:
 + name   - option name string
-. value  - option value string
+. value  - option value string, a value of `NULL` indicates the option is being removed from the database. A value
+           of "" indicates the option is in the database but has no value.
 . source - option source
 - mctx   - optional monitoring context, as set by `PetscOptionsMonitorSet()`
 
   Calling sequence of `monitordestroy`:
 . mctx - [optional] pointer to context to destroy with
 
+  Options Database Keys:
++ -options_monitor <viewer> - turn on default monitoring
+- -options_monitor_cancel   - turn off any option monitors except the default monitor obtained with `-options_monitor`
+
   Level: intermediate
 
   Notes:
   See `PetscInitialize()` for options related to option database monitoring.
 
-  The default is to do nothing.  To print the name and value of options
+  The default is to do no monitoring.  To print the name and value of options
   being inserted into the database, use `PetscOptionsMonitorDefault()` as the monitoring routine,
-  with a null monitoring context.
+  with a `NULL` monitoring context. Or use the option `-options_monitor` <viewer>.
 
   Several different monitoring routines may be set by calling
   `PetscOptionsMonitorSet()` multiple times; all will be called in the
@@ -2208,7 +2219,7 @@ PetscErrorCode PetscOptionsStringToBool(const char value[], PetscBool *a)
 PetscErrorCode PetscOptionsStringToInt(const char name[], PetscInt *a)
 {
   size_t    len;
-  PetscBool decide, tdefault, mouse;
+  PetscBool decide, tdefault, mouse, unlimited;
 
   PetscFunctionBegin;
   PetscCall(PetscStrlen(name, &len));
@@ -2218,10 +2229,15 @@ PetscErrorCode PetscOptionsStringToInt(const char name[], PetscInt *a)
   if (!tdefault) PetscCall(PetscStrcasecmp(name, "DEFAULT", &tdefault));
   PetscCall(PetscStrcasecmp(name, "PETSC_DECIDE", &decide));
   if (!decide) PetscCall(PetscStrcasecmp(name, "DECIDE", &decide));
+  if (!decide) PetscCall(PetscStrcasecmp(name, "PETSC_DETERMINE", &decide));
+  if (!decide) PetscCall(PetscStrcasecmp(name, "DETERMINE", &decide));
+  PetscCall(PetscStrcasecmp(name, "PETSC_UNLIMITED", &unlimited));
+  if (!unlimited) PetscCall(PetscStrcasecmp(name, "UNLIMITED", &unlimited));
   PetscCall(PetscStrcasecmp(name, "mouse", &mouse));
 
   if (tdefault) *a = PETSC_DEFAULT;
   else if (decide) *a = PETSC_DECIDE;
+  else if (unlimited) *a = PETSC_UNLIMITED;
   else if (mouse) *a = -1;
   else {
     char *endptr;
@@ -2322,6 +2338,20 @@ PetscErrorCode PetscOptionsStringToReal(const char name[], PetscReal *a)
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
+  PetscCall(PetscStrcasecmp(name, "PETSC_DETERMINE", &match));
+  if (!match) PetscCall(PetscStrcasecmp(name, "DETERMINE", &match));
+  if (match) {
+    *a = PETSC_DETERMINE;
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+
+  PetscCall(PetscStrcasecmp(name, "PETSC_UNLIMITED", &match));
+  if (!match) PetscCall(PetscStrcasecmp(name, "UNLIMITED", &match));
+  if (match) {
+    *a = PETSC_UNLIMITED;
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+
   PetscCall(PetscStrtod(name, a, &endptr));
   PetscCheck((size_t)(endptr - name) == len, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Input string %s has no numeric value", name);
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -2371,8 +2401,8 @@ PetscErrorCode PetscOptionsStringToScalar(const char name[], PetscScalar *a)
   Level: beginner
 
   Notes:
-  TRUE, true, YES, yes, nostring, and 1 all translate to `PETSC_TRUE`
-  FALSE, false, NO, no, and 0 all translate to `PETSC_FALSE`
+  TRUE, true, YES, yes, ON, on, nostring, and 1 all translate to `PETSC_TRUE`
+  FALSE, false, NO, no, OFF, off and 0 all translate to `PETSC_FALSE`
 
   If the option is given, but no value is provided, then `ivalue` and `set` are both given the value `PETSC_TRUE`. That is `-requested_bool`
   is equivalent to `-requested_bool true`
@@ -2380,7 +2410,7 @@ PetscErrorCode PetscOptionsStringToScalar(const char name[], PetscScalar *a)
   If the user does not supply the option at all `ivalue` is NOT changed. Thus
   you should ALWAYS initialize `ivalue` if you access it without first checking that the `set` flag is true.
 
-.seealso: `PetscOptionsGetReal()`, `PetscOptionsHasName()`, `PetscOptionsGetString()`,
+.seealso: `PetscOptionsGetBool3()`, `PetscOptionsGetReal()`, `PetscOptionsHasName()`, `PetscOptionsGetString()`,
           `PetscOptionsGetIntArray()`, `PetscOptionsGetRealArray()`, `PetscOptionsGetInt()`, `PetscOptionsBool()`,
           `PetscOptionsName()`, `PetscOptionsBegin()`, `PetscOptionsEnd()`, `PetscOptionsHeadBegin()`,
           `PetscOptionsStringArray()`, `PetscOptionsRealArray()`, `PetscOptionsScalar()`,
@@ -2400,6 +2430,68 @@ PetscErrorCode PetscOptionsGetBool(PetscOptions options, const char pre[], const
     if (set) *set = PETSC_TRUE;
     PetscCall(PetscOptionsStringToBool(value, &flag));
     if (ivalue) *ivalue = flag;
+  } else {
+    if (set) *set = PETSC_FALSE;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  PetscOptionsGetBool3 - Gets the ternary logical (true, false or unknown) value for a particular
+  option in the database.
+
+  Not Collective
+
+  Input Parameters:
++ options - options database, use `NULL` for default global database
+. pre     - the string to prepend to the name or `NULL`
+- name    - the option one is seeking
+
+  Output Parameters:
++ ivalue - the ternary logical value to return
+- set    - `PETSC_TRUE`  if found, else `PETSC_FALSE`
+
+  Level: beginner
+
+  Notes:
+  TRUE, true, YES, yes, ON, on, nostring and 1 all translate to `PETSC_BOOL3_TRUE`
+  FALSE, false, NO, no, OFF, off and 0 all translate to `PETSC_BOOL3_FALSE`
+  UNKNOWN, unknown, AUTO and auto all translate to `PETSC_BOOL3_UNKNOWN`
+
+  If the option is given, but no value is provided, then `ivalue` will be set to `PETSC_BOOL3_TRUE` and `set` will be set to `PETSC_TRUE`. That is `-requested_bool3`
+  is equivalent to `-requested_bool3 true`
+
+  If the user does not supply the option at all `ivalue` is NOT changed. Thus
+  you should ALWAYS initialize `ivalue` if you access it without first checking that the `set` flag is true.
+
+.seealso: `PetscOptionsGetBool()`, `PetscOptionsGetReal()`, `PetscOptionsHasName()`, `PetscOptionsGetString()`,
+          `PetscOptionsGetIntArray()`, `PetscOptionsGetRealArray()`, `PetscOptionsGetInt()`, `PetscOptionsBool()`,
+          `PetscOptionsName()`, `PetscOptionsBegin()`, `PetscOptionsEnd()`, `PetscOptionsHeadBegin()`,
+          `PetscOptionsStringArray()`, `PetscOptionsRealArray()`, `PetscOptionsScalar()`,
+          `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
+          `PetscOptionsFList()`, `PetscOptionsEList()`
+@*/
+PetscErrorCode PetscOptionsGetBool3(PetscOptions options, const char pre[], const char name[], PetscBool3 *ivalue, PetscBool *set)
+{
+  const char *value;
+  PetscBool   flag;
+
+  PetscFunctionBegin;
+  PetscAssertPointer(name, 3);
+  if (ivalue) PetscAssertPointer(ivalue, 4);
+  PetscCall(PetscOptionsFindPair(options, pre, name, &value, &flag));
+  if (flag) { // found the option
+    PetscBool isAUTO = PETSC_FALSE, isUNKNOWN = PETSC_FALSE;
+
+    if (set) *set = PETSC_TRUE;
+    PetscCall(PetscStrcasecmp("AUTO", value, &isAUTO));                    // auto or AUTO
+    if (!isAUTO) PetscCall(PetscStrcasecmp("UNKNOWN", value, &isUNKNOWN)); // unknown or UNKNOWN
+    if (isAUTO || isUNKNOWN) {
+      if (ivalue) *ivalue = PETSC_BOOL3_UNKNOWN;
+    } else { // handle boolean values (if no value is given, it returns true)
+      PetscCall(PetscOptionsStringToBool(value, &flag));
+      if (ivalue) *ivalue = PetscBoolToBool3(flag);
+    }
   } else {
     if (set) *set = PETSC_FALSE;
   }
@@ -2542,6 +2634,10 @@ PetscErrorCode PetscOptionsGetEnum(PetscOptions options, const char pre[], const
   If the user does not supply the option `ivalue` is NOT changed. Thus
   you should ALWAYS initialize the `ivalue` if you access it without first checking that the `set` flag is true.
 
+  Accepts the special values `determine`, `decide` and `unlimited`.
+
+  Accepts the deprecated value `default`.
+
 .seealso: `PetscOptionsGetReal()`, `PetscOptionsHasName()`, `PetscOptionsGetString()`,
           `PetscOptionsGetIntArray()`, `PetscOptionsGetRealArray()`, `PetscOptionsBool()`
           `PetscOptionsInt()`, `PetscOptionsString()`, `PetscOptionsReal()`,
@@ -2573,6 +2669,50 @@ PetscErrorCode PetscOptionsGetInt(PetscOptions options, const char pre[], const 
 }
 
 /*@C
+  PetscOptionsGetMPIInt - Gets the MPI integer value for a particular option in the database.
+
+  Not Collective
+
+  Input Parameters:
++ options - options database, use `NULL` for default global database
+. pre     - the string to prepend to the name or `NULL`
+- name    - the option one is seeking
+
+  Output Parameters:
++ ivalue - the MPI integer value to return
+- set    - `PETSC_TRUE` if found, else `PETSC_FALSE`
+
+  Level: beginner
+
+  Notes:
+  If the user does not supply the option `ivalue` is NOT changed. Thus
+  you should ALWAYS initialize the `ivalue` if you access it without first checking that the `set` flag is true.
+
+  Accepts the special values `determine`, `decide` and `unlimited`.
+
+  Accepts the deprecated value `default`.
+
+.seealso: `PetscOptionsGetReal()`, `PetscOptionsHasName()`, `PetscOptionsGetString()`,
+          `PetscOptionsGetIntArray()`, `PetscOptionsGetRealArray()`, `PetscOptionsBool()`
+          `PetscOptionsInt()`, `PetscOptionsString()`, `PetscOptionsReal()`,
+          `PetscOptionsName()`, `PetscOptionsBegin()`, `PetscOptionsEnd()`, `PetscOptionsHeadBegin()`,
+          `PetscOptionsStringArray()`, `PetscOptionsRealArray()`, `PetscOptionsScalar()`,
+          `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
+          `PetscOptionsFList()`, `PetscOptionsEList()`
+@*/
+PetscErrorCode PetscOptionsGetMPIInt(PetscOptions options, const char pre[], const char name[], PetscMPIInt *ivalue, PetscBool *set)
+{
+  PetscInt  value;
+  PetscBool flag;
+
+  PetscFunctionBegin;
+  PetscCall(PetscOptionsGetInt(options, pre, name, &value, &flag));
+  if (flag) PetscCall(PetscMPIIntCast(value, ivalue));
+  if (set) *set = flag;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
   PetscOptionsGetReal - Gets the double precision value for a particular
   option in the database.
 
@@ -2589,7 +2729,11 @@ PetscErrorCode PetscOptionsGetInt(PetscOptions options, const char pre[], const 
 
   Level: beginner
 
-  Note:
+  Notes:
+  Accepts the special values `determine`, `decide` and `unlimited`.
+
+  Accepts the deprecated value `default`
+
   If the user does not supply the option `dvalue` is NOT changed. Thus
   you should ALWAYS initialize `dvalue` if you access it without first checking that the `set` flag is true.
 

@@ -14,7 +14,7 @@ static PetscErrorCode SNESComputeMFFunctionCtx(void *snes, Vec x, Vec f, void *c
   return SNESComputeMFFunction((SNES)snes, x, f);
 }
 
-/*@C
+/*@
   SNESComputeJacobianDefaultColor - Computes the Jacobian using
   finite differences and coloring to exploit matrix sparsity.
 
@@ -90,9 +90,9 @@ PetscErrorCode SNESComputeJacobianDefaultColor(SNES snes, Vec x1, Mat J, Mat B, 
     PetscCall(MatFDColoringCreate(B, iscoloring, &color));
     PetscCall(DMGetDMSNES(dm, &dms));
     if (dms->ops->computemffunction) {
-      PetscCall(MatFDColoringSetFunction(color, (PetscErrorCode(*)(void))SNESComputeMFFunctionCtx, NULL));
+      PetscCall(MatFDColoringSetFunction(color, (PetscErrorCode (*)(void))SNESComputeMFFunctionCtx, NULL));
     } else {
-      PetscCall(MatFDColoringSetFunction(color, (PetscErrorCode(*)(void))SNESComputeFunctionCtx, NULL));
+      PetscCall(MatFDColoringSetFunction(color, (PetscErrorCode (*)(void))SNESComputeFunctionCtx, NULL));
     }
     PetscCall(MatFDColoringSetFromOptions(color));
     PetscCall(MatFDColoringSetUp(B, iscoloring, color));
@@ -116,7 +116,7 @@ PetscErrorCode SNESComputeJacobianDefaultColor(SNES snes, Vec x1, Mat J, Mat B, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   SNESPruneJacobianColor - Remove nondiagonal zeros in the Jacobian matrix and update the `MatMFFD` coloring information based on the new nonzero structure
 
   Collective
@@ -165,7 +165,7 @@ PetscErrorCode SNESPruneJacobianColor(SNES snes, Mat J, Mat B)
   //if (dms->ops->computemffunction) {
   //  PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode(*)(void))SNESComputeMFFunctionCtx, NULL));
   //} else {
-  PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode(*)(void))SNESComputeFunctionCtx, NULL));
+  PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode (*)(void))SNESComputeFunctionCtx, NULL));
   //}
   PetscCall(MatFDColoringSetFromOptions(matfdcoloring));
   PetscCall(MatFDColoringSetUp(B, iscoloring, matfdcoloring));

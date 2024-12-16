@@ -23,7 +23,7 @@ PetscFunctionList KSPMonitorCreateList        = NULL;
 PetscFunctionList KSPMonitorDestroyList       = NULL;
 PetscBool         KSPMonitorRegisterAllCalled = PETSC_FALSE;
 
-/*@C
+/*@
   KSPLoad - Loads a `KSP` that has been stored in a `PETSCVIEWERBINARY`  with `KSPView()`.
 
   Collective
@@ -67,7 +67,7 @@ PetscErrorCode KSPLoad(KSP newdm, PetscViewer viewer)
 #if defined(PETSC_HAVE_SAWS)
   #include <petscviewersaws.h>
 #endif
-/*@C
+/*@
   KSPView - Prints the `KSP` data structure.
 
   Collective
@@ -212,7 +212,7 @@ PetscErrorCode KSPView(KSP ksp, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   KSPViewFromOptions - View a `KSP` object based on values in the options database
 
   Collective
@@ -546,7 +546,7 @@ PetscErrorCode KSPGetOperators(KSP ksp, Mat *Amat, Mat *Pmat)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   KSPGetOperatorsSet - Determines if the matrix associated with the linear system and
   possibly a different one associated with the preconditioner have been set in the `KSP`.
 
@@ -705,20 +705,15 @@ PetscErrorCode KSPCreate(MPI_Comm comm, KSP *inksp)
 
   PetscFunctionBegin;
   PetscAssertPointer(inksp, 2);
-  *inksp = NULL;
   PetscCall(KSPInitializePackage());
 
   PetscCall(PetscHeaderCreate(ksp, KSP_CLASSID, "KSP", "Krylov Method", "KSP", comm, KSPDestroy, KSPView));
-
-  ksp->max_it  = 10000;
+  ksp->default_max_it = ksp->max_it = 10000;
   ksp->pc_side = ksp->pc_side_set = PC_SIDE_DEFAULT;
-  ksp->rtol                       = 1.e-5;
-#if defined(PETSC_USE_REAL_SINGLE)
-  ksp->abstol = 1.e-25;
-#else
-  ksp->abstol = 1.e-50;
-#endif
-  ksp->divtol = 1.e4;
+
+  ksp->default_rtol = ksp->rtol = 1.e-5;
+  ksp->default_abstol = ksp->abstol = PetscDefined(USE_REAL_SINGLE) ? 1.e-25 : 1.e-50;
+  ksp->default_divtol = ksp->divtol = 1.e4;
 
   ksp->chknorm  = -1;
   ksp->normtype = ksp->normtype_set = KSP_NORM_DEFAULT;

@@ -2801,7 +2801,7 @@ static PetscErrorCode MatColoringPatch_SeqAIJ_Inode(Mat mat, PetscInt ncolors, P
   /* loop over inodes, marking a color for each column*/
   row = 0;
   for (i = 0; i < m; i++) {
-    for (j = 0; j < ns[i]; j++) newcolor[row++] = coloring[i] + j * ncolors;
+    for (j = 0; j < ns[i]; j++) PetscCall(ISColoringValueCast(coloring[i] + j * ncolors, newcolor + row++));
   }
 
   /* eliminate unneeded colors */
@@ -2810,7 +2810,7 @@ static PetscErrorCode MatColoringPatch_SeqAIJ_Inode(Mat mat, PetscInt ncolors, P
 
   for (i = 1; i < 5 * ncolors; i++) colorused[i] += colorused[i - 1];
   ncolors = colorused[5 * ncolors - 1];
-  for (i = 0; i < n; i++) newcolor[i] = colorused[newcolor[i]] - 1;
+  for (i = 0; i < n; i++) PetscCall(ISColoringValueCast(colorused[newcolor[i]] - 1, newcolor + i));
   PetscCall(PetscFree(colorused));
   PetscCall(ISColoringCreate(PetscObjectComm((PetscObject)mat), ncolors, n, newcolor, PETSC_OWN_POINTER, iscoloring));
   PetscCall(PetscFree(coloring));
@@ -4521,7 +4521,7 @@ PetscErrorCode MatInodeAdjustForInodes_SeqAIJ_Inode(Mat A, IS *rperm, IS *cperm)
   if (a->inode.node_count == m) PetscFunctionReturn(PETSC_SUCCESS); /* all inodes are of size 1 */
 
   PetscCall(MatCreateColInode_Private(A, &nslim_col, &ns_col));
-  PetscCall(PetscMalloc1(((nslim_row > nslim_col) ? nslim_row : nslim_col) + 1, &tns));
+  PetscCall(PetscMalloc1(((nslim_row > nslim_col ? nslim_row : nslim_col) + 1), &tns));
   PetscCall(PetscMalloc2(m, &permr, n, &permc));
 
   PetscCall(ISGetIndices(ris, &ridx));

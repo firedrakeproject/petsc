@@ -182,7 +182,7 @@ PetscErrorCode PetscLayoutCreateFromRanges(MPI_Comm comm, const PetscInt range[]
   map->N      = map->range[map->size];
   if (PetscDefined(USE_DEBUG)) { /* just check that n, N and bs are consistent */
     PetscInt tmp;
-    PetscCall(MPIU_Allreduce(&map->n, &tmp, 1, MPIU_INT, MPI_SUM, map->comm));
+    PetscCallMPI(MPIU_Allreduce(&map->n, &tmp, 1, MPIU_INT, MPI_SUM, map->comm));
     PetscCheck(tmp == map->N, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Sum of local lengths %" PetscInt_FMT " does not equal global length %" PetscInt_FMT ", my local length %" PetscInt_FMT ". The provided PetscLayout is wrong.", tmp, map->N, map->n);
     if (map->bs > 1) PetscCheck(map->n % map->bs == 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Local size %" PetscInt_FMT " must be divisible by blocksize %" PetscInt_FMT, map->n, map->bs);
     if (map->bs > 1) PetscCheck(map->N % map->bs == 0, map->comm, PETSC_ERR_PLIB, "Global size %" PetscInt_FMT " must be divisible by blocksize %" PetscInt_FMT, map->N, map->bs);
@@ -545,7 +545,8 @@ PetscErrorCode PetscLayoutGetRange(PetscLayout map, PetscInt *rstart, PetscInt *
 
   Output Parameter:
 . range - start of each processors range of indices (the final entry is one more than the
-             last index on the last process)
+          last index on the last process). The length of the array is one more than the number of processes in the MPI
+          communicator owned by `map`
 
   Level: developer
 
@@ -587,5 +588,74 @@ PetscErrorCode PetscLayoutCompare(PetscLayout mapa, PetscLayout mapb, PetscBool 
   PetscFunctionBegin;
   *congruent = PETSC_FALSE;
   if (mapa->N == mapb->N && mapa->range && mapb->range && mapa->size == mapb->size) PetscCall(PetscArraycmp(mapa->range, mapb->range, mapa->size + 1, congruent));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  PetscLayoutFindOwner - Find the owning MPI process for a global index
+
+  Not Collective; No Fortran Support
+
+  Input Parameters:
++ map - the layout
+- idx - global index to find the owner of
+
+  Output Parameter:
+. owner - the owning rank
+
+  Level: developer
+
+.seealso: `PetscLayout`, `PetscLayoutFindOwnerIndex()`
+@*/
+PetscErrorCode PetscLayoutFindOwner(PetscLayout map, PetscInt idx, PetscMPIInt *owner)
+{
+  PetscMPIInt lo = 0, hi, t;
+
+  PetscFunctionBegin;
+  *owner = -1; /* GCC erroneously issues warning about possibly uninitialized use when error condition */
+  PetscAssert((map->n >= 0) && (map->N >= 0) && (map->range), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "PetscLayoutSetUp() must be called first");
+  PetscAssert(idx >= 0 && idx <= map->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Index %" PetscInt_FMT " is out of range", idx);
+  hi = map->size;
+  while (hi - lo > 1) {
+    t = lo + (hi - lo) / 2;
+    if (idx < map->range[t]) hi = t;
+    else lo = t;
+  }
+  *owner = lo;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  PetscLayoutFindOwnerIndex - Find the owning MPI process and the local index on that process for a global index
+
+  Not Collective; No Fortran Support
+
+  Input Parameters:
++ map - the layout
+- idx - global index to find the owner of
+
+  Output Parameters:
++ owner - the owning rank
+- lidx  - local index used by the owner for `idx`
+
+  Level: developer
+
+.seealso: `PetscLayout`, `PetscLayoutFindOwner()`
+@*/
+PetscErrorCode PetscLayoutFindOwnerIndex(PetscLayout map, PetscInt idx, PetscMPIInt *owner, PetscInt *lidx)
+{
+  PetscMPIInt lo = 0, hi, t;
+
+  PetscFunctionBegin;
+  PetscAssert((map->n >= 0) && (map->N >= 0) && (map->range), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "PetscLayoutSetUp() must be called first");
+  PetscAssert(idx >= 0 && idx <= map->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Index %" PetscInt_FMT " is out of range", idx);
+  hi = map->size;
+  while (hi - lo > 1) {
+    t = lo + (hi - lo) / 2;
+    if (idx < map->range[t]) hi = t;
+    else lo = t;
+  }
+  if (owner) *owner = lo;
+  if (lidx) *lidx = idx - map->range[lo];
   PetscFunctionReturn(PETSC_SUCCESS);
 }

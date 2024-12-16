@@ -3,6 +3,7 @@
 from petsc4py import PETSc
 import unittest
 from sys import getrefcount
+import numpy as np
 
 # --------------------------------------------------------------------
 
@@ -23,6 +24,7 @@ class Jacobian:
         P.assemble()
         if J != P:
             J.assemble()
+
 
 
 # --------------------------------------------------------------------
@@ -53,6 +55,13 @@ class BaseTestSNES:
         tnames = ('rtol', 'atol', 'stol', 'max_it')
         tolvals = [getattr(self.snes, t) for t in tnames]
         self.assertEqual(tuple(tols), tuple(tolvals))
+        dtol = self.snes.getDivergenceTolerance()
+        self.assertTrue(dtol > 0)
+        self.snes.setDivergenceTolerance(PETSc.UNLIMITED)
+        dtol = self.snes.getDivergenceTolerance()
+        self.assertEqual(dtol, PETSc.UNLIMITED)
+        self.snes.setDivergenceTolerance(PETSc.CURRENT)
+        self.assertEqual(dtol, PETSc.UNLIMITED)
 
     def testProperties(self):
         snes = self.snes
@@ -98,6 +107,12 @@ class BaseTestSNES:
         self.assertFalse(snes.use_ew)
         self.assertFalse(snes.use_mf)
         self.assertFalse(snes.use_fd)
+        ouse = snes.use_ksp
+        self.assertEqual(ouse, snes.getUseKSP())
+        snes.use_ksp = not ouse
+        self.assertEqual(not ouse, snes.getUseKSP())
+        snes.setUseKSP(ouse)
+        self.assertEqual(ouse, snes.use_ksp)
 
     def testGetSetFunc(self):
         r, func = self.snes.getFunction()
@@ -205,11 +220,18 @@ class BaseTestSNES:
         b = PETSc.Vec().createSeq(2)
         self.snes.setFunction(Function(), r)
         self.snes.setJacobian(Jacobian(), J)
+
+        def _update(snes, it, cnt):
+             cnt += 1
+        cnt_up = np.array(0)
+        self.snes.setUpdate(_update, (cnt_up,) )
+
         x.setArray([2, 3])
         b.set(0)
         self.snes.setConvergenceHistory()
         self.snes.setFromOptions()
         self.snes.solve(b, x)
+        self.snes.setUpdate(None)
         rh, ih = self.snes.getConvergenceHistory()
         self.snes.setConvergenceHistory(0, reset=True)
         rh, ih = self.snes.getConvergenceHistory()
@@ -217,6 +239,7 @@ class BaseTestSNES:
         self.assertEqual(len(ih), 0)
         self.assertAlmostEqual(abs(x[0]), 1.0, places=5)
         self.assertAlmostEqual(abs(x[1]), 2.0, places=5)
+        self.assertEqual(self.snes.getIterationNumber(), cnt_up)
         # XXX this test should not be here !
         reason = self.snes.callConvergenceTest(1, 0, 0, 0)
         self.assertTrue(reason > 0)
@@ -299,7 +322,7 @@ class BaseTestSNES:
         self.snes.setParamsEW(**params)
         params = self.snes.getParamsEW()
         self.assertEqual(params['version'], 1)
-        params['version'] = PETSc.DEFAULT
+        params['version'] = PETSc.CURRENT
         self.snes.setParamsEW(**params)
         params = self.snes.getParamsEW()
         self.assertEqual(params['version'], 1)
@@ -365,6 +388,27 @@ class BaseTestSNES:
         npc = self.snes.getNPC()
         self.assertEqual(npc.appctx, (1, 2, 3))
 
+    def testTRAPI(self):
+        newreg = (1,2,3)
+        newup = (1,2,3,4,5)
+        if self.snes.getType() == PETSc.SNES.Type.NEWTONTR:
+            defreg = self.snes.getTRTolerances()
+            defup = self.snes.getTRUpdateParameters()
+        self.snes.setTRTolerances(*newreg)
+        self.snes.setTRUpdateParameters(*newup)
+        if self.snes.getType() == PETSc.SNES.Type.NEWTONTR:
+            self.assertEqual(newreg, self.snes.getTRTolerances())
+            self.assertEqual(newup, self.snes.getTRUpdateParameters())
+        self.snes.setTRTolerances()
+        self.snes.setTRUpdateParameters()
+        if self.snes.getType() == PETSc.SNES.Type.NEWTONTR:
+            self.assertEqual(newreg, self.snes.getTRTolerances())
+            self.assertEqual(newup, self.snes.getTRUpdateParameters())
+        self.snes.setTRTolerances(*(PETSc.DETERMINE,)*3)
+        self.snes.setTRUpdateParameters(*(PETSc.DETERMINE,)*5)
+        if self.snes.getType() == PETSc.SNES.Type.NEWTONTR:
+            self.assertEqual(defreg, self.snes.getTRTolerances())
+            self.assertEqual(defup, self.snes.getTRUpdateParameters())
 
 # --------------------------------------------------------------------
 

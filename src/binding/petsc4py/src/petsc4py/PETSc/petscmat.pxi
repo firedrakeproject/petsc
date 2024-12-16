@@ -360,6 +360,8 @@ cdef extern from * nogil:
     PetscErrorCode MatGetLocalSubMatrix(PetscMat, PetscIS, PetscIS, PetscMat*)
     PetscErrorCode MatRestoreLocalSubMatrix(PetscMat, PetscIS, PetscIS, PetscMat*)
     PetscErrorCode MatDestroyMatrices(PetscInt, PetscMat*[])
+    PetscErrorCode MatSchurComplementGetSubMatrices(PetscMat, PetscMat*, PetscMat*, PetscMat*, PetscMat*, PetscMat*)
+    PetscErrorCode MatCreateSchurComplement(PetscMat, PetscMat, PetscMat, PetscMat, PetscMat, PetscMat*)
 
     PetscErrorCode MatConjugate(PetscMat)
     PetscErrorCode MatRealPart(PetscMat)
@@ -508,6 +510,8 @@ cdef extern from * nogil:
 
     PetscErrorCode MatPythonSetType(PetscMat, char[])
     PetscErrorCode MatPythonGetType(PetscMat, char*[])
+
+    PetscErrorCode MatPreallocatorPreallocate(PetscMat, PetscBool, PetscMat)
 
 cdef extern from * nogil: # custom.h
     PetscErrorCode MatGetCurrentMemType(PetscMat, PetscMemType*)
@@ -1194,8 +1198,8 @@ cdef mat_get_dlpack_ctx(Mat self):
     cdef PetscInt devId = 0
     cdef PetscMemType mtype = PETSC_MEMTYPE_HOST
     if ctx0 is None: # First time in, create a linear memory view
-        s1 = oarray_p(empty_p(ndim), NULL, <void**>&shape_arr)
-        s2 = oarray_p(empty_p(ndim), NULL, <void**>&strides_arr)
+        s1 = oarray_p(empty_p(<PetscInt>ndim), NULL, <void**>&shape_arr)
+        s2 = oarray_p(empty_p(<PetscInt>ndim), NULL, <void**>&strides_arr)
         CHKERR(MatGetSize(self.mat, NULL, &n))
         CHKERR(MatGetLocalSize(self.mat, &m, NULL))
         CHKERR(MatDenseGetLDA(self.mat, &lda))

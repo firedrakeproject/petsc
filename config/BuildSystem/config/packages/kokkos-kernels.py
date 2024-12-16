@@ -4,7 +4,7 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.gitcommit        = '4.3.00'
+    self.gitcommit        = '4.4.01'
     self.minversion       = '3.7.01'
     self.versionname      = 'KOKKOSKERNELS_VERSION'
     self.download         = ['git://https://github.com/kokkos/kokkos-kernels.git','https://github.com/kokkos/kokkos-kernels/archive/'+self.gitcommit+'.tar.gz']
@@ -121,5 +121,13 @@ class Configure(config.package.CMakePackage):
     return args
 
   def configureLibrary(self):
+    needRestore = False
     self.buildLanguages= self.kokkos.buildLanguages
+    if self.cuda.found and not self.cuda.cudaclang:
+        oldFlags = self.setCompilers.CUDAPPFLAGS
+        self.setCompilers.CUDAPPFLAGS += " -ccbin " + self.getCompiler('Cxx')
+        needRestore = True
+
     config.package.CMakePackage.configureLibrary(self)
+
+    if needRestore: self.setCompilers.CUDAPPFLAGS = oldFlags

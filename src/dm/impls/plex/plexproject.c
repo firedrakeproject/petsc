@@ -274,7 +274,9 @@ static PetscErrorCode DMProjectPoint_Field_Private(DM dm, PetscDS ds, DM dmIn, D
       }
       continue;
     }
+    const PetscInt ***perms;
     PetscCall(PetscDualSpaceGetDM(sp[f], &dm));
+    PetscCall(PetscDualSpaceGetSymmetries(sp[f], &perms, NULL));
     PetscCall(PetscDualSpaceGetAllData(sp[f], &allPoints, NULL));
     PetscCall(PetscQuadratureGetData(allPoints, &dim, NULL, &numPoints, &points, NULL));
     PetscCall(DMGetWorkArray(dm, numPoints * Nc[f], MPIU_SCALAR, &pointEval));
@@ -282,8 +284,8 @@ static PetscErrorCode DMProjectPoint_Field_Private(DM dm, PetscDS ds, DM dmIn, D
       PetscInt qpt[2];
 
       if (isCohesiveIn) {
-        PetscCall(PetscDSPermuteQuadPoint(dsIn, ornt[0], f, q, &qpt[0]));
-        PetscCall(PetscDSPermuteQuadPoint(dsIn, DMPolytopeTypeComposeOrientationInv(qct, ornt[1], 0), f, q, &qpt[1]));
+        qpt[0] = perms ? perms[0][ornt[0]][q] : q;
+        qpt[1] = perms ? perms[0][DMPolytopeTypeComposeOrientationInv(qct, ornt[1], 0)][q] : q;
       }
       if (isAffine) {
         CoordinatesRefToReal(dE, cgeom->dim, fegeom.xi, cgeom->v, fegeom.J, &points[q * dim], x);
@@ -478,7 +480,7 @@ static PetscErrorCode DMProjectPoint_Private(DM dm, PetscDS ds, DM dmIn, DMEnclo
   switch (type) {
   case DM_BC_ESSENTIAL:
   case DM_BC_NATURAL:
-    PetscCall(DMProjectPoint_Func_Private(dm, ds, dmIn, dsIn, time, fegeom, &fvgeom, isFE, sp, (PetscErrorCode(**)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *))funcs, ctxs, values));
+    PetscCall(DMProjectPoint_Func_Private(dm, ds, dmIn, dsIn, time, fegeom, &fvgeom, isFE, sp, (PetscErrorCode (**)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *))funcs, ctxs, values));
     break;
   case DM_BC_ESSENTIAL_FIELD:
   case DM_BC_NATURAL_FIELD:
@@ -729,7 +731,7 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
       dimAux = spmapAux ? 1 : 0;
     }
     {
-      PetscInt dimProj   = PetscMin(PetscMin(dim, dimIn), (dimAux < 0 ? PETSC_MAX_INT : dimAux));
+      PetscInt dimProj   = PetscMin(PetscMin(dim, dimIn), dimAux < 0 ? PETSC_INT_MAX : dimAux);
       PetscInt dimAuxEff = dimAux < 0 ? dimProj : dimAux;
 
       PetscCheck(PetscAbsInt(dimProj - dim) <= 1 && PetscAbsInt(dimProj - dimIn) <= 1 && PetscAbsInt(dimProj - dimAuxEff) <= 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "Do not currently support differences of more than 1 in dimension");

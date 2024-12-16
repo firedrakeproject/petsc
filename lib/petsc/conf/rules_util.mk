@@ -6,6 +6,9 @@
 
 # ********* Rules for printing PETSc library properties useful for building applications  ***********************************************************
 
+getversion:
+	-@${PETSC_DIR}/lib/petsc/bin/petscversion
+
 getmpilinklibs:
 	-@echo  ${MPI_LIB}
 
@@ -51,7 +54,7 @@ PETSCCLANGFORMAT ?= clang-format
 checkclangformatversion:
 	@version=`${PETSCCLANGFORMAT} --version | cut -d" " -f3 | cut -d"." -f 1` ;\
          if [ "$$version" = "version" ]; then version=`${PETSCCLANGFORMAT} --version | cut -d" " -f4 | cut -d"." -f 1`; fi;\
-         if [ $$version -lt 18 ]; then echo "Require clang-format version 18 at least! Currently used ${PETSCCLANGFORMAT} version is $$version" ;false ; fi
+         if [ $$version != 19 ]; then echo "Require clang-format version 19! Currently used ${PETSCCLANGFORMAT} version is $$version" ;false ; fi
 
 # Format all the source code in the given directory and down according to the file $PETSC_DIR/.clang_format
 clangformat: checkclangformatversion
@@ -76,12 +79,14 @@ GITCFSRCEXCL = \
 
 # Check that copies of external source code that live in the PETSc repository have not been changed by developer
 checkbadFileChange:
-	@git diff --stat --exit-code `lib/petsc/bin/maint/check-merge-branch.sh`..HEAD -- src/sys/yaml/src src/sys/yaml/include src/sys/yaml/License include/petsc/private/valgrind include/petsc/private/kash
+	@git diff --stat --exit-code `lib/petsc/bin/maint/check-merge-branch.sh`..HEAD -- src/sys/yaml/include src/sys/yaml/License include/petsc/private/valgrind include/petsc/private/kash
 
 vermin:
 	@vermin --violations -t=3.4- ${VERMIN_OPTIONS} ${PETSC_DIR}/config
 
 # Check that source code does not violate basic PETSc coding standards
+checkbadsource: checkbadSource
+
 checkbadSource:
 	@git --no-pager grep -n -P 'self\.gitcommit' -- config/BuildSystem/config/packages | grep 'origin/' ; if [[ "$$?" == "0" ]]; then echo "Error: Do not use a branch name in a configure package file"; false; fi
 	-@${RM} -f checkbadSource.out
@@ -100,7 +105,7 @@ checkbadSource:
 	-@echo "----- Two ;; -------------------------------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -e ';;' -- ${GITSRC} | grep -v ' for (' >> checkbadSource.out;true
 	-@echo "----- PetscCall for an MPI error code ------------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P -e 'PetscCall\(MPI[U]*_\w*\(.*\)\);' -- ${GITSRC} | grep -Ev 'MPIU_Allreduce|MPIU_File' >> checkbadSource.out;true
+	-@git --no-pager grep -n -P -e 'PetscCall\(MPI[U]*_\w*\(.*\)\);' -- ${GITSRC} | grep -Ev 'MPIU_File' >> checkbadSource.out;true
 	-@echo "----- DOS file (with DOS newlines) ---------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P '\r' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- { before SETERRQ ---------------------------------------------" >> checkbadSource.out
@@ -121,6 +126,8 @@ checkbadSource:
 	-@git --no-pager grep -n -P 'PetscFunctionReturn(ierr)' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- .seealso with leading white spaces ---------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -E '^[ ]+.seealso:' -- ${GITSRC} ':!src/sys/tests/linter/*' >> checkbadSource.out;true
+	-@echo "----- .seealso with double backticks -------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '^.seealso:.*``' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Defining a returning macro without PetscMacroReturns() -------" >> checkbadSource.out
 	-@git --no-pager grep -n -P 'define .*\w+;\s+do' -- ${GITSRC} | grep -E -v '(PetscMacroReturns|PetscDrawCollectiveBegin|MatPreallocateBegin|PetscOptionsBegin|PetscObjectOptionsBegin|PetscOptionsHeadEnd)' >> checkbadSource.out;true
 	-@echo "----- Defining an error checking macro using CHKERR style ----------" >> checkbadSource.out
@@ -147,7 +154,9 @@ checkbadSource:
 	-@git --no-pager grep -n -E -B 1 '  PetscFunctionBegin(User|Hot){0,1};' -- ${GITSRC} ':!src/sys/tests/*' ':!src/sys/tutorials/*' | grep -E '\-[0-9]+-.*;' | grep -v '^--$$' | grep -v '\\' >> checkbadSource.out;true
 	-@echo "----- Unneeded parentheses [!&~*](foo[->|.]bar) --------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -E '([\!\&\~\*\(]|\)\)|\([^,\*\(]+\**\))\(([a-zA-Z0-9_]+((\.|->)[a-zA-Z0-9_]+|\[[a-zA-Z0-9_ \%\+\*\-]+\])+)\)' -- ${GITSRC} >> checkbadSource.out;true
-	@a=`cat checkbadSource.out | wc -l`; l=`expr $$a - 29` ;\
+	-@echo "----- Use PetscSafePointerPlusOffset(ptr, n) instead of ptr ? ptr + n : NULL" >> checkbadSource.out
+	-@git --no-pager grep -n -Po ' ([^()\ ]+) \? (?1) \+ (.)* : NULL' -- ${GITSRC} >> checkbadSource.out;true
+	@a=`cat checkbadSource.out | wc -l`; l=`expr $$a - 31` ;\
          if [ $$l -gt 0 ] ; then \
            echo $$l " files with errors detected in source code formatting" ;\
            cat checkbadSource.out ;\
@@ -164,6 +173,16 @@ checkbadSource:
 	   ${RM} -f badSourceChar.out;\
          fi
 	@test ! -s badSourceChar.out
+
+#  Run a linter in a Python virtual environment to check (and fix) the formatting of PETSc manual pages
+#     V=1        verbose
+#     REPLACE=1  replace ill-formatted docs with correctly formatted docs
+env-lint:
+	@if [[ `which llvm-config` == "" ]]; then echo "llvm-config for version 14 must be in your path"; exit 1; fi
+	@if [ `llvm-config --version | cut -f1 -d"."` != 14 ]; then echo "llvm-config for version 14 must be in your path"; exit 1; fi
+	@python3 -m venv petsc-lint-env
+	@source petsc-lint-env/bin/activate && python3 -m pip install --quiet -r lib/petsc/bin/maint/petsclinter/requirements.txt && \
+          python3 ${PETSC_DIR}/lib/petsc/bin/maint/petsclinter --verbose=${V} --apply-patches=${REPLACE} --clang_lib=`llvm-config --libdir`/libclang.dylib --werror 1 ./src ; deactivate
 
 #  Run a linter to check (and fix) the formatting of PETSc manual pages
 lint:

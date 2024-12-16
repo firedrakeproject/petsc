@@ -209,14 +209,14 @@ PetscErrorCode VecNorm(Vec x, NormType type, PetscReal *val)
     PetscMPIInt b0 = (PetscMPIInt)flg, b1[2], b2[2];
     b1[0]          = -b0;
     b1[1]          = b0;
-    PetscCall(MPIU_Allreduce(b1, b2, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)x)));
+    PetscCallMPI(MPIU_Allreduce(b1, b2, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)x)));
     PetscCheck(-b2[0] == b2[1], PetscObjectComm((PetscObject)x), PETSC_ERR_ARG_WRONGSTATE, "Some MPI processes have cached %s norm, others do not. This may happen when some MPI processes call VecGetArray() and some others do not.", NormTypes[type]);
     if (flg) {
       PetscReal b1[2], b2[2];
       b1[0] = -(*val);
       b1[1] = *val;
-      PetscCall(MPIU_Allreduce(b1, b2, 2, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)x)));
-      PetscCheck(-b2[0] == b2[1], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Difference in cached %s norms: local %g", NormTypes[type], (double)*val);
+      PetscCallMPI(MPIU_Allreduce(b1, b2, 2, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)x)));
+      PetscCheck((PetscIsNanReal(b2[0]) && PetscIsNanReal(b2[1])) || (-b2[0] == b2[1]), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Difference in cached %s norms: local %g", NormTypes[type], (double)*val);
     }
   }
   if (flg) PetscFunctionReturn(PETSC_SUCCESS);
@@ -873,7 +873,7 @@ PetscErrorCode VecWAXPY(Vec w, PetscScalar alpha, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecSetValues - Inserts or adds values into certain locations of a vector.
 
   Not Collective
@@ -907,6 +907,12 @@ PetscErrorCode VecWAXPY(Vec w, PetscScalar alpha, Vec x, Vec y)
   with homogeneous Dirichlet boundary conditions that you don't want represented
   in the vector.
 
+  Fortran Note:
+  If any of `ix` and `y` are scalars pass them using, for example,
+.vb
+  VecSetValues(mat, one, [ix], [y], INSERT_VALUES)
+.ve
+
 .seealso: [](ch_vectors), `Vec`, `VecAssemblyBegin()`, `VecAssemblyEnd()`, `VecSetValuesLocal()`,
           `VecSetValue()`, `VecSetValuesBlocked()`, `InsertMode`, `INSERT_VALUES`, `ADD_VALUES`, `VecGetValues()`
 @*/
@@ -926,7 +932,7 @@ PetscErrorCode VecSetValues(Vec x, PetscInt ni, const PetscInt ix[], const Petsc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecGetValues - Gets values from certain locations of a vector. Currently
   can only get values on the same processor on which they are owned
 
@@ -938,7 +944,7 @@ PetscErrorCode VecSetValues(Vec x, PetscInt ni, const PetscInt ix[], const Petsc
 - ix - indices where to get them from (in global 1d numbering)
 
   Output Parameter:
-. y - array of values
+. y - array of values, must be passed in with a length of `ni`
 
   Level: beginner
 
@@ -970,7 +976,7 @@ PetscErrorCode VecGetValues(Vec x, PetscInt ni, const PetscInt ix[], PetscScalar
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecSetValuesBlocked - Inserts or adds blocks of values into certain locations of a vector.
 
   Not Collective
@@ -1002,6 +1008,12 @@ PetscErrorCode VecGetValues(Vec x, PetscInt ni, const PetscInt ix[], PetscScalar
   with homogeneous Dirichlet boundary conditions that you don't want represented
   in the vector.
 
+  Fortran Note:
+  If any of `ix` and `y` are scalars pass them using, for example,
+.vb
+  VecSetValuesBlocked(mat, one, [ix], [y], INSERT_VALUES)
+.ve
+
 .seealso: [](ch_vectors), `Vec`, `VecAssemblyBegin()`, `VecAssemblyEnd()`, `VecSetValuesBlockedLocal()`,
           `VecSetValues()`
 @*/
@@ -1021,7 +1033,7 @@ PetscErrorCode VecSetValuesBlocked(Vec x, PetscInt ni, const PetscInt ix[], cons
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   VecSetValuesLocal - Inserts or adds values into certain locations of a vector,
   using a local ordering of the nodes.
 
@@ -1039,7 +1051,7 @@ PetscErrorCode VecSetValuesBlocked(Vec x, PetscInt ni, const PetscInt ix[], cons
   Notes:
   `VecSetValuesLocal()` sets x[ix[i]] = y[i], for i=0,...,ni-1.
 
-  Calls to `VecSetValues()` with the `INSERT_VALUES` and `ADD_VALUES`
+  Calls to `VecSetValuesLocal()` with the `INSERT_VALUES` and `ADD_VALUES`
   options cannot be mixed without intervening calls to the assembly
   routines.
 
@@ -1047,6 +1059,12 @@ PetscErrorCode VecSetValuesBlocked(Vec x, PetscInt ni, const PetscInt ix[], cons
   MUST be called after all calls to `VecSetValuesLocal()` have been completed.
 
   `VecSetValuesLocal()` uses 0-based indices in Fortran as well as in C.
+
+  Fortran Note:
+  If any of `ix` and `y` are scalars pass them using, for example,
+.vb
+  VecSetValuesLocal(mat, one, [ix], [y], INSERT_VALUES)
+.ve
 
 .seealso: [](ch_vectors), `Vec`, `VecAssemblyBegin()`, `VecAssemblyEnd()`, `VecSetValues()`, `VecSetLocalToGlobalMapping()`,
           `VecSetValuesBlockedLocal()`
@@ -1064,6 +1082,7 @@ PetscErrorCode VecSetValuesLocal(Vec x, PetscInt ni, const PetscInt ix[], const 
 
   PetscCall(PetscLogEventBegin(VEC_SetValues, x, 0, 0, 0));
   if (!x->ops->setvalueslocal) {
+    if (PetscUnlikely(!x->map->mapping && x->ops->getlocaltoglobalmapping)) PetscUseTypeMethod(x, getlocaltoglobalmapping, &x->map->mapping);
     if (x->map->mapping) {
       if (ni > 128) PetscCall(PetscMalloc1(ni, &lix));
       PetscCall(ISLocalToGlobalMappingApply(x->map->mapping, ni, (PetscInt *)ix, lix));
@@ -1104,6 +1123,12 @@ PetscErrorCode VecSetValuesLocal(Vec x, PetscInt ni, const PetscInt ix[], const 
 
   `VecSetValuesBlockedLocal()` uses 0-based indices in Fortran as well as in C.
 
+  Fortran Note:
+  If any of `ix` and `y` are scalars pass them using, for example,
+.vb
+  VecSetValuesBlockedLocal(mat, one, [ix], [y], INSERT_VALUES)
+.ve
+
 .seealso: [](ch_vectors), `Vec`, `VecAssemblyBegin()`, `VecAssemblyEnd()`, `VecSetValues()`, `VecSetValuesBlocked()`,
           `VecSetLocalToGlobalMapping()`
 @*/
@@ -1118,6 +1143,7 @@ PetscErrorCode VecSetValuesBlockedLocal(Vec x, PetscInt ni, const PetscInt ix[],
   PetscAssertPointer(y, 4);
   PetscValidType(x, 1);
   PetscCall(PetscLogEventBegin(VEC_SetValues, x, 0, 0, 0));
+  if (PetscUnlikely(!x->map->mapping && x->ops->getlocaltoglobalmapping)) PetscUseTypeMethod(x, getlocaltoglobalmapping, &x->map->mapping);
   if (x->map->mapping) {
     if (ni > 128) PetscCall(PetscMalloc1(ni, &lix));
     PetscCall(ISLocalToGlobalMappingApplyBlock(x->map->mapping, ni, (PetscInt *)ix, lix));
@@ -1469,11 +1495,11 @@ PetscErrorCode VecGetSubVectorContiguityAndBS_Private(Vec X, IS is, PetscBool *c
   PetscCall(ISContiguousLocal(is, gstart, gend, &lstart, &red[0]));
   /* block size is given by IS if ibs > 1; otherwise, check the vector */
   if (ibs > 1) {
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, red, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, red, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
     bs = ibs;
   } else {
     if (n % vbs || vbs == 1) red[1] = PETSC_FALSE; /* this process invalidate the collectiveness of block size */
-    PetscCall(MPIU_Allreduce(MPI_IN_PLACE, red, 2, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, red, 2, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
     if (red[0] && red[1]) bs = vbs; /* all processes have a valid block size and the access will be contiguous */
   }
 
@@ -2135,7 +2161,7 @@ PetscErrorCode VecRestoreArrayRead(Vec x, const PetscScalar **a)
   The values in this array are NOT valid, the caller of this routine is responsible for putting
   values into the array; any values it does not set will be invalid.
 
-  The array must be returned using a matching call to `VecRestoreArrayRead()`.
+  The array must be returned using a matching call to `VecRestoreArrayWrite()`.
 
   For vectors associated with GPUs, the host and device vectors are not synchronized before
   giving access. If you need correct values in the array use `VecGetArray()`
@@ -3894,10 +3920,8 @@ PetscErrorCode VecRestoreArray4dRead(Vec x, PetscInt m, PetscInt n, PetscInt p, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-#if defined(PETSC_USE_DEBUG)
-
 /*@
-  VecLockGet  - Gets the current lock status of a vector
+  VecLockGet - Get the current lock status of a vector
 
   Logically Collective
 
@@ -3916,6 +3940,7 @@ PetscErrorCode VecLockGet(Vec x, PetscInt *state)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
+  PetscAssertPointer(state, 2);
   *state = x->lock;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -3927,25 +3952,24 @@ PetscErrorCode VecLockGetLocation(Vec x, const char *file[], const char *func[],
   PetscAssertPointer(file, 2);
   PetscAssertPointer(func, 3);
   PetscAssertPointer(line, 4);
-  #if !PetscDefined(HAVE_THREADSAFETY)
+#if PetscDefined(USE_DEBUG) && !PetscDefined(HAVE_THREADSAFETY)
   {
     const int index = x->lockstack.currentsize - 1;
 
-    PetscCheck(index >= 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Corrupted vec lock stack, have negative index %d", index);
-    *file = x->lockstack.file[index];
-    *func = x->lockstack.function[index];
-    *line = x->lockstack.line[index];
+    *file = index < 0 ? NULL : x->lockstack.file[index];
+    *func = index < 0 ? NULL : x->lockstack.function[index];
+    *line = index < 0 ? 0 : x->lockstack.line[index];
   }
-  #else
+#else
   *file = NULL;
   *func = NULL;
   *line = 0;
-  #endif
+#endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  VecLockReadPush  - Pushes a read-only lock on a vector to prevent it from being written to
+  VecLockReadPush - Push a read-only lock on a vector to prevent it from being written to
 
   Logically Collective
 
@@ -3967,31 +3991,30 @@ PetscErrorCode VecLockReadPush(Vec x)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
   PetscCheck(x->lock++ >= 0, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Vector is already locked for exclusive write access but you want to read it");
-  #if !PetscDefined(HAVE_THREADSAFETY)
+#if PetscDefined(USE_DEBUG) && !PetscDefined(HAVE_THREADSAFETY)
   {
     const char *file, *func;
     int         index, line;
 
-    if ((index = petscstack.currentsize - 2) == -1) {
+    if ((index = petscstack.currentsize - 2) < 0) {
       // vec was locked "outside" of petsc, either in user-land or main. the error message will
       // now show this function as the culprit, but it will include the stacktrace
       file = "unknown user-file";
       func = "unknown_user_function";
       line = 0;
     } else {
-      PetscCheck(index >= 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Unexpected petscstack, have negative index %d", index);
       file = petscstack.file[index];
       func = petscstack.function[index];
       line = petscstack.line[index];
     }
     PetscStackPush_Private(x->lockstack, file, func, line, petscstack.petscroutine[index], PETSC_FALSE);
   }
-  #endif
+#endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  VecLockReadPop  - Pops a read-only lock from a vector
+  VecLockReadPop - Pop a read-only lock from a vector
 
   Logically Collective
 
@@ -4007,18 +4030,18 @@ PetscErrorCode VecLockReadPop(Vec x)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
   PetscCheck(--x->lock >= 0, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Vector has been unlocked from read-only access too many times");
-  #if !PetscDefined(HAVE_THREADSAFETY)
+#if PetscDefined(USE_DEBUG) && !PetscDefined(HAVE_THREADSAFETY)
   {
     const char *previous = x->lockstack.function[x->lockstack.currentsize - 1];
 
     PetscStackPop_Private(x->lockstack, previous);
   }
-  #endif
+#endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  VecLockWriteSet  - Lock or unlock a vector for exclusive read/write access
+  VecLockWriteSet - Lock or unlock a vector for exclusive read/write access
 
   Logically Collective
 
@@ -4063,35 +4086,3 @@ PetscErrorCode VecLockWriteSet(Vec x, PetscBool flg)
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-// PetscClangLinter pragma disable: -fdoc-param-list-func-parameter-documentation
-/*@
-  VecLockPush  - Pushes a read-only lock on a vector to prevent it from being written to
-
-  Level: deprecated
-
-.seealso: [](ch_vectors), `Vec`, `VecLockReadPush()`
-@*/
-PetscErrorCode VecLockPush(Vec x)
-{
-  PetscFunctionBegin;
-  PetscCall(VecLockReadPush(x));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-// PetscClangLinter pragma disable: -fdoc-param-list-func-parameter-documentation
-/*@
-  VecLockPop  - Pops a read-only lock from a vector
-
-  Level: deprecated
-
-.seealso: [](ch_vectors), `Vec`, `VecLockReadPop()`
-@*/
-PetscErrorCode VecLockPop(Vec x)
-{
-  PetscFunctionBegin;
-  PetscCall(VecLockReadPop(x));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-#endif

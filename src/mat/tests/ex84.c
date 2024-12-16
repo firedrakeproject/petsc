@@ -23,7 +23,7 @@ static PetscErrorCode MatLoadComputeNorms(Mat data_mat, PetscViewer inp_viewer, 
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Data matrix norms: %g %g %g\n", (double)norms[0], (double)norms[1], (double)norms[2]));
 
   /* compute autocorrelation matrix */
-  PetscCall(MatMatTransposeMult(data_mat, data_mat, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &corr_mat));
+  PetscCall(MatMatTransposeMult(data_mat, data_mat, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &corr_mat));
 
   /* compute autocorrelation matrix norms */
   PetscCall(MatNorm(corr_mat, NORM_1, &norms[3]));
@@ -40,7 +40,7 @@ static PetscErrorCode GetReader(MPI_Comm comm, const char option[], PetscViewer 
   PetscBool flg;
 
   PetscFunctionBegin;
-  PetscCall(PetscOptionsGetViewer(PETSC_COMM_SELF, NULL, NULL, option, r, fmt, &flg));
+  PetscCall(PetscOptionsCreateViewer(PETSC_COMM_SELF, NULL, NULL, option, r, fmt, &flg));
   if (flg) {
     PetscFileMode mode;
     PetscCall(PetscViewerFileGetMode(*r, &mode));
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
   PetscCall(PetscViewerPushFormat(inp_viewer, fmt));
   PetscCall(MatLoadComputeNorms(data_mat, inp_viewer, norms0));
   PetscCall(PetscViewerPopFormat(inp_viewer));
-  PetscCall(PetscOptionsRestoreViewer(&inp_viewer));
+  PetscCall(PetscViewerDestroy(&inp_viewer));
   PetscCall(MatViewFromOptions(data_mat, NULL, "-view_serial_mat"));
   PetscCall(MatDestroy(&data_mat));
 

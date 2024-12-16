@@ -700,7 +700,7 @@ static PetscErrorCode TSForwardStep_RK(TS ts)
     }
 
     PetscCall(TSComputeRHSJacobian(ts, stage_time, Y[i], J, J));
-    PetscCall(MatMatMult(J, rk->MatsFwdStageSensip[i], MAT_REUSE_MATRIX, PETSC_DEFAULT, &MatsFwdSensipTemp[i]));
+    PetscCall(MatMatMult(J, rk->MatsFwdStageSensip[i], MAT_REUSE_MATRIX, PETSC_DETERMINE, &MatsFwdSensipTemp[i]));
     if (ts->Jacprhs) {
       PetscCall(TSComputeRHSJacobianP(ts, stage_time, Y[i], ts->Jacprhs)); /* get f_p */
       if (ts->vecs_sensi2p) {                                              /* TLM used for 2nd-order adjoint */
@@ -932,8 +932,8 @@ static PetscErrorCode TSAdjointStep_RK(TS ts)
 
       /* Stage values of mu */
       if (ts->vecs_sensip) {
+        PetscCall(MatMultTranspose(ts->Jacprhs, VecsSensiTemp[nadj], VecDeltaMu));
         if (b[i]) {
-          PetscCall(MatMultTranspose(ts->Jacprhs, VecsSensiTemp[nadj], VecDeltaMu));
           PetscCall(VecScale(VecDeltaMu, -h * b[i]));
           if (quadts) {
             PetscCall(MatDenseGetColumn(quadts->Jacprhs, nadj, &xarr));

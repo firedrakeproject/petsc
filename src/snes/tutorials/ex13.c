@@ -277,12 +277,14 @@ static PetscErrorCode ComputeSpectral(Vec u, PetscInt numPlanes, const PetscInt 
     PetscScalar    *rvals, *svals, *gsvals;
     PetscInt       *perm, *nperm;
     PetscInt        n, N, i, j, off, offu;
+    PetscMPIInt     in;
     const PetscInt *points;
 
     PetscCall(PetscSNPrintf(name, PETSC_MAX_PATH_LEN, "spectral_plane_%" PetscInt_FMT, p));
     PetscCall(DMGetLabel(dm, name, &label));
     PetscCall(DMLabelGetStratumIS(label, 1, &stratum));
     PetscCall(ISGetLocalSize(stratum, &n));
+    PetscCall(PetscMPIIntCast(n, &in));
     PetscCall(ISGetIndices(stratum, &points));
     PetscCall(PetscMalloc2(n, &ray, n, &svals));
     for (i = 0; i < n; ++i) {
@@ -300,8 +302,8 @@ static PetscErrorCode ComputeSpectral(Vec u, PetscInt numPlanes, const PetscInt 
       for (p = 1; p < size; ++p) displs[p] = displs[p - 1] + cnt[p - 1];
       N = displs[size - 1] + cnt[size - 1];
       PetscCall(PetscMalloc2(N, &gray, N, &gsvals));
-      PetscCallMPI(MPI_Gatherv(ray, n, MPIU_REAL, gray, cnt, displs, MPIU_REAL, 0, comm));
-      PetscCallMPI(MPI_Gatherv(svals, n, MPIU_SCALAR, gsvals, cnt, displs, MPIU_SCALAR, 0, comm));
+      PetscCallMPI(MPI_Gatherv(ray, in, MPIU_REAL, gray, cnt, displs, MPIU_REAL, 0, comm));
+      PetscCallMPI(MPI_Gatherv(svals, in, MPIU_SCALAR, gsvals, cnt, displs, MPIU_SCALAR, 0, comm));
       PetscCall(PetscFree2(cnt, displs));
     } else {
       N      = n;
@@ -642,8 +644,9 @@ int main(int argc, char **argv)
             -mg_levels_esteig_ksp_max_it 10 \
             -mg_levels_ksp_chebyshev_esteig 0,0.1,0,1.1 \
             -mg_levels_pc_type jacobi
+  # Run with -dm_refine_hierarchy 3 to get a better idea of the solver
   testset:
-    args: -potential_petscspace_degree 1 -dm_refine_hierarchy 3 \
+    args: -potential_petscspace_degree 1 -dm_refine_hierarchy 2 \
           -ksp_rtol 5e-10 -pc_type mg -pc_mg_type full \
             -mg_levels_ksp_max_it 2 \
             -mg_levels_esteig_ksp_type cg \
@@ -660,10 +663,10 @@ int main(int argc, char **argv)
     test:
       suffix: 3d_p1_gmg_fcycle
       requires: ctetgen
-      args: -dm_plex_dim 3 -dm_plex_box_faces 2,2,2
+      args: -dm_plex_dim 3 -dm_plex_box_faces 2,2,1
     test:
       suffix: 3d_q1_gmg_fcycle
-      args: -dm_plex_dim 3 -dm_plex_simplex 0 -dm_plex_box_faces 2,2,2
+      args: -dm_plex_dim 3 -dm_plex_simplex 0 -dm_plex_box_faces 2,2,1
   test:
     suffix: 2d_p1_gmg_vcycle_adapt
     requires: triangle

@@ -12,8 +12,6 @@
   #define petscerror_                      PETSCERROR
   #define petscerrorf_                     PETSCERRORF
   #define petscerrormpi_                   PETSCERRORMPI
-  #define petscrealview_                   PETSCREALVIEW
-  #define petscintview_                    PETSCINTVIEW
 #elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)
   #define petscpusherrorhandler_           petscpusherrorhandler
   #define petsctracebackerrorhandler_      petsctracebackerrorhandler
@@ -24,8 +22,6 @@
   #define petscerror_                      petscerror
   #define petscerrorf_                     petscerrorf
   #define petscerrormpi_                   petscerrormpi
-  #define petscrealview_                   petscrealview
-  #define petscintview_                    petscintview
 #endif
 
 static void (*f2)(MPI_Comm *comm, int *, const char *, const char *, PetscErrorCode *, PetscErrorType *, const char *, void *, PetscErrorCode *, PETSC_FORTRAN_CHARLEN_T len1, PETSC_FORTRAN_CHARLEN_T len2, PETSC_FORTRAN_CHARLEN_T len3);
@@ -41,7 +37,7 @@ static PetscErrorCode ourerrorhandler(MPI_Comm comm, int line, const char *fun, 
   ierr = PetscStrlen(mess, &len3);
 
   ierr = PETSC_SUCCESS;
-  (*f2)(&comm, &line, fun, file, &n, &p, mess, ctx, &ierr, ((PETSC_FORTRAN_CHARLEN_T)(len1)), ((PETSC_FORTRAN_CHARLEN_T)(len2)), ((PETSC_FORTRAN_CHARLEN_T)(len3)));
+  (*f2)(&comm, &line, fun, file, &n, &p, mess, ctx, &ierr, (PETSC_FORTRAN_CHARLEN_T)len1, (PETSC_FORTRAN_CHARLEN_T)len2, (PETSC_FORTRAN_CHARLEN_T)len3);
   return ierr;
 }
 
@@ -110,7 +106,7 @@ PETSC_EXTERN void petscerrormpi_(PetscErrorCode *err, int *line, char *file, PET
   PetscErrorCode ierr[] = {PETSC_SUCCESS}; /* needed by FIXCHAR */
 
   FIXCHAR(file, len, tfile);
-  PetscMPIErrorString(*err, errorstring);
+  PetscMPIErrorString(*err, 2 * MPI_MAX_ERROR_STRING, errorstring);
   *err = PetscError(PETSC_COMM_SELF, *line, NULL, file, PETSC_ERR_MPI, PETSC_ERROR_INITIAL, "MPI error %d %s", *err, errorstring);
   FREECHAR(file, tfile);
   *err = PETSC_ERR_MPI;
@@ -125,35 +121,8 @@ PETSC_EXTERN void petscerrormpi_(PetscErrorCode *err)
 {
   char errorstring[2 * MPI_MAX_ERROR_STRING];
 
-  PetscMPIErrorString(*err, errorstring);
+  PetscMPIErrorString(*err, 2 * MPI_MAX_ERROR_STRING, errorstring);
   *err = PetscError(PETSC_COMM_SELF, 0, NULL, NULL, PETSC_ERR_MPI, PETSC_ERROR_INITIAL, "MPI error %d %s", *err, errorstring);
   *err = PETSC_ERR_MPI;
 }
 #endif
-
-PETSC_EXTERN void petscrealview_(PetscInt *n, PetscReal *d, PetscViewer *viewer, PetscErrorCode *ierr)
-{
-  PetscViewer v;
-  PetscPatchDefaultViewers_Fortran(viewer, v);
-  *ierr = PetscRealView(*n, d, v);
-}
-
-PETSC_EXTERN void petscintview_(PetscInt *n, PetscInt *d, PetscViewer *viewer, PetscErrorCode *ierr)
-{
-  PetscViewer v;
-  PetscPatchDefaultViewers_Fortran(viewer, v);
-  *ierr = PetscIntView(*n, d, v);
-}
-
-#if defined(PETSC_HAVE_FORTRAN_CAPS)
-  #define petscscalarview_ PETSCSCALARVIEW
-#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)
-  #define petscscalarview_ petscscalarview
-#endif
-
-PETSC_EXTERN void petscscalarview_(PetscInt *n, PetscScalar *d, PetscViewer *viewer, PetscErrorCode *ierr)
-{
-  PetscViewer v;
-  PetscPatchDefaultViewers_Fortran(viewer, v);
-  *ierr = PetscScalarView(*n, d, v);
-}

@@ -308,7 +308,7 @@ PetscErrorCode KSPMonitorRange_Private(KSP ksp, PetscInt it, PetscReal *per)
   for (i = 0; i < n; ++i) pwork += (PetscAbsScalar(r[i]) > .20 * rmax);
   PetscCall(VecRestoreArrayRead(resid, &r));
   PetscCall(VecDestroy(&resid));
-  PetscCall(MPIU_Allreduce(&pwork, per, 1, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)ksp)));
+  PetscCallMPI(MPIU_Allreduce(&pwork, per, 1, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)ksp)));
   *per = *per / N;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1209,11 +1209,11 @@ PetscErrorCode KSPMonitorDynamicTolerance(KSP ksp, PetscInt its, PetscReal fnorm
   PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCDEFLATION, &flg));
   if (flg) {
     PetscCall(PCDeflationGetCoarseKSP(pc, &kspinner));
-    PetscCall(KSPSetTolerances(kspinner, inner_rtol, outer_abstol, outer_dtol, PETSC_DEFAULT));
+    PetscCall(KSPSetTolerances(kspinner, inner_rtol, outer_abstol, outer_dtol, PETSC_CURRENT));
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
-  /* todo: dynamic tolerance may apply to other types of pc */
+  /* TODO: dynamic tolerance may apply to other types of pc */
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1737,7 +1737,7 @@ PetscErrorCode KSPBuildResidualDefault(KSP ksp, Vec t, Vec v, Vec *V)
 
   Input Parameters:
 + ksp    - iterative context
-. rightn - number of right work vectors
+. rightn - number of right work vectors to allocate
 - leftn  - number of left work vectors to allocate
 
   Output Parameters:
@@ -1758,7 +1758,7 @@ PetscErrorCode KSPBuildResidualDefault(KSP ksp, Vec t, Vec v, Vec *V)
 
 .seealso: [](ch_ksp), `MatCreateVecs()`, `VecDestroyVecs()`, `KSPSetWorkVecs()`
 @*/
-PetscErrorCode KSPCreateVecs(KSP ksp, PetscInt rightn, Vec **right, PetscInt leftn, Vec **left)
+PetscErrorCode KSPCreateVecs(KSP ksp, PetscInt rightn, Vec *right[], PetscInt leftn, Vec *left[])
 {
   Vec       vecr = NULL, vecl = NULL;
   PetscBool matset, pmatset, isshell, preferdm = PETSC_FALSE;
@@ -1927,7 +1927,7 @@ PetscErrorCode KSPGetConvergedReason(KSP ksp, KSPConvergedReason *reason)
 
 .seealso: [](ch_ksp), `KSP`, `KSPGetConvergedReason()`
 @*/
-PetscErrorCode KSPGetConvergedReasonString(KSP ksp, const char **strreason)
+PetscErrorCode KSPGetConvergedReasonString(KSP ksp, const char *strreason[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -2132,11 +2132,11 @@ PetscErrorCode KSPCheckSolve(KSP ksp, PC pc, Vec vec)
   PetscFunctionBegin;
   PetscCall(KSPGetPC(ksp, &subpc));
   PetscCall(PCGetFailedReason(subpc, &pcreason));
+  PetscCall(VecFlag(vec, pcreason || (ksp->reason < 0 && ksp->reason != KSP_DIVERGED_ITS)));
   if (pcreason || (ksp->reason < 0 && ksp->reason != KSP_DIVERGED_ITS)) {
     PetscCheck(!pc->erroriffailure, PETSC_COMM_SELF, PETSC_ERR_NOT_CONVERGED, "Detected not converged in KSP inner solve: KSP reason %s PC reason %s", KSPConvergedReasons[ksp->reason], PCFailedReasons[pcreason]);
     PetscCall(PetscInfo(ksp, "Detected not converged in KSP inner solve: KSP reason %s PC reason %s\n", KSPConvergedReasons[ksp->reason], PCFailedReasons[pcreason]));
     pc->failedreason = PC_SUBPC_ERROR;
-    if (vec) PetscCall(VecSetInf(vec));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

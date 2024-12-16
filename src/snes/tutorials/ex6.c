@@ -32,7 +32,7 @@ int main(int argc, char **argv)
   MPI_Comm      comm;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &size));
   PetscCheck(size == 1, PETSC_COMM_SELF, PETSC_ERR_WRONG_MPI_SIZE, "This is a uniprocessor example only!");
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-n", &n, NULL));
@@ -344,30 +344,30 @@ PetscErrorCode MyKSPConvergedReasonView(KSP ksp, void *ctx)
    test:
       suffix: 1
       nsize: 1
-      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g"
+      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g" -e "s/CONVERGED_FNORM_ABS/CONVERGED_FNORM_RELATIVE/g"
 
    test:
       suffix: 2
       nsize: 1
       args: -ksp_converged_reason_view_cancel
-      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g"
+      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g" -e "s/CONVERGED_FNORM_ABS/CONVERGED_FNORM_RELATIVE/g"
 
    test:
       suffix: 3
       nsize: 1
       args: -ksp_converged_reason_view_cancel -ksp_converged_reason
-      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g"
+      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g" -e "s/CONVERGED_FNORM_ABS/CONVERGED_FNORM_RELATIVE/g"
 
    test:
       suffix: 4
       nsize: 1
       args: -snes_converged_reason_view_cancel
-      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g"
+      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g" -e "s/CONVERGED_FNORM_ABS/CONVERGED_FNORM_RELATIVE/g"
 
    test:
       suffix: 5
       nsize: 1
       args: -snes_converged_reason_view_cancel -snes_converged_reason
-      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g"
+      filter: sed -e "s/CONVERGED_ATOL/CONVERGED_RTOL/g" -e "s/CONVERGED_FNORM_ABS/CONVERGED_FNORM_RELATIVE/g"
 
 TEST*/

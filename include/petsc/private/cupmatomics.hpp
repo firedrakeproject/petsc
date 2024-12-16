@@ -13,6 +13,7 @@ typedef long long int          llint;
 typedef unsigned long long int ullint;
 
 #if PetscDefined(USING_NVCC)
+PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN("-Wunused-function")
 /*
   Atomic Insert (exchange) operations
 
@@ -478,7 +479,7 @@ struct AtomicLXOR {
     return op(x, y);
   }
 };
-
+PETSC_PRAGMA_DIAGNOSTIC_IGNORED_END()
 #elif PetscDefined(USING_HCC)
 
   /*
@@ -493,7 +494,7 @@ __device__ static double atomicExch(double *address, double val)
 }
   #endif
 
-__device__ static llint atomicExch(llint *address, llint val)
+__device__ static inline llint atomicExch(llint *address, llint val)
 {
   return (llint)(atomicExch((ullint *)address, (ullint)val));
 }
@@ -534,7 +535,7 @@ struct AtomicInsert<PetscComplex> {
   Atomic add operations
 
 */
-__device__ static llint atomicAdd(llint *address, llint val)
+__device__ static inline llint atomicAdd(llint *address, llint val)
 {
   return (llint)atomicAdd((ullint *)address, (ullint)val);
 }
@@ -583,7 +584,7 @@ struct AtomicAdd<PetscComplex> {
   HIP has no atomicMult at all, so we build our own with atomicCAS
  */
   #if defined(PETSC_USE_REAL_DOUBLE)
-__device__ static double atomicMult(double *address, double val)
+__device__ static inline double atomicMult(double *address, double val)
 {
   ullint *address_as_ull = (ullint *)(address);
   ullint  old            = *address_as_ull, assumed;
@@ -595,7 +596,7 @@ __device__ static double atomicMult(double *address, double val)
   return __longlong_as_double(old);
 }
   #elif defined(PETSC_USE_REAL_SINGLE)
-__device__ static float atomicMult(float *address, float val)
+__device__ static inline float atomicMult(float *address, float val)
 {
   int *address_as_int = (int *)(address);
   int  old            = *address_as_int, assumed;
@@ -607,7 +608,7 @@ __device__ static float atomicMult(float *address, float val)
 }
   #endif
 
-__device__ static int atomicMult(int *address, int val)
+__device__ static inline int atomicMult(int *address, int val)
 {
   int *address_as_int = (int *)(address);
   int  old            = *address_as_int, assumed;
@@ -618,7 +619,7 @@ __device__ static int atomicMult(int *address, int val)
   return (int)old;
 }
 
-__device__ static llint atomicMult(llint *address, llint val)
+__device__ static inline llint atomicMult(llint *address, llint val)
 {
   ullint *address_as_ull = (ullint *)(address);
   ullint  old            = *address_as_ull, assumed;
@@ -688,7 +689,7 @@ __device__ static float atomicMax(float *address, float val)
   #endif
 
   #if PETSC_PKG_HIP_VERSION_LT(5, 7, 0)
-__device__ static llint atomicMin(llint *address, llint val)
+__device__ static inline llint atomicMin(llint *address, llint val)
 {
   ullint *address_as_ull = (ullint *)(address);
   ullint  old            = *address_as_ull, assumed;
@@ -699,7 +700,7 @@ __device__ static llint atomicMin(llint *address, llint val)
   return (llint)old;
 }
 
-__device__ static llint atomicMax(llint *address, llint val)
+__device__ static inline llint atomicMax(llint *address, llint val)
 {
   ullint *address_as_ull = (ullint *)(address);
   ullint  old            = *address_as_ull, assumed;
@@ -725,7 +726,7 @@ struct AtomicMax {
   As of ROCm 3.10, the llint atomicAnd/Or/Xor(llint*, llint) is not supported
 */
 
-__device__ static llint atomicAnd(llint *address, llint val)
+__device__ static inline llint atomicAnd(llint *address, llint val)
 {
   ullint *address_as_ull = (ullint *)(address);
   ullint  old            = *address_as_ull, assumed;
@@ -735,7 +736,7 @@ __device__ static llint atomicAnd(llint *address, llint val)
   } while (assumed != old);
   return (llint)old;
 }
-__device__ static llint atomicOr(llint *address, llint val)
+__device__ static inline llint atomicOr(llint *address, llint val)
 {
   ullint *address_as_ull = (ullint *)(address);
   ullint  old            = *address_as_ull, assumed;
@@ -746,7 +747,7 @@ __device__ static llint atomicOr(llint *address, llint val)
   return (llint)old;
 }
 
-__device__ static llint atomicXor(llint *address, llint val)
+__device__ static inline llint atomicXor(llint *address, llint val)
 {
   ullint *address_as_ull = (ullint *)(address);
   ullint  old            = *address_as_ull, assumed;

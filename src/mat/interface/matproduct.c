@@ -215,7 +215,7 @@ static PetscErrorCode MatProductSymbolic_Unsafe(Mat mat)
   the symbolic phase took advantage of their symmetry, the product is cleared and `MatProductSetFromOptions()`
   and `MatProductSymbolic()` are invoked again.
 
-.seealso: [](ch_matrices), `MatProduct`, `Mat`, `MatProductCreate()`, `MatProductSetFromOptions()`, `MatProductSymbolic().` `MatProductClear()`
+.seealso: [](ch_matrices), `MatProduct`, `Mat`, `MatProductCreate()`, `MatProductSetFromOptions()`, `MatProductSymbolic()`, `MatProductClear()`
 @*/
 PetscErrorCode MatProductReplaceMats(Mat A, Mat B, Mat C, Mat D)
 {
@@ -413,11 +413,8 @@ static PetscErrorCode MatProductSetFromOptions_Private(Mat mat)
     Bn         = Bm;
     Bm         = t;
   }
-  if (product->type == MATPRODUCT_AtB) {
-    PetscInt t = An;
-    An         = Am;
-    Am         = t;
-  }
+  if (product->type == MATPRODUCT_AtB) An = Am;
+
   PetscCheck(An == Bm, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_SIZ, "Matrix dimensions of A and %s are incompatible for MatProductType %s: A %" PetscInt_FMT "x%" PetscInt_FMT ", %s %" PetscInt_FMT "x%" PetscInt_FMT, bname,
              MatProductTypes[product->type], A->rmap->N, A->cmap->N, bname, B->rmap->N, B->cmap->N);
   PetscCheck(!Cm || Cm == Bn, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_SIZ, "Matrix dimensions of B and C are incompatible for MatProductType %s: B %" PetscInt_FMT "x%" PetscInt_FMT ", C %" PetscInt_FMT "x%" PetscInt_FMT,
@@ -545,7 +542,7 @@ PetscErrorCode MatProductSetFromOptions(Mat mat)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatProductView - View the private matrix-matrix algorithm object within a matrix
 
   Logically Collective
@@ -555,6 +552,9 @@ PetscErrorCode MatProductSetFromOptions(Mat mat)
 - viewer - where the information on the matrix-matrix algorithm of `mat` should be reviewed
 
   Level: intermediate
+
+  Developer Note:
+  Shouldn't this information be printed from an appropriate `MatView()` with perhaps certain formats set?
 
 .seealso: [](ch_matrices), `MatProductType`, `Mat`, `MatProductSetFromOptions()`, `MatView()`, `MatProductCreate()`, `MatProductCreateWithMat()`
 @*/
@@ -833,24 +833,29 @@ PetscErrorCode MatProductSymbolic(Mat mat)
 
   Input Parameters:
 + mat  - the matrix whose values are to be computed via a matrix-matrix product operation
-- fill - expected fill as ratio of nnz(mat)/(nnz(A) + nnz(B) + nnz(C)); use `PETSC_DEFAULT` if you do not have a good estimate.
-          If the product is a dense matrix, this value is not used.
+- fill - expected fill as ratio of nnz(mat)/(nnz(A) + nnz(B) + nnz(C)); use `PETSC_DETERMINE` or `PETSC_CURRENT` if you do not have a good estimate.
+         If the product is a dense matrix, this value is not used.
 
   Level: intermediate
 
-.seealso: [](ch_matrices), `MatProduct`, `Mat`, `MatProductSetFromOptions()`, `MatProductSetType()`, `MatProductSetAlgorithm()`, `MatProductCreate()`
+  Notes:
+  Use `fill` of `PETSC_DETERMINE` to use the default value.
+
+  The deprecated `PETSC_DEFAULT` is also supported to mean use the current value.
+
+.seealso: [](ch_matrices), `MatProduct`, `PETSC_DETERMINE`, `Mat`, `MatProductSetFromOptions()`, `MatProductSetType()`, `MatProductSetAlgorithm()`, `MatProductCreate()`
 @*/
 PetscErrorCode MatProductSetFill(Mat mat, PetscReal fill)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   MatCheckProduct(mat, 1);
-  if (fill == (PetscReal)PETSC_DEFAULT || fill == (PetscReal)PETSC_DECIDE) mat->product->fill = 2.0;
-  else mat->product->fill = fill;
+  if (fill == (PetscReal)PETSC_DETERMINE) mat->product->fill = mat->product->default_fill;
+  else if (fill != (PetscReal)PETSC_CURRENT) mat->product->fill = fill;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatProductSetAlgorithm - Requests a particular algorithm for a matrix-matrix product operation that will perform to compute the given matrix
 
   Collective
@@ -876,7 +881,7 @@ PetscErrorCode MatProductSetAlgorithm(Mat mat, MatProductAlgorithm alg)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatProductGetAlgorithm - Returns the selected algorithm for a matrix-matrix product operation
 
   Not Collective
@@ -993,7 +998,8 @@ PetscErrorCode MatProductCreate_Private(Mat A, Mat B, Mat C, Mat D)
   product->api_user             = PETSC_FALSE;
   product->clear                = PETSC_FALSE;
   product->setfromoptionscalled = PETSC_FALSE;
-  D->product                    = product;
+  PetscObjectParameterSetDefault(product, fill, 2);
+  D->product = product;
 
   PetscCall(MatProductSetAlgorithm(D, MATPRODUCTALGORITHMDEFAULT));
   PetscCall(MatProductSetFill(D, PETSC_DEFAULT));

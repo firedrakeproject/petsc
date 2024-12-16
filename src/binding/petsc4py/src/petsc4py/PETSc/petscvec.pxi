@@ -169,12 +169,15 @@ cdef extern from * nogil:
     PetscErrorCode VecGhostUpdateBegin(PetscVec, PetscInsertMode, PetscScatterMode)
     PetscErrorCode VecGhostUpdateEnd(PetscVec, PetscInsertMode, PetscScatterMode)
     PetscErrorCode VecMPISetGhost(PetscVec, PetscInt, const PetscInt*)
+    PetscErrorCode VecGhostGetGhostIS(PetscVec, PetscIS*)
 
     PetscErrorCode VecGetSubVector(PetscVec, PetscIS, PetscVec*)
     PetscErrorCode VecRestoreSubVector(PetscVec, PetscIS, PetscVec*)
 
     PetscErrorCode VecNestGetSubVecs(PetscVec, PetscInt*, PetscVec**)
     PetscErrorCode VecNestSetSubVecs(PetscVec, PetscInt, PetscInt*, PetscVec*)
+
+    PetscErrorCode VecConcatenate(PetscInt nx, PetscVec[], PetscVec*, PetscIS*[])
 
     PetscErrorCode VecISAXPY(PetscVec, PetscIS, PetscScalar, PetscVec)
     PetscErrorCode VecISSet(PetscVec, PetscIS, PetscScalar)
@@ -467,8 +470,8 @@ cdef vec_get_dlpack_ctx(Vec self):
     cdef PetscInt devId = 0
     cdef PetscMemType mtype = PETSC_MEMTYPE_HOST
     if ctx0 is None: # First time in, create a linear memory view
-        s1 = oarray_p(empty_p(ndim), NULL, <void**>&shape_arr)
-        s2 = oarray_p(empty_p(ndim), NULL, <void**>&strides_arr)
+        s1 = oarray_p(empty_p(<PetscInt>ndim), NULL, <void**>&shape_arr)
+        s2 = oarray_p(empty_p(<PetscInt>ndim), NULL, <void**>&strides_arr)
         CHKERR(VecGetLocalSize(self.vec, &n))
         shape_arr[0] = <int64_t>n
         strides_arr[0] = 1

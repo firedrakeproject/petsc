@@ -318,7 +318,7 @@ PetscErrorCode SNESFASSetCycles(SNES snes, PetscInt cycles)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@
+/*@C
   SNESFASSetMonitor - Sets the method-specific cycle monitoring
 
   Logically Collective
@@ -352,7 +352,7 @@ PetscErrorCode SNESFASSetMonitor(SNES snes, PetscViewerAndFormat *vf, PetscBool 
         /* set the monitors for the upsmoother and downsmoother */
         PetscCall(SNESMonitorCancel(levelsnes));
         /* Only register destroy on finest level */
-        PetscCall(SNESMonitorSet(levelsnes, (PetscErrorCode(*)(SNES, PetscInt, PetscReal, void *))SNESMonitorDefault, vf, (!i ? (PetscErrorCode(*)(void **))PetscViewerAndFormatDestroy : NULL)));
+        PetscCall(SNESMonitorSet(levelsnes, (PetscErrorCode (*)(SNES, PetscInt, PetscReal, void *))SNESMonitorDefault, vf, !i ? (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy : NULL));
       } else if (i != fas->levels - 1) {
         /* unset the monitors on the coarse levels */
         PetscCall(SNESMonitorCancel(levelsnes));

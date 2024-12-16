@@ -12,11 +12,11 @@
 #define Mat type(tMat)
 #define MatNullSpace type(tMatNullSpace)
 #define MatFDColoring type(tMatFDColoring)
+#define MatColoring type(tMatColoring)
 #define MatTransposeColoring type(tMatTransposeColoring)
+#define MatPartitioning type(tMatPartitioning)
+#define MatCoarsen type(tMatCoarsen)
 
-#define MatColoring PetscFortranAddr
-#define MatPartitioning PetscFortranAddr
-#define MatCoarsen PetscFortranAddr
 #define MatAIJIndices PetscFortranAddr
 #define MatType character*(80)
 #define MatSolverType character*(80)
@@ -211,6 +211,7 @@
 #define MATSOLVERHIP             'hip'
 #define MATSOLVERKOKKOS          'kokkos'
 #define MATSOLVERSPQR            'spqr'
+#define MATSOLVERHTOOL           'htool'
 
 !
 ! GPU Storage Formats for CUSPARSE

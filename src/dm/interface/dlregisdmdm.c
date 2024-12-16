@@ -112,18 +112,20 @@ PetscErrorCode DMInitializePackage(void)
   PetscCall(PetscLogEventRegister("DMPlexJacobianFE", DM_CLASSID, &DMPLEX_JacobianFEM));
   PetscCall(PetscLogEventRegister("DMPlexInterpFE", DM_CLASSID, &DMPLEX_InterpolatorFEM));
   PetscCall(PetscLogEventRegister("DMPlexInjectorFE", DM_CLASSID, &DMPLEX_InjectorFEM));
-  PetscCall(PetscLogEventRegister("DMPlexIntegralFEM", DM_CLASSID, &DMPLEX_IntegralFEM));
+  PetscCall(PetscLogEventRegister("DMPlexIntegralFE", DM_CLASSID, &DMPLEX_IntegralFEM));
   PetscCall(PetscLogEventRegister("DMPlexRebalance", DM_CLASSID, &DMPLEX_RebalanceSharedPoints));
   PetscCall(PetscLogEventRegister("DMPlexLocatePoints", DM_CLASSID, &DMPLEX_LocatePoints));
   PetscCall(PetscLogEventRegister("DMPlexTopologyView", DM_CLASSID, &DMPLEX_TopologyView));
-  PetscCall(PetscLogEventRegister("DMPlexDistributionView", DM_CLASSID, &DMPLEX_DistributionView));
   PetscCall(PetscLogEventRegister("DMPlexLabelsView", DM_CLASSID, &DMPLEX_LabelsView));
   PetscCall(PetscLogEventRegister("DMPlexCoordinatesView", DM_CLASSID, &DMPLEX_CoordinatesView));
   PetscCall(PetscLogEventRegister("DMPlexSectionView", DM_CLASSID, &DMPLEX_SectionView));
   PetscCall(PetscLogEventRegister("DMPlexGlobalVectorView", DM_CLASSID, &DMPLEX_GlobalVectorView));
   PetscCall(PetscLogEventRegister("DMPlexLocalVectorView", DM_CLASSID, &DMPLEX_LocalVectorView));
   PetscCall(PetscLogEventRegister("DMPlexTopologyLoad", DM_CLASSID, &DMPLEX_TopologyLoad));
+#if defined(PETSC_HAVE_HDF5)
+  PetscCall(PetscLogEventRegister("DMPlexDistributionView", DM_CLASSID, &DMPLEX_DistributionView));
   PetscCall(PetscLogEventRegister("DMPlexDistributionLoad", DM_CLASSID, &DMPLEX_DistributionLoad));
+#endif
   PetscCall(PetscLogEventRegister("DMPlexLabelsLoad", DM_CLASSID, &DMPLEX_LabelsLoad));
   PetscCall(PetscLogEventRegister("DMPlexCoordinatesLoad", DM_CLASSID, &DMPLEX_CoordinatesLoad));
   PetscCall(PetscLogEventRegister("DMPlexSectionLoad", DM_CLASSID, &DMPLEX_SectionLoad));
@@ -175,6 +177,8 @@ PetscErrorCode DMInitializePackage(void)
 
   PetscCall(DMGenerateRegisterAll());
   PetscCall(PetscRegisterFinalize(DMGenerateRegisterDestroy));
+  PetscCall(DMGeomModelRegisterAll());
+  PetscCall(PetscRegisterFinalize(DMGeomModelRegisterDestroy));
   PetscCall(DMPlexTransformRegisterAll());
   PetscCall(PetscRegisterFinalize(DMPlexTransformRegisterDestroy));
   PetscCall(DMLabelRegisterAll());
@@ -405,6 +409,7 @@ PETSC_EXTERN PetscErrorCode PetscDLLibraryRegister_petscdm(void)
   PetscCall(PetscFEInitializePackage());
   PetscCall(PetscFVInitializePackage());
   PetscCall(DMFieldInitializePackage());
+  PetscCall(PetscDSInitializePackage());
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

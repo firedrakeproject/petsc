@@ -37,7 +37,7 @@ int main(int argc, char **argv)
   PetscBool nest;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(PetscOptionsGetInt(NULL, NULL, "-time", &time_steps, NULL));
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-nest", &nest, NULL));
 
@@ -230,7 +230,7 @@ PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec globalin, Vec globalout, void
   PetscCall(VecScatterBegin(scatter, tmp_out, globalout, INSERT_VALUES, SCATTER_FORWARD));
   PetscCall(VecScatterEnd(scatter, tmp_out, globalout, INSERT_VALUES, SCATTER_FORWARD));
 
-  /* Destroy idx aand scatter */
+  /* Destroy idx and scatter */
   PetscCall(ISDestroy(&from));
   PetscCall(ISDestroy(&to));
   PetscCall(VecScatterDestroy(&scatter));

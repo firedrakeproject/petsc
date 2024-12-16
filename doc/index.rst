@@ -12,15 +12,24 @@ Immediately jump in and run PETSc code :any:`handson`.
 
 PETSc is developed as :ref:`open-source <doc_license>`, :any:`requests <doc_creepycrawly>` and :any:`contributions <ch_contributing>` are welcome.
 
+.. admonition:: News:
+
+  PETSc is now on `BlueSky <https://bsky.app/profile/petsc.bsky.social>`__.
+
+.. admonition:: News:
+
+  The :any:`2025 PETSc Annual User Meeting<2025_meeting>` will take place May 20-21, 2025 in Buffalo, New York, USA, with tutorials on May 19th.
+
+.. admonition:: News: Mrs Hong Zhang, who has been a PETSc developer for twenty-five years and mentored many students and future PETSc developers, has retired.
+
+  .. image:: /images/community/HongZhangDinner.jpg
+     :align: center
+
 .. admonition:: News: PETSc is associated with `NumFOCUS <http://numfocus.org>`__, a 501(c)(3) nonprofit supporting open code and reproducible science,
                 through which you can help support PETSc.
 
   .. image:: /images/community/numfocus.png
      :align: center
-
-.. admonition:: News: PETSc 2024 Annual Meeting
-
-  The :any:`2024 Annual Meeting <meetings>` will take place May 23, 24 in Cologne, Germany.
 
 .. admonition:: News: Book on numerical methods using PETSc
 
@@ -68,6 +77,8 @@ Toolkits/libraries that use PETSc
 -  `DAFoam <https://dafoam.github.io>`__ Discrete adjoint solvers
    with `OpenFOAM <https://openfoam.com>`__ for aerodynamic
    optimization
+-  `DAMASK <https://damask-multiphysics.org>`__ Unified multi-physics
+   crystal plasticity simulation package
 -  `DEAL.II <https://www.dealii.org/>`__ C++ based finite element
    simulation package
 -  `DUNE-FEM <https://dune-project.org/sphinx/content/sphinx/dune-fem/>`__ Python and C++ based finite element simulation package

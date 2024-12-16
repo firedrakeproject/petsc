@@ -140,12 +140,12 @@ typedef struct {
   MPI_Request *send_waits;        /* array of send requests */
   MPI_Request *recv_waits;        /* array of receive requests */
   MPI_Status  *send_status;       /* array of send status */
-  PetscInt     nsends, nrecvs;    /* numbers of sends and receives */
+  PetscMPIInt  nsends, nrecvs;    /* numbers of sends and receives */
   PetscScalar *svalues, *rvalues; /* sending and receiving data */
   PetscInt    *sindices, *rindices;
   PetscInt     rmax;       /* maximum message length */
   PetscInt    *nprocs;     /* tmp data used both during scatterbegin and end */
-  PetscInt     nprocessed; /* number of messages already processed */
+  PetscMPIInt  nprocessed; /* number of messages already processed */
   PetscBool    donotstash;
   PetscBool    ignorenegidx; /* ignore negative indices passed into VecSetValues/VetGetValues */
   InsertMode   insertmode;
@@ -159,9 +159,9 @@ struct _p_Vec {
   PetscBool   array_gotten;
   VecStash    stash, bstash; /* used for storing off-proc values during assembly */
   PetscBool   petscnative;   /* means the ->data starts with VECHEADER and can use VecGetArrayFast()*/
+  PetscInt    lock;          /* lock state. vector can be free (=0), locked for read (>0) or locked for write(<0) */
 #if PetscDefined(USE_DEBUG)
   PetscStack lockstack; /* the file,func,line of where locks are added */
-  PetscInt   lock;      /* lock state. vector can be free (=0), locked for read (>0) or locked for write(<0) */
 #endif
   PetscOffloadMask offloadmask; /* a mask which indicates where the valid vector data is (GPU, CPU or both) */
 #if defined(PETSC_HAVE_DEVICE)
@@ -194,6 +194,7 @@ PETSC_EXTERN PetscLogEvent VEC_WAXPY;
 PETSC_EXTERN PetscLogEvent VEC_MAXPY;
 PETSC_EXTERN PetscLogEvent VEC_AssemblyEnd;
 PETSC_EXTERN PetscLogEvent VEC_PointwiseMult;
+PETSC_EXTERN PetscLogEvent VEC_PointwiseDivide;
 PETSC_EXTERN PetscLogEvent VEC_SetValues;
 PETSC_EXTERN PetscLogEvent VEC_SetPreallocateCOO;
 PETSC_EXTERN PetscLogEvent VEC_SetValuesCOO;
@@ -468,4 +469,12 @@ PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode VecWAXPYAsync_Private(Vec, PetscScala
     } else { \
       PetscUseTypeMethod(v, name, __VA_ARGS__); \
     } \
+  } while (0)
+
+// return in lda the vector's local size aligned to <alignment> bytes, where lda is an integer pointer
+#define VecGetLocalSizeAligned(v, alignment, lda) \
+  do { \
+    PetscInt     n = (v)->map->n; \
+    const size_t s = (alignment) / sizeof(PetscScalar); \
+    *(lda)         = ((n + s - 1) / s) * s; \
   } while (0)

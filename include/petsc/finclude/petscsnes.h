@@ -7,7 +7,8 @@
 #include "petsc/finclude/petscksp.h"
 
 #define SNES type(tSNES)
-
+#define SNESLineSearch type(tSNESLineSearch)
+#define MatMFFD type(tMatMFFD)
 #define PetscConvEst type(tPetscConvEst)
 
 #define SNESType character*(80)
@@ -15,9 +16,7 @@
 #define SNESConvergedReason PetscEnum
 #define SNESLineSearchReason PetscEnum
 #define SNESLineSearchType  character*(80)
-#define MatMFFD PetscFortranAddr
-#define MatMFFDType PetscFortranAddr
-#define SNESLineSearch PetscFortranAddr
+#define MatMFFDType character*(80)
 #define SNESLineSearchOrder PetscEnum
 #define SNESNormSchedule PetscEnum
 #define SNESQNType PetscEnum
@@ -31,6 +30,7 @@
 #define SNESNewtonTRQNType PetscEnum
 #define SNESCompositeType PetscEnum
 #define SNESFunctionType PetscEnum
+#define SNESNewtonALCorrectionType PetscEnum
 
 !
 !  SNESType
@@ -38,6 +38,7 @@
 #define SNESNEWTONLS         'newtonls'
 #define SNESNEWTONTR         'newtontr'
 #define SNESNEWTONTRDC       'newtontrdc'
+#define SNESNEWTONAL         'newtonal'
 #define SNESPYTHON           'python'
 #define SNESNRICHARDSON      'nrichardson'
 #define SNESKSPONLY          'ksponly'

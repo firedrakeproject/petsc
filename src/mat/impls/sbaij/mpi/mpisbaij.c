@@ -234,7 +234,6 @@ static PetscErrorCode MatRetrieveValues_MPISBAIJ(Mat mat)
     PetscCall(PetscArrayzero(ap + bs2 * _i, bs2)); \
     rp[_i]                          = bcol; \
     ap[bs2 * _i + bs * cidx + ridx] = value; \
-    A->nonzerostate++; \
   a_noinsert:; \
     ailen[brow] = nrow; \
   } while (0)
@@ -275,7 +274,6 @@ static PetscErrorCode MatRetrieveValues_MPISBAIJ(Mat mat)
     PetscCall(PetscArrayzero(ap + bs2 * _i, bs2)); \
     rp[_i]                          = bcol; \
     ap[bs2 * _i + bs * cidx + ridx] = value; \
-    B->nonzerostate++; \
   b_noinsert:; \
     bilen[brow] = nrow; \
   } while (0)
@@ -295,12 +293,12 @@ static PetscErrorCode MatSetValues_MPISBAIJ(Mat mat, PetscInt m, const PetscInt 
 
   /* Some Variables required in the macro */
   Mat           A     = baij->A;
-  Mat_SeqSBAIJ *a     = (Mat_SeqSBAIJ *)(A)->data;
+  Mat_SeqSBAIJ *a     = (Mat_SeqSBAIJ *)A->data;
   PetscInt     *aimax = a->imax, *ai = a->i, *ailen = a->ilen, *aj = a->j;
   MatScalar    *aa = a->a;
 
   Mat          B     = baij->B;
-  Mat_SeqBAIJ *b     = (Mat_SeqBAIJ *)(B)->data;
+  Mat_SeqBAIJ *b     = (Mat_SeqBAIJ *)B->data;
   PetscInt    *bimax = b->imax, *bi = b->i, *bilen = b->ilen, *bj = b->j;
   MatScalar   *ba = b->a;
 
@@ -364,7 +362,7 @@ static PetscErrorCode MatSetValues_MPISBAIJ(Mat mat, PetscInt m, const PetscInt 
               col = in[j];
               /* Reinitialize the variables required by MatSetValues_SeqBAIJ_B_Private() */
               B     = baij->B;
-              b     = (Mat_SeqBAIJ *)(B)->data;
+              b     = (Mat_SeqBAIJ *)B->data;
               bimax = b->imax;
               bi    = b->i;
               bilen = b->ilen;
@@ -622,22 +620,11 @@ static PetscErrorCode MatSetValuesBlocked_MPISBAIJ(Mat mat, PetscInt m, const Pe
           if (mat->was_assembled) {
             if (!baij->colmap) PetscCall(MatCreateColmap_MPIBAIJ_Private(mat));
 
-#if defined(PETSC_USE_DEBUG)
-  #if defined(PETSC_USE_CTABLE)
-            {
-              PetscInt data;
-              PetscCall(PetscHMapIGetWithDefault(baij->colmap, in[j] + 1, 0, &data));
-              PetscCheck((data - 1) % bs == 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Incorrect colmap");
-            }
-  #else
-            PetscCheck((baij->colmap[in[j]] - 1) % bs == 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Incorrect colmap");
-  #endif
-#endif
 #if defined(PETSC_USE_CTABLE)
             PetscCall(PetscHMapIGetWithDefault(baij->colmap, in[j] + 1, 0, &col));
-            col = (col - 1) / bs;
+            col = col < 1 ? -1 : (col - 1) / bs;
 #else
-            col = (baij->colmap[in[j]] - 1) / bs;
+            col = baij->colmap[in[j]] < 1 ? -1 : (baij->colmap[in[j]] - 1) / bs;
 #endif
             if (col < 0 && !((Mat_SeqBAIJ *)baij->A->data)->nonew) {
               PetscCall(MatDisAssemble_MPISBAIJ(mat));
@@ -716,7 +703,7 @@ static PetscErrorCode MatNorm_MPISBAIJ(Mat mat, NormType type, PetscReal *norm)
       PetscCall(MatNorm(baij->B, type, lnorm2));
       *lnorm2 = (*lnorm2) * (*lnorm2);
       lnorm2--; /* squar power of norm(B) */
-      PetscCall(MPIU_Allreduce(lnorm2, sum, 2, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
+      PetscCallMPI(MPIU_Allreduce(lnorm2, sum, 2, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
       *norm = PetscSqrtReal(sum[0] + 2 * sum[1]);
       PetscCall(PetscFree(lnorm2));
     } else if (type == NORM_INFINITY || type == NORM_1) { /* max row/column sum */
@@ -726,6 +713,7 @@ static PetscErrorCode MatNorm_MPISBAIJ(Mat mat, NormType type, PetscReal *norm)
       PetscInt     *jj, *garray = baij->garray, rstart = baij->rstartbs, nz;
       PetscInt      brow, bcol, col, bs = baij->A->rmap->bs, row, grow, gcol, mbs = amat->mbs;
       MatScalar    *v;
+      PetscMPIInt   iN;
 
       PetscCall(PetscMalloc2(mat->cmap->N, &rsum, mat->cmap->N, &rsum2));
       PetscCall(PetscArrayzero(rsum, mat->cmap->N));
@@ -770,7 +758,8 @@ static PetscErrorCode MatNorm_MPISBAIJ(Mat mat, NormType type, PetscReal *norm)
         }
         PetscCall(PetscLogFlops(nz * bs * bs));
       }
-      PetscCall(MPIU_Allreduce(rsum, rsum2, mat->cmap->N, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
+      PetscCall(PetscMPIIntCast(mat->cmap->N, &iN));
+      PetscCallMPI(MPIU_Allreduce(rsum, rsum2, iN, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
       *norm = 0.0;
       for (col = 0; col < mat->cmap->N; col++) {
         if (rsum2[col] > *norm) *norm = rsum2[col];
@@ -873,7 +862,7 @@ static PetscErrorCode MatAssemblyEnd_MPISBAIJ(Mat mat, MatAssemblyType mode)
      no processor disassembled thus we can skip this stuff
   */
   if (!((Mat_SeqBAIJ *)baij->B->data)->nonew) {
-    PetscCall(MPIU_Allreduce(&mat->was_assembled, &other_disassembled, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
+    PetscCallMPI(MPIU_Allreduce(&mat->was_assembled, &other_disassembled, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
     if (mat->was_assembled && !other_disassembled) PetscCall(MatDisAssemble_MPISBAIJ(mat));
   }
 
@@ -888,7 +877,7 @@ static PetscErrorCode MatAssemblyEnd_MPISBAIJ(Mat mat, MatAssemblyType mode)
   /* if no new nonzero locations are allowed in matrix then only set the matrix state the first time through */
   if ((!mat->was_assembled && mode == MAT_FINAL_ASSEMBLY) || !((Mat_SeqBAIJ *)baij->A->data)->nonew) {
     PetscObjectState state = baij->A->nonzerostate + baij->B->nonzerostate;
-    PetscCall(MPIU_Allreduce(&state, &mat->nonzerostate, 1, MPIU_INT64, MPI_SUM, PetscObjectComm((PetscObject)mat)));
+    PetscCallMPI(MPIU_Allreduce(&state, &mat->nonzerostate, 1, MPIU_INT64, MPI_SUM, PetscObjectComm((PetscObject)mat)));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1490,7 +1479,7 @@ static PetscErrorCode MatGetInfo_MPISBAIJ(Mat matin, MatInfoType flag, MatInfo *
     info->memory       = isend[3];
     info->mallocs      = isend[4];
   } else if (flag == MAT_GLOBAL_MAX) {
-    PetscCall(MPIU_Allreduce(isend, irecv, 5, MPIU_PETSCLOGDOUBLE, MPI_MAX, PetscObjectComm((PetscObject)matin)));
+    PetscCallMPI(MPIU_Allreduce(isend, irecv, 5, MPIU_PETSCLOGDOUBLE, MPI_MAX, PetscObjectComm((PetscObject)matin)));
 
     info->nz_used      = irecv[0];
     info->nz_allocated = irecv[1];
@@ -1498,7 +1487,7 @@ static PetscErrorCode MatGetInfo_MPISBAIJ(Mat matin, MatInfoType flag, MatInfo *
     info->memory       = irecv[3];
     info->mallocs      = irecv[4];
   } else if (flag == MAT_GLOBAL_SUM) {
-    PetscCall(MPIU_Allreduce(isend, irecv, 5, MPIU_PETSCLOGDOUBLE, MPI_SUM, PetscObjectComm((PetscObject)matin)));
+    PetscCallMPI(MPIU_Allreduce(isend, irecv, 5, MPIU_PETSCLOGDOUBLE, MPI_SUM, PetscObjectComm((PetscObject)matin)));
 
     info->nz_used      = irecv[0];
     info->nz_allocated = irecv[1];
@@ -1669,7 +1658,7 @@ static PetscErrorCode MatEqual_MPISBAIJ(Mat A, Mat B, PetscBool *flag)
 
   PetscCall(MatEqual(a, c, &flg));
   if (flg) PetscCall(MatEqual(b, d, &flg));
-  PetscCall(MPIU_Allreduce(&flg, flag, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)A)));
+  PetscCallMPI(MPIU_Allreduce(&flg, flag, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)A)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1964,6 +1953,9 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPISBAIJ,
                                        NULL,
                                        /*150*/ NULL,
                                        MatEliminateZeros_MPISBAIJ,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        NULL};
 
 static PetscErrorCode MatMPISBAIJSetPreallocation_MPISBAIJ(Mat B, PetscInt bs, PetscInt d_nz, const PetscInt *d_nnz, PetscInt o_nz, const PetscInt *o_nnz)
@@ -2255,7 +2247,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_MPISBAIJ(Mat B)
 .seealso: [](ch_matrices), `Mat`, `MATSEQSBAIJ`, `MATMPISBAIJ`, `MatCreateSBAIJ()`, `MATSEQSBAIJ`, `MATMPISBAIJ`
 M*/
 
-/*@C
+/*@
   MatMPISBAIJSetPreallocation - For good matrix assembly performance
   the user should preallocate the matrix storage by setting the parameters
   d_nz (or d_nnz) and o_nz (or o_nnz).  By setting these parameters accurately,
@@ -2347,7 +2339,7 @@ PetscErrorCode MatMPISBAIJSetPreallocation(Mat B, PetscInt bs, PetscInt d_nz, co
 }
 
 // PetscClangLinter pragma disable: -fdoc-section-header-unknown
-/*@C
+/*@
   MatCreateSBAIJ - Creates a sparse parallel matrix in symmetric block AIJ format, `MATSBAIJ`,
   (block compressed row).  For good matrix assembly performance
   the user should preallocate the matrix storage by setting the parameters
@@ -2360,35 +2352,35 @@ PetscErrorCode MatMPISBAIJSetPreallocation(Mat B, PetscInt bs, PetscInt d_nz, co
 . bs    - size of block, the blocks are ALWAYS square. One can use `MatSetBlockSizes()` to set a different row and column blocksize but the row
           blocksize always defines the size of the blocks. The column blocksize sets the blocksize of the vectors obtained with `MatCreateVecs()`
 . m     - number of local rows (or `PETSC_DECIDE` to have calculated if `M` is given)
-           This value should be the same as the local size used in creating the
-           y vector for the matrix-vector product y = Ax.
+          This value should be the same as the local size used in creating the
+          y vector for the matrix-vector product y = Ax.
 . n     - number of local columns (or `PETSC_DECIDE` to have calculated if `N` is given)
-           This value should be the same as the local size used in creating the
-           x vector for the matrix-vector product y = Ax.
+          This value should be the same as the local size used in creating the
+          x vector for the matrix-vector product y = Ax.
 . M     - number of global rows (or `PETSC_DETERMINE` to have calculated if `m` is given)
 . N     - number of global columns (or `PETSC_DETERMINE` to have calculated if `n` is given)
 . d_nz  - number of block nonzeros per block row in diagonal portion of local
-           submatrix (same for all local rows)
+          submatrix (same for all local rows)
 . d_nnz - array containing the number of block nonzeros in the various block rows
-           in the upper triangular portion of the in diagonal portion of the local
-           (possibly different for each block block row) or `NULL`.
-           If you plan to factor the matrix you must leave room for the diagonal entry and
-           set its value even if it is zero.
+          in the upper triangular portion of the in diagonal portion of the local
+          (possibly different for each block block row) or `NULL`.
+          If you plan to factor the matrix you must leave room for the diagonal entry and
+          set its value even if it is zero.
 . o_nz  - number of block nonzeros per block row in the off-diagonal portion of local
-           submatrix (same for all local rows).
+          submatrix (same for all local rows).
 - o_nnz - array containing the number of nonzeros in the various block rows of the
-           off-diagonal portion of the local submatrix (possibly different for
-           each block row) or `NULL`.
+          off-diagonal portion of the local submatrix (possibly different for
+          each block row) or `NULL`.
 
   Output Parameter:
 . A - the matrix
 
   Options Database Keys:
 + -mat_no_unroll  - uses code that does not unroll the loops in the
-                     block calculations (much slower)
+                    block calculations (much slower)
 . -mat_block_size - size of the blocks to use
 - -mat_mpi        - use the parallel matrix data structures even on one processor
-               (defaults to using SeqBAIJ format on one processor)
+                    (defaults to using SeqBAIJ format on one processor)
 
   Level: intermediate
 
@@ -2405,6 +2397,9 @@ PetscErrorCode MatMPISBAIJSetPreallocation(Mat B, PetscInt bs, PetscInt d_nz, co
 
   If `PETSC_DECIDE` or `PETSC_DETERMINE` is used for a particular argument on one processor
   than it must be used on all processors that share the object for that argument.
+
+  If `m` and `n` are not `PETSC_DECIDE`, then the values determines the `PetscLayout` of the matrix and the ranges returned by
+  `MatGetOwnershipRange()`,  `MatGetOwnershipRanges()`, `MatGetOwnershipRangeColumn()`, and `MatGetOwnershipRangesColumn()`.
 
   If the *_nnz parameter is given then the *_nz parameter is ignored
 
@@ -2443,7 +2438,8 @@ PetscErrorCode MatMPISBAIJSetPreallocation(Mat B, PetscInt bs, PetscInt d_nz, co
   In general, for PDE problems in which most nonzeros are near the diagonal,
   one expects `d_nz` >> `o_nz`.
 
-.seealso: [](ch_matrices), `Mat`, `MATSBAIJ`, `MatCreate()`, `MatCreateSeqSBAIJ()`, `MatSetValues()`, `MatCreateBAIJ()`
+.seealso: [](ch_matrices), `Mat`, `MATSBAIJ`, `MatCreate()`, `MatCreateSeqSBAIJ()`, `MatSetValues()`, `MatCreateBAIJ()`,
+          `MatGetOwnershipRange()`,  `MatGetOwnershipRanges()`, `MatGetOwnershipRangeColumn()`, `MatGetOwnershipRangesColumn()`, `PetscLayout`
 @*/
 PetscErrorCode MatCreateSBAIJ(MPI_Comm comm, PetscInt bs, PetscInt m, PetscInt n, PetscInt M, PetscInt N, PetscInt d_nz, const PetscInt d_nnz[], PetscInt o_nz, const PetscInt o_nnz[], Mat *A)
 {
@@ -2581,7 +2577,7 @@ static PetscErrorCode MatGetRowMaxAbs_MPISBAIJ(Mat A, Vec v, PetscInt idx[])
   PetscReal    *work, *svalues, *rvalues;
   PetscInt      i, bs, mbs, *bi, *bj, brow, j, ncols, krow, kcol, col, row, Mbs, bcol;
   PetscMPIInt   rank, size;
-  PetscInt     *rowners_bs, dest, count, source;
+  PetscInt     *rowners_bs, count, source;
   PetscScalar  *va;
   MatScalar    *ba;
   MPI_Status    stat;
@@ -2631,10 +2627,10 @@ static PetscErrorCode MatGetRowMaxAbs_MPISBAIJ(Mat A, Vec v, PetscInt idx[])
     }
 
     /* send values to its owners */
-    for (dest = rank + 1; dest < size; dest++) {
+    for (PetscMPIInt dest = rank + 1; dest < size; dest++) {
       svalues = work + rowners_bs[dest];
       count   = rowners_bs[dest + 1] - rowners_bs[dest];
-      PetscCallMPI(MPI_Send(svalues, count, MPIU_REAL, dest, rank, PetscObjectComm((PetscObject)A)));
+      PetscCallMPI(MPIU_Send(svalues, count, MPIU_REAL, dest, rank, PetscObjectComm((PetscObject)A)));
     }
   }
 
@@ -2643,7 +2639,7 @@ static PetscErrorCode MatGetRowMaxAbs_MPISBAIJ(Mat A, Vec v, PetscInt idx[])
     rvalues = work;
     count   = rowners_bs[rank + 1] - rowners_bs[rank];
     for (source = 0; source < rank; source++) {
-      PetscCallMPI(MPI_Recv(rvalues, count, MPIU_REAL, MPI_ANY_SOURCE, MPI_ANY_TAG, PetscObjectComm((PetscObject)A), &stat));
+      PetscCallMPI(MPIU_Recv(rvalues, count, MPIU_REAL, MPI_ANY_SOURCE, MPI_ANY_TAG, PetscObjectComm((PetscObject)A), &stat));
       /* process values */
       for (i = 0; i < count; i++) {
         if (PetscRealPart(va[i]) < rvalues[i]) va[i] = rvalues[i];
@@ -2833,7 +2829,7 @@ PetscErrorCode MatCreateMPISBAIJWithArrays(MPI_Comm comm, PetscInt bs, PetscInt 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatMPISBAIJSetPreallocationCSR - Creates a sparse parallel matrix in `MATMPISBAIJ` format using the given nonzero structure and (optional) numerical values
 
   Collective

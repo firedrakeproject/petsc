@@ -252,7 +252,7 @@ PetscErrorCode TSTrajectoryGetVecs(TSTrajectory tj, TS ts, PetscInt stepnum, Pet
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   TSTrajectoryViewFromOptions - View a `TSTrajectory` based on values in the options database
 
   Collective
@@ -274,7 +274,7 @@ PetscErrorCode TSTrajectoryViewFromOptions(TSTrajectory A, PetscObject obj, cons
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   TSTrajectoryView - Prints information about the trajectory object
 
   Collective
@@ -399,13 +399,11 @@ PetscErrorCode TSTrajectoryCreate(MPI_Comm comm, TSTrajectory *tj)
 
   PetscFunctionBegin;
   PetscAssertPointer(tj, 2);
-  *tj = NULL;
   PetscCall(TSInitializePackage());
 
   PetscCall(PetscHeaderCreate(t, TSTRAJECTORY_CLASSID, "TSTrajectory", "Time stepping", "TS", comm, TSTrajectoryDestroy, TSTrajectoryView));
   t->setupcalled = PETSC_FALSE;
   PetscCall(TSHistoryCreate(comm, &t->tsh));
-
   t->lag.order            = 1;
   t->lag.L                = NULL;
   t->lag.T                = NULL;
@@ -417,11 +415,11 @@ PetscErrorCode TSTrajectoryCreate(MPI_Comm comm, TSTrajectory *tj)
   t->lag.Ucached.id       = 0;
   t->lag.Ucached.state    = -1;
   t->lag.Ucached.time     = PETSC_MIN_REAL;
-  t->lag.Ucached.step     = PETSC_MAX_INT;
+  t->lag.Ucached.step     = PETSC_INT_MAX;
   t->lag.Udotcached.id    = 0;
   t->lag.Udotcached.state = -1;
   t->lag.Udotcached.time  = PETSC_MIN_REAL;
-  t->lag.Udotcached.step  = PETSC_MAX_INT;
+  t->lag.Udotcached.step  = PETSC_INT_MAX;
   t->adjoint_solve_mode   = PETSC_TRUE;
   t->solution_only        = PETSC_FALSE;
   t->keepfiles            = PETSC_FALSE;

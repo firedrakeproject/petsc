@@ -16,6 +16,11 @@
 % LiteralHTML:
 % LiteralHTML:  <a name="nano"><H3><center>Nano-simulations</center></H3>
 % LiteralHTML:
+@Misc{            semver-webpage,
+  author        = {{Semantic Versioning 2.0.0}},
+  note          = {\url{https://semver.org}}
+}
+
 @article{veldhuizen1984d,
   title          = {{D}-stability and {K}aps-{R}entrop-methods},
   author         = {Veldhuizen, M van},
@@ -1056,6 +1061,17 @@
   author        = {Richard Tran Mills and Mark F. Adams and Satish Balay and Jed Brown and Alp Dener
                   and Matthew Knepley and Scott E. Kruger and Hannah Morgan and Todd Munson and Karl
                   Rupp and Barry F. Smith and Stefano Zampini and Hong Zhang and Junchao Zhang}
+}
+
+@Article{         mills2024,
+  title         = {{PETSc/TAO} Developments for Early Exascale Systems},
+  author        = {Richard Tran Mills and Mark F. Adams and Satish Balay and Jed Brown and
+                  Jacob Faibussowitsch and Tobin Isaac and Matthew G. Knepley and Todd Munson and
+                  Hansul Suh and Stefano Zampini and Hong Zhang and Junchao Zhang},
+  journal       = {International Journal of High Performance Computing Applications},
+  url           = {http://arxiv.org/abs/2401.05868},
+  note          = {Submitted},
+  year          = {2024}
 }
 
 @Article{         rupp:2016:pis:2988256.2907944,
@@ -8994,11 +9010,11 @@
                   and Dinesh Kaushik and Matthew~G. Knepley and Fande Kong and Scott Kruger and
                   Dave~A. May and Lois Curfman McInnes and Richard Tran Mills and Lawrence Mitchell
                   and Todd Munson and Jose~E. Roman and Karl Rupp and Patrick Sanan and Jason Sarich
-                  and Barry~F. Smith and Stefano Zampini and Hong Zhang and Hong Zhang and Junchao
-                  Zhang},
+                  and Barry~F. Smith and Hansol Suh and Stefano Zampini and Hong Zhang and Hong Zhang
+                  and Junchao Zhang},
   title         = {{PETSc/TAO} Users Manual},
   institution   = {Argonne National Laboratory},
-  number        = {ANL-21/39 - Revision 3.21},
+  number        = {ANL-21/39 - Revision 3.22},
   doi           = {10.2172/2205494},
   year          = {2024}
 }
@@ -10906,7 +10922,7 @@
   journal       = {Computers and Mathematics with Applications},
   volume        = {84},
   pages         = {277--295},
-  year          = {2020}
+  year          = {2021}
 }
 
 @Article{         zampinitu2017,
@@ -17611,7 +17627,7 @@
   pages         = {1790--1808},
   year          = {2008},
   publisher     = {Academic Press},
-  url           = {http://chess.cs.umd.edu/~elman/papers/tax.pdf}
+  url           = {https://www.osti.gov/biblio/920807/}
 }
 
 @Article{         arioli2013,
@@ -22832,6 +22848,14 @@
   pages         = {2442--2475},
   doi           = {10.1093/gji/ggad370},
   year          = {2023}
+}
+
+@Article{         bhavsar2024influence,
+  title         = {Influence of initial slab dip, inter-plate coupling, and nonlinear rheology on dynamic weakening at the lithosphere-asthenosphere boundary},
+  author        = {Vivek Bhavsar and Margarete A. Jadamec and Matthew G. Knepley},
+  journal       = {Journal of Geophysical Research: Solid Earth},
+  note          = {Submitted},
+  year          = {2024},
 }
 
 @InProceedings{   actorfuentesriviere2020b,
@@ -39190,11 +39214,12 @@
 }
 
 @Article{         nathawaniknepley2023,
-  title         = {One-dimensional model to simulate shear-induced droplet formation},
+  title         = {A one-dimensional mathematical model for shear-induced droplet formation in co-flowing fluids},
   author        = {Darsh K. Nathawani and Matthew G. Knepley},
-  journal       = {International Journal of Multiphase Flow},
-  note          = {Submitted},
-  year          = {2023}
+  journal       = {Theoretical and Computational Fluid Dynamics},
+  url           = {https://rdcu.be/dFtlR},
+  doi           = {10.1007/s00162-024-00690-5},
+  year          = {2024}
 }
 
 @InProceedings{   georgalisnathawaniknepleypatra2023,
@@ -39250,6 +39275,16 @@
   pages         = {135--152},
   doi           = {10.2140/camcos.2023.18.135},
   year          = {2023}
+}
+
+@Article{         hamhaplaknepleymitchellsagiyama2024,
+  title         = {Efficient N-to-M Checkpointing Algorithm for Finite Element Simulations},
+  author        = {David A. Ham and Vaclav Hapla and Matthew G. Knepley and Lawrence Mitchell and Koki Sagiyama},
+  journal       = {SIAM Journal on Scientific Computing},
+  note          = {Under review},
+  url           = {https://arXiv.org/abs/2401.05868},
+  year          = {2024},
+  petsc_uses    = {DMPlex}
 }
 
 @Article{         eggersdupont1994,
@@ -39381,4 +39416,31 @@
   pages     = {196--225},
   year      = {2017},
   publisher = {Elsevier},
+}
+
+@article{Ritto-CorreaCamotim2008,
+  title={On the arc-length and other quadratic control methods: Established, less known and new implementation procedures},
+  volume={86},
+  ISSN={0045-7949},
+  DOI={10.1016/j.compstruc.2007.08.003},
+  number={11},
+  journal={Computers & Structures},
+  author={Ritto-Corr{\^{e}}a, Manuel and Camotim, Dinar},
+  year={2008},
+  month=jun,
+  pages={1353-1368},
+}
+
+
+@article{LeonPaulinoPereiraMenezesLages_2011,
+  title={A Unified Library of Nonlinear Solution Schemes},
+  volume={64},
+  ISSN={0003-6900, 2379-0407},
+  DOI={10.1115/1.4006992},
+  number={4},
+  journal={Applied Mechanics Reviews},
+  author={Leon, Sofie E. and Paulino, Glaucio H. and Pereira, Anderson and Menezes, Ivan F. M. and Lages, Eduardo N.},
+  year={2011},
+  month=jul,
+  pages={040803},
 }

@@ -69,6 +69,13 @@ Common Example Usages
 .. admonition:: Note
    :class: yellow
 
+   The configure options ``CFLAGS``, ``CXXFLAGS``, and ``FFLAGS`` overwrite most of the flags that PETSc would use by default. This is generally undesirable. To
+   add to the default flags instead use ``COPTFLAGS``, ``CXXOPTFLAGS``, and ``FOPTFLAGS`` (these work for all uses of ./configure). The same holds for
+   ``CUDAFLAGS``, ``HIPFLAGS``, and ``SYCLFLAGS``.
+
+.. admonition:: Note
+   :class: yellow
+
    Do not specify ``--with-cc``, ``--with-fc`` etc for the above when using
    ``--with-mpi-dir`` - so that ``mpicc``/ ``mpif90`` will be picked up from mpi-dir!
 
@@ -368,7 +375,7 @@ the following options to let PETSc's ``configure`` download and install MPI.
 
      $ ./configure --with-cc=mpigcc --with-cxx=mpigxx --with-fc=mpif90
 
-  "Old" Intel compilers: ``icc``, ``icpc``, and ``ifort``: 
+  "Old" Intel compilers: ``icc``, ``icpc``, and ``ifort``:
 
   .. code-block:: console
 
@@ -568,10 +575,10 @@ configure time. For example:
 
 .. code-block:: console
 
-   $ ./configure --prefix=/opt/petsc/petsc-3.21.0-mpich --with-mpi-dir=/opt/mpich
+   $ ./configure --prefix=/opt/petsc/petsc-3.22.0-mpich --with-mpi-dir=/opt/mpich
    $ make
    $ make install [DESTDIR=/tmp/petsc-pkg]
-   $ ./configure --prefix=/opt/petsc/petsc-3.21.0-openmpi --with-mpi-dir=/opt/openmpi
+   $ ./configure --prefix=/opt/petsc/petsc-3.22.0-openmpi --with-mpi-dir=/opt/openmpi
    $ make
    $ make install [DESTDIR=/tmp/petsc-pkg]
 
@@ -657,6 +664,16 @@ PETSc is able to take adavantage of GPU's and certain accelerator libraries, how
 
 .. _doc_config_accel_cuda:
 
+`OpenMP`
+^^^^^^^^
+
+Use ``--with-openmp`` to allow PETSc to be used within an OpenMP application; this also turns on OpenMP for all the packages that
+PETSc builds using ``--download-xxx``. If your application calls PETSc from within OpenMP threads then also use ``--with-threadsafety``.
+
+Use ``--with-openmp-kernels`` to have some PETSc numerical routines use OpenMP to speed up their computations. This requires ``--with-openmp``.
+
+Note that using OpenMP within MPI code must be done carefully to prevent too many OpenMP threads that overload the number of cores.
+
 `CUDA`_
 ^^^^^^^
 
@@ -665,8 +682,8 @@ PETSc is able to take adavantage of GPU's and certain accelerator libraries, how
    An NVIDIA GPU is **required** to use `CUDA`_-accelerated code. Check that your machine
    has a `CUDA`_ enabled GPU by consulting https://developer.nvidia.com/cuda-gpus.
 
-On Linux - make sure you have compatible `NVIDIA driver
-<https://developer.nvidia.com/cuda-downloads>`__ installed.
+On Linux - verify [#]_ that CUDA compatible `NVIDIA driver
+<https://www.nvidia.com/en-us/drivers>`__ is installed.
 
 On Microsoft Windows - Use either `Cygwin`_ or `WSL`_ the latter of which is entirely untested right
 now. If you have experience with `WSL`_ and/or have successfully built PETSc on Microsoft Windows
@@ -678,7 +695,7 @@ In most cases you need only pass the configure option ``--with-cuda``; check
 
 CUDA build of PETSc currently works on Mac OS X, Linux, Microsoft Windows with `Cygwin`_.
 
-Examples that use CUDA have the suffix .cu; see ``$PETSC_DIR/src/snes/tutorials/ex47.cu``
+Examples that use CUDA have the suffix .cu; see ``$PETSC_DIR/src/snes/tutorials/ex47cu.cu``
 
 .. _doc_config_accel_kokkos:
 
@@ -773,3 +790,4 @@ systems.  Also note the configuration examples in ``config/examples``.
 .. [#] The two packages provide slightly different (though largely overlapping) functionality which can only be fully used if both packages are installed.
 .. [#] Apple provides customized ``clang`` and ``clang++`` for its system. To use the unmodified LLVM project ``clang`` and ``clang++``
        install them with brew.
+.. [#] To verify CUDA compatible Nvidia driver on Linux - run the utility ``nvidia-smi`` - it should provide the version of the Nvidia driver currently installed, and the maximum CUDA version it supports.

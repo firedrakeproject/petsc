@@ -643,7 +643,7 @@ cdef class DM(Object):
         """
         CHKERR(DMClearFields(self.dm))
 
-    def copyFields(self, DM dm) -> None:
+    def copyFields(self, DM dm, minDegree = None, maxDegree = None) -> None:
         """Copy the discretizations of this `DM` into another `DM`.
 
         Collective.
@@ -652,13 +652,29 @@ cdef class DM(Object):
         ----------
         dm
             The `DM` that the fields are copied into.
+        minDegree
+            The minimum polynommial degree for the discretization,
+            or `None` for no limit
+        maxDegree
+            The maximum polynommial degree for the discretization,
+            or `None` for no limit
 
         See Also
         --------
         petsc.DMCopyFields
 
         """
-        CHKERR(DMCopyFields(self.dm, dm.dm))
+        cdef PetscInt mindeg = PETSC_DETERMINE
+        if minDegree is None:
+            pass
+        else:
+            mindeg = asInt(minDegree)
+        cdef PetscInt maxdeg = PETSC_DETERMINE
+        if maxDegree is None:
+            pass
+        else:
+            maxdeg = asInt(maxDegree)
+        CHKERR(DMCopyFields(self.dm, mindeg, maxdeg, dm.dm))
 
     def createDS(self) -> None:
         """Create discrete systems.
@@ -699,7 +715,7 @@ cdef class DM(Object):
         CHKERR(PetscINCREF(ds.obj))
         return ds
 
-    def copyDS(self, DM dm) -> None:
+    def copyDS(self, DM dm, minDegree = None, maxDegree = None) -> None:
         """Copy the discrete systems for this `DM` into another `DM`.
 
         Collective.
@@ -708,13 +724,29 @@ cdef class DM(Object):
         ----------
         dm
             The `DM` that the discrete fields are copied into.
+        minDegree
+            The minimum polynommial degree for the discretization,
+            or `None` for no limit
+        maxDegree
+            The maximum polynommial degree for the discretization,
+            or `None` for no limit
 
         See Also
         --------
         petsc.DMCopyDS
 
         """
-        CHKERR(DMCopyDS(self.dm, dm.dm))
+        cdef PetscInt mindeg = PETSC_DETERMINE
+        if minDegree is None:
+            pass
+        else:
+            mindeg = asInt(minDegree)
+        cdef PetscInt maxdeg = PETSC_DETERMINE
+        if maxDegree is None:
+            pass
+        else:
+            maxdeg = asInt(maxDegree)
+        CHKERR(DMCopyDS(self.dm, mindeg, maxdeg, dm.dm))
 
     def copyDisc(self, DM dm) -> None:
         """Copy fields and discrete systems of a `DM` into another `DM`.
@@ -791,56 +823,91 @@ cdef class DM(Object):
         CHKERR(DMCreateLocalVector(self.dm, &vl.vec))
         return vl
 
-    def getGlobalVec(self) -> Vec:
+    def getGlobalVec(self, name : str | None = None) -> Vec:
         """Return a global vector.
 
         Collective.
 
+        Parameters
+        ----------
+        name
+            The optional name to retrieve a persistent vector.
+
+        Notes
+        -----
+        When done with the vector, it must be restored using `restoreGlobalVec`.
+
         See Also
         --------
-        petsc.DMGetGlobalVector
+        restoreGlobalVec, petsc.DMGetGlobalVector, petsc.DMGetNamedGlobalVector
 
         """
         cdef Vec vg = Vec()
-        CHKERR(DMGetGlobalVector(self.dm, &vg.vec))
+        cdef const char *cname = NULL
+        str2bytes(name, &cname)
+        if cname != NULL:
+            CHKERR(DMGetNamedGlobalVector(self.dm, cname, &vg.vec))
+        else:
+            CHKERR(DMGetGlobalVector(self.dm, &vg.vec))
         CHKERR(PetscINCREF(vg.obj))
         return vg
 
-    def restoreGlobalVec(self, Vec vg) -> None:
-        """Restore a global vector.
+    def restoreGlobalVec(self, Vec vg, name : str | None = None) -> None:
+        """Restore a global vector obtained with `getGlobalVec`.
 
-        Not collective.
+        Logically collective.
 
         Parameters
         ----------
         vg
             The global vector.
+        name
+            The name used to retrieve the persistent vector, if any.
 
         See Also
         --------
-        petsc.DMRestoreGlobalVector
+        getGlobalVec, petsc.DMRestoreGlobalVector, petsc.DMRestoreNamedGlobalVector
 
         """
+        cdef const char *cname = NULL
+        str2bytes(name, &cname)
         CHKERR(PetscObjectDereference(<PetscObject>vg.vec))
-        CHKERR(DMRestoreGlobalVector(self.dm, &vg.vec))
+        if cname != NULL:
+            CHKERR(DMRestoreNamedGlobalVector(self.dm, cname, &vg.vec))
+        else:
+            CHKERR(DMRestoreGlobalVector(self.dm, &vg.vec))
 
-    def getLocalVec(self) -> Vec:
+    def getLocalVec(self, name : str | None = None) -> Vec:
         """Return a local vector.
 
         Not collective.
 
+        Parameters
+        ----------
+        name
+            The optional name to retrieve a persistent vector.
+
+        Notes
+        -----
+        When done with the vector, it must be restored using `restoreLocalVec`.
+
         See Also
         --------
-        petsc.DMGetLocalVector
+        restoreLocalVec, petsc.DMGetLocalVector, petsc.DMGetNamedLocalVector
 
         """
         cdef Vec vl = Vec()
-        CHKERR(DMGetLocalVector(self.dm, &vl.vec))
+        cdef const char *cname = NULL
+        str2bytes(name, &cname)
+        if cname != NULL:
+            CHKERR(DMGetNamedLocalVector(self.dm, cname, &vl.vec))
+        else:
+            CHKERR(DMGetLocalVector(self.dm, &vl.vec))
         CHKERR(PetscINCREF(vl.obj))
         return vl
 
-    def restoreLocalVec(self, Vec vl) -> None:
-        """Restore a local vector.
+    def restoreLocalVec(self, Vec vl, name : str | None = None) -> None:
+        """Restore a local vector obtained with `getLocalVec`.
 
         Not collective.
 
@@ -848,14 +915,21 @@ cdef class DM(Object):
         ----------
         vl
             The local vector.
+        name
+            The name used to retrieve the persistent vector, if any.
 
         See Also
         --------
-        petsc.DMRestoreLocalVector
+        getLocalVec, petsc.DMRestoreLocalVector, petsc.DMRestoreNamedLocalVector
 
         """
+        cdef const char *cname = NULL
+        str2bytes(name, &cname)
         CHKERR(PetscObjectDereference(<PetscObject>vl.vec))
-        CHKERR(DMRestoreLocalVector(self.dm, &vl.vec))
+        if cname != NULL:
+            CHKERR(DMRestoreNamedLocalVector(self.dm, cname, &vl.vec))
+        else:
+            CHKERR(DMRestoreLocalVector(self.dm, &vl.vec))
 
     def globalToLocal(self, Vec vg, Vec vl, addv: InsertModeSpec | None = None) -> None:
         """Update local vectors from global vector.
@@ -1483,7 +1557,7 @@ cdef class DM(Object):
         """
         cdef PetscInt i, n = asInt(nlevels)
         cdef PetscDM *newdmf = NULL
-        cdef object unused = oarray_p(empty_p(n), NULL, <void**>&newdmf)
+        cdef object unused = oarray_p(empty_p(<PetscInt>n), NULL, <void**>&newdmf)
         CHKERR(DMRefineHierarchy(self.dm, n, newdmf))
         cdef DM dmf = None
         cdef list hierarchy = []
@@ -1510,7 +1584,7 @@ cdef class DM(Object):
         """
         cdef PetscInt i, n = asInt(nlevels)
         cdef PetscDM *newdmc = NULL
-        cdef object unused = oarray_p(empty_p(n), NULL, <void**>&newdmc)
+        cdef object unused = oarray_p(empty_p(<PetscInt>n), NULL, <void**>&newdmc)
         CHKERR(DMCoarsenHierarchy(self.dm, n, newdmc))
         cdef DM dmc = None
         cdef list hierarchy = []

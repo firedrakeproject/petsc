@@ -74,7 +74,7 @@ static PetscErrorCode SNESLineSearchApply_NCGLinear(SNESLineSearch linesearch)
 
    This is a "odd-ball" line search, we don't know if it is in the literature or used in practice by anyone.
 
-.seealso: [](ch_snes), `SNES`, `SNESNCG` `SNESLineSearchCreate()`, `SNESLineSearchSetType()`
+.seealso: [](ch_snes), `SNES`, `SNESNCG`, `SNESLineSearchCreate()`, `SNESLineSearchSetType()`
 M*/
 
 PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_NCGLinear(SNESLineSearch linesearch)
@@ -400,11 +400,10 @@ PETSC_EXTERN PetscErrorCode SNESCreate_NCG(SNES snes)
 
   snes->alwayscomputesfinalresidual = PETSC_TRUE;
 
-  if (!snes->tolerancesset) {
-    snes->max_funcs = 30000;
-    snes->max_its   = 10000;
-    snes->stol      = 1e-20;
-  }
+  PetscCall(SNESParametersInitialize(snes));
+  PetscObjectParameterSetDefault(snes, max_funcs, 30000);
+  PetscObjectParameterSetDefault(snes, max_its, 10000);
+  PetscObjectParameterSetDefault(snes, stol, 1e-20);
 
   PetscCall(PetscNew(&neP));
   snes->data   = (void *)neP;

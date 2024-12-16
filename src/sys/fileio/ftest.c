@@ -139,7 +139,7 @@ static PetscErrorCode PetscGetFileStat(const char fname[], uid_t *fileUid, gid_t
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscTestFile - checks for the existence of a file
 
   Not Collective
@@ -182,7 +182,7 @@ PetscErrorCode PetscTestFile(const char fname[], char mode, PetscBool *flg)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscTestDirectory - checks for the existence of a directory
 
   Not Collective
@@ -251,12 +251,12 @@ PetscErrorCode PetscLs(MPI_Comm comm, const char dirname[], char found[], size_t
 #else
   SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP_SYS, "Cannot run external programs on this machine");
 #endif
-  f = fgets(found, tlen, fp);
+  f = fgets(found, (int)tlen, fp);
   if (f) *flg = PETSC_TRUE;
   else *flg = PETSC_FALSE;
   while (f) {
     PetscCall(PetscStrlen(found, &len));
-    f = fgets(found + len, tlen - len, fp);
+    f = fgets(found + len, (int)(tlen - len), fp);
   }
   if (*flg) PetscCall(PetscInfo(NULL, "ls on %s gives \n%s\n", dirname, found));
 #if defined(PETSC_HAVE_POPEN)

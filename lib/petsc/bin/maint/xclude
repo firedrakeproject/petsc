@@ -19,7 +19,7 @@ petsc-dist/externalpackages
 petsc-dist/tmp
 petsc-dist/src/binding/petsc4py/build
 petsc-dist/src/binding/petsc4py/dist
-petsc-dist/src/binding/petsc4py/petsc4py.egg-info
+petsc-dist/src/binding/petsc4py/src/petsc4py.egg-info
 petsc-dist/src/binding/petsc4py/.eggs
 petsc-dist/lib/petsc/conf/petscvariables
 petsc-dist/config/BuildSystem/.hg
@@ -42,7 +42,7 @@ petsc-dist/venv-petsc-docs
 petsc-dist/arch-build
 petsc-dist/arch-pydoc
 petsc-dist/arch-fvpf
-petsc-dist/arch-classic-docs
+petsc-dist/arch-docs
 petsc-dist/make.log
 petsc-dist/configure.log
 petsc-dist/configure.log.bkp

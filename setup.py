@@ -39,8 +39,11 @@ import sys
 import shlex
 import shutil
 from setuptools import setup
-from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 from setuptools.command.install import install as _install
+try:
+    from setuptools.command.bdist_wheel import bdist_wheel as _bdist_wheel
+except ImportError:
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 from distutils import log
 
 init_py = """\
@@ -188,7 +191,11 @@ def config(prefix, dry_run=False):
         if status != 0:
             raise RuntimeError(status)
     # Fix PETSc configuration
-    if os.environ.get('PEP517_BUILD_BACKEND'):
+    using_build_backend = any(
+        os.environ.get(prefix + '_BUILD_BACKEND')
+        for prefix in ('_PYPROJECT_HOOKS', 'PEP517')
+    )
+    if using_build_backend:
         pdir = os.environ['PETSC_DIR']
         parch = os.environ['PETSC_ARCH']
         include = os.path.join(pdir, parch, 'include')

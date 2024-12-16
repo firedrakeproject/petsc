@@ -1082,11 +1082,11 @@ static PetscErrorCode KSPSetUp_FETIDP(KSP ksp)
   PetscCall(PCSetUp(fetidp->innerbddc));
   /* FETI-DP as it is implemented needs an exact coarse solver */
   if (pcbddc->coarse_ksp) {
-    PetscCall(KSPSetTolerances(pcbddc->coarse_ksp, PETSC_SMALL, PETSC_SMALL, PETSC_DEFAULT, 1000));
+    PetscCall(KSPSetTolerances(pcbddc->coarse_ksp, PETSC_SMALL, PETSC_SMALL, PETSC_CURRENT, 1000));
     PetscCall(KSPSetNormType(pcbddc->coarse_ksp, KSP_NORM_DEFAULT));
   }
   /* FETI-DP as it is implemented needs exact local Neumann solvers */
-  PetscCall(KSPSetTolerances(pcbddc->ksp_R, PETSC_SMALL, PETSC_SMALL, PETSC_DEFAULT, 1000));
+  PetscCall(KSPSetTolerances(pcbddc->ksp_R, PETSC_SMALL, PETSC_SMALL, PETSC_CURRENT, 1000));
   PetscCall(KSPSetNormType(pcbddc->ksp_R, KSP_NORM_DEFAULT));
 
   /* setup FETI-DP operators
@@ -1141,6 +1141,7 @@ static PetscErrorCode KSPSolve_FETIDP(KSP ksp)
   PC                 pc;
   PCFailedReason     pcreason;
   PetscInt           hist_len;
+  int                flg;
 
   PetscFunctionBegin;
   PetscCall(PetscCitationsRegister(citation, &cited));
@@ -1160,11 +1161,13 @@ static PetscErrorCode KSPSolve_FETIDP(KSP ksp)
   PetscCall(KSPGetConvergedReason(fetidp->innerksp, &reason));
   PetscCall(KSPGetPC(fetidp->innerksp, &pc));
   PetscCall(PCGetFailedReason(pc, &pcreason));
-  if ((reason < 0 && reason != KSP_DIVERGED_ITS) || pcreason) {
+  flg = (reason < 0 && reason != KSP_DIVERGED_ITS) || pcreason;
+  PetscCall(VecFlag(Xl, flg));
+  if (flg) {
     PetscInt its;
+
     PetscCall(KSPGetIterationNumber(fetidp->innerksp, &its));
     ksp->reason = KSP_DIVERGED_PC_FAILED;
-    PetscCall(VecSetInf(Xl));
     PetscCall(PetscInfo(ksp, "Inner KSP solve failed: %s %s at iteration %" PetscInt_FMT "\n", KSPConvergedReasons[reason], PCFailedReasons[pcreason], its));
   }
   PetscCall(PCBDDCMatFETIDPGetSolution(F, Xl, X));

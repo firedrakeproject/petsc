@@ -255,7 +255,7 @@ M*/
    and the constants defined in both `NormType` and `ReductionType` are used to designate the desired operation.
 
 .seealso: [](ch_vectors), `MatGetColumnReductions()`, `MatGetColumnNorms()`, `NormType`, `REDUCTION_SUM_REALPART`,
-          `REDUCTION_SUM_IMAGINARYPART`, `REDUCTION_MEAN_REALPART`, `REDUCTION_NORM_1`, `REDUCTION_NORM_2`, `REDUCTION_NORM_FROBENIUS`, `REDUCTION_NORM_INFINITY`
+          `REDUCTION_SUM_IMAGINARYPART`, `REDUCTION_MEAN_REALPART`
 E*/
 typedef enum {
   REDUCTION_SUM_REALPART       = 10,
@@ -269,8 +269,7 @@ typedef enum {
 
    Level: beginner
 
-.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_SUM_IMAGINARYPART`, `REDUCTION_MEAN_REALPART`, `REDUCTION_NORM_1`,
-          `REDUCTION_NORM_2`, `REDUCTION_NORM_FROBENIUS`, `REDUCTION_NORM_INFINITY`
+.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_SUM_IMAGINARYPART`, `REDUCTION_MEAN_REALPART`
 M*/
 
 /*MC
@@ -278,8 +277,7 @@ M*/
 
    Level: beginner
 
-.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_SUM_REALPART`, `REDUCTION_MEAN_IMAGINARYPART`, `REDUCTION_NORM_1`,
-          `REDUCTION_NORM_2`, `REDUCTION_NORM_FROBENIUS`, `REDUCTION_NORM_INFINITY`
+.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_SUM_REALPART`, `REDUCTION_MEAN_IMAGINARYPART`
 M*/
 
 /*MC
@@ -287,8 +285,7 @@ M*/
 
    Level: beginner
 
-.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_MEAN_IMAGINARYPART`, `REDUCTION_SUM_REALPART`, `REDUCTION_NORM_1`,
-          `REDUCTION_NORM_2`, `REDUCTION_NORM_FROBENIUS`, `REDUCTION_NORM_INFINITY`
+.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_MEAN_IMAGINARYPART`, `REDUCTION_SUM_REALPART`
 M*/
 
 /*MC
@@ -296,12 +293,12 @@ M*/
 
    Level: beginner
 
-.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_MEAN_REALPART`, `REDUCTION_SUM_IMAGINARYPART`, `REDUCTION_NORM_1`,
-          `REDUCTION_NORM_2`, `REDUCTION_NORM_FROBENIUS`, `REDUCTION_NORM_INFINITY`
+.seealso: [](ch_vectors), `ReductionType`, `MatGetColumnReductions()`, `REDUCTION_MEAN_REALPART`, `REDUCTION_SUM_IMAGINARYPART`
 M*/
 
 PETSC_EXTERN PetscErrorCode VecNorm(Vec, NormType, PetscReal *);
 PETSC_EXTERN PetscErrorCode VecNormAvailable(Vec, NormType, PetscBool *, PetscReal *);
+PETSC_EXTERN PetscErrorCode VecFlag(Vec, PetscInt);
 PETSC_EXTERN PetscErrorCode VecNormalize(Vec, PetscReal *);
 PETSC_EXTERN PetscErrorCode VecSum(Vec, PetscScalar *);
 PETSC_EXTERN PetscErrorCode VecMean(Vec, PetscScalar *);
@@ -311,7 +308,7 @@ PETSC_EXTERN PetscErrorCode VecScale(Vec, PetscScalar);
 PETSC_EXTERN PetscErrorCode VecCopy(Vec, Vec);
 PETSC_EXTERN PetscErrorCode VecSetRandom(Vec, PetscRandom);
 PETSC_EXTERN PetscErrorCode VecSet(Vec, PetscScalar);
-PETSC_EXTERN PetscErrorCode VecSetInf(Vec);
+PETSC_DEPRECATED_FUNCTION(3, 22, 0, "VecFlag()", ) PetscErrorCode VecSetInf(Vec);
 PETSC_EXTERN PetscErrorCode VecSwap(Vec, Vec);
 PETSC_EXTERN PetscErrorCode VecAXPY(Vec, PetscScalar, Vec);
 PETSC_EXTERN PetscErrorCode VecAXPBY(Vec, PetscScalar, PetscScalar, Vec);
@@ -371,12 +368,8 @@ PETSC_EXTERN PetscErrorCode VecSetPreallocationCOO(Vec, PetscCount, const PetscI
 PETSC_EXTERN PetscErrorCode VecSetPreallocationCOOLocal(Vec, PetscCount, PetscInt[]);
 PETSC_EXTERN PetscErrorCode VecSetValuesCOO(Vec, const PetscScalar[], InsertMode);
 
-/*MC
+/*@C
    VecSetValue - Set a single entry into a vector.
-
-   Synopsis:
-   #include <petscvec.h>
-   PetscErrorCode VecSetValue(Vec v,PetscInt row,PetscScalar value, InsertMode mode);
 
    Not Collective
 
@@ -398,7 +391,7 @@ PETSC_EXTERN PetscErrorCode VecSetValuesCOO(Vec, const PetscScalar[], InsertMode
    `VecSetValue()` uses 0-based indices in Fortran as well as in C.
 
 .seealso: [](ch_vectors), `VecSetValues()`, `VecAssemblyBegin()`, `VecAssemblyEnd()`, `VecSetValuesBlockedLocal()`, `VecSetValueLocal()`
-M*/
+@*/
 static inline PetscErrorCode VecSetValue(Vec v, PetscInt i, PetscScalar va, InsertMode mode)
 {
   return VecSetValues(v, 1, &i, &va, mode);
@@ -481,12 +474,8 @@ PETSC_EXTERN PetscErrorCode VecViennaCLRestoreCLMemWrite(Vec);
 PETSC_EXTERN PetscErrorCode VecViennaCLGetCLMem(Vec, PETSC_UINTPTR_T *);
 PETSC_EXTERN PetscErrorCode VecViennaCLRestoreCLMem(Vec);
 
-/*MC
+/*@C
    VecSetValueLocal - Set a single entry into a vector using the local numbering, see `VecSetValuesLocal()`
-
-   Synopsis:
-   #include <petscvec.h>
-   PetscErrorCode VecSetValueLocal(Vec v,PetscInt row,PetscScalar value, InsertMode mode);
 
    Not Collective
 
@@ -505,10 +494,10 @@ PETSC_EXTERN PetscErrorCode VecViennaCLRestoreCLMem(Vec);
    These values may be cached, so `VecAssemblyBegin()` and `VecAssemblyEnd()`
    MUST be called after all calls to `VecSetValueLocal()` have been completed.
 
-   `VecSetValues()` uses 0-based indices in Fortran as well as in C.
+   `VecSetValueLocal()` uses 0-based indices in Fortran as well as in C.
 
 .seealso: [](ch_vectors), `VecSetValuesLocal()`, `VecSetValues()`, `VecAssemblyBegin()`, `VecAssemblyEnd()`, `VecSetValuesBlockedLocal()`, `VecSetValue()`
-M*/
+@*/
 static inline PetscErrorCode VecSetValueLocal(Vec v, PetscInt i, PetscScalar va, InsertMode mode)
 {
   return VecSetValuesLocal(v, 1, &i, &va, mode);
@@ -639,12 +628,12 @@ static inline PetscErrorCode VecRestoreArrayPair(Vec x, Vec y, PetscScalar **xv,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-#if PetscDefined(USE_DEBUG)
-PETSC_EXTERN PetscErrorCode  VecLockReadPush(Vec);
-PETSC_EXTERN PetscErrorCode  VecLockReadPop(Vec);
-PETSC_EXTERN PetscErrorCode  VecLockWriteSet(Vec, PetscBool);
-PETSC_EXTERN PetscErrorCode  VecLockGet(Vec, PetscInt *);
-PETSC_EXTERN PetscErrorCode  VecLockGetLocation(Vec, const char *[], const char *[], int *);
+PETSC_EXTERN PetscErrorCode VecLockReadPush(Vec);
+PETSC_EXTERN PetscErrorCode VecLockReadPop(Vec);
+PETSC_EXTERN PetscErrorCode VecLockWriteSet(Vec, PetscBool);
+PETSC_EXTERN PetscErrorCode VecLockGet(Vec, PetscInt *);
+PETSC_EXTERN PetscErrorCode VecLockGetLocation(Vec, const char *[], const char *[], int *);
+
 static inline PetscErrorCode VecSetErrorIfLocked(Vec x, PetscInt arg)
 {
   PetscInt state;
@@ -661,21 +650,19 @@ static inline PetscErrorCode VecSetErrorIfLocked(Vec x, PetscInt arg)
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
 /* The three are deprecated */
-PETSC_EXTERN PETSC_DEPRECATED_FUNCTION(3, 11, 0, "VecLockReadPush()", ) PetscErrorCode VecLockPush(Vec);
-PETSC_EXTERN PETSC_DEPRECATED_FUNCTION(3, 11, 0, "VecLockReadPop()", ) PetscErrorCode VecLockPop(Vec);
-  #define VecLocked(x, arg) VecSetErrorIfLocked(x, arg) PETSC_DEPRECATED_MACRO(3, 11, 0, "VecSetErrorIfLocked()", )
-#else
-  #define VecLockReadPush(x)          PETSC_SUCCESS
-  #define VecLockReadPop(x)           PETSC_SUCCESS
-  #define VecLockGet(x, s)            (*(s) = 0, PETSC_SUCCESS)
-  #define VecSetErrorIfLocked(x, arg) PETSC_SUCCESS
-  #define VecLockWriteSet(x, flg)     PETSC_SUCCESS
-  /* The three are deprecated */
-  #define VecLockPush(x)              PETSC_SUCCESS
-  #define VecLockPop(x)               PETSC_SUCCESS
-  #define VecLocked(x, arg)           PETSC_SUCCESS
-#endif
+PETSC_DEPRECATED_FUNCTION(3, 11, 0, "VecLockReadPush()", ) static inline PetscErrorCode VecLockPush(Vec v)
+{
+  return VecLockReadPush(v);
+}
+
+PETSC_DEPRECATED_FUNCTION(3, 11, 0, "VecLockReadPop()", ) static inline PetscErrorCode VecLockPop(Vec v)
+{
+  return VecLockReadPop(v);
+}
+
+#define VecLocked(x, arg) VecSetErrorIfLocked(x, arg) PETSC_DEPRECATED_MACRO(3, 11, 0, "VecSetErrorIfLocked()", )
 
 /*E
   VecOperation - Enumeration of overide-able methods in the `Vec` implementation function-table.

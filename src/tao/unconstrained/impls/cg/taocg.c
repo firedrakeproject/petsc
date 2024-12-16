@@ -52,8 +52,10 @@ static PetscErrorCode TaoSolve_CG(Tao tao)
 
   while (1) {
     /* Call general purpose update function */
-    PetscTryTypeMethod(tao, update, tao->niter, tao->user_update);
-
+    if (tao->ops->update) {
+      PetscUseTypeMethod(tao, update, tao->niter, tao->user_update);
+      PetscCall(TaoComputeObjective(tao, tao->solution, &f));
+    }
     /*  Save the current gradient information */
     f_old      = f;
     gnorm2_old = gnorm2;
@@ -282,8 +284,9 @@ PETSC_EXTERN PetscErrorCode TaoCreate_CG(Tao tao)
   tao->ops->destroy        = TaoDestroy_CG;
 
   /* Override default settings (unless already changed) */
-  if (!tao->max_it_changed) tao->max_it = 2000;
-  if (!tao->max_funcs_changed) tao->max_funcs = 4000;
+  PetscCall(TaoParametersInitialize(tao));
+  PetscObjectParameterSetDefault(tao, max_it, 2000);
+  PetscObjectParameterSetDefault(tao, max_funcs, 4000);
 
   /*  Note: nondefault values should be used for nonlinear conjugate gradient  */
   /*  method.  In particular, gtol should be less that 0.5; the value used in  */

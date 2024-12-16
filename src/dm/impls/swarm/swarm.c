@@ -220,6 +220,7 @@ static PetscErrorCode DMSwarmDestroyVectorFromField_Private(DM dm, const char fi
   /* check vector is an inplace array */
   PetscCall(DMSwarmDataBucketGetDMSwarmDataFieldIdByName(swarm->db, fieldname, &fid));
   PetscCall(PetscObjectComposedDataGetInt((PetscObject)*vec, SwarmDataFieldId, cfid, flg));
+  (void)flg; /* avoid compiler warning */
   PetscCheck(cfid == fid, PetscObjectComm((PetscObject)dm), PETSC_ERR_USER, "Vector being destroyed was not created from DMSwarm field(%s)! %" PetscInt_FMT " != %" PetscInt_FMT, fieldname, cfid, fid);
   PetscCall(VecGetLocalSize(*vec, &nlocal));
   PetscCall(VecGetBlockSize(*vec, &bs));
@@ -987,7 +988,7 @@ PetscErrorCode DMSwarmGetSize(DM dm, PetscInt *n)
 
   PetscFunctionBegin;
   PetscCall(DMSwarmDataBucketGetSizes(swarm->db, &nlocal, NULL, NULL));
-  PetscCall(MPIU_Allreduce(&nlocal, n, 1, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(&nlocal, n, 1, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)dm)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1386,7 +1387,12 @@ PetscErrorCode DMSwarmMigrate_GlobalToLocal_Basic(DM dm, PetscInt *globalsize);
   Notes:
   Users should call `DMSwarmCollectViewDestroy()` after
   they have finished computations associated with the collected points
+
   Different collect methods are supported. See `DMSwarmSetCollectType()`.
+
+  Developer Note:
+  Create and Destroy routines create new objects that can get destroyed, they do not change the state
+  of the current object.
 
 .seealso: `DM`, `DMSWARM`, `DMSwarmCollectViewDestroy()`, `DMSwarmSetCollectType()`
 @*/
@@ -1426,6 +1432,10 @@ PetscErrorCode DMSwarmCollectViewCreate(DM dm)
   Users should call `DMSwarmCollectViewCreate()` before this function is called.
 
   Level: advanced
+
+  Developer Note:
+  Create and Destroy routines create new objects that can get destroyed, they do not change the state
+  of the current object.
 
 .seealso: `DM`, `DMSWARM`, `DMSwarmCollectViewCreate()`, `DMSwarmSetCollectType()`
 @*/

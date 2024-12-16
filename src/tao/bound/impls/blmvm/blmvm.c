@@ -41,7 +41,7 @@ static PetscErrorCode TaoSolve_BLMVM(Tao tao)
     /* Call general purpose update function */
     if (tao->ops->update) {
       PetscUseTypeMethod(tao, update, tao->niter, tao->user_update);
-      PetscCall(TaoComputeObjectiveAndGradient(tao, tao->solution, &f, tao->gradient));
+      PetscCall(TaoComputeObjective(tao, tao->solution, &f));
     }
     /* Compute direction */
     gnorm2 = gnorm * gnorm;
@@ -239,8 +239,9 @@ PETSC_EXTERN PetscErrorCode TaoCreate_BLMVM(Tao tao)
   tao->data     = (void *)blmP;
 
   /* Override default settings (unless already changed) */
-  if (!tao->max_it_changed) tao->max_it = 2000;
-  if (!tao->max_funcs_changed) tao->max_funcs = 4000;
+  PetscCall(TaoParametersInitialize(tao));
+  PetscObjectParameterSetDefault(tao, max_it, 2000);
+  PetscObjectParameterSetDefault(tao, max_funcs, 4000);
 
   PetscCall(TaoLineSearchCreate(((PetscObject)tao)->comm, &tao->linesearch));
   PetscCall(PetscObjectIncrementTabLevel((PetscObject)tao->linesearch, (PetscObject)tao, 1));

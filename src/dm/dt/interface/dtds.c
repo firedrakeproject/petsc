@@ -231,7 +231,7 @@ static PetscErrorCode PetscDSView_Ascii(PetscDS ds, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscDSViewFromOptions - View a `PetscDS` based on values in the options database
 
   Collective
@@ -253,7 +253,7 @@ PetscErrorCode PetscDSViewFromOptions(PetscDS A, PetscObject obj, const char nam
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscDSView - Views a `PetscDS`
 
   Collective
@@ -681,21 +681,19 @@ PetscErrorCode PetscDSCreate(MPI_Comm comm, PetscDS *ds)
 
   PetscFunctionBegin;
   PetscAssertPointer(ds, 2);
-  *ds = NULL;
   PetscCall(PetscDSInitializePackage());
 
   PetscCall(PetscHeaderCreate(p, PETSCDS_CLASSID, "PetscDS", "Discrete System", "PetscDS", comm, PetscDSDestroy, PetscDSView));
-
-  p->Nf           = 0;
-  p->setup        = PETSC_FALSE;
-  p->numConstants = 0;
-  p->constants    = NULL;
-  p->dimEmbed     = -1;
-  p->useJacPre    = PETSC_TRUE;
-  p->forceQuad    = PETSC_TRUE;
+  p->Nf               = 0;
+  p->setup            = PETSC_FALSE;
+  p->numConstants     = 0;
+  p->numFuncConstants = 3; // Row and col fields, cell size
+  p->dimEmbed         = -1;
+  p->useJacPre        = PETSC_TRUE;
+  p->forceQuad        = PETSC_TRUE;
+  PetscCall(PetscMalloc1(p->numConstants + p->numFuncConstants, &p->constants));
   PetscCall(PetscWeakFormCreate(comm, &p->wf));
   PetscCall(PetscArrayzero(p->quadPerm, DM_NUM_POLYTOPES));
-
   *ds = p;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1171,7 +1169,7 @@ PetscErrorCode PetscDSGetQuadrature(PetscDS prob, PetscQuadrature *q)
 }
 
 /*@
-  PetscDSGetImplicit - Returns the flag for implicit solve for this field. This is just a guide for `TSIMEX`
+  PetscDSGetImplicit - Returns the flag for implicit solve for this field. This is just a guide for `TSARKIMEX`
 
   Not Collective
 
@@ -1184,7 +1182,7 @@ PetscErrorCode PetscDSGetQuadrature(PetscDS prob, PetscQuadrature *q)
 
   Level: developer
 
-.seealso: `TSIMEX`, `PetscDS`, `PetscDSSetImplicit()`, `PetscDSSetDiscretization()`, `PetscDSAddDiscretization()`, `PetscDSGetNumFields()`, `PetscDSCreate()`
+.seealso: `TSARKIMEX`, `PetscDS`, `PetscDSSetImplicit()`, `PetscDSSetDiscretization()`, `PetscDSAddDiscretization()`, `PetscDSGetNumFields()`, `PetscDSCreate()`
 @*/
 PetscErrorCode PetscDSGetImplicit(PetscDS prob, PetscInt f, PetscBool *implicit)
 {
@@ -1197,7 +1195,7 @@ PetscErrorCode PetscDSGetImplicit(PetscDS prob, PetscInt f, PetscBool *implicit)
 }
 
 /*@
-  PetscDSSetImplicit - Set the flag for implicit solve for this field. This is just a guide for `TSIMEX`
+  PetscDSSetImplicit - Set the flag for implicit solve for this field. This is just a guide for `TSARKIMEX`
 
   Not Collective
 
@@ -1208,7 +1206,7 @@ PetscErrorCode PetscDSGetImplicit(PetscDS prob, PetscInt f, PetscBool *implicit)
 
   Level: developer
 
-.seealso: `TSIMEX`, `PetscDSGetImplicit()`, `PetscDSSetDiscretization()`, `PetscDSAddDiscretization()`, `PetscDSGetNumFields()`, `PetscDSCreate()`
+.seealso: `TSARKIMEX`, `PetscDSGetImplicit()`, `PetscDSSetDiscretization()`, `PetscDSAddDiscretization()`, `PetscDSGetNumFields()`, `PetscDSCreate()`
 @*/
 PetscErrorCode PetscDSSetImplicit(PetscDS prob, PetscInt f, PetscBool implicit)
 {
@@ -1257,7 +1255,7 @@ PetscErrorCode PetscDSGetJetDegree(PetscDS ds, PetscInt f, PetscInt *k)
 
   Level: developer
 
-.seealso: ``PetscDS`, `PetscDSGetJetDegree()`, `PetscDSSetDiscretization()`, `PetscDSAddDiscretization()`, `PetscDSGetNumFields()`, `PetscDSCreate()`
+.seealso: `PetscDS`, `PetscDSGetJetDegree()`, `PetscDSSetDiscretization()`, `PetscDSAddDiscretization()`, `PetscDSGetNumFields()`, `PetscDSCreate()`
 @*/
 PetscErrorCode PetscDSSetJetDegree(PetscDS ds, PetscInt f, PetscInt k)
 {
@@ -2816,7 +2814,7 @@ PetscErrorCode PetscDSSetExactSolutionTimeDerivative(PetscDS prob, PetscInt f, P
   Not Collective
 
   Input Parameter:
-. prob - The `PetscDS` object
+. ds - The `PetscDS` object
 
   Output Parameters:
 + numConstants - The number of constants
@@ -2826,17 +2824,17 @@ PetscErrorCode PetscDSSetExactSolutionTimeDerivative(PetscDS prob, PetscInt f, P
 
 .seealso: `PetscDS`, `PetscDSSetConstants()`, `PetscDSCreate()`
 @*/
-PetscErrorCode PetscDSGetConstants(PetscDS prob, PetscInt *numConstants, const PetscScalar *constants[])
+PetscErrorCode PetscDSGetConstants(PetscDS ds, PetscInt *numConstants, const PetscScalar *constants[])
 {
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
+  PetscValidHeaderSpecific(ds, PETSCDS_CLASSID, 1);
   if (numConstants) {
     PetscAssertPointer(numConstants, 2);
-    *numConstants = prob->numConstants;
+    *numConstants = ds->numConstants;
   }
   if (constants) {
     PetscAssertPointer(constants, 3);
-    *constants = prob->constants;
+    *constants = ds->constants;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -2847,7 +2845,7 @@ PetscErrorCode PetscDSGetConstants(PetscDS prob, PetscInt *numConstants, const P
   Not Collective
 
   Input Parameters:
-+ prob         - The `PetscDS` object
++ ds           - The `PetscDS` object
 . numConstants - The number of constants
 - constants    - The array of constants, `NULL` if there are none
 
@@ -2855,23 +2853,63 @@ PetscErrorCode PetscDSGetConstants(PetscDS prob, PetscInt *numConstants, const P
 
 .seealso: `PetscDS`, `PetscDSGetConstants()`, `PetscDSCreate()`
 @*/
-PetscErrorCode PetscDSSetConstants(PetscDS prob, PetscInt numConstants, PetscScalar constants[])
+PetscErrorCode PetscDSSetConstants(PetscDS ds, PetscInt numConstants, PetscScalar constants[])
 {
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
-  if (numConstants != prob->numConstants) {
-    PetscCall(PetscFree(prob->constants));
-    prob->numConstants = numConstants;
-    if (prob->numConstants) {
-      PetscCall(PetscMalloc1(prob->numConstants, &prob->constants));
-    } else {
-      prob->constants = NULL;
-    }
+  PetscValidHeaderSpecific(ds, PETSCDS_CLASSID, 1);
+  if (numConstants != ds->numConstants) {
+    PetscCall(PetscFree(ds->constants));
+    ds->numConstants = numConstants;
+    PetscCall(PetscMalloc1(ds->numConstants + ds->numFuncConstants, &ds->constants));
   }
-  if (prob->numConstants) {
+  if (ds->numConstants) {
     PetscAssertPointer(constants, 3);
-    PetscCall(PetscArraycpy(prob->constants, constants, prob->numConstants));
+    PetscCall(PetscArraycpy(ds->constants, constants, ds->numConstants));
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  PetscDSSetIntegrationParameters - Set the parameters for a particular integration
+
+  Not Collective
+
+  Input Parameters:
++ ds     - The `PetscDS` object
+. fieldI - The test field for a given point function, or PETSC_DETERMINE
+- fieldJ - The basis field for a given point function, or PETSC_DETERMINE
+
+  Level: intermediate
+
+.seealso: `PetscDS`, `PetscDSSetConstants()`, `PetscDSGetConstants()`, `PetscDSCreate()`
+@*/
+PetscErrorCode PetscDSSetIntegrationParameters(PetscDS ds, PetscInt fieldI, PetscInt fieldJ)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ds, PETSCDS_CLASSID, 1);
+  ds->constants[ds->numConstants]     = fieldI;
+  ds->constants[ds->numConstants + 1] = fieldJ;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  PetscDSSetCellParameters - Set the parameters for a particular cell
+
+  Not Collective
+
+  Input Parameters:
++ ds     - The `PetscDS` object
+- volume - The cell volume
+
+  Level: intermediate
+
+.seealso: `PetscDS`, `PetscDSSetConstants()`, `PetscDSGetConstants()`, `PetscDSCreate()`
+@*/
+PetscErrorCode PetscDSSetCellParameters(PetscDS ds, PetscReal volume)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ds, PETSCDS_CLASSID, 1);
+  ds->constants[ds->numConstants + 2] = volume;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -3890,7 +3928,9 @@ PetscErrorCode PetscDSDestroyBoundary(PetscDS ds)
   Input Parameters:
 + prob      - The `PetscDS` object
 . numFields - Number of new fields
-- fields    - Old field number for each new field
+. fields    - Old field number for each new field
+. minDegree - Minimum degree for a discretization, or `PETSC_DETERMINE` for no limit
+- maxDegree - Maximum degree for a discretization, or `PETSC_DETERMINE` for no limit
 
   Output Parameter:
 . newprob - The `PetscDS` copy
@@ -3899,24 +3939,34 @@ PetscErrorCode PetscDSDestroyBoundary(PetscDS ds)
 
 .seealso: `PetscDS`, `PetscDSSelectEquations()`, `PetscDSCopyBoundary()`, `PetscDSSetResidual()`, `PetscDSSetJacobian()`, `PetscDSSetRiemannSolver()`, `PetscDSSetBdResidual()`, `PetscDSSetBdJacobian()`, `PetscDSCreate()`
 @*/
-PetscErrorCode PetscDSSelectDiscretizations(PetscDS prob, PetscInt numFields, const PetscInt fields[], PetscDS newprob)
+PetscErrorCode PetscDSSelectDiscretizations(PetscDS prob, PetscInt numFields, const PetscInt fields[], PetscInt minDegree, PetscInt maxDegree, PetscDS newprob)
 {
   PetscInt Nf, Nfn, fn;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(prob, PETSCDS_CLASSID, 1);
   if (fields) PetscAssertPointer(fields, 3);
-  PetscValidHeaderSpecific(newprob, PETSCDS_CLASSID, 4);
+  PetscValidHeaderSpecific(newprob, PETSCDS_CLASSID, 6);
   PetscCall(PetscDSGetNumFields(prob, &Nf));
   PetscCall(PetscDSGetNumFields(newprob, &Nfn));
   numFields = numFields < 0 ? Nf : numFields;
   for (fn = 0; fn < numFields; ++fn) {
     const PetscInt f = fields ? fields[fn] : fn;
     PetscObject    disc;
+    PetscClassId   id;
 
     if (f >= Nf) continue;
     PetscCall(PetscDSGetDiscretization(prob, f, &disc));
-    PetscCall(PetscDSSetDiscretization(newprob, fn, disc));
+    PetscCallContinue(PetscObjectGetClassId(disc, &id));
+    if (id == PETSCFE_CLASSID) {
+      PetscFE fe;
+
+      PetscCall(PetscFELimitDegree((PetscFE)disc, minDegree, maxDegree, &fe));
+      PetscCall(PetscDSSetDiscretization(newprob, fn, (PetscObject)fe));
+      PetscCall(PetscFEDestroy(&fe));
+    } else {
+      PetscCall(PetscDSSetDiscretization(newprob, fn, disc));
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -4077,7 +4127,7 @@ PetscErrorCode PetscDSCopyExactSolutions(PetscDS ds, PetscDS newds)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PetscDSCopy(PetscDS ds, DM dmNew, PetscDS dsNew)
+PetscErrorCode PetscDSCopy(PetscDS ds, PetscInt minDegree, PetscInt maxDegree, DM dmNew, PetscDS dsNew)
 {
   DSBoundary b;
   PetscInt   cdim, Nf, f, d;
@@ -4087,7 +4137,7 @@ PetscErrorCode PetscDSCopy(PetscDS ds, DM dmNew, PetscDS dsNew)
   PetscFunctionBegin;
   PetscCall(PetscDSCopyConstants(ds, dsNew));
   PetscCall(PetscDSCopyExactSolutions(ds, dsNew));
-  PetscCall(PetscDSSelectDiscretizations(ds, PETSC_DETERMINE, NULL, dsNew));
+  PetscCall(PetscDSSelectDiscretizations(ds, PETSC_DETERMINE, NULL, minDegree, maxDegree, dsNew));
   PetscCall(PetscDSCopyEquations(ds, dsNew));
   PetscCall(PetscDSGetNumFields(ds, &Nf));
   for (f = 0; f < Nf; ++f) {

@@ -5,10 +5,10 @@
     Some comments on left vs. right preconditioning, and restarts.
     Left and right preconditioning.
     If right preconditioning is chosen, then the problem being solved
-    by gmres is actually
+    by GMRES is actually
        My =  AB^-1 y = f
     so the initial residual is
-          r = f - Mx
+          r = f - M y
     Note that B^-1 y = x or y = B x, and if x is non-zero, the initial
     residual is
           r = f - A x
@@ -120,7 +120,6 @@ static PetscErrorCode KSPGMRESCycle(PetscInt *itcount, KSP ksp)
   }
   *GRS(0) = gmres->rnorm0 = res;
 
-  /* check for the convergence */
   PetscCall(PetscObjectSAWsTakeAccess((PetscObject)ksp));
   ksp->rnorm = res;
   PetscCall(PetscObjectSAWsGrantAccess((PetscObject)ksp));
@@ -134,6 +133,7 @@ static PetscErrorCode KSPGMRESCycle(PetscInt *itcount, KSP ksp)
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
+  /* check for the convergence */
   PetscCall((*ksp->converged)(ksp, ksp->its, res, &ksp->reason, ksp->cnvP));
   while (!ksp->reason && it < max_k && ksp->its < ksp->max_it) {
     if (it) {
@@ -186,13 +186,6 @@ static PetscErrorCode KSPGMRESCycle(PetscInt *itcount, KSP ksp)
     }
   }
 
-  /* Monitor if we know that we will not return for a restart */
-  if (it && (ksp->reason || ksp->its >= ksp->max_it)) {
-    PetscCall(KSPLogResidualHistory(ksp, res));
-    PetscCall(KSPLogErrorHistory(ksp));
-    PetscCall(KSPMonitor(ksp, ksp->its, res));
-  }
-
   if (itcount) *itcount = it;
 
   /*
@@ -202,6 +195,14 @@ static PetscErrorCode KSPGMRESCycle(PetscInt *itcount, KSP ksp)
    */
   /* Form the solution (or the solution so far) */
   PetscCall(KSPGMRESBuildSoln(GRS(0), ksp->vec_sol, ksp->vec_sol, ksp, it - 1));
+
+  /* Monitor if we know that we will not return for a restart */
+  if (ksp->reason == KSP_CONVERGED_ITERATING && ksp->its >= ksp->max_it) ksp->reason = KSP_DIVERGED_ITS;
+  if (it && ksp->reason) {
+    PetscCall(KSPLogResidualHistory(ksp, res));
+    PetscCall(KSPLogErrorHistory(ksp));
+    PetscCall(KSPMonitor(ksp, ksp->its, res));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -557,7 +558,7 @@ PetscErrorCode KSPSetFromOptions_GMRES(KSP ksp, PetscOptionItems *PetscOptionsOb
   if (flg) {
     PetscViewers viewers;
     PetscCall(PetscViewersCreate(PetscObjectComm((PetscObject)ksp), &viewers));
-    PetscCall(KSPMonitorSet(ksp, KSPGMRESMonitorKrylov, viewers, (PetscErrorCode(*)(void **))PetscViewersDestroy));
+    PetscCall(KSPMonitorSet(ksp, KSPGMRESMonitorKrylov, viewers, (PetscErrorCode (*)(void **))PetscViewersDestroy));
   }
   PetscOptionsHeadEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -787,7 +788,7 @@ PetscErrorCode KSPGMRESSetHapTol(KSP ksp, PetscReal tol)
 {
   PetscFunctionBegin;
   PetscValidLogicalCollectiveReal(ksp, tol, 2);
-  PetscTryMethod((ksp), "KSPGMRESSetHapTol_C", (KSP, PetscReal), ((ksp), (tol)));
+  PetscTryMethod(ksp, "KSPGMRESSetHapTol_C", (KSP, PetscReal), (ksp, tol));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -814,7 +815,7 @@ PetscErrorCode KSPGMRESSetBreakdownTolerance(KSP ksp, PetscReal tol)
 {
   PetscFunctionBegin;
   PetscValidLogicalCollectiveReal(ksp, tol, 2);
-  PetscTryMethod((ksp), "KSPGMRESSetBreakdownTolerance_C", (KSP, PetscReal), (ksp, tol));
+  PetscTryMethod(ksp, "KSPGMRESSetBreakdownTolerance_C", (KSP, PetscReal), (ksp, tol));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

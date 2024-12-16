@@ -97,7 +97,7 @@ int main(int argc, char **argv)
   Vec      x;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   comm = PETSC_COMM_WORLD;
   PetscCall(SNESCreate(comm, &snes));
 
@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 
      - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
   PetscCall(DMSetApplicationContext(da, &user));
-  PetscCall(DMDASNESSetFunctionLocal(da, INSERT_VALUES, (PetscErrorCode(*)(DMDALocalInfo *, void *, void *, void *))FormFunctionLocal, &user));
+  PetscCall(DMDASNESSetFunctionLocal(da, INSERT_VALUES, (PetscErrorCode (*)(DMDALocalInfo *, void *, void *, void *))FormFunctionLocal, &user));
   PetscCall(SNESSetFromOptions(snes));
   PetscCall(PetscPrintf(comm, "lid velocity = %g, prandtl # = %g, grashof # = %g\n", (double)user.lidvelocity, (double)user.prandtl, (double)user.grashof));
 
@@ -1226,7 +1226,7 @@ PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, void *ctx)
    test:
       suffix: failure_size
       nsize: 1
-      requires: !defined(PETSC_USE_64BIT_INDICES) !defined(PETSCTEST_VALGRIND)
+      requires: !defined(PETSC_USE_64BIT_INDICES) !defined(PETSCTEST_VALGRIND) !defined(PETSC_HAVE_SANITIZER)
       args: -da_refine 100 -petsc_ci_portable_error_output -error_output_stdout
       filter: grep -E -v "(memory block|leaked context|not freed before MPI_Finalize|Could be the program crashed)"
 

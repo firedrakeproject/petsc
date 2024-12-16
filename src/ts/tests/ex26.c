@@ -15,7 +15,7 @@ int main(int argc, char **argv)
   PetscBool flg = PETSC_FALSE, usingimex;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
 
   PetscCall(TSCreate(PETSC_COMM_WORLD, &ts));
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-set_implicit", &flg, NULL));
@@ -93,7 +93,7 @@ PetscErrorCode IJacobian(TS ts, PetscReal t, Vec x, Vec xdot, PetscReal shift, M
 
     test:
       suffix: arkimex_explicit_stage
-      requires: !defined(PETSCTEST_VALGRIND) defined(PETSC_USE_DEBUG)
+      requires: !defined(PETSCTEST_VALGRIND) defined(PETSC_USE_DEBUG) !defined(PETSC_HAVE_SANITIZER)
       args: -ts_type arkimex -petsc_ci_portable_error_output -error_output_stdout -set_implicit
       filter: grep -E -v "(memory block|leaked context|not freed before MPI_Finalize|Could be the program crashed)"
 

@@ -322,7 +322,7 @@ PETSC_EXTERN PetscErrorCode PetscLogEventsResume(void);
 PETSC_EXTERN PetscErrorCode PetscLogClassGetClassId(const char[], PetscClassId *);
 PETSC_EXTERN PetscErrorCode PetscLogClassIdGetName(PetscClassId, const char **);
 
-static inline PETSC_UNUSED PetscErrorCode PetscLogEventSync(PetscLogEvent e, MPI_Comm comm)
+static inline PetscErrorCode PetscLogEventSync(PetscLogEvent e, MPI_Comm comm)
 {
   if (PetscLogStateEventCurrentlyActive(petsc_log_state, e)) {
     for (int i = 0; i < PETSC_LOG_HANDLER_MAX; i++) {
@@ -336,7 +336,7 @@ static inline PETSC_UNUSED PetscErrorCode PetscLogEventSync(PetscLogEvent e, MPI
   return PETSC_SUCCESS;
 }
 
-static inline PETSC_UNUSED PetscErrorCode PetscLogEventBegin_Internal(PetscLogEvent e, PetscObject o1, PetscObject o2, PetscObject o3, PetscObject o4)
+static inline PetscErrorCode PetscLogEventBegin_Internal(PetscLogEvent e, PetscObject o1, PetscObject o2, PetscObject o3, PetscObject o4)
 {
   if (PetscLogStateEventCurrentlyActive(petsc_log_state, e)) {
     for (int i = 0; i < PETSC_LOG_HANDLER_MAX; i++) {
@@ -351,7 +351,7 @@ static inline PETSC_UNUSED PetscErrorCode PetscLogEventBegin_Internal(PetscLogEv
 }
   #define PetscLogEventBegin(e, o1, o2, o3, o4) PetscLogEventBegin_Internal(e, (PetscObject)(o1), (PetscObject)(o2), (PetscObject)(o3), (PetscObject)(o4))
 
-static inline PETSC_UNUSED PetscErrorCode PetscLogEventEnd_Internal(PetscLogEvent e, PetscObject o1, PetscObject o2, PetscObject o3, PetscObject o4)
+static inline PetscErrorCode PetscLogEventEnd_Internal(PetscLogEvent e, PetscObject o1, PetscObject o2, PetscObject o3, PetscObject o4)
 {
   if (PetscLogStateEventCurrentlyActive(petsc_log_state, e)) {
     for (int i = 0; i < PETSC_LOG_HANDLER_MAX; i++) {
@@ -367,7 +367,7 @@ static inline PETSC_UNUSED PetscErrorCode PetscLogEventEnd_Internal(PetscLogEven
   #define PetscLogEventEnd(e, o1, o2, o3, o4) PetscLogEventEnd_Internal(e, (PetscObject)(o1), (PetscObject)(o2), (PetscObject)(o3), (PetscObject)(o4))
 
 /* Object functions */
-static inline PETSC_UNUSED PetscErrorCode PetscLogObjectCreate(PetscObject o)
+static inline PetscErrorCode PetscLogObjectCreate(PetscObject o)
 {
   if (petsc_log_state) {
     for (int i = 0; i < PETSC_LOG_HANDLER_MAX; i++) {
@@ -381,7 +381,7 @@ static inline PETSC_UNUSED PetscErrorCode PetscLogObjectCreate(PetscObject o)
   return PETSC_SUCCESS;
 }
 
-static inline PETSC_UNUSED PetscErrorCode PetscLogObjectDestroy(PetscObject o)
+static inline PetscErrorCode PetscLogObjectDestroy(PetscObject o)
 {
   if (petsc_log_state) {
     for (int i = 0; i < PETSC_LOG_HANDLER_MAX; i++) {
@@ -414,7 +414,7 @@ static inline PETSC_UNUSED PetscErrorCode PetscLogObjectDestroy(PetscObject o)
     #define PETSC_FLOPS_PER_OP 1.0
   #endif
 
-/*@C
+/*@
    PetscLogFlops - Log how many flops are performed in a calculation
 
    Input Parameter:
@@ -425,9 +425,6 @@ static inline PETSC_UNUSED PetscErrorCode PetscLogObjectDestroy(PetscObject o)
    Note:
    To limit the chance of integer overflow when multiplying by a constant, represent the constant as a double,
    not an integer. Use `PetscLogFlops`(4.0*n) not `PetscLogFlops`(4*n)
-
-   Developer Note:
-   Currently Fortran stub generator cannot run through files in include
 
 .seealso: [](ch_profiling), `PetscLogView()`, `PetscLogGpuFlops()`
 @*/
@@ -454,7 +451,7 @@ static inline PetscErrorCode PetscLogFlops(PetscLogDouble n)
 /*
    Logging of MPI activities
 */
-static inline PetscErrorCode PetscMPITypeSize(PetscInt count, MPI_Datatype type, PetscLogDouble *length, PetscLogDouble *length_th)
+static inline PetscErrorCode PetscMPITypeSize(PetscCount count, MPI_Datatype type, PetscLogDouble *length, PetscLogDouble *length_th)
 {
   PetscMPIInt typesize;
 

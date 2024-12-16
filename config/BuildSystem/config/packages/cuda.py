@@ -110,7 +110,9 @@ class Configure(config.package.Package):
     else:
       arg_sep = ' '
 
-    return ''.join(' -gencode'+arg_sep+'arch=compute_'+gen+',code=sm_'+gen for gen in self.cudaArchList())
+    # generate both SASS and PTX for the arch, see https://stackoverflow.com/a/35657430/3447299
+    # e.g., '-arch=sm_50' is equivalent to '-arch=compute_50 -code=sm_50,compute_50'.
+    return ''.join(' -arch=sm_'+gen for gen in self.cudaArchList())
 
   def clangArchFlags(self):
     if not self.cudaArchIsVersionList():
@@ -361,10 +363,16 @@ class Configure(config.package.Package):
                     #include <cuda_runtime.h>
                     #include <cuda_runtime_api.h>
                     #include <cuda_device_runtime_api.h>'''
-        body = '''int cerr;
+        body = '''cudaError_t cerr;
                 cudaDeviceProp dp;
                 cerr = cudaGetDeviceProperties(&dp, 0);
-                if (cerr) printf("Error calling cudaGetDeviceProperties\\n");
+                if (cerr) {
+              #if (CUDART_VERSION >= 8000)
+                  printf("Error calling cudaGetDeviceProperties with CUDA error %d (%s) : %s\\n", (int)cerr, cudaGetErrorName(cerr), cudaGetErrorString(cerr));
+              #else
+                  printf("Error calling cudaGetDeviceProperties with CUDA error %d\\n", (int)cerr);
+              #endif
+                }
                 else printf("%d\\n",10*dp.major+dp.minor);
                 return(cerr);'''
         self.pushLanguage('CUDA')
@@ -386,7 +394,7 @@ class Configure(config.package.Package):
               self.cudaArch = str(gen)
     # Store min cuda arch at configure time for later error diagnosis
     if self.cudaArchIsVersionList():
-      self.addDefine('HAVE_CUDA_MIN_ARCH', min(self.cudaArchList()))
+      self.addDefine('PKG_CUDA_MIN_ARCH', min(self.cudaArchList()))
 
     # Check flags validity
     if hasattr(self,'cudaArch'):

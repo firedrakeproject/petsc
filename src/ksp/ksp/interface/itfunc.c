@@ -185,10 +185,10 @@ PetscErrorCode KSPComputeRitz(KSP ksp, PetscBool ritz, PetscBool small, PetscInt
   PetscTryTypeMethod(ksp, computeritz, ritz, small, nrit, S, tetar, tetai);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
 /*@
   KSPSetUpOnBlocks - Sets up the preconditioner for each block in
-  the block Jacobi, block Gauss-Seidel, and overlapping Schwarz
-  methods.
+  the block Jacobi, overlapping Schwarz, and fieldsplit methods.
 
   Collective
 
@@ -218,11 +218,11 @@ PetscErrorCode KSPSetUpOnBlocks(KSP ksp)
   level++;
   PetscCall(KSPGetPC(ksp, &pc));
   PetscCall(PCSetUpOnBlocks(pc));
-  PetscCall(PCGetFailedReasonRank(pc, &pcreason));
+  PetscCall(PCGetFailedReason(pc, &pcreason));
   level--;
   /*
      This is tricky since only a subset of MPI ranks may set this; each KSPSolve_*() is responsible for checking
-     this flag and initializing an appropriate vector with VecSetInf() so that the first norm computation can
+     this flag and initializing an appropriate vector with VecFlag() so that the first norm computation can
      produce a result at KSPCheckNorm() thus communicating the known problem to all MPI ranks so they may
      terminate the Krylov solve. For many KSP implementations this is handled within KSPInitialResidual()
   */
@@ -413,7 +413,7 @@ PetscErrorCode KSPSetUp(KSP ksp)
   PetscCall(PetscLogEventEnd(KSP_SetUp, ksp, ksp->vec_rhs, ksp->vec_sol, 0));
   PetscCall(PCSetErrorIfFailure(ksp->pc, ksp->errorifnotconverged));
   PetscCall(PCSetUp(ksp->pc));
-  PetscCall(PCGetFailedReasonRank(ksp->pc, &pcreason));
+  PetscCall(PCGetFailedReason(ksp->pc, &pcreason));
   /* TODO: this code was wrong and is still wrong, there is no way to propagate the failure to all processes; their is no code to handle a ksp->reason on only some ranks */
   if (pcreason) ksp->reason = KSP_DIVERGED_PC_FAILED;
 
@@ -428,7 +428,7 @@ PetscErrorCode KSPSetUp(KSP ksp)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   KSPConvergedReasonView - Displays the reason a `KSP` solve converged or diverged to a viewer
 
   Collective
@@ -522,7 +522,7 @@ PetscErrorCode KSPConvergedReasonViewSet(KSP ksp, PetscErrorCode (*f)(KSP, void 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   for (i = 0; i < ksp->numberreasonviews; i++) {
-    PetscCall(PetscMonitorCompare((PetscErrorCode(*)(void))f, vctx, reasonviewdestroy, (PetscErrorCode(*)(void))ksp->reasonview[i], ksp->reasonviewcontext[i], ksp->reasonviewdestroy[i], &identical));
+    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))f, vctx, reasonviewdestroy, (PetscErrorCode (*)(void))ksp->reasonview[i], ksp->reasonviewcontext[i], ksp->reasonviewdestroy[i], &identical));
     if (identical) PetscFunctionReturn(PETSC_SUCCESS);
   }
   PetscCheck(ksp->numberreasonviews < MAXKSPREASONVIEWS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many KSP reasonview set");
@@ -533,7 +533,8 @@ PetscErrorCode KSPConvergedReasonViewSet(KSP ksp, PetscErrorCode (*f)(KSP, void 
 }
 
 /*@
-  KSPConvergedReasonViewCancel - Clears all the reasonview functions for a `KSP` object set with `KSPConvergedReasonViewSet()`.
+  KSPConvergedReasonViewCancel - Clears all the reasonview functions for a `KSP` object set with `KSPConvergedReasonViewSet()`
+  as well as the default viewer.
 
   Collective
 
@@ -554,6 +555,7 @@ PetscErrorCode KSPConvergedReasonViewCancel(KSP ksp)
     if (ksp->reasonviewdestroy[i]) PetscCall((*ksp->reasonviewdestroy[i])(&ksp->reasonviewcontext[i]));
   }
   ksp->numberreasonviews = 0;
+  PetscCall(PetscViewerDestroy(&ksp->convergedreasonviewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -571,27 +573,20 @@ PetscErrorCode KSPConvergedReasonViewCancel(KSP ksp)
 @*/
 PetscErrorCode KSPConvergedReasonViewFromOptions(KSP ksp)
 {
-  PetscViewer       viewer;
-  PetscBool         flg;
-  PetscViewerFormat format;
-  PetscInt          i;
-
   PetscFunctionBegin;
   /* Call all user-provided reason review routines */
-  for (i = 0; i < ksp->numberreasonviews; i++) PetscCall((*ksp->reasonview[i])(ksp, ksp->reasonviewcontext[i]));
+  for (PetscInt i = 0; i < ksp->numberreasonviews; i++) PetscCall((*ksp->reasonview[i])(ksp, ksp->reasonviewcontext[i]));
 
   /* Call the default PETSc routine */
-  PetscCall(PetscOptionsGetViewer(PetscObjectComm((PetscObject)ksp), ((PetscObject)ksp)->options, ((PetscObject)ksp)->prefix, "-ksp_converged_reason", &viewer, &format, &flg));
-  if (flg) {
-    PetscCall(PetscViewerPushFormat(viewer, format));
-    PetscCall(KSPConvergedReasonView(ksp, viewer));
-    PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+  if (ksp->convergedreasonviewer) {
+    PetscCall(PetscViewerPushFormat(ksp->convergedreasonviewer, ksp->convergedreasonformat));
+    PetscCall(KSPConvergedReasonView(ksp, ksp->convergedreasonviewer));
+    PetscCall(PetscViewerPopFormat(ksp->convergedreasonviewer));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   KSPConvergedRateView - Displays the convergence rate <https://en.wikipedia.org/wiki/Coefficient_of_determination> of `KSPSolve()` to a viewer
 
   Collective
@@ -1070,12 +1065,22 @@ static PetscErrorCode KSPSolve_Private(KSP ksp, Vec b, Vec x)
 @*/
 PetscErrorCode KSPSolve(KSP ksp, Vec b, Vec x)
 {
+  PetscBool isPCMPI;
+
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   if (b) PetscValidHeaderSpecific(b, VEC_CLASSID, 2);
   if (x) PetscValidHeaderSpecific(x, VEC_CLASSID, 3);
   ksp->transpose_solve = PETSC_FALSE;
   PetscCall(KSPSolve_Private(ksp, b, x));
+  PetscCall(PetscObjectTypeCompare((PetscObject)ksp->pc, PCMPI, &isPCMPI));
+  if (PCMPIServerActive && isPCMPI) {
+    KSP subksp;
+
+    PetscCall(PCMPIGetKSP(ksp->pc, &subksp));
+    ksp->its    = subksp->its;
+    ksp->reason = subksp->reason;
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1140,8 +1145,8 @@ static PetscErrorCode KSPViewFinalMatResidual_Internal(KSP ksp, Mat B, Mat X, Pe
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &flg));
   if (flg) {
     PetscCall(PCGetOperators(ksp->pc, &A, NULL));
-    if (!ksp->transpose_solve) PetscCall(MatMatMult(A, X, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &R));
-    else PetscCall(MatTransposeMatMult(A, X, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &R));
+    if (!ksp->transpose_solve) PetscCall(MatMatMult(A, X, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &R));
+    else PetscCall(MatTransposeMatMult(A, X, MAT_INITIAL_MATRIX, PETSC_DETERMINE, &R));
     PetscCall(MatAYPX(R, -1.0, B, SAME_NONZERO_PATTERN));
     PetscCall(MatGetSize(R, NULL, &N));
     PetscCall(PetscMalloc1(N, &norms));
@@ -1366,20 +1371,20 @@ PetscErrorCode KSPResetViewers(KSP ksp)
   PetscFunctionBegin;
   if (ksp) PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   if (!ksp) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewer));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerPre));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerRate));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerMat));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerPMat));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerRhs));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerSol));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerMatExp));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerEV));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerSV));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerEVExp));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerFinalRes));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerPOpExp));
-  PetscCall(PetscOptionsRestoreViewer(&ksp->viewerDScale));
+  PetscCall(PetscViewerDestroy(&ksp->viewer));
+  PetscCall(PetscViewerDestroy(&ksp->viewerPre));
+  PetscCall(PetscViewerDestroy(&ksp->viewerRate));
+  PetscCall(PetscViewerDestroy(&ksp->viewerMat));
+  PetscCall(PetscViewerDestroy(&ksp->viewerPMat));
+  PetscCall(PetscViewerDestroy(&ksp->viewerRhs));
+  PetscCall(PetscViewerDestroy(&ksp->viewerSol));
+  PetscCall(PetscViewerDestroy(&ksp->viewerMatExp));
+  PetscCall(PetscViewerDestroy(&ksp->viewerEV));
+  PetscCall(PetscViewerDestroy(&ksp->viewerSV));
+  PetscCall(PetscViewerDestroy(&ksp->viewerEVExp));
+  PetscCall(PetscViewerDestroy(&ksp->viewerFinalRes));
+  PetscCall(PetscViewerDestroy(&ksp->viewerPOpExp));
+  PetscCall(PetscViewerDestroy(&ksp->viewerDScale));
   ksp->view         = PETSC_FALSE;
   ksp->viewPre      = PETSC_FALSE;
   ksp->viewMat      = PETSC_FALSE;
@@ -1430,7 +1435,7 @@ PetscErrorCode KSPReset(KSP ksp)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   KSPDestroy - Destroys a `KSP` context.
 
   Collective
@@ -1614,10 +1619,19 @@ PetscErrorCode KSPGetTolerances(KSP ksp, PetscReal *rtol, PetscReal *abstol, Pet
   Level: intermediate
 
   Notes:
-  Use `PETSC_DEFAULT` to retain the default value of any of the tolerances.
+  All parameters must be non-negative.
+
+  Use `PETSC_CURRENT` to retain the current value of any of the parameters. The deprecated `PETSC_DEFAULT` also retains the current value (though the name is confusing).
+
+  Use `PETSC_DETERMINE` to use the default value for the given `KSP`. The default value is the value when the object's type is set.
+
+  For `dtol` and `maxits` use `PETSC_UMLIMITED` to indicate there is no upper bound on these values
 
   See `KSPConvergedDefault()` for details how these parameters are used in the default convergence test.  See also `KSPSetConvergenceTest()`
   for setting user-defined stopping criteria.
+
+  Fortran Note:
+  Use `PETSC_CURRENT_INTEGER`, `PETSC_CURRENT_REAL`, `PETSC_DETERMINE_INTEGER`, or `PETSC_DETERMINE_REAL`
 
 .seealso: [](ch_ksp), `KSPGetTolerances()`, `KSPConvergedDefault()`, `KSPSetConvergenceTest()`, `KSP`, `KSPSetMinimumIterations()`
 @*/
@@ -1630,19 +1644,31 @@ PetscErrorCode KSPSetTolerances(KSP ksp, PetscReal rtol, PetscReal abstol, Petsc
   PetscValidLogicalCollectiveReal(ksp, dtol, 4);
   PetscValidLogicalCollectiveInt(ksp, maxits, 5);
 
-  if (rtol != (PetscReal)PETSC_DEFAULT) {
+  if (rtol == (PetscReal)PETSC_DETERMINE) {
+    ksp->rtol = ksp->default_rtol;
+  } else if (rtol != (PetscReal)PETSC_CURRENT) {
     PetscCheck(rtol >= 0.0 && rtol < 1.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Relative tolerance %g must be non-negative and less than 1.0", (double)rtol);
     ksp->rtol = rtol;
   }
-  if (abstol != (PetscReal)PETSC_DEFAULT) {
+  if (abstol == (PetscReal)PETSC_DETERMINE) {
+    ksp->abstol = ksp->default_abstol;
+  } else if (abstol != (PetscReal)PETSC_CURRENT) {
     PetscCheck(abstol >= 0.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Absolute tolerance %g must be non-negative", (double)abstol);
     ksp->abstol = abstol;
   }
-  if (dtol != (PetscReal)PETSC_DEFAULT) {
+  if (dtol == (PetscReal)PETSC_DETERMINE) {
+    ksp->divtol = ksp->default_divtol;
+  } else if (dtol == (PetscReal)PETSC_UNLIMITED) {
+    ksp->divtol = PETSC_MAX_REAL;
+  } else if (dtol != (PetscReal)PETSC_CURRENT) {
     PetscCheck(dtol >= 0.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Divergence tolerance %g must be larger than 1.0", (double)dtol);
     ksp->divtol = dtol;
   }
-  if (maxits != PETSC_DEFAULT) {
+  if (maxits == (PetscInt)PETSC_DETERMINE) {
+    ksp->max_it = ksp->default_max_it;
+  } else if (maxits == (PetscInt)PETSC_UNLIMITED) {
+    ksp->max_it = PETSC_INT_MAX;
+  } else if (maxits != (PetscInt)PETSC_CURRENT) {
     PetscCheck(maxits >= 0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Maximum number of iterations %" PetscInt_FMT " must be non-negative", maxits);
     ksp->max_it = maxits;
   }
@@ -1733,7 +1759,7 @@ PetscErrorCode KSPSetInitialGuessNonzero(KSP ksp, PetscBool flg)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscValidLogicalCollectiveBool(ksp, flg, 2);
-  ksp->guess_zero = (PetscBool) !(int)flg;
+  ksp->guess_zero = (PetscBool)!flg;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2048,8 +2074,7 @@ PetscErrorCode KSPGetRhs(KSP ksp, Vec *r)
 
 /*@
   KSPGetSolution - Gets the location of the solution for the
-  linear system to be solved.  Note that this may not be where the solution
-  is stored during the iterative process; see `KSPBuildSolution()`.
+  linear system to be solved.
 
   Not Collective
 
@@ -2060,6 +2085,10 @@ PetscErrorCode KSPGetRhs(KSP ksp, Vec *r)
 . v - solution vector
 
   Level: developer
+
+  Note:
+  If this is called during a `KSPSolve()` the vector's values may not represent the solution
+  to the linear system.
 
 .seealso: [](ch_ksp), `KSPGetRhs()`, `KSPBuildSolution()`, `KSPSolve()`, `KSP`
 @*/
@@ -2133,14 +2162,14 @@ PETSC_INTERN PetscErrorCode KSPCheckPCMPI(KSP ksp)
     PetscCall(KSPGetOptionsPrefix(ksp, &prefix));
     if (prefix) PetscCall(PetscStrstr(prefix, "mpi_linear_solver_server_", &found));
     if (!found) PetscCall(KSPAppendOptionsPrefix(ksp, "mpi_linear_solver_server_"));
+    PetscCall(PetscInfo(NULL, "In MPI Linear Solver Server and detected (root) PC that must be changed to PCMPI\n"));
     PetscCall(PCSetType(ksp->pc, PCMPI));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  KSPGetPC - Returns a pointer to the preconditioner context
-  set with `KSPSetPC()`.
+  KSPGetPC - Returns a pointer to the preconditioner context with the `KSP`
 
   Not Collective
 
@@ -2151,6 +2180,12 @@ PETSC_INTERN PetscErrorCode KSPCheckPCMPI(KSP ksp)
 . pc - preconditioner context
 
   Level: developer
+
+  Note:
+  The `PC` is created if it does not already exist.
+
+  Developer Note:
+  Calls `KSPCheckPCMPI()` to check if the `KSP` is effected by `-mpi_linear_solver_server`
 
 .seealso: [](ch_ksp), `KSPSetPC()`, `KSP`, `PC`
 @*/
@@ -2182,9 +2217,12 @@ PetscErrorCode KSPGetPC(KSP ksp, PC *pc)
 
   Level: developer
 
-  Note:
+  Notes:
   This routine is called by the `KSP` implementations.
   It does not typically need to be called by the user.
+
+  For Krylov methods that do not keep a running value of the current solution (such as `KSPGMRES`) this
+  cannot be called after the `KSPConvergedReason` has been set but before the final solution has been computed.
 
 .seealso: [](ch_ksp), `KSPMonitorSet()`
 @*/
@@ -2255,7 +2293,7 @@ PetscErrorCode KSPMonitorSet(KSP ksp, PetscErrorCode (*monitor)(KSP ksp, PetscIn
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   for (i = 0; i < ksp->numbermonitors; i++) {
-    PetscCall(PetscMonitorCompare((PetscErrorCode(*)(void))monitor, ctx, monitordestroy, (PetscErrorCode(*)(void))ksp->monitor[i], ksp->monitorcontext[i], ksp->monitordestroy[i], &identical));
+    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))monitor, ctx, monitordestroy, (PetscErrorCode (*)(void))ksp->monitor[i], ksp->monitorcontext[i], ksp->monitordestroy[i], &identical));
     if (identical) PetscFunctionReturn(PETSC_SUCCESS);
   }
   PetscCheck(ksp->numbermonitors < MAXKSPMONITORS, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Too many KSP monitors set");
@@ -2334,14 +2372,14 @@ PetscErrorCode KSPGetMonitorContext(KSP ksp, void *ctx)
 
   Notes:
   If provided, `a` is NOT freed by PETSc so the user needs to keep track of it and destroy once the `KSP` object is destroyed.
-  If 'a' is `NULL` then space is allocated for the history. If 'na' `PETSC_DECIDE` or `PETSC_DEFAULT` then a
-  default array of length 10000 is allocated.
+  If 'a' is `NULL` then space is allocated for the history. If 'na' `PETSC_DECIDE` or (deprecated) `PETSC_DEFAULT` then a
+  default array of length 10,000 is allocated.
 
   If the array is not long enough then once the iterations is longer than the array length `KSPSolve()` stops recording the history
 
 .seealso: [](ch_ksp), `KSPGetResidualHistory()`, `KSP`
 @*/
-PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscInt na, PetscBool reset)
+PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscCount na, PetscBool reset)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -2349,7 +2387,7 @@ PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscInt na, PetscB
   PetscCall(PetscFree(ksp->res_hist_alloc));
   if (na != PETSC_DECIDE && na != PETSC_DEFAULT && a) {
     ksp->res_hist     = a;
-    ksp->res_hist_max = (size_t)na;
+    ksp->res_hist_max = na;
   } else {
     if (na != PETSC_DECIDE && na != PETSC_DEFAULT) ksp->res_hist_max = (size_t)na;
     else ksp->res_hist_max = 10000; /* like default ksp->max_it */
@@ -2408,7 +2446,7 @@ PetscErrorCode KSPGetResidualHistory(KSP ksp, const PetscReal *a[], PetscInt *na
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   if (a) *a = ksp->res_hist;
-  if (na) *na = (PetscInt)ksp->res_hist_len;
+  if (na) PetscCall(PetscIntCast(ksp->res_hist_len, na));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2427,13 +2465,13 @@ PetscErrorCode KSPGetResidualHistory(KSP ksp, const PetscReal *a[], PetscInt *na
 
   Notes:
   If provided, `a` is NOT freed by PETSc so the user needs to keep track of it and destroy once the `KSP` object is destroyed.
-  If 'a' is `NULL` then space is allocated for the history. If 'na' is `PETSC_DECIDE` or `PETSC_DEFAULT` then a default array of length 10000 is allocated.
+  If 'a' is `NULL` then space is allocated for the history. If 'na' is `PETSC_DECIDE` or (deprecated) `PETSC_DEFAULT` then a default array of length 1,0000 is allocated.
 
   If the array is not long enough then once the iterations is longer than the array length `KSPSolve()` stops recording the history
 
 .seealso: [](ch_ksp), `KSPGetErrorHistory()`, `KSPSetResidualHistory()`, `KSP`
 @*/
-PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscInt na, PetscBool reset)
+PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscCount na, PetscBool reset)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -2441,12 +2479,11 @@ PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscInt na, PetscBool
   PetscCall(PetscFree(ksp->err_hist_alloc));
   if (na != PETSC_DECIDE && na != PETSC_DEFAULT && a) {
     ksp->err_hist     = a;
-    ksp->err_hist_max = (size_t)na;
+    ksp->err_hist_max = na;
   } else {
     if (na != PETSC_DECIDE && na != PETSC_DEFAULT) ksp->err_hist_max = (size_t)na;
     else ksp->err_hist_max = 10000; /* like default ksp->max_it */
     PetscCall(PetscCalloc1(ksp->err_hist_max, &ksp->err_hist_alloc));
-
     ksp->err_hist = ksp->err_hist_alloc;
   }
   ksp->err_hist_len   = 0;
@@ -2488,7 +2525,7 @@ PetscErrorCode KSPGetErrorHistory(KSP ksp, const PetscReal *a[], PetscInt *na)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   if (a) *a = ksp->err_hist;
-  if (na) *na = (PetscInt)ksp->err_hist_len;
+  if (na) PetscCall(PetscIntCast(ksp->err_hist_len, na));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2726,7 +2763,7 @@ PetscErrorCode KSPGetConvergenceContext(KSP ksp, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   KSPBuildSolution - Builds the approximate solution in a vector provided.
 
   Collective
@@ -2754,8 +2791,8 @@ PetscErrorCode KSPGetConvergenceContext(KSP ksp, void *ctx)
   methods, such as `KSPCG`, the second case requires a copy of the solution,
   while in the first case the call is essentially free since it simply
   returns the vector where the solution already is stored. For some methods
-  like `KSPGMRES` this is a reasonably expensive operation and should only be
-  used in truly needed.
+  like `KSPGMRES` during the solve this is a reasonably expensive operation and should only be
+  used if truly needed.
 
 .seealso: [](ch_ksp), `KSPGetSolution()`, `KSPBuildResidual()`, `KSP`
 @*/
@@ -2765,11 +2802,16 @@ PetscErrorCode KSPBuildSolution(KSP ksp, Vec v, Vec *V)
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
   PetscCheck(V || v, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_WRONG, "Must provide either v or V");
   if (!V) V = &v;
-  PetscUseTypeMethod(ksp, buildsolution, v, V);
+  if (ksp->reason != KSP_CONVERGED_ITERATING) {
+    if (!v) PetscCall(KSPGetSolution(ksp, V));
+    else PetscCall(VecCopy(ksp->vec_sol, v));
+  } else {
+    PetscUseTypeMethod(ksp, buildsolution, v, V);
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   KSPBuildResidual - Builds the residual in a vector provided.
 
   Collective

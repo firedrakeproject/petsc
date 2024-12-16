@@ -45,10 +45,10 @@
 */
 static PetscErrorCode SNESNEWTONLSCheckLocalMin_Private(SNES snes, Mat A, Vec F, PetscReal fnorm, PetscBool *ismin)
 {
-  PetscReal a1;
-  PetscBool hastranspose;
-  Vec       W;
-  PetscErrorCode (*objective)(SNES, Vec, PetscReal *, void *);
+  PetscReal        a1;
+  PetscBool        hastranspose;
+  Vec              W;
+  SNESObjectiveFn *objective;
 
   PetscFunctionBegin;
   *ismin = PETSC_FALSE;
@@ -87,9 +87,9 @@ static PetscErrorCode SNESNEWTONLSCheckLocalMin_Private(SNES snes, Mat A, Vec F,
 */
 static PetscErrorCode SNESNEWTONLSCheckResidual_Private(SNES snes, Mat A, Vec F, Vec X)
 {
-  PetscReal a1, a2;
-  PetscBool hastranspose;
-  PetscErrorCode (*objective)(SNES, Vec, PetscReal *, void *);
+  PetscReal        a1, a2;
+  PetscBool        hastranspose;
+  SNESObjectiveFn *objective;
 
   PetscFunctionBegin;
   PetscCall(MatHasOperation(A, MATOP_MULT_TRANSPOSE, &hastranspose));
@@ -189,6 +189,7 @@ static PetscErrorCode SNESSolve_NEWTONLS(SNES snes)
   for (i = 0; i < maxits; i++) {
     /* Call general purpose update function */
     PetscTryTypeMethod(snes, update, snes->iter);
+    PetscCall(VecNorm(snes->vec_func, NORM_2, &fnorm)); /* no-op unless update() function changed f() */
 
     /* apply the nonlinear preconditioner */
     if (snes->npc) {
@@ -351,14 +352,14 @@ static PetscErrorCode SNESSetFromOptions_NEWTONLS(SNES snes, PetscOptionItems *P
    SNESNEWTONLS - Newton based nonlinear solver that uses a line search
 
    Options Database Keys:
-+   -snes_linesearch_type <bt> - bt,basic.  Select line search type
-.   -snes_linesearch_order <3> - 2, 3. Selects the order of the line search for bt
-.   -snes_linesearch_norms <true> - Turns on/off computation of the norms for basic linesearch (`SNESLineSearchSetComputeNorms()`)
-.   -snes_linesearch_alpha <alpha> - Sets alpha used in determining if reduction in function norm is sufficient
-.   -snes_linesearch_maxstep <maxstep> - Sets the maximum stepsize the line search will use (if the 2-norm(y) > maxstep then scale y to be y = (maxstep/2-norm(y)) *y)
++   -snes_linesearch_type <bt>              - basic (or equivalently none), bt, l2, cp, nleqerr, shell.  Select line search type, see `SNESLineSearchSetType()`
+.   -snes_linesearch_order <3>              - 2, 3. Selects the order of the line search for bt, see `SNESLineSearchSetOrder()`
+.   -snes_linesearch_norms <true>           - Turns on/off computation of the norms for basic linesearch (`SNESLineSearchSetComputeNorms()`)
+.   -snes_linesearch_alpha <alpha>          - Sets alpha used in determining if reduction in function norm is sufficient
+.   -snes_linesearch_maxstep <maxstep>      - Sets the maximum stepsize the line search will use (if the 2-norm(y) > maxstep then scale y to be y = (maxstep/2-norm(y)) *y)
 .   -snes_linesearch_minlambda <minlambda>  - Sets the minimum lambda the line search will tolerate
-.   -snes_linesearch_monitor - print information about progress of line searches
--   -snes_linesearch_damping - damping factor used for basic line search
+.   -snes_linesearch_monitor                - print information about the progress of line searches
+-   -snes_linesearch_damping                - damping factor used for basic line search
 
    Level: beginner
 
@@ -366,7 +367,7 @@ static PetscErrorCode SNESSetFromOptions_NEWTONLS(SNES snes, PetscOptionItems *P
    This is the default nonlinear solver in `SNES`
 
 .seealso: [](ch_snes), `SNESCreate()`, `SNES`, `SNESSetType()`, `SNESNEWTONTR`, `SNESQN`, `SNESLineSearchSetType()`, `SNESLineSearchSetOrder()`
-          `SNESLineSearchSetPostCheck()`, `SNESLineSearchSetPreCheck()` `SNESLineSearchSetComputeNorms()`, `SNESGetLineSearch()`
+          `SNESLineSearchSetPostCheck()`, `SNESLineSearchSetPreCheck()` `SNESLineSearchSetComputeNorms()`, `SNESGetLineSearch()`, `SNESLineSearchSetType()`
 M*/
 PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONLS(SNES snes)
 {
@@ -389,6 +390,8 @@ PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONLS(SNES snes)
   if (!((PetscObject)linesearch)->type_name) PetscCall(SNESLineSearchSetType(linesearch, SNESLINESEARCHBT));
 
   snes->alwayscomputesfinalresidual = PETSC_TRUE;
+
+  PetscCall(SNESParametersInitialize(snes));
 
   PetscCall(PetscNew(&neP));
   snes->data = (void *)neP;

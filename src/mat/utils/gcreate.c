@@ -98,8 +98,6 @@ PetscErrorCode MatCreate(MPI_Comm comm, Mat *A)
 
   PetscFunctionBegin;
   PetscAssertPointer(A, 2);
-
-  *A = NULL;
   PetscCall(MatInitializePackage());
 
   PetscCall(PetscHeaderCreate(B, MAT_CLASSID, "Mat", "Matrix", "Mat", comm, MatDestroy, MatView));
@@ -216,11 +214,15 @@ PetscErrorCode MatSetErrorIfFailure(Mat mat, PetscBool flg)
   Likewise, the `n` used must match that used as the local size in
   `VecCreateMPI()` for 'x'.
 
+  If `m` and `n` are not `PETSC_DECIDE`, then the values determine the `PetscLayout` of the matrix and the ranges returned by
+  `MatGetOwnershipRange()`,  `MatGetOwnershipRanges()`, `MatGetOwnershipRangeColumn()`, and `MatGetOwnershipRangesColumn()`.
+
   You cannot change the sizes once they have been set.
 
   The sizes must be set before `MatSetUp()` or MatXXXSetPreallocation() is called.
 
-.seealso: [](ch_matrices), `Mat`, `MatGetSize()`, `PetscSplitOwnership()`
+.seealso: [](ch_matrices), `Mat`, `MatGetSize()`, `PetscSplitOwnership()`, `MatGetOwnershipRange()`, `MatGetOwnershipRanges()`,
+          `MatGetOwnershipRangeColumn()`, `MatGetOwnershipRangesColumn()`, `PetscLayout`, `VecSetSizes()`
 @*/
 PetscErrorCode MatSetSizes(Mat A, PetscInt m, PetscInt n, PetscInt M, PetscInt N)
 {
@@ -335,7 +337,7 @@ PetscErrorCode MatSetFromOptions(Mat B)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatXAIJSetPreallocation - set preallocation for serial and parallel `MATAIJ`, `MATBAIJ`, and `MATSBAIJ` matrices and their unassembled versions.
 
   Collective
@@ -648,6 +650,7 @@ PetscErrorCode MatSetPreallocationCOO_Basic(Mat A, PetscCount ncoo, PetscInt coo
   PetscScalar zero = 0.0;
 
   PetscFunctionBegin;
+  PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
   PetscCall(PetscLayoutSetUp(A->rmap));
   PetscCall(PetscLayoutSetUp(A->cmap));
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), &preallocator));
@@ -660,9 +663,8 @@ PetscErrorCode MatSetPreallocationCOO_Basic(Mat A, PetscCount ncoo, PetscInt coo
   PetscCall(MatAssemblyEnd(preallocator, MAT_FINAL_ASSEMBLY));
   PetscCall(MatPreallocatorPreallocate(preallocator, PETSC_TRUE, A));
   PetscCall(MatDestroy(&preallocator));
-  PetscCheck(ncoo <= PETSC_MAX_INT, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
-  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, ncoo, coo_i, PETSC_COPY_VALUES, &is_coo_i));
-  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, ncoo, coo_j, PETSC_COPY_VALUES, &is_coo_j));
+  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, (PetscInt)ncoo, coo_i, PETSC_COPY_VALUES, &is_coo_i));
+  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, (PetscInt)ncoo, coo_j, PETSC_COPY_VALUES, &is_coo_j));
   PetscCall(PetscObjectCompose((PetscObject)A, "__PETSc_coo_i", (PetscObject)is_coo_i));
   PetscCall(PetscObjectCompose((PetscObject)A, "__PETSc_coo_j", (PetscObject)is_coo_j));
   PetscCall(ISDestroy(&is_coo_i));
@@ -684,7 +686,7 @@ PetscErrorCode MatSetPreallocationCOO_Basic(Mat A, PetscCount ncoo, PetscInt coo
   Level: beginner
 
   Notes:
-  The indices `coo_i` and `coo_j` may be modified within this function. The caller should not rely on them
+  The indices within `coo_i` and `coo_j` may be modified within this function. The caller should not rely on them
   having any specific value after this function returns. The arrays can be freed or reused immediately
   after this function returns.
 
@@ -763,7 +765,7 @@ PetscErrorCode MatSetPreallocationCOOLocal(Mat A, PetscCount ncoo, PetscInt coo_
   PetscValidType(A, 1);
   if (ncoo) PetscAssertPointer(coo_i, 3);
   if (ncoo) PetscAssertPointer(coo_j, 4);
-  PetscCheck(ncoo <= PETSC_MAX_INT, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
+  PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
   PetscCall(PetscLayoutSetUp(A->rmap));
   PetscCall(PetscLayoutSetUp(A->cmap));
 
@@ -773,9 +775,10 @@ PetscErrorCode MatSetPreallocationCOOLocal(Mat A, PetscCount ncoo, PetscInt coo_
     A->nonzerostate++;
   } else {
     ISLocalToGlobalMapping ltog_row, ltog_col;
+
     PetscCall(MatGetLocalToGlobalMapping(A, &ltog_row, &ltog_col));
-    if (ltog_row) PetscCall(ISLocalToGlobalMappingApply(ltog_row, ncoo, coo_i, coo_i));
-    if (ltog_col) PetscCall(ISLocalToGlobalMappingApply(ltog_col, ncoo, coo_j, coo_j));
+    if (ltog_row) PetscCall(ISLocalToGlobalMappingApply(ltog_row, (PetscInt)ncoo, coo_i, coo_i));
+    if (ltog_col) PetscCall(ISLocalToGlobalMappingApply(ltog_col, (PetscInt)ncoo, coo_j, coo_j));
     PetscCall(MatSetPreallocationCOO(A, ncoo, coo_i, coo_j));
   }
   A->preallocated = PETSC_TRUE;

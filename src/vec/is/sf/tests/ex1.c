@@ -16,8 +16,8 @@ static PetscErrorCode CheckGraphNotSet(PetscSF sf)
   PetscCheck(nleaves < 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "SF graph is set");
   PetscCheck(!ilocal, PETSC_COMM_SELF, PETSC_ERR_PLIB, "SF graph is set");
   PetscCheck(!iremote, PETSC_COMM_SELF, PETSC_ERR_PLIB, "SF graph is set");
-  PetscCheck(sf->minleaf == PETSC_MAX_INT, PETSC_COMM_SELF, PETSC_ERR_PLIB, "SF minimum leaf is not PETSC_MAX_INT");
-  PetscCheck(sf->maxleaf == PETSC_MIN_INT, PETSC_COMM_SELF, PETSC_ERR_PLIB, "SF minimum leaf is not PETSC_MIN_INT");
+  PetscCheck(sf->minleaf == PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_PLIB, "SF minimum leaf is not PETSC_INT_MAX");
+  PetscCheck(sf->maxleaf == PETSC_INT_MIN, PETSC_COMM_SELF, PETSC_ERR_PLIB, "SF minimum leaf is not PETSC_INT_MIN");
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -276,6 +276,6 @@ int main(int argc, char **argv)
       suffix: window_shared
       args: -user_sf_type window -sf_type window -sf_window_flavor shared -sf_window_sync {{fence active lock}}
       nsize: {{1 2 3}separate output}
-      requires: defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY) !defined(PETSC_HAVE_MPICH_NUMVERSION) defined(PETSC_HAVE_MPI_ONE_SIDED) defined(PETSC_HAVE_MPI_FEATURE_DYNAMIC_WINDOW)
+      requires: defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY) !defined(PETSC_HAVE_MPICH) defined(PETSC_HAVE_MPI_ONE_SIDED) defined(PETSC_HAVE_MPI_FEATURE_DYNAMIC_WINDOW)
 
 TEST*/

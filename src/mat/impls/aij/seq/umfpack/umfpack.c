@@ -112,7 +112,8 @@ static PetscErrorCode MatSolve_UMFPACK_Private(Mat A, Vec b, Vec x, int uflag)
   Mat_SeqAIJ        *a  = (Mat_SeqAIJ *)lu->A->data;
   PetscScalar       *av = a->a, *xa;
   const PetscScalar *ba;
-  PetscInt          *ai = a->i, *aj = a->j, status;
+  PetscInt          *ai = a->i, *aj = a->j;
+  int                status;
   static PetscBool   cite = PETSC_FALSE;
 
   PetscFunctionBegin;
@@ -163,9 +164,10 @@ static PetscErrorCode MatSolveTranspose_UMFPACK(Mat A, Vec b, Vec x)
 
 static PetscErrorCode MatLUFactorNumeric_UMFPACK(Mat F, Mat A, const MatFactorInfo *info)
 {
-  Mat_UMFPACK *lu = (Mat_UMFPACK *)(F)->data;
+  Mat_UMFPACK *lu = (Mat_UMFPACK *)F->data;
   Mat_SeqAIJ  *a  = (Mat_SeqAIJ *)A->data;
-  PetscInt    *ai = a->i, *aj = a->j, status;
+  PetscInt    *ai = a->i, *aj = a->j;
+  int          status;
   PetscScalar *av = a->a;
 
   PetscFunctionBegin;
@@ -200,7 +202,8 @@ static PetscErrorCode MatLUFactorSymbolic_UMFPACK(Mat F, Mat A, IS r, IS c, cons
 {
   Mat_SeqAIJ  *a  = (Mat_SeqAIJ *)A->data;
   Mat_UMFPACK *lu = (Mat_UMFPACK *)F->data;
-  PetscInt     i, *ai = a->i, *aj = a->j, m = A->rmap->n, n = A->cmap->n, status, idx;
+  PetscInt     i, *ai = a->i, *aj = a->j, m = A->rmap->n, n = A->cmap->n, idx;
+  int          status;
 #if !defined(PETSC_USE_COMPLEX)
   PetscScalar *av = a->a;
 #endif
@@ -210,7 +213,7 @@ static PetscErrorCode MatLUFactorSymbolic_UMFPACK(Mat F, Mat A, IS r, IS c, cons
   PetscBool       flg;
 
   PetscFunctionBegin;
-  (F)->ops->lufactornumeric = MatLUFactorNumeric_UMFPACK;
+  F->ops->lufactornumeric = MatLUFactorNumeric_UMFPACK;
   if (!n) PetscFunctionReturn(PETSC_SUCCESS);
 
   /* Set options to F */

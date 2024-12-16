@@ -288,8 +288,7 @@ static PetscErrorCode VecDuplicateVecs_MPIKokkos_GEMV(Vec w, PetscInt m, Vec *V[
   } else {
     PetscCall(PetscMalloc1(m, V));
     PetscCall(VecGetLayout(w, &map));
-    lda = map->n;
-    lda = ((lda + 31) / 32) * 32; // make every vector 32-elements aligned
+    VecGetLocalSizeAligned(w, 64, &lda); // get in lda the 64-bytes aligned local size
 
     // allocate raw arrays on host and device for the whole m vectors
     PetscCall(PetscCalloc1(m * lda, &array_h));
@@ -306,10 +305,11 @@ static PetscErrorCode VecDuplicateVecs_MPIKokkos_GEMV(Vec w, PetscInt m, Vec *V[
       PetscCallCXX(static_cast<Vec_Kokkos *>(v->spptr)->v_dual.modify_host()); // as we only init'ed array_h
       PetscCall(PetscObjectListDuplicate(((PetscObject)w)->olist, &((PetscObject)v)->olist));
       PetscCall(PetscFunctionListDuplicate(((PetscObject)w)->qlist, &((PetscObject)v)->qlist));
-      v->ops->view          = w->ops->view;
+      v->ops[0]             = w->ops[0];
       v->stash.donotstash   = w->stash.donotstash;
       v->stash.ignorenegidx = w->stash.ignorenegidx;
       v->stash.bs           = w->stash.bs;
+      v->bstash.bs          = w->bstash.bs;
       (*V)[i]               = v;
     }
 

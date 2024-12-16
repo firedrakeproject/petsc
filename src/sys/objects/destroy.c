@@ -51,7 +51,7 @@ PetscErrorCode PetscObjectDestroy(PetscObject *obj)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscObjectView - Views a `PetscObject` regardless of the type.
 
   Collective
@@ -77,7 +77,7 @@ PetscErrorCode PetscObjectView(PetscObject obj, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscObjectViewFromOptions - Processes command line options to determine if/how a `PetscObject` is to be viewed.
 
   Collective
@@ -115,7 +115,7 @@ PetscErrorCode PetscObjectView(PetscObject obj, PetscViewer viewer)
 
   This is not called directly but is called by, for example, `MatViewFromOptions()`
 
-.seealso: `PetscObject`, `PetscObjectView()`, `PetscOptionsGetViewer()`
+.seealso: `PetscObject`, `PetscObjectView()`, `PetscOptionsCreateViewer()`
 @*/
 PetscErrorCode PetscObjectViewFromOptions(PetscObject obj, PetscObject bobj, const char optionname[])
 {
@@ -131,19 +131,19 @@ PetscErrorCode PetscObjectViewFromOptions(PetscObject obj, PetscObject bobj, con
   if (incall) PetscFunctionReturn(PETSC_SUCCESS);
   incall = PETSC_TRUE;
   prefix = bobj ? bobj->prefix : obj->prefix;
-  PetscCall(PetscOptionsGetViewer(PetscObjectComm((PetscObject)obj), obj->options, prefix, optionname, &viewer, &format, &flg));
+  PetscCall(PetscOptionsCreateViewer(PetscObjectComm((PetscObject)obj), obj->options, prefix, optionname, &viewer, &format, &flg));
   if (flg) {
     PetscCall(PetscViewerPushFormat(viewer, format));
     PetscCall(PetscObjectView(obj, viewer));
     PetscCall(PetscViewerFlush(viewer));
     PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
   incall = PETSC_FALSE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscObjectTypeCompare - Determines whether a PETSc object is of a particular type.
 
   Not Collective
@@ -176,7 +176,7 @@ PetscErrorCode PetscObjectTypeCompare(PetscObject obj, const char type_name[], P
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscObjectObjectTypeCompare - Determines whether two PETSc objects are of the same type
 
   Logically Collective
@@ -203,7 +203,7 @@ PetscErrorCode PetscObjectObjectTypeCompare(PetscObject obj1, PetscObject obj2, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscObjectBaseTypeCompare - Determines whether a `PetscObject` is of a given base type. For example the base type of `MATSEQAIJPERM` is `MATSEQAIJ`
 
   Not Collective
@@ -354,7 +354,6 @@ static PetscErrorCode PetscRunRegisteredFinalizers(void)
     PetscCall(PetscArrayzero(&regfin[reg_count].thunk, 1));
     switch (top.type) {
     case PETSC_FINALIZE_OBJECT:
-      top.thunk.obj->persistent = PETSC_FALSE;
       PetscCall(PetscObjectDestroy(&top.thunk.obj));
       break;
     case PETSC_FINALIZE_FUNC:
@@ -399,7 +398,7 @@ static PetscErrorCode RegisterFinalizer(PetscFinalizerContainer container)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscObjectRegisterDestroy - Registers a PETSc object to be destroyed when
   `PetscFinalize()` is called.
 

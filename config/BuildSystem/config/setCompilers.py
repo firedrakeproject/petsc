@@ -121,14 +121,18 @@ class Configure(config.base.Configure):
     help.addArgument('Compilers', '-CPPFLAGS=<string>',     nargs.Arg(None, None, 'Specify the C only (not used for C++ or FC) preprocessor options'))
     help.addArgument('Compilers', '-with-cc=<prog>',  nargs.Arg(None, None, 'Specify the C compiler'))
     help.addArgument('Compilers', '-CC=<prog>',             nargs.Arg(None, None, 'Specify the C compiler'))
-    help.addArgument('Compilers', '-CFLAGS=<string>',       nargs.Arg(None, None, 'Specify the C compiler options'))
-    help.addArgument('Compilers', '-CC_LINKER_FLAGS=<string>',        nargs.Arg(None, [], 'Specify the C linker flags'))
+    help.addArgument('Compilers', '-CFLAGS=<string>',       nargs.Arg(None, None, 'Overwrite the default PETSc C compiler flags\n\
+       Use CFLAGS+= to add to (instead of replacing) the default flags'))
+    help.addArgument('Compilers', '-CFLAGS+=<string>',      nargs.Arg(None, None, 'Add to the default PETSc C compiler flags'))
+    help.addArgument('Compilers', '-CC_LINKER_FLAGS=<string>',  nargs.Arg(None, [], 'Specify the C linker flags'))
 
     help.addArgument('Compilers', '-CXXPP=<prog>',          nargs.Arg(None, None, 'Specify the C++ preprocessor'))
     help.addArgument('Compilers', '-CXXPPFLAGS=<string>',   nargs.Arg(None, None, 'Specify the C++ preprocessor options'))
     help.addArgument('Compilers', '-with-cxx=<prog>', nargs.Arg(None, None, 'Specify the C++ compiler'))
     help.addArgument('Compilers', '-CXX=<prog>',            nargs.Arg(None, None, 'Specify the C++ compiler'))
-    help.addArgument('Compilers', '-CXXFLAGS=<string>',     nargs.Arg(None, None, 'Specify the C++ compiler options, also passed to linker'))
+    help.addArgument('Compilers', '-CXXFLAGS=<string>',     nargs.Arg(None, None, 'Overwrite the default PETSc C++ compiler flags, also passed to linker\n\
+       Use CXXFLAGS+ to add to (instead of replacing) the default flags'))
+    help.addArgument('Compilers', '-CXXFLAGS+=<string>',    nargs.Arg(None, None, 'Add to the default PETSc C++ compiler flags, also passed to linker'))
     help.addArgument('Compilers', '-CXX_CXXFLAGS=<string>', nargs.Arg(None, '',   'Specify the C++ compiler-only options, not passed to linker'))
     help.addArgument('Compilers', '-CXX_LINKER_FLAGS=<string>',       nargs.Arg(None, [], 'Specify the C++ linker flags'))
 
@@ -136,7 +140,9 @@ class Configure(config.base.Configure):
     help.addArgument('Compilers', '-FPPFLAGS=<string>',     nargs.Arg(None, None, 'Specify the Fortran preprocessor options'))
     help.addArgument('Compilers', '-with-fc=<prog>',  nargs.Arg(None, None, 'Specify the Fortran compiler'))
     help.addArgument('Compilers', '-FC=<prog>',             nargs.Arg(None, None, 'Specify the Fortran compiler'))
-    help.addArgument('Compilers', '-FFLAGS=<string>',       nargs.Arg(None, None, 'Specify the Fortran compiler options'))
+    help.addArgument('Compilers', '-FFLAGS=<string>',       nargs.Arg(None, None, 'Overwrite the default PETSc Fortran compiler flags\n\
+       Use FFLAGS+= to add to (instead of replacing) the default flags'))
+    help.addArgument('Compilers', '-FFLAGS+=<string>',      nargs.Arg(None, None, 'Add to the default PETSc Fortran compiler flags'))
     help.addArgument('Compilers', '-FC_LINKER_FLAGS=<string>',        nargs.Arg(None, [], 'Specify the FC linker flags'))
 
     help.addArgument('Compilers', '-with-large-file-io=<bool>', nargs.ArgBool(None, 0, 'Allow IO with files greater then 2 GB'))
@@ -145,21 +151,24 @@ class Configure(config.base.Configure):
     help.addArgument('Compilers', '-CUDAPPFLAGS=<string>', nargs.Arg(None, None, 'Specify the CUDA preprocessor options'))
     help.addArgument('Compilers', '-with-cudac=<prog>',    nargs.Arg(None, None, 'Specify the CUDA compiler'))
     help.addArgument('Compilers', '-CUDAC=<prog>',         nargs.Arg(None, None, 'Specify the CUDA compiler'))
-    help.addArgument('Compilers', '-CUDAFLAGS=<string>',   nargs.Arg(None, None, 'Specify the CUDA compiler options'))
+    help.addArgument('Compilers', '-CUDAFLAGS=<string>',   nargs.Arg(None, None, 'Overwrite the PETSc default CUDA compiler flags\n\
+       Use CUDAFLAGS+= to add to (instead of replacing) the default flags'))
     help.addArgument('Compilers', '-CUDAC_LINKER_FLAGS=<string>',        nargs.Arg(None, [], 'Specify the CUDA linker flags'))
 
     help.addArgument('Compilers', '-HIPPP=<prog>',        nargs.Arg(None, None, 'Specify the HIP preprocessor'))
     help.addArgument('Compilers', '-HIPPPFLAGS=<string>', nargs.Arg(None, None, 'Specify the HIP preprocessor options'))
     help.addArgument('Compilers', '-with-hipc=<prog>',    nargs.Arg(None, None, 'Specify the HIP compiler'))
     help.addArgument('Compilers', '-HIPC=<prog>',         nargs.Arg(None, None, 'Specify the HIP compiler'))
-    help.addArgument('Compilers', '-HIPFLAGS=<string>',   nargs.Arg(None, None, 'Specify the HIP compiler options'))
+    help.addArgument('Compilers', '-HIPFLAGS=<string>',   nargs.Arg(None, None, 'Overwrite the PETSc default HIP compiler flags\n\
+       Use HIPFLAGS+= to add to (instead of replacing) the default flags'))
     help.addArgument('Compilers', '-HIPC_LINKER_FLAGS=<string>',        nargs.Arg(None, [], 'Specify the HIP linker flags'))
 
     help.addArgument('Compilers', '-SYCLPP=<prog>',        nargs.Arg(None, None, 'Specify the SYCL preprocessor'))
     help.addArgument('Compilers', '-SYCLPPFLAGS=<string>', nargs.Arg(None, None, 'Specify the SYCL preprocessor options'))
     help.addArgument('Compilers', '-with-syclc=<prog>',    nargs.Arg(None, None, 'Specify the SYCL compiler'))
     help.addArgument('Compilers', '-SYCLC=<prog>',         nargs.Arg(None, None, 'Specify the SYCL compiler'))
-    help.addArgument('Compilers', '-SYCLFLAGS=<string>',   nargs.Arg(None, None, 'Specify the SYCL compiler options'))
+    help.addArgument('Compilers', '-SYCLFLAGS=<string>',   nargs.Arg(None, None, 'Overwrite the PETSc default SYCL compiler flags\n\
+       Use SYCLLAGS+= to add to (instead of replacing) the default flags'))
     help.addArgument('Compilers', '-SYCLC_LINKER_FLAGS=<string>',        nargs.Arg(None, '', 'Specify the SYCL linker flags'))
 
 ##    help.addArgument('Compilers', '-LD=<prog>',              nargs.Arg(None, None, 'Specify the executable linker'))
@@ -516,19 +525,19 @@ class Configure(config.base.Configure):
 
   @staticmethod
   def isCrayPEWrapper(compiler, log):
-    '''Returns true if the compiler is a Cray Programming Environment (PE) wrapper compiler'''
-    # Note with Cray module PrgEnv-gnu, cc is a Cray PE wrapper around gcc, but not a Cray compiler on its own.
+    '''Returns true if the compiler is a Cray Programming Environment (PE) compiler wrapper'''
     try:
-      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --help', log = log)
+      # Cray PE compiler wrappers (e.g., cc) when invoked with --version option will complain when CRAY_CPU_TARGET is set to erroneous value, but Cray raw compilers (e.g., craycc) won't. So use this behavior to differentiate cc from craycc.
+      canary_value = '5dde31d2'
+      (output, error, status) = config.base.Configure.executeShellCommand(
+        'CRAY_CPU_TARGET="%s" %s --version' % (canary_value, compiler),
+        checkCommand=config.base.Configure.passCheckCommand,
+        log=log,
+      )
       output = output + error
-      # On OLCF Spock, with PrgEnv-cray
-      #     $ cc --help |& grep "\-craype\-"
-      #     Use --craype-help for CrayPE specific options.
-      # with PrgEnv-gnu, the output is
-      #     -craype-verbose    Print the command which is forwarded
-      #     ...
-      if output.find('-craype-') >= 0:
-        if log: log.write('Detected Cray PE wrapper compiler\n')
+      if output.find(canary_value) >= 0:
+        if log:
+          log.write('Detected Cray PE compiler wrapper\n')
         return 1
     except RuntimeError:
       pass
@@ -1482,7 +1491,7 @@ class Configure(config.base.Configure):
     return
 
   def generateCPreprocessorGuesses(self):
-    '''Determines the C preprocessor from CPP, then --with-cpp, then the C compiler'''
+    '''Determines the C preprocessor from --with-cpp, then CPP, then the C compiler'''
     if 'with-cpp' in self.argDB:
       yield self.argDB['with-cpp']
     elif 'CPP' in self.argDB:
@@ -1683,7 +1692,7 @@ class Configure(config.base.Configure):
       for compiler in self.generateSYCLPreprocessorGuesses():
         try:
           if self.getExecutable(compiler, resultName = 'SYCLPP'):
-            if not self.checkPreprocess('#include <CL/sycl.hpp>\n void testFunction() {return;};'):
+            if not self.checkPreprocess('#include <sycl/sycl.hpp>\n void testFunction() {return;};'):
               raise RuntimeError('Cannot preprocess SYCL with '+self.SYCLPP+'.')
             return
         except RuntimeError as e:

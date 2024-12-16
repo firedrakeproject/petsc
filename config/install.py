@@ -81,6 +81,7 @@ class Installer(script.Script):
     self.destLibDir        = os.path.join(self.destDir, 'lib')
     self.destBinDir        = os.path.join(self.destDir, 'lib','petsc','bin')
     self.installIncludeDir = os.path.join(self.installDir, 'include')
+    self.installLibDir     = os.path.join(self.installDir, 'lib')
     self.installBinDir     = os.path.join(self.installDir, 'lib','petsc','bin')
     self.rootShareDir      = os.path.join(self.rootDir, 'share')
     self.destShareDir      = os.path.join(self.destDir, 'share')
@@ -275,6 +276,8 @@ class Installer(script.Script):
       line = line.replace('${PETSC_DIR}/${PETSC_ARCH}', self.installDir)
       line = line.replace('PETSC_ARCH=${PETSC_ARCH}', '')
       line = line.replace('${PETSC_DIR}', self.installDir)
+      # replace PETSC_DIR/PETSC_ARCH/lib (i.e., build location) with prefix/lib
+      line = line.replace(self.archLibDir,self.installLibDir)
       # replace PETSC_DIR/lib/petsc/bin with prefix/lib/petsc/bin
       line = line.replace(self.rootBinDir,self.destBinDir)
       lines.append(line)
@@ -505,12 +508,13 @@ for file in files:
       return
     shutil.copy2(src, dst)
     if self.setCompilers.getCompiler().find('win32fe') < 0 and os.path.splitext(dst)[1] == '.'+self.arLibSuffix:
-      self.executeShellCommand(self.ranlib+' '+dst)
-    if os.path.splitext(dst)[1] == '.dylib' and os.path.isfile('/usr/bin/install_name_tool'):
-      [output,err,flg] = self.executeShellCommand("otool -D "+src)
+      import shlex
+      self.executeShellCommand(shlex.split(self.ranlib) + [dst])
+    if os.path.splitext(dst)[1] == '.dylib' and shutil.which('otool') and shutil.which('install_name_tool'):
+      [output,err,flg] = self.executeShellCommand(['otool', '-D', src])
       oldname = output[output.find("\n")+1:]
       installName = oldname.replace(os.path.realpath(self.archDir), self.installDir)
-      self.executeShellCommand('/usr/bin/install_name_tool -id ' + installName + ' ' + dst)
+      self.executeShellCommand(['install_name_tool', '-id', installName, dst])
     # preserve the original timestamps - so that the .a vs .so time order is preserved
     shutil.copystat(src,dst)
     return
@@ -571,7 +575,11 @@ Before use - please copy/install over to specified prefix: %s
 
   def runfix(self):
     self.fixConf()
-    if os.environ.get('PEP517_BUILD_BACKEND'):
+    using_build_backend = any(
+      os.environ.get(prefix + '_BUILD_BACKEND')
+      for prefix in ('_PYPROJECT_HOOKS', 'PEP517')
+    )
+    if using_build_backend:
       self.fixPythonWheel()
     return
 

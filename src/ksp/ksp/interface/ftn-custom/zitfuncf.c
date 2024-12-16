@@ -2,8 +2,6 @@
 #include <petscksp.h>
 
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
-  #define kspconvergedreasonview_      KSPCONVERGEDREASONVIEW
-  #define kspconvergedrateview_        KSPCONVERGEDRATEVIEW
   #define kspmonitorset_               KSPMONITORSET
   #define kspsetconvergencetest_       KSPSETCONVERGENCETEST
   #define kspgetresidualhistory_       KSPGETRESIDUALHISTORY
@@ -23,8 +21,6 @@
   #define dmkspsetcomputeinitialguess_ DMKSPSETCOMPUTEINITIALGUESS /* zdmkspf.c */
   #define dmkspsetcomputeoperators_    DMKSPSETCOMPUTEOPERATORS    /* zdmkspf.c */
 #elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)
-  #define kspconvergedreasonview_      kspconvergedreasonview
-  #define kspconvergedrateview_        kspconvergedrateview
   #define kspmonitorset_               kspmonitorset
   #define kspsetconvergencetest_       kspsetconvergencetest
   #define kspgetresidualhistory_       kspgetresidualhistory
@@ -34,7 +30,7 @@
   #define kspconvergedskip_            kspconvergedskip
   #define kspmonitorsingularvalue_     kspmonitorsingularvalue
   #define kspgmresmonitorkrylov_       kspgmresmonitorkrylov
-  #define kspmonitoresidual_           kspmonitorresidual
+  #define kspmonitorresidual_          kspmonitorresidual
   #define kspmonitortrueresidual_      kspmonitortrueresidual
   #define kspmonitorsolution_          kspmonitorsolution
   #define kspsetcomputerhs_            kspsetcomputerhs
@@ -127,15 +123,15 @@ PETSC_EXTERN void kspmonitorset_(KSP *ksp, void (*monitor)(KSP *, PetscInt *, Pe
   CHKFORTRANNULLFUNCTION(monitordestroy);
 
   if ((PetscVoidFn *)monitor == (PetscVoidFn *)kspmonitorresidual_) {
-    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode(*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, *(PetscViewerAndFormat **)mctx, (PetscErrorCode(*)(void **))PetscViewerAndFormatDestroy);
+    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual, *(PetscViewerAndFormat **)mctx, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy);
   } else if ((PetscVoidFn *)monitor == (PetscVoidFn *)kspmonitorsolution_) {
-    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode(*)(KSP, PetscInt, PetscReal, void *))KSPMonitorSolution, *(PetscViewerAndFormat **)mctx, (PetscErrorCode(*)(void **))PetscViewerAndFormatDestroy);
+    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorSolution, *(PetscViewerAndFormat **)mctx, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy);
   } else if ((PetscVoidFn *)monitor == (PetscVoidFn *)kspmonitortrueresidual_) {
-    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode(*)(KSP, PetscInt, PetscReal, void *))KSPMonitorTrueResidual, *(PetscViewerAndFormat **)mctx, (PetscErrorCode(*)(void **))PetscViewerAndFormatDestroy);
+    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorTrueResidual, *(PetscViewerAndFormat **)mctx, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy);
   } else if ((PetscVoidFn *)monitor == (PetscVoidFn *)kspmonitorsingularvalue_) {
-    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode(*)(KSP, PetscInt, PetscReal, void *))KSPMonitorSingularValue, *(PetscViewerAndFormat **)mctx, (PetscErrorCode(*)(void **))PetscViewerAndFormatDestroy);
+    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorSingularValue, *(PetscViewerAndFormat **)mctx, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy);
   } else if ((PetscVoidFn *)monitor == (PetscVoidFn *)kspgmresmonitorkrylov_) {
-    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode(*)(KSP, PetscInt, PetscReal, void *))KSPGMRESMonitorKrylov, *(PetscViewerAndFormat **)mctx, (PetscErrorCode(*)(void **))PetscViewerAndFormatDestroy);
+    *ierr = KSPMonitorSet(*ksp, (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPGMRESMonitorKrylov, *(PetscViewerAndFormat **)mctx, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy);
   } else {
     *ierr = PetscObjectSetFortranCallback((PetscObject)*ksp, PETSC_FORTRAN_CALLBACK_CLASS, &_cb.monitor, (PetscVoidFn *)monitor, mctx);
     if (*ierr) return;
@@ -196,18 +192,4 @@ PETSC_EXTERN void kspsetcomputeoperators_(KSP *ksp, void (*func)(KSP *, Vec *, v
   DM dm;
   *ierr = KSPGetDM(*ksp, &dm);
   if (!*ierr) dmkspsetcomputeoperators_(&dm, func, ctx, ierr);
-}
-
-PETSC_EXTERN void kspconvergedreasonview_(KSP *ksp, PetscViewer *viewer, PetscErrorCode *ierr)
-{
-  PetscViewer v;
-  PetscPatchDefaultViewers_Fortran(viewer, v);
-  *ierr = KSPConvergedReasonView(*ksp, v);
-}
-
-PETSC_EXTERN void kspconvergedrateview_(KSP *ksp, PetscViewer *viewer, PetscErrorCode *ierr)
-{
-  PetscViewer v;
-  PetscPatchDefaultViewers_Fortran(viewer, v);
-  *ierr = KSPConvergedRateView(*ksp, v);
 }

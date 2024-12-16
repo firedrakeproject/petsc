@@ -69,11 +69,11 @@ static PetscErrorCode MatGetInfo_ScaLAPACK(Mat A, MatInfoType flag, MatInfo *inf
     info->nz_allocated = isend[0];
     info->nz_used      = isend[1];
   } else if (flag == MAT_GLOBAL_MAX) {
-    PetscCall(MPIU_Allreduce(isend, irecv, 2, MPIU_PETSCLOGDOUBLE, MPI_MAX, PetscObjectComm((PetscObject)A)));
+    PetscCallMPI(MPIU_Allreduce(isend, irecv, 2, MPIU_PETSCLOGDOUBLE, MPI_MAX, PetscObjectComm((PetscObject)A)));
     info->nz_allocated = irecv[0];
     info->nz_used      = irecv[1];
   } else if (flag == MAT_GLOBAL_SUM) {
-    PetscCall(MPIU_Allreduce(isend, irecv, 2, MPIU_PETSCLOGDOUBLE, MPI_SUM, PetscObjectComm((PetscObject)A)));
+    PetscCallMPI(MPIU_Allreduce(isend, irecv, 2, MPIU_PETSCLOGDOUBLE, MPI_SUM, PetscObjectComm((PetscObject)A)));
     info->nz_allocated = irecv[0];
     info->nz_used      = irecv[1];
   }
@@ -168,7 +168,7 @@ static PetscErrorCode MatMultXXXYYY_ScaLAPACK(Mat A, PetscBool transpose, PetscB
     /* create ScaLAPACK descriptors for vectors (1d block distribution) */
     PetscCall(PetscLayoutGetRanges(A->rmap, &ranges));
     PetscCall(PetscBLASIntCast(ranges[1], &mb)); /* x block size */
-    xlld = PetscMax(1, A->rmap->n);
+    PetscCall(PetscBLASIntCast(PetscMax(1, A->rmap->n), &xlld));
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(xdesc, &a->M, &one, &mb, &one, &zero, &zero, &a->grid->ictxcol, &xlld, &info));
     PetscCheckScaLapackInfo("descinit", info);
     PetscCall(PetscLayoutGetRanges(A->cmap, &ranges));
@@ -181,7 +181,7 @@ static PetscErrorCode MatMultXXXYYY_ScaLAPACK(Mat A, PetscBool transpose, PetscB
     lszx = SCALAPACKnumroc_(&a->M, &a->mb, &a->grid->myrow, &a->rsrc, &a->grid->nprow);
     lszy = SCALAPACKnumroc_(&a->N, &a->nb, &a->grid->mycol, &a->csrc, &a->grid->npcol);
     PetscCall(PetscMalloc2(lszx, &x2d, lszy, &y2d));
-    xlld = PetscMax(1, lszx);
+    PetscCall(PetscBLASIntCast(PetscMax(1, lszx), &xlld));
 
     /* create ScaLAPACK descriptors for vectors (2d block distribution) */
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(x2desc, &a->M, &one, &a->mb, &one, &zero, &zero, &a->grid->ictxt, &xlld, &info));
@@ -212,7 +212,7 @@ static PetscErrorCode MatMultXXXYYY_ScaLAPACK(Mat A, PetscBool transpose, PetscB
     PetscCheckScaLapackInfo("descinit", info);
     PetscCall(PetscLayoutGetRanges(A->rmap, &ranges));
     PetscCall(PetscBLASIntCast(ranges[1], &mb)); /* y block size */
-    ylld = PetscMax(1, A->rmap->n);
+    PetscCall(PetscBLASIntCast(PetscMax(1, A->rmap->n), &ylld));
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(ydesc, &a->M, &one, &mb, &one, &zero, &zero, &a->grid->ictxcol, &ylld, &info));
     PetscCheckScaLapackInfo("descinit", info);
 
@@ -220,7 +220,7 @@ static PetscErrorCode MatMultXXXYYY_ScaLAPACK(Mat A, PetscBool transpose, PetscB
     lszy = SCALAPACKnumroc_(&a->M, &a->mb, &a->grid->myrow, &a->rsrc, &a->grid->nprow);
     lszx = SCALAPACKnumroc_(&a->N, &a->nb, &a->grid->mycol, &a->csrc, &a->grid->npcol);
     PetscCall(PetscMalloc2(lszx, &x2d, lszy, &y2d));
-    ylld = PetscMax(1, lszy);
+    PetscCall(PetscBLASIntCast(PetscMax(1, lszy), &ylld));
 
     /* create ScaLAPACK descriptors for vectors (2d block distribution) */
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(x2desc, &one, &a->N, &one, &a->nb, &zero, &zero, &a->grid->ictxt, &xlld, &info));
@@ -442,14 +442,14 @@ static PetscErrorCode MatGetDiagonal_ScaLAPACK(Mat A, Vec D)
     /* create ScaLAPACK descriptor for vector (1d block distribution) */
     PetscCall(PetscLayoutGetRanges(A->rmap, &ranges));
     PetscCall(PetscBLASIntCast(ranges[1], &mb)); /* D block size */
-    dlld = PetscMax(1, A->rmap->n);
+    PetscCall(PetscBLASIntCast(PetscMax(1, A->rmap->n), &dlld));
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(ddesc, &a->M, &one, &mb, &one, &zero, &zero, &a->grid->ictxcol, &dlld, &info));
     PetscCheckScaLapackInfo("descinit", info);
 
     /* allocate 2d vector */
     lszd = SCALAPACKnumroc_(&a->M, &a->mb, &a->grid->myrow, &a->rsrc, &a->grid->nprow);
     PetscCall(PetscCalloc1(lszd, &d2d));
-    dlld = PetscMax(1, lszd);
+    PetscCall(PetscBLASIntCast(PetscMax(1, lszd), &dlld));
 
     /* create ScaLAPACK descriptor for vector (2d block distribution) */
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(d2desc, &a->M, &one, &a->mb, &one, &zero, &zero, &a->grid->ictxt, &dlld, &info));
@@ -544,14 +544,14 @@ static PetscErrorCode MatDiagonalScale_ScaLAPACK(Mat A, Vec L, Vec R)
     /* create ScaLAPACK descriptor for vector (1d block distribution) */
     PetscCall(PetscLayoutGetRanges(A->rmap, &ranges));
     PetscCall(PetscBLASIntCast(ranges[1], &mb)); /* D block size */
-    dlld = PetscMax(1, A->rmap->n);
+    PetscCall(PetscBLASIntCast(PetscMax(1, A->rmap->n), &dlld));
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(ddesc, &a->M, &one, &mb, &one, &zero, &zero, &a->grid->ictxcol, &dlld, &info));
     PetscCheckScaLapackInfo("descinit", info);
 
     /* allocate 2d vector */
     lszd = SCALAPACKnumroc_(&a->M, &a->mb, &a->grid->myrow, &a->rsrc, &a->grid->nprow);
     PetscCall(PetscCalloc1(lszd, &d2d));
-    dlld = PetscMax(1, lszd);
+    PetscCall(PetscBLASIntCast(PetscMax(1, lszd), &dlld));
 
     /* create ScaLAPACK descriptor for vector (2d block distribution) */
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(d2desc, &a->M, &one, &a->mb, &one, &zero, &zero, &a->grid->ictxt, &dlld, &info));
@@ -726,14 +726,14 @@ static PetscErrorCode MatSolve_ScaLAPACK(Mat A, Vec B, Vec X)
   /* create ScaLAPACK descriptor for a vector (1d block distribution) */
   PetscCall(PetscLayoutGetRanges(A->rmap, &ranges));
   PetscCall(PetscBLASIntCast(ranges[1], &mb)); /* x block size */
-  xlld = PetscMax(1, A->rmap->n);
+  PetscCall(PetscBLASIntCast(PetscMax(1, A->rmap->n), &xlld));
   PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(xdesc, &a->M, &one, &mb, &one, &zero, &zero, &a->grid->ictxcol, &xlld, &info));
   PetscCheckScaLapackInfo("descinit", info);
 
   /* allocate 2d vector */
   lszx = SCALAPACKnumroc_(&a->M, &a->mb, &a->grid->myrow, &a->rsrc, &a->grid->nprow);
   PetscCall(PetscMalloc1(lszx, &x2d));
-  xlld = PetscMax(1, lszx);
+  PetscCall(PetscBLASIntCast(PetscMax(1, lszx), &xlld));
 
   /* create ScaLAPACK descriptor for a vector (2d block distribution) */
   PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(x2desc, &a->M, &one, &a->mb, &one, &zero, &zero, &a->grid->ictxt, &xlld, &info));
@@ -774,18 +774,24 @@ static PetscErrorCode MatSolveAdd_ScaLAPACK(Mat A, Vec B, Vec Y, Vec X)
 
 static PetscErrorCode MatMatSolve_ScaLAPACK(Mat A, Mat B, Mat X)
 {
-  Mat_ScaLAPACK *a = (Mat_ScaLAPACK *)A->data, *b, *x;
+  Mat_ScaLAPACK *a = (Mat_ScaLAPACK *)A->data, *x;
   PetscBool      flg1, flg2;
   PetscBLASInt   one = 1, info;
+  Mat            C;
+  MatType        type;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectTypeCompare((PetscObject)B, MATSCALAPACK, &flg1));
   PetscCall(PetscObjectTypeCompare((PetscObject)X, MATSCALAPACK, &flg2));
-  PetscCheck((flg1 && flg2), PETSC_COMM_SELF, PETSC_ERR_SUP, "Both B and X must be of type MATSCALAPACK");
-  MatScaLAPACKCheckDistribution(B, 1, X, 2);
-  b = (Mat_ScaLAPACK *)B->data;
-  x = (Mat_ScaLAPACK *)X->data;
-  PetscCall(PetscArraycpy(x->loc, b->loc, b->lld * b->locc));
+  if (flg1 && flg2) MatScaLAPACKCheckDistribution(B, 2, X, 3);
+  if (flg2) {
+    if (flg1) PetscCall(MatCopy(B, X, SAME_NONZERO_PATTERN));
+    else PetscCall(MatConvert(B, MATSCALAPACK, MAT_REUSE_MATRIX, &X));
+    C = X;
+  } else {
+    PetscCall(MatConvert(B, MATSCALAPACK, MAT_INITIAL_MATRIX, &C));
+  }
+  x = (Mat_ScaLAPACK *)C->data;
 
   switch (A->factortype) {
   case MAT_FACTOR_LU:
@@ -798,6 +804,11 @@ static PetscErrorCode MatMatSolve_ScaLAPACK(Mat A, Mat B, Mat X)
     break;
   default:
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Unfactored Matrix or Unsupported MatFactorType");
+  }
+  if (!flg2) {
+    PetscCall(MatGetType(X, &type));
+    PetscCall(MatConvert(C, type, MAT_REUSE_MATRIX, &X));
+    PetscCall(MatDestroy(&C));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1006,7 +1017,7 @@ static PetscErrorCode MatConvert_ScaLAPACK_Dense(Mat A, MatType newtype, MatReus
     /* create ScaLAPACK descriptor for B (1d block distribution) */
     PetscCall(PetscBLASIntCast(ranges[1], &bmb)); /* row block size */
     PetscCall(MatDenseGetLDA(Bmpi, &ldb));
-    lld = PetscMax(ldb, 1); /* local leading dimension */
+    PetscCall(PetscBLASIntCast(PetscMax(ldb, 1), &lld)); /* local leading dimension */
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(bdesc, &a->M, &a->N, &bmb, &a->N, &zero, &zero, &a->grid->ictxcol, &lld, &info));
     PetscCheckScaLapackInfo("descinit", info);
 
@@ -1045,7 +1056,7 @@ static PetscErrorCode MatConvert_ScaLAPACK_Dense(Mat A, MatType newtype, MatReus
     /* create ScaLAPACK descriptor for B (1d block distribution) */
     PetscCall(PetscBLASIntCast(ranges[1], &bmb)); /* row block size */
     PetscCall(MatDenseGetLDA(Bmpi, &ldb));
-    lld = PetscMax(ldb, 1); /* local leading dimension */
+    PetscCall(PetscBLASIntCast(PetscMax(ldb, 1), &lld)); /* local leading dimension */
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(bdesc, &a->M, &a->N, &bmb, &a->N, &zero, &zero, &a->grid->ictxcol, &lld, &info));
     PetscCheckScaLapackInfo("descinit", info);
 
@@ -1118,8 +1129,8 @@ PETSC_INTERN PetscErrorCode MatConvert_Dense_ScaLAPACK(Mat A, MatType newtype, M
   if (flg) { /* if the input Mat has a ScaLAPACK-compatible layout, use ScaLAPACK for the redistribution */
     /* create ScaLAPACK descriptor for A (1d block distribution) */
     PetscCall(PetscLayoutGetRanges(A->rmap, &ranges));
-    PetscCall(PetscBLASIntCast(ranges[1], &amb)); /* row block size */
-    lld = PetscMax(lda, 1);                       /* local leading dimension */
+    PetscCall(PetscBLASIntCast(ranges[1], &amb));        /* row block size */
+    PetscCall(PetscBLASIntCast(PetscMax(lda, 1), &lld)); /* local leading dimension */
     PetscCallBLAS("SCALAPACKdescinit", SCALAPACKdescinit_(adesc, &b->M, &b->N, &amb, &b->N, &zero, &zero, &b->grid->ictxcol, &lld, &info));
     PetscCheckScaLapackInfo("descinit", info);
 
@@ -1365,22 +1376,22 @@ static PetscErrorCode MatLoad_ScaLAPACK(Mat newMat, PetscViewer viewer)
 }
 
 static struct _MatOps MatOps_Values = {MatSetValues_ScaLAPACK,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
                                        MatMult_ScaLAPACK,
                                        /* 4*/ MatMultAdd_ScaLAPACK,
                                        MatMultTranspose_ScaLAPACK,
                                        MatMultTransposeAdd_ScaLAPACK,
                                        MatSolve_ScaLAPACK,
                                        MatSolveAdd_ScaLAPACK,
-                                       0,
-                                       /*10*/ 0,
+                                       NULL,
+                                       /*10*/ NULL,
                                        MatLUFactor_ScaLAPACK,
                                        MatCholeskyFactor_ScaLAPACK,
-                                       0,
+                                       NULL,
                                        MatTranspose_ScaLAPACK,
                                        /*15*/ MatGetInfo_ScaLAPACK,
-                                       0,
+                                       NULL,
                                        MatGetDiagonal_ScaLAPACK,
                                        MatDiagonalScale_ScaLAPACK,
                                        MatNorm_ScaLAPACK,
@@ -1388,145 +1399,148 @@ static struct _MatOps MatOps_Values = {MatSetValues_ScaLAPACK,
                                        MatAssemblyEnd_ScaLAPACK,
                                        MatSetOption_ScaLAPACK,
                                        MatZeroEntries_ScaLAPACK,
-                                       /*24*/ 0,
+                                       /*24*/ NULL,
                                        MatLUFactorSymbolic_ScaLAPACK,
                                        MatLUFactorNumeric_ScaLAPACK,
                                        MatCholeskyFactorSymbolic_ScaLAPACK,
                                        MatCholeskyFactorNumeric_ScaLAPACK,
                                        /*29*/ MatSetUp_ScaLAPACK,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        /*34*/ MatDuplicate_ScaLAPACK,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        /*39*/ MatAXPY_ScaLAPACK,
-                                       0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        MatCopy_ScaLAPACK,
-                                       /*44*/ 0,
+                                       /*44*/ NULL,
                                        MatScale_ScaLAPACK,
                                        MatShift_ScaLAPACK,
-                                       0,
-                                       0,
-                                       /*49*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*54*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*59*/ 0,
+                                       NULL,
+                                       NULL,
+                                       /*49*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*54*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*59*/ NULL,
                                        MatDestroy_ScaLAPACK,
                                        MatView_ScaLAPACK,
-                                       0,
-                                       0,
-                                       /*64*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*69*/ 0,
-                                       0,
+                                       NULL,
+                                       NULL,
+                                       /*64*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*69*/ NULL,
+                                       NULL,
                                        MatConvert_ScaLAPACK_Dense,
-                                       0,
-                                       0,
-                                       /*74*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*79*/ 0,
-                                       0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
+                                       /*74*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*79*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        MatLoad_ScaLAPACK,
-                                       /*84*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*89*/ 0,
-                                       0,
+                                       /*84*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*89*/ NULL,
+                                       NULL,
                                        MatMatMultNumeric_ScaLAPACK,
-                                       0,
-                                       0,
-                                       /*94*/ 0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
+                                       /*94*/ NULL,
+                                       NULL,
+                                       NULL,
                                        MatMatTransposeMultNumeric_ScaLAPACK,
-                                       0,
+                                       NULL,
                                        /*99*/ MatProductSetFromOptions_ScaLAPACK,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
                                        MatConjugate_ScaLAPACK,
-                                       0,
-                                       /*104*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       /*104*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        /*109*/ MatMatSolve_ScaLAPACK,
-                                       0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        MatMissingDiagonal_ScaLAPACK,
-                                       /*114*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*119*/ 0,
+                                       /*114*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*119*/ NULL,
                                        MatHermitianTranspose_ScaLAPACK,
                                        MatMultHermitianTranspose_ScaLAPACK,
                                        MatMultHermitianTransposeAdd_ScaLAPACK,
-                                       0,
-                                       /*124*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*129*/ 0,
-                                       0,
-                                       0,
+                                       NULL,
+                                       /*124*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*129*/ NULL,
+                                       NULL,
+                                       NULL,
                                        MatTransposeMatMultNumeric_ScaLAPACK,
-                                       0,
-                                       /*134*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*140*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*145*/ 0,
-                                       0,
-                                       0,
-                                       0,
-                                       0,
-                                       /*150*/ 0,
-                                       0,
-                                       0};
+                                       NULL,
+                                       /*134*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*140*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*145*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*150*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL};
 
 static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, PetscInt *owners)
 {
-  PetscInt          *owner, *startv, *starti, tag1 = stash->tag1, tag2 = stash->tag2, bs2;
+  PetscInt          *owner, *startv, *starti, bs2;
   PetscInt           size = stash->size, nsends;
-  PetscInt           count, *sindices, **rindices, i, j, l;
+  PetscInt          *sindices, **rindices, j, l;
   PetscScalar      **rvalues, *svalues;
   MPI_Comm           comm = stash->comm;
   MPI_Request       *send_waits, *recv_waits, *recv_waits1, *recv_waits2;
-  PetscMPIInt       *sizes, *nlengths, nreceives;
+  PetscMPIInt        tag1 = stash->tag1, tag2 = stash->tag2, *sizes, *nlengths, nreceives, insends, ii;
   PetscInt          *sp_idx, *sp_idy;
   PetscScalar       *sp_val;
   PetscMatStashSpace space, space_next;
@@ -1536,7 +1550,7 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
   PetscFunctionBegin;
   { /* make sure all processors are either in INSERTMODE or ADDMODE */
     InsertMode addv;
-    PetscCall(MPIU_Allreduce((PetscEnum *)&mat->insertmode, (PetscEnum *)&addv, 1, MPIU_ENUM, MPI_BOR, PetscObjectComm((PetscObject)mat)));
+    PetscCallMPI(MPIU_Allreduce((PetscEnum *)&mat->insertmode, (PetscEnum *)&addv, 1, MPIU_ENUM, MPI_BOR, PetscObjectComm((PetscObject)mat)));
     PetscCheck(addv != (ADD_VALUES | INSERT_VALUES), PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Some processors inserted others added");
     mat->insertmode = addv; /* in case this processor had no cache */
   }
@@ -1547,8 +1561,8 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
   PetscCall(PetscCalloc1(size, &nlengths));
   PetscCall(PetscMalloc1(stash->n + 1, &owner));
 
-  i = j = 0;
-  space = stash->space_head;
+  ii = j = 0;
+  space  = stash->space_head;
   while (space) {
     space_next = space->next;
     for (l = 0; l < space->local_used; l++) {
@@ -1557,15 +1571,16 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
       PetscCallBLAS("SCALAPACKinfog2l", SCALAPACKinfog2l_(&gridx, &gcidx, a->desc, &a->grid->nprow, &a->grid->npcol, &a->grid->myrow, &a->grid->mycol, &lridx, &lcidx, &rsrc, &csrc));
       j = Cblacs_pnum(a->grid->ictxt, rsrc, csrc);
       nlengths[j]++;
-      owner[i] = j;
-      i++;
+      owner[ii] = j;
+      ii++;
     }
     space = space_next;
   }
 
   /* Now check what procs get messages - and compute nsends. */
   PetscCall(PetscCalloc1(size, &sizes));
-  for (i = 0, nsends = 0; i < size; i++) {
+  nsends = 0;
+  for (PetscMPIInt i = 0; i < size; i++) {
     if (nlengths[i]) {
       sizes[i] = 1;
       nsends++;
@@ -1574,14 +1589,16 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
 
   {
     PetscMPIInt *onodes, *olengths;
+
     /* Determine the number of messages to expect, their lengths, from from-ids */
     PetscCall(PetscGatherNumberOfMessages(comm, sizes, nlengths, &nreceives));
-    PetscCall(PetscGatherMessageLengths(comm, nsends, nreceives, nlengths, &onodes, &olengths));
+    PetscCall(PetscMPIIntCast(nsends, &insends));
+    PetscCall(PetscGatherMessageLengths(comm, insends, nreceives, nlengths, &onodes, &olengths));
     /* since clubbing row,col - lengths are multiplied by 2 */
-    for (i = 0; i < nreceives; i++) olengths[i] *= 2;
+    for (PetscMPIInt i = 0; i < nreceives; i++) olengths[i] *= 2;
     PetscCall(PetscPostIrecvInt(comm, tag1, nreceives, onodes, olengths, &rindices, &recv_waits1));
     /* values are size 'bs2' lengths (and remove earlier factor 2 */
-    for (i = 0; i < nreceives; i++) olengths[i] = olengths[i] * bs2 / 2;
+    for (PetscMPIInt i = 0; i < nreceives; i++) olengths[i] = (PetscMPIInt)(olengths[i] * bs2 / 2);
     PetscCall(PetscPostIrecvScalar(comm, tag2, nreceives, onodes, olengths, &rvalues, &recv_waits2));
     PetscCall(PetscFree(onodes));
     PetscCall(PetscFree(olengths));
@@ -1597,12 +1614,12 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
   /* use 2 sends the first with all_a, the next with all_i and all_j */
   startv[0] = 0;
   starti[0] = 0;
-  for (i = 1; i < size; i++) {
+  for (PetscMPIInt i = 1; i < size; i++) {
     startv[i] = startv[i - 1] + nlengths[i - 1];
     starti[i] = starti[i - 1] + 2 * nlengths[i - 1];
   }
 
-  i     = 0;
+  ii    = 0;
   space = stash->space_head;
   while (space) {
     space_next = space->next;
@@ -1610,7 +1627,7 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
     sp_idy     = space->idy;
     sp_val     = space->val;
     for (l = 0; l < space->local_used; l++) {
-      j = owner[i];
+      j = owner[ii];
       if (bs2 == 1) {
         svalues[startv[j]] = sp_val[l];
       } else {
@@ -1624,23 +1641,23 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
       sindices[starti[j] + nlengths[j]] = sp_idy[l];
       startv[j]++;
       starti[j]++;
-      i++;
+      ii++;
     }
     space = space_next;
   }
   startv[0] = 0;
-  for (i = 1; i < size; i++) startv[i] = startv[i - 1] + nlengths[i - 1];
+  for (PetscMPIInt i = 1; i < size; i++) startv[i] = startv[i - 1] + nlengths[i - 1];
 
-  for (i = 0, count = 0; i < size; i++) {
+  for (PetscMPIInt i = 0, count = 0; i < size; i++) {
     if (sizes[i]) {
-      PetscCallMPI(MPI_Isend(sindices + 2 * startv[i], 2 * nlengths[i], MPIU_INT, i, tag1, comm, send_waits + count++));
-      PetscCallMPI(MPI_Isend(svalues + bs2 * startv[i], bs2 * nlengths[i], MPIU_SCALAR, i, tag2, comm, send_waits + count++));
+      PetscCallMPI(MPIU_Isend(sindices + 2 * startv[i], 2 * nlengths[i], MPIU_INT, i, tag1, comm, send_waits + count++));
+      PetscCallMPI(MPIU_Isend(svalues + bs2 * startv[i], bs2 * nlengths[i], MPIU_SCALAR, i, tag2, comm, send_waits + count++));
     }
   }
 #if defined(PETSC_USE_INFO)
   PetscCall(PetscInfo(NULL, "No of messages: %" PetscInt_FMT "\n", nsends));
-  for (i = 0; i < size; i++) {
-    if (sizes[i]) PetscCall(PetscInfo(NULL, "Mesg_to: %" PetscInt_FMT ": size: %zu bytes\n", i, (size_t)(nlengths[i] * (bs2 * sizeof(PetscScalar) + 2 * sizeof(PetscInt)))));
+  for (PetscMPIInt i = 0; i < size; i++) {
+    if (sizes[i]) PetscCall(PetscInfo(NULL, "Mesg_to: %d: size: %zu bytes\n", i, (size_t)(nlengths[i] * (bs2 * sizeof(PetscScalar) + 2 * sizeof(PetscInt)))));
   }
 #endif
   PetscCall(PetscFree(nlengths));
@@ -1651,7 +1668,7 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
   /* recv_waits need to be contiguous for MatStashScatterGetMesg_Private() */
   PetscCall(PetscMalloc1(2 * nreceives, &recv_waits));
 
-  for (i = 0; i < nreceives; i++) {
+  for (PetscMPIInt i = 0; i < nreceives; i++) {
     recv_waits[2 * i]     = recv_waits1[i];
     recv_waits[2 * i + 1] = recv_waits2[i];
   }
@@ -1665,7 +1682,7 @@ static PetscErrorCode MatStashScatterBegin_ScaLAPACK(Mat mat, MatStash *stash, P
   stash->rvalues         = rvalues;
   stash->rindices        = rindices;
   stash->send_waits      = send_waits;
-  stash->nsends          = nsends;
+  stash->nsends          = (PetscMPIInt)nsends;
   stash->nrecvs          = nreceives;
   stash->reproduce_count = 0;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1799,7 +1816,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_ScaLAPACK(Mat A)
 
   /* Grid needs to be shared between multiple Mats on the same communicator, implement by attribute caching on the MPI_Comm */
   if (Petsc_ScaLAPACK_keyval == MPI_KEYVAL_INVALID) {
-    PetscCallMPI(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN, MPI_COMM_NULL_DELETE_FN, &Petsc_ScaLAPACK_keyval, (void *)0));
+    PetscCallMPI(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN, MPI_COMM_NULL_DELETE_FN, &Petsc_ScaLAPACK_keyval, NULL));
     PetscCall(PetscRegisterFinalize(Petsc_ScaLAPACK_keyval_free));
     PetscCall(PetscCitationsRegister(ScaLAPACKCitation, &ScaLAPACKCite));
   }
@@ -1809,13 +1826,13 @@ PETSC_EXTERN PetscErrorCode MatCreate_ScaLAPACK(Mat A)
     PetscCall(PetscNew(&grid));
 
     PetscCallMPI(MPI_Comm_size(icomm, &size));
-    grid->nprow = (PetscInt)(PetscSqrtReal((PetscReal)size) + 0.001);
+    PetscCall(PetscBLASIntCast(PetscSqrtReal((PetscReal)size) + 0.001, &grid->nprow));
 
     PetscOptionsBegin(PetscObjectComm((PetscObject)A), ((PetscObject)A)->prefix, "ScaLAPACK Grid Options", "Mat");
     PetscCall(PetscOptionsInt("-mat_scalapack_grid_height", "Grid Height", "None", grid->nprow, &optv1, &flg1));
     if (flg1) {
       PetscCheck(size % optv1 == 0, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_INCOMP, "Grid Height %" PetscInt_FMT " must evenly divide CommSize %d", optv1, size);
-      grid->nprow = optv1;
+      PetscCall(PetscBLASIntCast(optv1, &grid->nprow));
     }
     PetscOptionsEnd();
 
@@ -1847,8 +1864,8 @@ PETSC_EXTERN PetscErrorCode MatCreate_ScaLAPACK(Mat A)
   PetscOptionsBegin(PetscObjectComm((PetscObject)A), NULL, "ScaLAPACK Options", "Mat");
   PetscCall(PetscOptionsIntArray("-mat_scalapack_block_sizes", "Size of the blocks to use (one or two comma-separated integers)", "MatCreateScaLAPACK", array, &k, &flg));
   if (flg) {
-    a->mb = array[0];
-    a->nb = (k > 1) ? array[1] : a->mb;
+    a->mb = (PetscMPIInt)array[0];
+    a->nb = (k > 1) ? (PetscMPIInt)array[1] : a->mb;
   }
   PetscOptionsEnd();
 

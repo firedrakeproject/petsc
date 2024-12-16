@@ -62,7 +62,7 @@ int main(int argc, char **argv)
   PetscCall(VecGetArray(B, &bufB));
   for (i = 0; i < 2; i++) {
     bufA[i] = (PetscScalar)rank;
-    bufB[i] = (PetscScalar)(rank) + 10.0;
+    bufB[i] = (PetscScalar)rank + 10.0;
   }
   PetscCall(VecRestoreArray(A, &bufA));
   PetscCall(VecRestoreArray(B, &bufB));
@@ -115,6 +115,6 @@ int main(int argc, char **argv)
       filter: grep -v "type" | grep -v "sort"
       output_file: output/ex2_basic.out
       args: -sf_type window -sf_window_sync {{fence active lock}} -sf_window_flavor shared
-      requires: defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY) !defined(PETSC_HAVE_MPICH_NUMVERSION) defined(PETSC_HAVE_MPI_ONE_SIDED)
+      requires: defined(PETSC_HAVE_MPI_PROCESS_SHARED_MEMORY) !defined(PETSC_HAVE_MPICH) defined(PETSC_HAVE_MPI_ONE_SIDED)
 
 TEST*/

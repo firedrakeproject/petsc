@@ -297,7 +297,11 @@ $(foreach pkg, $(pkgs), $(call concattestlang,$(pkg),F F90)) : $(libpetscall)
 # Testing convenience targets
 .PHONY: test pre-clean
 
-test: report_tests
+# The Fortran compiler may use out-dated module files in the tutorial and test directories so delete them all
+remove-test-mod-files:
+	-@find src -name "*.mod" -not -path "src/binding/*" -delete
+
+test: remove-test-mod-files report_tests
 
 pre-clean:
 	@$(RM) -rf $(TESTDIR)/counts $(TESTLOGTAPFILE) $(TESTLOGERRFILE)
@@ -451,6 +455,7 @@ help-nontest:
 	-@echo "   libs - build (update) the PETSc and related libraries"
 	-@echo "   check - run a basic check that the libraries are built correctly and can be used"
 	-@echo "   "
+	-@echo "   getversion - print the PETSc version, or $PETSC_DIR/lib/petsc/bin/petscversion"
 	-@echo "   getmpiexec - print the mpiexec to use to run PETSc programs"
 	-@echo "   getlinklibs - print the libraries that a PETSc application must link against"
 	-@echo "   getincludedirs - print the include directories that a PETSc application must be compiled against"
@@ -517,6 +522,8 @@ help-test:
 	-@echo "    ${OMAKE} test s='sys*ex2*'"
 	-@echo "  You can also use the full path to a file directory"
 	-@echo "    ${OMAKE} test s='src/sys/tests/'"
+	-@echo "   or a file"
+	-@echo "    ${OMAKE} test s='src/sys/tests/ex1.c'"
 	-@echo
 	-@echo "  To search for fields from the original test definitions:"
 	-@echo "    ${OMAKE} test query='requires' queryval='*MPI_PROCESS_SHARED_MEMORY*'"

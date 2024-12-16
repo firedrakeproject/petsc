@@ -1076,9 +1076,8 @@ static PetscErrorCode DMPlexMetricModify_Private(PetscInt dim, PetscReal h_min, 
   } else {
     /* Anisotropic case */
     PetscScalar *work;
-    PetscBLASInt lwork;
+    PetscBLASInt lwork = (PetscBLASInt)(5 * dim);
 
-    lwork = 5 * dim;
     PetscCall(PetscMalloc1(5 * dim, &work));
     {
       PetscBLASInt lierr;
@@ -1122,7 +1121,7 @@ static PetscErrorCode DMPlexMetricModify_Private(PetscInt dim, PetscReal h_min, 
   /* Enforce maximum anisotropy and compute determinant */
   *detMp = 1.0;
   for (i = 0; i < dim; ++i) {
-    if (a_max > 1.0) eigs[i] = PetscMax(eigs[i], max_eig * la_min);
+    if (a_max >= 1.0) eigs[i] = PetscMax(eigs[i], max_eig * la_min);
     *detMp *= eigs[i];
   }
 
@@ -1483,9 +1482,7 @@ static PetscErrorCode DMPlexMetricIntersection_Private(PetscInt dim, PetscScalar
   }
   {
     PetscScalar *work;
-    PetscBLASInt lwork;
-
-    lwork = 5 * dim;
+    PetscBLASInt lwork = (PetscBLASInt)(5 * dim);
     PetscCall(PetscMalloc1(5 * dim, &work));
     {
       PetscBLASInt lierr, nb;

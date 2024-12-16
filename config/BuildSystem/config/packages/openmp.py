@@ -8,6 +8,12 @@ class Configure(config.package.Package):
     self.includes          = ['omp.h']
     return
 
+  def setupHelp(self, help):
+    config.package.Package.setupHelp(self,help)
+    import nargs
+    help.addArgument('OpenMP', '--with-openmp-kernels=<true,false>',  nargs.ArgBool(None, 0, 'PETSc\'s numerical kernels will use OpenMP threads'))
+    return
+
   def setupDependencies(self, framework):
     config.package.Package.setupDependencies(self, framework)
     self.function     = framework.require('config.functions',self)
@@ -21,7 +27,6 @@ class Configure(config.package.Package):
     ''' Checks for OpenMP compiler flags'''
     ''' Note it may be different for the C, C++, and FC compilers'''
     ''' Needs to check if OpenMP actually exists and works '''
-    self.found = 0
     oflags = ["-qopenmp", # Intel (must come before -fopenmp for icx)
               "-fopenmp", # Gnu
               "-qsmp=omp",# IBM XL C/C++
@@ -82,3 +87,10 @@ class Configure(config.package.Package):
       #  Apple pthread does not provide this functionality
       if self.function.check('pthread_barrier_init', libraries = 'pthread'):
         self.addDefine('HAVE_OPENMP_SUPPORT', 1)
+
+    if self.framework.argDB['with-openmp-kernels']:
+      self.addDefine('USE_OPENMP_KERNELS', 1)
+
+  def alternateConfigureLibrary(self):
+    if self.framework.argDB['with-openmp-kernels']:
+      raise RuntimeError('--with-openmp-kernels also requires --with-openmp')

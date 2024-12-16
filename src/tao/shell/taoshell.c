@@ -49,7 +49,7 @@ PetscErrorCode TaoShellSetSolve(Tao tao, PetscErrorCode (*solve)(Tao))
   Note:
   This routine is intended for use within various shell routines
 
-.seealso: `Tao`, `TAOSHELL`, `TaoCreateShell()`, `TaoShellSetContext()`
+.seealso: `Tao`, `TAOSHELL`, `TaoShellSetContext()`
 @*/
 PetscErrorCode TaoShellGetContext(Tao tao, void *ctx)
 {
@@ -78,7 +78,7 @@ PetscErrorCode TaoShellGetContext(Tao tao, void *ctx)
   Fortran Notes:
   The context can only be an integer or a `PetscObject`
 
-.seealso: `Tao`, `TAOSHELL`, `TaoCreateShell()`, `TaoShellGetContext()`
+.seealso: `Tao`, `TAOSHELL`, `TaoShellGetContext()`
 @*/
 PetscErrorCode TaoShellSetContext(Tao tao, void *ctx)
 {
@@ -145,6 +145,8 @@ PETSC_EXTERN PetscErrorCode TaoCreate_Shell(Tao tao)
   tao->ops->setfromoptions = TaoSetFromOptions_Shell;
   tao->ops->view           = TaoView_Shell;
   tao->ops->solve          = TaoSolve_Shell;
+
+  PetscCall(TaoParametersInitialize(tao));
 
   PetscCall(PetscNew(&shell));
   tao->data = (void *)shell;

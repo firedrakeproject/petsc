@@ -476,6 +476,9 @@ Unable to run hostname to check the network')
                        if (MPI_Win_attach(win,baseptr,size)) { }\n\
                        if (MPI_Win_create_dynamic(MPI_INFO_NULL,MPI_COMM_WORLD,&win)) { }\n'):
       self.addDefine('HAVE_MPI_FEATURE_DYNAMIC_WINDOW', 1) # Use it to represent a group of MPI3 Win routines
+    if self.checkCompile('#include <mpi.h>\n MPI_Count i = 0;\n'): # introduced in MPI-3.0
+      self.addDefine('HAVE_MPI_COUNT',1) # we need it to support MPIPetsc_Type_get_envelope etc
+
     if self.checkLink('#include <mpi.h>\n',
                       '''
                         int send=0,recv,counts[2]={1,1},displs[2]={1,2}; MPI_Request req;
@@ -529,10 +532,13 @@ Unable to run hostname to check the network')
 
     if self.checkLink('#include <mpi.h>\n',
     '''
-      int         buf[1]={0},dest=1,source=1,tag=0;
-      MPI_Count   count=1;
-      MPI_Request req;
-      MPI_Status  stat;
+      int          buf[1]={0},dest=1,source=1,tag=0, combiner, ints[1];
+      MPI_Count    count=1, nints, naddrs, ncounts, ntypes, counts[1];
+      MPI_Request  req;
+      MPI_Status   stat;
+      MPI_Aint     addrs[1];
+      MPI_Datatype types[1];
+
       if (MPI_Send_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD)) return 1;
       if (MPI_Send_init_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD,&req)) return 1;
       if (MPI_Isend_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD,&req)) return 1;
@@ -541,13 +547,15 @@ Unable to run hostname to check the network')
       if (MPI_Irecv_c(buf,count,MPI_INT,source,tag,MPI_COMM_WORLD,&req)) return 1;
       if (MPI_Neighbor_alltoallv_c(0,0,0,MPI_INT,0,0,0,MPI_INT,MPI_COMM_WORLD)) return 1;
       if (MPI_Ineighbor_alltoallv_c(0,0,0,MPI_INT,0,0,0,MPI_INT,MPI_COMM_WORLD,&req)) return 1;
+      if (MPI_Type_get_envelope_c(MPI_INT,&nints,&naddrs,&ncounts,&ntypes,&combiner)) return 1;
+      if (MPI_Type_get_contents_c(MPI_INT,nints,naddrs,ncounts,ntypes,ints,addrs,counts,types)) return 1;
     ''' + ('if (MPI_Reduce_local_c(0,0,0,MPI_INT,MPI_SUM)) return 1;\n' if self.haveReduceLocal == 1 else '')):
       self.addDefine('HAVE_MPI_LARGE_COUNT', 1)
 
     if self.checkLink('#include <mpi.h>\n',
     '''
       MPI_Request req;
-      MPI_Info    info;
+      MPI_Info    info = 0;
       if (MPI_Neighbor_alltoallv_init(0,0,0,MPI_INT,0,0,0,MPI_INT,MPI_COMM_WORLD,info,&req)) return 1;
     '''):
       self.addDefine('HAVE_MPI_PERSISTENT_NEIGHBORHOOD_COLLECTIVES', 1)
@@ -622,6 +630,9 @@ Unable to run hostname to check the network')
   def alternateConfigureLibrary(self):
     '''Setup MPIUNI, our uniprocessor version of MPI'''
     self.addDefine('HAVE_MPIUNI', 1)
+    self.addDefine('HAVE_MPI_REDUCE_LOCAL',1) # One can add these MPI macros on demand for MPIUNI
+    self.addDefine('HAVE_MPI_LARGE_COUNT', 1)
+    self.addDefine('HAVE_MPI_COUNT',1)
     self.addMakeMacro('MPI_IS_MPIUNI', 1)
     self.framework.packages.append(self)
     self.mpiexec = '${PETSC_DIR}/lib/petsc/bin/petsc-mpiexec.uni'
@@ -739,17 +750,24 @@ Unable to run hostname to check the network')
         MPI_VER  = '  '+MPICHPKG+'_VERSION: '+mpich_numversion
       except:
         self.logPrint('Unable to parse '+MPICHPKG+' version from header. Probably a buggy preprocessor')
-    for mpichpkg in ['i_mpi','mvapich2','mpich']:
-      MPICHPKG = mpichpkg.upper()
+    for MPICHPKG in ['MPICH', 'I_MPI', 'MVAPICH2']:
       mpich_test = '#include <mpi.h>\nint mpich_ver = '+MPICHPKG+'_NUMVERSION;\n'
       if self.checkCompile(mpich_test):
         buf = self.outputPreprocess(mpich_test)
         try:
           mpich_numversion = re.compile('\nint mpich_ver ='+HASHLINESPACE+'([0-9]+)'+HASHLINESPACE+';').search(buf).group(1)
-          self.addDefine('HAVE_'+MPICHPKG+'_NUMVERSION',mpich_numversion)
           MPI_VER += '  '+MPICHPKG+'_NUMVERSION: '+mpich_numversion
-          if mpichpkg == 'mpich': self.mpich_numversion = mpich_numversion
-          if mpichpkg == 'i_mpi': self.isIntelMPI = 1
+          self.addDefine('HAVE_'+MPICHPKG, 1)
+          # for I_MPI and MVAPICH2, we can not use petscpkg_version.h since they are not a petsc package yet.
+          # Anyway, we use PETSC_PKG_'MPICHPKG'_NUMVERSION to record the config time version for later compile time checking.
+          self.addDefine('PKG_'+MPICHPKG+'_NUMVERSION',mpich_numversion)
+          if MPICHPKG == 'MPICH':
+            self.mpich_numversion = mpich_numversion
+            MAJ = int(mpich_numversion)//10000000  # See comments in MPICH.py
+            MIN = int(mpich_numversion)//100000%100
+            REV = int(mpich_numversion)//1000%100
+            self.mpich.version_tuple = (MAJ, MIN, REV) # version_tuple makes mpich included in petscpkg_version.h
+          elif MPICHPKG == 'I_MPI': self.isIntelMPI = 1
         except:
           self.logPrint('Unable to parse '+MPICHPKG+' version from header. Probably a buggy preprocessor')
     if MPI_VER:
@@ -774,11 +792,10 @@ Unable to run hostname to check the network')
         ompi_major_version = re.compile('\nint ompi_major ='+HASHLINESPACE+'([0-9]+)'+HASHLINESPACE+';').search(buf).group(1)
         ompi_minor_version = re.compile('\nint ompi_minor ='+HASHLINESPACE+'([0-9]+)'+HASHLINESPACE+';').search(buf).group(1)
         ompi_release_version = re.compile('\nint ompi_release ='+HASHLINESPACE+'([0-9]+)'+HASHLINESPACE+';').search(buf).group(1)
-        self.addDefine('HAVE_OMPI_MAJOR_VERSION',ompi_major_version)
-        self.addDefine('HAVE_OMPI_MINOR_VERSION',ompi_minor_version)
-        self.addDefine('HAVE_OMPI_RELEASE_VERSION',ompi_release_version)
         self.ompi_major_version = ompi_major_version
         self.ompi_version = tuple([int(i) for i in [ompi_major_version,ompi_minor_version,ompi_release_version]])
+        self.openmpi.version_tuple = self.ompi_version # version_tuple makes openmpi included by petscpkg_version.h, so one can uses macros defined there
+        self.addDefine('HAVE_OPENMPI', 1) # we have openmpi, though it is not necessarily installed by --download-openmpi
         self.mpi_pkg_version = '  OMPI_VERSION: '+ompi_major_version+'.'+ompi_minor_version+'.'+ompi_release_version+'\n'
         MPI_VER = '  OMPI_VERSION: '+ompi_major_version+'.'+ompi_minor_version+'.'+ompi_release_version
       except:

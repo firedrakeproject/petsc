@@ -8,7 +8,7 @@ PetscClassId TAOLINESEARCH_CLASSID = 0;
 PetscLogEvent TAOLINESEARCH_Apply;
 PetscLogEvent TAOLINESEARCH_Eval;
 
-/*@C
+/*@
   TaoLineSearchViewFromOptions - View a `TaoLineSearch` object based on values in the options database
 
   Collective
@@ -33,7 +33,7 @@ PetscErrorCode TaoLineSearchViewFromOptions(TaoLineSearch A, PetscObject obj, co
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   TaoLineSearchView - Prints information about the `TaoLineSearch`
 
   Collective
@@ -381,7 +381,7 @@ PetscErrorCode TaoLineSearchSetType(TaoLineSearch ls, TaoLineSearchType type)
   PetscCall(PetscObjectTypeCompare((PetscObject)ls, type, &flg));
   if (flg) PetscFunctionReturn(PETSC_SUCCESS);
 
-  PetscCall(PetscFunctionListFind(TaoLineSearchList, type, (void (**)(void)) & r));
+  PetscCall(PetscFunctionListFind(TaoLineSearchList, type, (void (**)(void))&r));
   PetscCheck(r, PetscObjectComm((PetscObject)ls), PETSC_ERR_ARG_UNKNOWN_TYPE, "Unable to find requested TaoLineSearch type %s", type);
   PetscTryTypeMethod(ls, destroy);
   ls->max_funcs = 30;

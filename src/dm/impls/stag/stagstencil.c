@@ -18,7 +18,7 @@ const char *const DMStagStencilLocations[] = {"NONE", "BACK_DOWN_LEFT", "BACK_DO
 - stencils  - an array of `DMStagStencil` objects (`i`, `j`, and `k` are ignored)
 
   Output Parameter:
-. is - the global IS
+. is - the global `IS`
 
   Note:
   Redundant entries in the stencils argument are ignored
@@ -27,7 +27,7 @@ const char *const DMStagStencilLocations[] = {"NONE", "BACK_DOWN_LEFT", "BACK_DO
 
 .seealso: [](ch_stag), `DMSTAG`, `IS`, `DMStagStencil`, `DMCreateGlobalVector`
 @*/
-PetscErrorCode DMStagCreateISFromStencils(DM dm, PetscInt n_stencil, DMStagStencil *stencils, IS *is)
+PetscErrorCode DMStagCreateISFromStencils(DM dm, PetscInt n_stencil, DMStagStencil stencils[], IS *is)
 {
   PetscInt              *stencil_active;
   DMStagStencil         *stencils_ordered_unique;
@@ -46,7 +46,7 @@ PetscErrorCode DMStagCreateISFromStencils(DM dm, PetscInt n_stencil, DMStagStenc
      enum values are integers starting with 1, in canonical order */
   nc_max           = 1; // maximum number of components to represent these stencils
   n_stencil_unique = 0;
-  for (PetscInt p = 0; p < n_stencil; ++p) nc_max = PetscMax(nc_max, (stencils[p].c + 1));
+  for (PetscInt p = 0; p < n_stencil; ++p) nc_max = PetscMax(nc_max, stencils[p].c + 1);
   PetscCall(PetscCalloc1(DMSTAG_NUMBER_LOCATIONS * nc_max, &stencil_active));
   for (PetscInt p = 0; p < n_stencil; ++p) {
     DMStagStencilLocation loc_canonical;

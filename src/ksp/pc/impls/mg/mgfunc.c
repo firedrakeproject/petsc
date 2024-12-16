@@ -69,7 +69,7 @@ PetscErrorCode PCMGResidualTransposeDefault(Mat mat, Vec b, Vec x, Vec r)
 PetscErrorCode PCMGMatResidualDefault(Mat mat, Mat b, Mat x, Mat r)
 {
   PetscFunctionBegin;
-  PetscCall(MatMatMult(mat, x, MAT_REUSE_MATRIX, PETSC_DEFAULT, &r));
+  PetscCall(MatMatMult(mat, x, MAT_REUSE_MATRIX, PETSC_CURRENT, &r));
   PetscCall(MatAYPX(r, -1.0, b, UNKNOWN_NONZERO_PATTERN));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -94,7 +94,7 @@ PetscErrorCode PCMGMatResidualDefault(Mat mat, Mat b, Mat x, Mat r)
 PetscErrorCode PCMGMatResidualTransposeDefault(Mat mat, Mat b, Mat x, Mat r)
 {
   PetscFunctionBegin;
-  PetscCall(MatTransposeMatMult(mat, x, MAT_REUSE_MATRIX, PETSC_DEFAULT, &r));
+  PetscCall(MatTransposeMatMult(mat, x, MAT_REUSE_MATRIX, PETSC_CURRENT, &r));
   PetscCall(MatAYPX(r, -1.0, b, UNKNOWN_NONZERO_PATTERN));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -333,7 +333,7 @@ PetscErrorCode PCMGSetRestriction(PC pc, PetscInt l, Mat mat)
 }
 
 /*@
-  PCMGGetRestriction - Gets the function to be used to restrict dual vectors
+  PCMGGetRestriction - Gets the function to be used to restrict dual (i.e. residual) vectors
   from level l to l-1.
 
   Logically Collective
@@ -452,7 +452,7 @@ PetscErrorCode PCMGGetRScale(PC pc, PetscInt l, Vec *rscale)
 }
 
 /*@
-  PCMGSetInjection - Sets the function to be used to inject primal vectors
+  PCMGSetInjection - Sets the function to be used to inject primal (i.e. solution) vectors
   from level l to l-1.
 
   Logically Collective
@@ -484,7 +484,7 @@ PetscErrorCode PCMGSetInjection(PC pc, PetscInt l, Mat mat)
 }
 
 /*@
-  PCMGGetInjection - Gets the function to be used to inject primal vectors
+  PCMGGetInjection - Gets the function to be used to inject primal vectors (i.e. solutions)
   from level l to l-1.
 
   Logically Collective
@@ -536,7 +536,7 @@ PetscErrorCode PCMGGetInjection(PC pc, PetscInt l, Mat *mat)
 
   Level: advanced
 
-.seealso: [](ch_ksp), `PCMG`, ``PCMGGetSmootherUp()`, `PCMGGetSmootherDown()`, `PCMGGetCoarseSolve()`
+.seealso: [](ch_ksp), `PCMG`, `PCMGGetSmootherUp()`, `PCMGGetSmootherDown()`, `PCMGGetCoarseSolve()`
 @*/
 PetscErrorCode PCMGGetSmoother(PC pc, PetscInt l, KSP *ksp)
 {

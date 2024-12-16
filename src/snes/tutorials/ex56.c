@@ -205,7 +205,7 @@ int main(int argc, char **args)
   PetscReal     Lx, mdisp[10], err[10];
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &args, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &args, NULL, help));
   comm = PETSC_COMM_WORLD;
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   /* options */
@@ -405,14 +405,14 @@ int main(int argc, char **args)
     {
       PetscViewer       viewer = NULL;
       PetscViewerFormat fmt;
-      PetscCall(PetscOptionsGetViewer(comm, NULL, "", "-vec_view", &viewer, &fmt, &flg));
+      PetscCall(PetscOptionsCreateViewer(comm, NULL, "", "-vec_view", &viewer, &fmt, &flg));
       if (flg) {
         PetscCall(PetscViewerPushFormat(viewer, fmt));
         PetscCall(VecView(xx, viewer));
         PetscCall(VecView(bb, viewer));
         PetscCall(PetscViewerPopFormat(viewer));
       }
-      PetscCall(PetscOptionsRestoreViewer(&viewer));
+      PetscCall(PetscViewerDestroy(&viewer));
     }
     /* Free work space */
     PetscCall(SNESDestroy(&snes));
@@ -464,7 +464,7 @@ int main(int argc, char **args)
     timeoutfactor: 2
     test:
       suffix: 0
-      args: -run_type 1 -max_conv_its 3 -mat_coarsen_type hem -mat_coarsen_max_it 5 -pc_gamg_asm_hem_aggs 4 -ksp_rtol 1.e-6
+      args: -run_type 1 -max_conv_its 3 -pc_gamg_mat_coarsen_type hem -pc_gamg_mat_coarsen_max_it 5 -pc_gamg_asm_hem_aggs 4 -ksp_rtol 1.e-6
       filter: sed -e "s/Linear solve converged due to CONVERGED_RTOL iterations 7/Linear solve converged due to CONVERGED_RTOL iterations 8/g"
     test:
       suffix: 1

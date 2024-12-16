@@ -21,7 +21,7 @@ int main(int argc, char **argv)
   PetscBool   world2subs = PETSC_FALSE; /* Copy a vector from WORLD to multiple subcomms? */
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCallMPI(MPI_Comm_size(PETSC_COMM_WORLD, &nproc));
   PetscCallMPI(MPI_Comm_rank(PETSC_COMM_WORLD, &grank));
 
@@ -459,7 +459,7 @@ int main(int argc, char **argv)
        suffix: 2
        args: -sub2sub
        # deadlocks with NECMPI and INTELMPI (20210400300)
-       requires: !defined(PETSC_HAVE_NECMPI) !defined(PETSC_HAVE_I_MPI_NUMVERSION)
+       requires: !defined(PETSC_HAVE_NECMPI) !defined(PETSC_HAVE_I_MPI)
 
      test:
        suffix: 3

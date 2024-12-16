@@ -15,13 +15,14 @@ configure_options = [
   '--download-ptscotch',
   '--download-suitesparse',
   '--download-triangle',
+  '--download-triangle-build-exec',
   '--download-superlu',
   '--download-superlu_dist',
   '--download-scalapack',
   '--download-mumps',
   # '--download-elemental', # disabled since its maxCxxVersion is c++14, but Kokkos-4.0's minCxxVersion is c++17
   '--download-spai',
-  # '--download-moab', # disabled since its maxCxxVersion is c++14, but Kokkos-4.0's minCxxVersion is c++17
+  '--download-moab',
   '--download-parms',
   '--download-chaco',
   '--download-fftw',

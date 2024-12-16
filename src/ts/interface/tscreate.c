@@ -32,7 +32,6 @@ PetscErrorCode TSCreate(MPI_Comm comm, TS *ts)
 
   PetscFunctionBegin;
   PetscAssertPointer(ts, 2);
-  *ts = NULL;
   PetscCall(TSInitializePackage());
 
   PetscCall(PetscHeaderCreate(t, TS_CLASSID, "TS", "Time stepping", "TS", comm, TSDestroy, TSView));
@@ -46,7 +45,7 @@ PetscErrorCode TSCreate(MPI_Comm comm, TS *ts)
   t->max_time         = PETSC_MAX_REAL;
   t->exact_final_time = TS_EXACTFINALTIME_UNSPECIFIED;
   t->steps            = 0;
-  t->max_steps        = PETSC_MAX_INT;
+  t->max_steps        = PETSC_INT_MAX;
   t->steprestart      = PETSC_TRUE;
 
   t->max_snes_failures = 1;

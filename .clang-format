@@ -165,12 +165,23 @@ StatementMacros:
   - PETSC_DECLTYPE_NOEXCEPT_AUTO_RETURNS
   - PETSC_UNUSED
   - PetscPragmaOMP
+  - PetscPragmaUseOMPKernels
   - PetscPragmaSIMD
   - PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN
   - PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN_
   - PETSC_PRAGMA_DIAGNOSTIC_IGNORED_END
   - PETSC_PRAGMA_DIAGNOSTIC_IGNORED_END_
   - _Pragma
+TypeNames:
+  - PetscScalar
+  - PetscComplex
+  - PetscReal
+  - PetscInt
+  - PetscMPIInt
+  - PetscBLASInt
+  - PetscErrorCode
+  - PetscBool
+  - PetscBool3
 TabWidth: 2
 UseCRLF: false
 UseTab: Never

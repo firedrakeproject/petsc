@@ -152,9 +152,9 @@ static PetscErrorCode TSAlpha_Restart(TS ts, PetscBool *initok)
 
   /* Compute V0 ~ dX/dt at t0 with backward differences */
   PetscCall(VecZeroEntries(th->V0));
-  PetscCall(VecAXPY(th->V0, -3 / ts->time_step, X0));
-  PetscCall(VecAXPY(th->V0, +4 / ts->time_step, X1));
-  PetscCall(VecAXPY(th->V0, -1 / ts->time_step, X2));
+  PetscCall(VecAXPY(th->V0, -3 / time_step, X0));
+  PetscCall(VecAXPY(th->V0, +4 / time_step, X1));
+  PetscCall(VecAXPY(th->V0, -1 / time_step, X2));
 
   /* Rough, lower-order estimate LTE of the initial step */
   if (th->vec_lte_work) {
@@ -165,9 +165,10 @@ static PetscErrorCode TSAlpha_Restart(TS ts, PetscBool *initok)
   }
 
 finally:
-  /* Revert TSAlpha to the initial state (t0,X0) */
+  /* Revert TSAlpha to the initial state (t0,X0), but retain
+     potential time step reduction by factor after failed solve. */
   if (initok) *initok = stageok;
-  PetscCall(TSSetTimeStep(ts, time_step));
+  PetscCall(TSSetTimeStep(ts, 2 * ts->time_step));
   PetscCall(TSAlphaSetParams(ts, alpha_m, alpha_f, gamma));
   PetscCall(VecCopy(ts->vec_sol, th->X0));
 
@@ -272,12 +273,17 @@ static PetscErrorCode TSEvaluateWLTE_Alpha(TS ts, NormType wnormtype, PetscInt *
 
 static PetscErrorCode TSInterpolate_Alpha(TS ts, PetscReal t, Vec X)
 {
-  TS_Alpha *th = (TS_Alpha *)ts->data;
-  PetscReal dt = t - ts->ptime;
+  TS_Alpha *th    = (TS_Alpha *)ts->data;
+  PetscReal dt    = t - ts->ptime;
+  PetscReal Gamma = th->Gamma;
 
   PetscFunctionBegin;
+  PetscCall(VecWAXPY(th->V1, -1.0, th->X0, ts->vec_sol));
+  PetscCall(VecAXPBY(th->V1, 1 - 1 / Gamma, 1 / (Gamma * ts->time_step), th->V0));
   PetscCall(VecCopy(ts->vec_sol, X));
+  /* X = X + Gamma*dT*V1 */
   PetscCall(VecAXPY(X, th->Gamma * dt, th->V1));
+  /* X = X + (1-Gamma)*dT*V0 */
   PetscCall(VecAXPY(X, (1 - th->Gamma) * dt, th->V0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

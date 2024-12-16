@@ -221,11 +221,7 @@ PetscErrorCode DMCreateColoring_DA(DM da, ISColoringType ctype, ISColoring *colo
   PetscCall(PetscObjectGetComm((PetscObject)da, &comm));
   PetscCallMPI(MPI_Comm_size(comm, &size));
   if (ctype == IS_COLORING_LOCAL) {
-    if (size == 1) {
-      ctype = IS_COLORING_GLOBAL;
-    } else {
-      PetscCheck((dim == 1) || !((m == 1 && bx == DM_BOUNDARY_PERIODIC) || (n == 1 && by == DM_BOUNDARY_PERIODIC) || (p == 1 && bz == DM_BOUNDARY_PERIODIC)), PetscObjectComm((PetscObject)da), PETSC_ERR_SUP, "IS_COLORING_LOCAL cannot be used for periodic boundary condition having both ends of the domain on the same process");
-    }
+    PetscCheck(!((m == 1 && bx == DM_BOUNDARY_PERIODIC) || (n == 1 && by == DM_BOUNDARY_PERIODIC) || (p == 1 && bz == DM_BOUNDARY_PERIODIC)), PetscObjectComm((PetscObject)da), PETSC_ERR_SUP, "IS_COLORING_LOCAL cannot be used for periodic boundary condition having both sides of the domain on the same process");
   }
 
   /* Tell the DMDA it has 1 degree of freedom per grid point so that the coloring for BAIJ
@@ -292,7 +288,7 @@ PetscErrorCode DMCreateColoring_DA_2d_MPIAIJ(DM da, ISColoringType ctype, ISColo
         ii = 0;
         for (j = ys; j < ys + ny; j++) {
           for (i = xs; i < xs + nx; i++) {
-            for (k = 0; k < nc; k++) colors[ii++] = k + nc * ((i % col) + col * (j % col));
+            for (k = 0; k < nc; k++) PetscCall(ISColoringValueCast(k + nc * ((i % col) + col * (j % col)), colors + ii++));
           }
         }
         ncolors = nc + nc * (col - 1 + col * (col - 1));
@@ -307,7 +303,7 @@ PetscErrorCode DMCreateColoring_DA_2d_MPIAIJ(DM da, ISColoringType ctype, ISColo
           for (i = gxs; i < gxs + gnx; i++) {
             for (k = 0; k < nc; k++) {
               /* the complicated stuff is to handle periodic boundaries */
-              colors[ii++] = k + nc * ((SetInRange(i, m) % col) + col * (SetInRange(j, n) % col));
+              PetscCall(ISColoringValueCast(k + nc * ((SetInRange(i, m) % col) + col * (SetInRange(j, n) % col)), colors + ii++));
             }
           }
         }
@@ -357,7 +353,7 @@ PetscErrorCode DMCreateColoring_DA_3d_MPIAIJ(DM da, ISColoringType ctype, ISColo
       for (k = zs; k < zs + nz; k++) {
         for (j = ys; j < ys + ny; j++) {
           for (i = xs; i < xs + nx; i++) {
-            for (l = 0; l < nc; l++) colors[ii++] = l + nc * ((i % col) + col * (j % col) + col * col * (k % col));
+            for (l = 0; l < nc; l++) PetscCall(ISColoringValueCast(l + nc * ((i % col) + col * (j % col) + col * col * (k % col)), colors + ii++));
           }
         }
       }
@@ -374,7 +370,7 @@ PetscErrorCode DMCreateColoring_DA_3d_MPIAIJ(DM da, ISColoringType ctype, ISColo
           for (i = gxs; i < gxs + gnx; i++) {
             for (l = 0; l < nc; l++) {
               /* the complicated stuff is to handle periodic boundaries */
-              colors[ii++] = l + nc * ((SetInRange(i, m) % col) + col * (SetInRange(j, n) % col) + col * col * (SetInRange(k, p) % col));
+              PetscCall(ISColoringValueCast(l + nc * ((SetInRange(i, m) % col) + col * (SetInRange(j, n) % col) + col * col * (SetInRange(k, p) % col)), colors + ii++));
             }
           }
         }
@@ -405,6 +401,7 @@ PetscErrorCode DMCreateColoring_DA_1d_MPIAIJ(DM da, ISColoringType ctype, ISColo
   */
   PetscCall(DMDAGetInfo(da, &dim, &m, NULL, NULL, &M, NULL, NULL, &nc, &s, &bx, NULL, NULL, NULL));
   col = 2 * s + 1;
+  PetscCheck(bx != DM_BOUNDARY_PERIODIC || !(m % col), PetscObjectComm((PetscObject)da), PETSC_ERR_SUP, "IS_COLORING_GLOBAL can only be used for periodic boundary conditions if the number of grid points %" PetscInt_FMT " is divisible by the number of colors %" PetscInt_FMT, m, col);
   PetscCall(DMDAGetCorners(da, &xs, NULL, NULL, &nx, NULL, NULL));
   PetscCall(DMDAGetGhostCorners(da, &gxs, NULL, NULL, &gnx, NULL, NULL));
   PetscCall(PetscObjectGetComm((PetscObject)da, &comm));
@@ -420,9 +417,9 @@ PetscErrorCode DMCreateColoring_DA_1d_MPIAIJ(DM da, ISColoringType ctype, ISColo
         for (i = xs; i < xs + nx; i++) {
           for (l = 0; l < nc; l++) {
             if (dd->ofillcols[l] && (i % col)) {
-              colors[i1++] = nc - 1 + tc * ((i % col) - 1) + dd->ofillcols[l];
+              PetscCall(ISColoringValueCast(nc - 1 + tc * ((i % col) - 1) + dd->ofillcols[l], colors + i1++));
             } else {
-              colors[i1++] = l;
+              PetscCall(ISColoringValueCast(l, colors + i1++));
             }
           }
         }
@@ -430,7 +427,7 @@ PetscErrorCode DMCreateColoring_DA_1d_MPIAIJ(DM da, ISColoringType ctype, ISColo
       } else {
         i1 = 0;
         for (i = xs; i < xs + nx; i++) {
-          for (l = 0; l < nc; l++) colors[i1++] = l + nc * (i % col);
+          for (l = 0; l < nc; l++) PetscCall(ISColoringValueCast(l + nc * (i % col), colors + i1++));
         }
         ncolors = nc + nc * (col - 1);
       }
@@ -444,7 +441,7 @@ PetscErrorCode DMCreateColoring_DA_1d_MPIAIJ(DM da, ISColoringType ctype, ISColo
       for (i = gxs; i < gxs + gnx; i++) {
         for (l = 0; l < nc; l++) {
           /* the complicated stuff is to handle periodic boundaries */
-          colors[i1++] = l + nc * (SetInRange(i, m) % col);
+          PetscCall(ISColoringValueCast(l + nc * (SetInRange(i, m) % col), colors + i1++));
         }
       }
       ncolors = nc + nc * (col - 1);
@@ -482,7 +479,7 @@ PetscErrorCode DMCreateColoring_DA_2d_5pt_MPIAIJ(DM da, ISColoringType ctype, IS
       ii = 0;
       for (j = ys; j < ys + ny; j++) {
         for (i = xs; i < xs + nx; i++) {
-          for (k = 0; k < nc; k++) colors[ii++] = k + nc * ((3 * j + i) % 5);
+          for (k = 0; k < nc; k++) PetscCall(ISColoringValueCast(k + nc * ((3 * j + i) % 5), colors + ii++));
         }
       }
       ncolors = 5 * nc;
@@ -495,7 +492,7 @@ PetscErrorCode DMCreateColoring_DA_2d_5pt_MPIAIJ(DM da, ISColoringType ctype, IS
       ii = 0;
       for (j = gys; j < gys + gny; j++) {
         for (i = gxs; i < gxs + gnx; i++) {
-          for (k = 0; k < nc; k++) colors[ii++] = k + nc * ((3 * SetInRange(j, n) + SetInRange(i, m)) % 5);
+          for (k = 0; k < nc; k++) PetscCall(ISColoringValueCast(k + nc * ((3 * SetInRange(j, n) + SetInRange(i, m)) % 5), colors + ii++));
         }
       }
       ncolors = 5 * nc;

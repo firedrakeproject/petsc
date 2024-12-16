@@ -52,12 +52,12 @@ int main(int argc, char **argv)
   PetscInt    bc;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(KSPCreate(PETSC_COMM_WORLD, &ksp));
-  PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 12, 12, PETSC_DECIDE, PETSC_DECIDE, 1, 1, 0, 0, &da));
+  PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 2, 2, PETSC_DECIDE, PETSC_DECIDE, 1, 1, 0, 0, &da));
+  PetscCall(DMDASetInterpolationType(da, DMDA_Q0));
   PetscCall(DMSetFromOptions(da));
   PetscCall(DMSetUp(da));
-  PetscCall(DMDASetInterpolationType(da, DMDA_Q0));
 
   PetscCall(KSPSetDM(ksp, da));
 
@@ -72,6 +72,7 @@ int main(int argc, char **argv)
   PetscCall(KSPSetComputeRHS(ksp, ComputeRHS, &user));
   PetscCall(KSPSetComputeOperators(ksp, ComputeMatrix, &user));
   PetscCall(KSPSetFromOptions(ksp));
+  PetscCall(KSPSetUp(ksp));
   PetscCall(KSPSolve(ksp, NULL, NULL));
   PetscCall(KSPDestroy(&ksp));
   PetscCall(DMDestroy(&da));
@@ -90,8 +91,8 @@ PetscErrorCode ComputeRHS(KSP ksp, Vec b, void *ctx)
   PetscFunctionBeginUser;
   PetscCall(KSPGetDM(ksp, &da));
   PetscCall(DMDAGetInfo(da, 0, &mx, &my, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-  Hx = 1.0 / (PetscReal)(mx);
-  Hy = 1.0 / (PetscReal)(my);
+  Hx = 1.0 / (PetscReal)mx;
+  Hy = 1.0 / (PetscReal)my;
   PetscCall(DMDAGetCorners(da, &xs, &ys, 0, &xm, &ym, 0));
   PetscCall(DMDAVecGetArray(da, b, &array));
   for (j = ys; j < ys + ym; j++) {
@@ -124,8 +125,8 @@ PetscErrorCode ComputeMatrix(KSP ksp, Mat J, Mat jac, void *ctx)
   PetscFunctionBeginUser;
   PetscCall(KSPGetDM(ksp, &da));
   PetscCall(DMDAGetInfo(da, 0, &mx, &my, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
-  Hx    = 1.0 / (PetscReal)(mx);
-  Hy    = 1.0 / (PetscReal)(my);
+  Hx    = 1.0 / (PetscReal)mx;
+  Hy    = 1.0 / (PetscReal)my;
   HxdHy = Hx / Hy;
   HydHx = Hy / Hx;
   PetscCall(DMDAGetCorners(da, &xs, &ys, 0, &xm, &ym, 0));
@@ -170,7 +171,7 @@ PetscErrorCode ComputeMatrix(KSP ksp, Mat J, Mat jac, void *ctx)
             num++;
             numj++;
           }
-          v[num]     = (PetscReal)(numj)*HxdHy + (PetscReal)(numi)*HydHx;
+          v[num]     = (PetscReal)numj * HxdHy + (PetscReal)numi * HydHx;
           col[num].i = i;
           col[num].j = j;
           num++;
@@ -211,6 +212,18 @@ PetscErrorCode ComputeMatrix(KSP ksp, Mat J, Mat jac, void *ctx)
 /*TEST
 
    test:
-      args: -pc_type mg -pc_mg_type full -ksp_type fgmres -ksp_monitor_short -pc_mg_levels 3 -mg_coarse_pc_factor_shift_type nonzero
+     suffix: 2
+     requires: !single
+     args: -pc_type mg -pc_mg_levels 5 -ksp_monitor_true_residual -ksp_rtol 1.e-10 -ksp_type cg -mg_levels_pc_type sor -mg_levels_ksp_type richardson -mg_levels_ksp_max_it 2 -mg_coarse_pc_type svd -da_refine 5
+
+   test:
+     suffix: 3
+     requires: !single
+     args: -pc_type mg -pc_mg_levels 2 -ksp_monitor_true_residual -ksp_rtol 1.e-10 -ksp_type cg -mg_levels_pc_type sor -mg_levels_ksp_type richardson -mg_levels_ksp_max_it 2 -mg_coarse_pc_type svd -da_refine 5
+
+   test:
+     suffix: 4
+     requires: !single
+     args: -pc_type mg -pc_mg_levels 2 -ksp_monitor_true_residual -ksp_rtol 1.e-10 -ksp_type cg -mg_levels_pc_type sor -mg_levels_ksp_type richardson -mg_levels_ksp_max_it 2 -mg_coarse_pc_type svd -da_refine 4
 
 TEST*/

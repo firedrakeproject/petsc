@@ -10,20 +10,52 @@
 !    The following block allows one to write constants that match the
 !    precision of PetscReal as, for example,  x = .7_PETSC_REAL_KIND
 !
-       PetscReal,Parameter :: PetscReal_Private = 1.0
-       Integer,Parameter   :: PETSC_REAL_KIND = Selected_Real_Kind(Precision(PetscReal_Private))
+      PetscReal,Parameter :: PetscReal_Private = 1.0
+      Integer,Parameter   :: PETSC_REAL_KIND = Selected_Real_Kind(Precision(PetscReal_Private))
 
-      type tPetscOptions
+      type :: tPetscObject
         PetscFortranAddr:: v PETSC_FORTRAN_TYPE_INITIALIZE
+      end type tPetscObject
+      PetscObject, parameter :: PETSC_NULL_OBJECT = tPetscObject(0)
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_OBJECT
+#endif
+
+      type, extends(tPetscObject) :: tPetscOptions
       end type tPetscOptions
-
       PetscOptions, parameter :: PETSC_NULL_OPTIONS = tPetscOptions(0)
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_OPTIONS
+#endif
 
-      type tPetscBench
-        PetscFortranAddr:: v PETSC_FORTRAN_TYPE_INITIALIZE
+      type, extends(tPetscObject) :: tPetscBench
       end type tPetscBench
+      PetscBench, parameter :: PETSC_NULL_BENCH = tPetscBench(0)
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_BENCH
+#endif
 
-      PetscBench, parameter :: PETSC_NULL_BM = tPetscBench(0)
+      type :: tPetscDevice
+        PetscFortranAddr:: v PETSC_FORTRAN_TYPE_INITIALIZE
+      end type tPetscDevice
+      PetscDevice, parameter :: PETSC_NULL_DEVICE = tPetscDevice(0)
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_DEVICE
+#endif
+
+      type, extends(tPetscObject) :: tPetscDeviceContext
+      end type tPetscDeviceContext
+      PetscDeviceContext, parameter :: PETSC_NULL_DEVICE_CONTEXT = tPetscDeviceContext(0)
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL__DEVICE_CONTEXT
+#endif
+
+      type, extends(tPetscObject) :: tPetscMatlabEngine
+      end type tPetscMatlabEngine
+      PetscMatlabEngine, parameter :: PETSC_NULL_MATLAB_ENGINE = tPetscMatlabEngine(0)
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_MATLAB_ENGINE
+#endif
 ! ------------------------------------------------------------------------
 !     Non Common block Stuff declared first
 !
@@ -37,10 +69,40 @@
       PetscBool3, parameter :: PETSC_BOOL3_UNKNOWN = -1
 
       PetscInt, parameter :: PETSC_DECIDE = -1
-      PetscInt, parameter :: PETSC_DETERMINE = -1
-      PetscInt, parameter :: PETSC_DEFAULT_INTEGER = -2
+      PetscInt, parameter :: PETSC_DECIDE_INTEGER = -1
+      PetscReal, parameter :: PETSC_DECIDE_REAL = -1.0d0
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DECIDE
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DECIDE_INTEGER
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DECIDE_REAL
+#endif
 
+      PetscInt, parameter :: PETSC_DETERMINE = -1
+      PetscInt, parameter :: PETSC_DETERMINE_INTEGER = -1
+      PetscReal, parameter :: PETSC_DETERMINE_REAL = -1.0d0
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DETERMINE
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DETERMINE_INTEGER
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DETERMINE_REAL
+#endif
+
+      PetscInt, parameter :: PETSC_CURRENT = -2
+      PetscInt, parameter :: PETSC_CURRENT_INTEGER = -2
+      PetscReal, parameter :: PETSC_CURRENT_REAL = -2.0d0
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_CURRENT
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_CURRENT_INTEGER
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_CURRENT_REAL
+#endif
+
+      PetscInt, parameter :: PETSC_DEFAULT = -2
+      PetscInt, parameter :: PETSC_DEFAULT_INTEGER = -2
       PetscReal, parameter :: PETSC_DEFAULT_REAL = -2.0d0
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DEFAULT
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DEFAULT_INTEGER
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DEFAULT_REAL
+#endif
 
       PetscEnum, parameter :: PETSC_FP_TRAP_OFF = 0
       PetscEnum, parameter :: PETSC_FP_TRAP_ON = 55
@@ -122,12 +184,12 @@
 !
 !     Random numbers
 !
-      type tPetscRandom
-        sequence
-        PetscFortranAddr:: v PETSC_FORTRAN_TYPE_INITIALIZE
+      type, extends(tPetscObject) :: tPetscRandom
       end type tPetscRandom
-
       PetscRandom, parameter :: PETSC_NULL_RANDOM = tPetscRandom(0)
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_RANDOM
+#endif
 !
 #define PETSCRAND 'rand'
 #define PETSCRAND48 'rand48'
@@ -156,12 +218,12 @@
       PetscEnum, parameter :: PETSC_BUILDTWOSIDED_REDSCATTER = 2
 
       type tPetscSubcomm
-        sequence
         PetscFortranAddr:: v PETSC_FORTRAN_TYPE_INITIALIZE
       end type tPetscSubcomm
-
       PetscSubcomm, parameter :: PETSC_NULL_SUBCOMM = tPetscSubcomm(0)
-
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_SUBCOMM
+#endif
 !
 !     PetscSubcommType
 !
@@ -172,13 +234,8 @@
 #if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
 !DEC$ ATTRIBUTES DLLEXPORT::PetscReal_Private
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_REAL_KIND
-!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_OPTIONS
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_TRUE
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_FALSE
-!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DECIDE
-!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DETERMINE
-!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DEFAULT_INTEGER
-!DEC$ ATTRIBUTES DLLEXPORT::PETSC_DEFAULT_REAL
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_FP_TRAP_OFF
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_FP_TRAP_ON
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_STDOUT
@@ -202,7 +259,6 @@
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_OWN_POINTER
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_USE_POINTER
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_i
-!DEC$ ATTRIBUTES DLLEXPORT::PETSC_NULL_RANDOM
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_BINARY_INT_SIZE
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_BINARY_FLOAT_SIZE
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_BINARY_CHAR_SIZE

@@ -631,7 +631,7 @@ int main(int argc, char **argv)
      - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   PetscFunctionBeginUser;
-  PetscCall(PetscInitialize(&argc, &argv, (char *)0, help));
+  PetscCall(PetscInitialize(&argc, &argv, NULL, help));
 
   /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
      Initialize problem parameters
@@ -840,18 +840,18 @@ int main(int argc, char **argv)
 
    test:
      suffix: 2
-     args: -pc_type mg -ksp_converged_reason -snes_view -pc_mg_galerkin pmat -snes_grid_sequence 3 -mg_levels_ksp_norm_type unpreconditioned -snes_monitor_short -mg_levels_ksp_chebyshev_esteig 0.5,1.1 -mg_levels_pc_type sor -pc_mg_type full -ksp_atol -1.
+     args: -pc_type mg -ksp_converged_reason -snes_view -pc_mg_galerkin pmat -snes_grid_sequence 3 -mg_levels_ksp_norm_type unpreconditioned -snes_monitor_short -mg_levels_ksp_chebyshev_esteig 0.5,1.1 -mg_levels_pc_type sor -pc_mg_type full -ksp_atol 0
 
    test:
      suffix: 3
      nsize: 2
-     args: -snes_grid_sequence 2 -snes_mf_operator -snes_converged_reason -snes_view -pc_type mg -snes_atol -1 -snes_rtol 1.e-2
+     args: -snes_grid_sequence 2 -snes_mf_operator -snes_converged_reason -snes_view -pc_type mg -snes_atol 0 -snes_rtol 1.e-2
      filter: grep -v "otal number of function evaluations"
 
    test:
      suffix: 4
      nsize: 2
-     args: -snes_grid_sequence 2 -snes_monitor_short -ksp_converged_reason -snes_converged_reason -snes_view -pc_type mg -snes_atol -1 -ksp_atol -1
+     args: -snes_grid_sequence 2 -snes_monitor_short -ksp_converged_reason -snes_converged_reason -snes_view -pc_type mg -snes_atol 0 -ksp_atol 0
 
    test:
      suffix: 5_anderson
@@ -944,5 +944,20 @@ int main(int argc, char **argv)
      requires: complex !single
      suffix: complex
      args: -snes_mf_operator -mat_mffd_complex -snes_monitor
+
+   test:
+     requires: !single
+     suffix: 7_ksp_view_pre
+     args: -pc_type gamg -ksp_view_pre
+
+   test:
+     requires: !single
+     suffix: hem_view_detailed
+     args: -pc_type gamg -ksp_view ::ascii_info_detail -pc_gamg_mat_coarsen_type hem
+
+   test:
+     requires: !single
+     suffix: mis_view_detailed
+     args: -pc_type gamg -ksp_view ::ascii_info_detail -pc_gamg_mat_coarsen_type mis
 
 TEST*/

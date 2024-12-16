@@ -103,10 +103,7 @@ PetscBool PetscLogGpuTimeFlag = PETSC_FALSE;
 
 PetscLogState petsc_log_state = NULL;
 
-#define PETSC_LOG_HANDLER_HOT_BLANK \
-  { \
-    NULL, NULL, NULL, NULL, NULL, NULL \
-  }
+#define PETSC_LOG_HANDLER_HOT_BLANK {NULL, NULL, NULL, NULL, NULL, NULL}
 
 PetscLogHandlerHot PetscLogHandlers[PETSC_LOG_HANDLER_MAX] = {
   PETSC_LOG_HANDLER_HOT_BLANK,
@@ -135,7 +132,7 @@ PetscErrorCode PetscAddLogDoubleCnt(PetscLogDouble *cnt, PetscLogDouble *tot, Pe
   *cnt_th = *cnt_th + 1;
   *tot_th += tmp;
   PetscCall(PetscSpinlockLock(&PetscLogSpinLock));
-  *tot += (PetscLogDouble)(tmp);
+  *tot += (PetscLogDouble)tmp;
   *cnt += *cnt + 1;
   PetscCall(PetscSpinlockUnlock(&PetscLogSpinLock));
   return PETSC_SUCCESS;
@@ -1071,14 +1068,14 @@ PetscErrorCode PetscLogEventRegister(const char name[], PetscClassId classid, Pe
 
   Input Parameters:
 + event      - The event id
-- collective - Boolean flag indicating whether a particular event is collective
+- collective - `PetscBool` indicating whether a particular event is collective
 
   Level: developer
 
   Notes:
   New events returned from `PetscLogEventRegister()` are collective by default.
 
-  Collective events are handled specially if the command line option -log_sync is used. In that case the logging saves information about
+  Collective events are handled specially if the command line option `-log_sync` is used. In that case the logging saves information about
   two parts of the event; the time for all the MPI ranks to synchronize and then the time for the actual computation/communication
   to be performed. This option is useful to debug imbalance within the computations or communications.
 
@@ -1962,7 +1959,7 @@ PetscErrorCode PetscLogMPEDump(const char sname[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscLogView - Prints a summary of the logging.
 
   Collective
@@ -2067,12 +2064,12 @@ PetscErrorCode PetscLogViewFromOptions(void)
   PetscBool         flg;
 
   PetscFunctionBegin;
-  PetscCall(PetscOptionsGetViewers(PETSC_COMM_WORLD, NULL, NULL, "-log_view", &n_max, viewers, formats, &flg));
+  PetscCall(PetscOptionsCreateViewers(PETSC_COMM_WORLD, NULL, NULL, "-log_view", &n_max, viewers, formats, &flg));
   for (PetscInt i = 0; i < n_max; i++) {
     PetscCall(PetscViewerPushFormat(viewers[i], formats[i]));
     PetscCall(PetscLogView(viewers[i]));
     PetscCall(PetscViewerPopFormat(viewers[i]));
-    PetscCall(PetscOptionsRestoreViewer(&viewers[i]));
+    PetscCall(PetscViewerDestroy(&viewers[i]));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -2345,10 +2342,10 @@ PetscErrorCode PetscLogGpuTime(void)
   Level: intermediate
 
   Notes:
-  When CUDA or HIP is enabled, the timer is run on the GPU, it is a separate logging of time
+  When GPU is enabled, the timer is run on the GPU, it is a separate logging of time
   devoted to GPU computations (excluding kernel launch times).
 
-  When CUDA or HIP is not available, the timer is run on the CPU, it is a separate logging of
+  When GPU is not available, the timer is run on the CPU, it is a separate logging of
   time devoted to GPU computations (including kernel launch times).
 
   There is no need to call WaitForCUDA() or WaitForHIP() between `PetscLogGpuTimeBegin()` and
@@ -2380,14 +2377,16 @@ PetscErrorCode PetscLogGpuTimeBegin(void)
   PetscFunctionBegin;
   PetscCall(PetscLogEventBeginIsActive(&isActive));
   if (!isActive || !PetscLogGpuTimeFlag) PetscFunctionReturn(PETSC_SUCCESS);
-  if (PetscDefined(HAVE_DEVICE)) {
+    #if defined(PETSC_HAVE_DEVICE) && !defined(PETSC_HAVE_KOKKOS_WITHOUT_GPU)
+  {
     PetscDeviceContext dctx;
 
     PetscCall(PetscDeviceContextGetCurrentContext(&dctx));
     PetscCall(PetscDeviceContextBeginTimer_Internal(dctx));
-  } else {
-    PetscCall(PetscTimeSubtract(&petsc_gtime));
   }
+    #else
+  PetscCall(PetscTimeSubtract(&petsc_gtime));
+    #endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2405,16 +2404,18 @@ PetscErrorCode PetscLogGpuTimeEnd(void)
   PetscFunctionBegin;
   PetscCall(PetscLogEventEndIsActive(&isActive));
   if (!isActive || !PetscLogGpuTimeFlag) PetscFunctionReturn(PETSC_SUCCESS);
-  if (PetscDefined(HAVE_DEVICE)) {
+    #if defined(PETSC_HAVE_DEVICE) && !defined(PETSC_HAVE_KOKKOS_WITHOUT_GPU)
+  {
     PetscDeviceContext dctx;
     PetscLogDouble     elapsed;
 
     PetscCall(PetscDeviceContextGetCurrentContext(&dctx));
     PetscCall(PetscDeviceContextEndTimer_Internal(dctx, &elapsed));
     petsc_gtime += (elapsed / 1000.0);
-  } else {
-    PetscCall(PetscTimeAdd(&petsc_gtime));
   }
+    #else
+  PetscCall(PetscTimeAdd(&petsc_gtime));
+    #endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

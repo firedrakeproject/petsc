@@ -22,7 +22,8 @@ PetscErrorCode MatFDColoringSetF(MatFDColoring fd, Vec F)
 static PetscErrorCode MatFDColoringView_Draw_Zoom(PetscDraw draw, void *Aa)
 {
   MatFDColoring fd = (MatFDColoring)Aa;
-  PetscInt      i, j, nz, row;
+  PetscMPIInt   i, j, nz;
+  PetscInt      row;
   PetscReal     x, y;
   MatEntry     *Jentry = fd->matentry;
 
@@ -67,7 +68,7 @@ static PetscErrorCode MatFDColoringView_Draw(MatFDColoring fd, PetscViewer viewe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   MatFDColoringView - Views a finite difference coloring context.
 
   Collective
@@ -411,15 +412,15 @@ static PetscErrorCode MatFDColoringViewFromOptions(MatFDColoring fd, const char 
 
   PetscFunctionBegin;
   if (prefix) {
-    PetscCall(PetscOptionsGetViewer(PetscObjectComm((PetscObject)fd), ((PetscObject)fd)->options, prefix, optionname, &viewer, &format, &flg));
+    PetscCall(PetscOptionsCreateViewer(PetscObjectComm((PetscObject)fd), ((PetscObject)fd)->options, prefix, optionname, &viewer, &format, &flg));
   } else {
-    PetscCall(PetscOptionsGetViewer(PetscObjectComm((PetscObject)fd), ((PetscObject)fd)->options, ((PetscObject)fd)->prefix, optionname, &viewer, &format, &flg));
+    PetscCall(PetscOptionsCreateViewer(PetscObjectComm((PetscObject)fd), ((PetscObject)fd)->options, ((PetscObject)fd)->prefix, optionname, &viewer, &format, &flg));
   }
   if (flg) {
     PetscCall(PetscViewerPushFormat(viewer, format));
     PetscCall(MatFDColoringView(fd, viewer));
     PetscCall(PetscViewerPopFormat(viewer));
-    PetscCall(PetscOptionsRestoreViewer(&viewer));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -451,6 +452,7 @@ PetscErrorCode MatFDColoringCreate(Mat mat, ISColoring iscoloring, MatFDColoring
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
+  PetscAssertPointer(color, 3);
   PetscCheck(mat->assembled, PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Matrix must be assembled by calls to MatAssemblyBegin/End();");
   PetscCall(PetscLogEventBegin(MAT_FDColoringCreate, mat, 0, 0, 0));
   PetscCall(MatGetSize(mat, &M, &N));

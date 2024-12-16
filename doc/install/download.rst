@@ -31,16 +31,16 @@ Alternative: Obtain Release Version with Tarball
 
 Tarball which contains only the source. Documentation available `online <https://petsc.org/release>`__.
 
-- `petsc-3.22.0.tar.gz <https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-3.22.0.tar.gz>`__
+- `petsc-3.22.2.tar.gz <https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-3.22.2.tar.gz>`__
 
 Tarball which includes all documentation, recommended for offline use.
 
-- `petsc-with-docs-3.22.0.tar.gz <https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-with-docs-3.22.0.tar.gz>`__
+- `petsc-with-docs-3.22.2.tar.gz <https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc-with-docs-3.22.2.tar.gz>`__
 
 
 Tarball to enable a separate installation of petsc4py.
 
-- `petsc4py-3.22.0.tar.gz  <https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.22.0.tar.gz>`__
+- `petsc4py-3.22.2.tar.gz  <https://web.cels.anl.gov/projects/petsc/download/release-snapshots/petsc4py-3.22.2.tar.gz>`__
 
 To extract the sources use:
 
@@ -116,6 +116,9 @@ PETSc does not follow  **Semantic Versioning**, :cite:`semver-webpage`, rather i
 - MAJOR version, a major reorganization. Unlikely to change in foreseeable future.
 - MINOR version, with new functionality and likely small API changes; most changes are backward compatible with deprecation. On a 6 month cycle.
 - PATCH version, with bug fixes - and minor functionality updates preserving the current API. On a monthly cycle.
+
+PETSc provides tools to allow you to stipulate what versions of PETSc it works with at configure time, compile time, or runtime of your package, see
+:any:`ch_versionchecking`.
 
 .. rubric:: References
 

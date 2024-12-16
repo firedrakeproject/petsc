@@ -1928,6 +1928,7 @@ PetscErrorCode SNESCreate(MPI_Comm comm, SNES *outsnes)
   kctx->v4_m3       = 0.1;
   kctx->v4_m4       = 0.5;
 
+  PetscCall(SNESParametersInitialize(snes));
   *outsnes = snes;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -3946,9 +3947,6 @@ PetscErrorCode SNESSetTolerances(SNES snes, PetscReal abstol, PetscReal rtol, Pe
 
   Fortran Note:
   Use ``PETSC_DETERMINE_REAL` or `PETSC_UNLIMITED_REAL`
-
-  Developer Note:
-  Also supports the deprecated -1 to indicate no bound on the growth of the residual
 
 .seealso: [](ch_snes), `SNES`, `SNESSolve()`, `SNESSetTolerances()`, `SNESGetDivergenceTolerance()`
 @*/

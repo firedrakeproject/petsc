@@ -71,6 +71,7 @@
    This usually happens because
       * either an unexpected mpi.h is in the default compiler path (i.e. in /usr/include) or
       * an extra include path -I/something (which contains the unexpected mpi.h) is being passed to the compiler
+   Note: with MPICH and OpenMPI, accept versions [x.y.z, x+1.0.0) as compatible
 */
 #if defined(PETSC_HAVE_MPIUNI)
   #ifndef MPIUNI_H
@@ -91,14 +92,18 @@
 #elif defined(PETSC_HAVE_MPICH)
   #if !defined(MPICH_NUMVERSION) || defined(MVAPICH2_NUMVERSION) || defined(I_MPI_NUMVERSION)
     #error "PETSc was configured with MPICH but now appears to be compiling using a non-MPICH mpi.h"
-  #elif !PETSC_PKG_MPICH_VERSION_EQ(MPICH_NUMVERSION / 10000000, MPICH_NUMVERSION / 100000 % 100, MPICH_NUMVERSION / 1000 % 100)
-    #error "PETSc was configured with one MPICH mpi.h version but now appears to be compiling using a different MPICH mpi.h version"
+  #elif PETSC_PKG_MPICH_VERSION_GT(MPICH_NUMVERSION / 10000000, MPICH_NUMVERSION / 100000 % 100, MPICH_NUMVERSION / 1000 % 100)
+    #error "PETSc was configured with one MPICH mpi.h version but now appears to be compiling using an older MPICH mpi.h version"
+  #elif PETSC_PKG_MPICH_VERSION_LT(MPICH_NUMVERSION / 10000000, 0, 0)
+    #error "PETSc was configured with one MPICH mpi.h version but now appears to be compiling using a newer major MPICH mpi.h version"
   #endif
 #elif defined(PETSC_HAVE_OPENMPI)
   #if !defined(OMPI_MAJOR_VERSION)
     #error "PETSc was configured with Open MPI but now appears to be compiling using a non-Open MPI mpi.h"
-  #elif !PETSC_PKG_OPENMPI_VERSION_EQ(OMPI_MAJOR_VERSION, OMPI_MINOR_VERSION, OMPI_RELEASE_VERSION)
-    #error "PETSc was configured with one Open MPI mpi.h version but now appears to be compiling using a different Open MPI mpi.h version"
+  #elif PETSC_PKG_OPENMPI_VERSION_GT(OMPI_MAJOR_VERSION, OMPI_MINOR_VERSION, OMPI_RELEASE_VERSION)
+    #error "PETSc was configured with one Open MPI mpi.h version but now appears to be compiling using an older Open MPI mpi.h version"
+  #elif PETSC_PKG_OPENMPI_VERSION_LT(OMPI_MAJOR_VERSION, 0, 0)
+    #error "PETSc was configured with one Open MPI mpi.h version but now appears to be compiling using a newer major Open MPI mpi.h version"
   #endif
 #elif defined(PETSC_HAVE_MSMPI_VERSION)
   #if !defined(MSMPI_VER)
@@ -504,8 +509,8 @@ M*/
    Level: beginner
 
    Note:
-   This uses the sizeof() of the memory type requested to determine the total memory to be allocated, therefore you should not
-         multiply the number of elements requested by the `sizeof()` the type. For example use
+   This uses `sizeof()` of the memory type requested to determine the total memory to be allocated; therefore, you should not
+         multiply the number of elements requested by the `sizeof()` the type. For example, use
 .vb
   PetscInt *id;
   PetscMalloc1(10,&id);
@@ -516,7 +521,26 @@ M*/
   PetscMalloc1(10*sizeof(PetscInt),&id);
 .ve
 
-        Does not zero the memory allocated, use `PetscCalloc1()` to obtain memory that has been zeroed.
+  Does not zero the memory allocated, use `PetscCalloc1()` to obtain memory that has been zeroed.
+
+  The `PetscMalloc[N]()` and `PetscCalloc[N]()` take an argument of type `size_t`! However, most codes use `value`, computed via `int` or `PetscInt` variables. This can overflow in
+  32bit `int` computation - while computation in 64bit `size_t` would not overflow!
+  It's best if any arithmetic that is done for size computations is done with `size_t` type - avoiding arithmetic overflow!
+
+  `PetscMalloc[N]()` and `PetscCalloc[N]()` attempt to work-around this by casting the first variable to `size_t`.
+  This works for most expressions, but not all, such as
+.vb
+  PetscInt *id, a, b;
+  PetscMalloc1(use_a_squared ? a * a * b : a * b, &id); // use_a_squared is cast to size_t, but a and b are still PetscInt
+  PetscMalloc1(a + b * b, &id); // a is cast to size_t, but b * b is performed at PetscInt precision first due to order-of-operations
+.ve
+
+  These expressions should either be avoided, or appropriately cast variables to `size_t`:
+.vb
+  PetscInt *id, a, b;
+  PetscMalloc1(use_a_squared ? (size_t)a * a * b : (size_t)a * b, &id); // Cast a to size_t before multiplication
+  PetscMalloc1(b * b + a, &id); // b is automatically cast to size_t and order-of-operations ensures size_t precision is maintained
+.ve
 
 .seealso: `PetscFree()`, `PetscNew()`, `PetscMalloc()`, `PetscCalloc1()`, `PetscMalloc2()`
 M*/

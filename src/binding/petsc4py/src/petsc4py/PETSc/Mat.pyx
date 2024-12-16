@@ -930,6 +930,29 @@ cdef class Mat(Object):
         Mat_AllocAIJ_CSR(self.mat, csr)
         return self
 
+    def preallocatorPreallocate(self, Mat A, fill: bool = True) -> None:
+        """Preallocate memory for a matrix using a preallocator matrix.
+
+        Collective.
+
+        The current matrix (``self``) must be of type `Type.PREALLOCATOR`.
+
+        Parameters
+        ----------
+        A
+            The matrix to be preallocated.
+        fill
+            Flag indicating whether or not to insert zeros into
+            the newly allocated matrix, defaults to `True`.
+
+        See Also
+        --------
+        petsc.MatPreallocatorPreallocate
+
+        """
+        cdef PetscBool cfill = asBool(fill)
+        CHKERR(MatPreallocatorPreallocate(self.mat, cfill, A.mat))
+
     def createAIJWithArrays(
         self,
         size: MatSizeSpec,
@@ -3242,12 +3265,10 @@ cdef class Mat(Object):
         """
         cdef PetscScalar sval = asScalar(diag)
         cdef PetscInt nrows = asInt(len(rows))
-        cdef MatStencil r = 0
         cdef PetscMatStencil *crows = NULL
         CHKERR(PetscMalloc(<size_t>(nrows+1)*sizeof(PetscMatStencil), &crows))
         for i in range(nrows):
-            r = rows[i]
-            crows[i] = r.stencil
+            crows[i] = (<MatStencil?>rows[i]).stencil
         cdef PetscVec xvec = NULL, bvec = NULL
         if x is not None: xvec = x.vec
         if b is not None: bvec = b.vec

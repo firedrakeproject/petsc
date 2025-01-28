@@ -4,6 +4,7 @@
 */
 #pragma once
 
+#include "petscsystypes.h"
 #include <petscsys.h>
 #include <petscsftypes.h>
 #include <petscsectiontypes.h>
@@ -110,6 +111,8 @@ PETSC_EXTERN PetscErrorCode ISGetPointSubrange(IS, PetscInt, PetscInt, const Pet
 
 PETSC_EXTERN PetscErrorCode ISGetBlockSize(IS, PetscInt *);
 PETSC_EXTERN PetscErrorCode ISSetBlockSize(IS, PetscInt);
+PETSC_EXTERN PetscErrorCode ISGetCompressOutput(IS, PetscBool *);
+PETSC_EXTERN PetscErrorCode ISSetCompressOutput(IS, PetscBool);
 
 PETSC_EXTERN PetscErrorCode ISToGeneral(IS);
 
@@ -339,6 +342,23 @@ PETSC_EXTERN PetscErrorCode PetscLayoutSetISLocalToGlobalMapping(PetscLayout, IS
 PETSC_EXTERN PetscErrorCode PetscLayoutMapLocal(PetscLayout, PetscInt, const PetscInt[], PetscInt *, PetscInt **, PetscInt **);
 
 PETSC_EXTERN PetscErrorCode PetscParallelSortInt(PetscLayout, PetscLayout, PetscInt *, PetscInt *);
+
+/*S
+  PetscKDTree - Implementation of KDTree for efficiently querying spatial points
+
+  Level: advanced
+
+  Note:
+  See <https://en.wikipedia.org/wiki/K-d_tree> for a description of K-d trees
+
+.seealso: `PetscKDTreeCreate()`, `PetscKDTreeDestroy()`, `PetscKDTreeView()`, `PetscKDTreeQueryPointsNearestNeighbor()`
+S*/
+typedef struct _n_PetscKDTree *PetscKDTree;
+
+PETSC_EXTERN PetscErrorCode PetscKDTreeCreate(PetscCount, PetscInt, const PetscReal[], PetscCopyMode, PetscInt, PetscKDTree *);
+PETSC_EXTERN PetscErrorCode PetscKDTreeDestroy(PetscKDTree *);
+PETSC_EXTERN PetscErrorCode PetscKDTreeView(PetscKDTree, PetscViewer);
+PETSC_EXTERN PetscErrorCode PetscKDTreeQueryPointsNearestNeighbor(PetscKDTree, PetscCount, const PetscReal[], PetscReal, PetscCount[], PetscReal[]);
 
 PETSC_EXTERN PetscErrorCode ISGetLayout(IS, PetscLayout *);
 PETSC_EXTERN PetscErrorCode ISSetLayout(IS, PetscLayout);

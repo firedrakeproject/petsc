@@ -96,9 +96,9 @@ struct _n_PetscOptions {
   /* Monitors */
   PetscBool monitorFromOptions, monitorCancel;
   PetscErrorCode (*monitor[MAXOPTIONSMONITORS])(const char[], const char[], PetscOptionSource, void *); /* returns control to user after */
-  PetscErrorCode (*monitordestroy[MAXOPTIONSMONITORS])(void **);                                        /* callback for monitor destruction */
-  void    *monitorcontext[MAXOPTIONSMONITORS];                                                          /* to pass arbitrary user data into monitor */
-  PetscInt numbermonitors;                                                                              /* to, for instance, detect options being set */
+  PetscCtxDestroyFn *monitordestroy[MAXOPTIONSMONITORS];                                                /* callback for monitor destruction */
+  void              *monitorcontext[MAXOPTIONSMONITORS];                                                /* to pass arbitrary user data into monitor */
+  PetscInt           numbermonitors;                                                                    /* to, for instance, detect options being set */
 };
 
 static PetscOptions defaultoptions = NULL; /* the options database routines query this object for options */
@@ -872,7 +872,7 @@ PetscErrorCode PetscOptionsInsert(PetscOptions options, int *argc, char ***args,
 
   /* insert environment options */
   if (rank == 0) {
-    eoptions = (char *)getenv("PETSC_OPTIONS");
+    eoptions = getenv("PETSC_OPTIONS");
     PetscCall(PetscStrlen(eoptions, &len));
   }
   PetscCallMPI(MPI_Bcast(&len, 1, MPIU_SIZE_T, 0, comm));
@@ -886,7 +886,7 @@ PetscErrorCode PetscOptionsInsert(PetscOptions options, int *argc, char ***args,
 
   /* insert YAML environment options */
   if (rank == 0) {
-    eoptions = (char *)getenv("PETSC_OPTIONS_YAML");
+    eoptions = getenv("PETSC_OPTIONS_YAML");
     PetscCall(PetscStrlen(eoptions, &len));
   }
   PetscCallMPI(MPI_Bcast(&len, 1, MPIU_SIZE_T, 0, comm));
@@ -1491,11 +1491,13 @@ PetscErrorCode PetscOptionsClearValue(PetscOptions options, const char name[])
 PetscErrorCode PetscOptionsFindPair(PetscOptions options, const char pre[], const char name[], const char *value[], PetscBool *set)
 {
   char      buf[PETSC_MAX_OPTION_NAME];
-  PetscBool usehashtable = PETSC_TRUE;
   PetscBool matchnumbers = PETSC_TRUE;
 
   PetscFunctionBegin;
-  options = options ? options : defaultoptions;
+  if (!options) {
+    PetscCall(PetscOptionsCreateDefault());
+    options = defaultoptions;
+  }
   PetscCheck(!pre || !PetscUnlikely(pre[0] == '-'), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Prefix cannot begin with '-': Instead %s", pre);
   PetscCheck(name[0] == '-', PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Name must begin with '-': Instead %s", name);
 
@@ -1521,7 +1523,7 @@ PetscErrorCode PetscOptionsFindPair(PetscOptions options, const char pre[], cons
     PetscCheck(valid, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Invalid option '%s' obtained from pre='%s' and name='%s'", key, pre ? pre : "", name);
   }
 
-  if (!options->ht && usehashtable) {
+  if (!options->ht) {
     int          i, ret;
     khiter_t     it;
     khash_t(HO) *ht;
@@ -1537,29 +1539,14 @@ PetscErrorCode PetscOptionsFindPair(PetscOptions options, const char pre[], cons
     options->ht = ht;
   }
 
-  if (usehashtable) { /* fast search */
-    khash_t(HO) *ht = options->ht;
-    khiter_t     it = kh_get(HO, ht, name);
-    if (it != kh_end(ht)) {
-      int i            = kh_val(ht, it);
-      options->used[i] = PETSC_TRUE;
-      if (value) *value = options->values[i];
-      if (set) *set = PETSC_TRUE;
-      PetscFunctionReturn(PETSC_SUCCESS);
-    }
-  } else { /* slow search */
-    int i, N = options->N;
-    for (i = 0; i < N; i++) {
-      int result = PetscOptNameCmp(options->names[i], name);
-      if (!result) {
-        options->used[i] = PETSC_TRUE;
-        if (value) *value = options->values[i];
-        if (set) *set = PETSC_TRUE;
-        PetscFunctionReturn(PETSC_SUCCESS);
-      } else if (result > 0) {
-        break;
-      }
-    }
+  khash_t(HO) *ht = options->ht;
+  khiter_t     it = kh_get(HO, ht, name);
+  if (it != kh_end(ht)) {
+    int i            = kh_val(ht, it);
+    options->used[i] = PETSC_TRUE;
+    if (value) *value = options->values[i];
+    if (set) *set = PETSC_TRUE;
+    PetscFunctionReturn(PETSC_SUCCESS);
   }
 
   /*
@@ -2110,7 +2097,7 @@ PetscErrorCode PetscOptionsMonitorDefault(const char name[], const char value[],
 + monitor        - pointer to function (if this is `NULL`, it turns off monitoring
 . mctx           - [optional] context for private data for the monitor routine (use `NULL` if
                    no context is desired)
-- monitordestroy - [optional] routine that frees monitor context (may be `NULL`)
+- monitordestroy - [optional] routine that frees monitor context (may be `NULL`), see `PetscCtxDestroyFn` for its calling sequence
 
   Calling sequence of `monitor`:
 + name   - option name string
@@ -2118,9 +2105,6 @@ PetscErrorCode PetscOptionsMonitorDefault(const char name[], const char value[],
            of "" indicates the option is in the database but has no value.
 . source - option source
 - mctx   - optional monitoring context, as set by `PetscOptionsMonitorSet()`
-
-  Calling sequence of `monitordestroy`:
-. mctx - [optional] pointer to context to destroy with
 
   Options Database Keys:
 + -options_monitor <viewer> - turn on default monitoring
@@ -2139,9 +2123,9 @@ PetscErrorCode PetscOptionsMonitorDefault(const char name[], const char value[],
   `PetscOptionsMonitorSet()` multiple times; all will be called in the
   order in which they were set.
 
-.seealso: `PetscOptionsMonitorDefault()`, `PetscInitialize()`
+.seealso: `PetscOptionsMonitorDefault()`, `PetscInitialize()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode PetscOptionsMonitorSet(PetscErrorCode (*monitor)(const char name[], const char value[], PetscOptionSource source, void *mctx), void *mctx, PetscErrorCode (*monitordestroy)(void **mctx))
+PetscErrorCode PetscOptionsMonitorSet(PetscErrorCode (*monitor)(const char name[], const char value[], PetscOptionSource source, void *mctx), void *mctx, PetscCtxDestroyFn *monitordestroy)
 {
   PetscOptions options = defaultoptions;
 
@@ -2150,7 +2134,7 @@ PetscErrorCode PetscOptionsMonitorSet(PetscErrorCode (*monitor)(const char name[
   PetscCheck(options->numbermonitors < MAXOPTIONSMONITORS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many PetscOptions monitors set");
   options->monitor[options->numbermonitors]          = monitor;
   options->monitordestroy[options->numbermonitors]   = monitordestroy;
-  options->monitorcontext[options->numbermonitors++] = (void *)mctx;
+  options->monitorcontext[options->numbermonitors++] = mctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -3360,14 +3344,16 @@ PetscErrorCode PetscOptionsDeprecated_Private(PetscOptionItems *PetscOptionsObje
     quiet = PETSC_FALSE;
     PetscCall(PetscOptionsGetBool(options, NULL, quietopt, &quiet, NULL));
     if (!quiet) {
-      PetscCall(PetscStrncpy(msg, "** PETSc DEPRECATION WARNING ** : the option ", sizeof(msg)));
-      PetscCall(PetscStrlcat(msg, oldname, sizeof(msg)));
+      PetscCall(PetscStrncpy(msg, "** PETSc DEPRECATION WARNING ** : the option -", sizeof(msg)));
+      PetscCall(PetscStrlcat(msg, prefix, sizeof(msg)));
+      PetscCall(PetscStrlcat(msg, oldname + 1, sizeof(msg)));
       PetscCall(PetscStrlcat(msg, " is deprecated as of version ", sizeof(msg)));
       PetscCall(PetscStrlcat(msg, version, sizeof(msg)));
       PetscCall(PetscStrlcat(msg, " and will be removed in a future release.\n", sizeof(msg)));
       if (newname) {
-        PetscCall(PetscStrlcat(msg, "   Use the option ", sizeof(msg)));
-        PetscCall(PetscStrlcat(msg, newname, sizeof(msg)));
+        PetscCall(PetscStrlcat(msg, "   Use the option -", sizeof(msg)));
+        PetscCall(PetscStrlcat(msg, prefix, sizeof(msg)));
+        PetscCall(PetscStrlcat(msg, newname + 1, sizeof(msg)));
         PetscCall(PetscStrlcat(msg, " instead.", sizeof(msg)));
       }
       if (info) {

@@ -191,14 +191,17 @@ PetscErrorCode PetscWaitOnError(void)
   Not Collective
 
   Options Database Keys:
-+ -start_in_debugger [noxterm,lldb or gdb] [-display name] [-debugger_ranks m,n] - set debugger debug_terminal xterm or Terminal (for Apple)
-. -on_error_attach_debugger [noxterm,dbx,xxgdb,xdb,xldb,gdb] [-display name]     - Activates debugger attachment
-- -stop_for_debugger                                                             - print a message on how to attach the process with a debugger and then wait for the user to attach
++ -start_in_debugger [noxterm,lldb or gdb] - Set debugger debug_terminal xterm or Terminal (for Apple)
+. -display name                            - XDisplay to open xterm in
+. -debugger_ranks m,n                      - Which MPI ranks on which to start the debugger, defaults to all
+. -stop_for_debugger                       - Print a message on how to attach the process with a debugger and then wait for the user to attach
+- -debugger_pause <secs>                   - Wait <secs> before attaching the debugger. This is useful for slow connections
+                                             that take a long time for the Terminal window or xterm to start up.
 
   Level: advanced
 
   Note:
-  If you get the message " stdin is not a tty, hence unable to attach debugger, see PetscAttachDebugger()", this means the application
+  If you get the message "`stdin` is not a `tty`, hence unable to attach debugger, see `PetscAttachDebugger()`", this means the application
   is likely running in a batch system and you do not have terminal access to the process. You can try
   running with `-start_in_debugger` without the `noxterm` argument or `-stop_for_debugger`
 
@@ -235,7 +238,7 @@ PetscErrorCode PetscAttachDebugger(void)
     return PETSC_ERR_SYS;
   }
   if (PetscUnlikely(!isatty(fileno(stdin))) && !UseDebugTerminal) { printf("If the debugger exits immediately or hangs, this indicates you cannot use PetscAttachDebugger() in this situation\n\n"); }
-  child = (int)fork();
+  child = fork();
   if (PetscUnlikely(child < 0)) {
     ierr = (*PetscErrorPrintf)("PetscAttachDebugger: Error in fork() prior to attaching debugger\n");
     return PETSC_ERR_SYS;
@@ -247,7 +250,7 @@ PetscErrorCode PetscAttachDebugger(void)
     in the debugger goes to the correct process.
   */
   #if !defined(PETSC_DO_NOT_SWAP_CHILD_FOR_DEBUGGER)
-  child = child ? 0 : (int)getppid();
+  child = child ? 0 : getppid();
   #endif
 
   if (child) { /* I am the parent, will run the debugger */

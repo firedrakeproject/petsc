@@ -96,18 +96,18 @@ PetscErrorCode KSPGetTotalIterations(KSP ksp, PetscInt *its)
 }
 
 /*@C
-  KSPMonitorResidual - Print the (possibly preconditioned) residual norm at each iteration of an iterative solver.
+  KSPMonitorResidual - Print the (possibly preconditioned, possibly approximate) residual norm at each iteration of an iterative solver.
 
   Collective
 
   Input Parameters:
 + ksp   - iterative context
 . n     - iteration number
-. rnorm - 2-norm (preconditioned) residual value (may be estimated).
+. rnorm - (preconditioned) residual norm value (may be estimated).
 - vf    - The viewer context
 
   Options Database Key:
-. -ksp_monitor - Activates `KSPMonitorResidual()`
+. -ksp_monitor - Activates `KSPMonitorResidual()` to print the norm value at each iteration
 
   Level: intermediate
 
@@ -355,14 +355,15 @@ PetscErrorCode KSPMonitorResidualRange(KSP ksp, PetscInt it, PetscReal rnorm, Pe
   PetscCall(KSPMonitorRange_Private(ksp, it, &perc));
   rel  = (prev - rnorm) / prev;
   prev = rnorm;
-  PetscCall(PetscViewerASCIIPrintf(viewer, "%3" PetscInt_FMT " KSP preconditioned resid norm %14.12e Percent values above 20 percent of maximum %5.2f relative decrease %5.2e ratio %5.2e\n", it, (double)rnorm, (double)(100.0 * perc), (double)rel, (double)(rel / perc)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "%3" PetscInt_FMT " KSP preconditioned resid norm %14.12e Percent values above 20 percent of maximum %5.2f relative decrease %5.2e ratio %5.2e\n", it, (double)rnorm, (double)(100 * perc), (double)rel, (double)(rel / perc)));
   PetscCall(PetscViewerASCIISubtractTab(viewer, tablevel));
   PetscCall(PetscViewerPopFormat(viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@C
-  KSPMonitorTrueResidual - Prints the true residual norm, as well as the (possibly preconditioned) approximate residual norm, at each iteration of an iterative solver.
+  KSPMonitorTrueResidual - Prints the true residual norm, as well as the (possibly preconditioned, possibly approximate) residual norm,
+  at each iteration of a `KSPSolve()` iterative solver.
 
   Collective
 
@@ -373,12 +374,12 @@ PetscErrorCode KSPMonitorResidualRange(KSP ksp, PetscInt it, PetscReal rnorm, Pe
 - vf    - The viewer context
 
   Options Database Key:
-. -ksp_monitor_true_residual - Activates `KSPMonitorTrueResidual()`
+. -ksp_monitor_true_residual - Activates `KSPMonitorTrueResidual()` to print both norm values at each iteration
 
   Level: intermediate
 
   Notes:
-  When using right preconditioning, these values are equivalent.
+  When using right preconditioning, the two norm values are equivalent.
 
   This is not called directly by users, rather one calls `KSPMonitorSet()`, with this function as an argument, to cause the monitor
   to be used during the `KSP` solve.
@@ -2064,7 +2065,7 @@ PetscErrorCode KSPSetApplicationContext(KSP ksp, void *ctx)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  ksp->user = ctx;
+  ksp->ctx = ctx;
   PetscCall(KSPGetPC(ksp, &pc));
   PetscCall(PCSetApplicationContext(pc, ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -2093,7 +2094,7 @@ PetscErrorCode KSPGetApplicationContext(KSP ksp, void *ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  *(void **)ctx = ksp->user;
+  *(void **)ctx = ksp->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

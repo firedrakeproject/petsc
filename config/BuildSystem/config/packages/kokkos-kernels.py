@@ -4,7 +4,7 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.gitcommit        = '4.4.01'
+    self.gitcommit        = '4.5.01'
     self.minversion       = '3.7.01'
     self.versionname      = 'KOKKOSKERNELS_VERSION'
     self.download         = ['git://https://github.com/kokkos/kokkos-kernels.git','https://github.com/kokkos/kokkos-kernels/archive/'+self.gitcommit+'.tar.gz']
@@ -65,10 +65,6 @@ class Configure(config.package.CMakePackage):
         args.append('-DKokkosKernels_INST_COMPLEX_DOUBLE=ON')
       elif self.scalarTypes.precision == 'single':
         args.append('-DKokkosKernels_INST_COMPLEX_FLOAT=ON')
-
-    if self.checkSharedLibrariesEnabled():
-      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
-      args.append('-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON')
 
     if self.cuda.found:
       args = self.rmArgsStartsWith(args,'-DCMAKE_CXX_COMPILER=')

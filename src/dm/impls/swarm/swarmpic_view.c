@@ -83,16 +83,17 @@ static PetscErrorCode private_CreateDataFileNameXDMF(const char filename[], char
 
 static PetscErrorCode private_DMSwarmView_XDMF(DM dm, PetscViewer viewer)
 {
+  DMSwarmCellDM  celldm;
   PetscBool      isswarm = PETSC_FALSE;
   const char    *viewername;
   char           datafile[PETSC_MAX_PATH_LEN];
   char          *datafilename;
   PetscViewer    fviewer;
-  PetscInt       k, ng, dim;
+  PetscInt       k, ng, dim, Nfc;
   Vec            dvec;
   long int      *bytes     = NULL;
   PetscContainer container = NULL;
-  const char    *dmname;
+  const char    *dmname, **coordFields;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)viewer, "XDMFViewerContext", (PetscObject *)&container));
@@ -176,10 +177,14 @@ static PetscErrorCode private_DMSwarmView_XDMF(DM dm, PetscViewer viewer)
   PetscCall(PetscViewerASCIIPrintf(viewer, "</Geometry>\n"));
   PetscCall(PetscViewerASCIIPopTab(viewer));
 
+  PetscCall(DMSwarmGetCellDMActive(dm, &celldm));
+  PetscCall(DMSwarmCellDMGetCoordinateFields(celldm, &Nfc, &coordFields));
+  PetscCheck(Nfc == 1, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "We only support a single coordinate field right now, not %" PetscInt_FMT, Nfc);
+
   /* write geometry data */
-  PetscCall(DMSwarmCreateGlobalVectorFromField(dm, DMSwarmPICField_coor, &dvec));
+  PetscCall(DMSwarmCreateGlobalVectorFromField(dm, coordFields[0], &dvec));
   PetscCall(VecView(dvec, fviewer));
-  PetscCall(DMSwarmDestroyGlobalVectorFromField(dm, DMSwarmPICField_coor, &dvec));
+  PetscCall(DMSwarmDestroyGlobalVectorFromField(dm, coordFields[0], &dvec));
   bytes[0] += sizeof(PetscReal) * ng * dim;
 
   PetscCall(PetscViewerDestroy(&fviewer));

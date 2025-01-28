@@ -240,7 +240,7 @@ PetscErrorCode ISColoringGetIS(ISColoring iscoloring, PetscCopyMode mode, PetscI
       IS              *is;
 
       if (PetscDefined(USE_DEBUG)) {
-        for (i = 0; i < n; i++) PetscCheck(((PetscInt)colors[i]) < nc, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Coloring is our of range index %d value %d number colors %d", (int)i, (int)colors[i], (int)nc);
+        for (i = 0; i < n; i++) PetscCheck(((PetscInt)colors[i]) < nc, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Coloring is our of range index %" PetscInt_FMT "value %d number colors %" PetscInt_FMT, i, (int)colors[i], nc);
       }
 
       /* generate the lists of nodes for each color */
@@ -603,14 +603,14 @@ PetscErrorCode ISPartitioningCount(IS part, PetscInt len, PetscInt count[])
   MPI_Comm        comm;
   PetscInt        i, n, *lsizes;
   const PetscInt *indices;
-  PetscMPIInt     npp;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)part, &comm));
   if (len == PETSC_DEFAULT) {
     PetscMPIInt size;
+
     PetscCallMPI(MPI_Comm_size(comm, &size));
-    len = (PetscInt)size;
+    len = size;
   }
 
   /* count the number of partitions */
@@ -634,8 +634,7 @@ PetscErrorCode ISPartitioningCount(IS part, PetscInt len, PetscInt count[])
     if (indices[i] > -1) lsizes[indices[i]]++;
   }
   PetscCall(ISRestoreIndices(part, &indices));
-  PetscCall(PetscMPIIntCast(len, &npp));
-  PetscCallMPI(MPIU_Allreduce(lsizes, count, npp, MPIU_INT, MPI_SUM, comm));
+  PetscCallMPI(MPIU_Allreduce(lsizes, count, len, MPIU_INT, MPI_SUM, comm));
   PetscCall(PetscFree(lsizes));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -730,7 +729,7 @@ PetscErrorCode ISAllGather(IS is, IS *isout)
   Note:
   `ISAllGatherColors()` is clearly not scalable for large index sets.
 
-.seealso: `ISCOloringValue`, `ISColoring()`, `ISCreateGeneral()`, `ISCreateStride()`, `ISCreateBlock()`, `ISAllGather()`
+.seealso: `ISColoringValue`, `ISColoring()`, `ISCreateGeneral()`, `ISCreateStride()`, `ISCreateBlock()`, `ISAllGather()`
 @*/
 PetscErrorCode ISAllGatherColors(MPI_Comm comm, PetscInt n, ISColoringValue lindices[], PetscInt *outN, ISColoringValue *outindices[])
 {
@@ -750,7 +749,7 @@ PetscErrorCode ISAllGatherColors(MPI_Comm comm, PetscInt n, ISColoringValue lind
   PetscCall(PetscFree2(sizes, offsets));
 
   PetscCall(PetscMalloc1(N + 1, &indices));
-  PetscCallMPI(MPI_Allgatherv(lindices, (PetscMPIInt)n, MPIU_COLORING_VALUE, indices, sizes, offsets, MPIU_COLORING_VALUE, comm));
+  PetscCallMPI(MPI_Allgatherv(lindices, nn, MPIU_COLORING_VALUE, indices, sizes, offsets, MPIU_COLORING_VALUE, comm));
 
   *outindices = indices;
   if (outN) *outN = N;

@@ -34,6 +34,8 @@ typedef const char *PetscViewerType;
 #define PETSCVIEWERADIOS       "adios"
 #define PETSCVIEWEREXODUSII    "exodusii"
 #define PETSCVIEWERCGNS        "cgns"
+#define PETSCVIEWERPYTHON      "python"
+#define PETSCVIEWERPYVISTA     "pyvista"
 
 PETSC_EXTERN PetscFunctionList PetscViewerList;
 PETSC_EXTERN PetscErrorCode    PetscViewerInitializePackage(void);
@@ -233,13 +235,15 @@ PETSC_DEPRECATED_FUNCTION(3, 22, 0, "PetscOptionsPushCreateViewerOff()", ) stati
   return PetscOptionsPopCreateViewerOff();
 }
 
-typedef struct {
-  PetscViewer       viewer;
-  PetscViewerFormat format;
-  PetscDrawLG       lg;
-  PetscInt          view_interval;
-  void             *data;
-} PetscViewerAndFormat;
+typedef struct PetscViewerAndFormat_ PetscViewerAndFormat;
+struct PetscViewerAndFormat_ {
+  PetscViewer        viewer;
+  PetscViewerFormat  format;
+  PetscDrawLG        lg;
+  PetscInt           view_interval;
+  void              *data;
+  PetscCtxDestroyFn *data_destroy;
+};
 PETSC_EXTERN PetscErrorCode PetscViewerAndFormatCreate(PetscViewer, PetscViewerFormat, PetscViewerAndFormat **);
 PETSC_EXTERN PetscErrorCode PetscViewerAndFormatDestroy(PetscViewerAndFormat **);
 
@@ -267,7 +271,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerBinaryGetDescriptor(PetscViewer, int *);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryGetInfoPointer(PetscViewer, FILE **);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryRead(PetscViewer, void *, PetscInt, PetscInt *, PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryWrite(PetscViewer, const void *, PetscInt, PetscDataType);
-PETSC_EXTERN PetscErrorCode PetscViewerBinaryReadAll(PetscViewer, void *, PetscInt, PetscCount, PetscCount, PetscDataType);
+PETSC_EXTERN PetscErrorCode PetscViewerBinaryReadAll(PetscViewer, void *, PetscCount, PetscCount, PetscCount, PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscViewerBinaryWriteAll(PetscViewer, const void *, PetscCount, PetscCount, PetscCount, PetscDataType);
 PETSC_EXTERN PetscErrorCode PetscViewerStringSPrintf(PetscViewer, const char[], ...) PETSC_ATTRIBUTE_FORMAT(2, 3);
 PETSC_EXTERN PetscErrorCode PetscViewerStringSetString(PetscViewer, char[], size_t);
@@ -358,6 +362,8 @@ PETSC_EXTERN PetscViewer    PETSC_VIEWER_MATLAB_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_HDF5_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_GLVIS_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_EXODUSII_(MPI_Comm);
+PETSC_EXTERN PetscViewer    PETSC_VIEWER_PYTHON_(MPI_Comm);
+PETSC_EXTERN PetscViewer    PETSC_VIEWER_PYVISTA_(MPI_Comm);
 PETSC_EXTERN PetscViewer    PETSC_VIEWER_MATHEMATICA_WORLD_PRIVATE;
 
 /*MC
@@ -470,6 +476,11 @@ PETSC_EXTERN PetscErrorCode PetscViewerMatlabPutVariable(PetscViewer, const char
 #if defined(PETSC_HAVE_SAWS)
 PETSC_EXTERN PetscErrorCode PetscObjectViewSAWs(PetscObject, PetscViewer);
 #endif
+
+PETSC_EXTERN PetscErrorCode PetscViewerPythonSetType(PetscViewer, const char[]);
+PETSC_EXTERN PetscErrorCode PetscViewerPythonGetType(PetscViewer, const char *[]);
+PETSC_EXTERN PetscErrorCode PetscViewerPythonCreate(MPI_Comm, const char[], PetscViewer *);
+PETSC_EXTERN PetscErrorCode PetscViewerPythonViewObject(PetscViewer, PetscObject);
 
 /*S
    PetscViewers - Abstract collection of `PetscViewer`s. It is stored as an expandable array of viewers.

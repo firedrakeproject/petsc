@@ -73,7 +73,7 @@ static PetscErrorCode KSPSolve_FCG(KSP ksp)
 {
   PetscInt    i, k, idx, mi;
   KSP_FCG    *fcg   = (KSP_FCG *)ksp->data;
-  PetscScalar alpha = 0.0, beta = 0.0, dpi, dpiold = 0.0, s;
+  PetscScalar alpha = 0.0, beta = 0.0, dpi = 0.0, dpiold, s;
   PetscReal   dp = 0.0;
   Vec         B, R, Z, X, Pcurr, Ccurr;
   Mat         Amat, Pmat;
@@ -505,14 +505,14 @@ static PetscErrorCode KSPSetFromOptions_FCG(KSP ksp, PetscOptionItems *PetscOpti
   Unlike most `KSP` methods this allows the preconditioner to be nonlinear. [](sec_flexibleksp)
 
   Options Database Keys:
-+   -ksp_fcg_mmax <N>  - maximum number of search directions
-.   -ksp_fcg_nprealloc <N> - number of directions to preallocate
--   -ksp_fcg_truncation_type <standard,notay> - truncation approach for directions
++ -ksp_fcg_mmax <N>                         - maximum number of search directions, similar to the restart in `KSPGMRES` and `KSPFGMRES`
+. -ksp_fcg_nprealloc <N>                    - number of directions to preallocate
+- -ksp_fcg_truncation_type <standard,notay> - truncation approach for directions
 
   Level: beginner
 
   Notes:
-  Compare to `KSPFCG`
+  `KSPFGMRES` provides a flexible GMRES which can be used for matrices that are not symmetric positive-definite (SPD).
 
   Supports left preconditioning only.
 

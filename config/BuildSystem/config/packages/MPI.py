@@ -333,9 +333,9 @@ shared libraries and run with --known-mpi-shared-libraries=1')
           if ret == 0:
             self.logPrint("Hostname works, running network checks")
 
-            self.getExecutable('ping', path = ['/sbin'], useDefaultPath = 1)
+            self.getExecutable('ping', path = ['/sbin'], useDefaultPath = 1, setMakeMacro = 0)
             if not hasattr(self,'ping'):
-              self.getExecutable('fping', resultName = 'ping')
+              self.getExecutable('fping', resultName = 'ping', setMakeMacro = 0)
             if hasattr(self,'ping'):
               if self.setCompilers.isCygwin(self.log):
                 count = ' -n 2 '
@@ -350,7 +350,7 @@ shared libraries and run with --known-mpi-shared-libraries=1')
 
               if not hostnameworks:
                 # Note: host may not work on macOS, this is normal
-                self.getExecutable('host')
+                self.getExecutable('host', setMakeMacro = 0)
                 if hasattr(self,'host'):
                   try:
                     (ok, err, ret) = Configure.executeShellCommand(self.host + ' '+ hostname, timeout = 60, log = self.log, threads = 1)
@@ -532,13 +532,15 @@ Unable to run hostname to check the network')
 
     if self.checkLink('#include <mpi.h>\n',
     '''
-      int          buf[1]={0},dest=1,source=1,tag=0, combiner, ints[1];
-      MPI_Count    count=1, nints, naddrs, ncounts, ntypes, counts[1];
+      int          buf[1]={0},dest=1,source=1,tag=0, combiner, ints[1], rbuf[1] = {0};
+      MPI_Count    count=1, nints, naddrs, ncounts, ntypes, counts[1]={0};
       MPI_Request  req;
       MPI_Status   stat;
-      MPI_Aint     addrs[1];
+      MPI_Aint     addrs[1]={0};
       MPI_Datatype types[1];
 
+      if (MPI_Scatterv_c(buf,counts,addrs,MPI_INT,rbuf,count,MPI_INT,0,MPI_COMM_WORLD)) return 1;
+      if (MPI_Gatherv_c(buf,count,MPI_INT,rbuf,counts,addrs,MPI_INT,0,MPI_COMM_WORLD)) return 1;
       if (MPI_Send_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD)) return 1;
       if (MPI_Send_init_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD,&req)) return 1;
       if (MPI_Isend_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD,&req)) return 1;

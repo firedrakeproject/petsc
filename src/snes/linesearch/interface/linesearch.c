@@ -78,14 +78,11 @@ PetscErrorCode SNESLineSearchMonitor(SNESLineSearch ls)
 + ls             - the `SNESLineSearch` context
 . f              - the monitor function
 . mctx           - [optional] user-defined context for private data for the monitor routine (use `NULL` if no context is desired)
-- monitordestroy - [optional] routine that frees monitor context (may be `NULL`)
+- monitordestroy - [optional] routine that frees monitor context (may be `NULL`), see `PetscCtxDestroyFn` for the calling sequence
 
   Calling sequence of `f`:
 + ls   - the `SNESLineSearch` context
 - mctx - [optional] user-defined context for private data for the monitor routine
-
-  Calling sequence of `monitordestroy`:
-. mctx - [optional] user-defined context for private data for the monitor routine
 
   Level: intermediate
 
@@ -97,9 +94,9 @@ PetscErrorCode SNESLineSearchMonitor(SNESLineSearch ls)
   Fortran Note:
   Only a single monitor function can be set for each `SNESLineSearch` object
 
-.seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESGetLineSearch()`, `SNESLineSearchMonitorDefault()`, `SNESLineSearchMonitorCancel()`
+.seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESGetLineSearch()`, `SNESLineSearchMonitorDefault()`, `SNESLineSearchMonitorCancel()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode SNESLineSearchMonitorSet(SNESLineSearch ls, PetscErrorCode (*f)(SNESLineSearch ls, void *mctx), void *mctx, PetscErrorCode (*monitordestroy)(void **mctx))
+PetscErrorCode SNESLineSearchMonitorSet(SNESLineSearch ls, PetscErrorCode (*f)(SNESLineSearch ls, void *mctx), void *mctx, PetscCtxDestroyFn *monitordestroy)
 {
   PetscInt  i;
   PetscBool identical;
@@ -113,7 +110,7 @@ PetscErrorCode SNESLineSearchMonitorSet(SNESLineSearch ls, PetscErrorCode (*f)(S
   PetscCheck(ls->numbermonitors < MAXSNESLSMONITORS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many monitors set");
   ls->monitorftns[ls->numbermonitors]      = f;
   ls->monitordestroy[ls->numbermonitors]   = monitordestroy;
-  ls->monitorcontext[ls->numbermonitors++] = (void *)mctx;
+  ls->monitorcontext[ls->numbermonitors++] = mctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -572,10 +569,10 @@ PetscErrorCode SNESLineSearchPreCheckPicard(SNESLineSearch linesearch, Vec X, Ve
     alpha = (ydiffnorm > .001 * ylastnorm) ? ylastnorm / ydiffnorm : 1000.0;
     PetscCall(VecCopy(Y, Ylast));
     PetscCall(VecScale(Y, alpha));
-    PetscCall(PetscInfo(snes, "Angle %14.12e degrees less than threshold %14.12e, corrected step by alpha=%14.12e\n", (double)(theta * 180. / PETSC_PI), (double)angle, (double)alpha));
+    PetscCall(PetscInfo(snes, "Angle %14.12e degrees less than threshold %14.12e, corrected step by alpha=%14.12e\n", (double)(theta * 180 / PETSC_PI), (double)angle, (double)alpha));
     *changed = PETSC_TRUE;
   } else {
-    PetscCall(PetscInfo(snes, "Angle %14.12e degrees exceeds threshold %14.12e, no correction applied\n", (double)(theta * 180. / PETSC_PI), (double)angle));
+    PetscCall(PetscInfo(snes, "Angle %14.12e degrees exceeds threshold %14.12e, no correction applied\n", (double)(theta * 180 / PETSC_PI), (double)angle));
     PetscCall(VecCopy(Y, Ylast));
     *changed = PETSC_FALSE;
   }
@@ -597,7 +594,7 @@ PetscErrorCode SNESLineSearchPreCheckPicard(SNESLineSearch linesearch, Vec X, Ve
 - Y     - The current search direction, on output the direction determined by the linesearch, i.e. Xnew = Xold - lambda*Y
 
   Options Database Keys:
-+ -snes_linesearch_type                - basic (or equivalently none), bt, l2, cp, nleqerr, shell
++ -snes_linesearch_type                - basic (or equivalently none), bt, l2, cp, nleqerr, bisection, shell
 . -snes_linesearch_monitor [:filename] - Print progress of line searches
 . -snes_linesearch_damping             - The linesearch damping parameter, default is 1.0 (no damping)
 . -snes_linesearch_norms               - Turn on/off the linesearch norms computation (SNESLineSearchSetComputeNorms())
@@ -744,7 +741,7 @@ PetscErrorCode SNESLineSearchGetDefaultMonitor(SNESLineSearch linesearch, PetscV
 . name         - the monitor type
 . help         - message indicating what monitoring is done
 . manual       - manual page for the monitor
-. monitor      - the monitor function
+. monitor      - the monitor function, must use `PetscViewerAndFormat` as its context
 - monitorsetup - a function that is called once ONLY if the user selected this monitor that may set additional features of the `SNESLineSearch` or `PetscViewer`
 
   Calling sequence of `monitor`:
@@ -778,7 +775,7 @@ PetscErrorCode SNESLineSearchMonitorSetFromOptions(SNESLineSearch ls, const char
     PetscCall(PetscViewerAndFormatCreate(viewer, format, &vf));
     PetscCall(PetscViewerDestroy(&viewer));
     if (monitorsetup) PetscCall((*monitorsetup)(ls, vf));
-    PetscCall(SNESLineSearchMonitorSet(ls, (PetscErrorCode (*)(SNESLineSearch, void *))monitor, vf, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy));
+    PetscCall(SNESLineSearchMonitorSet(ls, (PetscErrorCode (*)(SNESLineSearch, void *))monitor, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -792,7 +789,7 @@ PetscErrorCode SNESLineSearchMonitorSetFromOptions(SNESLineSearch ls, const char
 . linesearch - a `SNESLineSearch` line search context
 
   Options Database Keys:
-+ -snes_linesearch_type <type>                                      - basic (or equivalently none), bt, l2, cp, nleqerr, shell
++ -snes_linesearch_type <type>                                      - basic (or equivalently none), bt, l2, cp, nleqerr, bisection, shell
 . -snes_linesearch_order <order>                                    - 1, 2, 3.  Most types only support certain orders (bt supports 2 or 3)
 . -snes_linesearch_norms                                            - Turn on/off the linesearch norms for the basic linesearch typem (`SNESLineSearchSetComputeNorms()`)
 . -snes_linesearch_minlambda                                        - The minimum step length
@@ -940,7 +937,7 @@ PetscErrorCode SNESLineSearchGetType(SNESLineSearch linesearch, SNESLineSearchTy
 }
 
 /*@
-  SNESLineSearchSetType - Sets the `SNESLinesearchType` of a `SNESLineSearch`
+  SNESLineSearchSetType - Sets the `SNESLinesearchType` of a `SNESLineSearch` object to indicate the line search algorithm that should be used by a given `SNES` solver
 
   Logically Collective
 
@@ -953,7 +950,11 @@ PetscErrorCode SNESLineSearchGetType(SNESLineSearch linesearch, SNESLineSearchTy
 
   Level: intermediate
 
-.seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchType`, `SNESLineSearchCreate()`, `SNESLineSearchSetFromOptions()`, `SNESLineSearchGetType()`
+  Note:
+  The `SNESLineSearch` object is generally obtained with `SNESGetLineSearch()`
+
+.seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchType`, `SNESLineSearchCreate()`, `SNESLineSearchSetFromOptions()`, `SNESLineSearchGetType()`,
+          `SNESGetLineSearch()`
 @*/
 PetscErrorCode SNESLineSearchSetType(SNESLineSearch linesearch, SNESLineSearchType type)
 {

@@ -177,18 +177,16 @@ PETSC_EXTERN_TYPEDEF typedef PetscObjectViewFn *PetscObjectViewFunction;
   #include <petsc/private/petscimpl.h>
   PetscErrorCode PetscHeaderCreate(PetscObject h, PetscClassId classid, const char class_name[], const char descr[], const char mansec[], MPI_Comm comm, PetscObjectDestroyFn * destroy, PetscObjectViewFn * view)
 
+  Collective
+
   Input Parameters:
 + classid    - The classid associated with this object (for example `VEC_CLASSID`)
-. class_name - String name of class; should be static (for example "Vec"), may be
-               `PETSC_NULLPTR`
-. descr      - String containing short description; should be static (for example "Vector"),
-               may be `PETSC_NULLPTR`
-. mansec     - String indicating section in manual pages; should be static (for example "Vec"),
-               may be `PETSC_NULLPTR`
+. class_name - String name of class; should be static (for example "Vec"), may be `PETSC_NULLPTR`
+. descr      - String containing short description; should be static (for example "Vector"), may be `PETSC_NULLPTR`
+. mansec     - String indicating section in manual pages; should be static (for example "Vec"), may be `PETSC_NULLPTR`
 . comm       - The MPI Communicator
 . destroy    - The destroy routine for this object (for example `VecDestroy()`)
-- view       - The view routine for this object (for example `VecView()`), may be
-               `PETSC_NULLPTR`
+- view       - The view routine for this object (for example `VecView()`), may be `PETSC_NULLPTR`
 
   Output Parameter:
 . h - The newly created `PetscObject`
@@ -314,6 +312,8 @@ PETSC_INTERN PetscObjectId  PetscObjectNewId_Internal(void);
   Synopsis:
   #include <petsc/private/petscimpl.h>
   PetscErrorCode PetscHeaderDestroy(PetscObject *obj)
+
+  Collective
 
   Input Parameter:
 . h - A pointer to the header created with `PetscHeaderCreate()`
@@ -692,14 +692,14 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
       do { \
         PetscBool _7_match; \
         PetscCall(PetscObjectTypeCompare(((PetscObject)(a)), (type), &_7_match)); \
-        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s", (char *)(((PetscObject)(a))->type_name), type); \
+        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s", ((PetscObject)(a))->type_name, type); \
       } while (0)
 
     #define PetscCheckTypeNames(a, type1, type2) \
       do { \
         PetscBool _7_match; \
         PetscCall(PetscObjectTypeCompareAny(((PetscObject)(a)), &_7_match, (type1), (type2), "")); \
-        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s or %s", (char *)(((PetscObject)(a))->type_name), type1, type2); \
+        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s or %s", ((PetscObject)(a))->type_name, type1, type2); \
       } while (0)
 
     /*
@@ -1206,7 +1206,7 @@ M*/
           `PetscObjectComposedDataSetIntstar()`, `PetscObjectComposedDataGetInt()`, `PetscObject`,
           `PetscObjectCompose()`, `PetscObjectQuery()`
 M*/
-#define PetscObjectComposedDataGetReal(obj, id, data, flag) ((PetscErrorCode)(((obj)->realcomposedstate ? (data = (obj)->realcomposeddata[id], flag = (PetscBool)((obj)->realcomposedstate[id] == (obj)->state)) : (flag = PETSC_FALSE)), PETSC_SUCCESS))
+#define PetscObjectComposedDataGetReal(obj, id, data, flag) (((obj)->realcomposedstate ? (data = (obj)->realcomposeddata[id], flag = (PetscBool)((obj)->realcomposedstate[id] == (obj)->state)) : (flag = PETSC_FALSE)), PETSC_SUCCESS)
 
 /*MC
    PetscObjectComposedDataSetRealstar - attach `PetscReal` array data to a `PetscObject` that may be retrieved with `PetscObjectComposedDataGetRealstar()`

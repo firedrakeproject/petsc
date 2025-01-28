@@ -102,7 +102,7 @@ PETSC_INTERN PetscErrorCode PetscSFDestroy_Allgatherv(PetscSF sf)
 static PetscErrorCode PetscSFBcastBegin_Allgatherv(PetscSF sf, MPI_Datatype unit, PetscMemType rootmtype, const void *rootdata, PetscMemType leafmtype, void *leafdata, MPI_Op op)
 {
   PetscSFLink         link;
-  PetscMPIInt         sendcount, rank, nleaves;
+  PetscMPIInt         sendcount, rank;
   MPI_Comm            comm;
   void               *rootbuf = NULL, *leafbuf = NULL;
   MPI_Request        *req = NULL;
@@ -120,8 +120,7 @@ static PetscErrorCode PetscSFBcastBegin_Allgatherv(PetscSF sf, MPI_Datatype unit
   if (dat->bcast_pattern && rank == dat->bcast_root) PetscCall((*link->Memcpy)(link, link->leafmtype_mpi, leafbuf, link->rootmtype_mpi, rootbuf, (size_t)sendcount * link->unitbytes));
   /* Ready the buffers for MPI */
   PetscCall(PetscSFLinkSyncStreamBeforeCallMPI(sf, link));
-  PetscCall(PetscMPIIntCast(sf->nleaves, &nleaves));
-  if (dat->bcast_pattern) PetscCallMPI(MPIU_Ibcast(leafbuf, nleaves, unit, dat->bcast_root, comm, req));
+  if (dat->bcast_pattern) PetscCallMPI(MPIU_Ibcast(leafbuf, sf->nleaves, unit, dat->bcast_root, comm, req));
   else PetscCallMPI(MPIU_Iallgatherv(rootbuf, sendcount, unit, leafbuf, dat->recvcounts, dat->displs, unit, comm, req));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -150,11 +149,14 @@ static PetscErrorCode PetscSFReduceBegin_Allgatherv(PetscSF sf, MPI_Datatype uni
     PetscCall(PetscSFLinkGetMPIBuffersAndRequests(sf, link, PETSCSF_LEAF2ROOT, &rootbuf, &leafbuf, &req, NULL));
     PetscCall(PetscSFLinkSyncStreamBeforeCallMPI(sf, link));
     if (dat->bcast_pattern) {
+      PetscMPIInt nleavesi;
+
+      PetscCall(PetscMPIIntCast(sf->nleaves, &nleavesi));
 #if defined(PETSC_HAVE_OPENMPI) /* Workaround: cuda-aware Open MPI 4.1.3 does not support MPI_Ireduce() with device buffers */
       *req = MPI_REQUEST_NULL;  /* Set NULL so that we can safely MPI_Wait(req) */
-      PetscCallMPI(MPIU_Reduce(leafbuf, rootbuf, sf->nleaves, unit, op, dat->bcast_root, comm));
+      PetscCallMPI(MPIU_Reduce(leafbuf, rootbuf, nleavesi, unit, op, dat->bcast_root, comm));
 #else
-      PetscCallMPI(MPIU_Ireduce(leafbuf, rootbuf, sf->nleaves, unit, op, dat->bcast_root, comm, req));
+      PetscCallMPI(MPIU_Ireduce(leafbuf, rootbuf, nleavesi, unit, op, dat->bcast_root, comm, req));
 #endif
     } else { /* Reduce leafdata, then scatter to rootdata */
       PetscCallMPI(MPI_Comm_rank(comm, &rank));

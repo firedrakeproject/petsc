@@ -1701,6 +1701,45 @@ cdef class DM(Object):
         CHKERR(DMAdaptMetric(self.dm, metric.vec, cbdlbl, crglbl, &newdm.dm))
         return newdm
 
+    def adaptMetricLevelSet(
+        self,
+        Vec metric,
+        Vec levelset,
+        bdLabel: str | None = None,
+        rgLabel: str | None = None) -> DM:
+        """Return a mesh adapted to the specified metric field.
+
+        Collective.
+
+        Parameters
+        ----------
+        metric
+            The metric to which the mesh is adapted, defined vertex-wise.
+        levelset
+            A scalar field of which the 0-contour should be included in the mesh.
+        bdLabel
+            Label for boundary tags.
+        rgLabel
+            Label for cell tag.
+
+        See Also
+        --------
+        petsc.DMAdaptMetricLevelSet
+
+        """
+        cdef const char *cval = NULL
+        cdef PetscDMLabel cbdlbl = NULL
+        cdef PetscDMLabel crglbl = NULL
+        bdLabel = str2bytes(bdLabel, &cval)
+        if cval == NULL: cval = b"" # XXX Should be fixed upstream
+        CHKERR(DMGetLabel(self.dm, cval, &cbdlbl))
+        rgLabel = str2bytes(rgLabel, &cval)
+        if cval == NULL: cval = b"" # XXX Should be fixed upstream
+        CHKERR(DMGetLabel(self.dm, cval, &crglbl))
+        cdef DM newdm = DMPlex()
+        CHKERR(DMAdaptMetricLevelSet(self.dm, metric.vec, levelset.vec, cbdlbl, crglbl, &newdm.dm))
+        return newdm
+
     def getLabel(self, name: str) -> DMLabel:
         """Return the label of a given name.
 

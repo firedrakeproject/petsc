@@ -22,6 +22,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Pragmatic_Plex(DM, Vec, DMLabel, DMLab
 #endif
 #if defined(PETSC_HAVE_MMG)
 PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM, Vec, DMLabel, DMLabel, DM *);
+PETSC_EXTERN PetscErrorCode DMAdaptMetricLevelSet_Mmg_Plex(DM, Vec, Vec, DMLabel, DMLabel, DM *);
 #endif
 #if defined(PETSC_HAVE_PARMMG)
 PETSC_EXTERN PetscErrorCode DMAdaptMetric_ParMmg_Plex(DM, Vec, DMLabel, DMLabel, DM *);
@@ -256,6 +257,51 @@ PetscErrorCode DMAdaptMetric(DM dm, Vec metric, DMLabel bdLabel, DMLabel rgLabel
     fl = fl->next;
   }
   PetscCheck(found, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Grid adaptor %s not registered; you may need to add --download-%s to your ./configure options", name, name);
+  if (*dmAdapt) {
+    (*dmAdapt)->prealloc_only = dm->prealloc_only; /* maybe this should go .... */
+    PetscCall(PetscFree((*dmAdapt)->vectype));
+    PetscCall(PetscStrallocpy(dm->vectype, (char **)&(*dmAdapt)->vectype));
+    PetscCall(PetscFree((*dmAdapt)->mattype));
+    PetscCall(PetscStrallocpy(dm->mattype, (char **)&(*dmAdapt)->mattype));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  DMAdaptMetricLevelSet - Generates a mesh adapted to the specified metric and levelset field
+
+  Input Parameters:
++ dm       - The DM object
+. metric   - The metric to which the mesh is adapted, defined vertex-wise.
+. levelset - The vertex-wise scalar field whose 0-contour is to be included in the new mesh.
+. bdLabel  - Label for boundary tags, which will be preserved in the output mesh. `bdLabel` should be `NULL` if there is no such label, and should be different from "_boundary_".
+- rgLabel  - Label for cell tags, which will be preserved in the output mesh. `rgLabel` should be `NULL` if there is no such label, and should be different from "_regions_".
+
+  Output Parameter:
+. dmAdapt  - Pointer to the `DM` object containing the adapted mesh
+
+  Note:
+  The label in the adapted mesh will be registered under the name of the input `DMLabel` object
+
+  Level: advanced
+
+.seealso: `DMAdaptLabel()`, `DMCoarsen()`, `DMRefine()`
+@*/
+PetscErrorCode DMAdaptMetricLevelSet(DM dm, Vec metric, Vec levelset, DMLabel bdLabel, DMLabel rgLabel, DM *dmAdapt)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
+  PetscValidHeaderSpecific(metric, VEC_CLASSID, 2);
+  PetscValidHeaderSpecific(levelset, VEC_CLASSID, 3);
+  if (bdLabel) PetscValidHeaderSpecific(bdLabel, DMLABEL_CLASSID, 4);
+  if (rgLabel) PetscValidHeaderSpecific(rgLabel, DMLABEL_CLASSID, 5);
+  PetscAssertPointer(dmAdapt, 5);
+  *dmAdapt = NULL;
+
+#if !defined(PETSC_HAVE_MMG)
+  SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Grid adaptor mmg not registered; you may need to add --download-mmg to your ./configure options");
+#endif
+  PetscCall(DMAdaptMetricLevelSet_Mmg_Plex(dm, metric, levelset, bdLabel, rgLabel, dmAdapt));
   if (*dmAdapt) {
     (*dmAdapt)->prealloc_only = dm->prealloc_only; /* maybe this should go .... */
     PetscCall(PetscFree((*dmAdapt)->vectype));

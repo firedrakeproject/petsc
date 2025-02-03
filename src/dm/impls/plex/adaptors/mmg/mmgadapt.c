@@ -10,8 +10,7 @@ const char MmgCitation[] = "@article{DAPOGNY2014358,\n"
                            "  pages   = {358--378},\n"
                            "  doi     = {10.1016/j.jcp.2014.01.005},\n"
                            "  year    = {2014}\n}\n";
-
-PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLabel rgLabel, DM *dmNew)
+PETSC_EXTERN PetscErrorCode DMAdaptMetricLevelSet_Mmg_Plex(DM dm, Vec vertexMetric, Vec levelSet, DMLabel bdLabel, DMLabel rgLabel, DM *dmNew)
 {
   MPI_Comm           comm;
   const char        *bdName = "_boundary_";
@@ -22,7 +21,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
   PetscSection       coordSection;
   Vec                coordinates;
   const PetscScalar *coords, *met;
-  PetscReal         *vertices, *metric, *verticesNew, gradationFactor, hausdorffNumber;
+  PetscReal         *vertices, *metric, *verticesNew, gradationFactor, hausdorffNumber, *ls;
   PetscInt          *cells, *cellsNew, *cellTags, *cellTagsNew, *verTags, *verTagsNew;
   PetscInt          *bdFaces, *faceTags, *facesNew, *faceTagsNew;
   int               *corners, *requiredCells, *requiredVer, *ridges, *requiredFaces;
@@ -31,7 +30,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
   PetscInt           numCellsNew, numVerticesNew, numCornersNew, numFacesNew;
   PetscBool          flg        = PETSC_FALSE, noInsert, noSwap, noMove, noSurf, isotropic, uniform;
   MMG5_pMesh         mmg_mesh   = NULL;
-  MMG5_pSol          mmg_metric = NULL;
+  MMG5_pSol          mmg_metric = NULL, mmg_levelset = NULL;
 
   PetscFunctionBegin;
   PetscCall(PetscCitationsRegister(MmgCitation, &MmgCite));
@@ -148,6 +147,13 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
   }
   PetscCall(VecRestoreArrayRead(vertexMetric, &met));
 
+  /* Get levelset */
+  if (levelSet) {
+    /* note: VecGetArray instead of VecGetArrayRead because MMG2D_Set_scalarSols
+     * takes "double* s" instead of "const double* s" input vector for no apparent reason */
+    PetscCall(VecGetArray(levelSet, &ls));
+  }
+
   /* Send mesh to Mmg and remesh */
   PetscCall(DMPlexMetricGetVerbosity(dm, &verbosity));
   PetscCall(DMPlexMetricGetGradationFactor(dm, &gradationFactor));
@@ -158,7 +164,12 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
   PetscCall(DMPlexMetricNoSurf(dm, &noSurf));
   switch (dim) {
   case 2:
-    PetscCallMMG_NONSTANDARD(MMG2D_Init_mesh, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    if (levelSet) {
+      PetscCallMMG_NONSTANDARD(MMG2D_Init_mesh, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppLs, &mmg_levelset, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+      PetscCallMMG_NONSTANDARD(MMG2D_Set_iparameter, mmg_mesh, mmg_levelset, MMG2D_IPARAM_iso, 1);
+    } else {
+      PetscCallMMG_NONSTANDARD(MMG2D_Init_mesh, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    }
     PetscCallMMG_NONSTANDARD(MMG2D_Set_iparameter, mmg_mesh, mmg_metric, MMG2D_IPARAM_noinsert, noInsert);
     PetscCallMMG_NONSTANDARD(MMG2D_Set_iparameter, mmg_mesh, mmg_metric, MMG2D_IPARAM_noswap, noSwap);
     PetscCallMMG_NONSTANDARD(MMG2D_Set_iparameter, mmg_mesh, mmg_metric, MMG2D_IPARAM_nomove, noMove);
@@ -172,10 +183,22 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
     PetscCallMMG_NONSTANDARD(MMG2D_Set_edges, mmg_mesh, bdFaces, faceTags);
     PetscCallMMG_NONSTANDARD(MMG2D_Set_solSize, mmg_mesh, mmg_metric, MMG5_Vertex, numVertices, MMG5_Tensor);
     PetscCallMMG_NONSTANDARD(MMG2D_Set_tensorSols, mmg_metric, metric);
-    PetscCallMMG(MMG2D_mmg2dlib, mmg_mesh, mmg_metric);
+    if (levelSet) {
+      PetscCallMMG_NONSTANDARD(MMG2D_Set_solSize, mmg_mesh, mmg_levelset, MMG5_Vertex, numVertices, MMG5_Scalar);
+      PetscCallMMG_NONSTANDARD(MMG2D_Set_scalarSols, mmg_levelset, ls);
+      PetscCall(VecRestoreArray(levelSet, &ls));
+      PetscCallMMG(MMG2D_mmg2dls, mmg_mesh, mmg_levelset, mmg_metric);
+    } else {
+      PetscCallMMG(MMG2D_mmg2dlib, mmg_mesh, mmg_metric);
+    }
     break;
   case 3:
-    PetscCallMMG_NONSTANDARD(MMG3D_Init_mesh, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    if (levelSet) {
+      PetscCallMMG_NONSTANDARD(MMG3D_Init_mesh, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppLs, &mmg_levelset, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+      PetscCallMMG_NONSTANDARD(MMG3D_Set_iparameter, mmg_mesh, mmg_levelset, MMG3D_IPARAM_iso, 1);
+    } else {
+      PetscCallMMG_NONSTANDARD(MMG3D_Init_mesh, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    }
     PetscCallMMG_NONSTANDARD(MMG3D_Set_iparameter, mmg_mesh, mmg_metric, MMG3D_IPARAM_noinsert, noInsert);
     PetscCallMMG_NONSTANDARD(MMG3D_Set_iparameter, mmg_mesh, mmg_metric, MMG3D_IPARAM_noswap, noSwap);
     PetscCallMMG_NONSTANDARD(MMG3D_Set_iparameter, mmg_mesh, mmg_metric, MMG3D_IPARAM_nomove, noMove);
@@ -189,7 +212,14 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
     PetscCallMMG_NONSTANDARD(MMG3D_Set_triangles, mmg_mesh, bdFaces, faceTags);
     PetscCallMMG_NONSTANDARD(MMG3D_Set_solSize, mmg_mesh, mmg_metric, MMG5_Vertex, numVertices, MMG5_Tensor);
     PetscCallMMG_NONSTANDARD(MMG3D_Set_tensorSols, mmg_metric, metric);
-    PetscCallMMG(MMG3D_mmg3dlib, mmg_mesh, mmg_metric);
+    if (levelSet) {
+      PetscCallMMG_NONSTANDARD(MMG3D_Set_solSize, mmg_mesh, mmg_levelset, MMG5_Vertex, numVertices, MMG5_Scalar);
+      PetscCallMMG_NONSTANDARD(MMG3D_Set_scalarSols, mmg_levelset, ls);
+      PetscCall(VecRestoreArray(levelSet, &ls));
+      PetscCallMMG(MMG3D_mmg3dls, mmg_mesh, mmg_levelset, mmg_metric);
+    } else {
+      PetscCallMMG(MMG3D_mmg3dlib, mmg_mesh, mmg_metric);
+    }
     break;
   default:
     SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "No Mmg adaptation defined for dimension %" PetscInt_FMT, dim);
@@ -235,10 +265,18 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
   PetscCall(DMPlexCreateFromCellListParallelPetsc(comm, dim, numCellsNew, numVerticesNew, PETSC_DECIDE, numCornersNew, PETSC_TRUE, cellsNew, dim, verticesNew, NULL, NULL, dmNew));
   switch (dim) {
   case 2:
-    PetscCallMMG_NONSTANDARD(MMG2D_Free_all, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    if (levelSet) {
+      PetscCallMMG_NONSTANDARD(MMG2D_Free_all, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppLs, &mmg_levelset, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    } else {
+      PetscCallMMG_NONSTANDARD(MMG2D_Free_all, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    }
     break;
   case 3:
-    PetscCallMMG_NONSTANDARD(MMG3D_Free_all, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    if (levelSet) {
+      PetscCallMMG_NONSTANDARD(MMG3D_Free_all, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppLs, &mmg_levelset, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    } else {
+      PetscCallMMG_NONSTANDARD(MMG3D_Free_all, MMG5_ARG_start, MMG5_ARG_ppMesh, &mmg_mesh, MMG5_ARG_ppMet, &mmg_metric, MMG5_ARG_end);
+    }
     break;
   default:
     SETERRQ(comm, PETSC_ERR_ARG_OUTOFRANGE, "No Mmg adaptation defined for dimension %" PetscInt_FMT, dim);
@@ -276,5 +314,12 @@ PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLa
   PetscCall(DMGetLabel(*dmNew, rgLabel ? rgLabelName : rgName, &rgLabelNew));
   for (c = cStart; c < cEnd; ++c) PetscCall(DMLabelSetValue(rgLabelNew, c, cellTagsNew[c - cStart]));
   PetscCall(PetscFree3(cellsNew, cellTagsNew, requiredCells));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PETSC_EXTERN PetscErrorCode DMAdaptMetric_Mmg_Plex(DM dm, Vec vertexMetric, DMLabel bdLabel, DMLabel rgLabel, DM *dmNew)
+{
+  PetscFunctionBegin;
+  PetscCall(DMAdaptMetricLevelSet_Mmg_Plex(dm, vertexMetric, NULL, bdLabel, rgLabel, dmNew));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

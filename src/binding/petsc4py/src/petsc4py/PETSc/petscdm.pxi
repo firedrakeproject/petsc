@@ -147,6 +147,7 @@ cdef extern from * nogil:
 
     PetscErrorCode DMAdaptLabel(PetscDM, PetscDMLabel, PetscDM*)
     PetscErrorCode DMAdaptMetric(PetscDM, PetscVec, PetscDMLabel, PetscDMLabel, PetscDM*)
+    PetscErrorCode DMAdaptMetricLevelSet(PetscDM, PetscVec, PetscVec, PetscDMLabel, PetscDMLabel, PetscDM*)
 
     PetscErrorCode DMGlobalToLocalBegin(PetscDM, PetscVec, PetscInsertMode, PetscVec)
     PetscErrorCode DMGlobalToLocalEnd(PetscDM, PetscVec, PetscInsertMode, PetscVec)

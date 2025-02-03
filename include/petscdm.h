@@ -119,6 +119,7 @@ PETSC_EXTERN PetscErrorCode DMGeomModelRegisterAll(void);
 PETSC_EXTERN PetscErrorCode DMGeomModelRegisterDestroy(void);
 PETSC_EXTERN PetscErrorCode DMAdaptLabel(DM, DMLabel, DM *);
 PETSC_EXTERN PetscErrorCode DMAdaptMetric(DM, Vec, DMLabel, DMLabel, DM *);
+PETSC_EXTERN PetscErrorCode DMAdaptMetricLevelSet(DM, Vec, Vec, DMLabel, DMLabel, DM *);
 
 PETSC_EXTERN PetscErrorCode DMSetUp(DM);
 PETSC_EXTERN PetscErrorCode DMCreateInterpolationScale(DM, DM, Mat, Vec *);

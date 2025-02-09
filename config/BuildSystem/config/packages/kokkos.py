@@ -117,6 +117,9 @@ class Configure(config.package.CMakePackage):
       lang = 'cuda'
       args.append('-DKokkos_ENABLE_CUDA=ON')
       args.append('-DKokkos_ENABLE_CUDA_LAMBDA:BOOL=ON')
+      # Use of cudaMallocAsync() is turned off by default since Kokkos-4.5.0, see https://github.com/kokkos/kokkos/pull/7353,
+      # since it interferes with the CUDA aware MPI. We also turn it off for older versions.
+      args.append('-DKokkos_ENABLE_IMPL_CUDA_MALLOC_ASYNC:BOOL=OFF')
       self.system = 'CUDA'
       self.pushLanguage('CUDA')
       petscNvcc = self.getCompiler()
@@ -173,7 +176,8 @@ class Configure(config.package.CMakePackage):
       args.append('-DCMAKE_CXX_COMPILER='+self.systemHipc)
       args = self.rmArgsStartsWith(args, '-DCMAKE_CXX_FLAGS')
       args.append('-DCMAKE_CXX_FLAGS="' + hipFlags + '"')
-      deviceArchName = self.hip.hipArch.upper().replace('GFX','VEGA',1) # ex. map gfx90a to VEGA90A
+      # See https://kokkos.org/kokkos-core-wiki/keywords.html#amd-gpus, AMD_GFX is preferred over VEGA
+      deviceArchName = 'AMD_' + self.hip.hipArch.upper()
       args.append('-DKokkos_ENABLE_HIP_RELOCATABLE_DEVICE_CODE=OFF')
     elif self.sycl.found:
       lang = 'sycl'

@@ -196,10 +196,11 @@ PetscErrorCode VecSetPreallocationCOO(Vec x, PetscCount ncoo, const PetscInt coo
   if (x->ops->setpreallocationcoo) {
     PetscUseTypeMethod(x, setpreallocationcoo, ncoo, coo_i);
   } else {
-    IS is_coo_i;
-    /* The default implementation only supports ncoo within limit of PetscInt */
-    PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
-    PetscCall(ISCreateGeneral(PETSC_COMM_SELF, (PetscInt)ncoo, coo_i, PETSC_COPY_VALUES, &is_coo_i));
+    PetscInt ncoo_i;
+    IS       is_coo_i;
+
+    PetscCall(PetscIntCast(ncoo, &ncoo_i));
+    PetscCall(ISCreateGeneral(PETSC_COMM_SELF, ncoo_i, coo_i, PETSC_COPY_VALUES, &is_coo_i));
     PetscCall(PetscObjectCompose((PetscObject)x, "__PETSc_coo_i", (PetscObject)is_coo_i));
     PetscCall(ISDestroy(&is_coo_i));
   }
@@ -237,16 +238,17 @@ PetscErrorCode VecSetPreallocationCOO(Vec x, PetscCount ncoo, const PetscInt coo
 @*/
 PetscErrorCode VecSetPreallocationCOOLocal(Vec x, PetscCount ncoo, PetscInt coo_i[])
 {
+  PetscInt               ncoo_i;
   ISLocalToGlobalMapping ltog;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
   PetscValidType(x, 1);
   if (ncoo) PetscAssertPointer(coo_i, 3);
-  PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
+  PetscCall(PetscIntCast(ncoo, &ncoo_i));
   PetscCall(PetscLayoutSetUp(x->map));
   PetscCall(VecGetLocalToGlobalMapping(x, &ltog));
-  if (ltog) PetscCall(ISLocalToGlobalMappingApply(ltog, (PetscInt)ncoo, coo_i, coo_i));
+  if (ltog) PetscCall(ISLocalToGlobalMappingApply(ltog, ncoo_i, coo_i, coo_i));
   PetscCall(VecSetPreallocationCOO(x, ncoo, coo_i));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -648,7 +650,7 @@ PetscErrorCode VecDuplicateVecs(Vec v, PetscInt m, Vec *V[])
   The Fortran interface is slightly different from that given below.
   See the [](ch_fortran) for details.
 
-.seealso: [](ch_vectors), `Vec`, [](ch_fortran), `VecDuplicateVecs()`, `VecDestroyVecsf90()`
+.seealso: [](ch_vectors), `Vec`, [](ch_fortran), `VecDuplicateVecs()`, `VecDestroyVecsF90()`
 @*/
 PetscErrorCode VecDestroyVecs(PetscInt m, Vec *vv[])
 {
@@ -1994,7 +1996,7 @@ PetscErrorCode PetscOptionsGetVec(PetscOptions options, const char prefix[], con
   Note:
   The layout determines what vector elements are contained on each MPI process
 
-.seealso: [](ch_vectors), `PetscLayout`, `Vec`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `PetscLayout`, `Vec`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecGetLayout(Vec x, PetscLayout *map)
 {
@@ -2019,7 +2021,7 @@ PetscErrorCode VecGetLayout(Vec x, PetscLayout *map)
   Note:
   It is normally only valid to replace the layout with a layout known to be equivalent.
 
-.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecSetLayout(Vec x, PetscLayout map)
 {
@@ -2047,7 +2049,7 @@ PetscErrorCode VecSetLayout(Vec x, PetscLayout map)
   `KSPCheckNorm()` detects an infinity and at least one of the MPI processes has a not converged reason then the `KSP`
   object collectively is labeled as not converged.
 
-.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecFlag(Vec xin, PetscInt flg)
 {
@@ -2098,7 +2100,7 @@ PetscErrorCode VecFlag(Vec xin, PetscInt flg)
 
   This cannot be called if `xin` has a cached norm available
 
-.seealso: [](ch_vectors), `VecFlag()`, `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `VecFlag()`, `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecSetInf(Vec xin)
 {

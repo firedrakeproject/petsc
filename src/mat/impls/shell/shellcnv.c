@@ -129,7 +129,7 @@ static PetscErrorCode MatDestroy_CF(Mat A)
 
 typedef struct {
   void *userdata;
-  PetscErrorCode (*userdestroy)(void *);
+  PetscErrorCode (*ctxdestroy)(void *);
   PetscErrorCode (*numeric)(Mat);
   MatProductType ptype;
   Mat            Dwork;
@@ -140,7 +140,7 @@ static PetscErrorCode MatProductDestroy_CF(void *data)
   MatMatCF *mmcfdata = (MatMatCF *)data;
 
   PetscFunctionBegin;
-  if (mmcfdata->userdestroy) PetscCall((*mmcfdata->userdestroy)(mmcfdata->userdata));
+  if (mmcfdata->ctxdestroy) PetscCall((*mmcfdata->ctxdestroy)(mmcfdata->userdata));
   PetscCall(MatDestroy(&mmcfdata->Dwork));
   PetscCall(PetscFree(mmcfdata));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -176,11 +176,11 @@ static PetscErrorCode MatProductSymbolicPhase_CF(Mat A, Mat B, Mat C, void **dat
   /* the MATSHELL interface does not allow non-empty product data */
   PetscCall(PetscNew(&mmcfdata));
 
-  mmcfdata->numeric     = C->ops->productnumeric;
-  mmcfdata->ptype       = C->product->type;
-  mmcfdata->userdata    = C->product->data;
-  mmcfdata->userdestroy = C->product->destroy;
-  mmcfdata->Dwork       = C->product->Dwork;
+  mmcfdata->numeric    = C->ops->productnumeric;
+  mmcfdata->ptype      = C->product->type;
+  mmcfdata->userdata   = C->product->data;
+  mmcfdata->ctxdestroy = C->product->destroy;
+  mmcfdata->Dwork      = C->product->Dwork;
 
   C->product->Dwork   = NULL;
   C->product->data    = NULL;
@@ -195,7 +195,7 @@ static PetscErrorCode MatProductSymbolicPhase_CF(Mat A, Mat B, Mat C, void **dat
 static PetscErrorCode MatProductSetFromOptions_CF(Mat D)
 {
   Mat A, B, Ain;
-  void (*Af)(void) = NULL;
+  PetscErrorCode (*Af)(Mat) = NULL;
   PetscBool flg;
 
   PetscFunctionBegin;
@@ -206,7 +206,7 @@ static PetscErrorCode MatProductSetFromOptions_CF(Mat D)
   PetscCall(MatIsShell(A, &flg));
   if (!flg) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(PetscObjectQueryFunction((PetscObject)A, "MatProductSetFromOptions_anytype_C", &Af));
-  if (Af == (void (*)(void))MatProductSetFromOptions_CF) {
+  if (Af == MatProductSetFromOptions_CF) {
     PetscCall(MatShellGetContext(A, &Ain));
   } else PetscFunctionReturn(PETSC_SUCCESS);
   D->product->A = Ain;

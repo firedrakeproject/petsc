@@ -460,7 +460,7 @@ static PetscErrorCode SetupSection(DM dm, AppCtx *user)
       const PetscInt *anchors;
 
       PetscCall(DMGetLocalSection(dm, &section));
-      /* this creates the matrix and preallocates the matrix structure: we
+      /* this creates the matrix and preallocates the matrix nonzero structure: we
        * just have to fill in the values */
       PetscCall(DMGetDefaultConstraints(dm, &cSec, &cMat, NULL));
       PetscCall(PetscSectionGetChart(cSec, &cStart, &cEnd));
@@ -813,6 +813,7 @@ static PetscErrorCode CheckInterpolation(DM dm, PetscBool checkRestrict, PetscIn
   PetscCall(DMGetDimension(dm, &dim));
   PetscCall(DMRefine(dm, comm, &rdm));
   PetscCall(DMSetCoarseDM(rdm, dm));
+  PetscCall(DMGetCoordinatesLocalSetUp(rdm));
   PetscCall(DMPlexSetRegularRefinement(rdm, user->convRefine));
   if (user->tree) {
     DM refTree;
@@ -857,6 +858,7 @@ static PetscErrorCode CheckInterpolation(DM dm, PetscBool checkRestrict, PetscIn
     PetscCall(VecPointwiseMult(fu, scaling, fu));
   } else PetscCall(MatInterpolate(Interp, iu, fu));
   /* Compare approximation to exact in L_2 */
+  PetscCall(DMGetCoordinatesLocalSetUp(fdm));
   PetscCall(DMComputeL2Diff(fdm, 0.0, exactFuncs, exactCtxs, fu, &error));
   PetscCall(DMComputeL2GradientDiff(fdm, 0.0, exactFuncDers, exactCtxs, fu, n, &errorDer));
   /* Report result */
@@ -904,9 +906,9 @@ static PetscErrorCode CheckConvergence(DM dm, PetscInt Nr, AppCtx *user)
       PetscCall(SetupSection(rdm, user));
       PetscCall(ComputeError(rdm, exactFuncs, exactFuncDers, exactCtxs, &error, &errorDer, user));
       p = PetscLog2Real(errorOld / error);
-      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Function   convergence rate at refinement %" PetscInt_FMT ": %.2f\n", r, (double)p));
+      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Function   convergence rate at refinement %" PetscInt_FMT ": %.2f\n", r, p));
       p = PetscLog2Real(errorDerOld / errorDer);
-      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Derivative convergence rate at refinement %" PetscInt_FMT ": %.2f\n", r, (double)p));
+      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Derivative convergence rate at refinement %" PetscInt_FMT ": %.2f\n", r, p));
       PetscCall(DMDestroy(&odm));
       odm         = rdm;
       errorOld    = error;
@@ -926,10 +928,10 @@ static PetscErrorCode CheckConvergence(DM dm, PetscInt Nr, AppCtx *user)
       len = cEnd - cStart;
       rel = error / errorOld;
       p   = PetscLogReal(rel) / PetscLogReal(lenOld / len);
-      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Function   convergence rate at coarsening %" PetscInt_FMT ": %.2f\n", c, (double)p));
+      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Function   convergence rate at coarsening %" PetscInt_FMT ": %.2f\n", c, p));
       rel = errorDer / errorDerOld;
       p   = PetscLogReal(rel) / PetscLogReal(lenOld / len);
-      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Derivative convergence rate at coarsening %" PetscInt_FMT ": %.2f\n", c, (double)p));
+      PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "Derivative convergence rate at coarsening %" PetscInt_FMT ": %.2f\n", c, p));
       PetscCall(DMDestroy(&odm));
       odm         = cdm;
       errorOld    = error;
@@ -970,7 +972,7 @@ int main(int argc, char **argv)
 
     PetscCall(PetscFEGetDualSpace(user.fe, &dsp));
     PetscCall(PetscDualSpaceGetDeRahm(dsp, &k));
-    if (dim == 2 && simplex == PETSC_TRUE && user.tree == PETSC_FALSE && k == 0) {
+    if (dim == 2 && user.constraints == PETSC_FALSE && user.tree == PETSC_FALSE && k == 0) {
       PetscCall(CheckInterpolation(dm, PETSC_FALSE, user.porder, &user));
       PetscCall(CheckInterpolation(dm, PETSC_TRUE, user.porder, &user));
     }
@@ -987,6 +989,16 @@ int main(int argc, char **argv)
   test:
     suffix: 1
     requires: triangle
+
+  # 2D P_0 on a triangle
+  test:
+    suffix: p0_2d_0
+    requires: triangle
+    args: -petscspace_degree 1 -qorder 1 -convergence
+  test:
+    suffix: p0_2d_1
+    requires: triangle
+    args: -petscspace_degree 1 -qorder 1 -porder 1
 
   # 2D P_1 on a triangle
   test:
@@ -1106,6 +1118,14 @@ int main(int argc, char **argv)
     TODO: broken
     args: -use_da 1 -petscspace_degree 1 -qorder 1 -porder 2
 
+  # 2D P_0 on a quadrilaterial Plex
+  test:
+    suffix: p0_2d_plex_0
+    args: -dm_plex_simplex 0 -petscspace_degree 0 -qorder 1 -convergence
+  test:
+    suffix: p0_2d_plex_1
+    args: -dm_plex_simplex 0 -petscspace_degree 0 -qorder 1 -porder 1
+
   # 2D Q_1 on a quadrilaterial Plex
   test:
     suffix: q1_2d_plex_0
@@ -1131,10 +1151,16 @@ int main(int argc, char **argv)
   test:
     suffix: q1_2d_plex_7
     args: -dm_plex_simplex 0 -petscspace_degree 1 -petscspace_type tensor -qorder 1 -porder 2 -non_affine_coords -convergence
+  test:
+    suffix: q1_2d_plex_8
+    requires: triangle
+    args: -dist_dm_refine 1 -dist_dm_plex_transform_type refine_tobox -petscspace_degree 1 -qorder 1 -convergence
 
   # 2D Q_2 on a quadrilaterial
+  # The derivative interpolation test fails in single because we lose precision
   test:
     suffix: q2_2d_plex_0
+    requires: !single
     args: -dm_plex_simplex 0 -petscspace_degree 2 -qorder 2 -convergence
   test:
     suffix: q2_2d_plex_1
@@ -1148,11 +1174,15 @@ int main(int argc, char **argv)
   test:
     suffix: q2_2d_plex_4
     args: -dm_plex_simplex 0 -petscspace_degree 2 -qorder 2 -porder 2 -shear_coords
+  # The derivative interpolation test fails in single because we lose precision
   test:
     suffix: q2_2d_plex_5
+    requires: !single
     args: -dm_plex_simplex 0 -petscspace_degree 2 -petscspace_type tensor -qorder 2 -porder 0 -non_affine_coords -convergence
+  # The derivative interpolation test fails in single because we lose precision
   test:
     suffix: q2_2d_plex_6
+    requires: !single
     args: -dm_plex_simplex 0 -petscspace_degree 2 -petscspace_type tensor -qorder 2 -porder 1 -non_affine_coords -convergence
   test:
     suffix: q2_2d_plex_7

@@ -229,7 +229,9 @@ static PetscErrorCode TaoLineSearchApply_OWArmijo(TaoLineSearch ls, Vec x, Petsc
     }
 
     /* Calculate function at new iterate */
+    PetscCall(VecLockReadPush(x));
     PetscCall(TaoLineSearchComputeObjectiveAndGradient(ls, armP->work, f, g));
+    PetscCall(VecLockReadPop(x));
     g_computed = PETSC_TRUE;
 
     PetscCall(TaoLineSearchMonitor(ls, its, *f, ls->step));
@@ -284,7 +286,7 @@ static PetscErrorCode TaoLineSearchApply_OWArmijo(TaoLineSearch ls, Vec x, Petsc
 
    Level: developer
 
-seealso: `TaoLineSearch`, `TAOOWLQN`, `Tao`
+.seealso: `TaoLineSearch`, `TAOOWLQN`, `Tao`
 M*/
 PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_OWArmijo(TaoLineSearch ls)
 {

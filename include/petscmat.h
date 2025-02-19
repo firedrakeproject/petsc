@@ -22,12 +22,14 @@ S*/
 typedef struct _p_Mat *Mat;
 
 /*J
-   MatType - String with the name of a PETSc matrix type
+   MatType - String with the name of a PETSc matrix type. These are all the matrix formats that PETSc provides.
 
    Level: beginner
 
-   Note:
+   Notes:
    [](doc_matrix) for a table of available matrix types
+
+   Use `MatSetType()` or the options database keys `-mat_type` or `dm_mat_type` to set the matrix format to use for a given `Mat`
 
 .seealso: [](doc_matrix), [](ch_matrices), `MatSetType()`, `Mat`, `MatSolverType`, `MatRegister()`
 J*/
@@ -532,6 +534,7 @@ PETSC_EXTERN PetscErrorCode MatPythonGetType(Mat, const char *[]);
 PETSC_EXTERN PetscErrorCode MatPythonCreate(MPI_Comm, PetscInt, PetscInt, PetscInt, PetscInt, const char[], Mat *);
 
 PETSC_EXTERN PetscErrorCode MatResetPreallocation(Mat);
+PETSC_EXTERN PetscErrorCode MatResetHash(Mat);
 PETSC_EXTERN PetscErrorCode MatSetUp(Mat);
 PETSC_EXTERN PetscErrorCode MatDestroy(Mat *);
 PETSC_EXTERN PetscErrorCode MatGetNonzeroState(Mat, PetscObjectState *);
@@ -953,6 +956,7 @@ PETSC_EXTERN PetscErrorCode MatFindZeroDiagonals(Mat, IS *);
 PETSC_EXTERN PetscErrorCode MatFindOffBlockDiagonalEntries(Mat, IS *);
 PETSC_EXTERN PetscErrorCode MatCreateMPIMatConcatenateSeqMat(MPI_Comm, Mat, PetscInt, MatReuse, Mat *);
 
+PETSC_EXTERN PetscErrorCode MatCopyHashToXAIJ(Mat A, Mat B);
 /*@C
    MatSetValue - Set a single entry into a matrix.
 
@@ -2031,7 +2035,8 @@ typedef enum {
   MATOP_GET_ROW_SUM_ABS     = 152,
   MATOP_GET_FACTOR          = 153,
   MATOP_GET_BLOCK_DIAGONAL  = 154, // NOTE: caller of the two op functions owns the returned matrix
-  MATOP_GET_VBLOCK_DIAGONAL = 155  // and need to destroy it after use.
+  MATOP_GET_VBLOCK_DIAGONAL = 155, // and need to destroy it after use.
+  MATOP_COPY_HASH_TO_AIJ    = 156
 } MatOperation;
 PETSC_EXTERN PetscErrorCode MatSetOperation(Mat, MatOperation, void (*)(void));
 PETSC_EXTERN PetscErrorCode MatGetOperation(Mat, MatOperation, void (**)(void));
@@ -2044,7 +2049,7 @@ PETSC_DEPRECATED_FUNCTION(3, 14, 0, "MatProductClear()", ) static inline PetscEr
 PETSC_EXTERN PetscErrorCode MatShellSetOperation(Mat, MatOperation, void (*)(void));
 PETSC_EXTERN PetscErrorCode MatShellGetOperation(Mat, MatOperation, void (**)(void));
 PETSC_EXTERN PetscErrorCode MatShellSetContext(Mat, void *);
-PETSC_EXTERN PetscErrorCode MatShellSetContextDestroy(Mat, PetscErrorCode (*)(void *));
+PETSC_EXTERN PetscErrorCode MatShellSetContextDestroy(Mat, PetscCtxDestroyFn *);
 PETSC_EXTERN PetscErrorCode MatShellSetVecType(Mat, VecType);
 PETSC_EXTERN PetscErrorCode MatShellTestMult(Mat, PetscErrorCode (*)(void *, Vec, Vec), Vec, void *, PetscBool *);
 PETSC_EXTERN PetscErrorCode MatShellTestMultTranspose(Mat, PetscErrorCode (*)(void *, Vec, Vec), Vec, void *, PetscBool *);

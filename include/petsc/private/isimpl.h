@@ -11,6 +11,9 @@ PETSC_INTERN PetscBool ISLocalToGlobalMappingRegisterAllCalled;
 PETSC_EXTERN PetscLogEvent IS_View;
 PETSC_EXTERN PetscLogEvent IS_Load;
 
+PETSC_EXTERN PetscLogEvent PetscKDTree_Build;
+PETSC_EXTERN PetscLogEvent PetscKDTree_Query;
+
 struct _ISOps {
   PetscErrorCode (*getindices)(IS, const PetscInt *[]);
   PetscErrorCode (*restoreindices)(IS, const PetscInt *[]);
@@ -54,6 +57,7 @@ struct _p_IS {
   IS          complement;                     /* IS wrapping nonlocal indices. */
   PetscBool   info_permanent[2][IS_INFO_MAX]; /* whether local / global properties are permanent */
   ISInfoBool  info[2][IS_INFO_MAX];           /* local / global properties */
+  PetscBool   compressOutput;                 /* flag to compress output */
 };
 
 PETSC_INTERN PetscErrorCode ISView_Binary(IS, PetscViewer);

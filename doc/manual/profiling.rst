@@ -7,7 +7,9 @@ PETSc includes a consistent, lightweight scheme for profiling
 application programs. The PETSc routines automatically log
 performance data if certain options are specified at runtime. The user
 can also log information about application codes for a complete picture
-of performance. In addition, as described in
+of performance.
+
+In addition, as described in
 :any:`sec_ploginfo`, PETSc provides a mechanism for
 printing informative messages about computations.
 :any:`sec_profbasic` introduces the various profiling
@@ -19,12 +21,9 @@ such as monitoring application codes and tips for accurate profiling.
 Basic Profiling Information
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If an application code and the PETSc libraries have been configured with
-``--with-log=1``, the default, then various kinds of profiling of code
-between calls to ``PetscInitialize()`` and ``PetscFinalize()`` can be
-activated at runtime. The profiling options include the following:
+The profiling options include the following:
 
--  ``-log_view  [:filename]`` - Prints an ASCII version of performance data at
+-  ``-log_view  [:filename]`` - Prints an ASCII version of performance data at the
    program’s conclusion. These statistics are comprehensive and concise
    and require little overhead; thus, ``-log_view`` is intended as the
    primary means of monitoring the performance of PETSc codes.  See :any:`sec_ploginfo`
@@ -180,7 +179,7 @@ object creation and destruction is presented.
    ---------------------------------------------- PETSc Performance Summary: ----------------------------------------------
 
    ./ex10 on a intel-bdw-opt named beboplogin4 with 4 processors, by jczhang Mon Apr 23 13:36:54 2018
-   Using Petsc Development GIT revision: v3.9-163-gbe3efd42  GIT Date: 2018-04-16 10:45:40 -0500
+   Using PETSc Development Git Revision: v3.9-163-gbe3efd42 Git Date: 2018-04-16 10:45:40 -0500
 
                             Max       Max/Min        Avg      Total
    Time (sec):           1.849e-01      1.00002   1.849e-01

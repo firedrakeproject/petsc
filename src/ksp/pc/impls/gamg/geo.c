@@ -1,5 +1,5 @@
 /*
- GAMG geometric-algebric multigrid PC - Mark Adams 2011
+ GAMG geometric-algebraic multigrid PC - Mark Adams 2011
  */
 
 #include <../src/ksp/pc/impls/gamg/gamg.h> /*I "petscpc.h" I*/
@@ -150,10 +150,10 @@ static PetscErrorCode triangulateAndFormProl(IS selected_2, PetscInt data_stride
   PetscCall(MatGetOwnershipRange(a_Prol, &Istart, &Iend));
   nFineLoc = (Iend - Istart) / bs;
   myFine0  = Istart / bs;
-  nPlotPts = nFineLoc; /* locals */
+  PetscCall(PetscCIntCast(nFineLoc, &nPlotPts)); /* locals */
   /* triangle */
-  /* Define input points - in*/
-  in.numberofpoints          = nselected_2;
+  /* Define input points - in */
+  PetscCall(PetscCIntCast(nselected_2, &in.numberofpoints));
   in.numberofpointattributes = 0;
   /* get nselected points */
   PetscCall(PetscMalloc1(2 * nselected_2, &in.pointlist));
@@ -674,7 +674,7 @@ static PetscErrorCode PCGAMGProlongator_GEO(PC pc, Mat Amat, PetscCoarsenData *a
     if (size > 1) {
       PetscCall(PCGAMGGetDataWithGhosts(Gmat2, dim, pc_gamg->data, &data_stride, &coords));
     } else {
-      coords      = (PetscReal *)pc_gamg->data;
+      coords      = pc_gamg->data;
       data_stride = pc_gamg->data_sz / pc_gamg->data_cell_cols;
     }
     PetscCall(MatDestroy(&Gmat2));

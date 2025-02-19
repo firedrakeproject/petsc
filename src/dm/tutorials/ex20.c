@@ -24,6 +24,7 @@ PetscErrorCode pic_insert_DMDA(PetscInt dim)
   if (dim == 3) PetscCall(DMDACreate3d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_BOX, 25, 13, 19, PETSC_DECIDE, PETSC_DECIDE, PETSC_DECIDE, dof, stencil_width, NULL, NULL, NULL, &celldm));
 
   PetscCall(DMDASetElementType(celldm, DMDA_ELEMENT_Q1));
+  PetscCall(PetscObjectSetName((PetscObject)celldm, "Cell DM"));
   PetscCall(DMSetFromOptions(celldm));
   PetscCall(DMSetUp(celldm));
 
@@ -71,7 +72,7 @@ PetscErrorCode pic_insert_DMDA(PetscInt dim)
     PetscCall(DMSwarmSortGetAccess(swarm));
     PetscCall(DMSwarmSortGetNumberOfPointsPerCell(swarm, 0, &npoints));
     PetscCall(DMSwarmSortGetPointsPerCell(swarm, rank, &npoints, &list));
-    PetscCall(PetscFree(list));
+    PetscCall(DMSwarmSortRestorePointsPerCell(swarm, rank, &npoints, &list));
     PetscCall(DMSwarmSortRestoreAccess(swarm));
   }
   PetscCall(DMSwarmMigrate(swarm, PETSC_FALSE));

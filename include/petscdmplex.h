@@ -13,6 +13,7 @@
 #include <petscsftypes.h>
 #include <petscdmfield.h>
 #include <petscviewer.h>
+#include <petsc/private/hashmapi.h>
 
 /* SUBMANSEC = DMPlex */
 
@@ -114,6 +115,8 @@ PETSC_EXTERN PetscErrorCode DMPlexUninterpolate(DM, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexInterpolatePointSF(DM, PetscSF);
 PETSC_EXTERN PetscErrorCode DMPlexIsInterpolated(DM, DMPlexInterpolatedFlag *);
 PETSC_EXTERN PetscErrorCode DMPlexIsInterpolatedCollective(DM, DMPlexInterpolatedFlag *);
+PETSC_EXTERN PetscErrorCode DMPlexGetInterpolatePreferTensor(DM, PetscBool *);
+PETSC_EXTERN PetscErrorCode DMPlexSetInterpolatePreferTensor(DM, PetscBool);
 
 PETSC_EXTERN PetscErrorCode DMPlexFilter(DM, DMLabel, PetscInt, PetscBool, PetscBool, PetscSF *, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexGetCellNumbering(DM, IS *);
@@ -181,9 +184,8 @@ PETSC_EXTERN PetscErrorCode DMPlexCreateHexCylinderMesh(MPI_Comm, DMBoundaryType
 PETSC_EXTERN PetscErrorCode DMPlexCreateTPSMesh(MPI_Comm, DMPlexTPSType, const PetscInt[], const DMBoundaryType[], PetscBool, PetscInt, PetscInt, PetscReal, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateWedgeCylinderMesh(MPI_Comm, PetscInt, PetscBool, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateWedgeBoxMesh(MPI_Comm, const PetscInt[], const PetscReal[], const PetscReal[], const DMBoundaryType[], PetscBool, PetscBool, DM *);
-PETSC_EXTERN PetscErrorCode DMPlexCreateHypercubicMesh(MPI_Comm, PetscInt, const PetscInt[], const PetscReal[], const PetscReal[], DM *);
+PETSC_EXTERN PetscErrorCode DMPlexCreateHypercubicMesh(MPI_Comm, PetscInt, const PetscInt[], const PetscReal[], const PetscReal[], PetscInt, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexExtrude(DM, PetscInt, PetscReal, PetscBool, PetscBool, PetscBool, const PetscReal[], const PetscReal[], DM *);
-PETSC_EXTERN PetscErrorCode DMPlexInflateToGeomModel(DM);
 
 PETSC_EXTERN PetscErrorCode DMPlexSetIsoperiodicFaceSF(DM, PetscInt, PetscSF *);
 PETSC_EXTERN PetscErrorCode DMPlexGetIsoperiodicFaceSF(DM, PetscInt *, const PetscSF **);
@@ -213,8 +215,6 @@ PETSC_EXTERN PetscErrorCode DMPlexCreateGmshFromFile(MPI_Comm, const char[], Pet
 PETSC_EXTERN PetscErrorCode DMPlexCreateFluent(MPI_Comm, PetscViewer, PetscBool, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateFluentFromFile(MPI_Comm, const char[], PetscBool, DM *);
 PETSC_EXTERN PetscErrorCode DMPlexCreatePLYFromFile(MPI_Comm, const char[], PetscBool, DM *);
-PETSC_EXTERN PetscErrorCode DMPlexCreateEGADSFromFile(MPI_Comm, const char[], DM *);
-PETSC_EXTERN PetscErrorCode DMPlexCreateEGADSLiteFromFile(MPI_Comm, const char[], DM *);
 
 PETSC_EXTERN PetscErrorCode PetscViewerExodusIIOpen(MPI_Comm comm, const char name[], PetscFileMode type, PetscViewer *exo);
 PETSC_EXTERN PetscErrorCode PetscViewerExodusIIGetNodalVariableIndex(PetscViewer, const char[], PetscExodusIIInt *);
@@ -245,6 +245,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerCGNSOpen(MPI_Comm, const char[], PetscFil
 PETSC_EXTERN PetscErrorCode PetscViewerCGNSSetSolutionIndex(PetscViewer, PetscInt);
 PETSC_EXTERN PetscErrorCode PetscViewerCGNSGetSolutionIndex(PetscViewer, PetscInt *);
 PETSC_EXTERN PetscErrorCode PetscViewerCGNSGetSolutionTime(PetscViewer, PetscReal *, PetscBool *);
+PETSC_EXTERN PetscErrorCode PetscViewerCGNSGetSolutionIteration(PetscViewer, PetscInt *, PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscViewerCGNSGetSolutionName(PetscViewer, const char *[]);
 
 /* Mesh Partitioning and Distribution */
@@ -438,6 +439,7 @@ PETSC_EXTERN PetscErrorCode DMPlexComputeMassMatrixGeneral(DM, DM, Mat, void *);
 
 PETSC_EXTERN PetscErrorCode DMPlexCreateRigidBody(DM, PetscInt, MatNullSpace *);
 PETSC_EXTERN PetscErrorCode DMPlexCreateRigidBodies(DM, PetscInt, DMLabel, const PetscInt[], const PetscInt[], MatNullSpace *);
+PETSC_EXTERN PetscErrorCode DMPlexComputeMoments(DM, Vec, PetscReal[]);
 
 PETSC_EXTERN PetscErrorCode DMPlexSetSNESLocalFEM(DM, PetscBool, void *);
 PETSC_EXTERN PetscErrorCode DMPlexSNESComputeBoundaryFEM(DM, Vec, void *);
@@ -484,13 +486,22 @@ PETSC_EXTERN PetscErrorCode DMPlexMonitorThroughput(DM, void *);
 /* natural order */
 PETSC_EXTERN PetscErrorCode DMPlexCreateGlobalToNaturalSF(DM, PetscSection, PetscSF, PetscSF *);
 PETSC_EXTERN PetscErrorCode DMPlexMigrateGlobalToNaturalSF(DM, DM, PetscSF, PetscSF, PetscSF *);
-PETSC_EXTERN PetscErrorCode DMPlexSetGlobalToNaturalSF(DM, PetscSF);
-PETSC_EXTERN PetscErrorCode DMPlexGetGlobalToNaturalSF(DM, PetscSF *);
 PETSC_EXTERN PetscErrorCode DMPlexGlobalToNaturalBegin(DM, Vec, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexGlobalToNaturalEnd(DM, Vec, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexNaturalToGlobalBegin(DM, Vec, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexNaturalToGlobalEnd(DM, Vec, Vec);
 PETSC_EXTERN PetscErrorCode DMPlexCreateNaturalVector(DM, Vec *);
+PETSC_DEPRECATED_FUNCTION(3, 23, 0, "DMSetNaturalSF() and DMSetUseNatural()", "In addition to setting the NaturalSF, DMPlexSetGlobalToNaturalSF() would also set UseNatural if the SF was non-NULL", )
+static inline PetscErrorCode DMPlexSetGlobalToNaturalSF(DM dm, PetscSF sf)
+{
+  if (sf) PetscCall(DMSetUseNatural(dm, PETSC_TRUE));
+  return DMSetNaturalSF(dm, sf);
+}
+PETSC_DEPRECATED_FUNCTION(3, 23, 0, "DMGetNaturalSF()", )
+static inline PetscErrorCode DMPlexGetGlobalToNaturalSF(DM dm, PetscSF *sf)
+{
+  return DMGetNaturalSF(dm, sf);
+}
 
 /* mesh adaptation */
 PETSC_EXTERN PetscErrorCode DMPlexMetricSetFromOptions(DM);
@@ -588,3 +599,6 @@ PETSC_EXTERN PetscErrorCode PetscViewerHDF5SetDMPlexStorageVersionReading(PetscV
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5GetDMPlexStorageVersionWriting(PetscViewer, DMPlexStorageVersion *);
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5SetDMPlexStorageVersionWriting(PetscViewer, DMPlexStorageVersion);
 #endif
+
+PETSC_EXTERN PetscErrorCode DMPlexCreateGeomFromFile(MPI_Comm, const char[], DM *, PetscBool);
+PETSC_EXTERN PetscErrorCode DMPlexInflateToGeomModel(DM, PetscBool);

@@ -318,12 +318,12 @@ static PetscErrorCode DMSwarmDataExCompleteCommunicationMap_Private(MPI_Comm com
 */
   if ((n_new != NULL) && (proc_neighbours_new != NULL)) {
     PetscCall(MatGetRow(A, rank_, &nc, &cols, &red_vals));
-    _n_new = (PetscMPIInt)nc;
+    PetscCall(PetscMPIIntCast(nc, &_n_new));
     PetscCall(PetscMalloc1(_n_new, &_proc_neighbours_new));
-    for (j = 0; j < nc; ++j) _proc_neighbours_new[j] = (PetscMPIInt)cols[j];
+    for (j = 0; j < nc; ++j) PetscCall(PetscMPIIntCast(cols[j], &_proc_neighbours_new[j]));
     PetscCall(MatRestoreRow(A, rank_, &nc, &cols, &red_vals));
-    *n_new               = (PetscMPIInt)_n_new;
-    *proc_neighbours_new = (PetscMPIInt *)_proc_neighbours_new;
+    *n_new               = _n_new;
+    *proc_neighbours_new = _proc_neighbours_new;
   }
   PetscCall(MatDestroy(&A));
   PetscCall(PetscFree(vals));
@@ -364,8 +364,8 @@ PetscErrorCode DMSwarmDataExTopologyFinalize(DMSwarmDataEx d)
     PetscMPIInt r1 = d->neighbour_procs[n];
 
     _get_tags(d->instance, size, r0, r1, *maxtag, &st, &rt);
-    d->send_tags[n] = (int)st;
-    d->recv_tags[n] = (int)rt;
+    d->send_tags[n] = st;
+    d->recv_tags[n] = rt;
   }
   d->topology_status = DEOBJECT_FINALIZED;
   PetscCall(PetscLogEventEnd(DMSWARM_DataExchangerTopologySetup, 0, 0, 0, 0));
@@ -475,7 +475,7 @@ PetscErrorCode DMSwarmDataExPackInitialize(DMSwarmDataEx de, size_t unit_message
   for (i = 0; i < np; ++i) {
     if (de->messages_to_be_sent[i] == -1) {
       PetscMPIInt proc_neighour = de->neighbour_procs[i];
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ORDER, "Messages_to_be_sent[neighbour_proc=%d] is un-initialised. Call DMSwarmDataExSetSendCount() first", (int)proc_neighour);
+      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ORDER, "Messages_to_be_sent[neighbour_proc=%d] is un-initialised. Call DMSwarmDataExSetSendCount() first", proc_neighour);
     }
     total = total + de->messages_to_be_sent[i];
   }
@@ -512,8 +512,8 @@ PetscErrorCode DMSwarmDataExPackData(DMSwarmDataEx de, PetscMPIInt proc_id, Pets
 
   PetscCheck(de->send_message, de->comm, PETSC_ERR_ORDER, "send_message is not initialized. Call DMSwarmDataExPackInitialize() first");
   PetscCall(_DMSwarmDataExConvertProcIdToLocalIndex(de, proc_id, &local));
-  PetscCheck(local != -1, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "proc_id %d is not registered neighbour", (int)proc_id);
-  PetscCheck(n + de->pack_cnt[local] <= de->messages_to_be_sent[local], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Trying to pack too many entries to be sent to proc %d. Space requested = %" PetscInt_FMT ": Attempt to insert %" PetscInt_FMT, (int)proc_id, de->messages_to_be_sent[local], n + de->pack_cnt[local]);
+  PetscCheck(local != -1, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "proc_id %d is not registered neighbour", proc_id);
+  PetscCheck(n + de->pack_cnt[local] <= de->messages_to_be_sent[local], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Trying to pack too many entries to be sent to proc %d. Space requested = %" PetscInt_FMT ": Attempt to insert %" PetscInt_FMT, proc_id, de->messages_to_be_sent[local], n + de->pack_cnt[local]);
 
   /* copy memory */
   insert_location = de->message_offsets[local] + de->pack_cnt[local];
@@ -536,7 +536,7 @@ PetscErrorCode DMSwarmDataExPackFinalize(DMSwarmDataEx de)
   PetscCheck(de->packer_status == DEOBJECT_INITIALIZED, de->comm, PETSC_ERR_ORDER, "Packer has not been initialized. Must call DMSwarmDataExPackInitialize() first.");
   np = de->n_neighbour_procs;
   for (i = 0; i < np; ++i) {
-    PetscCheck(de->pack_cnt[i] == de->messages_to_be_sent[i], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Not all messages for neighbour[%d] have been packed. Expected %" PetscInt_FMT " : Inserted %" PetscInt_FMT, (int)de->neighbour_procs[i], de->messages_to_be_sent[i], de->pack_cnt[i]);
+    PetscCheck(de->pack_cnt[i] == de->messages_to_be_sent[i], PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Not all messages for neighbour[%d] have been packed. Expected %" PetscInt_FMT " : Inserted %" PetscInt_FMT, de->neighbour_procs[i], de->messages_to_be_sent[i], de->pack_cnt[i]);
   }
   /* init */
   for (i = 0; i < np; ++i) de->messages_to_be_recvieved[i] = -1;
@@ -561,7 +561,7 @@ PetscErrorCode DMSwarmDataExPackFinalize(DMSwarmDataEx de)
 /* do the actual message passing */
 PetscErrorCode DMSwarmDataExBegin(DMSwarmDataEx de)
 {
-  PetscMPIInt i, np, length;
+  PetscMPIInt i, np;
   void       *dest;
 
   PetscFunctionBegin;
@@ -574,9 +574,8 @@ PetscErrorCode DMSwarmDataExBegin(DMSwarmDataEx de)
   np = de->n_neighbour_procs;
   /* == NON BLOCKING == */
   for (i = 0; i < np; ++i) {
-    PetscCall(PetscMPIIntCast(de->messages_to_be_sent[i] * de->unit_message_size, &length));
     dest = ((char *)de->send_message) + de->unit_message_size * de->message_offsets[i];
-    PetscCallMPI(MPIU_Isend(dest, length, MPI_CHAR, de->neighbour_procs[i], de->send_tags[i], de->comm, &de->_requests[i]));
+    PetscCallMPI(MPIU_Isend(dest, de->messages_to_be_sent[i] * de->unit_message_size, MPI_CHAR, de->neighbour_procs[i], de->send_tags[i], de->comm, &de->_requests[i]));
   }
   PetscCall(PetscLogEventEnd(DMSWARM_DataExchangerBegin, 0, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -585,7 +584,7 @@ PetscErrorCode DMSwarmDataExBegin(DMSwarmDataEx de)
 /* do the actual message passing now */
 PetscErrorCode DMSwarmDataExEnd(DMSwarmDataEx de)
 {
-  PetscMPIInt i, np, length;
+  PetscMPIInt i, np;
   PetscInt    total;
   PetscInt   *message_recv_offsets;
   void       *dest;
@@ -604,9 +603,8 @@ PetscErrorCode DMSwarmDataExEnd(DMSwarmDataEx de)
   }
   /* == NON BLOCKING == */
   for (i = 0; i < np; ++i) {
-    PetscCall(PetscMPIIntCast(de->messages_to_be_recvieved[i] * de->unit_message_size, &length));
     dest = ((char *)de->recv_message) + de->unit_message_size * message_recv_offsets[i];
-    PetscCallMPI(MPIU_Irecv(dest, length, MPI_CHAR, de->neighbour_procs[i], de->recv_tags[i], de->comm, &de->_requests[np + i]));
+    PetscCallMPI(MPIU_Irecv(dest, de->messages_to_be_recvieved[i] * de->unit_message_size, MPI_CHAR, de->neighbour_procs[i], de->recv_tags[i], de->comm, &de->_requests[np + i]));
   }
   PetscCallMPI(MPI_Waitall(2 * np, de->_requests, de->_stats));
   PetscCall(PetscFree(message_recv_offsets));

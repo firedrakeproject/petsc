@@ -63,7 +63,7 @@ static PetscErrorCode MatProductSymbolic_PtAP_Unsafe(Mat C)
   PetscReal    fill = product->fill;
 
   PetscFunctionBegin;
-  PetscCall(PetscInfo((PetscObject)C, "for A %s, P %s is used\n", ((PetscObject)product->A)->type_name, ((PetscObject)product->B)->type_name));
+  PetscCall(PetscInfo(C, "for A %s, P %s is used\n", ((PetscObject)product->A)->type_name, ((PetscObject)product->B)->type_name));
   /* AP = A*P */
   PetscCall(MatProductCreate(A, P, NULL, &AP));
   PetscCall(MatProductSetType(AP, MATPRODUCT_AB));
@@ -109,7 +109,7 @@ static PetscErrorCode MatProductSymbolic_RARt_Unsafe(Mat C)
   PetscReal    fill = product->fill;
 
   PetscFunctionBegin;
-  PetscCall(PetscInfo((PetscObject)C, "for A %s, R %s is used\n", ((PetscObject)product->A)->type_name, ((PetscObject)product->B)->type_name));
+  PetscCall(PetscInfo(C, "for A %s, R %s is used\n", ((PetscObject)product->A)->type_name, ((PetscObject)product->B)->type_name));
   /* RA = R*A */
   PetscCall(MatProductCreate(R, A, NULL, &RA));
   PetscCall(MatProductSetType(RA, MATPRODUCT_AB));
@@ -152,7 +152,7 @@ static PetscErrorCode MatProductSymbolic_ABC_Unsafe(Mat mat)
   PetscReal    fill = product->fill;
 
   PetscFunctionBegin;
-  PetscCall(PetscInfo((PetscObject)mat, "for A %s, B %s, C %s is used\n", ((PetscObject)product->A)->type_name, ((PetscObject)product->B)->type_name, ((PetscObject)product->C)->type_name));
+  PetscCall(PetscInfo(mat, "for A %s, B %s, C %s is used\n", ((PetscObject)product->A)->type_name, ((PetscObject)product->B)->type_name, ((PetscObject)product->C)->type_name));
   /* Symbolic BC = B*C */
   PetscCall(MatProductCreate(B, C, NULL, &BC));
   PetscCall(MatProductSetType(BC, MATPRODUCT_AB));
@@ -1196,6 +1196,8 @@ PetscErrorCode MatProductSymbolic_ABC_Basic(Mat mat)
     A  = product->B;
     B  = product->A;
     C  = product->B;
+    if (A->cmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(mat->rmap, A->cmap->bs));
+    if (C->cmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(mat->cmap, C->cmap->bs));
     break;
   case MATPRODUCT_RARt:
     p1 = MATPRODUCT_ABt;
@@ -1203,6 +1205,8 @@ PetscErrorCode MatProductSymbolic_ABC_Basic(Mat mat)
     A  = product->B;
     B  = product->A;
     C  = product->B;
+    if (A->rmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(mat->rmap, A->rmap->bs));
+    if (C->rmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(mat->cmap, C->rmap->bs));
     break;
   case MATPRODUCT_ABC:
     p1 = MATPRODUCT_AB;
@@ -1210,6 +1214,7 @@ PetscErrorCode MatProductSymbolic_ABC_Basic(Mat mat)
     A  = product->A;
     B  = product->B;
     C  = product->C;
+    PetscCall(MatSetBlockSizesFromMats(mat, A, C));
     break;
   default:
     SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_PLIB, "Not for ProductType %s", MatProductTypes[product->type]);

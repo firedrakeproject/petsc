@@ -709,13 +709,12 @@ static PetscErrorCode MatNorm_MPISBAIJ(Mat mat, NormType type, PetscReal *norm)
     } else if (type == NORM_INFINITY || type == NORM_1) { /* max row/column sum */
       Mat_SeqSBAIJ *amat = (Mat_SeqSBAIJ *)baij->A->data;
       Mat_SeqBAIJ  *bmat = (Mat_SeqBAIJ *)baij->B->data;
-      PetscReal    *rsum, *rsum2, vabs;
+      PetscReal    *rsum, vabs;
       PetscInt     *jj, *garray = baij->garray, rstart = baij->rstartbs, nz;
       PetscInt      brow, bcol, col, bs = baij->A->rmap->bs, row, grow, gcol, mbs = amat->mbs;
       MatScalar    *v;
-      PetscMPIInt   iN;
 
-      PetscCall(PetscMalloc2(mat->cmap->N, &rsum, mat->cmap->N, &rsum2));
+      PetscCall(PetscMalloc1(mat->cmap->N, &rsum));
       PetscCall(PetscArrayzero(rsum, mat->cmap->N));
       /* Amat */
       v  = amat->a;
@@ -758,13 +757,12 @@ static PetscErrorCode MatNorm_MPISBAIJ(Mat mat, NormType type, PetscReal *norm)
         }
         PetscCall(PetscLogFlops(nz * bs * bs));
       }
-      PetscCall(PetscMPIIntCast(mat->cmap->N, &iN));
-      PetscCallMPI(MPIU_Allreduce(rsum, rsum2, iN, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
+      PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, rsum, mat->cmap->N, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
       *norm = 0.0;
       for (col = 0; col < mat->cmap->N; col++) {
-        if (rsum2[col] > *norm) *norm = rsum2[col];
+        if (rsum[col] > *norm) *norm = rsum[col];
       }
-      PetscCall(PetscFree2(rsum, rsum2));
+      PetscCall(PetscFree(rsum));
     } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "No support for this norm yet");
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -904,7 +902,7 @@ static PetscErrorCode MatView_MPISBAIJ_ASCIIorDraworSocket(Mat mat, PetscViewer 
       PetscCall(MatGetInfo(mat, MAT_LOCAL, &info));
       PetscCall(PetscViewerASCIIPushSynchronized(viewer));
       PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "[%d] Local rows %" PetscInt_FMT " nz %" PetscInt_FMT " nz alloced %" PetscInt_FMT " bs %" PetscInt_FMT " mem %g\n", rank, mat->rmap->n, (PetscInt)info.nz_used, (PetscInt)info.nz_allocated,
-                                                   mat->rmap->bs, (double)info.memory));
+                                                   mat->rmap->bs, info.memory));
       PetscCall(MatGetInfo(baij->A, MAT_LOCAL, &info));
       PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "[%d] on-diagonal part: nz %" PetscInt_FMT " \n", rank, (PetscInt)info.nz_used));
       PetscCall(MatGetInfo(baij->B, MAT_LOCAL, &info));
@@ -1956,7 +1954,8 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPISBAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       NULL};
+                                       /*155*/ NULL,
+                                       MatCopyHashToXAIJ_MPI_Hash};
 
 static PetscErrorCode MatMPISBAIJSetPreallocation_MPISBAIJ(Mat B, PetscInt bs, PetscInt d_nz, const PetscInt *d_nnz, PetscInt o_nz, const PetscInt *o_nnz)
 {

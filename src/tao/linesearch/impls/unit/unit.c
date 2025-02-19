@@ -1,17 +1,5 @@
 #include <petsc/private/taolinesearchimpl.h>
 
-static PetscErrorCode TaoLineSearchDestroy_Unit(TaoLineSearch ls)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode TaoLineSearchSetFromOptions_Unit(TaoLineSearch ls, PetscOptionItems *PetscOptionsObject)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode TaoLineSearchView_Unit(TaoLineSearch ls, PetscViewer viewer)
 {
   PetscBool isascii;
@@ -43,17 +31,15 @@ static PetscErrorCode TaoLineSearchApply_Unit(TaoLineSearch ls, Vec x, PetscReal
 
    Level: developer
 
-.seealso: `Tao`, `TaoLinesearch`, `TaoLineSearchCreate()`, `TaoLineSearchSetType()`, `TaoLineSearchApply()`
+.seealso: `Tao`, `TaoLineSearch`, `TaoLineSearchCreate()`, `TaoLineSearchSetType()`, `TaoLineSearchApply()`
 M*/
 PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_Unit(TaoLineSearch ls)
 {
   PetscFunctionBegin;
-  ls->ops->setup          = NULL;
-  ls->ops->reset          = NULL;
-  ls->ops->monitor        = NULL;
-  ls->ops->apply          = TaoLineSearchApply_Unit;
-  ls->ops->view           = TaoLineSearchView_Unit;
-  ls->ops->destroy        = TaoLineSearchDestroy_Unit;
-  ls->ops->setfromoptions = TaoLineSearchSetFromOptions_Unit;
+  ls->ops->setup   = NULL;
+  ls->ops->reset   = NULL;
+  ls->ops->monitor = NULL;
+  ls->ops->apply   = TaoLineSearchApply_Unit;
+  ls->ops->view    = TaoLineSearchView_Unit;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -1,4 +1,3 @@
-#include "petscsystypes.h"
 #define PETSCDM_DLL
 #include <petsc/private/dmpleximpl.h> /*I   "petscdmplex.h"   I*/
 
@@ -64,12 +63,6 @@ static PetscErrorCode PetscViewerSetFromOptions_ExodusII(PetscViewer v, PetscOpt
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "ExodusII PetscViewer Options");
   PetscOptionsHeadEnd();
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode PetscViewerSetUp_ExodusII(PetscViewer viewer)
-{
-  PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -631,7 +624,6 @@ PETSC_EXTERN PetscErrorCode PetscViewerCreate_ExodusII(PetscViewer v)
   v->data                 = (void *)exo;
   v->ops->destroy         = PetscViewerDestroy_ExodusII;
   v->ops->setfromoptions  = PetscViewerSetFromOptions_ExodusII;
-  v->ops->setup           = PetscViewerSetUp_ExodusII;
   v->ops->view            = PetscViewerView_ExodusII;
   v->ops->flush           = PetscViewerFlush_ExodusII;
   exo->btype              = FILE_MODE_UNDEFINED;
@@ -1459,7 +1451,7 @@ static PetscErrorCode VecViewPlex_ExodusII_Zonal_Internal(Vec v, PetscExodusIIIn
      Zonal variables are accessed one element block at a time, so we loop through the cell sets,
      but once the vector has been reordered to natural size, we cannot use the label information
      to figure out what to save where. */
-  numCS = ex_inquire_int(exoid, EX_INQ_ELEM_BLK);
+  numCS = (PetscExodusIIInt)ex_inquire_int(exoid, EX_INQ_ELEM_BLK); // This is an int64_t
   PetscCall(PetscMalloc2(numCS, &csID, numCS, &csSize));
   PetscCallExternal(ex_get_ids, exoid, EX_ELEM_BLOCK, csID);
   for (set = 0; set < numCS; ++set) {
@@ -1468,7 +1460,7 @@ static PetscErrorCode VecViewPlex_ExodusII_Zonal_Internal(Vec v, PetscExodusIIIn
     block.id   = csID[set];
     block.type = EX_ELEM_BLOCK;
     PetscCallExternal(ex_get_block_param, exoid, &block);
-    csSize[set] = block.num_entry;
+    PetscCall(PetscIntCast(block.num_entry, &csSize[set])); // This is an int64_t
   }
   PetscCall(VecGetOwnershipRange(vNatural, &xs, &xe));
   PetscCall(VecGetBlockSize(vNatural, &bs));
@@ -1530,7 +1522,7 @@ static PetscErrorCode VecLoadPlex_ExodusII_Zonal_Internal(Vec v, PetscExodusIIIn
      Zonal variables are accessed one element block at a time, so we loop through the cell sets,
      but once the vector has been reordered to natural size, we cannot use the label information
      to figure out what to save where. */
-  numCS = ex_inquire_int(exoid, EX_INQ_ELEM_BLK);
+  numCS = (PetscExodusIIInt)ex_inquire_int(exoid, EX_INQ_ELEM_BLK); // This is an int64_t
   PetscCall(PetscMalloc2(numCS, &csID, numCS, &csSize));
   PetscCallExternal(ex_get_ids, exoid, EX_ELEM_BLOCK, csID);
   for (set = 0; set < numCS; ++set) {
@@ -1539,7 +1531,7 @@ static PetscErrorCode VecLoadPlex_ExodusII_Zonal_Internal(Vec v, PetscExodusIIIn
     block.id   = csID[set];
     block.type = EX_ELEM_BLOCK;
     PetscCallExternal(ex_get_block_param, exoid, &block);
-    csSize[set] = block.num_entry;
+    PetscCall(PetscIntCast(block.num_entry, &csSize[set])); // This is an int64_t
   }
   PetscCall(VecGetOwnershipRange(vNatural, &xs, &xe));
   PetscCall(VecGetBlockSize(vNatural, &bs));

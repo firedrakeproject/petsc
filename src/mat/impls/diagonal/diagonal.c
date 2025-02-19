@@ -74,12 +74,6 @@ static PetscErrorCode MatGetRow_Diagonal(Mat A, PetscInt row, PetscInt *ncols, P
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatRestoreRow_Diagonal(Mat A, PetscInt row, PetscInt *ncols, PetscInt **cols, PetscScalar **vals)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode MatMult_Diagonal(Mat A, Vec x, Vec y)
 {
   Mat_Diagonal *ctx = (Mat_Diagonal *)A->data;
@@ -171,7 +165,7 @@ PetscErrorCode MatDiagonalGetDiagonal(Mat A, Vec *diag)
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscAssertPointer(diag, 2);
   *diag = NULL;
-  PetscUseMethod((PetscObject)A, "MatDiagonalGetDiagonal_C", (Mat, Vec *), (A, diag));
+  PetscUseMethod(A, "MatDiagonalGetDiagonal_C", (Mat, Vec *), (A, diag));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -206,7 +200,7 @@ PetscErrorCode MatDiagonalRestoreDiagonal(Mat A, Vec *diag)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscAssertPointer(diag, 2);
-  PetscUseMethod((PetscObject)A, "MatDiagonalRestoreDiagonal_C", (Mat, Vec *), (A, diag));
+  PetscUseMethod(A, "MatDiagonalRestoreDiagonal_C", (Mat, Vec *), (A, diag));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -254,7 +248,7 @@ PetscErrorCode MatDiagonalGetInverseDiagonal(Mat A, Vec *inv_diag)
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscAssertPointer(inv_diag, 2);
   *inv_diag = NULL;
-  PetscUseMethod((PetscObject)A, "MatDiagonalGetInverseDiagonal_C", (Mat, Vec *), (A, inv_diag));
+  PetscUseMethod(A, "MatDiagonalGetInverseDiagonal_C", (Mat, Vec *), (A, inv_diag));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -286,7 +280,7 @@ PetscErrorCode MatDiagonalRestoreInverseDiagonal(Mat A, Vec *inv_diag)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
   PetscAssertPointer(inv_diag, 2);
-  PetscUseMethod((PetscObject)A, "MatDiagonalRestoreInverseDiagonal_C", (Mat, Vec *), (A, inv_diag));
+  PetscUseMethod(A, "MatDiagonalRestoreInverseDiagonal_C", (Mat, Vec *), (A, inv_diag));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -649,7 +643,6 @@ PETSC_INTERN PetscErrorCode MatCreate_Diagonal(Mat A)
   if (!PetscDefined(USE_COMPLEX)) A->hermitian = PETSC_BOOL3_TRUE;
 
   A->ops->getrow           = MatGetRow_Diagonal;
-  A->ops->restorerow       = MatRestoreRow_Diagonal;
   A->ops->mult             = MatMult_Diagonal;
   A->ops->multadd          = MatMultAdd_Diagonal;
   A->ops->multtranspose    = MatMult_Diagonal;

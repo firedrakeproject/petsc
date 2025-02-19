@@ -131,6 +131,7 @@ PetscErrorCode MatDestroy_SchurComplement(Mat N)
   PetscCall(PetscFree(N->data));
   PetscCall(PetscObjectComposeFunction((PetscObject)N, "MatProductSetFromOptions_schurcomplement_seqdense_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)N, "MatProductSetFromOptions_schurcomplement_mpidense_C", NULL));
+  PetscCall(PetscObjectComposeFunction((PetscObject)N, "MatProductSetFromOptions_anytype_C", NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -140,21 +141,21 @@ PetscErrorCode MatDestroy_SchurComplement(Mat N)
   Collective
 
   Input Parameters:
-+ A00  - the upper-left block of the original matrix A = [A00 A01; A10 A11]
-. Ap00 - preconditioning matrix for use in ksp(A00,Ap00) to approximate the action of A00^{-1}
-. A01  - the upper-right block of the original matrix A = [A00 A01; A10 A11]
-. A10  - the lower-left block of the original matrix A = [A00 A01; A10 A11]
-- A11  - (optional) the lower-right block of the original matrix A = [A00 A01; A10 A11]
++ A00  - the upper-left block of the original matrix $A = [A00 A01; A10 A11]$
+. Ap00 - preconditioning matrix for use in $ksp(A00,Ap00)$ to approximate the action of $A00^{-1}$
+. A01  - the upper-right block of the original matrix $A = [A00 A01; A10 A11]$
+. A10  - the lower-left block of the original matrix $A = [A00 A01; A10 A11]$
+- A11  - (optional) the lower-right block of the original matrix $A = [A00 A01; A10 A11]$
 
   Output Parameter:
-. S - the matrix that behaves as the Schur complement S = A11 - A10 ksp(A00,Ap00) A01
+. S - the matrix that behaves as the Schur complement $S = A11 - A10 ksp(A00,Ap00) A01$
 
   Level: intermediate
 
   Notes:
   The Schur complement is NOT explicitly formed! Rather, this function returns a virtual Schur complement
-  that can compute the matrix-vector product by using formula S = A11 - A10 A^{-1} A01
-  for Schur complement S and a `KSP` solver to approximate the action of A^{-1}.
+  that can compute the matrix-vector product by using formula $S = A11 - A10 A^{-1} A01$
+  for Schur complement `S` and a `KSP` solver to approximate the action of $A^{-1}$.
 
   All four matrices must have the same MPI communicator.
 
@@ -188,17 +189,17 @@ PetscErrorCode MatCreateSchurComplement(Mat A00, Mat Ap00, Mat A01, Mat A10, Mat
 
   Input Parameters:
 + S    - matrix obtained with `MatSetType`(S,`MATSCHURCOMPLEMENT`)
-. A00  - the upper-left block of the original matrix A = [A00 A01; A10 A11]
-. Ap00 - preconditioning matrix for use in ksp(A00,Ap00) to approximate the action of A00^{-1}
-. A01  - the upper-right block of the original matrix A = [A00 A01; A10 A11]
-. A10  - the lower-left block of the original matrix A = [A00 A01; A10 A11]
-- A11  - (optional) the lower-right block of the original matrix A = [A00 A01; A10 A11]
+. A00  - the upper-left block of the original matrix $A = [A00 A01; A10 A11]$
+. Ap00 - preconditioning matrix for use in $ksp(A00,Ap00)$ to approximate the action of $A00^{-1}$
+. A01  - the upper-right block of the original matrix $A = [A00 A01; A10 A11]$
+. A10  - the lower-left block of the original matrix $A = [A00 A01; A10 A11]$
+- A11  - (optional) the lower-right block of the original matrix $A = [A00 A01; A10 A11]$
 
   Level: intermediate
 
   Notes:
   The Schur complement is NOT explicitly formed! Rather, this
-  object performs the matrix-vector product of the Schur complement by using formula S = A11 - A10 ksp(A00,Ap00) A01
+  object performs the matrix-vector product of the Schur complement by using formula $S = A11 - A10 ksp(A00,Ap00) A01$
 
   All four matrices must have the same MPI communicator.
 
@@ -245,12 +246,12 @@ PetscErrorCode MatSchurComplementSetSubMatrices(Mat S, Mat A00, Mat Ap00, Mat A0
   PetscCall(PetscObjectReference((PetscObject)Ap00));
   PetscCall(PetscObjectReference((PetscObject)A01));
   PetscCall(PetscObjectReference((PetscObject)A10));
+  PetscCall(PetscObjectReference((PetscObject)A11));
   Na->A  = A00;
   Na->Ap = Ap00;
   Na->B  = A01;
   Na->C  = A10;
   Na->D  = A11;
-  if (A11) PetscCall(PetscObjectReference((PetscObject)A11));
   PetscCall(MatSetUp(S));
   PetscCall(KSPSetOperators(Na->ksp, A00, Ap00));
   S->assembled = PETSC_TRUE;
@@ -258,18 +259,18 @@ PetscErrorCode MatSchurComplementSetSubMatrices(Mat S, Mat A00, Mat Ap00, Mat A0
 }
 
 /*@
-  MatSchurComplementGetKSP - Gets the `KSP` object that is used to solve with A00 in the Schur complement matrix S = A11 - A10 ksp(A00,Ap00) A01
+  MatSchurComplementGetKSP - Gets the `KSP` object that is used to solve with `A00` in the Schur complement matrix $S = A11 - A10 ksp(A00,Ap00) A01$
 
   Not Collective
 
   Input Parameter:
-. S - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of A11 - A10 ksp(A00,Ap00) A01
+. S - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of $ A11 - A10 ksp(A00,Ap00) A01 $
 
   Output Parameter:
 . ksp - the linear solver object
 
   Options Database Key:
-. -fieldsplit_<splitname_0>_XXX - sets KSP and PC options for the 0-split solver inside the Schur complement used in `PCFIELDSPLIT`; default <splitname_0> is 0.
+. -fieldsplit_<splitname_0>_XXX - sets `KSP` and `PC` options for the 0-split solver inside the Schur complement used in `PCFIELDSPLIT`; default <splitname_0> is 0.
 
   Level: intermediate
 
@@ -291,7 +292,7 @@ PetscErrorCode MatSchurComplementGetKSP(Mat S, KSP *ksp)
 }
 
 /*@
-  MatSchurComplementSetKSP - Sets the `KSP` object that is used to solve with A00 in the Schur complement matrix S = A11 - A10 ksp(A00,Ap00) A01
+  MatSchurComplementSetKSP - Sets the `KSP` object that is used to solve with `A00` in the Schur complement matrix $ S = A11 - A10 ksp(A00,Ap00) A01$
 
   Not Collective
 
@@ -302,8 +303,8 @@ PetscErrorCode MatSchurComplementGetKSP(Mat S, KSP *ksp)
   Level: developer
 
   Developer Notes:
-  This is used in `PCFIELDSPLIT` to reuse the 0-split `KSP` to implement ksp(A00,Ap00) in S.
-  The `KSP` operators are overwritten with A00 and Ap00 currently set in S.
+  This is used in `PCFIELDSPLIT` to reuse the 0-split `KSP` to implement $ksp(A00,Ap00)$ in `S`.
+  The `KSP` operators are overwritten with `A00` and `Ap00` currently set in `S`.
 
 .seealso: [](ch_ksp), `Mat`, `MatSchurComplementGetKSP()`, `MatCreateSchurComplement()`, `MatCreateNormal()`, `MatMult()`, `MatCreate()`, `MATSCHURCOMPLEMENT`
 @*/
@@ -331,12 +332,12 @@ PetscErrorCode MatSchurComplementSetKSP(Mat S, KSP ksp)
   Collective
 
   Input Parameters:
-+ S    - matrix obtained with `MatCreateSchurComplement()` (or `MatSchurSetSubMatrices()`) and implementing the action of A11 - A10 ksp(A00,Ap00) A01
-. A00  - the upper-left block of the original matrix A = [A00 A01; A10 A11]
-. Ap00 - preconditioning matrix for use in ksp(A00,Ap00) to approximate the action of A00^{-1}
-. A01  - the upper-right block of the original matrix A = [A00 A01; A10 A11]
-. A10  - the lower-left block of the original matrix A = [A00 A01; A10 A11]
-- A11  - (optional) the lower-right block of the original matrix A = [A00 A01; A10 A11]
++ S    - matrix obtained with `MatCreateSchurComplement()` (or `MatSchurSetSubMatrices()`) and implementing the action of $A11 - A10 ksp(A00,Ap00) A01$
+. A00  - the upper-left block of the original matrix $A = [A00 A01; A10 A11]$
+. Ap00 - preconditioning matrix for use in $ksp(A00,Ap00)$ to approximate the action of $A00^{-1}$
+. A01  - the upper-right block of the original matrix $A = [A00 A01; A10 A11]$
+. A10  - the lower-left block of the original matrix $A = [A00 A01; A10 A11]$
+- A11  - (optional) the lower-right block of the original matrix $A = [A00 A01; A10 A11]$
 
   Level: intermediate
 
@@ -411,14 +412,14 @@ PetscErrorCode MatSchurComplementUpdateSubMatrices(Mat S, Mat A00, Mat Ap00, Mat
   Collective
 
   Input Parameter:
-. S - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of A11 - A10 ksp(A00,Ap00) A01
+. S - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of $A11 - A10 ksp(A00,Ap00) A01$
 
   Output Parameters:
-+ A00  - the upper-left block of the original matrix A = [A00 A01; A10 A11]
-. Ap00 - preconditioning matrix for use in ksp(A00,Ap00) to approximate the action of A^{-1}
-. A01  - the upper-right block of the original matrix A = [A00 A01; A10 A11]
-. A10  - the lower-left block of the original matrix A = [A00 A01; A10 A11]
-- A11  - (optional) the lower-right block of the original matrix A = [A00 A01; A10 A11]
++ A00  - the upper-left block of the original matrix $A = [A00 A01; A10 A11]$
+. Ap00 - preconditioning matrix for use in $ksp(A00,Ap00)$ to approximate the action of $A^{-1}$
+. A01  - the upper-right block of the original matrix $A = [A00 A01; A10 A11]$
+. A10  - the lower-left block of the original matrix $A = [A00 A01; A10 A11]$
+- A11  - (optional) the lower-right block of the original matrix $A = [A00 A01; A10 A11]$
 
   Level: intermediate
 
@@ -654,19 +655,19 @@ PetscErrorCode MatGetSchurComplement_Basic(Mat mat, IS isrow0, IS iscol0, IS isr
 . iscol0   - columns to eliminate, (isrow0,iscol0) should be square and nonsingular
 . isrow1   - rows in which the Schur complement is formed
 . iscol1   - columns in which the Schur complement is formed
-. mreuse   - `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`, use `MAT_IGNORE_MATRIX` to put nothing in S
-. ainvtype - the type of approximation used for the inverse of the (0,0) block used in forming Sp:
-                       `MAT_SCHUR_COMPLEMENT_AINV_DIAG`, `MAT_SCHUR_COMPLEMENT_AINV_LUMP`, `MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG`, or `MAT_SCHUR_COMPLEMENT_AINV_FULL`
-- preuse   - `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`, use `MAT_IGNORE_MATRIX` to put nothing in Sp
+. mreuse   - `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`, use `MAT_IGNORE_MATRIX` to put nothing in `S`
+. ainvtype - the type of approximation used for the inverse of the (0,0) block used in forming `Sp`:
+             `MAT_SCHUR_COMPLEMENT_AINV_DIAG`, `MAT_SCHUR_COMPLEMENT_AINV_LUMP`, `MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG`, or `MAT_SCHUR_COMPLEMENT_AINV_FULL`
+- preuse   - `MAT_INITIAL_MATRIX` or `MAT_REUSE_MATRIX`, use `MAT_IGNORE_MATRIX` to put nothing in `Sp`
 
   Output Parameters:
 + S  - exact Schur complement, often of type `MATSCHURCOMPLEMENT` which is difficult to use for preconditioning
-- Sp - approximate Schur complement from which a preconditioner can be built A11 - A10 inv(DIAGFORM(A00)) A01
+- Sp - approximate Schur complement from which a preconditioner can be built $A11 - A10 inv(DIAGFORM(A00)) A01$
 
   Level: advanced
 
   Notes:
-  Since the real Schur complement is usually dense, providing a good approximation to Sp usually requires
+  Since the real Schur complement is usually dense, providing a good approximation to `Sp` usually requires
   application-specific information.
 
   Sometimes users would like to provide problem-specific data in the Schur complement, usually only for special row
@@ -713,14 +714,14 @@ PetscErrorCode MatGetSchurComplement(Mat A, IS isrow0, IS iscol0, IS isrow1, IS 
 }
 
 /*@
-  MatSchurComplementSetAinvType - set the type of approximation used for the inverse of the (0,0) block used in forming Sp in `MatSchurComplementGetPmat()`
+  MatSchurComplementSetAinvType - set the type of approximation used for the inverse of the (0,0) block used in forming `Sp` in `MatSchurComplementGetPmat()`
 
   Not Collective
 
   Input Parameters:
-+ S        - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of A11 - A10 ksp(A00,Ap00) A01
-- ainvtype - type of approximation to be used to form approximate Schur complement Sp = A11 - A10 inv(DIAGFORM(A00)) A01:
-                      `MAT_SCHUR_COMPLEMENT_AINV_DIAG`, `MAT_SCHUR_COMPLEMENT_AINV_LUMP`, `MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG`, or `MAT_SCHUR_COMPLEMENT_AINV_FULL`
++ S        - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of $A11 - A10 ksp(A00,Ap00) A01$
+- ainvtype - type of approximation to be used to form approximate Schur complement $Sp = A11 - A10 inv(DIAGFORM(A00)) A01$:
+             `MAT_SCHUR_COMPLEMENT_AINV_DIAG`, `MAT_SCHUR_COMPLEMENT_AINV_LUMP`, `MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG`, or `MAT_SCHUR_COMPLEMENT_AINV_FULL`
 
   Options Database Key:
 . -mat_schur_complement_ainv_type diag | lump | blockdiag | full - set schur complement type
@@ -746,16 +747,16 @@ PetscErrorCode MatSchurComplementSetAinvType(Mat S, MatSchurComplementAinvType a
 }
 
 /*@
-  MatSchurComplementGetAinvType - get the type of approximation for the inverse of the (0,0) block used in forming Sp in `MatSchurComplementGetPmat()`
+  MatSchurComplementGetAinvType - get the type of approximation for the inverse of the (0,0) block used in forming `Sp` in `MatSchurComplementGetPmat()`
 
   Not Collective
 
   Input Parameter:
-. S - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of A11 - A10 ksp(A00,Ap00) A01
+. S - matrix obtained with `MatCreateSchurComplement()` (or equivalent) and implementing the action of $A11 - A10 ksp(A00,Ap00) A01$
 
   Output Parameter:
 . ainvtype - type of approximation used to form approximate Schur complement Sp = A11 - A10 inv(DIAGFORM(A00)) A01:
-                      `MAT_SCHUR_COMPLEMENT_AINV_DIAG`, `MAT_SCHUR_COMPLEMENT_AINV_LUMP`, `MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG`, or `MAT_SCHUR_COMPLEMENT_AINV_FULL`
+             `MAT_SCHUR_COMPLEMENT_AINV_DIAG`, `MAT_SCHUR_COMPLEMENT_AINV_LUMP`, `MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG`, or `MAT_SCHUR_COMPLEMENT_AINV_FULL`
 
   Level: advanced
 
@@ -777,20 +778,20 @@ PetscErrorCode MatSchurComplementGetAinvType(Mat S, MatSchurComplementAinvType *
 
 /*@
   MatCreateSchurComplementPmat - create a preconditioning matrix for the Schur complement by explicitly assembling the sparse matrix
-  Sp = A11 - A10 inv(DIAGFORM(A00)) A01
+  $Sp = A11 - A10 inv(DIAGFORM(A00)) A01$
 
   Collective
 
   Input Parameters:
-+ A00      - the upper-left part of the original matrix A = [A00 A01; A10 A11]
-. A01      - (optional) the upper-right part of the original matrix A = [A00 A01; A10 A11]
-. A10      - (optional) the lower-left part of the original matrix A = [A00 A01; A10 A11]
-. A11      - (optional) the lower-right part of the original matrix A = [A00 A01; A10 A11]
-. ainvtype - type of approximation for DIAGFORM(A00) used when forming Sp = A11 - A10 inv(DIAGFORM(A00)) A01. See MatSchurComplementAinvType.
-- preuse   - `MAT_INITIAL_MATRIX` for a new Sp, or `MAT_REUSE_MATRIX` to reuse an existing Sp, or `MAT_IGNORE_MATRIX` to put nothing in Sp
++ A00      - the upper-left part of the original matrix $A = [A00 A01; A10 A11]$
+. A01      - (optional) the upper-right part of the original matrix $A = [A00 A01; A10 A11]$
+. A10      - (optional) the lower-left part of the original matrix $A = [A00 A01; A10 A11]$
+. A11      - (optional) the lower-right part of the original matrix $A = [A00 A01; A10 A11]$
+. ainvtype - type of approximation for DIAGFORM(A00) used when forming $Sp = A11 - A10 inv(DIAGFORM(A00)) A01$. See `MatSchurComplementAinvType`.
+- preuse   - `MAT_INITIAL_MATRIX` for a new `Sp`, or `MAT_REUSE_MATRIX` to reuse an existing `Sp`, or `MAT_IGNORE_MATRIX` to put nothing in `Sp`
 
   Output Parameter:
-. Sp - approximate Schur complement suitable for preconditioning the true Schur complement S = A11 - A10 inv(A00) A01
+. Sp - approximate Schur complement suitable for constructing a preconditioner for the true Schur complement $S = A11 - A10 inv(A00) A01$
 
   Level: advanced
 
@@ -895,21 +896,21 @@ static PetscErrorCode MatSchurComplementGetPmat_Basic(Mat S, MatReuse preuse, Ma
 }
 
 /*@
-  MatSchurComplementGetPmat - Obtain a preconditioning matrix for the Schur complement by assembling Sp = A11 - A10 inv(DIAGFORM(A00)) A01
+  MatSchurComplementGetPmat - Obtain a preconditioning matrix for the Schur complement by assembling $Sp = A11 - A10 inv(DIAGFORM(A00)) A01$
 
   Collective
 
   Input Parameters:
-+ S      - matrix obtained with MatCreateSchurComplement() (or equivalent) that implements the action of A11 - A10 ksp(A00,Ap00) A01
-- preuse - `MAT_INITIAL_MATRIX` for a new Sp, or `MAT_REUSE_MATRIX` to reuse an existing Sp, or `MAT_IGNORE_MATRIX` to put nothing in Sp
++ S      - matrix obtained with MatCreateSchurComplement() (or equivalent) that implements the action of $A11 - A10 ksp(A00,Ap00) A01$
+- preuse - `MAT_INITIAL_MATRIX` for a new `Sp`, or `MAT_REUSE_MATRIX` to reuse an existing `Sp`, or `MAT_IGNORE_MATRIX` to put nothing in `Sp`
 
   Output Parameter:
-. Sp - approximate Schur complement suitable for preconditioning the exact Schur complement S = A11 - A10 inv(A00) A01
+. Sp - approximate Schur complement suitable for preconditioning the exact Schur complement $S = A11 - A10 inv(A00) A01$
 
   Level: advanced
 
   Notes:
-  The approximation of Sp depends on the argument passed to `MatSchurComplementSetAinvType()`
+  The approximation of `Sp` depends on the argument passed to `MatSchurComplementSetAinvType()`
   `MAT_SCHUR_COMPLEMENT_AINV_DIAG`, `MAT_SCHUR_COMPLEMENT_AINV_LUMP`, `MAT_SCHUR_COMPLEMENT_AINV_BLOCK_DIAG`, or `MAT_SCHUR_COMPLEMENT_AINV_FULL`
   -mat_schur_complement_ainv_type <diag,lump,blockdiag,full>
 
@@ -1005,6 +1006,132 @@ static PetscErrorCode MatProductSetFromOptions_SchurComplement_Dense(Mat C)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode MatProductNumeric_SchurComplement_Any(Mat C)
+{
+  Mat_SchurComplement *Na = (Mat_SchurComplement *)C->data;
+
+  PetscFunctionBegin;
+  if (Na->D && Na->D->product) PetscCall(MatProductNumeric(Na->D));
+  if (Na->B->product) PetscCall(MatProductNumeric(Na->B));
+  if (Na->C->product) PetscCall(MatProductNumeric(Na->C));
+  C->assembled = PETSC_TRUE;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode MatProductSymbolic_SchurComplement_Any(Mat C)
+{
+  Mat_SchurComplement *Na = (Mat_SchurComplement *)C->data;
+
+  PetscFunctionBegin;
+  if (Na->D && Na->D->product) PetscCall(MatProductSymbolic(Na->D));
+  if (Na->B->product) PetscCall(MatProductSymbolic(Na->B));
+  if (Na->C->product) PetscCall(MatProductSymbolic(Na->C));
+  C->ops->productnumeric = MatProductNumeric_SchurComplement_Any;
+  C->preallocated        = PETSC_TRUE;
+  C->assembled           = PETSC_FALSE;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode MatProductSetFromOptions_SchurComplement_Any(Mat C)
+{
+  Mat_Product         *product = C->product;
+  Mat_SchurComplement *Na, *Ca;
+  Mat                  B = product->B, S = product->A, pB = NULL, pC = NULL, pD = NULL;
+  KSP                  ksp;
+  PetscInt             m = PETSC_DECIDE, n = PETSC_DECIDE, M = PETSC_DECIDE, N = PETSC_DECIDE;
+  MatProductType       pbtype = MATPRODUCT_UNSPECIFIED, pctype = MATPRODUCT_UNSPECIFIED;
+  PetscBool            isschur;
+
+  PetscFunctionBegin;
+  if (product->type == MATPRODUCT_ABC || product->type == MATPRODUCT_AtB) PetscFunctionReturn(PETSC_SUCCESS);
+  /* A * S not yet supported (should be easy though) */
+  PetscCall(PetscObjectTypeCompare((PetscObject)S, MATSCHURCOMPLEMENT, &isschur));
+  if (!isschur) PetscFunctionReturn(PETSC_SUCCESS);
+
+  Na = (Mat_SchurComplement *)S->data;
+  if (Na->D) {
+    PetscCall(MatProductCreate(Na->D, B, NULL, &pD));
+    PetscCall(MatProductSetType(pD, product->type));
+    PetscCall(MatProductSetFromOptions(pD));
+  }
+  if (pD && !pD->ops->productsymbolic) {
+    PetscCall(MatDestroy(&pD));
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+
+  /* S = A11 - A10 M A01 */
+  switch (product->type) {
+  case MATPRODUCT_AB: /* A11 B - A10 * M * A01 * B */
+    pbtype = product->type;
+    PetscCall(PetscObjectReference((PetscObject)Na->C));
+    pC = Na->C;
+    m  = S->rmap->n;
+    M  = S->rmap->N;
+    n  = B->cmap->n;
+    N  = B->cmap->N;
+    break;
+  case MATPRODUCT_ABt: /* A11 B^t - A10 * M * A01 * B^t */
+    pbtype = product->type;
+    PetscCall(PetscObjectReference((PetscObject)Na->C));
+    pC = Na->C;
+    m  = S->rmap->n;
+    M  = S->rmap->N;
+    n  = B->rmap->n;
+    N  = B->rmap->N;
+    break;
+  case MATPRODUCT_PtAP: /* Pt A11 P - Pt * A10 * M * A01 * P */
+    pbtype = MATPRODUCT_AB;
+    pctype = MATPRODUCT_AtB;
+    m      = B->cmap->n;
+    M      = B->cmap->N;
+    n      = B->cmap->n;
+    N      = B->cmap->N;
+    break;
+  case MATPRODUCT_RARt: /* R A11 Rt - R * A10 * M * A01 * Rt */
+    pbtype = MATPRODUCT_ABt;
+    pctype = MATPRODUCT_AB;
+    m      = B->rmap->n;
+    M      = B->rmap->N;
+    n      = B->rmap->n;
+    N      = B->rmap->N;
+    break;
+  default:
+    break;
+  }
+  PetscCall(MatProductCreate(Na->B, B, NULL, &pB));
+  PetscCall(MatProductSetType(pB, pbtype));
+  PetscCall(MatProductSetFromOptions(pB));
+  if (!pB->ops->productsymbolic) {
+    PetscCall(MatDestroy(&pB));
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+  if (pC == NULL) { /* Some work can in principle be saved here if we recognize symmetry */
+    PetscCall(MatProductCreate(B, Na->C, NULL, &pC));
+    PetscCall(MatProductSetType(pC, pctype));
+    PetscCall(MatProductSetFromOptions(pC));
+    if (!pC->ops->productsymbolic) {
+      PetscCall(MatDestroy(&pC));
+      PetscFunctionReturn(PETSC_SUCCESS);
+    }
+  }
+  PetscCall(MatSetType(C, MATSCHURCOMPLEMENT));
+  PetscCall(MatSetSizes(C, m, n, M, N));
+  PetscCall(PetscLayoutSetUp(C->rmap));
+  PetscCall(PetscLayoutSetUp(C->cmap));
+  PetscCall(PetscObjectReference((PetscObject)Na->A));
+  PetscCall(PetscObjectReference((PetscObject)Na->Ap));
+  Ca                      = (Mat_SchurComplement *)C->data;
+  Ca->A                   = Na->A;
+  Ca->Ap                  = Na->Ap;
+  Ca->B                   = pB;
+  Ca->C                   = pC;
+  Ca->D                   = pD;
+  C->ops->productsymbolic = MatProductSymbolic_SchurComplement_Any;
+  PetscCall(MatSchurComplementGetKSP(S, &ksp));
+  PetscCall(MatSchurComplementSetKSP(C, ksp));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /*MC
   MATSCHURCOMPLEMENT -  "schurcomplement" - Matrix type that behaves like the Schur complement of a matrix.
 
@@ -1035,5 +1162,6 @@ PETSC_EXTERN PetscErrorCode MatCreate_SchurComplement(Mat N)
   PetscCall(PetscObjectChangeTypeName((PetscObject)N, MATSCHURCOMPLEMENT));
   PetscCall(PetscObjectComposeFunction((PetscObject)N, "MatProductSetFromOptions_schurcomplement_seqdense_C", MatProductSetFromOptions_SchurComplement_Dense));
   PetscCall(PetscObjectComposeFunction((PetscObject)N, "MatProductSetFromOptions_schurcomplement_mpidense_C", MatProductSetFromOptions_SchurComplement_Dense));
+  PetscCall(PetscObjectComposeFunction((PetscObject)N, "MatProductSetFromOptions_anytype_C", MatProductSetFromOptions_SchurComplement_Any));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

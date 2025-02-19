@@ -20,12 +20,18 @@ static PetscErrorCode PetscLoadDynamicLibrary(const char *name, PetscBool *found
   PetscFunctionBegin;
   PetscCall(PetscStrncpy(libs, "${PETSC_LIB_DIR}/libpetsc", sizeof(libs)));
   PetscCall(PetscStrlcat(libs, name, sizeof(libs)));
+  #if defined(PETSC_LIB_NAME_SUFFIX)
+  PetscCall(PetscStrlcat(libs, PETSC_LIB_NAME_SUFFIX, sizeof(libs)));
+  #endif
   PetscCall(PetscDLLibraryRetrieve(PETSC_COMM_WORLD, libs, dlib, 1024, found));
   if (*found) {
     PetscCall(PetscDLLibraryAppend(PETSC_COMM_WORLD, &PetscDLLibrariesLoaded, dlib));
   } else {
     PetscCall(PetscStrncpy(libs, "${PETSC_DIR}/${PETSC_ARCH}/lib/libpetsc", sizeof(libs)));
     PetscCall(PetscStrlcat(libs, name, sizeof(libs)));
+  #if defined(PETSC_LIB_NAME_SUFFIX)
+    PetscCall(PetscStrlcat(libs, PETSC_LIB_NAME_SUFFIX, sizeof(libs)));
+  #endif
     PetscCall(PetscDLLibraryRetrieve(PETSC_COMM_WORLD, libs, dlib, 1024, found));
     if (*found) PetscCall(PetscDLLibraryAppend(PETSC_COMM_WORLD, &PetscDLLibrariesLoaded, dlib));
   }
@@ -518,7 +524,7 @@ PetscErrorCode PetscFunctionListGet(PetscFunctionList list, const char ***array,
     PetscCall(PetscMalloc1(size, (char ***)array));
     PetscCall(PetscHMapFuncGetKeys(map, &off, *array));
   }
-  *n = (int)size;
+  PetscCall(PetscCIntCast(size, n));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

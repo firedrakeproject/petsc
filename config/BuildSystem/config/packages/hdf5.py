@@ -20,12 +20,13 @@ class Configure(config.package.GNUPackage):
   def setupHelp(self, help):
     config.package.GNUPackage.setupHelp(self,help)
     import nargs
-    # PETSc does not need the Fortran interface.
+    # PETSc does not need the Fortran/CXX interface.
     # We currently need it to be disabled by default as HDF5 has bugs in their build process as of hdf5-1.12.0.
     # Not all dependencies for Fortran bindings are given in the makefiles, hence a parallel build can fail
     # when it starts a Fortran file before all its needed modules are finished.
     # Barry has reported this to them and they acknowledged it.
-    help.addArgument('HDF5', '-with-hdf5-fortran-bindings', nargs.ArgBool(None, 0, 'Use/build HDF5 Fortran interface (PETsc does not need it)'))
+    help.addArgument('HDF5', '-with-hdf5-fortran-bindings', nargs.ArgBool(None, 0, 'Use/build HDF5 Fortran interface (PETSc does not need it)'))
+    help.addArgument('HDF5', '-with-hdf5-cxx-bindings', nargs.ArgBool(None, 0, 'Use/build HDF5 Cxx interface (PETSc does not need it)'))
     #  Apple using Intel Fortran compiler errors when using shared libraries, ironically when you turn off building shared libraries it builds them correctly
     help.addArgument('HDF5', '-download-hdf5-shared-libraries', nargs.ArgBool(None, 1, 'Build HDF5 shared libraries'))
 
@@ -74,6 +75,11 @@ class Configure(config.package.GNUPackage):
         args.append('--enable-fortran')
       else:
         raise RuntimeError('Cannot build HDF5 Fortran bindings --with-fc=0 or with a malfunctioning Fortran compiler.')
+    if self.argDB['with-hdf5-cxx-bindings']:
+      if hasattr(self.compilers, 'CXX'):
+        args.extend(['--enable-cxx', '--enable-unsupported'])
+      else:
+        raise RuntimeError('Cannot build HDF5 Cxx bindings --with-cxx=0 or with a malfunctioning Cxx compiler.')
     if self.zlib.found:
       args.append('--with-zlib=yes')
     else:
@@ -87,11 +93,15 @@ class Configure(config.package.GNUPackage):
     return args
 
   def configureLibrary(self):
+    # PETSc does not need the Fortran/CXX interface, but some users will use them
+    # and expect our standard linking to be sufficient.  Thus we try to link the Fortran/CXX
+    # libraries, but fall back to linking only C.
     if hasattr(self.compilers, 'FC') and self.argDB['with-hdf5-fortran-bindings']:
-      # PETSc does not need the Fortran interface, but some users will call the Fortran interface
-      # and expect our standard linking to be sufficient.  Thus we try to link the Fortran
-      # libraries, but fall back to linking only C.
-      self.liblist = [['libhdf5hl_fortran.a','libhdf5_fortran.a'] + libs for libs in self.liblist] + self.liblist
+      self.liblist = [['libhdf5_hl_fortran.a','libhdf5_fortran.a'] + libs for libs in self.liblist] \
+                   + [['libhdf5hl_fortran.a','libhdf5_fortran.a'] + libs for libs in self.liblist] \
+                   + self.liblist
+    if hasattr(self.compilers, 'CXX') and self.argDB['with-hdf5-cxx-bindings']:
+      self.liblist = [['libhdf5_hl_cpp.a','libhdf5_cpp.a'] + libs for libs in self.liblist] + self.liblist
     config.package.GNUPackage.configureLibrary(self)
 
     for i in ['ZLIB_H','SZLIB_H','PARALLEL']:

@@ -182,7 +182,7 @@ PetscErrorCode DMInterpolationSetUp(DMInterpolationInfo ctx, DM dm, PetscBool re
   PetscReal         *globalPoints;
   PetscScalar       *globalPointsScalar;
   const PetscInt    *ranges;
-  PetscMPIInt       *counts, *displs, iN;
+  PetscMPIInt       *counts, *displs;
   const PetscSFNode *foundCells;
   const PetscInt    *foundPoints;
   PetscMPIInt       *foundProcs, *globalProcs, in;
@@ -237,13 +237,12 @@ PetscErrorCode DMInterpolationSetUp(DMInterpolationInfo ctx, DM dm, PetscBool re
     if (foundCells[p].index >= 0) foundProcs[foundPoints ? foundPoints[p] : p] = rank;
   }
   /* Let the lowest rank process own each point */
-  PetscCall(PetscMPIIntCast(N, &iN));
-  PetscCallMPI(MPIU_Allreduce(foundProcs, globalProcs, iN, MPI_INT, MPI_MIN, comm));
+  PetscCallMPI(MPIU_Allreduce(foundProcs, globalProcs, N, MPI_INT, MPI_MIN, comm));
   ctx->n = 0;
   for (p = 0; p < N; ++p) {
     if (globalProcs[p] == size) {
-      PetscCheck(ignoreOutsideDomain, comm, PETSC_ERR_PLIB, "Point %" PetscInt_FMT ": %g %g %g not located in mesh", p, (double)globalPoints[p * ctx->dim + 0], (double)(ctx->dim > 1 ? globalPoints[p * ctx->dim + 1] : 0.0),
-                 (double)(ctx->dim > 2 ? globalPoints[p * ctx->dim + 2] : 0.0));
+      PetscCheck(ignoreOutsideDomain, comm, PETSC_ERR_PLIB, "Point %" PetscInt_FMT ": %g %g %g not located in mesh", p, (double)globalPoints[p * ctx->dim + 0], (double)(ctx->dim > 1 ? globalPoints[p * ctx->dim + 1] : 0),
+                 (double)(ctx->dim > 2 ? globalPoints[p * ctx->dim + 2] : 0));
       if (rank == 0) ++ctx->n;
     } else if (globalProcs[p] == rank) ++ctx->n;
   }

@@ -6,7 +6,7 @@ class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
     self.minversion        = '5.6.0'
-    self.version           = '7.8.2'
+    self.version           = '7.8.3'
     self.versioninclude    = 'SuiteSparse_config.h'
     self.versionname       = 'SUITESPARSE_MAIN_VERSION.SUITESPARSE_SUB_VERSION.SUITESPARSE_SUBSUB_VERSION'
     self.gitcommit         = 'v'+self.version
@@ -46,7 +46,6 @@ class Configure(config.package.CMakePackage):
   def formCMakeConfigureArgs(self):
     args = config.package.CMakePackage.formCMakeConfigureArgs(self)
     args.append('-DSUITESPARSE_ENABLE_PROJECTS="amd;cholmod;klu;umfpack;spqr"')
-    args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
 
     args.append('-DBLA_VENDOR:STRING=Generic')
     args.append('-DBLAS_LIBRARIES:STRING="'+self.libraries.toString(self.blasLapack.dlib)+'"')

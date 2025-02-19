@@ -20,12 +20,6 @@ static PetscErrorCode TaoLineSearchDestroy_MT(TaoLineSearch ls)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TaoLineSearchSetFromOptions_MT(TaoLineSearch ls, PetscOptionItems *PetscOptionsObject)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode TaoLineSearchMonitor_MT(TaoLineSearch ls)
 {
   TaoLineSearch_MT *mt = (TaoLineSearch_MT *)ls->data;
@@ -144,6 +138,8 @@ static PetscErrorCode TaoLineSearchApply_MT(TaoLineSearch ls, Vec x, PetscReal *
     }
 
     if (ls->bounded) PetscCall(VecMedian(ls->lower, mt->work, ls->upper, mt->work));
+    /* Make sure user code doesn't mess with the non-updated solution */
+    PetscCall(VecLockReadPush(x));
     if (ls->usegts) {
       PetscCall(TaoLineSearchComputeObjectiveAndGTS(ls, mt->work, f, &dg));
       g_computed = PETSC_FALSE;
@@ -158,6 +154,7 @@ static PetscErrorCode TaoLineSearchApply_MT(TaoLineSearch ls, Vec x, PetscReal *
         PetscCall(VecDot(g, s, &dg));
       }
     }
+    PetscCall(VecLockReadPop(x));
 
     /* update bracketing parameters in the MT context for printouts in monitor */
     mt->stx = stx;
@@ -267,7 +264,7 @@ static PetscErrorCode TaoLineSearchApply_MT(TaoLineSearch ls, Vec x, PetscReal *
 
   /* Set new solution vector and compute gradient if needed */
   PetscCall(VecCopy(mt->work, x));
-  if (!g_computed) PetscCall(TaoLineSearchComputeGradient(ls, mt->work, g));
+  if (!g_computed) PetscCall(TaoLineSearchComputeGradient(ls, x, g));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -289,16 +286,15 @@ PETSC_EXTERN PetscErrorCode TaoLineSearchCreate_MT(TaoLineSearch ls)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, TAOLINESEARCH_CLASSID, 1);
   PetscCall(PetscNew(&ctx));
-  ctx->bracket            = 0;
-  ctx->infoc              = 1;
-  ls->data                = (void *)ctx;
-  ls->initstep            = 1.0;
-  ls->ops->setup          = NULL;
-  ls->ops->reset          = NULL;
-  ls->ops->apply          = TaoLineSearchApply_MT;
-  ls->ops->destroy        = TaoLineSearchDestroy_MT;
-  ls->ops->setfromoptions = TaoLineSearchSetFromOptions_MT;
-  ls->ops->monitor        = TaoLineSearchMonitor_MT;
+  ctx->bracket     = 0;
+  ctx->infoc       = 1;
+  ls->data         = (void *)ctx;
+  ls->initstep     = 1.0;
+  ls->ops->setup   = NULL;
+  ls->ops->reset   = NULL;
+  ls->ops->apply   = TaoLineSearchApply_MT;
+  ls->ops->destroy = TaoLineSearchDestroy_MT;
+  ls->ops->monitor = TaoLineSearchMonitor_MT;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

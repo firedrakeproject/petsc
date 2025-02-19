@@ -1060,13 +1060,13 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
 
     /* HACK: special support to forward L and Lp matrices that might be used by PCLSC */
     PetscCall(PetscSNPrintf(lscname, sizeof(lscname), "%s_LSC_L", ilink->splitname));
-    PetscCall(PetscObjectQuery((PetscObject)pc->mat, lscname, (PetscObject *)&LSC_L));
-    if (!LSC_L) PetscCall(PetscObjectQuery((PetscObject)pc->pmat, lscname, (PetscObject *)&LSC_L));
-    if (LSC_L) PetscCall(PetscObjectCompose((PetscObject)jac->schur, "LSC_L", (PetscObject)LSC_L));
+    PetscCall(PetscObjectQuery((PetscObject)pc->mat, lscname, &LSC_L));
+    if (!LSC_L) PetscCall(PetscObjectQuery((PetscObject)pc->pmat, lscname, &LSC_L));
+    if (LSC_L) PetscCall(PetscObjectCompose((PetscObject)jac->schur, "LSC_L", LSC_L));
     PetscCall(PetscSNPrintf(lscname, sizeof(lscname), "%s_LSC_Lp", ilink->splitname));
-    PetscCall(PetscObjectQuery((PetscObject)pc->pmat, lscname, (PetscObject *)&LSC_L));
-    if (!LSC_L) PetscCall(PetscObjectQuery((PetscObject)pc->mat, lscname, (PetscObject *)&LSC_L));
-    if (LSC_L) PetscCall(PetscObjectCompose((PetscObject)jac->schur, "LSC_Lp", (PetscObject)LSC_L));
+    PetscCall(PetscObjectQuery((PetscObject)pc->pmat, lscname, &LSC_L));
+    if (!LSC_L) PetscCall(PetscObjectQuery((PetscObject)pc->mat, lscname, &LSC_L));
+    if (LSC_L) PetscCall(PetscObjectCompose((PetscObject)jac->schur, "LSC_Lp", LSC_L));
   } else if (jac->type == PC_COMPOSITE_GKB) {
     IS       ccis;
     PetscInt rstart, rend;
@@ -1957,6 +1957,7 @@ static PetscErrorCode PCFieldSplitSetFields_FieldSplit(PC pc, const char splitna
   PC_FieldSplitLink ilink, next = jac->head;
   char              prefix[128];
   PetscInt          i;
+  PetscLogEvent     nse;
 
   PetscFunctionBegin;
   if (jac->splitdefined) {
@@ -1971,7 +1972,8 @@ static PetscErrorCode PCFieldSplitSetFields_FieldSplit(PC pc, const char splitna
     PetscCall(PetscMalloc1(3, &ilink->splitname));
     PetscCall(PetscSNPrintf(ilink->splitname, 2, "%" PetscInt_FMT, jac->nsplits));
   }
-  ilink->event = jac->nsplits < 5 ? (PetscLogEvent)(KSP_Solve_FS_0 + jac->nsplits) : (PetscLogEvent)(KSP_Solve_FS_0 + 4); /* Splits greater than 4 logged in 4th split */
+  PetscCall(PetscMPIIntCast(jac->nsplits, &nse));
+  ilink->event = jac->nsplits < 5 ? KSP_Solve_FS_0 + nse : KSP_Solve_FS_0 + 4; /* Splits greater than 4 logged in 4th split */
   PetscCall(PetscMalloc1(n, &ilink->fields));
   PetscCall(PetscArraycpy(ilink->fields, fields, n));
   PetscCall(PetscMalloc1(n, &ilink->fields_col));
@@ -2142,6 +2144,7 @@ static PetscErrorCode PCFieldSplitSetIS_FieldSplit(PC pc, const char splitname[]
   PC_FieldSplit    *jac = (PC_FieldSplit *)pc->data;
   PC_FieldSplitLink ilink, next = jac->head;
   char              prefix[128];
+  PetscLogEvent     nse;
 
   PetscFunctionBegin;
   if (jac->splitdefined) {
@@ -2155,7 +2158,8 @@ static PetscErrorCode PCFieldSplitSetIS_FieldSplit(PC pc, const char splitname[]
     PetscCall(PetscMalloc1(8, &ilink->splitname));
     PetscCall(PetscSNPrintf(ilink->splitname, 7, "%" PetscInt_FMT, jac->nsplits));
   }
-  ilink->event = jac->nsplits < 5 ? (PetscLogEvent)(KSP_Solve_FS_0 + jac->nsplits) : (PetscLogEvent)(KSP_Solve_FS_0 + 4); /* Splits greater than 4 logged in 4th split */
+  PetscCall(PetscMPIIntCast(jac->nsplits, &nse));
+  ilink->event = jac->nsplits < 5 ? KSP_Solve_FS_0 + nse : KSP_Solve_FS_0 + 4; /* Splits greater than 4 logged in 4th split */
   PetscCall(PetscObjectReference((PetscObject)is));
   PetscCall(ISDestroy(&ilink->is));
   ilink->is = is;
@@ -2211,7 +2215,7 @@ static PetscErrorCode PCFieldSplitSetIS_FieldSplit(PC pc, const char splitname[]
   `PCFieldSplitSetFields()` is for defining fields as strided blocks (based on the block size provided to the matrix with `MatSetBlocksize()` or
   to the `PC` with `PCFieldSplitSetBlockSize()`). For example, if the block
   size is three then one can define a split as 0, or 1 or 2 or 0,1 or 0,2 or 1,2 which mean
-  0xx3xx6xx9xx12 ... x1xx4xx7xx ... xx2xx5xx8xx.. 01x34x67x... 0x1x3x5x7.. x12x45x78x....
+  0xx3xx6xx9xx12 ... x1xx4xx7xx ... xx2xx5xx8xx.. 01x34x67x... 0x23x56x8.. x12x45x78x....
   where the numbered entries indicate what is in the split.
 
   This function is called once per split (it creates a new split each time).  Solve options
@@ -3222,7 +3226,7 @@ PetscErrorCode PCFieldSplitGetType(PC pc, PCCompositeType *type)
   Developer Note:
   The name should be `PCFieldSplitSetUseDMSplits()`, similar change to options database
 
-.seealso: [](sec_block_matrices), `PC`, `PCFIELDSPLIT`, `PCFieldSplitGetDMSplits()`, `DMCreateFieldDecomposition()`, `PCFieldSplitSetFields()`, `PCFieldsplitSetIS()`
+.seealso: [](sec_block_matrices), `PC`, `PCFIELDSPLIT`, `PCFieldSplitGetDMSplits()`, `DMCreateFieldDecomposition()`, `PCFieldSplitSetFields()`, `PCFieldSplitSetIS()`
 @*/
 PetscErrorCode PCFieldSplitSetDMSplits(PC pc, PetscBool flg)
 {
@@ -3253,7 +3257,7 @@ PetscErrorCode PCFieldSplitSetDMSplits(PC pc, PetscBool flg)
   Developer Note:
   The name should be `PCFieldSplitGetUseDMSplits()`
 
-.seealso: [](sec_block_matrices), `PC`, `PCFIELDSPLIT`, `PCFieldSplitSetDMSplits()`, `DMCreateFieldDecomposition()`, `PCFieldSplitSetFields()`, `PCFieldsplitSetIS()`
+.seealso: [](sec_block_matrices), `PC`, `PCFIELDSPLIT`, `PCFieldSplitSetDMSplits()`, `DMCreateFieldDecomposition()`, `PCFieldSplitSetFields()`, `PCFieldSplitSetIS()`
 @*/
 PetscErrorCode PCFieldSplitGetDMSplits(PC pc, PetscBool *flg)
 {
@@ -3330,7 +3334,10 @@ PetscErrorCode PCFieldSplitSetDetectSaddlePoint(PC pc, PetscBool flg)
 
 /*MC
   PCFIELDSPLIT - Preconditioner created by combining separate preconditioners for individual
-  collections of variables (that may overlap) called splits. See [the users manual section on "Solving Block Matrices"](sec_block_matrices) for more details.
+  collections of variables (that may overlap) called fields or splits. Each field often represents a different continuum variable
+  represented on a grid, such as velocity, pressure, or temperature.
+  In the literature these are sometimes called block preconditioners; but should not be confused with `PCBJACOBI`.
+  See [the users manual section on "Solving Block Matrices"](sec_block_matrices) for more details.
 
   Options Database Keys:
 +   -pc_fieldsplit_%d_fields <a,b,..>                                                - indicates the fields to be used in the `%d`'th split
@@ -3422,6 +3429,9 @@ PetscErrorCode PCFieldSplitSetDetectSaddlePoint(PC pc, PetscBool flg)
   ```
   with $A_{00}$ positive semi-definite. The implementation follows {cite}`arioli2013`. Therein, we choose $N := 1/\nu * I$ and the $(1,1)$-block of the matrix is modified to $H = _{A00} + \nu*A_{01}*A_{01}'$.
   A linear system $Hx = b$ has to be solved in each iteration of the GKB algorithm. This solver is chosen with the option prefix `-fieldsplit_0_`.
+
+  Some `PCFIELDSPLIT` variants are called physics-based preconditioners, since the preconditioner takes into account the underlying physics of the
+  problem. But this nomenclature is not well-defined.
 
   Developer Note:
   The Schur complement functionality of `PCFIELDSPLIT` should likely be factored into its own `PC` thus simplifying the implementation of the preconditioners and their

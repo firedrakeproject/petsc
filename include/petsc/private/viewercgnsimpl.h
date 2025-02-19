@@ -4,6 +4,8 @@
 #include <cgnstypes.h>
 #include <cgnslib.h>
 
+PETSC_EXTERN PetscLogEvent PETSC_VIEWER_CGNS_Open, PETSC_VIEWER_CGNS_Close, PETSC_VIEWER_CGNS_ReadMeta, PETSC_VIEWER_CGNS_WriteMeta, PETSC_VIEWER_CGNS_ReadData, PETSC_VIEWER_CGNS_WriteData;
+
 typedef struct {
   char           *filename_template;
   char           *filename;
@@ -32,6 +34,48 @@ typedef struct {
     PetscCheck(!_cgns_ier, PETSC_COMM_SELF, PETSC_ERR_LIB, "CGNS error %d %s", _cgns_ier, cg_get_error()); \
   } while (0)
 
+#define PetscCallCGNSOpen(ierr, o1, o2) \
+  do { \
+    PetscCall(PetscLogEventBegin(PETSC_VIEWER_CGNS_Open, o1, o2, 0, 0)); \
+    PetscCallCGNS((ierr)); \
+    PetscCall(PetscLogEventEnd(PETSC_VIEWER_CGNS_Open, o1, o2, 0, 0)); \
+  } while (0)
+
+#define PetscCallCGNSClose(ierr, o1, o2) \
+  do { \
+    PetscCall(PetscLogEventBegin(PETSC_VIEWER_CGNS_Close, o1, o2, 0, 0)); \
+    PetscCallCGNS((ierr)); \
+    PetscCall(PetscLogEventEnd(PETSC_VIEWER_CGNS_Close, o1, o2, 0, 0)); \
+  } while (0)
+
+#define PetscCallCGNSRead(ierr, o1, o2) \
+  do { \
+    PetscCall(PetscLogEventBegin(PETSC_VIEWER_CGNS_ReadMeta, o1, o2, 0, 0)); \
+    PetscCallCGNS((ierr)); \
+    PetscCall(PetscLogEventEnd(PETSC_VIEWER_CGNS_ReadMeta, o1, o2, 0, 0)); \
+  } while (0)
+
+#define PetscCallCGNSReadData(ierr, o1, o2) \
+  do { \
+    PetscCall(PetscLogEventBegin(PETSC_VIEWER_CGNS_ReadData, o1, o2, 0, 0)); \
+    PetscCallCGNS((ierr)); \
+    PetscCall(PetscLogEventEnd(PETSC_VIEWER_CGNS_ReadData, o1, o2, 0, 0)); \
+  } while (0)
+
+#define PetscCallCGNSWrite(ierr, o1, o2) \
+  do { \
+    PetscCall(PetscLogEventBegin(PETSC_VIEWER_CGNS_WriteMeta, o1, o2, 0, 0)); \
+    PetscCallCGNS((ierr)); \
+    PetscCall(PetscLogEventEnd(PETSC_VIEWER_CGNS_WriteMeta, o1, o2, 0, 0)); \
+  } while (0)
+
+#define PetscCallCGNSWriteData(ierr, o1, o2) \
+  do { \
+    PetscCall(PetscLogEventBegin(PETSC_VIEWER_CGNS_WriteData, o1, o2, 0, 0)); \
+    PetscCallCGNS((ierr)); \
+    PetscCall(PetscLogEventEnd(PETSC_VIEWER_CGNS_WriteData, o1, o2, 0, 0)); \
+  } while (0)
+
 #if !defined(PRIdCGSIZE)
   #if CG_SIZEOF_SIZE == 32
     // cgsize_t is defined as int
@@ -58,6 +102,7 @@ typedef struct {
   #endif
 #endif
 
+PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode PetscViewerCGNSRegisterLogEvents_Internal();
 PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode PetscViewerCGNSCheckBatch_Internal(PetscViewer);
 PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode PetscViewerCGNSFileOpen_Internal(PetscViewer, PetscInt);
 PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode PetscViewerCGNSGetSolutionFileIndex_Internal(PetscViewer, int *);

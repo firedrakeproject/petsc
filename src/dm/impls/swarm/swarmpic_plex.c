@@ -83,7 +83,8 @@ static PetscErrorCode private_PetscFECreateDefault_scalar_pk1(DM dm, PetscInt di
 static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX_SubDivide(DM dm, DM dmc, PetscInt nsub)
 {
   PetscInt         dim, nfaces, nbasis;
-  PetscInt         q, npoints_q, e, nel, pcnt, ps, pe, d, k, r;
+  PetscInt         q, npoints_q, e, nel, pcnt, ps, pe, d, k, r, Nfc;
+  DMSwarmCellDM    celldm;
   PetscTabulation  T;
   Vec              coorlocal;
   PetscSection     coordSection;
@@ -94,6 +95,7 @@ static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX_SubDivide(DM d
   PetscQuadrature  quadrature;
   PetscFE          fe, feRef;
   PetscBool        is_simplex;
+  const char     **coordFields, *cellid;
 
   PetscFunctionBegin;
   PetscCall(DMGetDimension(dmc, &dim));
@@ -119,9 +121,14 @@ static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX_SubDivide(DM d
   PetscCall(DMPlexGetHeightStratum(dmc, 0, &ps, &pe));
   nel = pe - ps;
 
+  PetscCall(DMSwarmGetCellDMActive(dmc, &celldm));
+  PetscCall(DMSwarmCellDMGetCoordinateFields(celldm, &Nfc, &coordFields));
+  PetscCheck(Nfc == 1, PetscObjectComm((PetscObject)dmc), PETSC_ERR_SUP, "We only support a single coordinate field right now, not %" PetscInt_FMT, Nfc);
+  PetscCall(DMSwarmCellDMGetCellID(celldm, &cellid));
+
   PetscCall(DMSwarmSetLocalSizes(dm, npoints_q * nel, -1));
-  PetscCall(DMSwarmGetField(dm, DMSwarmPICField_coor, NULL, NULL, (void **)&swarm_coor));
-  PetscCall(DMSwarmGetField(dm, DMSwarmPICField_cellid, NULL, NULL, (void **)&swarm_cellid));
+  PetscCall(DMSwarmGetField(dm, coordFields[0], NULL, NULL, (void **)&swarm_coor));
+  PetscCall(DMSwarmGetField(dm, cellid, NULL, NULL, (void **)&swarm_cellid));
 
   PetscCall(DMGetCoordinatesLocal(dmc, &coorlocal));
   PetscCall(DMGetCoordinateSection(dmc, &coordSection));
@@ -140,8 +147,8 @@ static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX_SubDivide(DM d
     }
     PetscCall(DMPlexVecRestoreClosure(dmc, coordSection, coorlocal, ps + e, NULL, &elcoor));
   }
-  PetscCall(DMSwarmRestoreField(dm, DMSwarmPICField_cellid, NULL, NULL, (void **)&swarm_cellid));
-  PetscCall(DMSwarmRestoreField(dm, DMSwarmPICField_coor, NULL, NULL, (void **)&swarm_coor));
+  PetscCall(DMSwarmRestoreField(dm, cellid, NULL, NULL, (void **)&swarm_cellid));
+  PetscCall(DMSwarmRestoreField(dm, coordFields[0], NULL, NULL, (void **)&swarm_coor));
 
   PetscCall(PetscFEDestroy(&fe));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -149,16 +156,18 @@ static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX_SubDivide(DM d
 
 static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX2D_Regular(DM dm, DM dmc, PetscInt npoints)
 {
-  PetscInt     dim;
-  PetscInt     ii, jj, q, npoints_q, e, nel, npe, pcnt, ps, pe, d, k, nfaces;
-  PetscReal   *xi, ds, ds2;
-  PetscReal  **basis;
-  Vec          coorlocal;
-  PetscSection coordSection;
-  PetscScalar *elcoor = NULL;
-  PetscReal   *swarm_coor;
-  PetscInt    *swarm_cellid;
-  PetscBool    is_simplex;
+  PetscInt      dim;
+  PetscInt      ii, jj, q, npoints_q, e, nel, npe, pcnt, ps, pe, d, k, nfaces, Nfc;
+  PetscReal    *xi, ds, ds2;
+  PetscReal   **basis;
+  DMSwarmCellDM celldm;
+  Vec           coorlocal;
+  PetscSection  coordSection;
+  PetscScalar  *elcoor = NULL;
+  PetscReal    *swarm_coor;
+  PetscInt     *swarm_cellid;
+  PetscBool     is_simplex;
+  const char  **coordFields, *cellid;
 
   PetscFunctionBegin;
   PetscCall(DMGetDimension(dmc, &dim));
@@ -202,9 +211,14 @@ static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX2D_Regular(DM d
   PetscCall(DMPlexGetHeightStratum(dmc, 0, &ps, &pe));
   nel = pe - ps;
 
+  PetscCall(DMSwarmGetCellDMActive(dmc, &celldm));
+  PetscCall(DMSwarmCellDMGetCoordinateFields(celldm, &Nfc, &coordFields));
+  PetscCheck(Nfc == 1, PetscObjectComm((PetscObject)dmc), PETSC_ERR_SUP, "We only support a single coordinate field right now, not %" PetscInt_FMT, Nfc);
+  PetscCall(DMSwarmCellDMGetCellID(celldm, &cellid));
+
   PetscCall(DMSwarmSetLocalSizes(dm, npoints_q * nel, -1));
-  PetscCall(DMSwarmGetField(dm, DMSwarmPICField_coor, NULL, NULL, (void **)&swarm_coor));
-  PetscCall(DMSwarmGetField(dm, DMSwarmPICField_cellid, NULL, NULL, (void **)&swarm_cellid));
+  PetscCall(DMSwarmGetField(dm, coordFields[0], NULL, NULL, (void **)&swarm_coor));
+  PetscCall(DMSwarmGetField(dm, cellid, NULL, NULL, (void **)&swarm_cellid));
 
   PetscCall(DMGetCoordinatesLocal(dmc, &coorlocal));
   PetscCall(DMGetCoordinateSection(dmc, &coordSection));
@@ -223,8 +237,8 @@ static PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX2D_Regular(DM d
     }
     PetscCall(DMPlexVecRestoreClosure(dmc, coordSection, coorlocal, e, NULL, &elcoor));
   }
-  PetscCall(DMSwarmRestoreField(dm, DMSwarmPICField_cellid, NULL, NULL, (void **)&swarm_cellid));
-  PetscCall(DMSwarmRestoreField(dm, DMSwarmPICField_coor, NULL, NULL, (void **)&swarm_coor));
+  PetscCall(DMSwarmRestoreField(dm, cellid, NULL, NULL, (void **)&swarm_cellid));
+  PetscCall(DMSwarmRestoreField(dm, coordFields[0], NULL, NULL, (void **)&swarm_coor));
 
   PetscCall(PetscFree(xi));
   for (q = 0; q < npoints_q; q++) PetscCall(PetscFree(basis[q]));
@@ -267,7 +281,8 @@ PetscErrorCode private_DMSwarmInsertPointsUsingCellDM_PLEX(DM dm, DM celldm, DMS
 PetscErrorCode private_DMSwarmSetPointCoordinatesCellwise_PLEX(DM dm, DM dmc, PetscInt npoints, PetscReal xi[])
 {
   PetscBool       is_simplex, is_tensorcell;
-  PetscInt        dim, nfaces, ps, pe, p, d, nbasis, pcnt, e, k, nel;
+  PetscInt        dim, nfaces, ps, pe, p, d, nbasis, pcnt, e, k, nel, Nfc;
+  DMSwarmCellDM   celldm;
   PetscFE         fe;
   PetscQuadrature quadrature;
   PetscTabulation T;
@@ -277,6 +292,7 @@ PetscErrorCode private_DMSwarmSetPointCoordinatesCellwise_PLEX(DM dm, DM dmc, Pe
   PetscScalar    *elcoor = NULL;
   PetscReal      *swarm_coor;
   PetscInt       *swarm_cellid;
+  const char    **coordFields, *cellid;
 
   PetscFunctionBegin;
   PetscCall(DMGetDimension(dmc, &dim));
@@ -328,9 +344,14 @@ PetscErrorCode private_DMSwarmSetPointCoordinatesCellwise_PLEX(DM dm, DM dmc, Pe
   PetscCall(DMPlexGetHeightStratum(dmc, 0, &ps, &pe));
   nel = pe - ps;
 
+  PetscCall(DMSwarmGetCellDMActive(dm, &celldm));
+  PetscCall(DMSwarmCellDMGetCoordinateFields(celldm, &Nfc, &coordFields));
+  PetscCheck(Nfc == 1, PetscObjectComm((PetscObject)dmc), PETSC_ERR_SUP, "We only support a single coordinate field right now, not %" PetscInt_FMT, Nfc);
+  PetscCall(DMSwarmCellDMGetCellID(celldm, &cellid));
+
   PetscCall(DMSwarmSetLocalSizes(dm, npoints * nel, -1));
-  PetscCall(DMSwarmGetField(dm, DMSwarmPICField_coor, NULL, NULL, (void **)&swarm_coor));
-  PetscCall(DMSwarmGetField(dm, DMSwarmPICField_cellid, NULL, NULL, (void **)&swarm_cellid));
+  PetscCall(DMSwarmGetField(dm, coordFields[0], NULL, NULL, (void **)&swarm_coor));
+  PetscCall(DMSwarmGetField(dm, cellid, NULL, NULL, (void **)&swarm_cellid));
 
   PetscCall(DMGetCoordinatesLocal(dmc, &coorlocal));
   PetscCall(DMGetCoordinateSection(dmc, &coordSection));
@@ -349,8 +370,8 @@ PetscErrorCode private_DMSwarmSetPointCoordinatesCellwise_PLEX(DM dm, DM dmc, Pe
     }
     PetscCall(DMPlexVecRestoreClosure(dmc, coordSection, coorlocal, ps + e, NULL, &elcoor));
   }
-  PetscCall(DMSwarmRestoreField(dm, DMSwarmPICField_cellid, NULL, NULL, (void **)&swarm_cellid));
-  PetscCall(DMSwarmRestoreField(dm, DMSwarmPICField_coor, NULL, NULL, (void **)&swarm_coor));
+  PetscCall(DMSwarmRestoreField(dm, cellid, NULL, NULL, (void **)&swarm_cellid));
+  PetscCall(DMSwarmRestoreField(dm, coordFields[0], NULL, NULL, (void **)&swarm_coor));
 
   PetscCall(PetscQuadratureDestroy(&quadrature));
   PetscCall(PetscFEDestroy(&fe));

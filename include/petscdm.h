@@ -19,11 +19,15 @@ PETSC_EXTERN PetscClassId DM_CLASSID;
 #define DMLOCATEPOINT_POINT_NOT_FOUND -367
 
 /*J
-    DMType - String with the name of a PETSc `DM`
+   DMType - String with the name of a PETSc `DM`. These are all the `DM` provided by PETSc.
 
    Level: beginner
 
-.seealso: [](ch_dmbase), `DMSetType()`, `DMCreate()`, `DM`
+   Note:
+   These can be used with `DMSetType()` or the options database key `-dm_type` to set the specific data structures and algorithms to use with a specific `DM`.
+   But more commonly one calls directly a constructor for a particular `DMType` such as `DMDACreate()`
+
+.seealso: [](ch_dmbase), `DMSetType()`, `DMCreate()`, `DM`, `DMDACreate()`
 J*/
 typedef const char *DMType;
 #define DMDA        "da"
@@ -201,7 +205,7 @@ PETSC_EXTERN PetscErrorCode DMGetMatType(DM, MatType *);
 PETSC_EXTERN PetscErrorCode DMSetISColoringType(DM, ISColoringType);
 PETSC_EXTERN PetscErrorCode DMGetISColoringType(DM, ISColoringType *);
 PETSC_EXTERN PetscErrorCode DMSetApplicationContext(DM, void *);
-PETSC_EXTERN PetscErrorCode DMSetApplicationContextDestroy(DM, PetscErrorCode (*)(void **));
+PETSC_EXTERN PetscErrorCode DMSetApplicationContextDestroy(DM, PetscCtxDestroyFn *);
 PETSC_EXTERN PetscErrorCode DMGetApplicationContext(DM, void *);
 PETSC_EXTERN PetscErrorCode DMSetVariableBounds(DM, PetscErrorCode (*)(DM, Vec, Vec));
 PETSC_EXTERN PetscErrorCode DMHasVariableBounds(DM, PetscBool *);
@@ -246,8 +250,6 @@ PETSC_EXTERN PetscErrorCode DMGetNullSpaceConstructor(DM, PetscInt, PetscErrorCo
 PETSC_EXTERN PetscErrorCode DMSetNearNullSpaceConstructor(DM, PetscInt, PetscErrorCode (*)(DM, PetscInt, PetscInt, MatNullSpace *));
 PETSC_EXTERN PetscErrorCode DMGetNearNullSpaceConstructor(DM, PetscInt, PetscErrorCode (**)(DM, PetscInt, PetscInt, MatNullSpace *));
 
-PETSC_EXTERN PetscErrorCode DMGetSection(DM, PetscSection *); /* Use DMGetLocalSection() in new code (since v3.12) */
-PETSC_EXTERN PetscErrorCode DMSetSection(DM, PetscSection);   /* Use DMSetLocalSection() in new code (since v3.12) */
 PETSC_EXTERN PetscErrorCode DMGetLocalSection(DM, PetscSection *);
 PETSC_EXTERN PetscErrorCode DMSetLocalSection(DM, PetscSection);
 PETSC_EXTERN PetscErrorCode DMGetGlobalSection(DM, PetscSection *);
@@ -258,13 +260,21 @@ PETSC_EXTERN PetscErrorCode DMReorderSectionSetDefault(DM, DMReorderDefaultFlag)
 PETSC_EXTERN PetscErrorCode DMReorderSectionGetType(DM, MatOrderingType *);
 PETSC_EXTERN PetscErrorCode DMReorderSectionSetType(DM, MatOrderingType);
 PETSC_EXTERN PetscErrorCode DMUseTensorOrder(DM, PetscBool);
+static inline PETSC_DEPRECATED_FUNCTION(3, 23, 0, "DMGetLocalSection()", ) PetscErrorCode DMGetSection(DM dm, PetscSection *s)
+{
+  return DMGetLocalSection(dm, s);
+}
+static inline PETSC_DEPRECATED_FUNCTION(3, 23, 0, "DMSetLocalSection()", ) PetscErrorCode DMSetSection(DM dm, PetscSection s)
+{
+  return DMSetLocalSection(dm, s);
+}
 static inline PETSC_DEPRECATED_FUNCTION(3, 9, 0, "DMGetSection()", ) PetscErrorCode DMGetDefaultSection(DM dm, PetscSection *s)
 {
-  return DMGetSection(dm, s);
+  return DMGetLocalSection(dm, s);
 }
 static inline PETSC_DEPRECATED_FUNCTION(3, 9, 0, "DMSetSection()", ) PetscErrorCode DMSetDefaultSection(DM dm, PetscSection s)
 {
-  return DMSetSection(dm, s);
+  return DMSetLocalSection(dm, s);
 }
 static inline PETSC_DEPRECATED_FUNCTION(3, 9, 0, "DMGetGlobalSection()", ) PetscErrorCode DMGetDefaultGlobalSection(DM dm, PetscSection *s)
 {
@@ -447,7 +457,7 @@ PETSC_EXTERN PetscErrorCode DMCopyTransform(DM, DM);
 
 PETSC_EXTERN PetscErrorCode DMGetCompatibility(DM, DM, PetscBool *, PetscBool *);
 
-PETSC_EXTERN PetscErrorCode DMMonitorSet(DM, PetscErrorCode (*)(DM, void *), void *, PetscErrorCode (*)(void **));
+PETSC_EXTERN PetscErrorCode DMMonitorSet(DM, PetscErrorCode (*)(DM, void *), void *, PetscCtxDestroyFn *);
 PETSC_EXTERN PetscErrorCode DMMonitorCancel(DM);
 PETSC_EXTERN PetscErrorCode DMMonitorSetFromOptions(DM, const char[], const char[], const char[], PetscErrorCode (*)(DM, void *), PetscErrorCode (*)(DM, PetscViewerAndFormat *), PetscBool *);
 PETSC_EXTERN PetscErrorCode DMMonitor(DM);

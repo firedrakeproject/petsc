@@ -583,7 +583,7 @@ static PetscErrorCode DMGetCompatibility_Stag(DM dm, DM dm2, PetscBool *compatib
   PetscCall(DMGetType(dm2, &type2));
   PetscCall(PetscStrcmp(DMSTAG, type2, &sameType));
   if (!sameType) {
-    PetscCall(PetscInfo((PetscObject)dm, "DMStag compatibility check not implemented with DM of type %s\n", type2));
+    PetscCall(PetscInfo(dm, "DMStag compatibility check not implemented with DM of type %s\n", type2));
     *set = PETSC_FALSE;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
@@ -591,33 +591,33 @@ static PetscErrorCode DMGetCompatibility_Stag(DM dm, DM dm2, PetscBool *compatib
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   PetscCallMPI(MPI_Comm_compare(comm, PetscObjectComm((PetscObject)dm2), &sameComm));
   if (sameComm != MPI_IDENT) {
-    PetscCall(PetscInfo((PetscObject)dm, "DMStag objects have different communicators: %" PETSC_INTPTR_T_FMT " != %" PETSC_INTPTR_T_FMT "\n", (PETSC_INTPTR_T)comm, (PETSC_INTPTR_T)PetscObjectComm((PetscObject)dm2)));
+    PetscCall(PetscInfo(dm, "DMStag objects have different communicators: %" PETSC_INTPTR_T_FMT " != %" PETSC_INTPTR_T_FMT "\n", (PETSC_INTPTR_T)comm, (PETSC_INTPTR_T)PetscObjectComm((PetscObject)dm2)));
     *set = PETSC_FALSE;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
   PetscCall(DMGetDimension(dm, &dim));
   PetscCall(DMGetDimension(dm2, &dim2));
   if (dim != dim2) {
-    PetscCall(PetscInfo((PetscObject)dm, "DMStag objects have different dimensions\n"));
+    PetscCall(PetscInfo(dm, "DMStag objects have different dimensions\n"));
     *set        = PETSC_TRUE;
     *compatible = PETSC_FALSE;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
   for (i = 0; i < dim; ++i) {
     if (stag->N[i] != stag2->N[i]) {
-      PetscCall(PetscInfo((PetscObject)dm, "DMStag objects have different global numbers of elements in dimension %" PetscInt_FMT ": %" PetscInt_FMT " != %" PetscInt_FMT "\n", i, stag->n[i], stag2->n[i]));
+      PetscCall(PetscInfo(dm, "DMStag objects have different global numbers of elements in dimension %" PetscInt_FMT ": %" PetscInt_FMT " != %" PetscInt_FMT "\n", i, stag->n[i], stag2->n[i]));
       *set        = PETSC_TRUE;
       *compatible = PETSC_FALSE;
       PetscFunctionReturn(PETSC_SUCCESS);
     }
     if (stag->n[i] != stag2->n[i]) {
-      PetscCall(PetscInfo((PetscObject)dm, "DMStag objects have different local numbers of elements in dimension %" PetscInt_FMT ": %" PetscInt_FMT " != %" PetscInt_FMT "\n", i, stag->n[i], stag2->n[i]));
+      PetscCall(PetscInfo(dm, "DMStag objects have different local numbers of elements in dimension %" PetscInt_FMT ": %" PetscInt_FMT " != %" PetscInt_FMT "\n", i, stag->n[i], stag2->n[i]));
       *set        = PETSC_TRUE;
       *compatible = PETSC_FALSE;
       PetscFunctionReturn(PETSC_SUCCESS);
     }
     if (stag->boundaryType[i] != stag2->boundaryType[i]) {
-      PetscCall(PetscInfo((PetscObject)dm, "DMStag objects have different boundary types in dimension %" PetscInt_FMT ": %s != %s\n", i, DMBoundaryTypes[stag->boundaryType[i]], DMBoundaryTypes[stag2->boundaryType[i]]));
+      PetscCall(PetscInfo(dm, "DMStag objects have different boundary types in dimension %" PetscInt_FMT ": %s != %s\n", i, DMBoundaryTypes[stag->boundaryType[i]], DMBoundaryTypes[stag2->boundaryType[i]]));
       *set        = PETSC_TRUE;
       *compatible = PETSC_FALSE;
       PetscFunctionReturn(PETSC_SUCCESS);
@@ -628,13 +628,13 @@ static PetscErrorCode DMGetCompatibility_Stag(DM dm, DM dm2, PetscBool *compatib
      of wanting to transfer between two other-wise compatible DMs with different
      stencil characteristics. */
   if (stag->stencilType != stag2->stencilType) {
-    PetscCall(PetscInfo((PetscObject)dm, "DMStag objects have different ghost stencil types: %s != %s\n", DMStagStencilTypes[stag->stencilType], DMStagStencilTypes[stag2->stencilType]));
+    PetscCall(PetscInfo(dm, "DMStag objects have different ghost stencil types: %s != %s\n", DMStagStencilTypes[stag->stencilType], DMStagStencilTypes[stag2->stencilType]));
     *set        = PETSC_TRUE;
     *compatible = PETSC_FALSE;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
   if (stag->stencilWidth != stag2->stencilWidth) {
-    PetscCall(PetscInfo((PetscObject)dm, "DMStag objects have different ghost stencil widths: %" PetscInt_FMT " != %" PetscInt_FMT "\n", stag->stencilWidth, stag->stencilWidth));
+    PetscCall(PetscInfo(dm, "DMStag objects have different ghost stencil widths: %" PetscInt_FMT " != %" PetscInt_FMT "\n", stag->stencilWidth, stag->stencilWidth));
     *set        = PETSC_TRUE;
     *compatible = PETSC_FALSE;
     PetscFunctionReturn(PETSC_SUCCESS);
@@ -918,13 +918,13 @@ static PetscErrorCode DMSetFromOptions_Stag(DM dm, PetscOptionItems *PetscOption
 }
 
 /*MC
-  DMSTAG - `"stag"` - A `DM` object representing a "staggered grid" or a structured cell complex.
+  DMSTAG - `"stag"` - A `DM` object for working with a staggered grid (or mesh) or a structured cell complex.
 
   Level: beginner
 
   Notes:
   This implementation parallels the `DMDA` implementation in many ways, but allows degrees of freedom
-  to be associated with all "strata" in a logically-rectangular grid.
+  to be associated with all "strata" in a logically-rectangular grid. That is, points, edges, faces, and cells (called elements).
 
   Each stratum can be characterized by the dimension of the entities ("points", to borrow the `DMPLEX`
   terminology), from 0- to 3-dimensional.

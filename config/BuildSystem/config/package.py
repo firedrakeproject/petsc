@@ -2004,6 +2004,10 @@ class CMakePackage(Package):
       args.append('-DBUILD_SHARED_LIBS:BOOL=OFF')
       args.append('-DBUILD_STATIC_LIBS:BOOL=ON')
 
+    if self.checkSharedLibrariesEnabled():
+      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
+      args.append('-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON')
+
     if 'MSYSTEM' in os.environ:
       args.append('-G "MSYS Makefiles"')
     for package in self.deps + self.odeps:
@@ -2066,7 +2070,9 @@ class CMakePackage(Package):
         raise RuntimeError('Error configuring '+self.PACKAGE+' with CMake')
       try:
         self.logPrintBox('Compiling and installing '+self.PACKAGE+'; this may take several minutes')
-        output2,err2,ret2  = config.package.Package.executeShellCommand(self.make.make_jnp+' '+self.makerulename, cwd=folder, timeout=3000, log = self.log)
+        if self.parallelMake: pmake = self.make.make_jnp+' '+self.makerulename+' '
+        else: pmake = self.make.make+' '+self.makerulename+' '
+        output2,err2,ret2  = config.package.Package.executeShellCommand(pmake, cwd=folder, timeout=3000, log = self.log)
         output3,err3,ret3  = config.package.Package.executeShellCommand(self.make.make+' install', cwd=folder, timeout=3000, log = self.log)
       except RuntimeError as e:
         self.logPrint('Error running make on  '+self.PACKAGE+': '+str(e))

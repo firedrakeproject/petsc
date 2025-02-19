@@ -210,9 +210,7 @@ PetscErrorCode MatSetErrorIfFailure(Mat mat, PetscBool flg)
   user must ensure that they are chosen to be compatible with the
   vectors. To do this, one first considers the matrix-vector product
   'y = A x'. The `m` that is used in the above routine must match the
-  local size used in the vector creation routine `VecCreateMPI()` for 'y'.
-  Likewise, the `n` used must match that used as the local size in
-  `VecCreateMPI()` for 'x'.
+  local size of 'y'. Likewise, the `n` used must match the local size of 'x'.
 
   If `m` and `n` are not `PETSC_DECIDE`, then the values determine the `PetscLayout` of the matrix and the ranges returned by
   `MatGetOwnershipRange()`,  `MatGetOwnershipRanges()`, `MatGetOwnershipRangeColumn()`, and `MatGetOwnershipRangesColumn()`.
@@ -312,10 +310,10 @@ PetscErrorCode MatSetFromOptions(Mat B)
   PetscTryTypeMethod(B, setfromoptions, PetscOptionsObject);
 
   flg = PETSC_FALSE;
-  PetscCall(PetscOptionsBool("-mat_new_nonzero_location_err", "Generate an error if new nonzeros are created in the matrix structure (useful to test preallocation)", "MatSetOption", flg, &flg, &set));
+  PetscCall(PetscOptionsBool("-mat_new_nonzero_location_err", "Generate an error if new nonzeros are created in the matrix nonzero structure (useful to test preallocation)", "MatSetOption", flg, &flg, &set));
   if (set) PetscCall(MatSetOption(B, MAT_NEW_NONZERO_LOCATION_ERR, flg));
   flg = PETSC_FALSE;
-  PetscCall(PetscOptionsBool("-mat_new_nonzero_allocation_err", "Generate an error if new nonzeros are allocated in the matrix structure (useful to test preallocation)", "MatSetOption", flg, &flg, &set));
+  PetscCall(PetscOptionsBool("-mat_new_nonzero_allocation_err", "Generate an error if new nonzeros are allocated in the matrix nonzero structure (useful to test preallocation)", "MatSetOption", flg, &flg, &set));
   if (set) PetscCall(MatSetOption(B, MAT_NEW_NONZERO_ALLOCATION_ERR, flg));
   flg = PETSC_FALSE;
   PetscCall(PetscOptionsBool("-mat_ignore_zero_entries", "For AIJ/IS matrices this will stop zero values from creating a zero location in the matrix", "MatSetOption", flg, &flg, &set));
@@ -358,10 +356,8 @@ PetscErrorCode MatSetFromOptions(Mat B)
 @*/
 PetscErrorCode MatXAIJSetPreallocation(Mat A, PetscInt bs, const PetscInt dnnz[], const PetscInt onnz[], const PetscInt dnnzu[], const PetscInt onnzu[])
 {
-  PetscInt cbs;
-  void (*aij)(void);
-  void (*is)(void);
-  void (*hyp)(void) = NULL;
+  PetscInt  cbs;
+  PetscBool aij, is, hyp;
 
   PetscFunctionBegin;
   if (bs != PETSC_DECIDE) { /* don't mess with an already set block size */
@@ -379,12 +375,10 @@ PetscErrorCode MatXAIJSetPreallocation(Mat A, PetscInt bs, const PetscInt dnnz[]
     In general, we have to do extra work to preallocate for scalar (AIJ) or unassembled (IS) matrices so we check whether it will do any
     good before going on with it.
   */
-  PetscCall(PetscObjectQueryFunction((PetscObject)A, "MatMPIAIJSetPreallocation_C", &aij));
-  PetscCall(PetscObjectQueryFunction((PetscObject)A, "MatISSetPreallocation_C", &is));
-#if defined(PETSC_HAVE_HYPRE)
-  PetscCall(PetscObjectQueryFunction((PetscObject)A, "MatHYPRESetPreallocation_C", &hyp));
-#endif
-  if (!aij && !is && !hyp) PetscCall(PetscObjectQueryFunction((PetscObject)A, "MatSeqAIJSetPreallocation_C", &aij));
+  PetscCall(PetscObjectHasFunction((PetscObject)A, "MatMPIAIJSetPreallocation_C", &aij));
+  PetscCall(PetscObjectHasFunction((PetscObject)A, "MatISSetPreallocation_C", &is));
+  PetscCall(PetscObjectHasFunction((PetscObject)A, "MatHYPRESetPreallocation_C", &hyp));
+  if (!aij && !is && !hyp) PetscCall(PetscObjectHasFunction((PetscObject)A, "MatSeqAIJSetPreallocation_C", &aij));
   if (aij || is || hyp) {
     if (bs == cbs && bs == 1) {
       PetscCall(MatSeqAIJSetPreallocation(A, 0, dnnz));
@@ -529,8 +523,9 @@ PetscErrorCode MatHeaderMerge(Mat A, Mat *C)
 .ve
 
   Note:
-  This can be used inside a function provided to `SNESSetJacobian()`, `TSSetRHSJacobian()`, or `TSSetIJacobian()` in cases where the user code computes an entirely new sparse matrix
-  (generally with a different nonzero pattern) for each Newton update. It is usually better to reuse the matrix structure of `A` instead of constructing an entirely new one.
+  This can be used inside a function provided to `SNESSetJacobian()`, `TSSetRHSJacobian()`, or `TSSetIJacobian()` in cases where the user code
+  computes an entirely new sparse matrix  (generally with a different matrix nonzero structure/pattern) for each Newton update.
+  It is usually better to reuse the matrix nonzero structure of `A` instead of constructing an entirely new one.
 
   Developer Note:
   This is somewhat different from `MatHeaderMerge()` it would be nice to merge the code
@@ -647,10 +642,11 @@ PetscErrorCode MatSetPreallocationCOO_Basic(Mat A, PetscCount ncoo, PetscInt coo
 {
   Mat         preallocator;
   IS          is_coo_i, is_coo_j;
+  PetscInt    ncoo_i;
   PetscScalar zero = 0.0;
 
   PetscFunctionBegin;
-  PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
+  PetscCall(PetscIntCast(ncoo, &ncoo_i));
   PetscCall(PetscLayoutSetUp(A->rmap));
   PetscCall(PetscLayoutSetUp(A->cmap));
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), &preallocator));
@@ -663,8 +659,8 @@ PetscErrorCode MatSetPreallocationCOO_Basic(Mat A, PetscCount ncoo, PetscInt coo
   PetscCall(MatAssemblyEnd(preallocator, MAT_FINAL_ASSEMBLY));
   PetscCall(MatPreallocatorPreallocate(preallocator, PETSC_TRUE, A));
   PetscCall(MatDestroy(&preallocator));
-  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, (PetscInt)ncoo, coo_i, PETSC_COPY_VALUES, &is_coo_i));
-  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, (PetscInt)ncoo, coo_j, PETSC_COPY_VALUES, &is_coo_j));
+  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, ncoo_i, coo_i, PETSC_COPY_VALUES, &is_coo_i));
+  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, ncoo_i, coo_j, PETSC_COPY_VALUES, &is_coo_j));
   PetscCall(PetscObjectCompose((PetscObject)A, "__PETSc_coo_i", (PetscObject)is_coo_i));
   PetscCall(PetscObjectCompose((PetscObject)A, "__PETSc_coo_j", (PetscObject)is_coo_j));
   PetscCall(ISDestroy(&is_coo_i));
@@ -765,7 +761,6 @@ PetscErrorCode MatSetPreallocationCOOLocal(Mat A, PetscCount ncoo, PetscInt coo_
   PetscValidType(A, 1);
   if (ncoo) PetscAssertPointer(coo_i, 3);
   if (ncoo) PetscAssertPointer(coo_j, 4);
-  PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
   PetscCall(PetscLayoutSetUp(A->rmap));
   PetscCall(PetscLayoutSetUp(A->cmap));
 
@@ -774,11 +769,18 @@ PetscErrorCode MatSetPreallocationCOOLocal(Mat A, PetscCount ncoo, PetscInt coo_
     PetscCall((*f)(A, ncoo, coo_i, coo_j));
     A->nonzerostate++;
   } else {
+    PetscInt               ncoo_i;
     ISLocalToGlobalMapping ltog_row, ltog_col;
 
     PetscCall(MatGetLocalToGlobalMapping(A, &ltog_row, &ltog_col));
-    if (ltog_row) PetscCall(ISLocalToGlobalMappingApply(ltog_row, (PetscInt)ncoo, coo_i, coo_i));
-    if (ltog_col) PetscCall(ISLocalToGlobalMappingApply(ltog_col, (PetscInt)ncoo, coo_j, coo_j));
+    if (ltog_row) {
+      PetscCall(PetscIntCast(ncoo, &ncoo_i));
+      PetscCall(ISLocalToGlobalMappingApply(ltog_row, ncoo_i, coo_i, coo_i));
+    }
+    if (ltog_col) {
+      PetscCall(PetscIntCast(ncoo, &ncoo_i));
+      PetscCall(ISLocalToGlobalMappingApply(ltog_col, ncoo_i, coo_j, coo_j));
+    }
     PetscCall(MatSetPreallocationCOO(A, ncoo, coo_i, coo_j));
   }
   A->preallocated = PETSC_TRUE;

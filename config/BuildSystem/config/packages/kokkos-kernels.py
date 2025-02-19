@@ -4,7 +4,7 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.gitcommit        = '4.4.01'
+    self.gitcommit        = '4.5.01'
     self.minversion       = '3.7.01'
     self.versionname      = 'KOKKOSKERNELS_VERSION'
     self.download         = ['git://https://github.com/kokkos/kokkos-kernels.git','https://github.com/kokkos/kokkos-kernels/archive/'+self.gitcommit+'.tar.gz']
@@ -66,10 +66,6 @@ class Configure(config.package.CMakePackage):
       elif self.scalarTypes.precision == 'single':
         args.append('-DKokkosKernels_INST_COMPLEX_FLOAT=ON')
 
-    if self.checkSharedLibrariesEnabled():
-      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
-      args.append('-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON')
-
     if self.cuda.found:
       args = self.rmArgsStartsWith(args,'-DCMAKE_CXX_COMPILER=')
       if self.cuda.cudaclang:
@@ -92,10 +88,27 @@ class Configure(config.package.CMakePackage):
         args.append('-DKokkosKernels_ENABLE_TPL_ROCBLAS=ON')
         args.append('-DKokkosKernels_ENABLE_TPL_ROCSPARSE=ON')
         args.append('-DKokkosKernels_ENABLE_TPL_ROCSOLVER=ON')
-        args.append('-DROCBLAS_ROOT='+self.hip.rocBlasDir) # KK-4.0.1 and higher only support these
-        args.append('-DROCSPARSE_ROOT='+self.hip.rocSparseDir)
-        args.append('-DKokkosKernels_ROCBLAS_ROOT='+self.hip.rocBlasDir) # KK-4.0.0 and lower support these; remove the two lines once self.miniversion >= 4.0.1
-        args.append('-DKokkosKernels_ROCSPARSE_ROOT='+self.hip.rocSparseDir)
+        # rocm re-organized directory since 6.0.0
+        #   Before 6.0.0: /opt/rocm-5.4.3/include/{rocblas.h, rocsparse.h, ...}, /opt/rocm-5.4.3/lib/{librocblas.so, librocsparse.so, ...}
+        #   Since 6.0.0: /opt/rocm-6.0.0/include/{rocblas/rocblas.h, rocsparse/rocsparse.h, ...}, /opt/rocm-6.0.0/lib/{librocblas.so, librocsparse.so, ...}
+        # KK-4.5.1 failed with the simple -DROCBLAS_ROOT=/opt/rocm-6.0.0, so we go verbosely
+        if self.hip.version_tuple >= (6, 0, 0):
+          args.append('-DROCBLAS_LIBRARIES=rocblas')
+          args.append('-DROCBLAS_LIBRARY_DIRS='+os.path.join(self.hip.hipDir, 'lib'))
+          args.append('-DROCBLAS_INCLUDE_DIRS='+os.path.join(self.hip.hipDir, 'include', 'rocblas'))
+          args.append('-DROCSPARSE_LIBRARIES=rocsparse')
+          args.append('-DROCSPARSE_LIBRARY_DIRS='+os.path.join(self.hip.hipDir, 'lib'))
+          args.append('-DROCSPARSE_INCLUDE_DIRS='+os.path.join(self.hip.hipDir, 'include', 'rocsparse'))
+          args.append('-DROCSOLVER_LIBRARIES=rocsolver')
+          args.append('-DROCSOLVER_LIBRARY_DIRS='+os.path.join(self.hip.hipDir, 'lib'))
+          args.append('-DROCSOLVER_INCLUDE_DIRS='+os.path.join(self.hip.hipDir, 'include', 'rocsolver'))
+        else:
+          args.append('-DROCBLAS_ROOT='+self.hip.hipDir) # KK-4.0.1 and higher only support these
+          args.append('-DROCSPARSE_ROOT='+self.hip.hipDir)
+          args.append('-DROCSPARSE_ROOT='+self.hip.hipDir)
+          args.append('-DKokkosKernels_ROCBLAS_ROOT='+self.hip.hipDir) # KK-4.0.0 and lower support these; remove the two lines once self.miniversion >= 4.0.1
+          args.append('-DKokkosKernels_ROCSPARSE_ROOT='+self.hip.hipDir)
+          args.append('-DKokkosKernels_ROCSOLVER_ROOT='+self.hip.hipDir)
       elif 'with-kokkos-kernels-tpl' in self.framework.clArgDB and self.argDB['with-kokkos-kernels-tpl']: # TPL is explicitly required by users
         raise RuntimeError('Kokkos-Kernels TPL is required but {x} and {y} do not exist! If not needed, use --with-kokkos-kernels-tpl=0'.format(x=self.hip.rocBlasDir,y=self.hip.rocSparseDir))
       else: # Users turned it off or because rocBlas/rocSparse dirs not found

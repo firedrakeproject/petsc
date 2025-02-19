@@ -852,7 +852,7 @@ static PetscErrorCode SNESMonitorPauseFinal_Internal(SNES snes)
 . name         - the monitor type one is seeking
 . help         - message indicating what monitoring is done
 . manual       - manual page for the monitor
-. monitor      - the monitor function
+. monitor      - the monitor function, this must use a `PetscViewerFormat` as its context
 - monitorsetup - a function that is called once ONLY if the user selected this monitor that may set additional features of the `SNES` or `PetscViewer` objects
 
   Calling sequence of `monitor`:
@@ -891,7 +891,7 @@ PetscErrorCode SNESMonitorSetFromOptions(SNES snes, const char name[], const cha
     PetscCall(PetscViewerAndFormatCreate(viewer, format, &vf));
     PetscCall(PetscViewerDestroy(&viewer));
     if (monitorsetup) PetscCall((*monitorsetup)(snes, vf));
-    PetscCall(SNESMonitorSet(snes, (PetscErrorCode (*)(SNES, PetscInt, PetscReal, void *))monitor, vf, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy));
+    PetscCall(SNESMonitorSet(snes, (PetscErrorCode (*)(SNES, PetscInt, PetscReal, void *))monitor, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1103,7 +1103,7 @@ PetscErrorCode SNESSetFromOptions(SNES snes)
     PetscViewer ctx;
 
     PetscCall(PetscViewerDrawOpen(PetscObjectComm((PetscObject)snes), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, &ctx));
-    PetscCall(SNESMonitorSet(snes, SNESMonitorLGRange, ctx, (PetscErrorCode (*)(void **))PetscViewerDestroy));
+    PetscCall(SNESMonitorSet(snes, SNESMonitorLGRange, ctx, (PetscCtxDestroyFn *)PetscViewerDestroy));
   }
 
   PetscCall(PetscViewerDestroy(&snes->convergedreasonviewer));
@@ -1231,14 +1231,11 @@ PetscErrorCode SNESResetFromOptions(SNES snes)
   Input Parameters:
 + snes    - the `SNES` context
 . compute - function to compute the context
-- destroy - function to destroy the context
+- destroy - function to destroy the context, see `PetscCtxDestroyFn` for the calling sequence
 
   Calling sequence of `compute`:
 + snes - the `SNES` context
 - ctx  - context to be computed
-
-  Calling sequence of `destroy`:
-. ctx - context to be computed by `compute()`
 
   Level: intermediate
 
@@ -1247,14 +1244,14 @@ PetscErrorCode SNESResetFromOptions(SNES snes)
 
   Use `SNESSetApplicationContext()` to see the context immediately
 
-.seealso: [](ch_snes), `SNESGetApplicationContext()`, `SNESSetApplicationContext()`
+.seealso: [](ch_snes), `SNESGetApplicationContext()`, `SNESSetApplicationContext()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode SNESSetComputeApplicationContext(SNES snes, PetscErrorCode (*compute)(SNES snes, void **ctx), PetscErrorCode (*destroy)(void **ctx))
+PetscErrorCode SNESSetComputeApplicationContext(SNES snes, PetscErrorCode (*compute)(SNES snes, void **ctx), PetscCtxDestroyFn *destroy)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   snes->ops->usercompute = compute;
-  snes->ops->userdestroy = destroy;
+  snes->ops->ctxdestroy  = destroy;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1265,7 +1262,7 @@ PetscErrorCode SNESSetComputeApplicationContext(SNES snes, PetscErrorCode (*comp
 
   Input Parameters:
 + snes - the `SNES` context
-- usrP - optional user context
+- ctx  - optional user context
 
   Level: intermediate
 
@@ -1281,15 +1278,15 @@ PetscErrorCode SNESSetComputeApplicationContext(SNES snes, PetscErrorCode (*comp
 
 .seealso: [](ch_snes), `SNES`, `SNESSetComputeApplicationContext()`, `SNESGetApplicationContext()`
 @*/
-PetscErrorCode SNESSetApplicationContext(SNES snes, void *usrP)
+PetscErrorCode SNESSetApplicationContext(SNES snes, void *ctx)
 {
   KSP ksp;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   PetscCall(SNESGetKSP(snes, &ksp));
-  PetscCall(KSPSetApplicationContext(ksp, usrP));
-  snes->user = usrP;
+  PetscCall(KSPSetApplicationContext(ksp, ctx));
+  snes->ctx = ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1303,7 +1300,7 @@ PetscErrorCode SNESSetApplicationContext(SNES snes, void *usrP)
 . snes - `SNES` context
 
   Output Parameter:
-. usrP - user context
+. ctx - user context
 
   Level: intermediate
 
@@ -1313,11 +1310,11 @@ PetscErrorCode SNESSetApplicationContext(SNES snes, void *usrP)
 
 .seealso: [](ch_snes), `SNESSetApplicationContext()`, `SNESSetComputeApplicationContext()`
 @*/
-PetscErrorCode SNESGetApplicationContext(SNES snes, void *usrP)
+PetscErrorCode SNESGetApplicationContext(SNES snes, void *ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
-  *(void **)usrP = snes->user;
+  *(void **)ctx = snes->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1904,7 +1901,7 @@ PetscErrorCode SNESCreate(MPI_Comm comm, SNES *outsnes)
   /* Create context to compute Eisenstat-Walker relative tolerance for KSP */
   PetscCall(PetscNew(&kctx));
 
-  snes->kspconvctx  = (void *)kctx;
+  snes->kspconvctx  = kctx;
   kctx->version     = 2;
   kctx->rtol_0      = 0.3; /* Eisenstat and Walker suggest rtol_0=.5, but
                              this was too large for some test cases */
@@ -3388,7 +3385,7 @@ PetscErrorCode SNESSetUp(SNES snes)
     }
   }
   if (snes->mf) PetscCall(SNESSetUpMatrixFree_Private(snes, snes->mf_operator, snes->mf_version));
-  if (snes->ops->usercompute && !snes->user) PetscCallBack("SNES callback compute application context", (*snes->ops->usercompute)(snes, (void **)&snes->user));
+  if (snes->ops->usercompute && !snes->ctx) PetscCallBack("SNES callback compute application context", (*snes->ops->usercompute)(snes, &snes->ctx));
 
   snes->jac_iter = 0;
   snes->pre_iter = 0;
@@ -3431,9 +3428,9 @@ PetscErrorCode SNESReset(SNES snes)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
-  if (snes->ops->userdestroy && snes->user) {
-    PetscCallBack("SNES callback destroy application context", (*snes->ops->userdestroy)((void **)&snes->user));
-    snes->user = NULL;
+  if (snes->ops->ctxdestroy && snes->ctx) {
+    PetscCallBack("SNES callback destroy application context", (*snes->ops->ctxdestroy)(&snes->ctx));
+    snes->ctx = NULL;
   }
   if (snes->npc) PetscCall(SNESReset(snes->npc));
 
@@ -3908,18 +3905,18 @@ PetscErrorCode SNESSetTolerances(SNES snes, PetscReal abstol, PetscReal rtol, Pe
     snes->stol = stol;
   }
 
-  if (maxit == (PetscInt)PETSC_DETERMINE) {
+  if (maxit == PETSC_DETERMINE) {
     snes->max_its = snes->default_max_its;
-  } else if (maxit == (PetscInt)PETSC_UNLIMITED) {
+  } else if (maxit == PETSC_UNLIMITED) {
     snes->max_its = PETSC_INT_MAX;
   } else if (maxit != PETSC_CURRENT) {
     PetscCheck(maxit >= 0, PetscObjectComm((PetscObject)snes), PETSC_ERR_ARG_OUTOFRANGE, "Maximum number of iterations %" PetscInt_FMT " must be non-negative", maxit);
     snes->max_its = maxit;
   }
 
-  if (maxf == (PetscInt)PETSC_DETERMINE) {
+  if (maxf == PETSC_DETERMINE) {
     snes->max_funcs = snes->default_max_funcs;
-  } else if (maxf == (PetscInt)PETSC_UNLIMITED || maxf == -1) {
+  } else if (maxf == PETSC_UNLIMITED || maxf == -1) {
     snes->max_funcs = PETSC_UNLIMITED;
   } else if (maxf != PETSC_CURRENT) {
     PetscCheck(maxf >= 0, PetscObjectComm((PetscObject)snes), PETSC_ERR_ARG_OUTOFRANGE, "Maximum number of function evaluations %" PetscInt_FMT " must be nonnegative", maxf);
@@ -4190,7 +4187,7 @@ M*/
 + snes           - the `SNES` context
 . f              - the monitor function,  for the calling sequence see `SNESMonitorFunction`
 . mctx           - [optional] user-defined context for private data for the monitor routine (use `NULL` if no context is desired)
-- monitordestroy - [optional] routine that frees monitor context (may be `NULL`)
+- monitordestroy - [optional] routine that frees monitor context (may be `NULL`), see `PetscCtxDestroyFn` for the calling sequence
 
   Options Database Keys:
 + -snes_monitor               - sets `SNESMonitorDefault()`
@@ -4208,9 +4205,9 @@ M*/
   Fortran Note:
   Only a single monitor function can be set for each `SNES` object
 
-.seealso: [](ch_snes), `SNES`, `SNESSolve()`, `SNESMonitorDefault()`, `SNESMonitorCancel()`, `SNESMonitorFunction`
+.seealso: [](ch_snes), `SNES`, `SNESSolve()`, `SNESMonitorDefault()`, `SNESMonitorCancel()`, `SNESMonitorFunction`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode SNESMonitorSet(SNES snes, PetscErrorCode (*f)(SNES, PetscInt, PetscReal, void *), void *mctx, PetscErrorCode (*monitordestroy)(void **))
+PetscErrorCode SNESMonitorSet(SNES snes, PetscErrorCode (*f)(SNES, PetscInt, PetscReal, void *), void *mctx, PetscCtxDestroyFn *monitordestroy)
 {
   PetscInt  i;
   PetscBool identical;
@@ -4224,7 +4221,7 @@ PetscErrorCode SNESMonitorSet(SNES snes, PetscErrorCode (*f)(SNES, PetscInt, Pet
   PetscCheck(snes->numbermonitors < MAXSNESMONITORS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many monitors set");
   snes->monitor[snes->numbermonitors]          = f;
   snes->monitordestroy[snes->numbermonitors]   = monitordestroy;
-  snes->monitorcontext[snes->numbermonitors++] = (void *)mctx;
+  snes->monitorcontext[snes->numbermonitors++] = mctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -4616,14 +4613,11 @@ PetscErrorCode SNESConvergedReasonView(SNES snes, PetscViewer viewer)
 + snes              - the `SNES` context
 . f                 - the `SNESConvergedReason` view function
 . vctx              - [optional] user-defined context for private data for the `SNESConvergedReason` view function (use `NULL` if no context is desired)
-- reasonviewdestroy - [optional] routine that frees the context (may be `NULL`)
+- reasonviewdestroy - [optional] routine that frees the context (may be `NULL`), see `PetscCtxDestroyFn` for the calling sequence
 
   Calling sequence of `f`:
 + snes - the `SNES` context
-- vctx - [optional] user-defined context for private data for the function
-
-  Calling sequence of `reasonviewerdestroy`:
-. vctx - [optional] user-defined context for private data for the function
+- vctx - [optional] context for private data for the function
 
   Options Database Keys:
 + -snes_converged_reason             - sets a default `SNESConvergedReasonView()`
@@ -4637,9 +4631,10 @@ PetscErrorCode SNESConvergedReasonView(SNES snes, PetscViewer viewer)
   `SNESConvergedReasonViewSet()` multiple times; all will be called in the
   order in which they were set.
 
-.seealso: [](ch_snes), `SNES`, `SNESSolve()`, `SNESConvergedReason`, `SNESGetConvergedReason()`, `SNESConvergedReasonView()`, `SNESConvergedReasonViewCancel()`
+.seealso: [](ch_snes), `SNES`, `SNESSolve()`, `SNESConvergedReason`, `SNESGetConvergedReason()`, `SNESConvergedReasonView()`, `SNESConvergedReasonViewCancel()`,
+          `PetscCtxDestroyFn`
 @*/
-PetscErrorCode SNESConvergedReasonViewSet(SNES snes, PetscErrorCode (*f)(SNES snes, void *vctx), void *vctx, PetscErrorCode (*reasonviewdestroy)(void **vctx))
+PetscErrorCode SNESConvergedReasonViewSet(SNES snes, PetscErrorCode (*f)(SNES snes, void *vctx), void *vctx, PetscCtxDestroyFn *reasonviewdestroy)
 {
   PetscInt  i;
   PetscBool identical;
@@ -4653,7 +4648,7 @@ PetscErrorCode SNESConvergedReasonViewSet(SNES snes, PetscErrorCode (*f)(SNES sn
   PetscCheck(snes->numberreasonviews < MAXSNESREASONVIEWS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many SNES reasonview set");
   snes->reasonview[snes->numberreasonviews]          = f;
   snes->reasonviewdestroy[snes->numberreasonviews]   = reasonviewdestroy;
-  snes->reasonviewcontext[snes->numberreasonviews++] = (void *)vctx;
+  snes->reasonviewcontext[snes->numberreasonviews++] = vctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -5741,7 +5736,7 @@ PetscErrorCode SNESGetNPC(SNES snes, SNES *pc)
     PetscCall(SNESSetOptionsPrefix(snes->npc, optionsprefix));
     PetscCall(SNESAppendOptionsPrefix(snes->npc, "npc_"));
     if (snes->ops->usercompute) {
-      PetscCall(SNESSetComputeApplicationContext(snes, snes->ops->usercompute, snes->ops->userdestroy));
+      PetscCall(SNESSetComputeApplicationContext(snes, snes->ops->usercompute, snes->ops->ctxdestroy));
     } else {
       PetscCall(SNESGetApplicationContext(snes, &ctx));
       PetscCall(SNESSetApplicationContext(snes->npc, ctx));
@@ -5771,7 +5766,8 @@ PetscErrorCode SNESHasNPC(SNES snes, PetscBool *has_npc)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
-  *has_npc = (PetscBool)(snes->npc ? PETSC_TRUE : PETSC_FALSE);
+  PetscAssertPointer(has_npc, 2);
+  *has_npc = snes->npc ? PETSC_TRUE : PETSC_FALSE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

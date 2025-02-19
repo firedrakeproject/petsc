@@ -55,6 +55,7 @@ PetscErrorCode DMInitializePackage(void)
   PetscCall(PetscClassIdRegister("DM Label", &DMLABEL_CLASSID));
   PetscCall(PetscClassIdRegister("Quadrature", &PETSCQUADRATURE_CLASSID));
   PetscCall(PetscClassIdRegister("Mesh Transform", &DMPLEXTRANSFORM_CLASSID));
+  PetscCall(PetscClassIdRegister("Swarm Cell DM", &DMSWARMCELLDM_CLASSID));
 
 #if defined(PETSC_HAVE_HYPRE)
   PetscCall(MatRegister(MATHYPRESTRUCT, MatCreate_HYPREStruct));
@@ -77,12 +78,14 @@ PetscErrorCode DMInitializePackage(void)
   PetscCall(PetscLogEventRegister("DMCreateMat", DM_CLASSID, &DM_CreateMatrix));
   PetscCall(PetscLogEventRegister("DMCreateMassMat", DM_CLASSID, &DM_CreateMassMatrix));
   PetscCall(PetscLogEventRegister("DMLoad", DM_CLASSID, &DM_Load));
+  PetscCall(PetscLogEventRegister("DMView", DM_CLASSID, &DM_View));
   PetscCall(PetscLogEventRegister("DMAdaptInterp", DM_CLASSID, &DM_AdaptInterpolator));
   PetscCall(PetscLogEventRegister("DMProjectFunc", DM_CLASSID, &DM_ProjectFunction));
 
   PetscCall(PetscLogEventRegister("DMPlexBuFrCeLi", DM_CLASSID, &DMPLEX_BuildFromCellList));
   PetscCall(PetscLogEventRegister("DMPlexBuCoFrCeLi", DM_CLASSID, &DMPLEX_BuildCoordinatesFromCellList));
   PetscCall(PetscLogEventRegister("DMPlexCreateGmsh", DM_CLASSID, &DMPLEX_CreateGmsh));
+  PetscCall(PetscLogEventRegister("DMPlexCrBoxSFC", DM_CLASSID, &DMPLEX_CreateBoxSFC));
   PetscCall(PetscLogEventRegister("DMPlexCrFromFile", DM_CLASSID, &DMPLEX_CreateFromFile));
   PetscCall(PetscLogEventRegister("DMPlexCrFromOpts", DM_CLASSID, &DMPLEX_CreateFromOptions));
   PetscCall(PetscLogEventRegister("Mesh Partition", DM_CLASSID, &DMPLEX_Partition));

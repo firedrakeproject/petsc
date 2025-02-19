@@ -169,9 +169,9 @@ static PetscErrorCode PetscViewerGLVisSetFields_GLVis(PetscViewer viewer, PetscI
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscViewerGLVisInfoDestroy_Private(void *ptr)
+static PetscErrorCode PetscViewerGLVisInfoDestroy_Private(void **ptr)
 {
-  PetscViewerGLVisInfo info = (PetscViewerGLVisInfo)ptr;
+  PetscViewerGLVisInfo info = (PetscViewerGLVisInfo)*ptr;
 
   PetscFunctionBegin;
   PetscCall(PetscFree(info->fmt));
@@ -749,12 +749,14 @@ static PetscErrorCode PetscViewerASCIISocketOpen(MPI_Comm comm, const char *host
   FILE          *stream = NULL;
   int            fd     = 0;
   PetscErrorCode ierr;
+  PetscMPIInt    iport;
 
   PetscFunctionBegin;
   PetscAssertPointer(hostname, 2);
   PetscAssertPointer(viewer, 4);
+  PetscCall(PetscMPIIntCast(port, &iport));
   #if defined(PETSC_USE_SOCKET_VIEWER)
-  ierr = PetscOpenSocket(hostname, (int)port, &fd);
+  ierr = PetscOpenSocket(hostname, iport, &fd);
   #else
   SETERRQ(comm, PETSC_ERR_SUP, "Missing Socket viewer");
   #endif

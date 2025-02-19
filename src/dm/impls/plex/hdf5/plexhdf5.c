@@ -52,7 +52,7 @@ static PetscErrorCode PetscViewerParseVersion_Private(PetscViewer viewer, const 
 static PetscErrorCode PetscViewerAttachVersion_Private(PetscViewer viewer, const char key[], DMPlexStorageVersion v)
 {
   PetscFunctionBegin;
-  PetscCall(PetscObjectContainerCompose((PetscObject)viewer, key, v, PetscContainerUserDestroyDefault));
+  PetscCall(PetscObjectContainerCompose((PetscObject)viewer, key, v, PetscCtxDestroyDefault));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -512,17 +512,19 @@ static PetscErrorCode DMPlexCreateCutVertexLabel_Private(DM dm, DMLabel cutLabel
 
 PetscErrorCode VecView_Plex_Local_HDF5_Internal(Vec v, PetscViewer viewer)
 {
-  DM                dm;
-  DM                dmBC;
-  PetscSection      section, sectionGlobal;
-  Vec               gv;
-  const char       *name;
-  PetscViewerFormat format;
-  PetscInt          seqnum;
-  PetscReal         seqval;
-  PetscBool         isseq;
+  DMPlexStorageVersion version;
+  DM                   dm;
+  DM                   dmBC;
+  PetscSection         section, sectionGlobal;
+  Vec                  gv;
+  const char          *name;
+  PetscViewerFormat    format;
+  PetscInt             seqnum;
+  PetscReal            seqval;
+  PetscBool            isseq;
 
   PetscFunctionBegin;
+  PetscCall(PetscViewerHDF5GetDMPlexStorageVersionWriting(viewer, &version));
   PetscCall(PetscObjectTypeCompare((PetscObject)v, VECSEQ, &isseq));
   PetscCall(VecGetDM(v, &dm));
   PetscCall(DMGetLocalSection(dm, &section));
@@ -549,96 +551,110 @@ PetscErrorCode VecView_Plex_Local_HDF5_Internal(Vec v, PetscViewer viewer)
     PetscCall(PetscSectionGetNumFields(section, &numFields));
     PetscCall(DMGetLabel(dm, "periodic_cut", &cutLabel));
     for (f = 0; f < numFields; ++f) {
-      Vec                     subv;
-      IS                      is;
-      const char             *fname, *fgroup, *componentName, *fname_def = "unnamed";
-      char                    subname[PETSC_MAX_PATH_LEN];
-      PetscInt                Nc, c;
-      PetscInt                pStart, pEnd;
-      PetscViewerVTKFieldType ft;
+      Vec                      subv;
+      IS                       is;
+      const char              *fname, *fgroup, *componentName, *fname_def = "unnamed";
+      char                     subname[PETSC_MAX_PATH_LEN];
+      PetscInt                 Nc, Nt = 1;
+      PetscInt                *pStart, *pEnd;
+      PetscViewerVTKFieldType *ft;
 
-      PetscCall(DMPlexGetFieldType_Internal(dm, section, f, &pStart, &pEnd, &ft));
-      if (ft == PETSC_VTK_INVALID) continue;
-      fgroup = (ft == PETSC_VTK_POINT_VECTOR_FIELD) || (ft == PETSC_VTK_POINT_FIELD) ? "/vertex_fields" : "/cell_fields";
-      PetscCall(PetscSectionGetFieldName(section, f, &fname));
-      if (!fname) fname = fname_def;
+      if (DMPlexStorageVersionEQ(version, 1, 1, 0)) PetscCall(DMPlexGetFieldTypes_Internal(dm, section, f, &Nt, &pStart, &pEnd, &ft));
+      else {
+        PetscCall(PetscMalloc3(Nt, &pStart, Nt, &pEnd, Nt, &ft));
+        PetscCall(DMPlexGetFieldType_Internal(dm, section, f, &pStart[0], &pEnd[0], &ft[0]));
+      }
+      for (PetscInt t = 0; t < Nt; ++t) {
+        if (ft[t] == PETSC_VTK_INVALID) continue;
+        fgroup = (ft[t] == PETSC_VTK_POINT_VECTOR_FIELD) || (ft[t] == PETSC_VTK_POINT_FIELD) ? "/vertex_fields" : "/cell_fields";
+        PetscCall(PetscSectionGetFieldName(section, f, &fname));
+        if (!fname) fname = fname_def;
 
-      PetscCall(PetscViewerHDF5PushGroup(viewer, fgroup));
+        if (!t) {
+          PetscCall(PetscViewerHDF5PushGroup(viewer, fgroup));
+        } else {
+          char group[PETSC_MAX_PATH_LEN];
 
-      if (cutLabel) {
-        const PetscScalar *ga;
-        PetscScalar       *suba;
-        PetscInt           gstart, subSize = 0, extSize = 0, subOff = 0, newOff = 0, p;
-
-        PetscCall(DMPlexCreateCutVertexLabel_Private(dm, cutLabel, &cutVertexLabel));
-        PetscCall(PetscSectionGetFieldComponents(section, f, &Nc));
-        for (p = pStart; p < pEnd; ++p) {
-          PetscInt gdof, fdof = 0, val;
-
-          PetscCall(PetscSectionGetDof(sectionGlobal, p, &gdof));
-          if (gdof > 0) PetscCall(PetscSectionGetFieldDof(section, p, f, &fdof));
-          subSize += fdof;
-          PetscCall(DMLabelGetValue(cutVertexLabel, p, &val));
-          if (val == 1) extSize += fdof;
+          PetscCall(PetscSNPrintf(group, PETSC_MAX_PATH_LEN, "%s_%" PetscInt_FMT, fgroup, t));
+          PetscCall(PetscViewerHDF5PushGroup(viewer, group));
         }
-        PetscCall(VecCreate(PetscObjectComm((PetscObject)gv), &subv));
-        PetscCall(VecSetSizes(subv, subSize + extSize, PETSC_DETERMINE));
-        PetscCall(VecSetBlockSize(subv, Nc));
-        PetscCall(VecSetType(subv, VECSTANDARD));
-        PetscCall(VecGetOwnershipRange(gv, &gstart, NULL));
-        PetscCall(VecGetArrayRead(gv, &ga));
-        PetscCall(VecGetArray(subv, &suba));
-        for (p = pStart; p < pEnd; ++p) {
-          PetscInt gdof, goff, val;
 
-          PetscCall(PetscSectionGetDof(sectionGlobal, p, &gdof));
-          if (gdof > 0) {
-            PetscInt fdof, fc, f2, poff = 0;
+        if (cutLabel) {
+          const PetscScalar *ga;
+          PetscScalar       *suba;
+          PetscInt           gstart, subSize = 0, extSize = 0, subOff = 0, newOff = 0;
 
-            PetscCall(PetscSectionGetOffset(sectionGlobal, p, &goff));
-            /* Can get rid of this loop by storing field information in the global section */
-            for (f2 = 0; f2 < f; ++f2) {
-              PetscCall(PetscSectionGetFieldDof(section, p, f2, &fdof));
-              poff += fdof;
-            }
-            PetscCall(PetscSectionGetFieldDof(section, p, f, &fdof));
-            for (fc = 0; fc < fdof; ++fc, ++subOff) suba[subOff] = ga[goff + poff + fc - gstart];
+          PetscCall(DMPlexCreateCutVertexLabel_Private(dm, cutLabel, &cutVertexLabel));
+          PetscCall(PetscSectionGetFieldComponents(section, f, &Nc));
+          for (PetscInt p = pStart[t]; p < pEnd[t]; ++p) {
+            PetscInt gdof, fdof = 0, val;
+
+            PetscCall(PetscSectionGetDof(sectionGlobal, p, &gdof));
+            if (gdof > 0) PetscCall(PetscSectionGetFieldDof(section, p, f, &fdof));
+            subSize += fdof;
             PetscCall(DMLabelGetValue(cutVertexLabel, p, &val));
-            if (val == 1) {
-              for (fc = 0; fc < fdof; ++fc, ++newOff) suba[subSize + newOff] = ga[goff + poff + fc - gstart];
+            if (val == 1) extSize += fdof;
+          }
+          PetscCall(VecCreate(PetscObjectComm((PetscObject)gv), &subv));
+          PetscCall(VecSetSizes(subv, subSize + extSize, PETSC_DETERMINE));
+          PetscCall(VecSetBlockSize(subv, Nc));
+          PetscCall(VecSetType(subv, VECSTANDARD));
+          PetscCall(VecGetOwnershipRange(gv, &gstart, NULL));
+          PetscCall(VecGetArrayRead(gv, &ga));
+          PetscCall(VecGetArray(subv, &suba));
+          for (PetscInt p = pStart[t]; p < pEnd[t]; ++p) {
+            PetscInt gdof, goff, val;
+
+            PetscCall(PetscSectionGetDof(sectionGlobal, p, &gdof));
+            if (gdof > 0) {
+              PetscInt fdof, fc, f2, poff = 0;
+
+              PetscCall(PetscSectionGetOffset(sectionGlobal, p, &goff));
+              /* Can get rid of this loop by storing field information in the global section */
+              for (f2 = 0; f2 < f; ++f2) {
+                PetscCall(PetscSectionGetFieldDof(section, p, f2, &fdof));
+                poff += fdof;
+              }
+              PetscCall(PetscSectionGetFieldDof(section, p, f, &fdof));
+              for (fc = 0; fc < fdof; ++fc, ++subOff) suba[subOff] = ga[goff + poff + fc - gstart];
+              PetscCall(DMLabelGetValue(cutVertexLabel, p, &val));
+              if (val == 1) {
+                for (fc = 0; fc < fdof; ++fc, ++newOff) suba[subSize + newOff] = ga[goff + poff + fc - gstart];
+              }
             }
           }
+          PetscCall(VecRestoreArrayRead(gv, &ga));
+          PetscCall(VecRestoreArray(subv, &suba));
+          PetscCall(DMLabelDestroy(&cutVertexLabel));
+        } else {
+          PetscCall(PetscSectionGetField_Internal(section, sectionGlobal, gv, f, pStart[t], pEnd[t], &is, &subv));
         }
-        PetscCall(VecRestoreArrayRead(gv, &ga));
-        PetscCall(VecRestoreArray(subv, &suba));
-        PetscCall(DMLabelDestroy(&cutVertexLabel));
-      } else {
-        PetscCall(PetscSectionGetField_Internal(section, sectionGlobal, gv, f, pStart, pEnd, &is, &subv));
-      }
-      PetscCall(PetscStrncpy(subname, name, sizeof(subname)));
-      PetscCall(PetscStrlcat(subname, "_", sizeof(subname)));
-      PetscCall(PetscStrlcat(subname, fname, sizeof(subname)));
-      PetscCall(PetscObjectSetName((PetscObject)subv, subname));
-      if (isseq) PetscCall(VecView_Seq(subv, viewer));
-      else PetscCall(VecView_MPI(subv, viewer));
-      if (ft == PETSC_VTK_POINT_VECTOR_FIELD || ft == PETSC_VTK_CELL_VECTOR_FIELD) {
-        PetscCall(PetscViewerHDF5WriteObjectAttribute(viewer, (PetscObject)subv, "vector_field_type", PETSC_STRING, "vector"));
-      } else {
-        PetscCall(PetscViewerHDF5WriteObjectAttribute(viewer, (PetscObject)subv, "vector_field_type", PETSC_STRING, "scalar"));
-      }
+        PetscCall(PetscStrncpy(subname, name, sizeof(subname)));
+        PetscCall(PetscStrlcat(subname, "_", sizeof(subname)));
+        PetscCall(PetscStrlcat(subname, fname, sizeof(subname)));
+        PetscCall(PetscObjectSetName((PetscObject)subv, subname));
+        if (isseq) PetscCall(VecView_Seq(subv, viewer));
+        else PetscCall(VecView_MPI(subv, viewer));
+        if (ft[t] == PETSC_VTK_POINT_VECTOR_FIELD || ft[t] == PETSC_VTK_CELL_VECTOR_FIELD) {
+          PetscCall(PetscViewerHDF5WriteObjectAttribute(viewer, (PetscObject)subv, "vector_field_type", PETSC_STRING, "vector"));
+        } else {
+          PetscCall(PetscViewerHDF5WriteObjectAttribute(viewer, (PetscObject)subv, "vector_field_type", PETSC_STRING, "scalar"));
+        }
 
-      /* Output the component names in the field if available */
-      PetscCall(PetscSectionGetFieldComponents(section, f, &Nc));
-      for (c = 0; c < Nc; ++c) {
-        char componentNameLabel[PETSC_MAX_PATH_LEN];
-        PetscCall(PetscSectionGetComponentName(section, f, c, &componentName));
-        PetscCall(PetscSNPrintf(componentNameLabel, sizeof(componentNameLabel), "componentName%" PetscInt_FMT, c));
-        PetscCall(PetscViewerHDF5WriteObjectAttribute(viewer, (PetscObject)subv, componentNameLabel, PETSC_STRING, componentName));
-      }
+        /* Output the component names in the field if available */
+        PetscCall(PetscSectionGetFieldComponents(section, f, &Nc));
+        for (PetscInt c = 0; c < Nc; ++c) {
+          char componentNameLabel[PETSC_MAX_PATH_LEN];
+          PetscCall(PetscSectionGetComponentName(section, f, c, &componentName));
+          PetscCall(PetscSNPrintf(componentNameLabel, sizeof(componentNameLabel), "componentName%" PetscInt_FMT, c));
+          PetscCall(PetscViewerHDF5WriteObjectAttribute(viewer, (PetscObject)subv, componentNameLabel, PETSC_STRING, componentName));
+        }
 
-      if (cutLabel) PetscCall(VecDestroy(&subv));
-      else PetscCall(PetscSectionRestoreField_Internal(section, sectionGlobal, gv, f, pStart, pEnd, &is, &subv));
-      PetscCall(PetscViewerHDF5PopGroup(viewer));
+        if (cutLabel) PetscCall(VecDestroy(&subv));
+        else PetscCall(PetscSectionRestoreField_Internal(section, sectionGlobal, gv, f, pStart[t], pEnd[t], &is, &subv));
+        PetscCall(PetscViewerHDF5PopGroup(viewer));
+      }
+      if (!DMPlexStorageVersionEQ(version, 1, 1, 0)) PetscCall(PetscFree3(pStart, pEnd, ft));
     }
   } else {
     /* Output full vector */
@@ -749,20 +765,22 @@ PetscErrorCode VecLoad_Plex_HDF5_Native_Internal(Vec v, PetscViewer viewer)
 
 static PetscErrorCode DMPlexDistributionView_HDF5_Private(DM dm, IS globalPointNumbers, PetscViewer viewer)
 {
-  MPI_Comm           comm;
-  PetscMPIInt        size, rank;
-  PetscInt           size_petsc_int;
-  const char        *topologydm_name, *distribution_name;
-  const PetscInt    *gpoint;
-  PetscInt           pStart, pEnd, p;
-  PetscSF            pointSF;
-  PetscInt           nroots, nleaves;
-  const PetscInt    *ilocal;
-  const PetscSFNode *iremote;
-  IS                 chartSizesIS, ownersIS, gpointsIS;
-  PetscInt          *chartSize, *owners, *gpoints;
+  DMPlexStorageVersion version;
+  MPI_Comm             comm;
+  PetscMPIInt          size, rank;
+  PetscInt             size_petsc_int;
+  const char          *topologydm_name, *distribution_name;
+  const PetscInt      *gpoint;
+  PetscInt             pStart, pEnd, p;
+  PetscSF              pointSF;
+  PetscInt             nroots, nleaves;
+  const PetscInt      *ilocal;
+  const PetscSFNode   *iremote;
+  IS                   chartSizesIS, ownersIS, gpointsIS;
+  PetscInt            *chartSize, *owners, *gpoints;
 
   PetscFunctionBegin;
+  PetscCall(PetscViewerHDF5GetDMPlexStorageVersionWriting(viewer, &version));
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   PetscCallMPI(MPI_Comm_size(comm, &size));
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
@@ -794,6 +812,11 @@ static PetscErrorCode DMPlexDistributionView_HDF5_Private(DM dm, IS globalPointN
   PetscCall(ISCreateGeneral(comm, 1, chartSize, PETSC_OWN_POINTER, &chartSizesIS));
   PetscCall(ISCreateGeneral(comm, *chartSize, owners, PETSC_OWN_POINTER, &ownersIS));
   PetscCall(ISCreateGeneral(comm, *chartSize, gpoints, PETSC_OWN_POINTER, &gpointsIS));
+  if (DMPlexStorageVersionGE(version, 3, 1, 0)) {
+    PetscCall(ISSetCompressOutput(chartSizesIS, PETSC_TRUE));
+    PetscCall(ISSetCompressOutput(ownersIS, PETSC_TRUE));
+    PetscCall(ISSetCompressOutput(gpointsIS, PETSC_TRUE));
+  }
   PetscCall(PetscObjectSetName((PetscObject)chartSizesIS, "chart_sizes"));
   PetscCall(PetscObjectSetName((PetscObject)ownersIS, "owners"));
   PetscCall(PetscObjectSetName((PetscObject)gpointsIS, "global_point_numbers"));
@@ -810,14 +833,16 @@ static PetscErrorCode DMPlexDistributionView_HDF5_Private(DM dm, IS globalPointN
 
 static PetscErrorCode DMPlexTopologyView_HDF5_Inner_Private(DM dm, IS globalPointNumbers, PetscViewer viewer, PetscInt pStart, PetscInt pEnd, const char pointsName[], const char coneSizesName[], const char conesName[], const char orientationsName[])
 {
-  IS              coneSizesIS, conesIS, orientationsIS;
-  PetscInt       *coneSizes, *cones, *orientations;
-  const PetscInt *gpoint;
-  PetscInt        nPoints = 0, conesSize = 0;
-  PetscInt        p, c, s;
-  MPI_Comm        comm;
+  DMPlexStorageVersion version;
+  IS                   coneSizesIS, conesIS, orientationsIS;
+  PetscInt            *coneSizes, *cones, *orientations;
+  const PetscInt      *gpoint;
+  PetscInt             nPoints = 0, conesSize = 0;
+  PetscInt             p, c, s;
+  MPI_Comm             comm;
 
   PetscFunctionBegin;
+  PetscCall(PetscViewerHDF5GetDMPlexStorageVersionWriting(viewer, &version));
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   PetscCall(ISGetIndices(globalPointNumbers, &gpoint));
   for (p = pStart; p < pEnd; ++p) {
@@ -856,6 +881,11 @@ static PetscErrorCode DMPlexTopologyView_HDF5_Inner_Private(DM dm, IS globalPoin
   PetscCall(PetscObjectSetName((PetscObject)coneSizesIS, coneSizesName));
   PetscCall(PetscObjectSetName((PetscObject)conesIS, conesName));
   PetscCall(PetscObjectSetName((PetscObject)orientationsIS, orientationsName));
+  if (DMPlexStorageVersionGE(version, 3, 1, 0)) {
+    PetscCall(ISSetCompressOutput(coneSizesIS, PETSC_TRUE));
+    PetscCall(ISSetCompressOutput(conesIS, PETSC_TRUE));
+    PetscCall(ISSetCompressOutput(orientationsIS, PETSC_TRUE));
+  }
   PetscCall(ISView(coneSizesIS, viewer));
   PetscCall(ISView(conesIS, viewer));
   PetscCall(ISView(orientationsIS, viewer));
@@ -875,6 +905,7 @@ static PetscErrorCode DMPlexTopologyView_HDF5_Inner_Private(DM dm, IS globalPoin
     }
     PetscCall(ISCreateGeneral(comm, nPoints, points, PETSC_OWN_POINTER, &pointsIS));
     PetscCall(PetscObjectSetName((PetscObject)pointsIS, pointsName));
+    if (DMPlexStorageVersionGE(version, 3, 1, 0)) PetscCall(ISSetCompressOutput(pointsIS, PETSC_TRUE));
     PetscCall(ISView(pointsIS, viewer));
     PetscCall(ISDestroy(&pointsIS));
   }
@@ -1482,6 +1513,7 @@ PetscErrorCode DMPlexLabelsView_HDF5_Internal(DM dm, IS globalPointNumbers, Pets
       if (stratumIS) PetscCall(ISRestoreIndices(stratumIS, &spoints));
       PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)dm), gn, gspoints, PETSC_OWN_POINTER, &globalStratumIS));
       PetscCall(PetscObjectSetName((PetscObject)globalStratumIS, iname));
+      if (DMPlexStorageVersionGE(version, 3, 1, 0)) PetscCall(ISSetCompressOutput(globalStratumIS, PETSC_TRUE));
 
       PetscCall(ISView(globalStratumIS, viewer));
       PetscCall(ISDestroy(&globalStratumIS));
@@ -1547,12 +1579,14 @@ PetscErrorCode DMPlexView_HDF5_Internal(DM dm, PetscViewer viewer)
 
 PetscErrorCode DMPlexSectionView_HDF5_Internal(DM dm, PetscViewer viewer, DM sectiondm)
 {
-  MPI_Comm     comm;
-  const char  *topologydm_name;
-  const char  *sectiondm_name;
-  PetscSection gsection;
+  DMPlexStorageVersion version;
+  MPI_Comm             comm;
+  const char          *topologydm_name;
+  const char          *sectiondm_name;
+  PetscSection         gsection;
 
   PetscFunctionBegin;
+  PetscCall(PetscViewerHDF5GetDMPlexStorageVersionWriting(viewer, &version));
   PetscCall(PetscObjectGetComm((PetscObject)sectiondm, &comm));
   PetscCall(DMPlexGetHDF5Name_Private(dm, &topologydm_name));
   PetscCall(PetscObjectGetName((PetscObject)sectiondm, &sectiondm_name));
@@ -1586,6 +1620,7 @@ PetscErrorCode DMPlexSectionView_HDF5_Internal(DM dm, PetscViewer viewer, DM sec
     PetscCall(ISDestroy(&globalPointNumbers));
     PetscCall(ISCreateGeneral(comm, n, order, PETSC_OWN_POINTER, &orderIS));
     PetscCall(PetscObjectSetName((PetscObject)orderIS, "order"));
+    if (DMPlexStorageVersionGE(version, 3, 1, 0)) PetscCall(ISSetCompressOutput(orderIS, PETSC_TRUE));
     PetscCall(ISView(orderIS, viewer));
     PetscCall(ISDestroy(&orderIS));
   }

@@ -4,7 +4,7 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.gitcommit        = '4.4.01'
+    self.gitcommit        = '4.5.00'
     self.minversion       = '3.7.01'
     self.versionname      = 'KOKKOS_VERSION'
     self.download         = ['git://https://github.com/kokkos/kokkos.git','https://github.com/kokkos/kokkos/archive/'+self.gitcommit+'.tar.gz']
@@ -87,10 +87,6 @@ class Configure(config.package.CMakePackage):
 
     if not self.compilerFlags.debugging:
       args.append('-DXSDK_ENABLE_DEBUG=NO')
-
-    if self.checkSharedLibrariesEnabled():
-      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
-      args.append('-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON')
 
     if self.mpi.found and not self.mpi.usingMPIUni:
       args.append('-DKokkos_ENABLE_MPI=ON')

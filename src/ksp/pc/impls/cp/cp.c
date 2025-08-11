@@ -112,14 +112,9 @@ static PetscErrorCode PCDestroy_CP(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_CP(PC pc, PetscOptionItems *PetscOptionsObject)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 /*MC
-     PCCP - a "column-projection" preconditioner
+     PCCP - a "column-projection" preconditioner. Iteratively projects the current residual onto the one dimensional spaces
+            spanned by each of the columns of the matrix.
 
      This is a terrible preconditioner and is not recommended, ever!
 
@@ -140,14 +135,14 @@ static PetscErrorCode PCSetFromOptions_CP(PC pc, PetscOptionItems *PetscOptionsO
     take the derivative with respect to dx_i to obtain
         dx_i = (A_i^T A_i)^(-1) A_i^T r
 
-    This algorithm can be thought of as Gauss-Seidel on the normal equations
+    This is equivalent to using Gauss-Seidel on the normal equations
 .ve
 
     Notes:
     This procedure can also be done with block columns or any groups of columns
     but this is not coded.
 
-    These "projections" can be done simultaneously for all columns (similar to Jacobi)
+    These "projections" can be done simultaneously for all columns (similar to the Jacobi method)
     or sequentially (similar to Gauss-Seidel/SOR). This is only coded for SOR type.
 
     This is related to, but not the same as "row projection" methods.
@@ -172,7 +167,6 @@ PETSC_EXTERN PetscErrorCode PCCreate_CP(PC pc)
   pc->ops->setup           = PCSetUp_CP;
   pc->ops->reset           = PCReset_CP;
   pc->ops->destroy         = PCDestroy_CP;
-  pc->ops->setfromoptions  = PCSetFromOptions_CP;
   pc->ops->view            = NULL;
   pc->ops->applyrichardson = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);

@@ -55,7 +55,7 @@ PetscErrorCode DMGetPoints_Internal(DM dm, DMLabel domainLabel, PetscInt labelVa
 
 .seealso: [](ch_unstructured), `DMPlexGetLocalOffsetsSupport()`, `DM`, `DMPLEX`, `DMLabel`, `DMPlexGetClosureIndices()`, `DMPlexSetClosurePermutationTensor()`, `DMPlexGetCeedRestriction()`
 @*/
-PetscErrorCode DMPlexGetLocalOffsets(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field, PetscInt *num_cells, PetscInt *cell_size, PetscInt *num_comp, PetscInt *l_size, PetscInt **offsets)
+PetscErrorCode DMPlexGetLocalOffsets(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field, PetscInt *num_cells, PetscInt *cell_size, PetscInt *num_comp, PetscInt *l_size, PetscInt *offsets[])
 {
   PetscDS         ds = NULL;
   PetscFE         fe;
@@ -77,6 +77,7 @@ PetscErrorCode DMPlexGetLocalOffsets(DM dm, DMLabel domain_label, PetscInt label
     PetscInt        num_fields;
 
     PetscCall(DMGetRegionDS(dm, domain_label, &field_is, &ds, NULL));
+    PetscCheck(field_is, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Domain label does not have any fields associated with it");
     // Translate dm_field to ds_field
     PetscCall(ISGetIndices(field_is, &fields));
     PetscCall(ISGetSize(field_is, &num_fields));
@@ -364,7 +365,7 @@ PetscErrorCode DMPlexCreateCeedRestrictionFVM(DM dm, CeedElemRestriction *erL, C
 PetscErrorCode DMPlexCeedComputeGeometryFVM(DM dm, CeedVector qd)
 {
   DMLabel         domain_label = NULL;
-  PetscInt        label_value = 0, height = 1, Nf, NfInt = 0, cdim;
+  PetscInt        label_value = 0, height = 1, Nf, cdim;
   const PetscInt *iter_indices;
   IS              iter_is;
   CeedScalar     *qdata;
@@ -377,7 +378,7 @@ PetscErrorCode DMPlexCeedComputeGeometryFVM(DM dm, CeedVector qd)
     PetscCall(ISGetLocalSize(iter_is, &Nf));
     for (PetscInt p = 0, Ns; p < Nf; ++p) {
       PetscCall(DMPlexGetSupportSize(dm, iter_indices[p], &Ns));
-      if (Ns == 2) ++NfInt;
+      //if (Ns == 2) ++NfInt;
     }
   } else {
     iter_indices = NULL;

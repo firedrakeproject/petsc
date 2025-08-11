@@ -3,6 +3,7 @@
 #include <petscdm.h>
 #include <petscdmproduct.h>
 
+/* MANSEC = DM */
 /* SUBMANSEC = DMStag */
 
 /*E
@@ -16,13 +17,10 @@
   The order of the enum entries is significant, as it corresponds to the canonical numbering
   of DOFs, and the fact that the numbering starts at 0 may also be used by the implementation.
 
-  Fortran Note:
-  Currently there is no Fortran support, it could be easily added.
-
 .seealso: [](ch_stag), `DMSTAG`, `DMDA`, `DMStagStencil`, `DMStagGetLocationSlot()`, `DMStagStencilType`
 E*/
 typedef enum {
-  DMSTAG_NULL_LOCATION = 0,
+  DMSTAG_NULL_LOCATION,
   DMSTAG_BACK_DOWN_LEFT,
   DMSTAG_BACK_DOWN,
   DMSTAG_BACK_DOWN_RIGHT,
@@ -85,7 +83,7 @@ typedef struct {
 E*/
 
 typedef enum {
-  DMSTAG_STENCIL_NONE = 0,
+  DMSTAG_STENCIL_NONE,
   DMSTAG_STENCIL_STAR,
   DMSTAG_STENCIL_BOX
 } DMStagStencilType;

@@ -1,12 +1,6 @@
 #include <../src/snes/impls/ncg/snesncgimpl.h> /*I "petscsnes.h" I*/
 const char *const SNESNCGTypes[] = {"FR", "PRP", "HS", "DY", "CD", "SNESNCGType", "SNES_NCG_", NULL};
 
-static PetscErrorCode SNESReset_NCG(SNES snes)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode SNESDestroy_NCG(SNES snes)
 {
   PetscFunctionBegin;
@@ -89,7 +83,7 @@ PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_NCGLinear(SNESLineSearch linese
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESSetFromOptions_NCG(SNES snes, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode SNESSetFromOptions_NCG(SNES snes, PetscOptionItems PetscOptionsObject)
 {
   SNES_NCG      *ncg     = (SNES_NCG *)snes->data;
   PetscBool      debug   = PETSC_FALSE;
@@ -366,7 +360,7 @@ static PetscErrorCode SNESSolve_NCG(SNES snes)
   Level: beginner
 
   Options Database Keys:
-+   -snes_ncg_type <fr, prp, dy, hs, cd> - Choice of conjugate-gradient update parameter, default is prp.
++   -snes_ncg_type <fr, prp, dy, hs, cd> - Choice of conjugate-gradient update parameter, default is `prp`.
 .   -snes_linesearch_type <cp,l2,basic>  - Line search type.
 -   -snes_ncg_monitor                    - Print the beta values nonlinear Conjugate-Gradient used in the  iteration, .
 
@@ -377,8 +371,8 @@ static PetscErrorCode SNESSolve_NCG(SNES snes)
 
    Only supports left non-linear preconditioning.
 
-   Default line search is `SNESLINESEARCHCP`, unless a nonlinear preconditioner is used with -npc_snes_type <type>, `SNESSetNPC()`, or `SNESGetNPC()` then
-   `SNESLINESEARCHL2` is used. Also supports the special purpose line search `SNESLINESEARCHNCGLINEAR`
+   Default line search is `SNESLINESEARCHCP`, unless a nonlinear preconditioner is used with `-npc_snes_type` <type>, `SNESSetNPC()`, or `SNESGetNPC()` then
+   `SNESLINESEARCHL2` is used. Also supports the special-purpose line search `SNESLINESEARCHNCGLINEAR`
 
 .seealso: [](ch_snes), `SNES`, `SNESNCG`, `SNESCreate()`, `SNES`, `SNESSetType()`, `SNESNEWTONLS`, `SNESNEWTONTR`, `SNESNGMRES`, `SNESQN`, `SNESLINESEARCHNCGLINEAR`, `SNESNCGSetType()`, `SNESLineSearchSetType()`
 M*/
@@ -392,7 +386,6 @@ PETSC_EXTERN PetscErrorCode SNESCreate_NCG(SNES snes)
   snes->ops->setfromoptions = SNESSetFromOptions_NCG;
   snes->ops->view           = SNESView_NCG;
   snes->ops->solve          = SNESSolve_NCG;
-  snes->ops->reset          = SNESReset_NCG;
 
   snes->usesksp = PETSC_FALSE;
   snes->usesnpc = PETSC_TRUE;

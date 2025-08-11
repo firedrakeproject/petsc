@@ -7,6 +7,7 @@
 #include <petscdmtypes.h>
 #include <petscistypes.h>
 
+/* MANSEC = DM */
 /* SUBMANSEC = DT */
 
 PETSC_EXTERN PetscClassId PETSCQUADRATURE_CLASSID;
@@ -56,10 +57,10 @@ typedef enum {
 .seealso: `PetscQuadrature`
 E*/
 typedef enum {
-  PETSCDTNODES_DEFAULT = -1,
-  PETSCDTNODES_GAUSSJACOBI,
-  PETSCDTNODES_EQUISPACED,
-  PETSCDTNODES_TANHSINH
+  PETSCDTNODES_DEFAULT     = -1,
+  PETSCDTNODES_GAUSSJACOBI = 0,
+  PETSCDTNODES_EQUISPACED  = 1,
+  PETSCDTNODES_TANHSINH    = 2
 } PetscDTNodeType;
 
 PETSC_EXTERN const char *const *const PetscDTNodeTypes;
@@ -91,7 +92,7 @@ E*/
 typedef enum {
   PETSCDTSIMPLEXQUAD_DEFAULT = -1,
   PETSCDTSIMPLEXQUAD_CONIC   = 0,
-  PETSCDTSIMPLEXQUAD_MINSYM
+  PETSCDTSIMPLEXQUAD_MINSYM  = 1
 } PetscDTSimplexQuadratureType;
 
 PETSC_EXTERN const char *const *const PetscDTSimplexQuadratureTypes;
@@ -132,6 +133,7 @@ PETSC_EXTERN PetscErrorCode PetscDTGaussTensorQuadrature(PetscInt, PetscInt, Pet
 PETSC_EXTERN PetscErrorCode PetscDTStroudConicalQuadrature(PetscInt, PetscInt, PetscInt, PetscReal, PetscReal, PetscQuadrature *);
 PETSC_EXTERN PetscErrorCode PetscDTSimplexQuadrature(PetscInt, PetscInt, PetscDTSimplexQuadratureType, PetscQuadrature *);
 PETSC_EXTERN PetscErrorCode PetscDTCreateDefaultQuadrature(DMPolytopeType, PetscInt, PetscQuadrature *, PetscQuadrature *);
+PETSC_EXTERN PetscErrorCode PetscDTCreateQuadratureByCell(DMPolytopeType, PetscInt, PetscDTSimplexQuadratureType, PetscQuadrature *, PetscQuadrature *);
 
 PETSC_EXTERN PetscErrorCode PetscDTTanhSinhTensorQuadrature(PetscInt, PetscInt, PetscReal, PetscReal, PetscQuadrature *);
 PETSC_EXTERN PetscErrorCode PetscDTTanhSinhIntegrate(void (*)(const PetscReal[], void *, PetscReal *), PetscReal, PetscReal, PetscInt, void *, PetscReal *);
@@ -325,6 +327,9 @@ static inline PetscErrorCode PetscDTBinomialInt(PetscInt n, PetscInt k, PetscInt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/* the following inline routines should be not be inline routines and then Fortran binding can be built automatically */
+#define PeOp
+
 /*MC
    PetscDTEnumPerm - Get a permutation of `n` integers from its encoding into the integers [0, n!) as a sequence of swaps.
 
@@ -349,7 +354,7 @@ static inline PetscErrorCode PetscDTBinomialInt(PetscInt n, PetscInt k, PetscInt
 
 .seealso: `PetscDTFactorial()`, `PetscDTFactorialInt()`, `PetscDTBinomial()`, `PetscDTBinomialInt()`, `PetscDTPermIndex()`
 M*/
-static inline PetscErrorCode PetscDTEnumPerm(PetscInt n, PetscInt k, PetscInt *perm, PetscBool *isOdd)
+static inline PetscErrorCode PetscDTEnumPerm(PetscInt n, PetscInt k, PetscInt *perm, PeOp PetscBool *isOdd)
 {
   PetscInt  odd = 0;
   PetscInt  i;
@@ -397,7 +402,7 @@ static inline PetscErrorCode PetscDTEnumPerm(PetscInt n, PetscInt k, PetscInt *p
 
 .seealso: `PetscDTFactorial()`, `PetscDTFactorialInt()`, `PetscDTBinomial()`, `PetscDTBinomialInt()`, `PetscDTEnumPerm()`
 M*/
-static inline PetscErrorCode PetscDTPermIndex(PetscInt n, const PetscInt *perm, PetscInt *k, PetscBool *isOdd)
+static inline PetscErrorCode PetscDTPermIndex(PetscInt n, const PetscInt *perm, PetscInt *k, PeOp PetscBool *isOdd)
 {
   PetscInt odd = 0;
   PetscInt i, idx;
@@ -512,7 +517,7 @@ static inline PetscErrorCode PetscDTSubsetIndex(PetscInt n, PetscInt k, const Pe
 }
 
 /*MC
-   PetscDTEnumSubset - Split the integers [0, ..., n - 1] into two complementary ordered subsets, the first subset of size k and being the jth subset of that size in lexicographic order.
+   PetscDTEnumSplit - Split the integers [0, ..., n - 1] into two complementary ordered subsets, the first subset of size k and being the jth subset of that size in lexicographic order.
 
    Input Parameters:
 +  n - a non-negative integer (see note about limits below)
@@ -531,7 +536,7 @@ static inline PetscErrorCode PetscDTSubsetIndex(PetscInt n, PetscInt k, const Pe
 .seealso: `PetscDTEnumSubset()`, `PetscDTSubsetIndex()`, `PetscDTFactorial()`, `PetscDTFactorialInt()`, `PetscDTBinomial()`, `PetscDTBinomialInt()`, `PetscDTEnumPerm()`,
           `PetscDTPermIndex()`
 M*/
-static inline PetscErrorCode PetscDTEnumSplit(PetscInt n, PetscInt k, PetscInt j, PetscInt *perm, PetscBool *isOdd)
+static inline PetscErrorCode PetscDTEnumSplit(PetscInt n, PetscInt k, PetscInt j, PetscInt *perm, PeOp PetscBool *isOdd)
 {
   PetscInt  i, l, m, Nk, odd = 0;
   PetscInt *subcomp = PetscSafePointerPlusOffset(perm, k);
@@ -558,7 +563,7 @@ static inline PetscErrorCode PetscDTEnumSplit(PetscInt n, PetscInt k, PetscInt j
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-struct _p_PetscTabulation {
+struct _n_PetscTabulation {
   PetscInt    K;    /* Indicates a k-jet, namely tabulated derivatives up to order k */
   PetscInt    Nr;   /* The number of tabulation replicas (often 1) */
   PetscInt    Np;   /* The number of tabulation points in a replica */
@@ -570,9 +575,44 @@ struct _p_PetscTabulation {
                        T[1] = D[Nr*Np][Nb][Nc][cdim]:       The basis function derivatives at quadrature points
                        T[2] = H[Nr*Np][Nb][Nc][cdim][cdim]: The basis function second derivatives at quadrature points */
 };
-typedef struct _p_PetscTabulation *PetscTabulation;
 
-typedef PetscErrorCode (*PetscProbFunc)(const PetscReal[], const PetscReal[], PetscReal[]);
+/*S
+   PetscTabulation - PETSc object that manages tabulations for finite element methods.
+
+   Level: intermediate
+
+   Note:
+   This is a pointer to a C struct, hence the data in it may be accessed directly.
+
+   Fortran Note:
+   Use `PetscTabulationGetData()` and `PetscTabulationRestoreData()` to access the arrays in the tabulation.
+
+   Developer Note:
+   TODO: put the meaning of the struct fields in this manual page
+
+.seealso: `PetscTabulationDestroy()`, `PetscFECreateTabulation()`, `PetscFEGetCellTabulation()`
+S*/
+typedef struct _n_PetscTabulation *PetscTabulation;
+
+/*S
+  PetscProbFn - A prototype of a PDF or CDF used with PETSc probability operations whose names begin with `PetscProb` such as
+  `PetscProbComputeKSStatistic()`.
+
+  Calling Sequence:
++ x      - input value
+. scale  - scale factor, I don't know what this is for
+- result - the value of the PDF or CDF at the input value
+
+  Level: beginner
+
+  Developer Note:
+  Why does this take an array argument for `result` when it seems to be able to output a single value?
+
+.seealso: `PetscProbComputeKSStatistic()`, `PetscProbComputeKSStatisticWeighted()`, `PetscPDFMaxwellBoltzmann1D()`
+S*/
+typedef PetscErrorCode PetscProbFn(const PetscReal x[], const PetscReal scale[], PetscReal result[]);
+
+PETSC_EXTERN_TYPEDEF typedef PetscProbFn *PetscProbFunc PETSC_DEPRECATED_TYPEDEF(3, 24, 0, "PetscProbFn*", );
 
 typedef enum {
   DTPROB_DENSITY_CONSTANT,
@@ -582,30 +622,32 @@ typedef enum {
 } DTProbDensityType;
 PETSC_EXTERN const char *const DTProbDensityTypes[];
 
-PETSC_EXTERN PetscErrorCode PetscPDFMaxwellBoltzmann1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscCDFMaxwellBoltzmann1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFMaxwellBoltzmann2D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscCDFMaxwellBoltzmann2D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFMaxwellBoltzmann3D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscCDFMaxwellBoltzmann3D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFGaussian1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscCDFGaussian1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFSampleGaussian1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFGaussian2D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFSampleGaussian2D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFGaussian3D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFSampleGaussian3D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFConstant1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscCDFConstant1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFSampleConstant1D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFConstant2D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscCDFConstant2D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFSampleConstant2D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFConstant3D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscCDFConstant3D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscPDFSampleConstant3D(const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode PetscProbCreateFromOptions(PetscInt, const char[], const char[], PetscProbFunc *, PetscProbFunc *, PetscProbFunc *);
+PETSC_EXTERN PetscProbFn    PetscPDFMaxwellBoltzmann1D;
+PETSC_EXTERN PetscProbFn    PetscCDFMaxwellBoltzmann1D;
+PETSC_EXTERN PetscProbFn    PetscPDFMaxwellBoltzmann2D;
+PETSC_EXTERN PetscProbFn    PetscCDFMaxwellBoltzmann2D;
+PETSC_EXTERN PetscProbFn    PetscPDFMaxwellBoltzmann3D;
+PETSC_EXTERN PetscProbFn    PetscCDFMaxwellBoltzmann3D;
+PETSC_EXTERN PetscProbFn    PetscPDFGaussian1D;
+PETSC_EXTERN PetscProbFn    PetscCDFGaussian1D;
+PETSC_EXTERN PetscProbFn    PetscPDFSampleGaussian1D;
+PETSC_EXTERN PetscProbFn    PetscPDFGaussian2D;
+PETSC_EXTERN PetscProbFn    PetscPDFSampleGaussian2D;
+PETSC_EXTERN PetscProbFn    PetscPDFGaussian3D;
+PETSC_EXTERN PetscProbFn    PetscPDFSampleGaussian3D;
+PETSC_EXTERN PetscProbFn    PetscPDFConstant1D;
+PETSC_EXTERN PetscProbFn    PetscCDFConstant1D;
+PETSC_EXTERN PetscProbFn    PetscPDFSampleConstant1D;
+PETSC_EXTERN PetscProbFn    PetscPDFConstant2D;
+PETSC_EXTERN PetscProbFn    PetscCDFConstant2D;
+PETSC_EXTERN PetscProbFn    PetscPDFSampleConstant2D;
+PETSC_EXTERN PetscProbFn    PetscPDFConstant3D;
+PETSC_EXTERN PetscProbFn    PetscCDFConstant3D;
+PETSC_EXTERN PetscProbFn    PetscPDFSampleConstant3D;
+PETSC_EXTERN PetscErrorCode PetscProbCreateFromOptions(PetscInt, const char[], const char[], PetscProbFn **, PetscProbFn **, PetscProbFn **);
 
 #include <petscvec.h>
 
-PETSC_EXTERN PetscErrorCode PetscProbComputeKSStatistic(Vec, PetscProbFunc, PetscReal *);
+PETSC_EXTERN PetscErrorCode PetscProbComputeKSStatistic(Vec, PetscProbFn *, PetscReal *);
+PETSC_EXTERN PetscErrorCode PetscProbComputeKSStatisticWeighted(Vec, Vec, PetscProbFn *, PetscReal *);
+PETSC_EXTERN PetscErrorCode PetscProbComputeKSStatisticMagnitude(Vec, PetscProbFn *, PetscReal *);

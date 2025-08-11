@@ -265,9 +265,9 @@ class KSPConvergedReason(object):
     `ITERATING`
         Still iterating
 
-    `CONVERGED_RTOL_NORMAL`
+    `CONVERGED_RTOL_NORMAL_EQUATIONS`
         Undocumented.
-    `CONVERGED_ATOL_NORMAL`
+    `CONVERGED_ATOL_NORMAL_EQUATIONS`
         Undocumented.
     `CONVERGED_RTOL`
         ∥r∥ <= rtolnorm(b) or rtolnorm(b - Ax₀)
@@ -296,7 +296,7 @@ class KSPConvergedReason(object):
         could not continue to enlarge the Krylov space. Could be due to
         a singular matrix or preconditioner. In KSPHPDDM, this is also
         returned when some search directions within a block are
-        colinear.
+        collinear.
     `DIVERGED_BREAKDOWN_BICG`
         A breakdown in the KSPBICG method was detected so the method
         could not continue to enlarge the Krylov space.
@@ -328,8 +328,8 @@ class KSPConvergedReason(object):
     CONVERGED_ITERATING       = KSP_CONVERGED_ITERATING
     ITERATING                 = KSP_CONVERGED_ITERATING
     # converged
-    CONVERGED_RTOL_NORMAL     = KSP_CONVERGED_RTOL_NORMAL
-    CONVERGED_ATOL_NORMAL     = KSP_CONVERGED_ATOL_NORMAL
+    CONVERGED_RTOL_NORMAL_EQUATIONS = KSP_CONVERGED_RTOL_NORMAL_EQUATIONS
+    CONVERGED_ATOL_NORMAL_EQUATIONS = KSP_CONVERGED_ATOL_NORMAL_EQUATIONS
     CONVERGED_RTOL            = KSP_CONVERGED_RTOL
     CONVERGED_ATOL            = KSP_CONVERGED_ATOL
     CONVERGED_ITS             = KSP_CONVERGED_ITS

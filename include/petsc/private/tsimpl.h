@@ -41,7 +41,7 @@ struct _TSOps {
   PetscErrorCode (*interpolate)(TS, PetscReal, Vec);
   PetscErrorCode (*evaluatewlte)(TS, NormType, PetscInt *, PetscReal *);
   PetscErrorCode (*evaluatestep)(TS, PetscInt, Vec, PetscBool *);
-  PetscErrorCode (*setfromoptions)(TS, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(TS, PetscOptionItems);
   PetscErrorCode (*destroy)(TS);
   PetscErrorCode (*view)(TS, PetscViewer);
   PetscErrorCode (*reset)(TS);
@@ -81,7 +81,7 @@ struct _TSTrajectoryOps {
   PetscErrorCode (*destroy)(TSTrajectory);
   PetscErrorCode (*set)(TSTrajectory, TS, PetscInt, PetscReal, Vec);
   PetscErrorCode (*get)(TSTrajectory, TS, PetscInt, PetscReal *);
-  PetscErrorCode (*setfromoptions)(TSTrajectory, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(TSTrajectory, PetscOptionItems);
   PetscErrorCode (*setup)(TSTrajectory, TS);
 };
 
@@ -122,7 +122,7 @@ struct _p_TSTrajectory {
   PetscBool   solution_only;      /* whether we dump just the solution or also the stages */
   PetscBool   adjoint_solve_mode; /* whether we will use the Trajectory inside a TSAdjointSolve() or not */
   PetscViewer monitor;
-  PetscInt    setupcalled;            /* true if setup has been called */
+  PetscBool   setupcalled;            /* true if setup has been called */
   PetscInt    recomps;                /* counter for recomputations in the adjoint run */
   PetscInt    diskreads, diskwrites;  /* counters for disk checkpoint reads and writes */
   char      **names;                  /* the name of each variable; each process has only the local names */
@@ -144,15 +144,17 @@ struct _TS_RHSSplitLink {
   PetscLogEvent   event;
 };
 
-typedef struct _TS_TimeSpan *TSTimeSpan;
-struct _TS_TimeSpan {
-  PetscInt   num_span_times; /* number of time points */
-  PetscReal *span_times;     /* array of the time span */
-  PetscReal  reltol;         /* relative tolerance for span point detection */
-  PetscReal  abstol;         /* absolute tolerance for span point detection */
-  PetscReal  worktol;        /* the ultimate tolerance (variable), maintained within a single TS time step for consistency */
-  PetscInt   spanctr;        /* counter of the time points that have been reached */
-  Vec       *vecs_sol;       /* array of the solutions at the specified time points */
+typedef struct _TS_EvaluationTimes *TSEvaluationTimes;
+struct _TS_EvaluationTimes {
+  PetscInt   num_time_points; /* number of time points */
+  PetscReal *time_points;     /* array of the time span */
+  PetscReal  reltol;          /* relative tolerance for span point detection */
+  PetscReal  abstol;          /* absolute tolerance for span point detection */
+  PetscReal  worktol;         /* the ultimate tolerance (variable), maintained within a single TS time step for consistency */
+  PetscInt   time_point_idx;  /* index of the time_point to be reached next */
+  PetscInt   sol_idx;         /* index into sol_vecs and sol_times */
+  Vec       *sol_vecs;        /* array of the solutions at the specified time points */
+  PetscReal *sol_times;       /* array of times that sol_vecs was taken at */
 };
 
 struct _p_TS {
@@ -174,14 +176,13 @@ struct _p_TS {
 
   /* ---------------- User (or PETSc) Provided stuff ---------------------*/
   PetscErrorCode (*monitor[MAXTSMONITORS])(TS, PetscInt, PetscReal, Vec, void *);
-  PetscErrorCode (*monitordestroy[MAXTSMONITORS])(void **);
-  void    *monitorcontext[MAXTSMONITORS];
-  PetscInt numbermonitors;
+  PetscCtxDestroyFn *monitordestroy[MAXTSMONITORS];
+  void              *monitorcontext[MAXTSMONITORS];
+  PetscInt           numbermonitors;
   PetscErrorCode (*adjointmonitor[MAXTSMONITORS])(TS, PetscInt, PetscReal, Vec, PetscInt, Vec *, Vec *, void *);
-  PetscErrorCode (*adjointmonitordestroy[MAXTSMONITORS])(void **);
-  void    *adjointmonitorcontext[MAXTSMONITORS];
-  PetscInt numberadjointmonitors;
-  PetscInt monitorFrequency; /* Number of timesteps between monitor output */
+  PetscCtxDestroyFn *adjointmonitordestroy[MAXTSMONITORS];
+  void              *adjointmonitorcontext[MAXTSMONITORS];
+  PetscInt           numberadjointmonitors;
 
   PetscErrorCode (*prestep)(TS);
   PetscErrorCode (*prestage)(TS, PetscReal);
@@ -199,7 +200,7 @@ struct _p_TS {
   Vec         *vecs_sensip;
   PetscInt     numcost; /* number of cost functions */
   Vec          vec_costintegral;
-  PetscInt     adjointsetupcalled;
+  PetscBool    adjointsetupcalled;
   PetscInt     adjoint_steps;
   PetscInt     adjoint_max_steps;
   PetscBool    adjoint_solve;     /* immediately call TSAdjointSolve() after TSSolve() is complete */
@@ -244,14 +245,14 @@ struct _p_TS {
   PetscInt  num_parameters;
   PetscInt  num_initialvalues;
   void     *vecsrhsjacobianpctx;
-  PetscInt  forwardsetupcalled;
+  PetscBool forwardsetupcalled;
   PetscBool forward_solve;
   PetscErrorCode (*vecsrhsjacobianp)(TS, PetscReal, Vec, Vec *, void *);
 
   /* ---------------------- IMEX support ---------------------------------*/
   /* These extra slots are only used when the user provides both Implicit and RHS */
   Mat Arhs; /* Right hand side matrix */
-  Mat Brhs; /* Right hand side preconditioning matrix */
+  Mat Brhs; /* Right hand side matrix used to construct the preconditioner */
   Vec Frhs; /* Right hand side function value */
 
   /* This is a general caching scheme to avoid recomputing the Jacobian at a place that has been previously been evaluated.
@@ -286,9 +287,9 @@ struct _p_TS {
   PetscInt ifuncs, rhsfuncs, ijacs, rhsjacs;
 
   /* --- Data that is unique to each particular solver --- */
-  PetscInt setupcalled; /* true if setup has been called */
-  void    *data;        /* implementationspecific data */
-  void    *user;        /* user context */
+  PetscBool setupcalled; /* true if setup has been called */
+  void     *data;        /* implementationspecific data */
+  void     *ctx;         /* user context */
 
   PetscBool steprollback;        /* flag to indicate that the step was rolled back */
   PetscBool steprestart;         /* flag to indicate that the timestepper has to discard any history and restart */
@@ -310,9 +311,11 @@ struct _p_TS {
   PetscObjectParameterDeclare(PetscReal, rtol); /* Relative and absolute tolerance for local truncation error */
   PetscObjectParameterDeclare(PetscReal, atol);
   PetscObjectParameterDeclare(PetscReal, max_time); /* max time allowed */
-  PetscObjectParameterDeclare(PetscInt, max_steps); /* max number of steps */
+  PetscObjectParameterDeclare(PetscInt, max_steps); /* maximum time-step number to execute until (possibly with nonzero starting value) */
+  PetscObjectParameterDeclare(PetscInt, run_steps); /* maximum number of time steps for TSSolve to take on each call */
   Vec       vatol, vrtol;                           /* Relative and absolute tolerance in vector form */
   PetscReal cfltime, cfltime_local;
+  PetscInt  start_step; /* step number at start of current run */
 
   PetscBool testjacobian;
   PetscBool testjacobiantranspose;
@@ -330,7 +333,7 @@ struct _p_TS {
   TS quadraturets;
 
   /* ---------------------- Time span support ---------------------------------*/
-  TSTimeSpan tspan;
+  TSEvaluationTimes eval_times;
 };
 
 struct _TSAdaptOps {
@@ -338,7 +341,7 @@ struct _TSAdaptOps {
   PetscErrorCode (*destroy)(TSAdapt);
   PetscErrorCode (*reset)(TSAdapt);
   PetscErrorCode (*view)(TSAdapt, PetscViewer);
-  PetscErrorCode (*setfromoptions)(TSAdapt, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(TSAdapt, PetscOptionItems);
   PetscErrorCode (*load)(TSAdapt, PetscViewer);
 };
 
@@ -368,7 +371,7 @@ struct _p_TSAdapt {
   PetscViewer monitor;
   PetscInt    timestepjustdecreased_delay; /* number of timesteps after a decrease in the timestep before the timestep can be increased */
   PetscInt    timestepjustdecreased;
-  PetscReal   dt_span_cached; /* time step before hitting a TS span time point */
+  PetscReal   dt_eval_times_cached; /* time step before hitting a TS evaluation time point */
 };
 
 typedef struct _p_DMTS  *DMTS;
@@ -448,12 +451,12 @@ struct _p_DMTS {
   DM originaldm;
 };
 
-PETSC_EXTERN PetscErrorCode DMTSUnsetRHSFunctionContext_Internal(DM);
-PETSC_EXTERN PetscErrorCode DMTSUnsetRHSJacobianContext_Internal(DM);
-PETSC_EXTERN PetscErrorCode DMTSUnsetIFunctionContext_Internal(DM);
-PETSC_EXTERN PetscErrorCode DMTSUnsetIJacobianContext_Internal(DM);
-PETSC_EXTERN PetscErrorCode DMTSUnsetI2FunctionContext_Internal(DM);
-PETSC_EXTERN PetscErrorCode DMTSUnsetI2JacobianContext_Internal(DM);
+PETSC_INTERN PetscErrorCode DMTSUnsetRHSFunctionContext_Internal(DM);
+PETSC_INTERN PetscErrorCode DMTSUnsetRHSJacobianContext_Internal(DM);
+PETSC_INTERN PetscErrorCode DMTSUnsetIFunctionContext_Internal(DM);
+PETSC_INTERN PetscErrorCode DMTSUnsetIJacobianContext_Internal(DM);
+PETSC_INTERN PetscErrorCode DMTSUnsetI2FunctionContext_Internal(DM);
+PETSC_INTERN PetscErrorCode DMTSUnsetI2JacobianContext_Internal(DM);
 
 PETSC_EXTERN PetscErrorCode DMGetDMTS(DM, DMTS *);
 PETSC_EXTERN PetscErrorCode DMGetDMTSWrite(DM, DMTS *);
@@ -534,8 +537,8 @@ struct _n_TSMonitorLGCtx {
   PetscInt   *displayvariables;
   PetscReal  *displayvalues;
   PetscErrorCode (*transform)(void *, Vec, Vec *);
-  PetscErrorCode (*transformdestroy)(void *);
-  void *transformctx;
+  PetscCtxDestroyFn *transformdestroy;
+  void              *transformctx;
 };
 
 struct _n_TSMonitorSPCtx {
@@ -573,7 +576,7 @@ static inline PetscErrorCode TSCheckImplicitTerm(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PETSC_EXTERN PetscErrorCode TSGetRHSMats_Private(TS, Mat *, Mat *);
+PETSC_INTERN PetscErrorCode TSGetRHSMats_Private(TS, Mat *, Mat *);
 /* this is declared here as TSHistory is not public */
 PETSC_EXTERN PetscErrorCode TSAdaptHistorySetTSHistory(TSAdapt, TSHistory, PetscBool);
 
@@ -598,4 +601,8 @@ struct _n_TSMonitorDrawCtx {
 struct _n_TSMonitorVTKCtx {
   char    *filenametemplate;
   PetscInt interval; /* when > 0 uses step % interval, when negative only final solution plotted */
+};
+
+struct _n_TSMonitorSolutionCtx {
+  PetscBool skip_initial; // Skip the viewer the first time TSMonitorSolution is run (within a single call to `TSSolve()`)
 };

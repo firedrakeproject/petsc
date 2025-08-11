@@ -216,7 +216,7 @@ PetscErrorCode PetscMatlabEnginePrintOutput(PetscMatlabEngine mengine, FILE *fd)
 }
 
 /*@
-  PetscMatlabEnginePut - Puts a Petsc object, such as a `Mat` or `Vec` into the MATLAB space. For parallel objects,
+  PetscMatlabEnginePut - Puts a PETSc object, such as a `Mat` or `Vec` into the MATLAB space. For parallel objects,
   each processor's part is put in a separate  MATLAB process.
 
   Collective
@@ -305,7 +305,9 @@ static PetscMPIInt Petsc_Matlab_Engine_keyval = MPI_KEYVAL_INVALID;
    Note:
    Unlike almost all other PETSc routines, this does not return
    an error code. Usually used in the form
-$      PetscMatlabEngineYYY(XXX object, PETSC_MATLAB_ENGINE_(comm));
+.vb
+  PetscMatlabEngineYYY(XXX object, PETSC_MATLAB_ENGINE_(comm));
+.ve
 
 .seealso: `PetscMatlabEngineDestroy()`, `PetscMatlabEnginePut()`, `PetscMatlabEngineGet()`,
           `PetscMatlabEngineEvaluate()`, `PetscMatlabEngineGetOutput()`, `PetscMatlabEnginePrintOutput()`,

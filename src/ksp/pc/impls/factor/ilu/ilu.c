@@ -25,7 +25,7 @@ static PetscErrorCode PCReset_ILU(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PCFactorSetDropTolerance_ILU(PC pc, PetscReal dt, PetscReal dtcol, PetscInt dtcount)
+static PetscErrorCode PCFactorSetDropTolerance_ILU(PC pc, PetscReal dt, PetscReal dtcol, PetscInt dtcount)
 {
   PC_ILU *ilu = (PC_ILU *)pc->data;
 
@@ -40,7 +40,7 @@ PetscErrorCode PCFactorSetDropTolerance_ILU(PC pc, PetscReal dt, PetscReal dtcol
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_ILU(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_ILU(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscInt  itmp;
   PetscBool flg, set;
@@ -218,6 +218,15 @@ static PetscErrorCode PCApplyTranspose_ILU(PC pc, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode PCMatApplyTranspose_ILU(PC pc, Mat X, Mat Y)
+{
+  PC_ILU *ilu = (PC_ILU *)pc->data;
+
+  PetscFunctionBegin;
+  PetscCall(MatMatSolveTranspose(((PC_Factor *)ilu)->fact, X, Y));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PCApplySymmetricLeft_ILU(PC pc, Vec x, Vec y)
 {
   PC_ILU *icc = (PC_ILU *)pc->data;
@@ -267,7 +276,7 @@ static PetscErrorCode PCApplySymmetricRight_ILU(PC pc, Vec x, Vec y)
    is never done on the GPU).
 
 .seealso: [](ch_ksp), `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCSOR`, `MatOrderingType`, `PCLU`, `PCICC`, `PCCHOLESKY`,
-          `PCFactorSetZeroPivot()`, `PCFactorSetShiftSetType()`, `PCFactorSetAmount()`,
+          `PCFactorSetZeroPivot()`, `PCFactorSetShiftType()`, `PCFactorSetShiftAmount()`,
           `PCFactorSetDropTolerance()`, `PCFactorSetFill()`, `PCFactorSetMatOrderingType()`, `PCFactorSetReuseOrdering()`,
           `PCFactorSetLevels()`, `PCFactorSetUseInPlace()`, `PCFactorSetAllowDiagonalFill()`, `PCFactorSetPivotInBlocks()`,
           `PCFactorGetAllowDiagonalFill()`, `PCFactorGetUseInPlace()`
@@ -295,6 +304,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_ILU(PC pc)
   pc->ops->apply               = PCApply_ILU;
   pc->ops->matapply            = PCMatApply_ILU;
   pc->ops->applytranspose      = PCApplyTranspose_ILU;
+  pc->ops->matapplytranspose   = PCMatApplyTranspose_ILU;
   pc->ops->setup               = PCSetUp_ILU;
   pc->ops->setfromoptions      = PCSetFromOptions_ILU;
   pc->ops->view                = PCView_Factor;

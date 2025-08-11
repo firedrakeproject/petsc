@@ -1,4 +1,7 @@
 #pragma once
+
+/* MANSEC = Tao */
+
 PETSC_DEPRECATED_FUNCTION(3, 17, 0, "TaoSetSolution()", ) static inline PetscErrorCode TaoSetInitialVector(Tao t, Vec v)
 {
   return TaoSetSolution(t, v);
@@ -39,7 +42,7 @@ PETSC_DEPRECATED_FUNCTION(3, 11, 0, "TaoComputeResidual()", ) static inline Pets
 {
   return TaoComputeResidual(tao, X, F);
 }
-PETSC_DEPRECATED_FUNCTION(3, 21, 0, "TaoMonitorSet()", ) static inline PetscErrorCode TaoSetMonitor(Tao tao, PetscErrorCode (*monitor)(Tao, void *), void *ctx, PetscErrorCode (*destroy)(void **))
+PETSC_DEPRECATED_FUNCTION(3, 21, 0, "TaoMonitorSet()", ) static inline PetscErrorCode TaoSetMonitor(Tao tao, PetscErrorCode (*monitor)(Tao, void *), void *ctx, PetscCtxDestroyFn *destroy)
 {
   return TaoMonitorSet(tao, monitor, ctx, destroy);
 }

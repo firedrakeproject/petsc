@@ -6,7 +6,7 @@
 
 #if defined(PETSC_HAVE_KOKKOS)
   #if defined(petsccomplexlib)
-    #error "Error: You must include petscvec_kokkos.hpp before other petsc headers in this C++ file to use petsc complex with Kokkos"
+    #error "Error: You must include petscvec_kokkos.hpp before other PETSc headers in this C++ file to use PetscComplex with Kokkos"
   #endif
 
   #define PETSC_DESIRE_KOKKOS_COMPLEX 1 /* To control the definition of petsccomplexlib in petscsystypes.h */
@@ -43,10 +43,10 @@
    Passing in a const View enables read-only access.
 
    One must return the View by a matching `VecRestoreKokkosView()` after finishing using the View. Currently, only two memory
-   spaces are supported: Kokkos::HostSpace and Kokkos::DefaultExecutionSpace::memory_space.
+   spaces are supported: HostMirrorMemorySpace and Kokkos::DefaultExecutionSpace::memory_space.
    If needed, a memory copy will be internally called to copy the latest vector data to the specified memory space.
 
-.seealso: `VecRestoreKokkosView()`, `VecRestoreArray()`, `VecGetKokkosViewWrite()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecGetArrayF90()`, `VecGetArrayReadF90()`, `VecPlaceArray()`, `VecGetArray2d()`,
+.seealso: `VecRestoreKokkosView()`, `VecRestoreArray()`, `VecGetKokkosViewWrite()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecPlaceArray()`, `VecGetArray2d()`,
           `VecGetArrayPair()`, `VecRestoreArrayPair()`, `VecGetArrayWrite()`, `VecRestoreArrayWrite()`
 @*/
 template <class MemorySpace>
@@ -74,7 +74,7 @@ PetscErrorCode VecGetKokkosView(Vec, Kokkos::View<PetscScalar *, MemorySpace> *)
    If the vector is not of type `VECKOKKOS`, an error will be raised.
    The functions are similar to `VecRestoreArrayRead()` and `VecRestoreArray()` respectively. They are the counterpart of `VecGetKokkosView()`.
 
-.seealso: `VecGetKokkosView()`, `VecRestoreKokkosViewWrite()`, `VecRestoreArray()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecGetArrayF90()`, `VecGetArrayReadF90()`, `VecPlaceArray()`, `VecGetArray2d()`,
+.seealso: `VecGetKokkosView()`, `VecRestoreKokkosViewWrite()`, `VecRestoreArray()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecPlaceArray()`, `VecGetArray2d()`,
           `VecGetArrayPair()`, `VecRestoreArrayPair()`, `VecGetArrayWrite()`, `VecRestoreArrayWrite()`
 @*/
 template <class MemorySpace>
@@ -109,9 +109,9 @@ PetscErrorCode VecRestoreKokkosView(Vec, Kokkos::View<PetscScalar *, MemorySpace
    expected to read data from the View. Instead, one is expected to overwrite all data in the View.
    One must return the View by a matching `VecRestoreKokkosViewWrite()` after finishing using the View.
 
-   Currently, only two memory spaces are supported: Kokkos::HostSpace and Kokkos::DefaultExecutionSpace::memory_space.
+   Currently, only two memory spaces are supported: HostMirrorMemorySpace and Kokkos::DefaultExecutionSpace::memory_space.
 
-.seealso: `VecRestoreKokkosViewWrite()`, `VecRestoreKokkosView()`, `VecGetKokkosView()`, `VecRestoreArray()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecGetArrayF90()`, `VecGetArrayReadF90()`, `VecPlaceArray()`, `VecGetArray2d()`,
+.seealso: `VecRestoreKokkosViewWrite()`, `VecRestoreKokkosView()`, `VecGetKokkosView()`, `VecRestoreArray()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecPlaceArray()`, `VecGetArray2d()`,
           `VecGetArrayPair()`, `VecRestoreArrayPair()`, `VecGetArrayWrite()`, `VecRestoreArrayWrite()`
 @*/
 template <class MemorySpace>
@@ -137,7 +137,7 @@ PetscErrorCode VecGetKokkosViewWrite(Vec, Kokkos::View<PetscScalar *, MemorySpac
 
    The function is similar to `VecRestoreArrayWrite()`. It is the counterpart of `VecGetKokkosViewWrite()`.
 
-.seealso: `VecGetKokkosViewWrite()`, `VecGetKokkosView()`, `VecGetKokkosView()`, `VecRestoreArray()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecGetArrayF90()`, `VecGetArrayReadF90()`, `VecPlaceArray()`, `VecGetArray2d()`,
+.seealso: `VecGetKokkosViewWrite()`, `VecGetKokkosView()`, `VecGetKokkosView()`, `VecRestoreArray()`, `VecGetArrayRead()`, `VecGetArrays()`, `VecPlaceArray()`, `VecGetArray2d()`,
           `VecGetArrayPair()`, `VecRestoreArrayPair()`, `VecGetArrayWrite()`, `VecRestoreArrayWrite()`
 @*/
 template <class MemorySpace>

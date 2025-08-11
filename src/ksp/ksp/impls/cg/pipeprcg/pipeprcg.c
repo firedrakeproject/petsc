@@ -19,7 +19,7 @@ static PetscErrorCode KSPSetUp_PIPEPRCG(KSP ksp)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPSetFromOptions_PIPEPRCG(KSP ksp, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode KSPSetFromOptions_PIPEPRCG(KSP ksp, PetscOptionItems PetscOptionsObject)
 {
   KSP_CG_PIPE_PR *prcg = (KSP_CG_PIPE_PR *)ksp->data;
   PetscBool       flag = PETSC_FALSE;
@@ -175,7 +175,7 @@ static PetscErrorCode KSPSolve_PIPEPRCG(KSP ksp)
 }
 
 /*MC
-   KSPPIPEPRCG - Pipelined predict-and-recompute conjugate gradient method {cite}`chen2020predict`. [](sec_pipelineksp)
+   KSPPIPEPRCG - Pipelined predict-and-recompute conjugate gradient Krylov method {cite}`chen2020predict`. [](sec_pipelineksp)
 
    Options Database Key:
 .  -ksp_pipeprcg_recompute_w - recompute the $w_k$ with $Ar_k$, default is true

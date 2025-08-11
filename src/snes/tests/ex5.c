@@ -81,7 +81,7 @@ int main(int argc, char **argv)
      -snes_fd : default finite differencing approximation of Jacobian
      -snes_mf : matrix-free Newton-Krylov method with no preconditioning
                 (unless user explicitly sets preconditioner)
-     -snes_mf_operator : form preconditioning matrix as set by the user,
+     -snes_mf_operator : form matrix used to construct the preconditioner as set by the user,
                          but use matrix-free approx for Jacobian-vector
                          products within Newton-Krylov method
   */
@@ -246,7 +246,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx)
 
    Output Parameters:
 .  jac - Jacobian matrix
-.  B - optionally different preconditioning matrix
+.  B - optionally different matrix used to construct the preconditioner
 
 */
 
@@ -334,11 +334,16 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy)
       requires: kokkos_kernels
       args: -mat_type aijkokkos -vec_type kokkos
 
-   # this is just a test for SNESKSPTRASPOSEONLY and KSPSolveTranspose to behave properly
+   # this is just a test for SNESKSPTRANSPOSEONLY and KSPSolveTranspose() to behave properly
    # the solution is wrong on purpose
    test:
       requires: !single !complex
       suffix: transpose_only
       args: -snes_monitor_short -snes_view -ksp_monitor -snes_type ksptransposeonly -pc_type ilu -snes_test_jacobian -snes_test_jacobian_view -ksp_view_rhs -ksp_view_solution -ksp_view_mat_explicit -ksp_view_preconditioned_operator_explicit
+
+   test:
+      requires: mumps
+      suffix: mumps
+      args: -pc_type lu -pc_factor_mat_solver_type mumps -mat_mumps_icntl_15 1 -snes_monitor_short -ksp_monitor
 
 TEST*/

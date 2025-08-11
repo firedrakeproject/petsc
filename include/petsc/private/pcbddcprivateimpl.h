@@ -16,21 +16,21 @@ PETSC_EXTERN PetscErrorCode PCBDDCResetSolvers(PC);
 PETSC_EXTERN PetscErrorCode PCBDDCResetCustomization(PC);
 
 /* graph */
-PETSC_EXTERN PetscErrorCode PCBDDCGraphCreate(PCBDDCGraph *);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphDestroy(PCBDDCGraph *);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphInit(PCBDDCGraph, ISLocalToGlobalMapping, PetscInt, PetscInt);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphReset(PCBDDCGraph);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphResetCSR(PCBDDCGraph);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphResetCoords(PCBDDCGraph);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphSetUp(PCBDDCGraph, PetscInt, IS, IS, PetscInt, IS[], IS);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphComputeConnectedComponents(PCBDDCGraph);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphComputeConnectedComponentsLocal(PCBDDCGraph);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphASCIIView(PCBDDCGraph, PetscInt, PetscViewer);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphGetCandidatesIS(PCBDDCGraph, PetscInt *, IS *[], PetscInt *, IS *[], IS *);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphRestoreCandidatesIS(PCBDDCGraph, PetscInt *, IS *[], PetscInt *, IS *[], IS *);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphGetDirichletDofs(PCBDDCGraph, IS *);
-PETSC_EXTERN PetscErrorCode PCBDDCGraphGetDirichletDofsB(PCBDDCGraph, IS *);
-PETSC_EXTERN PetscErrorCode PCBDDCDestroyGraphCandidatesIS(void *);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphCreate(PCBDDCGraph *);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphDestroy(PCBDDCGraph *);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphInit(PCBDDCGraph, ISLocalToGlobalMapping, PetscInt, PetscInt);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphReset(PCBDDCGraph);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphResetCSR(PCBDDCGraph);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphResetCoords(PCBDDCGraph);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphSetUp(PCBDDCGraph, PetscInt, IS, IS, PetscInt, IS[], IS);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphComputeConnectedComponents(PCBDDCGraph);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphComputeConnectedComponentsLocal(PCBDDCGraph);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphASCIIView(PCBDDCGraph, PetscInt, PetscViewer);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphGetCandidatesIS(PCBDDCGraph, PetscInt *, IS *[], PetscInt *, IS *[], IS *);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphRestoreCandidatesIS(PCBDDCGraph, PetscInt *, IS *[], PetscInt *, IS *[], IS *);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphGetDirichletDofs(PCBDDCGraph, IS *);
+PETSC_EXTERN PetscErrorCode    PCBDDCGraphGetDirichletDofsB(PCBDDCGraph, IS *);
+PETSC_EXTERN PetscCtxDestroyFn PCBDDCDestroyGraphCandidatesIS;
 
 /* interface for scaling operator */
 PETSC_INTERN PetscErrorCode PCBDDCScalingSetUp(PC);
@@ -69,6 +69,7 @@ PETSC_INTERN PetscErrorCode PCBDDCAddPrimalVerticesLocalIS(PC, IS);
 PETSC_INTERN PetscErrorCode PCBDDCComputeFakeChange(PC, PetscBool, PCBDDCGraph, PCBDDCSubSchurs, Mat *, IS *, IS *, PetscBool *);
 PETSC_INTERN PetscErrorCode MatCreateSubMatrixUnsorted(Mat, IS, IS, Mat *);
 PETSC_INTERN PetscErrorCode MatSeqAIJCompress(Mat, Mat *);
+PETSC_INTERN PetscErrorCode MatNullSpacePropagateAny_Private(Mat, IS, Mat);
 
 /* benign subspace trick */
 PETSC_INTERN PetscErrorCode PCBDDCBenignPopOrPushB0(PC, PetscBool);

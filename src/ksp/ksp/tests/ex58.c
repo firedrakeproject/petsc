@@ -1,7 +1,7 @@
 static char help[] = "Solves a tridiagonal linear system with KSP.\n\n";
 
 /*
-  Modified from ex1.c for testing matrix operations when matrix structure is changed.
+  Modified from ex1.c for testing matrix operations when the matrix nonzero structure is changed.
   Contributed by Jose E. Roman, Feb. 2012.
 */
 #include <petscksp.h>
@@ -114,7 +114,7 @@ int main(int argc, char **args)
 
   /*
      Set operators. Here the matrix that defines the linear system
-     also serves as the preconditioning matrix.
+     also serves as the matrix from which the preconditioner is constructed.
   */
   PetscCall(KSPSetOperators(ksp, C, C));
 

@@ -1,5 +1,5 @@
 /*
- GAMG geometric-algebric multigrid PC - Mark Adams 2011
+ GAMG geometric-algebraic multigrid PC - Mark Adams 2011
  */
 
 #include <../src/ksp/pc/impls/gamg/gamg.h> /*I "petscpc.h" I*/
@@ -88,7 +88,7 @@ static PetscErrorCode PCSetData_GEO(PC pc, Mat m)
   SETERRQ(PetscObjectComm((PetscObject)pc), PETSC_ERR_PLIB, "GEO MG needs coordinates");
 }
 
-static PetscErrorCode PCSetFromOptions_GEO(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_GEO(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "GAMG-GEO options");
@@ -150,10 +150,10 @@ static PetscErrorCode triangulateAndFormProl(IS selected_2, PetscInt data_stride
   PetscCall(MatGetOwnershipRange(a_Prol, &Istart, &Iend));
   nFineLoc = (Iend - Istart) / bs;
   myFine0  = Istart / bs;
-  nPlotPts = nFineLoc; /* locals */
+  PetscCall(PetscCIntCast(nFineLoc, &nPlotPts)); /* locals */
   /* triangle */
-  /* Define input points - in*/
-  in.numberofpoints          = nselected_2;
+  /* Define input points - in */
+  PetscCall(PetscCIntCast(nselected_2, &in.numberofpoints));
   in.numberofpointattributes = 0;
   /* get nselected points */
   PetscCall(PetscMalloc1(2 * nselected_2, &in.pointlist));
@@ -255,7 +255,7 @@ static PetscErrorCode triangulateAndFormProl(IS selected_2, PetscInt data_stride
           PetscInt lid = selected_idx_2[kk];
           if (lid == jj) sel = PETSC_FALSE;
         }
-        if (sel) fprintf(file, "%d %e %e\n", sid++, coords[jj], coords[data_stride + jj]);
+        if (sel) fprintf(file, "%d %e %e\n", sid++, (double)coords[jj], (double)coords[data_stride + jj]);
       }
       fclose(file);
       PetscCheck(sid == nPlotPts, PETSC_COMM_SELF, PETSC_ERR_PLIB, "sid %d != nPlotPts %d", sid, nPlotPts);
@@ -674,7 +674,7 @@ static PetscErrorCode PCGAMGProlongator_GEO(PC pc, Mat Amat, PetscCoarsenData *a
     if (size > 1) {
       PetscCall(PCGAMGGetDataWithGhosts(Gmat2, dim, pc_gamg->data, &data_stride, &coords));
     } else {
-      coords      = (PetscReal *)pc_gamg->data;
+      coords      = pc_gamg->data;
       data_stride = pc_gamg->data_sz / pc_gamg->data_cell_cols;
     }
     PetscCall(MatDestroy(&Gmat2));

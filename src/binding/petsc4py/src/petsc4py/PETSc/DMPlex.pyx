@@ -374,6 +374,30 @@ cdef class DMPlex(DM):
         CHKERR(PetscCLEAR(self.obj)); self.dm = newdm
         return self
 
+    def createCoordinateSpace(self, degree: int, localized: bool, project: bool) -> None:
+        """Create a finite element space for the coordinates.
+
+        Collective.
+
+        Parameters
+        ----------
+        degree
+            The degree of the finite element.
+        localized
+            Flag to create a localized (DG) coordinate space.
+        project
+            Flag to project current coordinates into the space.
+
+        See Also
+        --------
+        DM, DMPlex, petsc.DMPlexCreateCoordinateSpace
+
+        """
+        cdef PetscInt cdegree = asInt(degree)
+        cdef PetscBool clocalized = localized
+        cdef PetscBool cproject = project
+        CHKERR(DMPlexCreateCoordinateSpace(self.dm, cdegree, clocalized, cproject))
+
     def createCohesiveSubmesh(self, hasLagrange: bool, value: int) -> DMPlex:
         """Extract the hypersurface defined by one face of the cohesive cells.
 
@@ -3461,7 +3485,7 @@ class DMPlexTransformType(object):
     REFINETOBOX = S_(DMPLEXREFINETOBOX)
     REFINETOSIMPLEX = S_(DMPLEXREFINETOSIMPLEX)
     REFINE1D = S_(DMPLEXREFINE1D)
-    EXTRUDE = S_(DMPLEXEXTRUDE)
+    EXTRUDE = S_(DMPLEXEXTRUDETYPE)
     TRANSFORMFILTER = S_(DMPLEXTRANSFORMFILTER)
 
 

@@ -136,7 +136,7 @@ static PetscErrorCode DMFieldRestoreClosure_Internal(DMField field, PetscInt cel
   } else {
     PetscCall(DMFieldGetDM(field, &fdm));
     PetscCall(DMGetLocalSection(fdm, &s));
-    PetscCall(DMPlexVecRestoreClosure(fdm, s, dsfield->vec, cell, Nc, (PetscScalar **)values));
+    PetscCall(DMPlexVecRestoreClosure(fdm, s, dsfield->vec, cell, Nc, values));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -247,6 +247,7 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
   PetscScalar       *cellBs = NULL, *cellDs = NULL, *cellHs = NULL;
   PetscReal         *cellBr = NULL, *cellDr = NULL, *cellHr = NULL;
   PetscReal         *v, *J, *invJ, *detJ;
+  PetscMPIInt        idim;
 
   PetscFunctionBegin;
   nc = field->numComponents;
@@ -272,7 +273,8 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
   if (datatype == PETSC_SCALAR) PetscCall(PetscMalloc3((B ? (size_t)nc * gatherSize : 0), &cellBs, (D ? (size_t)nc * dim * gatherSize : 0), &cellDs, (H ? (size_t)nc * dim * dim * gatherSize : 0), &cellHs));
   else PetscCall(PetscMalloc3((B ? (size_t)nc * gatherSize : 0), &cellBr, (D ? (size_t)nc * dim * gatherSize : 0), &cellDr, (H ? (size_t)nc * dim * dim * gatherSize : 0), &cellHr));
 
-  PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)dim, MPIU_SCALAR, &pointType));
+  PetscCall(PetscMPIIntCast(dim, &idim));
+  PetscCallMPI(MPI_Type_contiguous(idim, MPIU_SCALAR, &pointType));
   PetscCallMPI(MPI_Type_commit(&pointType));
   PetscCall(VecGetArrayRead(points, &pointsArray));
   PetscCall(PetscSFGatherBegin(cellSF, pointType, pointsArray, cellPoints));
@@ -410,7 +412,8 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
     if (B) {
       MPI_Datatype Btype;
 
-      PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)nc, origtype, &Btype));
+      PetscCall(PetscMPIIntCast(nc, &idim));
+      PetscCallMPI(MPI_Type_contiguous(idim, origtype, &Btype));
       PetscCallMPI(MPI_Type_commit(&Btype));
       PetscCall(PetscSFScatterBegin(cellSF, Btype, (datatype == PETSC_SCALAR) ? (void *)cellBs : (void *)cellBr, B));
       PetscCall(PetscSFScatterEnd(cellSF, Btype, (datatype == PETSC_SCALAR) ? (void *)cellBs : (void *)cellBr, B));
@@ -419,7 +422,8 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
     if (D) {
       MPI_Datatype Dtype;
 
-      PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)(nc * dim), origtype, &Dtype));
+      PetscCall(PetscMPIIntCast(nc * dim, &idim));
+      PetscCallMPI(MPI_Type_contiguous(idim, origtype, &Dtype));
       PetscCallMPI(MPI_Type_commit(&Dtype));
       PetscCall(PetscSFScatterBegin(cellSF, Dtype, (datatype == PETSC_SCALAR) ? (void *)cellDs : (void *)cellDr, D));
       PetscCall(PetscSFScatterEnd(cellSF, Dtype, (datatype == PETSC_SCALAR) ? (void *)cellDs : (void *)cellDr, D));
@@ -428,7 +432,8 @@ static PetscErrorCode DMFieldEvaluate_DS(DMField field, Vec points, PetscDataTyp
     if (H) {
       MPI_Datatype Htype;
 
-      PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)(nc * dim * dim), origtype, &Htype));
+      PetscCall(PetscMPIIntCast(nc * dim * dim, &idim));
+      PetscCallMPI(MPI_Type_contiguous(idim, origtype, &Htype));
       PetscCallMPI(MPI_Type_commit(&Htype));
       PetscCall(PetscSFScatterBegin(cellSF, Htype, (datatype == PETSC_SCALAR) ? (void *)cellHs : (void *)cellHr, H));
       PetscCall(PetscSFScatterEnd(cellSF, Htype, (datatype == PETSC_SCALAR) ? (void *)cellHs : (void *)cellHr, H));
@@ -482,7 +487,7 @@ static PetscErrorCode DMFieldEvaluateFV_DS(DMField field, IS pointIS, PetscDataT
   if (maxDegree <= 1) PetscCall(DMFieldCreateDefaultQuadrature(coordField, pointIS, &quad));
   if (!quad) PetscCall(DMFieldCreateDefaultQuadrature(field, pointIS, &quad));
   PetscCheck(quad, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Could not determine quadrature for cell averages");
-  PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, PETSC_FALSE, &geom));
+  PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, PETSC_FEGEOM_BASIC, &geom));
   PetscCall(PetscQuadratureGetData(quad, NULL, &qNc, &Nq, NULL, &weights));
   PetscCheck(qNc == 1, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Expected scalar quadrature components");
   N = numPoints * Nq * Nc;
@@ -745,6 +750,42 @@ static PetscErrorCode DMFieldCreateDefaultQuadrature_DS(DMField field, IS pointI
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode DMFieldCreateDefaultFaceQuadrature_DS(DMField field, IS pointIS, PetscQuadrature *quad)
+{
+  PetscInt     h, dim, imax, imin, cellHeight;
+  DM           dm;
+  DMField_DS  *dsfield;
+  PetscObject  disc;
+  PetscFE      fe;
+  PetscClassId id;
+
+  PetscFunctionBegin;
+  dm      = field->dm;
+  dsfield = (DMField_DS *)field->data;
+  PetscCall(ISGetMinMax(pointIS, &imin, &imax));
+  PetscCall(DMGetDimension(dm, &dim));
+  for (h = 0; h <= dim; h++) {
+    PetscInt hStart, hEnd;
+
+    PetscCall(DMPlexGetHeightStratum(dm, h, &hStart, &hEnd));
+    if (imax >= hStart && imin < hEnd) break;
+  }
+  PetscCall(DMPlexGetVTKCellHeight(dm, &cellHeight));
+  h -= cellHeight;
+  *quad = NULL;
+  if (h < dsfield->height) {
+    PetscQuadrature fq;
+
+    PetscCall(DMFieldDSGetHeightDisc(field, h, dsfield->disc, &disc));
+    PetscCall(PetscObjectGetClassId(disc, &id));
+    if (id != PETSCFE_CLASSID) PetscFunctionReturn(PETSC_SUCCESS);
+    fe = (PetscFE)disc;
+    PetscCall(PetscFEGetFaceQuadrature(fe, &fq));
+    PetscCall(PetscFEExpandFaceQuadrature(fe, fq, quad));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, PetscQuadrature quad, PetscFEGeom *geom)
 {
   const PetscInt *points;
@@ -842,7 +883,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
       for (s = 0; s < numSupp; s++, offset++) cells[offset] = supp[s];
     }
     PetscCall(ISCreateGeneral(PETSC_COMM_SELF, numCells, cells, PETSC_USE_POINTER, &suppIS));
-    PetscCall(DMFieldCreateFEGeom(field, suppIS, cellQuad, PETSC_FALSE, &cellGeom));
+    PetscCall(DMFieldCreateFEGeom(field, suppIS, cellQuad, PETSC_FEGEOM_BASIC, &cellGeom));
     for (p = 0, offset = 0; p < numFaces; p++) {
       PetscInt        point = points[p];
       PetscInt        numSupp, s, q;
@@ -869,7 +910,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
     PetscDualSpace dsp;
     DM             K;
     DMPolytopeType ct;
-    PetscInt(*co)[2][3];
+    PetscInt (*co)[2][3];
     PetscInt        coneSize;
     PetscInt      **counts;
     PetscInt        f, i, o, q, s;
@@ -1059,7 +1100,7 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
           }
         }
         PetscCall(ISCreateGeneral(PETSC_COMM_SELF, numCells, cells, PETSC_USE_POINTER, &suppIS));
-        PetscCall(DMFieldCreateFEGeom(field, suppIS, cellQuad, PETSC_FALSE, &cellGeom));
+        PetscCall(DMFieldCreateFEGeom(field, suppIS, cellQuad, PETSC_FEGEOM_BASIC, &cellGeom));
         for (p = 0, offset = 0; p < numFaces; p++) {
           for (s = 0; s < 2; s++) {
             if (co[p][s][0] == f && co[p][s][1] == o + minOrient) {
@@ -1093,14 +1134,15 @@ static PetscErrorCode DMFieldComputeFaceData_DS(DMField field, IS pointIS, Petsc
 static PetscErrorCode DMFieldInitialize_DS(DMField field)
 {
   PetscFunctionBegin;
-  field->ops->destroy                 = DMFieldDestroy_DS;
-  field->ops->evaluate                = DMFieldEvaluate_DS;
-  field->ops->evaluateFE              = DMFieldEvaluateFE_DS;
-  field->ops->evaluateFV              = DMFieldEvaluateFV_DS;
-  field->ops->getDegree               = DMFieldGetDegree_DS;
-  field->ops->createDefaultQuadrature = DMFieldCreateDefaultQuadrature_DS;
-  field->ops->view                    = DMFieldView_DS;
-  field->ops->computeFaceData         = DMFieldComputeFaceData_DS;
+  field->ops->destroy                     = DMFieldDestroy_DS;
+  field->ops->evaluate                    = DMFieldEvaluate_DS;
+  field->ops->evaluateFE                  = DMFieldEvaluateFE_DS;
+  field->ops->evaluateFV                  = DMFieldEvaluateFV_DS;
+  field->ops->getDegree                   = DMFieldGetDegree_DS;
+  field->ops->createDefaultQuadrature     = DMFieldCreateDefaultQuadrature_DS;
+  field->ops->createDefaultFaceQuadrature = DMFieldCreateDefaultFaceQuadrature_DS;
+  field->ops->view                        = DMFieldView_DS;
+  field->ops->computeFaceData             = DMFieldComputeFaceData_DS;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

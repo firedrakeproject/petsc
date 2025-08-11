@@ -7,6 +7,8 @@
 #include <petscsnestypes.h>
 #include <petscdmadaptortypes.h>
 
+/* SUBMANSEC = DM */
+
 PETSC_EXTERN PetscClassId DMADAPTOR_CLASSID;
 
 /*J
@@ -55,7 +57,7 @@ PETSC_EXTERN PetscErrorCode DMAdaptorMonitorRegister(const char[], PetscViewerTy
 PETSC_EXTERN PetscErrorCode DMAdaptorMonitorRegisterAll(void);
 PETSC_EXTERN PetscErrorCode DMAdaptorMonitorRegisterDestroy(void);
 PETSC_EXTERN PetscErrorCode DMAdaptorMonitor(DMAdaptor, PetscInt, DM, DM, PetscInt, PetscReal[], Vec);
-PETSC_EXTERN PetscErrorCode DMAdaptorMonitorSet(DMAdaptor, PetscErrorCode (*)(DMAdaptor, PetscInt, DM, DM, PetscInt, PetscReal[], Vec, void *), void *, PetscErrorCode (*)(void **));
+PETSC_EXTERN PetscErrorCode DMAdaptorMonitorSet(DMAdaptor, PetscErrorCode (*)(DMAdaptor, PetscInt, DM, DM, PetscInt, PetscReal[], Vec, void *), void *, PetscCtxDestroyFn *);
 PETSC_EXTERN PetscErrorCode DMAdaptorMonitorSetFromOptions(DMAdaptor, const char[], const char[], void *);
 PETSC_EXTERN PetscErrorCode DMAdaptorMonitorCancel(DMAdaptor);
 PETSC_EXTERN PetscErrorCode DMAdaptorMonitorSize(DMAdaptor, PetscInt, DM, DM, PetscInt, PetscReal[], Vec, PetscViewerAndFormat *);

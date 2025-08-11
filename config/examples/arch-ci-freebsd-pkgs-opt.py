@@ -9,6 +9,9 @@ configure_options = [
 
   '--useThreads=0', # for some reason cmake hangs when invoked from configure on bsd?
   '--download-netlib-lapack=1',
+  '--with-netlib-lapack-c-bindings=1',
+  '--download-pastix=1',
+  '--download-hwloc=1',
   '--with-mpi-dir=/home/svcpetsc/soft/mpich-4.2.2',
   '--download-metis=1',
   '--download-parmetis=1',
@@ -29,7 +32,6 @@ configure_options = [
   '--download-concurrencykit=1',
   '--download-revolve=1',
   '--with-strict-petscerrorcode',
-  '--with-fortran-bindings-inplace',
   ]
 
 if __name__ == '__main__':

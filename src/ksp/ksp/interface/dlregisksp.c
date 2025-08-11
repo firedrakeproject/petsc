@@ -68,7 +68,6 @@ PetscErrorCode PCInitializePackage(void)
   PetscCall(PetscLogEventRegister("PCMatApply", PC_CLASSID, &PC_MatApply));
   PetscCall(PetscLogEventRegister("PCApplyOnBlocks", PC_CLASSID, &PC_ApplyOnBlocks));
   PetscCall(PetscLogEventRegister("PCApplyCoarse", PC_CLASSID, &PC_ApplyCoarse));
-  PetscCall(PetscLogEventRegister("PCApplyMultiple", PC_CLASSID, &PC_ApplyMultiple));
   PetscCall(PetscLogEventRegister("PCApplySymmLeft", PC_CLASSID, &PC_ApplySymmetricLeft));
   PetscCall(PetscLogEventRegister("PCApplySymmRight", PC_CLASSID, &PC_ApplySymmetricRight));
   PetscCall(PetscLogEventRegister("PCModifySubMatri", PC_CLASSID, &PC_ModifySubMatrices));
@@ -112,8 +111,8 @@ const char *const        KSPCGTypes[]                 = {"SYMMETRIC", "HERMITIAN
 const char *const        KSPGMRESCGSRefinementTypes[] = {"REFINE_NEVER", "REFINE_IFNEEDED", "REFINE_ALWAYS", "KSPGMRESRefinementType", "KSP_GMRES_CGS_", NULL};
 const char *const        KSPNormTypes_Shifted[]       = {"DEFAULT", "NONE", "PRECONDITIONED", "UNPRECONDITIONED", "NATURAL", "KSPNormType", "KSP_NORM_", NULL};
 const char *const *const KSPNormTypes                 = KSPNormTypes_Shifted + 1;
-const char *const KSPConvergedReasons_Shifted[] = {"DIVERGED_PC_FAILED", "DIVERGED_INDEFINITE_MAT", "DIVERGED_NANORINF", "DIVERGED_INDEFINITE_PC", "DIVERGED_NONSYMMETRIC", "DIVERGED_BREAKDOWN_BICG", "DIVERGED_BREAKDOWN", "DIVERGED_DTOL", "DIVERGED_ITS", "DIVERGED_NULL", "", "CONVERGED_ITERATING", "CONVERGED_RTOL_NORMAL", "CONVERGED_RTOL", "CONVERGED_ATOL", "CONVERGED_ITS", "CONVERGED_NEG_CURVE", "CONVERGED_STEP_LENGTH", "CONVERGED_HAPPY_BREAKDOWN", "CONVERGED_ATOL_NORMAL", "KSPConvergedReason", "KSP_", NULL};
-const char *const *KSPConvergedReasons     = KSPConvergedReasons_Shifted + 11;
+const char *const KSPConvergedReasons_Shifted[] = {"DIVERGED_USER", "DIVERGED_PC_FAILED", "DIVERGED_INDEFINITE_MAT", "DIVERGED_NANORINF", "DIVERGED_INDEFINITE_PC", "DIVERGED_NONSYMMETRIC", "DIVERGED_BREAKDOWN_BICG", "DIVERGED_BREAKDOWN", "DIVERGED_DTOL", "DIVERGED_ITS", "DIVERGED_NULL", "", "CONVERGED_ITERATING", "CONVERGED_RTOL_NORMAL_EQUATIONS", "CONVERGED_RTOL", "CONVERGED_ATOL", "CONVERGED_ITS", "CONVERGED_NEG_CURVE", "CONVERGED_STEP_LENGTH", "CONVERGED_HAPPY_BREAKDOWN", "CONVERGED_USER", "CONVERGED_ATOL_NORMAL_EQUATIONS", "KSPConvergedReason", "KSP_", NULL};
+const char *const *KSPConvergedReasons     = KSPConvergedReasons_Shifted + 12;
 const char *const  KSPFCDTruncationTypes[] = {"STANDARD", "NOTAY", "KSPFCDTruncationTypes", "KSP_FCD_TRUNC_TYPE_", NULL};
 
 static PetscBool KSPPackageInitialized = PETSC_FALSE;
@@ -146,6 +145,9 @@ PetscErrorCode KSPFinalizePackage(void)
   when using shared or static libraries.
 
   Level: developer
+
+  Note:
+  This function never needs to be called by PETSc users.
 
 .seealso: [](ch_ksp), `PetscInitialize()`, `KSPFinalizePackage()`
 @*/

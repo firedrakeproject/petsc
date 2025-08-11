@@ -505,7 +505,7 @@ static PetscErrorCode TaoDestroy_IPM(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TaoSetFromOptions_IPM(Tao tao, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TaoSetFromOptions_IPM(Tao tao, PetscOptionItems PetscOptionsObject)
 {
   TAO_IPM *ipmP = (TAO_IPM *)tao->data;
 
@@ -820,7 +820,7 @@ static PetscErrorCode IPMUpdateK(Tao tao)
   subsize = PetscMax(ipmP->n, ipmP->nb);
   subsize = PetscMax(ipmP->me, subsize);
   subsize = PetscMax(2, subsize);
-  PetscCall(PetscMalloc1(subsize, (PetscInt **)&indices));
+  PetscCall(PetscMalloc1(subsize, &indices));
   PetscCall(PetscMalloc1(subsize, &newvals));
 
   r1 = c1 = ipmP->n;

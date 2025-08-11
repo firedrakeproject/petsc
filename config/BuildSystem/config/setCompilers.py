@@ -103,13 +103,11 @@ class Configure(config.base.Configure):
     if compiler == 'Cxx': clabel='  C++ '
     if compiler == 'FC':  clabel='  Fortran '
     self.pushLanguage(compiler)
-    desc.append(clabel+'Compiler:         '
-                +self.getCompiler()+' '+self.getCompilerFlags())
+    desc.append(clabel+'Compiler:  '+self.getCompiler()+' '+self.getCompilerFlags())
     if self.compilerflags.version[compiler]:
       desc.append('    Version: '+self.compilerflags.version[compiler])
     if not self.getLinker() == self.getCompiler():
-      desc.append(clabel+'Linker:           '
-                  +self.getLinker()+' '+self.getLinkerFlags())
+      desc.append(clabel+'Linker:  '+self.getLinker()+' '+self.getLinkerFlags())
     self.popLanguage()
     return
 
@@ -145,7 +143,7 @@ class Configure(config.base.Configure):
     help.addArgument('Compilers', '-FFLAGS+=<string>',      nargs.Arg(None, None, 'Add to the default PETSc Fortran compiler flags'))
     help.addArgument('Compilers', '-FC_LINKER_FLAGS=<string>',        nargs.Arg(None, [], 'Specify the FC linker flags'))
 
-    help.addArgument('Compilers', '-with-large-file-io=<bool>', nargs.ArgBool(None, 0, 'Allow IO with files greater then 2 GB'))
+    help.addArgument('Compilers', '-with-large-file-io=<bool>', nargs.ArgBool(None, 0, 'Allow IO with files greater than 2 GB'))
 
     help.addArgument('Compilers', '-CUDAPP=<prog>',        nargs.Arg(None, None, 'Specify the CUDA preprocessor'))
     help.addArgument('Compilers', '-CUDAPPFLAGS=<string>', nargs.Arg(None, None, 'Specify the CUDA preprocessor options'))
@@ -357,6 +355,24 @@ class Configure(config.base.Configure):
       if log: log.write('Did not detect Gcc110plus compiler\n')
     except RuntimeError:
       if log: log.write('Did not detect Gcc110plus compiler due to exception\n')
+      pass
+
+  @staticmethod
+  def isGcc150plus(compiler, log):
+    '''returns true if the compiler is gcc-15.0.x or later'''
+    try:
+      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --version', log = log)
+      output = output + error
+      import re
+      strmatch = re.match(r'gcc[-0-9]*\s+\(.*\)\s+(\d+)\.(\d+)',output)
+      if strmatch:
+        VMAJOR,VMINOR = strmatch.groups()
+        if (int(VMAJOR),int(VMINOR)) >= (15,0):
+          if log: log.write('Detected Gcc150plus compiler\n')
+          return 1
+      if log: log.write('Did not detect Gcc150plus compiler\n')
+    except RuntimeError:
+      if log: log.write('Did not detect Gcc150plus compiler due to exception\n')
       pass
 
   @staticmethod
@@ -890,6 +906,11 @@ class Configure(config.base.Configure):
         std::cout << x << ret << std::endl;
         std::vector<std::unique_ptr<double>> vector;
         std::sort(vector.begin(), vector.end(), [](std::unique_ptr<double> &a, std::unique_ptr<double> &b) { return *a < *b; });
+        {
+          std::size_t alignment = 0, size = 0, space;
+          void* ptr = nullptr;
+          std::align(alignment, size, ptr, space);
+        }
         """
       )
 

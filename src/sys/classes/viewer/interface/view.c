@@ -137,7 +137,6 @@ PetscErrorCode PetscViewerAndFormatCreate(PetscViewer viewer, PetscViewerFormat 
   PetscCall(PetscNew(vf));
   (*vf)->viewer = viewer;
   (*vf)->format = format;
-  (*vf)->lg     = NULL;
   (*vf)->data   = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -159,7 +158,7 @@ PetscErrorCode PetscViewerAndFormatDestroy(PetscViewerAndFormat **vf)
 {
   PetscFunctionBegin;
   PetscCall(PetscViewerDestroy(&(*vf)->viewer));
-  PetscCall(PetscDrawLGDestroy(&(*vf)->lg));
+  if ((*vf)->data_destroy) PetscCall((*vf)->data_destroy(&(*vf)->data));
   PetscCall(PetscFree(*vf));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -256,9 +255,6 @@ PetscErrorCode PetscViewerAppendOptionsPrefix(PetscViewer viewer, const char pre
 . prefix - pointer to the prefix string used
 
   Level: advanced
-
-  Fortran Notes:
-  The user should pass in a string 'prefix' of sufficient length to hold the prefix.
 
 .seealso: [](sec_viewers), `PetscViewer`, `PetscViewerAppendOptionsPrefix()`, `PetscViewerSetOptionsPrefix()`
 @*/

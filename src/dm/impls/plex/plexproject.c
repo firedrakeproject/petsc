@@ -69,6 +69,7 @@ PetscErrorCode DMPlexSetActivePoint(DM dm, PetscInt point)
 */
 static PetscErrorCode DMProjectPoint_Func_Private(DM dm, PetscDS ds, DM dmIn, PetscDS dsIn, PetscReal time, PetscFEGeom *fegeom, PetscFVCellGeom *fvgeom, PetscBool isFE[], PetscDualSpace sp[], PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, PetscScalar values[])
 {
+  PetscInt  debug = ((DM_Plex *)dm->data)->printProject;
   PetscInt  coordDim, Nf, *Nc, f, spDim, d, v, tp;
   PetscBool isAffine, isCohesive, transform;
 
@@ -124,6 +125,21 @@ static PetscErrorCode DMProjectPoint_Func_Private(DM dm, PetscDS ds, DM dmIn, Pe
           if (transform) {
             PetscCall(DMPlexBasisTransformApplyReal_Internal(dmIn, v0, PETSC_TRUE, coordDim, v0, x, dm->transformCtx));
             v0 = x;
+          }
+          if (debug > 3) {
+            PetscInt ap;
+            PetscCall(DMPlexGetActivePoint(dm, &ap));
+            PetscCall(PetscPrintf(PETSC_COMM_SELF, "Project point %" PetscInt_FMT ", analytic: ref (", ap));
+            for (PetscInt d = 0; d < dim; ++d) {
+              if (d > 0) PetscCall(PetscPrintf(PETSC_COMM_SELF, ", "));
+              PetscCall(PetscPrintf(PETSC_COMM_SELF, "%g", (double)points[q * dim + d]));
+            }
+            PetscCall(PetscPrintf(PETSC_COMM_SELF, ") real ("));
+            for (PetscInt d = 0; d < dim; ++d) {
+              if (d > 0) PetscCall(PetscPrintf(PETSC_COMM_SELF, ", "));
+              PetscCall(PetscPrintf(PETSC_COMM_SELF, "%g", (double)v0[d]));
+            }
+            PetscCall(PetscPrintf(PETSC_COMM_SELF, ")\n"));
           }
           PetscCall((*funcs[f])(coordDim, time, v0, Nc[f], &pointEval[Nc[f] * q], ctx));
         }
@@ -189,7 +205,7 @@ static PetscErrorCode DMProjectPoint_Field_Private(DM dm, PetscDS ds, DM dmIn, D
   const PetscScalar *constants;
   PetscReal         *x;
   PetscInt          *uOff, *uOff_x, *aOff = NULL, *aOff_x = NULL, *Nc, face[2];
-  PetscFEGeom        fegeom;
+  PetscFEGeom        fegeom, fgeomN[2];
   const PetscInt     dE = cgeom->dimEmbed, *cone, *ornt;
   PetscInt           numConstants, Nf, NfIn, NfAux = 0, f, spDim, d, v, inp, tp = 0;
   PetscBool          isAffine, isCohesive, isCohesiveIn, transform;
@@ -249,12 +265,26 @@ static PetscErrorCode DMProjectPoint_Field_Private(DM dm, PetscDS ds, DM dmIn, D
   isAffine        = cgeom->isAffine;
   fegeom.dim      = cgeom->dim;
   fegeom.dimEmbed = cgeom->dimEmbed;
+  if (isCohesiveIn) {
+    fgeomN[0].dim      = cgeom->dim;
+    fgeomN[0].dimEmbed = cgeom->dimEmbed;
+    fgeomN[1].dim      = cgeom->dim;
+    fgeomN[1].dimEmbed = cgeom->dimEmbed;
+  }
   if (isAffine) {
     fegeom.v    = x;
     fegeom.xi   = cgeom->xi;
     fegeom.J    = cgeom->J;
     fegeom.invJ = cgeom->invJ;
     fegeom.detJ = cgeom->detJ;
+    if (isCohesiveIn) {
+      fgeomN[0].J    = cgeom->suppJ[0];
+      fgeomN[0].invJ = cgeom->suppInvJ[0];
+      fgeomN[0].detJ = cgeom->suppDetJ[0];
+      fgeomN[1].J    = cgeom->suppJ[1];
+      fgeomN[1].invJ = cgeom->suppInvJ[1];
+      fgeomN[1].detJ = cgeom->suppDetJ[1];
+    }
   }
   for (f = 0, v = 0; f < Nf; ++f) {
     PetscQuadrature  allPoints;
@@ -294,9 +324,17 @@ static PetscErrorCode DMProjectPoint_Field_Private(DM dm, PetscDS ds, DM dmIn, D
         fegeom.J    = &cgeom->J[tp * dE * dE];
         fegeom.invJ = &cgeom->invJ[tp * dE * dE];
         fegeom.detJ = &cgeom->detJ[tp];
+        if (isCohesiveIn) {
+          fgeomN[0].J    = &cgeom->suppJ[0][tp * dE * dE];
+          fgeomN[0].invJ = &cgeom->suppInvJ[0][tp * dE * dE];
+          fgeomN[0].detJ = &cgeom->suppDetJ[0][tp];
+          fgeomN[1].J    = &cgeom->suppJ[1][tp * dE * dE];
+          fgeomN[1].invJ = &cgeom->suppInvJ[1][tp * dE * dE];
+          fgeomN[1].detJ = &cgeom->suppDetJ[1][tp];
+        }
       }
       if (coefficients) {
-        if (isCohesiveIn) PetscCall(PetscFEEvaluateFieldJets_Hybrid_Internal(dsIn, NfIn, 0, tp, T, face, qpt, T, &fegeom, coefficients, coefficients_t, u, u_x, u_t));
+        if (isCohesiveIn) PetscCall(PetscFEEvaluateFieldJets_Hybrid_Internal(dsIn, NfIn, 0, tp, T, face, qpt, T, &fegeom, fgeomN, coefficients, coefficients_t, u, u_x, u_t));
         else PetscCall(PetscFEEvaluateFieldJets_Internal(dsIn, NfIn, 0, tp, T, &fegeom, coefficients, coefficients_t, u, u_x, u_t));
       }
       if (dsAux) PetscCall(PetscFEEvaluateFieldJets_Internal(dsAux, NfAux, 0, tp, TAux, &fegeom, coefficientsAux, coefficientsAux_t, a, a_x, a_t));
@@ -326,7 +364,7 @@ static PetscErrorCode DMProjectPoint_BdField_Private(DM dm, PetscDS ds, DM dmIn,
   const PetscScalar *constants;
   PetscReal         *x;
   PetscInt          *uOff, *uOff_x, *aOff = NULL, *aOff_x = NULL, *Nc, face[2];
-  PetscFEGeom        fegeom, cgeom;
+  PetscFEGeom        fegeom, cgeom, fgeomN[2];
   const PetscInt     dE = fgeom->dimEmbed, *cone, *ornt;
   PetscInt           numConstants, Nf, NfIn, NfAux = 0, f, spDim, d, v, inp, tp = 0;
   PetscBool          isAffine, isCohesive, isCohesiveIn, transform;
@@ -383,13 +421,21 @@ static PetscErrorCode DMProjectPoint_BdField_Private(DM dm, PetscDS ds, DM dmIn,
     PetscCall(DMPlexVecGetClosure(dmAux, sectionAux, localA, subp, NULL, &coefficientsAux));
   }
   /* Get values for closure */
-  isAffine       = fgeom->isAffine;
-  fegeom.n       = NULL;
-  fegeom.J       = NULL;
-  fegeom.v       = NULL;
-  fegeom.xi      = NULL;
-  cgeom.dim      = fgeom->dim;
-  cgeom.dimEmbed = fgeom->dimEmbed;
+  isAffine        = fgeom->isAffine;
+  fegeom.dim      = fgeom->dim;
+  fegeom.dimEmbed = fgeom->dimEmbed;
+  fegeom.n        = NULL;
+  fegeom.J        = NULL;
+  fegeom.v        = NULL;
+  fegeom.xi       = NULL;
+  cgeom.dim       = fgeom->dim;
+  cgeom.dimEmbed  = fgeom->dimEmbed;
+  if (isCohesiveIn) {
+    fgeomN[0].dim      = fgeom->dim;
+    fgeomN[0].dimEmbed = fgeom->dimEmbed;
+    fgeomN[1].dim      = fgeom->dim;
+    fgeomN[1].dimEmbed = fgeom->dimEmbed;
+  }
   if (isAffine) {
     fegeom.v    = x;
     fegeom.xi   = fgeom->xi;
@@ -401,6 +447,15 @@ static PetscErrorCode DMProjectPoint_BdField_Private(DM dm, PetscDS ds, DM dmIn,
     cgeom.J    = fgeom->suppJ[0];
     cgeom.invJ = fgeom->suppInvJ[0];
     cgeom.detJ = fgeom->suppDetJ[0];
+
+    if (isCohesiveIn) {
+      fgeomN[0].J    = fgeom->suppJ[0];
+      fgeomN[0].invJ = fgeom->suppInvJ[0];
+      fgeomN[0].detJ = fgeom->suppDetJ[0];
+      fgeomN[1].J    = fgeom->suppJ[1];
+      fgeomN[1].invJ = fgeom->suppInvJ[1];
+      fgeomN[1].detJ = fgeom->suppDetJ[1];
+    }
   }
   for (f = 0, v = 0; f < Nf; ++f) {
     PetscQuadrature  allPoints;
@@ -444,10 +499,18 @@ static PetscErrorCode DMProjectPoint_BdField_Private(DM dm, PetscDS ds, DM dmIn,
         cgeom.J    = &fgeom->suppJ[0][tp * dE * dE];
         cgeom.invJ = &fgeom->suppInvJ[0][tp * dE * dE];
         cgeom.detJ = &fgeom->suppDetJ[0][tp];
+        if (isCohesiveIn) {
+          fgeomN[0].J    = &fgeom->suppJ[0][tp * dE * dE];
+          fgeomN[0].invJ = &fgeom->suppInvJ[0][tp * dE * dE];
+          fgeomN[0].detJ = &fgeom->suppDetJ[0][tp];
+          fgeomN[1].J    = &fgeom->suppJ[1][tp * dE * dE];
+          fgeomN[1].invJ = &fgeom->suppInvJ[1][tp * dE * dE];
+          fgeomN[1].detJ = &fgeom->suppDetJ[1][tp];
+        }
       }
       /* TODO We should use cgeom here, instead of fegeom, however the geometry coming in through fgeom does not have the support cell geometry */
       if (coefficients) {
-        if (isCohesiveIn) PetscCall(PetscFEEvaluateFieldJets_Hybrid_Internal(dsIn, NfIn, 0, tp, T, face, qpt, T, &cgeom, coefficients, coefficients_t, u, u_x, u_t));
+        if (isCohesiveIn) PetscCall(PetscFEEvaluateFieldJets_Hybrid_Internal(dsIn, NfIn, 0, tp, T, face, qpt, T, &fegeom, fgeomN, coefficients, coefficients_t, u, u_x, u_t));
         else PetscCall(PetscFEEvaluateFieldJets_Internal(dsIn, NfIn, 0, tp, T, &cgeom, coefficients, coefficients_t, u, u_x, u_t));
       }
       if (dsAux) PetscCall(PetscFEEvaluateFieldJets_Internal(dsAux, NfAux, 0, tp, TAux, &cgeom, coefficientsAux, coefficientsAux_t, a, a_x, a_t));
@@ -659,7 +722,7 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
   PetscDualSpace  *sp, *cellsp, *spIn, *cellspIn;
   PetscTabulation *T = NULL, *TAux = NULL;
   PetscInt        *Nc;
-  PetscInt         dim, dimEmbed, depth, htInc = 0, htIncIn = 0, htIncAux = 0, minHeight, maxHeight, minHeightIn, minHeightAux, h, regionNum, Nf, NfIn, NfAux = 0, NfTot, f;
+  PetscInt         dim, dimEmbed, depth, pStart, pEnd, lStart = PETSC_DETERMINE, htInc = 0, htIncIn = 0, htIncAux = 0, minHeight, maxHeight, minHeightIn, minHeightAux, h, regionNum, Nf, NfIn, NfAux = 0, NfTot, f;
   PetscBool       *isFE, hasFE = PETSC_FALSE, hasFV = PETSC_FALSE, isCohesive = PETSC_FALSE, isCohesiveIn = PETSC_FALSE, transform;
   DMField          coordField;
   DMLabel          depthLabel;
@@ -692,7 +755,7 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
   /* Determine height for iteration of all meshes */
   {
     DMPolytopeType ct, ctIn, ctAux;
-    PetscInt       lStart, pStart, pEnd, p, pStartIn, pStartAux, pEndAux;
+    PetscInt       p, pStartIn, pStartAux, pEndAux;
     PetscInt       dim = -1, dimIn = -1, dimAux = -1;
 
     PetscCall(DMPlexGetSimplexOrBoxCells(plex, minHeight, &pStart, &pEnd));
@@ -750,6 +813,17 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
   if (!ds) PetscCall(DMGetDS(dm, &ds));
   PetscCall(DMGetFirstLabeledPoint(dmIn, dm, label, numIds, ids, minHeight, NULL, &dsIn));
   if (!dsIn) PetscCall(DMGetDS(dmIn, &dsIn));
+  if (!dsIn) {
+    if (encIn == DM_ENC_SUPERMESH) {
+      PetscInt p = pStart, pIn;
+
+      PetscCall(DMGetEnclosurePoint(dmIn, dm, encIn, lStart < 0 ? p : lStart, &pIn));
+      // If the input mesh is higher dimensional than the output mesh, get a cell from the output mesh
+      if (htIncIn) PetscCall(DMPlexGetSimplexOrBoxCells(plex, 0, &p, NULL));
+      PetscCall(DMGetEnclosurePoint(dmIn, dm, encIn, lStart < 0 ? p : lStart, &pIn));
+      PetscCall(DMGetCellDS(dmIn, pIn, &dsIn, NULL));
+    } else PetscCall(DMGetDS(dmIn, &dsIn));
+  }
   PetscCall(PetscDSGetNumFields(ds, &Nf));
   PetscCall(PetscDSGetNumFields(dsIn, &NfIn));
   PetscCall(PetscDSIsCohesive(dsIn, &isCohesiveIn));
@@ -761,7 +835,14 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
   PetscCall(DMGetCoordinateDim(dm, &dimEmbed));
   PetscCall(DMGetLocalSection(dm, &section));
   if (dmAux) {
-    PetscCall(DMGetDS(dmAux, &dsAux));
+    if (encAux == DM_ENC_SUPERMESH) {
+      PetscInt p = pStart, pAux;
+
+      // If the auxiliary mesh is higher dimensional than the output mesh, get a cell from the output mesh
+      if (htIncAux) PetscCall(DMPlexGetSimplexOrBoxCells(plex, 0, &p, NULL));
+      PetscCall(DMGetEnclosurePoint(dmAux, dm, encAux, lStart < 0 ? p : lStart, &pAux));
+      PetscCall(DMGetCellDS(dmAux, pAux, &dsAux, NULL));
+    } else PetscCall(DMGetDS(dmAux, &dsAux));
     PetscCall(PetscDSGetNumFields(dsAux, &NfAux));
   }
   PetscCall(PetscDSGetComponents(ds, &Nc));
@@ -822,7 +903,7 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
     PetscFE          fem, subfem;
     PetscDiscType    disctype;
     const PetscReal *points;
-    PetscInt         numPoints;
+    PetscInt         numPoints, k;
 
     PetscCheck(maxHeight <= minHeight, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "Field projection not supported for face interpolation");
     PetscCall(PetscDualSpaceGetAllPointsUnion(Nf, sp, dim - htInc, funcs, &allPoints));
@@ -839,7 +920,8 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
       if (!htIncIn) {
         subfem = fem;
       } else PetscCall(PetscFEGetHeightSubspace(fem, htIncIn, &subfem));
-      PetscCall(PetscFECreateTabulation(subfem, 1, numPoints, points, 1, &T[f]));
+      PetscCall(PetscDSGetJetDegree(dsIn, f, &k));
+      PetscCall(PetscFECreateTabulation(subfem, 1, numPoints, points, k, &T[f]));
     }
     for (f = 0; f < NfAux; ++f) {
       PetscCall(PetscDSGetDiscType_Internal(dsAux, f, &disctype));
@@ -848,7 +930,8 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
       if (!htIncAux) {
         subfem = fem;
       } else PetscCall(PetscFEGetHeightSubspace(fem, htIncAux, &subfem));
-      PetscCall(PetscFECreateTabulation(subfem, 1, numPoints, points, 1, &TAux[f]));
+      PetscCall(PetscDSGetJetDegree(dsAux, f, &k));
+      PetscCall(PetscFECreateTabulation(subfem, 1, numPoints, points, k, &TAux[f]));
     }
   }
   /* Note: We make no attempt to optimize for height. Higher height things just overwrite the lower height results. */
@@ -862,7 +945,7 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
     PetscScalar *values;
     PetscBool   *fieldActive;
     PetscInt     maxDegree;
-    PetscInt     pStart, pEnd, p, lStart, spDim, totDim, numValues;
+    PetscInt     p, spDim, totDim, numValues;
     IS           heightIS;
 
     if (h > minHeight) {
@@ -953,16 +1036,16 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
             PetscCall(PetscDualSpaceGetAllPointsUnion(Nf, sp, isCohesive ? dim - htInc - 1 : dim - htInc, funcs, &quad));
           }
         }
-        PetscBool computeFaceGeom = htInc && h == minHeight ? PETSC_TRUE : PETSC_FALSE;
+        PetscFEGeomMode geommode = htInc && h == minHeight ? PETSC_FEGEOM_BOUNDARY : PETSC_FEGEOM_BASIC;
 
         if (n) {
           PetscInt depth, dep;
 
           PetscCall(DMPlexGetDepth(dm, &depth));
           PetscCall(DMPlexGetPointDepth(dm, points[0], &dep));
-          if (dep < depth && h == minHeight) computeFaceGeom = PETSC_TRUE;
+          if (dep < depth && h == minHeight) geommode = PETSC_FEGEOM_BOUNDARY;
         }
-        PetscCall(DMFieldCreateFEGeom(coordField, isectIS, quad, computeFaceGeom, &fegeom));
+        PetscCall(DMFieldCreateFEGeom(coordField, isectIS, quad, geommode, &fegeom));
         for (p = 0; p < n; ++p) {
           const PetscInt point = points[p];
 
@@ -995,7 +1078,7 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
           PetscCall(PetscDualSpaceGetAllPointsUnion(Nf, sp, dim - htInc, funcs, &quad));
         }
       }
-      PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, (htInc && h == minHeight) ? PETSC_TRUE : PETSC_FALSE, &fegeom));
+      PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, (htInc && h == minHeight) ? PETSC_FEGEOM_BOUNDARY : PETSC_FEGEOM_BASIC, &fegeom));
       for (p = pStart; p < pEnd; ++p) {
         PetscCall(PetscArrayzero(values, numValues));
         PetscCall(PetscFEGeomGetChunk(fegeom, p - pStart, p - pStart + 1, &chunkgeom));

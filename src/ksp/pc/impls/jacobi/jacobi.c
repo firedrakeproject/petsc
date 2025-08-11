@@ -53,9 +53,9 @@ const char *const PCJacobiTypes[] = {"DIAGONAL", "ROWL1", "ROWMAX", "ROWSUM", "P
    Private context (data structure) for the Jacobi preconditioner.
 */
 typedef struct {
-  Vec          diag;     /* vector containing the reciprocals of the diagonal elements of the preconditioner matrix */
+  Vec          diag;     /* vector containing the reciprocals of the diagonal elements of the matrix used to construct the preconditioner */
   Vec          diagsqrt; /* vector containing the reciprocals of the square roots of
-                                    the diagonal elements of the preconditioner matrix (used
+                                    the diagonal elements of the matrix used to compute the preconditioner (used
                                     only for symmetric preconditioner application) */
   PCJacobiType type;
   PetscBool    useabs;  /* use the absolute values of the diagonal entries */
@@ -180,7 +180,7 @@ static PetscErrorCode PCSetUp_Jacobi(PC pc)
   /*
        For most preconditioners the code would begin here something like
 
-  if (pc->setupcalled == 0) { allocate space the first time this is ever called
+  if (!pc->setupcalled) { allocate space the first time this is ever called
     PetscCall(MatCreateVecs(pc->mat,&jac->diag));
   }
 
@@ -426,7 +426,7 @@ static PetscErrorCode PCDestroy_Jacobi(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_Jacobi(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_Jacobi(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_Jacobi   *jac = (PC_Jacobi *)pc->data;
   PetscBool    flg;
@@ -777,7 +777,7 @@ PetscErrorCode PCJacobiSetType(PC pc, PCJacobiType type)
 
   Level: intermediate
 
-.seealso: [](ch_ksp), `PCJACOBI`, `PCJacobiaUseAbs()`, `PCJacobiSetType()`
+.seealso: [](ch_ksp), `PCJACOBI`, `PCJacobiSetUseAbs()`, `PCJacobiSetType()`
 @*/
 PetscErrorCode PCJacobiGetType(PC pc, PCJacobiType *type)
 {

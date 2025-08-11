@@ -13,12 +13,11 @@ const char *const  MPChacoGlobalTypes[]        = {"", "MULTILEVEL", "SPECTRAL", 
 const char *const  MPChacoLocalTypes[]         = {"", "KERNIGHAN", "NONE", "MPChacoLocalType", "MP_CHACO_", NULL};
 const char *const  MPChacoEigenTypes[]         = {"LANCZOS", "RQI", "MPChacoEigenType", "MP_CHACO_", NULL};
 
-extern PetscErrorCode MatMFFDInitializePackage(void);
 extern PetscErrorCode MatSolverTypeDestroy(void);
 static PetscBool      MatPackageInitialized = PETSC_FALSE;
 
 /*@C
-  MatFinalizePackage - This function destroys everything in the Petsc interface to the `Mat`
+  MatFinalizePackage - This function destroys everything in the PETSc interface to the `Mat`
   package. It is called from `PetscFinalize()`.
 
   Level: developer
@@ -75,7 +74,7 @@ PETSC_INTERN PetscErrorCode MatSolverTypeRegister_CUSPARSE(void);
 PETSC_INTERN PetscErrorCode MatSolverTypeRegister_HIPSPARSE(void);
 #endif
 #if defined(PETSC_HAVE_KOKKOS_KERNELS)
-PETSC_INTERN PetscErrorCode MatSolverTypeRegister_KOKKOS(void);
+PETSC_INTERN PetscErrorCode MatSolverTypeRegister_Kokkos(void);
 #endif
 #if defined(PETSC_HAVE_VIENNACL)
 PETSC_INTERN PetscErrorCode MatSolverTypeRegister_ViennaCL(void);
@@ -142,6 +141,9 @@ PETSC_INTERN PetscErrorCode PetscBenchCreate_HPL(PetscBench);
   when using shared or static libraries.
 
   Level: developer
+
+  Note:
+  This function never needs to be called by PETSc users.
 
 .seealso: [](ch_matrices), `Mat`, `PetscInitialize()`, `MatFinalizePackage()`
 @*/
@@ -390,7 +392,7 @@ PetscErrorCode MatInitializePackage(void)
   PetscCall(MatSolverTypeRegister_HIPSPARSE());
 #endif
 #if defined(PETSC_HAVE_KOKKOS_KERNELS)
-  PetscCall(MatSolverTypeRegister_KOKKOS());
+  PetscCall(MatSolverTypeRegister_Kokkos());
 #endif
 #if defined(PETSC_HAVE_VIENNACL)
   PetscCall(MatSolverTypeRegister_ViennaCL());

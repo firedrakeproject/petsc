@@ -7,6 +7,7 @@
 #include <petscdmtypes.h>
 #include <petscpctypes.h>
 
+/* MANSEC = KSP */
 /* SUBMANSEC = PC */
 
 PETSC_EXTERN PetscErrorCode PCInitializePackage(void);
@@ -63,6 +64,7 @@ PETSC_EXTERN PetscErrorCode PCApplySymmetricLeft(PC, Vec, Vec);
 PETSC_EXTERN PetscErrorCode PCApplySymmetricRight(PC, Vec, Vec);
 PETSC_EXTERN PetscErrorCode PCApplyBAorAB(PC, PCSide, Vec, Vec, Vec);
 PETSC_EXTERN PetscErrorCode PCApplyTranspose(PC, Vec, Vec);
+PETSC_EXTERN PetscErrorCode PCMatApplyTranspose(PC, Mat, Mat);
 PETSC_EXTERN PetscErrorCode PCApplyTransposeExists(PC, PetscBool *);
 PETSC_EXTERN PetscErrorCode PCApplyBAorABTranspose(PC, PCSide, Vec, Vec, Vec);
 PETSC_EXTERN PetscErrorCode PCSetReusePreconditioner(PC, PetscBool);
@@ -83,8 +85,28 @@ PETSC_EXTERN PetscErrorCode PCDestroy(PC *);
 PETSC_EXTERN PetscErrorCode PCSetFromOptions(PC);
 
 PETSC_EXTERN PetscErrorCode PCFactorGetMatrix(PC, Mat *);
-PETSC_EXTERN PetscErrorCode PCSetModifySubMatrices(PC, PetscErrorCode (*)(PC, PetscInt, const IS[], const IS[], Mat[], void *), void *);
-PETSC_EXTERN PetscErrorCode PCModifySubMatrices(PC, PetscInt, const IS[], const IS[], Mat[], void *);
+
+/*S
+  PCModifySubMatricesFn - A prototype of a function used to modify submatrices generated with `PCASM`, `PCBJACOBI`, etc.
+
+  Calling Sequence:
++ pc     - the `PC` preconditioner context
+. nsub   - number of index sets
+. row    - an array of index sets that contain the global row numbers
+         that comprise each local submatrix
+. col    - an array of index sets that contain the global column numbers
+         that comprise each local submatrix
+. submat - array of local submatrices
+- ctx    - optional user-defined context for private data for the user-defined func routine (may be `NULL`), provided with `PCSetModifySubMatrices()`
+
+  Level: beginner
+
+.seealso: [](ch_ksp), `PC`, `PCSetModifySubMatrices()`, `PCModifySubMatrices()`, `PCASM`, `PCBJACOBI`
+S*/
+PETSC_EXTERN_TYPEDEF typedef PetscErrorCode PCModifySubMatricesFn(PC pc, PetscInt nsub, const IS row[], const IS col[], Mat submat[], void *ctx);
+
+PETSC_EXTERN PetscErrorCode        PCSetModifySubMatrices(PC, PCModifySubMatricesFn *, void *);
+PETSC_EXTERN PCModifySubMatricesFn PCModifySubMatrices;
 
 PETSC_EXTERN PetscErrorCode PCSetOperators(PC, Mat, Mat);
 PETSC_EXTERN PetscErrorCode PCGetOperators(PC, Mat *, Mat *);
@@ -104,6 +126,8 @@ PETSC_DEPRECATED_FUNCTION(3, 12, 0, "PCComputeOperator()", ) static inline Petsc
   return PCComputeOperator(A, PETSC_NULLPTR, B);
 }
 
+PETSC_EXTERN PetscErrorCode PCSetPostSetUp(PC, PetscErrorCode (*)(PC));
+
 /*
       These are used to provide extra scaling of preconditioned
    operator for time-stepping schemes like in SUNDIALS
@@ -117,7 +141,7 @@ PETSC_EXTERN PetscErrorCode PCSetDM(PC, DM);
 PETSC_EXTERN PetscErrorCode PCGetDM(PC, DM *);
 
 PETSC_EXTERN PetscErrorCode PCGetInterpolations(PC, PetscInt *, Mat *[]);
-PETSC_EXTERN PetscErrorCode PCGetCoarseOperators(PC pc, PetscInt *, Mat *[]);
+PETSC_EXTERN PetscErrorCode PCGetCoarseOperators(PC, PetscInt *, Mat *[]);
 
 PETSC_EXTERN PetscErrorCode PCSetCoordinates(PC, PetscInt, PetscInt, PetscReal[]);
 
@@ -132,7 +156,7 @@ PETSC_EXTERN PetscErrorCode PCJacobiSetUseAbs(PC, PetscBool);
 PETSC_EXTERN PetscErrorCode PCJacobiGetUseAbs(PC, PetscBool *);
 PETSC_EXTERN PetscErrorCode PCJacobiSetFixDiagonal(PC, PetscBool);
 PETSC_EXTERN PetscErrorCode PCJacobiGetFixDiagonal(PC, PetscBool *);
-PETSC_EXTERN PetscErrorCode PCJacobiGetDiagonal(PC pc, Vec, Vec);
+PETSC_EXTERN PetscErrorCode PCJacobiGetDiagonal(PC, Vec, Vec);
 PETSC_EXTERN PetscErrorCode PCJacobiSetRowl1Scale(PC, PetscReal);
 PETSC_EXTERN PetscErrorCode PCJacobiGetRowl1Scale(PC, PetscReal *);
 PETSC_EXTERN PetscErrorCode PCSORSetSymmetric(PC, MatSORType);
@@ -158,6 +182,7 @@ PETSC_EXTERN PetscErrorCode PCShellSetApplySymmetricLeft(PC, PetscErrorCode (*)(
 PETSC_EXTERN PetscErrorCode PCShellSetApplySymmetricRight(PC, PetscErrorCode (*)(PC, Vec, Vec));
 PETSC_EXTERN PetscErrorCode PCShellSetApplyBA(PC, PetscErrorCode (*)(PC, PCSide, Vec, Vec, Vec));
 PETSC_EXTERN PetscErrorCode PCShellSetApplyTranspose(PC, PetscErrorCode (*)(PC, Vec, Vec));
+PETSC_EXTERN PetscErrorCode PCShellSetMatApplyTranspose(PC, PetscErrorCode (*)(PC, Mat, Mat));
 PETSC_EXTERN PetscErrorCode PCShellSetSetUp(PC, PetscErrorCode (*)(PC));
 PETSC_EXTERN PetscErrorCode PCShellSetApplyRichardson(PC, PetscErrorCode (*)(PC, Vec, Vec, Vec, PetscReal, PetscReal, PetscReal, PetscInt, PetscBool, PetscInt *, PCRichardsonConvergedReason *));
 PETSC_EXTERN PetscErrorCode PCShellSetView(PC, PetscErrorCode (*)(PC, PetscViewer));
@@ -220,8 +245,8 @@ PETSC_EXTERN PetscErrorCode PCASMGetType(PC, PCASMType *);
 PETSC_EXTERN PetscErrorCode PCASMSetLocalType(PC, PCCompositeType);
 PETSC_EXTERN PetscErrorCode PCASMGetLocalType(PC, PCCompositeType *);
 PETSC_EXTERN PetscErrorCode PCASMCreateSubdomains(Mat, PetscInt, IS *[]);
-PETSC_EXTERN PetscErrorCode PCASMDestroySubdomains(PetscInt, IS[], IS[]);
-PETSC_EXTERN PetscErrorCode PCASMCreateSubdomains2D(PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt *, IS **, IS **);
+PETSC_EXTERN PetscErrorCode PCASMDestroySubdomains(PetscInt, IS *[], IS *[]);
+PETSC_EXTERN PetscErrorCode PCASMCreateSubdomains2D(PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt *, IS *[], IS *[]);
 PETSC_EXTERN PetscErrorCode PCASMGetLocalSubdomains(PC, PetscInt *, IS *[], IS *[]);
 PETSC_EXTERN PetscErrorCode PCASMGetLocalSubmatrices(PC, PetscInt *, Mat *[]);
 PETSC_EXTERN PetscErrorCode PCASMGetSubMatType(PC, MatType *);
@@ -237,7 +262,7 @@ PETSC_EXTERN PetscErrorCode PCGASMSetSortIndices(PC, PetscBool);
 PETSC_EXTERN PetscErrorCode PCGASMSetType(PC, PCGASMType);
 PETSC_EXTERN PetscErrorCode PCGASMCreateSubdomains(Mat, PetscInt, PetscInt *, IS *[]);
 PETSC_EXTERN PetscErrorCode PCGASMDestroySubdomains(PetscInt, IS *[], IS *[]);
-PETSC_EXTERN PetscErrorCode PCGASMCreateSubdomains2D(PC, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt *, IS **, IS **);
+PETSC_EXTERN PetscErrorCode PCGASMCreateSubdomains2D(PC, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt, PetscInt *, IS *[], IS *[]);
 PETSC_EXTERN PetscErrorCode PCGASMGetSubdomains(PC, PetscInt *, IS *[], IS *[]);
 PETSC_EXTERN PetscErrorCode PCGASMGetSubmatrices(PC, PetscInt *, Mat *[]);
 
@@ -272,6 +297,7 @@ PETSC_EXTERN PetscErrorCode PCHYPRESetEdgeConstantVectors(PC, Vec, Vec, Vec);
 PETSC_EXTERN PetscErrorCode PCHYPREAMSSetInteriorNodes(PC, Vec);
 PETSC_EXTERN PetscErrorCode PCHYPRESetAlphaPoissonMatrix(PC, Mat);
 PETSC_EXTERN PetscErrorCode PCHYPRESetBetaPoissonMatrix(PC, Mat);
+PETSC_EXTERN PetscErrorCode PCHYPREGetCFMarkers(PC pc, PetscInt *[], PetscBT *[]);
 
 PETSC_EXTERN PetscErrorCode PCFieldSplitSetFields(PC, const char[], PetscInt, const PetscInt *, const PetscInt *);
 PETSC_EXTERN PetscErrorCode PCFieldSplitSetType(PC, PCCompositeType);
@@ -294,8 +320,8 @@ PETSC_EXTERN PetscErrorCode PCFieldSplitGetSchurPre(PC, PCFieldSplitSchurPreType
 PETSC_EXTERN PetscErrorCode PCFieldSplitSetSchurFactType(PC, PCFieldSplitSchurFactType);
 PETSC_EXTERN PetscErrorCode PCFieldSplitSetSchurScale(PC, PetscScalar);
 PETSC_EXTERN PetscErrorCode PCFieldSplitGetSchurBlocks(PC, Mat *, Mat *, Mat *, Mat *);
-PETSC_EXTERN PetscErrorCode PCFieldSplitSchurGetS(PC, Mat *S);
-PETSC_EXTERN PetscErrorCode PCFieldSplitSchurRestoreS(PC, Mat *S);
+PETSC_EXTERN PetscErrorCode PCFieldSplitSchurGetS(PC, Mat *);
+PETSC_EXTERN PetscErrorCode PCFieldSplitSchurRestoreS(PC, Mat *);
 PETSC_EXTERN PetscErrorCode PCFieldSplitGetDetectSaddlePoint(PC, PetscBool *);
 PETSC_EXTERN PetscErrorCode PCFieldSplitSetDetectSaddlePoint(PC, PetscBool);
 PETSC_EXTERN PetscErrorCode PCFieldSplitSetGKBTol(PC, PetscReal);
@@ -469,9 +495,9 @@ PETSC_EXTERN PetscErrorCode PCPatchSetConstructType(PC, PCPatchConstructType, Pe
 PETSC_EXTERN PetscErrorCode PCPatchGetConstructType(PC, PCPatchConstructType *, PetscErrorCode (**)(PC, PetscInt *, IS **, IS *, void *), void **);
 PETSC_EXTERN PetscErrorCode PCPatchSetDiscretisationInfo(PC, PetscInt, DM *, PetscInt *, PetscInt *, const PetscInt **, const PetscInt *, PetscInt, const PetscInt *, PetscInt, const PetscInt *);
 PETSC_EXTERN PetscErrorCode PCPatchSetComputeOperator(PC, PetscErrorCode (*)(PC, PetscInt, Vec, Mat, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *);
-PETSC_EXTERN PetscErrorCode PCPatchSetComputeFunction(PC pc, PetscErrorCode (*func)(PC, PetscInt, Vec, Vec, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *ctx);
+PETSC_EXTERN PetscErrorCode PCPatchSetComputeFunction(PC pc, PetscErrorCode (*)(PC, PetscInt, Vec, Vec, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *ctx);
 PETSC_EXTERN PetscErrorCode PCPatchSetComputeOperatorInteriorFacets(PC, PetscErrorCode (*)(PC, PetscInt, Vec, Mat, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *);
-PETSC_EXTERN PetscErrorCode PCPatchSetComputeFunctionInteriorFacets(PC pc, PetscErrorCode (*func)(PC, PetscInt, Vec, Vec, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *ctx);
+PETSC_EXTERN PetscErrorCode PCPatchSetComputeFunctionInteriorFacets(PC pc, PetscErrorCode (*)(PC, PetscInt, Vec, Vec, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *ctx);
 
 PETSC_EXTERN PetscErrorCode PCLMVMSetMatLMVM(PC, Mat);
 PETSC_EXTERN PetscErrorCode PCLMVMGetMatLMVM(PC, Mat *);

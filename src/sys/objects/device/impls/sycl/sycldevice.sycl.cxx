@@ -92,7 +92,7 @@ private:
   static ::sycl::device chooseSYCLDevice_(int id)
   {
     if (id == PETSC_SYCL_DEVICE_HOST) {
-      return ::sycl::device(::sycl::host_selector());
+      return ::sycl::device(::sycl::cpu_selector_v);
     } else {
       return ::sycl::device::get_devices(::sycl::info::device_type::gpu)[id];
     }
@@ -155,7 +155,7 @@ PetscErrorCode Device::initialize(MPI_Comm comm, PetscInt *defaultDeviceId, Pets
   if (initType == PETSC_DEVICE_INIT_NONE) id = PETSC_SYCL_DEVICE_NONE; /* user wants to disable all sycl devices */
   else {
     PetscCall(PetscDeviceCheckDeviceCount_Internal(ngpus));
-    if (id == PETSC_DECIDE) { /* petsc will choose a GPU device if any, otherwise a CPU device */
+    if (id == PETSC_DECIDE) { /* PETSc will choose a GPU device if any, otherwise a CPU device */
       if (ngpus) {
         PetscMPIInt rank;
         PetscCallMPI(MPI_Comm_rank(comm, &rank));

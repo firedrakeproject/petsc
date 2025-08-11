@@ -69,16 +69,16 @@ class Configure(config.package.Package):
     help.addArgument('MPI', '-with-mpiexec-tail=<prog>',                         nargs.Arg(None, None, 'The utility you want to put at the very end of "mpiexec -n <np> ..." and right before your executable to launch MPI jobs.'))
     help.addArgument('MPI', '-with-mpi-compilers=<bool>',                        nargs.ArgBool(None, 1, 'Try to use the MPI compilers, e.g. mpicc'))
     help.addArgument('MPI', '-known-mpi-shared-libraries=<bool>',                nargs.ArgBool(None, None, 'Indicates the MPI libraries are shared (the usual test will be skipped)'))
-    help.addArgument('MPI', '-with-mpi-f90module-visibility=<bool>',             nargs.ArgBool(None, 1, 'Indicates the MPI f90 module is available via petsc module. When disabled, mpi_f08 can be used from user code'))
+    help.addArgument('MPI', '-with-mpi-f90module-visibility=<bool>',             nargs.ArgBool(None, 1, 'Indicates the MPI f90 module is available via PETSc module. When disabled, mpi_f08 can be used from user code'))
     return
 
   def setupDependencies(self, framework):
     config.package.Package.setupDependencies(self, framework)
     self.mpich   = framework.require('config.packages.MPICH', self)
     self.openmpi = framework.require('config.packages.OpenMPI', self)
-    self.cuda    = framework.require('config.packages.cuda',self)
-    self.hip     = framework.require('config.packages.hip',self)
-    self.sycl    = framework.require('config.packages.sycl',self)
+    self.cuda    = framework.require('config.packages.CUDA',self)
+    self.hip     = framework.require('config.packages.HIP',self)
+    self.sycl    = framework.require('config.packages.SYCL',self)
     self.odeps   = [self.cuda,self.hip,self.sycl]
     return
 
@@ -333,9 +333,9 @@ shared libraries and run with --known-mpi-shared-libraries=1')
           if ret == 0:
             self.logPrint("Hostname works, running network checks")
 
-            self.getExecutable('ping', path = ['/sbin'], useDefaultPath = 1)
+            self.getExecutable('ping', path = ['/sbin'], useDefaultPath = 1, setMakeMacro = 0)
             if not hasattr(self,'ping'):
-              self.getExecutable('fping', resultName = 'ping')
+              self.getExecutable('fping', resultName = 'ping', setMakeMacro = 0)
             if hasattr(self,'ping'):
               if self.setCompilers.isCygwin(self.log):
                 count = ' -n 2 '
@@ -350,7 +350,7 @@ shared libraries and run with --known-mpi-shared-libraries=1')
 
               if not hostnameworks:
                 # Note: host may not work on macOS, this is normal
-                self.getExecutable('host')
+                self.getExecutable('host', setMakeMacro = 0)
                 if hasattr(self,'host'):
                   try:
                     (ok, err, ret) = Configure.executeShellCommand(self.host + ' '+ hostname, timeout = 60, log = self.log, threads = 1)
@@ -532,13 +532,15 @@ Unable to run hostname to check the network')
 
     if self.checkLink('#include <mpi.h>\n',
     '''
-      int          buf[1]={0},dest=1,source=1,tag=0, combiner, ints[1];
-      MPI_Count    count=1, nints, naddrs, ncounts, ntypes, counts[1];
+      int          buf[1]={0},dest=1,source=1,tag=0, combiner, ints[1], rbuf[1] = {0};
+      MPI_Count    count=1, nints, naddrs, ncounts, ntypes, counts[1]={0};
       MPI_Request  req;
       MPI_Status   stat;
-      MPI_Aint     addrs[1];
+      MPI_Aint     addrs[1]={0};
       MPI_Datatype types[1];
 
+      if (MPI_Scatterv_c(buf,counts,addrs,MPI_INT,rbuf,count,MPI_INT,0,MPI_COMM_WORLD)) return 1;
+      if (MPI_Gatherv_c(buf,count,MPI_INT,rbuf,counts,addrs,MPI_INT,0,MPI_COMM_WORLD)) return 1;
       if (MPI_Send_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD)) return 1;
       if (MPI_Send_init_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD,&req)) return 1;
       if (MPI_Isend_c(buf,count,MPI_INT,dest,tag,MPI_COMM_WORLD,&req)) return 1;
@@ -758,7 +760,7 @@ Unable to run hostname to check the network')
           mpich_numversion = re.compile('\nint mpich_ver ='+HASHLINESPACE+'([0-9]+)'+HASHLINESPACE+';').search(buf).group(1)
           MPI_VER += '  '+MPICHPKG+'_NUMVERSION: '+mpich_numversion
           self.addDefine('HAVE_'+MPICHPKG, 1)
-          # for I_MPI and MVAPICH2, we can not use petscpkg_version.h since they are not a petsc package yet.
+          # for I_MPI and MVAPICH2, we can not use petscpkg_version.h since they are not a PETSc package yet.
           # Anyway, we use PETSC_PKG_'MPICHPKG'_NUMVERSION to record the config time version for later compile time checking.
           self.addDefine('PKG_'+MPICHPKG+'_NUMVERSION',mpich_numversion)
           if MPICHPKG == 'MPICH':

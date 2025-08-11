@@ -44,13 +44,13 @@ int main(int argc, char **argv)
   CHKMPIERR(err);
   err = MPI_Comm_get_attr(newcomm, key1, &attr, &flag);
   CHKMPIERR(err);
-  if (flag) printf("Error: newcomm should not have attribute for keyval %d\n", (int)key1);
+  if (flag) printf("Error: newcomm should not have attribute for keyval %d\n", key1);
   err = MPI_Comm_get_attr(MPI_COMM_WORLD, key1, &attr, &flag);
   CHKMPIERR(err);
-  if (*attr != attr1) printf("Error: expected attribute %d, but got %d\n", (int)attr1, (int)*attr);
+  if (*attr != attr1) printf("Error: expected attribute %d, but got %d\n", attr1, *attr);
   err = MPI_Comm_get_attr(newcomm, key2, &attr, &flag);
   CHKMPIERR(err);
-  if (*attr != attr2) printf("Error: expected attribute %d, but got %d\n", (int)attr2, (int)*attr);
+  if (*attr != attr2) printf("Error: expected attribute %d, but got %d\n", attr2, *attr);
 
   err = MPI_Comm_delete_attr(MPI_COMM_WORLD, key1);
   CHKMPIERR(err);
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 /*TEST
    # Elemental in debug mode has bugs that it can not be repeatedly init/finalize'd for more than 300 times
    testset:
-    output_file: output/ex53_1.out
+    output_file: output/empty.out
     test:
       suffix: 1
       requires: !elemental

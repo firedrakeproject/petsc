@@ -57,7 +57,7 @@ PetscErrorCode VecPointwiseMin_Seq(Vec win, Vec xin, Vec yin)
 
 static PetscScalar MaxAbs(PetscScalar x, PetscScalar y)
 {
-  return (PetscScalar)PetscMax(PetscAbsScalar(x), PetscAbsScalar(y));
+  return PetscMax(PetscAbsScalar(x), PetscAbsScalar(y));
 }
 
 PetscErrorCode VecPointwiseMaxAbs_Seq(Vec win, Vec xin, Vec yin)
@@ -271,89 +271,6 @@ static PetscErrorCode VecView_Seq_ASCII(Vec xin, PetscViewer viewer)
       PetscCall(PetscViewerASCIIPrintf(viewer, "%18.16e\n", (double)xv[i]));
 #endif
     }
-  } else if (format == PETSC_VIEWER_ASCII_VTK_DEPRECATED || format == PETSC_VIEWER_ASCII_VTK_CELL_DEPRECATED) {
-    /*
-       state 0: No header has been output
-       state 1: Only POINT_DATA has been output
-       state 2: Only CELL_DATA has been output
-       state 3: Output both, POINT_DATA last
-       state 4: Output both, CELL_DATA last
-    */
-    static PetscInt stateId     = -1;
-    PetscInt        outputState = 0;
-    PetscBool       hasState;
-    int             doOutput = 0;
-    PetscInt        bs, b;
-
-    if (stateId < 0) PetscCall(PetscObjectComposedDataRegister(&stateId));
-    PetscCall(PetscObjectComposedDataGetInt((PetscObject)viewer, stateId, outputState, hasState));
-    if (!hasState) outputState = 0;
-    PetscCall(PetscObjectGetName((PetscObject)xin, &name));
-    PetscCall(VecGetBlockSize(xin, &bs));
-    PetscCheck(bs >= 1 && bs <= 3, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "VTK can only handle 3D objects, but vector dimension is %" PetscInt_FMT, bs);
-    if (format == PETSC_VIEWER_ASCII_VTK_DEPRECATED) {
-      if (outputState == 0) {
-        outputState = 1;
-        doOutput    = 1;
-      } else if (outputState == 1) doOutput = 0;
-      else if (outputState == 2) {
-        outputState = 3;
-        doOutput    = 1;
-      } else if (outputState == 3) doOutput = 0;
-      else PetscCheck(outputState != 4, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Tried to output POINT_DATA again after intervening CELL_DATA");
-
-      if (doOutput) PetscCall(PetscViewerASCIIPrintf(viewer, "POINT_DATA %" PetscInt_FMT "\n", n / bs));
-    } else {
-      if (outputState == 0) {
-        outputState = 2;
-        doOutput    = 1;
-      } else if (outputState == 1) {
-        outputState = 4;
-        doOutput    = 1;
-      } else if (outputState == 2) {
-        doOutput = 0;
-      } else {
-        PetscCheck(outputState != 3, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Tried to output CELL_DATA again after intervening POINT_DATA");
-        if (outputState == 4) doOutput = 0;
-      }
-
-      if (doOutput) PetscCall(PetscViewerASCIIPrintf(viewer, "CELL_DATA %" PetscInt_FMT "\n", n));
-    }
-    PetscCall(PetscObjectComposedDataSetInt((PetscObject)viewer, stateId, outputState));
-    if (name) {
-      if (bs == 3) {
-        PetscCall(PetscViewerASCIIPrintf(viewer, "VECTORS %s double\n", name));
-      } else {
-        PetscCall(PetscViewerASCIIPrintf(viewer, "SCALARS %s double %" PetscInt_FMT "\n", name, bs));
-      }
-    } else {
-      PetscCall(PetscViewerASCIIPrintf(viewer, "SCALARS scalars double %" PetscInt_FMT "\n", bs));
-    }
-    if (bs != 3) PetscCall(PetscViewerASCIIPrintf(viewer, "LOOKUP_TABLE default\n"));
-    for (i = 0; i < n / bs; i++) {
-      for (b = 0; b < bs; b++) {
-        if (b > 0) PetscCall(PetscViewerASCIIPrintf(viewer, " "));
-#if !defined(PETSC_USE_COMPLEX)
-        PetscCall(PetscViewerASCIIPrintf(viewer, "%g", (double)xv[i * bs + b]));
-#endif
-      }
-      PetscCall(PetscViewerASCIIPrintf(viewer, "\n"));
-    }
-  } else if (format == PETSC_VIEWER_ASCII_VTK_COORDS_DEPRECATED) {
-    PetscInt bs, b;
-
-    PetscCall(VecGetBlockSize(xin, &bs));
-    PetscCheck(bs >= 1 && bs <= 3, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "VTK can only handle 3D objects, but vector dimension is %" PetscInt_FMT, bs);
-    for (i = 0; i < n / bs; i++) {
-      for (b = 0; b < bs; b++) {
-        if (b > 0) PetscCall(PetscViewerASCIIPrintf(viewer, " "));
-#if !defined(PETSC_USE_COMPLEX)
-        PetscCall(PetscViewerASCIIPrintf(viewer, "%g", (double)xv[i * bs + b]));
-#endif
-      }
-      for (b = bs; b < 3; b++) PetscCall(PetscViewerASCIIPrintf(viewer, " 0.0"));
-      PetscCall(PetscViewerASCIIPrintf(viewer, "\n"));
-    }
   } else if (format == PETSC_VIEWER_ASCII_PCICE) {
     PetscInt bs, b;
 
@@ -430,18 +347,21 @@ static PetscErrorCode VecView_Seq_Draw_LG(Vec xin, PetscViewer v)
   PetscDraw          draw;
   PetscBool          isnull;
   PetscDrawLG        lg;
-  PetscInt           i, c, bs = PetscAbs(xin->map->bs), n = xin->map->n / bs;
+  PetscInt           i, c, bs = xin->map->bs, n = xin->map->n / bs;
   const PetscScalar *xv;
   PetscReal         *xx, *yy, xmin, xmax, h;
   int                colors[] = {PETSC_DRAW_RED};
   PetscViewerFormat  format;
   PetscDrawAxis      axis;
+  const char        *name;
 
   PetscFunctionBegin;
   PetscCall(PetscViewerDrawGetDraw(v, 0, &draw));
   PetscCall(PetscDrawIsNull(draw, &isnull));
   if (isnull) PetscFunctionReturn(PETSC_SUCCESS);
 
+  PetscCall(PetscObjectGetName((PetscObject)xin, &name));
+  PetscCall(PetscDrawSetTitle(draw, name));
   PetscCall(PetscViewerGetFormat(v, &format));
   PetscCall(PetscMalloc2(n, &xx, n, &yy));
   PetscCall(VecGetArrayRead(xin, &xv));
@@ -599,14 +519,15 @@ PetscErrorCode VecSetValues_Seq(Vec xin, PetscInt ni, const PetscInt ix[], const
   PetscCall(VecGetArray(xin, &xx));
   for (PetscInt i = 0; i < ni; i++) {
     if (ignorenegidx && (ix[i] < 0)) continue;
+    PetscScalar yv = y ? y[i] : 0.0;
     if (PetscDefined(USE_DEBUG)) {
       PetscCheck(ix[i] >= 0, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Out of range index value %" PetscInt_FMT " cannot be negative", ix[i]);
       PetscCheck(ix[i] < xin->map->n, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Out of range index value %" PetscInt_FMT ", should be less than %" PetscInt_FMT, ix[i], xin->map->n);
     }
     if (m == INSERT_VALUES) {
-      xx[ix[i]] = y[i];
+      xx[ix[i]] = yv;
     } else {
-      xx[ix[i]] += y[i];
+      xx[ix[i]] += yv;
     }
   }
   PetscCall(VecRestoreArray(xin, &xx));
@@ -629,9 +550,9 @@ PetscErrorCode VecSetValuesBlocked_Seq(Vec xin, PetscInt ni, const PetscInt ix[]
     PetscCheck(start < xin->map->n, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Out of range index value %" PetscInt_FMT ", should be less than %" PetscInt_FMT, start, xin->map->n);
     for (PetscInt j = 0; j < bs; j++) {
       if (m == INSERT_VALUES) {
-        xx[start + j] = yin[j];
+        xx[start + j] = yin ? yin[j] : 0.0;
       } else {
-        xx[start + j] += yin[j];
+        xx[start + j] += yin ? yin[j] : 0.0;
       }
     }
   }
@@ -839,7 +760,6 @@ static struct _VecOps DvOps = {
   PetscDesignatedInitializer(conjugate, VecConjugate_Seq),
   PetscDesignatedInitializer(setlocaltoglobalmapping, NULL),
   PetscDesignatedInitializer(getlocaltoglobalmapping, NULL),
-  PetscDesignatedInitializer(setvalueslocal, NULL),
   PetscDesignatedInitializer(resetarray, VecResetArray_Seq),
   PetscDesignatedInitializer(setfromoptions, NULL),
   PetscDesignatedInitializer(maxpointwisedivide, VecMaxPointwiseDivide_Seq),

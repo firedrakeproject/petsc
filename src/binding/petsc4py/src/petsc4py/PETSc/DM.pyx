@@ -871,7 +871,7 @@ cdef class DM(Object):
         """
         cdef const char *cname = NULL
         str2bytes(name, &cname)
-        CHKERR(PetscObjectDereference(<PetscObject>vg.vec))
+        CHKERR(PetscDECREF(vg.obj))
         if cname != NULL:
             CHKERR(DMRestoreNamedGlobalVector(self.dm, cname, &vg.vec))
         else:
@@ -925,7 +925,7 @@ cdef class DM(Object):
         """
         cdef const char *cname = NULL
         str2bytes(name, &cname)
-        CHKERR(PetscObjectDereference(<PetscObject>vl.vec))
+        CHKERR(PetscDECREF(vl.obj))
         if cname != NULL:
             CHKERR(DMRestoreNamedLocalVector(self.dm, cname, &vl.vec))
         else:
@@ -1270,7 +1270,7 @@ cdef class DM(Object):
         CHKERR(PetscINCREF(c.obj))
         return c
 
-    def setCoordinateDisc(self, FE disc, project: bool) -> Self:
+    def setCoordinateDisc(self, FE disc, localized: bool, project: bool) -> Self:
         """Project coordinates to a different space.
 
         Collective.
@@ -1279,14 +1279,19 @@ cdef class DM(Object):
         ----------
         disc
             The new coordinates discretization.
+        localized
+            Set a localized (DG) coordinate space
+        project
+            Project coordinates to new discretization
 
         See Also
         --------
         petsc.DMSetCoordinateDisc
 
         """
+        cdef PetscBool clocalized = localized
         cdef PetscBool pr = project
-        CHKERR(DMSetCoordinateDisc(self.dm, disc.fe, pr))
+        CHKERR(DMSetCoordinateDisc(self.dm, disc.fe, clocalized, pr))
         return self
 
     def getCoordinatesLocalized(self) -> bool:
@@ -1353,6 +1358,69 @@ cdef class DM(Object):
         """
         CHKERR(DMLocalizeCoordinates(self.dm))
     #
+
+    def getPeriodicity(self) -> tuple[ArrayReal, ArrayReal, ArrayReal]:
+        """Set the description of mesh periodicity.
+
+        Not collective.
+
+        Parameters
+        ----------
+        maxCell
+            The longest allowable cell dimension in each direction.
+        Lstart
+            The start of each coordinate direction, usually [0, 0, 0]
+        L
+            The periodic length of each coordinate direction, or -1 for non-periodic
+
+        See Also
+        --------
+        petsc.DMSetPeriodicity
+
+        """
+        cdef PetscInt dim = 0
+        CHKERR(DMGetDimension(self.dm, &dim))
+        cdef PetscReal *MAXCELL = NULL
+        cdef ndarray mcell = oarray_r(empty_r(dim), NULL, &MAXCELL)
+        cdef PetscReal *LSTART = NULL
+        cdef ndarray lstart = oarray_r(empty_r(dim), NULL, &LSTART)
+        cdef PetscReal *LPY = NULL
+        cdef ndarray lpy = oarray_r(empty_r(dim), NULL, &LPY)
+        cdef const PetscReal *maxCell = NULL
+        cdef const PetscReal *Lstart = NULL
+        cdef const PetscReal *L = NULL
+        CHKERR(DMGetPeriodicity(self.dm, &maxCell, &Lstart, &L))
+        CHKERR(PetscMemcpy(MAXCELL, maxCell, <size_t>dim*sizeof(PetscReal)))
+        CHKERR(PetscMemcpy(LSTART, Lstart, <size_t>dim*sizeof(PetscReal)))
+        CHKERR(PetscMemcpy(LPY, L, <size_t>dim*sizeof(PetscReal)))
+        return (mcell, lstart, lpy)
+
+    def setPeriodicity(self, maxCell: Sequence[float], Lstart: Sequence[float], L: Sequence[float]) -> None:
+        """Set the description of mesh periodicity.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        maxCell
+            The longest allowable cell dimension in each direction.
+        Lstart
+            The start of each coordinate direction, usually [0, 0, 0]
+        L
+            The periodic length of each coordinate direction, or -1 for non-periodic
+
+        See Also
+        --------
+        petsc.DMSetPeriodicity
+
+        """
+        cdef PetscReal *MAXCELL = NULL
+        cdef ndarray unuseda = oarray_r(maxCell, NULL, &MAXCELL)
+        cdef PetscReal *LSTART = NULL
+        cdef ndarray unusedb = oarray_r(Lstart, NULL, &LSTART)
+        cdef PetscReal *LPY = NULL
+        cdef ndarray unusedc = oarray_r(L, NULL, &LPY)
+        CHKERR(DMSetPeriodicity(self.dm, MAXCELL, LSTART, LPY))
 
     def setMatType(self, mat_type: Mat.Type | str) -> None:
         """Set matrix type to be used by `DM.createMat`.

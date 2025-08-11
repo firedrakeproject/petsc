@@ -27,7 +27,7 @@
   PetscBool    free_rlen;          /* free rlen array ? */ \
   PetscInt     reallocs;           /* number of mallocs done during MatSetValues() \
 as more values are set than were prealloced */ \
-  PetscBool    keepnonzeropattern; /* keeps matrix structure same in calls to MatZeroRows()*/ \
+  PetscBool    keepnonzeropattern; /* keeps matrix nonzero structure the same in calls to MatZeroRows()*/ \
   PetscBool    ignorezeroentries; \
   PetscBool    free_colidx;     /* free the column indices colidx when the matrix is destroyed */ \
   PetscBool    free_val;        /* free the numerical values when matrix is destroy */ \
@@ -92,7 +92,7 @@ static inline PetscErrorCode MatSeqXSELLFreeSELL(Mat AA, MatScalar **val, PetscI
 \
       PetscCheck(NONEW != -2, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "New nonzero at (%" PetscInt_FMT ",%" PetscInt_FMT ") caused a malloc. Use MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE) to turn off this check", ROW, COL); \
       /* malloc new storage space */ \
-      PetscCall(PetscMalloc2(BS2 *new_size, &new_val, BS2 *new_size, &new_colidx)); \
+      PetscCall(PetscMalloc2(BS2 * new_size, &new_val, BS2 * new_size, &new_colidx)); \
 \
       /* copy over old data into new slots by two steps: one step for data before the current slice and the other for the rest */ \
       PetscCall(PetscArraycpy(new_val, VAL, SIDX[SID + 1])); \
@@ -106,7 +106,7 @@ static inline PetscErrorCode MatSeqXSELLFreeSELL(Mat AA, MatScalar **val, PetscI
       VP = new_val + SIDX[SID] + (ROW % SH); \
       /* free up old matrix storage */ \
       PetscCall(MatSeqXSELLFreeSELL(A, &Ain->val, &Ain->colidx)); \
-      Ain->val          = (MatScalar *)new_val; \
+      Ain->val          = new_val; \
       Ain->colidx       = new_colidx; \
       Ain->singlemalloc = PETSC_TRUE; \
       Ain->maxallocmat  = new_size; \
@@ -159,7 +159,7 @@ static inline PetscErrorCode MatSeqXSELLFreeSELL(Mat AA, MatScalar **val, PetscI
           vp = new_val + a->sliidx[row / a->sliceheight] + (row % a->sliceheight); \
           /* free up old matrix storage */ \
           PetscCall(MatSeqXSELLFreeSELL(A, &a->val, &a->colidx)); \
-          a->val          = (MatScalar *)new_val; \
+          a->val          = new_val; \
           a->colidx       = new_colidx; \
           a->singlemalloc = PETSC_TRUE; \
           a->maxallocmat  = new_size; \
@@ -188,6 +188,8 @@ static inline PetscErrorCode MatSeqXSELLFreeSELL(Mat AA, MatScalar **val, PetscI
       high++; \
     } \
   } while (0)
+
+#define PetscCeilIntMacro(x, y) ((((PetscInt)(x)) / ((PetscInt)(y))) + ((((PetscInt)(x)) % ((PetscInt)(y))) ? 1 : 0))
 
 PETSC_INTERN PetscErrorCode MatSeqSELLSetPreallocation_SeqSELL(Mat, PetscInt, const PetscInt[]);
 PETSC_INTERN PetscErrorCode MatMult_SeqSELL(Mat, Vec, Vec);

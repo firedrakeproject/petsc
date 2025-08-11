@@ -33,7 +33,7 @@ int main(int argc, char **argv)
   dx = (xp - xm) / (Nx - 1);
   dy = (yp - ym) / (Ny - 1);
 
-  /* Initialize the Petsc context */
+  /* Initialize the PETSc context */
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, Nx, Ny, PETSC_DECIDE, PETSC_DECIDE, 1, 1, NULL, NULL, &da2D));
@@ -98,17 +98,18 @@ int main(int argc, char **argv)
 
       test:
          nsize: 4
+         output_file: output/empty.out
 
       test:
          nsize: 4
          suffix: 2
          args: -viewer_hdf5_base_dimension2
-         output_file: output/ex10_1.out
+         output_file: output/empty.out
 
       test:
          nsize: 4
          suffix: 3
          args: -viewer_hdf5_sp_output
-         output_file: output/ex10_1.out
+         output_file: output/empty.out
 
 TEST*/

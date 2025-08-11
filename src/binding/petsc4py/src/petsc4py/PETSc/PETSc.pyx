@@ -2,6 +2,7 @@
 
 cdef extern from * nogil:
     """
+    #include "pyapicompat.h"
     #include "lib-petsc/compat.h"
     #include "lib-petsc/custom.h"
 
@@ -56,29 +57,7 @@ cdef inline object S_(const char p[]):
 # SETERR Support
 # --------------
 
-cdef extern from *:
-    """
-#if PY_VERSION_HEX < 0X30C0000
-static PyObject *PyErr_GetRaisedException()
-{
-    PyObject *t, *v, *tb;
-    PyErr_Fetch(&t, &v, &tb);
-    PyErr_NormalizeException(&t, &v, &tb);
-    if (tb != NULL) PyException_SetTraceback(v, tb);
-    Py_XDECREF(t);
-    Py_XDECREF(tb);
-    return v;
-}
-static void PyErr_SetRaisedException(PyObject *v)
-{
-    PyObject *t = (PyObject *)Py_TYPE(v);
-    PyObject *tb = PyException_GetTraceback(v);
-    Py_XINCREF(t);
-    Py_XINCREF(tb);
-    PyErr_Restore(t, v, tb);
-}
-#endif
-    """
+cdef extern from "Python.h":
     void PyErr_SetObject(object, object)
     PyObject *PyExc_RuntimeError
     PyObject *PyErr_GetRaisedException()
@@ -86,6 +65,12 @@ static void PyErr_SetRaisedException(PyObject *v)
     void PyException_SetCause(PyObject*, PyObject*)
 
 cdef object PetscError = <object>PyExc_RuntimeError
+
+cdef inline void PetscTracebackAdd(object exc) noexcept:
+    if (<void*>PetscError) == NULL: return
+    global tracebacklist
+    exc._traceback[:] = tracebacklist[:]
+    del tracebacklist[:]
 
 cdef inline int SETERR(PetscErrorCode ierr) noexcept nogil:
     cdef PyObject *exception = NULL, *cause = NULL
@@ -95,10 +80,10 @@ cdef inline int SETERR(PetscErrorCode ierr) noexcept nogil:
             PyErr_SetObject(PetscError, <long>ierr)
         else:
             PyErr_SetObject(<object>PyExc_RuntimeError, <long>ierr)
-        if cause != NULL:
-            exception = PyErr_GetRaisedException()
-            PyException_SetCause(exception, cause)
-            PyErr_SetRaisedException(exception)
+        exception = PyErr_GetRaisedException()
+        PetscTracebackAdd(<object>exception)
+        PyException_SetCause(exception, cause)
+        PyErr_SetRaisedException(exception)
     return 0
 
 cdef inline PetscErrorCode CHKERR(PetscErrorCode ierr) except PETSC_ERR_PYTHON nogil:
@@ -115,7 +100,7 @@ cdef extern from * nogil:
     enum: MPI_MAX_ERROR_STRING
     int MPI_Error_string(int, char[], int*)
     PetscErrorCode PetscSNPrintf(char[], size_t, const char[], ...)
-    PetscErrorCode PetscERROR(MPI_Comm, char[], PetscErrorCode, int, char[], char[])
+    PetscErrorCode PetscERROR(MPI_Comm, const char[], PetscErrorCode, int, const char[], const char[])
 
 cdef inline int SETERRMPI(int ierr) noexcept nogil:
     cdef char mpi_err_str[MPI_MAX_ERROR_STRING]
@@ -141,9 +126,11 @@ cdef inline PetscErrorCode CHKERRMPI(int ierr) except PETSC_ERR_PYTHON nogil:
 # -------------
 
 cdef extern from * nogil:
-    ctypedef long   PetscInt
-    ctypedef double PetscReal
-    ctypedef double PetscScalar
+    ctypedef long      PetscInt
+    ctypedef long long PetscInt64
+    ctypedef double    PetscReal
+    ctypedef double    PetscScalar
+    ctypedef ptrdiff_t PetscCount
 
 cdef extern from "<petsc4py/pyscalar.h>":
     object      PyPetscScalar_FromPetscScalar(PetscScalar)
@@ -231,6 +218,7 @@ include "petscpartitioner.pxi"
 include "petscspace.pxi"
 include "petscdmutils.pxi"
 include "petscpyappctx.pxi"
+include "petscregressor.pxi"
 
 # --------------------------------------------------------------------
 
@@ -275,6 +263,7 @@ include "DMSwarm.pyx"
 include "Partitioner.pyx"
 include "Space.pyx"
 include "DMUtils.pyx"
+include "Regressor.pyx"
 
 # --------------------------------------------------------------------
 
@@ -405,7 +394,7 @@ cdef int getinitargs(object args, int *argc, char **argv[]) except -1:
     return 0
 
 cdef void delinitargs(int *argc, char **argv[]) noexcept nogil:
-    # dallocate command line arguments
+    # deallocate command line arguments
     cdef int i, c = argc[0]
     cdef char** v = argv[0]
     argc[0] = 0; argv[0] = NULL
@@ -538,6 +527,7 @@ cdef extern from * nogil:
     PetscClassId PETSC_DUALSPACE_CLASSID        "PETSCDUALSPACE_CLASSID"
     PetscClassId PETSC_DEVICE_CLASSID           "PETSC_DEVICE_CLASSID"
     PetscClassId PETSC_DEVICE_CONTEXT_CLASSID   "PETSC_DEVICE_CONTEXT_CLASSID"
+    PetscClassId PETSC_REGRESSOR_CLASSID        "PETSCREGRESSOR_CLASSID"
 
 cdef bint registercalled = 0
 
@@ -592,6 +582,7 @@ cdef int register() except -1:
     PyPetscType_Register(PETSC_DMLABEL_CLASSID,          DMLabel)
     PyPetscType_Register(PETSC_SPACE_CLASSID,            Space)
     PyPetscType_Register(PETSC_DUALSPACE_CLASSID,        DualSpace)
+    PyPetscType_Register(PETSC_REGRESSOR_CLASSID,        Regressor)
     return 0 # and we are done, enjoy !!
 
 # --------------------------------------------------------------------
@@ -599,8 +590,6 @@ cdef int register() except -1:
 
 def _initialize(args=None, comm=None):
     import atexit
-    global tracebacklist
-    Error._traceback_ = tracebacklist
     global PetscError
     PetscError = Error
     #

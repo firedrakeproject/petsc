@@ -210,7 +210,7 @@ PetscErrorCode SNESMonitorFields(SNES snes, PetscInt its, PetscReal fgnorm, Pets
     }
   }
   PetscCall(VecRestoreArrayRead(res, &r));
-  PetscCallMPI(MPIU_Allreduce(lnorms, norms, (PetscMPIInt)numFields, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(lnorms, norms, numFields, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)dm)));
   PetscCall(PetscViewerPushFormat(viewer, vf->format));
   PetscCall(PetscViewerASCIIAddTab(viewer, ((PetscObject)snes)->tablevel));
   PetscCall(PetscViewerASCIIPrintf(viewer, "%3" PetscInt_FMT " SNES Function norm %14.12e [", its, (double)fgnorm));
@@ -311,7 +311,7 @@ PetscErrorCode DMPlexSNESComputeResidualFEM(DM dm, Vec X, Vec F, void *user)
       PetscCall(ISIntersect_Caching_Internal(allcellIS, pointIS, &cellIS));
       PetscCall(ISDestroy(&pointIS));
     }
-    PetscCall(DMPlexComputeResidual_Internal(plex, key, cellIS, PETSC_MIN_REAL, X, NULL, 0.0, F, user));
+    PetscCall(DMPlexComputeResidualByKey(plex, key, cellIS, PETSC_MIN_REAL, X, NULL, 0.0, F, user));
     PetscCall(ISDestroy(&cellIS));
   }
   PetscCall(ISDestroy(&allcellIS));
@@ -392,7 +392,7 @@ PetscErrorCode DMPlexSNESComputeResidualDS(DM dm, Vec X, Vec F, void *user)
           PetscCall(ISIntersect_Caching_Internal(allcellIS, pointIS, &cellIS));
           PetscCall(ISDestroy(&pointIS));
         }
-        PetscCall(DMPlexComputeResidual_Internal(plex, reskeys[k], cellIS, PETSC_MIN_REAL, X, NULL, 0.0, F, user));
+        PetscCall(DMPlexComputeResidualByKey(plex, reskeys[k], cellIS, PETSC_MIN_REAL, X, NULL, 0.0, F, user));
         PetscCall(ISDestroy(&cellIS));
       }
       PetscCall(PetscFree(reskeys));
@@ -402,49 +402,6 @@ PetscErrorCode DMPlexSNESComputeResidualDS(DM dm, Vec X, Vec F, void *user)
   PetscCall(DMDestroy(&plex));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-#ifdef PETSC_HAVE_LIBCEED
-PetscErrorCode DMPlexSNESComputeResidualCEED(DM dm, Vec locX, Vec locF, void *user)
-{
-  Ceed       ceed;
-  DMCeed     sd = dm->dmceed;
-  CeedVector clocX, clocF;
-
-  PetscFunctionBegin;
-  PetscCall(DMGetCeed(dm, &ceed));
-  PetscCheck(sd, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONGSTATE, "This DM has no CEED data. Call DMCeedCreate() before computing the residual.");
-  PetscCall(DMCeedComputeGeometry(dm, sd));
-
-  PetscCall(VecGetCeedVectorRead(locX, ceed, &clocX));
-  PetscCall(VecGetCeedVector(locF, ceed, &clocF));
-  PetscCallCEED(CeedOperatorApplyAdd(sd->op, clocX, clocF, CEED_REQUEST_IMMEDIATE));
-  PetscCall(VecRestoreCeedVectorRead(locX, &clocX));
-  PetscCall(VecRestoreCeedVector(locF, &clocF));
-
-  {
-    DM_Plex *mesh = (DM_Plex *)dm->data;
-
-    if (mesh->printFEM) {
-      PetscSection section;
-      Vec          locFbc;
-      PetscInt     pStart, pEnd, p, maxDof;
-      PetscScalar *zeroes;
-
-      PetscCall(DMGetLocalSection(dm, &section));
-      PetscCall(VecDuplicate(locF, &locFbc));
-      PetscCall(VecCopy(locF, locFbc));
-      PetscCall(PetscSectionGetChart(section, &pStart, &pEnd));
-      PetscCall(PetscSectionGetMaxDof(section, &maxDof));
-      PetscCall(PetscCalloc1(maxDof, &zeroes));
-      for (p = pStart; p < pEnd; ++p) PetscCall(VecSetValuesSection(locFbc, section, p, zeroes, INSERT_BC_VALUES));
-      PetscCall(PetscFree(zeroes));
-      PetscCall(DMPrintLocalVec(dm, "Residual", mesh->printTol, locFbc));
-      PetscCall(VecDestroy(&locFbc));
-    }
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-#endif
 
 /*@
   DMPlexSNESComputeBoundaryFEM - Form the boundary values for the local input `X`
@@ -550,7 +507,7 @@ PetscErrorCode DMSNESComputeJacobianAction(DM dm, Vec X, Vec Y, Vec F, void *use
           PetscCall(ISIntersect_Caching_Internal(allcellIS, pointIS, &cellIS));
           PetscCall(ISDestroy(&pointIS));
         }
-        PetscCall(DMPlexComputeJacobian_Action_Internal(plex, jackeys[k], cellIS, 0.0, 0.0, X, NULL, Y, F, user));
+        PetscCall(DMPlexComputeJacobianActionByKey(plex, jackeys[k], cellIS, 0.0, 0.0, X, NULL, Y, F, user));
         PetscCall(ISDestroy(&cellIS));
       }
       PetscCall(PetscFree(jackeys));
@@ -618,7 +575,7 @@ PetscErrorCode DMPlexSNESComputeJacobianFEM(DM dm, Vec X, Mat Jac, Mat JacP, voi
       if (hasJac && hasPrec) PetscCall(MatZeroEntries(Jac));
       PetscCall(MatZeroEntries(JacP));
     }
-    PetscCall(DMPlexComputeJacobian_Internal(plex, key, cellIS, 0.0, 0.0, X, NULL, Jac, JacP, user));
+    PetscCall(DMPlexComputeJacobianByKey(plex, key, cellIS, 0.0, 0.0, X, NULL, Jac, JacP, user));
     PetscCall(ISDestroy(&cellIS));
   }
   PetscCall(ISDestroy(&allcellIS));
@@ -911,7 +868,9 @@ PetscErrorCode DMSNESCheckResidual(SNES snes, DM dm, Vec u, PetscReal tol, Petsc
     PetscCall(VecFilter(r, 1.0e-10));
     PetscCall(PetscObjectSetName((PetscObject)r, "Initial Residual"));
     PetscCall(PetscObjectSetOptionsPrefix((PetscObject)r, "res_"));
+    PetscCall(PetscObjectCompose((PetscObject)r, "__Vec_bc_zero__", (PetscObject)snes));
     PetscCall(VecViewFromOptions(r, NULL, "-vec_view"));
+    PetscCall(PetscObjectCompose((PetscObject)r, "__Vec_bc_zero__", NULL));
   }
   PetscCall(VecDestroy(&r));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -961,7 +920,7 @@ PetscErrorCode DMSNESCheckJacobian(SNES snes, DM dm, Vec u, PetscReal tol, Petsc
   if (hasJac && hasPrec) {
     PetscCall(DMCreateMatrix(dm, &M));
     PetscCall(SNESComputeJacobian(snes, u, J, M));
-    PetscCall(PetscObjectSetName((PetscObject)M, "Preconditioning Matrix"));
+    PetscCall(PetscObjectSetName((PetscObject)M, "Matrix used to construct preconditioner"));
     PetscCall(PetscObjectSetOptionsPrefix((PetscObject)M, "jacpre_"));
     PetscCall(MatViewFromOptions(M, NULL, "-mat_view"));
     PetscCall(MatDestroy(&M));
@@ -1039,7 +998,7 @@ PetscErrorCode DMSNESCheckJacobian(SNES snes, DM dm, Vec u, PetscReal tol, Petsc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMSNESCheck_Internal(SNES snes, DM dm, Vec u)
+static PetscErrorCode DMSNESCheck_Internal(SNES snes, DM dm, Vec u)
 {
   PetscFunctionBegin;
   PetscCall(DMSNESCheckDiscretization(snes, dm, 0.0, u, -1.0, NULL));
@@ -1076,5 +1035,64 @@ PetscErrorCode DMSNESCheckFromOptions(SNES snes, Vec u)
   PetscCall(SNESSetSolution(snes, sol));
   PetscCall(DMSNESCheck_Internal(snes, dm, sol));
   PetscCall(VecDestroy(&sol));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  DMPlexSetSNESVariableBounds - Compute upper and lower bounds for the solution using pointsie functions from the `PetscDS`
+
+  Collective
+
+  Input Parameters:
++ dm   - The `DM` object
+- snes - the `SNES` object
+
+  Level: intermediate
+
+  Notes:
+  This calls `SNESVISetVariableBounds()` after generating the bounds vectors, so it only applied to `SNESVI` solves.
+
+  We project the actual bounds into the current finite element space so that they become more accurate with refinement.
+
+.seealso: `SNESVISetVariableBounds()`, `SNESVI`, [](ch_snes), `DM`
+@*/
+PetscErrorCode DMPlexSetSNESVariableBounds(DM dm, SNES snes)
+{
+  PetscDS              ds;
+  Vec                  lb, ub;
+  PetscSimplePointFn **lfuncs, **ufuncs;
+  void               **lctxs, **uctxs;
+  PetscBool            hasBound, hasLower = PETSC_FALSE, hasUpper = PETSC_FALSE;
+  PetscInt             Nf;
+
+  PetscFunctionBegin;
+  PetscCall(DMHasBound(dm, &hasBound));
+  if (!hasBound) PetscFunctionReturn(PETSC_SUCCESS);
+  // TODO Generalize for multiple DSes
+  PetscCall(DMGetDS(dm, &ds));
+  PetscCall(PetscDSGetNumFields(ds, &Nf));
+  PetscCall(PetscMalloc4(Nf, &lfuncs, Nf, &lctxs, Nf, &ufuncs, Nf, &uctxs));
+  for (PetscInt f = 0; f < Nf; ++f) {
+    PetscCall(PetscDSGetLowerBound(ds, f, &lfuncs[f], &lctxs[f]));
+    PetscCall(PetscDSGetUpperBound(ds, f, &ufuncs[f], &uctxs[f]));
+    if (lfuncs[f]) hasLower = PETSC_TRUE;
+    if (ufuncs[f]) hasUpper = PETSC_TRUE;
+  }
+  PetscCall(DMCreateGlobalVector(dm, &lb));
+  PetscCall(DMCreateGlobalVector(dm, &ub));
+  PetscCall(PetscObjectSetName((PetscObject)lb, "Lower Bound"));
+  PetscCall(PetscObjectSetName((PetscObject)ub, "Upper Bound"));
+  PetscCall(VecSet(lb, PETSC_NINFINITY));
+  PetscCall(VecSet(ub, PETSC_INFINITY));
+  if (hasLower) PetscCall(DMProjectFunction(dm, 0., lfuncs, lctxs, INSERT_VALUES, lb));
+  if (hasUpper) PetscCall(DMProjectFunction(dm, 0., ufuncs, uctxs, INSERT_VALUES, ub));
+  PetscCall(DMPlexInsertBounds(dm, PETSC_TRUE, 0., lb));
+  PetscCall(DMPlexInsertBounds(dm, PETSC_FALSE, 0., ub));
+  PetscCall(VecViewFromOptions(lb, NULL, "-dm_plex_snes_lb_view"));
+  PetscCall(VecViewFromOptions(ub, NULL, "-dm_plex_snes_ub_view"));
+  PetscCall(SNESVISetVariableBounds(snes, lb, ub));
+  PetscCall(VecDestroy(&lb));
+  PetscCall(VecDestroy(&ub));
+  PetscCall(PetscFree4(lfuncs, lctxs, ufuncs, uctxs));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

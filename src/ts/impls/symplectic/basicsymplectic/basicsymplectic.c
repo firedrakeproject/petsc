@@ -320,7 +320,7 @@ static PetscErrorCode TSDestroy_BasicSymplectic(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TSSetFromOptions_BasicSymplectic(TS ts, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TSSetFromOptions_BasicSymplectic(TS ts, PetscOptionItems PetscOptionsObject)
 {
   TS_BasicSymplectic *bsymp = (TS_BasicSymplectic *)ts->data;
 
@@ -340,12 +340,6 @@ static PetscErrorCode TSSetFromOptions_BasicSymplectic(TS ts, PetscOptionItems *
     PetscCall(PetscFree(namelist));
   }
   PetscOptionsHeadEnd();
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode TSView_BasicSymplectic(TS ts, PetscViewer viewer)
-{
-  PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -456,8 +450,8 @@ static PetscErrorCode TSBasicSymplecticGetType_BasicSymplectic(TS ts, TSBasicSym
 
   $$
   \begin{align*}
-  qdot = dH(q,p,t)/dp   \\
-  pdot = -dH(q,p,t)/dq
+  \dot q &= \frac{dH(q,p,t)}{dp}   \\
+  \dot p &= -\frac{dH(q,p,t)}{dq}
   \end{align*}
   $$
 
@@ -471,19 +465,18 @@ static PetscErrorCode TSBasicSymplecticGetType_BasicSymplectic(TS ts, TSBasicSym
 
   $$
   \begin{align*}
-  qdot = f(p,t) = dT(p,t)/dp \\
-  pdot = g(q,t) = -dV(q,t)/dq
+  \dot q &= f(p,t) = \frac{dT(p,t)}{dp} \\
+  \dot p &= g(q,t) = -\frac{dV(q,t)}{dq}
   \end{align*}
   $$
 
-  and solved iteratively with
+  and solved iteratively with $i \in [0, n]$
 
   $$
   \begin{align*}
-  q_new = q_old + d_i*h*f(p_old,t_old) \\
-  t_new = t_old + d_i*h \\
-  p_new = p_old + c_i*h*g(p_new,t_new) \\
-  i     = 0,1,...,n.
+  q_{new} &= q_{old} + h d_i f(p_{old}, t_{old}) \\
+  t_{new} &= t_{old} + h d_i \\
+  p_{new} &= p_{old} + h c_i g(q_{new}, t_{new})
   \end{align*}
   $$
 
@@ -509,7 +502,6 @@ PETSC_EXTERN PetscErrorCode TSCreate_BasicSymplectic(TS ts)
   ts->ops->reset           = TSReset_BasicSymplectic;
   ts->ops->destroy         = TSDestroy_BasicSymplectic;
   ts->ops->setfromoptions  = TSSetFromOptions_BasicSymplectic;
-  ts->ops->view            = TSView_BasicSymplectic;
   ts->ops->interpolate     = TSInterpolate_BasicSymplectic;
   ts->ops->linearstability = TSComputeLinearStability_BasicSymplectic;
 

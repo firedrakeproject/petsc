@@ -10,7 +10,6 @@
 
 PETSC_EXTERN PetscBool      DMRegisterAllCalled;
 PETSC_EXTERN PetscErrorCode DMRegisterAll(void);
-typedef PetscErrorCode (*NullSpaceFunc)(DM dm, PetscInt origField, PetscInt field, MatNullSpace *nullSpace);
 
 typedef struct _PetscHashAuxKey {
   DMLabel  label;
@@ -38,7 +37,7 @@ struct _DMOps {
   PetscErrorCode (*view)(DM, PetscViewer);
   PetscErrorCode (*load)(DM, PetscViewer);
   PetscErrorCode (*clone)(DM, DM *);
-  PetscErrorCode (*setfromoptions)(DM, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(DM, PetscOptionItems);
   PetscErrorCode (*setup)(DM);
   PetscErrorCode (*createlocalsection)(DM);
   PetscErrorCode (*createsectionpermutation)(DM, IS *, PetscBT *);
@@ -48,6 +47,7 @@ struct _DMOps {
   PetscErrorCode (*getlocaltoglobalmapping)(DM);
   PetscErrorCode (*createfieldis)(DM, PetscInt *, char ***, IS **);
   PetscErrorCode (*createcoordinatedm)(DM, DM *);
+  PetscErrorCode (*createcellcoordinatedm)(DM, DM *);
   PetscErrorCode (*createcoordinatefield)(DM, DMField *);
 
   PetscErrorCode (*getcoloring)(DM, ISColoringType, ISColoring *);
@@ -56,6 +56,7 @@ struct _DMOps {
   PetscErrorCode (*createrestriction)(DM, DM, Mat *);
   PetscErrorCode (*createmassmatrix)(DM, DM, Mat *);
   PetscErrorCode (*createmassmatrixlumped)(DM, Vec *, Vec *);
+  PetscErrorCode (*creategradientmatrix)(DM, DM, Mat *);
   PetscErrorCode (*hascreateinjection)(DM, PetscBool *);
   PetscErrorCode (*createinjection)(DM, DM, Mat *);
 
@@ -102,9 +103,9 @@ struct _DMOps {
   PetscErrorCode (*getcompatibility)(DM, DM, PetscBool *, PetscBool *);
 };
 
-PETSC_EXTERN PetscErrorCode DMLocalizeCoordinate_Internal(DM, PetscInt, const PetscScalar[], const PetscScalar[], PetscScalar[]);
-PETSC_EXTERN PetscErrorCode DMLocalizeCoordinateReal_Internal(DM, PetscInt, const PetscReal[], const PetscReal[], PetscReal[]);
-PETSC_EXTERN PetscErrorCode DMLocalizeAddCoordinate_Internal(DM, PetscInt, const PetscScalar[], const PetscScalar[], PetscScalar[]);
+PETSC_INTERN PetscErrorCode DMLocalizeCoordinate_Internal(DM, PetscInt, const PetscScalar[], const PetscScalar[], PetscScalar[]);
+PETSC_INTERN PetscErrorCode DMLocalizeCoordinateReal_Internal(DM, PetscInt, const PetscReal[], const PetscReal[], PetscReal[]);
+PETSC_INTERN PetscErrorCode DMLocalizeAddCoordinate_Internal(DM, PetscInt, const PetscScalar[], const PetscScalar[], PetscScalar[]);
 
 PETSC_INTERN PetscErrorCode DMCountNonCyclicReferences(PetscObject, PetscInt *);
 
@@ -222,18 +223,20 @@ typedef struct {
   DMField  field; /* Coordinates as an abstract field */
 } DMCoordinates;
 
+PETSC_EXTERN_TYPEDEF typedef PetscErrorCode (*NullSpaceFn)(DM dm, PetscInt origField, PetscInt field, MatNullSpace *nullSpace);
+
 struct _p_DM {
   PETSCHEADER(struct _DMOps);
-  Vec            localin[DM_MAX_WORK_VECTORS], localout[DM_MAX_WORK_VECTORS];
-  Vec            globalin[DM_MAX_WORK_VECTORS], globalout[DM_MAX_WORK_VECTORS];
-  DMNamedVecLink namedglobal;
-  DMNamedVecLink namedlocal;
-  DMWorkLink     workin, workout;
-  DMLabelLink    labels;        /* Linked list of labels */
-  DMLabel        depthLabel;    /* Optimized access to depth label */
-  DMLabel        celltypeLabel; /* Optimized access to celltype label */
-  void          *ctx;           /* a user context */
-  PetscErrorCode (*ctxdestroy)(void **);
+  Vec                    localin[DM_MAX_WORK_VECTORS], localout[DM_MAX_WORK_VECTORS];
+  Vec                    globalin[DM_MAX_WORK_VECTORS], globalout[DM_MAX_WORK_VECTORS];
+  DMNamedVecLink         namedglobal;
+  DMNamedVecLink         namedlocal;
+  DMWorkLink             workin, workout;
+  DMLabelLink            labels;        /* Linked list of labels */
+  DMLabel                depthLabel;    /* Optimized access to depth label */
+  DMLabel                celltypeLabel; /* Optimized access to celltype label */
+  void                  *ctx;           /* a user context */
+  PetscCtxDestroyFn     *ctxdestroy;
   ISColoringType         coloringtype;
   MatFDColoring          fd;
   VecType                vectype;    /* type of vector created with DMCreateLocalVector() and DMCreateGlobalVector() */
@@ -244,7 +247,7 @@ struct _p_DM {
   ISLocalToGlobalMapping ltogmap;
   PetscBool              prealloc_skip;      // Flag indicating the DMCreateMatrix() should not preallocate (only set sizes and local-to-global)
   PetscBool              prealloc_only;      /* Flag indicating the DMCreateMatrix() should only preallocate, not fill the matrix */
-  PetscBool              structure_only;     /* Flag indicating the DMCreateMatrix() create matrix structure without values */
+  PetscBool              structure_only;     /* Flag indicating the DMCreateMatrix() create matrix nonzero structure without values */
   PetscInt               levelup, leveldown; /* if the DM has been obtained by refining (or coarsening) this indicates how many times that process has been used to generate this DM */
   PetscBool              setupcalled;        /* Indicates that the DM has been set up, methods that modify a DM such that a fresh setup is required should reset this flag */
   PetscBool              setfromoptionscalled;
@@ -300,9 +303,9 @@ struct _p_DM {
   /* Periodicity */
   PetscReal *Lstart, *L, *maxCell; /* Size of periodic box and max cell size for determining periodicity */
   PetscBool  sparseLocalize;       /* Localize coordinates only for cells near periodic boundary */
-  /* Null spaces -- of course I should make this have a variable number of fields */
-  NullSpaceFunc nullspaceConstructors[10];
-  NullSpaceFunc nearnullspaceConstructors[10];
+  /* Null spaces */
+  NullSpaceFn *nullspaceConstructors;
+  NullSpaceFn *nearnullspaceConstructors;
   /* Fields are represented by objects */
   PetscInt     Nf;       /* Number of fields defined on the total domain */
   RegionField *fields;   /* Array of discretization fields with regions of validity */
@@ -315,9 +318,9 @@ struct _p_DM {
   PetscInt  outputSequenceNum; /* The current sequence number for output */
   PetscReal outputSequenceVal; /* The current sequence value for output */
   PetscErrorCode (*monitor[MAXDMMONITORS])(DM, void *);
-  PetscErrorCode (*monitordestroy[MAXDMMONITORS])(void **);
-  void    *monitorcontext[MAXDMMONITORS];
-  PetscInt numbermonitors;
+  PetscCtxDestroyFn *monitordestroy[MAXDMMONITORS];
+  void              *monitorcontext[MAXDMMONITORS];
+  PetscInt           numbermonitors;
   /* Configuration */
   PetscBool cloneOpts; /* Flag indicating that this is a linked clone and should not respond to some options. This is currently used to prevent transformations from also affecting the coordinate DM */
 
@@ -341,13 +344,14 @@ PETSC_EXTERN PetscLogEvent DM_CreateInjection;
 PETSC_EXTERN PetscLogEvent DM_CreateMatrix;
 PETSC_EXTERN PetscLogEvent DM_CreateMassMatrix;
 PETSC_EXTERN PetscLogEvent DM_Load;
+PETSC_EXTERN PetscLogEvent DM_View;
 PETSC_EXTERN PetscLogEvent DM_AdaptInterpolator;
 PETSC_EXTERN PetscLogEvent DM_ProjectFunction;
 
-PETSC_EXTERN PetscErrorCode DMCreateGlobalVector_Section_Private(DM, Vec *);
-PETSC_EXTERN PetscErrorCode DMCreateLocalVector_Section_Private(DM, Vec *);
+PETSC_INTERN PetscErrorCode DMCreateGlobalVector_Section_Private(DM, Vec *);
+PETSC_INTERN PetscErrorCode DMCreateLocalVector_Section_Private(DM, Vec *);
 
-PETSC_EXTERN PetscErrorCode DMView_GLVis(DM, PetscViewer, PetscErrorCode (*)(DM, PetscViewer));
+PETSC_INTERN PetscErrorCode DMView_GLVis(DM, PetscViewer, PetscErrorCode (*)(DM, PetscViewer));
 
 /*
 
@@ -533,11 +537,12 @@ static inline PetscErrorCode DMGetGlobalFieldOffset_Private(DM dm, PetscInt poin
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PETSC_EXTERN PetscErrorCode DMGetCoordinateDegree_Internal(DM, PetscInt *);
+PETSC_INTERN PetscErrorCode DMGetCoordinateDegree_Internal(DM, PetscInt *);
 PETSC_INTERN PetscErrorCode DMGetLocalBoundingBox_Coordinates(DM, PetscReal[], PetscReal[], PetscInt[], PetscInt[]);
+PETSC_INTERN PetscErrorCode DMGetIsoperiodicPointSF_Internal(DM dm, PetscSF *sf);
 
-PETSC_EXTERN PetscErrorCode DMGetBasisTransformDM_Internal(DM, DM *);
-PETSC_EXTERN PetscErrorCode DMGetBasisTransformVec_Internal(DM, Vec *);
+PETSC_INTERN PetscErrorCode DMGetBasisTransformDM_Internal(DM, DM *);
+PETSC_INTERN PetscErrorCode DMGetBasisTransformVec_Internal(DM, Vec *);
 PETSC_INTERN PetscErrorCode DMConstructBasisTransform_Internal(DM);
 
 PETSC_INTERN PetscErrorCode DMGetLocalBoundingIndices_DMDA(DM, PetscReal[], PetscReal[]);

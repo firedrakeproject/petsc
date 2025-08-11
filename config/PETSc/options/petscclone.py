@@ -9,7 +9,6 @@ def noCheck(command, status, output, error):
 class Configure(config.base.Configure):
   def __init__(self, framework):
     config.base.Configure.__init__(self, framework)
-    self.isClone = 0
     return
 
   def setupDependencies(self, framework):
@@ -21,7 +20,6 @@ class Configure(config.base.Configure):
     '''Determine if PETSc was obtained via git or a tarball'''
     if os.path.exists(os.path.join(self.petscdir.dir,'lib','petsc','bin','maint')):
       self.logPrint('lib/petsc/bin/maint exists. This appears to be a repository clone')
-      self.isClone = 1
       if os.path.exists(os.path.join(self.petscdir.dir, '.git')):
         self.logPrint('.git directory exists')
         if hasattr(self.sourceControl,'git'):
@@ -44,7 +42,7 @@ class Configure(config.base.Configure):
         self.logPrint('This repository clone is obtained as a tarball as no .git dirs exist')
     else:
       if os.path.exists(os.path.join(self.petscdir.dir, '.git')):
-        raise RuntimeError('Your petsc source tree is broken. Use "git status" to check, or remove the entire directory and start all over again')
+        raise RuntimeError('Your PETSc source tree is broken. Use "git status" to check, or remove the entire directory and start all over again')
       else:
         self.logPrint('This is a tarball installation')
     return

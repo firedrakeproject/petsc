@@ -8,7 +8,7 @@ class Configure(config.package.Package):
     #self.version                = '4.6'
     #self.versionname            = 'MFEM_VERSION_STRING'
     #self.versioninclude         = 'mfem/config.hpp'
-    self.gitcommit              = 'v4.7'
+    self.gitcommit              = '7a6caccf995638055e4a931e1f93cf2c32a6f718' # v4.7+ master Dec 5, 2024
     self.download               = ['git://https://github.com/mfem/mfem.git','https://github.com/mfem/mfem/archive/'+self.gitcommit+'.tar.gz']
     self.linkedbypetsc          = 0
     self.downloadonWindows      = 1
@@ -30,14 +30,14 @@ class Configure(config.package.Package):
     config.package.Package.setupDependencies(self, framework)
     self.hypre        = framework.require('config.packages.hypre',self)
     self.mpi          = framework.require('config.packages.MPI',self)
-    self.metis        = framework.require('config.packages.metis',self)
-    self.slepc        = framework.require('config.packages.slepc',self)
+    self.metis        = framework.require('config.packages.METIS',self)
+    self.slepc        = framework.require('config.packages.SLEPc',self)
     self.ceed         = framework.require('config.packages.libceed',self)
-    self.cuda         = framework.require('config.packages.cuda',self)
-    self.hip          = framework.require('config.packages.hip',self)
-    self.openmp       = framework.require('config.packages.openmp',self)
+    self.cuda         = framework.require('config.packages.CUDA',self)
+    self.hip          = framework.require('config.packages.HIP',self)
+    self.openmp       = framework.require('config.packages.OpenMP',self)
     self.superlu_dist = framework.require('config.packages.SuperLU_DIST',self)
-    self.netcdf       = framework.require('config.packages.netcdf',self)
+    self.netcdf       = framework.require('config.packages.netCDF',self)
     self.scalar = framework.require('PETSc.options.scalarTypes',self)
     self.deps   = [self.mpi,self.hypre,self.metis]
     self.odeps  = [self.slepc,self.ceed,self.cuda,self.openmp,self.superlu_dist,self.netcdf]
@@ -149,7 +149,7 @@ class Configure(config.package.Package):
       if self.argDB['with-single-library']:
         petsclib = '-L'+prefix+'/lib -lpetsc'
       else:
-        petsclib = '-L'+prefix+'/lib -lpetsctao -lpetscts -lpetscsnes -lpetscksp -lpetscdm -lpetscmat -lpetscvec -lpetscsys'
+        petsclib = '-L'+prefix+'/lib -lpetscml -lpetsctao -lpetscts -lpetscsnes -lpetscksp -lpetscdm -lpetscmat -lpetscvec -lpetscsys'
       if self.argDB['with-shared-libraries']:
         if self.cuda.found:
           petscrpt = '-Xlinker=-rpath,'+prefix+'/lib'
@@ -211,53 +211,13 @@ run-config:
 
     self.addDefine('HAVE_MFEM',1)
     self.addMakeMacro('MFEM','yes')
-    self.addMakeRule('mfembuild',makedepend, \
-                       ['@echo "*** Building MFEM ***"',\
-                          '@${RM} ${PETSC_ARCH}/lib/petsc/conf/mfem.errorflg',\
-                          '@(cd '+buildDir+' && \\\n\
-           ${OMAKE} -f '+configDir+'/petsc.mk run-config && \\\n\
-           ${OMAKE} clean && \\\n\
-           '+self.make.make_jnp+') > ${PETSC_ARCH}/lib/petsc/conf/mfem.log 2>&1 || \\\n\
-             (echo "**************************ERROR*************************************" && \\\n\
-             echo "Error building MFEM. Check ${PETSC_ARCH}/lib/petsc/conf/mfem.log" && \\\n\
-             echo "********************************************************************" && \\\n\
-             touch ${PETSC_ARCH}/lib/petsc/conf/mfem.errorflg && \\\n\
-             exit 1)'])
-    self.addMakeRule('mfeminstall','', \
-                       ['@echo "*** Installing MFEM ***"',\
-                          '@(cd '+buildDir+' && \\\n\
-           '+'${OMAKE} install) >> ${PETSC_ARCH}/lib/petsc/conf/mfem.log 2>&1 || \\\n\
-             (echo "**************************ERROR*************************************" && \\\n\
-             echo "Error installing MFEM. Check ${PETSC_ARCH}/lib/petsc/conf/mfem.log" && \\\n\
-             echo "********************************************************************" && \\\n\
-             exit 1)'])
-    exampleDirBuild = os.path.join(buildDir, 'examples', 'petsc')
-    mfemchecklog = os.path.join(exampleDirBuild, 'mfem-check.log')
-    self.addMakeRule('mfem-check', '', ['@echo "Running MFEM/PETSc check examples"',\
-                                          '@(cd '+exampleDirBuild+' ; ${OMAKE} -i ex1p-test-par ex9p-test-par) >& '+mfemchecklog+'; \\\n\
-             if (grep ": FAILED" '+mfemchecklog+' > /dev/null) then \\\n\
-                 (echo "**************************ERROR*************************************"; \\\n\
-                 echo "Possible error with MFEM check, see below"; \\\n\
-                 cat '+mfemchecklog+'; \\\n\
-                 echo "********************************************************************"; \\\n\
-                 touch '+os.path.join(self.petscdir.dir,'check_error')+'; \\\n\
-                 exit 1) \\\n\
-             fi;'])
-
-    if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
-      self.addMakeRule('mfem-build','')
-      self.addMakeRule('mfem-install','mfembuild mfeminstall')
-    else:
-      self.addMakeRule('mfem-build','mfembuild mfeminstall')
-      self.addMakeRule('mfem-install','')
-
-    exampleDir = os.path.join(self.packageDir,'examples')
+    self.addPost(buildDir, ['${OMAKE} -f ' + os.path.join(configDir,'petsc.mk') + ' run-config',
+                            '${OMAKE} clean',
+                            self.make.make_jnp,
+                            '${OMAKE} install'])
+    # this checks MFEM using the pre-installed libraries, I think that is wrong and it should use the post-installed prefix location
+    self.addMakeCheck(os.path.join(buildDir, 'examples', 'petsc'), '${OMAKE} -i ex1p-test-par ex9p-test-par')
     self.logClearRemoveDirectory()
-    self.logPrintBox('MFEM examples are available at '+exampleDir)
+    self.logPrintBox('MFEM examples are available at ' + os.path.join(self.packageDir,'examples'))
     self.logResetRemoveDirectory()
-
     return self.installDir
-
-  def alternateConfigureLibrary(self):
-    self.addMakeRule('mfem-build','')
-    self.addMakeRule('mfem-install','')

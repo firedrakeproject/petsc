@@ -3,7 +3,7 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.version          = '5.7.3'
+    self.version          = '5.8.1'
     self.minversion       = '5.2.1'
     self.versionname      = 'MUMPS_VERSION'
     self.requiresversion  = 1
@@ -32,12 +32,12 @@ class Configure(config.package.Package):
     self.flibs            = framework.require('config.packages.flibs',self)
     self.blasLapack       = framework.require('config.packages.BlasLapack',self)
     self.mpi              = framework.require('config.packages.MPI',self)
-    self.metis            = framework.require('config.packages.metis',self)
-    self.parmetis         = framework.require('config.packages.parmetis',self)
-    self.ptscotch         = framework.require('config.packages.PTScotch',self)
-    self.scalapack        = framework.require('config.packages.scalapack',self)
+    self.metis            = framework.require('config.packages.METIS',self)
+    self.parmetis         = framework.require('config.packages.ParMETIS',self)
+    self.ptscotch         = framework.require('config.packages.PTSCOTCH',self)
+    self.scalapack        = framework.require('config.packages.ScaLAPACK',self)
     self.hwloc            = framework.require('config.packages.hwloc',self)
-    self.openmp           = framework.require('config.packages.openmp',self)
+    self.openmp           = framework.require('config.packages.OpenMP',self)
     self.scalartypes      = framework.require('PETSc.options.scalarTypes',self)
     if self.argDB['with-mumps-serial']:
       self.deps           = [self.blasLapack,self.flibs]
@@ -96,9 +96,6 @@ class Configure(config.package.Package):
     g.write('PLAT       = \n')
     orderingsc = '-Dpord'
     orderingsf = self.fortran.FortranDefineCompilerOption+'pord'
-    # Disable threads on BGL
-    if self.libraries.isBGL():
-      orderingsc += ' -DWITHOUT_PTHREAD'
     if self.metis.found:
       g.write('IMETIS = '+self.headers.toString(self.metis.include)+'\n')
       g.write('LMETIS = '+self.libraries.toString(self.metis.lib)+'\n')
@@ -121,7 +118,7 @@ class Configure(config.package.Package):
     g.write('IORDERINGSC = $(IPARMETIS) $(IMETIS) $(IPORD) $(ISCOTCH)\n')
     g.write('IORDERINGSF = $(ISCOTCH)\n')
 
-    g.write('RM = /bin/rm -f\n')
+    g.write('RM = '+self.programs.RM+'\n')
     self.pushLanguage('C')
     g.write('CC = '+self.getCompiler()+'\n')
     g.write('OPTC    = '+self.updatePackageCFlags(self.getCompilerFlags())+'\n')
@@ -206,6 +203,6 @@ class Configure(config.package.Package):
       except RuntimeError as e:
         self.logPrint('Error running make on MUMPS: '+str(e))
         raise RuntimeError('Error running make on MUMPS')
-      self.postInstall(output1+err1+output2+err2+output3+err3,'Makefile.inc')
+      self.postInstall(output2+err2+output3+err3,'Makefile.inc')
     return self.installDir
 

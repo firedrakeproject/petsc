@@ -96,18 +96,18 @@ PetscErrorCode KSPGetTotalIterations(KSP ksp, PetscInt *its)
 }
 
 /*@C
-  KSPMonitorResidual - Print the (possibly preconditioned) residual norm at each iteration of an iterative solver.
+  KSPMonitorResidual - Print the (possibly preconditioned, possibly approximate) residual norm at each iteration of an iterative solver.
 
   Collective
 
   Input Parameters:
 + ksp   - iterative context
 . n     - iteration number
-. rnorm - 2-norm (preconditioned) residual value (may be estimated).
+. rnorm - (preconditioned) residual norm value (may be estimated).
 - vf    - The viewer context
 
   Options Database Key:
-. -ksp_monitor - Activates `KSPMonitorResidual()`
+. -ksp_monitor - Activates `KSPMonitorResidual()` to print the norm value at each iteration
 
   Level: intermediate
 
@@ -119,7 +119,7 @@ PetscErrorCode KSPGetTotalIterations(KSP ksp, PetscInt *its)
   This is not called directly by users, rather one calls `KSPMonitorSet()`, with this function as an argument, to cause the monitor
   to be used during the `KSP` solve.
 
-.seealso: [](ch_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorTrueResidual()`, `KSPMonitorResidualDraw()`, `KSPMonitorResidualDrawLG()`,
+.seealso: [](ch_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorTrueResidual()`, `KSPMonitorResidualView()`, `KSPMonitorResidualDrawLG()`,
           `KSPMonitorResidualRange()`, `KSPMonitorTrueResidualDraw()`, `KSPMonitorTrueResidualDrawLG()`, `KSPMonitorTrueResidualMax()`,
           `KSPMonitorSingularValue()`, `KSPMonitorSolutionDrawLG()`, `KSPMonitorSolutionDraw()`, `KSPMonitorSolution()`,
           `KSPMonitorErrorDrawLG()`, `KSPMonitorErrorDraw()`, `KSPMonitorError()`
@@ -145,7 +145,7 @@ PetscErrorCode KSPMonitorResidual(KSP ksp, PetscInt n, PetscReal rnorm, PetscVie
 }
 
 /*@C
-  KSPMonitorResidualDraw - Plots the (possibly preconditioned) residual at each iteration of an iterative solver.
+  KSPMonitorResidualView - Plots the (possibly preconditioned) residual at each iteration of an iterative solver.
 
   Collective
 
@@ -156,7 +156,7 @@ PetscErrorCode KSPMonitorResidual(KSP ksp, PetscInt n, PetscReal rnorm, PetscVie
 - vf    - The viewer context
 
   Options Database Key:
-. -ksp_monitor draw - Activates `KSPMonitorResidualDraw()`
+. -ksp_monitor viewertype - Activates `KSPMonitorResidualView()`
 
   Level: intermediate
 
@@ -166,7 +166,7 @@ PetscErrorCode KSPMonitorResidual(KSP ksp, PetscInt n, PetscReal rnorm, PetscVie
 
 .seealso: [](ch_ksp), `KSP`, `KSPMonitorSet()`, `KSPMonitorTrueResidual()`, `KSPMonitorResidual()`, `KSPMonitorResidualDrawLG()`
 @*/
-PetscErrorCode KSPMonitorResidualDraw(KSP ksp, PetscInt n, PetscReal rnorm, PetscViewerAndFormat *vf)
+PetscErrorCode KSPMonitorResidualView(KSP ksp, PetscInt n, PetscReal rnorm, PetscViewerAndFormat *vf)
 {
   PetscViewer       viewer = vf->viewer;
   PetscViewerFormat format = vf->format;
@@ -207,20 +207,20 @@ PetscErrorCode KSPMonitorResidualDraw(KSP ksp, PetscInt n, PetscReal rnorm, Pets
 
   Use `KSPMonitorResidualDrawLGCreate()` to create the context used with this monitor
 
-.seealso: [](ch_ksp), `KSP`, `PETSCVIEWERDRAW`, `KSPMonitorSet()`, `KSPMonitorTrueResidual()`, `KSPMonitorResidualDraw()`, `KSPMonitorResidual()`
+.seealso: [](ch_ksp), `KSP`, `PETSCVIEWERDRAW`, `KSPMonitorSet()`, `KSPMonitorTrueResidual()`, `KSPMonitorResidualView()`, `KSPMonitorResidual()`
 @*/
 PetscErrorCode KSPMonitorResidualDrawLG(KSP ksp, PetscInt n, PetscReal rnorm, PetscViewerAndFormat *vf)
 {
   PetscViewer        viewer = vf->viewer;
   PetscViewerFormat  format = vf->format;
-  PetscDrawLG        lg     = vf->lg;
+  PetscDrawLG        lg;
   KSPConvergedReason reason;
   PetscReal          x, y;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 4);
-  PetscValidHeaderSpecific(lg, PETSC_DRAWLG_CLASSID, 4);
   PetscCall(PetscViewerPushFormat(viewer, format));
+  PetscCall(PetscViewerDrawGetDrawLG(viewer, 0, &lg));
   if (!n) PetscCall(PetscDrawLGReset(lg));
   x = (PetscReal)n;
   if (rnorm > 0.0) y = PetscLog10Real(rnorm);
@@ -258,7 +258,7 @@ PetscErrorCode KSPMonitorResidualDrawLGCreate(PetscViewer viewer, PetscViewerFor
   PetscFunctionBegin;
   PetscCall(PetscViewerAndFormatCreate(viewer, format, vf));
   (*vf)->data = ctx;
-  PetscCall(KSPMonitorLGCreate(PetscObjectComm((PetscObject)viewer), NULL, NULL, "Log Residual Norm", 1, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, &(*vf)->lg));
+  PetscCall(PetscViewerMonitorLGSetUp(viewer, NULL, NULL, "Log Residual Norm", 1, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -355,14 +355,15 @@ PetscErrorCode KSPMonitorResidualRange(KSP ksp, PetscInt it, PetscReal rnorm, Pe
   PetscCall(KSPMonitorRange_Private(ksp, it, &perc));
   rel  = (prev - rnorm) / prev;
   prev = rnorm;
-  PetscCall(PetscViewerASCIIPrintf(viewer, "%3" PetscInt_FMT " KSP preconditioned resid norm %14.12e Percent values above 20 percent of maximum %5.2f relative decrease %5.2e ratio %5.2e\n", it, (double)rnorm, (double)(100.0 * perc), (double)rel, (double)(rel / perc)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "%3" PetscInt_FMT " KSP preconditioned resid norm %14.12e Percent values above 20 percent of maximum %5.2f relative decrease %5.2e ratio %5.2e\n", it, (double)rnorm, (double)(100 * perc), (double)rel, (double)(rel / perc)));
   PetscCall(PetscViewerASCIISubtractTab(viewer, tablevel));
   PetscCall(PetscViewerPopFormat(viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@C
-  KSPMonitorTrueResidual - Prints the true residual norm, as well as the (possibly preconditioned) approximate residual norm, at each iteration of an iterative solver.
+  KSPMonitorTrueResidual - Prints the true residual norm, as well as the (possibly preconditioned, possibly approximate) residual norm,
+  at each iteration of a `KSPSolve()` iterative solver.
 
   Collective
 
@@ -373,12 +374,12 @@ PetscErrorCode KSPMonitorResidualRange(KSP ksp, PetscInt it, PetscReal rnorm, Pe
 - vf    - The viewer context
 
   Options Database Key:
-. -ksp_monitor_true_residual - Activates `KSPMonitorTrueResidual()`
+. -ksp_monitor_true_residual - Activates `KSPMonitorTrueResidual()` to print both norm values at each iteration
 
   Level: intermediate
 
   Notes:
-  When using right preconditioning, these values are equivalent.
+  When using right preconditioning, the two norm values are equivalent.
 
   This is not called directly by users, rather one calls `KSPMonitorSet()`, with this function as an argument, to cause the monitor
   to be used during the `KSP` solve.
@@ -420,7 +421,7 @@ PetscErrorCode KSPMonitorTrueResidual(KSP ksp, PetscInt n, PetscReal rnorm, Pets
 }
 
 /*@C
-  KSPMonitorTrueResidualDraw - Plots the true residual at each iteration of an iterative solver.
+  KSPMonitorTrueResidualView - Plots the true residual at each iteration of an iterative solver.
 
   Collective
 
@@ -431,7 +432,7 @@ PetscErrorCode KSPMonitorTrueResidual(KSP ksp, PetscInt n, PetscReal rnorm, Pets
 - vf    - The viewer context of type `PETSCVIEWERDRAW`
 
   Options Database Key:
-. -ksp_monitor_true_residual draw - Activates `KSPMonitorResidualDraw()`
+. -ksp_monitor_true_residual viewertype - Activates `KSPMonitorTrueResidualView()`
 
   Level: intermediate
 
@@ -442,7 +443,7 @@ PetscErrorCode KSPMonitorTrueResidual(KSP ksp, PetscInt n, PetscReal rnorm, Pets
 .seealso: [](ch_ksp), `PETSCVIEWERDRAW`, `KSP`, `KSPMonitorSet()`, `KSPMonitorTrueResidual()`, `KSPMonitorResidual()`,
           `KSPMonitorTrueResidualDrawLG()`, `PetscViewerAndFormat`
 @*/
-PetscErrorCode KSPMonitorTrueResidualDraw(KSP ksp, PetscInt n, PetscReal rnorm, PetscViewerAndFormat *vf)
+PetscErrorCode KSPMonitorTrueResidualView(KSP ksp, PetscInt n, PetscReal rnorm, PetscViewerAndFormat *vf)
 {
   PetscViewer       viewer = vf->viewer;
   PetscViewerFormat format = vf->format;
@@ -452,7 +453,7 @@ PetscErrorCode KSPMonitorTrueResidualDraw(KSP ksp, PetscInt n, PetscReal rnorm, 
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 4);
   PetscCall(PetscViewerPushFormat(viewer, format));
   PetscCall(KSPBuildResidual(ksp, NULL, NULL, &r));
-  PetscCall(PetscObjectSetName((PetscObject)r, "Residual"));
+  PetscCall(PetscObjectSetName((PetscObject)r, "True Residual"));
   PetscCall(PetscObjectCompose((PetscObject)r, "__Vec_bc_zero__", (PetscObject)ksp));
   PetscCall(VecView(r, viewer));
   PetscCall(PetscObjectCompose((PetscObject)r, "__Vec_bc_zero__", NULL));
@@ -490,18 +491,18 @@ PetscErrorCode KSPMonitorTrueResidualDrawLG(KSP ksp, PetscInt n, PetscReal rnorm
 {
   PetscViewer        viewer = vf->viewer;
   PetscViewerFormat  format = vf->format;
-  PetscDrawLG        lg     = vf->lg;
   Vec                r;
   KSPConvergedReason reason;
   PetscReal          truenorm, x[2], y[2];
+  PetscDrawLG        lg;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 4);
-  PetscValidHeaderSpecific(lg, PETSC_DRAWLG_CLASSID, 4);
   PetscCall(KSPBuildResidual(ksp, NULL, NULL, &r));
   PetscCall(VecNorm(r, NORM_2, &truenorm));
   PetscCall(VecDestroy(&r));
   PetscCall(PetscViewerPushFormat(viewer, format));
+  PetscCall(PetscViewerDrawGetDrawLG(viewer, 0, &lg));
   if (!n) PetscCall(PetscDrawLGReset(lg));
   x[0] = (PetscReal)n;
   if (rnorm > 0.0) y[0] = PetscLog10Real(rnorm);
@@ -543,7 +544,7 @@ PetscErrorCode KSPMonitorTrueResidualDrawLGCreate(PetscViewer viewer, PetscViewe
   PetscFunctionBegin;
   PetscCall(PetscViewerAndFormatCreate(viewer, format, vf));
   (*vf)->data = ctx;
-  PetscCall(KSPMonitorLGCreate(PetscObjectComm((PetscObject)viewer), NULL, NULL, "Log Residual Norm", 2, names, PETSC_DECIDE, PETSC_DECIDE, 400, 300, &(*vf)->lg));
+  PetscCall(PetscViewerMonitorLGSetUp(viewer, NULL, NULL, "Log Residual Norm", 2, names, PETSC_DECIDE, PETSC_DECIDE, 400, 300));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -736,7 +737,7 @@ PetscErrorCode KSPMonitorErrorDrawLG(KSP ksp, PetscInt n, PetscReal rnorm, Petsc
 {
   PetscViewer        viewer = vf->viewer;
   PetscViewerFormat  format = vf->format;
-  PetscDrawLG        lg     = vf->lg;
+  PetscDrawLG        lg;
   DM                 dm;
   Vec                sol;
   KSPConvergedReason reason;
@@ -745,7 +746,7 @@ PetscErrorCode KSPMonitorErrorDrawLG(KSP ksp, PetscInt n, PetscReal rnorm, Petsc
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 4);
-  PetscValidHeaderSpecific(lg, PETSC_DRAWLG_CLASSID, 4);
+  PetscCall(PetscViewerDrawGetDrawLG(viewer, 0, &lg));
   PetscCall(KSPGetDM(ksp, &dm));
   PetscCall(DMGetNumFields(dm, &Nf));
   PetscCall(DMGetGlobalVector(dm, &sol));
@@ -815,7 +816,7 @@ PetscErrorCode KSPMonitorErrorDrawLGCreate(PetscViewer viewer, PetscViewerFormat
   PetscCall(PetscStrallocpy("residual", &names[Nf]));
   PetscCall(PetscViewerAndFormatCreate(viewer, format, vf));
   (*vf)->data = ctx;
-  PetscCall(KSPMonitorLGCreate(PetscObjectComm((PetscObject)viewer), NULL, NULL, "Log Error Norm", Nf + 1, (const char **)names, PETSC_DECIDE, PETSC_DECIDE, 400, 300, &(*vf)->lg));
+  PetscCall(PetscViewerMonitorLGSetUp(viewer, NULL, NULL, "Log Error Norm", Nf + 1, (const char **)names, PETSC_DECIDE, PETSC_DECIDE, 400, 300));
   for (f = 0; f <= Nf; ++f) PetscCall(PetscFree(names[f]));
   PetscCall(PetscFree(names));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -935,14 +936,14 @@ PetscErrorCode KSPMonitorSolutionDrawLG(KSP ksp, PetscInt n, PetscReal rnorm, Pe
 {
   PetscViewer        viewer = vf->viewer;
   PetscViewerFormat  format = vf->format;
-  PetscDrawLG        lg     = vf->lg;
+  PetscDrawLG        lg;
   Vec                u;
   KSPConvergedReason reason;
   PetscReal          snorm, x, y;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 4);
-  PetscValidHeaderSpecific(lg, PETSC_DRAWLG_CLASSID, 4);
+  PetscCall(PetscViewerDrawGetDrawLG(viewer, 0, &lg));
   PetscCall(KSPBuildSolution(ksp, NULL, &u));
   PetscCall(VecNorm(u, NORM_2, &snorm));
   PetscCall(PetscViewerPushFormat(viewer, format));
@@ -986,7 +987,7 @@ PetscErrorCode KSPMonitorSolutionDrawLGCreate(PetscViewer viewer, PetscViewerFor
   PetscFunctionBegin;
   PetscCall(PetscViewerAndFormatCreate(viewer, format, vf));
   (*vf)->data = ctx;
-  PetscCall(KSPMonitorLGCreate(PetscObjectComm((PetscObject)viewer), NULL, NULL, "Log Solution Norm", 1, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, &(*vf)->lg));
+  PetscCall(PetscViewerMonitorLGSetUp(viewer, NULL, NULL, "Log Solution Norm", 1, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1264,7 +1265,7 @@ PetscErrorCode KSPMonitorDynamicToleranceDestroy(void **ctx)
   of iterations have been reached. Useful when one is using `KSPCG` or
   `KSPBCGS`. [](sec_flexibleksp)
 
-.seealso: [](ch_ksp), `KSP`, `KSPCG`, `KSPBCGS`, `KSPSetConvergenceTest()`, `KSPSetTolerances()`, `KSPSetNormType()`, [](sec_flexibleksp),
+.seealso: [](ch_ksp), `KSP`, `KSPCG`, `KSPBCGS`, `KSPConvergenceTestFn`, `KSPSetConvergenceTest()`, `KSPSetTolerances()`, `KSPSetNormType()`, [](sec_flexibleksp),
           `KSPConvergedReason`
 @*/
 PetscErrorCode KSPConvergedSkip(KSP ksp, PetscInt n, PetscReal rnorm, KSPConvergedReason *reason, void *dtx)
@@ -1343,7 +1344,7 @@ PetscErrorCode KSPGetConvergedNegativeCurvature(KSP ksp, PetscBool *flg)
           `KSPConvergedSkip()`, `KSPConvergedReason`, `KSPGetConvergedReason()`, `KSPConvergedDefaultSetUIRNorm()`, `KSPConvergedDefaultSetUMIRNorm()`,
           `KSPConvergedDefaultSetConvergedMaxits()`
 @*/
-PetscErrorCode KSPConvergedDefaultCreate(void **ctx)
+PetscErrorCode KSPConvergedDefaultCreate(void **ctx) PeNS
 {
   KSPConvergedDefaultCtx *cctx;
 
@@ -1511,7 +1512,8 @@ PetscErrorCode KSPConvergedDefaultSetConvergedMaxits(KSP ksp, PetscBool flg)
 
   Call `KSPSetConvergenceTest()` with the `ctx`, as created above and the destruction function `KSPConvergedDefaultDestroy()`
 
-.seealso: [](ch_ksp), `KSP`, `KSPSetConvergenceTest()`, `KSPSetTolerances()`, `KSPConvergedSkip()`, `KSPConvergedReason`, `KSPGetConvergedReason()`, `KSPSetMinimumIterations()`,
+.seealso: [](ch_ksp), `KSP`, `KSPSetConvergenceTest()`, `KSPSetTolerances()`, `KSPConvergedSkip()`, `KSPConvergedReason`, `KSPGetConvergedReason()`,
+          `KSPSetMinimumIterations()`, `KSPConvergenceTestFn`,
           `KSPConvergedDefaultSetUIRNorm()`, `KSPConvergedDefaultSetUMIRNorm()`, `KSPConvergedDefaultSetConvergedMaxits()`, `KSPConvergedDefaultCreate()`, `KSPConvergedDefaultDestroy()`
 @*/
 PetscErrorCode KSPConvergedDefault(KSP ksp, PetscInt n, PetscReal rnorm, KSPConvergedReason *reason, void *ctx)
@@ -1623,13 +1625,13 @@ PetscErrorCode KSPConvergedDefault(KSP ksp, PetscInt n, PetscReal rnorm, KSPConv
 .seealso: [](ch_ksp), `KSP`, `KSPConvergedDefault()`, `KSPConvergedDefaultCreate()`, `KSPSetConvergenceTest()`, `KSPSetTolerances()`, `KSPConvergedSkip()`,
           `KSPConvergedReason`, `KSPGetConvergedReason()`, `KSPConvergedDefaultSetUIRNorm()`, `KSPConvergedDefaultSetUMIRNorm()`
 @*/
-PetscErrorCode KSPConvergedDefaultDestroy(void *ctx)
+PetscErrorCode KSPConvergedDefaultDestroy(void **ctx)
 {
-  KSPConvergedDefaultCtx *cctx = (KSPConvergedDefaultCtx *)ctx;
+  KSPConvergedDefaultCtx *cctx = (KSPConvergedDefaultCtx *)*ctx;
 
   PetscFunctionBegin;
   PetscCall(VecDestroy(&cctx->work));
-  PetscCall(PetscFree(ctx));
+  PetscCall(PetscFree(cctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2043,7 +2045,7 @@ PetscErrorCode KSPGetDM(KSP ksp, DM *dm)
 
   Input Parameters:
 + ksp - the `KSP` context
-- ctx - optional user context
+- ctx - user context
 
   Level: intermediate
 
@@ -2053,8 +2055,9 @@ PetscErrorCode KSPGetDM(KSP ksp, DM *dm)
   Use `KSPGetApplicationContext()` to get access to the context at a later time.
 
   Fortran Note:
-  To use this from Fortran you must write a Fortran interface definition for this
-  function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
+  This only works when `ctx` is a Fortran derived type (it cannot be a `PetscObject`), we recommend writing a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is passed in as the `ctx` argument. See `KSPGetApplicationContext()` for
+  an example.
 
 .seealso: [](ch_ksp), `KSP`, `KSPGetApplicationContext()`
 @*/
@@ -2064,7 +2067,7 @@ PetscErrorCode KSPSetApplicationContext(KSP ksp, void *ctx)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  ksp->user = ctx;
+  ksp->ctx = ctx;
   PetscCall(KSPGetPC(ksp, &pc));
   PetscCall(PCSetApplicationContext(pc, ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -2079,21 +2082,37 @@ PetscErrorCode KSPSetApplicationContext(KSP ksp, void *ctx)
 . ksp - `KSP` context
 
   Output Parameter:
-. ctx - user context
+. ctx - a pointer to the user context
 
   Level: intermediate
 
-  Fortran Note:
-  You may need to write a Fortran interface definition for this
-  function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
+  Fortran Notes:
+  This only works when the context is a Fortran derived type (it cannot be a `PetscObject`) and you **must** write a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is returned as the `ctx` argument. For example,
+.vb
+  Interface KSPGetApplicationContext
+    Subroutine KSPGetApplicationContext(ksp,ctx,ierr)
+  #include <petsc/finclude/petscksp.h>
+      use petscksp
+      KSP ksp
+      type(tUsertype), pointer :: ctx
+      PetscErrorCode ierr
+    End Subroutine
+  End Interface KSPGetApplicationContext
+.ve
+
+  The prototype for `ctx` must be
+.vb
+  type(tUsertype), pointer :: ctx
+.ve
 
 .seealso: [](ch_ksp), `KSP`, `KSPSetApplicationContext()`
 @*/
-PetscErrorCode KSPGetApplicationContext(KSP ksp, void *ctx)
+PetscErrorCode KSPGetApplicationContext(KSP ksp, PeCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  *(void **)ctx = ksp->user;
+  *(void **)ctx = ksp->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

@@ -1,65 +1,17 @@
-iteration     0 solution vector:
-Vec Object: 2 MPI processes
-  type: mpi
-Process [0]
-0.
-0.
-0.
-0.
-0.
-Process [1]
-0.
-0.
-0.
-0.
-iteration     0 residual norm  0.1118E+01
   0 KSP Residual norm 1.118033988750e+00
-iteration     1 solution vector:
-Vec Object: 2 MPI processes
-  type: mpi
-Process [0]
-0.6
-0.3
-0.6
-0.3
-0.
-Process [1]
-0.3
-0.6
-0.3
-0.6
-iteration     1 residual norm  0.5916E+00
+  0 KSP preconditioned resid norm 1.118033988750e+00 true resid norm 4.472135955000e+00 ||r(i)||/||b|| 1.000000000000e+00
   1 KSP Residual norm 5.916079783100e-01
-iteration     2 solution vector:
-Vec Object: 2 MPI processes
-  type: mpi
-Process [0]
-0.85
-0.8
-0.85
-0.8
-0.5
-Process [1]
-0.8
-0.85
-0.8
-0.85
-iteration     2 residual norm  0.3162E+00
+  1 KSP preconditioned resid norm 5.916079783100e-01 true resid norm 2.366431913240e+00 ||r(i)||/||b|| 5.291502622129e-01
   2 KSP Residual norm 3.162277660168e-01
-iteration     3 solution vector:
-Vec Object: 2 MPI processes
-  type: mpi
-Process [0]
-1.
-1.
-1.
-1.
-1.
-Process [1]
-1.
-1.
-1.
-1.
-iteration     3 residual norm  0.0000E+00
-  3 KSP Residual norm 0.000000000000e+00
+  2 KSP preconditioned resid norm 3.162277660168e-01 true resid norm 1.264911064067e+00 ||r(i)||/||b|| 2.828427124746e-01
+  3 KSP Residual norm 2.569666978571e-17
+  3 KSP preconditioned resid norm 2.569666978571e-17 true resid norm 2.082963028648e-15 ||r(i)||/||b|| 4.657646926676e-16
 Norm of error < 1.e-12 iterations     3
+iteration     0 residual norm  0.1118E+01
+iteration     0 solution vector:
+iteration     1 residual norm  0.5916E+00
+iteration     1 solution vector:
+iteration     2 residual norm  0.3162E+00
+iteration     2 solution vector:
+iteration     3 residual norm  0.2570E-16
+iteration     3 solution vector:

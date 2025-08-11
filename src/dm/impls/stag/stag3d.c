@@ -357,10 +357,10 @@ PETSC_INTERN PetscErrorCode DMSetUp_Stag_3d(DM dm)
   }
 
   /* Check that we will not overflow 32-bit indices (slightly overconservative) */
-  if (!PetscDefined(USE_64BIT_INDICES)) {
-    PetscCheck(((PetscInt64)stag->n[0]) * ((PetscInt64)stag->n[1]) * ((PetscInt64)stag->n[2]) * ((PetscInt64)stag->entriesPerElement) <= (PetscInt64)PETSC_MPI_INT_MAX, PetscObjectComm((PetscObject)dm), PETSC_ERR_INT_OVERFLOW, "Mesh of %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " with %" PetscInt_FMT " entries per (interior) element is likely too large for 32-bit indices",
-               stag->n[0], stag->n[1], stag->n[2], stag->entriesPerElement);
-  }
+#if !defined(PETSC_USE_64BIT_INDICES)
+  PetscCheck(((PetscInt64)stag->n[0]) * ((PetscInt64)stag->n[1]) * ((PetscInt64)stag->n[2]) * ((PetscInt64)stag->entriesPerElement) <= (PetscInt64)PETSC_MPI_INT_MAX, PetscObjectComm((PetscObject)dm), PETSC_ERR_INT_OVERFLOW, "Mesh of %" PetscInt_FMT " x %" PetscInt_FMT " x %" PetscInt_FMT " with %" PetscInt_FMT " entries per (interior) element is likely too large for 32-bit indices",
+             stag->n[0], stag->n[1], stag->n[2], stag->entriesPerElement);
+#endif
 
   /* Compute offsets for each rank into global vectors
 
@@ -1633,7 +1633,7 @@ static PetscErrorCode DMStagSetUpBuildScatter_3d(DM dm, const PetscInt *globalOf
     PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)dm), entriesToTransferTotal, idxLocal, PETSC_OWN_POINTER, &isLocal));
     PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)dm), entriesToTransferTotal, idxGlobal, PETSC_OWN_POINTER, &isGlobal));
     PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)dm), 1, stag->entries, PETSC_DECIDE, NULL, &global));
-    PetscCall(VecCreateSeqWithArray(PETSC_COMM_SELF, stag->entriesPerElement, stag->entriesGhost, NULL, &local));
+    PetscCall(VecCreateSeqWithArray(PETSC_COMM_SELF, PetscMax(stag->entriesPerElement, 1), stag->entriesGhost, NULL, &local));
     PetscCall(VecScatterCreate(global, isGlobal, local, isLocal, &stag->gtol));
     PetscCall(VecDestroy(&global));
     PetscCall(VecDestroy(&local));
@@ -3273,7 +3273,7 @@ PETSC_INTERN PetscErrorCode DMStagPopulateLocalToGlobalInjective_3d(DM dm)
   {
     Vec local, global;
     PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)dm), 1, stag->entries, PETSC_DECIDE, NULL, &global));
-    PetscCall(VecCreateSeqWithArray(PETSC_COMM_SELF, stag->entriesPerElement, stag->entriesGhost, NULL, &local));
+    PetscCall(VecCreateSeqWithArray(PETSC_COMM_SELF, PetscMax(stag->entriesPerElement, 1), stag->entriesGhost, NULL, &local));
     PetscCall(VecScatterCreate(local, isLocal, global, isGlobal, &stag->ltog_injective));
     PetscCall(VecDestroy(&global));
     PetscCall(VecDestroy(&local));

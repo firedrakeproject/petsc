@@ -577,7 +577,7 @@ static PetscErrorCode KSPCGGetObjFcn_STCG(KSP ksp, PetscReal *o_fcn)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems PetscOptionsObject)
 {
   KSPCG_STCG *cg = (KSPCG_STCG *)ksp->data;
 
@@ -604,13 +604,13 @@ static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems *PetscO
    Use preconditioned conjugate gradient to compute an approximate minimizer of the quadratic function
 
    $$
-   q(s) = g^T * s + 0.5 * s^T * H * s
+   q(s) = g^T s + \frac{1}{2} s^T H s
    $$
 
    subject to the trust region constraint
 
    $$
-            || s || le delta,
+            || s || \le \delta,
    $$
 
    where
@@ -618,7 +618,6 @@ static PetscErrorCode KSPCGSetFromOptions_STCG(KSP ksp, PetscOptionItems *PetscO
      delta is the trust region radius,
      g is the gradient vector,
      H is the Hessian approximation, and
-     M is the positive definite preconditioner matrix.
 .ve
 
    `KSPConvergedReason` may include

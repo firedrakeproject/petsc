@@ -4,7 +4,7 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.version          = '2.2.2'
+    self.version          = '3.2.0'
     self.versionname      = 'PACKAGE_VERSION'
     self.gitcommit        = 'v'+self.version
     self.download         = ['git://https://github.com/liuyangzhuan/ButterflyPACK']
@@ -21,9 +21,9 @@ class Configure(config.package.CMakePackage):
     self.compilerFlags   = framework.require('config.compilerFlags', self)
     self.sharedLibraries = framework.require('PETSc.options.sharedLibraries', self)
     self.blasLapack     = framework.require('config.packages.BlasLapack',self)
-    self.scalapack      = framework.require('config.packages.scalapack',self)
+    self.scalapack      = framework.require('config.packages.ScaLAPACK',self)
     self.mpi            = framework.require('config.packages.MPI',self)
-    self.openmp         = framework.require('config.packages.openmp',self)
+    self.openmp         = framework.require('config.packages.OpenMP',self)
     self.deps           = [self.mpi,self.blasLapack,self.scalapack]
     self.odeps          = [self.openmp]
     return

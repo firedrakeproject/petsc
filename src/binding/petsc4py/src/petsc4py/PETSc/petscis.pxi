@@ -20,6 +20,8 @@ cdef extern from * nogil:
     PetscErrorCode ISCopy(PetscIS, PetscIS)
     PetscErrorCode ISAllGather(PetscIS, PetscIS*)
     PetscErrorCode ISInvertPermutation(PetscIS, PetscInt, PetscIS*)
+    PetscErrorCode ISPartitioningToNumbering(PetscIS, PetscIS*)
+    PetscErrorCode ISPartitioningCount(PetscIS, PetscInt, PetscInt*)
 
     PetscErrorCode ISGetSize(PetscIS, PetscInt*)
     PetscErrorCode ISGetLocalSize(PetscIS, PetscInt*)
@@ -74,6 +76,7 @@ cdef extern from * nogil:
     PetscErrorCode ISLocalToGlobalMappingSetType(PetscLGMap, PetscISLocalToGlobalMappingType)
     PetscErrorCode ISLocalToGlobalMappingSetFromOptions(PetscLGMap)
     PetscErrorCode ISLocalToGlobalMappingView(PetscLGMap, PetscViewer)
+    PetscErrorCode ISLocalToGlobalMappingLoad(PetscLGMap, PetscViewer)
     PetscErrorCode ISLocalToGlobalMappingDestroy(PetscLGMap*)
     PetscErrorCode ISLocalToGlobalMappingGetSize(PetscLGMap, PetscInt*)
     PetscErrorCode ISLocalToGlobalMappingGetBlockSize(PetscLGMap, PetscInt*)
@@ -180,28 +183,6 @@ cdef class _IS_buffer:
 
     def __exit__(self, *exc):
         return self.exit()
-
-    # buffer interface (legacy)
-
-    cdef Py_ssize_t getbuffer(self, void **p) except -1:
-        cdef PetscInt n = 0
-        if p != NULL:
-            self.acquire()
-            p[0] = <void*>self.data
-            n = self.size
-        elif self.iset != NULL:
-            CHKERR(ISGetLocalSize(self.iset, &n))
-        return <Py_ssize_t>(<size_t>n*sizeof(PetscInt))
-
-    def __getsegcount__(self, Py_ssize_t *lenp):
-        if lenp != NULL:
-            lenp[0] = self.getbuffer(NULL)
-        return 1
-
-    def __getreadbuffer__(self, Py_ssize_t idx, void **p):
-        if idx != 0: raise SystemError(
-            "accessing non-existent buffer segment")
-        return self.getbuffer(p)
 
     # NumPy array interface (legacy)
 

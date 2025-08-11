@@ -212,17 +212,20 @@ PetscErrorCode PetscSFSetGraphSection(PetscSF sf, PetscSection localSection, Pet
 - rootSection - Section defined on root space
 
   Output Parameters:
-+ remoteOffsets - root offsets in leaf storage, or `NULL`
++ remoteOffsets - root offsets in leaf storage, or `NULL`, its length will be the size of the chart of `leafSection`
 - leafSection   - Section defined on the leaf space
 
   Level: advanced
 
-  Fortran Notes:
-  In Fortran, use PetscSFDistributeSectionF90()
+  Note:
+  Caller must `PetscFree()` `remoteOffsets` if it was requested
+
+  Fortran Note:
+  Use `PetscSFDestroyRemoteOffsets()` when `remoteOffsets` is no longer needed.
 
 .seealso: `PetscSF`, `PetscSFCreate()`
 @*/
-PetscErrorCode PetscSFDistributeSection(PetscSF sf, PetscSection rootSection, PetscInt **remoteOffsets, PetscSection leafSection)
+PetscErrorCode PetscSFDistributeSection(PetscSF sf, PetscSection rootSection, PetscInt *remoteOffsets[], PetscSection leafSection)
 {
   PetscSF         embedSF;
   const PetscInt *indices;
@@ -273,7 +276,7 @@ PetscErrorCode PetscSFDistributeSection(PetscSF sf, PetscSection rootSection, Pe
   rpEnd = PetscMax(rpStart, rpEnd);
   /* see if we can avoid creating the embedded SF, since it can cost more than an allreduce */
   sub[0] = (PetscBool)(nroots != rpEnd - rpStart);
-  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, sub, (PetscMPIInt)(2 + numFields), MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)sf)));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, sub, 2 + numFields, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)sf)));
   if (sub[0]) {
     PetscCall(ISCreateStride(PETSC_COMM_SELF, rpEnd - rpStart, rpStart, 1, &selected));
     PetscCall(ISGetIndices(selected, &indices));
@@ -357,20 +360,23 @@ PetscErrorCode PetscSFDistributeSection(PetscSF sf, PetscSection rootSection, Pe
 
   Input Parameters:
 + sf          - The `PetscSF`
-. rootSection - Data layout of remote points for outgoing data (this is layout for SF roots)
-- leafSection - Data layout of local points for incoming data  (this is layout for SF leaves)
+. rootSection - Data layout of remote points for outgoing data (this is layout for roots)
+- leafSection - Data layout of local points for incoming data  (this is layout for leaves)
 
   Output Parameter:
-. remoteOffsets - Offsets for point data on remote processes (these are offsets from the root section), or NULL
+. remoteOffsets - Offsets for point data on remote processes (these are offsets from the root section), or `NULL`
 
   Level: developer
 
-  Fortran Notes:
-  In Fortran, use PetscSFCreateRemoteOffsetsF90()
+  Note:
+  Caller must `PetscFree()` `remoteOffsets` if it was requested
+
+  Fortran Note:
+  Use `PetscSFDestroyRemoteOffsets()` when `remoteOffsets` is no longer needed.
 
 .seealso: `PetscSF`, `PetscSFCreate()`
 @*/
-PetscErrorCode PetscSFCreateRemoteOffsets(PetscSF sf, PetscSection rootSection, PetscSection leafSection, PetscInt **remoteOffsets)
+PetscErrorCode PetscSFCreateRemoteOffsets(PetscSF sf, PetscSection rootSection, PetscSection leafSection, PetscInt *remoteOffsets[])
 {
   PetscSF         embedSF;
   const PetscInt *indices;
@@ -397,7 +403,7 @@ PetscErrorCode PetscSFCreateRemoteOffsets(PetscSF sf, PetscSection rootSection, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   PetscSFCreateSectionSF - Create an expanded `PetscSF` of dofs, assuming the input `PetscSF` relates points
 
   Collective
@@ -414,10 +420,7 @@ PetscErrorCode PetscSFCreateRemoteOffsets(PetscSF sf, PetscSection rootSection, 
   Level: advanced
 
   Notes:
-  `remoteOffsets` can be NULL if `sf` does not reference any points in leafSection
-
-  Fortran Notes:
-  In Fortran, use PetscSFCreateSectionSFF90()
+  `remoteOffsets` can be `NULL` if `sf` does not reference any points in leafSection
 
 .seealso: `PetscSF`, `PetscSFCreate()`
 @*/
@@ -458,8 +461,8 @@ PetscErrorCode PetscSFCreateSectionSF(PetscSF sf, PetscSection rootSection, Pets
   PetscCall(PetscMalloc1(numIndices, &remoteIndices));
   /* Create new index graph */
   for (i = 0, ind = 0; i < numPoints; ++i) {
-    PetscInt    localPoint = localPoints ? localPoints[i] : i;
-    PetscMPIInt rank       = (PetscMPIInt)remotePoints[i].rank;
+    PetscInt localPoint = localPoints ? localPoints[i] : i;
+    PetscInt rank       = remotePoints[i].rank;
 
     if ((localPoint >= lpStart) && (localPoint < lpEnd)) {
       PetscInt remoteOffset = remoteOffsets[localPoint - lpStart];
@@ -530,15 +533,15 @@ PetscErrorCode PetscSFCreateFromLayouts(PetscLayout rmap, PetscLayout lmap, Pets
 }
 
 /* TODO: handle nooffprocentries like MatZeroRowsMapLocal_Private, since this code is the same */
-PetscErrorCode PetscLayoutMapLocal(PetscLayout map, PetscInt N, const PetscInt idxs[], PetscInt *on, PetscInt **oidxs, PetscInt **ogidxs)
+PetscErrorCode PetscLayoutMapLocal(PetscLayout map, PetscInt N, const PetscInt idxs[], PetscInt *on, PetscInt *oidxs[], PetscInt *ogidxs[])
 {
   PetscInt    *owners = map->range;
   PetscInt     n      = map->n;
   PetscSF      sf;
-  PetscInt    *lidxs, *work = NULL;
+  PetscInt    *lidxs, *work = NULL, *ilocal;
   PetscSFNode *ridxs;
   PetscMPIInt  rank, p = 0;
-  PetscInt     r, len  = 0;
+  PetscInt     r, len = 0, nleaves = 0;
 
   PetscFunctionBegin;
   if (on) *on = 0; /* squelch -Wmaybe-uninitialized */
@@ -547,17 +550,22 @@ PetscErrorCode PetscLayoutMapLocal(PetscLayout map, PetscInt N, const PetscInt i
   PetscCall(PetscMalloc1(n, &lidxs));
   for (r = 0; r < n; ++r) lidxs[r] = -1;
   PetscCall(PetscMalloc1(N, &ridxs));
+  PetscCall(PetscMalloc1(N, &ilocal));
   for (r = 0; r < N; ++r) {
     const PetscInt idx = idxs[r];
-    PetscCheck(idx >= 0 && idx < map->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Index %" PetscInt_FMT " out of range [0,%" PetscInt_FMT ")", idx, map->N);
+
+    if (idx < 0) continue;
+    PetscCheck(idx < map->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Index %" PetscInt_FMT " out of range [0,%" PetscInt_FMT ")", idx, map->N);
     if (idx < owners[p] || owners[p + 1] <= idx) { /* short-circuit the search if the last p owns this idx too */
       PetscCall(PetscLayoutFindOwner(map, idx, &p));
     }
-    ridxs[r].rank  = p;
-    ridxs[r].index = idxs[r] - owners[p];
+    ridxs[nleaves].rank  = p;
+    ridxs[nleaves].index = idxs[r] - owners[p];
+    ilocal[nleaves]      = r;
+    nleaves++;
   }
   PetscCall(PetscSFCreate(map->comm, &sf));
-  PetscCall(PetscSFSetGraph(sf, n, N, NULL, PETSC_OWN_POINTER, ridxs, PETSC_OWN_POINTER));
+  PetscCall(PetscSFSetGraph(sf, n, nleaves, ilocal, PETSC_OWN_POINTER, ridxs, PETSC_OWN_POINTER));
   PetscCall(PetscSFReduceBegin(sf, MPIU_INT, (PetscInt *)idxs, lidxs, MPI_LOR));
   PetscCall(PetscSFReduceEnd(sf, MPIU_INT, (PetscInt *)idxs, lidxs, MPI_LOR));
   if (ogidxs) { /* communicate global idxs */
@@ -934,8 +942,8 @@ PetscErrorCode PetscSFCreateStridedSF(PetscSF sf, PetscInt bs, PetscInt ldr, Pet
   PetscCall(PetscSFBcastEnd(rankssf, MPIU_INT, &ldr, ldrs, MPI_REPLACE));
 
   for (PetscInt i = 0, rold = -1, lda = -1; i < nl; i++) {
-    const PetscMPIInt r  = (PetscMPIInt)iremote[i].rank;
-    const PetscInt    ii = iremote[i].index;
+    const PetscInt r  = iremote[i].rank;
+    const PetscInt ii = iremote[i].index;
 
     if (r == rank) lda = ldr;
     else if (rold != r) {
@@ -943,7 +951,7 @@ PetscErrorCode PetscSFCreateStridedSF(PetscSF sf, PetscInt bs, PetscInt ldr, Pet
 
       for (j = 0; j < nranks; j++)
         if (sfrremote[j].rank == r) break;
-      PetscCheck(j < nranks, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Unable to locate neighbor rank %d", r);
+      PetscCheck(j < nranks, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Unable to locate neighbor rank %" PetscInt_FMT, r);
       lda = ldrs[j];
     }
     rold = r;

@@ -27,7 +27,7 @@
       zero = 0
       n = 3
       PetscCallA(PetscOptionsGetInt(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-n',n,flg,ierr))
-      nz = 3*n - 4;
+      nz = 3*n - 4
 
       PetscCallA(VecCreateSeq(PETSC_COMM_SELF,n,rhs,ierr))
       PetscCallA(VecCreateSeq(PETSC_COMM_SELF,n,solution,ierr))
@@ -35,11 +35,11 @@
       PetscCallA(PetscShmgetAllocateArrayInt(zero,nz,colind,ierr))
       PetscCallA(PetscShmgetAllocateArrayScalar(zero,nz,a,ierr))
 
-      PetscCallA(VecGetArrayF90(rhs,b,ierr))
+      PetscCallA(VecGetArray(rhs,b,ierr))
       do i=1,n
         b(i) = 1.0
       enddo
-      PetscCallA(VecRestoreArrayF90(rhs,b,ierr))
+      PetscCallA(VecRestoreArray(rhs,b,ierr))
 
       rowptr(0) = 0
       colind(0) = 0
@@ -73,7 +73,7 @@
 
 !     Keep the same size and nonzero structure of the matrix but change its numerical entries
       do i=2,n-1
-         a(2+3*(i-2))  = 4.0;
+         a(2+3*(i-2))  = 4.0
       enddo
       PetscCallA(PetscObjectStateIncrease(J,ierr))
 

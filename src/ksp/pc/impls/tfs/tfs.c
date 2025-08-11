@@ -84,11 +84,6 @@ static PetscErrorCode PCSetUp_TFS(PC pc)
   PetscInt   *localtoglobal, ncol, i;
   PetscBool   ismpiaij;
 
-  /*
-  PetscBool      issymmetric;
-  Petsc Real tol = 0.0;
-  */
-
   PetscFunctionBegin;
   PetscCheck(A->cmap->N == A->rmap->N, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_SIZ, "matrix must be square");
   PetscCall(PetscObjectTypeCompare((PetscObject)pc->pmat, MATMPIAIJ, &ismpiaij));
@@ -106,8 +101,6 @@ static PetscErrorCode PCSetUp_TFS(PC pc)
   PetscCall(VecCreateSeqWithArray(PETSC_COMM_SELF, 1, a->B->cmap->n, NULL, &tfs->xo));
   tfs->nd = a->A->cmap->n;
 
-  /*  ierr =  MatIsSymmetric(A,tol,&issymmetric); */
-  /*  if (issymmetric) { */
   PetscCall(PetscBarrier((PetscObject)pc));
   if (A->symmetric == PETSC_BOOL3_TRUE) {
     tfs->xxt = XXT_new();
@@ -120,17 +113,6 @@ static PetscErrorCode PCSetUp_TFS(PC pc)
   }
 
   PetscCall(PetscFree(localtoglobal));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode PCSetFromOptions_TFS(PC pc, PetscOptionItems *PetscOptionsObject)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-static PetscErrorCode PCView_TFS(PC pc, PetscViewer viewer)
-{
-  PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -173,8 +155,6 @@ PETSC_EXTERN PetscErrorCode PCCreate_TFS(PC pc)
   pc->ops->applytranspose      = NULL;
   pc->ops->setup               = PCSetUp_TFS;
   pc->ops->destroy             = PCDestroy_TFS;
-  pc->ops->setfromoptions      = PCSetFromOptions_TFS;
-  pc->ops->view                = PCView_TFS;
   pc->ops->applyrichardson     = NULL;
   pc->ops->applysymmetricleft  = NULL;
   pc->ops->applysymmetricright = NULL;

@@ -1,10 +1,10 @@
 #include <../src/snes/impls/tr/trimpl.h> /*I   "petscsnes.h"   I*/
 
 typedef struct {
-  SNES snes;
-  PetscErrorCode (*convtest)(KSP, PetscInt, PetscReal, KSPConvergedReason *, void *);
-  PetscErrorCode (*convdestroy)(void *);
-  void *convctx;
+  SNES                  snes;
+  KSPConvergenceTestFn *convtest;
+  PetscCtxDestroyFn    *convdestroy;
+  void                 *convctx;
 } SNES_TR_KSPConverged_Ctx;
 
 const char *const SNESNewtonTRFallbackTypes[] = {"NEWTON", "CAUCHY", "DOGLEG", "SNESNewtonTRFallbackType", "SNES_TR_FALLBACK_", NULL};
@@ -73,12 +73,12 @@ static PetscErrorCode SNESTR_KSPConverged_Private(KSP ksp, PetscInt n, PetscReal
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESTR_KSPConverged_Destroy(void *cctx)
+static PetscErrorCode SNESTR_KSPConverged_Destroy(void **cctx)
 {
-  SNES_TR_KSPConverged_Ctx *ctx = (SNES_TR_KSPConverged_Ctx *)cctx;
+  SNES_TR_KSPConverged_Ctx *ctx = (SNES_TR_KSPConverged_Ctx *)*cctx;
 
   PetscFunctionBegin;
-  PetscCall((*ctx->convdestroy)(ctx->convctx));
+  PetscCall((*ctx->convdestroy)(&ctx->convctx));
   PetscCall(PetscFree(ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -485,7 +485,7 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
   Vec                       X, F, Y, G, W, GradF, YU, Yc;
   PetscInt                  maxits, lits;
   PetscReal                 rho, fnorm, gnorm = 0.0, xnorm = 0.0, delta, ynorm;
-  PetscReal                 deltaM, fk, fkp1, deltaqm = 0.0, gTy = 0.0, yTHy = 0.0;
+  PetscReal                 fk, fkp1, deltaqm = 0.0, gTy = 0.0, yTHy = 0.0;
   PetscReal                 auk, tauk, gfnorm, gfnorm_k, ycnorm, gTBg, objmin = 0.0, beta_k = 1.0;
   PC                        pc;
   Mat                       J, Jp;
@@ -494,7 +494,8 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
   SNES_TR_KSPConverged_Ctx *ctx;
   void                     *convctx;
   SNESObjectiveFn          *objective;
-  PetscErrorCode (*convtest)(KSP, PetscInt, PetscReal, KSPConvergedReason *, void *), (*convdestroy)(void *);
+  KSPConvergenceTestFn     *convtest;
+  PetscCtxDestroyFn        *convdestroy;
 
   PetscFunctionBegin;
   PetscCall(SNESGetObjective(snes, &objective, NULL));
@@ -544,7 +545,6 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
   snes->norm = fnorm;
   PetscCall(PetscObjectSAWsGrantAccess((PetscObject)snes));
   delta      = neP->delta0;
-  deltaM     = neP->deltaM;
   neP->delta = delta;
   PetscCall(SNESLogConvergenceHistory(snes, fnorm, 0));
 
@@ -741,7 +741,7 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
     /* update the size of the trust region */
     if (rho < neP->eta2) delta *= neP->t1;                     /* shrink the region */
     else if (rho > neP->eta3 && on_boundary) delta *= neP->t2; /* expand the region */
-    delta = PetscMin(delta, deltaM);                           /* but not greater than deltaM */
+    delta = PetscMin(delta, neP->deltaM);                      /* but not greater than deltaM */
 
     /* log 2-norm of update for moniroting routines */
     PetscCall(VecNorm(Y, NORM_2, &ynorm));
@@ -824,7 +824,7 @@ static PetscErrorCode SNESDestroy_NEWTONTR(SNES snes)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESSetFromOptions_NEWTONTR(SNES snes, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode SNESSetFromOptions_NEWTONTR(SNES snes, PetscOptionItems PetscOptionsObject)
 {
   SNES_NEWTONTR           *ctx = (SNES_NEWTONTR *)snes->data;
   SNESNewtonTRQNType       qn;

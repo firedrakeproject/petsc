@@ -144,8 +144,7 @@ PetscErrorCode PetscStrToArrayDestroy(int argc, char **args)
   Level: intermediate
 
   Note:
-  If `t` has previously been allocated then that memory is lost, you may need to `PetscStrArrayDestroy()`
-  the array before calling this routine.
+  Use `PetscStrArrayDestroy()` to free the memory.
 
 .seealso: `PetscStrallocpy()`, `PetscStrArrayDestroy()`, `PetscStrNArrayallocpy()`
 @*/
@@ -200,6 +199,9 @@ PetscErrorCode PetscStrArrayDestroy(char ***list)
 . t - the copied array string
 
   Level: intermediate
+
+  Note:
+  Use `PetscStrNArrayDestroy()` to free the memory.
 
 .seealso: `PetscStrallocpy()`, `PetscStrArrayallocpy()`, `PetscStrNArrayDestroy()`
 @*/
@@ -340,7 +342,7 @@ PetscErrorCode PetscStrendswithwhich(const char a[], const char *const *bs, Pets
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-struct _p_PetscToken {
+struct _n_PetscToken {
   char  token;
   char *array;
   char *current;
@@ -368,9 +370,11 @@ struct _p_PetscToken {
 
   If the separator character is + and the string is xxxx then the first and only token found will be a pointer to a `NULL` terminated xxxx
 
+  Do not change or free the value of `result`
+
 .seealso: `PetscToken`, `PetscTokenCreate()`, `PetscTokenDestroy()`
 @*/
-PetscErrorCode PetscTokenFind(PetscToken a, char *result[])
+PetscErrorCode PetscTokenFind(PetscToken a, const char *result[])
 {
   char *ptr, token;
 
@@ -477,8 +481,8 @@ PetscErrorCode PetscTokenDestroy(PetscToken *a)
 @*/
 PetscErrorCode PetscStrInList(const char str[], const char list[], char sep, PetscBool *found)
 {
-  PetscToken token;
-  char      *item;
+  PetscToken  token;
+  const char *item;
 
   PetscFunctionBegin;
   PetscAssertPointer(found, 4);
@@ -528,9 +532,12 @@ PetscErrorCode PetscGetPetscDir(const char *dir[])
   Level: developer
 
   Notes:
-  Replaces ${PETSC_ARCH},${PETSC_DIR},${PETSC_LIB_DIR},${DISPLAY},
-      ${HOMEDIRECTORY},${WORKINGDIRECTORY},${USERNAME}, ${HOSTNAME}, ${PETSC_MAKE} with appropriate values
-  as well as any environmental variables.
+  Replaces
+.vb
+    ${PETSC_ARCH}, ${PETSC_DIR}, ${PETSC_LIB_DIR}, ${DISPLAY},
+    ${HOMEDIRECTORY}, ${WORKINGDIRECTORY}, ${USERNAME}, ${HOSTNAME}, ${PETSC_MAKE}
+.ve
+  with appropriate values as well as any environmental variables.
 
   `PETSC_LIB_DIR` uses the environmental variable if it exists. `PETSC_ARCH` and `PETSC_DIR` use what
   PETSc was built with and do not use environmental variables.
@@ -550,7 +557,7 @@ PetscErrorCode PetscStrreplace(MPI_Comm comm, const char aa[], char b[], size_t 
   PetscFunctionBegin;
   PetscAssertPointer(aa, 2);
   PetscAssertPointer(b, 3);
-  if (aa == b) PetscCall(PetscStrallocpy(aa, (char **)&a));
+  if (aa == b) PetscCall(PetscStrallocpy(aa, &a));
   PetscCall(PetscMalloc1(len, &work));
 
   /* get values for replaced variables */
@@ -579,6 +586,11 @@ PetscErrorCode PetscStrreplace(MPI_Comm comm, const char aa[], char b[], size_t 
   /* replace the requested strings */
   PetscCall(PetscStrncpy(b, a, len));
   while (s[i]) {
+    PetscCall(PetscStrcmp(s[i], r[i], &flag));
+    if (flag) {
+      i++;
+      continue;
+    }
     PetscCall(PetscStrlen(s[i], &l));
     PetscCall(PetscStrstr(b, s[i], &par));
     while (par) {
@@ -599,7 +611,7 @@ PetscErrorCode PetscStrreplace(MPI_Comm comm, const char aa[], char b[], size_t 
   }
   i = 0;
   while (r[i]) {
-    tfree = (char *)r[i];
+    tfree = r[i];
     PetscCall(PetscFree(tfree));
     i++;
   }

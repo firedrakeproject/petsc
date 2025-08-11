@@ -469,7 +469,7 @@ static PetscErrorCode PCSetUp_Deflation(PC pc)
   PetscCall(PetscObjectGetComm((PetscObject)pc, &comm));
   PetscCall(PCGetOperators(pc, NULL, &Amat));
   if (!def->lvl && !def->prefix) PetscCall(PCGetOptionsPrefix(pc, &def->prefix));
-  if (def->lvl) PetscCall(PetscSNPrintf(prefix, sizeof(prefix), "%d_", (int)def->lvl));
+  if (def->lvl) PetscCall(PetscSNPrintf(prefix, sizeof(prefix), "%" PetscInt_FMT "_", def->lvl));
 
   /* compute a deflation space */
   if (def->W || def->Wt) {
@@ -715,6 +715,7 @@ static PetscErrorCode PCView_Deflation(PC pc, PetscViewer viewer)
   PetscBool     iascii;
 
   PetscFunctionBegin;
+  if (!pc->setupcalled) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
   if (iascii) {
     if (def->correct) PetscCall(PetscViewerASCIIPrintf(viewer, "using CP correction, factor = %g+%gi\n", (double)PetscRealPart(def->correctfact), (double)PetscImaginaryPart(def->correctfact)));
@@ -735,7 +736,7 @@ static PetscErrorCode PCView_Deflation(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_Deflation(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_Deflation(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_Deflation *def = (PC_Deflation *)pc->data;
 

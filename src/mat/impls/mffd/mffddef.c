@@ -75,7 +75,7 @@ static PetscErrorCode MatMFFDCompute_DS(MatMFFD ctx, Vec U, Vec a, PetscScalar *
     */
     if (PetscAbsScalar(dot) < umin * sum && PetscRealPart(dot) >= 0.0) dot = umin * sum;
     else if (PetscAbsScalar(dot) < 0.0 && PetscRealPart(dot) > -umin * sum) dot = -umin * sum;
-    *h = ctx->error_rel * dot / (nrm * nrm);
+    *h = dot * ctx->error_rel / (nrm * nrm);
     PetscCheck(!PetscIsInfOrNanScalar(*h), PETSC_COMM_SELF, PETSC_ERR_PLIB, "Differencing parameter is not a number sum = %g dot = %g norm = %g", (double)sum, (double)PetscRealPart(dot), (double)nrm);
   } else {
     *h = ctx->currenth;
@@ -100,7 +100,7 @@ static PetscErrorCode MatMFFDView_DS(MatMFFD ctx, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatMFFDSetFromOptions_DS(MatMFFD ctx, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode MatMFFDSetFromOptions_DS(MatMFFD ctx, PetscOptionItems PetscOptionsObject)
 {
   MatMFFD_DS *hctx = (MatMFFD_DS *)ctx->hctx;
 

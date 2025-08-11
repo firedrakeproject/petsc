@@ -571,7 +571,7 @@ static PetscErrorCode KSPView_LGMRES(KSP ksp, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPSetFromOptions_LGMRES(KSP ksp, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode KSPSetFromOptions_LGMRES(KSP ksp, PetscOptionItems PetscOptionsObject)
 {
   PetscInt    aug;
   KSP_LGMRES *lgmres = (KSP_LGMRES *)ksp->data;
@@ -640,7 +640,7 @@ static PetscErrorCode KSPLGMRESSetAugDim_LGMRES(KSP ksp, PetscInt aug_dim)
   Developer Notes:
   To run LGMRES(m, k) as described in {cite}`bjm2005`, use\:
 .vb
-   -ksp_gmres_restart <m+k>
+  -ksp_gmres_restart <m+k>
   -ksp_lgmres_augment <k>
 .ve
 

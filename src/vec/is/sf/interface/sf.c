@@ -355,6 +355,7 @@ PetscErrorCode PetscSFSetFromOptions(PetscSF sf)
   PetscCall(PetscOptionsFList("-sf_type", "PetscSF implementation type", "PetscSFSetType", PetscSFList, deft, type, sizeof(type), &flg));
   PetscCall(PetscSFSetType(sf, flg ? type : deft));
   PetscCall(PetscOptionsBool("-sf_rank_order", "sort composite points for gathers and scatters in rank order, gathers are non-deterministic otherwise", "PetscSFSetRankOrder", sf->rankorder, &sf->rankorder, NULL));
+  PetscCall(PetscOptionsBool("-sf_monitor", "monitor the MPI communication in sf", NULL, sf->monitor, &sf->monitor, NULL));
 #if defined(PETSC_HAVE_DEVICE)
   {
     char      backendstr[32] = {0};
@@ -427,10 +428,10 @@ PetscErrorCode PetscSFSetRankOrder(PetscSF sf, PetscBool flg)
 . nroots     - number of root vertices on the current process (these are possible targets for other process to attach leaves)
 . nleaves    - number of leaf vertices on the current process, each of these references a root on any process
 . ilocal     - locations of leaves in leafdata buffers, pass `NULL` for contiguous storage (locations must be >= 0, enforced
-during setup in debug mode)
+               during setup in debug mode)
 . localmode  - copy mode for `ilocal`
-. iremote    - remote locations of root vertices for each leaf on the current process (locations must be >= 0, enforced
-during setup in debug mode)
+. iremote    - remote locations of root vertices for each leaf on the current process, length is 2 `nleaves'
+               (locations must be >= 0, enforced during setup in debug mode)
 - remotemode - copy mode for `iremote`
 
   Level: intermediate
@@ -453,7 +454,7 @@ during setup in debug mode)
 
 .seealso: `PetscSF`, `PetscSFType`, `PetscSFCreate()`, `PetscSFView()`, `PetscSFGetGraph()`
 @*/
-PetscErrorCode PetscSFSetGraph(PetscSF sf, PetscInt nroots, PetscInt nleaves, PetscInt *ilocal, PetscCopyMode localmode, PetscSFNode *iremote, PetscCopyMode remotemode)
+PetscErrorCode PetscSFSetGraph(PetscSF sf, PetscInt nroots, PetscInt nleaves, PetscInt ilocal[], PetscCopyMode localmode, PetscSFNode iremote[], PetscCopyMode remotemode)
 {
   PetscBool unique, contiguous;
 
@@ -595,10 +596,12 @@ PetscErrorCode PetscSFSetGraphWithPattern(PetscSF sf, PetscLayout map, PetscSFPa
   PetscCallMPI(MPI_Comm_size(comm, &size));
 
   if (pattern == PETSCSF_PATTERN_ALLTOALL) {
+    PetscInt sizei = size;
+
     type = PETSCSFALLTOALL;
     PetscCall(PetscLayoutCreate(comm, &sf->map));
     PetscCall(PetscLayoutSetLocalSize(sf->map, size));
-    PetscCall(PetscLayoutSetSize(sf->map, (PetscInt)size * size));
+    PetscCall(PetscLayoutSetSize(sf->map, PetscSqr(sizei)));
     PetscCall(PetscLayoutSetUp(sf->map));
   } else {
     PetscCall(PetscLayoutGetLocalSize(map, &n));
@@ -796,16 +799,12 @@ PetscErrorCode PetscSFDuplicate(PetscSF sf, PetscSFDuplicateOption opt, PetscSF 
 
   The returned `ilocal` and `iremote` might contain values in different order than the input ones in `PetscSFSetGraph()`
 
-  Fortran Notes:
-  The returned `iremote` array is a copy and must be deallocated after use. Consequently, if you
-  want to update the graph, you must call `PetscSFSetGraph()` after modifying the `iremote` array.
-
-  To check for a `NULL` `ilocal` use
-$      if (loc(ilocal) == loc(PETSC_NULL_INTEGER)) then
+  Fortran Note:
+  Use `PetscSFRestoreGraph()` when access to the arrays is no longer needed
 
 .seealso: `PetscSF`, `PetscSFType`, `PetscSFCreate()`, `PetscSFView()`, `PetscSFSetGraph()`
 @*/
-PetscErrorCode PetscSFGetGraph(PetscSF sf, PetscInt *nroots, PetscInt *nleaves, const PetscInt **ilocal, const PetscSFNode **iremote)
+PetscErrorCode PetscSFGetGraph(PetscSF sf, PetscInt *nroots, PetscInt *nleaves, const PetscInt *ilocal[], const PetscSFNode *iremote[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 1);
@@ -911,7 +910,7 @@ PetscErrorCode PetscSFView(PetscSF sf, PetscViewer viewer)
       PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)sf), &rank));
       PetscCall(PetscViewerASCIIPushSynchronized(viewer));
       PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "[%d] Number of roots=%" PetscInt_FMT ", leaves=%" PetscInt_FMT ", remote ranks=%d\n", rank, sf->nroots, sf->nleaves, sf->nranks));
-      for (PetscInt i = 0; i < sf->nleaves; i++) PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "[%d] %" PetscInt_FMT " <- (%d,%" PetscInt_FMT ")\n", rank, sf->mine ? sf->mine[i] : i, (PetscMPIInt)sf->remote[i].rank, sf->remote[i].index));
+      for (PetscInt i = 0; i < sf->nleaves; i++) PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "[%d] %" PetscInt_FMT " <- (%" PetscInt_FMT ",%" PetscInt_FMT ")\n", rank, sf->mine ? sf->mine[i] : i, sf->remote[i].rank, sf->remote[i].index));
       PetscCall(PetscViewerFlush(viewer));
       PetscCall(PetscViewerGetFormat(viewer, &format));
       if (format == PETSC_VIEWER_ASCII_INFO_DETAIL) {
@@ -958,7 +957,7 @@ PetscErrorCode PetscSFView(PetscSF sf, PetscViewer viewer)
 
 .seealso: `PetscSF`, `PetscSFGetLeafRanks()`
 @*/
-PetscErrorCode PetscSFGetRootRanks(PetscSF sf, PetscMPIInt *nranks, const PetscMPIInt **ranks, const PetscInt **roffset, const PetscInt **rmine, const PetscInt **rremote)
+PetscErrorCode PetscSFGetRootRanks(PetscSF sf, PetscMPIInt *nranks, const PetscMPIInt *ranks[], const PetscInt *roffset[], const PetscInt *rmine[], const PetscInt *rremote[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 1);
@@ -994,7 +993,7 @@ PetscErrorCode PetscSFGetRootRanks(PetscSF sf, PetscMPIInt *nranks, const PetscM
 
 .seealso: `PetscSF`, `PetscSFGetRootRanks()`
 @*/
-PetscErrorCode PetscSFGetLeafRanks(PetscSF sf, PetscMPIInt *niranks, const PetscMPIInt **iranks, const PetscInt **ioffset, const PetscInt **irootloc)
+PetscErrorCode PetscSFGetLeafRanks(PetscSF sf, PetscMPIInt *niranks, const PetscMPIInt *iranks[], const PetscInt *ioffset[], const PetscInt *irootloc[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 1);
@@ -1112,14 +1111,14 @@ PetscErrorCode PetscSFSetUpRanks(PetscSF sf, MPI_Group dgroup)
     /* short circuit */
     if (orank != sf->remote[i].rank) {
       /* Search for index of iremote[i].rank in sf->ranks */
-      PetscCall(PetscFindMPIInt((PetscMPIInt)sf->remote[i].rank, sf->ndranks, sf->ranks, &irank));
+      PetscCall(PetscMPIIntCast(sf->remote[i].rank, &orank));
+      PetscCall(PetscFindMPIInt(orank, sf->ndranks, sf->ranks, &irank));
       if (irank < 0) {
-        PetscCall(PetscFindMPIInt((PetscMPIInt)sf->remote[i].rank, sf->nranks - sf->ndranks, sf->ranks + sf->ndranks, &irank));
+        PetscCall(PetscFindMPIInt(orank, sf->nranks - sf->ndranks, sf->ranks + sf->ndranks, &irank));
         if (irank >= 0) irank += sf->ndranks;
       }
-      orank = (PetscMPIInt)sf->remote[i].rank;
     }
-    PetscCheck(irank >= 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Could not find rank %d in array", (PetscMPIInt)sf->remote[i].rank);
+    PetscCheck(irank >= 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Could not find rank %d in array", orank);
     sf->rmine[sf->roffset[irank] + rcount[irank]]   = sf->mine ? sf->mine[i] : i;
     sf->rremote[sf->roffset[irank] + rcount[irank]] = sf->remote[i].index;
     rcount[irank]++;
@@ -1826,7 +1825,7 @@ PetscErrorCode PetscSFComputeDegreeBegin(PetscSF sf, const PetscInt *degree[])
 
 .seealso: `PetscSF`, `PetscSFGatherBegin()`, `PetscSFComputeDegreeBegin()`
 @*/
-PetscErrorCode PetscSFComputeDegreeEnd(PetscSF sf, const PetscInt **degree)
+PetscErrorCode PetscSFComputeDegreeEnd(PetscSF sf, const PetscInt *degree[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 1);
@@ -2253,6 +2252,8 @@ PetscErrorCode PetscSFCreateLocalSF_Private(PetscSF sf, PetscSF *out)
   PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 1);
   if (sf->ops->CreateLocalSF) PetscUseTypeMethod(sf, CreateLocalSF, out);
   else {
+    PetscMPIInt irank;
+
     /* Could use PetscSFCreateEmbeddedLeafSF, but since we know the comm is PETSC_COMM_SELF, we can make it fast */
     PetscCall(PetscObjectGetComm((PetscObject)sf, &comm));
     PetscCallMPI(MPI_Comm_rank(comm, &myrank));
@@ -2260,13 +2261,15 @@ PetscErrorCode PetscSFCreateLocalSF_Private(PetscSF sf, PetscSF *out)
     /* Find out local edges and build a local SF */
     PetscCall(PetscSFGetGraph(sf, &nroots, &nleaves, &ilocal, &iremote));
     for (i = lnleaves = 0; i < nleaves; i++) {
-      if (iremote[i].rank == (PetscInt)myrank) lnleaves++;
+      PetscCall(PetscMPIIntCast(iremote[i].rank, &irank));
+      if (irank == myrank) lnleaves++;
     }
     PetscCall(PetscMalloc1(lnleaves, &lilocal));
     PetscCall(PetscMalloc1(lnleaves, &liremote));
 
     for (i = j = 0; i < nleaves; i++) {
-      if (iremote[i].rank == (PetscInt)myrank) {
+      PetscCall(PetscMPIIntCast(iremote[i].rank, &irank));
+      if (irank == myrank) {
         lilocal[j]        = ilocal ? ilocal[i] : i; /* ilocal=NULL for contiguous storage */
         liremote[j].rank  = 0;                      /* rank in PETSC_COMM_SELF */
         liremote[j].index = iremote[i].index;

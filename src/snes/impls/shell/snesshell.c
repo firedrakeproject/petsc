@@ -15,7 +15,7 @@ typedef struct {
 - solve - the application-provided solver routine
 
   Calling sequence of `apply`:
-+ snes - the preconditioner, get the application context with `SNESShellGetContext()` provided with `SNESShelletContext()`
++ snes - the preconditioner, get the application context with `SNESShellGetContext()` provided with `SNESShellSetContext()`
 - xout - solution vector
 
   Level: advanced
@@ -30,36 +30,10 @@ PetscErrorCode SNESShellSetSolve(SNES snes, PetscErrorCode (*solve)(SNES snes, V
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESReset_Shell(SNES snes)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode SNESDestroy_Shell(SNES snes)
 {
   PetscFunctionBegin;
-  PetscCall(SNESReset_Shell(snes));
   PetscCall(PetscFree(snes->data));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode SNESSetUp_Shell(SNES snes)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode SNESSetFromOptions_Shell(SNES snes, PetscOptionItems *PetscOptionsObject)
-{
-  PetscFunctionBegin;
-  PetscOptionsHeadBegin(PetscOptionsObject, "SNES Shell options");
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode SNESView_Shell(SNES snes, PetscViewer viewer)
-{
-  PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -101,9 +75,6 @@ PetscErrorCode SNESShellGetContext(SNES snes, void *ctx)
 - ctx  - the context
 
   Level: advanced
-
-  Fortran Note:
-  The context can only be an integer or a `PetscObject` it cannot be a Fortran array or derived type.
 
 .seealso: [](ch_snes), `SNES`, `SNESSHELL`, `SNESCreateShell()`, `SNESShellGetContext()`
 @*/
@@ -152,12 +123,8 @@ PETSC_EXTERN PetscErrorCode SNESCreate_Shell(SNES snes)
   SNES_Shell *shell;
 
   PetscFunctionBegin;
-  snes->ops->destroy        = SNESDestroy_Shell;
-  snes->ops->setup          = SNESSetUp_Shell;
-  snes->ops->setfromoptions = SNESSetFromOptions_Shell;
-  snes->ops->view           = SNESView_Shell;
-  snes->ops->solve          = SNESSolve_Shell;
-  snes->ops->reset          = SNESReset_Shell;
+  snes->ops->destroy = SNESDestroy_Shell;
+  snes->ops->solve   = SNESSolve_Shell;
 
   snes->usesksp = PETSC_FALSE;
   snes->usesnpc = PETSC_FALSE;

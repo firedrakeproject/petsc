@@ -1,8 +1,8 @@
 !
 !   Example of using PetscOptionsBegin in Fortran
 program ex9f
-#include "petsc/finclude/petsc.h"
-    use petsc
+#include "petsc/finclude/petscsys.h"
+    use petscsys
     implicit none
 
     PetscReal,Parameter                       :: PReal = 1.0
@@ -108,6 +108,7 @@ end program ex9f
 !      requires: defined(PETSC_USING_F2003) defined(PETSC_USING_F90FREEFORM) !complex
 !
 !   test:
+!      output_file: output/empty.out
 !
 !   test:
 !      suffix: 2

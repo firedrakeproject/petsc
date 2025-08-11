@@ -937,23 +937,8 @@ PetscErrorCode MatSetOption_SeqSELL(Mat A, MatOption op, PetscBool flg)
   case MAT_UNUSED_NONZERO_LOCATION_ERR:
     a->nounused = (flg ? -1 : 0);
     break;
-  case MAT_FORCE_DIAGONAL_ENTRIES:
-  case MAT_IGNORE_OFF_PROC_ENTRIES:
-  case MAT_USE_HASH_TABLE:
-  case MAT_SORTED_FULL:
-    PetscCall(PetscInfo(A, "Option %s ignored\n", MatOptions[op]));
-    break;
-  case MAT_SPD:
-  case MAT_SYMMETRIC:
-  case MAT_STRUCTURALLY_SYMMETRIC:
-  case MAT_HERMITIAN:
-  case MAT_SYMMETRY_ETERNAL:
-  case MAT_STRUCTURAL_SYMMETRY_ETERNAL:
-  case MAT_SPD_ETERNAL:
-    /* These options are handled directly by MatSetOption() */
-    break;
   default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "unknown option %d", op);
+    break;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1257,7 +1242,7 @@ static PetscErrorCode MatView_SeqSELL_ASCII(Mat A, PetscViewer viewer)
           PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->colidx[j], (double)PetscRealPart(1.0 / a->val[j])));
         }
 #else
-        PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->colidx[j], (double)(1.0 / a->val[j])));
+        PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->colidx[j], (double)(1 / a->val[j])));
 #endif
 
         /* U part */
@@ -1863,10 +1848,10 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSELL,
                                        /* 69*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
+                                       MatFDColoringApply_AIJ, /* reuse the FDColoring function for AIJ */
                                        NULL,
                                        /* 74*/ NULL,
-                                       MatFDColoringApply_AIJ, /* reuse the FDColoring function for AIJ */
+                                       NULL,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -1884,7 +1869,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSELL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
+                                       MatConjugate_SeqSELL,
                                        /* 94*/ NULL,
                                        NULL,
                                        NULL,
@@ -1893,9 +1878,9 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSELL,
                                        /* 99*/ NULL,
                                        NULL,
                                        NULL,
-                                       MatConjugate_SeqSELL,
                                        NULL,
-                                       /*104*/ NULL,
+                                       NULL,
+                                       /*104*/ MatMissingDiagonal_SeqSELL,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -1904,7 +1889,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSELL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       MatMissingDiagonal_SeqSELL,
+                                       NULL,
                                        /*114*/ NULL,
                                        NULL,
                                        NULL,
@@ -1920,7 +1905,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSELL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       /*129*/ NULL,
+                                       /*129*/ MatFDColoringSetUp_SeqXAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -1931,19 +1916,6 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSELL,
                                        NULL,
                                        NULL,
                                        /*139*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       MatFDColoringSetUp_SeqXAIJ,
-                                       NULL,
-                                       /*144*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*150*/ NULL,
-                                       NULL,
-                                       NULL,
                                        NULL,
                                        NULL,
                                        NULL};

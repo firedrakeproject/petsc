@@ -11,7 +11,7 @@ cdef extern from * nogil:
     PetscDMPlexTransformType DMPLEXREFINETOBOX
     PetscDMPlexTransformType DMPLEXREFINETOSIMPLEX
     PetscDMPlexTransformType DMPLEXREFINE1D
-    PetscDMPlexTransformType DMPLEXEXTRUDE
+    PetscDMPlexTransformType DMPLEXEXTRUDETYPE
     PetscDMPlexTransformType DMPLEXTRANSFORMFILTER
 
     PetscErrorCode DMPlexCreate(MPI_Comm, PetscDM*)
@@ -80,6 +80,7 @@ cdef extern from * nogil:
     PetscErrorCode DMPlexCreateExodus(MPI_Comm, int, PetscBool, PetscDM*)
     PetscErrorCode DMPlexCreateExodusFromFile(MPI_Comm, const char[], PetscBool, PetscDM*)
     PetscErrorCode DMPlexCreateGmsh(MPI_Comm, PetscViewer, PetscBool, PetscDM*)
+    PetscErrorCode DMPlexCreateCoordinateSpace(PetscDM, PetscInt, PetscBool, PetscBool)
 
     PetscErrorCode DMPlexSetAdjacencyUseAnchors(PetscDM, PetscBool)
     PetscErrorCode DMPlexGetAdjacencyUseAnchors(PetscDM, PetscBool*)

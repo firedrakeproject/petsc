@@ -7,9 +7,9 @@ typedef struct {
       Same with SNESTR_KSPConverged_Private, SNESTR_KSPConverged_Destroy, and SNESTR_Converged_Private
  */
 
-  PetscErrorCode (*convtest)(KSP, PetscInt, PetscReal, KSPConvergedReason *, void *);
-  PetscErrorCode (*convdestroy)(void *);
-  void *convctx;
+  KSPConvergenceTestFn *convtest;
+  PetscCtxDestroyFn    *convdestroy;
+  void                 *convctx;
 } SNES_TRDC_KSPConverged_Ctx;
 
 static PetscErrorCode SNESNewtonTRSetTolerances_TRDC(SNES snes, PetscReal delta_min, PetscReal delta_max, PetscReal delta_0)
@@ -47,20 +47,18 @@ static PetscErrorCode SNESTRDC_KSPConverged_Private(KSP ksp, PetscInt n, PetscRe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESTRDC_KSPConverged_Destroy(void *cctx)
+static PetscErrorCode SNESTRDC_KSPConverged_Destroy(void **cctx)
 {
-  SNES_TRDC_KSPConverged_Ctx *ctx = (SNES_TRDC_KSPConverged_Ctx *)cctx;
+  SNES_TRDC_KSPConverged_Ctx *ctx = (SNES_TRDC_KSPConverged_Ctx *)*cctx;
 
   PetscFunctionBegin;
-  PetscCall((*ctx->convdestroy)(ctx->convctx));
+  PetscCall((*ctx->convdestroy)(&ctx->convctx));
   PetscCall(PetscFree(ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*
-   SNESTRDC_Converged_Private -test convergence JUST for
-   the trust region tolerance.
-
+   SNESTRDC_Converged_Private -test convergence JUST for the trust region tolerance.
 */
 static PetscErrorCode SNESTRDC_Converged_Private(SNES snes, PetscInt it, PetscReal xnorm, PetscReal pnorm, PetscReal fnorm, SNESConvergedReason *reason, void *dummy)
 {
@@ -309,8 +307,9 @@ static PetscErrorCode SNESSolve_NEWTONTRDC(SNES snes)
   SNESConvergedReason         reason   = SNES_CONVERGED_ITERATING;
   PetscBool                   breakout = PETSC_FALSE;
   SNES_TRDC_KSPConverged_Ctx *ctx;
-  PetscErrorCode (*convtest)(KSP, PetscInt, PetscReal, KSPConvergedReason *, void *), (*convdestroy)(void *);
-  void *convctx;
+  KSPConvergenceTestFn       *convtest;
+  PetscCtxDestroyFn          *convdestroy;
+  void                       *convctx;
 
   PetscFunctionBegin;
   maxits = snes->max_its;  /* maximum number of iterations */
@@ -583,22 +582,15 @@ static PetscErrorCode SNESSetUp_NEWTONTRDC(SNES snes)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESReset_NEWTONTRDC(SNES snes)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode SNESDestroy_NEWTONTRDC(SNES snes)
 {
   PetscFunctionBegin;
-  PetscCall(SNESReset_NEWTONTRDC(snes));
   PetscCall(PetscObjectComposeFunction((PetscObject)snes, "SNESNewtonTRSetTolerances_C", NULL));
   PetscCall(PetscFree(snes->data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESSetFromOptions_NEWTONTRDC(SNES snes, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode SNESSetFromOptions_NEWTONTRDC(SNES snes, PetscOptionItems PetscOptionsObject)
 {
   SNES_NEWTONTRDC *ctx = (SNES_NEWTONTRDC *)snes->data;
 
@@ -673,7 +665,6 @@ PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONTRDC(SNES snes)
   snes->ops->destroy        = SNESDestroy_NEWTONTRDC;
   snes->ops->setfromoptions = SNESSetFromOptions_NEWTONTRDC;
   snes->ops->view           = SNESView_NEWTONTRDC;
-  snes->ops->reset          = SNESReset_NEWTONTRDC;
 
   snes->usesksp = PETSC_TRUE;
   snes->usesnpc = PETSC_FALSE;

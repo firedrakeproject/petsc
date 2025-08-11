@@ -1,5 +1,4 @@
 #include <../src/mat/impls/htool/htool.hpp> /*I "petscmat.h" I*/
-#include <petscblaslapack.h>
 #include <set>
 
 const char *const MatHtoolCompressorTypes[] = {"sympartialACA", "fullACA", "SVD"};
@@ -348,7 +347,7 @@ static PetscErrorCode MatGetRow_Htool(Mat A, PetscInt row, PetscInt *nz, PetscIn
     if (a->wrapper) a->wrapper->copy_submatrix(1, A->cmap->N, &row, idxc, *v);
     else reinterpret_cast<htool::VirtualGenerator<PetscScalar> *>(a->kernelctx)->copy_submatrix(1, A->cmap->N, &row, idxc, *v);
     PetscCall(PetscBLASIntCast(A->cmap->N, &bn));
-    PetscCallBLAS("BLASscal", BLASscal_(&bn, &scale, *v, &one));
+    PetscCallCXX(htool::Blas<PetscScalar>::scal(&bn, &scale, *v, &one));
     if (row < A->cmap->N) (*v)[row] += shift;
   }
   if (!idx) PetscCall(PetscFree(idxc));
@@ -363,7 +362,7 @@ static PetscErrorCode MatRestoreRow_Htool(Mat, PetscInt, PetscInt *, PetscInt **
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatSetFromOptions_Htool(Mat A, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode MatSetFromOptions_Htool(Mat A, PetscOptionItems PetscOptionsObject)
 {
   Mat_Htool *a;
   PetscInt   n;
@@ -807,7 +806,7 @@ static PetscErrorCode MatTranspose_Htool(Mat A, MatReuse reuse, Mat *B)
     PetscCall(MatSetType(C, ((PetscObject)A)->type_name));
     PetscCall(MatSetUp(C));
     PetscCall(PetscNew(&kernelt));
-    PetscCall(PetscObjectContainerCompose((PetscObject)C, "KernelTranspose", kernelt, PetscContainerUserDestroyDefault));
+    PetscCall(PetscObjectContainerCompose((PetscObject)C, "KernelTranspose", kernelt, PetscCtxDestroyDefault));
   } else {
     C = *B;
     PetscCall(PetscObjectQuery((PetscObject)C, "KernelTranspose", (PetscObject *)&container));

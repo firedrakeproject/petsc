@@ -34,8 +34,10 @@ static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt, TSAdaptType default_t
 + -ts_type <type>                                                    - EULER, BEULER, SUNDIALS, PSEUDO, CN, RK, THETA, ALPHA, GLLE,  SSP, GLEE, BSYMP, IRK, see `TSType`
 . -ts_save_trajectory                                                - checkpoint the solution at each time-step
 . -ts_max_time <time>                                                - maximum time to compute to
-. -ts_time_span <t0,...tf>                                           - sets the time span, solutions are computed and stored for each indicated time
-. -ts_max_steps <steps>                                              - maximum number of time-steps to take
+. -ts_time_span <t0,...tf>                                           - sets the time span, solutions are computed and stored for each indicated time, init_time and max_time are set
+. -ts_eval_times <t0,...tn>                                          - time points where solutions are computed and stored for each indicated time
+. -ts_max_steps <steps>                                              - maximum time-step number to execute until (possibly with nonzero starting value)
+. -ts_run_steps <steps>                                              - maximum number of time steps for TSSolve to take on each call
 . -ts_init_time <time>                                               - initial time to start computation
 . -ts_final_time <time>                                              - final time to compute to (deprecated: use `-ts_max_time`)
 . -ts_dt <dt>                                                        - initial time step
@@ -51,6 +53,7 @@ static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt, TSAdaptType default_t
 . -ts_fd_color                                                       - Use finite differences with coloring to compute IJacobian
 . -ts_monitor                                                        - print information at each timestep
 . -ts_monitor_cancel                                                 - Cancel all monitors
+. -ts_monitor_wall_clock_time                                        - Monitor wall-clock time, KSP iterations, and SNES iterations per step
 . -ts_monitor_lg_solution                                            - Monitor solution graphically
 . -ts_monitor_lg_error                                               - Monitor error graphically
 . -ts_monitor_error                                                  - Monitors norm of error
@@ -64,6 +67,7 @@ static PetscErrorCode TSAdaptSetDefaultType(TSAdapt adapt, TSAdaptType default_t
 . -ts_monitor_draw_error                                             - Monitor error graphically, requires use to have provided TSSetSolutionFunction()
 . -ts_monitor_solution [ascii binary draw][:filename][:viewerformat] - monitors the solution at each timestep
 . -ts_monitor_solution_interval <interval>                           - output once every interval (default=1) time steps. Use -1 to only output at the end of the simulation
+. -ts_monitor_solution_skip_initial                                  - skip writing of initial condition
 . -ts_monitor_solution_vtk <filename.vts,filename.vtu>               - Save each time step to a binary file, use filename-%%03" PetscInt_FMT ".vts (filename-%%03" PetscInt_FMT ".vtu)
 . -ts_monitor_solution_vtk_interval <interval>                       - output once every interval (default=1) time steps. Use -1 to only output at the end of the simulation
 - -ts_monitor_envelope                                               - determine maximum and minimum value of each component of the solution over the solution time
@@ -86,8 +90,8 @@ PetscErrorCode TSSetFromOptions(TS ts)
 {
   PetscBool              opt, flg, tflg;
   char                   monfilename[PETSC_MAX_PATH_LEN];
-  PetscReal              time_step, tspan[100];
-  PetscInt               nt = PETSC_STATIC_ARRAY_LENGTH(tspan);
+  PetscReal              time_step, eval_times[100];
+  PetscInt               num_eval_times = PETSC_STATIC_ARRAY_LENGTH(eval_times);
   TSExactFinalTimeOption eftopt;
   char                   dir[16];
   TSIFunctionFn         *ifun;
@@ -110,9 +114,14 @@ PetscErrorCode TSSetFromOptions(TS ts)
   /* Handle generic TS options */
   PetscCall(PetscOptionsDeprecated("-ts_final_time", "-ts_max_time", "3.10", NULL));
   PetscCall(PetscOptionsReal("-ts_max_time", "Maximum time to run to", "TSSetMaxTime", ts->max_time, &ts->max_time, NULL));
-  PetscCall(PetscOptionsRealArray("-ts_time_span", "Time span", "TSSetTimeSpan", tspan, &nt, &flg));
-  if (flg) PetscCall(TSSetTimeSpan(ts, nt, tspan));
-  PetscCall(PetscOptionsInt("-ts_max_steps", "Maximum number of time steps", "TSSetMaxSteps", ts->max_steps, &ts->max_steps, NULL));
+  PetscCall(PetscOptionsRealArray("-ts_time_span", "Time span", "TSSetTimeSpan", eval_times, &num_eval_times, &flg));
+  if (flg) PetscCall(TSSetTimeSpan(ts, num_eval_times, eval_times));
+  num_eval_times = PETSC_STATIC_ARRAY_LENGTH(eval_times);
+  PetscCall(PetscOptionsRealArray("-ts_eval_times", "Evaluation time points", "TSSetEvaluationTimes", eval_times, &num_eval_times, &opt));
+  PetscCheck(flg != opt || (!flg && !opt), PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONG, "May not provide -ts_time_span and -ts_eval_times simultaneously");
+  if (opt) PetscCall(TSSetEvaluationTimes(ts, num_eval_times, eval_times));
+  PetscCall(PetscOptionsInt("-ts_max_steps", "Maximum time step number to execute to (possibly with non-zero starting value)", "TSSetMaxSteps", ts->max_steps, &ts->max_steps, NULL));
+  PetscCall(PetscOptionsInt("-ts_run_steps", "Maximum number of time steps to take on each call to TSSolve()", "TSSetRunSteps", ts->run_steps, &ts->run_steps, NULL));
   PetscCall(PetscOptionsReal("-ts_init_time", "Initial time", "TSSetTime", ts->ptime, &ts->ptime, NULL));
   PetscCall(PetscOptionsReal("-ts_dt", "Initial time step", "TSSetTimeStep", ts->time_step, &time_step, &flg));
   if (flg) PetscCall(TSSetTimeStep(ts, time_step));
@@ -139,12 +148,12 @@ PetscErrorCode TSSetFromOptions(TS ts)
 #endif
 
   /* Monitor options */
-  PetscCall(PetscOptionsInt("-ts_monitor_frequency", "Number of time steps between monitor output", "TSMonitorSetFrequency", ts->monitorFrequency, &ts->monitorFrequency, NULL));
+  PetscCall(PetscOptionsDeprecated("-ts_monitor_frequency", "-ts_dmswarm_monitor_moments_interval", "3.24", "Retired in favor of monitor-specific intervals (ts_dmswarm_monitor_moments was the only monitor to use ts_monitor_frequency)"));
   PetscCall(TSMonitorSetFromOptions(ts, "-ts_monitor", "Monitor time and timestep size", "TSMonitorDefault", TSMonitorDefault, NULL));
+  PetscCall(TSMonitorSetFromOptions(ts, "-ts_monitor_wall_clock_time", "Monitor wall-clock time, KSP iterations, and SNES iterations per step", "TSMonitorWallClockTime", TSMonitorWallClockTime, TSMonitorWallClockTimeSetUp));
   PetscCall(TSMonitorSetFromOptions(ts, "-ts_monitor_extreme", "Monitor extreme values of the solution", "TSMonitorExtreme", TSMonitorExtreme, NULL));
-  PetscCall(TSMonitorSetFromOptions(ts, "-ts_monitor_solution", "View the solution at each timestep", "TSMonitorSolution", TSMonitorSolution, NULL));
+  PetscCall(TSMonitorSetFromOptions(ts, "-ts_monitor_solution", "View the solution at each timestep", "TSMonitorSolution", TSMonitorSolution, TSMonitorSolutionSetup));
   PetscCall(TSMonitorSetFromOptions(ts, "-ts_dmswarm_monitor_moments", "Monitor moments of particle distribution", "TSDMSwarmMonitorMoments", TSDMSwarmMonitorMoments, NULL));
-
   PetscCall(PetscOptionsString("-ts_monitor_python", "Use Python function", "TSMonitorSet", NULL, monfilename, sizeof(monfilename), &flg));
   if (flg) PetscCall(PetscPythonMonitorSet((PetscObject)ts, monfilename));
 
@@ -160,12 +169,12 @@ PetscErrorCode TSSetFromOptions(TS ts)
     if (net) {
       TSMonitorLGCtxNetwork ctx;
       PetscCall(TSMonitorLGCtxNetworkCreate(ts, NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 600, 400, howoften, &ctx));
-      PetscCall(TSMonitorSet(ts, TSMonitorLGCtxNetworkSolution, ctx, (PetscErrorCode (*)(void **))TSMonitorLGCtxNetworkDestroy));
+      PetscCall(TSMonitorSet(ts, TSMonitorLGCtxNetworkSolution, ctx, (PetscCtxDestroyFn *)TSMonitorLGCtxNetworkDestroy));
       PetscCall(PetscOptionsBool("-ts_monitor_lg_solution_semilogy", "Plot the solution with a semi-log axis", "", ctx->semilogy, &ctx->semilogy, NULL));
     } else {
       TSMonitorLGCtx ctx;
       PetscCall(TSMonitorLGCtxCreate(PETSC_COMM_SELF, NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, howoften, &ctx));
-      PetscCall(TSMonitorSet(ts, TSMonitorLGSolution, ctx, (PetscErrorCode (*)(void **))TSMonitorLGCtxDestroy));
+      PetscCall(TSMonitorSet(ts, TSMonitorLGSolution, ctx, (PetscCtxDestroyFn *)TSMonitorLGCtxDestroy));
     }
   }
 
@@ -176,7 +185,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_lg_error", "Monitor error graphically", "TSMonitorLGError", howoften, &howoften, NULL));
     PetscCall(TSMonitorLGCtxCreate(PETSC_COMM_SELF, NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorLGError, ctx, (PetscErrorCode (*)(void **))TSMonitorLGCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorLGError, ctx, (PetscCtxDestroyFn *)TSMonitorLGCtxDestroy));
   }
   PetscCall(TSMonitorSetFromOptions(ts, "-ts_monitor_error", "View the error at each timestep", "TSMonitorError", TSMonitorError, NULL));
 
@@ -187,7 +196,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_lg_timestep", "Monitor timestep size graphically", "TSMonitorLGTimeStep", howoften, &howoften, NULL));
     PetscCall(TSMonitorLGCtxCreate(PetscObjectComm((PetscObject)ts), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorLGTimeStep, ctx, (PetscErrorCode (*)(void **))TSMonitorLGCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorLGTimeStep, ctx, (PetscCtxDestroyFn *)TSMonitorLGCtxDestroy));
   }
   PetscCall(PetscOptionsName("-ts_monitor_lg_timestep_log", "Monitor log timestep size graphically", "TSMonitorLGTimeStep", &opt));
   if (opt) {
@@ -196,7 +205,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_lg_timestep_log", "Monitor log timestep size graphically", "TSMonitorLGTimeStep", howoften, &howoften, NULL));
     PetscCall(TSMonitorLGCtxCreate(PetscObjectComm((PetscObject)ts), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorLGTimeStep, ctx, (PetscErrorCode (*)(void **))TSMonitorLGCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorLGTimeStep, ctx, (PetscCtxDestroyFn *)TSMonitorLGCtxDestroy));
     ctx->semilogy = PETSC_TRUE;
   }
 
@@ -207,7 +216,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_lg_snes_iterations", "Monitor number nonlinear iterations for each timestep graphically", "TSMonitorLGSNESIterations", howoften, &howoften, NULL));
     PetscCall(TSMonitorLGCtxCreate(PetscObjectComm((PetscObject)ts), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorLGSNESIterations, ctx, (PetscErrorCode (*)(void **))TSMonitorLGCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorLGSNESIterations, ctx, (PetscCtxDestroyFn *)TSMonitorLGCtxDestroy));
   }
   PetscCall(PetscOptionsName("-ts_monitor_lg_ksp_iterations", "Monitor number nonlinear iterations for each timestep graphically", "TSMonitorLGKSPIterations", &opt));
   if (opt) {
@@ -216,7 +225,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_lg_ksp_iterations", "Monitor number nonlinear iterations for each timestep graphically", "TSMonitorLGKSPIterations", howoften, &howoften, NULL));
     PetscCall(TSMonitorLGCtxCreate(PetscObjectComm((PetscObject)ts), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 400, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorLGKSPIterations, ctx, (PetscErrorCode (*)(void **))TSMonitorLGCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorLGKSPIterations, ctx, (PetscCtxDestroyFn *)TSMonitorLGCtxDestroy));
   }
   PetscCall(PetscOptionsName("-ts_monitor_sp_eig", "Monitor eigenvalues of linearized operator graphically", "TSMonitorSPEig", &opt));
   if (opt) {
@@ -225,7 +234,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_sp_eig", "Monitor eigenvalues of linearized operator graphically", "TSMonitorSPEig", howoften, &howoften, NULL));
     PetscCall(TSMonitorSPEigCtxCreate(PETSC_COMM_SELF, NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 300, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorSPEig, ctx, (PetscErrorCode (*)(void **))TSMonitorSPEigCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorSPEig, ctx, (PetscCtxDestroyFn *)TSMonitorSPEigCtxDestroy));
   }
   PetscCall(PetscOptionsName("-ts_monitor_sp_swarm", "Display particle phase space from the DMSwarm", "TSMonitorSPSwarm", &opt));
   if (opt) {
@@ -244,7 +253,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
       PetscCall(PetscOptionsBool("-ts_monitor_sp_swarm_phase", "Plot in phase space rather than coordinate space", "TSMonitorSPSwarm", phase, &phase, NULL));
       PetscCall(PetscOptionsBool("-ts_monitor_sp_swarm_multi_species", "Color particles by particle species", "TSMonitorSPSwarm", multispecies, &multispecies, NULL));
       PetscCall(TSMonitorSPCtxCreate(PetscObjectComm((PetscObject)ts), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 300, 300, howoften, retain, phase, multispecies, &ctx));
-      PetscCall(TSMonitorSet(ts, TSMonitorSPSwarmSolution, ctx, (PetscErrorCode (*)(void **))TSMonitorSPCtxDestroy));
+      PetscCall(TSMonitorSet(ts, TSMonitorSPSwarmSolution, ctx, (PetscCtxDestroyFn *)TSMonitorSPCtxDestroy));
     }
   }
   PetscCall(PetscOptionsName("-ts_monitor_hg_swarm", "Display particle histogram from the DMSwarm", "TSMonitorHGSwarm", &opt));
@@ -271,7 +280,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
       PetscCall(PetscOptionsInt("-ts_monitor_hg_swarm_species", "Number of species to histogram", "TSMonitorHGSwarm", Ns, &Ns, NULL));
       PetscCall(PetscOptionsInt("-ts_monitor_hg_swarm_bins", "Number of histogram bins", "TSMonitorHGSwarm", Nb, &Nb, NULL));
       PetscCall(TSMonitorHGCtxCreate(PetscObjectComm((PetscObject)ts), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 300, 300, howoften, Ns, Nb, velocity, &ctx));
-      PetscCall(TSMonitorSet(ts, TSMonitorHGSwarmSolution, ctx, (PetscErrorCode (*)(void **))TSMonitorHGCtxDestroy));
+      PetscCall(TSMonitorSet(ts, TSMonitorHGSwarmSolution, ctx, (PetscCtxDestroyFn *)TSMonitorHGCtxDestroy));
     }
   }
   opt = PETSC_FALSE;
@@ -282,7 +291,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_draw_solution", "Monitor solution graphically", "TSMonitorDrawSolution", howoften, &howoften, NULL));
     PetscCall(TSMonitorDrawCtxCreate(PetscObjectComm((PetscObject)ts), NULL, "Computed Solution", PETSC_DECIDE, PETSC_DECIDE, 300, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorDrawSolution, ctx, (PetscErrorCode (*)(void **))TSMonitorDrawCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorDrawSolution, ctx, (PetscCtxDestroyFn *)TSMonitorDrawCtxDestroy));
   }
   opt = PETSC_FALSE;
   PetscCall(PetscOptionsName("-ts_monitor_draw_solution_phase", "Monitor solution graphically", "TSMonitorDrawSolutionPhase", &opt));
@@ -300,7 +309,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
     PetscCall(PetscViewerDrawGetDrawAxis(ctx->viewer, 0, &axis));
     PetscCall(PetscDrawAxisSetLimits(axis, bounds[0], bounds[2], bounds[1], bounds[3]));
     PetscCall(PetscDrawAxisSetLabels(axis, "Phase Diagram", "Variable 1", "Variable 2"));
-    PetscCall(TSMonitorSet(ts, TSMonitorDrawSolutionPhase, ctx, (PetscErrorCode (*)(void **))TSMonitorDrawCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorDrawSolutionPhase, ctx, (PetscCtxDestroyFn *)TSMonitorDrawCtxDestroy));
   }
   opt = PETSC_FALSE;
   PetscCall(PetscOptionsName("-ts_monitor_draw_error", "Monitor error graphically", "TSMonitorDrawError", &opt));
@@ -310,7 +319,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_draw_error", "Monitor error graphically", "TSMonitorDrawError", howoften, &howoften, NULL));
     PetscCall(TSMonitorDrawCtxCreate(PetscObjectComm((PetscObject)ts), NULL, "Error", PETSC_DECIDE, PETSC_DECIDE, 300, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorDrawError, ctx, (PetscErrorCode (*)(void **))TSMonitorDrawCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorDrawError, ctx, (PetscCtxDestroyFn *)TSMonitorDrawCtxDestroy));
   }
   opt = PETSC_FALSE;
   PetscCall(PetscOptionsName("-ts_monitor_draw_solution_function", "Monitor solution provided by TSMonitorSetSolutionFunction() graphically", "TSMonitorDrawSolutionFunction", &opt));
@@ -320,7 +329,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(PetscOptionsInt("-ts_monitor_draw_solution_function", "Monitor solution provided by TSMonitorSetSolutionFunction() graphically", "TSMonitorDrawSolutionFunction", howoften, &howoften, NULL));
     PetscCall(TSMonitorDrawCtxCreate(PetscObjectComm((PetscObject)ts), NULL, "Solution provided by user function", PETSC_DECIDE, PETSC_DECIDE, 300, 300, howoften, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorDrawSolutionFunction, ctx, (PetscErrorCode (*)(void **))TSMonitorDrawCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorDrawSolutionFunction, ctx, (PetscCtxDestroyFn *)TSMonitorDrawCtxDestroy));
   }
 
   opt = PETSC_FALSE;
@@ -330,7 +339,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
 
     PetscCall(TSMonitorSolutionVTKCtxCreate(monfilename, &ctx));
     PetscCall(PetscOptionsInt("-ts_monitor_solution_vtk_interval", "Save every interval time step (-1 for last step only)", NULL, ctx->interval, &ctx->interval, NULL));
-    PetscCall(TSMonitorSet(ts, (PetscErrorCode (*)(TS, PetscInt, PetscReal, Vec, void *))TSMonitorSolutionVTK, ctx, (PetscErrorCode (*)(void **))TSMonitorSolutionVTKDestroy));
+    PetscCall(TSMonitorSet(ts, (PetscErrorCode (*)(TS, PetscInt, PetscReal, Vec, void *))TSMonitorSolutionVTK, ctx, (PetscCtxDestroyFn *)TSMonitorSolutionVTKDestroy));
   }
 
   PetscCall(PetscOptionsString("-ts_monitor_dmda_ray", "Display a ray of the solution", "None", "y=0", dir, sizeof(dir), &flg));
@@ -347,7 +356,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
     else SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONG, "Unknown ray %s", dir);
     sscanf(dir + 2, "%d", &ray);
 
-    PetscCall(PetscInfo((PetscObject)ts, "Displaying DMDA ray %c = %d\n", dir[0], ray));
+    PetscCall(PetscInfo(ts, "Displaying DMDA ray %c = %d\n", dir[0], ray));
     PetscCall(PetscNew(&rayctx));
     PetscCall(TSGetDM(ts, &da));
     PetscCall(DMDAGetRay(da, ddir, ray, &rayctx->ray, &rayctx->scatter));
@@ -370,7 +379,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
     else SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONG, "Unknown ray direction %s", dir);
     sscanf(dir + 2, "%d", &ray);
 
-    PetscCall(PetscInfo((PetscObject)ts, "Displaying LG DMDA ray %c = %d\n", dir[0], ray));
+    PetscCall(PetscInfo(ts, "Displaying LG DMDA ray %c = %d\n", dir[0], ray));
     PetscCall(PetscNew(&rayctx));
     PetscCall(TSGetDM(ts, &da));
     PetscCall(DMDAGetRay(da, ddir, ray, &rayctx->ray, &rayctx->scatter));
@@ -383,7 +392,7 @@ PetscErrorCode TSSetFromOptions(TS ts)
     TSMonitorEnvelopeCtx ctx;
 
     PetscCall(TSMonitorEnvelopeCtxCreate(ts, &ctx));
-    PetscCall(TSMonitorSet(ts, TSMonitorEnvelope, ctx, (PetscErrorCode (*)(void **))TSMonitorEnvelopeCtxDestroy));
+    PetscCall(TSMonitorSet(ts, TSMonitorEnvelope, ctx, (PetscCtxDestroyFn *)TSMonitorEnvelopeCtxDestroy));
   }
   flg = PETSC_FALSE;
   PetscCall(PetscOptionsBool("-ts_monitor_cancel", "Remove all monitors", "TSMonitorCancel", flg, &flg, &opt));
@@ -543,13 +552,13 @@ PetscErrorCode TSRemoveTrajectory(TS ts)
 
   Output Parameters:
 + A - Jacobian matrix
-- B - optional preconditioning matrix
+- B - optional matrix used to compute the preconditioner, often the same as `A`
 
   Level: developer
 
   Note:
   Most users should not need to explicitly call this routine, as it
-  is used internally within the nonlinear solvers.
+  is used internally within the ODE integrators.
 
 .seealso: [](ch_ts), `TS`, `TSSetRHSJacobian()`, `KSPSetOperators()`
 @*/
@@ -1562,17 +1571,19 @@ PetscErrorCode TSComputeI2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec 
 
   Output Parameters:
 + J - Jacobian matrix
-- P - optional preconditioning matrix
+- P - optional matrix used to construct the preconditioner
 
   Level: developer
 
   Notes:
-  If F(t,U,V,A)=0 is the DAE, the required Jacobian is
+  If $F(t,U,V,A) = 0$ is the DAE, the required Jacobian is
 
+$$
   dF/dU + shiftV*dF/dV + shiftA*dF/dA
+$$
 
   Most users should not need to explicitly call this routine, as it
-  is used internally within the nonlinear solvers.
+  is used internally within the ODE integrators.
 
 .seealso: [](ch_ts), `TS`, `TSSetI2Jacobian()`
 @*/
@@ -1908,6 +1919,7 @@ PetscErrorCode TSView(TS ts, PetscViewer viewer)
       PetscCall(PetscViewerASCIIPopTab(viewer));
     }
     if (ts->max_steps < PETSC_INT_MAX) PetscCall(PetscViewerASCIIPrintf(viewer, "  maximum steps=%" PetscInt_FMT "\n", ts->max_steps));
+    if (ts->run_steps < PETSC_INT_MAX) PetscCall(PetscViewerASCIIPrintf(viewer, "  run steps=%" PetscInt_FMT "\n", ts->run_steps));
     if (ts->max_time < PETSC_MAX_REAL) PetscCall(PetscViewerASCIIPrintf(viewer, "  maximum time=%g\n", (double)ts->max_time));
     if (ts->ifuncs) PetscCall(PetscViewerASCIIPrintf(viewer, "  total number of I function evaluations=%" PetscInt_FMT "\n", ts->ifuncs));
     if (ts->ijacs) PetscCall(PetscViewerASCIIPrintf(viewer, "  total number of I Jacobian evaluations=%" PetscInt_FMT "\n", ts->ijacs));
@@ -2001,28 +2013,29 @@ PetscErrorCode TSView(TS ts, PetscViewer viewer)
 }
 
 /*@
-  TSSetApplicationContext - Sets an optional user-defined context for
-  the timesteppers.
+  TSSetApplicationContext - Sets an optional user-defined context for the timesteppers that may be accessed, for example inside the user provided
+  `TS` callbacks with `TSGetApplicationContext()`
 
   Logically Collective
 
   Input Parameters:
-+ ts   - the `TS` context obtained from `TSCreate()`
-- usrP - user context
++ ts  - the `TS` context obtained from `TSCreate()`
+- ctx - user context
 
   Level: intermediate
 
-  Fortran Notes:
-  You must write a Fortran interface definition for this
-  function that tells Fortran the Fortran derived data type that you are passing in as the `ctx` argument.
+  Fortran Note:
+  This only works when `ctx` is a Fortran derived type (it cannot be a `PetscObject`), we recommend writing a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is passed in as the `ctx` argument. See `TSGetApplicationContext()` for
+  an example.
 
 .seealso: [](ch_ts), `TS`, `TSGetApplicationContext()`
 @*/
-PetscErrorCode TSSetApplicationContext(TS ts, void *usrP)
+PetscErrorCode TSSetApplicationContext(TS ts, PeCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
-  ts->user = usrP;
+  ts->ctx = ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2036,21 +2049,37 @@ PetscErrorCode TSSetApplicationContext(TS ts, void *usrP)
 . ts - the `TS` context obtained from `TSCreate()`
 
   Output Parameter:
-. usrP - user context
+. ctx - a pointer to the user context
 
   Level: intermediate
 
   Fortran Notes:
-  You must write a Fortran interface definition for this
-  function that tells Fortran the Fortran derived data type that you are passing in as the `ctx` argument.
+  This only works when the context is a Fortran derived type (it cannot be a `PetscObject`) and you **must** write a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is returned as the `ctx` argument. For example,
+.vb
+  Interface TSGetApplicationContext
+    Subroutine TSGetApplicationContext(ts,ctx,ierr)
+  #include <petsc/finclude/petscts.h>
+      use petscts
+      TS ts
+      type(tUsertype), pointer :: ctx
+      PetscErrorCode ierr
+    End Subroutine
+  End Interface TSGetApplicationContext
+.ve
+
+  The prototype for `ctx` must be
+.vb
+  type(tUsertype), pointer :: ctx
+.ve
 
 .seealso: [](ch_ts), `TS`, `TSSetApplicationContext()`
 @*/
-PetscErrorCode TSGetApplicationContext(TS ts, void *usrP)
+PetscErrorCode TSGetApplicationContext(TS ts, void *ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
-  *(void **)usrP = ts->user;
+  *(void **)ctx = ts->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2136,8 +2165,9 @@ PetscErrorCode TSSetTimeStep(TS ts, PetscReal time_step)
 
 /*@
   TSSetExactFinalTime - Determines whether to adapt the final time step to
-  match the exact final time, interpolate solution to the exact final time,
-  or just return at the final time `TS` computed.
+  match the exact final time, to interpolate the solution to the exact final time,
+  or to just return at the final time `TS` computed (which may be slightly larger
+  than the requested final time).
 
   Logically Collective
 
@@ -2145,13 +2175,13 @@ PetscErrorCode TSSetTimeStep(TS ts, PetscReal time_step)
 + ts     - the time-step context
 - eftopt - exact final time option
 .vb
-  TS_EXACTFINALTIME_STEPOVER    - Don't do anything if final time is exceeded
-  TS_EXACTFINALTIME_INTERPOLATE - Interpolate back to final time
-  TS_EXACTFINALTIME_MATCHSTEP - Adapt final time step to match the final time
+  TS_EXACTFINALTIME_STEPOVER    - Don't do anything if final time is exceeded, just use it
+  TS_EXACTFINALTIME_INTERPOLATE - Interpolate back to final time if the final time is exceeded
+  TS_EXACTFINALTIME_MATCHSTEP   - Adapt final time step to ensure the computed final time exactly equals the requested final time
 .ve
 
   Options Database Key:
-. -ts_exact_final_time <stepover,interpolate,matchstep> - select the final step at runtime
+. -ts_exact_final_time <stepover,interpolate,matchstep> - select the final step approach at runtime
 
   Level: beginner
 
@@ -2474,9 +2504,6 @@ PetscErrorCode TSSetUp(TS ts)
     PetscCall(DMCreateGlobalVector(ts->dm, &ts->vec_sol));
   }
 
-  if (ts->tspan) {
-    if (!ts->tspan->vecs_sol) PetscCall(VecDuplicateVecs(ts->vec_sol, ts->tspan->num_span_times, &ts->tspan->vecs_sol));
-  }
   if (!ts->Jacp && ts->Jacprhs) { /* IJacobianP shares the same matrix with RHSJacobianP if only RHSJacobianP is provided */
     PetscCall(PetscObjectReference((PetscObject)ts->Jacprhs));
     ts->Jacp = ts->Jacprhs;
@@ -2540,16 +2567,21 @@ PetscErrorCode TSSetUp(TS ts)
 }
 
 /*@
-  TSReset - Resets a `TS` context and removes any allocated `Vec`s and `Mat`s.
+  TSReset - Resets a `TS` context to the state it was in before `TSSetUp()` was called and removes any allocated `Vec` and `Mat` from its data structures
 
   Collective
 
   Input Parameter:
 . ts - the `TS` context obtained from `TSCreate()`
 
-  Level: beginner
+  Level: developer
 
-.seealso: [](ch_ts), `TS`, `TSCreate()`, `TSSetup()`, `TSDestroy()`
+  Notes:
+  Any options set on the `TS` object, including those set with `TSSetFromOptions()` remain.
+
+  See also `TSSetResize()` to change the size of the system being integrated (for example by adaptive mesh refinement) during the time integration.
+
+.seealso: [](ch_ts), `TS`, `TSCreate()`, `TSSetUp()`, `TSDestroy()`, `TSSetResize()`
 @*/
 PetscErrorCode TSReset(TS ts)
 {
@@ -2589,10 +2621,11 @@ PetscErrorCode TSReset(TS ts)
   }
   ts->tsrhssplit     = NULL;
   ts->num_rhs_splits = 0;
-  if (ts->tspan) {
-    PetscCall(PetscFree(ts->tspan->span_times));
-    PetscCall(VecDestroyVecs(ts->tspan->num_span_times, &ts->tspan->vecs_sol));
-    PetscCall(PetscFree(ts->tspan));
+  if (ts->eval_times) {
+    PetscCall(PetscFree(ts->eval_times->time_points));
+    PetscCall(PetscFree(ts->eval_times->sol_times));
+    PetscCall(VecDestroyVecs(ts->eval_times->num_time_points, &ts->eval_times->sol_vecs));
+    PetscCall(PetscFree(ts->eval_times));
   }
   ts->rhsjacobian.time  = PETSC_MIN_REAL;
   ts->rhsjacobian.scale = 1.0;
@@ -2693,7 +2726,7 @@ PetscErrorCode TSGetSNES(TS ts, SNES *snes)
 }
 
 /*@
-  TSSetSNES - Set the `SNES` (nonlinear solver) to be used by the timestepping context
+  TSSetSNES - Set the `SNES` (nonlinear solver) to be used by the `TS` timestepping context
 
   Collective
 
@@ -2829,6 +2862,67 @@ PetscErrorCode TSGetMaxSteps(TS ts, PetscInt *maxsteps)
 }
 
 /*@
+  TSSetRunSteps - Sets the maximum number of steps to take in each call to `TSSolve()`.
+
+  If the step count when `TSSolve()` is `start_step`, this will stop the simulation once `current_step - start_step >= run_steps`.
+  Comparatively, `TSSetMaxSteps()` will stop if `current_step >= max_steps`.
+  The simulation will stop when either condition is reached.
+
+  Logically Collective
+
+  Input Parameters:
++ ts       - the `TS` context obtained from `TSCreate()`
+- runsteps - maximum number of steps to take in each call to `TSSolve()`;
+
+  Options Database Key:
+. -ts_run_steps <runsteps> - Sets runsteps
+
+  Level: intermediate
+
+  Note:
+  The default is `PETSC_UNLIMITED`
+
+.seealso: [](ch_ts), `TS`, `TSGetRunSteps()`, `TSSetMaxTime()`, `TSSetExactFinalTime()`, `TSSetMaxSteps()`
+@*/
+PetscErrorCode TSSetRunSteps(TS ts, PetscInt runsteps)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
+  PetscValidLogicalCollectiveInt(ts, runsteps, 2);
+  if (runsteps == PETSC_DETERMINE) {
+    ts->run_steps = PETSC_UNLIMITED;
+  } else {
+    PetscCheck(runsteps >= 0, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_OUTOFRANGE, "Max number of steps to take in each call to TSSolve must be non-negative");
+    ts->run_steps = runsteps;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  TSGetRunSteps - Gets the maximum number of steps to take in each call to `TSSolve()`.
+
+  Not Collective
+
+  Input Parameter:
+. ts - the `TS` context obtained from `TSCreate()`
+
+  Output Parameter:
+. runsteps - maximum number of steps to take in each call to `TSSolve`.
+
+  Level: advanced
+
+.seealso: [](ch_ts), `TS`, `TSSetRunSteps()`, `TSGetMaxTime()`, `TSSetMaxTime()`, `TSGetMaxSteps()`
+@*/
+PetscErrorCode TSGetRunSteps(TS ts, PetscInt *runsteps)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
+  PetscAssertPointer(runsteps, 2);
+  *runsteps = ts->run_steps;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
   TSSetMaxTime - Sets the maximum (or final) time for timestepping.
 
   Logically Collective
@@ -2937,7 +3031,7 @@ PetscErrorCode TSGetDuration(TS ts, PetscInt *maxsteps, PetscReal *maxtime)
 PetscErrorCode TSSetDuration(TS ts, PetscInt maxsteps, PetscReal maxtime)
 {
   PetscFunctionBegin;
-  if (maxsteps != (PetscInt)PETSC_CURRENT) PetscCall(TSSetMaxSteps(ts, maxsteps));
+  if (maxsteps != PETSC_CURRENT) PetscCall(TSSetMaxSteps(ts, maxsteps));
   if (maxtime != (PetscReal)PETSC_CURRENT) PetscCall(TSSetMaxTime(ts, maxtime));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -3313,7 +3407,7 @@ PetscErrorCode TSSetPostStep(TS ts, PetscErrorCode (*func)(TS ts))
 
   Level: developer
 
-.seealso: [](ch_ts), `TS`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostEvaluate()`, `TSGetTimeStep()`, `TSGetStepNumber()`, `TSGetTime()`, `TSSetPotsStep()`
+.seealso: [](ch_ts), `TS`, `TSSetPreStep()`, `TSSetPreStage()`, `TSSetPostEvaluate()`, `TSGetTimeStep()`, `TSGetStepNumber()`, `TSGetTime()`, `TSSetPostStep()`
 @*/
 PetscErrorCode TSPostStep(TS ts)
 {
@@ -3404,11 +3498,11 @@ PetscErrorCode TSStep(TS ts)
                                    &cite));
   PetscCall(TSSetUp(ts));
   PetscCall(TSTrajectorySetUp(ts->trajectory, ts));
-  if (ts->tspan)
-    ts->tspan->worktol = 0; /* In each step of TSSolve() 'tspan->worktol' will be meaningfully defined (later) only once:
+  if (ts->eval_times)
+    ts->eval_times->worktol = 0; /* In each step of TSSolve() 'eval_times->worktol' will be meaningfully defined (later) only once:
                                                    in TSAdaptChoose() or TSEvent_dt_cap(), and then reused till the end of the step */
 
-  PetscCheck(ts->max_time < PETSC_MAX_REAL || ts->max_steps != PETSC_INT_MAX, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "You must call TSSetMaxTime() or TSSetMaxSteps(), or use -ts_max_time <time> or -ts_max_steps <steps>");
+  PetscCheck(ts->max_time < PETSC_MAX_REAL || ts->run_steps != PETSC_INT_MAX || ts->max_steps != PETSC_INT_MAX, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "You must call TSSetMaxTime(), TSSetMaxSteps(), or TSSetRunSteps() or use -ts_max_time <time>, -ts_max_steps <steps>, -ts_run_steps <steps>");
   PetscCheck(ts->exact_final_time != TS_EXACTFINALTIME_UNSPECIFIED, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "You must call TSSetExactFinalTime() or use -ts_exact_final_time <stepover,interpolate,matchstep> before calling TSStep()");
   PetscCheck(ts->exact_final_time != TS_EXACTFINALTIME_MATCHSTEP || ts->adapt, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "Since TS is not adaptive you cannot use TS_EXACTFINALTIME_MATCHSTEP, suggest TS_EXACTFINALTIME_INTERPOLATE");
 
@@ -3941,7 +4035,7 @@ PetscErrorCode TSResize(TS ts)
   Input Parameters:
 + ts - the `TS` context obtained from `TSCreate()`
 - u  - the solution vector  (can be null if `TSSetSolution()` was used and `TSSetExactFinalTime`(ts,`TS_EXACTFINALTIME_MATCHSTEP`) was not used,
-                             otherwise must contain the initial conditions and will contain the solution at the final requested time
+       otherwise it must contain the initial conditions and will contain the solution at the final requested time
 
   Level: beginner
 
@@ -3973,14 +4067,29 @@ PetscErrorCode TSSolve(TS ts, Vec u)
   PetscCall(TSSetUp(ts));
   PetscCall(TSTrajectorySetUp(ts->trajectory, ts));
 
-  PetscCheck(ts->max_time < PETSC_MAX_REAL || ts->max_steps != PETSC_INT_MAX, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "You must call TSSetMaxTime() or TSSetMaxSteps(), or use -ts_max_time <time> or -ts_max_steps <steps>");
+  PetscCheck(ts->max_time < PETSC_MAX_REAL || ts->run_steps != PETSC_INT_MAX || ts->max_steps != PETSC_INT_MAX, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "You must call TSSetMaxTime(), TSSetMaxSteps(), or TSSetRunSteps() or use -ts_max_time <time>, -ts_max_steps <steps>, -ts_run_steps <steps>");
   PetscCheck(ts->exact_final_time != TS_EXACTFINALTIME_UNSPECIFIED, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONGSTATE, "You must call TSSetExactFinalTime() or use -ts_exact_final_time <stepover,interpolate,matchstep> before calling TSSolve()");
   PetscCheck(ts->exact_final_time != TS_EXACTFINALTIME_MATCHSTEP || ts->adapt, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "Since TS is not adaptive you cannot use TS_EXACTFINALTIME_MATCHSTEP, suggest TS_EXACTFINALTIME_INTERPOLATE");
-  PetscCheck(!(ts->tspan && ts->exact_final_time != TS_EXACTFINALTIME_MATCHSTEP), PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "You must use TS_EXACTFINALTIME_MATCHSTEP when using time span");
+  PetscCheck(!(ts->eval_times && ts->exact_final_time != TS_EXACTFINALTIME_MATCHSTEP), PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "You must use TS_EXACTFINALTIME_MATCHSTEP when using time span or evaluation times");
 
-  if (ts->tspan && PetscIsCloseAtTol(ts->ptime, ts->tspan->span_times[0], ts->tspan->reltol * ts->time_step + ts->tspan->abstol, 0)) { /* starting point in time span */
-    PetscCall(VecCopy(ts->vec_sol, ts->tspan->vecs_sol[0]));
-    ts->tspan->spanctr = 1;
+  if (ts->eval_times) {
+    if (!ts->eval_times->sol_vecs) PetscCall(VecDuplicateVecs(ts->vec_sol, ts->eval_times->num_time_points, &ts->eval_times->sol_vecs));
+    for (PetscInt i = 0; i < ts->eval_times->num_time_points; i++) {
+      PetscBool is_close = PetscIsCloseAtTol(ts->ptime, ts->eval_times->time_points[i], ts->eval_times->reltol * ts->time_step + ts->eval_times->abstol, 0);
+      if (ts->ptime <= ts->eval_times->time_points[i] || is_close) {
+        ts->eval_times->time_point_idx = i;
+
+        PetscBool is_ptime_in_sol_times = PETSC_FALSE; // If current solution has already been saved, we should not save it again
+        if (ts->eval_times->sol_idx > 0) is_ptime_in_sol_times = PetscIsCloseAtTol(ts->ptime, ts->eval_times->sol_times[ts->eval_times->sol_idx - 1], ts->eval_times->reltol * ts->time_step + ts->eval_times->abstol, 0);
+        if (is_close && !is_ptime_in_sol_times) {
+          PetscCall(VecCopy(ts->vec_sol, ts->eval_times->sol_vecs[ts->eval_times->sol_idx]));
+          ts->eval_times->sol_times[ts->eval_times->sol_idx] = ts->ptime;
+          ts->eval_times->sol_idx++;
+          ts->eval_times->time_point_idx++;
+        }
+        break;
+      }
+    }
   }
 
   if (ts->forward_solve) PetscCall(TSForwardSetUp(ts));
@@ -4001,12 +4110,12 @@ PetscErrorCode TSSolve(TS ts, Vec u)
     ts->rhsjacobian.time  = PETSC_MIN_REAL;
   }
 
-  /* make sure initial time step does not overshoot final time or the next point in tspan */
+  /* make sure initial time step does not overshoot final time or the next point in evaluation times */
   if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP) {
     PetscReal maxdt;
     PetscReal dt = ts->time_step;
 
-    if (ts->tspan) maxdt = ts->tspan->span_times[ts->tspan->spanctr] - ts->ptime;
+    if (ts->eval_times) maxdt = ts->eval_times->time_points[ts->eval_times->time_point_idx] - ts->ptime;
     else maxdt = ts->max_time - ts->ptime;
     ts->time_step = dt >= maxdt ? maxdt : (PetscIsCloseAtTol(dt, maxdt, 10 * PETSC_MACHINE_EPSILON, 0) ? maxdt : dt);
   }
@@ -4066,6 +4175,7 @@ PetscErrorCode TSSolve(TS ts, Vec u)
       PetscCall(TSEventInitialize(ts->event, ts, ts->ptime, ts->vec_sol));
     }
 
+    ts->start_step = ts->steps; // records starting step
     while (!ts->reason) {
       PetscCall(TSMonitor(ts, ts->steps, ts->ptime, ts->vec_sol));
       if (!ts->steprollback || (ts->stepresize && ts->resizerollback)) PetscCall(TSPreStep(ts));
@@ -4088,7 +4198,8 @@ PetscErrorCode TSSolve(TS ts, Vec u)
       if (!ts->steprollback && ts->resizerollback) PetscCall(TSResize(ts));
       /* check convergence */
       if (!ts->reason) {
-        if (ts->steps >= ts->max_steps) ts->reason = TS_CONVERGED_ITS;
+        if ((ts->steps - ts->start_step) >= ts->run_steps) ts->reason = TS_CONVERGED_ITS;
+        else if (ts->steps >= ts->max_steps) ts->reason = TS_CONVERGED_ITS;
         else if (ts->ptime >= ts->max_time) ts->reason = TS_CONVERGED_TIME;
       }
       if (!ts->steprollback) {
@@ -4096,9 +4207,14 @@ PetscErrorCode TSSolve(TS ts, Vec u)
         PetscCall(TSPostStep(ts));
         if (!ts->resizerollback) PetscCall(TSResize(ts));
 
-        if (ts->tspan && ts->tspan->spanctr < ts->tspan->num_span_times) {
-          PetscCheck(ts->tspan->worktol > 0, PetscObjectComm((PetscObject)ts), PETSC_ERR_PLIB, "Unexpected state !(tspan->worktol > 0) in TSSolve()");
-          if (PetscIsCloseAtTol(ts->ptime, ts->tspan->span_times[ts->tspan->spanctr], ts->tspan->worktol, 0)) PetscCall(VecCopy(ts->vec_sol, ts->tspan->vecs_sol[ts->tspan->spanctr++]));
+        if (ts->eval_times && ts->eval_times->time_point_idx < ts->eval_times->num_time_points && ts->reason >= 0) {
+          PetscCheck(ts->eval_times->worktol > 0, PetscObjectComm((PetscObject)ts), PETSC_ERR_PLIB, "Unexpected state !(eval_times->worktol > 0) in TSSolve()");
+          if (PetscIsCloseAtTol(ts->ptime, ts->eval_times->time_points[ts->eval_times->time_point_idx], ts->eval_times->worktol, 0)) {
+            ts->eval_times->sol_times[ts->eval_times->sol_idx] = ts->ptime;
+            PetscCall(VecCopy(ts->vec_sol, ts->eval_times->sol_vecs[ts->eval_times->sol_idx]));
+            ts->eval_times->sol_idx++;
+            ts->eval_times->time_point_idx++;
+          }
         }
       }
     }
@@ -4274,10 +4390,6 @@ PetscErrorCode TSAppendOptionsPrefix(TS ts, const char prefix[])
 
   Level: intermediate
 
-  Fortran Notes:
-  The user should pass in a string 'prefix' of
-  sufficient length to hold the prefix.
-
 .seealso: [](ch_ts), `TS`, `TSAppendOptionsPrefix()`, `TSSetFromOptions()`
 @*/
 PetscErrorCode TSGetOptionsPrefix(TS ts, const char *prefix[])
@@ -4436,19 +4548,19 @@ PetscErrorCode TSGetDM(TS ts, DM *dm)
 }
 
 /*@
-  SNESTSFormFunction - Function to evaluate nonlinear residual
+  SNESTSFormFunction - Function to evaluate nonlinear residual defined by an ODE solver algorithm implemented within `TS`
 
   Logically Collective
 
   Input Parameters:
 + snes - nonlinear solver
 . U    - the current state at which to evaluate the residual
-- ctx  - user context, must be a TS
+- ctx  - user context, must be a `TS`
 
   Output Parameter:
 . F - the nonlinear residual
 
-  Level: advanced
+  Level: developer
 
   Note:
   This function is not normally called by users and is automatically registered with the `SNES` used by `TS`.
@@ -4471,7 +4583,7 @@ PetscErrorCode SNESTSFormFunction(SNES snes, Vec U, Vec F, void *ctx)
 }
 
 /*@
-  SNESTSFormJacobian - Function to evaluate the Jacobian
+  SNESTSFormJacobian - Function to evaluate the Jacobian defined by an ODE solver algorithm implemented within `TS`
 
   Collective
 
@@ -4482,7 +4594,7 @@ PetscErrorCode SNESTSFormFunction(SNES snes, Vec U, Vec F, void *ctx)
 
   Output Parameters:
 + A - the Jacobian
-- B - the preconditioning matrix (may be the same as A)
+- B - the matrix used to construct the preconditioner (often the same as `A`)
 
   Level: developer
 
@@ -4553,8 +4665,8 @@ PetscErrorCode TSComputeRHSFunctionLinear(TS ts, PetscReal t, Vec U, Vec F, void
 - ctx - context
 
   Output Parameters:
-+ A - pointer to operator
-- B - pointer to preconditioning matrix
++ A - Jacobian
+- B - matrix used to construct the preconditioner, often the same as `A`
 
   Level: intermediate
 
@@ -4826,7 +4938,7 @@ PetscErrorCode TSGetSNESIterations(TS ts, PetscInt *nits)
   Note:
   This counter is reset to zero for each successive call to `TSSolve()`.
 
-.seealso: [](ch_ts), `TS`, `TSSolve()`, `TSGetSNESIterations()`, `SNESGetKSPIterations()`
+.seealso: [](ch_ts), `TS`, `TSSolve()`, `TSGetSNESIterations()`
 @*/
 PetscErrorCode TSGetKSPIterations(TS ts, PetscInt *lits)
 {
@@ -5464,7 +5576,7 @@ PetscErrorCode TSComputeIJacobianDefaultColor(TS ts, PetscReal t, Vec U, Vec Udo
     if (hascolor && !matcolor) {
       PetscCall(DMCreateColoring(dm, IS_COLORING_GLOBAL, &iscoloring));
       PetscCall(MatFDColoringCreate(B, iscoloring, &color));
-      PetscCall(MatFDColoringSetFunction(color, (PetscErrorCode (*)(void))SNESTSFormFunction, (void *)ts));
+      PetscCall(MatFDColoringSetFunction(color, (MatFDColoringFn *)SNESTSFormFunction, (void *)ts));
       PetscCall(MatFDColoringSetFromOptions(color));
       PetscCall(MatFDColoringSetUp(B, iscoloring, color));
       PetscCall(ISColoringDestroy(&iscoloring));
@@ -5478,7 +5590,7 @@ PetscErrorCode TSComputeIJacobianDefaultColor(TS ts, PetscReal t, Vec U, Vec Udo
       PetscCall(MatColoringApply(mc, &iscoloring));
       PetscCall(MatColoringDestroy(&mc));
       PetscCall(MatFDColoringCreate(B, iscoloring, &color));
-      PetscCall(MatFDColoringSetFunction(color, (PetscErrorCode (*)(void))SNESTSFormFunction, (void *)ts));
+      PetscCall(MatFDColoringSetFunction(color, (MatFDColoringFn *)SNESTSFormFunction, (void *)ts));
       PetscCall(MatFDColoringSetFromOptions(color));
       PetscCall(MatFDColoringSetUp(B, iscoloring, color));
       PetscCall(ISColoringDestroy(&iscoloring));
@@ -5599,8 +5711,7 @@ PetscErrorCode TSClone(TS tsin, TS *tsout)
 
   /* General TS description */
   t->numbermonitors    = 0;
-  t->monitorFrequency  = 1;
-  t->setupcalled       = 0;
+  t->setupcalled       = PETSC_FALSE;
   t->ksp_its           = 0;
   t->snes_its          = 0;
   t->nwork             = 0;
@@ -5809,56 +5920,67 @@ PetscErrorCode TSSetMatStructure(TS ts, MatStructure str)
 }
 
 /*@
-  TSSetTimeSpan - sets the time span. The solution will be computed and stored for each time requested in the span
+  TSSetEvaluationTimes - sets the evaluation points. The solution will be computed and stored for each time requested
 
   Collective
 
   Input Parameters:
-+ ts         - the time-stepper
-. n          - number of the time points (>=2)
-- span_times - array of the time points. The first element and the last element are the initial time and the final time respectively.
++ ts          - the time-stepper
+. n           - number of the time points
+- time_points - array of the time points, must be increasing
 
   Options Database Key:
-. -ts_time_span <t0,...tf> - Sets the time span
+. -ts_eval_times <t0,...tn> - Sets the evaluation times
 
   Level: intermediate
 
   Notes:
-  The elements in tspan must be all increasing. They correspond to the intermediate points for time integration.
-  `TS_EXACTFINALTIME_MATCHSTEP` must be used to make the last time step in each sub-interval match the intermediate points specified.
-  The intermediate solutions are saved in a vector array that can be accessed with `TSGetTimeSpanSolutions()`. Thus using time span may
-  pressure the memory system when using a large number of span points.
+  The elements in `time_points` must be all increasing. They correspond to the intermediate points to be saved.
 
-.seealso: [](ch_ts), `TS`, `TSGetTimeSpan()`, `TSGetTimeSpanSolutions()`
+  `TS_EXACTFINALTIME_MATCHSTEP` must be used to make the last time step in each sub-interval match the intermediate points specified.
+
+  The intermediate solutions are saved in a vector array that can be accessed with `TSGetEvaluationSolutions()`. Thus using evaluation times may
+  pressure the memory system when using a large number of time points.
+
+.seealso: [](ch_ts), `TS`, `TSGetEvaluationTimes()`, `TSGetEvaluationSolutions()`, `TSSetTimeSpan()`
  @*/
-PetscErrorCode TSSetTimeSpan(TS ts, PetscInt n, PetscReal *span_times)
+PetscErrorCode TSSetEvaluationTimes(TS ts, PetscInt n, PetscReal *time_points)
 {
+  PetscBool is_sorted;
+
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
-  PetscCheck(n >= 2, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONG, "Minimum time span size is 2 but %" PetscInt_FMT " is provided", n);
-  if (ts->tspan && n != ts->tspan->num_span_times) {
-    PetscCall(PetscFree(ts->tspan->span_times));
-    PetscCall(VecDestroyVecs(ts->tspan->num_span_times, &ts->tspan->vecs_sol));
-    PetscCall(PetscMalloc1(n, &ts->tspan->span_times));
+  if (ts->eval_times) { // Reset eval_times
+    ts->eval_times->sol_idx        = 0;
+    ts->eval_times->time_point_idx = 0;
+    if (n != ts->eval_times->num_time_points) {
+      PetscCall(PetscFree(ts->eval_times->time_points));
+      PetscCall(PetscFree(ts->eval_times->sol_times));
+      PetscCall(VecDestroyVecs(ts->eval_times->num_time_points, &ts->eval_times->sol_vecs));
+    } else {
+      PetscCall(PetscArrayzero(ts->eval_times->sol_times, n));
+      for (PetscInt i = 0; i < n; i++) PetscCall(VecZeroEntries(ts->eval_times->sol_vecs[i]));
+    }
+  } else { // Create/initialize eval_times
+    TSEvaluationTimes eval_times;
+    PetscCall(PetscNew(&eval_times));
+    PetscCall(PetscMalloc1(n, &eval_times->time_points));
+    PetscCall(PetscMalloc1(n, &eval_times->sol_times));
+    eval_times->reltol  = 1e-6;
+    eval_times->abstol  = 10 * PETSC_MACHINE_EPSILON;
+    eval_times->worktol = 0;
+    ts->eval_times      = eval_times;
   }
-  if (!ts->tspan) {
-    TSTimeSpan tspan;
-    PetscCall(PetscNew(&tspan));
-    PetscCall(PetscMalloc1(n, &tspan->span_times));
-    tspan->reltol  = 1e-6;
-    tspan->abstol  = 10 * PETSC_MACHINE_EPSILON;
-    tspan->worktol = 0;
-    ts->tspan      = tspan;
-  }
-  ts->tspan->num_span_times = n;
-  PetscCall(PetscArraycpy(ts->tspan->span_times, span_times, n));
-  PetscCall(TSSetTime(ts, ts->tspan->span_times[0]));
-  PetscCall(TSSetMaxTime(ts, ts->tspan->span_times[n - 1]));
+  ts->eval_times->num_time_points = n;
+  PetscCall(PetscSortedReal(n, time_points, &is_sorted));
+  PetscCheck(is_sorted, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONG, "time_points array must be sorted");
+  PetscCall(PetscArraycpy(ts->eval_times->time_points, time_points, n));
+  // Note: ts->vec_sol not guaranteed to exist, so ts->eval_times->sol_vecs allocated at TSSolve time
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@C
-  TSGetTimeSpan - gets the time span set with `TSSetTimeSpan()`
+  TSGetEvaluationTimes - gets the evaluation times set with `TSSetEvaluationTimes()`
 
   Not Collective
 
@@ -5866,67 +5988,113 @@ PetscErrorCode TSSetTimeSpan(TS ts, PetscInt n, PetscReal *span_times)
 . ts - the time-stepper
 
   Output Parameters:
-+ n          - number of the time points (>=2)
-- span_times - array of the time points. The first element and the last element are the initial time and the final time respectively.
++ n           - number of the time points
+- time_points - array of the time points
 
   Level: beginner
 
   Note:
   The values obtained are valid until the `TS` object is destroyed.
 
-  Both `n` and `span_times` can be `NULL`.
+  Both `n` and `time_points` can be `NULL`.
 
-.seealso: [](ch_ts), `TS`, `TSSetTimeSpan()`, `TSGetTimeSpanSolutions()`
+  Also used to see time points set by `TSSetTimeSpan()`.
+
+.seealso: [](ch_ts), `TS`, `TSSetEvaluationTimes()`, `TSGetEvaluationSolutions()`
  @*/
-PetscErrorCode TSGetTimeSpan(TS ts, PetscInt *n, const PetscReal *span_times[])
+PetscErrorCode TSGetEvaluationTimes(TS ts, PetscInt *n, const PetscReal *time_points[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (n) PetscAssertPointer(n, 2);
-  if (span_times) PetscAssertPointer(span_times, 3);
-  if (!ts->tspan) {
+  if (time_points) PetscAssertPointer(time_points, 3);
+  if (!ts->eval_times) {
     if (n) *n = 0;
-    if (span_times) *span_times = NULL;
+    if (time_points) *time_points = NULL;
   } else {
-    if (n) *n = ts->tspan->num_span_times;
-    if (span_times) *span_times = ts->tspan->span_times;
+    if (n) *n = ts->eval_times->num_time_points;
+    if (time_points) *time_points = ts->eval_times->time_points;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@
-  TSGetTimeSpanSolutions - Get the number of solutions and the solutions at the time points specified by the time span.
+/*@C
+  TSGetEvaluationSolutions - Get the number of solutions and the solutions at the evaluation time points specified
 
   Input Parameter:
 . ts - the `TS` context obtained from `TSCreate()`
 
   Output Parameters:
-+ nsol - the number of solutions
-- Sols - the solution vectors
++ nsol      - the number of solutions
+. sol_times - array of solution times corresponding to the solution vectors. See note below
+- Sols      - the solution vectors
 
   Level: intermediate
 
   Notes:
   Both `nsol` and `Sols` can be `NULL`.
 
-  Some time points in the time span may be skipped by `TS` so that `nsol` is less than the number of points specified by `TSSetTimeSpan()`.
-  For example, manipulating the step size, especially with a reduced precision, may cause `TS` to step over certain points in the span.
+  Some time points in the evaluation points may be skipped by `TS` so that `nsol` is less than the number of points specified by `TSSetEvaluationTimes()`.
+  For example, manipulating the step size, especially with a reduced precision, may cause `TS` to step over certain evaluation times.
 
-.seealso: [](ch_ts), `TS`, `TSSetTimeSpan()`
+  Also used to see view solutions requested by `TSSetTimeSpan()`.
+
+.seealso: [](ch_ts), `TS`, `TSSetEvaluationTimes()`, `TSGetEvaluationTimes()`
 @*/
-PetscErrorCode TSGetTimeSpanSolutions(TS ts, PetscInt *nsol, Vec **Sols)
+PetscErrorCode TSGetEvaluationSolutions(TS ts, PetscInt *nsol, const PetscReal *sol_times[], Vec **Sols)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
   if (nsol) PetscAssertPointer(nsol, 2);
-  if (Sols) PetscAssertPointer(Sols, 3);
-  if (!ts->tspan) {
+  if (sol_times) PetscAssertPointer(sol_times, 3);
+  if (Sols) PetscAssertPointer(Sols, 4);
+  if (!ts->eval_times) {
     if (nsol) *nsol = 0;
+    if (sol_times) *sol_times = NULL;
     if (Sols) *Sols = NULL;
   } else {
-    if (nsol) *nsol = ts->tspan->spanctr;
-    if (Sols) *Sols = ts->tspan->vecs_sol;
+    if (nsol) *nsol = ts->eval_times->sol_idx;
+    if (sol_times) *sol_times = ts->eval_times->sol_times;
+    if (Sols) *Sols = ts->eval_times->sol_vecs;
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  TSSetTimeSpan - sets the time span. The solution will be computed and stored for each time requested in the span
+
+  Collective
+
+  Input Parameters:
++ ts         - the time-stepper
+. n          - number of the time points (>=2)
+- span_times - array of the time points, must be increasing. The first element and the last element are the initial time and the final time respectively.
+
+  Options Database Key:
+. -ts_time_span <t0,...tf> - Sets the time span
+
+  Level: intermediate
+
+  Notes:
+  This function is identical to `TSSetEvaluationTimes()`, except that it also sets the initial time and final time for the `ts` to the first and last `span_times` entries.
+
+  The elements in `span_times` must be all increasing. They correspond to the intermediate points to be saved.
+
+  `TS_EXACTFINALTIME_MATCHSTEP` must be used to make the last time step in each sub-interval match the intermediate points specified.
+
+  The intermediate solutions are saved in a vector array that can be accessed with `TSGetEvaluationSolutions()`. Thus using time span may
+  pressure the memory system when using a large number of span points.
+
+.seealso: [](ch_ts), `TS`, `TSSetEvaluationTimes()`, `TSGetEvaluationTimes()`, `TSGetEvaluationSolutions()`
+ @*/
+PetscErrorCode TSSetTimeSpan(TS ts, PetscInt n, PetscReal *span_times)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
+  PetscCheck(n >= 2, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_WRONG, "Minimum time span size is 2 but %" PetscInt_FMT " is provided", n);
+  PetscCall(TSSetEvaluationTimes(ts, n, span_times));
+  PetscCall(TSSetTime(ts, span_times[0]));
+  PetscCall(TSSetMaxTime(ts, span_times[n - 1]));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -5971,7 +6139,7 @@ PetscErrorCode TSPruneIJacobianColor(TS ts, Mat J, Mat B)
   PetscCall(MatColoringDestroy(&mc));
   /* Replace the old coloring with the new one */
   PetscCall(MatFDColoringCreate(B, iscoloring, &matfdcoloring));
-  PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode (*)(void))SNESTSFormFunction, (void *)ts));
+  PetscCall(MatFDColoringSetFunction(matfdcoloring, (MatFDColoringFn *)SNESTSFormFunction, (void *)ts));
   PetscCall(MatFDColoringSetFromOptions(matfdcoloring));
   PetscCall(MatFDColoringSetUp(B, iscoloring, matfdcoloring));
   PetscCall(PetscObjectCompose((PetscObject)B, "TSMatFDColoring", (PetscObject)matfdcoloring));

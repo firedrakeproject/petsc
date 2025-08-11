@@ -9,7 +9,7 @@ static char help[] = "Demonstrates adjoint sensitivity analysis for Reaction-Dif
   Runtime options:
     -forwardonly  - run the forward simulation without adjoint
     -implicitform - provide IFunction and IJacobian to TS, if not set, RHSFunction and RHSJacobian will be used
-    -aijpc        - set the preconditioner matrix to be aij (the Jacobian matrix can be of a different type such as ELL)
+    -aijpc        - set the matrix used to compute the preconditioner to be aij (the Jacobian matrix can be of a different type such as ELL)
 */
 #include "reaction_diffusion.h"
 #include <petscdm.h>
@@ -213,6 +213,7 @@ PetscErrorCode InitialConditions(DM da, Vec U)
       suffix: 3
       nsize: 2
       args: -ts_max_steps 10 -ts_dt 10 -ts_adjoint_monitor_draw_sensi
+      output_file: output/empty.out
 
    test:
       suffix: 4
@@ -229,7 +230,7 @@ PetscErrorCode InitialConditions(DM da, Vec U)
    test:
       suffix: knl
       args: -ts_max_steps 10 -ts_monitor -ts_adjoint_monitor -ts_trajectory_type memory -ts_trajectory_solution_only 0 -malloc_hbw -ts_trajectory_use_dram 1
-      output_file: output/ex5adj_3.out
+      output_file: output/empty.out
       requires: knl
 
    test:

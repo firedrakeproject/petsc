@@ -101,11 +101,17 @@ cdef extern from "<petsc.h>":
     struct _p_DMPlexTransform
     ctypedef _p_DMPlexTransform* PetscDMPlexTransform "DMPlexTransform"
 
+    struct _p_DMSwarmCellDM
+    ctypedef _p_DMSwarmCellDM* PetscDMSwarmCellDM "DMSwarmCellDM"
+
     struct _p_PetscDS
     ctypedef _p_PetscDS* PetscDS
 
     struct _p_PetscPartitioner
     ctypedef _p_PetscPartitioner* PetscPartitioner "PetscPartitioner"
+
+    struct _p_PetscRegressor
+    ctypedef _p_PetscRegressor* PetscRegressor "PetscRegressor"
 
 # --------------------------------------------------------------------
 
@@ -250,6 +256,12 @@ ctypedef public api class SNES(Object) [
     ]:
     cdef PetscSNES snes
 
+ctypedef public api class SNESLineSearch(Object) [
+    type   PyPetscSNESLineSearch_Type,
+    object PyPetscSNESLineSearchObject,
+    ]:
+    cdef PetscSNESLineSearch snesls
+
 ctypedef public api class TS(Object) [
     type   PyPetscTS_Type,
     object PyPetscTSObject,
@@ -287,6 +299,12 @@ ctypedef public api class DMPlexTransform(Object) [
     ]:
     cdef PetscDMPlexTransform tr
 
+ctypedef public api class CellDM(Object) [
+    type   PyPetscDMSwarmCellDM_Type,
+    object PyPetscDMSwarmCellDMObject,
+    ]:
+    cdef PetscDMSwarmCellDM cdm
+
 ctypedef public api class DS(Object) [
     type   PyPetscDS_Type,
     object PyPetscDSObject,
@@ -304,6 +322,12 @@ ctypedef public api class DMLabel(Object) [
     object PyPetscDMLabelObject,
     ]:
     cdef PetscDMLabel dmlabel
+
+ctypedef public api class Regressor(Object) [
+    type   PyPetscRegressor_Type,
+    object PyPetscRegressorObject,
+    ]:
+    cdef PetscRegressor regressor
 
 # --------------------------------------------------------------------
 

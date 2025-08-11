@@ -7,7 +7,7 @@ PetscBool               DMGenerateRegisterAllCalled = PETSC_FALSE;
 
 #if defined(PETSC_HAVE_TRIANGLE)
 PETSC_EXTERN PetscErrorCode DMPlexGenerate_Triangle(DM, PetscBool, DM *);
-PETSC_EXTERN PetscErrorCode DMPlexRefine_Triangle(DM, double *, DM *);
+PETSC_EXTERN PetscErrorCode DMPlexRefine_Triangle(DM, PetscReal *, DM *);
 #endif
 #if defined(PETSC_HAVE_TETGEN)
 PETSC_EXTERN PetscErrorCode DMPlexGenerate_Tetgen(DM, PetscBool, DM *);
@@ -84,9 +84,13 @@ PetscErrorCode DMGenerateRegisterAll(void)
 .ve
 
   Then, your generator can be chosen with the procedural interface via
-$     DMGenerate(dm, "my_generator",...)
+.vb
+  DMGenerate(dm, "my_generator",...)
+.ve
   or at runtime via the option
-$     -dm_generator my_generator
+.vb
+  -dm_generator my_generator
+.ve
 
   Level: advanced
 
@@ -115,8 +119,6 @@ PetscErrorCode DMGenerateRegister(const char sname[], PetscErrorCode (*fnc)(DM, 
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-extern PetscBool DMGenerateRegisterAllCalled;
 
 PetscErrorCode DMGenerateRegisterDestroy(void)
 {

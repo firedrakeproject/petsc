@@ -301,7 +301,7 @@ PetscErrorCode MatAssemblyEnd_MPISELL(Mat mat, MatAssemblyType mode)
   PetscInt     i, flg;
   PetscInt    *row, *col;
   PetscScalar *val;
-  PetscBool    other_disassembled;
+  PetscBool    all_assembled;
   /* do not use 'b = (Mat_SeqSELL*)sell->B->data' as B can be reset in disassembly */
   PetscFunctionBegin;
   if (!sell->donotstash && !mat->nooffprocentries) {
@@ -322,16 +322,16 @@ PetscErrorCode MatAssemblyEnd_MPISELL(Mat mat, MatAssemblyType mode)
   PetscCall(MatAssemblyEnd(sell->A, mode));
 
   /*
-     determine if any processor has disassembled, if so we must
+     determine if any process has disassembled, if so we must
      also disassemble ourselves, in order that we may reassemble.
   */
   /*
      if nonzero structure of submatrix B cannot change then we know that
-     no processor disassembled thus we can skip this stuff
+     no process disassembled thus we can skip this stuff
   */
   if (!((Mat_SeqSELL *)sell->B->data)->nonew) {
-    PetscCallMPI(MPIU_Allreduce(&mat->was_assembled, &other_disassembled, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
-    if (mat->was_assembled && !other_disassembled) PetscCall(MatDisAssemble_MPISELL(mat));
+    PetscCallMPI(MPIU_Allreduce(&mat->was_assembled, &all_assembled, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
+    if (mat->was_assembled && !all_assembled) PetscCall(MatDisAssemble_MPISELL(mat));
   }
   if (!mat->was_assembled && mode == MAT_FINAL_ASSEMBLY) PetscCall(MatSetUpMultiply_MPISELL(mat));
 #if defined(PETSC_HAVE_CUDA)
@@ -766,15 +766,8 @@ static PetscErrorCode MatSetOption_MPISELL(Mat A, MatOption op, PetscBool flg)
     PetscCall(MatSetOption(a->A, op, flg));
     PetscCall(MatSetOption(a->B, op, flg));
     break;
-  case MAT_FORCE_DIAGONAL_ENTRIES:
-  case MAT_SORTED_FULL:
-    PetscCall(PetscInfo(A, "Option %s ignored\n", MatOptions[op]));
-    break;
   case MAT_IGNORE_OFF_PROC_ENTRIES:
     a->donotstash = flg;
-    break;
-  case MAT_SPD:
-  case MAT_SPD_ETERNAL:
     break;
   case MAT_SYMMETRIC:
     MatCheckPreallocated(A, 1);
@@ -797,7 +790,7 @@ static PetscErrorCode MatSetOption_MPISELL(Mat A, MatOption op, PetscBool flg)
     PetscCall(MatSetOption(a->A, op, flg));
     break;
   default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "unknown option %d", op);
+    break;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -941,7 +934,7 @@ static PetscErrorCode MatSetRandom_MPISELL(Mat x, PetscRandom rctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatSetFromOptions_MPISELL(Mat A, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode MatSetFromOptions_MPISELL(Mat A, PetscOptionItems PetscOptionsObject)
 {
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "MPISELL options");
@@ -1167,11 +1160,11 @@ static const struct _MatOps MatOps_Values = {MatSetValues_MPISELL,
                                              /*69*/ NULL,
                                              NULL,
                                              NULL,
-                                             NULL,
-                                             NULL,
-                                             NULL,
-                                             /*75*/ MatFDColoringApply_AIJ, /* reuse AIJ function */
+                                             MatFDColoringApply_AIJ, /* reuse AIJ function */
                                              MatSetFromOptions_MPISELL,
+                                             NULL,
+                                             /*75*/ NULL,
+                                             NULL,
                                              NULL,
                                              NULL,
                                              NULL,
@@ -1188,43 +1181,43 @@ static const struct _MatOps MatOps_Values = {MatSetValues_MPISELL,
                                              NULL,
                                              NULL,
                                              NULL,
-                                             NULL,
+                                             MatConjugate_MPISELL,
                                              /*94*/ NULL,
                                              NULL,
-                                             NULL,
-                                             NULL,
+                                             MatRealPart_MPISELL,
+                                             MatImaginaryPart_MPISELL,
                                              NULL,
                                              /*99*/ NULL,
                                              NULL,
                                              NULL,
-                                             MatConjugate_MPISELL,
-                                             NULL,
-                                             /*104*/ NULL,
-                                             MatRealPart_MPISELL,
-                                             MatImaginaryPart_MPISELL,
                                              NULL,
                                              NULL,
-                                             /*109*/ NULL,
+                                             /*104*/ MatMissingDiagonal_MPISELL,
                                              NULL,
-                                             NULL,
-                                             NULL,
-                                             MatMissingDiagonal_MPISELL,
-                                             /*114*/ NULL,
                                              NULL,
                                              MatGetGhosts_MPISELL,
                                              NULL,
+                                             /*109*/ NULL,
+                                             MatMultDiagonalBlock_MPISELL,
                                              NULL,
-                                             /*119*/ MatMultDiagonalBlock_MPISELL,
+                                             NULL,
+                                             NULL,
+                                             /*114*/ NULL,
+                                             NULL,
+                                             NULL,
+                                             MatInvertBlockDiagonal_MPISELL,
+                                             NULL,
+                                             /*119*/ NULL,
                                              NULL,
                                              NULL,
                                              NULL,
                                              NULL,
                                              /*124*/ NULL,
                                              NULL,
-                                             MatInvertBlockDiagonal_MPISELL,
                                              NULL,
                                              NULL,
-                                             /*129*/ NULL,
+                                             NULL,
+                                             /*129*/ MatFDColoringSetUp_MPIXAIJ,
                                              NULL,
                                              NULL,
                                              NULL,
@@ -1235,19 +1228,6 @@ static const struct _MatOps MatOps_Values = {MatSetValues_MPISELL,
                                              NULL,
                                              NULL,
                                              /*139*/ NULL,
-                                             NULL,
-                                             NULL,
-                                             MatFDColoringSetUp_MPIXAIJ,
-                                             NULL,
-                                             /*144*/ NULL,
-                                             NULL,
-                                             NULL,
-                                             NULL,
-                                             NULL,
-                                             NULL,
-                                             /*150*/ NULL,
-                                             NULL,
-                                             NULL,
                                              NULL,
                                              NULL,
                                              NULL};
@@ -1316,13 +1296,13 @@ static const struct _MatOps MatOps_Values = {MatSetValues_MPISELL,
   corresponding to proc0,proc1,proc2 are [BC], [DF], [GH] respectively.
   Internally, each processor stores the DIAGONAL part, and the OFF-DIAGONAL
   part as `MATSEQSELL` matrices. For example, proc1 will store [E] as a `MATSEQSELL`
-  matrix, ans [DF] as another SeqSELL matrix.
+  matrix, and [DF] as another SeqSELL matrix.
 
   When `d_nz`, `o_nz` parameters are specified, `d_nz` storage elements are
-  allocated for every row of the local diagonal submatrix, and o_nz
-  storage locations are allocated for every row of the OFF-DIAGONAL submat.
-  One way to choose `d_nz` and `o_nz` is to use the max nonzerors per local
-  rows for each of the local DIAGONAL, and the OFF-DIAGONAL submatrices.
+  allocated for every row of the local DIAGONAL submatrix, and o_nz
+  storage locations are allocated for every row of the OFF-DIAGONAL submatrix.
+  One way to choose `d_nz` and `o_nz` is to use the maximum number of nonzeros over
+  the local rows for each of the local DIAGONAL, and the OFF-DIAGONAL submatrices.
   In this case, the values of d_nz,o_nz are
 .vb
      proc0  dnz = 2, o_nz = 2
@@ -1472,13 +1452,13 @@ M*/
   corresponding to proc0,proc1,proc2 are [BC], [DF], [GH] respectively.
   Internally, each processor stores the DIAGONAL part, and the OFF-DIAGONAL
   part as `MATSEQSELL` matrices. For example, proc1 will store [E] as a `MATSEQSELL`
-  matrix, ans [DF] as another `MATSEQSELL` matrix.
+  matrix, and [DF] as another `MATSEQSELL` matrix.
 
   When d_rlenmax, o_rlenmax parameters are specified, d_rlenmax storage elements are
-  allocated for every row of the local diagonal submatrix, and o_rlenmax
-  storage locations are allocated for every row of the OFF-DIAGONAL submat.
-  One way to choose d_rlenmax and o_rlenmax is to use the max nonzerors per local
-  rows for each of the local DIAGONAL, and the OFF-DIAGONAL submatrices.
+  allocated for every row of the local DIAGONAL submatrix, and o_rlenmax
+  storage locations are allocated for every row of the OFF-DIAGONAL submatrix.
+  One way to choose `d_rlenmax` and `o_rlenmax` is to use the maximum number of nonzeros over
+  the local rows for each of the local DIAGONAL, and the OFF-DIAGONAL submatrices.
   In this case, the values of d_rlenmax,o_rlenmax are
 .vb
      proc0 - d_rlenmax = 2, o_rlenmax = 2

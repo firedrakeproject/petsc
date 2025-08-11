@@ -2,6 +2,8 @@
 
 #include <petscviewer.h>
 
+/* MANSEC = Viewer */
+
 #if defined(PETSC_HAVE_HDF5)
   #include <hdf5.h>
   #if !defined(H5_VERSION_GE)
@@ -25,7 +27,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerHDF5GetFileId(PetscViewer, hid_t *);
   /* As per https://portal.hdfgroup.org/display/HDF5/Chunking+in+HDF5, max. chunk size is 4GB */
   #define PETSC_HDF5_MAX_CHUNKSIZE 2147483647
 
-static inline PetscErrorCode PetscViewerHDF5PathIsRelative(const char path[], PetscBool emptyIsRelative, PetscBool *has)
+static inline PetscErrorCode PetscViewerHDF5PathIsRelative(const char path[], PetscBool emptyIsRelative, PetscBool *has) PeNS
 {
   size_t len;
 
@@ -61,7 +63,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerHDF5HasObjectAttribute(PetscViewer, Petsc
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5Open(MPI_Comm, const char[], PetscFileMode, PetscViewer *);
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5PushGroup(PetscViewer, const char[]);
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5PopGroup(PetscViewer);
-PETSC_EXTERN PetscErrorCode PetscViewerHDF5GetGroup(PetscViewer, const char[], char *[]);
+PETSC_EXTERN PetscErrorCode PetscViewerHDF5GetGroup(PetscViewer, const char[], const char *[]);
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5HasGroup(PetscViewer, const char[], PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5OpenGroup(PetscViewer, const char[], hid_t *, hid_t *);
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5WriteGroup(PetscViewer, const char[]);
@@ -83,4 +85,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerHDF5GetSPOutput(PetscViewer, PetscBool *)
 
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5SetCollective(PetscViewer, PetscBool);
 PETSC_EXTERN PetscErrorCode PetscViewerHDF5GetCollective(PetscViewer, PetscBool *);
+
+PETSC_EXTERN PetscErrorCode PetscViewerHDF5SetCompress(PetscViewer, PetscBool);
+PETSC_EXTERN PetscErrorCode PetscViewerHDF5GetCompress(PetscViewer, PetscBool *);
 #endif /* defined(PETSC_HAVE_HDF5) */

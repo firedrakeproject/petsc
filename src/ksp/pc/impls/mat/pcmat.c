@@ -131,7 +131,7 @@ static PetscErrorCode PCDestroy_Mat(PC pc)
 }
 
 /*@
-  PCMatSetApplyOperation - Set which matrix operation of the preconditioning matrix implements `PCApply()` for `PCMAT`.
+  PCMatSetApplyOperation - Set which matrix operation of the matrix implements `PCApply()` for `PCMAT`.
 
   Logically collective
 
@@ -151,12 +151,12 @@ PetscErrorCode PCMatSetApplyOperation(PC pc, MatOperation matop)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
-  PetscTryMethod((PetscObject)pc, "PCMatSetApplyOperation_C", (PC, MatOperation), (pc, matop));
+  PetscTryMethod(pc, "PCMatSetApplyOperation_C", (PC, MatOperation), (pc, matop));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  PCMatGetApplyOperation - Get which matrix operation of the preconditioning matrix implements `PCApply()` for `PCMAT`.
+  PCMatGetApplyOperation - Get which matrix operation of the matrix implements `PCApply()` for `PCMAT`.
 
   Logically collective
 
@@ -175,7 +175,7 @@ PetscErrorCode PCMatGetApplyOperation(PC pc, MatOperation *matop)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscAssertPointer(matop, 2);
-  PetscUseMethod((PetscObject)pc, "PCMatGetApplyOperation_C", (PC, MatOperation *), (pc, matop));
+  PetscUseMethod(pc, "PCMatGetApplyOperation_C", (PC, MatOperation *), (pc, matop));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

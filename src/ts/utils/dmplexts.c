@@ -30,40 +30,6 @@ static PetscErrorCode DMTSConvertPlex(DM dm, DM *plex, PetscBool copy)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexTSComputeRHSFunctionFVMCEED(DM dm, PetscReal time, Vec locX, Vec F, void *user)
-{
-#ifdef PETSC_HAVE_LIBCEED
-  PetscFV    fv;
-  Vec        locF;
-  Ceed       ceed;
-  DMCeed     sd = dm->dmceed;
-  CeedVector clocX, clocF;
-#endif
-
-#ifdef PETSC_HAVE_LIBCEED
-  PetscFunctionBegin;
-  PetscCall(DMGetCeed(dm, &ceed));
-  PetscCheck(sd, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONGSTATE, "This DM has no CEED data. Call DMCeedCreate() before computing the residual.");
-  if (time == 0.) PetscCall(DMCeedComputeGeometry(dm, sd));
-  PetscCall(DMGetField(dm, 0, NULL, (PetscObject *)&fv));
-  PetscCall(DMPlexInsertBoundaryValuesFVM(dm, fv, locX, time, NULL));
-  PetscCall(DMGetLocalVector(dm, &locF));
-  PetscCall(VecZeroEntries(locF));
-  PetscCall(VecGetCeedVectorRead(locX, ceed, &clocX));
-  PetscCall(VecGetCeedVector(locF, ceed, &clocF));
-  PetscCallCEED(CeedOperatorApplyAdd(sd->op, clocX, clocF, CEED_REQUEST_IMMEDIATE));
-  PetscCall(VecRestoreCeedVectorRead(locX, &clocX));
-  PetscCall(VecRestoreCeedVector(locF, &clocF));
-  PetscCall(DMLocalToGlobalBegin(dm, locF, ADD_VALUES, F));
-  PetscCall(DMLocalToGlobalEnd(dm, locF, ADD_VALUES, F));
-  PetscCall(DMRestoreLocalVector(dm, &locF));
-  PetscCall(VecViewFromOptions(F, NULL, "-fv_rhs_view"));
-  PetscFunctionReturn(PETSC_SUCCESS);
-#else
-  SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "This requires libCEED. Reconfigure using --download-libceed");
-#endif
-}
-
 /*@
   DMPlexTSComputeRHSFunctionFVM - Form the forcing `F` from the local input `locX` using pointwise functions specified by the user
 
@@ -95,7 +61,7 @@ PetscErrorCode DMPlexTSComputeRHSFunctionFVM(DM dm, PetscReal time, Vec locX, Ve
   if (!cellIS) PetscCall(DMGetStratumIS(plex, "depth", depth, &cellIS));
   PetscCall(DMGetLocalVector(plex, &locF));
   PetscCall(VecZeroEntries(locF));
-  PetscCall(DMPlexComputeResidual_Internal(plex, key, cellIS, time, locX, NULL, time, locF, user));
+  PetscCall(DMPlexComputeResidualByKey(plex, key, cellIS, time, locX, NULL, time, locF, user));
   PetscCall(DMLocalToGlobalBegin(plex, locF, ADD_VALUES, F));
   PetscCall(DMLocalToGlobalEnd(plex, locF, ADD_VALUES, F));
   PetscCall(DMRestoreLocalVector(plex, &locF));
@@ -195,7 +161,7 @@ PetscErrorCode DMPlexTSComputeIFunctionFEM(DM dm, PetscReal time, Vec locX, Vec 
       PetscCall(ISIntersect_Caching_Internal(allcellIS, pointIS, &cellIS));
       PetscCall(ISDestroy(&pointIS));
     }
-    PetscCall(DMPlexComputeResidual_Internal(plex, key, cellIS, time, locX, locX_t, time, locF, user));
+    PetscCall(DMPlexComputeResidualByKey(plex, key, cellIS, time, locX, locX_t, time, locF, user));
     PetscCall(ISDestroy(&cellIS));
   }
   PetscCall(ISDestroy(&allcellIS));
@@ -259,7 +225,7 @@ PetscErrorCode DMPlexTSComputeIJacobianFEM(DM dm, PetscReal time, Vec locX, Vec 
       if (hasJac && hasPrec) PetscCall(MatZeroEntries(Jac));
       PetscCall(MatZeroEntries(JacP));
     }
-    PetscCall(DMPlexComputeJacobian_Internal(plex, key, cellIS, time, X_tShift, locX, locX_t, Jac, JacP, user));
+    PetscCall(DMPlexComputeJacobianByKey(plex, key, cellIS, time, X_tShift, locX, locX_t, Jac, JacP, user));
     PetscCall(ISDestroy(&cellIS));
   }
   PetscCall(ISDestroy(&allcellIS));
@@ -313,7 +279,7 @@ PetscErrorCode DMPlexTSComputeRHSFunctionFEM(DM dm, PetscReal time, Vec locX, Ve
       PetscCall(ISIntersect_Caching_Internal(allcellIS, pointIS, &cellIS));
       PetscCall(ISDestroy(&pointIS));
     }
-    PetscCall(DMPlexComputeResidual_Internal(plex, key, cellIS, time, locX, NULL, time, locG, user));
+    PetscCall(DMPlexComputeResidualByKey(plex, key, cellIS, time, locX, NULL, time, locG, user));
     PetscCall(ISDestroy(&cellIS));
   }
   PetscCall(ISDestroy(&allcellIS));
@@ -418,7 +384,7 @@ PetscErrorCode DMTSCheckJacobian(TS ts, DM dm, PetscReal t, Vec u, Vec u_t, Pets
   if (hasJac && hasPrec) {
     PetscCall(DMCreateMatrix(dm, &M));
     PetscCall(TSComputeIJacobian(ts, t, u, u_t, shift, J, M, PETSC_FALSE));
-    PetscCall(PetscObjectSetName((PetscObject)M, "Preconditioning Matrix"));
+    PetscCall(PetscObjectSetName((PetscObject)M, "Matrix used to construct the preconditioner"));
     PetscCall(PetscObjectSetOptionsPrefix((PetscObject)M, "jacpre_"));
     PetscCall(MatViewFromOptions(M, NULL, "-mat_view"));
     PetscCall(MatDestroy(&M));

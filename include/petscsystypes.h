@@ -59,7 +59,7 @@
   These are the generic error codes. These error codes are used in many different places in the
   PETSc source code. The C-string versions are at defined in `PetscErrorStrings[]` in
   `src/sys/error/err.c`, while the Fortran versions are defined in
-  `src/sys/f90-mod/petscerror.h`. Any changes here must also be made in both locations.
+  `src/sys/ftn-mod/petscerror.h`. Any changes here must also be made in both locations.
 
 .seealso: `PetscErrorMessage()`, `PetscCall()`, `SETERRQ()`
 E*/
@@ -119,7 +119,8 @@ PETSC_ERROR_CODE_TYPEDEF enum PETSC_ERROR_CODE_NODISCARD {
   PETSC_ERR_MPI            = 98,  /* general MPI error */
   PETSC_ERR_RETURN         = 99,  /* PetscError() incorrectly returned an error code of 0 */
   PETSC_ERR_MEM_LEAK       = 100, /* memory alloc/free imbalance */
-  PETSC_ERR_MAX_VALUE      = 101, /* this is always the one more than the largest error code */
+  PETSC_ERR_PYTHON         = 101, /* Exception in Python */
+  PETSC_ERR_MAX_VALUE      = 102, /* this is always the one more than the largest error code */
 
   /*
     do not use, exist purely to make the enum bounds equal that of a regular int (so conversion
@@ -225,7 +226,6 @@ typedef enum {
 } PetscEnum;
 
 typedef short PetscShort;
-typedef char  PetscChar;
 typedef float PetscFloat;
 
 /*MC
@@ -467,8 +467,8 @@ PETSC_EXTERN const char *const PetscBools[];
 .seealso: `PETSC_TRUE`, `PETSC_FALSE`, `PetscNot()`, `PETSC_BOOL3_TRUE`, `PETSC_BOOL3_FALSE`, `PETSC_BOOL3_UNKNOWN`
 E*/
 typedef enum {
-  PETSC_BOOL3_FALSE,
-  PETSC_BOOL3_TRUE,
+  PETSC_BOOL3_FALSE   = 0,
+  PETSC_BOOL3_TRUE    = 1,
   PETSC_BOOL3_UNKNOWN = -1 /* the value is unknown at the time of query, but might be determined later */
 } PetscBool3;
 
@@ -524,7 +524,7 @@ typedef __fp16 PetscReal;
    Complex numbers are automatically available if PETSc was able to find a working complex implementation
 
     PETSc has a 'fix' for complex numbers to support expressions such as `std::complex<PetscReal>` + `PetscInt`, which are not supported by the standard
-    C++ library, but are convenient for petsc users. If the C++ compiler is able to compile code in `petsccxxcomplexfix.h` (This is checked by
+    C++ library, but are convenient for PETSc users. If the C++ compiler is able to compile code in `petsccxxcomplexfix.h` (This is checked by
     configure), we include `petsccxxcomplexfix.h` to provide this convenience.
 
     If the fix causes conflicts, or one really does not want this fix for a particular C++ file, one can define `PETSC_SKIP_CXX_COMPLEX_FIX`
@@ -749,15 +749,15 @@ PETSC_EXTERN const char *const PetscDataTypes[];
 
 .seealso: `PetscTokenCreate()`, `PetscTokenFind()`, `PetscTokenDestroy()`
 S*/
-typedef struct _p_PetscToken *PetscToken;
+typedef struct _n_PetscToken *PetscToken;
 
 /*S
-   PetscObject - any PETSc object, `PetscViewer`, `Mat`, `Vec`, `KSP` etc
+   PetscObject - any PETSc object, for example: `PetscViewer`, `Mat`, `Vec`, `KSP`, `DM`
 
    Level: beginner
 
    Notes:
-   This is the base class from which all PETSc objects are derived from.
+   This is the base class from which all PETSc objects are derived.
 
    In certain situations one can cast an object, for example a `Vec`, to a `PetscObject` with (`PetscObject`)vec
 
@@ -817,12 +817,12 @@ typedef struct _n_PetscFunctionList *PetscFunctionList;
 .seealso: `PetscViewerFileSetMode()`
 E*/
 typedef enum {
-  FILE_MODE_UNDEFINED = -1,
-  FILE_MODE_READ      = 0,
-  FILE_MODE_WRITE,
-  FILE_MODE_APPEND,
-  FILE_MODE_UPDATE,
-  FILE_MODE_APPEND_UPDATE
+  FILE_MODE_UNDEFINED     = -1,
+  FILE_MODE_READ          = 0,
+  FILE_MODE_WRITE         = 1,
+  FILE_MODE_APPEND        = 2,
+  FILE_MODE_UPDATE        = 3,
+  FILE_MODE_APPEND_UPDATE = 4
 } PetscFileMode;
 PETSC_EXTERN const char *const PetscFileModes[];
 
@@ -931,7 +931,6 @@ typedef enum {
 } PetscBuildTwoSidedType;
 PETSC_EXTERN const char *const PetscBuildTwoSidedTypes[];
 
-/* NOTE: If you change this, you must also change the values in src/vec/f90-mod/petscvec.h */
 /*E
   InsertMode - How the entries are combined with the current values in the vectors or matrices
 
@@ -1061,7 +1060,7 @@ PETSC_EXTERN const char *const PetscSubcommTypes[];
 
 .seealso: `PetscHeapCreate()`, `PetscHeapAdd()`, `PetscHeapPop()`, `PetscHeapPeek()`, `PetscHeapStash()`, `PetscHeapUnstash()`, `PetscHeapView()`, `PetscHeapDestroy()`
 S*/
-typedef struct _PetscHeap *PetscHeap;
+typedef struct _n_PetscHeap *PetscHeap;
 
 typedef struct _n_PetscShmComm *PetscShmComm;
 typedef struct _n_PetscOmpCtrl *PetscOmpCtrl;
@@ -1098,7 +1097,7 @@ typedef struct _n_PetscOptionsHelpPrinted *PetscOptionsHelpPrinted;
      PetscBTView(m,bt,viewer)     - prints all the entries in a bit array
 .ve
 
-    PETSc does not check error flags on `PetscBTLookup()`, `PetcBTLookupSet()`, `PetscBTLength()` because error checking
+    PETSc does not check error flags on `PetscBTLookup()`, `PetscBTLookupSet()`, `PetscBTLength()` because error checking
     would cost hundreds more cycles then the operation.
 
 S*/

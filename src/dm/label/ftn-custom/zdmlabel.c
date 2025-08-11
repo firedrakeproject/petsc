@@ -1,10 +1,10 @@
-#include <petsc/private/fortranimpl.h>
+#include <petsc/private/ftnimpl.h>
 #include <petscdmlabel.h>
 #include <petscviewer.h>
 
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
   #define petscsectionsymlabelsetstratum_ PETSCSECTIONSYMLABELSETSTRATUM
-#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE) && !defined(FORTRANDOUBLEUNDERSCORE)
+#elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)
   #define petscsectionsymlabelsetstratum_ petscsectionsymlabelsetstratum
 #endif
 

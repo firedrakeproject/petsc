@@ -3367,8 +3367,8 @@ static PetscErrorCode DMPlexTransferInjectorTree(DM coarse, DM fine, PetscSF coa
   { /* there may be the case where an sf root has a parent: broadcast parents back to children */
     MPI_Datatype threeInt;
     PetscMPIInt  rank;
-    PetscInt(*parentNodeAndIdCoarse)[3];
-    PetscInt(*parentNodeAndIdFine)[3];
+    PetscInt (*parentNodeAndIdCoarse)[3];
+    PetscInt (*parentNodeAndIdFine)[3];
     PetscInt           p, nleaves, nleavesToParents;
     PetscSF            pointSF, sfToParents;
     const PetscInt    *ilocal;
@@ -3431,7 +3431,7 @@ static PetscErrorCode DMPlexTransferInjectorTree(DM coarse, DM fine, PetscSF coa
       if (parentNodeAndIdFine[p - pStartF][0] >= 0) {
         ilocalToParents[nleavesToParents] = p - pStartF;
         // FIXME PetscCall(PetscMPIIntCast(parentNodeAndIdFine[p - pStartF][0],&iremoteToParents[nleavesToParents].rank));
-        iremoteToParents[nleavesToParents].rank  = (PetscMPIInt)parentNodeAndIdFine[p - pStartF][0];
+        iremoteToParents[nleavesToParents].rank  = parentNodeAndIdFine[p - pStartF][0];
         iremoteToParents[nleavesToParents].index = parentNodeAndIdFine[p - pStartF][1];
         nleavesToParents++;
       }

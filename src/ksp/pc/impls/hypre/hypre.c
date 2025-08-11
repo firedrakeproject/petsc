@@ -152,15 +152,15 @@ typedef struct {
 */
 static PetscErrorCode PCGetCoarseOperators_BoomerAMG(PC pc, PetscInt *nlevels, Mat *operators[])
 {
-  PC_HYPRE            *jac  = (PC_HYPRE *)pc->data;
-  PetscBool            same = PETSC_FALSE;
+  PC_HYPRE            *jac = (PC_HYPRE *)pc->data;
+  PetscBool            same;
   PetscInt             num_levels, l;
   Mat                 *mattmp;
   hypre_ParCSRMatrix **A_array;
 
   PetscFunctionBegin;
   PetscCall(PetscStrcmp(jac->hypre_type, "boomeramg", &same));
-  PetscCheck(same, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_NOTSAMETYPE, "Hypre type is not BoomerAMG ");
+  PetscCheck(same, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_NOTSAMETYPE, "Hypre type is not BoomerAMG");
   num_levels = hypre_ParAMGDataNumLevels((hypre_ParAMGData *)jac->hsolver);
   PetscCall(PetscMalloc1(num_levels, &mattmp));
   A_array = hypre_ParAMGDataAArray((hypre_ParAMGData *)jac->hsolver);
@@ -181,15 +181,15 @@ static PetscErrorCode PCGetCoarseOperators_BoomerAMG(PC pc, PetscInt *nlevels, M
 */
 static PetscErrorCode PCGetInterpolations_BoomerAMG(PC pc, PetscInt *nlevels, Mat *interpolations[])
 {
-  PC_HYPRE            *jac  = (PC_HYPRE *)pc->data;
-  PetscBool            same = PETSC_FALSE;
+  PC_HYPRE            *jac = (PC_HYPRE *)pc->data;
+  PetscBool            same;
   PetscInt             num_levels, l;
   Mat                 *mattmp;
   hypre_ParCSRMatrix **P_array;
 
   PetscFunctionBegin;
   PetscCall(PetscStrcmp(jac->hypre_type, "boomeramg", &same));
-  PetscCheck(same, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_NOTSAMETYPE, "Hypre type is not BoomerAMG ");
+  PetscCheck(same, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_NOTSAMETYPE, "Hypre type is not BoomerAMG");
   num_levels = hypre_ParAMGDataNumLevels((hypre_ParAMGData *)jac->hsolver);
   PetscCall(PetscMalloc1(num_levels, &mattmp));
   P_array = hypre_ParAMGDataPArray((hypre_ParAMGData *)jac->hsolver);
@@ -200,6 +200,43 @@ static PetscErrorCode PCGetInterpolations_BoomerAMG(PC pc, PetscInt *nlevels, Ma
   }
   *nlevels        = num_levels;
   *interpolations = mattmp;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*
+  Boolean Vecs are created IN PLACE with using data from BoomerAMG.
+*/
+static PetscErrorCode PCHYPREGetCFMarkers_BoomerAMG(PC pc, PetscInt *n_per_level[], PetscBT *CFMarkers[])
+{
+  PC_HYPRE        *jac = (PC_HYPRE *)pc->data;
+  PetscBool        same;
+  PetscInt         num_levels, fine_nodes = 0, coarse_nodes;
+  PetscInt        *n_per_temp;
+  PetscBT         *markertmp;
+  hypre_IntArray **CF_marker_array;
+
+  PetscFunctionBegin;
+  PetscCall(PetscStrcmp(jac->hypre_type, "boomeramg", &same));
+  PetscCheck(same, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_NOTSAMETYPE, "Hypre type is not BoomerAMG");
+  num_levels = hypre_ParAMGDataNumLevels((hypre_ParAMGData *)jac->hsolver);
+  PetscCall(PetscMalloc1(num_levels, &n_per_temp));
+  PetscCall(PetscMalloc1(num_levels - 1, &markertmp));
+  CF_marker_array = hypre_ParAMGDataCFMarkerArray((hypre_ParAMGData *)jac->hsolver);
+  for (PetscInt l = 0, CFMaxIndex = num_levels - 2; CFMaxIndex >= 0; l++, CFMaxIndex--) {
+    fine_nodes   = hypre_IntArraySize(CF_marker_array[CFMaxIndex]);
+    coarse_nodes = 0;
+    PetscCall(PetscBTCreate(fine_nodes, &markertmp[l]));
+    for (PetscInt k = 0; k < fine_nodes; k++) {
+      if (hypre_IntArrayDataI(CF_marker_array[CFMaxIndex], k) > 0) {
+        PetscCall(PetscBTSet(markertmp[l], k));
+        coarse_nodes++;
+      }
+    }
+    n_per_temp[l] = coarse_nodes;
+  }
+  n_per_temp[num_levels - 1] = fine_nodes;
+  *n_per_level               = n_per_temp;
+  *CFMarkers                 = markertmp;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -234,8 +271,8 @@ static PetscErrorCode PCSetUp_HYPRE(PC pc)
   if (pc->flag == DIFFERENT_NONZERO_PATTERN) PetscCall(MatDestroy(&jac->hpmat));
   PetscCall(PetscObjectTypeCompare((PetscObject)pc->pmat, MATHYPRE, &ishypre));
   if (!ishypre) {
+#if defined(PETSC_HAVE_HYPRE_DEVICE) && PETSC_PKG_HYPRE_VERSION_LE(2, 30, 0)
     /* Temporary fix since we do not support MAT_REUSE_MATRIX with HYPRE device */
-#if defined(PETSC_HAVE_HYPRE_DEVICE)
     PetscBool iscuda, iship, iskokkos;
 
     PetscCall(PetscObjectTypeCompareAny((PetscObject)pc->pmat, &iscuda, MATSEQAIJCUSPARSE, MATMPIAIJCUSPARSE, ""));
@@ -564,13 +601,14 @@ static PetscErrorCode PCDestroy_HYPRE(PC pc)
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCHYPREAMSSetInteriorNodes_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGetInterpolations_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGetCoarseOperators_C", NULL));
+  PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCHYPREGetCFMarkers_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCMGGalerkinSetMatProductAlgorithm_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCMGGalerkinGetMatProductAlgorithm_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCSetCoordinates_C", NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_HYPRE_Pilut(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE_Pilut(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_HYPRE *jac = (PC_HYPRE *)pc->data;
   PetscBool flag;
@@ -626,7 +664,7 @@ static const char *HYPREILUType[] = {
 
 static const char *HYPREILUIterSetup[] = {"default", "async-in-place", "async-explicit", "sync-explicit", "semisync-explicit"};
 
-static PetscErrorCode PCSetFromOptions_HYPRE_ILU(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE_ILU(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_HYPRE *jac = (PC_HYPRE *)pc->data;
   PetscBool flg;
@@ -754,7 +792,7 @@ static PetscErrorCode PCView_HYPRE_ILU(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_HYPRE_Euclid(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE_Euclid(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_HYPRE *jac = (PC_HYPRE *)pc->data;
   PetscBool flag, eu_bj = jac->eu_bj ? PETSC_TRUE : PETSC_FALSE;
@@ -812,8 +850,8 @@ static PetscErrorCode PCApplyTranspose_HYPRE_BoomerAMG(PC pc, Vec b, Vec x)
   PetscFunctionBegin;
   PetscCall(PetscCitationsRegister(hypreCitation, &cite));
   PetscCall(VecSet(x, 0.0));
-  PetscCall(VecHYPRE_IJVectorPushVecRead(hjac->x, b));
-  PetscCall(VecHYPRE_IJVectorPushVecWrite(hjac->b, x));
+  PetscCall(VecHYPRE_IJVectorPushVecRead(hjac->b, b));
+  PetscCall(VecHYPRE_IJVectorPushVecWrite(hjac->x, x));
 
   PetscCallExternal(HYPRE_IJMatrixGetObject, hjac->ij, (void **)&hmat);
   PetscCallExternal(HYPRE_IJVectorGetObject, hjac->b->ij, (void **)&jbv);
@@ -882,7 +920,7 @@ static const char *HYPREBoomerAMGMeasureType[] = {"local", "global"};
 static const char *HYPREBoomerAMGSmoothType[] = {"ILU", "Schwarz-smoothers", "Pilut", "ParaSails", "Euclid"};
 static const char *HYPREBoomerAMGRelaxType[] = {"Jacobi", "sequential-Gauss-Seidel", "seqboundary-Gauss-Seidel", "SOR/Jacobi", "backward-SOR/Jacobi", "" /* [5] hybrid chaotic Gauss-Seidel (works only with OpenMP) */, "symmetric-SOR/Jacobi", "" /* 7 */, "l1scaled-SOR/Jacobi", "Gaussian-elimination", "" /* 10 */, "" /* 11 */, "" /* 12 */, "l1-Gauss-Seidel" /* nonsymmetric */, "backward-l1-Gauss-Seidel" /* nonsymmetric */, "CG" /* non-stationary */, "Chebyshev", "FCF-Jacobi", "l1scaled-Jacobi"};
 static const char    *HYPREBoomerAMGInterpType[] = {"classical", "", "", "direct", "multipass", "multipass-wts", "ext+i", "ext+i-cc", "standard", "standard-wts", "block", "block-wtd", "FF", "FF1", "ext", "ad-wts", "ext-mm", "ext+i-mm", "ext+e-mm"};
-static PetscErrorCode PCSetFromOptions_HYPRE_BoomerAMG(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE_BoomerAMG(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_HYPRE   *jac = (PC_HYPRE *)pc->data;
   PetscInt    bs, n, indx, level;
@@ -1421,7 +1459,7 @@ static PetscErrorCode PCView_HYPRE_BoomerAMG(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_HYPRE_ParaSails(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE_ParaSails(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_HYPRE   *jac = (PC_HYPRE *)pc->data;
   PetscInt    indx;
@@ -1481,7 +1519,7 @@ static PetscErrorCode PCView_HYPRE_ParaSails(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_HYPRE_AMS(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE_AMS(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_HYPRE *jac = (PC_HYPRE *)pc->data;
   PetscInt  n;
@@ -1577,7 +1615,7 @@ static PetscErrorCode PCView_HYPRE_AMS(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_HYPRE_ADS(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE_ADS(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_HYPRE *jac = (PC_HYPRE *)pc->data;
   PetscInt  n;
@@ -1727,7 +1765,7 @@ static PetscErrorCode PCHYPRESetDiscreteCurl_HYPRE(PC pc, Mat C)
 }
 
 /*@
-  PCHYPRESetDiscreteCurl - Set discrete curl matrx for `PCHYPRE` type of ads
+  PCHYPRESetDiscreteCurl - Set discrete curl matrix for `PCHYPRE` type of ads
 
   Collective
 
@@ -1740,7 +1778,7 @@ static PetscErrorCode PCHYPRESetDiscreteCurl_HYPRE(PC pc, Mat C)
   Notes:
   C should have as many rows as the number of faces and as many columns as the number of edges in the mesh
 
-  Each row of G has as many nonzeros as the number of edges of a face, with column indexes being the global indexes of the corresponding edge: matrix entries are +1 and -1 depending on edge orientation with respect to the face orientation
+  Each row of C has as many nonzeros as the number of edges of a face, with column indexes being the global indexes of the corresponding edge: matrix entries are +1 and -1 depending on edge orientation with respect to the face orientation
 
   Developer Notes:
   This automatically converts the matrix to `MATHYPRE` if it is not already of that type
@@ -2064,9 +2102,6 @@ static PetscErrorCode PCHYPREAMSSetInteriorNodes_HYPRE(PC pc, Vec interior)
   Note:
   This calls `HYPRE_AMSSetInteriorNodes()`
 
-  Developer Notes:
-  If this is only for  `PCHYPRE` type of ams it should be called `PCHYPREAMSSetInteriorNodes()`
-
 .seealso: [](ch_ksp), `PCHYPRE`, `PCHYPRESetDiscreteGradient()`, `PCHYPRESetDiscreteCurl()`, `PCHYPRESetAlphaPoissonMatrix()`
 @*/
 PetscErrorCode PCHYPREAMSSetInteriorNodes(PC pc, Vec interior)
@@ -2215,6 +2250,7 @@ static PetscErrorCode PCHYPRESetType_HYPRE(PC pc, const char name[])
     pc->ops->matapply        = PCMatApply_HYPRE_BoomerAMG;
     PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGetInterpolations_C", PCGetInterpolations_BoomerAMG));
     PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCGetCoarseOperators_C", PCGetCoarseOperators_BoomerAMG));
+    PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCHYPREGetCFMarkers_C", PCHYPREGetCFMarkers_BoomerAMG));
     jac->destroy         = HYPRE_BoomerAMGDestroy;
     jac->setup           = HYPRE_BoomerAMGSetup;
     jac->solve           = HYPRE_BoomerAMGSolve;
@@ -2428,14 +2464,14 @@ static PetscErrorCode PCHYPRESetType_HYPRE(PC pc, const char name[])
   PetscCall(PetscFree(jac->hypre_type));
 
   jac->hypre_type = NULL;
-  SETERRQ(PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_UNKNOWN_TYPE, "Unknown HYPRE preconditioner %s; Choices are euclid, pilut, parasails, boomeramg, ams", name);
+  SETERRQ(PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_UNKNOWN_TYPE, "Unknown HYPRE preconditioner %s; Choices are euclid, ilu, pilut, parasails, boomeramg, ams, ads", name);
 }
 
 /*
     It only gets here if the HYPRE type has not been set before the call to
    ...SetFromOptions() which actually is most of the time
 */
-static PetscErrorCode PCSetFromOptions_HYPRE(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HYPRE(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscInt    indx;
   const char *type[] = {"ilu", "euclid", "pilut", "parasails", "boomeramg", "ams", "ads"};
@@ -2459,10 +2495,10 @@ static PetscErrorCode PCSetFromOptions_HYPRE(PC pc, PetscOptionItems *PetscOptio
 
   Input Parameters:
 + pc   - the preconditioner context
-- name - either  euclid, pilut, parasails, boomeramg, ams, ads
+- name - either euclid, ilu, pilut, parasails, boomeramg, ams, ads
 
   Options Database Key:
-. pc_hypre_type - One of euclid, pilut, parasails, boomeramg, ams, ads
+. pc_hypre_type - One of euclid, ilu, pilut, parasails, boomeramg, ams, ads
 
   Level: intermediate
 
@@ -2477,6 +2513,35 @@ PetscErrorCode PCHYPRESetType(PC pc, const char name[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@C
+  PCHYPREGetCFMarkers - Gets CF marker arrays for all levels (except the finest level)
+
+  Logically Collective
+
+  Input Parameter:
+. pc - the preconditioner context
+
+  Output Parameters:
++ n_per_level - the number of nodes per level (size of `num_levels`)
+- CFMarkers   - the Coarse/Fine Boolean arrays (size of `num_levels` - 1)
+
+  Note:
+  Caller is responsible for memory management of `n_per_level` and `CFMarkers` pointers. That is they should free them with `PetscFree()` when no longer needed.
+
+  Level: advanced
+
+.seealso: [](ch_ksp), `PC`, `PCMG`, `PCMGGetRestriction()`, `PCMGSetInterpolation()`, `PCMGGetRScale()`, `PCMGGetInterpolation()`, `PCGetInterpolations()`
+@*/
+PetscErrorCode PCHYPREGetCFMarkers(PC pc, PetscInt *n_per_level[], PetscBT *CFMarkers[])
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
+  PetscAssertPointer(n_per_level, 2);
+  PetscAssertPointer(CFMarkers, 3);
+  PetscUseMethod(pc, "PCHYPREGetCFMarkers_C", (PC, PetscInt *[], PetscBT *[]), (pc, n_per_level, CFMarkers));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /*@
   PCHYPREGetType - Gets which hypre preconditioner you are using
 
@@ -2484,7 +2549,7 @@ PetscErrorCode PCHYPRESetType(PC pc, const char name[])
 . pc - the preconditioner context
 
   Output Parameter:
-. name - either  euclid, pilut, parasails, boomeramg, ams, ads
+. name - either euclid, ilu, pilut, parasails, boomeramg, ams, ads
 
   Level: intermediate
 
@@ -2554,9 +2619,9 @@ PetscErrorCode PCMGGalerkinGetMatProductAlgorithm(PC pc, const char *name[])
 
    Options Database Keys:
 +   -pc_hypre_type - One of `euclid`, `pilut`, `parasails`, `boomeramg`, `ams`, or `ads`
-.   -pc_hypre_boomeramg_nodal_coarsen <n> - where n is from 1 to 6 (see `HYPRE_BOOMERAMGSetNodal()`)
+.   -pc_hypre_boomeramg_nodal_coarsen <n> - where n is from 1 to 6 (see `HYPRE_BoomerAMGSetNodal()`)
 .   -pc_hypre_boomeramg_vec_interp_variant <v> - where v is from 1 to 3 (see `HYPRE_BoomerAMGSetInterpVecVariant()`)
--   Many others, run with `-pc_type hypre` `-pc_hypre_type XXX` `-help` to see options for the XXX preconditioner
+-   Many others - run with `-pc_type hypre` `-pc_hypre_type XXX` `-help` to see options for the XXX preconditioner
 
    Level: intermediate
 
@@ -2690,7 +2755,7 @@ static PetscErrorCode PCView_PFMG(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_PFMG(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_PFMG(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_PFMG *ex = (PC_PFMG *)pc->data;
 
@@ -2910,7 +2975,7 @@ static PetscErrorCode PCView_SysPFMG(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_SysPFMG(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_SysPFMG(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_SysPFMG *ex  = (PC_SysPFMG *)pc->data;
   PetscBool   flg = PETSC_FALSE;
@@ -3138,7 +3203,7 @@ static PetscErrorCode PCView_SMG(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_SMG(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_SMG(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_SMG *ex = (PC_SMG *)pc->data;
 

@@ -2,6 +2,7 @@ from __future__ import generators
 import config.base
 
 import os
+import sys
 import re
 import itertools
 from hashlib import md5 as new_md5
@@ -49,6 +50,7 @@ class Package(config.base.Configure):
     self.version_tuple    = ''   # version of the package actually found (tuple)
     self.requiresversion  = 0    # error if the version information is not found
     self.requirekandr     = 0    # package requires KandR compiler flags to build
+    self.brokengnu23      = 0    # package requires a C standard lower than GNU23
 
     # These are specified for the package
     self.required               = 0    # 1 means the package is required
@@ -106,7 +108,7 @@ class Package(config.base.Configure):
     self.defaultInstallDir      = ''
     self.PrefixWriteCheck       = 1 # check if specified prefix location is writable for 'make install'
 
-    self.isMPI                  = 0 # Is an MPI implementation, needed to check for compiler wrappers
+    self.skipMPIDependency      = 0 # Does this package need to skip adding a dependency on MPI? Most packages work with MPI dependency - some libraries (ex. metis) don't care, while some build tools (ex. make, bison) and some MPI library dependencies (ex. hwloc, ucx) need to be built before it, so they can set/use this flag.
     self.hastests               = 0 # indicates that PETSc make alltests has tests for this package
     self.hastestsdatafiles      = 0 # indicates that PETSc make alltests has tests for this package that require DATAFILESPATH to be set
     self.makerulename           = '' # some packages do too many things with the make stage; this allows a package to limit to, for example, just building the libraries
@@ -116,7 +118,7 @@ class Package(config.base.Configure):
 
     self.downloaded             = 0  # 1 indicates that this package is being downloaded during this run (internal use only)
     self.testoptions            = '' # Any PETSc options that should be used when this package is installed and the test harness is run
-    self.executablename         = '' # full path of executable, for example cmake, bfort etc
+    self.executablename         = '' # full path of executable, for example cmake
     return
 
   def __str__(self):
@@ -150,6 +152,8 @@ class Package(config.base.Configure):
     self.libraries       = framework.require('config.libraries', self)
     self.programs        = framework.require('config.programs', self)
     self.sourceControl   = framework.require('config.sourceControl',self)
+    self.sourceControl   = framework.require('config.sourceControl',self)
+    self.python          = framework.require('config.packages.Python',self)
     try:
       import PETSc.options
       self.sharedLibraries = framework.require('PETSc.options.sharedLibraries', self)
@@ -161,9 +165,7 @@ class Package(config.base.Configure):
       self.petscdir        = FakePETScDir()
     # All packages depend on make
     self.make          = framework.require('config.packages.make',self)
-    if not self.isMPI and not self.package in ['make','cuda','hip','sycl','thrust','hwloc','x','bison','python']:
-      # force MPI to be the first package (except for those listed above) configured since all other packages
-      # may depend on its compilers defined here
+    if not self.skipMPIDependency:
       self.mpi         = framework.require('config.packages.MPI',self)
     return
 
@@ -430,6 +432,9 @@ class Package(config.base.Configure):
     outflags = self.removeCoverageFlag(outflags)
     if self.requirekandr:
       outflags += self.setCompilers.KandRFlags
+    with self.Language('C'):
+      if self.brokengnu23 and config.setCompilers.Configure.isGcc150plus(self.getCompiler(), self.log):
+        outflags.append('-std=gnu17')
     return ' '.join(outflags)
 
   def updatePackageFFlags(self,flags):
@@ -527,6 +532,7 @@ class Package(config.base.Configure):
     if not self.packageDir: self.packageDir = self.downLoad()
     self.updateGitDir()
     self.updatehgDir()
+    self.applyPatches()
     if (self.publicInstall or 'package-prefix-hash' in self.argDB) and not ('package-prefix-hash' in self.argDB and (hasattr(self,'postProcess') or self.builtafterpetsc)):
       self.installDir = self.defaultInstallDir
     else:
@@ -800,6 +806,9 @@ Now rerun configure''' % (self.installDirProvider.dir, '--download-'+self.packag
     '''Some packages may need addition prerequisites if the package comes from a git repository'''
     return 1
 
+  def applyPatches(self):
+    '''Patch the package's files with needed (likely portability) corrections'''
+
   def updatehgDir(self):
     '''Checkout the correct hash'''
     if hasattr(self.sourceControl, 'hg') and (self.packageDir == os.path.join(self.externalPackagesDir,'hg.'+self.package)):
@@ -1030,6 +1039,38 @@ To use currently downloaded (local) git snapshot - use: --download-'+self.packag
       if hasattr(package, 'lib'):     self.dlib += package.lib
       if hasattr(package, 'include'): self.dinclude += package.include
     return
+
+  def addPost(self, dir, rules):
+    '''Adds make rules that are run after PETSc is built
+
+       Without a prefix the rules are run at the end of make all, otherwise they are run at the end of make install
+    '''
+    steps = ['@echo "=========================================="',\
+             '@echo "Building/installing ' + self.name + '. This may take several minutes"',\
+             '@${RM} ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name.lower() + '.build.log']
+    if not isinstance(rules, list): rules = [rules]
+    for rule in rules:
+      steps.append('@cd ' + dir + ' && ' + rule + ' >> ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name.lower() + '.build.log 2>&1 ||\
+                    (echo "***** Error building/installing ' + self.name + '. Check ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name + '.build.log" && exit 1)')
+    self.addMakeRule(self.name.lower() + 'build', '', steps)
+    if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
+      self.framework.postinstalls.append(self.name.lower() + 'build')
+    else:
+      self.framework.postbuilds.append(self.name.lower() + 'build')
+
+  def addMakeCheck(self, dir, rule):
+    '''Adds a small make check for the project'''
+    self.addMakeRule(self.name.lower() + 'check','', \
+                         ['@echo "*** Checking ' + self.name + ' ***"',\
+                          '@cd ' + dir + ' && ' + rule + ' || (echo "***** Error checking ' + self.name + ' ******" && exit 1)'])
+    self.framework.postchecks.append(self.name.lower() + 'check')
+
+  def addTest(self, dir, rule):
+    '''Adds a large make test for the project'''
+    self.addMakeRule(self.name.lower() + 'test','', \
+                         ['@echo "*** Testing ' + self.name + ' ***"',\
+                          '@${RM} ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name.lower() + '.errorflg',\
+                          '@cd ' + dir + ' && ' + rule + ' || (echo "***** Error testing ' + self.name + ' ******" && exit 1)'])
 
   def configureLibrary(self):
     '''Find an installation and check if it can work with PETSc'''
@@ -1276,6 +1317,13 @@ const char *ver = "petscpkgver(" PetscXstr_({y}) ")";
         raise RuntimeError('Configure must be able to determined the version information for '+self.name+'. It was unable to, please send configure.log to petsc-maint@mcs.anl.gov')
       return
     try:
+      # 'version' could be in many formats, like '10007201', '3.23.0', or '((((1)<<24)|((18)<<16)))'. As long as it doesn't contain '.', we eval it to simplify it.
+      if '.' not in version:
+        try:
+          version = str(eval(version)) # eval a potentially complex version expression
+          self.log.write('This is the evaluated version string: ' + version +'\n')
+        except:
+          self.log.write('For '+self.package+' failed to eval its version string ('+version+') to a number\n')
       self.foundversion = self.versionToStandardForm(version)
     except:
       self.log.write('For '+self.package+' unable to convert version information ('+version+') to standard form, skipping version check\n')
@@ -1807,7 +1855,7 @@ class GNUPackage(Package):
     else:
       args.append('--disable-shared')
 
-    cuda_module = self.framework.findModule(self, config.packages.cuda)
+    cuda_module = self.framework.findModule(self, config.packages.CUDA)
     if cuda_module and cuda_module.found:
       with self.Language('CUDA'):
         args.append('CUDAC='+self.getCompiler())
@@ -1911,6 +1959,7 @@ class CMakePackage(Package):
   def __init__(self, framework):
     Package.__init__(self, framework)
     self.minCmakeVersion = (2,0,0)
+    self.need35policy = False
     return
 
   def setupHelp(self, help):
@@ -1921,7 +1970,7 @@ class CMakePackage(Package):
 
   def setupDependencies(self, framework):
     Package.setupDependencies(self, framework)
-    self.cmake = framework.require('config.packages.cmake',self)
+    self.cmake = framework.require('config.packages.CMake',self)
     if self.argDB['download-'+self.downloadname.lower()]:
       self.cmake.maxminCmakeVersion = max(self.minCmakeVersion,self.cmake.maxminCmakeVersion)
     return
@@ -1958,7 +2007,7 @@ class CMakePackage(Package):
     args.append('-DCMAKE_C_FLAGS_RELEASE:STRING="'+cflags+'"')
     self.framework.popLanguage()
     if hasattr(self.compilers, 'CXX'):
-      lang = self.framework.pushLanguage('Cxx')
+      lang = self.framework.pushLanguage('Cxx').lower()
       args.append('-DCMAKE_CXX_COMPILER="'+self.framework.getCompiler()+'"')
       # bypass CMake findMPI() bug that can find compilers later in the PATH before the first one in the PATH.
       # relevant lines of findMPI() begins with if(_MPI_BASE_DIR)
@@ -1996,6 +2045,8 @@ class CMakePackage(Package):
     if self.setCompilers.LDFLAGS:
       ldflags = self.setCompilers.LDFLAGS.replace('"','\\"') # escape double quotes (") in LDFLAGS
       args.append('-DCMAKE_EXE_LINKER_FLAGS:STRING="'+ldflags+'"')
+      if self.checkSharedLibrariesEnabled():
+        args.append('-DCMAKE_SHARED_LINKER_FLAGS:STRING="'+ldflags+'"')
 
     if not config.setCompilers.Configure.isWindows(self.setCompilers.CC, self.log) and self.checkSharedLibrariesEnabled():
       args.append('-DBUILD_SHARED_LIBS:BOOL=ON')
@@ -2004,10 +2055,14 @@ class CMakePackage(Package):
       args.append('-DBUILD_SHARED_LIBS:BOOL=OFF')
       args.append('-DBUILD_STATIC_LIBS:BOOL=ON')
 
+    if self.checkSharedLibrariesEnabled():
+      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
+      args.append('-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON')
+
     if 'MSYSTEM' in os.environ:
       args.append('-G "MSYS Makefiles"')
     for package in self.deps + self.odeps:
-      if package.found and package.name == 'cuda':
+      if package.found and package.name == 'CUDA':
         with self.Language('CUDA'):
           args.append('-DCMAKE_CUDA_COMPILER='+self.getCompiler())
           cuda_flags = self.updatePackageCUDAFlags(self.getCompilerFlags())
@@ -2020,6 +2075,8 @@ class CMakePackage(Package):
             with self.Language('C++'):
               args.append('-DCMAKE_CUDA_HOST_COMPILER="{}"'.format(self.getCompiler()))
         break
+    if self.need35policy:
+      args.append('-DCMAKE_POLICY_VERSION_MINIMUM=3.5')
     return args
 
   def updateControlFiles(self):
@@ -2066,7 +2123,9 @@ class CMakePackage(Package):
         raise RuntimeError('Error configuring '+self.PACKAGE+' with CMake')
       try:
         self.logPrintBox('Compiling and installing '+self.PACKAGE+'; this may take several minutes')
-        output2,err2,ret2  = config.package.Package.executeShellCommand(self.make.make_jnp+' '+self.makerulename, cwd=folder, timeout=3000, log = self.log)
+        if self.parallelMake: pmake = self.make.make_jnp+' '+self.makerulename+' '
+        else: pmake = self.make.make+' '+self.makerulename+' '
+        output2,err2,ret2  = config.package.Package.executeShellCommand(pmake, cwd=folder, timeout=3000, log = self.log)
         output3,err3,ret3  = config.package.Package.executeShellCommand(self.make.make+' install', cwd=folder, timeout=3000, log = self.log)
       except RuntimeError as e:
         self.logPrint('Error running make on  '+self.PACKAGE+': '+str(e))
@@ -2081,4 +2140,116 @@ class CMakePackage(Package):
           if f.is_file() and f.suffix in ['.a']:
             self.logPrint('Changing '+str(f)+' to '+str(f.with_suffix('.lib')))
             f.rename(f.with_suffix('.lib'))
+
+      if os.path.isfile(os.path.join(self.packageDir,'pyproject.toml')):
+        # this code is duplicated below for PythonPackage
+        env = os.environ.copy()
+        env["CMAKE_MODULE_PATH"] = folder
+        env["CC"]                = self.compilers.CC
+        if 'Cxx' in self.buildLanguages:
+          self.pushLanguage('C++')
+          env["CXX"]      = self.compilers.CXX
+          env["CXXFLAGS"] = self.updatePackageCxxFlags(self.getCompilerFlags())
+          self.popLanguage()
+        try:
+          # Uses --no-deps so does not install any listed dependencies of the package that Python pip would normally install
+          output,err,ret = config.package.Package.executeShellCommandSeq([[self.python.pyexe, '-m', 'pip', 'install', '--no-build-isolation', '--no-deps', '--upgrade-strategy', 'only-if-needed', '--upgrade', '--target='+os.path.join(self.installDir,'lib'), '.']],cwd=self.packageDir, env=env, timeout=30, log = self.log)
+        except RuntimeError as e:
+          raise RuntimeError('Error running pip install on '+self.pkgname)
+    return self.installDir
+
+class PythonPackage(Package):
+  def __init__(self, framework):
+    Package.__init__(self, framework)
+    self.download = 'PyPi'
+
+  def setupDependencies(self, framework):
+    config.package.Package.setupDependencies(self, framework)
+    self.python = framework.require('config.packages.Python', self)
+
+  def __str__(self):
+    if self.found:
+      s =  self.name + ':\n'
+      if hasattr(self,'pythonpath'):
+        s += '  PYTHONPATH: '+self.pythonpath+'\n'
+      return s
+    return ''
+
+  def configureLibrary(self):
+    import importlib
+
+    self.checkDownload()
+    if self.builtafterpetsc: return
+
+    if self.argDB.get('with-' + self.name + '-dir'):
+      dir = self.argDB['with-' + self.name + '-dir']
+      sys.path.insert(0, dir)
+      try:
+        self.logPrint('Trying to import ' + self.pkgname + ' which was indicated with the --with-' + self.name + '-dir option')
+        importlib.import_module(self.pkgname)
+        self.python.path.add(dir)
+        self.pythonpath = dir
+      except:
+        raise RuntimeError('--with-' + self.name + '-dir=' + dir + ' was not successful, check the directory or use --download-' + self.name)
+    elif self.argDB.get('download-' + self.name):
+      dir = os.path.join(self.installDir,'lib')
+      sys.path.insert(0, dir)
+      try:
+        self.logPrint('Trying to import ' + self.pkgname + ' which was just installed with the --download-' + self.name + ' option')
+        # importlib.import_module fails python 3.11 a newer
+        #importlib.import_module(self.pkgname)
+        self.python.path.add(dir)
+        self.pythonpath = dir
+      except:
+        raise RuntimeError('--download-' + self.name + ' was not successful, send configure.log to petsc-maint@mcs.anl.gov')
+    elif self.argDB.get('with-' + self.name):
+      try:
+        self.logPrint('Trying to import ' + self.pkgname + ' which was just included with the --with-' + self.name + ' option')
+        importlib.import_module(self.pkgname)
+      except:
+        raise RuntimeError(self.name + ' not found in default Python PATH! Suggest --download-' + self.name + ' or --with-' + self.name + '-dir')
+    self.found = 1
+
+  def downLoad(self):
+    pass
+
+  def Install(self):
+    pkgname = self.pkgname
+    if hasattr(self,'pkgbuild'): pkgname = self.pkgbuild
+    if hasattr(self,'version') and self.version: pkgname = pkgname + '==' + self.version
+
+    if not self.builtafterpetsc:
+      env = os.environ.copy()
+      env["CC"]      = self.compilers.CC
+      if 'Cxx' in self.buildLanguages:
+        self.pushLanguage('C++')
+        env["CXX"]      = self.compilers.CXX
+        env["CXXFLAGS"] = self.updatePackageCxxFlags(self.getCompilerFlags())
+        self.popLanguage()
+
+      if 'PYTHONPATH' in env:
+        env['PYTHONPATH'] = env['PYTHONPATH'] + ':' + os.path.join(self.installDir,'lib')
+      else:
+        env['PYTHONPATH'] = os.path.join(self.installDir,'lib')
+
+      try:
+        output,err,ret = config.package.Package.executeShellCommandSeq([[self.python.pyexe, '-m', 'pip', 'install', '--no-build-isolation', '--no-deps', '--upgrade-strategy', 'only-if-needed', '--upgrade', '--target='+os.path.join(self.installDir,'lib'), pkgname]],env=env, timeout=30, log = self.log)
+      except RuntimeError as e:
+        raise RuntimeError('Error running pip install on '+self.pkgname)
+    else:
+      # provide access to previously built pip packages
+      ppath = 'PYTHONPATH=' + os.path.join(self.installDir,'lib')
+
+      ccarg = 'CC=' + self.compilers.CC
+      if 'Cxx' in self.buildLanguages:
+        self.pushLanguage('C++')
+        ccarg += ' CXX=' + self.compilers.CXX
+        ccarg += ' CXXFLAGS="' +  self.updatePackageCxxFlags(self.getCompilerFlags()) + '"'
+        self.popLanguage()
+
+      if hasattr(self,'env'):
+        for i in self.env:
+          ccarg += ' ' + i + '=' + self.env[i]
+
+      self.addPost('', [ccarg + ' ' + ppath + ' ' + ' ' + self.python.pyexe +  ' -m  pip install --no-build-isolation --no-deps --upgrade-strategy only-if-needed --upgrade --target=' + os.path.join(self.installDir,'lib') + ' ' + pkgname])
     return self.installDir

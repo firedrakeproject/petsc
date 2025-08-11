@@ -119,7 +119,7 @@ cdef extern from * nogil:
     PetscErrorCode DMGetCoordinateDim(PetscDM, PetscInt*)
     PetscErrorCode DMSetCoordinateDim(PetscDM, PetscInt)
     PetscErrorCode DMLocalizeCoordinates(PetscDM)
-    PetscErrorCode DMSetCoordinateDisc(PetscDM, PetscFE, PetscBool)
+    PetscErrorCode DMSetCoordinateDisc(PetscDM, PetscFE, PetscBool, PetscBool)
     PetscErrorCode DMSetCellCoordinateDM(PetscDM, PetscDM)
     PetscErrorCode DMGetCellCoordinateDM(PetscDM, PetscDM*)
     PetscErrorCode DMSetCellCoordinateSection(PetscDM, PetscInt, PetscSection)
@@ -129,6 +129,8 @@ cdef extern from * nogil:
     PetscErrorCode DMSetCellCoordinatesLocal(PetscDM, PetscVec)
     PetscErrorCode DMGetCellCoordinatesLocal(PetscDM, PetscVec*)
     PetscErrorCode DMGetCoordinatesLocalized(PetscDM, PetscBool*)
+    PetscErrorCode DMGetPeriodicity(PetscDM, const PetscReal *[], const PetscReal *[], const PetscReal *[])
+    PetscErrorCode DMSetPeriodicity(PetscDM, const PetscReal[], const PetscReal[], const PetscReal[])
 
     PetscErrorCode DMCreateInterpolation(PetscDM, PetscDM, PetscMat*, PetscVec*)
     PetscErrorCode DMCreateInjection(PetscDM, PetscDM, PetscMat*)
@@ -157,8 +159,6 @@ cdef extern from * nogil:
 
     PetscErrorCode DMGetLocalToGlobalMapping(PetscDM, PetscLGMap*)
 
-    PetscErrorCode DMSetSection(PetscDM, PetscSection)
-    PetscErrorCode DMGetSection(PetscDM, PetscSection*)
     PetscErrorCode DMSetLocalSection(PetscDM, PetscSection)
     PetscErrorCode DMGetLocalSection(PetscDM, PetscSection*)
     PetscErrorCode DMSetGlobalSection(PetscDM, PetscSection)
@@ -236,9 +236,12 @@ cdef inline PetscInt asBoundary(object boundary,
                                 PetscDMBoundaryType *_z) except -1:
     cdef PetscInt dim = 0
     cdef object x=None, y=None, z=None
+    # Use `type(0)` instead of `int` to workaround
+    # Cython 3.1 failing to interpret `int` as a type
+    cdef type pyint = type(0)
     if boundary is None or \
        isinstance(boundary, str) or \
-       isinstance(boundary, int):
+       isinstance(boundary, pyint):
         _x[0] = _y[0] = _z[0] = asBoundaryType(boundary)
     else:
         _x[0] = _y[0] = _z[0] = DM_BOUNDARY_NONE

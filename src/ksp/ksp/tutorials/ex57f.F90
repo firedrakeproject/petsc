@@ -131,7 +131,7 @@
           PetscCallA(MatSetValues(A,ione,[II],ione,[JJ],[v],INSERT_VALUES,ierr))
         endif
         v = 4.0
-        PetscCallA( MatSetValues(A,ione,[II],ione,[II],[v],INSERT_VALUES,ierr))
+        PetscCallA(MatSetValues(A,ione,[II],ione,[II],[v],INSERT_VALUES,ierr))
  10   continue
       PetscCallA(MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr))
       PetscCallA(MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr))
@@ -191,7 +191,7 @@
       PetscCallA(KSPCreate(PETSC_COMM_WORLD,ksp,ierr))
 
 !  Set operators. Here the matrix that defines the linear system
-!  also serves as the preconditioning matrix.
+!  also serves as the matrix from which the preconditioner is constructed.
 
       PetscCallA(KSPSetOperators(ksp,A,A,ierr))
 
@@ -205,7 +205,7 @@
       PetscCallA(PCFactorSetUpMatSolverType(pc,ierr))
       PetscCallA(PCFactorGetMatrix(pc,F,ierr))
       PetscCallA(KSPSetFromOptions(ksp,ierr))
-      icntl = 7; ival = 2;
+      icntl = 7; ival = 2
       PetscCallA(MatMumpsSetIcntl(F,icntl,ival,ierr))
 #endif
 
@@ -325,9 +325,9 @@
       PetscReal rnorm
 
       if (rnorm .le. .05) then
-        flag = 1
+        flag = KSP_CONVERGED_RTOL
       else
-        flag = 0
+        flag = KSP_CONVERGED_ITERATING
       endif
       ierr = 0
 

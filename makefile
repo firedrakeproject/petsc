@@ -3,7 +3,7 @@
 #
 # This is the top level makefile for compiling PETSc.
 #   * make help - useful messages on functionality
-#   * make all  - compile the PETSc libraries and utilities
+#   * make all  - compile the PETSc libraries and utilities, run after ./configure
 #   * make check - runs a quick test that the libraries are built correctly and PETSc applications can run
 #
 #   * make install - for use with ./configure is run with the --prefix=directory option
@@ -60,7 +60,7 @@ all:
 	@echo "Finishing make run at `date +'%a, %d %b %Y %H:%M:%S %z'`" >> ${PETSC_ARCH}/lib/petsc/conf/make.log
 	@if [ "`cat ${PETSC_ARCH}/lib/petsc/conf/error.log 2> /dev/null`" != "0" ]; then exit 1; fi
 
-all-local: info libs matlabbin petsc4py-build libmesh-build mfem-build slepc-build hpddm-build amrex-build bamg-build
+all-local: info libs matlabbin ${PETSC_POST_BUILDS}
 
 ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/files:
 	@touch -t 197102020000 ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/files
@@ -80,31 +80,25 @@ matlabbin:
             echo "========================================="; \
         fi
 
-allfortranstubs: deletefortranstubs
-	@${PYTHON} lib/petsc/bin/maint/generatefortranstubs.py --petsc-dir=${PETSC_DIR} --petsc-arch=${PETSC_ARCH} --bfort=${BFORT} --mode=generate --verbose=${V}
-	-@${PYTHON} lib/petsc/bin/maint/generatefortranstubs.py --petsc-dir=${PETSC_DIR} --petsc-arch=${PETSC_ARCH} --mode=merge --verbose=${V}
-
-#copy of allfortranstubs with PETSC_ARCH=''
-allfortranstubsinplace: deletefortranstubs
-	@${PYTHON} lib/petsc/bin/maint/generatefortranstubs.py --petsc-dir=${PETSC_DIR} --petsc-arch='' --bfort=${BFORT} --mode=generate --verbose=${V}
-	-@${PYTHON} lib/petsc/bin/maint/generatefortranstubs.py --petsc-dir=${PETSC_DIR} --petsc-arch='' --mode=merge --verbose=${V}
+fortranbindings: deletefortranbindings
+	@${PYTHON} config/utils/generatefortranbindings.py --petsc-dir=${PETSC_DIR} --petsc-arch=${PETSC_ARCH}
 
 deleteshared:
 	@for LIBNAME in ${SHLIBS}; \
 	do \
-	   if [ -d ${INSTALL_LIB_DIR}/$${LIBNAME}.dylib.dSYM ]; then \
-             echo ${RM} -rf ${INSTALL_LIB_DIR}/$${LIBNAME}.dylib.dSYM; \
-	     ${RM} -rf ${INSTALL_LIB_DIR}/$${LIBNAME}.dylib.dSYM; \
+	   if [ -d ${INSTALL_LIB_DIR}/$${LIBNAME}$${LIB_NAME_SUFFIX}.dylib.dSYM ]; then \
+             echo ${RM} -rf ${INSTALL_LIB_DIR}/$${LIBNAME}$${LIB_NAME_SUFFIX}.dylib.dSYM; \
+	     ${RM} -rf ${INSTALL_LIB_DIR}/$${LIBNAME}$${LIB_NAME_SUFFIX}.dylib.dSYM; \
 	   fi; \
-           echo ${RM} ${INSTALL_LIB_DIR}/$${LIBNAME}.${SL_LINKER_SUFFIX}; \
-           ${RM} ${INSTALL_LIB_DIR}/$${LIBNAME}.${SL_LINKER_SUFFIX}; \
+           echo ${RM} ${INSTALL_LIB_DIR}/$${LIBNAME}$${LIB_NAME_SUFFIX}.${SL_LINKER_SUFFIX}; \
+           ${RM} ${INSTALL_LIB_DIR}/$${LIBNAME}$${LIB_NAME_SUFFIX}.${SL_LINKER_SUFFIX}; \
 	done
 	@if [ -f ${INSTALL_LIB_DIR}/so_locations ]; then \
           echo ${RM} ${INSTALL_LIB_DIR}/so_locations; \
           ${RM} ${INSTALL_LIB_DIR}/so_locations; \
 	fi
 
-deletefortranstubs:
+deletefortranbindings:
 	-@find src -type d -name ftn-auto* | xargs rm -rf
 	-@if [ -n "${PETSC_ARCH}" ] && [ -d ${PETSC_ARCH} ] && [ -d ${PETSC_ARCH}/src ]; then \
           find ${PETSC_ARCH}/src -type d -name ftn-auto* | xargs rm -rf ;\
@@ -124,8 +118,11 @@ gnumake:
 
 RUN_TEST = ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} DIFF=${PETSC_DIR}/lib/petsc/bin/petscdiff
 
+check: check_body ${PETSC_POST_CHECKS}
+
 check_install: check
-check:
+
+check_body:
 	-@echo "Running PETSc check examples to verify correct installation"
 	-@echo "Using PETSC_DIR=${PETSC_DIR} and PETSC_ARCH=${PETSC_ARCH}"
 	@if [ "${PETSC_WITH_BATCH}" != "" ]; then \
@@ -134,7 +131,7 @@ check:
            echo "*mpiexec not found*. cannot run make check"; \
         else \
           ${RM} -f check_error;\
-          ${RUN_TEST} OMP_NUM_THREADS=1 PETSC_OPTIONS="${PETSC_OPTIONS} ${PETSC_TEST_OPTIONS}" PATH="${PETSC_DIR}/${PETSC_ARCH}/lib:${PATH}" check_build 2>&1 | tee ./${PETSC_ARCH}/lib/petsc/conf/check.log; \
+          ${RUN_TEST} OMP_NUM_THREADS=1 PETSC_OPTIONS="${EXTRA_OPTIONS} ${PETSC_TEST_OPTIONS}" PATH="${PETSC_DIR}/${PETSC_ARCH}/lib:${PATH}" check_build 2>&1 | tee ./${PETSC_ARCH}/lib/petsc/conf/check.log; \
           if [ -f check_error ]; then \
             echo "Error while running make check"; \
             ${RM} -f check_error;\
@@ -217,12 +214,6 @@ check_build:
            ${RUN_TEST} testex31; \
            ${RUN_TEST} clean-legacy; \
           fi;
-	+@if [ "${SLEPC}" = "yes" ]; then \
-           ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} slepc-check; \
-         fi;
-	+@if [ "${MFEM}" = "yes" ]; then \
-           ${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} mfem-check; \
-         fi;
 	-@echo "Completed PETSc check examples"
 
 # ********* Rules for make install *******************************************************************************************************************
@@ -237,7 +228,8 @@ install-lib:
 	+${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} PETSC_INSTALL=$@ install-builtafterpetsc
 
 install-builtafterpetsc:
-	+${OMAKE_SELF} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} PETSC_INSTALL=${PETSC_INSTALL} petsc4py-install libmesh-install mfem-install slepc-install hpddm-install amrex-install bamg-install
+	@if [ "${PETSC_POST_INSTALLS}" != "" ]; then ${OMAKE_SELF} PETSC_DIR=${PETSC_DIR} PETSC_INSTALL=${PETSC_INSTALL} ${PETSC_POST_INSTALLS}; fi
+	@echo "*** Install of PETSc (and any other packages) complete ***"
 
 # Creates ${HOME}/petsc.tar.gz [and petsc-with-docs.tar.gz]
 dist:
@@ -268,7 +260,7 @@ allgtests-tap: allgtest-tap
 	+@${OMAKE} -f ${ALLTESTS_MAKEFILE} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} check-test-errors
 
 allgtest-tap: ${PETSC_DIR}/${PETSC_ARCH}/tests/testfiles
-	+@MAKEFLAGS="-j$(MAKE_TEST_NP) -l$(MAKE_LOAD) $(MAKEFLAGS)" ${OMAKE} -f ${ALLTESTS_MAKEFILE} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} test OUTPUT=1
+	+@MAKEFLAGS="-j$(MAKE_TEST_NP) -l$(MAKE_LOAD) $(MAKEFLAGS)" ${OMAKE} ${MAKE_SHUFFLE_FLG} -f ${ALLTESTS_MAKEFILE} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} test OUTPUT=1
 
 allgtest: ${PETSC_DIR}/${PETSC_ARCH}/tests/testfiles
 	+@MAKEFLAGS="-j$(MAKE_TEST_NP) -l$(MAKE_LOAD) $(MAKEFLAGS)" ${OMAKE} -k -f ${ALLTESTS_MAKEFILE} PETSC_ARCH=${PETSC_ARCH} PETSC_DIR=${PETSC_DIR} test V=0 2>&1 | grep -E -v '^(ok [^#]*(# SKIP|# TODO|$$)|[A-Za-z][A-Za-z0-9_]*\.(c|F|cxx|F90).$$)'
@@ -358,6 +350,10 @@ abitest:
 	-@echo "========================================================================================="
 	-@$(PYTHON)	${PETSC_DIR}/lib/petsc/bin/maint/abicheck.py -old_dir ${PETSC_DIR_ABI_OLD} -old_arch ${PETSC_ARCH_ABI_OLD} -new_dir ${PETSC_DIR} -new_arch ${PETSC_ARCH} -report_format html
 
+# Run fortitude Fortran linter; pip install fortitude-lint; fortitude does not support using the preprocessor so it is of only limited utility
+fortitude:
+	-@fortitude check --line-length 1000 --ignore C003,C121,S241 --verbose --fix --preview
+
 # Compare ABI/API of current PETSC_ARCH/PETSC_DIR with a previous branch
 abitestcomplete:
 	-@if [[ -f "${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/configure.log" ]]; then \
@@ -407,7 +403,9 @@ streams: mpistreams
 
 # ********  Rules for generating tag files for Emacs/VIM *******************************************************************************************
 
-alletags:
+alletags: etags
+
+etags:
 	-@${PYTHON} lib/petsc/bin/maint/generateetags.py && cp TAGS ${PETSC_ARCH}/
 	-@find config -type f -name "*.py" |grep -v SCCS | xargs etags -o TAGS_PYTHON
 
@@ -418,7 +416,7 @@ allgtags:
 # ********* Rules for building "classic" documentation; uses rules also in lib/petsc/conf/rules_doc.mk **************************************************
 
 docs:
-	cd doc; time ${OMAKE_SELF} sphinxhtml
+	cd doc; ${OMAKE_SELF} docs
 
 chk_in_petscdir:
 	@if [ ! -f include/petscversion.h ]; then \
@@ -452,7 +450,7 @@ gcov:
 	petsc_arch_dir=${PETSC_DIR}/${PETSC_ARCH}; \
         tar_file=$${petsc_arch_dir}/$${output_file_base_name}.tar.bz2; \
 	cd $${petsc_arch_dir} && \
-	gcovr --json --output $${petsc_arch_dir}/$${output_file_base_name} --exclude '.*/ftn-auto/.*' --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-throw-branches --exclude-unreachable-branches -j 4 --gcov-executable "${PETSC_COVERAGE_EXEC}" --root ${PETSC_DIR} ./obj ./tests ${PETSC_GCOV_OPTIONS} && \
+	gcovr --json --output $${petsc_arch_dir}/$${output_file_base_name} --exclude '.*/ftn-auto/.*' --exclude '.*/petscsys.h' --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-throw-branches --exclude-unreachable-branches --gcov-ignore-parse-errors -j 8 --gcov-executable "${PETSC_COVERAGE_EXEC}" --root ${PETSC_DIR} ./obj ./tests ${PETSC_GCOV_OPTIONS} && \
 	${RM} -f $${tar_file} && \
 	tar --bzip2 -cf $${tar_file} -C $${petsc_arch_dir} ./$${output_file_base_name} && \
 	${RM} $${petsc_arch_dir}/$${output_file_base_name}
@@ -460,45 +458,10 @@ gcov:
 mergegcov:
 	$(PYTHON) ${PETSC_DIR}/lib/petsc/bin/maint/gcov.py --merge-branch `lib/petsc/bin/maint/check-merge-branch.sh` --html --xml ${PETSC_GCOV_OPTIONS}
 
-countfortranfunctions:
-	-@cd ${PETSC_DIR}/src/fortran; grep -E '^void' custom/*.c auto/*.c | \
-	cut -d'(' -f1 | tr -s  ' ' | cut -d' ' -f2 | uniq | grep -E -v "(^$$|Petsc)" | \
-	sed "s/_$$//" | sort > /tmp/countfortranfunctions
-
 countcfunctions:
 	-@grep PETSC_EXTERN ${PETSC_DIR}/include/*.h  | grep "(" | tr -s ' ' | \
 	cut -d'(' -f1 | cut -d' ' -f3 | grep -v "\*" | tr -s '\012' |  \
 	tr 'A-Z' 'a-z' |  sort | uniq > /tmp/countcfunctions
-
-difffortranfunctions: countfortranfunctions countcfunctions
-	-@echo -------------- Functions missing in the fortran interface ---------------------
-	-@${DIFF} /tmp/countcfunctions /tmp/countfortranfunctions | grep "^<" | cut -d' ' -f2
-	-@echo ----------------- Functions missing in the C interface ------------------------
-	-@${DIFF} /tmp/countcfunctions /tmp/countfortranfunctions | grep "^>" | cut -d' ' -f2
-	-@${RM}  /tmp/countcfunctions /tmp/countfortranfunctions
-
-checkbadfortranstubs:
-	-@echo "========================================="
-	-@echo "Functions with MPI_Comm as an Argument"
-	-@echo "========================================="
-	-@cd ${PETSC_DIR}/src/fortran/auto; grep '^void' *.c | grep 'MPI_Comm' | \
-	tr -s ' ' | tr -s ':' ' ' |cut -d'(' -f1 | cut -d' ' -f1,3
-	-@echo "========================================="
-	-@echo "Functions with a String as an Argument"
-	-@echo "========================================="
-	-@cd ${PETSC_DIR}/src/fortran/auto; grep '^void' *.c | grep 'char \*' | \
-	tr -s ' ' | tr -s ':' ' ' |cut -d'(' -f1 | cut -d' ' -f1,3
-	-@echo "========================================="
-	-@echo "Functions with Pointers to PETSc Objects as Argument"
-	-@echo "========================================="
-	-@cd ${PETSC_DIR}/src/fortran/auto; \
-	_p_OBJ=`grep _p_ ${PETSC_DIR}/include/*.h | tr -s ' ' | \
-	cut -d' ' -f 3 | tr -s '\012' | grep -v '{' | cut -d'*' -f1 | \
-	sed "s/_p_//g" | tr -s '\012 ' ' *|' ` ; \
-	for OBJ in $$_p_OBJ; do \
-	grep "$$OBJ \*" *.c | tr -s ' ' | tr -s ':' ' ' | \
-	cut -d'(' -f1 | cut -d' ' -f1,3; \
-	done
 
 checkpackagetests:
 	-@echo "Missing package tests"
@@ -533,5 +496,5 @@ updatedatafiles:
 
 .PHONY: info info_h all deletelibs allclean update \
         alletags etags etags_complete etags_noexamples etags_makefiles etags_examples etags_fexamples alldoc allmanpages \
-        allcleanhtml  countfortranfunctions \
+        allcleanhtml \
         start_configure configure_petsc configure_clean matlabbin install

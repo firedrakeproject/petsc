@@ -40,12 +40,12 @@ PetscErrorCode DMFieldShellEvaluateFEDefault(DMField field, IS pointIS, PetscQua
   PetscFunctionBegin;
   Nc = field->numComponents;
   PetscCall(DMGetCoordinateField(dm, &coordField));
-  PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, PETSC_FALSE, &geom));
+  PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, PETSC_FEGEOM_BASIC, &geom));
   PetscCall(DMGetCoordinateDim(dm, &dimC));
   PetscCall(PetscQuadratureGetData(quad, &dim, NULL, &Nq, NULL, NULL));
   PetscCall(ISGetLocalSize(pointIS, &numPoints));
   PetscCall(PetscMalloc1(dimC * Nq * numPoints, &pfArray));
-  for (p = 0; p < numPoints * dimC * Nq; p++) pfArray[p] = (PetscScalar)geom->v[p];
+  for (p = 0; p < numPoints * dimC * Nq; p++) pfArray[p] = geom->v[p];
   PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)pointIS), dimC, dimC * Nq * numPoints, PETSC_DETERMINE, pfArray, &pushforward));
   PetscCall(DMFieldEvaluate(field, pushforward, type, B, D, H));
   /* TODO: handle covariant/contravariant pullbacks */
@@ -161,10 +161,10 @@ PetscErrorCode DMFieldShellEvaluateFVDefault(DMField field, IS pointIS, PetscDat
   PetscCheck(quad, comm, PETSC_ERR_ARG_WRONGSTATE, "coordinate field must have default quadrature for FV computation");
   PetscCall(PetscQuadratureGetData(quad, NULL, NULL, &Nq, NULL, NULL));
   PetscCheck(Nq == 1, comm, PETSC_ERR_ARG_WRONGSTATE, "quadrature must have only one point");
-  PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, PETSC_FALSE, &geom));
+  PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, PETSC_FEGEOM_BASIC, &geom));
   PetscCall(ISGetLocalSize(pointIS, &numPoints));
   PetscCall(PetscMalloc1(dimC * numPoints, &pfArray));
-  for (p = 0; p < numPoints * dimC; p++) pfArray[p] = (PetscScalar)geom->v[p];
+  for (p = 0; p < numPoints * dimC; p++) pfArray[p] = geom->v[p];
   PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)pointIS), dimC, dimC * numPoints, PETSC_DETERMINE, pfArray, &pushforward));
   PetscCall(DMFieldEvaluate(field, pushforward, type, B, D, H));
   PetscCall(PetscQuadratureDestroy(&quad));

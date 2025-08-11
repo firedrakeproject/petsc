@@ -1,4 +1,4 @@
-#include <petsc/private/fortranimpl.h>
+#include <petsc/private/ftnimpl.h>
 #include <petscpc.h>
 #include <petscksp.h>
 
@@ -14,20 +14,18 @@
   #define pcshellsetpresolve_            PCSHELLSETPRESOLVE
   #define pcshellsetpostsolve_           PCSHELLSETPOSTSOLVE
   #define pcshellsetview_                PCSHELLSETVIEW
-  #define pcshellsetcontext_             PCSHELLSETCONTEXT
-  #define pcshellgetcontext_             PCSHELLGETCONTEXT
 #elif !defined(PETSC_HAVE_FORTRAN_UNDERSCORE)
-  #define pcshellsetapply_           pcshellsetapply
-  #define pcshellsetapplyba_         pcshellsetapplyba
-  #define pcshellsetapplyrichardson_ pcshellsetapplyrichardson
-  #define pcshellsetapplytranspose_  pcshellsetapplytranspose
-  #define pcshellsetsetup_           pcshellsetsetup
-  #define pcshellsetdestroy_         pcshellsetdestroy
-  #define pcshellsetpresolve_        pcshellsetpresolve
-  #define pcshellsetpostsolve_       pcshellsetpostsolve
-  #define pcshellsetview_            pcshellsetview
-  #define pcshellsetcontext_         pcshellsetcontext
-  #define pcshellgetcontext_         pcshellgetcontext
+  #define pcshellsetapply_               pcshellsetapply
+  #define pcshellsetapplysymmetricleft_  pcshellsetapplysymmetricleft
+  #define pcshellsetapplysymmetricright_ pcshellsetapplysymmetricright
+  #define pcshellsetapplyba_             pcshellsetapplyba
+  #define pcshellsetapplyrichardson_     pcshellsetapplyrichardson
+  #define pcshellsetapplytranspose_      pcshellsetapplytranspose
+  #define pcshellsetsetup_               pcshellsetsetup
+  #define pcshellsetdestroy_             pcshellsetdestroy
+  #define pcshellsetpresolve_            pcshellsetpresolve
+  #define pcshellsetpostsolve_           pcshellsetpostsolve
+  #define pcshellsetview_                pcshellsetview
 #endif
 
 /* These are not extern C because they are passed into non-extern C user level functions */
@@ -111,11 +109,6 @@ static PetscErrorCode ourshellview(PC pc, PetscViewer view)
 {
   PetscCallFortranVoidFunction((*(void (*)(PC *, PetscViewer *, PetscErrorCode *))(((PetscObject)pc)->fortran_func_pointers[8]))(&pc, &view, &ierr));
   return PETSC_SUCCESS;
-}
-
-PETSC_EXTERN void pcshellgetcontext_(PC *pc, void **ctx, PetscErrorCode *ierr)
-{
-  *ierr = PCShellGetContext(*pc, ctx);
 }
 
 PETSC_EXTERN void pcshellsetapply_(PC *pc, void (*apply)(void *, Vec *, Vec *, PetscErrorCode *), PetscErrorCode *ierr)

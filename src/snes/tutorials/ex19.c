@@ -108,7 +108,7 @@ int main(int argc, char **argv)
   PetscCall(DMDACreate2d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DMDA_STENCIL_STAR, 4, 4, PETSC_DECIDE, PETSC_DECIDE, 4, 1, 0, 0, &da));
   PetscCall(DMSetFromOptions(da));
   PetscCall(DMSetUp(da));
-  PetscCall(SNESSetDM(snes, (DM)da));
+  PetscCall(SNESSetDM(snes, da));
   PetscCall(SNESSetNGS(snes, NonlinearGS, (void *)&user));
 
   PetscCall(DMDAGetInfo(da, 0, &mx, &my, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE, PETSC_IGNORE));
@@ -396,7 +396,7 @@ PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, void *ctx)
   tot_its = 0;
   PetscCall(SNESNGSGetTolerances(snes, &rtol, &atol, &stol, &max_its));
   PetscCall(SNESNGSGetSweeps(snes, &sweeps));
-  PetscCall(SNESGetDM(snes, (DM *)&da));
+  PetscCall(SNESGetDM(snes, &da));
   PetscCall(DMGetLocalVector(da, &localX));
   if (B) PetscCall(DMGetLocalVector(da, &localB));
   /*
@@ -655,13 +655,13 @@ PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, void *ctx)
       suffix: 11
       nsize: 4
       requires: pastix
-      args: -snes_monitor_short -pc_type redundant -dm_mat_type mpiaij -redundant_pc_factor_mat_solver_type pastix -pc_redundant_number 2 -da_refine 4 -ksp_type fgmres
+      args: -snes_monitor_short -pc_type redundant -dm_mat_type mpiaij -redundant_pc_factor_mat_solver_type pastix -mat_pastix_thread_nbr 1 -pc_redundant_number 2 -da_refine 4 -ksp_type fgmres
 
    test:
       suffix: 12
       nsize: 12
       requires: pastix
-      args: -snes_monitor_short -pc_type redundant -dm_mat_type mpiaij -redundant_pc_factor_mat_solver_type pastix -pc_redundant_number 5 -da_refine 4 -ksp_type fgmres
+      args: -snes_monitor_short -pc_type redundant -dm_mat_type mpiaij -redundant_pc_factor_mat_solver_type pastix -mat_pastix_thread_nbr 1 -pc_redundant_number 5 -da_refine 4 -ksp_type fgmres
 
    test:
       suffix: 13

@@ -30,7 +30,7 @@ static PetscErrorCode TaoLineSearchReset_Armijo(TaoLineSearch ls)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TaoLineSearchSetFromOptions_Armijo(TaoLineSearch ls, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TaoLineSearchSetFromOptions_Armijo(TaoLineSearch ls, PetscOptionItems PetscOptionsObject)
 {
   TaoLineSearch_ARMIJO *armP = (TaoLineSearch_ARMIJO *)ls->data;
 
@@ -196,6 +196,7 @@ static PetscErrorCode TaoLineSearchApply_Armijo(TaoLineSearch ls, Vec x, PetscRe
     if (ls->bounded) PetscCall(VecMedian(ls->lower, armP->work, ls->upper, armP->work));
 
     /* Calculate function at new iterate */
+    PetscCall(VecLockReadPush(x));
     if (ls->hasobjective) {
       PetscCall(TaoLineSearchComputeObjective(ls, armP->work, f));
       g_computed = PETSC_FALSE;
@@ -206,6 +207,7 @@ static PetscErrorCode TaoLineSearchApply_Armijo(TaoLineSearch ls, Vec x, PetscRe
       PetscCall(TaoLineSearchComputeObjectiveAndGradient(ls, armP->work, f, g));
       g_computed = PETSC_TRUE;
     }
+    PetscCall(VecLockReadPop(x));
     if (ls->step == ls->initstep) ls->f_fullstep = *f;
 
     PetscCall(TaoLineSearchMonitor(ls, its, *f, ls->step));

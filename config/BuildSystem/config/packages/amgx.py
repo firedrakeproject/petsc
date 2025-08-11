@@ -21,7 +21,7 @@ class Configure(config.package.CMakePackage):
   def setupDependencies(self, framework):
     config.package.CMakePackage.setupDependencies(self, framework)
     self.mpi            = framework.require('config.packages.MPI',self)
-    self.cuda           = framework.require('config.packages.cuda',self)
+    self.cuda           = framework.require('config.packages.CUDA',self)
     self.deps           = [self.mpi,self.cuda]
     return
 
@@ -32,5 +32,7 @@ class Configure(config.package.CMakePackage):
     #args.append('-DCMAKE_CXX_FLAGS="-O3"')
     #args.append('-DCMAKE_C_FLAGS="-O3"')
     args.extend(self.cuda.getCmakeCUDAArchFlag())
+    if not hasattr(self.cuda, 'cudaDir'):
+      raise RuntimeError('CUDA directory not detected! Mail configure.log to petsc-maint@mcs.anl.gov.')
     args.append('-DCUDAToolkit_ROOT=' + self.cuda.cudaDir)
     return args

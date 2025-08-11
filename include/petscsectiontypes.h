@@ -1,5 +1,6 @@
 #pragma once
 
+/* MANSEC = Vec */
 /* SUBMANSEC = PetscSection */
 
 /*S
@@ -19,7 +20,7 @@
 
   Level: beginner
 
-.seealso: [PetscSection](sec_petscsection), `PetscSectionCreate()`, `PetscSectionDestroy()`, `PetscSectionSym`
+.seealso: [PetscSection](ch_petscsection), `PetscSectionCreate()`, `PetscSectionDestroy()`, `PetscSectionSym`
 S*/
 typedef struct _p_PetscSection *PetscSection;
 
@@ -33,7 +34,7 @@ typedef struct _p_PetscSection *PetscSection;
 
   Level: developer
 
-.seealso: [PetscSection](sec_petscsection), `PetscSection`, `PetscSectionSymCreate()`, `PetscSectionSymDestroy()`, `PetscSectionSetSym()`, `PetscSectionGetSym()`, `PetscSectionSetFieldSym()`,
+.seealso: [PetscSection](ch_petscsection), `PetscSection`, `PetscSectionSymCreate()`, `PetscSectionSymDestroy()`, `PetscSectionSetSym()`, `PetscSectionGetSym()`, `PetscSectionSetFieldSym()`,
           `PetscSectionGetFieldSym()`, `PetscSectionGetSymPoints()`, `PetscSectionSymType`, `PetscSectionSymSetType()`, `PetscSectionSymGetType()`
 S*/
 typedef struct _p_PetscSectionSym *PetscSectionSym;
@@ -46,6 +47,6 @@ typedef struct _p_PetscSectionSym *PetscSectionSym;
   Note:
   `PetscSectionSym` has no default implementation, but is used by `DM` in `PetscSectionSymCreateLabel()`.
 
-.seealso: [PetscSection](sec_petscsection), `PetscSectionSymSetType()`, `PetscSectionSymGetType()`, `PetscSectionSym`, `PetscSectionSymCreate()`, `PetscSectionSymRegister()`
+.seealso: [PetscSection](ch_petscsection), `PetscSectionSymSetType()`, `PetscSectionSymGetType()`, `PetscSectionSym`, `PetscSectionSymCreate()`, `PetscSectionSymRegister()`
 J*/
 typedef const char *PetscSectionSymType;

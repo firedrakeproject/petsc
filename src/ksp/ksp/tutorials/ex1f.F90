@@ -135,7 +135,7 @@ subroutine MyKSPConverged(ksp,n,rnorm,flag,defaultctx,ierr)
       PetscCallA(KSPCreate(PETSC_COMM_WORLD,ksp,ierr))
 
 !  Set operators. Here the matrix that defines the linear system
-!  also serves as the preconditioning matrix.
+!  also serves as the matrix from which the preconditioner is constructed.
 
       PetscCallA(KSPConvergedDefaultCreate(defaultctx, ierr))
       PetscCallA(KSPSetConvergenceTest(ksp, MyKSPConverged, defaultctx, KSPConvergedDefaultDestroy, ierr))
@@ -148,12 +148,13 @@ subroutine MyKSPConverged(ksp,n,rnorm,flag,defaultctx,ierr)
 !     to set various options.
 !   - The following four statements are optional; all of these
 !     parameters could alternatively be specified at runtime via
-!     KSPSetFromOptions();
+!     KSPSetFromOptions()
 
       PetscCallA(KSPGetPC(ksp,pc,ierr))
       PetscCallA(PCSetType(pc,PCJACOBI,ierr))
       tol = .0000001
       PetscCallA(KSPSetTolerances(ksp,tol,PETSC_CURRENT_REAL,PETSC_CURRENT_REAL,PETSC_CURRENT_INTEGER,ierr))
+      PetscCallA(KSPGetTolerances(ksp,PETSC_NULL_REAL,tol,PETSC_NULL_REAL,PETSC_NULL_INTEGER,ierr))
 
 !  Set runtime options, e.g.,
 !      -ksp_type <type> -pc_type <type> -ksp_monitor -ksp_rtol <rtol>

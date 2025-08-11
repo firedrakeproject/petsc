@@ -15,7 +15,7 @@ print("Stage 1: Building function dictionary from source files in " + path);
 sourcefiles = [os.path.join(root, name)
                for root, dirs, files in os.walk(path)
                for name in files
-               if name.endswith((".c", ".h")) and root.find("ftn-auto") < 0 and root.find("ftn-custom") < 0 and root.find("f90-custom") < 0 and root.find("examples") < 0]
+               if name.endswith((".c", ".h")) and root.find("ftn-custom") < 0 and root.find("examples") < 0]
 
 #
 # Iterate over all source files and collect function names in dictionary (key-type: function name, value-type: filename where function is defined)
@@ -59,7 +59,7 @@ for file in sourcefiles:
       continue;
 
     for funcname in function_dict.keys():
-      if line.find(' ' + funcname + '(') >= 0 or line.find("=" + funcname + '(') >= 0:    #Note: Might not have perfect accuracy, but is much faster then regular expressions.
+      if line.find(' ' + funcname + '(') >= 0 or line.find("=" + funcname + '(') >= 0:    #Note: Might not have perfect accuracy, but is much faster than regular expressions.
         function_calling_dict[funcname].add(file);
 #        print line;
 

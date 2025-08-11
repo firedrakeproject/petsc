@@ -17,7 +17,7 @@ static PetscErrorCode PetscViewerXMLStartSection(PetscViewer viewer, const char 
 
   PetscFunctionBegin;
   PetscCall(PetscViewerASCIIGetTab(viewer, &XMLSectionDepthPetsc));
-  XMLSectionDepth = (int)XMLSectionDepthPetsc;
+  PetscCall(PetscCIntCast(XMLSectionDepthPetsc, &XMLSectionDepth));
   if (!desc) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "%*s<%s>\n", 2 * XMLSectionDepth, "", name));
   } else {
@@ -49,10 +49,10 @@ static PetscErrorCode PetscViewerXMLEndSection(PetscViewer viewer, const char *n
 
   PetscFunctionBegin;
   PetscCall(PetscViewerASCIIGetTab(viewer, &XMLSectionDepthPetsc));
-  XMLSectionDepth = (int)XMLSectionDepthPetsc;
+  PetscCall(PetscCIntCast(XMLSectionDepthPetsc, &XMLSectionDepth));
   if (XMLSectionDepth > 0) PetscCall(PetscViewerASCIIPopTab(viewer));
   PetscCall(PetscViewerASCIIGetTab(viewer, &XMLSectionDepthPetsc));
-  XMLSectionDepth = (int)XMLSectionDepthPetsc;
+  PetscCall(PetscCIntCast(XMLSectionDepthPetsc, &XMLSectionDepth));
   PetscCall(PetscViewerASCIIPrintf(viewer, "%*s</%s>\n", 2 * XMLSectionDepth, "", name));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -72,7 +72,7 @@ static PetscErrorCode PetscViewerXMLPutString(PetscViewer viewer, const char *na
 
   PetscFunctionBegin;
   PetscCall(PetscViewerASCIIGetTab(viewer, &XMLSectionDepthPetsc));
-  XMLSectionDepth = (int)XMLSectionDepthPetsc;
+  PetscCall(PetscCIntCast(XMLSectionDepthPetsc, &XMLSectionDepth));
   if (!desc) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "%*s<%s>%s</%s>\n", 2 * XMLSectionDepth, "", name, value, name));
   } else {
@@ -88,7 +88,7 @@ static PetscErrorCode PetscViewerXMLPutInt(PetscViewer viewer, const char *name,
 
   PetscFunctionBegin;
   PetscCall(PetscViewerASCIIGetTab(viewer, &XMLSectionDepthPetsc));
-  XMLSectionDepth = (int)XMLSectionDepthPetsc;
+  PetscCall(PetscCIntCast(XMLSectionDepthPetsc, &XMLSectionDepth));
   if (!desc) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "%*s<%s>%d</%s>\n", 2 * XMLSectionDepth, "", name, value, name));
   } else {
@@ -105,7 +105,7 @@ static PetscErrorCode PetscViewerXMLPutDouble(PetscViewer viewer, const char *na
 
   PetscFunctionBegin;
   PetscCall(PetscViewerASCIIGetTab(viewer, &XMLSectionDepthPetsc));
-  XMLSectionDepth = (int)XMLSectionDepthPetsc;
+  PetscCall(PetscCIntCast(XMLSectionDepthPetsc, &XMLSectionDepth));
   PetscCall(PetscSNPrintf(buffer, sizeof(buffer), "%*s<%s>%s</%s>\n", 2 * XMLSectionDepth, "", name, format, name));
   PetscCall(PetscViewerASCIIPrintf(viewer, buffer, value));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -134,7 +134,7 @@ static PetscErrorCode PetscPrintExeSpecs(PetscViewer viewer)
   PetscCall(PetscViewerXMLPutInt(viewer, "nprocesses", "Number of processes", size));
   PetscCall(PetscViewerXMLPutString(viewer, "user", "Run by user", username));
   PetscCall(PetscViewerXMLPutString(viewer, "date", "Started at", date));
-  PetscCall(PetscViewerXMLPutString(viewer, "petscrelease", "Petsc Release", version));
+  PetscCall(PetscViewerXMLPutString(viewer, "petscrelease", "PETSc Release", version));
 
   if (PetscDefined(USE_DEBUG)) PetscCall(PetscStrlcat(buildoptions, "Debug ", sizeof(buildoptions)));
   if (PetscDefined(USE_COMPLEX)) PetscCall(PetscStrlcat(buildoptions, "Complex ", sizeof(buildoptions)));
@@ -150,7 +150,7 @@ static PetscErrorCode PetscPrintExeSpecs(PetscViewer viewer)
   PetscCall(PetscStrlcat(buildoptions, "C++ ", sizeof(buildoptions)));
 #endif
   PetscCall(PetscStrlen(buildoptions, &len));
-  if (len) PetscCall(PetscViewerXMLPutString(viewer, "petscbuildoptions", "Petsc build options", buildoptions));
+  if (len) PetscCall(PetscViewerXMLPutString(viewer, "petscbuildoptions", "PETSc build options", buildoptions));
   PetscCall(PetscViewerXMLEndSection(viewer, "runspecification"));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -312,7 +312,7 @@ static PetscErrorCode PetscLogNestedTreePrint(PetscViewer viewer, double total_t
   PetscInt           num_children = 0, num_printed;
   PetscInt           num_nodes    = parent_node->num_descendants;
   PetscInt          *perm;
-  PetscReal         *times;
+  PetscReal         *times; // Not PetscLogDouble, to reuse PetscSortRealWithArrayInt() below
   PetscEventPerfInfo other;
 
   PetscFunctionBegin;
@@ -327,7 +327,7 @@ static PetscErrorCode PetscLogNestedTreePrint(PetscViewer viewer, double total_t
     PetscLogDouble child_time = perf[node].time;
 
     perm[i] = node;
-    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &child_time, 1, MPI_DOUBLE, MPI_MAX, PetscObjectComm((PetscObject)viewer)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &child_time, 1, MPIU_PETSCLOGDOUBLE, MPI_MAX, PetscObjectComm((PetscObject)viewer)));
     times[i] = -child_time;
 
     parent_info->time -= perf[node].time;
@@ -351,7 +351,9 @@ static PetscErrorCode PetscLogNestedTreePrint(PetscViewer viewer, double total_t
   times[num_children]     = -parent_info->time;
   perm[num_children + 1]  = -2;
   times[num_children + 1] = -other.time;
-  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &times[num_children], 2, MPI_DOUBLE, MPI_MIN, PetscObjectComm((PetscObject)viewer)));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &times[num_children], 2, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)viewer)));
+  // Sync the time with allreduce results, otherwise it could result in code path divergence through num_printed and early return.
+  other.time = -times[num_children + 1];
   if (type == PETSC_LOG_NESTED_FLAMEGRAPH) {
     /* The output is given as an integer in microseconds because otherwise the file cannot be read
      * by apps such as speedscope (https://speedscope.app/). */
@@ -409,7 +411,7 @@ static PetscErrorCode PetscLogNestedTreePrintTop(PetscViewer viewer, PetscNested
   main_stage_perf = &tree->perf[0];
   perf_rem        = &tree->perf[1];
   time            = main_stage_perf->time;
-  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &time, 1, MPI_DOUBLE, MPI_MAX, tree->comm));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &time, 1, MPIU_PETSCLOGDOUBLE, MPI_MAX, tree->comm));
   /* Print (or ignore) the children in ascending order of total time */
   if (type == PETSC_LOG_NESTED_XML) {
     PetscCall(PetscViewerXMLStartSection(viewer, "timertree", "Timings tree"));

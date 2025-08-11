@@ -246,6 +246,17 @@ cdef api PetscSNES PyPetscSNES_Get(object arg) except ? NULL:
     retv = ob.snes
     return retv
 
+cdef api object PyPetscSNESLineSearch_New(PetscSNESLineSearch arg):
+    cdef SNESLineSearch retv = SNESLineSearch()
+    setref(&retv.snesls, arg)
+    return retv
+
+cdef api PetscSNESLineSearch PyPetscSNESLineSearch_Get(object arg) except ? NULL:
+    cdef PetscSNESLineSearch retv = NULL
+    cdef SNESLineSearch ob = <SNESLineSearch?> arg
+    retv = ob.snesls
+    return retv
+
 # -- TS --
 
 cdef api object PyPetscTS_New(PetscTS arg):
@@ -400,6 +411,32 @@ cdef api PetscDualSpace PyPetscDualSpace_Get(object arg) except ? NULL:
     cdef PetscDualSpace retv = NULL
     cdef DualSpace ob = <DualSpace?> arg
     retv = ob.dualspace
+    return retv
+
+# -- DMSwarmCellDM --
+
+cdef api object PyPetscDMSwarmCellDM_New(PetscDMSwarmCellDM arg):
+    cdef CellDM retv = CellDM()
+    setref(&retv.cdm, arg)
+    return retv
+
+cdef api PetscDMSwarmCellDM PyPetscDMSwarmCellDM_Get(object arg) except ? NULL:
+    cdef PetscDMSwarmCellDM retv = NULL
+    cdef CellDM ob = <CellDM?> arg
+    retv = ob.cdm
+    return retv
+
+# -- PetscRegressor --
+
+cdef api object PyPetscRegressor_New(PetscRegressor arg):
+    cdef Regressor retv = Regressor()
+    setref(&retv.regressor, arg)
+    return retv
+
+cdef api PetscRegressor PyPetscRegressor_Get(object arg) except ? NULL:
+    cdef PetscRegressor retv = NULL
+    cdef Regressor ob = <Regressor?> arg
+    retv = ob.regressor
     return retv
 
 # ---------------------------------------------------------------------

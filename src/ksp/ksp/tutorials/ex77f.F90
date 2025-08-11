@@ -31,8 +31,8 @@
       PetscCallA(MatLoad(A,viewer,ierr))
       PetscCallA(PetscViewerDestroy(viewer,ierr))
       PetscCallA(MatGetLocalSize(A,m,PETSC_NULL_INTEGER,ierr))
-      PetscCallA(MatCreateDense(PETSC_COMM_WORLD,m,PETSC_DECIDE,PETSC_DECIDE,K,PETSC_NULL_SCALAR,B,ierr))
-      PetscCallA(MatCreateDense(PETSC_COMM_WORLD,m,PETSC_DECIDE,PETSC_DECIDE,K,PETSC_NULL_SCALAR,X,ierr))
+      PetscCallA(MatCreateDense(PETSC_COMM_WORLD,m,PETSC_DECIDE,PETSC_DECIDE,K,PETSC_NULL_SCALAR_ARRAY,B,ierr))
+      PetscCallA(MatCreateDense(PETSC_COMM_WORLD,m,PETSC_DECIDE,PETSC_DECIDE,K,PETSC_NULL_SCALAR_ARRAY,X,ierr))
       PetscCallA(MatSetRandom(B,PETSC_NULL_RANDOM,ierr))
       PetscCallA(KSPSetFromOptions(ksp,ierr))
       PetscCallA(KSPSetUp(ksp,ierr))
@@ -100,7 +100,7 @@
 !      nsize: 1
 !      suffix: preonly
 !      requires: hpddm datafilespath double !complex !defined(PETSC_USE_64BIT_INDICES)
-!      output_file: output/ex77_preonly.out
+!      output_file: output/empty.out
 !      args: -N 6 -f ${DATAFILESPATH}/matrices/hpddm/GCRODR/A_400.dat -pc_type lu -ksp_type hpddm -ksp_hpddm_type preonly
 !   test:
 !      nsize: 4

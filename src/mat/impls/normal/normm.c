@@ -144,14 +144,13 @@ static PetscErrorCode MatGetDiagonal_Normal(Mat N, Vec v)
   Mat                A;
   PetscInt           i, j, rstart, rend, nnz;
   const PetscInt    *cols;
-  PetscScalar       *diag, *work, *values;
+  PetscScalar       *work, *values;
   const PetscScalar *mvalues;
-  PetscMPIInt        iN;
 
   PetscFunctionBegin;
   PetscCall(MatShellGetContext(N, &Na));
   A = Na->A;
-  PetscCall(PetscMalloc2(A->cmap->N, &diag, A->cmap->N, &work));
+  PetscCall(PetscMalloc1(A->cmap->N, &work));
   PetscCall(PetscArrayzero(work, A->cmap->N));
   PetscCall(MatGetOwnershipRange(A, &rstart, &rend));
   for (i = rstart; i < rend; i++) {
@@ -159,14 +158,13 @@ static PetscErrorCode MatGetDiagonal_Normal(Mat N, Vec v)
     for (j = 0; j < nnz; j++) work[cols[j]] += mvalues[j] * mvalues[j];
     PetscCall(MatRestoreRow(A, i, &nnz, &cols, &mvalues));
   }
-  PetscCall(PetscMPIIntCast(A->cmap->N, &iN));
-  PetscCallMPI(MPIU_Allreduce(work, diag, iN, MPIU_SCALAR, MPIU_SUM, PetscObjectComm((PetscObject)N)));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, work, A->cmap->N, MPIU_SCALAR, MPIU_SUM, PetscObjectComm((PetscObject)N)));
   rstart = N->cmap->rstart;
   rend   = N->cmap->rend;
   PetscCall(VecGetArray(v, &values));
-  PetscCall(PetscArraycpy(values, diag + rstart, rend - rstart));
+  PetscCall(PetscArraycpy(values, work + rstart, rend - rstart));
   PetscCall(VecRestoreArray(v, &values));
-  PetscCall(PetscFree2(diag, work));
+  PetscCall(PetscFree(work));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -377,7 +375,7 @@ static PetscErrorCode MatProductSetFromOptions_Normal_Dense(Mat C)
 M*/
 
 /*@
-  MatCreateNormal - Creates a new `MATNORMAL` matrix object that behaves like A'*A.
+  MatCreateNormal - Creates a new `MATNORMAL` matrix object that behaves like $A^T A$.
 
   Collective
 
@@ -385,14 +383,16 @@ M*/
 . A - the (possibly rectangular) matrix
 
   Output Parameter:
-. N - the matrix that represents A'*A
+. N - the matrix that represents $A^T A $
 
   Level: intermediate
 
   Notes:
-  The product A'*A is NOT actually formed! Rather the new matrix
+  The product $A^T A$ is NOT actually formed! Rather the new matrix
   object performs the matrix-vector product, `MatMult()`, by first multiplying by
-  A and then A'
+  $A$ and then $A^T$
+
+  If `MatGetFactor()` is called on this matrix with `MAT_FACTOR_QR` then the inner matrix `A` is used for the factorization
 
 .seealso: [](ch_matrices), `Mat`, `MATNORMAL`, `MatMult()`, `MatNormalGetMat()`, `MATNORMALHERMITIAN`, `MatCreateNormalHermitian()`
 @*/
@@ -412,7 +412,7 @@ PetscErrorCode MatCreateNormal(Mat A, Mat *N)
   Na->A = A;
   PetscCall(MatCreateVecs(A, NULL, &Na->w));
 
-  PetscCall(MatSetBlockSizes(*N, PetscAbs(A->cmap->bs), PetscAbs(A->rmap->bs)));
+  PetscCall(MatSetBlockSize(*N, A->cmap->bs));
   PetscCall(MatShellSetOperation(*N, MATOP_DESTROY, (void (*)(void))MatDestroy_Normal));
   PetscCall(MatShellSetOperation(*N, MATOP_MULT, (void (*)(void))MatMult_Normal));
   PetscCall(MatShellSetOperation(*N, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMult_Normal));

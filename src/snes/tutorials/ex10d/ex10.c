@@ -405,7 +405,7 @@ int main(int argc, char **argv)
     PetscCall(MatColoringApply(mc, &iscoloring));
     PetscCall(MatColoringDestroy(&mc));
     PetscCall(MatFDColoringCreate(Jac, iscoloring, &matfdcoloring));
-    PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode (*)(void))FormFunction, &user));
+    PetscCall(MatFDColoringSetFunction(matfdcoloring, (MatFDColoringFn *)FormFunction, &user));
     PetscCall(MatFDColoringSetFromOptions(matfdcoloring));
     PetscCall(MatFDColoringSetUp(Jac, iscoloring, matfdcoloring));
     /* PetscCall(MatFDColoringView(matfdcoloring,PETSC_VIEWER_STDOUT_WORLD)); */
@@ -620,8 +620,7 @@ PetscErrorCode FormFunction(SNES snes, Vec X, Vec F, void *ptr)
 
    Output Parameters:
 .  A - Jacobian matrix
-.  B - optionally different preconditioning matrix
-.  flag - flag indicating matrix structure
+.  B - optionally different matrix used to construct the preconditioner
 
 */
 PetscErrorCode FormJacobian(SNES snes, Vec X, Mat J, Mat jac, void *ptr)

@@ -1,5 +1,6 @@
 #pragma once
 #include <petsc_kokkos.hpp>
+#include <petscmat_kokkos.hpp>
 #include <petsc/private/kokkosimpl.hpp>
 #include <../src/mat/impls/aij/seq/aij.h>
 #include <KokkosSparse_CrsMatrix.hpp>
@@ -24,10 +25,10 @@ template <class MemorySpace>
 using KokkosCsrGraphType = typename KokkosCsrMatrixType<MemorySpace>::staticcrsgraph_type;
 
 using KokkosCsrGraph     = KokkosCsrGraphType<DefaultMemorySpace>;
-using KokkosCsrGraphHost = KokkosCsrGraphType<Kokkos::HostSpace>;
+using KokkosCsrGraphHost = KokkosCsrGraphType<HostMirrorMemorySpace>;
 
 using KokkosCsrMatrix     = KokkosCsrMatrixType<DefaultMemorySpace>;
-using KokkosCsrMatrixHost = KokkosCsrMatrixType<Kokkos::HostSpace>;
+using KokkosCsrMatrixHost = KokkosCsrMatrixType<HostMirrorMemorySpace>;
 
 using MatRowMapKokkosView = KokkosCsrGraph::row_map_type::non_const_type;
 using MatColIdxKokkosView = KokkosCsrGraph::entries_type::non_const_type;
@@ -55,26 +56,46 @@ using KokkosTeamMemberType = Kokkos::TeamPolicy<DefaultExecutionSpace>::member_t
 
 /* For mat->spptr of a factorized matrix */
 struct Mat_SeqAIJKokkosTriFactors {
-  MatRowMapKokkosView   iL_d, iU_d, iLt_d, iUt_d;  /* rowmap for L, U, L^t, U^t of A=LU */
-  MatColIdxKokkosView   jL_d, jU_d, jLt_d, jUt_d;  /* column ids */
-  MatScalarKokkosView   aL_d, aU_d, aLt_d, aUt_d;  /* matrix values */
-  KernelHandle          kh, khL, khU, khLt, khUt;  /* Kernel handles for A, L, U, L^t, U^t */
+  MatRowMapKokkosView   iL_d, iU_d, iLt_d, iUt_d; /* rowmap for L, U, L^t, U^t of A=LU */
+  MatColIdxKokkosView   jL_d, jU_d, jLt_d, jUt_d; /* column ids */
+  MatScalarKokkosView   aL_d, aU_d, aLt_d, aUt_d; /* matrix values */
+  KernelHandle          kh, khL, khU, khLt, khUt; /* Kernel handles for ILU factorization of A, and TRSV of L, U, L^t, U^t */
+  PetscScalarKokkosView workVector;
   PetscBool             transpose_updated;         /* Are L^T, U^T updated wrt L, U*/
   PetscBool             sptrsv_symbolic_completed; /* Have we completed the symbolic solve for L and U */
-  PetscScalarKokkosView workVector;
 
-  Mat_SeqAIJKokkosTriFactors(PetscInt n) : transpose_updated(PETSC_FALSE), sptrsv_symbolic_completed(PETSC_FALSE), workVector("workVector", n) { }
+  MatRowMapKokkosViewHost iL_h, iU_h, iLt_h, iUt_h; // temp. buffers when we do factorization with PETSc on host. We copy L, U to these buffers and then copy to device
+  MatColIdxKokkosViewHost jL_h, jU_h, jLt_h, jUt_h;
+  MatScalarKokkosViewHost aL_h, aU_h, aLt_h, aUt_h, D_h; // D is for LDLT factorization
+  MatScalarKokkosView     D_d;
+  Mat                     L, U, Lt, Ut; // MATSEQAIJ on host if needed. Their arrays are alias to (iL_h, jL_h, aL_h), (iU_h, jU_h, aU_h) and their transpose.
+                                        // MatTranspose() on host might be faster than KK's csr transpose on device.
+
+  PetscIntKokkosView rowperm, colperm; // row permutation and column permutation
+
+  Mat_SeqAIJKokkosTriFactors(PetscInt n) : workVector("workVector", n)
+  {
+    L = U = Lt = Ut   = nullptr;
+    transpose_updated = sptrsv_symbolic_completed = PETSC_FALSE;
+  }
 
   ~Mat_SeqAIJKokkosTriFactors() { Destroy(); }
 
   void Destroy()
   {
+    PetscFunctionBeginUser;
     kh.destroy_spiluk_handle();
     khL.destroy_sptrsv_handle();
     khU.destroy_sptrsv_handle();
     khLt.destroy_sptrsv_handle();
     khUt.destroy_sptrsv_handle();
+    PetscCallVoid(MatDestroy(&L));
+    PetscCallVoid(MatDestroy(&U));
+    PetscCallVoid(MatDestroy(&Lt));
+    PetscCallVoid(MatDestroy(&Ut));
+    L = U = Lt = Ut   = nullptr;
     transpose_updated = sptrsv_symbolic_completed = PETSC_FALSE;
+    PetscFunctionReturnVoid();
   }
 };
 
@@ -83,6 +104,7 @@ struct Mat_SeqAIJKokkos {
   MatRowMapKokkosDualView i_dual;
   MatColIdxKokkosDualView j_dual;
   MatScalarKokkosDualView a_dual;
+  PetscBool               host_aij_allocated_by_kokkos = PETSC_FALSE; /* Are host views of a, i, j in the duals allocated by Kokkos? */
 
   MatRowMapKokkosDualView diag_dual; /* Diagonal pointer, built on demand */
 
@@ -96,7 +118,7 @@ struct Mat_SeqAIJKokkos {
   /* Construct a nrows by ncols matrix with given aseq on host. Caller also specifies a nonzero state */
   Mat_SeqAIJKokkos(PetscInt nrows, PetscInt ncols, Mat_SeqAIJ *aseq, PetscObjectState nzstate, PetscBool copyValues = PETSC_TRUE)
   {
-    auto &exec = PetscGetKokkosExecutionSpace();
+    auto exec = PetscGetKokkosExecutionSpace();
 
     MatScalarKokkosViewHost a_h(aseq->a, aseq->nz);
     MatRowMapKokkosViewHost i_h(const_cast<MatRowMapType *>(aseq->i), nrows + 1);
@@ -113,11 +135,10 @@ struct Mat_SeqAIJKokkos {
     diag_dual   = MatColIdxKokkosDualView(diag_d, diag_h);
 
     a_dual.modify_host(); /* Since caller provided values on host */
-    if (copyValues) a_dual.sync_device(exec);
+    if (copyValues) (void)KokkosDualViewSyncDevice(a_dual, exec);
 
-    csrmat            = KokkosCsrMatrix("csrmat", ncols, a_d, KokkosCsrGraph(j_d, i_d));
-    nonzerostate      = nzstate;
-    transpose_updated = hermitian_updated = PETSC_FALSE;
+    csrmat = KokkosCsrMatrix("csrmat", ncols, a_d, KokkosCsrGraph(j_d, i_d));
+    Init(nzstate);
   }
 
   /* Construct with a KokkosCsrMatrix. For performance, only i, j are copied to host, but not the matrix values. */
@@ -127,23 +148,21 @@ struct Mat_SeqAIJKokkos {
     /* Get a non-const version since I don't want to deal with DualView<const T*>, which is not well defined */
     MatRowMapKokkosView i_d(const_cast<MatRowMapType *>(csr.graph.row_map.data()), csr.graph.row_map.extent(0));
     auto                j_d = csr.graph.entries;
-    auto                a_h = Kokkos::create_mirror_view(Kokkos::WithoutInitializing, Kokkos::HostSpace(), a_d);
-    auto                i_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), i_d);
-    auto                j_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), j_d);
+    auto                a_h = Kokkos::create_mirror_view(Kokkos::WithoutInitializing, HostMirrorMemorySpace(), a_d);
+    auto                i_h = Kokkos::create_mirror_view_and_copy(HostMirrorMemorySpace(), i_d);
+    auto                j_h = Kokkos::create_mirror_view_and_copy(HostMirrorMemorySpace(), j_d);
 
     // diag_dual is set until MatAssemblyEnd() where we copy diag from host to device
     a_dual = MatScalarKokkosDualView(a_d, a_h);
     a_dual.modify_device(); /* since we did not copy a_d to a_h, we mark device has the latest data */
-    i_dual = MatRowMapKokkosDualView(i_d, i_h);
-    j_dual = MatColIdxKokkosDualView(j_d, j_h);
+    i_dual                       = MatRowMapKokkosDualView(i_d, i_h);
+    j_dual                       = MatColIdxKokkosDualView(j_d, j_h);
+    host_aij_allocated_by_kokkos = PETSC_TRUE; /* That means after deleting aijkok, one shouldn't access aijseq->{a,i,j} anymore! */
     Init();
   }
 
-  Mat_SeqAIJKokkos(PetscInt nrows, PetscInt ncols, PetscInt nnz, MatRowMapKokkosDualView &i, MatColIdxKokkosDualView &j, MatScalarKokkosDualView a) : i_dual(i), j_dual(j), a_dual(a)
-  {
-    csrmat = KokkosCsrMatrix("csrmat", nrows, ncols, nnz, a.view_device(), i.view_device(), j.view_device());
-    Init();
-  }
+  // Don't use DualView argument types as we want to be sure that a,i,j on host are allocated by Mat_SeqAIJKokkos itself (vs. by users)
+  Mat_SeqAIJKokkos(PetscInt nrows, PetscInt ncols, PetscInt nnz, const MatRowMapKokkosView &i_d, const MatColIdxKokkosView &j_d, const MatScalarKokkosView &a_d) : Mat_SeqAIJKokkos(KokkosCsrMatrix("csrmat", nrows, ncols, nnz, a_d, i_d, j_d)) { }
 
   MatScalarType *a_host_data() { return a_dual.view_host().data(); }
   MatRowMapType *i_host_data() { return i_dual.view_host().data(); }
@@ -168,10 +187,11 @@ struct Mat_SeqAIJKokkos {
   }
 
   /* Shared init stuff */
-  void Init(void)
+  void Init(PetscObjectState nzstate = 0)
   {
-    transpose_updated = hermitian_updated = PETSC_FALSE;
-    nonzerostate                          = 0;
+    nonzerostate      = nzstate;
+    transpose_updated = PETSC_FALSE;
+    hermitian_updated = PETSC_FALSE;
   }
 
   PetscErrorCode DestroyMatTranspose(void)

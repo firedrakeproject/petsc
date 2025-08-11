@@ -4,7 +4,7 @@ PetscFunctionList ISList              = NULL;
 PetscBool         ISRegisterAllCalled = PETSC_FALSE;
 
 /*@
-  ISCreate - Creates an index set object. `IS` are objects used to do efficient indexing into other data structures such as `Vec` and `Mat`
+  ISCreate - Create an index set object. `IS`, index sets, are PETSc objects used to do efficient indexing into other data structures such as `Vec` and `Mat`
 
   Collective
 
@@ -32,6 +32,7 @@ PetscErrorCode ISCreate(MPI_Comm comm, IS *is)
 
   PetscCall(PetscHeaderCreate(*is, IS_CLASSID, "IS", "Index Set", "IS", comm, ISDestroy, ISView));
   PetscCall(PetscLayoutCreate(comm, &(*is)->map));
+  (*is)->compressOutput = PETSC_TRUE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

@@ -227,13 +227,22 @@ static PetscErrorCode TSStep_Theta(TS ts)
     PetscCall(TSAdaptCheckStage(ts->adapt, ts, th->stage_time, th->X, &stageok));
     if (!stageok) goto reject_step;
 
-    th->status = TS_STEP_PENDING;
     if (th->endpoint) {
       PetscCall(VecCopy(th->X, ts->vec_sol));
     } else {
-      PetscCall(VecAXPBYPCZ(th->Xdot, -th->shift, th->shift, 0, th->X0, th->X));
-      PetscCall(VecAXPY(ts->vec_sol, ts->time_step, th->Xdot));
+      PetscCall(VecAXPBYPCZ(th->Xdot, -th->shift, th->shift, 0, th->X0, th->X)); /* th->Xdot is needed by TSInterpolate_Theta */
+      if (th->Theta == 1.0) PetscCall(VecCopy(th->X, ts->vec_sol));              /* BEULER, stage already checked */
+      else {
+        PetscCall(VecAXPY(ts->vec_sol, ts->time_step, th->Xdot));
+        PetscCall(TSAdaptCheckStage(ts->adapt, ts, ts->ptime + ts->time_step, ts->vec_sol, &stageok));
+        if (!stageok) {
+          PetscCall(VecCopy(th->X0, ts->vec_sol));
+          goto reject_step;
+        }
+      }
     }
+
+    th->status = TS_STEP_PENDING;
     PetscCall(TSAdaptChoose(ts->adapt, ts, ts->time_step, NULL, &next_time_step, &accept));
     th->status = accept ? TS_STEP_COMPLETE : TS_STEP_INCOMPLETE;
     if (!accept) {
@@ -700,9 +709,9 @@ static PetscErrorCode TSEvaluateWLTE_Theta(TS ts, NormType wnormtype, PetscInt *
     PetscReal   a = 1 + h_prev / h;
     PetscScalar scal[3];
     Vec         vecs[3];
-    scal[0] = +1 / a;
-    scal[1] = -1 / (a - 1);
-    scal[2] = +1 / (a * (a - 1));
+    scal[0] = -1 / a;
+    scal[1] = +1 / (a - 1);
+    scal[2] = -1 / (a * (a - 1));
     vecs[0] = X;
     vecs[1] = th->X0;
     vecs[2] = th->vec_sol_prev;
@@ -1075,7 +1084,7 @@ static PetscErrorCode TSAdjointSetUp_Theta(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TSSetFromOptions_Theta(TS ts, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TSSetFromOptions_Theta(TS ts, PetscOptionItems PetscOptionsObject)
 {
   TS_Theta *th = (TS_Theta *)ts->data;
 
@@ -1219,9 +1228,9 @@ static PetscErrorCode TSGetStages_Theta(TS ts, PetscInt *ns, Vec *Y[])
    For the default Theta=0.5, this is the trapezoid rule (also known as Crank-Nicolson, see TSCN).
 
    To apply a diagonally implicit RK method to DAE, the stage formula
-
-$  Y_i = X + h sum_j a_ij Y'_j
-
+.vb
+  Y_i = X + h sum_j a_ij Y'_j
+.ve
    is interpreted as a formula for Y'_i in terms of Y_i and known values (Y'_j, j<i)
 
 .seealso: [](ch_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSCN`, `TSBEULER`, `TSThetaSetTheta()`, `TSThetaSetEndpoint()`

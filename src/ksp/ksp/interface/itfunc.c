@@ -24,7 +24,7 @@ static inline PetscErrorCode ObjectView(PetscObject obj, PetscViewer viewer, Pet
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameters:
 + emax - maximum estimated singular value
@@ -37,17 +37,17 @@ static inline PetscErrorCode ObjectView(PetscObject obj, PetscViewer viewer, Pet
 
   Notes:
   One must call `KSPSetComputeSingularValues()` before calling `KSPSetUp()`
-  (or use the option -ksp_view_eigenvalues) in order for this routine to work correctly.
+  (or use the option `-ksp_view_singularvalues`) in order for this routine to work correctly.
 
   Many users may just want to use the monitoring routine
-  `KSPMonitorSingularValue()` (which can be set with option -ksp_monitor_singular_value)
+  `KSPMonitorSingularValue()` (which can be set with option `-ksp_monitor_singular_value`)
   to print the extreme singular values at each iteration of the linear solve.
 
   Estimates of the smallest singular value may be very inaccurate, especially if the Krylov method has not converged.
   The largest singular value is usually accurate to within a few percent if the method has converged, but is still not
-  intended for eigenanalysis. Consider the excellent package `SLEPc` if accurate values are required.
+  intended for eigenanalysis. Consider the excellent package SLEPc if accurate values are required.
 
-  Disable restarts if using KSPGMRES, otherwise this estimate will only be using those iterations after the last
+  Disable restarts if using `KSPGMRES`, otherwise this estimate will only be using those iterations after the last
   restart. See `KSPGMRESSetRestart()` for more details.
 
 .seealso: [](ch_ksp), `KSPSetComputeSingularValues()`, `KSPMonitorSingularValue()`, `KSPComputeEigenvalues()`, `KSP`, `KSPComputeRitz()`
@@ -75,9 +75,8 @@ PetscErrorCode KSPComputeExtremeSingularValues(KSP ksp, PetscReal *emax, PetscRe
   Not Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
-- n   - size of arrays `r` and `c`. The number of eigenvalues computed `neig` will, in
-       general, be less than this.
++ ksp - iterative solver obtained from `KSPCreate()`
+- n   - size of arrays `r` and `c`. The number of eigenvalues computed `neig` will, in general, be less than this.
 
   Output Parameters:
 + r    - real part of computed eigenvalues, provided by user with a dimension of at least `n`
@@ -105,7 +104,7 @@ PetscErrorCode KSPComputeExtremeSingularValues(KSP ksp, PetscReal *emax, PetscRe
   in order for this routine to work correctly.
 
   Many users may just want to use the monitoring routine
-  `KSPMonitorSingularValue()` (which can be set with option -ksp_monitor_singular_value)
+  `KSPMonitorSingularValue()` (which can be set with option `-ksp_monitor_singular_value`)
   to print the singular values at each iteration of the linear solve.
 
   `KSPComputeRitz()` provides estimates for both the eigenvalues and their corresponding eigenvectors.
@@ -134,7 +133,7 @@ PetscErrorCode KSPComputeEigenvalues(KSP ksp, PetscInt n, PetscReal r[], PetscRe
   Not Collective
 
   Input Parameters:
-+ ksp   - iterative context obtained from `KSPCreate()`
++ ksp   - iterative solver obtained from `KSPCreate()`
 . ritz  - `PETSC_TRUE` or `PETSC_FALSE` for Ritz pairs or harmonic Ritz pairs, respectively
 - small - `PETSC_TRUE` or `PETSC_FALSE` for smallest or largest (harmonic) Ritz values, respectively
 
@@ -173,7 +172,7 @@ PetscErrorCode KSPComputeEigenvalues(KSP ksp, PetscInt n, PetscReal r[], PetscRe
   The (harmonic) Ritz pairs are given in order of increasing (harmonic) Ritz values in modulus.
 
   The Ritz pairs do not necessarily accurately reflect the eigenvalues and eigenvectors of the operator, consider the
-  excellent package `SLEPc` if accurate values are required.
+  excellent package SLEPc if accurate values are required.
 
 .seealso: [](ch_ksp), `KSPSetComputeRitz()`, `KSP`, `KSPGMRES`, `KSPComputeEigenvalues()`, `KSPSetComputeSingularValues()`, `KSPMonitorSingularValue()`
 @*/
@@ -188,7 +187,7 @@ PetscErrorCode KSPComputeRitz(KSP ksp, PetscBool ritz, PetscBool small, PetscInt
 
 /*@
   KSPSetUpOnBlocks - Sets up the preconditioner for each block in
-  the block Jacobi, overlapping Schwarz, and fieldsplit methods.
+  the block Jacobi `PCJACOBI`, overlapping Schwarz `PCASM`, and fieldsplit `PCFIELDSPLIT` preconditioners
 
   Collective
 
@@ -199,12 +198,12 @@ PetscErrorCode KSPComputeRitz(KSP ksp, PetscBool ritz, PetscBool small, PetscInt
 
   Notes:
   `KSPSetUpOnBlocks()` is a routine that the user can optionally call for
-  more precise profiling (via -log_view) of the setup phase for these
+  more precise profiling (via `-log_view`) of the setup phase for these
   block preconditioners.  If the user does not call `KSPSetUpOnBlocks()`,
   it will automatically be called from within `KSPSolve()`.
 
   Calling `KSPSetUpOnBlocks()` is the same as calling `PCSetUpOnBlocks()`
-  on the PC context within the `KSP` context.
+  on the `PC` context within the `KSP` context.
 
 .seealso: [](ch_ksp), `PCSetUpOnBlocks()`, `KSPSetUp()`, `PCSetUp()`, `KSP`
 @*/
@@ -231,17 +230,28 @@ PetscErrorCode KSPSetUpOnBlocks(KSP ksp)
 }
 
 /*@
-  KSPSetReusePreconditioner - reuse the current preconditioner, do not construct a new one even if the operator changes
+  KSPSetReusePreconditioner - reuse the current preconditioner for future `KSPSolve()`, do not construct a new preconditioner even if the `Mat` operator
+  in the `KSP` has different values
 
   Collective
 
   Input Parameters:
-+ ksp  - iterative context obtained from `KSPCreate()`
-- flag - `PETSC_TRUE` to reuse the current preconditioner
++ ksp  - iterative solver obtained from `KSPCreate()`
+- flag - `PETSC_TRUE` to reuse the current preconditioner, or `PETSC_FALSE` to construct a new preconditioner
+
+  Options Database Key:
+. -ksp_reuse_preconditioner <true,false> - reuse the previously computed preconditioner
 
   Level: intermediate
 
-.seealso: [](ch_ksp), `KSPCreate()`, `KSPSolve()`, `KSPDestroy()`, `PCSetReusePreconditioner()`, `KSP`
+  Notes:
+  When using `SNES` one can use `SNESSetLagPreconditioner()` to determine when preconditioners are reused.
+
+  Reusing the preconditioner reduces the time needed to form new preconditioners but may (significantly) increase the number
+  of iterations needed for future solves depending on how much the matrix entries have changed.
+
+.seealso: [](ch_ksp), `KSPCreate()`, `KSPSolve()`, `KSPDestroy()`, `KSP`, `KSPGetReusePreconditioner()`,
+          `SNESSetLagPreconditioner()`, `SNES`
 @*/
 PetscErrorCode KSPSetReusePreconditioner(KSP ksp, PetscBool flag)
 {
@@ -255,15 +265,15 @@ PetscErrorCode KSPSetReusePreconditioner(KSP ksp, PetscBool flag)
 }
 
 /*@
-  KSPGetReusePreconditioner - Determines if the `KSP` reuses the current preconditioner even if the operator in the preconditioner has changed.
+  KSPGetReusePreconditioner - Determines if the `KSP` reuses the current preconditioner even if the `Mat` operator in the `KSP` has changed.
 
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
-. flag - the boolean flag
+. flag - the boolean flag indicating if the current preconditioner should be reused
 
   Level: intermediate
 
@@ -280,15 +290,16 @@ PetscErrorCode KSPGetReusePreconditioner(KSP ksp, PetscBool *flag)
 }
 
 /*@
-  KSPSetSkipPCSetFromOptions - prevents `KSPSetFromOptions()` from calling `PCSetFromOptions()`. This is used if the same `PC` is shared by more than one `KSP` so its options are not resettable for each `KSP`
+  KSPSetSkipPCSetFromOptions - prevents `KSPSetFromOptions()` from calling `PCSetFromOptions()`.
+  This is used if the same `PC` is shared by more than one `KSP` so its options are not reset for each `KSP`
 
   Collective
 
   Input Parameters:
-+ ksp  - iterative context obtained from `KSPCreate()`
++ ksp  - iterative solver obtained from `KSPCreate()`
 - flag - `PETSC_TRUE` to skip calling the `PCSetFromOptions()`
 
-  Level: intermediate
+  Level: developer
 
 .seealso: [](ch_ksp), `KSPCreate()`, `KSPSolve()`, `KSPDestroy()`, `PCSetReusePreconditioner()`, `KSP`
 @*/
@@ -302,16 +313,19 @@ PetscErrorCode KSPSetSkipPCSetFromOptions(KSP ksp, PetscBool flag)
 
 /*@
   KSPSetUp - Sets up the internal data structures for the
-  later use of an iterative solver.
+  later use `KSPSolve()` the `KSP` linear iterative solver.
 
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver, `KSP`, obtained from `KSPCreate()`
 
   Level: developer
 
-.seealso: [](ch_ksp), `KSPCreate()`, `KSPSolve()`, `KSPDestroy()`, `KSP`
+  Note:
+  This is called automatically by `KSPSolve()` so usually does not need to be called directly.
+
+.seealso: [](ch_ksp), `KSPCreate()`, `KSPSolve()`, `KSPDestroy()`, `KSP`, `KSPSetUpOnBlocks()`
 @*/
 PetscErrorCode KSPSetUp(KSP ksp)
 {
@@ -429,13 +443,13 @@ PetscErrorCode KSPSetUp(KSP ksp)
 }
 
 /*@
-  KSPConvergedReasonView - Displays the reason a `KSP` solve converged or diverged to a viewer
+  KSPConvergedReasonView - Displays the reason a `KSP` solve converged or diverged, `KSPConvergedReason` to a `PetscViewer`
 
   Collective
 
   Input Parameters:
-+ ksp    - iterative context obtained from `KSPCreate()`
-- viewer - the viewer to display the reason
++ ksp    - iterative solver obtained from `KSPCreate()`
+- viewer - the `PetscViewer` on which to display the reason
 
   Options Database Keys:
 + -ksp_converged_reason          - print reason for converged or diverged, also prints number of iterations
@@ -444,10 +458,12 @@ PetscErrorCode KSPSetUp(KSP ksp)
   Level: beginner
 
   Note:
+  Use `KSPConvergedReasonViewFromOptions()` to display the reason based on values in the PETSc options database.
+
   To change the format of the output call `PetscViewerPushFormat`(`viewer`,`format`) before this call. Use `PETSC_VIEWER_DEFAULT` for the default,
   use `PETSC_VIEWER_FAILED` to only display a reason if it fails.
 
-.seealso: [](ch_ksp), `KSPCreate()`, `KSPSetUp()`, `KSPDestroy()`, `KSPSetTolerances()`, `KSPConvergedDefault()`,
+.seealso: [](ch_ksp), `KSPConvergedReasonViewFromOptions()`, `KSPCreate()`, `KSPSetUp()`, `KSPDestroy()`, `KSPSetTolerances()`, `KSPConvergedDefault()`,
           `KSPSolveTranspose()`, `KSPGetIterationNumber()`, `KSP`, `KSPGetConvergedReason()`, `PetscViewerPushFormat()`, `PetscViewerPopFormat()`
 @*/
 PetscErrorCode KSPConvergedReasonView(KSP ksp, PetscViewer viewer)
@@ -476,7 +492,7 @@ PetscErrorCode KSPConvergedReasonView(KSP ksp, PetscViewer viewer)
       if (ksp->reason == KSP_DIVERGED_PC_FAILED) {
         PCFailedReason reason;
         PetscCall(PCGetFailedReason(ksp->pc, &reason));
-        PetscCall(PetscViewerASCIIPrintf(viewer, "               PC failed due to %s \n", PCFailedReasons[reason]));
+        PetscCall(PetscViewerASCIIPrintf(viewer, "               PC failed due to %s\n", PCFailedReasons[reason]));
       }
     }
     PetscCall(PetscViewerASCIISubtractTab(viewer, ((PetscObject)ksp)->tablevel + 1));
@@ -492,10 +508,10 @@ PetscErrorCode KSPConvergedReasonView(KSP ksp, PetscViewer viewer)
 
   Input Parameters:
 + ksp               - the `KSP` context
-. f                 - the ksp converged reason view function
+. f                 - the `ksp` converged reason view function, see `KSPConvergedReasonViewFn`
 . vctx              - [optional] user-defined context for private data for the
                       `KSPConvergedReason` view routine (use `NULL` if no context is desired)
-- reasonviewdestroy - [optional] routine that frees `vctx` (may be `NULL`)
+- reasonviewdestroy - [optional] routine that frees `vctx` (may be `NULL`), see `PetscCtxDestroyFn` for the calling sequence
 
   Options Database Keys:
 + -ksp_converged_reason             - sets a default `KSPConvergedReasonView()`
@@ -512,9 +528,9 @@ PetscErrorCode KSPConvergedReasonView(KSP ksp, PetscViewer viewer)
   Developer Note:
   Should be named KSPConvergedReasonViewAdd().
 
-.seealso: [](ch_ksp), `KSPConvergedReasonView()`, `KSPConvergedReasonViewCancel()`
+.seealso: [](ch_ksp), `KSPConvergedReasonView()`, `KSPConvergedReasonViewFn`, `KSPConvergedReasonViewCancel()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode KSPConvergedReasonViewSet(KSP ksp, PetscErrorCode (*f)(KSP, void *), void *vctx, PetscErrorCode (*reasonviewdestroy)(void **))
+PetscErrorCode KSPConvergedReasonViewSet(KSP ksp, KSPConvergedReasonViewFn *f, void *vctx, PetscCtxDestroyFn *reasonviewdestroy)
 {
   PetscInt  i;
   PetscBool identical;
@@ -528,18 +544,18 @@ PetscErrorCode KSPConvergedReasonViewSet(KSP ksp, PetscErrorCode (*f)(KSP, void 
   PetscCheck(ksp->numberreasonviews < MAXKSPREASONVIEWS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many KSP reasonview set");
   ksp->reasonview[ksp->numberreasonviews]          = f;
   ksp->reasonviewdestroy[ksp->numberreasonviews]   = reasonviewdestroy;
-  ksp->reasonviewcontext[ksp->numberreasonviews++] = (void *)vctx;
+  ksp->reasonviewcontext[ksp->numberreasonviews++] = vctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  KSPConvergedReasonViewCancel - Clears all the reasonview functions for a `KSP` object set with `KSPConvergedReasonViewSet()`
+  KSPConvergedReasonViewCancel - Clears all the `KSPConvergedReason` view functions for a `KSP` object set with `KSPConvergedReasonViewSet()`
   as well as the default viewer.
 
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Level: intermediate
 
@@ -569,6 +585,9 @@ PetscErrorCode KSPConvergedReasonViewCancel(KSP ksp)
 
   Level: intermediate
 
+  Note:
+  This is called automatically at the conclusion of `KSPSolve()` so is rarely called directly by user code.
+
 .seealso: [](ch_ksp), `KSPConvergedReasonView()`, `KSPConvergedReasonViewSet()`
 @*/
 PetscErrorCode KSPConvergedReasonViewFromOptions(KSP ksp)
@@ -592,8 +611,8 @@ PetscErrorCode KSPConvergedReasonViewFromOptions(KSP ksp)
   Collective
 
   Input Parameters:
-+ ksp    - iterative context obtained from `KSPCreate()`
-- viewer - the viewer to display the reason
++ ksp    - iterative solver obtained from `KSPCreate()`
+- viewer - the `PetscViewer` to display the reason
 
   Options Database Key:
 . -ksp_converged_rate - print reason for convergence or divergence and the convergence rate (or 0.0 for divergence)
@@ -617,12 +636,12 @@ PetscErrorCode KSPConvergedRateView(KSP ksp, PetscViewer viewer)
   const char       *prefix, *reason = KSPConvergedReasons[ksp->reason];
 
   PetscFunctionBegin;
-  PetscCall(KSPGetOptionsPrefix(ksp, &prefix));
   PetscCall(KSPGetIterationNumber(ksp, &its));
   PetscCall(KSPComputeConvergenceRate(ksp, &rrate, &rRsq, &erate, &eRsq));
   if (!viewer) viewer = PETSC_VIEWER_STDOUT_(PetscObjectComm((PetscObject)ksp));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isAscii));
   if (isAscii) {
+    PetscCall(KSPGetOptionsPrefix(ksp, &prefix));
     PetscCall(PetscViewerGetFormat(viewer, &format));
     PetscCall(PetscViewerASCIIAddTab(viewer, ((PetscObject)ksp)->tablevel));
     if (ksp->reason > 0) {
@@ -644,7 +663,7 @@ PetscErrorCode KSPConvergedRateView(KSP ksp, PetscViewer viewer)
       if (ksp->reason == KSP_DIVERGED_PC_FAILED) {
         PCFailedReason reason;
         PetscCall(PCGetFailedReason(ksp->pc, &reason));
-        PetscCall(PetscViewerASCIIPrintf(viewer, "               PC failed due to %s \n", PCFailedReasons[reason]));
+        PetscCall(PetscViewerASCIIPrintf(viewer, "               PC failed due to %s\n", PCFailedReasons[reason]));
       }
     }
     PetscCall(PetscViewerASCIISubtractTab(viewer, ((PetscObject)ksp)->tablevel));
@@ -750,40 +769,35 @@ static PetscErrorCode KSPViewFinalResidual_Internal(KSP ksp, PetscViewer viewer,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPMonitorPauseFinal_Internal(KSP ksp)
+PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode PetscMonitorPauseFinal_Internal(PetscInt n, void *ctx[])
 {
-  PetscInt i;
-
   PetscFunctionBegin;
-  if (!ksp->pauseFinal) PetscFunctionReturn(PETSC_SUCCESS);
-  for (i = 0; i < ksp->numbermonitors; ++i) {
-    PetscViewerAndFormat *vf = (PetscViewerAndFormat *)ksp->monitorcontext[i];
+  for (PetscInt i = 0; i < n; ++i) {
+    PetscViewerAndFormat *vf = (PetscViewerAndFormat *)ctx[i];
     PetscDraw             draw;
     PetscReal             lpause;
+    PetscBool             isdraw;
 
     if (!vf) continue;
-    if (vf->lg) {
-      if (!PetscCheckPointer(vf->lg, PETSC_OBJECT)) continue;
-      if (((PetscObject)vf->lg)->classid != PETSC_DRAWLG_CLASSID) continue;
-      PetscCall(PetscDrawLGGetDraw(vf->lg, &draw));
-      PetscCall(PetscDrawGetPause(draw, &lpause));
-      PetscCall(PetscDrawSetPause(draw, -1.0));
-      PetscCall(PetscDrawPause(draw));
-      PetscCall(PetscDrawSetPause(draw, lpause));
-    } else {
-      PetscBool isdraw;
+    if (!PetscCheckPointer(vf->viewer, PETSC_OBJECT)) continue;
+    if (((PetscObject)vf->viewer)->classid != PETSC_VIEWER_CLASSID) continue;
+    PetscCall(PetscObjectTypeCompare((PetscObject)vf->viewer, PETSCVIEWERDRAW, &isdraw));
+    if (!isdraw) continue;
 
-      if (!PetscCheckPointer(vf->viewer, PETSC_OBJECT)) continue;
-      if (((PetscObject)vf->viewer)->classid != PETSC_VIEWER_CLASSID) continue;
-      PetscCall(PetscObjectTypeCompare((PetscObject)vf->viewer, PETSCVIEWERDRAW, &isdraw));
-      if (!isdraw) continue;
-      PetscCall(PetscViewerDrawGetDraw(vf->viewer, 0, &draw));
-      PetscCall(PetscDrawGetPause(draw, &lpause));
-      PetscCall(PetscDrawSetPause(draw, -1.0));
-      PetscCall(PetscDrawPause(draw));
-      PetscCall(PetscDrawSetPause(draw, lpause));
-    }
+    PetscCall(PetscViewerDrawGetDraw(vf->viewer, 0, &draw));
+    PetscCall(PetscDrawGetPause(draw, &lpause));
+    PetscCall(PetscDrawSetPause(draw, -1.0));
+    PetscCall(PetscDrawPause(draw));
+    PetscCall(PetscDrawSetPause(draw, lpause));
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode KSPMonitorPauseFinal_Internal(KSP ksp)
+{
+  PetscFunctionBegin;
+  if (!ksp->pauseFinal) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(PetscMonitorPauseFinal_Internal(ksp->numbermonitors, ksp->monitorcontext));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -885,9 +899,9 @@ static PetscErrorCode KSPSolve_Private(KSP ksp, Vec b, Vec x)
     if (flg && !norm) ksp->guess_zero = PETSC_TRUE;
   }
   if (ksp->transpose_solve) {
-    PetscCall(MatGetNullSpace(pmat, &nullsp));
+    PetscCall(MatGetNullSpace(mat, &nullsp));
   } else {
-    PetscCall(MatGetTransposeNullSpace(pmat, &nullsp));
+    PetscCall(MatGetTransposeNullSpace(mat, &nullsp));
   }
   if (nullsp) {
     PetscCall(VecDuplicate(ksp->vec_rhs, &btmp));
@@ -992,14 +1006,14 @@ static PetscErrorCode KSPSolve_Private(KSP ksp, Vec b, Vec x)
 }
 
 /*@
-  KSPSolve - Solves linear system.
+  KSPSolve - Solves a linear system associated with `KSP` object
 
   Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 . b   - the right-hand side vector
-- x   - the solution (this may be the same vector as `b`, then `b` will be overwritten with answer)
+- x   - the solution (this may be the same vector as `b`, then `b` will be overwritten with the answer)
 
   Options Database Keys:
 + -ksp_view_eigenvalues                      - compute preconditioned operators eigenvalues
@@ -1020,6 +1034,8 @@ static PetscErrorCode KSPSolve_Private(KSP ksp, Vec b, Vec x)
   Level: beginner
 
   Notes:
+  See `KSPSetFromOptions()` for additional options database keys that affect `KSPSolve()`
+
   If one uses `KSPSetDM()` then `x` or `b` need not be passed. Use `KSPGetSolution()` to access the solution in this case.
 
   The operator is specified with `KSPSetOperators()`.
@@ -1034,28 +1050,28 @@ static PetscErrorCode KSPSolve_Private(KSP ksp, Vec b, Vec x)
   If you provide a matrix that has a `MatSetNullSpace()` and `MatSetTransposeNullSpace()` this will use that information to solve singular systems
   in the least squares sense with a norm minimizing solution.
 
-  $A x = b $  where $b = b_p + b_t$ where $b_t$ is not in the range of A (and hence by the fundamental theorem of linear algebra is in the nullspace(A'), see `MatSetNullSpace()`).
+  $A x = b $  where $b = b_p + b_t$ where $b_t$ is not in the range of $A$ (and hence by the fundamental theorem of linear algebra is in the nullspace(A'), see `MatSetNullSpace()`).
 
-  `KSP` first removes b_t producing the linear system  A x = b_p (which has multiple solutions) and solves this to find the ||x|| minimizing solution (and hence
-  it finds the solution x orthogonal to the nullspace(A). The algorithm is simply in each iteration of the Krylov method we remove the nullspace(A) from the search
+  `KSP` first removes $b_t$ producing the linear system $ A x = b_p $ (which has multiple solutions) and solves this to find the $\|x\|$ minimizing solution (and hence
+  it finds the solution $x$ orthogonal to the nullspace(A). The algorithm is simply in each iteration of the Krylov method we remove the nullspace(A) from the search
   direction thus the solution which is a linear combination of the search directions has no component in the nullspace(A).
 
   We recommend always using `KSPGMRES` for such singular systems.
-  If nullspace(A) = nullspace(A') (note symmetric matrices always satisfy this property) then both left and right preconditioning will work
-  If nullspace(A) != nullspace(A') then left preconditioning will work but right preconditioning may not work (or it may).
+  If $ nullspace(A) = nullspace(A^T)$ (note symmetric matrices always satisfy this property) then both left and right preconditioning will work
+  If $nullspace(A) \neq nullspace(A^T)$ then left preconditioning will work but right preconditioning may not work (or it may).
 
   Developer Notes:
-  The reason we cannot always solve  nullspace(A) != nullspace(A') systems with right preconditioning is because we need to remove at each iteration
-  the nullspace(AB) from the search direction. While we know the nullspace(A) the nullspace(AB) equals B^-1 times the nullspace(A) but except for trivial preconditioners
-  such as diagonal scaling we cannot apply the inverse of the preconditioner to a vector and thus cannot compute the nullspace(AB).
+  The reason we cannot always solve  $nullspace(A) \neq nullspace(A^T)$ systems with right preconditioning is because we need to remove at each iteration
+  $ nullspace(AB) $ from the search direction. While we know the $nullspace(A)$, $nullspace(AB)$ equals $B^{-1}$ times $nullspace(A)$ but except for trivial preconditioners
+  such as diagonal scaling we cannot apply the inverse of the preconditioner to a vector and thus cannot compute $nullspace(AB)$.
 
   If using a direct method (e.g., via the `KSP` solver
-  `KSPPREONLY` and a preconditioner such as `PCLU` or `PCILU`,
-  then its=1.  See `KSPSetTolerances()` and `KSPConvergedDefault()`
-  for more details.
+  `KSPPREONLY` and a preconditioner such as `PCLU` or `PCCHOLESKY` then usually one iteration of the `KSP` method will be needed for convergence.
+
+  To solve a linear system with the transpose of the matrix use `KSPSolveTranspose()`.
 
   Understanding Convergence\:
-  The routines `KSPMonitorSet()`, `KSPComputeEigenvalues()`, and
+  The manual pages `KSPMonitorSet()`, `KSPComputeEigenvalues()`, and
   `KSPComputeEigenvaluesExplicitly()` provide information on additional
   options to monitor convergence and print eigenvalue information.
 
@@ -1085,12 +1101,12 @@ PetscErrorCode KSPSolve(KSP ksp, Vec b, Vec x)
 }
 
 /*@
-  KSPSolveTranspose - Solves a linear system with the transpose of the matrix, $ A^T x = b$.
+  KSPSolveTranspose - Solves a linear system with the transpose of the matrix associated with the `KSP` object, $ A^T x = b$.
 
   Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 . b   - right-hand side vector
 - x   - solution vector
 
@@ -1103,7 +1119,7 @@ PetscErrorCode KSPSolve(KSP ksp, Vec b, Vec x)
   We need to implement a `KSPSolveHermitianTranspose()`
 
 .seealso: [](ch_ksp), `KSPCreate()`, `KSPSetUp()`, `KSPDestroy()`, `KSPSetTolerances()`, `KSPConvergedDefault()`,
-          `KSPSolve()`, `KSP`
+          `KSPSolve()`, `KSP`, `KSPSetOperators()`
 @*/
 PetscErrorCode KSPSolveTranspose(KSP ksp, Vec b, Vec x)
 {
@@ -1201,7 +1217,7 @@ static PetscErrorCode KSPMatSolve_Private(KSP ksp, Mat B, Mat X)
     /* by default, do a single solve with all columns */
     if (Bbn == PETSC_DECIDE) Bbn = N2;
     else PetscCheck(Bbn >= 1, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "KSPMatSolve() batch size %" PetscInt_FMT " must be positive", Bbn);
-    PetscCall(PetscInfo(ksp, "KSP type %s solving using batches of width at most %" PetscInt_FMT "\n", ((PetscObject)ksp)->type_name, Bbn));
+    PetscCall(PetscInfo(ksp, "KSP type %s%s solving using batches of width at most %" PetscInt_FMT "\n", ((PetscObject)ksp)->type_name, ksp->transpose_solve ? " transpose" : "", Bbn));
     /* if -ksp_matsolve_batch_size is greater than the actual number of columns, do a single solve with all columns */
     if (Bbn >= N2) {
       PetscUseTypeMethod(ksp, matsolve, B, X);
@@ -1260,10 +1276,10 @@ static PetscErrorCode KSPMatSolve_Private(KSP ksp, Mat B, Mat X)
 }
 
 /*@
-  KSPMatSolve - Solves a linear system with multiple right-hand sides stored as a `MATDENSE`. Unlike `KSPSolve()`, `B` and `X` must be different matrices.
+  KSPMatSolve - Solves a linear system with multiple right-hand sides stored as a `MATDENSE`.
 
   Input Parameters:
-+ ksp - iterative context
++ ksp - iterative solver
 - B   - block of right-hand sides
 
   Output Parameter:
@@ -1271,10 +1287,12 @@ static PetscErrorCode KSPMatSolve_Private(KSP ksp, Mat B, Mat X)
 
   Level: intermediate
 
-  Note:
+  Notes:
   This is a stripped-down version of `KSPSolve()`, which only handles `-ksp_view`, `-ksp_converged_reason`, `-ksp_converged_rate`, and `-ksp_view_final_residual`.
 
-.seealso: [](ch_ksp), `KSPSolve()`, `MatMatSolve()`, `KSPMatSolveTranspose()`, `MATDENSE`, `KSPHPDDM`, `PCBJACOBI`, `PCASM`
+  Unlike with `KSPSolve()`, `B` and `X` must be different matrices.
+
+.seealso: [](ch_ksp), `KSPSolve()`, `MatMatSolve()`, `KSPMatSolveTranspose()`, `MATDENSE`, `KSPHPDDM`, `PCBJACOBI`, `PCASM`, `KSPSetMatSolveBatchSize()`
 @*/
 PetscErrorCode KSPMatSolve(KSP ksp, Mat B, Mat X)
 {
@@ -1285,11 +1303,10 @@ PetscErrorCode KSPMatSolve(KSP ksp, Mat B, Mat X)
 }
 
 /*@
-  KSPMatSolveTranspose - Solves a linear system with the transposed matrix with multiple right-hand sides stored as a `MATDENSE`. Unlike `KSPSolveTranspose()`,
-  `B` and `X` must be different matrices and the transposed matrix cannot be assembled explicitly for the user.
+  KSPMatSolveTranspose - Solves a linear system with the transposed matrix with multiple right-hand sides stored as a `MATDENSE`.
 
   Input Parameters:
-+ ksp - iterative context
++ ksp - iterative solver
 - B   - block of right-hand sides
 
   Output Parameter:
@@ -1297,8 +1314,11 @@ PetscErrorCode KSPMatSolve(KSP ksp, Mat B, Mat X)
 
   Level: intermediate
 
-  Note:
+  Notes:
   This is a stripped-down version of `KSPSolveTranspose()`, which only handles `-ksp_view`, `-ksp_converged_reason`, `-ksp_converged_rate`, and `-ksp_view_final_residual`.
+
+  Unlike `KSPSolveTranspose()`,
+  `B` and `X` must be different matrices and the transposed matrix cannot be assembled explicitly for the user.
 
 .seealso: [](ch_ksp), `KSPSolveTranspose()`, `MatMatTransposeSolve()`, `KSPMatSolve()`, `MATDENSE`, `KSPHPDDM`, `PCBJACOBI`, `PCASM`
 @*/
@@ -1316,10 +1336,13 @@ PetscErrorCode KSPMatSolveTranspose(KSP ksp, Mat B, Mat X)
   Logically Collective
 
   Input Parameters:
-+ ksp - iterative context
++ ksp - the `KSP` iterative solver
 - bs  - batch size
 
   Level: advanced
+
+  Note:
+  Using a larger block size can improve the efficiency of the solver.
 
 .seealso: [](ch_ksp), `KSPMatSolve()`, `KSPGetMatSolveBatchSize()`, `-mat_mumps_icntl_27`, `-matmatmult_Bbn`
 @*/
@@ -1336,7 +1359,7 @@ PetscErrorCode KSPSetMatSolveBatchSize(KSP ksp, PetscInt bs)
   KSPGetMatSolveBatchSize - Gets the maximum number of columns treated simultaneously in `KSPMatSolve()`.
 
   Input Parameter:
-. ksp - iterative context
+. ksp - iterative solver context
 
   Output Parameter:
 . bs - batch size
@@ -1360,7 +1383,7 @@ PetscErrorCode KSPGetMatSolveBatchSize(KSP ksp, PetscInt *bs)
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - the `KSP` iterative solver context obtained from `KSPCreate()`
 
   Level: beginner
 
@@ -1402,14 +1425,19 @@ PetscErrorCode KSPResetViewers(KSP ksp)
 }
 
 /*@
-  KSPReset - Resets a `KSP` context to the kspsetupcalled = 0 state and removes any allocated Vecs and Mats
+  KSPReset - Removes any allocated `Vec` and `Mat` from the `KSP` data structures.
 
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
-  Level: beginner
+  Level: intermediate
+
+  Notes:
+  Any options set in the `KSP`, including those set with `KSPSetFromOptions()` remain.
+
+  Call `KSPReset()` only before you call `KSPSetOperators()` with a different sized matrix than the previous matrix used with the `KSP`.
 
 .seealso: [](ch_ksp), `KSPCreate()`, `KSPSetUp()`, `KSPSolve()`, `KSP`
 @*/
@@ -1441,7 +1469,7 @@ PetscErrorCode KSPReset(KSP ksp)
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Level: beginner
 
@@ -1484,7 +1512,7 @@ PetscErrorCode KSPDestroy(KSP *ksp)
   PetscCall(PCDestroy(&(*ksp)->pc));
   PetscCall(PetscFree((*ksp)->res_hist_alloc));
   PetscCall(PetscFree((*ksp)->err_hist_alloc));
-  if ((*ksp)->convergeddestroy) PetscCall((*(*ksp)->convergeddestroy)((*ksp)->cnvP));
+  if ((*ksp)->convergeddestroy) PetscCall((*(*ksp)->convergeddestroy)(&(*ksp)->cnvP));
   PetscCall(KSPMonitorCancel(*ksp));
   PetscCall(KSPConvergedReasonViewCancel(*ksp));
   PetscCall(PetscHeaderDestroy(ksp));
@@ -1497,14 +1525,14 @@ PetscErrorCode KSPDestroy(KSP *ksp)
   Logically Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . side - the preconditioning side, where side is one of
 .vb
-      PC_LEFT      - left preconditioning (default)
-      PC_RIGHT     - right preconditioning
-      PC_SYMMETRIC - symmetric preconditioning
+  PC_LEFT      - left preconditioning (default)
+  PC_RIGHT     - right preconditioning
+  PC_SYMMETRIC - symmetric preconditioning
 .ve
 
   Options Database Key:
@@ -1519,11 +1547,12 @@ PetscErrorCode KSPDestroy(KSP *ksp)
 
   Symmetric preconditioning is currently available only for the `KSPQCG` method. However, note that
   symmetric preconditioning can be emulated by using either right or left
-  preconditioning and a pre or post processing step.
+  preconditioning, modifying the application of the matrix (with a custom `Mat` argument to `KSPSetOperators()`,
+  and using a pre 'KSPSetPreSolve()` or post processing `KSPSetPostSolve()` step).
 
-  Setting the `PCSide` often affects the default norm type.  See `KSPSetNormType()` for details.
+  Setting the `PCSide` often affects the default norm type. See `KSPSetNormType()` for details.
 
-.seealso: [](ch_ksp), `KSPGetPCSide()`, `KSPSetNormType()`, `KSPGetNormType()`, `KSP`
+.seealso: [](ch_ksp), `KSPGetPCSide()`, `KSPSetNormType()`, `KSPGetNormType()`, `KSP`, `KSPSetPreSolve()`, `KSPSetPostSolve()`
 @*/
 PetscErrorCode KSPSetPCSide(KSP ksp, PCSide side)
 {
@@ -1540,14 +1569,14 @@ PetscErrorCode KSPSetPCSide(KSP ksp, PCSide side)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . side - the preconditioning side, where side is one of
 .vb
-      PC_LEFT      - left preconditioning (default)
-      PC_RIGHT     - right preconditioning
-      PC_SYMMETRIC - symmetric preconditioning
+  PC_LEFT      - left preconditioning (default)
+  PC_RIGHT     - right preconditioning
+  PC_SYMMETRIC - symmetric preconditioning
 .ve
 
   Level: intermediate
@@ -1586,7 +1615,7 @@ PetscErrorCode KSPGetPCSide(KSP ksp, PCSide *side)
 
 .seealso: [](ch_ksp), `KSPSetTolerances()`, `KSP`, `KSPSetMinimumIterations()`, `KSPGetMinimumIterations()`
 @*/
-PetscErrorCode KSPGetTolerances(KSP ksp, PetscReal *rtol, PetscReal *abstol, PetscReal *dtol, PetscInt *maxits)
+PetscErrorCode KSPGetTolerances(KSP ksp, PeOp PetscReal *rtol, PeOp PetscReal *abstol, PeOp PetscReal *dtol, PeOp PetscInt *maxits)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -1619,6 +1648,9 @@ PetscErrorCode KSPGetTolerances(KSP ksp, PetscReal *rtol, PetscReal *abstol, Pet
   Level: intermediate
 
   Notes:
+  The tolerances are with respect to a norm of the residual of the equation $ \| b - A x^n \|$, they do not directly use the error of the equation.
+  The norm used depends on the `KSPNormType` that has been set with `KSPSetNormType()`, the default depends on the `KSPType` used.
+
   All parameters must be non-negative.
 
   Use `PETSC_CURRENT` to retain the current value of any of the parameters. The deprecated `PETSC_DEFAULT` also retains the current value (though the name is confusing).
@@ -1664,11 +1696,11 @@ PetscErrorCode KSPSetTolerances(KSP ksp, PetscReal rtol, PetscReal abstol, Petsc
     PetscCheck(dtol >= 0.0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Divergence tolerance %g must be larger than 1.0", (double)dtol);
     ksp->divtol = dtol;
   }
-  if (maxits == (PetscInt)PETSC_DETERMINE) {
+  if (maxits == PETSC_DETERMINE) {
     ksp->max_it = ksp->default_max_it;
-  } else if (maxits == (PetscInt)PETSC_UNLIMITED) {
+  } else if (maxits == PETSC_UNLIMITED) {
     ksp->max_it = PETSC_INT_MAX;
-  } else if (maxits != (PetscInt)PETSC_CURRENT) {
+  } else if (maxits != PETSC_CURRENT) {
     PetscCheck(maxits >= 0, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Maximum number of iterations %" PetscInt_FMT " must be non-negative", maxits);
     ksp->max_it = maxits;
   }
@@ -1694,6 +1726,10 @@ PetscErrorCode KSPSetTolerances(KSP ksp, PetscReal rtol, PetscReal abstol, Petsc
 
   See `KSPConvergedDefault()` for details on how these parameters are used in the default convergence test. See also `KSPSetConvergenceTest()`
   for setting user-defined stopping criteria.
+
+  If the initial residual norm is small enough solvers may return immediately without computing any improvement to the solution. Using this routine
+  prevents that which usually ensures the solution is changed (often minimally) from the previous solution. This option may be used with ODE integrators
+  to ensure the integrator does not fall into a false steady-state solution of the ODE.
 
 .seealso: [](ch_ksp), `KSPGetTolerances()`, `KSPConvergedDefault()`, `KSPSetConvergenceTest()`, `KSP`, `KSPSetTolerances()`, `KSPGetMinimumIterations()`
 @*/
@@ -1741,16 +1777,13 @@ PetscErrorCode KSPGetMinimumIterations(KSP ksp, PetscInt *minit)
   Logically Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 - flg - ``PETSC_TRUE`` indicates the guess is non-zero, `PETSC_FALSE` indicates the guess is zero
 
   Options Database Key:
 . -ksp_initial_guess_nonzero <true,false> - use nonzero initial guess
 
   Level: beginner
-
-  Note:
-  If this is not called the X vector is zeroed in the call to `KSPSolve()`.
 
 .seealso: [](ch_ksp), `KSPGetInitialGuessNonzero()`, `KSPGuessSetType()`, `KSPGuessType`, `KSP`
 @*/
@@ -1770,7 +1803,7 @@ PetscErrorCode KSPSetInitialGuessNonzero(KSP ksp, PetscBool flg)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . flag - `PETSC_TRUE` if guess is nonzero, else `PETSC_FALSE`
@@ -1795,7 +1828,7 @@ PetscErrorCode KSPGetInitialGuessNonzero(KSP ksp, PetscBool *flag)
   Logically Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 - flg - `PETSC_TRUE` indicates you want the error generated
 
   Options Database Key:
@@ -1805,7 +1838,8 @@ PetscErrorCode KSPGetInitialGuessNonzero(KSP ksp, PetscBool *flag)
 
   Notes:
   Normally PETSc continues if a linear solver fails to converge, you can call `KSPGetConvergedReason()` after a `KSPSolve()`
-  to determine if it has converged.
+  to determine if it has converged. This functionality is mostly helpful while running in a debugger (`-start_in_debugger`) to determine exactly where
+  the failure occurs and why.
 
   A `KSP_DIVERGED_ITS` will not generate an error in a `KSPSolve()` inside a nested linear solver
 
@@ -1826,7 +1860,7 @@ PetscErrorCode KSPSetErrorIfNotConverged(KSP ksp, PetscBool flg)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from KSPCreate()
+. ksp - iterative solver obtained from KSPCreate()
 
   Output Parameter:
 . flag - `PETSC_TRUE` if it will generate an error, else `PETSC_FALSE`
@@ -1845,20 +1879,21 @@ PetscErrorCode KSPGetErrorIfNotConverged(KSP ksp, PetscBool *flag)
 }
 
 /*@
-  KSPSetInitialGuessKnoll - Tells the iterative solver to use `PCApply()` to compute the initial guess (The Knoll trick)
+  KSPSetInitialGuessKnoll - Tells the iterative solver to use `PCApply()` on the right hand side vector to compute the initial guess (The Knoll trick)
 
   Logically Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 - flg - `PETSC_TRUE` or `PETSC_FALSE`
 
   Level: advanced
 
   Developer Note:
-  The Knoll trick is not currently implemented using the `KSPGuess` class
+  The Knoll trick is not currently implemented using the `KSPGuess` class which provides a variety of ways of computing
+  an initial guess based on previous solves.
 
-.seealso: [](ch_ksp), `KSPGetInitialGuessKnoll()`, `KSPSetInitialGuessNonzero()`, `KSPGetInitialGuessNonzero()`, `KSP`
+.seealso: [](ch_ksp), `KSPGetInitialGuessKnoll()`, `KSPGuess`, `KSPSetInitialGuessNonzero()`, `KSPGetInitialGuessNonzero()`, `KSP`
 @*/
 PetscErrorCode KSPSetInitialGuessKnoll(KSP ksp, PetscBool flg)
 {
@@ -1876,7 +1911,7 @@ PetscErrorCode KSPSetInitialGuessKnoll(KSP ksp, PetscBool flg)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . flag - `PETSC_TRUE` if using Knoll trick, else `PETSC_FALSE`
@@ -1902,7 +1937,7 @@ PetscErrorCode KSPGetInitialGuessKnoll(KSP ksp, PetscBool *flag)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . flg - `PETSC_TRUE` or `PETSC_FALSE`
@@ -1913,10 +1948,10 @@ PetscErrorCode KSPGetInitialGuessKnoll(KSP ksp, PetscBool *flag)
   Level: advanced
 
   Notes:
-  Currently this option is not valid for all iterative methods.
+  This option is not valid for `KSPType`.
 
   Many users may just want to use the monitoring routine
-  `KSPMonitorSingularValue()` (which can be set with option -ksp_monitor_singular_value)
+  `KSPMonitorSingularValue()` (which can be set with option `-ksp_monitor_singular_value`)
   to print the singular values at each iteration of the linear solve.
 
 .seealso: [](ch_ksp), `KSPComputeExtremeSingularValues()`, `KSPMonitorSingularValue()`, `KSP`
@@ -1938,7 +1973,7 @@ PetscErrorCode KSPGetComputeSingularValues(KSP ksp, PetscBool *flg)
   Logically Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 - flg - `PETSC_TRUE` or `PETSC_FALSE`
 
   Options Database Key:
@@ -1947,11 +1982,13 @@ PetscErrorCode KSPGetComputeSingularValues(KSP ksp, PetscBool *flg)
   Level: advanced
 
   Notes:
-  Currently this option is not valid for all iterative methods.
+  This option is not valid for all iterative methods.
 
   Many users may just want to use the monitoring routine
-  `KSPMonitorSingularValue()` (which can be set with option -ksp_monitor_singular_value)
+  `KSPMonitorSingularValue()` (which can be set with option `-ksp_monitor_singular_value`)
   to print the singular values at each iteration of the linear solve.
+
+  Consider using the excellent package SLEPc for accurate efficient computations of singular or eigenvalues.
 
 .seealso: [](ch_ksp), `KSPComputeExtremeSingularValues()`, `KSPMonitorSingularValue()`, `KSP`, `KSPSetComputeRitz()`
 @*/
@@ -1972,7 +2009,7 @@ PetscErrorCode KSPSetComputeSingularValues(KSP ksp, PetscBool flg)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . flg - `PETSC_TRUE` or `PETSC_FALSE`
@@ -2001,13 +2038,15 @@ PetscErrorCode KSPGetComputeEigenvalues(KSP ksp, PetscBool *flg)
   Logically Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 - flg - `PETSC_TRUE` or `PETSC_FALSE`
 
   Level: advanced
 
   Note:
   Currently this option is not valid for all iterative methods.
+
+  Consider using the excellent package SLEPc for accurate efficient computations of singular or eigenvalues.
 
 .seealso: [](ch_ksp), `KSPComputeEigenvalues()`, `KSPComputeEigenvaluesExplicitly()`, `KSP`, `KSPSetComputeRitz()`
 @*/
@@ -2028,7 +2067,7 @@ PetscErrorCode KSPSetComputeEigenvalues(KSP ksp, PetscBool flg)
   Logically Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
++ ksp - iterative solver obtained from `KSPCreate()`
 - flg - `PETSC_TRUE` or `PETSC_FALSE`
 
   Level: advanced
@@ -2036,7 +2075,7 @@ PetscErrorCode KSPSetComputeEigenvalues(KSP ksp, PetscBool flg)
   Note:
   Currently this option is only valid for the `KSPGMRES` method.
 
-.seealso: [](ch_ksp), `KSPComputeRitz()`, `KSP`
+.seealso: [](ch_ksp), `KSPComputeRitz()`, `KSP`, `KSPComputeEigenvalues()`, `KSPComputeExtremeSingularValues()`
 @*/
 PetscErrorCode KSPSetComputeRitz(KSP ksp, PetscBool flg)
 {
@@ -2054,7 +2093,7 @@ PetscErrorCode KSPSetComputeRitz(KSP ksp, PetscBool flg)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . r - right-hand-side vector
@@ -2079,7 +2118,7 @@ PetscErrorCode KSPGetRhs(KSP ksp, Vec *r)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . v - solution vector
@@ -2103,18 +2142,19 @@ PetscErrorCode KSPGetSolution(KSP ksp, Vec *v)
 
 /*@
   KSPSetPC - Sets the preconditioner to be used to calculate the
-  application of the preconditioner on a vector.
+  application of the preconditioner on a vector into a `KSP`.
 
   Collective
 
   Input Parameters:
-+ ksp - iterative context obtained from `KSPCreate()`
-- pc  - the preconditioner object (can be `NULL`)
++ ksp - the `KSP` iterative solver obtained from `KSPCreate()`
+- pc  - the preconditioner object (if `NULL` it returns the `PC` currently held by the `KSP`)
 
   Level: developer
 
   Note:
-  Use `KSPGetPC()` to retrieve the preconditioner context.
+  This routine is almost never used since `KSP` creates its own `PC` when needed.
+  Use `KSPGetPC()` to retrieve the preconditioner context instead of creating a new one.
 
 .seealso: [](ch_ksp), `KSPGetPC()`, `KSP`
 @*/
@@ -2142,7 +2182,7 @@ PETSC_INTERN PetscErrorCode PCCreate_MPI(PC);
    Collective, No Fortran Support
 
    Input Parameter:
-.  ksp - iterative context obtained from `KSPCreate()`
+.  ksp - iterative solver obtained from `KSPCreate()`
 
    Level: developer
 
@@ -2174,12 +2214,12 @@ PETSC_INTERN PetscErrorCode KSPCheckPCMPI(KSP ksp)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . pc - preconditioner context
 
-  Level: developer
+  Level: beginner
 
   Note:
   The `PC` is created if it does not already exist.
@@ -2211,7 +2251,7 @@ PetscErrorCode KSPGetPC(KSP ksp, PC *pc)
   Collective
 
   Input Parameters:
-+ ksp   - iterative context obtained from `KSPCreate()`
++ ksp   - iterative solver obtained from `KSPCreate()`
 . it    - iteration number
 - rnorm - relative norm of the residual
 
@@ -2236,29 +2276,21 @@ PetscErrorCode KSPMonitor(KSP ksp, PetscInt it, PetscReal rnorm)
 }
 
 /*@C
-  KSPMonitorSet - Sets an ADDITIONAL function to be called at every iteration to monitor
-  the residual/error etc.
+  KSPMonitorSet - Sets an ADDITIONAL function to be called at every iteration to monitor, i.e. display in some way, perhaps by printing in the terminal,
+  the residual norm computed in a `KSPSolve()`
 
   Logically Collective
 
   Input Parameters:
-+ ksp            - iterative context obtained from `KSPCreate()`
-. monitor        - pointer to function (if this is `NULL`, it turns off monitoring
++ ksp            - iterative solver obtained from `KSPCreate()`
+. monitor        - pointer to function (if this is `NULL`, it turns off monitoring, see `KSPMonitorFn`
 . ctx            - [optional] context for private data for the monitor routine (use `NULL` if no context is needed)
-- monitordestroy - [optional] routine that frees monitor context (may be `NULL`)
-
-  Calling sequence of `monitor`:
-+ ksp   - iterative context obtained from `KSPCreate()`
-. it    - iteration number
-. rnorm - (estimated) 2-norm of (preconditioned) residual
-- ctx   - optional monitoring context, as set by `KSPMonitorSet()`
-
-  Calling sequence of `monitordestroy`:
-. ctx - optional monitoring context, as set by `KSPMonitorSet()`
+- monitordestroy - [optional] routine that frees monitor context (may be `NULL`), see `PetscCtxDestroyFn` for the calling sequence
 
   Options Database Keys:
 + -ksp_monitor                             - sets `KSPMonitorResidual()`
-. -ksp_monitor draw                        - sets `KSPMonitorResidualDraw()` and plots residual
+. -ksp_monitor hdf5:filename               - sets `KSPMonitorResidualView()` and saves residual
+. -ksp_monitor draw                        - sets `KSPMonitorResidualView()` and plots residual
 . -ksp_monitor draw::draw_lg               - sets `KSPMonitorResidualDrawLG()` and plots residual
 . -ksp_monitor_pause_final                 - Pauses any graphics when the solve finishes (only works for internal monitors)
 . -ksp_monitor_true_residual               - sets `KSPMonitorTrueResidual()`
@@ -2271,21 +2303,25 @@ PetscErrorCode KSPMonitor(KSP ksp, PetscInt it, PetscReal rnorm)
   Level: beginner
 
   Notes:
-  The default is to do nothing.  To print the residual, or preconditioned
+  The options database option `-ksp_monitor` and related options are the easiest way to turn on `KSP` iteration monitoring
+
+  `KSPMonitorRegister()` provides a way to associate an options database key with `KSP` monitor function.
+
+  The default is to do no monitoring.  To print the residual, or preconditioned
   residual if `KSPSetNormType`(ksp,`KSP_NORM_PRECONDITIONED`) was called, use
   `KSPMonitorResidual()` as the monitoring routine, with a `PETSCVIEWERASCII` as the
   context.
 
   Several different monitoring routines may be set by calling
-  `KSPMonitorSet()` multiple times; all will be called in the
+  `KSPMonitorSet()` multiple times; they will be called in the
   order in which they were set.
 
   Fortran Note:
   Only a single monitor function can be set for each `KSP` object
 
-.seealso: [](ch_ksp), `KSPMonitorResidual()`, `KSPMonitorCancel()`, `KSP`
+.seealso: [](ch_ksp), `KSPMonitorResidual()`, `KSPMonitorRegister()`, `KSPMonitorCancel()`, `KSP`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode KSPMonitorSet(KSP ksp, PetscErrorCode (*monitor)(KSP ksp, PetscInt it, PetscReal rnorm, void *ctx), void *ctx, PetscErrorCode (*monitordestroy)(void **ctx))
+PetscErrorCode KSPMonitorSet(KSP ksp, KSPMonitorFn *monitor, void *ctx, PetscCtxDestroyFn *monitordestroy)
 {
   PetscInt  i;
   PetscBool identical;
@@ -2299,7 +2335,7 @@ PetscErrorCode KSPMonitorSet(KSP ksp, PetscErrorCode (*monitor)(KSP ksp, PetscIn
   PetscCheck(ksp->numbermonitors < MAXKSPMONITORS, PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Too many KSP monitors set");
   ksp->monitor[ksp->numbermonitors]          = monitor;
   ksp->monitordestroy[ksp->numbermonitors]   = monitordestroy;
-  ksp->monitorcontext[ksp->numbermonitors++] = (void *)ctx;
+  ksp->monitorcontext[ksp->numbermonitors++] = ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2309,7 +2345,7 @@ PetscErrorCode KSPMonitorSet(KSP ksp, PetscErrorCode (*monitor)(KSP ksp, PetscIn
   Logically Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Options Database Key:
 . -ksp_monitor_cancel - Cancels all monitors that have been hardwired into a code by calls to `KSPMonitorSet()`, but does not cancel those set via the options database.
@@ -2337,7 +2373,7 @@ PetscErrorCode KSPMonitorCancel(KSP ksp)
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . ctx - monitoring context
@@ -2362,7 +2398,7 @@ PetscErrorCode KSPGetMonitorContext(KSP ksp, void *ctx)
   Not Collective
 
   Input Parameters:
-+ ksp   - iterative context obtained from `KSPCreate()`
++ ksp   - iterative solver obtained from `KSPCreate()`
 . a     - array to hold history
 . na    - size of `a`
 - reset - `PETSC_TRUE` indicates the history counter is reset to zero
@@ -2406,7 +2442,7 @@ PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscCount na, Pets
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameters:
 + a  - pointer to array to hold history (or `NULL`)
@@ -2431,13 +2467,7 @@ PetscErrorCode KSPSetResidualHistory(KSP ksp, PetscReal a[], PetscCount na, Pets
   `KSPBCGSL` does not record the residual norms for the "subiterations" hence the results from `KSPGetResidualHistory()` and `KSPGetIterationNumber()` will be different
 
   Fortran Note:
-  The Fortran version of this routine has a calling sequence
-.vb
-  call KSPGetResidualHistory(KSP ksp, integer na, integer ierr)
-.ve
-  note that you have passed a Fortran array into `KSPSetResidualHistory()` and you need
-  to access the residual values from this Fortran array you provided. Only the `na` (number of
-  residual norms currently held) is set.
+  Call `KSPRestoreResidualHistory()` when access to the history is no longer needed.
 
 .seealso: [](ch_ksp), `KSPSetResidualHistory()`, `KSP`, `KSPGetIterationNumber()`, `KSPSTCG`, `KSPBCGSL`
 @*/
@@ -2456,7 +2486,7 @@ PetscErrorCode KSPGetResidualHistory(KSP ksp, const PetscReal *a[], PetscInt *na
   Not Collective
 
   Input Parameters:
-+ ksp   - iterative context obtained from `KSPCreate()`
++ ksp   - iterative solver obtained from `KSPCreate()`
 . a     - array to hold history
 . na    - size of `a`
 - reset - `PETSC_TRUE` indicates the history counter is reset to zero for each new linear solve
@@ -2497,7 +2527,7 @@ PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscCount na, PetscBo
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameters:
 + a  - pointer to array to hold history (or `NULL`)
@@ -2510,13 +2540,9 @@ PetscErrorCode KSPSetErrorHistory(KSP ksp, PetscReal a[], PetscCount na, PetscBo
   Can only be called after a `KSPSetErrorHistory()` otherwise `a` and `na` are set to `NULL` and zero
 
   Fortran Note:
-  The Fortran version of this routine has a calling sequence
 .vb
-  call KSPGetErrorHistory(KSP ksp, integer na, integer ierr)
+  PetscReal, pointer :: a(:)
 .ve
-  note that you have passed a Fortran array into `KSPSetErrorHistory()` and you need
-  to access the residual values from this Fortran array you provided. Only the `na` (number of
-  residual norms currently held) is set.
 
 .seealso: [](ch_ksp), `KSPSetErrorHistory()`, `KSPGetResidualHistory()`, `KSP`
 @*/
@@ -2608,25 +2634,15 @@ PetscErrorCode KSPComputeConvergenceRate(KSP ksp, PetscReal *cr, PetscReal *rRsq
 }
 
 /*@C
-  KSPSetConvergenceTest - Sets the function to be used to determine convergence.
+  KSPSetConvergenceTest - Sets the function to be used to determine convergence of `KSPSolve()`
 
   Logically Collective
 
   Input Parameters:
-+ ksp      - iterative context obtained from `KSPCreate()`
-. converge - pointer to the function
++ ksp      - iterative solver obtained from `KSPCreate()`
+. converge - pointer to the function, see `KSPConvergenceTestFn`
 . ctx      - context for private data for the convergence routine (may be `NULL`)
 - destroy  - a routine for destroying the context (may be `NULL`)
-
-  Calling sequence of `converge`:
-+ ksp    - iterative context obtained from `KSPCreate()`
-. it     - iteration number
-. rnorm  - (estimated) 2-norm of (preconditioned) residual
-. reason - the reason why it has converged or diverged
-- ctx    - optional convergence context, as set by `KSPSetConvergenceTest()`
-
-  Calling sequence of `destroy`:
-. ctx - the context
 
   Level: advanced
 
@@ -2644,16 +2660,16 @@ PetscErrorCode KSPComputeConvergenceRate(KSP ksp, PetscReal *cr, PetscReal *rRsq
   In the default PETSc convergence test, the precise values of reason
   are macros such as `KSP_CONVERGED_RTOL`, which are defined in petscksp.h.
 
-.seealso: [](ch_ksp), `KSP`, `KSPConvergedDefault()`, `KSPGetConvergenceContext()`, `KSPSetTolerances()`, `KSPGetConvergenceTest()`, `KSPGetAndClearConvergenceTest()`
+.seealso: [](ch_ksp), `KSP`, `KSPConvergenceTestFn`, `KSPConvergedDefault()`, `KSPGetConvergenceContext()`, `KSPSetTolerances()`, `KSPGetConvergenceTest()`, `KSPGetAndClearConvergenceTest()`
 @*/
-PetscErrorCode KSPSetConvergenceTest(KSP ksp, PetscErrorCode (*converge)(KSP ksp, PetscInt it, PetscReal rnorm, KSPConvergedReason *reason, void *ctx), void *ctx, PetscErrorCode (*destroy)(void *ctx))
+PetscErrorCode KSPSetConvergenceTest(KSP ksp, KSPConvergenceTestFn *converge, void *ctx, PetscCtxDestroyFn *destroy)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
-  if (ksp->convergeddestroy) PetscCall((*ksp->convergeddestroy)(ksp->cnvP));
+  if (ksp->convergeddestroy) PetscCall((*ksp->convergeddestroy)(&ksp->cnvP));
   ksp->converged        = converge;
   ksp->convergeddestroy = destroy;
-  ksp->cnvP             = (void *)ctx;
+  ksp->cnvP             = ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2663,28 +2679,18 @@ PetscErrorCode KSPSetConvergenceTest(KSP ksp, PetscErrorCode (*converge)(KSP ksp
   Logically Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameters:
-+ converge - pointer to convergence test function
++ converge - pointer to convergence test function, see `KSPConvergenceTestFn`
 . ctx      - context for private data for the convergence routine (may be `NULL`)
 - destroy  - a routine for destroying the context (may be `NULL`)
-
-  Calling sequence of `converge`:
-+ ksp    - iterative context obtained from `KSPCreate()`
-. it     - iteration number
-. rnorm  - (estimated) 2-norm of (preconditioned) residual
-. reason - the reason why it has converged or diverged
-- ctx    - optional convergence context, as set by `KSPSetConvergenceTest()`
-
-  Calling sequence of `destroy`:
-. ctx - the convergence test context
 
   Level: advanced
 
 .seealso: [](ch_ksp), `KSP`, `KSPConvergedDefault()`, `KSPGetConvergenceContext()`, `KSPSetTolerances()`, `KSPSetConvergenceTest()`, `KSPGetAndClearConvergenceTest()`
 @*/
-PetscErrorCode KSPGetConvergenceTest(KSP ksp, PetscErrorCode (**converge)(KSP ksp, PetscInt it, PetscReal rnorm, KSPConvergedReason *reason, void *ctx), void **ctx, PetscErrorCode (**destroy)(void *ctx))
+PetscErrorCode KSPGetConvergenceTest(KSP ksp, KSPConvergenceTestFn **converge, void **ctx, PetscCtxDestroyFn **destroy)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -2700,22 +2706,12 @@ PetscErrorCode KSPGetConvergenceTest(KSP ksp, PetscErrorCode (**converge)(KSP ks
   Logically Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameters:
-+ converge - pointer to convergence test function
++ converge - pointer to convergence test function, see `KSPConvergenceTestFn`
 . ctx      - context for private data for the convergence routine
 - destroy  - a routine for destroying the context
-
-  Calling sequence of `converge`:
-+ ksp    - iterative context obtained from `KSPCreate()`
-. it     - iteration number
-. rnorm  - (estimated) 2-norm of (preconditioned) residual
-. reason - the reason why it has converged or diverged
-- ctx    - optional convergence context, as set by `KSPSetConvergenceTest()`
-
-  Calling sequence of `destroy`:
-. ctx - the convergence test context
 
   Level: advanced
 
@@ -2727,7 +2723,7 @@ PetscErrorCode KSPGetConvergenceTest(KSP ksp, PetscErrorCode (**converge)(KSP ks
 
 .seealso: [](ch_ksp), `KSP`, `KSPConvergedDefault()`, `KSPGetConvergenceContext()`, `KSPSetTolerances()`, `KSPSetConvergenceTest()`, `KSPGetConvergenceTest()`
 @*/
-PetscErrorCode KSPGetAndClearConvergenceTest(KSP ksp, PetscErrorCode (**converge)(KSP ksp, PetscInt it, PetscReal rnorm, KSPConvergedReason *reason, void *ctx), void **ctx, PetscErrorCode (**destroy)(void *ctx))
+PetscErrorCode KSPGetAndClearConvergenceTest(KSP ksp, KSPConvergenceTestFn **converge, void **ctx, PetscCtxDestroyFn **destroy)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -2746,7 +2742,7 @@ PetscErrorCode KSPGetAndClearConvergenceTest(KSP ksp, PetscErrorCode (**converge
   Not Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
 . ctx - monitoring context
@@ -2769,7 +2765,7 @@ PetscErrorCode KSPGetConvergenceContext(KSP ksp, void *ctx)
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameter:
    Provide exactly one of
@@ -2817,11 +2813,11 @@ PetscErrorCode KSPBuildSolution(KSP ksp, Vec v, Vec *V)
   Collective
 
   Input Parameter:
-. ksp - iterative context obtained from `KSPCreate()`
+. ksp - iterative solver obtained from `KSPCreate()`
 
   Output Parameters:
-+ v - optional location to stash residual.  If `v` is not provided, then a location is generated.
-. t - work vector.  If not provided then one is generated.
++ t - work vector.  If not provided then one is generated.
+. v - optional location to stash residual.  If `v` is not provided, then a location is generated.
 - V - the residual
 
   Level: advanced

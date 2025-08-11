@@ -51,7 +51,7 @@ static PetscErrorCode PCView_ASM(PC pc, PetscViewer viewer)
       }
     } else {
       PetscCall(PetscViewerASCIIPushSynchronized(viewer));
-      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "  [%d] number of local blocks = %" PetscInt_FMT "\n", (int)rank, osm->n_local_true));
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "  [%d] number of local blocks = %" PetscInt_FMT "\n", rank, osm->n_local_true));
       PetscCall(PetscViewerFlush(viewer));
       PetscCall(PetscViewerASCIIPrintf(viewer, "  Local solver information for each block is in the following KSP and PC objects:\n"));
       PetscCall(PetscViewerASCIIPushTab(viewer));
@@ -59,7 +59,7 @@ static PetscErrorCode PCView_ASM(PC pc, PetscViewer viewer)
       PetscCall(PetscViewerGetSubViewer(viewer, PETSC_COMM_SELF, &sviewer));
       for (i = 0; i < osm->n_local_true; i++) {
         PetscCall(ISGetLocalSize(osm->is[i], &bsz));
-        PetscCall(PetscViewerASCIIPrintf(sviewer, "[%d] local block number %" PetscInt_FMT ", size = %" PetscInt_FMT "\n", (int)rank, i, bsz));
+        PetscCall(PetscViewerASCIIPrintf(sviewer, "[%d] local block number %" PetscInt_FMT ", size = %" PetscInt_FMT "\n", rank, i, bsz));
         PetscCall(KSPView(osm->ksp[i], sviewer));
         PetscCall(PetscViewerASCIIPrintf(sviewer, "- - - - - - - - - - - - - - - - - -\n"));
       }
@@ -490,7 +490,7 @@ static PetscErrorCode PCApply_ASM(PC pc, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCMatApply_ASM(PC pc, Mat X, Mat Y)
+static PetscErrorCode PCMatApply_ASM_Private(PC pc, Mat X, Mat Y, PetscBool transpose)
 {
   PC_ASM     *osm = (PC_ASM *)pc->data;
   Mat         Z, W;
@@ -504,12 +504,12 @@ static PetscErrorCode PCMatApply_ASM(PC pc, Mat X, Mat Y)
      support for limiting the restriction or interpolation to only local
      subdomain values (leaving the other values 0).
   */
-  if (!(osm->type & PC_ASM_RESTRICT)) {
+  if ((!transpose && !(osm->type & PC_ASM_RESTRICT)) || (transpose && !(osm->type & PC_ASM_INTERPOLATE))) {
     forward = SCATTER_FORWARD_LOCAL;
     /* have to zero the work RHS since scatter may leave some slots empty */
     PetscCall(VecSet(osm->lx, 0.0));
   }
-  if (!(osm->type & PC_ASM_INTERPOLATE)) reverse = SCATTER_REVERSE_LOCAL;
+  if ((!transpose && !(osm->type & PC_ASM_INTERPOLATE)) || (transpose && !(osm->type & PC_ASM_RESTRICT))) reverse = SCATTER_REVERSE_LOCAL;
   PetscCall(VecGetLocalSize(osm->x[0], &m));
   PetscCall(MatGetSize(X, NULL, &N));
   PetscCall(MatCreateSeqDense(PETSC_COMM_SELF, m, N, NULL, &Z));
@@ -534,16 +534,22 @@ static PetscErrorCode PCMatApply_ASM(PC pc, Mat X, Mat Y)
   }
   PetscCall(MatCreateSeqDense(PETSC_COMM_SELF, m, N, NULL, &W));
   /* solve the overlapping 0-block */
-  PetscCall(PetscLogEventBegin(PC_ApplyOnBlocks, osm->ksp[0], Z, W, 0));
-  PetscCall(KSPMatSolve(osm->ksp[0], Z, W));
+  if (!transpose) {
+    PetscCall(PetscLogEventBegin(PC_ApplyOnBlocks, osm->ksp[0], Z, W, 0));
+    PetscCall(KSPMatSolve(osm->ksp[0], Z, W));
+    PetscCall(PetscLogEventEnd(PC_ApplyOnBlocks, osm->ksp[0], Z, W, 0));
+  } else {
+    PetscCall(PetscLogEventBegin(PC_ApplyTransposeOnBlocks, osm->ksp[0], Z, W, 0));
+    PetscCall(KSPMatSolveTranspose(osm->ksp[0], Z, W));
+    PetscCall(PetscLogEventEnd(PC_ApplyTransposeOnBlocks, osm->ksp[0], Z, W, 0));
+  }
   PetscCall(KSPCheckSolve(osm->ksp[0], pc, NULL));
-  PetscCall(PetscLogEventEnd(PC_ApplyOnBlocks, osm->ksp[0], Z, W, 0));
   PetscCall(MatDestroy(&Z));
 
   for (i = 0; i < N; ++i) {
     PetscCall(VecSet(osm->ly, 0.0));
     PetscCall(MatDenseGetColumnVecRead(W, i, &x));
-    if (osm->lprolongation && osm->type != PC_ASM_INTERPOLATE) { /* interpolate the non-overlapping 0-block solution to the local solution (only for restrictive additive) */
+    if (osm->lprolongation && ((!transpose && osm->type != PC_ASM_INTERPOLATE) || (transpose && osm->type != PC_ASM_RESTRICT))) { /* interpolate the non-overlapping 0-block solution to the local solution (only for restrictive additive) */
       PetscCall(VecScatterBegin(osm->lprolongation[0], x, osm->ly, ADD_VALUES, forward));
       PetscCall(VecScatterEnd(osm->lprolongation[0], x, osm->ly, ADD_VALUES, forward));
     } else { /* interpolate the overlapping 0-block solution to the local solution */
@@ -562,6 +568,20 @@ static PetscErrorCode PCMatApply_ASM(PC pc, Mat X, Mat Y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode PCMatApply_ASM(PC pc, Mat X, Mat Y)
+{
+  PetscFunctionBegin;
+  PetscCall(PCMatApply_ASM_Private(pc, X, Y, PETSC_FALSE));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode PCMatApplyTranspose_ASM(PC pc, Mat X, Mat Y)
+{
+  PetscFunctionBegin;
+  PetscCall(PCMatApply_ASM_Private(pc, X, Y, PETSC_TRUE));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PCApplyTranspose_ASM(PC pc, Vec x, Vec y)
 {
   PC_ASM     *osm = (PC_ASM *)pc->data;
@@ -569,6 +589,7 @@ static PetscErrorCode PCApplyTranspose_ASM(PC pc, Vec x, Vec y)
   ScatterMode forward = SCATTER_FORWARD, reverse = SCATTER_REVERSE;
 
   PetscFunctionBegin;
+  PetscCheck(osm->n_local_true <= 1 || osm->loctype == PC_COMPOSITE_ADDITIVE, PetscObjectComm((PetscObject)pc), PETSC_ERR_SUP, "Not yet implemented");
   /*
      Support for limiting the restriction or interpolation to only local
      subdomain values (leaving the other values 0).
@@ -599,10 +620,10 @@ static PetscErrorCode PCApplyTranspose_ASM(PC pc, Vec x, Vec y)
   /* do the local solves */
   for (i = 0; i < n_local_true; ++i) {
     /* solve the overlapping i-block */
-    PetscCall(PetscLogEventBegin(PC_ApplyOnBlocks, osm->ksp[i], osm->x[i], osm->y[i], 0));
+    PetscCall(PetscLogEventBegin(PC_ApplyTransposeOnBlocks, osm->ksp[i], osm->x[i], osm->y[i], 0));
     PetscCall(KSPSolveTranspose(osm->ksp[i], osm->x[i], osm->y[i]));
     PetscCall(KSPCheckSolve(osm->ksp[i], pc, osm->y[i]));
-    PetscCall(PetscLogEventEnd(PC_ApplyOnBlocks, osm->ksp[i], osm->x[i], osm->y[i], 0));
+    PetscCall(PetscLogEventEnd(PC_ApplyTransposeOnBlocks, osm->ksp[i], osm->x[i], osm->y[i], 0));
 
     if (osm->lprolongation && osm->type != PC_ASM_RESTRICT) { /* interpolate the non-overlapping i-block solution to the local solution */
       PetscCall(VecScatterBegin(osm->lprolongation[i], osm->y[i], osm->ly, ADD_VALUES, forward));
@@ -649,7 +670,7 @@ static PetscErrorCode PCReset_ASM(PC pc)
     PetscCall(PetscFree(osm->x));
     PetscCall(PetscFree(osm->y));
   }
-  PetscCall(PCASMDestroySubdomains(osm->n_local_true, osm->is, osm->is_local));
+  PetscCall(PCASMDestroySubdomains(osm->n_local_true, &osm->is, &osm->is_local));
   PetscCall(ISDestroy(&osm->lis));
   PetscCall(VecDestroy(&osm->lx));
   PetscCall(VecDestroy(&osm->ly));
@@ -689,7 +710,7 @@ static PetscErrorCode PCDestroy_ASM(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_ASM(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_ASM(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_ASM         *osm = (PC_ASM *)pc->data;
   PetscInt        blocks, ovl;
@@ -744,7 +765,7 @@ static PetscErrorCode PCASMSetLocalSubdomains_ASM(PC pc, PetscInt n, IS is[], IS
     if (is_local) {
       for (i = 0; i < n; i++) PetscCall(PetscObjectReference((PetscObject)is_local[i]));
     }
-    PetscCall(PCASMDestroySubdomains(osm->n_local_true, osm->is, osm->is_local));
+    PetscCall(PCASMDestroySubdomains(osm->n_local_true, &osm->is, &osm->is_local));
 
     if (osm->ksp && osm->n_local_true != n) {
       for (i = 0; i < osm->n_local_true; i++) PetscCall(KSPDestroy(&osm->ksp[i]));
@@ -796,10 +817,10 @@ static PetscErrorCode PCASMSetTotalSubdomains_ASM(PC pc, PetscInt N, IS *is, IS 
   PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)pc), &rank));
   PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)pc), &size));
   n = N / size + ((N % size) > rank);
-  PetscCheck(n, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Process %d must have at least one block: total processors %d total blocks %" PetscInt_FMT, (int)rank, (int)size, N);
+  PetscCheck(n, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Process %d must have at least one block: total processors %d total blocks %" PetscInt_FMT, rank, size, N);
   PetscCheck(!pc->setupcalled || n == osm->n_local_true, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "PCASMSetTotalSubdomains() should be called before PCSetUp().");
   if (!pc->setupcalled) {
-    PetscCall(PCASMDestroySubdomains(osm->n_local_true, osm->is, osm->is_local));
+    PetscCall(PCASMDestroySubdomains(osm->n_local_true, &osm->is, &osm->is_local));
 
     osm->n_local_true = n;
     osm->is           = NULL;
@@ -1212,8 +1233,8 @@ PetscErrorCode PCASMSetSortIndices(PC pc, PetscBool doSort)
 
   You must call `KSPSetUp()` before calling `PCASMGetSubKSP()`.
 
-  Fortran Notes:
-  The output argument 'ksp' must be an array of sufficient length or `PETSC_NULL_KSP`. The latter can be used to learn the necessary length.
+  Fortran Note:
+  Call `PCASMRestoreSubKSP()` when access to the array of `KSP` is no longer needed
 
 .seealso: [](ch_ksp), `PCASM`, `PCASMSetTotalSubdomains()`, `PCASMSetOverlap()`,
           `PCASMCreateSubdomains2D()`,
@@ -1287,17 +1308,18 @@ PETSC_EXTERN PetscErrorCode PCCreate_ASM(PC pc)
   osm->dm_subdomains = PETSC_FALSE;
   osm->sub_mat_type  = NULL;
 
-  pc->data                 = (void *)osm;
-  pc->ops->apply           = PCApply_ASM;
-  pc->ops->matapply        = PCMatApply_ASM;
-  pc->ops->applytranspose  = PCApplyTranspose_ASM;
-  pc->ops->setup           = PCSetUp_ASM;
-  pc->ops->reset           = PCReset_ASM;
-  pc->ops->destroy         = PCDestroy_ASM;
-  pc->ops->setfromoptions  = PCSetFromOptions_ASM;
-  pc->ops->setuponblocks   = PCSetUpOnBlocks_ASM;
-  pc->ops->view            = PCView_ASM;
-  pc->ops->applyrichardson = NULL;
+  pc->data                   = (void *)osm;
+  pc->ops->apply             = PCApply_ASM;
+  pc->ops->matapply          = PCMatApply_ASM;
+  pc->ops->applytranspose    = PCApplyTranspose_ASM;
+  pc->ops->matapplytranspose = PCMatApplyTranspose_ASM;
+  pc->ops->setup             = PCSetUp_ASM;
+  pc->ops->reset             = PCReset_ASM;
+  pc->ops->destroy           = PCDestroy_ASM;
+  pc->ops->setfromoptions    = PCSetFromOptions_ASM;
+  pc->ops->setuponblocks     = PCSetUpOnBlocks_ASM;
+  pc->ops->view              = PCView_ASM;
+  pc->ops->applyrichardson   = NULL;
 
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCASMSetLocalSubdomains_C", PCASMSetLocalSubdomains_ASM));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCASMSetTotalSubdomains_C", PCASMSetTotalSubdomains_ASM));
@@ -1331,9 +1353,6 @@ PETSC_EXTERN PetscErrorCode PCCreate_ASM(PC pc)
   Note:
   This generates nonoverlapping subdomains; the `PCASM` will generate the overlap
   from these if you use `PCASMSetLocalSubdomains()`
-
-  Fortran Notes:
-  You must provide the array `outis` already allocated of length `n`.
 
 .seealso: [](ch_ksp), `PCASM`, `PCASMSetLocalSubdomains()`, `PCASMDestroySubdomains()`
 @*/
@@ -1497,23 +1516,26 @@ PetscErrorCode PCASMCreateSubdomains(Mat A, PetscInt n, IS *outis[])
 
   Level: advanced
 
+  Developer Note:
+  The `IS` arguments should be a *[]
+
 .seealso: [](ch_ksp), `PCASM`, `PCASMCreateSubdomains()`, `PCASMSetLocalSubdomains()`
 @*/
-PetscErrorCode PCASMDestroySubdomains(PetscInt n, IS is[], IS is_local[])
+PetscErrorCode PCASMDestroySubdomains(PetscInt n, IS *is[], IS *is_local[])
 {
   PetscInt i;
 
   PetscFunctionBegin;
   if (n <= 0) PetscFunctionReturn(PETSC_SUCCESS);
-  if (is) {
-    PetscAssertPointer(is, 2);
-    for (i = 0; i < n; i++) PetscCall(ISDestroy(&is[i]));
-    PetscCall(PetscFree(is));
+  if (*is) {
+    PetscAssertPointer(*is, 2);
+    for (i = 0; i < n; i++) PetscCall(ISDestroy(&(*is)[i]));
+    PetscCall(PetscFree(*is));
   }
-  if (is_local) {
-    PetscAssertPointer(is_local, 3);
-    for (i = 0; i < n; i++) PetscCall(ISDestroy(&is_local[i]));
-    PetscCall(PetscFree(is_local));
+  if (is_local && *is_local) {
+    PetscAssertPointer(*is_local, 3);
+    for (i = 0; i < n; i++) PetscCall(ISDestroy(&(*is_local)[i]));
+    PetscCall(PetscFree(*is_local));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1544,13 +1566,10 @@ PetscErrorCode PCASMDestroySubdomains(PetscInt n, IS is[], IS is_local[])
   preconditioners.  More general related routines are
   `PCASMSetTotalSubdomains()` and `PCASMSetLocalSubdomains()`.
 
-  Fortran Notes:
-  `is` must be declared as an array of length long enough to hold `Nsub` entries
-
 .seealso: [](ch_ksp), `PCASM`, `PCASMSetTotalSubdomains()`, `PCASMSetLocalSubdomains()`, `PCASMGetSubKSP()`,
           `PCASMSetOverlap()`
 @*/
-PetscErrorCode PCASMCreateSubdomains2D(PetscInt m, PetscInt n, PetscInt M, PetscInt N, PetscInt dof, PetscInt overlap, PetscInt *Nsub, IS **is, IS **is_local)
+PetscErrorCode PCASMCreateSubdomains2D(PetscInt m, PetscInt n, PetscInt M, PetscInt N, PetscInt dof, PetscInt overlap, PetscInt *Nsub, IS *is[], IS *is_local[])
 {
   PetscInt i, j, height, width, ystart, xstart, yleft, yright, xleft, xright, loc_outer;
   PetscInt nidx, *idx, loc, ii, jj, count;
@@ -1625,9 +1644,6 @@ PetscErrorCode PCASMCreateSubdomains2D(PetscInt m, PetscInt n, PetscInt M, Petsc
   Note:
   The `IS` numbering is in the parallel, global numbering of the vector.
 
-  Fortran Note:
-  Pass in for `is` and `is_local` arrays long enough to hold all the subdomains
-
 .seealso: [](ch_ksp), `PCASM`, `PCASMSetTotalSubdomains()`, `PCASMSetOverlap()`, `PCASMGetSubKSP()`,
           `PCASMCreateSubdomains2D()`, `PCASMSetLocalSubdomains()`, `PCASMGetLocalSubmatrices()`
 @*/
@@ -1668,9 +1684,6 @@ PetscErrorCode PCASMGetLocalSubdomains(PC pc, PetscInt *n, IS *is[], IS *is_loca
   Call after `PCSetUp()` (or `KSPSetUp()`) but before `PCApply()` and before `PCSetUpOnBlocks()`)
 
   Usually one would use `PCSetModifySubMatrices()` to change the submatrices in building the preconditioner.
-
-  Fortran Note:
-  Pass in for `mat` an array long enough to hold all the matrices
 
 .seealso: [](ch_ksp), `PCASM`, `PCASMSetTotalSubdomains()`, `PCASMSetOverlap()`, `PCASMGetSubKSP()`,
           `PCASMCreateSubdomains2D()`, `PCASMSetLocalSubdomains()`, `PCASMGetLocalSubdomains()`, `PCSetModifySubMatrices()`

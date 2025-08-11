@@ -120,7 +120,7 @@ static PetscErrorCode PCApplySymmetricRight_ICC(PC pc, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_ICC(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_ICC(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_ICC   *icc = (PC_ICC *)pc->data;
   PetscBool flg;
@@ -143,8 +143,6 @@ static PetscErrorCode PCSetFromOptions_ICC(PC pc, PetscOptionItems *PetscOptions
   PetscOptionsHeadEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-extern PetscErrorCode PCFactorSetDropTolerance_ILU(PC, PetscReal, PetscReal, PetscInt);
 
 /*MC
      PCICC - Incomplete Cholesky factorization preconditioners {cite}`chan1997approximate`
@@ -188,6 +186,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_ICC(PC pc)
   pc->ops->apply               = PCApply_ICC;
   pc->ops->matapply            = PCMatApply_ICC;
   pc->ops->applytranspose      = PCApply_ICC;
+  pc->ops->matapplytranspose   = PCMatApply_ICC;
   pc->ops->setup               = PCSetUp_ICC;
   pc->ops->reset               = PCReset_ICC;
   pc->ops->destroy             = PCDestroy_ICC;

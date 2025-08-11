@@ -10,7 +10,7 @@ PetscClassId  VEC_CLASSID;
 PetscLogEvent VEC_View, VEC_Max, VEC_Min, VEC_Dot, VEC_MDot, VEC_TDot;
 PetscLogEvent VEC_Norm, VEC_Normalize, VEC_Scale, VEC_Shift, VEC_Copy, VEC_Set, VEC_AXPY, VEC_AYPX, VEC_WAXPY;
 PetscLogEvent VEC_MTDot, VEC_MAXPY, VEC_Swap, VEC_AssemblyBegin, VEC_ScatterBegin, VEC_ScatterEnd;
-PetscLogEvent VEC_AssemblyEnd, VEC_PointwiseMult, VEC_PointwiseDivide, VEC_SetValues, VEC_Load, VEC_SetPreallocateCOO, VEC_SetValuesCOO;
+PetscLogEvent VEC_AssemblyEnd, VEC_PointwiseMult, VEC_PointwiseDivide, VEC_Reciprocal, VEC_SetValues, VEC_Load, VEC_SetPreallocateCOO, VEC_SetValuesCOO;
 PetscLogEvent VEC_SetRandom, VEC_ReduceArithmetic, VEC_ReduceCommunication, VEC_ReduceBegin, VEC_ReduceEnd, VEC_Ops;
 PetscLogEvent VEC_DotNorm2, VEC_AXPBYPCZ;
 PetscLogEvent VEC_ViennaCLCopyFromGPU, VEC_ViennaCLCopyToGPU;
@@ -196,10 +196,11 @@ PetscErrorCode VecSetPreallocationCOO(Vec x, PetscCount ncoo, const PetscInt coo
   if (x->ops->setpreallocationcoo) {
     PetscUseTypeMethod(x, setpreallocationcoo, ncoo, coo_i);
   } else {
-    IS is_coo_i;
-    /* The default implementation only supports ncoo within limit of PetscInt */
-    PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
-    PetscCall(ISCreateGeneral(PETSC_COMM_SELF, (PetscInt)ncoo, coo_i, PETSC_COPY_VALUES, &is_coo_i));
+    PetscInt ncoo_i;
+    IS       is_coo_i;
+
+    PetscCall(PetscIntCast(ncoo, &ncoo_i));
+    PetscCall(ISCreateGeneral(PETSC_COMM_SELF, ncoo_i, coo_i, PETSC_COPY_VALUES, &is_coo_i));
     PetscCall(PetscObjectCompose((PetscObject)x, "__PETSc_coo_i", (PetscObject)is_coo_i));
     PetscCall(ISDestroy(&is_coo_i));
   }
@@ -237,16 +238,17 @@ PetscErrorCode VecSetPreallocationCOO(Vec x, PetscCount ncoo, const PetscInt coo
 @*/
 PetscErrorCode VecSetPreallocationCOOLocal(Vec x, PetscCount ncoo, PetscInt coo_i[])
 {
+  PetscInt               ncoo_i;
   ISLocalToGlobalMapping ltog;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
   PetscValidType(x, 1);
   if (ncoo) PetscAssertPointer(coo_i, 3);
-  PetscCheck(ncoo <= PETSC_INT_MAX, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "ncoo %" PetscCount_FMT " overflowed PetscInt; configure --with-64-bit-indices or request support", ncoo);
+  PetscCall(PetscIntCast(ncoo, &ncoo_i));
   PetscCall(PetscLayoutSetUp(x->map));
   PetscCall(VecGetLocalToGlobalMapping(x, &ltog));
-  if (ltog) PetscCall(ISLocalToGlobalMappingApply(ltog, (PetscInt)ncoo, coo_i, coo_i));
+  if (ltog) PetscCall(ISLocalToGlobalMappingApply(ltog, ncoo_i, coo_i, coo_i));
   PetscCall(VecSetPreallocationCOO(x, ncoo, coo_i));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -598,16 +600,21 @@ PetscErrorCode VecDestroy(Vec *v)
 
   Level: intermediate
 
-  Note:
+  Notes:
   Use `VecDestroyVecs()` to free the space. Use `VecDuplicate()` to form a single
   vector.
 
-  Fortran Notes:
-  The Fortran interface is slightly different from that given below, it
-  requires one to pass in `V` a `Vec` array of size at least `m`.
-  See the [](ch_fortran) for details.
+  Some implementations ensure that the arrays accessed by each vector are contiguous in memory. Certain `VecMDot()` and `VecMAXPY()`
+  implementations utilize this property to use BLAS 2 operations for higher efficiency. This is especially useful in `KSPGMRES`, see
+  `KSPGMRESSetPreAllocateVectors()`.
 
-.seealso: [](ch_vectors), `Vec`, [](ch_fortran), `VecDestroyVecs()`, `VecDuplicate()`, `VecCreate()`, `VecDuplicateVecsF90()`
+  Fortran Note:
+.vb
+  Vec, pointer :: V(:)
+.ve
+
+.seealso: [](ch_vectors), `Vec`, [](ch_fortran), `VecDestroyVecs()`, `VecDuplicate()`, `VecCreate()`, `VecMDot()`, `VecMAXPY()`, `KSPGMRES`,
+          `KSPGMRESSetPreAllocateVectors()`
 @*/
 PetscErrorCode VecDuplicateVecs(Vec v, PetscInt m, Vec *V[])
 {
@@ -644,10 +651,6 @@ PetscErrorCode VecDuplicateVecs(Vec v, PetscInt m, Vec *V[])
 
   Level: intermediate
 
-  Fortran Notes:
-  The Fortran interface is slightly different from that given below.
-  See the [](ch_fortran) for details.
-
 .seealso: [](ch_vectors), `Vec`, [](ch_fortran), `VecDuplicateVecs()`, `VecDestroyVecsf90()`
 @*/
 PetscErrorCode VecDestroyVecs(PetscInt m, Vec *vv[])
@@ -673,7 +676,7 @@ PetscErrorCode VecDestroyVecs(PetscInt m, Vec *vv[])
 
   Input Parameters:
 + A    - the vector
-. obj  - Optional object that provides the options prefix for this viewing
+. obj  - optional object that provides the options prefix for this viewing, use 'NULL' to use the prefix of `A`
 - name - command line option
 
   Level: intermediate
@@ -683,7 +686,7 @@ PetscErrorCode VecDestroyVecs(PetscInt m, Vec *vv[])
 
 .seealso: [](ch_vectors), `Vec`, `VecView`, `PetscObjectViewFromOptions()`, `VecCreate()`
 @*/
-PetscErrorCode VecViewFromOptions(Vec A, PetscObject obj, const char name[])
+PetscErrorCode VecViewFromOptions(Vec A, PeOp PetscObject obj, const char name[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, VEC_CLASSID, 1);
@@ -985,8 +988,12 @@ PetscErrorCode VecGetOwnershipRange(Vec x, PetscInt *low, PetscInt *high)
 
   If `ranges` are used after all vectors that share the ranges has been destroyed, then the program will crash accessing `ranges`.
 
-  Fortran Notes:
-  You must PASS in an array of length `size` + 1, where `size` is the size of the communicator owning the vector
+  Fortran Note:
+  The argument `ranges` must be declared as
+.vb
+  PetscInt, pointer :: ranges(:)
+.ve
+  and you have to return it with a call to `VecRestoreOwnershipRanges()` when no longer needed
 
 .seealso: [](ch_vectors), `Vec`, `MatGetOwnershipRange()`, `MatGetOwnershipRanges()`, `VecGetOwnershipRange()`, `PetscSplitOwnership()`,
           `VecSetSizes()`, `VecCreateMPI()`, `PetscLayout`, `DMDAGetGhostCorners()`, `DM`
@@ -1388,7 +1395,7 @@ PetscErrorCode VecZeroEntries(Vec vec)
 
 .seealso: [](ch_vectors), `Vec`, `VecSetFromOptions()`, `VecSetType()`
 */
-static PetscErrorCode VecSetTypeFromOptions_Private(Vec vec, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode VecSetTypeFromOptions_Private(Vec vec, PetscOptionItems PetscOptionsObject)
 {
   PetscBool   opt;
   VecType     defaultType;
@@ -1619,10 +1626,6 @@ PetscErrorCode VecAppendOptionsPrefix(Vec v, const char prefix[])
 . prefix - pointer to the prefix string used
 
   Level: advanced
-
-  Fortran Notes:
-  The user must pass in a string `prefix` of
-  sufficient length to hold the prefix.
 
 .seealso: [](ch_vectors), `Vec`, `VecAppendOptionsPrefix()`
 @*/
@@ -1994,7 +1997,7 @@ PetscErrorCode PetscOptionsGetVec(PetscOptions options, const char prefix[], con
   Note:
   The layout determines what vector elements are contained on each MPI process
 
-.seealso: [](ch_vectors), `PetscLayout`, `Vec`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `PetscLayout`, `Vec`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecGetLayout(Vec x, PetscLayout *map)
 {
@@ -2019,7 +2022,7 @@ PetscErrorCode VecGetLayout(Vec x, PetscLayout *map)
   Note:
   It is normally only valid to replace the layout with a layout known to be equivalent.
 
-.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecSetLayout(Vec x, PetscLayout map)
 {
@@ -2047,15 +2050,13 @@ PetscErrorCode VecSetLayout(Vec x, PetscLayout map)
   `KSPCheckNorm()` detects an infinity and at least one of the MPI processes has a not converged reason then the `KSP`
   object collectively is labeled as not converged.
 
-.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecFlag(Vec xin, PetscInt flg)
 {
-  // use of variables one and zero over just doing 1.0/0.0 is deliberate. MSVC complains that
-  // we are dividing by zero in the latter case (ostensibly because dividing by 0 is UB, but
-  // only for *integers* not floats).
-  const PetscScalar one = 1.0, zero = 0.0;
-  PetscScalar       inf;
+  // MSVC gives "divide by zero" error at compile time - so declare as volatile to skip this check.
+  volatile PetscReal one = 1.0, zero = 0.0;
+  PetscScalar        inf;
 
   PetscFunctionBegin;
   if (!xin) PetscFunctionReturn(PETSC_SUCCESS);
@@ -2098,16 +2099,14 @@ PetscErrorCode VecFlag(Vec xin, PetscInt flg)
 
   This cannot be called if `xin` has a cached norm available
 
-.seealso: [](ch_vectors), `VecFlag()`, `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSizes()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
+.seealso: [](ch_vectors), `VecFlag()`, `Vec`, `PetscLayout`, `VecGetLayout()`, `VecGetSize()`, `VecGetOwnershipRange()`, `VecGetOwnershipRanges()`
 @*/
 PetscErrorCode VecSetInf(Vec xin)
 {
-  // use of variables one and zero over just doing 1.0/0.0 is deliberate. MSVC complains that
-  // we are dividing by zero in the latter case (ostensibly because dividing by 0 is UB, but
-  // only for *integers* not floats).
-  const PetscScalar one = 1.0, zero = 0.0;
-  PetscScalar       inf;
-  PetscBool         flg;
+  // MSVC gives "divide by zero" error at compile time - so declare as volatile to skip this check.
+  volatile PetscReal one = 1.0, zero = 0.0;
+  PetscScalar        inf;
+  PetscBool          flg;
 
   PetscFunctionBegin;
   PetscCall(VecNormAvailable(xin, NORM_2, &flg, NULL));
@@ -2440,7 +2439,7 @@ static PetscErrorCode VecErrorWeightedNorms_Basic(Vec U, Vec Y, Vec E, NormType 
 . vatol      - vector representing per-entry absolute tolerances (can be ``NULL``)
 . rtol       - scalar for relative tolerance
 . vrtol      - vector representing per-entry relative tolerances (can be ``NULL``)
-- ignore_max - ignore values smaller then this value in absolute terms.
+- ignore_max - ignore values smaller than this value in absolute terms.
 
   Output Parameters:
 + norm      - weighted norm

@@ -162,7 +162,7 @@ class generateExamples(Petsc):
 
   def getInInstallDir(self,thisscriptdir):
     """
-    When petsc is installed then this file in installed in:
+    When PETSc is installed then this file in installed in:
          <PREFIX>/share/petsc/examples/config/gmakegentest.py
     otherwise the path is:
          <PETSC_DIR>/config/gmakegentest.py
@@ -394,7 +394,7 @@ class generateExamples(Petsc):
     subst['mpiexec_tail']=self.conf['MPIEXEC_TAIL']
     subst['pkg_name']=self.pkg_name
     subst['pkg_dir']=self.pkg_dir
-    subst['pkg_arch']=self.petsc_arch
+    subst['pkg_arch']=self.pkg_arch
     subst['CONFIG_DIR']=thisscriptdir
     subst['PETSC_BINDIR']=os.path.join(self.petsc_dir,'lib','petsc','bin')
     subst['diff']=self.conf['DIFF']
@@ -647,9 +647,10 @@ class generateExamples(Petsc):
       # if the next two lines are dropped all scripts are generating included the unneeded
       # if the unneeded are generated when run they will skip their tests automatically
       # not generating them saves setup time
-      reason = False
-      if 'SKIP' in srcDict[test]:  reason = srcDict[test]['SKIP'] == ['Requires DATAFILESPATH']
-      if not isRun and not reason:
+      allow = False
+      if 'SKIP' in srcDict[test]:
+        allow = srcDict[test]['SKIP'] in [['Requires DATAFILESPATH'], ['PETSC_HAVE_PYVISTA requirement not met']]
+      if not isRun and not allow:
         del srcDict[test]
         continue
       if 'TODO' in srcDict[test]:

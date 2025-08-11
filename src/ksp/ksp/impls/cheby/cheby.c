@@ -78,11 +78,14 @@ static PetscErrorCode KSPChebyshevSetEigenvalues_Chebyshev(KSP ksp, PetscReal em
 static PetscErrorCode KSPChebyshevEstEigSet_Chebyshev(KSP ksp, PetscReal a, PetscReal b, PetscReal c, PetscReal d)
 {
   KSP_Chebyshev *cheb = (KSP_Chebyshev *)ksp->data;
+  PetscInt       nestlevel;
 
   PetscFunctionBegin;
   if (a != 0.0 || b != 0.0 || c != 0.0 || d != 0.0) {
     if ((cheb->emin_provided == 0. || cheb->emax_provided == 0.) && !cheb->kspest) { /* should this block of code be moved to KSPSetUp_Chebyshev()? */
       PetscCall(KSPCreate(PetscObjectComm((PetscObject)ksp), &cheb->kspest));
+      PetscCall(KSPGetNestLevel(ksp, &nestlevel));
+      PetscCall(KSPSetNestLevel(cheb->kspest, nestlevel + 1));
       PetscCall(KSPSetErrorIfNotConverged(cheb->kspest, ksp->errorifnotconverged));
       PetscCall(PetscObjectIncrementTabLevel((PetscObject)cheb->kspest, (PetscObject)ksp, 1));
       /* use PetscObjectSet/AppendOptionsPrefix() instead of KSPSet/AppendOptionsPrefix() so that the PC prefix is not changed */
@@ -336,7 +339,7 @@ static PetscErrorCode KSPChebyshevEstEigGetKSP_Chebyshev(KSP ksp, KSP *kspest)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPSetFromOptions_Chebyshev(KSP ksp, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode KSPSetFromOptions_Chebyshev(KSP ksp, PetscOptionItems PetscOptionsObject)
 {
   KSP_Chebyshev *cheb    = (KSP_Chebyshev *)ksp->data;
   PetscInt       neigarg = 2, nestarg = 4;
@@ -614,8 +617,8 @@ static PetscErrorCode KSPSolve_Chebyshev_FourthKind(KSP ksp)
     if (ksp->max_it == 0) ksp->reason = KSP_DIVERGED_ITS; /* This for a V(0,x) cycle */
     PetscFunctionReturn(PETSC_SUCCESS);
   }
-  if (ksp->normtype != KSP_NORM_PRECONDITIONED) { PetscCall(KSP_PCApply(ksp, r, Br)); /* Br = B^{-1}r */ }
-  PetscCall(VecAXPBY(d, 4.0 / 3.0 * scale, 0.0, Br)); /* d = 4/3 * scale B^{-1}r */
+  if (ksp->normtype != KSP_NORM_PRECONDITIONED) PetscCall(KSP_PCApply(ksp, r, Br)); /* Br = B^{-1}r */
+  PetscCall(VecAXPBY(d, 4.0 / 3.0 * scale, 0.0, Br));                               /* d = 4/3 * scale B^{-1}r */
   PetscCall(PetscObjectSAWsTakeAccess((PetscObject)ksp));
   ksp->its = 1;
   PetscCall(PetscObjectSAWsGrantAccess((PetscObject)ksp));
@@ -653,7 +656,7 @@ static PetscErrorCode KSPSolve_Chebyshev_FourthKind(KSP ksp)
       PetscCall(KSPMonitor(ksp, i, rnorm));
       PetscCall((*ksp->converged)(ksp, i, rnorm, &ksp->reason, ksp->cnvP));
       if (ksp->reason) break;
-      if (ksp->normtype != KSP_NORM_PRECONDITIONED) { PetscCall(KSP_PCApply(ksp, r, Br)); /*  Br = B^{-1}r  */ }
+      if (ksp->normtype != KSP_NORM_PRECONDITIONED) PetscCall(KSP_PCApply(ksp, r, Br)); /*  Br = B^{-1}r  */
     } else {
       PetscCall(KSP_PCApply(ksp, r, Br)); /*  Br = B^{-1}r  */
     }
@@ -808,7 +811,7 @@ static PetscErrorCode KSPSetUp_Chebyshev(KSP ksp)
       PetscCall(KSPSetPC(cheb->kspest, ksp->pc));
       if (cheb->usenoisy) {
         B = ksp->work[1];
-        PetscCall(KSPSetNoisy_Private(B));
+        PetscCall(KSPSetNoisy_Private(Amat, B));
       } else {
         PetscBool change;
 
@@ -852,6 +855,7 @@ static PetscErrorCode KSPSetUp_Chebyshev(KSP ksp)
       cheb->pmatstate = pmatstate;
     }
   }
+  if (ksp->monitor[0] == (PetscErrorCode (*)(KSP, PetscInt, PetscReal, void *))KSPMonitorResidual && !ksp->normtype) PetscCall(KSPSetNormType(ksp, KSP_NORM_PRECONDITIONED));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -877,11 +881,11 @@ static PetscErrorCode KSPDestroy_Chebyshev(KSP ksp)
 
    Options Database Keys:
 +   -ksp_chebyshev_eigenvalues <emin,emax> - set approximations to the smallest and largest eigenvalues
-                  of the preconditioned operator. If these are accurate you will get much faster convergence.
-.   -ksp_chebyshev_esteig <a,b,c,d> - estimate eigenvalues using a Krylov method, then use this
-                         transform for Chebyshev eigenvalue bounds (`KSPChebyshevEstEigSet()`)
-.   -ksp_chebyshev_esteig_steps - number of estimation steps
--   -ksp_chebyshev_esteig_noisy - use a noisy random number generator to create right-hand side for eigenvalue estimator
+                                             of the preconditioned operator. If these are accurate you will get much faster convergence.
+.   -ksp_chebyshev_esteig <a,b,c,d>        - estimate eigenvalues using a Krylov method, then use this
+                                             transform for Chebyshev eigenvalue bounds (`KSPChebyshevEstEigSet()`)
+.   -ksp_chebyshev_esteig_steps            - number of eigenvalue estimation steps
+-   -ksp_chebyshev_esteig_noisy            - use a noisy random number generator to create right-hand side for eigenvalue estimator
 
    Level: beginner
 
@@ -889,11 +893,12 @@ static PetscErrorCode KSPDestroy_Chebyshev(KSP ksp)
    The Chebyshev method requires both the matrix and preconditioner to be symmetric positive (semi) definite, but it can work
    as a smoother in other situations
 
-   Only support for left preconditioning.
+   Only has support for left preconditioning.
 
    Chebyshev is configured as a smoother by default, targeting the "upper" part of the spectrum.
 
-   The user should call `KSPChebyshevSetEigenvalues()` to get eigenvalue estimates.
+   By default this uses `KSPGMRES` to estimate the extreme eigenvalues, if the matrix is known to be SPD then it uses `KSPCG` to estimate the eigenvalues.
+   See `MatIsSPDKnown()` for how to indicate a `Mat`, matrix is SPD.
 
 .seealso: [](ch_ksp), `KSPCreate()`, `KSPSetType()`, `KSPType`, `KSP`,
           `KSPChebyshevSetEigenvalues()`, `KSPChebyshevEstEigSet()`, `KSPChebyshevEstEigSetUseNoisy()`

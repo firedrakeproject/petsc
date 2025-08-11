@@ -12,6 +12,7 @@
       PetscInt nloc,on
       PetscScalar one
       PetscReal norm
+      Vec, pointer :: vnsp(:)
 
       PetscCallA(PetscInitialize(ierr))
 
@@ -21,7 +22,9 @@
       one = 1.0
       PetscCallA(VecSet(v(1),one,ierr))
       PetscCallA(VecNormalize(v(1),norm,ierr))
-      PetscCallA(MatNullSpaceCreate(PETSC_COMM_WORLD,PETSC_FALSE,on,v(1),nsp,ierr))
+      PetscCallA(MatNullSpaceCreate(PETSC_COMM_WORLD,PETSC_FALSE,on,[v],nsp,ierr))
+      PetscCallA(MatNullSpaceGetVecs(nsp,PETSC_NULL_BOOL, PETSC_NULL_INTEGER, vnsp, ierr))
+      PetscCallA(MatNullSpaceRestoreVecs(nsp,PETSC_NULL_BOOL, PETSC_NULL_INTEGER, vnsp, ierr))
       PetscCallA(MatNullSpaceDestroy(nsp,ierr))
       PetscCallA(VecDestroy(v(1),ierr))
       PetscCallA(PetscFinalize(ierr))
@@ -30,5 +33,6 @@
 !/*TEST
 !
 !   test:
+!      output_file: output/empty.out
 !
 !TEST*/

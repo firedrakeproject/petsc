@@ -16,6 +16,8 @@ class ViewerType(object):
     GLVIS       = S_(PETSCVIEWERGLVIS)
     ADIOS       = S_(PETSCVIEWERADIOS)
     EXODUSII    = S_(PETSCVIEWEREXODUSII)
+    PYTHON      = S_(PETSCVIEWERPYTHON)
+    PYVISTA     = S_(PETSCVIEWERPYVISTA)
 
 
 class ViewerFormat(object):
@@ -31,9 +33,6 @@ class ViewerFormat(object):
     ASCII_INDEX       = PETSC_VIEWER_ASCII_INDEX
     ASCII_DENSE       = PETSC_VIEWER_ASCII_DENSE
     ASCII_MATRIXMARKET= PETSC_VIEWER_ASCII_MATRIXMARKET
-    ASCII_VTK         = PETSC_VIEWER_ASCII_VTK_DEPRECATED
-    ASCII_VTK_CELL    = PETSC_VIEWER_ASCII_VTK_CELL_DEPRECATED
-    ASCII_VTK_COORDS  = PETSC_VIEWER_ASCII_VTK_COORDS_DEPRECATED
     ASCII_PCICE       = PETSC_VIEWER_ASCII_PCICE
     ASCII_PYTHON      = PETSC_VIEWER_ASCII_PYTHON
     ASCII_FACTOR_INFO = PETSC_VIEWER_ASCII_FACTOR_INFO
@@ -460,6 +459,31 @@ cdef class Viewer(Object):
         cdef PetscViewerType cval = NULL
         CHKERR(PetscViewerGetType(self.vwr, &cval))
         return bytes2str(cval)
+
+    def setFromOptions(self) -> None:
+        """Configure the object from the options database.
+
+        Collective.
+
+        See Also
+        --------
+        petsc_options, petsc.PetscViewerSetFromOptions
+
+        """
+        CHKERR(PetscViewerSetFromOptions(self.vwr))
+
+    def setUp(self) -> Self:
+        """Set up the internal data structures for using the viewer.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.PetscViewerSetUp
+
+        """
+        CHKERR(PetscViewerSetUp(self.vwr))
+        return self
 
     def getFormat(self) -> Format:
         """Return the format of the viewer.
@@ -906,6 +930,104 @@ cdef class Viewer(Object):
         """
         CHKERR(PetscViewerDrawClear(self.vwr))
 
+    def createPython(self, context: Any = None, comm: Comm | None = None) -> Self:
+        """Create a `Type.PYTHON` viewer.
+
+        Collective.
+
+        Parameters
+        ----------
+        context
+            An instance of the Python class implementing the required methods.
+        comm
+            MPI communicator, defaults to `Sys.getDefaultComm`.
+
+        See Also
+        --------
+        petsc_python_viewer, setType, setPythonContext, Type.PYTHON
+
+        """
+        # communicator and sizes
+        cdef MPI_Comm ccomm = def_Comm(comm, PETSC_COMM_DEFAULT)
+        cdef PetscViewer newvwr = NULL
+        CHKERR(PetscViewerCreate(ccomm, &newvwr))
+        CHKERR(PetscCLEAR(self.obj)); self.vwr = newvwr
+        CHKERR(PetscViewerSetType(self.vwr, PETSCVIEWERPYTHON))
+        CHKERR(PetscViewerPythonSetContext(self.vwr, <void*>context))
+        if context:
+            CHKERR(PetscViewerSetUp(self.vwr))
+        return self
+
+    def setPythonContext(self, context: Any) -> None:
+        """Set the instance of the class implementing the required Python methods.
+
+        Logically collective.
+
+        See Also
+        --------
+        petsc_python_viewer, getPythonContext, setPythonType
+
+        """
+        CHKERR(PetscViewerPythonSetContext(self.vwr, <void*>context))
+
+    def getPythonContext(self) -> Any:
+        """Return the instance of the class implementing the required Python methods.
+
+        Not collective.
+
+        See Also
+        --------
+        petsc_python_viewer, setPythonContext
+
+        """
+        cdef void *context = NULL
+        CHKERR(PetscViewerPythonGetContext(self.vwr, &context))
+        if context == NULL: return None
+        else: return <object> context
+
+    def setPythonType(self, py_type: str) -> None:
+        """Set the fully qualified Python name of the class to be used.
+
+        Collective.
+
+        See Also
+        --------
+        petsc_python_viewer, setPythonContext, getPythonType
+        petsc.PetscViewerPythonSetType
+
+        """
+        cdef const char *cval = NULL
+        py_type = str2bytes(py_type, &cval)
+        CHKERR(PetscViewerPythonSetType(self.vwr, cval))
+
+    def getPythonType(self) -> str:
+        """Return the fully qualified Python name of the class used by the viewer.
+
+        Not collective.
+
+        See Also
+        --------
+        petsc_python_viewer, setPythonContext, setPythonType
+        petsc.PetscViewerPythonGetType
+
+        """
+        cdef const char *cval = NULL
+        CHKERR(PetscViewerPythonGetType(self.vwr, &cval))
+        return bytes2str(cval)
+
+    def viewObjectPython(self, Object obj) -> None:
+        """View a generic `Object`.
+
+        Collective.
+
+        See Also
+        --------
+        petsc_python_viewer, setPythonContext, setPythonType
+        petsc.PetscViewerPythonViewObject
+
+        """
+        CHKERR(PetscViewerPythonViewObject(self.vwr, obj.obj[0]))
+
 # --------------------------------------------------------------------
 
 cdef class ViewerHDF5(Viewer):
@@ -1056,7 +1178,7 @@ cdef class ViewerHDF5(Viewer):
         pushGroup, popGroup, petsc.PetscViewerHDF5GetGroup
 
         """
-        cdef char *cgroup = NULL
+        cdef const char *cgroup = NULL
         CHKERR(PetscViewerHDF5GetGroup(self.vwr, NULL, &cgroup))
         group = bytes2str(cgroup)
         CHKERR(PetscFree(cgroup))

@@ -136,6 +136,7 @@ def __register_all_classids() -> None:
     "_p_DMKSP *"                  : "DMKSP_CLASSID",
     "_p_DMLabel *"                : "DMLABEL_CLASSID",
     "_p_DMPlexTransform *"        : "DMPLEXTRANSFORM_CLASSID",
+    "_p_DMSwarmCellDM *"          : "DMSWARMCELLDM_CLASSID",
     "_p_DMSNES *"                 : "DMSNES_CLASSID",
     "_p_DMTS *"                   : "DMTS_CLASSID",
     "_p_IS *"                     : "IS_CLASSID",
@@ -185,6 +186,7 @@ def __register_all_classids() -> None:
     "_p_TSTrajectory *"           : "TSTRAJECTORY_CLASSID",
     "_p_Tao *"                    : "TAO_CLASSID",
     "_p_TaoLineSearch *"          : "TAOLINESEARCH_CLASSID",
+    "_p_PetscRegressor *"         : "PETSCREGRESSOR_CLASSID",
     "_p_Vec *"                    : "VEC_CLASSID",
     "_p_VecTagger *"              : "VEC_TAGGER_CLASSID",
   }

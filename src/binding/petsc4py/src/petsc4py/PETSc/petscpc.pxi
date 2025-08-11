@@ -31,7 +31,6 @@ cdef extern from * nogil:
     PetscPCType PCGALERKIN
     PetscPCType PCEXOTIC
     PetscPCType PCCP
-    PetscPCType PCBFBT
     PetscPCType PCLSC
     PetscPCType PCPYTHON
     PetscPCType PCPFMG
@@ -162,6 +161,7 @@ cdef extern from * nogil:
     PetscErrorCode PCApply(PetscPC, PetscVec, PetscVec)
     PetscErrorCode PCMatApply(PetscPC, PetscMat, PetscMat)
     PetscErrorCode PCApplyTranspose(PetscPC, PetscVec, PetscVec)
+    PetscErrorCode PCMatApplyTranspose(PetscPC, PetscMat, PetscMat)
     PetscErrorCode PCApplySymmetricLeft(PetscPC, PetscVec, PetscVec)
     PetscErrorCode PCApplySymmetricRight(PetscPC, PetscVec, PetscVec)
     PetscErrorCode PCApplyRichardson(PetscPC, PetscVec, PetscVec, PetscVec, PetscReal, PetscReal, PetscReal, PetscInt)
@@ -184,6 +184,8 @@ cdef extern from * nogil:
     PetscErrorCode PCDiagonalScaleLeft(PetscPC, PetscVec, PetscVec)
     PetscErrorCode PCDiagonalScaleRight(PetscPC, PetscVec, PetscVec)
     PetscErrorCode PCDiagonalScaleSet(PetscPC, PetscVec)
+
+    PetscErrorCode PCBJacobiGetSubKSP(PetscPC, PetscInt*, PetscInt*, PetscKSP*[])
 
     PetscErrorCode PCASMSetType(PetscPC, PetscPCASMType)
     PetscErrorCode PCASMSetOverlap(PetscPC, PetscInt)

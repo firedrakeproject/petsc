@@ -13,9 +13,6 @@ typedef struct {
   PetscInt  component;     /* Which subspace is used for the subspace-based coarsening algorithm? */
 } PC_HMG;
 
-static PetscErrorCode PCSetFromOptions_HMG(PC, PetscOptionItems *);
-PetscErrorCode        PCReset_MG(PC);
-
 static PetscErrorCode PCHMGExtractSubMatrix_Private(Mat pmat, Mat *submat, MatReuse reuse, PetscInt component, PetscInt blocksize)
 {
   IS       isrow;
@@ -249,7 +246,7 @@ static PetscErrorCode PCView_HMG(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_HMG(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_HMG(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_MG  *mg  = (PC_MG *)pc->data;
   PC_HMG *hmg = (PC_HMG *)mg->innerctx;
@@ -287,6 +284,9 @@ static PetscErrorCode PCHMGSetReuseInterpolation_HMG(PC pc, PetscBool reuse)
 . -pc_hmg_reuse_interpolation <true | false> - Whether or not to reuse the interpolations. If true, it potentially save the compute time.
 
   Level: beginner
+
+  Note:
+  This decreases the set up time of the `PC` significantly but may slow the convergence of the iterative method, `KSP`, that is using the `PCHMG`
 
 .seealso: [](ch_ksp), `PCHMG`, `PCGAMG`, `PCHMGSetUseSubspaceCoarsening()`, `PCHMGSetCoarseningComponent()`, `PCHMGSetInnerPCType()`
 @*/
@@ -343,7 +343,8 @@ static PetscErrorCode PCHMGSetInnerPCType_HMG(PC pc, PCType type)
 }
 
 /*@
-  PCHMGSetInnerPCType - Set an inner `PC` type
+  PCHMGSetInnerPCType - Set an inner `PC` type to be used in the `PCHMG` preconditioner. That is the method used to compute
+  the hierarchy of restriction operators.
 
   Logically Collective
 
@@ -377,7 +378,7 @@ static PetscErrorCode PCHMGSetCoarseningComponent_HMG(PC pc, PetscInt component)
 }
 
 /*@
-  PCHMGSetCoarseningComponent - Set which component of the PDE is used for the subspace-based coarsening algorithm
+  PCHMGSetCoarseningComponent - Set which component of the PDE is used for the subspace-based coarsening algorithm in the preconditioner `PCHMG`
 
   Logically Collective
 
@@ -389,6 +390,9 @@ static PetscErrorCode PCHMGSetCoarseningComponent_HMG(PC pc, PetscInt component)
 . -pc_hmg_coarsening_component <i> - Which component is chosen for the subspace-based coarsening algorithm
 
   Level: beginner
+
+  Note:
+  By default it uses the first component
 
 .seealso: [](ch_ksp), `PCHMG`, `PCType`, `PCGAMG`, `PCHMGSetReuseInterpolation()`, `PCHMGSetUseSubspaceCoarsening()`, `PCHMGSetInnerPCType()`
 @*/
@@ -411,7 +415,7 @@ static PetscErrorCode PCHMGUseMatMAIJ_HMG(PC pc, PetscBool usematmaij)
 }
 
 /*@
-  PCHMGUseMatMAIJ - Set a flag that indicates if or not to use `MATMAIJ` for the interpolation matrices for saving memory
+  PCHMGUseMatMAIJ - Set a flag that indicates if or not to use `MATMAIJ` for the interpolation matrices to save memory
 
   Logically Collective
 
@@ -435,14 +439,14 @@ PetscErrorCode PCHMGUseMatMAIJ(PC pc, PetscBool usematmaij)
 }
 
 /*MC
-   PCHMG - For multiple component PDE problems constructs a hierarchy of restriction operators to coarse grid problems using the submatrix of
-   a single component with either `PCHYPRE` or `PCGAMG`. The same restriction operators are used for each of the components of the PDE with `PCMG`
-   resulting in a much more efficient to build and apply preconditioner than using `PCGAMG` on the entire system {cite}`kong2020highly`.
+   PCHMG - Preconditioner for multiple component PDE problems that constructs a hierarchy of restriction operators to coarse grid problems using the submatrix of
+   a single component with either `PCHYPRE` or `PCGAMG`. The same restriction operators are then used for each of the components of the PDE within the `PCMG`
+   multigrid preconditioner. This results in a much more efficient to build and apply preconditioner than using `PCGAMG` on the entire system {cite}`kong2020highly`.
 
    Options Database Keys:
-+  -pc_hmg_reuse_interpolation <true | false>      - Whether or not to reuse the interpolations for new matrix values. It can potentially save compute time.
-.  -pc_hmg_use_subspace_coarsening  <true | false> - Whether or not to use subspace coarsening (that is, coarsen a submatrix).
-.  -hmg_inner_pc_type <hypre, gamg, ...>           - What method is used to solve the coarsen matrix
++  -pc_hmg_reuse_interpolation <true | false>      - Whether or not to reuse the interpolations for new matrix values or rebuild the interpolation. This can save compute time.
+.  -pc_hmg_use_subspace_coarsening  <true | false> - Whether or not to use subspace coarsening (that is, coarsen a submatrix, or coarsen on the full matrix).
+.  -hmg_inner_pc_type <hypre, gamg, ...>           - What method to use to generate the hierarchy of restriction operators
 -  -pc_hmg_use_matmaij <true | false>              - Whether or not to use `MATMAIJ` for multicomponent problems for saving memory
 
    Level: intermediate
@@ -451,7 +455,7 @@ PetscErrorCode PCHMGUseMatMAIJ(PC pc, PetscBool usematmaij)
    `MatSetBlockSize()` must be called on the linear system matrix to set the number of components of the PDE.
 
 .seealso: [](ch_ksp), `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCMG`, `PCHYPRE`, `PCHMG`, `PCGetCoarseOperators()`, `PCGetInterpolations()`,
-          `PCHMGSetReuseInterpolation()`, `PCHMGSetUseSubspaceCoarsening()`, `PCHMGSetInnerPCType()`
+          `PCHMGSetReuseInterpolation()`, `PCHMGSetUseSubspaceCoarsening()`, `PCHMGSetInnerPCType()`, `PCGAMG`
 M*/
 PETSC_EXTERN PetscErrorCode PCCreate_HMG(PC pc)
 {

@@ -217,6 +217,11 @@ PETSC_NODISCARD static PETSC_CONSTEXPR_14 const char *CUPM_VISIBLE_DEVICES() noe
   return "PETSC_ERROR_PLIB";
 }
 
+/*
+     The default device ID is
+       MPI     -- rank % number_local_devices
+       PyTorch -- getenv("LOCAL_RANK")
+*/
 template <DeviceType T>
 PetscErrorCode Device<T>::initialize(MPI_Comm comm, PetscInt *defaultDeviceId, PetscBool *defaultView, PetscDeviceInitType *defaultInitType) noexcept
 {
@@ -253,10 +258,21 @@ PetscErrorCode Device<T>::initialize(MPI_Comm comm, PetscInt *defaultDeviceId, P
     PetscCall(PetscDeviceCheckDeviceCount_Internal(ndev));
     if (initId.first == PETSC_DECIDE) {
       if (ndev) {
-        PetscMPIInt rank;
+        /* TORCHELASTIC_RUN_ID is used as a proxy to determine if the current process was launched with torchrun */
+        char *pytorch_exists = (char *)getenv("TORCHELASTIC_RUN_ID");
+        char *pytorch_rank   = (char *)getenv("LOCAL_RANK");
 
-        PetscCallMPI(MPI_Comm_rank(comm, &rank));
-        initId.first = rank % ndev;
+        if (pytorch_exists && pytorch_rank) {
+          char *endptr;
+
+          initId.first = (PetscInt)strtol(pytorch_rank, &endptr, 10);
+          PetscCheck(initId.first < ndev, PETSC_COMM_SELF, PETSC_ERR_LIB, "PyTorch environmental variable LOCAL_RANK %s > number devices %d", pytorch_rank, ndev);
+        } else {
+          PetscMPIInt rank;
+
+          PetscCallMPI(MPI_Comm_rank(comm, &rank));
+          initId.first = rank % ndev;
+        }
       } else initId.first = 0;
     }
     if (initView.first) initType.first = PETSC_DEVICE_INIT_EAGER;

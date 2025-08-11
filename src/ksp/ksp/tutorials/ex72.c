@@ -394,8 +394,8 @@ int main(int argc, char **args)
       PetscCall(PetscViewerDestroy(&viewer));
     } else {
       PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Number of iterations = %3" PetscInt_FMT "\n", its));
-      if (!PetscIsNanScalar(norm)) {
-        if (norm < 1.e-12 && !PetscIsNanScalar((PetscScalar)norm)) {
+      if (!PetscIsNanReal(norm)) {
+        if (norm < 1.e-12) {
           PetscCall(PetscPrintf(PETSC_COMM_WORLD, "  Residual norm < 1.e-12\n"));
         } else {
           PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Residual norm %g\n", (double)norm));
@@ -770,12 +770,12 @@ int main(int argc, char **args)
       requires: datafilespath double !defined(PETSC_USE_64BIT_INDICES) pastix
       output_file: output/ex72_mumps.out
       nsize: {{1 2}}
-      args: -f0 ${DATAFILESPATH}/matrices/small -ksp_type preonly -pc_factor_mat_solver_type pastix -num_numfac 2 -num_rhs 2 -pc_type cholesky -mat_type sbaij -mat_ignore_lower_triangular
+      args: -f0 ${DATAFILESPATH}/matrices/small -ksp_type preonly -pc_factor_mat_solver_type pastix -num_numfac 2 -num_rhs 2 -pc_type cholesky -mat_type sbaij -mat_ignore_lower_triangular -mat_pastix_thread_nbr 1
 
    testset:
       suffix: pastix_lu
       requires: datafilespath double !defined(PETSC_USE_64BIT_INDICES) pastix
-      args: -f0 ${DATAFILESPATH}/matrices/small -ksp_type preonly -pc_type lu -pc_factor_mat_solver_type pastix -num_numfac 2 -num_rhs 2
+      args: -f0 ${DATAFILESPATH}/matrices/small -ksp_type preonly -pc_type lu -pc_factor_mat_solver_type pastix -num_numfac 2 -num_rhs 2 -mat_pastix_thread_nbr 1
       output_file: output/ex72_mumps.out
       test:
          args: -mat_type seqaij
@@ -788,7 +788,7 @@ int main(int argc, char **args)
       output_file: output/ex72_mumps_redundant.out
       nsize: 8
       requires: datafilespath double !defined(PETSC_USE_64BIT_INDICES) pastix
-      args: -f0 ${DATAFILESPATH}/matrices/medium -ksp_type preonly -pc_type redundant -pc_redundant_number {{8 7 6 5 4 3 2 1}} -redundant_pc_factor_mat_solver_type pastix -num_numfac 2 -num_rhs 2
+      args: -f0 ${DATAFILESPATH}/matrices/medium -ksp_type preonly -pc_type redundant -pc_redundant_number {{8 7 6 5 4 3 2 1}} -redundant_pc_factor_mat_solver_type pastix -num_numfac 2 -num_rhs 2 -mat_pastix_thread_nbr 1
 
    testset:
       suffix: superlu_dist_lu
@@ -880,14 +880,21 @@ int main(int argc, char **args)
          suffix: hpddm_gen_non_hermitian
          output_file: output/ex72_2.out
          nsize: 4
-         args: -f0 ${DATAFILESPATH}/matrices/arco1 -pc_type hpddm -pc_hpddm_define_subdomains -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 10 -pc_hpddm_levels_1_st_share_sub_ksp -pc_hpddm_levels_1_eps_gen_non_hermitian -pc_hpddm_coarse_mat_type baij -pc_hpddm_block_splitting -pc_hpddm_levels_1_eps_threshold 0.7 -ksp_pc_side right
+         args: -f0 ${DATAFILESPATH}/matrices/arco1 -pc_type hpddm -pc_hpddm_define_subdomains -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 10 -pc_hpddm_levels_1_st_share_sub_ksp -pc_hpddm_levels_1_eps_gen_non_hermitian -pc_hpddm_coarse_mat_type baij -pc_hpddm_block_splitting -pc_hpddm_levels_1_eps_threshold_absolute 0.7 -ksp_pc_side right
       test:
          requires: datafilespath double !defined(PETSC_USE_64BIT_INDICES) mumps !defined(PETSCTEST_VALGRIND)
          suffix: hpddm_gen_non_hermitian_baij
          output_file: output/ex72_10.out
          nsize: 4
          timeoutfactor: 2
-         args: -f0 ${DATAFILESPATH}/matrices/arco6 -pc_type hpddm -pc_hpddm_define_subdomains -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 30 -pc_hpddm_levels_1_st_share_sub_ksp -pc_hpddm_levels_1_eps_gen_non_hermitian -pc_hpddm_coarse_mat_type baij -pc_hpddm_block_splitting -pc_hpddm_levels_1_eps_threshold 0.8 -ksp_pc_side right -mat_type baij -pc_hpddm_levels_1_sub_pc_factor_mat_solver_type mumps -pc_hpddm_levels_1_eps_tol 1.0e-2 -ksp_monitor_short
+         args: -f0 ${DATAFILESPATH}/matrices/arco6 -pc_type hpddm -pc_hpddm_define_subdomains -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 30 -pc_hpddm_levels_1_st_share_sub_ksp -pc_hpddm_levels_1_eps_gen_non_hermitian -pc_hpddm_coarse_mat_type baij -pc_hpddm_block_splitting -pc_hpddm_levels_1_eps_threshold_absolute 0.8 -ksp_pc_side right -mat_type baij -pc_hpddm_levels_1_sub_pc_factor_mat_solver_type mumps -pc_hpddm_levels_1_eps_tol 1.0e-2 -ksp_monitor_short
+      test:
+         requires: datafilespath double !defined(PETSC_USE_64BIT_INDICES)
+         suffix: hpddm_too_much_oversampling
+         output_file: output/ex72_2.out
+         nsize: 2
+         filter: sed -e "s/Number of iterations =   3/Number of iterations =  10/g"
+         args: -f0 ${DATAFILESPATH}/matrices/small -pc_type hpddm -pc_hpddm_levels_1_svd_nsv 1 -pc_hpddm_levels_1_st_share_sub_ksp -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_harmonic_overlap 3 -pc_hpddm_coarse_mat_type aij
 
    # BDDC multiple subdomains per process tests
    test:

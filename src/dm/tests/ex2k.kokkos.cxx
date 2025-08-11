@@ -19,12 +19,14 @@ static char help[] = "Benchmarking various accessing methods of DMDA vectors on 
 #include <petscdmda_kokkos.hpp>
 #include <petscdm.h>
 #include <petscdmda.h>
+#include <Kokkos_DualView.hpp>
 
 using Kokkos::Iterate;
 using Kokkos::MDRangePolicy;
 using Kokkos::Rank;
-using PetscScalarKokkosOffsetView3D      = Kokkos::Experimental::OffsetView<PetscScalar ***, Kokkos::LayoutRight, Kokkos::HostSpace>;
-using ConstPetscScalarKokkosOffsetView3D = Kokkos::Experimental::OffsetView<const PetscScalar ***, Kokkos::LayoutRight, Kokkos::HostSpace>;
+using HostMirrorMemorySpace              = Kokkos::DualView<PetscScalar *>::host_mirror_space::memory_space;
+using PetscScalarKokkosOffsetView3D      = Kokkos::Experimental::OffsetView<PetscScalar ***, Kokkos::LayoutRight, HostMirrorMemorySpace>;
+using ConstPetscScalarKokkosOffsetView3D = Kokkos::Experimental::OffsetView<const PetscScalar ***, Kokkos::LayoutRight, HostMirrorMemorySpace>;
 
 /* PETSc multi-dimensional array access */
 static PetscErrorCode Update1(DM da, const PetscScalar ***__restrict__ x1, PetscScalar ***__restrict__ y1, PetscInt nwarm, PetscInt nloop, PetscLogDouble *avgTime)
@@ -111,7 +113,7 @@ int main(int argc, char **argv)
     PetscCall(DMCreateLocalVector(da, &x)); /* Create local x and global y */
     PetscCall(DMCreateGlobalVector(da, &y));
 
-    /* Access with petsc multi-dimensional arrays */
+    /* Access with PETSc multi-dimensional arrays */
     PetscCall(VecSetRandom(x, rctx));
     PetscCall(VecSet(y, 0.0));
     PetscCall(DMDAVecGetArrayRead(da, x, &x1));
@@ -168,5 +170,6 @@ int main(int argc, char **argv)
     requires: kokkos_kernels
     args: -min 32 -max 32 -dm_vec_type kokkos
     filter: grep -v "time"
+    output_file: output/empty.out
 
 TEST*/

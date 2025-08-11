@@ -112,6 +112,7 @@ static PetscErrorCode DMLabelMakeValid_Private(DMLabel label, PetscInt v)
   } else {
     PetscCall(ISCreateGeneral(PETSC_COMM_SELF, label->stratumSizes[v], pointArray, PETSC_OWN_POINTER, &is));
   }
+  PetscCall(ISSetInfo(is, IS_SORTED, IS_LOCAL, PETSC_TRUE, PETSC_TRUE));
   PetscCall(PetscObjectSetName((PetscObject)is, "indices"));
   label->points[v]  = is;
   label->validIS[v] = PETSC_TRUE;
@@ -1610,9 +1611,8 @@ PetscErrorCode DMLabelSetStratumBounds(DMLabel label, PetscInt value, PetscInt p
 @*/
 PetscErrorCode DMLabelGetStratumPointIndex(DMLabel label, PetscInt value, PetscInt p, PetscInt *index)
 {
-  IS              pointIS;
-  const PetscInt *indices;
-  PetscInt        v;
+  IS       pointIS;
+  PetscInt v;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 1);
@@ -1622,9 +1622,7 @@ PetscErrorCode DMLabelGetStratumPointIndex(DMLabel label, PetscInt value, PetscI
   if (v < 0) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(DMLabelMakeValid_Private(label, v));
   PetscUseTypeMethod(label, getstratumis, v, &pointIS);
-  PetscCall(ISGetIndices(pointIS, &indices));
-  PetscCall(PetscFindInt(p, label->stratumSizes[v], indices, index));
-  PetscCall(ISRestoreIndices(pointIS, &indices));
+  PetscCall(ISLocate(pointIS, p, index));
   PetscCall(ISDestroy(&pointIS));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1722,6 +1720,81 @@ PetscErrorCode DMLabelPermute(DMLabel label, IS permutation, DMLabel *labelNew)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@
+  DMLabelPermuteValues - Permute the values in a label
+
+  Not collective
+
+  Input Parameters:
++ label       - the `DMLabel`
+- permutation - the value permutation, permutation[old value] = new value
+
+  Output Parameter:
+. label - the `DMLabel` now with permuted values
+
+  Note:
+  The modification is done in-place
+
+  Level: intermediate
+
+.seealso: `DMLabelRewriteValues()`, `DMLabel`, `DM`, `DMLabelPermute()`, `DMLabelCreate()`, `DMLabelGetValue()`, `DMLabelSetValue()`, `DMLabelClearValue()`
+@*/
+PetscErrorCode DMLabelPermuteValues(DMLabel label, IS permutation)
+{
+  PetscInt Nv, Np;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 1);
+  PetscValidHeaderSpecific(permutation, IS_CLASSID, 2);
+  PetscCall(DMLabelGetNumValues(label, &Nv));
+  PetscCall(ISGetLocalSize(permutation, &Np));
+  PetscCheck(Np == Nv, PetscObjectComm((PetscObject)label), PETSC_ERR_ARG_SIZ, "Permutation has size %" PetscInt_FMT " != %" PetscInt_FMT " number of label values", Np, Nv);
+  if (PetscDefined(USE_DEBUG)) {
+    PetscBool flg;
+    PetscCall(ISGetInfo(permutation, IS_PERMUTATION, IS_LOCAL, PETSC_TRUE, &flg));
+    PetscCheck(flg, PetscObjectComm((PetscObject)label), PETSC_ERR_ARG_WRONG, "IS is not a permutation");
+  }
+  PetscCall(DMLabelRewriteValues(label, permutation));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  DMLabelRewriteValues - Permute the values in a label, but some may be omitted
+
+  Not collective
+
+  Input Parameters:
++ label       - the `DMLabel`
+- permutation - the value permutation, permutation[old value] = new value, but some maybe omitted
+
+  Output Parameter:
+. label - the `DMLabel` now with permuted values
+
+  Note:
+  The modification is done in-place
+
+  Level: intermediate
+
+.seealso: `DMLabelPermuteValues()`, `DMLabel`, `DM`, `DMLabelPermute()`, `DMLabelCreate()`, `DMLabelGetValue()`, `DMLabelSetValue()`, `DMLabelClearValue()`
+@*/
+PetscErrorCode DMLabelRewriteValues(DMLabel label, IS permutation)
+{
+  const PetscInt *perm;
+  PetscInt        Nv, Np;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 1);
+  PetscValidHeaderSpecific(permutation, IS_CLASSID, 2);
+  PetscCall(DMLabelMakeAllValid_Private(label));
+  PetscCall(DMLabelGetNumValues(label, &Nv));
+  PetscCall(ISGetLocalSize(permutation, &Np));
+  PetscCheck(Np >= Nv, PetscObjectComm((PetscObject)label), PETSC_ERR_ARG_SIZ, "Permutation has size %" PetscInt_FMT " < %" PetscInt_FMT " number of label values", Np, Nv);
+  PetscCall(ISGetIndices(permutation, &perm));
+  for (PetscInt v = 0; v < Nv; ++v) label->stratumValues[v] = perm[label->stratumValues[v]];
+  PetscCall(ISRestoreIndices(permutation, &perm));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode DMLabelDistribute_Internal(DMLabel label, PetscSF sf, PetscSection *leafSection, PetscInt **leafStrata)
 {
   MPI_Comm     comm;
@@ -1808,7 +1881,7 @@ PetscErrorCode DMLabelDistribute(DMLabel label, PetscSF sf, DMLabel *labelNew)
   PetscInt   **points;
   const char  *lname = NULL;
   char        *name;
-  PetscInt     nameSize;
+  PetscMPIInt  nameSize;
   PetscHSetI   stratumHash;
   size_t       len = 0;
   PetscMPIInt  rank;
@@ -1827,11 +1900,11 @@ PetscErrorCode DMLabelDistribute(DMLabel label, PetscSF sf, DMLabel *labelNew)
     PetscCall(PetscObjectGetName((PetscObject)label, &lname));
     PetscCall(PetscStrlen(lname, &len));
   }
-  nameSize = (PetscInt)len;
-  PetscCallMPI(MPI_Bcast(&nameSize, 1, MPIU_INT, 0, comm));
+  PetscCall(PetscMPIIntCast(len, &nameSize));
+  PetscCallMPI(MPI_Bcast(&nameSize, 1, MPI_INT, 0, comm));
   PetscCall(PetscMalloc1(nameSize + 1, &name));
   if (rank == 0) PetscCall(PetscArraycpy(name, lname, nameSize + 1));
-  PetscCallMPI(MPI_Bcast(name, (PetscMPIInt)(nameSize + 1), MPI_CHAR, 0, comm));
+  PetscCallMPI(MPI_Bcast(name, nameSize + 1, MPI_CHAR, 0, comm));
   PetscCall(DMLabelCreate(PETSC_COMM_SELF, name, labelNew));
   PetscCall(PetscFree(name));
   /* Bcast defaultValue */
@@ -1928,7 +2001,7 @@ PetscErrorCode DMLabelGather(DMLabel label, PetscSF sf, DMLabel *labelNew)
   PetscInt       *rootStrata;
   const char     *lname;
   char           *name;
-  PetscInt        nameSize;
+  PetscMPIInt     nameSize;
   size_t          len = 0;
   PetscMPIInt     rank, size;
 
@@ -1944,11 +2017,11 @@ PetscErrorCode DMLabelGather(DMLabel label, PetscSF sf, DMLabel *labelNew)
     PetscCall(PetscObjectGetName((PetscObject)label, &lname));
     PetscCall(PetscStrlen(lname, &len));
   }
-  nameSize = (PetscInt)len;
-  PetscCallMPI(MPI_Bcast(&nameSize, 1, MPIU_INT, 0, comm));
+  PetscCall(PetscMPIIntCast(len, &nameSize));
+  PetscCallMPI(MPI_Bcast(&nameSize, 1, MPI_INT, 0, comm));
   PetscCall(PetscMalloc1(nameSize + 1, &name));
   if (rank == 0) PetscCall(PetscArraycpy(name, lname, nameSize + 1));
-  PetscCallMPI(MPI_Bcast(name, (PetscMPIInt)(nameSize + 1), MPI_CHAR, 0, comm));
+  PetscCallMPI(MPI_Bcast(name, nameSize + 1, MPI_CHAR, 0, comm));
   PetscCall(DMLabelCreate(PETSC_COMM_SELF, name, labelNew));
   PetscCall(PetscFree(name));
   /* Gather rank/index pairs of leaves into local roots to build

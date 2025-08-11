@@ -17,7 +17,7 @@ static PetscErrorCode PCFactorReorderForNonzeroDiagonal_LU(PC pc, PetscReal z)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_LU(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_LU(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_LU    *lu  = (PC_LU *)pc->data;
   PetscBool flg = PETSC_FALSE;
@@ -197,6 +197,19 @@ static PetscErrorCode PCApplyTranspose_LU(PC pc, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode PCMatApplyTranspose_LU(PC pc, Mat X, Mat Y)
+{
+  PC_LU *dir = (PC_LU *)pc->data;
+
+  PetscFunctionBegin;
+  if (dir->hdr.inplace) {
+    PetscCall(MatMatSolveTranspose(pc->pmat, X, Y));
+  } else {
+    PetscCall(MatMatSolveTranspose(((PC_Factor *)dir)->fact, X, Y));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /*MC
    PCLU - Uses a direct solver, based on LU factorization, as a preconditioner
 
@@ -220,11 +233,13 @@ static PetscErrorCode PCApplyTranspose_LU(PC pc, Vec x, Vec y)
    Notes:
    Not all options work for all matrix formats
 
-   Run with -help to see additional options for particular matrix formats or factorization algorithms
+   Run with `-help` to see additional options for particular matrix formats or factorization algorithms
+
+   The Cholesky factorization direct solver, `PCCHOLESKY` will be more efficient than `PCLU` for symmetric positive-definite (SPD) matrices
 
    Usually this will compute an "exact" solution in one iteration and does
    not need a Krylov method (i.e. you can use -ksp_type preonly, or
-   `KSPSetType`(ksp,`KSPPREONLY`) for the Krylov method
+   `KSPSetType`(ksp,`KSPPREONLY`) for the Krylov method.
 
 .seealso: [](ch_ksp), `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `MatSolverType`, `MatGetFactor()`, `PCQR`, `PCSVD`,
           `PCILU`, `PCCHOLESKY`, `PCICC`, `PCFactorSetReuseOrdering()`, `PCFactorSetReuseFill()`, `PCFactorGetMatrix()`,
@@ -249,15 +264,16 @@ PETSC_EXTERN PetscErrorCode PCCreate_LU(PC pc)
   dir->col                           = NULL;
   dir->row                           = NULL;
 
-  pc->ops->reset           = PCReset_LU;
-  pc->ops->destroy         = PCDestroy_LU;
-  pc->ops->apply           = PCApply_LU;
-  pc->ops->matapply        = PCMatApply_LU;
-  pc->ops->applytranspose  = PCApplyTranspose_LU;
-  pc->ops->setup           = PCSetUp_LU;
-  pc->ops->setfromoptions  = PCSetFromOptions_LU;
-  pc->ops->view            = PCView_Factor;
-  pc->ops->applyrichardson = NULL;
+  pc->ops->reset             = PCReset_LU;
+  pc->ops->destroy           = PCDestroy_LU;
+  pc->ops->apply             = PCApply_LU;
+  pc->ops->matapply          = PCMatApply_LU;
+  pc->ops->applytranspose    = PCApplyTranspose_LU;
+  pc->ops->matapplytranspose = PCMatApplyTranspose_LU;
+  pc->ops->setup             = PCSetUp_LU;
+  pc->ops->setfromoptions    = PCSetFromOptions_LU;
+  pc->ops->view              = PCView_Factor;
+  pc->ops->applyrichardson   = NULL;
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCFactorReorderForNonzeroDiagonal_C", PCFactorReorderForNonzeroDiagonal_LU));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

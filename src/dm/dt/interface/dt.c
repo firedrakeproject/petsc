@@ -13,10 +13,10 @@
   #include <mpfr.h>
 #endif
 
-const char *const        PetscDTNodeTypes_shifted[] = {"default", "gaussjacobi", "equispaced", "tanhsinh", "PETSCDTNODES_", NULL};
+const char *const        PetscDTNodeTypes_shifted[] = {"default", "gaussjacobi", "equispaced", "tanhsinh", "PetscDTNodeType", "PETSCDTNODES_", NULL};
 const char *const *const PetscDTNodeTypes           = PetscDTNodeTypes_shifted + 1;
 
-const char *const        PetscDTSimplexQuadratureTypes_shifted[] = {"default", "conic", "minsym", "PETSCDTSIMPLEXQUAD_", NULL};
+const char *const        PetscDTSimplexQuadratureTypes_shifted[] = {"default", "conic", "minsym", "diagsym", "PetscDTSimplexQuadratureType", "PETSCDTSIMPLEXQUAD_", NULL};
 const char *const *const PetscDTSimplexQuadratureTypes           = PetscDTSimplexQuadratureTypes_shifted + 1;
 
 static PetscBool GolubWelschCite       = PETSC_FALSE;
@@ -296,12 +296,15 @@ PetscErrorCode PetscQuadratureSetNumComponents(PetscQuadrature q, PetscInt Nc)
 
   Level: intermediate
 
+  Note:
+  All output arguments are optional, pass `NULL` for any argument not required
+
   Fortran Note:
   Call `PetscQuadratureRestoreData()` when you are done with the data
 
 .seealso: `PetscQuadrature`, `PetscQuadratureCreate()`, `PetscQuadratureSetData()`
 @*/
-PetscErrorCode PetscQuadratureGetData(PetscQuadrature q, PetscInt *dim, PetscInt *Nc, PetscInt *npoints, const PetscReal *points[], const PetscReal *weights[])
+PetscErrorCode PetscQuadratureGetData(PetscQuadrature q, PeOp PetscInt *dim, PeOp PetscInt *Nc, PeOp PetscInt *npoints, PeOp const PetscReal *points[], PeOp const PetscReal *weights[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(q, PETSCQUADRATURE_CLASSID, 1);
@@ -391,9 +394,9 @@ static PetscErrorCode PetscDTJacobianInverse_Internal(PetscInt m, PetscInt n, co
 
     PetscCall(PetscArraycpy(Jinvs, Js, m * m));
     PetscCallBLAS("LAPACKgetrf", LAPACKgetrf_(&bm, &bm, Jinvs, &bm, pivots, &info));
-    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetrf %" PetscInt_FMT, (PetscInt)info);
+    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetrf %" PetscBLASInt_FMT, info);
     PetscCallBLAS("LAPACKgetri", LAPACKgetri_(&bm, Jinvs, &bm, pivots, W, &bm, &info));
-    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetri %" PetscInt_FMT, (PetscInt)info);
+    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetri %" PetscBLASInt_FMT, info);
     PetscCall(PetscFree2(pivots, W));
   } else if (m < n) {
     PetscScalar  *JJT;
@@ -412,9 +415,9 @@ static PetscErrorCode PetscDTJacobianInverse_Internal(PetscInt m, PetscInt n, co
     }
 
     PetscCallBLAS("LAPACKgetrf", LAPACKgetrf_(&bm, &bm, JJT, &bm, pivots, &info));
-    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetrf %" PetscInt_FMT, (PetscInt)info);
+    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetrf %" PetscBLASInt_FMT, info);
     PetscCallBLAS("LAPACKgetri", LAPACKgetri_(&bm, JJT, &bm, pivots, W, &bm, &info));
-    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetri %" PetscInt_FMT, (PetscInt)info);
+    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetri %" PetscBLASInt_FMT, info);
     for (i = 0; i < n; i++) {
       for (j = 0; j < m; j++) {
         PetscScalar val = 0.;
@@ -442,9 +445,9 @@ static PetscErrorCode PetscDTJacobianInverse_Internal(PetscInt m, PetscInt n, co
     }
 
     PetscCallBLAS("LAPACKgetrf", LAPACKgetrf_(&bn, &bn, JTJ, &bn, pivots, &info));
-    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetrf %" PetscInt_FMT, (PetscInt)info);
+    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetrf %" PetscBLASInt_FMT, info);
     PetscCallBLAS("LAPACKgetri", LAPACKgetri_(&bn, JTJ, &bn, pivots, W, &bn, &info));
-    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetri %" PetscInt_FMT, (PetscInt)info);
+    PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error returned from LAPACKgetri %" PetscBLASInt_FMT, info);
     for (i = 0; i < n; i++) {
       for (j = 0; j < m; j++) {
         PetscScalar val = 0.;
@@ -556,11 +559,11 @@ PetscErrorCode PetscQuadraturePushForward(PetscQuadrature q, PetscInt imageDim, 
   Level: intermediate
 
   Note:
-  This routine owns the references to points and weights, so they must be allocated using `PetscMalloc()` and the user should not free them.
+  `q` owns the references to points and weights, so they must be allocated using `PetscMalloc()` and the user should not free them.
 
 .seealso: `PetscQuadrature`, `PetscQuadratureCreate()`, `PetscQuadratureGetData()`
 @*/
-PetscErrorCode PetscQuadratureSetData(PetscQuadrature q, PetscInt dim, PetscInt Nc, PetscInt npoints, const PetscReal points[], const PetscReal weights[])
+PetscErrorCode PetscQuadratureSetData(PetscQuadrature q, PetscInt dim, PetscInt Nc, PetscInt npoints, const PetscReal points[], const PetscReal weights[]) PeNSS
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(q, PETSCQUADRATURE_CLASSID, 1);
@@ -910,7 +913,7 @@ PetscErrorCode PetscDTJacobiEvalJet(PetscReal alpha, PetscReal beta, PetscInt np
 
 .seealso: `PetscDTGaussQuadrature()`, `PetscDTLegendreEval()`
 @*/
-PetscErrorCode PetscDTJacobiEval(PetscInt npoints, PetscReal alpha, PetscReal beta, const PetscReal *points, PetscInt ndegree, const PetscInt *degrees, PetscReal *B, PetscReal *D, PetscReal *D2)
+PetscErrorCode PetscDTJacobiEval(PetscInt npoints, PetscReal alpha, PetscReal beta, const PetscReal *points, PetscInt ndegree, const PetscInt *degrees, PeOp PetscReal B[], PeOp PetscReal D[], PeOp PetscReal D2[])
 {
   PetscFunctionBegin;
   PetscCheck(alpha > -1., PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "alpha must be > -1.");
@@ -942,7 +945,7 @@ PetscErrorCode PetscDTJacobiEval(PetscInt npoints, PetscReal alpha, PetscReal be
 
 .seealso: `PetscDTGaussQuadrature()`
 @*/
-PetscErrorCode PetscDTLegendreEval(PetscInt npoints, const PetscReal *points, PetscInt ndegree, const PetscInt *degrees, PetscReal *B, PetscReal *D, PetscReal *D2)
+PetscErrorCode PetscDTLegendreEval(PetscInt npoints, const PetscReal *points, PetscInt ndegree, const PetscInt *degrees, PeOp PetscReal B[], PeOp PetscReal D[], PeOp PetscReal D2[])
 {
   PetscFunctionBegin;
   PetscCall(PetscDTJacobiEval(npoints, 0., 0., points, ndegree, degrees, B, D, D2));
@@ -958,7 +961,7 @@ PetscErrorCode PetscDTLegendreEval(PetscInt npoints, const PetscReal *points, Pe
 - index - the index to convert: should be >= 0
 
   Output Parameter:
-. degtup - will be filled with a tuple of degrees
+. degtup - filled with a tuple of degrees
 
   Level: beginner
 
@@ -1299,7 +1302,7 @@ static PetscErrorCode PetscDTPTrimmedEvalJet_Internal(PetscInt dim, PetscInt npo
   PetscInt *form_atoms;
   PetscCall(PetscMalloc1(formDegree + 1, &form_atoms));
   // construct the interior product pattern
-  PetscInt(*pattern)[3];
+  PetscInt (*pattern)[3];
   PetscInt Nf1; // number of formDegree + 1 forms
   PetscCall(PetscDTBinomialInt(dim, formDegree + 1, &Nf1));
   PetscInt nnz = Nf1 * (formDegree + 1);
@@ -1443,7 +1446,7 @@ static PetscErrorCode PetscDTSymmetricTridiagonalEigensolve(PetscInt n, PetscRea
   PetscCallBLAS("LAPACKstegr", LAPACKstegr_(&jobz, &range, &bn, diag, subdiag, &VL, &VU, &IL, &IU, &abstol, &bm, eigs, V, &ldz, isuppz, &workquery, &lwork, &iworkquery, &liwork, &info));
   PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_PLIB, "xSTEGR error");
   lwork  = (PetscBLASInt)workquery;
-  liwork = (PetscBLASInt)iworkquery;
+  liwork = iworkquery;
   PetscCall(PetscMalloc2(lwork, &work, liwork, &iwork));
   PetscCall(PetscFPTrapPush(PETSC_FP_TRAP_OFF));
   PetscCallBLAS("LAPACKstegr", LAPACKstegr_(&jobz, &range, &bn, diag, subdiag, &VL, &VU, &IL, &IU, &abstol, &bm, eigs, V, &ldz, isuppz, work, &lwork, iwork, &liwork, &info));
@@ -1837,7 +1840,7 @@ PetscErrorCode PetscDTGaussLobattoJacobiQuadrature(PetscInt npoints, PetscReal a
 
 .seealso: `PetscDTLegendreEval()`, `PetscDTGaussJacobiQuadrature()`
 @*/
-PetscErrorCode PetscDTGaussQuadrature(PetscInt npoints, PetscReal a, PetscReal b, PetscReal *x, PetscReal *w)
+PetscErrorCode PetscDTGaussQuadrature(PetscInt npoints, PetscReal a, PetscReal b, PetscReal x[], PetscReal w[])
 {
   PetscInt i;
 
@@ -2089,6 +2092,21 @@ const char       MinSymTetQuadCitation[] = "@article{JaskowiecSukumar2021\n"
 
 #include "petscdttetquadrules.h"
 
+static PetscBool DiagSymTriQuadCite       = PETSC_FALSE;
+const char       DiagSymTriQuadCitation[] = "@article{KongMulderVeldhuizen1999,\n"
+                                            "  title = {Higher-order triangular and tetrahedral finite elements with mass lumping for solving the wave equation},\n"
+                                            "  journal = {Journal of Engineering Mathematics},\n"
+                                            "  volume = {35},\n"
+                                            "  number = {4},\n"
+                                            "  pages = {405--426},\n"
+                                            "  year = {1999},\n"
+                                            "  doi = {10.1023/A:1004420829610},\n"
+                                            "  url = {https://link.springer.com/article/10.1023/A:1004420829610},\n"
+                                            "  author = {MJS Chin-Joe-Kong and Wim A Mulder and Marinus Van Veldhuizen},\n"
+                                            "}\n";
+
+#include "petscdttridiagquadrules.h"
+
 // https://en.wikipedia.org/wiki/Partition_(number_theory)
 static PetscErrorCode PetscDTPartitionNumber(PetscInt n, PetscInt *p)
 {
@@ -2112,7 +2130,7 @@ static PetscErrorCode PetscDTPartitionNumber(PetscInt n, PetscInt *p)
   Input Parameters:
 + dim    - The spatial dimension of the simplex (1 = segment, 2 = triangle, 3 = tetrahedron)
 . degree - The largest polynomial degree that is required to be integrated exactly
-- type   - left end of interval (often-1)
+- type   - `PetscDTSimplexQuadratureType` indicating the type of quadrature rule
 
   Output Parameter:
 . quad - A `PetscQuadrature` object for integration over the biunit simplex
@@ -2164,28 +2182,45 @@ PetscErrorCode PetscDTSimplexQuadrature(PetscInt dim, PetscInt degree, PetscDTSi
     default:
       ct = DM_POLYTOPE_UNKNOWN;
     }
-    switch (dim) {
-    case 2:
-      cited              = &MinSymTriQuadCite;
-      citation           = MinSymTriQuadCitation;
-      max_degree         = PetscDTWVTriQuad_max_degree;
-      nodes_per_type     = PetscDTWVTriQuad_num_orbits;
-      all_num_full_nodes = PetscDTWVTriQuad_num_nodes;
-      weights_list       = PetscDTWVTriQuad_weights;
-      compact_nodes_list = PetscDTWVTriQuad_orbits;
-      break;
-    case 3:
-      cited              = &MinSymTetQuadCite;
-      citation           = MinSymTetQuadCitation;
-      max_degree         = PetscDTJSTetQuad_max_degree;
-      nodes_per_type     = PetscDTJSTetQuad_num_orbits;
-      all_num_full_nodes = PetscDTJSTetQuad_num_nodes;
-      weights_list       = PetscDTJSTetQuad_weights;
-      compact_nodes_list = PetscDTJSTetQuad_orbits;
-      break;
-    default:
-      max_degree = -1;
-      break;
+    if (type == PETSCDTSIMPLEXQUAD_MINSYM) {
+      switch (dim) {
+      case 2:
+        cited              = &MinSymTriQuadCite;
+        citation           = MinSymTriQuadCitation;
+        max_degree         = PetscDTWVTriQuad_max_degree;
+        nodes_per_type     = PetscDTWVTriQuad_num_orbits;
+        all_num_full_nodes = PetscDTWVTriQuad_num_nodes;
+        weights_list       = PetscDTWVTriQuad_weights;
+        compact_nodes_list = PetscDTWVTriQuad_orbits;
+        break;
+      case 3:
+        cited              = &MinSymTetQuadCite;
+        citation           = MinSymTetQuadCitation;
+        max_degree         = PetscDTJSTetQuad_max_degree;
+        nodes_per_type     = PetscDTJSTetQuad_num_orbits;
+        all_num_full_nodes = PetscDTJSTetQuad_num_nodes;
+        weights_list       = PetscDTJSTetQuad_weights;
+        compact_nodes_list = PetscDTJSTetQuad_orbits;
+        break;
+      default:
+        max_degree = -1;
+        break;
+      }
+    } else {
+      switch (dim) {
+      case 2:
+        cited              = &DiagSymTriQuadCite;
+        citation           = DiagSymTriQuadCitation;
+        max_degree         = PetscDTKMVTriQuad_max_degree;
+        nodes_per_type     = PetscDTKMVTriQuad_num_orbits;
+        all_num_full_nodes = PetscDTKMVTriQuad_num_nodes;
+        weights_list       = PetscDTKMVTriQuad_weights;
+        compact_nodes_list = PetscDTKMVTriQuad_orbits;
+        break;
+      default:
+        max_degree = -1;
+        break;
+      }
     }
 
     if (degree > max_degree) {
@@ -2193,7 +2228,7 @@ PetscErrorCode PetscDTSimplexQuadrature(PetscInt dim, PetscInt degree, PetscDTSi
         // fall back to conic
         PetscCall(PetscDTSimplexQuadrature(dim, degree, PETSCDTSIMPLEXQUAD_CONIC, quad));
         PetscFunctionReturn(PETSC_SUCCESS);
-      } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Minimal symmetric quadrature for dim %" PetscInt_FMT ", degree %" PetscInt_FMT " unsupported", dim, degree);
+      } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "%s symmetric quadrature for dim %" PetscInt_FMT ", degree %" PetscInt_FMT " unsupported", orig_type == PETSCDTSIMPLEXQUAD_MINSYM ? "Minimal" : "Diagonal", dim, degree);
     }
 
     PetscCall(PetscCitationsRegister(citation, cited));
@@ -2289,6 +2324,7 @@ PetscErrorCode PetscDTSimplexQuadrature(PetscInt dim, PetscInt degree, PetscDTSi
           for (PetscInt c = 0; c < count; c++) part[offset++] = digit;
         }
       }
+      PetscCheck(node_offset <= num_full_nodes, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Node offset %" PetscInt_FMT " > %" PetscInt_FMT " number of nodes", node_offset, num_full_nodes);
     }
     PetscCall(PetscFree3(part, perm, counts));
     PetscCall(PetscFree(bary_to_biunit));
@@ -2440,7 +2476,7 @@ PetscErrorCode PetscDTTanhSinhIntegrate(void (*func)(const PetscReal[], void *, 
 #if defined(PETSC_HAVE_MPFR)
 PetscErrorCode PetscDTTanhSinhIntegrateMPFR(void (*func)(const PetscReal[], void *, PetscReal *), PetscReal a, PetscReal b, PetscInt digits, void *ctx, PetscReal *sol)
 {
-  const PetscInt safetyFactor = 2; /* Calculate abcissa until 2*p digits */
+  const PetscInt safetyFactor = 2; /* Calculate abscissa until 2*p digits */
   PetscInt       l            = 0; /* Level of refinement, h = 2^{-l} */
   mpfr_t         alpha;            /* Half-width of the integration interval */
   mpfr_t         beta;             /* Center of the integration interval */
@@ -3343,7 +3379,7 @@ PetscErrorCode PetscDTBaryToIndex(PetscInt len, PetscInt sum, const PetscInt coo
 
 .seealso: `PetscQuadratureSetCellType()`, `PetscQuadrature`
 @*/
-PetscErrorCode PetscQuadratureComputePermutations(PetscQuadrature quad, PetscInt *Np, IS *perm[])
+PetscErrorCode PetscQuadratureComputePermutations(PetscQuadrature quad, PeOp PetscInt *Np, IS *perm[])
 {
   DMPolytopeType   ct;
   const PetscReal *xq, *wq;
@@ -3389,13 +3425,14 @@ PetscErrorCode PetscQuadratureComputePermutations(PetscQuadrature quad, PetscInt
 }
 
 /*@
-  PetscDTCreateDefaultQuadrature - Create default quadrature for a given cell
+  PetscDTCreateQuadratureByCell - Create default quadrature for a given cell
 
   Not collective
 
   Input Parameters:
 + ct     - The integration domain
-- qorder - The desired quadrature order
+. qorder - The desired quadrature order
+- qtype  - The type of simplex quadrature, or PETSCDTSIMPLEXQUAD_DEFAULT
 
   Output Parameters:
 + q  - The cell quadrature
@@ -3403,9 +3440,9 @@ PetscErrorCode PetscQuadratureComputePermutations(PetscQuadrature quad, PetscInt
 
   Level: developer
 
-.seealso: `PetscFECreateDefault()`, `PetscDTGaussTensorQuadrature()`, `PetscDTSimplexQuadrature()`, `PetscDTTensorQuadratureCreate()`
+.seealso: `PetscDTCreateDefaultQuadrature()`, `PetscFECreateDefault()`, `PetscDTGaussTensorQuadrature()`, `PetscDTSimplexQuadrature()`, `PetscDTTensorQuadratureCreate()`
 @*/
-PetscErrorCode PetscDTCreateDefaultQuadrature(DMPolytopeType ct, PetscInt qorder, PetscQuadrature *q, PetscQuadrature *fq)
+PetscErrorCode PetscDTCreateQuadratureByCell(DMPolytopeType ct, PetscInt qorder, PetscDTSimplexQuadratureType qtype, PetscQuadrature *q, PetscQuadrature *fq)
 {
   const PetscInt quadPointsPerEdge = PetscMax(qorder + 1, 1);
   const PetscInt dim               = DMPolytopeTypeGetDim(ct);
@@ -3423,8 +3460,8 @@ PetscErrorCode PetscDTCreateDefaultQuadrature(DMPolytopeType ct, PetscInt qorder
     break;
   case DM_POLYTOPE_TRIANGLE:
   case DM_POLYTOPE_TETRAHEDRON:
-    PetscCall(PetscDTSimplexQuadrature(dim, 2 * qorder, PETSCDTSIMPLEXQUAD_DEFAULT, q));
-    PetscCall(PetscDTSimplexQuadrature(dim - 1, 2 * qorder, PETSCDTSIMPLEXQUAD_DEFAULT, fq));
+    PetscCall(PetscDTSimplexQuadrature(dim, 2 * qorder, qtype, q));
+    PetscCall(PetscDTSimplexQuadrature(dim - 1, 2 * qorder, qtype, fq));
     break;
   case DM_POLYTOPE_TRI_PRISM:
   case DM_POLYTOPE_TRI_PRISM_TENSOR: {
@@ -3441,5 +3478,29 @@ PetscErrorCode PetscDTCreateDefaultQuadrature(DMPolytopeType ct, PetscInt qorder
   default:
     SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "No quadrature for celltype %s", DMPolytopeTypes[PetscMin(ct, DM_POLYTOPE_UNKNOWN)]);
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  PetscDTCreateDefaultQuadrature - Create default quadrature for a given cell
+
+  Not collective
+
+  Input Parameters:
++ ct     - The integration domain
+- qorder - The desired quadrature order
+
+  Output Parameters:
++ q  - The cell quadrature
+- fq - The face quadrature
+
+  Level: developer
+
+.seealso: `PetscDTCreateQuadratureByCell()`, `PetscFECreateDefault()`, `PetscDTGaussTensorQuadrature()`, `PetscDTSimplexQuadrature()`, `PetscDTTensorQuadratureCreate()`
+@*/
+PetscErrorCode PetscDTCreateDefaultQuadrature(DMPolytopeType ct, PetscInt qorder, PetscQuadrature *q, PetscQuadrature *fq)
+{
+  PetscFunctionBegin;
+  PetscCall(PetscDTCreateQuadratureByCell(ct, qorder, PETSCDTSIMPLEXQUAD_DEFAULT, q, fq));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

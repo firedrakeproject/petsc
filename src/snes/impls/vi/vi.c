@@ -48,22 +48,49 @@ PetscErrorCode SNESVISetComputeVariableBounds_VI(SNES snes, SNESVIComputeVariabl
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESVIMonitorResidual(SNES snes, PetscInt its, PetscReal fgnorm, void *dummy)
+static PetscErrorCode SNESVIMonitorResidual(SNES snes, PetscInt its, PetscReal fgnorm, PetscViewerAndFormat *vf)
 {
-  Vec         X, F, Finactive;
-  IS          isactive;
-  PetscViewer viewer = (PetscViewer)dummy;
+  Vec X, F, Finactive;
+  IS  isactive;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(vf->viewer, PETSC_VIEWER_CLASSID, 4);
   PetscCall(SNESGetFunction(snes, &F, NULL, NULL));
   PetscCall(SNESGetSolution(snes, &X));
   PetscCall(SNESVIGetActiveSetIS(snes, X, F, &isactive));
   PetscCall(VecDuplicate(F, &Finactive));
+  PetscCall(PetscObjectCompose((PetscObject)Finactive, "__Vec_bc_zero__", (PetscObject)snes));
   PetscCall(VecCopy(F, Finactive));
   PetscCall(VecISSet(Finactive, isactive, 0.0));
   PetscCall(ISDestroy(&isactive));
-  PetscCall(VecView(Finactive, viewer));
+  PetscCall(PetscViewerPushFormat(vf->viewer, vf->format));
+  PetscCall(VecView(Finactive, vf->viewer));
+  PetscCall(PetscViewerPopFormat(vf->viewer));
+  PetscCall(PetscObjectCompose((PetscObject)Finactive, "__Vec_bc_zero__", NULL));
   PetscCall(VecDestroy(&Finactive));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode SNESVIMonitorActive(SNES snes, PetscInt its, PetscReal fgnorm, PetscViewerAndFormat *vf)
+{
+  Vec X, F, A;
+  IS  isactive;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(vf->viewer, PETSC_VIEWER_CLASSID, 4);
+  PetscCall(SNESGetFunction(snes, &F, NULL, NULL));
+  PetscCall(SNESGetSolution(snes, &X));
+  PetscCall(SNESVIGetActiveSetIS(snes, X, F, &isactive));
+  PetscCall(VecDuplicate(F, &A));
+  PetscCall(PetscObjectCompose((PetscObject)A, "__Vec_bc_zero__", (PetscObject)snes));
+  PetscCall(VecSet(A, 0.));
+  PetscCall(VecISSet(A, isactive, 1.));
+  PetscCall(ISDestroy(&isactive));
+  PetscCall(PetscViewerPushFormat(vf->viewer, vf->format));
+  PetscCall(VecView(A, vf->viewer));
+  PetscCall(PetscViewerPopFormat(vf->viewer));
+  PetscCall(PetscObjectCompose((PetscObject)A, "__Vec_bc_zero__", NULL));
+  PetscCall(VecDestroy(&A));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -278,28 +305,90 @@ PetscErrorCode SNESVIGetActiveSetIS(SNES snes, Vec X, Vec F, IS *ISact)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@
+  SNESVIComputeInactiveSetFnorm - Computes the function norm for variational inequalities on the inactive set
+
+  Input Parameters:
++ snes - the `SNES` context
+. F    - the nonlinear function vector
+- X    - the `SNES` solution vector
+
+  Output Parameter:
+. fnorm - the function norm
+
+  Level: developer
+
+.seealso: [](ch_snes), `SNES`, `SNESVINEWTONRSLS`, `SNESVINEWTONSSLS`, `SNESLineSearchSetVIFunctions()`
+@*/
 PetscErrorCode SNESVIComputeInactiveSetFnorm(SNES snes, Vec F, Vec X, PetscReal *fnorm)
 {
   const PetscScalar *x, *xl, *xu, *f;
   PetscInt           i, n;
-  PetscReal          rnorm, zerotolerance = snes->vizerotolerance;
+  PetscReal          zerotolerance = snes->vizerotolerance;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
+  PetscAssertPointer(fnorm, 4);
   PetscCall(VecGetLocalSize(X, &n));
   PetscCall(VecGetArrayRead(snes->xl, &xl));
   PetscCall(VecGetArrayRead(snes->xu, &xu));
   PetscCall(VecGetArrayRead(X, &x));
   PetscCall(VecGetArrayRead(F, &f));
-  rnorm = 0.0;
+  *fnorm = 0.0;
   for (i = 0; i < n; i++) {
-    if ((PetscRealPart(x[i]) > PetscRealPart(xl[i]) + zerotolerance || (PetscRealPart(f[i]) <= 0.0)) && ((PetscRealPart(x[i]) < PetscRealPart(xu[i]) - zerotolerance) || PetscRealPart(f[i]) >= 0.0)) rnorm += PetscRealPart(PetscConj(f[i]) * f[i]);
+    if ((PetscRealPart(x[i]) > PetscRealPart(xl[i]) + zerotolerance || (PetscRealPart(f[i]) <= 0.0)) && ((PetscRealPart(x[i]) < PetscRealPart(xu[i]) - zerotolerance) || PetscRealPart(f[i]) >= 0.0)) *fnorm += PetscRealPart(PetscConj(f[i]) * f[i]);
   }
   PetscCall(VecRestoreArrayRead(F, &f));
   PetscCall(VecRestoreArrayRead(snes->xl, &xl));
   PetscCall(VecRestoreArrayRead(snes->xu, &xu));
   PetscCall(VecRestoreArrayRead(X, &x));
-  PetscCallMPI(MPIU_Allreduce(&rnorm, fnorm, 1, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)snes)));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, fnorm, 1, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)snes)));
   *fnorm = PetscSqrtReal(*fnorm);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  SNESVIComputeInactiveSetFtY - Computes the directional derivative for variational inequalities on the inactive set,
+  assuming that there exists some $G(x)$ for which the `SNESFunctionFn` $F(x) = grad G(x)$ (relevant for some line search algorithms)
+
+  Input Parameters:
++ snes - the `SNES` context
+. F    - the nonlinear function vector
+. X    - the `SNES` solution vector
+- Y    - the direction vector
+
+  Output Parameter:
+. fty - the directional derivative
+
+  Level: developer
+
+.seealso: [](ch_snes), `SNES`, `SNESVINEWTONRSLS`, `SNESVINEWTONSSLS`
+@*/
+PetscErrorCode SNESVIComputeInactiveSetFtY(SNES snes, Vec F, Vec X, Vec Y, PetscScalar *fty)
+{
+  const PetscScalar *x, *xl, *xu, *y, *f;
+  PetscInt           i, n;
+  PetscReal          zerotolerance = snes->vizerotolerance;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
+  PetscAssertPointer(fty, 5);
+  PetscCall(VecGetLocalSize(X, &n));
+  PetscCall(VecGetArrayRead(F, &f));
+  PetscCall(VecGetArrayRead(X, &x));
+  PetscCall(VecGetArrayRead(snes->xl, &xl));
+  PetscCall(VecGetArrayRead(snes->xu, &xu));
+  PetscCall(VecGetArrayRead(Y, &y));
+  *fty = 0.0;
+  for (i = 0; i < n; i++) {
+    if ((PetscRealPart(x[i]) > PetscRealPart(xl[i]) + zerotolerance || (PetscRealPart(f[i]) <= 0.0)) && ((PetscRealPart(x[i]) < PetscRealPart(xu[i]) - zerotolerance) || PetscRealPart(f[i]) >= 0.0)) *fty += f[i] * PetscConj(y[i]);
+  }
+  PetscCall(VecRestoreArrayRead(F, &f));
+  PetscCall(VecRestoreArrayRead(X, &x));
+  PetscCall(VecRestoreArrayRead(snes->xl, &xl));
+  PetscCall(VecRestoreArrayRead(snes->xu, &xu));
+  PetscCall(VecRestoreArrayRead(Y, &y));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, fty, 1, MPIU_SCALAR, MPIU_SUM, PetscObjectComm((PetscObject)snes)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -485,7 +574,7 @@ PetscErrorCode SNESVIGetVariableBounds(SNES snes, Vec *xl, Vec *xu)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SNESSetFromOptions_VI(SNES snes, PetscOptionItems *PetscOptionsObject)
+PetscErrorCode SNESSetFromOptions_VI(SNES snes, PetscOptionItems PetscOptionsObject)
 {
   PetscBool flg = PETSC_FALSE;
 
@@ -495,8 +584,8 @@ PetscErrorCode SNESSetFromOptions_VI(SNES snes, PetscOptionItems *PetscOptionsOb
   PetscCall(PetscOptionsBool("-snes_vi_monitor", "Monitor all non-active variables", "SNESMonitorResidual", flg, &flg, NULL));
   if (flg) PetscCall(SNESMonitorSet(snes, SNESMonitorVI, PETSC_VIEWER_STDOUT_(PetscObjectComm((PetscObject)snes)), NULL));
   flg = PETSC_FALSE;
-  PetscCall(PetscOptionsBool("-snes_vi_monitor_residual", "Monitor residual all non-active variables; using zero for active constraints", "SNESMonitorVIResidual", flg, &flg, NULL));
-  if (flg) PetscCall(SNESMonitorSet(snes, SNESVIMonitorResidual, PETSC_VIEWER_DRAW_(PetscObjectComm((PetscObject)snes)), NULL));
+  PetscCall(SNESMonitorSetFromOptions(snes, "-snes_vi_monitor_residual", "View residual at each iteration, using zero for active constraints", "SNESVIMonitorResidual", SNESVIMonitorResidual, NULL));
+  PetscCall(SNESMonitorSetFromOptions(snes, "-snes_vi_monitor_active", "View active set at each iteration, using zero for inactive dofs", "SNESVIMonitorActive", SNESVIMonitorActive, NULL));
   PetscOptionsHeadEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
 }

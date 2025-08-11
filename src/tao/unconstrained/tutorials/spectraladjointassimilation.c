@@ -72,7 +72,7 @@ typedef struct {
 typedef struct {
   Vec      grid;  /* total grid */
   Vec      mass;  /* mass matrix for total integration */
-  Mat      stiff; /* stifness matrix */
+  Mat      stiff; /* stiffness matrix */
   Mat      advec;
   Mat      keptstiff;
   PetscGLL gll;
@@ -443,7 +443,6 @@ PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec globalin, Mat A, Mat B, void 
    Output Parameters:
    AA - Jacobian matrix
    BB - optionally different matrix from which the preconditioner is built
-   str - flag indicating matrix structure
 
    Scales by the inverse of the mass matrix (perhaps that should be pulled out)
 

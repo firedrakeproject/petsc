@@ -128,9 +128,10 @@ PetscErrorCode KSPAGMRESRoddec(KSP ksp, PetscInt nvec)
   PetscReal    c, s, rho, Ajj, val, tt, old;
   PetscScalar *col;
   MPI_Status   status;
-  PetscBLASInt N = (PetscBLASInt)(MAXKSPSIZE + 1);
+  PetscBLASInt N;
 
   PetscFunctionBegin;
+  PetscCall(PetscBLASIntCast(MAXKSPSIZE + 1, &N));
   PetscCall(PetscObjectGetComm((PetscObject)ksp, &comm));
   PetscCall(PetscLogEventBegin(KSP_AGMRESRoddec, ksp, 0, 0, 0));
   PetscCall(PetscArrayzero(agmres->Rloc, N * N));
@@ -229,7 +230,7 @@ PetscErrorCode KSPAGMRESRoddec(KSP ksp, PetscInt nvec)
     - Qloc, sgn, tloc, nvec (see AGMRESRoddec above)
     - In : input vector (size nvec)
    Output :
-    - Out : Petsc vector (distributed as the basis vectors)
+    - Out : PETSc vector (distributed as the basis vectors)
 */
 PetscErrorCode KSPAGMRESRodvec(KSP ksp, PetscInt nvec, PetscScalar *In, Vec Out)
 {

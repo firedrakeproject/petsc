@@ -1,4 +1,4 @@
-#include <petsc/private/fortranimpl.h>
+#include <petsc/private/ftnimpl.h>
 
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
   #define petscobjectgetcomm_ PETSCOBJECTGETCOMM
@@ -6,7 +6,7 @@
   #define petscobjectgetcomm_ petscobjectgetcomm
 #endif
 
-PETSC_EXTERN void petscobjectgetcomm_(PetscObject *obj, int *comm, PetscErrorCode *ierr)
+PETSC_EXTERN void petscobjectgetcomm_(PetscObject *obj, MPI_Fint *comm, PetscErrorCode *ierr)
 {
   MPI_Comm c;
   *ierr        = PetscObjectGetComm(*obj, &c);

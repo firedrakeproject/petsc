@@ -9,6 +9,7 @@ class Configure(config.package.CMakePackage):
     self.functions         = ['pragmatic_2d_init']
     self.includes          = ['pragmatic/pragmatic.h']
     self.liblist           = [['libpragmatic.a']]
+    self.need35policy      = True
     return
 
   def setupDependencies(self, framework):
@@ -18,7 +19,7 @@ class Configure(config.package.CMakePackage):
     self.scalartypes     = framework.require('PETSc.options.scalarTypes',self)
     self.indexTypes      = framework.require('PETSc.options.indexTypes', self)
     self.mpi             = framework.require('config.packages.MPI',self)
-    self.metis           = framework.require('config.packages.metis', self)
+    self.metis           = framework.require('config.packages.METIS', self)
     self.eigen           = framework.require('config.packages.eigen', self)
     self.mathlib         = framework.require('config.packages.mathlib',self)
     self.deps            = [self.mpi, self.metis, self.eigen, self.mathlib]
@@ -40,8 +41,6 @@ class Configure(config.package.CMakePackage):
     args.append('-DMPI_CXX_LINK_FLAGS:STRING=""')
     args.append('-DMPI_CXX_LIBRARIES:STRING=""')
 
-    if self.checkSharedLibrariesEnabled():
-      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
     if self.indexTypes.integerSize == 64:
       raise RuntimeError('Pragmatic cannot be built with 64-bit integers')
     if self.scalartypes.precision == 'single':

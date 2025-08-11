@@ -709,13 +709,12 @@ static PetscErrorCode MatNorm_MPISBAIJ(Mat mat, NormType type, PetscReal *norm)
     } else if (type == NORM_INFINITY || type == NORM_1) { /* max row/column sum */
       Mat_SeqSBAIJ *amat = (Mat_SeqSBAIJ *)baij->A->data;
       Mat_SeqBAIJ  *bmat = (Mat_SeqBAIJ *)baij->B->data;
-      PetscReal    *rsum, *rsum2, vabs;
+      PetscReal    *rsum, vabs;
       PetscInt     *jj, *garray = baij->garray, rstart = baij->rstartbs, nz;
       PetscInt      brow, bcol, col, bs = baij->A->rmap->bs, row, grow, gcol, mbs = amat->mbs;
       MatScalar    *v;
-      PetscMPIInt   iN;
 
-      PetscCall(PetscMalloc2(mat->cmap->N, &rsum, mat->cmap->N, &rsum2));
+      PetscCall(PetscMalloc1(mat->cmap->N, &rsum));
       PetscCall(PetscArrayzero(rsum, mat->cmap->N));
       /* Amat */
       v  = amat->a;
@@ -758,13 +757,12 @@ static PetscErrorCode MatNorm_MPISBAIJ(Mat mat, NormType type, PetscReal *norm)
         }
         PetscCall(PetscLogFlops(nz * bs * bs));
       }
-      PetscCall(PetscMPIIntCast(mat->cmap->N, &iN));
-      PetscCallMPI(MPIU_Allreduce(rsum, rsum2, iN, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
+      PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, rsum, mat->cmap->N, MPIU_REAL, MPIU_SUM, PetscObjectComm((PetscObject)mat)));
       *norm = 0.0;
       for (col = 0; col < mat->cmap->N; col++) {
-        if (rsum2[col] > *norm) *norm = rsum2[col];
+        if (rsum[col] > *norm) *norm = rsum[col];
       }
-      PetscCall(PetscFree2(rsum, rsum2));
+      PetscCall(PetscFree(rsum));
     } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "No support for this norm yet");
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -793,7 +791,7 @@ static PetscErrorCode MatAssemblyEnd_MPISBAIJ(Mat mat, MatAssemblyType mode)
   Mat_SeqSBAIJ *a    = (Mat_SeqSBAIJ *)baij->A->data;
   PetscInt      i, j, rstart, ncols, flg, bs2 = baij->bs2;
   PetscInt     *row, *col;
-  PetscBool     other_disassembled;
+  PetscBool     all_assembled;
   PetscMPIInt   n;
   PetscBool     r1, r2, r3;
   MatScalar    *val;
@@ -828,7 +826,7 @@ static PetscErrorCode MatAssemblyEnd_MPISBAIJ(Mat mat, MatAssemblyType mode)
     baij->roworiented = PETSC_FALSE;
     a->roworiented    = PETSC_FALSE;
 
-    ((Mat_SeqBAIJ *)baij->B->data)->roworiented = PETSC_FALSE; /* b->roworinted */
+    ((Mat_SeqBAIJ *)baij->B->data)->roworiented = PETSC_FALSE; /* b->roworiented */
     while (1) {
       PetscCall(MatStashScatterGetMesg_Private(&mat->bstash, &n, &row, &col, &val, &flg));
       if (!flg) break;
@@ -849,21 +847,21 @@ static PetscErrorCode MatAssemblyEnd_MPISBAIJ(Mat mat, MatAssemblyType mode)
     baij->roworiented = r1;
     a->roworiented    = r2;
 
-    ((Mat_SeqBAIJ *)baij->B->data)->roworiented = r3; /* b->roworinted */
+    ((Mat_SeqBAIJ *)baij->B->data)->roworiented = r3; /* b->roworiented */
   }
 
   PetscCall(MatAssemblyBegin(baij->A, mode));
   PetscCall(MatAssemblyEnd(baij->A, mode));
 
-  /* determine if any processor has disassembled, if so we must
+  /* determine if any process has disassembled, if so we must
      also disassemble ourselves, in order that we may reassemble. */
   /*
      if nonzero structure of submatrix B cannot change then we know that
-     no processor disassembled thus we can skip this stuff
+     no process disassembled thus we can skip this stuff
   */
   if (!((Mat_SeqBAIJ *)baij->B->data)->nonew) {
-    PetscCallMPI(MPIU_Allreduce(&mat->was_assembled, &other_disassembled, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
-    if (mat->was_assembled && !other_disassembled) PetscCall(MatDisAssemble_MPISBAIJ(mat));
+    PetscCallMPI(MPIU_Allreduce(&mat->was_assembled, &all_assembled, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
+    if (mat->was_assembled && !all_assembled) PetscCall(MatDisAssemble_MPISBAIJ(mat));
   }
 
   if (!mat->was_assembled && mode == MAT_FINAL_ASSEMBLY) { PetscCall(MatSetUpMultiply_MPISBAIJ(mat)); /* setup Mvctx and sMvctx */ }
@@ -904,7 +902,7 @@ static PetscErrorCode MatView_MPISBAIJ_ASCIIorDraworSocket(Mat mat, PetscViewer 
       PetscCall(MatGetInfo(mat, MAT_LOCAL, &info));
       PetscCall(PetscViewerASCIIPushSynchronized(viewer));
       PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "[%d] Local rows %" PetscInt_FMT " nz %" PetscInt_FMT " nz alloced %" PetscInt_FMT " bs %" PetscInt_FMT " mem %g\n", rank, mat->rmap->n, (PetscInt)info.nz_used, (PetscInt)info.nz_allocated,
-                                                   mat->rmap->bs, (double)info.memory));
+                                                   mat->rmap->bs, info.memory));
       PetscCall(MatGetInfo(baij->A, MAT_LOCAL, &info));
       PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "[%d] on-diagonal part: nz %" PetscInt_FMT " \n", rank, (PetscInt)info.nz_used));
       PetscCall(MatGetInfo(baij->B, MAT_LOCAL, &info));
@@ -1512,7 +1510,6 @@ static PetscErrorCode MatSetOption_MPISBAIJ(Mat A, MatOption op, PetscBool flg)
   case MAT_NEW_NONZERO_ALLOCATION_ERR:
   case MAT_UNUSED_NONZERO_LOCATION_ERR:
   case MAT_KEEP_NONZERO_PATTERN:
-  case MAT_SUBMAT_SINGLEIS:
   case MAT_NEW_NONZERO_LOCATION_ERR:
     MatCheckPreallocated(A, 1);
     PetscCall(MatSetOption(a->A, op, flg));
@@ -1525,10 +1522,6 @@ static PetscErrorCode MatSetOption_MPISBAIJ(Mat A, MatOption op, PetscBool flg)
     PetscCall(MatSetOption(a->A, op, flg));
     PetscCall(MatSetOption(a->B, op, flg));
     break;
-  case MAT_FORCE_DIAGONAL_ENTRIES:
-  case MAT_SORTED_FULL:
-    PetscCall(PetscInfo(A, "Option %s ignored\n", MatOptions[op]));
-    break;
   case MAT_IGNORE_OFF_PROC_ENTRIES:
     a->donotstash = flg;
     break;
@@ -1536,8 +1529,7 @@ static PetscErrorCode MatSetOption_MPISBAIJ(Mat A, MatOption op, PetscBool flg)
     a->ht_flag = flg;
     break;
   case MAT_HERMITIAN:
-    MatCheckPreallocated(A, 1);
-    PetscCall(MatSetOption(a->A, op, flg));
+    if (a->A && A->rmap->n == A->cmap->n) PetscCall(MatSetOption(a->A, op, flg));
 #if defined(PETSC_USE_COMPLEX)
     if (flg) { /* need different mat-vec ops */
       A->ops->mult             = MatMult_MPISBAIJ_Hermitian;
@@ -1550,8 +1542,7 @@ static PetscErrorCode MatSetOption_MPISBAIJ(Mat A, MatOption op, PetscBool flg)
     break;
   case MAT_SPD:
   case MAT_SYMMETRIC:
-    MatCheckPreallocated(A, 1);
-    PetscCall(MatSetOption(a->A, op, flg));
+    if (a->A && A->rmap->n == A->cmap->n) PetscCall(MatSetOption(a->A, op, flg));
 #if defined(PETSC_USE_COMPLEX)
     if (flg) { /* restore to use default mat-vec ops */
       A->ops->mult             = MatMult_MPISBAIJ;
@@ -1562,19 +1553,9 @@ static PetscErrorCode MatSetOption_MPISBAIJ(Mat A, MatOption op, PetscBool flg)
 #endif
     break;
   case MAT_STRUCTURALLY_SYMMETRIC:
-    MatCheckPreallocated(A, 1);
-    PetscCall(MatSetOption(a->A, op, flg));
-    break;
-  case MAT_SYMMETRY_ETERNAL:
-  case MAT_STRUCTURAL_SYMMETRY_ETERNAL:
-    PetscCheck(flg, PETSC_COMM_SELF, PETSC_ERR_SUP, "Matrix must be symmetric");
-    PetscCall(PetscInfo(A, "Option %s ignored\n", MatOptions[op]));
-    break;
-  case MAT_SPD_ETERNAL:
+    if (a->A && A->rmap->n == A->cmap->n) PetscCall(MatSetOption(a->A, op, flg));
     break;
   case MAT_IGNORE_LOWER_TRIANGULAR:
-    aA->ignore_ltriangular = flg;
-    break;
   case MAT_ERROR_LOWER_TRIANGULAR:
     aA->ignore_ltriangular = flg;
     break;
@@ -1582,7 +1563,7 @@ static PetscErrorCode MatSetOption_MPISBAIJ(Mat A, MatOption op, PetscBool flg)
     aA->getrow_utriangular = flg;
     break;
   default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "unknown option %d", op);
+    break;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1869,22 +1850,22 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPISBAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       /* 69*/ MatGetRowMaxAbs_MPISBAIJ,
-                                       NULL,
+                                       MatGetRowMaxAbs_MPISBAIJ,
+                                       /* 69*/ NULL,
                                        MatConvert_MPISBAIJ_Basic,
                                        NULL,
                                        NULL,
-                                       /* 74*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       /* 79*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
                                        MatLoad_MPISBAIJ,
+                                       /* 79*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        /* 84*/ NULL,
                                        NULL,
                                        NULL,
@@ -1894,27 +1875,27 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPISBAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
+                                       MatConjugate_MPISBAIJ,
                                        /* 94*/ NULL,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /* 99*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       MatConjugate_MPISBAIJ,
-                                       NULL,
-                                       /*104*/ NULL,
                                        MatRealPart_MPISBAIJ,
                                        MatImaginaryPart_MPISBAIJ,
                                        MatGetRowUpperTriangular_MPISBAIJ,
-                                       MatRestoreRowUpperTriangular_MPISBAIJ,
+                                       /* 99*/ MatRestoreRowUpperTriangular_MPISBAIJ,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*104*/ MatMissingDiagonal_MPISBAIJ,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        /*109*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       MatMissingDiagonal_MPISBAIJ,
+                                       NULL,
                                        /*114*/ NULL,
                                        NULL,
                                        NULL,
@@ -1928,35 +1909,22 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPISBAIJ,
                                        /*124*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
+                                       MatSetBlockSizes_Default,
                                        NULL,
                                        /*129*/ NULL,
                                        NULL,
-                                       NULL,
+                                       MatCreateMPIMatConcatenateSeqMat_MPISBAIJ,
                                        NULL,
                                        NULL,
                                        /*134*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       /*139*/ MatSetBlockSizes_Default,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*144*/ MatCreateMPIMatConcatenateSeqMat_MPISBAIJ,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*150*/ NULL,
                                        MatEliminateZeros_MPISBAIJ,
                                        NULL,
+                                       /*139*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL};
+                                       MatCopyHashToXAIJ_MPI_Hash};
 
 static PetscErrorCode MatMPISBAIJSetPreallocation_MPISBAIJ(Mat B, PetscInt bs, PetscInt d_nz, const PetscInt *d_nnz, PetscInt o_nz, const PetscInt *o_nnz)
 {
@@ -1970,7 +1938,7 @@ static PetscErrorCode MatMPISBAIJSetPreallocation_MPISBAIJ(Mat B, PetscInt bs, P
     B->hash_active = PETSC_FALSE;
   }
   if (!B->preallocated) PetscCall(MatStashCreate_Private(PetscObjectComm((PetscObject)B), bs, &B->bstash));
-  PetscCall(MatSetBlockSize(B, PetscAbs(bs)));
+  PetscCall(MatSetBlockSize(B, bs));
   PetscCall(PetscLayoutSetUp(B->rmap));
   PetscCall(PetscLayoutSetUp(B->cmap));
   PetscCall(PetscLayoutGetBlockSize(B->rmap, &bs));

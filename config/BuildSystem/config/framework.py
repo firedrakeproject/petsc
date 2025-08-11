@@ -98,6 +98,9 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     self.configureParent    = None
     # List of packages actually found
     self.packages           = []
+    self.postbuilds         = [] # list of package builds needed to be made after PETSc is built
+    self.postinstalls       = [] # list of package builds/installs needed to be made after PETSc is installed
+    self.postchecks         = [] # list of package checks needed to be made after PETSc is make check
     self.createChildren()
     # Create argDB for user specified options only
     self.clArgDB = dict([(nargs.Arg.parseArgument(arg)[0], arg) for arg in self.clArgs])
@@ -472,6 +475,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     lines = [s for s in lines if lines != 'conftest.c:']
     # nvcc
     lines = [s for s in lines if s.find('incompatible redefinition for option \'compiler-bindir\', the last value of this option was used') < 0]
+    lines = [s for s in lines if s.find('Support for offline compilation for architectures prior to \'<compute/sm/lto>_75\' will be removed in a future release') < 0]
 
     lines = [s for s in lines if len(s)]
     if lines: output = '\n'.join(lines)
@@ -538,6 +542,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
       lines = [s for s in lines if len(s)]
       # nvcc
       lines = [s for s in lines if s.find('incompatible redefinition for option \'compiler-bindir\', the last value of this option was used') < 0]
+      lines = [s for s in lines if s.find('Support for offline compilation for architectures prior to \'<compute/sm/lto>_75\' will be removed in a future release') < 0]
       if lines: output = '\n'.join(lines)
       else: output = ''
       self.log.write("Compiler output after filtering:\n"+(output if not output else output+'\n'))
@@ -561,7 +566,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
       lines = [s for s in lines if s.find(": command line warning #10121: overriding") < 0]
       lines = [s for s in lines if s.find(': remark #10441:') < 0]
       #Intel icpx
-      lines = [s for s in lines if s.find("warning: Note that use of '-g' without any optimization-level option will turn off most compiler optimizations similar to use") < 0] 
+      lines = [s for s in lines if s.find("warning: Note that use of '-g' without any optimization-level option will turn off most compiler optimizations similar to use") < 0]
       # PGI: Ignore warning about temporary license
       lines = [s for s in lines if s.find('license.dat') < 0]
       # Cray XT3
@@ -800,7 +805,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     return
 
   def outputMakeMacros(self, f, child, prefix = None):
-    '''If the child contains a dictionary named "makemacros", the entries are output in the makefile config header.
+    '''If the child contains a dictionary named "makeMacros", the entries are output in the makefile config header.
     - No prefix is used
     '''
     if not hasattr(child, 'makeMacros') or not isinstance(child.makeMacros, dict): return
@@ -920,6 +925,9 @@ class Framework(config.base.Configure, script.LanguageProcessor):
         if (not hasattr(child,'found') or not child.found) and hasattr(child,'testoptions_whennotfound'):
           testoptions += ' '+child.testoptions_whennotfound
     f.write('PETSC_TEST_OPTIONS = '+testoptions+'\n')
+    f.write('PETSC_POST_BUILDS = '+' '.join(self.framework.postbuilds)+'\n')
+    f.write('PETSC_POST_INSTALLS = '+' '.join(self.framework.postinstalls)+'\n')
+    f.write('PETSC_POST_CHECKS = '+' '.join(self.framework.postchecks)+'\n')
     if not hasattr(name, 'close'):
       f.close()
 

@@ -8,7 +8,7 @@ PetscLogEvent TS_AdjointStep, TS_ForwardStep, TS_JacobianPEval;
 /* ------------------------ Sensitivity Context ---------------------------*/
 
 /*@C
-  TSSetRHSJacobianP - Sets the function that computes the Jacobian of G w.r.t. the parameters P where U_t = G(U,P,t), as well as the location to store the matrix.
+  TSSetRHSJacobianP - Sets the function that computes the Jacobian of $G$ w.r.t. the parameters $p$ where $U_t = G(U,p,t)$, as well as the location to store the matrix.
 
   Logically Collective
 
@@ -42,7 +42,7 @@ PetscErrorCode TSSetRHSJacobianP(TS ts, Mat Amat, TSRHSJacobianPFn *func, void *
 }
 
 /*@C
-  TSGetRHSJacobianP - Gets the function that computes the Jacobian of G w.r.t. the parameters P where U_t = G(U,P,t), as well as the location to store the matrix.
+  TSGetRHSJacobianP - Gets the function that computes the Jacobian of $G $ w.r.t. the parameters $p$ where $ U_t = G(U,p,t)$, as well as the location to store the matrix.
 
   Logically Collective
 
@@ -108,7 +108,7 @@ PetscErrorCode TSComputeRHSJacobianP(TS ts, PetscReal t, Vec U, Mat Amat)
 }
 
 /*@C
-  TSSetIJacobianP - Sets the function that computes the Jacobian of F w.r.t. the parameters P where F(Udot,U,t) = G(U,P,t), as well as the location to store the matrix.
+  TSSetIJacobianP - Sets the function that computes the Jacobian of $F$ w.r.t. the parameters $p$ where $F(Udot,U,p,t) = G(U,p,t)$, as well as the location to store the matrix.
 
   Logically Collective
 
@@ -123,14 +123,14 @@ PetscErrorCode TSComputeRHSJacobianP(TS ts, PetscReal t, Vec U, Mat Amat)
 . t     - current timestep
 . U     - input vector (current ODE solution)
 . Udot  - time derivative of state vector
-. shift - shift to apply, see note below
+. shift - shift to apply, see the note in `TSSetIJacobian()`
 . A     - output matrix
 - ctx   - [optional] user-defined function context
 
   Level: intermediate
 
   Note:
-  Amat has the same number of rows and the same row parallel layout as u, Amat has the same number of columns and parallel layout as p
+  `Amat` has the same number of rows and the same row parallel layout as `u`, `Amat` has the same number of columns and parallel layout as `p`
 
 .seealso: [](ch_ts), `TSSetRHSJacobianP()`, `TS`
 @*/
@@ -150,6 +150,46 @@ PetscErrorCode TSSetIJacobianP(TS ts, Mat Amat, PetscErrorCode (*func)(TS ts, Pe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@C
+  TSGetIJacobianP - Gets the function that computes the Jacobian of $ F$ w.r.t. the parameters $p$ where $F(Udot,U,p,t) = G(U,p,t) $, as well as the location to store the matrix.
+
+  Logically Collective
+
+  Input Parameter:
+. ts - `TS` context obtained from `TSCreate()`
+
+  Output Parameters:
++ Amat - JacobianP matrix
+. func - the function that computes the JacobianP
+- ctx  - [optional] user-defined function context
+
+  Calling sequence of `func`:
++ ts    - the `TS` context
+. t     - current timestep
+. U     - input vector (current ODE solution)
+. Udot  - time derivative of state vector
+. shift - shift to apply, see the note in `TSSetIJacobian()`
+. A     - output matrix
+- ctx   - [optional] user-defined function context
+
+  Level: intermediate
+
+  Note:
+  `Amat` has the same number of rows and the same row parallel layout as `u`, `Amat` has the same number of columns and parallel layout as `p`
+
+.seealso: [](ch_ts), `TSSetRHSJacobianP()`, `TS`, `TSSetIJacobianP()`, `TSGetRHSJacobianP()`
+@*/
+PetscErrorCode TSGetIJacobianP(TS ts, Mat *Amat, PetscErrorCode (**func)(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal shift, Mat A, void *ctx), void **ctx)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(ts, TS_CLASSID, 1);
+
+  if (func) *func = ts->ijacobianp;
+  if (ctx) *ctx = ts->ijacobianpctx;
+  if (Amat) *Amat = ts->Jacp;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /*@
   TSComputeIJacobianP - Runs the user-defined IJacobianP function.
 
@@ -161,7 +201,7 @@ PetscErrorCode TSSetIJacobianP(TS ts, Mat Amat, PetscErrorCode (*func)(TS ts, Pe
 . U     - state vector
 . Udot  - time derivative of state vector
 . shift - shift to apply, see note below
-- imex  - flag indicates if the method is IMEX so that the RHSJacobianP should be kept separate
+- imex  - flag indicates if the method is IMEX so that the `RHSJacobianP` should be kept separate
 
   Output Parameter:
 . Amat - Jacobian matrix
@@ -1067,7 +1107,7 @@ PetscErrorCode TSAdjointSetUp(TS ts)
 
   Level: beginner
 
-.seealso: [](ch_ts), `TSCreate()`, `TSAdjointSetUp()`, `TSADestroy()`
+.seealso: [](ch_ts), `TSCreate()`, `TSAdjointSetUp()`, `TSDestroy()`
 @*/
 PetscErrorCode TSAdjointReset(TS ts)
 {
@@ -1216,7 +1256,7 @@ static PetscErrorCode TSAdjointMonitorSensi(TS ts, PetscInt step, PetscReal ptim
 . name         - the monitor type one is seeking
 . help         - message indicating what monitoring is done
 . manual       - manual page for the monitor
-. monitor      - the monitor function
+. monitor      - the monitor function, its context must be a `PetscViewerAndFormat`
 - monitorsetup - a function that is called once ONLY if the user selected this monitor that may set additional features of the `TS` or `PetscViewer` objects
 
   Level: developer
@@ -1227,7 +1267,7 @@ static PetscErrorCode TSAdjointMonitorSensi(TS ts, PetscInt step, PetscReal ptim
           `PetscOptionsName()`, `PetscOptionsBegin()`, `PetscOptionsEnd()`, `PetscOptionsHeadBegin()`,
           `PetscOptionsStringArray()`, `PetscOptionsRealArray()`, `PetscOptionsScalar()`,
           `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
-          `PetscOptionsFList()`, `PetscOptionsEList()`
+          `PetscOptionsFList()`, `PetscOptionsEList()`, `PetscViewerAndFormat`
 @*/
 PetscErrorCode TSAdjointMonitorSetFromOptions(TS ts, const char name[], const char help[], const char manual[], PetscErrorCode (*monitor)(TS, PetscInt, PetscReal, Vec, PetscInt, Vec *, Vec *, PetscViewerAndFormat *), PetscErrorCode (*monitorsetup)(TS, PetscViewerAndFormat *))
 {
@@ -1242,7 +1282,7 @@ PetscErrorCode TSAdjointMonitorSetFromOptions(TS ts, const char name[], const ch
     PetscCall(PetscViewerAndFormatCreate(viewer, format, &vf));
     PetscCall(PetscViewerDestroy(&viewer));
     if (monitorsetup) PetscCall((*monitorsetup)(ts, vf));
-    PetscCall(TSAdjointMonitorSet(ts, (PetscErrorCode (*)(TS, PetscInt, PetscReal, Vec, PetscInt, Vec *, Vec *, void *))monitor, vf, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy));
+    PetscCall(TSAdjointMonitorSet(ts, (PetscErrorCode (*)(TS, PetscInt, PetscReal, Vec, PetscInt, Vec *, Vec *, void *))monitor, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1258,7 +1298,7 @@ PetscErrorCode TSAdjointMonitorSetFromOptions(TS ts, const char name[], const ch
 . adjointmonitor  - monitoring routine
 . adjointmctx     - [optional] user-defined context for private data for the monitor routine
                     (use `NULL` if no context is desired)
-- adjointmdestroy - [optional] routine that frees monitor context (may be `NULL`)
+- adjointmdestroy - [optional] routine that frees monitor context (may be `NULL`), see `PetscCtxDestroyFn` for its calling sequence
 
   Calling sequence of `adjointmonitor`:
 + ts          - the `TS` context
@@ -1271,9 +1311,6 @@ PetscErrorCode TSAdjointMonitorSetFromOptions(TS ts, const char name[], const ch
 . mu          - sensitivities to parameters
 - adjointmctx - [optional] adjoint monitoring context
 
-  Calling sequence of `adjointmdestroy`:
-. mctx - the monitor context to destroy
-
   Level: intermediate
 
   Note:
@@ -1283,9 +1320,9 @@ PetscErrorCode TSAdjointMonitorSetFromOptions(TS ts, const char name[], const ch
   Fortran Notes:
   Only a single monitor function can be set for each `TS` object
 
-.seealso: [](ch_ts), `TS`, `TSAdjointSolve()`, `TSAdjointMonitorCancel()`
+.seealso: [](ch_ts), `TS`, `TSAdjointSolve()`, `TSAdjointMonitorCancel()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode TSAdjointMonitorSet(TS ts, PetscErrorCode (*adjointmonitor)(TS ts, PetscInt steps, PetscReal time, Vec u, PetscInt numcost, Vec *lambda, Vec *mu, void *adjointmctx), void *adjointmctx, PetscErrorCode (*adjointmdestroy)(void **mctx))
+PetscErrorCode TSAdjointMonitorSet(TS ts, PetscErrorCode (*adjointmonitor)(TS ts, PetscInt steps, PetscReal time, Vec u, PetscInt numcost, Vec *lambda, Vec *mu, void *adjointmctx), void *adjointmctx, PetscCtxDestroyFn *adjointmdestroy)
 {
   PetscInt  i;
   PetscBool identical;
@@ -1299,7 +1336,7 @@ PetscErrorCode TSAdjointMonitorSet(TS ts, PetscErrorCode (*adjointmonitor)(TS ts
   PetscCheck(ts->numberadjointmonitors < MAXTSMONITORS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many adjoint monitors set");
   ts->adjointmonitor[ts->numberadjointmonitors]          = adjointmonitor;
   ts->adjointmonitordestroy[ts->numberadjointmonitors]   = adjointmdestroy;
-  ts->adjointmonitorcontext[ts->numberadjointmonitors++] = (void *)adjointmctx;
+  ts->adjointmonitorcontext[ts->numberadjointmonitors++] = adjointmctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1399,7 +1436,7 @@ PetscErrorCode TSAdjointMonitorDrawSensi(TS ts, PetscInt step, PetscReal ptime, 
 
   PetscCall(VecView(lambda[0], ictx->viewer));
   PetscCall(PetscViewerDrawGetDraw(ictx->viewer, 0, &draw));
-  PetscCall(PetscSNPrintf(time, 32, "Timestep %d Time %g", (int)step, (double)ptime));
+  PetscCall(PetscSNPrintf(time, 32, "Timestep %" PetscInt_FMT " Time %g", step, (double)ptime));
   PetscCall(PetscDrawGetCoordinates(draw, &xl, &yl, &xr, &yr));
   h = yl + .95 * (yr - yl);
   PetscCall(PetscDrawStringCentered(draw, .5 * (xl + xr), h, PETSC_DRAW_BLACK, time));
@@ -1428,7 +1465,7 @@ PetscErrorCode TSAdjointMonitorDrawSensi(TS ts, PetscInt step, PetscReal ptime, 
 
 .seealso: [](ch_ts), `TSSetSaveTrajectory()`, `TSTrajectorySetUp()`
 @*/
-PetscErrorCode TSAdjointSetFromOptions(TS ts, PetscOptionItems *PetscOptionsObject)
+PetscErrorCode TSAdjointSetFromOptions(TS ts, PetscOptionItems PetscOptionsObject)
 {
   PetscBool tflg, opt;
 
@@ -1451,7 +1488,7 @@ PetscErrorCode TSAdjointSetFromOptions(TS ts, PetscOptionItems *PetscOptionsObje
 
     PetscCall(PetscOptionsInt("-ts_adjoint_monitor_draw_sensi", "Monitor adjoint sensitivities (lambda only) graphically", "TSAdjointMonitorDrawSensi", howoften, &howoften, NULL));
     PetscCall(TSMonitorDrawCtxCreate(PetscObjectComm((PetscObject)ts), NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 300, 300, howoften, &ctx));
-    PetscCall(TSAdjointMonitorSet(ts, TSAdjointMonitorDrawSensi, ctx, (PetscErrorCode (*)(void **))TSMonitorDrawCtxDestroy));
+    PetscCall(TSAdjointMonitorSet(ts, TSAdjointMonitorDrawSensi, ctx, (PetscCtxDestroyFn *)TSMonitorDrawCtxDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1959,7 +1996,7 @@ PetscErrorCode TSGetQuadratureTS(TS ts, PetscBool *fwd, TS *quadts)
 
   Output Parameters:
 + J    - Jacobian matrix
-- Jpre - preconditioning matrix for J (may be same as J)
+- Jpre - matrix used to compute the preconditioner for `J` (may be same as `J`)
 
   Level: developer
 

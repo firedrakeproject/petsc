@@ -12,7 +12,7 @@ struct _PCGAMGOps {
   PetscErrorCode (*optprolongator)(PC, Mat, Mat *);
   PetscErrorCode (*createlevel)(PC, Mat, PetscInt, Mat *, Mat *, PetscMPIInt *, IS *, PetscBool);
   PetscErrorCode (*createdefaultdata)(PC, Mat); /* for data methods that have a default (SA) */
-  PetscErrorCode (*setfromoptions)(PC, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(PC, PetscOptionItems);
   PetscErrorCode (*destroy)(PC);
   PetscErrorCode (*view)(PC, PetscViewer);
 };
@@ -54,8 +54,6 @@ typedef struct gamg_TAG {
   PetscInt  injection_index_size;
   PetscInt  injection_index[MAT_COARSEN_STRENGTH_INDEX_SIZE];
 } PC_GAMG;
-
-PetscErrorCode PCReset_MG(PC);
 
 /* hooks create derivied classes */
 PetscErrorCode PCCreateGAMG_GEO(PC);

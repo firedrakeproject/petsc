@@ -7,6 +7,9 @@
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"%s() not supported with complex scalars",PETSC_FUNCTION_NAME); \
     PetscFunctionReturn(PETSC_ERR_SUP);} while (0)
 
+PetscErrorCode TaoSetLMVMMatrix(PETSC_UNUSED Tao tao,PETSC_UNUSED Mat mat) {PetscTaoError;}
+PetscErrorCode TaoGetLMVMMatrix(PETSC_UNUSED Tao tao,PETSC_UNUSED Mat *mat) {PetscTaoError;}
+
 PetscErrorCode TaoLMVMSetH0(PETSC_UNUSED Tao tao,PETSC_UNUSED Mat mat) {PetscTaoError;}
 PetscErrorCode TaoLMVMGetH0(PETSC_UNUSED Tao tao,PETSC_UNUSED Mat *mat) {PetscTaoError;}
 PetscErrorCode TaoLMVMGetH0KSP(PETSC_UNUSED Tao tao,PETSC_UNUSED KSP *ksp) {PetscTaoError;}
@@ -21,6 +24,12 @@ PetscErrorCode TaoBRGNGetDampingVector(PETSC_UNUSED Tao tao,PETSC_UNUSED Vec *d)
 
 PetscErrorCode TaoBNCGSetType(PETSC_UNUSED Tao tao, PETSC_UNUSED TaoBNCGType type) {PetscTaoError;}
 PetscErrorCode TaoBNCGGetType(PETSC_UNUSED Tao tao, PETSC_UNUSED TaoBNCGType *type) {PetscTaoError;}
+
+PetscErrorCode TaoALMMGetSubsolver(PETSC_UNUSED Tao tao, PETSC_UNUSED Tao *subsolver) {PetscTaoError;}
+PetscErrorCode TaoALMMSetSubsolver(PETSC_UNUSED Tao tao, PETSC_UNUSED Tao subsolver) {PetscTaoError;}
+PetscErrorCode TaoALMMGetType(PETSC_UNUSED Tao tao, PETSC_UNUSED TaoALMMType *type) {PetscTaoError;}
+PetscErrorCode TaoALMMSetType(PETSC_UNUSED Tao tao, PETSC_UNUSED TaoALMMType type) {PetscTaoError;}
+
 #undef PetscTaoError
 
 #endif/*PETSC_USE_COMPLEX*/

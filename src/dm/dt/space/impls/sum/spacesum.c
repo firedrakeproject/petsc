@@ -162,7 +162,7 @@ static PetscErrorCode PetscSpaceSumSetNumSubspaces_Sum(PetscSpace space, PetscIn
   PetscInt        Ns  = sum->numSumSpaces;
 
   PetscFunctionBegin;
-  PetscCheck(!sum->setupCalled, PetscObjectComm((PetscObject)space), PETSC_ERR_ARG_WRONGSTATE, "Cannot change number of subspaces after setup called");
+  PetscCheck(!sum->setupcalled, PetscObjectComm((PetscObject)space), PETSC_ERR_ARG_WRONGSTATE, "Cannot change number of subspaces after setup called");
   if (numSumSpaces == Ns) PetscFunctionReturn(PETSC_SUCCESS);
   if (Ns >= 0) {
     PetscInt s;
@@ -189,7 +189,7 @@ static PetscErrorCode PetscSpaceSumSetConcatenate_Sum(PetscSpace sp, PetscBool c
   PetscSpace_Sum *sum = (PetscSpace_Sum *)sp->data;
 
   PetscFunctionBegin;
-  PetscCheck(!sum->setupCalled, PetscObjectComm((PetscObject)sp), PETSC_ERR_ARG_WRONGSTATE, "Cannot change space concatenation after setup called.");
+  PetscCheck(!sum->setupcalled, PetscObjectComm((PetscObject)sp), PETSC_ERR_ARG_WRONGSTATE, "Cannot change space concatenation after setup called.");
 
   sum->concatenate = concatenate;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -214,7 +214,7 @@ static PetscErrorCode PetscSpaceSumSetSubspace_Sum(PetscSpace space, PetscInt s,
   PetscInt        Ns  = sum->numSumSpaces;
 
   PetscFunctionBegin;
-  PetscCheck(!sum->setupCalled, PetscObjectComm((PetscObject)space), PETSC_ERR_ARG_WRONGSTATE, "Cannot change subspace after setup called");
+  PetscCheck(!sum->setupcalled, PetscObjectComm((PetscObject)space), PETSC_ERR_ARG_WRONGSTATE, "Cannot change subspace after setup called");
   PetscCheck(Ns >= 0, PetscObjectComm((PetscObject)space), PETSC_ERR_ARG_WRONGSTATE, "Must call PetscSpaceSumSetNumSubspaces() first");
   PetscCheck(s >= 0 && s < Ns, PetscObjectComm((PetscObject)space), PETSC_ERR_ARG_OUTOFRANGE, "Invalid subspace number %" PetscInt_FMT, s);
 
@@ -224,7 +224,7 @@ static PetscErrorCode PetscSpaceSumSetSubspace_Sum(PetscSpace space, PetscInt s,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscSpaceSetFromOptions_Sum(PetscSpace sp, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PetscSpaceSetFromOptions_Sum(PetscSpace sp, PetscOptionItems PetscOptionsObject)
 {
   PetscSpace_Sum *sum = (PetscSpace_Sum *)sp->data;
   PetscInt        Ns, Nc, Nv, deg, i;
@@ -278,7 +278,7 @@ static PetscErrorCode PetscSpaceSetUp_Sum(PetscSpace sp)
   PetscInt        minNc, maxNc;
 
   PetscFunctionBegin;
-  if (sum->setupCalled) PetscFunctionReturn(PETSC_SUCCESS);
+  if (sum->setupcalled) PetscFunctionReturn(PETSC_SUCCESS);
 
   PetscCall(PetscSpaceGetNumVariables(sp, &Nv));
   PetscCall(PetscSpaceGetNumComponents(sp, &Nc));
@@ -332,7 +332,7 @@ static PetscErrorCode PetscSpaceSetUp_Sum(PetscSpace sp)
   sp->maxDegree    = maxDeg;
   sum->concatenate = concatenate;
   sum->uniform     = uniform;
-  sum->setupCalled = PETSC_TRUE;
+  sum->setupcalled = PETSC_TRUE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -397,7 +397,7 @@ static PetscErrorCode PetscSpaceGetDimension_Sum(PetscSpace sp, PetscInt *dim)
   PetscInt        i, d = 0, Ns = sum->numSumSpaces;
 
   PetscFunctionBegin;
-  if (!sum->setupCalled) {
+  if (!sum->setupcalled) {
     PetscCall(PetscSpaceSetUp(sp));
     PetscCall(PetscSpaceGetDimension(sp, dim));
     PetscFunctionReturn(PETSC_SUCCESS);
@@ -424,7 +424,7 @@ static PetscErrorCode PetscSpaceEvaluate_Sum(PetscSpace sp, PetscInt npoints, co
   PetscReal      *sB = NULL, *sD = NULL, *sH = NULL;
 
   PetscFunctionBegin;
-  if (!sum->setupCalled) {
+  if (!sum->setupcalled) {
     PetscCall(PetscSpaceSetUp(sp));
     PetscCall(PetscSpaceEvaluate(sp, npoints, points, B, D, H));
     PetscFunctionReturn(PETSC_SUCCESS);
@@ -594,7 +594,7 @@ static PetscErrorCode PetscSpaceSumSetInterleave_Sum(PetscSpace sp, PetscBool in
 
 .seealso: `PetscSpace`, `PETSCSPACESUM`, `PETSCFEVECTOR`, `PetscSpaceSumSetInterleave()`
 @*/
-PetscErrorCode PetscSpaceSumGetInterleave(PetscSpace sp, PetscBool *interleave_basis, PetscBool *interleave_components)
+PetscErrorCode PetscSpaceSumGetInterleave(PetscSpace sp, PeOp PetscBool *interleave_basis, PeOp PetscBool *interleave_components)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sp, PETSCSPACE_CLASSID, 1);

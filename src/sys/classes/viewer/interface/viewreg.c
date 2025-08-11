@@ -96,7 +96,7 @@ static PetscBool noviewers[PETSCVIEWERCREATEVIEWEROFFPUSHESMAX];
 static PetscInt  inoviewers = 0;
 
 /*@
-  PetscOptionsPushCreateViewerOff - sets if a `PetscOptionsCreateViewer()`, `PetscOptionsViewer(), and `PetscOptionsCreateViewers()` returns viewers.
+  PetscOptionsPushCreateViewerOff - sets if `PetscOptionsCreateViewer()`, `PetscOptionsViewer()`, and `PetscOptionsCreateViewers()` return viewers.
 
   Logically Collective
 
@@ -145,7 +145,7 @@ PetscErrorCode PetscOptionsPopCreateViewerOff(void)
 }
 
 /*@
-  PetscOptionsGetCreateViewerOff - do `PetscOptionsCreateViewer()`, `PetscOptionsViewer(), and `PetscOptionsCreateViewers()` return viewers
+  PetscOptionsGetCreateViewerOff - do `PetscOptionsCreateViewer()`, `PetscOptionsViewer()`, and `PetscOptionsCreateViewers()` return viewers
 
   Logically Collective
 
@@ -169,7 +169,7 @@ static PetscErrorCode PetscOptionsCreateViewers_Single(MPI_Comm comm, const char
   char    *loc0_vtype = NULL, *loc1_fname = NULL, *loc2_fmt = NULL, *loc3_fmode = NULL;
   PetscInt cnt;
   size_t   viewer_string_length;
-  const char *viewers[] = {PETSCVIEWERASCII, PETSCVIEWERBINARY, PETSCVIEWERDRAW, PETSCVIEWERSOCKET, PETSCVIEWERMATLAB, PETSCVIEWERSAWS, PETSCVIEWERVTK, PETSCVIEWERHDF5, PETSCVIEWERGLVIS, PETSCVIEWEREXODUSII, NULL}; /* list should be automatically generated from PetscViewersList */
+  const char *viewers[] = {PETSCVIEWERASCII, PETSCVIEWERBINARY, PETSCVIEWERDRAW, PETSCVIEWERSOCKET, PETSCVIEWERMATLAB, PETSCVIEWERSAWS, PETSCVIEWERVTK, PETSCVIEWERHDF5, PETSCVIEWERGLVIS, PETSCVIEWEREXODUSII, PETSCVIEWERPYTHON, PETSCVIEWERPYVISTA, NULL}; /* list should be automatically generated from PetscViewersList */
 
   PetscFunctionBegin;
   PetscCall(PetscStrlen(value, &viewer_string_length));
@@ -247,6 +247,14 @@ static PetscErrorCode PetscOptionsCreateViewers_Single(MPI_Comm comm, const char
         PetscCall(PetscObjectReference((PetscObject)*viewer));
         break;
 #endif
+      case 10:
+        if (!(*viewer = PETSC_VIEWER_PYTHON_(comm))) PetscCall(PETSC_ERR_PLIB);
+        PetscCall(PetscObjectReference((PetscObject)*viewer));
+        break;
+      case 11:
+        if (!(*viewer = PETSC_VIEWER_PYVISTA_(comm))) PetscCall(PETSC_ERR_PLIB);
+        PetscCall(PetscObjectReference((PetscObject)*viewer));
+        break;
       default:
         SETERRQ(comm, PETSC_ERR_SUP, "Unsupported viewer %s", loc0_vtype);
       }
@@ -356,7 +364,7 @@ static PetscErrorCode PetscOptionsCreateViewers_Internal(MPI_Comm comm, PetscOpt
         char              *comma_separator    = NULL;
         PetscInt           n                  = *n_max_p;
 
-        PetscCheck(n < n_max, comm, PETSC_ERR_PLIB, "More viewers than max available (%d)", (int)n_max);
+        PetscCheck(n < n_max, comm, PETSC_ERR_PLIB, "More viewers than max available (%" PetscInt_FMT ")", n_max);
 
         PetscCall(PetscStrchr(this_viewer_string, ',', &comma_separator));
         if (comma_separator) {
@@ -442,7 +450,7 @@ PetscErrorCode PetscOptionsCreateViewer(MPI_Comm comm, PetscOptions options, con
   if (viewer) *viewer = NULL;
   if (format) *format = PETSC_VIEWER_DEFAULT;
   PetscCall(PetscOptionsCreateViewers_Internal(comm, options, pre, name, &n_max, viewer, format, &set_internal, PETSC_FUNCTION_NAME, PETSC_FALSE));
-  if (set_internal) PetscAssert(n_max == 1, comm, PETSC_ERR_PLIB, "Unexpected: %d != 1 viewers set", (int)n_max);
+  if (set_internal) PetscAssert(n_max == 1, comm, PETSC_ERR_PLIB, "Unexpected: %" PetscInt_FMT " != 1 viewers set", n_max);
   if (set) *set = set_internal;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -578,9 +586,13 @@ PetscErrorCode PetscViewerSetType(PetscViewer viewer, PetscViewerType type)
 .ve
 
   Then, your solver can be chosen with the procedural interface via
-$     PetscViewerSetType(viewer, "my_viewer_type")
+.vb
+  PetscViewerSetType(viewer, "my_viewer_type")
+.ve
   or at runtime via the option
-$     -viewer_type my_viewer_type
+.vb
+  -viewer_type my_viewer_type
+.ve
 
 .seealso: [](sec_viewers), `PetscViewerRegisterAll()`
  @*/

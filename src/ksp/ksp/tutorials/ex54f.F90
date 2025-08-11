@@ -34,7 +34,6 @@
       PetscScalar::ss(4,4),val
       PetscReal::shp(3,9),sg(3,9)
       PetscReal::thk,a1,a2
-      PetscReal, external :: ex54_psi
       PetscReal::theta,eps,h,x,y,xsj
       PetscReal::coord(2,4),dd(2,2),ev(3),blb(2)
 
@@ -72,7 +71,7 @@
          print *, 'error: ', ki,' arguments read for -blob_center.  Needs to be two.'
       endif
       PetscCallA(PetscOptionsGetBool(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-out_matlab',out_matlab,flg,ierr))
-      if (.not.flg) out_matlab = PETSC_FALSE;
+      if (.not.flg) out_matlab = PETSC_FALSE
 
       ev(1) = 1.0
       ev(2) = eps*ev(1)
@@ -142,7 +141,7 @@
             idx(1) = geq; idx(2) = geq+1; idx(3) = geq+(ne+1)+1
             idx(4) = geq+(ne+1)
             if (qj > 0) then
-               PetscCallA(MatSetValues(Amat,f4,idx,f4,idx,ss,ADD_VALUES,ierr))
+               PetscCallA(MatSetValues(Amat,f4,idx,f4,idx,reshape(ss, [f4*f4]),ADD_VALUES,ierr))
             else                !     a BC
                do ki=1,4,1
                   do kj=1,4,1
@@ -155,7 +154,7 @@
                      endif
                   enddo
                enddo
-               PetscCallA(MatSetValues(Amat,f4,idx,f4,idx,ss,ADD_VALUES,ierr))
+               PetscCallA(MatSetValues(Amat,f4,idx,f4,idx,reshape(ss, [f4*f4]),ADD_VALUES,ierr))
             endif               ! BC
          endif                  ! add element
          if (qj > 0) then      ! set rhs
@@ -177,7 +176,7 @@
       PetscCallA(KSPCreate(PETSC_COMM_WORLD,ksp,ierr))
 
 !  Set operators. Here the matrix that defines the linear system
-!  also serves as the preconditioning matrix.
+!  also serves as the matrix from which the preconditioner is constructed.
 
       PetscCallA(KSPSetOperators(ksp,Amat,Amat,ierr))
 
@@ -228,7 +227,7 @@
             write (1,*) 'r = PetscBinaryRead(''Rvec'');'
             write (1,*) 'bb = reshape(b,mm,mm);'
             write (1,*) 'xx = reshape(x,mm,mm);'
-            write (1,*) 'rr = reshape(r,mm,mm);'
+            write (1,*) 'rr = reshape(r,mm,mm)'
 !            write (1,*) 'imagesc(bb')'
 !            write (1,*) 'title('RHS'),'
             write (1,*) 'figure,'
@@ -251,15 +250,13 @@
       PetscCallA(KSPDestroy(ksp,ierr))
       PetscCallA(PetscFinalize(ierr))
 
-      end
-
+      contains
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     thfx2d - compute material tensor
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !     Compute thermal gradient and flux
 
       subroutine thfx2d(ev,xl,shp,dd,ndm,ndf,nel,dir)
-      implicit  none
 
       PetscInt   ndm,ndf,nel,i
       PetscReal ev(2),xl(ndm,nel),shp(3,*),dir
@@ -308,7 +305,6 @@
 !                     shp(3,i) = N_i
 !         xsj       - Jacobian determinant at point
 !-----[--.----+----.----+----.-----------------------------------------]
-      implicit  none
       PetscInt  ndm
       PetscReal xo,xs,xt, yo,ys,yt, xsm,xsp,xtm
       PetscReal xtp, ysm,ysp,ytm,ytp
@@ -394,7 +390,6 @@
 !     Outputs:
 !     sg(3,*) - Array of points and weights
 !-----[--.----+----.----+----.-----------------------------------------]
-      implicit  none
       PetscInt   l,i,lr(9),lz(9)
       PetscReal    g,third,sg(3,*)
       data      lr/-1,1,1,-1,0,1,0,-1,0/,lz/-1,-1,1,1,-1,0,1,0,0/
@@ -411,10 +406,9 @@
       end
 
 !     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-!     ex54_psi - anusotropic material direction
+!     ex54_psi - anisotropic material direction
 !     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       PetscReal function ex54_psi(x,y)
-      implicit  none
       PetscReal x,y,theta
       common /ex54_theta/ theta
       ex54_psi = theta
@@ -425,6 +419,7 @@
             ex54_psi = atan(-x/y)
          endif
       endif
+      end
       end
 
 !

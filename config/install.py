@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import print_function
 import os, re, shutil, sys
+import sysconfig
 
 if 'PETSC_DIR' in os.environ:
   PETSC_DIR = os.environ['PETSC_DIR']
@@ -19,7 +20,6 @@ else:
   PETSC_ARCH = a.split('=')[1][0:-1]
   fd.close()
 
-print('*** Using PETSC_DIR='+PETSC_DIR+' PETSC_ARCH='+PETSC_ARCH+' ***')
 sys.path.insert(0, os.path.join(PETSC_DIR, 'config'))
 sys.path.insert(0, os.path.join(PETSC_DIR, 'config', 'BuildSystem'))
 
@@ -124,6 +124,13 @@ class Installer(script.Script):
         sys.exit(1)
     return
 
+  def setupBuild(self):
+    self.using_build_backend = any(
+      os.environ.get(prefix + '_BUILD_BACKEND')
+      for prefix in ('_PYPROJECT_HOOKS', 'PEP517')
+    )
+    self.relocate_py_env = os.environ.get('CIBUILDWHEEL', '0') == '1'
+
   def copyfile(self, src, dst, symlinks = False, copyFunc = shutil.copy2):
     """Copies a single file    """
     copies = []
@@ -150,7 +157,7 @@ class Installer(script.Script):
     return copies
 
   def fixExamplesMakefile(self, src):
-    '''Change ././${PETSC_ARCH} in makefile in root petsc directory with ${PETSC_DIR}'''
+    '''Change ././${PETSC_ARCH} in makefile in root PETSc directory with ${PETSC_DIR}'''
     lines   = []
     oldFile = open(src, 'r')
     alllines=oldFile.read()
@@ -316,6 +323,13 @@ class Installer(script.Script):
         elif os.path.exists(pathname):
           os.remove(pathname)
     #
+    if self.relocate_py_env:
+      pydir = sys.prefix
+      pylibdir = os.path.join(pydir, 'lib')
+      pysitedir = sysconfig.get_paths()["platlib"]
+      # petsc is installed in site-packages
+      petscdir = os.path.join(pysitedir, 'petsc')
+      petsclibdir = os.path.join(petscdir, 'lib')
     for filename in (
       self.destIncludeDir + '/petscconf.h',
       self.destIncludeDir + '/petscconfiginfo.h',
@@ -332,6 +346,9 @@ class Installer(script.Script):
         contents = oldFile.read()
       contents = contents.replace(self.installDir, '${PETSC_DIR}')
       contents = contents.replace(self.rootDir, '${PETSC_DIR}')
+      if self.relocate_py_env:
+        pydir_from_petsc = os.path.relpath(pydir, petscdir)
+        contents = contents.replace(pydir, os.path.join('${PETSC_DIR}', pydir_from_petsc))
       contents = re.sub(
         r'^(PYTHON(_EXE)?) = (.*)$',
         r'\1 = python%d' % sys.version_info[0],
@@ -354,10 +371,23 @@ class Installer(script.Script):
         # fix shared library rpath
         rpath = shell('patchelf', '--print-rpath', shlib)
         rpath = rpath.split(os.path.pathsep)
-        if libdir in rpath:
+        if not self.relocate_py_env:
+          if libdir in rpath:
+            rpath.insert(0, '$ORIGIN')
+            while libdir in rpath:
+              rpath.remove(libdir)
+        else:
+          rpathold = rpath
+          rpath = []
+          # strip all rpath info, except for libraries in Python
+          # sys prefix, site-packages, or petsc/lib
           rpath.insert(0, '$ORIGIN')
-          while libdir in rpath:
-            rpath.remove(libdir)
+          for libdir in rpathold:
+            if libdir.startswith(pysitedir):
+              libdir_from_petsc = os.path.relpath(libdir, petsclibdir)
+              rpath.insert(0, os.path.join('$ORIGIN',libdir_from_petsc))
+          pylibdir_from_petsc = os.path.relpath(pylibdir, petsclibdir)
+          rpath.insert(0, os.path.join('$ORIGIN',pylibdir_from_petsc))
         if rpath:
           rpath = os.path.pathsep.join(rpath)
           shell('patchelf', '--set-rpath', "'%s'" % rpath, shlib)
@@ -375,7 +405,8 @@ class Installer(script.Script):
           if soname != basename:
             os.rename(basename, soname)
           if soname != liblink:
-            os.symlink(soname, liblink)
+            with open(liblink, 'w') as f:
+              f.write('INPUT(' + soname + ')\n')
         finally:
           os.chdir(curdir)
     if sys.platform == 'darwin':
@@ -465,12 +496,12 @@ for file in files:
     return
 
   def installConf(self):
-    self.copies.extend(self.copytree(self.rootConfDir, self.destConfDir, exclude = ['uncrustify.cfg','bfort-base.txt','bfort-petsc.txt','bfort-mpi.txt','test.log']))
+    self.copies.extend(self.copytree(self.rootConfDir, self.destConfDir, exclude = ['test.log']))
     self.copies.extend(self.copytree(self.archConfDir, self.destConfDir, exclude = ['sowing', 'configure.log.bkp','configure.log','make.log','gmake.log','test.log','error.log','memoryerror.log','files','testfiles','RDict.db']))
     return
 
   def installBin(self):
-    exclude = ['bfort','bib2html','doc2lt','doctext','mapnames', 'pstogif','pstoxbm','tohtml']
+    exclude = ['bib2html','doc2lt','doctext','mapnames', 'pstogif','pstoxbm','tohtml']
     self.copies.extend(self.copytree(self.archBinDir, self.destBinDir, exclude = exclude ))
     exclude = ['maint']
     if not self.mpi.usingMPIUni:
@@ -483,7 +514,9 @@ for file in files:
     return
 
   def installShare(self):
-    self.copies.extend(self.copytree(self.rootShareDir, self.destShareDir))
+    if self.argDB['no-examples']: exclude = ['datafiles']
+    else: exclude = []
+    self.copies.extend(self.copytree(self.rootShareDir, self.destShareDir, exclude=exclude))
     examplesdir=os.path.join(self.destShareDir,'petsc','examples')
     if os.path.exists(examplesdir):
       shutil.rmtree(examplesdir)
@@ -529,8 +562,7 @@ for file in files:
     from config.packages.make import getMakeUserPath
     print('''\
 ====================================
-Install complete.
-Now to check if the libraries are working do (in current directory):
+To check if the libraries are working do (in current directory):
 %s PETSC_DIR=%s PETSC_ARCH="" check
 ====================================\
 ''' % (getMakeUserPath(self.arch), self.installDir))
@@ -548,6 +580,7 @@ Before use - please copy/install over to specified prefix: %s
   def runsetup(self):
     self.setup()
     self.setupDirectories()
+    self.setupBuild()
     self.checkPrefix()
     self.checkDestdir()
     return
@@ -575,11 +608,7 @@ Before use - please copy/install over to specified prefix: %s
 
   def runfix(self):
     self.fixConf()
-    using_build_backend = any(
-      os.environ.get(prefix + '_BUILD_BACKEND')
-      for prefix in ('_PYPROJECT_HOOKS', 'PEP517')
-    )
-    if using_build_backend:
+    if self.using_build_backend:
       self.fixPythonWheel()
     return
 

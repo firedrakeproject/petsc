@@ -926,11 +926,11 @@ int main(int argc, char **argv)
   }
 
   if (user.bdIntegral) {
-    DMLabel          label;
-    PetscBdPointFunc func[1] = {bd_integral_2d};
-    PetscInt         id      = 1;
-    PetscScalar      bdInt   = 0.0;
-    PetscReal        exact   = 3.3333333333;
+    DMLabel         label;
+    PetscBdPointFn *func[1] = {bd_integral_2d};
+    PetscInt        id      = 1;
+    PetscScalar     bdInt   = 0.0;
+    PetscReal       exact   = 3.3333333333;
 
     PetscCall(DMGetLabel(dm, "marker", &label));
     PetscCall(DMPlexComputeBdIntegral(dm, u, label, 1, &id, func, &bdInt, NULL));
@@ -961,7 +961,14 @@ int main(int argc, char **argv)
   test:
     suffix: 2d_p1_1
     requires: triangle
-    args: -run_type test -bc_type dirichlet -petscspace_degree 1 -show_initial -dm_plex_print_fem 1
+    args: -run_type test -bc_type dirichlet -petscspace_degree 1 -show_initial -dm_plex_print_fem 1 -cdm_dm_plex_coordinate_dim {{2 3}}
+
+  test:
+    suffix: 2d_p1_1b
+    requires: triangle
+    args: -run_type test -bc_type dirichlet -petscspace_degree 1 -show_initial -dm_plex_print_fem 1 -dm_refine 3 -dm_coord_space 0 \
+          -dm_plex_option_phases proj_ -cdm_proj_dm_plex_coordinate_dim 3 -proj_dm_coord_space \
+          -proj_dm_coord_remap -proj_dm_coord_map sinusoid -proj_dm_coord_map_params 0.1,1.,1.
 
   test:
     suffix: 2d_p1_2
@@ -1586,21 +1593,25 @@ int main(int argc, char **argv)
     suffix: tri_p1_adapt_analytic_pragmatic
     requires: pragmatic
     args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 1 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_min 0.0001 -dm_plex_metric_h_max 0.05 -dm_adaptor pragmatic
+    output_file: output/empty.out
 
   test:
     suffix: tri_p2_adapt_analytic_pragmatic
     requires: pragmatic
     args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 2 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_min 0.0001 -dm_plex_metric_h_max 0.05 -dm_adaptor pragmatic
+    output_file: output/empty.out
 
   test:
     suffix: tri_p1_adapt_analytic_mmg
     requires: mmg
     args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 1 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_max 0.5 -dm_adaptor mmg
+    output_file: output/empty.out
 
   test:
     suffix: tri_p2_adapt_analytic_mmg
     requires: mmg
     args: -run_type exact -dm_refine 3 -bc_type dirichlet -petscspace_degree 2 -variable_coefficient cross -snes_adapt_initial 4 -adaptor_target_num 500 -dm_plex_metric_h_max 0.5 -dm_adaptor mmg
+    output_file: output/empty.out
 
   test:
     suffix: tri_p1_adapt_uniform_pragmatic
@@ -1742,7 +1753,7 @@ int main(int argc, char **argv)
   testset:
     nsize: 4
     requires: hpddm slepc !single defined(PETSC_HAVE_DYNAMIC_LIBRARIES) defined(PETSC_USE_SHARED_LIBRARIES)
-    args: -run_type full -petscpartitioner_type simple -dm_plex_box_faces 7,5 -dm_refine 2 -dm_plex_simplex 0 -bc_type dirichlet -petscspace_degree 1 -ksp_type gmres -ksp_gmres_restart 100 -pc_type hpddm -snes_monitor_short -ksp_monitor_short -snes_converged_reason ::ascii_info_detail -ksp_converged_reason -snes_view -show_solution 0 -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_threshold 0.1 -pc_hpddm_coarse_p 2 -pc_hpddm_coarse_pc_type redundant -ksp_rtol 1.e-1
+    args: -run_type full -petscpartitioner_type simple -dm_plex_box_faces 7,5 -dm_refine 2 -dm_plex_simplex 0 -bc_type dirichlet -petscspace_degree 1 -ksp_type gmres -ksp_gmres_restart 100 -pc_type hpddm -snes_monitor_short -ksp_monitor_short -snes_converged_reason ::ascii_info_detail -ksp_converged_reason -snes_view -show_solution 0 -pc_type hpddm -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_threshold_absolute 0.1 -pc_hpddm_coarse_p 2 -pc_hpddm_coarse_pc_type redundant -ksp_rtol 1.e-1
     test:
       args: -pc_hpddm_coarse_mat_type baij -options_left no
       suffix: quad_hpddm_reuse_threshold_baij
@@ -1773,7 +1784,6 @@ int main(int argc, char **argv)
           -ksp_rtol 1e-8 -pc_type mg
   test:
     suffix: 2d_p1_adaptmg_1
-    TODO: broken
     requires: triangle bamg
     args: -petscpartitioner_type simple -dm_refine_hierarchy 3 -dm_plex_box_faces 4,4 -bc_type dirichlet -petscspace_degree 1 \
           -variable_coefficient checkerboard_0 -mat_petscspace_degree 0 -div 16 -k 3 \

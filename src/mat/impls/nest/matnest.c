@@ -928,6 +928,17 @@ static PetscErrorCode MatView_Nest(Mat A, PetscViewer viewer)
   PetscFunctionBegin;
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   if (isascii) {
+    PetscViewerFormat format;
+
+    PetscCall(PetscViewerGetFormat(viewer, &format));
+    if (format == PETSC_VIEWER_ASCII_MATLAB) {
+      Mat T;
+
+      PetscCall(MatConvert(A, MATAIJ, MAT_INITIAL_MATRIX, &T));
+      PetscCall(MatView(T, viewer));
+      PetscCall(MatDestroy(&T));
+      PetscFunctionReturn(PETSC_SUCCESS);
+    }
     PetscCall(PetscOptionsGetBool(((PetscObject)A)->options, ((PetscObject)A)->prefix, "-mat_view_nest_sub", &viewSub, NULL));
     PetscCall(PetscViewerASCIIPrintf(viewer, "Matrix object:\n"));
     PetscCall(PetscViewerASCIIPushTab(viewer));
@@ -993,10 +1004,20 @@ static PetscErrorCode MatCopy_Nest(Mat A, Mat B, MatStructure str)
       PetscObjectState subnnzstate = 0;
       if (bA->m[i][j] && bB->m[i][j]) {
         PetscCall(MatCopy(bA->m[i][j], bB->m[i][j], str));
-      } else PetscCheck(!bA->m[i][j] && !bB->m[i][j], PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_INCOMP, "Matrix block does not exist at %" PetscInt_FMT ",%" PetscInt_FMT, i, j);
-      PetscCall(MatGetNonzeroState(bB->m[i][j], &subnnzstate));
-      nnzstate                 = (PetscBool)(nnzstate || bB->nnzstate[i * nc + j] != subnnzstate);
-      bB->nnzstate[i * nc + j] = subnnzstate;
+        PetscCall(MatGetNonzeroState(bB->m[i][j], &subnnzstate));
+        nnzstate                 = (PetscBool)(nnzstate || bB->nnzstate[i * nc + j] != subnnzstate);
+        bB->nnzstate[i * nc + j] = subnnzstate;
+      } else if (bA->m[i][j]) { // bB->m[i][j] is NULL
+        Mat M;
+
+        PetscCheck(str == DIFFERENT_NONZERO_PATTERN || str == UNKNOWN_NONZERO_PATTERN, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_INCOMP, "Matrix block does not exist at %" PetscInt_FMT ",%" PetscInt_FMT ". Use DIFFERENT_NONZERO_PATTERN or UNKNOWN_NONZERO_PATTERN", i, j);
+        PetscCall(MatDuplicate(bA->m[i][j], MAT_COPY_VALUES, &M));
+        PetscCall(MatNestSetSubMat(B, i, j, M));
+        PetscCall(MatDestroy(&M));
+      } else if (bB->m[i][j]) { // bA->m[i][j] is NULL
+        PetscCheck(str == DIFFERENT_NONZERO_PATTERN || str == SUBSET_NONZERO_PATTERN || str == UNKNOWN_NONZERO_PATTERN, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_INCOMP, "Matrix block does not exist at %" PetscInt_FMT ",%" PetscInt_FMT ". Use DIFFERENT_NONZERO_PATTERN, SUBSET_NONZERO_PATTERN or UNKNOWN_NONZERO_PATTERN", i, j);
+        PetscCall(MatNestSetSubMat(B, i, j, NULL));
+      }
     }
   }
   if (nnzstate) B->nonzerostate++;
@@ -1464,20 +1485,24 @@ static PetscErrorCode MatNestSetSubMats_Nest(Mat A, PetscInt nr, const IS is_row
 . is_row - index sets for each nested row block, or `NULL` to make contiguous
 . nc     - number of nested column blocks
 . is_col - index sets for each nested column block, or `NULL` to make contiguous
-- a      - array of nr*nc submatrices, or `NULL`
+- a      - array of $ nr \times nc$ submatrices, or `NULL`
 
   Level: advanced
 
   Notes:
   This always resets any block matrix information previously set.
+
   Pass `NULL` in the corresponding entry of `a` for an empty block.
 
-  In both C and Fortran, `a` must be a row-major order array containing the matrices. See
+  In both C and Fortran, `a` must be a one-dimensional array representing a two-dimensional row-major order array containing the matrices. See
   `MatCreateNest()` for an example.
+
+  Fortran Note:
+  Pass `PETSC_NULL_MAT` in the corresponding entry of `a` for an empty block
 
 .seealso: [](ch_matrices), `Mat`, `MATNEST`, `MatCreateNest()`, `MatNestSetSubMat()`, `MatNestGetSubMat()`, `MatNestGetSubMats()`
 @*/
-PetscErrorCode MatNestSetSubMats(Mat A, PetscInt nr, const IS is_row[], PetscInt nc, const IS is_col[], const Mat a[])
+PetscErrorCode MatNestSetSubMats(Mat A, PetscInt nr, const IS is_row[], PetscInt nc, const IS is_col[], const Mat a[]) PeNSS
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
@@ -1612,7 +1637,6 @@ static PetscErrorCode MatSetUp_NestIS_Private(Mat A, PetscInt nr, const IS is_ro
     /* refs on is[] are incremented */
     for (i = 0; i < vs->nr; i++) {
       PetscCall(PetscObjectReference((PetscObject)is_row[i]));
-
       vs->isglobal.row[i] = is_row[i];
     }
   } else { /* Create the ISs by inspecting sizes of a submatrix in each row */
@@ -1640,7 +1664,6 @@ static PetscErrorCode MatSetUp_NestIS_Private(Mat A, PetscInt nr, const IS is_ro
     /* refs on is[] are incremented */
     for (j = 0; j < vs->nc; j++) {
       PetscCall(PetscObjectReference((PetscObject)is_col[j]));
-
       vs->isglobal.col[j] = is_col[j];
     }
   } else { /* Create the ISs by inspecting sizes of a submatrix in each column */
@@ -1754,24 +1777,27 @@ static PetscErrorCode MatSetUp_NestIS_Private(Mat A, PetscInt nr, const IS is_ro
 . is_row - index sets for each nested row block, or `NULL` to make contiguous
 . nc     - number of nested column blocks
 . is_col - index sets for each nested column block, or `NULL` to make contiguous
-- a      - array of nr*nc submatrices, empty submatrices can be passed using `NULL`
+- a      - array of $nr \times nc$ submatrices, empty submatrices can be passed using `NULL`
 
   Output Parameter:
 . B - new matrix
 
+  Level: advanced
+
   Note:
-  In both C and Fortran, `a` must be a row-major order array holding references to the matrices.
+  In both C and Fortran, `a` must be a one-dimensional array representing a two-dimensional row-major order array holding references to the matrices.
   For instance, to represent the matrix
   $\begin{bmatrix} A_{11} & A_{12} \\ A_{21} & A_{22}\end{bmatrix}$
   one should use `Mat a[4]={A11,A12,A21,A22}`.
 
-  Level: advanced
+  Fortran Note:
+  Pass `PETSC_NULL_MAT` in the corresponding entry of `a` for an empty block
 
 .seealso: [](ch_matrices), `Mat`, `MATNEST`, `MatCreate()`, `VecCreateNest()`, `DMCreateMatrix()`, `MatNestSetSubMat()`,
           `MatNestGetSubMat()`, `MatNestGetLocalISs()`, `MatNestGetSize()`,
           `MatNestGetISs()`, `MatNestSetSubMats()`, `MatNestGetSubMats()`
 @*/
-PetscErrorCode MatCreateNest(MPI_Comm comm, PetscInt nr, const IS is_row[], PetscInt nc, const IS is_col[], const Mat a[], Mat *B)
+PetscErrorCode MatCreateNest(MPI_Comm comm, PetscInt nr, const IS is_row[], PetscInt nc, const IS is_col[], const Mat a[], Mat *B) PeNSS
 {
   PetscFunctionBegin;
   PetscCall(MatCreate(comm, B));

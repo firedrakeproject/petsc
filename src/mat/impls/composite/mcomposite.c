@@ -168,7 +168,7 @@ static PetscErrorCode MatMult_Composite(Mat mat, Vec x, Vec y)
     shell->len = tot;
 
     /* Go through matrices second time to sort off-diag columns and remove dups */
-    PetscCall(PetscMalloc1(tot, &gindices)); /* No Malloc2() since we will give one to petsc and free the other */
+    PetscCall(PetscMalloc1(tot, &gindices)); /* No Malloc2() since we will give one to PETSc and free the other */
     PetscCall(PetscMalloc1(tot, &buf));
     nuniq = 0; /* Number of unique nonzero columns */
     for (cur = shell->head; cur; cur = cur->next) {
@@ -333,7 +333,7 @@ static PetscErrorCode MatAssemblyEnd_Composite(Mat Y, MatAssemblyType t)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatSetFromOptions_Composite(Mat A, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode MatSetFromOptions_Composite(Mat A, PetscOptionItems PetscOptionsObject)
 {
   Mat_Composite *a;
 

@@ -604,7 +604,7 @@ PetscErrorCode MatPartitioningCreate(MPI_Comm comm, MatPartitioning *newp)
   part->use_edge_weights = PETSC_FALSE; /* By default we don't use edge weights */
 
   PetscCallMPI(MPI_Comm_size(comm, &size));
-  part->n    = (PetscInt)size;
+  part->n    = size;
   part->ncon = 1;
 
   *newp = part;
@@ -724,8 +724,7 @@ PetscErrorCode MatPartitioningSetType(MatPartitioning part, MatPartitioningType 
   PetscTryTypeMethod(part, destroy);
   part->ops->destroy = NULL;
 
-  part->setupcalled = 0;
-  part->data        = NULL;
+  part->data = NULL;
   PetscCall(PetscMemzero(part->ops, sizeof(struct _MatPartitioningOps)));
 
   PetscCall(PetscFunctionListFind(MatPartitioningList, type, &r));

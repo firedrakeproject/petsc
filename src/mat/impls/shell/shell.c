@@ -231,7 +231,7 @@ static PetscErrorCode MatShellGetContext_Shell(Mat mat, void *ctx)
 
   Fortran Notes:
   You must write a Fortran interface definition for this
-  function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
+  function that tells Fortran the Fortran derived data type that you are passing in as the `ctx` argument.
 
 .seealso: [](ch_matrices), `Mat`, `MATSHELL`, `MatCreateShell()`, `MatShellSetOperation()`, `MatShellSetContext()`
 @*/
@@ -837,11 +837,11 @@ set:
 .vb
   extern PetscErrorCode usersymbolic(Mat, Mat, Mat, void**);
   extern PetscErrorCode usernumeric(Mat, Mat, Mat, void*);
-  extern PetscErrorCode userdestroy(void*);
+  extern PetscErrorCode ctxdestroy(void*);
 
   MatCreateShell(comm, m, n, M, N, ctx, &A);
   MatShellSetMatProductOperation(
-    A, MATPRODUCT_AB, usersymbolic, usernumeric, userdestroy,MATSEQAIJ, MATDENSE
+    A, MATPRODUCT_AB, usersymbolic, usernumeric, ctxdestroy,MATSEQAIJ, MATDENSE
   );
   // create B of type SEQAIJ etc..
   MatProductCreate(A, B, PETSC_NULLPTR, &C);
@@ -1439,8 +1439,8 @@ static struct _MatOps MatOps_Values = {NULL,
                                        NULL,
                                        NULL,
                                        /*69*/ NULL,
-                                       NULL,
                                        MatConvert_Shell,
+                                       NULL,
                                        NULL,
                                        NULL,
                                        /*74*/ NULL,
@@ -1473,7 +1473,7 @@ static struct _MatOps MatOps_Values = {NULL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       /*104*/ NULL,
+                                       /*104*/ MatMissingDiagonal_Shell,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -1482,7 +1482,7 @@ static struct _MatOps MatOps_Values = {NULL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       MatMissingDiagonal_Shell,
+                                       MatMultHermitianTransposeAdd_Shell,
                                        /*114*/ NULL,
                                        NULL,
                                        NULL,
@@ -1491,7 +1491,7 @@ static struct _MatOps MatOps_Values = {NULL,
                                        /*119*/ NULL,
                                        NULL,
                                        NULL,
-                                       MatMultHermitianTransposeAdd_Shell,
+                                       NULL,
                                        NULL,
                                        /*124*/ NULL,
                                        NULL,
@@ -1509,19 +1509,6 @@ static struct _MatOps MatOps_Values = {NULL,
                                        NULL,
                                        NULL,
                                        /*139*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*144*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*150*/ NULL,
-                                       NULL,
-                                       NULL,
                                        NULL,
                                        NULL,
                                        NULL};
@@ -1545,12 +1532,12 @@ static PetscErrorCode MatShellSetContext_Shell(Mat mat, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatShellSetContextDestroy_Shell(Mat mat, PetscErrorCode (*f)(void *))
+static PetscErrorCode MatShellSetContextDestroy_Shell(Mat mat, PetscCtxDestroyFn *f)
 {
   Mat_Shell *shell = (Mat_Shell *)mat->data;
 
   PetscFunctionBegin;
-  if (shell->ctxcontainer) PetscCall(PetscContainerSetUserDestroy(shell->ctxcontainer, f));
+  if (shell->ctxcontainer) PetscCall(PetscContainerSetCtxDestroy(shell->ctxcontainer, f));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1561,7 +1548,7 @@ PetscErrorCode MatShellSetContext_Immutable(Mat mat, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MatShellSetContextDestroy_Immutable(Mat mat, PetscErrorCode (*f)(void *))
+PetscErrorCode MatShellSetContextDestroy_Immutable(Mat mat, PetscCtxDestroyFn *f)
 {
   PetscFunctionBegin;
   SETERRQ(PetscObjectComm((PetscObject)mat), PETSC_ERR_ARG_WRONGSTATE, "Cannot call MatShellSetContextDestroy() for a %s, it is used internally by the structure", ((PetscObject)mat)->type_name);
@@ -1751,11 +1738,18 @@ static PetscErrorCode MatShellGetOperation_Shell(Mat mat, MatOperation op, void 
 }
 
 /*MC
-   MATSHELL - MATSHELL = "shell" - A matrix type to be used to define your own matrix type -- perhaps matrix-free.
+  MATSHELL - MATSHELL = "shell" - A matrix type to be used to define your own matrix type with its own data structure -- perhaps matrix-free.
 
   Level: advanced
 
-.seealso: [](ch_matrices), `Mat`, `MatCreateShell()`
+  Notes:
+  See `MatCreateShell()` for details on the usage of `MATSHELL`
+
+  `PCSHELL` can be used in conjunction with `MATSHELL` to provide a custom preconditioner appropriate for your `MATSHELL`. Since
+  many standard preconditioners such as `PCILU` depend on having an explicit representation of the matrix entries they cannot be used
+  directly with `MATSHELL`.
+
+.seealso: [](ch_matrices), `Mat`, `MatCreateShell()`, `PCSHELL`
 M*/
 
 PETSC_EXTERN PetscErrorCode MatCreate_Shell(Mat A)
@@ -1789,7 +1783,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_Shell(Mat A)
 
 /*@C
   MatCreateShell - Creates a new matrix of `MatType` `MATSHELL` for use with a user-defined
-  private data storage format.
+  private matrix data storage format.
 
   Collective
 
@@ -1812,14 +1806,15 @@ PETSC_EXTERN PetscErrorCode MatCreate_Shell(Mat A)
 
   MatCreateShell(comm, m, n, M, N, ctx, &mat);
   MatShellSetOperation(mat, MATOP_MULT, (void(*)(void))mult);
+  MatShellSetContext(mat,ctx);
   // Use matrix for operations that have been set
   MatDestroy(mat);
 .ve
 
   Notes:
-  The shell matrix type is intended to provide a simple class to use
-  with `KSP` (such as, for use with matrix-free methods). You should not
-  use the shell type if you plan to define a complete matrix class.
+  The shell matrix type is intended to provide a simple way for users to write a custom matrix specifically for their application.
+
+  `MatCreateShell()` is used in conjunction with `MatShellSetContext()` and `MatShellSetOperation()`.
 
   PETSc requires that matrices and vectors being used for certain
   operations are partitioned accordingly.  For example, when
@@ -1869,7 +1864,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_Shell(Mat A)
   an update in the preconditioner you must call `MatAssemblyBegin()` and `MatAssemblyEnd()` or `PetscObjectStateIncrease`((`PetscObject`)mat);
   each time the `MATSHELL` matrix has changed.
 
-  Matrix product operations (i.e. `MatMat()`, `MatTransposeMat()` etc) can be specified using `MatShellSetMatProductOperation()`
+  Matrix-matrix product operations can be specified using `MatShellSetMatProductOperation()`
 
   Calling `MatAssemblyBegin()`/`MatAssemblyEnd()` on a `MATSHELL` removes any previously supplied shift and scales that were provided
   with `MatDiagonalSet()`, `MatShift()`, `MatScale()`, or `MatDiagonalScale()`.
@@ -1903,6 +1898,10 @@ PetscErrorCode MatCreateShell(MPI_Comm comm, PetscInt m, PetscInt n, PetscInt M,
 
   Level: advanced
 
+  Note:
+  This provides an easy way, along with `MatCreateShell()` and `MatShellSetOperation()` to provide a custom matrix format
+  specifically for your application.
+
   Fortran Notes:
   You must write a Fortran interface definition for this
   function that tells Fortran the Fortran derived data type that you are passing in as the `ctx` argument.
@@ -1924,7 +1923,7 @@ PetscErrorCode MatShellSetContext(Mat mat, void *ctx)
 
   Input Parameters:
 + mat - the shell matrix
-- f   - the context destroy function
+- f   - the context destroy function, see `PetscCtxDestroyFn` for calling sequence
 
   Level: advanced
 
@@ -1934,13 +1933,14 @@ PetscErrorCode MatShellSetContext(Mat mat, void *ctx)
   ensures proper reference counting for the user provided context data in the case that
   the `MATSHELL` is duplicated.
 
-.seealso: [](ch_matrices), `Mat`, `MATSHELL`, `MatCreateShell()`, `MatShellSetContext()`
+.seealso: [](ch_matrices), `Mat`, `MATSHELL`, `MatCreateShell()`, `MatShellSetContext()`,
+          `PetscCtxDestroyFn`
 @*/
-PetscErrorCode MatShellSetContextDestroy(Mat mat, PetscErrorCode (*f)(void *))
+PetscErrorCode MatShellSetContextDestroy(Mat mat, PetscCtxDestroyFn *f)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
-  PetscTryMethod(mat, "MatShellSetContextDestroy_C", (Mat, PetscErrorCode (*)(void *)), (mat, f));
+  PetscTryMethod(mat, "MatShellSetContextDestroy_C", (Mat, PetscCtxDestroyFn *), (mat, f));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2182,7 +2182,9 @@ PetscErrorCode MatShellTestMultTranspose(Mat mat, PetscErrorCode (*f)(void *, Ve
   sequence as the usual matrix interface routines, since they
   are intended to be accessed via the usual matrix interface
   routines, e.g.,
-$       MatMult(Mat, Vec, Vec) -> usermult(Mat, Vec, Vec)
+.vb
+  MatMult(Mat, Vec, Vec) -> usermult(Mat, Vec, Vec)
+.ve
 
   In particular each function MUST return an error code of 0 on success and
   nonzero on failure.
@@ -2194,7 +2196,7 @@ $       MatMult(Mat, Vec, Vec) -> usermult(Mat, Vec, Vec)
   Use `MatSetOperation()` to set an operation for any matrix type. For matrix product operations (i.e. `MatMatXXX()`, `MatTransposeMatXXX()` etc)
   use `MatShellSetMatProductOperation()`
 
-  Fortran Notes:
+  Fortran Note:
   For `MatCreateVecs()` the user code should check if the input left or right matrix is -1 and in that case not
   generate a matrix. See src/mat/tests/ex120f.F
 
@@ -2232,7 +2234,9 @@ PetscErrorCode MatShellSetOperation(Mat mat, MatOperation op, void (*g)(void))
   sequence as the usual matrix interface routines, since they
   are intended to be accessed via the usual matrix interface
   routines, e.g.,
-$       MatMult(Mat, Vec, Vec) -> usermult(Mat, Vec, Vec)
+.vb
+  MatMult(Mat, Vec, Vec) -> usermult(Mat, Vec, Vec)
+.ve
 
   Within each user-defined routine, the user should call
   `MatShellGetContext()` to obtain the user-defined context that was

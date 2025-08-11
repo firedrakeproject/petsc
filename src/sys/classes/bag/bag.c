@@ -70,7 +70,7 @@ PetscErrorCode PetscBagRegisterEnum(PetscBag bag, void *addr, const char *const 
   PetscCheck(item->offset <= bag->bagsize, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Registered item %s %s is not in bag memory space", name, help);
   item->next  = NULL;
   item->msize = 1;
-  PetscCall(PetscStrArrayallocpy(list, (char ***)&item->list));
+  PetscCall(PetscStrArrayallocpy(list, &item->list));
   *(PetscEnum *)addr = mdefault;
   PetscCall(PetscBagRegister_Private(bag, item, name, help));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -248,17 +248,19 @@ PetscErrorCode PetscBagRegisterInt64(PetscBag bag, void *addr, PetscInt64 mdefau
   PetscBagItem item;
   char         nname[PETSC_BAG_NAME_LENGTH + 1];
   PetscBool    printhelp;
-  PetscInt     odefault = (PetscInt)mdefault;
+  PetscInt     odefault;
   PetscBool    flg;
 
   PetscFunctionBegin;
   nname[0] = '-';
   nname[1] = 0;
+
+  PetscCall(PetscIntCast(mdefault, &odefault));
   PetscCall(PetscStrlcat(nname, name, PETSC_BAG_NAME_LENGTH));
   PetscCall(PetscOptionsHasHelp(NULL, &printhelp));
   if (printhelp) PetscCall((*PetscHelpPrintf)(bag->bagcomm, "  -%s%s <%" PetscInt_FMT ">: %s \n", bag->bagprefix ? bag->bagprefix : "", name, odefault, help));
   PetscCall(PetscOptionsGetInt(NULL, bag->bagprefix, nname, &odefault, &flg));
-  if (flg) mdefault = (PetscInt64)odefault;
+  if (flg) mdefault = odefault;
 
   PetscCall(PetscNew(&item));
   item->dtype  = PETSC_INT;
@@ -344,7 +346,7 @@ PetscErrorCode PetscBagRegisterBoolArray(PetscBag bag, void *addr, PetscInt msiz
           `PetscBagRegisterInt()`, `PetscBagRegisterBool()`, `PetscBagRegisterScalar()`
           `PetscBagSetFromOptions()`, `PetscBagCreate()`, `PetscBagGetName()`, `PetscBagRegisterEnum()`
 @*/
-PetscErrorCode PetscBagRegisterString(PetscBag bag, void *addr, PetscInt msize, const char *mdefault, const char *name, const char *help)
+PetscErrorCode PetscBagRegisterString(PetscBag bag, void *addr, PetscInt msize, const char *mdefault, const char *name, const char *help) PeNS
 {
   PetscBagItem item;
   char         nname[PETSC_BAG_NAME_LENGTH + 1];
@@ -497,8 +499,6 @@ PetscErrorCode PetscBagRegisterBool(PetscBag bag, void *addr, PetscBool mdefault
   PetscAssertPointer(addr, 2);
   PetscAssertPointer(name, 4);
   PetscAssertPointer(help, 5);
-  /* the checks here with != PETSC_FALSE and PETSC_TRUE is a special case; here we truly demand that the value be 0 or 1 */
-  PetscCheck(mdefault == PETSC_FALSE || mdefault == PETSC_TRUE, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Boolean %s %s must be boolean; integer value %d", name, help, (int)mdefault);
   nname[0] = '-';
   nname[1] = 0;
   PetscCall(PetscStrlcat(nname, name, PETSC_BAG_NAME_LENGTH));
@@ -585,7 +585,7 @@ PetscErrorCode PetscBagSetFromOptions(PetscBag bag)
     name[1] = 0;
     PetscCall(PetscStrlcat(name, nitem->name, sizeof(name)));
     if (nitem->dtype == PETSC_CHAR) { /* special handling for fortran required? [due to space padding vs null termination] */
-      char *value = (char *)(((char *)bag) + nitem->offset);
+      char *value = ((char *)bag) + nitem->offset;
       PetscCall(PetscOptionsString(name, nitem->help, "", value, value, nitem->msize, NULL));
     } else if (nitem->dtype == PETSC_REAL) {
       PetscReal *value = (PetscReal *)(((char *)bag) + nitem->offset);
@@ -663,7 +663,7 @@ PetscErrorCode PetscBagView(PetscBag bag, PetscViewer view)
     }
     while (nitem) {
       if (nitem->dtype == PETSC_CHAR) {
-        char *value             = (char *)(((char *)bag) + nitem->offset);
+        char *value             = ((char *)bag) + nitem->offset;
         char  tmp               = value[nitem->msize - 1]; /* special handling for fortran chars without null terminator */
         value[nitem->msize - 1] = 0;
         PetscCall(PetscViewerASCIIPrintf(view, "  %s = %s; %s\n", nitem->name, value, nitem->help));
@@ -827,7 +827,7 @@ PetscErrorCode PetscBagLoad(PetscViewer view, PetscBag bag)
   PetscCheck(classid == PETSC_BAG_FILE_CLASSID, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Not PetscBag next in binary file");
   PetscCall(PetscViewerBinaryRead(view, &deprecatedbagsize, 1, NULL, PETSC_INT));
   PetscCall(PetscViewerBinaryRead(view, &bagcount, 1, NULL, PETSC_INT));
-  PetscCheck(bagcount == bag->count, comm, PETSC_ERR_ARG_INCOMP, "Bag in file has different number of entries %d then passed in bag %d", (int)bagcount, (int)bag->count);
+  PetscCheck(bagcount == bag->count, comm, PETSC_ERR_ARG_INCOMP, "Bag in file has different number of entries %" PetscInt_FMT " then passed in bag %" PetscInt_FMT, bagcount, bag->count);
   PetscCall(PetscViewerBinaryRead(view, bag->bagname, PETSC_BAG_NAME_LENGTH, NULL, PETSC_CHAR));
   PetscCall(PetscViewerBinaryRead(view, bag->baghelp, PETSC_BAG_HELP_LENGTH, NULL, PETSC_CHAR));
 
@@ -869,7 +869,7 @@ PetscErrorCode PetscBagLoad(PetscViewer view, PetscBag bag)
 
   Input Parameters:
 + comm    - communicator to share bag
-- bagsize - size of the C structure holding the values, for example sizeof(mystruct)
+- bagsize - size of the C structure holding the values, for example `sizeof(mystruct)`
 
   Output Parameter:
 . bag - the bag of values
@@ -919,7 +919,7 @@ PetscErrorCode PetscBagCreate(MPI_Comm comm, size_t bagsize, PetscBag *bag)
           `PetscBagRegisterReal()`, `PetscBagRegisterInt()`, `PetscBagRegisterBool()`, `PetscBagRegisterScalar()`
           `PetscBagSetFromOptions()`, `PetscBagCreate()`, `PetscBagDestroy()`, `PetscBagRegisterEnum()`
 @*/
-PetscErrorCode PetscBagSetName(PetscBag bag, const char *name, const char *help)
+PetscErrorCode PetscBagSetName(PetscBag bag, const char name[], const char help[])
 {
   PetscFunctionBegin;
   PetscAssertPointer(bag, 1);
@@ -967,7 +967,7 @@ PetscErrorCode PetscBagGetName(PetscBag bag, const char **name)
 
   Output Parameter:
 . data - pointer to memory that will have user-data-structure, this can be cast to a pointer of the type the C struct used in
-    defining the bag
+         defining the bag
 
   Level: intermediate
 
@@ -975,12 +975,12 @@ PetscErrorCode PetscBagGetName(PetscBag bag, const char **name)
           `PetscBagRegisterReal()`, `PetscBagRegisterInt()`, `PetscBagRegisterBool()`, `PetscBagRegisterScalar()`
           `PetscBagSetFromOptions()`, `PetscBagCreate()`, `PetscBagDestroy()`, `PetscBagRegisterEnum()`
 @*/
-PetscErrorCode PetscBagGetData(PetscBag bag, void **data)
+PetscErrorCode PetscBagGetData(PetscBag bag, PeCtx data)
 {
   PetscFunctionBegin;
   PetscAssertPointer(bag, 1);
   PetscAssertPointer(data, 2);
-  *data = bag->structlocation;
+  *(void **)data = bag->structlocation;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1024,7 +1024,7 @@ PetscErrorCode PetscBagSetOptionsPrefix(PetscBag bag, const char pre[])
 . bag - the bag of values
 
   Output Parameter:
-. names - array of char pointers for names
+. names - pass in an array of char pointers to hold the names. The array must be as long as the number of items in the bag.
 
   Level: intermediate
 

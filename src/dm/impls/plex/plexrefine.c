@@ -49,7 +49,7 @@ PetscErrorCode DMPlexCreateProcessSF(DM dm, PetscSF sfPoint, IS *processRanks, P
     ranksNew[l]              = ranks[l];
     localPointsNew[l]        = l;
     remotePointsNew[l].index = 0;
-    remotePointsNew[l].rank  = (PetscMPIInt)ranksNew[l];
+    remotePointsNew[l].rank  = ranksNew[l];
   }
   PetscCall(PetscFree(ranks));
   if (processRanks) PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)dm), numLeaves, ranksNew, PETSC_OWN_POINTER, processRanks));
@@ -102,7 +102,7 @@ PetscErrorCode DMPlexCreateCoarsePointIS(DM dm, IS *fpointIS)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMPlexSetTransformType - Set the transform type for uniform refinement
 
   Input Parameters:
@@ -146,6 +146,51 @@ PetscErrorCode DMPlexGetTransformType(DM dm, DMPlexTransformType *type)
   PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
   PetscAssertPointer(type, 2);
   *type = mesh->transformType;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode DMPlexSetTransform(DM dm, DMPlexTransform tr)
+{
+  DM_Plex *mesh = (DM_Plex *)dm->data;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
+  if (tr) PetscValidHeaderSpecific(tr, DMPLEXTRANSFORM_CLASSID, 2);
+  PetscCall(PetscObjectReference((PetscObject)tr));
+  PetscCall(DMPlexTransformDestroy(&mesh->transform));
+  mesh->transform = tr;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode DMPlexGetTransform(DM dm, DMPlexTransform *tr)
+{
+  DM_Plex *mesh = (DM_Plex *)dm->data;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
+  PetscAssertPointer(tr, 2);
+  *tr = mesh->transform;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode DMPlexSetSaveTransform(DM dm, PetscBool save)
+{
+  DM_Plex *mesh = (DM_Plex *)dm->data;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
+  mesh->saveTransform = save;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode DMPlexGetSaveTransform(DM dm, PetscBool *save)
+{
+  DM_Plex *mesh = (DM_Plex *)dm->data;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecificType(dm, DM_CLASSID, 1, DMPLEX);
+  PetscAssertPointer(save, 2);
+  *save = mesh->saveTransform;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -307,8 +352,7 @@ PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm)
     const char         *prefix;
     PetscOptions        options;
     PetscInt            cDegree;
-    PetscBool           useCeed, flg;
-    char                name[PETSC_MAX_PATH_LEN];
+    PetscBool           useCeed, save;
 
     PetscCall(DMPlexTransformCreate(PetscObjectComm((PetscObject)dm), &tr));
     PetscCall(DMPlexTransformSetDM(tr, dm));
@@ -320,16 +364,6 @@ PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm)
     PetscCall(PetscObjectSetOptions((PetscObject)tr, options));
     PetscCall(DMPlexTransformSetFromOptions(tr));
     PetscCall(PetscObjectSetOptions((PetscObject)tr, NULL));
-    PetscCall(PetscOptionsGetString(options, prefix, "-dm_plex_transform_active", name, PETSC_MAX_PATH_LEN, &flg));
-    if (flg) {
-      PetscCall(DMHasLabel(dm, name, &flg));
-      if (flg) {
-        DMLabel active;
-
-        PetscCall(DMGetLabel(dm, name, &active));
-        PetscCall(DMPlexTransformSetActive(tr, active));
-      }
-    }
     PetscCall(DMPlexTransformSetUp(tr));
     PetscCall(PetscObjectViewFromOptions((PetscObject)tr, NULL, "-dm_plex_transform_view"));
     PetscCall(DMPlexTransformApply(tr, dm, rdm));
@@ -341,11 +375,14 @@ PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm)
     PetscCall(DMGetCoordinateDM(dm, &cdm));
     PetscCall(DMGetCoordinateDM(*rdm, &rcdm));
     PetscCall(DMGetCoordinateDegree_Internal(dm, &cDegree));
-    if (cDegree <= 1) {
-      PetscCall(DMCopyDisc(cdm, rcdm));
-    } else {
-      PetscCall(DMPlexCreateCoordinateSpace(*rdm, cDegree, PETSC_TRUE, NULL));
+    {
+      PetscDS cds, rcds;
+
+      PetscCall(DMPlexCreateCoordinateSpace(*rdm, cDegree, PETSC_FALSE, PETSC_TRUE));
       PetscCall(DMGetCoordinateDM(*rdm, &rcdm));
+      PetscCall(DMGetDS(cdm, &cds));
+      PetscCall(DMGetDS(rcdm, &rcds));
+      PetscCall(PetscDSCopyConstants(cds, rcds));
     }
     PetscCall(DMPlexGetUseCeed(cdm, &useCeed));
     PetscCall(DMPlexSetUseCeed(rcdm, useCeed));
@@ -354,6 +391,8 @@ PetscErrorCode DMRefine_Plex(DM dm, MPI_Comm comm, DM *rdm)
       PetscCall(DMUseTensorOrder(rcdm, PETSC_TRUE));
     }
     PetscCall(DMPlexTransformCreateDiscLabels(tr, *rdm));
+    PetscCall(DMPlexGetSaveTransform(dm, &save));
+    if (save) PetscCall(DMPlexSetTransform(*rdm, tr));
     PetscCall(DMPlexTransformDestroy(&tr));
   } else {
     PetscCall(DMPlexRefine_Internal(dm, NULL, NULL, NULL, rdm));

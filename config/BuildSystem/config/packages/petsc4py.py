@@ -20,12 +20,16 @@ class Configure(config.package.Package):
     return
 
   def __str__(self):
-    if self.found: return 'petsc4py:\n  PYTHONPATH: '+self.petsc4pypythonpath+'\n'
+    if self.found:
+      s = 'petsc4py:\n'
+      if hasattr(self,'pythonpath'):
+        s += '  PYTHONPATH: '+self.pythonpath+'\n'
+      return s
     return ''
 
   def setupDependencies(self, framework):
     config.package.Package.setupDependencies(self, framework)
-    self.python          = framework.require('config.packages.python',self)
+    self.python          = framework.require('config.packages.Python',self)
     self.setCompilers    = framework.require('config.setCompilers',self)
     self.sharedLibraries = framework.require('PETSc.options.sharedLibraries', self)
     self.installdir      = framework.require('PETSc.options.installDir',self)
@@ -57,12 +61,9 @@ class Configure(config.package.Package):
     # if DESTDIR is non-empty, then PETSc has been installed into staging dir
     # if prefix has been specified at config time, path to PETSc includes that prefix
     if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
-      newdir = 'PETSC_DIR=${DESTDIR}'+os.path.abspath(os.path.expanduser(self.argDB['prefix'])) + \
-              ' PETSC_ARCH= '
+      newdir = 'PETSC_DIR=${DESTDIR}' + os.path.abspath(os.path.expanduser(self.argDB['prefix'])) + ' PETSC_ARCH= '
     else:
       newdir = ''
-
-    newdir += 'MPICC=${PCC} '
 
     # Pass to setup.py if given, otherwise setup.py will autodetect
     numpy_include = self.argDB.get('with-numpy-include')
@@ -72,30 +73,17 @@ class Configure(config.package.Package):
     self.addDefine('HAVE_PETSC4PY',1)
     self.addDefine('PETSC4PY_INSTALL_PATH','"'+os.path.join(self.installdir.dir,'lib')+'"')
     self.addMakeMacro('PETSC4PY','yes')
-    self.addMakeRule('petsc4pybuild','', \
-                       ['@echo "*** Building petsc4py ***"',\
-                          '@${RM} ${PETSC_ARCH}/lib/petsc/conf/petsc4py.errorflg',\
-                          '@(cd '+self.packageDir+' && ${RM} -rf build && \\\n\
-           '+newdir+archflags+self.python.pyexe+' setup.py build ) || \\\n\
-             (echo "**************************ERROR*************************************" && \\\n\
-             echo "Error building petsc4py." && \\\n\
-             echo "********************************************************************" && \\\n\
-             touch ${PETSC_ARCH}/lib/petsc/conf/petsc4py.errorflg && \\\n\
-             exit 1)'])
-    self.addMakeRule('petsc4pyinstall','', \
-                       ['@echo "*** Installing petsc4py ***"',\
-                          '@(MPICC=${PCC} && export MPICC && cd '+self.packageDir+' && \\\n\
-           '+newdir+archflags+self.python.pyexe+' setup.py install --install-lib='+installLibPath+' \\\n\
-               $(if $(DESTDIR),--root=\'$(DESTDIR)\') ) || \\\n\
-             (echo "**************************ERROR*************************************" && \\\n\
-             echo "Error installing petsc4py." && \\\n\
-             echo "********************************************************************" && \\\n\
-             exit 1)',\
-                          '@echo "====================================="',\
-                          '@echo "To use petsc4py, add '+installLibPath+' to PYTHONPATH"',\
-                          '@echo "====================================="'])
-
-    self.petsc4pypythonpath = installLibPath
+    cflags = ''
+    # by default, multiple flags are added by setup.py (-DNDEBUG -O3 -g), no matter the type of PETSc build
+    # this is problematic with Intel compilers, which take extremely long to compile bindings when using -g
+    # so we instead force no additional flags (other than the ones already used by PETSc, i.e., CFLAGS)
+    # TODO FIXME: this observation was made with Intel(R) oneAPI DPC++/C++ Compiler 2025.1.0 (2025.1.0.20250317), but it may be fixed in a subsequent release
+    if config.setCompilers.Configure.isIntel(self.getCompiler(), self.log):
+      cflags = 'CFLAGS=\'\' '
+    self.addPost(self.packageDir, ['${RM} -rf build',
+                                   newdir + archflags + cflags + self.python.pyexe + ' setup.py build',
+                                   'MPICC=${PCC} ' + newdir + archflags + self.python.pyexe +' setup.py install --install-lib=' + installLibPath + ' $(if $(DESTDIR),--root=\'$(DESTDIR)\')'])
+    self.pythonpath = installLibPath
     np = self.make.make_test_np
     if self.mpi.usingMPIUni:
       np = 1
@@ -104,28 +92,17 @@ class Configure(config.package.Package):
     if 'with-petsc4py-test-np' in self.argDB and self.argDB['with-petsc4py-test-np']:
       np = self.argDB['with-petsc4py-test-np']
     self.addMakeMacro('PETSC4PY_NP',np)
-    self.addMakeRule('petsc4pytest', '',
-        ['@echo "*** Testing petsc4py on ${PETSC4PY_NP} processes ***"',
-         '@PYTHONPATH=%s:${PETSC_MPI4PY_PYTHONPATH}:${PYTHONPATH} PETSC_OPTIONS="%s" ${MPIEXEC} -n ${PETSC4PY_NP} %s %s --verbose' % \
-             (installLibPath, '${PETSC_OPTIONS} -check_pointer_intensity 0 -error_output_stdout -malloc_dump ${PETSC_TEST_OPTIONS}', self.python.pyexe, os.path.join(self.packageDir, 'test', 'runtests.py')),
-         '@echo "====================================="'])
-
-    if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
-      self.addMakeRule('petsc4py-build','')
-      # the build must be done at install time because PETSc shared libraries must be in final location before building petsc4py
-      self.addMakeRule('petsc4py-install','petsc4pybuild petsc4pyinstall')
-    else:
-      self.addMakeRule('petsc4py-build','petsc4pybuild petsc4pyinstall')
-      self.addMakeRule('petsc4py-install','')
+    self.addTest('.', 'PYTHONPATH=%s:${PETSCPYTHONPATH} PETSC_OPTIONS="%s" ${MPIEXEC} -n ${PETSC4PY_NP} %s %s --verbose' % (installLibPath, '${PETSC_OPTIONS} -check_pointer_intensity 0 -error_output_stdout -malloc_dump ${PETSC_TEST_OPTIONS}', self.python.pyexe, os.path.join(self.packageDir, 'test', 'runtests.py')))
     self.found = True
+    self.python.path.add(installLibPath)
     return self.installDir
 
   def configureLibrary(self):
     import sys
     if not self.sharedLibraries.useShared and not self.setCompilers.isCygwin(self.log):
       raise RuntimeError('petsc4py requires PETSc be built with shared libraries; rerun with --with-shared-libraries')
-    if sys.version_info < (3, 7):
-      raise RuntimeError('petsc4py requires Python 3.7 at least')
+    if sys.version_info < (3, 6):
+      raise RuntimeError('petsc4py requires Python 3.6 at least')
     chkpkgs = ['numpy']
     if sys.version_info >= (3, 12):
       chkpkgs.append('setuptools')
@@ -139,8 +116,6 @@ class Configure(config.package.Package):
     self.getInstallDir()
 
   def alternateConfigureLibrary(self):
-    '''Adds rules for building petsc4py to PETSc makefiles'''
-    self.addMakeRule('petsc4py-build','')
-    self.addMakeRule('petsc4py-install','')
+    '''This is ugly but currently .gitlab-ci.yml is hardwired to use petsc4pytest'''
     self.addMakeRule('petsc4pytest','')
 

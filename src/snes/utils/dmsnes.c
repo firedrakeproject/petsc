@@ -325,20 +325,20 @@ PetscErrorCode DMSNESSetFunction(DM dm, SNESFunctionFn *f, void *ctx)
 
   Input Parameters:
 + dm - `DM` to be used with `SNES`
-- f  - residual evaluation context destroy function
+- f  - residual evaluation context destroy function, see `PetscCtxDestroyFn` for its calling sequence
 
   Level: developer
 
-.seealso: [](ch_snes), `DMSNES`, `DMSNESSetFunction()`, `SNESSetFunction()`
+.seealso: [](ch_snes), `DMSNES`, `DMSNESSetFunction()`, `SNESSetFunction()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode DMSNESSetFunctionContextDestroy(DM dm, PetscErrorCode (*f)(void *))
+PetscErrorCode DMSNESSetFunctionContextDestroy(DM dm, PetscCtxDestroyFn *f)
 {
   DMSNES sdm;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(DMGetDMSNESWrite(dm, &sdm));
-  if (sdm->functionctxcontainer) PetscCall(PetscContainerSetUserDestroy(sdm->functionctxcontainer, f));
+  if (sdm->functionctxcontainer) PetscCall(PetscContainerSetCtxDestroy(sdm->functionctxcontainer, f));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -368,7 +368,7 @@ PetscErrorCode DMSNESUnsetFunctionContext_Internal(DM dm)
   Note:
   If not provided then the function provided with `SNESSetFunction()` is used
 
-.seealso: [](ch_snes), `DMSNES`, `DMSNESSetContext()`, `SNESSetFunction()`, `DMSNESSetJacobian()`, `SNESFunction`, `DMSNESSetFunction()`, `SNESFunctionFn`
+.seealso: [](ch_snes), `DMSNES`, `DMSNESSetContext()`, `SNESSetFunction()`, `DMSNESSetJacobian()`, `DMSNESSetFunction()`, `SNESFunctionFn`
 @*/
 PetscErrorCode DMSNESSetMFFunction(DM dm, SNESFunctionFn *func, void *ctx)
 {
@@ -593,20 +593,20 @@ PetscErrorCode DMSNESSetJacobian(DM dm, SNESJacobianFn *J, void *ctx)
 
   Input Parameters:
 + dm - `DM` to be used with `SNES`
-- f  - Jacobian evaluation context destroy function
+- f  - Jacobian evaluation context destroy function, see `PetscCtxDestroyFn` for its calling sequence
 
   Level: developer
 
 .seealso: [](ch_snes), `DMSNES`, `DMSNESSetJacobian()`
 @*/
-PetscErrorCode DMSNESSetJacobianContextDestroy(DM dm, PetscErrorCode (*f)(void *))
+PetscErrorCode DMSNESSetJacobianContextDestroy(DM dm, PetscCtxDestroyFn *f)
 {
   DMSNES sdm;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(DMGetDMSNESWrite(dm, &sdm));
-  if (sdm->jacobianctxcontainer) PetscCall(PetscContainerSetUserDestroy(sdm->jacobianctxcontainer, f));
+  if (sdm->jacobianctxcontainer) PetscCall(PetscContainerSetCtxDestroy(sdm->jacobianctxcontainer, f));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

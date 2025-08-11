@@ -1,4 +1,4 @@
-static char help[] = "Illustrate how to do one symbolic factorization and multiple numeric factorizations using same matrix structure. \n\n";
+static char help[] = "Illustrate how to do one symbolic factorization and multiple numeric factorizations using same matrix nonzero structure. \n\n";
 
 #include <petscmat.h>
 
@@ -62,9 +62,7 @@ int main(int argc, char **args)
 
   PetscCall(MatGetFactor(A[0], solvertype, facttype, &F));
   /* test mumps options */
-#if defined(PETSC_HAVE_MUMPS)
   PetscCall(MatMumpsSetIcntl(F, 7, 5));
-#endif
   PetscCall(PetscStrncpy(factortype, MatFactorTypes[facttype], sizeof(factortype)));
   PetscCall(PetscStrtoupper(solvertype));
   PetscCall(PetscStrtoupper(factortype));

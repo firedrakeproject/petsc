@@ -4,7 +4,7 @@ import os
 class Configure(config.package.GNUPackage):
   def __init__(self, framework):
     config.package.GNUPackage.__init__(self, framework)
-    self.version          = '4.2.3'
+    self.version          = '4.3.1'
     self.download         = ['https://github.com/pmodels/mpich/releases/download/v'+self.version+'/mpich-'+self.version+'.tar.gz',
                              'https://www.mpich.org/static/downloads/'+self.version+'/mpich-'+self.version+'.tar.gz', # does not always work from Python? So add in web.cels URL below
                              'https://web.cels.anl.gov/projects/petsc/download/externalpackages'+'/mpich-'+self.version+'.tar.gz']
@@ -14,16 +14,16 @@ class Configure(config.package.GNUPackage):
     self.gitsubmodules    = ['.']
     self.downloaddirnames = ['mpich']
     self.skippackagewithoptions = 1
-    self.isMPI = 1
+    self.skipMPIDependency      = 1
     return
 
   def setupDependencies(self, framework):
     config.package.GNUPackage.setupDependencies(self, framework)
     self.compilerFlags   = framework.require('config.compilerFlags',self)
-    self.cuda            = framework.require('config.packages.cuda',self)
-    self.hip             = framework.require('config.packages.hip',self)
+    self.cuda            = framework.require('config.packages.CUDA',self)
+    self.hip             = framework.require('config.packages.HIP',self)
     self.hwloc           = framework.require('config.packages.hwloc',self)
-    self.python          = framework.require('config.packages.python',self)
+    self.python          = framework.require('config.packages.Python',self)
     self.odeps           = [self.cuda, self.hip, self.hwloc]
     return
 
@@ -75,6 +75,8 @@ class Configure(config.package.GNUPackage):
     else:
       mpich_device = 'ch3:nemesis'
     if self.cuda.found:
+      if not hasattr(self.cuda, 'cudaDir'):
+        raise RuntimeError('CUDA directory not detected! Mail configure.log to petsc-maint@mcs.anl.gov.')
       args.append('--with-cuda='+self.cuda.cudaDir)
       if hasattr(self.cuda,'cudaArch'): # MPICH's default to --with-cuda-sm=XX is 'auto', to auto-detect the arch of the visible GPUs (similar to our `native`).
         if self.cuda.cudaArch == 'all':

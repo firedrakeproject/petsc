@@ -15,7 +15,7 @@ PetscErrorCode PCMGMCycle_Private(PC pc, PC_MG_Levels **mglevelsin, PetscBool tr
 {
   PC_MG        *mg = (PC_MG *)pc->data;
   PC_MG_Levels *mgc, *mglevels = *mglevelsin;
-  PetscInt      cycles = (mglevels->level == 1) ? 1 : (PetscInt)mglevels->cycles;
+  PetscInt      cycles = (mglevels->level == 1) ? 1 : mglevels->cycles;
 
   PetscFunctionBegin;
   if (mglevels->eventsmoothsolve) PetscCall(PetscLogEventBegin(mglevels->eventsmoothsolve, 0, 0, 0, 0));
@@ -104,11 +104,14 @@ PetscErrorCode PCMGMCycle_Private(PC pc, PC_MG_Levels **mglevelsin, PetscBool tr
       PetscCall(KSPCheckSolve(mglevels->smoothd, pc, mglevels->x));
     }
     if (mglevels->cr) {
+      Mat crA;
+
       PetscCheck(!matapp, PetscObjectComm((PetscObject)pc), PETSC_ERR_SUP, "Not supported");
       /* TODO Turn on copy and turn off noisy if we have an exact solution
       PetscCall(VecCopy(mglevels->x, mglevels->crx));
       PetscCall(VecCopy(mglevels->b, mglevels->crb)); */
-      PetscCall(KSPSetNoisy_Private(mglevels->crx));
+      PetscCall(KSPGetOperators(mglevels->cr, &crA, NULL));
+      PetscCall(KSPSetNoisy_Private(crA, mglevels->crx));
       PetscCall(KSPSolve(mglevels->cr, mglevels->crb, mglevels->crx)); /* compatible relaxation */
       PetscCall(KSPCheckSolve(mglevels->cr, pc, mglevels->crx));
     }
@@ -422,11 +425,11 @@ PetscErrorCode PCMGSetLevels_MG(PC pc, PetscInt levels, MPI_Comm *comms)
             else PetscCall(PetscSNPrintf(tprefix, 128, "mg_fine_"));
             PetscCall(KSPSetOptionsPrefix(mglevels[i]->smoothd, tprefix));
           } else {
-            PetscCall(PetscSNPrintf(tprefix, 128, "mg_levels_%d_", (int)i));
+            PetscCall(PetscSNPrintf(tprefix, 128, "mg_levels_%" PetscInt_FMT "_", i));
             PetscCall(KSPAppendOptionsPrefix(mglevels[i]->smoothd, tprefix));
           }
         } else {
-          PetscCall(PetscSNPrintf(tprefix, 128, "mg_levels_%d_", (int)i));
+          PetscCall(PetscSNPrintf(tprefix, 128, "mg_levels_%" PetscInt_FMT "_", i));
           PetscCall(KSPAppendOptionsPrefix(mglevels[i]->smoothd, tprefix));
         }
       }
@@ -663,7 +666,14 @@ static PetscErrorCode PCMatApply_MG(PC pc, Mat b, Mat x)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PCSetFromOptions_MG(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCMatApplyTranspose_MG(PC pc, Mat b, Mat x)
+{
+  PetscFunctionBegin;
+  PetscCall(PCApply_MG_Internal(pc, NULL, NULL, b, x, PETSC_TRUE));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode PCSetFromOptions_MG(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscInt            levels, cycles;
   PetscBool           flg, flg2;
@@ -689,9 +699,6 @@ PetscErrorCode PCSetFromOptions_MG(PC pc, PetscOptionItems *PetscOptionsObject)
   mgctype = (PCMGCycleType)mglevels[0]->cycles;
   PetscCall(PetscOptionsEnum("-pc_mg_cycle_type", "V cycle or for W-cycle", "PCMGSetCycleType", PCMGCycleTypes, (PetscEnum)mgctype, (PetscEnum *)&mgctype, &flg));
   if (flg) PetscCall(PCMGSetCycleType(pc, mgctype));
-  gtype = mg->galerkin;
-  PetscCall(PetscOptionsEnum("-pc_mg_galerkin", "Use Galerkin process to compute coarser operators", "PCMGSetGalerkin", PCMGGalerkinTypes, (PetscEnum)gtype, (PetscEnum *)&gtype, &flg));
-  if (flg) PetscCall(PCMGSetGalerkin(pc, gtype));
   coarseSpaceType = mg->coarseSpaceType;
   PetscCall(PetscOptionsEnum("-pc_mg_adapt_interp_coarse_space", "Type of adaptive coarse space: none, polynomial, harmonic, eigenvector, generalized_eigenvector, gdsw", "PCMGSetAdaptCoarseSpaceType", PCMGCoarseSpaceTypes, (PetscEnum)coarseSpaceType, (PetscEnum *)&coarseSpaceType, &flg));
   if (flg) PetscCall(PCMGSetAdaptCoarseSpaceType(pc, coarseSpaceType));
@@ -703,6 +710,8 @@ PetscErrorCode PCSetFromOptions_MG(PC pc, PetscOptionItems *PetscOptionsObject)
   flg = PETSC_FALSE;
   PetscCall(PetscOptionsBool("-pc_mg_distinct_smoothup", "Create separate smoothup KSP and append the prefix _up", "PCMGSetDistinctSmoothUp", PETSC_FALSE, &flg, NULL));
   if (flg) PetscCall(PCMGSetDistinctSmoothUp(pc));
+  PetscCall(PetscOptionsEnum("-pc_mg_galerkin", "Use Galerkin process to compute coarser operators", "PCMGSetGalerkin", PCMGGalerkinTypes, (PetscEnum)mg->galerkin, (PetscEnum *)&gtype, &flg));
+  if (flg) PetscCall(PCMGSetGalerkin(pc, gtype));
   mgtype = mg->am;
   PetscCall(PetscOptionsEnum("-pc_mg_type", "Multigrid type", "PCMGSetType", PCMGTypes, (PetscEnum)mgtype, (PetscEnum *)&mgtype, &flg));
   if (flg) PetscCall(PCMGSetType(pc, mgtype));
@@ -718,14 +727,14 @@ PetscErrorCode PCSetFromOptions_MG(PC pc, PetscOptionItems *PetscOptionsObject)
 
     levels = mglevels[0]->levels;
     for (i = 0; i < levels; i++) {
-      PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGSetup Level %d", (int)i));
+      PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGSetup Level %" PetscInt_FMT, i));
       PetscCall(PetscLogEventRegister(eventname, ((PetscObject)pc)->classid, &mglevels[i]->eventsmoothsetup));
-      PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGSmooth Level %d", (int)i));
+      PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGSmooth Level %" PetscInt_FMT, i));
       PetscCall(PetscLogEventRegister(eventname, ((PetscObject)pc)->classid, &mglevels[i]->eventsmoothsolve));
       if (i) {
-        PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGResid Level %d", (int)i));
+        PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGResid Level %" PetscInt_FMT, i));
         PetscCall(PetscLogEventRegister(eventname, ((PetscObject)pc)->classid, &mglevels[i]->eventresidual));
-        PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGInterp Level %d", (int)i));
+        PetscCall(PetscSNPrintf(eventname, PETSC_STATIC_ARRAY_LENGTH(eventname), "MGInterp Level %" PetscInt_FMT, i));
         PetscCall(PetscLogEventRegister(eventname, ((PetscObject)pc)->classid, &mglevels[i]->eventinterprestrict));
       }
     }
@@ -911,7 +920,7 @@ PetscErrorCode PCSetUp_MG(PC pc)
 
       PetscCall(KSPSetTolerances(mglevels[i]->cr, PETSC_CURRENT, PETSC_CURRENT, PETSC_CURRENT, mg->default_smoothd));
       PetscCall(KSPSetInitialGuessNonzero(mglevels[i]->cr, PETSC_TRUE));
-      PetscCall(PetscSNPrintf(crprefix, 128, "mg_levels_%d_cr_", (int)i));
+      PetscCall(PetscSNPrintf(crprefix, 128, "mg_levels_%" PetscInt_FMT "_cr_", i));
       PetscCall(KSPAppendOptionsPrefix(mglevels[i]->cr, crprefix));
     }
   }
@@ -1837,25 +1846,16 @@ static PetscErrorCode PCGetCoarseOperators_MG(PC pc, PetscInt *num_levels, Mat *
 
   Input Parameters:
 + name     - name of the constructor
-- function - constructor routine
-
-  Calling sequence of `function`:
-+ pc        - The `PC` object
-. l         - The multigrid level, 0 is the coarse level
-. dm        - The `DM` for this level
-. smooth    - The level smoother
-. Nc        - The size of the coarse space
-. initGuess - Basis for an initial guess for the space
-- coarseSp  - A basis for the computed coarse space
+- function - constructor routine, see `PCMGCoarseSpaceConstructorFn`
 
   Level: advanced
 
   Developer Notes:
-  How come this is not used by `PCGAMG`?
+  This does not appear to be used anywhere
 
-.seealso: [](ch_ksp), `PCMG`, `PCMGGetCoarseSpaceConstructor()`, `PCRegister()`
+.seealso: [](ch_ksp), `PCMGCoarseSpaceConstructorFn`, `PCMG`, `PCMGGetCoarseSpaceConstructor()`, `PCRegister()`
 @*/
-PetscErrorCode PCMGRegisterCoarseSpaceConstructor(const char name[], PetscErrorCode (*function)(PC pc, PetscInt l, DM dm, KSP smooth, PetscInt Nc, Mat initGuess, Mat *coarseSp))
+PetscErrorCode PCMGRegisterCoarseSpaceConstructor(const char name[], PCMGCoarseSpaceConstructorFn *function)
 {
   PetscFunctionBegin;
   PetscCall(PCInitializePackage());
@@ -1876,9 +1876,9 @@ PetscErrorCode PCMGRegisterCoarseSpaceConstructor(const char name[], PetscErrorC
 
   Level: advanced
 
-.seealso: [](ch_ksp), `PCMG`, `PCMGRegisterCoarseSpaceConstructor()`, `PCRegister()`
+.seealso: [](ch_ksp), `PCMGCoarseSpaceConstructorFn`, `PCMG`, `PCMGRegisterCoarseSpaceConstructor()`, `PCRegister()`
 @*/
-PetscErrorCode PCMGGetCoarseSpaceConstructor(const char name[], PetscErrorCode (**function)(PC, PetscInt, DM, KSP, PetscInt, Mat, Mat *))
+PetscErrorCode PCMGGetCoarseSpaceConstructor(const char name[], PCMGCoarseSpaceConstructorFn **function)
 {
   PetscFunctionBegin;
   PetscCall(PetscFunctionListFind(PCMGCoarseList, name, function));
@@ -1914,7 +1914,7 @@ PetscErrorCode PCMGGetCoarseSpaceConstructor(const char name[], PetscErrorCode (
 .ve
    These options also work for controlling the smoothers etc inside `PCGAMG`
 
-   If one uses a Krylov method such `KSPGMRES` or `KSPCG` as the smoother then one must use `KSPFGMRES`, `KSPGCR`, or `KSPRICHARDSON` as the outer Krylov method
+   If one uses a Krylov method such `KSPGMRES` or `KSPCG` as the smoother than one must use `KSPFGMRES`, `KSPGCR`, or `KSPRICHARDSON` as the outer Krylov method
 
    When run with a single level the smoother options are used on that level NOT the coarse grid solver options
 
@@ -1947,14 +1947,15 @@ PETSC_EXTERN PetscErrorCode PCCreate_MG(PC pc)
 
   pc->useAmat = PETSC_TRUE;
 
-  pc->ops->apply          = PCApply_MG;
-  pc->ops->applytranspose = PCApplyTranspose_MG;
-  pc->ops->matapply       = PCMatApply_MG;
-  pc->ops->setup          = PCSetUp_MG;
-  pc->ops->reset          = PCReset_MG;
-  pc->ops->destroy        = PCDestroy_MG;
-  pc->ops->setfromoptions = PCSetFromOptions_MG;
-  pc->ops->view           = PCView_MG;
+  pc->ops->apply             = PCApply_MG;
+  pc->ops->applytranspose    = PCApplyTranspose_MG;
+  pc->ops->matapply          = PCMatApply_MG;
+  pc->ops->matapplytranspose = PCMatApplyTranspose_MG;
+  pc->ops->setup             = PCSetUp_MG;
+  pc->ops->reset             = PCReset_MG;
+  pc->ops->destroy           = PCDestroy_MG;
+  pc->ops->setfromoptions    = PCSetFromOptions_MG;
+  pc->ops->view              = PCView_MG;
 
   PetscCall(PetscObjectComposedDataRegister(&mg->eigenvalue));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCMGSetGalerkin_C", PCMGSetGalerkin_MG));

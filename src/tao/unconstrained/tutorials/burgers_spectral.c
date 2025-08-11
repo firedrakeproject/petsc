@@ -64,7 +64,7 @@ typedef struct {
 typedef struct {
   Vec      grid;  /* total grid */
   Vec      mass;  /* mass matrix for total integration */
-  Mat      stiff; /* stifness matrix */
+  Mat      stiff; /* stiffness matrix */
   Mat      keptstiff;
   Mat      grad;
   PetscGLL gll;
@@ -420,7 +420,6 @@ PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec globalin, Mat A, Mat B, void 
    Output Parameters:
    AA - Jacobian matrix
    BB - optionally different matrix from which the preconditioner is built
-   str - flag indicating matrix structure
 
 */
 PetscErrorCode RHSMatrixLaplaciangllDM(TS ts, PetscReal t, Vec X, Mat A, Mat BB, void *ctx)
@@ -482,8 +481,7 @@ PetscErrorCode RHSMatrixLaplaciangllDM(TS ts, PetscReal t, Vec X, Mat A, Mat BB,
 
    Output Parameters:
    AA - Jacobian matrix
-   BB - optionally different preconditioning matrix
-   str - flag indicating matrix structure
+   BB - optionally different matrix used to compute the preconditioner
 
 */
 PetscErrorCode RHSMatrixAdvectiongllDM(TS ts, PetscReal t, Vec X, Mat A, Mat BB, void *ctx)

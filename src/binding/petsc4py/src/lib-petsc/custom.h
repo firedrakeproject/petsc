@@ -11,12 +11,9 @@
 #include <petsc/private/tsimpl.h>
 #include <petsc/private/taoimpl.h>
 #include <petsc/private/deviceimpl.h>
+#include <petsc/private/viewerimpl.h>
 
 /* ---------------------------------------------------------------- */
-
-#ifndef PETSC_ERR_PYTHON
-#define PETSC_ERR_PYTHON ((PetscErrorCode)(-1))
-#endif
 
 #define PetscERROR(comm,FUNCT,n,t,msg,arg) \
         PetscError(comm,__LINE__,FUNCT,__FILE__,n,t,msg,arg)
@@ -364,9 +361,9 @@ PetscErrorCode KSPConverged(KSP ksp,PetscInt iter,PetscReal rnorm,KSPConvergedRe
 
 typedef struct {
   PetscBool prepend_custom;
-  PetscErrorCode (*convtest)(KSP, PetscInt, PetscReal, KSPConvergedReason *, void *);
-  PetscErrorCode (*convdestroy)(void *);
-  PetscErrorCode (*convtestcustom)(KSP, PetscInt, PetscReal, KSPConvergedReason *, void *);
+  KSPConvergenceTestFn *convtest;
+  PetscCtxDestroyFn    *convdestroy;
+  KSPConvergenceTestFn *convtestcustom;
   void *convctx;
 } KSPConvergedNativeCtx;
 
@@ -396,13 +393,13 @@ PetscErrorCode KSPConvergedNative_Private(KSP ksp, PetscInt n, PetscReal rnorm, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPConvergedNative_Destroy(void *cctx)
+static PetscErrorCode KSPConvergedNative_Destroy(void **cctx)
 {
-  KSPConvergedNativeCtx *ctx = (KSPConvergedNativeCtx *)cctx;
+  KSPConvergedNativeCtx *ctx = (KSPConvergedNativeCtx *)*cctx;
 
   PetscFunctionBegin;
   PetscCheck(ctx, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing context");
-  if (ctx->convdestroy) PetscCall((*ctx->convdestroy)(ctx->convctx));
+  if (ctx->convdestroy) PetscCall((*ctx->convdestroy)(&ctx->convctx));
   PetscCall(PetscFree(ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -43,6 +43,7 @@ class Configure(config.base.Configure):
     help.addArgument('PETSc', '-with-default-arch=<bool>',                   nargs.ArgBool(None, 1, 'Allow using the last configured arch without setting PETSC_ARCH'))
     help.addArgument('PETSc','-with-single-library=<bool>',                  nargs.ArgBool(None, 1,'Put all PETSc code into the single -lpetsc library'))
     help.addArgument('PETSc','-with-fortran-bindings=<bool>',                nargs.ArgBool(None, 1,'Build PETSc fortran bindings in the library and corresponding module files'))
+    help.addArgument('PETSc', '-with-library-name-suffix=<string>',          nargs.Arg(None, '', 'Add a suffix to PETSc library names'))
     help.addArgument('PETSc', '-with-ios=<bool>',                            nargs.ArgBool(None, 0, 'Build an iPhone/iPad version of PETSc library'))
     help.addArgument('PETSc', '-with-display=<x11display>',                  nargs.Arg(None, '', 'Specifiy DISPLAY environmental variable for use with MATLAB test)'))
     help.addArgument('PETSc', '-with-package-scripts=<pyscripts>',           nargs.ArgFileList(None,None,'Specify configure package scripts for user provided packages'))
@@ -148,7 +149,7 @@ class Configure(config.base.Configure):
                  'readlink','realpath','usleep','sleep','_sleep',
                  'uname','snprintf','_snprintf','lseek','_lseek','time','fork','stricmp',
                  'strcasecmp','bzero','dlopen','dlsym','dlclose','dlerror',
-                 '_set_output_format','_mkdir','socket','gethostbyname','fpresetsticky',
+                 '_mkdir','socket','gethostbyname','fpresetsticky',
                  'fpsetsticky','__gcov_dump']
     libraries = [(['fpe'],'handle_sigfpes')]
     librariessock = [(['socket','nsl'],'socket')]
@@ -179,6 +180,7 @@ class Configure(config.base.Configure):
         fd.write('cflags_extra='+self.setCompilers.getCompilerFlags().strip()+'\n')
         fd.write('cflags_dep='+self.compilers.dependenciesGenerationFlag.get('C','')+'\n')
         fd.write('ldflag_rpath='+self.setCompilers.CSharedLinkerFlag+'\n')
+        fd.write('ldflags='+self.setCompilers.getLinkerFlags().strip()+'\n')
       if hasattr(self.compilers, 'CXX'):
         with self.setCompilers.Language('C++'):
           fd.write('cxxcompiler='+self.setCompilers.getCompiler()+'\n')
@@ -191,12 +193,18 @@ class Configure(config.base.Configure):
         with self.setCompilers.Language('CUDA'):
           fd.write('cudacompiler='+self.setCompilers.getCompiler()+'\n')
           fd.write('cudaflags_extra='+self.setCompilers.getCompilerFlags().strip()+'\n')
-          p = self.framework.require('config.packages.cuda')
+          p = self.framework.require('config.packages.CUDA')
           fd.write('cudalib='+self.libraries.toStringNoDupes(p.lib)+'\n')
           fd.write('cudainclude='+self.headers.toStringNoDupes(p.include)+'\n')
           if hasattr(self.setCompilers,'CUDA_CXX'):
             fd.write('cuda_cxx='+self.setCompilers.CUDA_CXX+'\n')
             fd.write('cuda_cxxflags='+self.setCompilers.CUDA_CXXFLAGS+'\n')
+      fd.write('mpiexec='+self.mpi.mpiexec+'\n')
+      if self.python.path:
+        if 'PYTHONPATH' in os.environ:
+          fd.write('PETSCPYTHONPATH='+':'.join(self.python.path)+':'+os.environ['PYTHONPATH']+'\n')
+        else:
+          fd.write('PETSCPYTHONPATH='+':'.join(self.python.path)+'\n')
 
       fd.write('\n')
       fd.write('Name: PETSc\n')
@@ -453,12 +461,16 @@ prepend-path PATH "%s"
     # Use build dir here for 'make check' to work before 'make install'
     PREINSTALL_LIB_DIR = os.path.join(self.petscdir.dir,self.arch.arch,'lib')
 
+    self.LIB_NAME_SUFFIX = self.framework.argDB['with-library-name-suffix']
+    self.addMakeMacro('LIB_NAME_SUFFIX', self.LIB_NAME_SUFFIX)
+    self.addDefine('LIB_NAME_SUFFIX', '"'+self.LIB_NAME_SUFFIX+'"')
+
     if self.framework.argDB['with-single-library']:
-      self.petsclib = '-lpetsc'
+      self.petsclib = '-lpetsc'+self.LIB_NAME_SUFFIX
       self.addDefine('USE_SINGLE_LIBRARY', '1')
-      self.addMakeMacro('LIBNAME','${INSTALL_LIB_DIR}/libpetsc.${AR_LIB_SUFFIX}')
+      self.addMakeMacro('LIBNAME','${INSTALL_LIB_DIR}/libpetsc${LIB_NAME_SUFFIX}.${AR_LIB_SUFFIX}')
       self.addMakeMacro('SHLIBS','libpetsc')
-      self.addMakeMacro('PETSC_WITH_EXTERNAL_LIB',self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR, '-lpetsc']+self.packagelibs+self.complibs))
+      self.addMakeMacro('PETSC_WITH_EXTERNAL_LIB',self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR, '-lpetsc'+self.LIB_NAME_SUFFIX]+self.packagelibs+self.complibs))
       self.addMakeMacro('PETSC_SYS_LIB','${PETSC_WITH_EXTERNAL_LIB}')
       self.addMakeMacro('PETSC_VEC_LIB','${PETSC_WITH_EXTERNAL_LIB}')
       self.addMakeMacro('PETSC_MAT_LIB','${PETSC_WITH_EXTERNAL_LIB}')
@@ -467,23 +479,30 @@ prepend-path PATH "%s"
       self.addMakeMacro('PETSC_SNES_LIB','${PETSC_WITH_EXTERNAL_LIB}')
       self.addMakeMacro('PETSC_TS_LIB','${PETSC_WITH_EXTERNAL_LIB}')
       self.addMakeMacro('PETSC_TAO_LIB','${PETSC_WITH_EXTERNAL_LIB}')
+      self.addMakeMacro('PETSC_ML_LIB','${PETSC_WITH_EXTERNAL_LIB}')
     else:
-      self.petsclib = '-lpetsctao -lpetscts -lpetscsnes -lpetscksp -lpetscdm -lpetscmat -lpetscvec -lpetscsys'
-      self.addMakeMacro('PETSC_SYS_LIB', self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetscsys']+self.packagelibs+self.complibs))
-      self.addMakeMacro('PETSC_VEC_LIB', self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetscvec','-lpetscsys']+self.packagelibs+self.complibs))
-      self.addMakeMacro('PETSC_MAT_LIB', self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetscmat','-lpetscvec','-lpetscsys']+self.packagelibs+self.complibs))
-      self.addMakeMacro('PETSC_DM_LIB',  self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetscdm','-lpetscmat','-lpetscvec','-lpetscsys']+self.packagelibs+self.complibs))
-      self.addMakeMacro('PETSC_KSP_LIB', self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetscksp','-lpetscdm','-lpetscmat','-lpetscvec','-lpetscsys']+self.packagelibs+self.complibs))
-      self.addMakeMacro('PETSC_SNES_LIB',self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetscsnes','-lpetscksp','-lpetscdm','-lpetscmat','-lpetscvec','-lpetscsys']+self.packagelibs+self.complibs))
-      self.addMakeMacro('PETSC_TS_LIB',  self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetscts','-lpetscsnes','-lpetscksp','-lpetscdm','-lpetscmat','-lpetscvec','-lpetscsys']+self.packagelibs+self.complibs))
-      self.addMakeMacro('PETSC_TAO_LIB', self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR,'-lpetsctao','-lpetscts','-lpetscsnes','-lpetscksp','-lpetscdm','-lpetscmat','-lpetscvec','-lpetscsys']+self.packagelibs+self.complibs))
-    self.addMakeMacro('PETSC_LIB','${PETSC_TAO_LIB}')
+      pkgs = ['ml', 'tao', 'ts', 'snes', 'ksp', 'dm', 'mat', 'vec', 'sys']
+      def liblist_basic(libs):
+        return [ '-lpetsc'+lib+self.LIB_NAME_SUFFIX for lib in libs]
+      def liblist(libs):
+        return self.libraries.toStringNoDupes(['-L'+PREINSTALL_LIB_DIR]+liblist_basic(libs)+self.packagelibs+self.complibs)
+      self.petsclib = ' '.join(liblist_basic(pkgs))
+      self.addMakeMacro('PETSC_SYS_LIB', liblist(pkgs[-1:]))
+      self.addMakeMacro('PETSC_VEC_LIB', liblist(pkgs[-2:]))
+      self.addMakeMacro('PETSC_MAT_LIB', liblist(pkgs[-3:]))
+      self.addMakeMacro('PETSC_DM_LIB',  liblist(pkgs[-4:]))
+      self.addMakeMacro('PETSC_KSP_LIB', liblist(pkgs[-5:]))
+      self.addMakeMacro('PETSC_SNES_LIB',liblist(pkgs[-6:]))
+      self.addMakeMacro('PETSC_TS_LIB',  liblist(pkgs[-7:]))
+      self.addMakeMacro('PETSC_TAO_LIB', liblist(pkgs[-8:]))
+      self.addMakeMacro('PETSC_ML_LIB', liblist(pkgs[-9:]))
+    self.addMakeMacro('PETSC_LIB','${PETSC_ML_LIB}')
     self.addMakeMacro('PETSC_LIB_BASIC',self.petsclib)
 
     if not os.path.exists(os.path.join(self.petscdir.dir,self.arch.arch,'lib')):
       os.makedirs(os.path.join(self.petscdir.dir,self.arch.arch,'lib'))
 
-# add a makefile endtry for display
+    # add a makefile entry for display
     if self.framework.argDB['with-display']:
       self.addMakeMacro('DISPLAY',self.framework.argDB['with-display'])
 
@@ -492,7 +511,12 @@ prepend-path PATH "%s"
 
     if self.framework.argDB['with-tau-perfstubs']:
       self.addDefine('HAVE_TAU_PERFSTUBS',1)
-    return
+
+    if self.python.path:
+      if 'PYTHONPATH' in os.environ:
+        self.addMakeMacro('PETSCPYTHONPATH',':'.join(self.python.path)+':'+os.environ['PYTHONPATH'])
+      else:
+        self.addMakeMacro('PETSCPYTHONPATH',':'.join(self.python.path))
 
   def dumpConfigInfo(self):
     import time
@@ -515,18 +539,18 @@ prepend-path PATH "%s"
     if os.environ.get('SOURCE_DATE_EPOCH'):
       buildhost = "reproducible"
     buildtime = datetime.datetime.utcfromtimestamp(int(os.environ.get('SOURCE_DATE_EPOCH', time.time())))
-    fd.write('\"Libraries compiled on %s on %s \\n\"\n' % (buildtime, buildhost))
+    fd.write('\"Libraries compiled on %s on %s\\n\"\n' % (buildtime, buildhost))
     fd.write('\"Machine characteristics: %s\\n\"\n' % (platform.platform()))
     fd.write('\"Using PETSc directory: %s\\n\"\n' % (escape(self.installdir.petscDir)))
     fd.write('\"Using PETSc arch: %s\\n\"\n' % (escape(self.installdir.petscArch)))
     fd.write('\"-----------------------------------------\\n\";\n')
     fd.write('static const char *petsccompilerinfo = \"\\n\"\n')
     self.setCompilers.pushLanguage(self.languages.clanguage)
-    fd.write('\"Using C compiler: %s %s \\n\"\n' % (escape(self.setCompilers.getCompiler()), escape(self.setCompilers.getCompilerFlags())))
+    fd.write('\"Using C compiler: %s %s\\n\"\n' % (escape(self.setCompilers.getCompiler()), escape(self.setCompilers.getCompilerFlags())))
     self.setCompilers.popLanguage()
     if hasattr(self.compilers, 'FC'):
       self.setCompilers.pushLanguage('FC')
-      fd.write('\"Using Fortran compiler: %s %s  %s\\n\"\n' % (escape(self.setCompilers.getCompiler()), escape(self.setCompilers.getCompilerFlags()), escape(self.setCompilers.CPPFLAGS)))
+      fd.write('\"Using Fortran compiler: %s %s %s\\n\"\n' % (escape(self.setCompilers.getCompiler()), escape(self.setCompilers.getCompilerFlags()), escape(self.setCompilers.CPPFLAGS)))
       self.setCompilers.popLanguage()
     fd.write('\"-----------------------------------------\\n\";\n')
     fd.write('static const char *petsccompilerflagsinfo = \"\\n\"\n')
@@ -1342,7 +1366,7 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
     for i in self.framework.packages:
       if hasattr(i,'postProcess'): postPackages.append(i)
     if postPackages:
-      # ctetgen needs petsc conf files. so attempt to create them early
+      # ctetgen needs PETSc conf files. so attempt to create them early
       self.framework.dumpConfFiles()
       # tacky fix for dependency of Aluimia on Pflotran; requested via petsc-dev Matt provide a correct fix
       for i in postPackages:
@@ -1355,6 +1379,19 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
           self.installed = 1
           break
     return
+
+  def generateFortranBindings(self):
+    '''Remove any current Fortran bindings from previous ./configure runs because they may not be needed this run'''
+    import shutil
+    dir = os.path.join(self.arch.arch,'ftn')
+    if os.path.isdir(dir): shutil.rmtree(dir)
+    if hasattr(self.compilers, 'FC') and self.framework.argDB['with-fortran-bindings']:
+      self.logPrintBox('Generating Fortran binding')
+      try:
+        from utils import generatefortranbindings
+        generatefortranbindings.main(self.petscdir.dir, self.arch.arch)
+      except RuntimeError as e:
+        raise RuntimeError('*******Error generating Fortran stubs: '+str(e)+'*******\n')
 
   def configure(self):
     if 'package-prefix-hash' in self.argDB:
@@ -1408,6 +1445,7 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
     self.executeTest(self.configureCoverageExecutable)
     self.executeTest(self.configureStrictPetscErrorCode)
     self.executeTest(self.configureSanitize)
+    self.executeTest(self.generateFortranBindings)
 
     self.Dump()
     self.dumpConfigInfo()

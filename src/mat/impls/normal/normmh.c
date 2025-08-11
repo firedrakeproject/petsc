@@ -128,14 +128,13 @@ static PetscErrorCode MatGetDiagonal_NormalHermitian(Mat N, Vec v)
   Mat                  A;
   PetscInt             i, j, rstart, rend, nnz;
   const PetscInt      *cols;
-  PetscScalar         *diag, *work, *values;
+  PetscScalar         *work, *values;
   const PetscScalar   *mvalues;
-  PetscMPIInt          iN;
 
   PetscFunctionBegin;
   PetscCall(MatShellGetContext(N, &Na));
   A = Na->A;
-  PetscCall(PetscMalloc2(A->cmap->N, &diag, A->cmap->N, &work));
+  PetscCall(PetscMalloc1(A->cmap->N, &work));
   PetscCall(PetscArrayzero(work, A->cmap->N));
   PetscCall(MatGetOwnershipRange(A, &rstart, &rend));
   for (i = rstart; i < rend; i++) {
@@ -143,14 +142,13 @@ static PetscErrorCode MatGetDiagonal_NormalHermitian(Mat N, Vec v)
     for (j = 0; j < nnz; j++) work[cols[j]] += mvalues[j] * PetscConj(mvalues[j]);
     PetscCall(MatRestoreRow(A, i, &nnz, &cols, &mvalues));
   }
-  PetscCall(PetscMPIIntCast(A->cmap->N, &iN));
-  PetscCallMPI(MPIU_Allreduce(work, diag, iN, MPIU_SCALAR, MPIU_SUM, PetscObjectComm((PetscObject)N)));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, work, A->cmap->N, MPIU_SCALAR, MPIU_SUM, PetscObjectComm((PetscObject)N)));
   rstart = N->cmap->rstart;
   rend   = N->cmap->rend;
   PetscCall(VecGetArray(v, &values));
-  PetscCall(PetscArraycpy(values, diag + rstart, rend - rstart));
+  PetscCall(PetscArraycpy(values, work + rstart, rend - rstart));
   PetscCall(VecRestoreArray(v, &values));
-  PetscCall(PetscFree2(diag, work));
+  PetscCall(PetscFree(work));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -263,7 +261,7 @@ static PetscErrorCode MatConvert_NormalHermitian_HYPRE(Mat A, MatType type, MatR
 M*/
 
 /*@
-  MatCreateNormalHermitian - Creates a new matrix object `MATNORMALHERMITIAN` that behaves like (A*)'*A.
+  MatCreateNormalHermitian - Creates a new matrix object `MATNORMALHERMITIAN` that behaves like $A^* A$.
 
   Collective
 
@@ -271,14 +269,16 @@ M*/
 . A - the (possibly rectangular complex) matrix
 
   Output Parameter:
-. N - the matrix that represents (A*)'*A
+. N - the matrix that represents $ A^* A$
 
   Level: intermediate
 
   Note:
-  The product (A*)'*A is NOT actually formed! Rather the new matrix
+  The product $ A^* A$ is NOT actually formed! Rather the new matrix
   object performs the matrix-vector product, `MatMult()`, by first multiplying by
-  A and then (A*)'
+  $A$ and then $A^*$
+
+  If `MatGetFactor()` is called on this matrix with `MAT_FACTOR_QR` then the inner matrix `A` is used for the factorization
 
 .seealso: [](ch_matrices), `Mat`, `MATNORMAL`, `MATNORMALHERMITIAN`, `MatNormalHermitianGetMat()`
 @*/
@@ -298,7 +298,7 @@ PetscErrorCode MatCreateNormalHermitian(Mat A, Mat *N)
   Na->A = A;
   PetscCall(MatCreateVecs(A, NULL, &Na->w));
 
-  PetscCall(MatSetBlockSizes(*N, PetscAbs(A->cmap->bs), PetscAbs(A->rmap->bs)));
+  PetscCall(MatSetBlockSize(*N, A->cmap->bs));
   PetscCall(MatShellSetOperation(*N, MATOP_DESTROY, (void (*)(void))MatDestroy_NormalHermitian));
   PetscCall(MatShellSetOperation(*N, MATOP_MULT, (void (*)(void))MatMult_NormalHermitian));
   PetscCall(MatShellSetOperation(*N, MATOP_MULT_HERMITIAN_TRANSPOSE, (void (*)(void))MatMult_NormalHermitian));

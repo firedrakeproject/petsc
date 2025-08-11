@@ -83,7 +83,7 @@
           PetscCallA(MatSetValues(A,i1,[II],i1,[JJ],[v],ADD_VALUES,ierr))
         endif
         v = 4.0
-        PetscCallA( MatSetValues(A,i1,[II],i1,[II],[v],ADD_VALUES,ierr))
+        PetscCallA(MatSetValues(A,i1,[II],i1,[II],[v],ADD_VALUES,ierr))
  10   continue
 
 !  Assemble matrix, using the 2-step process:
@@ -138,7 +138,7 @@
       PetscCallA(KSPSetFromOptions(ksp,ierr))
       PetscCallA(KSPSetUp(ksp,ierr))
 #if defined(PETSC_HAVE_MUMPS)
-      icntl = 3;
+      icntl = 3
       PetscCallA(MatMumpsGetCntl(F,icntl,cntl,ierr))
       icntl = 34
       PetscCallA(MatMumpsGetInfog(F,icntl,infog34,ierr))

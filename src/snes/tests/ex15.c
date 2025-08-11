@@ -358,6 +358,7 @@ static PetscErrorCode CreateSwarm(DM dm, AppCtx *user, DM *sw)
   PetscCall(DMSetApplicationContext(*sw, user));
   PetscCall(PetscObjectSetName((PetscObject)*sw, "Particles"));
   PetscCall(DMViewFromOptions(*sw, NULL, "-sw_view"));
+  PetscCall(DMSwarmVectorDefineField(*sw, "w_q"));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -565,12 +566,14 @@ int main(int argc, char **argv)
           suffix: quad_hdiv_3
           args: -sol_type trig \
                 -fieldsplit_q_pc_type lu -fieldsplit_phi_pc_type svd
+          output_file: output/empty.out
 
     test:
           suffix: quad_hdiv_4
           requires: !single
           args: -sol_type trigx \
                 -fieldsplit_q_pc_type lu -fieldsplit_phi_pc_type svd
+          output_file: output/empty.out
 
     test:
           suffix: particle_hdiv_5

@@ -1123,7 +1123,7 @@ static PetscErrorCode TSSetUp_GLLE(TS ts)
 }
 /*------------------------------------------------------------*/
 
-static PetscErrorCode TSSetFromOptions_GLLE(TS ts, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TSSetFromOptions_GLLE(TS ts, PetscOptionItems PetscOptionsObject)
 {
   TS_GLLE *gl         = (TS_GLLE *)ts->data;
   char     tname[256] = TSGLLE_IRKS, completef[256] = "rescale-and-modify";
@@ -1214,9 +1214,13 @@ static PetscErrorCode TSView_GLLE(TS ts, PetscViewer viewer)
 .ve
 
   Then, your scheme can be chosen with the procedural interface via
-$ TSGLLESetType(ts, "my_scheme")
+.vb
+  TSGLLESetType(ts, "my_scheme")
+.ve
   or at runtime via the option
-$ -ts_gl_type my_scheme
+.vb
+  -ts_gl_type my_scheme
+.ve
 
 .seealso: [](ch_ts), `TSGLLE`, `TSGLLEType`, `TSGLLERegisterAll()`
 @*/

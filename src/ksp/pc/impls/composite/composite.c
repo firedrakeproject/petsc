@@ -236,7 +236,7 @@ static PetscErrorCode PCDestroy_Composite(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_Composite(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_Composite(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_Composite    *jac = (PC_Composite *)pc->data;
   PetscInt         nmax, i;
@@ -371,7 +371,7 @@ static PetscErrorCode PCCompositeAddPC_Composite(PC pc, PC subpc)
   }
   PetscCall(PCGetOptionsPrefix(pc, &prefix));
   PetscCall(PCSetOptionsPrefix(subpc, prefix));
-  PetscCall(PetscSNPrintf(newprefix, 20, "sub_%d_", (int)cnt));
+  PetscCall(PetscSNPrintf(newprefix, 20, "sub_%" PetscInt_FMT "_", cnt));
   PetscCall(PCAppendOptionsPrefix(subpc, newprefix));
   PetscCall(PetscObjectReference((PetscObject)subpc));
   PetscFunctionReturn(PETSC_SUCCESS);

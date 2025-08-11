@@ -125,7 +125,7 @@ int main(int argc, char **argv)
       PetscCall(MatColoringApply(mc, &iscoloring));
       PetscCall(MatColoringDestroy(&mc));
       PetscCall(MatFDColoringCreate(J, iscoloring, &matfdcoloring));
-      PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode (*)(void))SNESTSFormFunction, ts));
+      PetscCall(MatFDColoringSetFunction(matfdcoloring, (MatFDColoringFn *)SNESTSFormFunction, ts));
       PetscCall(MatFDColoringSetFromOptions(matfdcoloring));
       PetscCall(MatFDColoringSetUp(J, iscoloring, matfdcoloring));
       PetscCall(SNESSetJacobian(snes, J, J, SNESComputeJacobianDefaultColor, matfdcoloring));
@@ -135,7 +135,7 @@ int main(int argc, char **argv)
     }
   }
 
-  /* Pick up a Petsc preconditioner */
+  /* Pick up a PETSc preconditioner */
   /* one can always set method or preconditioner during the run time */
   PetscCall(TSGetSNES(ts, &snes));
   PetscCall(SNESGetKSP(snes, &ksp));

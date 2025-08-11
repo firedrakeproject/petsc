@@ -493,6 +493,7 @@ static PetscErrorCode MatHYPRE_AttachCOOMat(Mat mat)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+// Build COO's coordinate list i[], j[] based on CSR's i[], j[] arrays and the number of local rows 'n'
 static PetscErrorCode CSRtoCOO_Private(PetscInt n, const PetscInt ii[], const PetscInt jj[], PetscCount *ncoo, PetscInt **coo_i, PetscInt **coo_j)
 {
   PetscInt *cooi, *cooj;
@@ -509,6 +510,7 @@ static PetscErrorCode CSRtoCOO_Private(PetscInt n, const PetscInt ii[], const Pe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+// Similar to CSRtoCOO_Private, but the CSR's i[], j[] are of type HYPRE_Int
 static PetscErrorCode CSRtoCOO_HYPRE_Int_Private(PetscInt n, const HYPRE_Int ii[], const HYPRE_Int jj[], PetscCount *ncoo, PetscInt **coo_i, PetscInt **coo_j)
 {
   PetscInt *cooi, *cooj;
@@ -525,6 +527,7 @@ static PetscErrorCode CSRtoCOO_HYPRE_Int_Private(PetscInt n, const HYPRE_Int ii[
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+// Build a COO data structure for the seqaij matrix, as if the nonzeros are laid out in the same order as in the CSR
 static PetscErrorCode MatSeqAIJGetCOO_Private(Mat A, PetscCount *ncoo, PetscInt **coo_i, PetscInt **coo_j)
 {
   PetscInt        n;
@@ -540,6 +543,7 @@ static PetscErrorCode MatSeqAIJGetCOO_Private(Mat A, PetscCount *ncoo, PetscInt 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+// Build a COO data structure for the hypreCSRMatrix, as if the nonzeros are laid out in the same order as in the hypreCSRMatrix
 static PetscErrorCode hypreCSRMatrixGetCOO_Private(hypre_CSRMatrix *A, PetscCount *ncoo, PetscInt **coo_i, PetscInt **coo_j)
 {
   PetscInt             n = hypre_CSRMatrixNumRows(A);
@@ -618,6 +622,18 @@ PETSC_INTERN PetscErrorCode MatConvert_AIJ_HYPRE(Mat A, MatType type, MatReuse r
     }
     PetscFunctionReturn(PETSC_SUCCESS);
   }
+
+#if defined(PETSC_HAVE_HYPRE_DEVICE)
+  {
+    PetscBool isaij;
+    // Hypre defaults to GPU when configured with GPU. We make it default to the memory location associated with the PETSc matrix,
+    // i.e., when A is a host matrix, Hypre will be on the host; otherwise, when A is of type aijcusparse, aijhipsarse, aijkokkos etc,
+    // Hypre will be on the device.
+    PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &isaij, MATSEQAIJ, MATMPIAIJ, ""));
+    PetscHYPREInitialize();
+    PetscCallExternal(HYPRE_SetMemoryLocation, isaij ? HYPRE_MEMORY_HOST : HYPRE_MEMORY_DEVICE);
+  }
+#endif
 
   dA = A;
   PetscCall(PetscObjectBaseTypeCompare((PetscObject)A, MATMPIAIJ, &ismpiaij));
@@ -791,8 +807,8 @@ static PetscErrorCode MatAIJGetParCSR_Private(Mat A, hypre_ParCSRMatrix **hA)
   PetscCall(PetscObjectBaseTypeCompare((PetscObject)A, MATMPIAIJ, &ismpiaij));
   PetscCall(PetscObjectBaseTypeCompare((PetscObject)A, MATSEQAIJ, &isseqaij));
   PetscCheck(ismpiaij || isseqaij, comm, PETSC_ERR_SUP, "Unsupported type %s", ((PetscObject)A)->type_name);
-  PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &iscuda, MATSEQAIJHIPSPARSE, MATMPIAIJCUSPARSE, ""));
-  PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &iship, MATSEQAIJCUSPARSE, MATMPIAIJHIPSPARSE, ""));
+  PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &iscuda, MATSEQAIJCUSPARSE, MATMPIAIJCUSPARSE, ""));
+  PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &iship, MATSEQAIJHIPSPARSE, MATMPIAIJHIPSPARSE, ""));
   PetscHYPREInitialize();
   if (ismpiaij) {
     Mat_MPIAIJ *a = (Mat_MPIAIJ *)A->data;
@@ -929,15 +945,16 @@ static PetscErrorCode MatAIJRestoreParCSR_Private(Mat A, hypre_ParCSRMatrix **hA
 {
   hypre_CSRMatrix *hdiag, *hoffd;
   PetscBool        ismpiaij, sameint = (PetscBool)(sizeof(PetscInt) == sizeof(HYPRE_Int));
-#if defined(PETSC_HAVE_HYPRE_DEVICE)
-  PetscBool iscuda = PETSC_FALSE;
-#endif
+  PetscBool        iscuda, iship;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectBaseTypeCompare((PetscObject)A, MATMPIAIJ, &ismpiaij));
-#if defined(PETSC_HAVE_HYPRE_DEVICE)
   PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &iscuda, MATSEQAIJCUSPARSE, MATMPIAIJCUSPARSE, ""));
+  PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &iship, MATSEQAIJHIPSPARSE, MATMPIAIJHIPSPARSE, ""));
+#if defined(HYPRE_USING_CUDA) && defined(PETSC_HAVE_CUDA)
   if (iscuda) sameint = PETSC_TRUE;
+#elif defined(HYPRE_USING_HIP) && defined(PETSC_HAVE_HIP)
+  if (iship) sameint = PETSC_TRUE;
 #endif
   hdiag = hypre_ParCSRMatrixDiag(*hA);
   hoffd = hypre_ParCSRMatrixOffd(*hA);
@@ -1711,7 +1728,7 @@ PetscErrorCode MatHYPRESetPreallocation(Mat A, PetscInt dnz, const PetscInt dnnz
 
   Level: intermediate
 
-.seealso: [](ch_matrices), `Mat`, `MatHYPRE`, `PetscCopyMode`
+.seealso: [](ch_matrices), `Mat`, `MATHYPRE`, `PetscCopyMode`
 @*/
 PETSC_EXTERN PetscErrorCode MatCreateFromParCSR(hypre_ParCSRMatrix *parcsr, MatType mtype, PetscCopyMode copymode, Mat *A)
 {
@@ -1740,24 +1757,14 @@ PETSC_EXTERN PetscErrorCode MatCreateFromParCSR(hypre_ParCSRMatrix *parcsr, MatT
   M      = hypre_ParCSRMatrixGlobalNumRows(parcsr);
   N      = hypre_ParCSRMatrixGlobalNumCols(parcsr);
 
-  /* fix for empty local rows/columns */
-  if (rend < rstart) rend = rstart;
-  if (cend < cstart) cend = cstart;
-
-  /* PETSc convention */
-  rend++;
-  cend++;
-  rend = PetscMin(rend, M);
-  cend = PetscMin(cend, N);
-
   /* create PETSc matrix with MatHYPRE */
   PetscCall(MatCreate(comm, &T));
-  PetscCall(MatSetSizes(T, rend - rstart, cend - cstart, M, N));
+  PetscCall(MatSetSizes(T, PetscMax(rend - rstart + 1, 0), PetscMax(cend - cstart + 1, 0), M, N));
   PetscCall(MatSetType(T, MATHYPRE));
   hA = (Mat_HYPRE *)T->data;
 
   /* create HYPRE_IJMatrix */
-  PetscCallExternal(HYPRE_IJMatrixCreate, hA->comm, rstart, rend - 1, cstart, cend - 1, &hA->ij);
+  PetscCallExternal(HYPRE_IJMatrixCreate, hA->comm, rstart, rend, cstart, cend, &hA->ij);
   PetscCallExternal(HYPRE_IJMatrixSetObjectType, hA->ij, HYPRE_PARCSR);
 
   /* create new ParCSR object if needed */
@@ -1860,7 +1867,7 @@ static PetscErrorCode MatHYPREGetParCSR_HYPRE(Mat A, hypre_ParCSRMatrix **parcsr
 
   Level: intermediate
 
-.seealso: [](ch_matrices), `Mat`, `MatHYPRE`, `PetscCopyMode`
+.seealso: [](ch_matrices), `Mat`, `MATHYPRE`, `PetscCopyMode`
 @*/
 PetscErrorCode MatHYPREGetParCSR(Mat A, hypre_ParCSRMatrix **parcsr)
 {

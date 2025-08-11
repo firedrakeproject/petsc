@@ -75,7 +75,7 @@ def printsingleindex(outfilename, alphabet_dict):
       global numberErrors
       with open(outfilename, "w") as fd:
           fd.write("# Single Index of all PETSc Manual Pages\n\n")
-          fd.write(" Also see the [Manual page table of contents, by section](/manualpages/index.rst).\n\n")
+          fd.write(" Also see the [Manual page table of contents, by section](/manualpages/index.md).\n\n")
           for key in sorted(alphabet_dict.keys()):
                 fd.write("## %s\n\n" % key.upper())
                 fd.write("```{hlist}\n")
@@ -137,7 +137,7 @@ def modifylevel(filename,secname,edit_branch):
       tmpbuf = re.sub('.cxx#', '.cxx.html#', tmpbuf)
 
       # Add footer links
-      outbuf = tmpbuf + '\n[Index of all %s routines](index.md)  \n' % secname + '[Table of Contents for all manual pages](/manualpages/index.rst)  \n' + '[Index of all manual pages](/manualpages/singleindex.md)  \n'
+      outbuf = tmpbuf + '\n[Index of all %s routines](index.md)  \n' % secname + '[Table of Contents for all manual pages](/manualpages/index.md)  \n' + '[Index of all manual pages](/manualpages/singleindex.md)  \n'
 
       # write the modified manpage
       with open(filename, "w") as fd:
@@ -150,7 +150,7 @@ def modifylevel(filename,secname,edit_branch):
 def createtable(dirname,levels,secname,editbranch):
       global numberErrors
       listdir =  os.listdir(dirname)
-      mdfiles = [os.path.join(dirname,f) for f in listdir if f.endswith('.md')]
+      mdfiles = [os.path.join(dirname,f) for f in listdir if f.endswith('.md') and not f == 'index.md']
       mdfiles.sort()
       if mdfiles == []:
             return None
@@ -216,10 +216,10 @@ def getallmandirs(dirs):
       return mandirs
 
 
-def main(PETSC_DIR):
+def main(PETSC_DIR, build_dir):
       global numberErrors
       HEADERDIR = 'doc/manualpages/MANSECHeaders'
-      dirs      = glob.glob(os.path.join(PETSC_DIR,'doc','manualpages','*'))
+      dirs      = glob.glob(os.path.join(build_dir,'manualpages','*'))
       mandirs   = getallmandirs(dirs)
 
       levels = ['beginner','intermediate','advanced','developer','deprecated','none']
@@ -250,10 +250,7 @@ def main(PETSC_DIR):
             printindex(outfilename,headfilename,levels,titles,table)
 
       alphabet_dict = createdict(singlelist)
-      outfilename   = os.path.join(PETSC_DIR,'doc','manualpages','singleindex.md')
+      outfilename   = os.path.join(build_dir,'manualpages','singleindex.md')
       printsingleindex (outfilename,alphabet_dict)
       if numberErrors:
         raise RuntimeError('Stopping document build since errors were detected in generating manual page indices')
-
-if __name__ == '__main__':
-      main(os.path.abspath(os.environ['PETSC_DIR']))

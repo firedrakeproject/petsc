@@ -21,27 +21,19 @@ typedef struct {
 #endif
   PetscInt     partial_dim;
   fftw_plan    p_forward, p_backward;
-  unsigned     p_flag;                                      /* planner flags, FFTW_ESTIMATE,FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE */
-  PetscScalar *finarray, *foutarray, *binarray, *boutarray; /* keep track of arrays because fftw plan should be
-                                                            executed for the arrays with which the plan was created */
+  unsigned     p_flag;                                      /* planner flags, FFTW_ESTIMATE, FFTW_MEASURE, FFTW_PATIENT, FFTW_EXHAUSTIVE */
+  PetscScalar *finarray, *foutarray, *binarray, *boutarray; /* keep track of arrays because fftw_execute() can only be executed for the arrays with which the plan was created */
 } Mat_FFTW;
 
-extern PetscErrorCode MatMult_SeqFFTW(Mat, Vec, Vec);
-extern PetscErrorCode MatMultTranspose_SeqFFTW(Mat, Vec, Vec);
-extern PetscErrorCode MatDestroy_FFTW(Mat);
 extern PetscErrorCode MatCreateVecsFFTW_FFTW(Mat, Vec *, Vec *, Vec *);
-#if !PetscDefined(HAVE_MPIUNI)
-extern PetscErrorCode MatMult_MPIFFTW(Mat, Vec, Vec);
-extern PetscErrorCode MatMultTranspose_MPIFFTW(Mat, Vec, Vec);
-extern PetscErrorCode VecDestroy_MPIFFTW(Vec);
-#endif
 
-PetscErrorCode MatMult_SeqFFTW(Mat A, Vec x, Vec y)
+static PetscErrorCode MatMult_SeqFFTW(Mat A, Vec x, Vec y)
 {
   Mat_FFT           *fft  = (Mat_FFT *)A->data;
   Mat_FFTW          *fftw = (Mat_FFTW *)fft->data;
   const PetscScalar *x_array;
   PetscScalar       *y_array;
+  Vec                xx;
 #if defined(PETSC_USE_COMPLEX)
   #if defined(PETSC_USE_64BIT_INDICES)
   fftw_iodim64 *iodims;
@@ -53,7 +45,13 @@ PetscErrorCode MatMult_SeqFFTW(Mat A, Vec x, Vec y)
   PetscInt ndim = fft->ndim, *dim = fft->dim;
 
   PetscFunctionBegin;
-  PetscCall(VecGetArrayRead(x, &x_array));
+  if (!fftw->p_forward && fftw->p_flag != FFTW_ESTIMATE) {
+    /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+    PetscCall(VecDuplicate(x, &xx));
+    PetscCall(VecGetArrayRead(xx, &x_array));
+  } else {
+    PetscCall(VecGetArrayRead(x, &x_array));
+  }
   PetscCall(VecGetArray(y, &y_array));
   if (!fftw->p_forward) { /* create a plan, then execute it */
     switch (ndim) {
@@ -108,34 +106,39 @@ PetscErrorCode MatMult_SeqFFTW(Mat A, Vec x, Vec y)
 #endif
       break;
     }
-    fftw->finarray  = (PetscScalar *)x_array;
-    fftw->foutarray = y_array;
-    /* Warning: if (fftw->p_flag!==FFTW_ESTIMATE) The data in the in/out arrays is overwritten!
-                planning should be done before x is initialized! See FFTW manual sec2.1 or sec4 */
-    fftw_execute(fftw->p_forward);
-  } else {                                                         /* use existing plan */
-    if (fftw->finarray != x_array || fftw->foutarray != y_array) { /* use existing plan on new arrays */
-#if defined(PETSC_USE_COMPLEX)
-      fftw_execute_dft(fftw->p_forward, (fftw_complex *)x_array, (fftw_complex *)y_array);
-#else
-      fftw_execute_dft_r2c(fftw->p_forward, (double *)x_array, (fftw_complex *)y_array);
-#endif
+    if (fftw->p_flag != FFTW_ESTIMATE) {
+      /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+      PetscCall(VecRestoreArrayRead(xx, &x_array));
+      PetscCall(VecDestroy(&xx));
+      PetscCall(VecGetArrayRead(x, &x_array));
     } else {
-      fftw_execute(fftw->p_forward);
+      fftw->finarray  = (PetscScalar *)x_array;
+      fftw->foutarray = y_array;
     }
+  }
+
+  if (fftw->finarray != x_array || fftw->foutarray != y_array) { /* use existing plan on new arrays */
+#if defined(PETSC_USE_COMPLEX)
+    fftw_execute_dft(fftw->p_forward, (fftw_complex *)x_array, (fftw_complex *)y_array);
+#else
+    fftw_execute_dft_r2c(fftw->p_forward, (double *)x_array, (fftw_complex *)y_array);
+#endif
+  } else {
+    fftw_execute(fftw->p_forward);
   }
   PetscCall(VecRestoreArray(y, &y_array));
   PetscCall(VecRestoreArrayRead(x, &x_array));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MatMultTranspose_SeqFFTW(Mat A, Vec x, Vec y)
+static PetscErrorCode MatMultTranspose_SeqFFTW(Mat A, Vec x, Vec y)
 {
   Mat_FFT           *fft  = (Mat_FFT *)A->data;
   Mat_FFTW          *fftw = (Mat_FFTW *)fft->data;
   const PetscScalar *x_array;
   PetscScalar       *y_array;
   PetscInt           ndim = fft->ndim, *dim = fft->dim;
+  Vec                xx;
 #if defined(PETSC_USE_COMPLEX)
   #if defined(PETSC_USE_64BIT_INDICES)
   fftw_iodim64 *iodims = fftw->iodims;
@@ -145,7 +148,13 @@ PetscErrorCode MatMultTranspose_SeqFFTW(Mat A, Vec x, Vec y)
 #endif
 
   PetscFunctionBegin;
-  PetscCall(VecGetArrayRead(x, &x_array));
+  if (!fftw->p_backward && fftw->p_flag != FFTW_ESTIMATE) {
+    /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+    PetscCall(VecDuplicate(x, &xx));
+    PetscCall(VecGetArrayRead(xx, &x_array));
+  } else {
+    PetscCall(VecGetArrayRead(x, &x_array));
+  }
   PetscCall(VecGetArray(y, &y_array));
   if (!fftw->p_backward) { /* create a plan, then execute it */
     switch (ndim) {
@@ -182,19 +191,24 @@ PetscErrorCode MatMultTranspose_SeqFFTW(Mat A, Vec x, Vec y)
 #endif
       break;
     }
-    fftw->binarray  = (PetscScalar *)x_array;
-    fftw->boutarray = y_array;
-    fftw_execute(fftw->p_backward);
-  } else {                                                         /* use existing plan */
-    if (fftw->binarray != x_array || fftw->boutarray != y_array) { /* use existing plan on new arrays */
-#if defined(PETSC_USE_COMPLEX)
-      fftw_execute_dft(fftw->p_backward, (fftw_complex *)x_array, (fftw_complex *)y_array);
-#else
-      fftw_execute_dft_c2r(fftw->p_backward, (fftw_complex *)x_array, (double *)y_array);
-#endif
+    if (fftw->p_flag != FFTW_ESTIMATE) {
+      /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+      PetscCall(VecRestoreArrayRead(xx, &x_array));
+      PetscCall(VecDestroy(&xx));
+      PetscCall(VecGetArrayRead(x, &x_array));
     } else {
-      fftw_execute(fftw->p_backward);
+      fftw->binarray  = (PetscScalar *)x_array;
+      fftw->boutarray = y_array;
     }
+  }
+  if (fftw->binarray != x_array || fftw->boutarray != y_array) { /* use existing plan on new arrays */
+#if defined(PETSC_USE_COMPLEX)
+    fftw_execute_dft(fftw->p_backward, (fftw_complex *)x_array, (fftw_complex *)y_array);
+#else
+    fftw_execute_dft_c2r(fftw->p_backward, (fftw_complex *)x_array, (double *)y_array);
+#endif
+  } else {
+    fftw_execute(fftw->p_backward);
   }
   PetscCall(VecRestoreArray(y, &y_array));
   PetscCall(VecRestoreArrayRead(x, &x_array));
@@ -202,7 +216,7 @@ PetscErrorCode MatMultTranspose_SeqFFTW(Mat A, Vec x, Vec y)
 }
 
 #if !PetscDefined(HAVE_MPIUNI)
-PetscErrorCode MatMult_MPIFFTW(Mat A, Vec x, Vec y)
+static PetscErrorCode MatMult_MPIFFTW(Mat A, Vec x, Vec y)
 {
   Mat_FFT           *fft  = (Mat_FFT *)A->data;
   Mat_FFTW          *fftw = (Mat_FFTW *)fft->data;
@@ -210,10 +224,17 @@ PetscErrorCode MatMult_MPIFFTW(Mat A, Vec x, Vec y)
   PetscScalar       *y_array;
   PetscInt           ndim = fft->ndim, *dim = fft->dim;
   MPI_Comm           comm;
+  Vec                xx;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)A, &comm));
-  PetscCall(VecGetArrayRead(x, &x_array));
+  if (!fftw->p_forward && fftw->p_flag != FFTW_ESTIMATE) {
+    /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+    PetscCall(VecDuplicate(x, &xx));
+    PetscCall(VecGetArrayRead(xx, &x_array));
+  } else {
+    PetscCall(VecGetArrayRead(x, &x_array));
+  }
   PetscCall(VecGetArray(y, &y_array));
   if (!fftw->p_forward) { /* create a plan, then execute it */
     switch (ndim) {
@@ -246,24 +267,27 @@ PetscErrorCode MatMult_MPIFFTW(Mat A, Vec x, Vec y)
   #endif
       break;
     }
-    fftw->finarray  = (PetscScalar *)x_array;
-    fftw->foutarray = y_array;
-    /* Warning: if (fftw->p_flag!==FFTW_ESTIMATE) The data in the in/out arrays is overwritten!
-                planning should be done before x is initialized! See FFTW manual sec2.1 or sec4 */
-    fftw_execute(fftw->p_forward);
-  } else {                                                         /* use existing plan */
-    if (fftw->finarray != x_array || fftw->foutarray != y_array) { /* use existing plan on new arrays */
-      fftw_execute_dft(fftw->p_forward, (fftw_complex *)x_array, (fftw_complex *)y_array);
+    if (fftw->p_flag != FFTW_ESTIMATE) {
+      /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+      PetscCall(VecRestoreArrayRead(xx, &x_array));
+      PetscCall(VecDestroy(&xx));
+      PetscCall(VecGetArrayRead(x, &x_array));
     } else {
-      fftw_execute(fftw->p_forward);
+      fftw->finarray  = (PetscScalar *)x_array;
+      fftw->foutarray = y_array;
     }
+  }
+  if (fftw->finarray != x_array || fftw->foutarray != y_array) { /* use existing plan on new arrays */
+    fftw_execute_dft(fftw->p_forward, (fftw_complex *)x_array, (fftw_complex *)y_array);
+  } else {
+    fftw_execute(fftw->p_forward);
   }
   PetscCall(VecRestoreArray(y, &y_array));
   PetscCall(VecRestoreArrayRead(x, &x_array));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MatMultTranspose_MPIFFTW(Mat A, Vec x, Vec y)
+static PetscErrorCode MatMultTranspose_MPIFFTW(Mat A, Vec x, Vec y)
 {
   Mat_FFT           *fft  = (Mat_FFT *)A->data;
   Mat_FFTW          *fftw = (Mat_FFTW *)fft->data;
@@ -271,10 +295,17 @@ PetscErrorCode MatMultTranspose_MPIFFTW(Mat A, Vec x, Vec y)
   PetscScalar       *y_array;
   PetscInt           ndim = fft->ndim, *dim = fft->dim;
   MPI_Comm           comm;
+  Vec                xx;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)A, &comm));
-  PetscCall(VecGetArrayRead(x, &x_array));
+  if (!fftw->p_backward && fftw->p_flag != FFTW_ESTIMATE) {
+    /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+    PetscCall(VecDuplicate(x, &xx));
+    PetscCall(VecGetArrayRead(xx, &x_array));
+  } else {
+    PetscCall(VecGetArrayRead(x, &x_array));
+  }
   PetscCall(VecGetArray(y, &y_array));
   if (!fftw->p_backward) { /* create a plan, then execute it */
     switch (ndim) {
@@ -307,15 +338,20 @@ PetscErrorCode MatMultTranspose_MPIFFTW(Mat A, Vec x, Vec y)
   #endif
       break;
     }
-    fftw->binarray  = (PetscScalar *)x_array;
-    fftw->boutarray = y_array;
-    fftw_execute(fftw->p_backward);
-  } else {                                                         /* use existing plan */
-    if (fftw->binarray != x_array || fftw->boutarray != y_array) { /* use existing plan on new arrays */
-      fftw_execute_dft(fftw->p_backward, (fftw_complex *)x_array, (fftw_complex *)y_array);
+    if (fftw->p_flag != FFTW_ESTIMATE) {
+      /* The data in the in/out arrays is overwritten so need a dummy array for computation, see FFTW manual sec2.1 or sec4 */
+      PetscCall(VecRestoreArrayRead(xx, &x_array));
+      PetscCall(VecDestroy(&xx));
+      PetscCall(VecGetArrayRead(x, &x_array));
     } else {
-      fftw_execute(fftw->p_backward);
+      fftw->binarray  = (PetscScalar *)x_array;
+      fftw->boutarray = y_array;
     }
+  }
+  if (fftw->binarray != x_array || fftw->boutarray != y_array) { /* use existing plan on new arrays */
+    fftw_execute_dft(fftw->p_backward, (fftw_complex *)x_array, (fftw_complex *)y_array);
+  } else {
+    fftw_execute(fftw->p_backward);
   }
   PetscCall(VecRestoreArray(y, &y_array));
   PetscCall(VecRestoreArrayRead(x, &x_array));
@@ -323,7 +359,7 @@ PetscErrorCode MatMultTranspose_MPIFFTW(Mat A, Vec x, Vec y)
 }
 #endif
 
-PetscErrorCode MatDestroy_FFTW(Mat A)
+static PetscErrorCode MatDestroy_FFTW(Mat A)
 {
   Mat_FFT  *fft  = (Mat_FFT *)A->data;
   Mat_FFTW *fftw = (Mat_FFTW *)fft->data;
@@ -345,7 +381,7 @@ PetscErrorCode MatDestroy_FFTW(Mat A)
 
 #if !PetscDefined(HAVE_MPIUNI)
   #include <../src/vec/vec/impls/mpi/pvecimpl.h> /*I  "petscvec.h"   I*/
-PetscErrorCode VecDestroy_MPIFFTW(Vec v)
+static PetscErrorCode VecDestroy_MPIFFTW(Vec v)
 {
   PetscScalar *array;
 

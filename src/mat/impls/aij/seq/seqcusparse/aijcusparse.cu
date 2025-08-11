@@ -14,13 +14,15 @@
 #include <thrust/adjacent_difference.h>
 #if PETSC_CPP_VERSION >= 14
   #define PETSC_HAVE_THRUST_ASYNC 1
-  // thrust::for_each(thrust::cuda::par.on()) requires C++14
-  #include <thrust/async/for_each.h>
+// thrust::for_each(thrust::cuda::par.on()) requires C++14
 #endif
 #include <thrust/iterator/constant_iterator.h>
 #include <thrust/remove.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
+#if PETSC_PKG_CUDA_VERSION_GE(12, 9, 0) && !PetscDefined(HAVE_THRUST)
+  #include <cuda/std/functional>
+#endif
 
 PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN("-Wdeprecated-declarations")
 const char *const MatCUSPARSEStorageFormats[] = {"CSR", "ELL", "HYB", "MatCUSPARSEStorageFormat", "MAT_CUSPARSE_", 0};
@@ -71,7 +73,7 @@ static PetscErrorCode MatSolve_SeqAIJCUSPARSE_NaturalOrdering(Mat, Vec, Vec);
 static PetscErrorCode MatSolveTranspose_SeqAIJCUSPARSE_NaturalOrdering(Mat, Vec, Vec);
 static PetscErrorCode MatSeqAIJCUSPARSEMultStruct_Destroy(Mat_SeqAIJCUSPARSETriFactorStruct **);
 #endif
-static PetscErrorCode MatSetFromOptions_SeqAIJCUSPARSE(Mat, PetscOptionItems *PetscOptionsObject);
+static PetscErrorCode MatSetFromOptions_SeqAIJCUSPARSE(Mat, PetscOptionItems PetscOptionsObject);
 static PetscErrorCode MatAXPY_SeqAIJCUSPARSE(Mat, PetscScalar, Mat, MatStructure);
 static PetscErrorCode MatScale_SeqAIJCUSPARSE(Mat, PetscScalar);
 static PetscErrorCode MatMult_SeqAIJCUSPARSE(Mat, Vec, Vec);
@@ -185,7 +187,7 @@ static PetscErrorCode MatSetOption_SeqAIJCUSPARSE(Mat A, MatOption op, PetscBool
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatSetFromOptions_SeqAIJCUSPARSE(Mat A, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode MatSetFromOptions_SeqAIJCUSPARSE(Mat A, PetscOptionItems PetscOptionsObject)
 {
   MatCUSPARSEStorageFormat format;
   PetscBool                flg;
@@ -308,13 +310,21 @@ static PetscErrorCode MatSeqAIJCUSPARSEBuildFactoredMatrix_LU(Mat A)
     }
     PetscCallCUDA(cudaMemcpy(fs->csrVal, Ma, sizeof(*Ma) * Mnz, cudaMemcpyHostToDevice));
 
-    // Do cusparseSpSV_analysis(), which is numeric and requires valid and up-to-date matrix values
-    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_L, fs->spsvBuffer_L));
+  #if PETSC_PKG_CUDA_VERSION_GE(12, 1, 1)
+    if (fs->updatedSpSVAnalysis) { // have done cusparseSpSV_analysis before, and only matrix values changed?
+      // Otherwise cusparse would error out: "On entry to cusparseSpSV_updateMatrix() parameter number 3 (newValues) had an illegal value: NULL pointer"
+      if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_L, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+      if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_U, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+    } else
+  #endif
+    {
+      // Do cusparseSpSV_analysis(), which is numeric and requires valid and up-to-date matrix values
+      PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_L, fs->spsvBuffer_L));
 
-    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_U, fs->spsvBuffer_U));
-
-    // L, U values have changed, reset the flag to indicate we need to redo cusparseSpSV_analysis() for transpose solve
-    fs->updatedTransposeSpSVAnalysis = PETSC_FALSE;
+      PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_U, fs->spsvBuffer_U));
+      fs->updatedSpSVAnalysis          = PETSC_TRUE;
+      fs->updatedTransposeSpSVAnalysis = PETSC_FALSE;
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -586,7 +596,7 @@ static PetscErrorCode MatSeqAIJCUSPARSEILUAnalysisAndCopyToGPU(Mat A)
 {
   Mat_SeqAIJ                   *a                  = (Mat_SeqAIJ *)A->data;
   Mat_SeqAIJCUSPARSETriFactors *cusparseTriFactors = (Mat_SeqAIJCUSPARSETriFactors *)A->spptr;
-  IS                            isrow = a->row, iscol = a->icol;
+  IS                            isrow = a->row, isicol = a->icol;
   PetscBool                     row_identity, col_identity;
   PetscInt                      n = A->rmap->n;
 
@@ -616,14 +626,14 @@ static PetscErrorCode MatSeqAIJCUSPARSEILUAnalysisAndCopyToGPU(Mat A)
   }
 
   /* upper triangular indices */
-  PetscCall(ISIdentity(iscol, &col_identity));
+  PetscCall(ISIdentity(isicol, &col_identity));
   if (!col_identity && !cusparseTriFactors->cpermIndices) {
     const PetscInt *c;
 
-    PetscCall(ISGetIndices(iscol, &c));
+    PetscCall(ISGetIndices(isicol, &c));
     cusparseTriFactors->cpermIndices = new THRUSTINTARRAY(n);
     cusparseTriFactors->cpermIndices->assign(c, c + n);
-    PetscCall(ISRestoreIndices(iscol, &c));
+    PetscCall(ISRestoreIndices(isicol, &c));
     PetscCall(PetscLogCpuToGpu(n * sizeof(PetscInt)));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -708,9 +718,18 @@ static PetscErrorCode MatSeqAIJCUSPARSEBuildFactoredMatrix_Cheolesky(Mat A)
     PetscCallCUDA(cudaMemcpy(fs->csrVal, Ma, sizeof(*Ma) * Mnz, cudaMemcpyHostToDevice));
     PetscCallCUDA(cudaMemcpy(fs->diag, D, sizeof(*D) * m, cudaMemcpyHostToDevice));
 
-    // Do cusparseSpSV_analysis(), which is numeric and requires valid and up-to-date matrix values
-    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_U, fs->spsvBuffer_U));
-    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_Ut, fs->spsvBuffer_Ut));
+  #if PETSC_PKG_CUDA_VERSION_GE(12, 1, 1)
+    if (fs->updatedSpSVAnalysis) {
+      if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_U, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+      if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_Ut, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+    } else
+  #endif
+    {
+      // Do cusparseSpSV_analysis(), which is numeric and requires valid and up-to-date matrix values
+      PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_U, fs->spsvBuffer_U));
+      PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_Ut, fs->spsvBuffer_Ut));
+      fs->updatedSpSVAnalysis = PETSC_TRUE;
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1728,15 +1747,24 @@ static PetscErrorCode MatILUFactorNumeric_SeqAIJCUSPARSE_ILU0(Mat fact, Mat A, c
     PetscAssert(CUSPARSE_STATUS_ZERO_PIVOT != status, PETSC_COMM_SELF, PETSC_ERR_USER_INPUT, "Numerical zero pivot detected in csrilu02: A(%d,%d) is zero", numerical_zero, numerical_zero);
   }
 
-  /* cusparseSpSV_analysis() is numeric, i.e., it requires valid matrix values, therefore, we do it after cusparseXcsrilu02()
+  #if PETSC_PKG_CUDA_VERSION_GE(12, 1, 1)
+  if (fs->updatedSpSVAnalysis) {
+    if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_L, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+    if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_U, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+  } else
+  #endif
+  {
+    /* cusparseSpSV_analysis() is numeric, i.e., it requires valid matrix values, therefore, we do it after cusparseXcsrilu02()
      See discussion at https://github.com/NVIDIA/CUDALibrarySamples/issues/78
-  */
-  PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_L, fs->spsvBuffer_L));
+    */
+    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_L, fs->spsvBuffer_L));
 
-  PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_U, fs->spsvBuffer_U));
+    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_U, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_U, fs->spsvBuffer_U));
 
-  /* L, U values have changed, reset the flag to indicate we need to redo cusparseSpSV_analysis() for transpose solve */
-  fs->updatedTransposeSpSVAnalysis = PETSC_FALSE;
+    fs->updatedSpSVAnalysis = PETSC_TRUE;
+    /* L, U values have changed, reset the flag to indicate we need to redo cusparseSpSV_analysis() for transpose solve */
+    fs->updatedTransposeSpSVAnalysis = PETSC_FALSE;
+  }
 
   fact->offloadmask            = PETSC_OFFLOAD_GPU;
   fact->ops->solve             = MatSolve_SeqAIJCUSPARSE_LU; // spMatDescr_L/U uses 32-bit indices, but cusparseSpSV_solve() supports both 32 and 64. The info is encoded in cusparseSpMatDescr_t.
@@ -1973,12 +2001,21 @@ static PetscErrorCode MatICCFactorNumeric_SeqAIJCUSPARSE_ICC0(Mat fact, Mat A, c
     PetscAssert(CUSPARSE_STATUS_ZERO_PIVOT != status, PETSC_COMM_SELF, PETSC_ERR_USER_INPUT, "Numerical zero pivot detected in csric02: A(%d,%d) is zero", numerical_zero, numerical_zero);
   }
 
-  PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_L, fs->spsvBuffer_L));
+  #if PETSC_PKG_CUDA_VERSION_GE(12, 1, 1)
+  if (fs->updatedSpSVAnalysis) {
+    if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_L, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+    if (fs->csrVal) PetscCallCUSPARSE(cusparseSpSV_updateMatrix(fs->handle, fs->spsvDescr_Lt, fs->csrVal, CUSPARSE_SPSV_UPDATE_GENERAL));
+  } else
+  #endif
+  {
+    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_L, fs->spsvBuffer_L));
 
-  /* Note that cusparse reports this error if we use double and CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE
+    /* Note that cusparse reports this error if we use double and CUSPARSE_OPERATION_CONJUGATE_TRANSPOSE
     ** On entry to cusparseSpSV_analysis(): conjugate transpose (opA) is not supported for matA data type, current -> CUDA_R_64F
   */
-  PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_Lt, fs->spsvBuffer_Lt));
+    PetscCallCUSPARSE(cusparseSpSV_analysis(fs->handle, CUSPARSE_OPERATION_TRANSPOSE, &PETSC_CUSPARSE_ONE, fs->spMatDescr_L, fs->dnVecDescr_X, fs->dnVecDescr_Y, cusparse_scalartype, CUSPARSE_SPSV_ALG_DEFAULT, fs->spsvDescr_Lt, fs->spsvBuffer_Lt));
+    fs->updatedSpSVAnalysis = PETSC_TRUE;
+  }
 
   fact->offloadmask            = PETSC_OFFLOAD_GPU;
   fact->ops->solve             = MatSolve_SeqAIJCUSPARSE_ICC0;
@@ -2189,7 +2226,7 @@ static PetscErrorCode MatILUFactorSymbolic_SeqAIJCUSPARSE(Mat B, Mat A, IS isrow
   PetscFunctionBegin;
 #if PETSC_PKG_CUDA_VERSION_GE(11, 4, 0)
   PetscBool row_identity = PETSC_FALSE, col_identity = PETSC_FALSE;
-  if (cusparseTriFactors->factorizeOnDevice) {
+  if (!info->factoronhost) {
     PetscCall(ISIdentity(isrow, &row_identity));
     PetscCall(ISIdentity(iscol, &col_identity));
   }
@@ -2212,7 +2249,7 @@ static PetscErrorCode MatICCFactorSymbolic_SeqAIJCUSPARSE(Mat B, Mat A, IS perm,
   PetscFunctionBegin;
 #if PETSC_PKG_CUDA_VERSION_GE(11, 4, 0)
   PetscBool perm_identity = PETSC_FALSE;
-  if (cusparseTriFactors->factorizeOnDevice) PetscCall(ISIdentity(perm, &perm_identity));
+  if (!info->factoronhost) PetscCall(ISIdentity(perm, &perm_identity));
   if (!info->levels && perm_identity) {
     PetscCall(MatICCFactorSymbolic_SeqAIJCUSPARSE_ICC0(B, A, perm, info));
   } else
@@ -2259,25 +2296,13 @@ M*/
 
 PETSC_EXTERN PetscErrorCode MatGetFactor_seqaijcusparse_cusparse(Mat A, MatFactorType ftype, Mat *B)
 {
-  PetscInt  n = A->rmap->n;
-  PetscBool factOnDevice, factOnHost;
-  char     *prefix;
-  char      factPlace[32] = "device"; /* the default */
+  PetscInt n = A->rmap->n;
 
   PetscFunctionBegin;
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), B));
   PetscCall(MatSetSizes(*B, n, n, n, n));
   (*B)->factortype = ftype; // factortype makes MatSetType() allocate spptr of type Mat_SeqAIJCUSPARSETriFactors
   PetscCall(MatSetType(*B, MATSEQAIJCUSPARSE));
-
-  prefix = (*B)->factorprefix ? (*B)->factorprefix : ((PetscObject)A)->prefix;
-  PetscOptionsBegin(PetscObjectComm((PetscObject)*B), prefix, "MatGetFactor", "Mat");
-  PetscCall(PetscOptionsString("-mat_factor_bind_factorization", "Do matrix factorization on host or device when possible", "MatGetFactor", NULL, factPlace, sizeof(factPlace), NULL));
-  PetscOptionsEnd();
-  PetscCall(PetscStrcasecmp("device", factPlace, &factOnDevice));
-  PetscCall(PetscStrcasecmp("host", factPlace, &factOnHost));
-  PetscCheck(factOnDevice || factOnHost, PetscObjectComm((PetscObject)*B), PETSC_ERR_ARG_OUTOFRANGE, "Wrong option %s to -mat_factor_bind_factorization <string>. Only host and device are allowed", factPlace);
-  ((Mat_SeqAIJCUSPARSETriFactors *)(*B)->spptr)->factorizeOnDevice = factOnDevice;
 
   if (A->boundtocpu && A->bindingpropagates) PetscCall(MatBindToCPU(*B, PETSC_TRUE));
   if (ftype == MAT_FACTOR_LU || ftype == MAT_FACTOR_ILU || ftype == MAT_FACTOR_ILUDT) {
@@ -2767,7 +2792,7 @@ static PetscErrorCode MatProductNumeric_SeqAIJCUSPARSE_SeqDENSECUDA(Mat C)
       mmdata->mmBufferSize = mmBufferSize;
     }
 
-  #if PETSC_PKG_CUDA_VERSION_GE(12, 4, 0) // the _preprocess was added in 11.2.1, but petsc worked without it until 12.4.0
+  #if PETSC_PKG_CUDA_VERSION_GE(12, 4, 0) // the _preprocess was added in 11.2.1, but PETSc worked without it until 12.4.0
     PetscCallCUSPARSE(cusparseSpMM_preprocess(cusp->handle, opA, opB, mat->alpha_one, matADescr, mmdata->matBDescr, mat->beta_zero, mmdata->matCDescr, cusparse_scalartype, cusp->spmmAlg, mmdata->mmBuffer));
   #endif
 
@@ -2840,22 +2865,31 @@ static PetscErrorCode MatProductSymbolic_SeqAIJCUSPARSE_SeqDENSECUDA(Mat C)
   case MATPRODUCT_AB:
     m = A->rmap->n;
     n = B->cmap->n;
+    PetscCall(MatSetBlockSizesFromMats(C, A, B));
     break;
   case MATPRODUCT_AtB:
     m = A->cmap->n;
     n = B->cmap->n;
+    if (A->cmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->rmap, A->cmap->bs));
+    if (B->cmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->cmap, B->cmap->bs));
     break;
   case MATPRODUCT_ABt:
     m = A->rmap->n;
     n = B->rmap->n;
+    if (A->rmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->rmap, A->rmap->bs));
+    if (B->rmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->cmap, B->rmap->bs));
     break;
   case MATPRODUCT_PtAP:
     m = B->cmap->n;
     n = B->cmap->n;
+    if (B->cmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->rmap, B->cmap->bs));
+    if (B->cmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->cmap, B->cmap->bs));
     break;
   case MATPRODUCT_RARt:
     m = B->rmap->n;
     n = B->rmap->n;
+    if (B->rmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->rmap, B->rmap->bs));
+    if (B->rmap->bs > 0) PetscCall(PetscLayoutSetBlockSize(C->cmap, B->rmap->bs));
     break;
   default:
     SETERRQ(PetscObjectComm((PetscObject)C), PETSC_ERR_GPU, "Unsupported product type %s", MatProductTypes[product->type]);
@@ -3694,20 +3728,8 @@ static PetscErrorCode MatMultAddKernel_SeqAIJCUSPARSE(Mat A, Vec xx, Vec yy, Vec
       /* ScatterAdd the result from work vector into the full vector when A is compressed */
       if (compressed) {
         PetscCall(PetscLogGpuTimeBegin());
-        /* I wanted to make this for_each asynchronous but failed. thrust::async::for_each() returns an event (internally registered)
-           and in the destructor of the scope, it will call cudaStreamSynchronize() on this stream. One has to store all events to
-           prevent that. So I just add a ScatterAdd kernel.
-         */
-#if 0
-        thrust::device_ptr<PetscScalar> zptr = thrust::device_pointer_cast(zarray);
-        thrust::async::for_each(thrust::cuda::par.on(cusparsestruct->stream),
-                         thrust::make_zip_iterator(thrust::make_tuple(cusparsestruct->workVector->begin(), thrust::make_permutation_iterator(zptr, matstruct->cprowIndices->begin()))),
-                         thrust::make_zip_iterator(thrust::make_tuple(cusparsestruct->workVector->begin(), thrust::make_permutation_iterator(zptr, matstruct->cprowIndices->begin()))) + matstruct->cprowIndices->size(),
-                         VecCUDAPlusEquals());
-#else
         PetscInt n = (PetscInt)matstruct->cprowIndices->size();
         ScatterAdd<<<(int)((n + 255) / 256), 256, 0, PetscDefaultCudaStream>>>(n, matstruct->cprowIndices->data().get(), cusparsestruct->workVector->data().get(), zarray);
-#endif
         PetscCall(PetscLogGpuTimeEnd());
       }
     } else {
@@ -4010,7 +4032,7 @@ static PetscErrorCode MatBindToCPU_SeqAIJCUSPARSE(Mat A, PetscBool flg)
     PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatProductSetFromOptions_seqaijcusparse_seqaijcusparse_C", MatProductSetFromOptions_SeqAIJCUSPARSE));
   }
   A->boundtocpu = flg;
-  if (flg && a->inode.size) {
+  if (flg && a->inode.size_csr) {
     a->inode.use = PETSC_TRUE;
   } else {
     a->inode.use = PETSC_FALSE;
@@ -4302,9 +4324,9 @@ static PetscErrorCode MatSeqAIJCUSPARSEInvalidateTranspose(Mat A, PetscBool dest
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatCOOStructDestroy_SeqAIJCUSPARSE(void *data)
+static PetscErrorCode MatCOOStructDestroy_SeqAIJCUSPARSE(void **data)
 {
-  MatCOOStruct_SeqAIJ *coo = (MatCOOStruct_SeqAIJ *)data;
+  MatCOOStruct_SeqAIJ *coo = (MatCOOStruct_SeqAIJ *)*data;
 
   PetscFunctionBegin;
   PetscCallCUDA(cudaFree(coo->perm));
@@ -4322,7 +4344,6 @@ static PetscErrorCode MatSetPreallocationCOO_SeqAIJCUSPARSE(Mat mat, PetscCount 
   MatCOOStruct_SeqAIJ *coo_h, *coo_d;
 
   PetscFunctionBegin;
-  // The two MatResetPreallocationCOO_* must be done in order. The former relies on values that might be destroyed by the latter
   PetscCall(PetscGetMemType(coo_i, &mtype));
   if (PetscMemTypeDevice(mtype)) {
     dev_ij = PETSC_TRUE;
@@ -4802,7 +4823,11 @@ PetscErrorCode MatSeqAIJCUSPARSEMergeMats(Mat A, Mat B, MatReuse reuse, Mat *C)
 #if 0 //Errors on SUMMIT cuda 11.1.0
       PetscCallThrust(thrust::partition_copy(thrust::device,cci,cce,wPerm->begin(),p1,p2,thrust::identity<int>()));
 #else
+  #if PETSC_PKG_CUDA_VERSION_LT(12, 9, 0) || PetscDefined(HAVE_THRUST)
       auto pred = thrust::identity<int>();
+  #else
+      auto pred = cuda::std::identity();
+  #endif
       PetscCallThrust(thrust::copy_if(thrust::device, cci, cce, wPerm->begin(), p1, pred));
       PetscCallThrust(thrust::remove_copy_if(thrust::device, cci, cce, wPerm->begin(), p2, pred));
 #endif

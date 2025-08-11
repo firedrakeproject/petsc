@@ -91,7 +91,7 @@
           PetscCallA(MatSetValues(A,one,[II],one,[JJ],[v],ADD_VALUES,ierr))
         endif
         v = 4.0
-        PetscCallA( MatSetValues(A,one,[II],one,[II],[v],ADD_VALUES,ierr))
+        PetscCallA(MatSetValues(A,one,[II],one,[II],[v],ADD_VALUES,ierr))
  10   continue
 
 !  Assemble matrix, using the 2-step process:
@@ -132,7 +132,7 @@
       PetscCallA(PCMGSetResidual(pc,zero,MyResidual,A,ierr))
 
 !  Set operators. Here the matrix that defines the linear system
-!  also serves as the preconditioning matrix.
+!  also serves as the matrix used to construct the preconditioner.
 
       PetscCallA(KSPSetOperators(ksp,A,A,ierr))
 
@@ -157,4 +157,5 @@
 !
 !   test:
 !      nsize: 1
+!      output_file: output/empty.out
 !TEST*/

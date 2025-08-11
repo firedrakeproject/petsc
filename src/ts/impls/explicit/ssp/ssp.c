@@ -278,7 +278,7 @@ PetscErrorCode TSSSPSetType(TS ts, TSSSPType ssptype)
 
   Level: beginner
 
-.seealso: [](ch_ts), `TSSSP`, `TSSSPSettype()`, `TSSSPSetNumStages()`, `TSSSPRKS2`, `TSSSPRKS3`, `TSSSPRK104`
+.seealso: [](ch_ts), `TSSSP`, `TSSSPSetType()`, `TSSSPSetNumStages()`, `TSSSPRKS2`, `TSSSPRKS3`, `TSSSPRK104`
 @*/
 PetscErrorCode TSSSPGetType(TS ts, TSSSPType *type)
 {
@@ -388,7 +388,7 @@ static PetscErrorCode TSSSPGetNumStages_SSP(TS ts, PetscInt *nstages)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TSSetFromOptions_SSP(TS ts, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TSSetFromOptions_SSP(TS ts, PetscOptionItems PetscOptionsObject)
 {
   char      tname[256] = TSSSPRKS2;
   TS_SSP   *ssp        = (TS_SSP *)ts->data;

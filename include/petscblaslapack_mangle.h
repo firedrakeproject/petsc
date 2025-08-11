@@ -5,6 +5,8 @@
 */
 #pragma once
 
+/* MANSEC = Sys */
+
 /* macros to mangle BLAS/LAPACK names as needed for linking */
 
 /* token pasting, with an extra level of indirection so that we
@@ -216,6 +218,8 @@
   #if !defined(PETSC_MISSING_LAPACK_STEBZ)
     #define LAPACKstebz_ PETSCBLAS(stebz, STEBZ) /* eigenvalues of symm tridiagonal matrix */
   #endif
+  #define LAPACKgerc_ PETSCBLAS(ger, GER)
+  #define BLAShemv_   PETSCBLAS(symv, SYMV)
 #else
   #define LAPACKhetrf_ PETSCBLAS(hetrf, HETRF)
   #define LAPACKhetrs_ PETSCBLAS(hetrs, HETRS)
@@ -233,4 +237,7 @@
   #define LAPACKsyevx_ PETSCBLAS(heevx, HEEVX) /* selected eigenvalues and eigenvectors of a symm matrix */
   #define LAPACKsygv_  PETSCBLAS(hegv, HEGV)
   #define LAPACKsygvx_ PETSCBLAS(hegvx, HEGVX)
+
+  #define LAPACKgerc_ PETSCBLAS(gerc, GERC)
+  #define BLAShemv_   PETSCBLAS(hemv, HEMV)
 #endif

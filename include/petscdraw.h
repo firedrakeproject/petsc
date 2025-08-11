@@ -5,7 +5,8 @@
 #include <petscsys.h>
 #include <petscdrawtypes.h>
 
-/* SUBMANSEC = Sys */
+/* MANSEC = Sys */
+/* SUBMANSEC = Draw */
 
 PETSC_EXTERN PetscClassId PETSC_DRAW_CLASSID;
 
@@ -223,7 +224,7 @@ PETSC_EXTERN PetscErrorCode PetscDrawSetVisible(PetscDraw, PetscBool);
 .seealso: `PetscDraw`, `PetscDrawGetMouseButton()`
 E*/
 typedef enum {
-  PETSC_BUTTON_NONE = 0,
+  PETSC_BUTTON_NONE,
   PETSC_BUTTON_LEFT,
   PETSC_BUTTON_CENTER,
   PETSC_BUTTON_RIGHT,
@@ -291,6 +292,7 @@ PETSC_EXTERN PetscErrorCode PetscDrawLGSetLimits(PetscDrawLG, PetscReal, PetscRe
 PETSC_EXTERN PetscErrorCode PetscDrawLGSetColors(PetscDrawLG, const int[]);
 PETSC_EXTERN PetscErrorCode PetscDrawLGSetOptionsPrefix(PetscDrawLG, const char[]);
 PETSC_EXTERN PetscErrorCode PetscDrawLGSetFromOptions(PetscDrawLG);
+PETSC_EXTERN PetscErrorCode PetscDrawLGGetData(PetscDrawLG, PetscInt *, PetscInt *, const PetscReal *[], const PetscReal *[]);
 
 PETSC_EXTERN PetscClassId PETSC_DRAWSP_CLASSID;
 
@@ -314,6 +316,7 @@ PETSC_EXTERN PetscClassId PETSC_DRAWHG_CLASSID;
 PETSC_EXTERN PetscErrorCode PetscDrawHGCreate(PetscDraw, int, PetscDrawHG *);
 PETSC_EXTERN PetscErrorCode PetscDrawHGDestroy(PetscDrawHG *);
 PETSC_EXTERN PetscErrorCode PetscDrawHGAddValue(PetscDrawHG, PetscReal);
+PETSC_EXTERN PetscErrorCode PetscDrawHGAddWeightedValue(PetscDrawHG, PetscReal, PetscReal);
 PETSC_EXTERN PetscErrorCode PetscDrawHGDraw(PetscDrawHG);
 PETSC_EXTERN PetscErrorCode PetscDrawHGSave(PetscDrawHG);
 PETSC_EXTERN PetscErrorCode PetscDrawHGView(PetscDrawHG, PetscViewer);
@@ -446,3 +449,12 @@ M*/
   #define PetscDrawCollectiveBegin(draw)
   #define PetscDrawCollectiveEnd(draw)
 #endif /* PetscDefined(HAVE_X) && PetscDefined(HAVE_SETJMP_H) */
+
+PETSC_EXTERN PetscErrorCode PetscViewerDrawGetDrawType(PetscViewer, PetscDrawType *);
+PETSC_EXTERN PetscErrorCode PetscViewerDrawSetTitle(PetscViewer, const char[]);
+PETSC_EXTERN PetscErrorCode PetscViewerDrawGetTitle(PetscViewer, const char *[]);
+PETSC_EXTERN PetscErrorCode PetscViewerDrawGetDraw(PetscViewer, PetscInt, PetscDraw *);
+PETSC_EXTERN PetscErrorCode PetscViewerDrawBaseAdd(PetscViewer, PetscInt);
+PETSC_EXTERN PetscErrorCode PetscViewerDrawBaseSet(PetscViewer, PetscInt);
+PETSC_EXTERN PetscErrorCode PetscViewerDrawGetDrawLG(PetscViewer, PetscInt, PetscDrawLG *);
+PETSC_EXTERN PetscErrorCode PetscViewerDrawGetDrawAxis(PetscViewer, PetscInt, PetscDrawAxis *);

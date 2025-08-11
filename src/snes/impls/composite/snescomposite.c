@@ -326,7 +326,7 @@ static PetscErrorCode SNESSetUp_Composite(SNES snes)
     n++;
     PetscCall(SNESSetDM(next->snes, dm));
     PetscCall(SNESSetJacobian(next->snes, snes->jacobian, snes->jacobian_pre, NULL, NULL));
-    PetscCall(SNESSetApplicationContext(next->snes, snes->user));
+    PetscCall(SNESSetApplicationContext(next->snes, snes->ctx));
     if (snes->xl && snes->xu) {
       if (snes->ops->computevariablebounds) {
         PetscCall(SNESVISetComputeVariableBounds(next->snes, snes->ops->computevariablebounds));
@@ -354,9 +354,9 @@ static PetscErrorCode SNESSetUp_Composite(SNES snes)
     }
     /* allocate the subspace direct solve area */
     jac->nrhs = 1;
-    jac->lda  = (PetscBLASInt)jac->nsnes;
-    jac->ldb  = (PetscBLASInt)jac->nsnes;
-    jac->n    = (PetscBLASInt)jac->nsnes;
+    PetscCall(PetscBLASIntCast(jac->nsnes, &jac->lda));
+    PetscCall(PetscBLASIntCast(jac->nsnes, &jac->ldb));
+    PetscCall(PetscBLASIntCast(jac->nsnes, &jac->n));
 
     PetscCall(PetscMalloc4(jac->n * jac->n, &jac->h, jac->n, &jac->beta, jac->n, &jac->s, jac->n, &jac->g));
     jac->lwork = 12 * jac->n;
@@ -409,7 +409,7 @@ static PetscErrorCode SNESDestroy_Composite(SNES snes)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESSetFromOptions_Composite(SNES snes, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode SNESSetFromOptions_Composite(SNES snes, PetscOptionItems PetscOptionsObject)
 {
   SNES_Composite    *jac  = (SNES_Composite *)snes->data;
   PetscInt           nmax = 8, i;
@@ -513,7 +513,7 @@ static PetscErrorCode SNESCompositeAddSNES_Composite(SNES snes, SNESType type)
   }
   PetscCall(SNESGetOptionsPrefix(snes, &prefix));
   PetscCall(SNESSetOptionsPrefix(ilink->snes, prefix));
-  PetscCall(PetscSNPrintf(newprefix, sizeof(newprefix), "sub_%d_", (int)cnt));
+  PetscCall(PetscSNPrintf(newprefix, sizeof(newprefix), "sub_%" PetscInt_FMT "_", cnt));
   PetscCall(SNESAppendOptionsPrefix(ilink->snes, newprefix));
   PetscCall(SNESSetType(ilink->snes, type));
   PetscCall(SNESSetNormSchedule(ilink->snes, SNES_NORM_FINAL_ONLY));

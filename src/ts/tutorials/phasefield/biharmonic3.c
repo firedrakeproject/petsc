@@ -109,7 +109,7 @@ int main(int argc, char **argv)
      routine. User can override with:
      -snes_mf : matrix-free Newton-Krylov method with no preconditioning
                 (unless user explicitly sets preconditioner)
-     -snes_mf_operator : form preconditioning matrix as set by the user,
+     -snes_mf_operator : form matrix used to construct the preconditioner as set by the user,
                          but use matrix-free approx for Jacobian-vector
                          products within Newton-Krylov method
 
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
   PetscCall(DMSetMatType(da, MATAIJ));
   PetscCall(DMCreateMatrix(da, &J));
   PetscCall(MatFDColoringCreate(J, iscoloring, &matfdcoloring));
-  PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode (*)(void))SNESTSFormFunction, ts));
+  PetscCall(MatFDColoringSetFunction(matfdcoloring, (MatFDColoringFn *)SNESTSFormFunction, ts));
   PetscCall(MatFDColoringSetFromOptions(matfdcoloring));
   PetscCall(MatFDColoringSetUp(J, iscoloring, matfdcoloring));
   PetscCall(ISColoringDestroy(&iscoloring));

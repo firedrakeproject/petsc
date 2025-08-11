@@ -104,7 +104,7 @@ int main(int argc, char **args)
 
   /*
      Set operators. Here the matrix that defines the linear system
-     also serves as the preconditioning matrix.
+     also serves as the matrix from which the preconditioner is constructed.
   */
   PetscCall(KSPSetOperators(ksp, A, A));
 
@@ -342,7 +342,7 @@ PetscErrorCode AssembleMatrix(Mat A, PetscInt m, PetscInt n)
       nsize: 4
       requires: superlu_dist
       args: -M 7 -N 9 -pc_gasm_overlap 1 -sub_pc_type lu -sub_pc_factor_mat_solver_type superlu_dist -ksp_monitor -print_error -pc_gasm_total_subdomains 2 -pc_gasm_use_hierachical_partitioning 1
-      output_file: output/ex62.out
+      output_file: output/empty.out
       TODO: bug, triggers New nonzero at (0,15) caused a malloc in MatCreateSubMatrices_MPIAIJ_SingleIS_Local
 
    test:

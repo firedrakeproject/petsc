@@ -1888,12 +1888,6 @@ static PetscErrorCode PetscFVView_Upwind(PetscFV fv, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscFVSetUp_Upwind(PetscFV fvm)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode PetscFVComputeGradient_Upwind(PetscFV fv, PetscInt numFaces, const PetscScalar dx[], PetscScalar grad[])
 {
   PetscInt dim;
@@ -1941,7 +1935,6 @@ static PetscErrorCode PetscFVInitialize_Upwind(PetscFV fvm)
 {
   PetscFunctionBegin;
   fvm->ops->setfromoptions       = NULL;
-  fvm->ops->setup                = PetscFVSetUp_Upwind;
   fvm->ops->view                 = PetscFVView_Upwind;
   fvm->ops->destroy              = PetscFVDestroy_Upwind;
   fvm->ops->computegradient      = PetscFVComputeGradient_Upwind;
@@ -2011,12 +2004,6 @@ static PetscErrorCode PetscFVView_LeastSquares(PetscFV fv, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscFVSetUp_LeastSquares(PetscFV fvm)
-{
-  PetscFunctionBegin;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 /* Overwrites A. Can only handle full-rank problems with m>=n */
 static PetscErrorCode PetscFVLeastSquaresPseudoInverse_Static(PetscInt m, PetscInt mstride, PetscInt n, PetscScalar *A, PetscScalar *Ainv, PetscScalar *tau, PetscInt worksize, PetscScalar *work)
 {
@@ -2073,7 +2060,7 @@ static PetscErrorCode PetscFVLeastSquaresPseudoInverseSVD_Static(PetscInt m, Pet
   PetscReal    rcond;
 #if defined(PETSC_USE_COMPLEX)
   PetscInt   rworkSize;
-  PetscReal *rwork;
+  PetscReal *rwork, *rtau;
 #endif
   PetscInt     i, j, maxmn;
   PetscBLASInt M, N, lda, ldb, ldwork;
@@ -2098,19 +2085,22 @@ static PetscErrorCode PetscFVLeastSquaresPseudoInverseSVD_Static(PetscInt m, Pet
 #if defined(PETSC_USE_COMPLEX)
   rworkSize = 5 * PetscMin(M, N);
   PetscCall(PetscMalloc1(rworkSize, &rwork));
+  PetscCall(PetscMalloc1(PetscMin(M, N), &rtau));
   PetscCall(PetscFPTrapPush(PETSC_FP_TRAP_OFF));
-  PetscCallBLAS("LAPACKgelss", LAPACKgelss_(&M, &N, &nrhs, A, &lda, Brhs, &ldb, (PetscReal *)tau, &rcond, &irank, tmpwork, &ldwork, rwork, &info));
+  PetscCallBLAS("LAPACKgelss", LAPACKgelss_(&M, &N, &nrhs, A, &lda, Brhs, &ldb, rtau, &rcond, &irank, tmpwork, &ldwork, rwork, &info));
   PetscCall(PetscFPTrapPop());
   PetscCall(PetscFree(rwork));
+  for (i = 0; i < PetscMin(M, N); i++) tau[i] = rtau[i];
+  PetscCall(PetscFree(rtau));
 #else
   nrhs = M;
   PetscCall(PetscFPTrapPush(PETSC_FP_TRAP_OFF));
-  PetscCallBLAS("LAPACKgelss", LAPACKgelss_(&M, &N, &nrhs, A, &lda, Brhs, &ldb, (PetscReal *)tau, &rcond, &irank, tmpwork, &ldwork, &info));
+  PetscCallBLAS("LAPACKgelss", LAPACKgelss_(&M, &N, &nrhs, A, &lda, Brhs, &ldb, tau, &rcond, &irank, tmpwork, &ldwork, &info));
   PetscCall(PetscFPTrapPop());
 #endif
   PetscCheck(!info, PETSC_COMM_SELF, PETSC_ERR_LIB, "xGELSS error");
   /* The following check should be turned into a diagnostic as soon as someone wants to do this intentionally */
-  PetscCheck(irank >= PetscMin(M, N), PETSC_COMM_SELF, PETSC_ERR_USER, "Rank deficient least squares fit, indicates an isolated cell with two colinear points");
+  PetscCheck(irank >= PetscMin(M, N), PETSC_COMM_SELF, PETSC_ERR_USER, "Rank deficient least squares fit, indicates an isolated cell with two collinear points");
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2247,7 +2237,6 @@ static PetscErrorCode PetscFVInitialize_LeastSquares(PetscFV fvm)
 {
   PetscFunctionBegin;
   fvm->ops->setfromoptions       = NULL;
-  fvm->ops->setup                = PetscFVSetUp_LeastSquares;
   fvm->ops->view                 = PetscFVView_LeastSquares;
   fvm->ops->destroy              = PetscFVDestroy_LeastSquares;
   fvm->ops->computegradient      = PetscFVComputeGradient_LeastSquares;

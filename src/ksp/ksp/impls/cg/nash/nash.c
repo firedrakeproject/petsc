@@ -555,7 +555,7 @@ static PetscErrorCode KSPCGGetObjFcn_NASH(KSP ksp, PetscReal *o_fcn)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPCGSetFromOptions_NASH(KSP ksp, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode KSPCGSetFromOptions_NASH(KSP ksp, PetscOptionItems PetscOptionsObject)
 {
   KSPCG_NASH *cg = (KSPCG_NASH *)ksp->data;
 
@@ -599,7 +599,6 @@ static PetscErrorCode KSPCGSetFromOptions_NASH(KSP ksp, PetscOptionItems *PetscO
      delta is the trust region radius,
      g is the gradient vector,
      H is the Hessian approximation, and
-     M is the positive definite preconditioner matrix.
 .ve
 
    `KSPConvergedReason` may include

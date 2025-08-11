@@ -40,7 +40,7 @@ static PetscErrorCode DMView_DA_3d(DM da, PetscViewer viewer)
       nzlocal = info.xm * info.ym * info.zm;
       PetscCall(PetscMalloc1(size, &nz));
       PetscCallMPI(MPI_Allgather(&nzlocal, 1, MPIU_INT, nz, 1, MPIU_INT, PetscObjectComm((PetscObject)da)));
-      for (i = 0; i < (PetscInt)size; i++) {
+      for (i = 0; i < size; i++) {
         nmax = PetscMax(nmax, nz[i]);
         nmin = PetscMin(nmin, nz[i]);
         navg += nz[i];
@@ -50,7 +50,7 @@ static PetscErrorCode DMView_DA_3d(DM da, PetscViewer viewer)
       PetscCall(PetscViewerASCIIPrintf(viewer, "  Load Balance - Grid Points: Min %" PetscInt_FMT "  avg %" PetscInt_FMT "  max %" PetscInt_FMT "\n", nmin, navg, nmax));
       PetscFunctionReturn(PETSC_SUCCESS);
     }
-    if (format != PETSC_VIEWER_ASCII_VTK_DEPRECATED && format != PETSC_VIEWER_ASCII_VTK_CELL_DEPRECATED && format != PETSC_VIEWER_ASCII_GLVIS) {
+    if (format != PETSC_VIEWER_ASCII_GLVIS) {
       DMDALocalInfo info;
       PetscCall(DMDAGetLocalInfo(da, &info));
       PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "Processor [%d] M %" PetscInt_FMT " N %" PetscInt_FMT " P %" PetscInt_FMT " m %" PetscInt_FMT " n %" PetscInt_FMT " p %" PetscInt_FMT " w %" PetscInt_FMT " s %" PetscInt_FMT "\n", rank, dd->M, dd->N, dd->P, dd->m, dd->n, dd->p, dd->w, dd->s));
@@ -71,7 +71,6 @@ static PetscErrorCode DMView_DA_3d(DM da, PetscViewer viewer)
       PetscCall(PetscViewerFlush(viewer));
       PetscCall(PetscViewerASCIIPopSynchronized(viewer));
     } else if (format == PETSC_VIEWER_ASCII_GLVIS) PetscCall(DMView_DA_GLVis(da, viewer));
-    else PetscCall(DMView_DA_VTK(da, viewer));
   } else if (isdraw) {
     PetscDraw       draw;
     PetscReal       ymin = -1.0, ymax = (PetscReal)dd->N;
@@ -124,13 +123,13 @@ static PetscErrorCode DMView_DA_3d(DM da, PetscViewer viewer)
         xmax = (dd->xe - 1) / dd->w;
 
         /* identify which processor owns the box */
-        PetscCall(PetscSNPrintf(node, sizeof(node), "%d", (int)rank));
+        PetscCall(PetscSNPrintf(node, sizeof(node), "%d", rank));
         PetscCall(PetscDrawString(draw, xmin + (dd->M + 1) * k + .2, ymin + .3, PETSC_DRAW_RED, node));
         /* put in numbers*/
         base = (dd->base + (dd->xe - dd->xs) * (dd->ye - dd->ys) * (k - dd->zs)) / dd->w;
         for (y = ymin; y <= ymax; y++) {
           for (x = xmin + (dd->M + 1) * k; x <= xmax + (dd->M + 1) * k; x++) {
-            PetscCall(PetscSNPrintf(node, sizeof(node), "%d", (int)base++));
+            PetscCall(PetscSNPrintf(node, sizeof(node), "%" PetscInt_FMT, base++));
             PetscCall(PetscDrawString(draw, x, y, PETSC_DRAW_BLACK, node));
           }
         }
@@ -1413,7 +1412,7 @@ PetscErrorCode DMSetUp_DA_3D(DM da)
   dd->m = m;
   dd->n = n;
   dd->p = p;
-  /* note petsc expects xs/xe/Xs/Xe to be multiplied by #dofs in many places */
+  /* note PETSc expects xs/xe/Xs/Xe to be multiplied by #dofs in many places */
   dd->xs = xs * dof;
   dd->xe = xe * dof;
   dd->ys = ys;

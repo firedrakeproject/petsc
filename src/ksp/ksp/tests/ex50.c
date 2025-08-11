@@ -62,7 +62,7 @@ int main(int argc, char **args)
 
   /*
      Set operators. Here the matrix that defines the linear system
-     also serves as the preconditioning matrix.
+     also serves as the matrix from which the preconditioner is constructed.
   */
   PetscCall(KSPSetOperators(ksp, A, A));
 
@@ -117,7 +117,7 @@ int main(int argc, char **args)
 
   testset:
     args: -bs {{1 2 3 4 5 6 7 8 11 15}} -pc_type {{pbjacobi ilu}}
-    output_file: output/ex50_1.out
+    output_file: output/empty.out
 
     test:
       args: -mat_type {{aij baij}}

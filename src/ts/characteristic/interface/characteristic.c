@@ -33,6 +33,18 @@ static PetscErrorCode CharacteristicView(Characteristic c, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@
+  CharacteristicDestroy - Destroys a `Characteristic` context created with `CharacteristicCreate()`
+
+  Collective
+
+  Input Parameter:
+. c - the `Characteristic` context
+
+  Level: beginner
+
+.seealso: `Characteristic`, `CharacteristicCreate()`
+@*/
 PetscErrorCode CharacteristicDestroy(Characteristic *c)
 {
   PetscFunctionBegin;
@@ -56,6 +68,21 @@ PetscErrorCode CharacteristicDestroy(Characteristic *c)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@
+  CharacteristicCreate - Creates a `Characteristic` context for use with the Method of Characteristics
+
+  Collective
+
+  Input Parameter:
+. comm - MPI communicator
+
+  Output Parameter:
+. c - the `Characteristic` context
+
+  Level: beginner
+
+.seealso: `Characteristic`, `CharacteristicDestroy()`
+@*/
 PetscErrorCode CharacteristicCreate(MPI_Comm comm, Characteristic *c)
 {
   Characteristic newC;
@@ -121,20 +148,8 @@ PetscErrorCode CharacteristicCreate(MPI_Comm comm, Characteristic *c)
 
   Level: intermediate
 
-  Notes:
+  Note:
   See "include/petsccharacteristic.h" for available methods
-
-  Normally, it is best to use the CharacteristicSetFromOptions() command and
-  then set the Characteristic type from the options database rather than by using
-  this routine.  Using the options database provides the user with
-  maximum flexibility in evaluating the many different Krylov methods.
-  The CharacteristicSetType() routine is provided for those situations where it
-  is necessary to set the iterative solver independently of the command
-  line or options database.  This might be the case, for example, when
-  the choice of iterative solver changes during the execution of the
-  program, and the user's application is taking responsibility for
-  choosing the appropriate method.  In other words, this routine is
-  not for beginners.
 
 .seealso: [](ch_ts), `CharacteristicType`
 @*/
@@ -159,7 +174,7 @@ PetscErrorCode CharacteristicSetType(Characteristic c, CharacteristicType type)
 
   PetscCall(PetscFunctionListFind(CharacteristicList, type, &r));
   PetscCheck(r, PetscObjectComm((PetscObject)c), PETSC_ERR_ARG_UNKNOWN_TYPE, "Unknown Characteristic type given: %s", type);
-  c->setupcalled = 0;
+  c->setupcalled = PETSC_FALSE;
   PetscCall((*r)(c));
   PetscCall(PetscObjectChangeTypeName((PetscObject)c, type));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -167,16 +182,16 @@ PetscErrorCode CharacteristicSetType(Characteristic c, CharacteristicType type)
 
 /*@
   CharacteristicSetUp - Sets up the internal data structures for the
-  later use of an iterative solver.
+  later use of a `Charactoristic` .
 
   Collective
 
   Input Parameter:
-. c - iterative context obtained from CharacteristicCreate()
+. c - context obtained from CharacteristicCreate()
 
   Level: developer
 
-.seealso: [](ch_ts), `CharacteristicCreate()`, `CharacteristicSolve()`, `CharacteristicDestroy()`
+.seealso: [](ch_ts), `Characteristic`, `CharacteristicCreate()`, `CharacteristicSolve()`, `CharacteristicDestroy()`
 @*/
 PetscErrorCode CharacteristicSetUp(Characteristic c)
 {
@@ -185,22 +200,22 @@ PetscErrorCode CharacteristicSetUp(Characteristic c)
 
   if (!((PetscObject)c)->type_name) PetscCall(CharacteristicSetType(c, CHARACTERISTICDA));
 
-  if (c->setupcalled == 2) PetscFunctionReturn(PETSC_SUCCESS);
+  if (c->setupcalled) PetscFunctionReturn(PETSC_SUCCESS);
 
   PetscCall(PetscLogEventBegin(CHARACTERISTIC_SetUp, c, NULL, NULL, NULL));
   if (!c->setupcalled) PetscUseTypeMethod(c, setup);
   PetscCall(PetscLogEventEnd(CHARACTERISTIC_SetUp, c, NULL, NULL, NULL));
-  c->setupcalled = 2;
+  c->setupcalled = PETSC_TRUE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@C
-  CharacteristicRegister -  Adds a solver to the method of characteristics package.
+  CharacteristicRegister -  Adds an approarch to the method of characteristics package.
 
   Not Collective, No Fortran Support
 
   Input Parameters:
-+ sname    - name of a new user-defined solver
++ sname    - name of a new approach
 - function - routine to create method context
 
   Level: advanced
@@ -221,7 +236,7 @@ PetscErrorCode CharacteristicSetUp(Characteristic c)
 .ve
 
   Notes:
-  CharacteristicRegister() may be called multiple times to add several user-defined solvers.
+  `CharacteristicRegister()` may be called multiple times to add several approaches.
 
 .seealso: [](ch_ts), `CharacteristicRegisterAll()`, `CharacteristicRegisterDestroy()`
 @*/
@@ -289,6 +304,20 @@ PetscErrorCode CharacteristicSetFieldInterpolationLocal(Characteristic c, DM da,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@
+  CharacteristicSolve - Apply the Method of Characteristics solver
+
+  Collective
+
+  Input Parameters:
++ c        - context obtained from `CharacteristicCreate()`
+. dt       - the time-step
+- solution - vector holding the solution
+
+  Level: developer
+
+.seealso: [](ch_ts), `Characteristic`, `CharacteristicCreate()`, `CharacteristicDestroy()`
+@*/
 PetscErrorCode CharacteristicSolve(Characteristic c, PetscReal dt, Vec solution)
 {
   CharacteristicPointDA2D Qi;
@@ -528,7 +557,7 @@ PetscErrorCode CharacteristicSolve(Characteristic c, PetscReal dt, Vec solution)
 PetscErrorCode CharacteristicSetNeighbors(Characteristic c, PetscInt numNeighbors, PetscMPIInt neighbors[])
 {
   PetscFunctionBegin;
-  c->numNeighbors = (PetscMPIInt)numNeighbors;
+  PetscCall(PetscMPIIntCast(numNeighbors, &c->numNeighbors));
   PetscCall(PetscFree(c->neighbors));
   PetscCall(PetscMalloc1(numNeighbors, &c->neighbors));
   PetscCall(PetscArraycpy(c->neighbors, neighbors, numNeighbors));
@@ -687,14 +716,15 @@ static PetscErrorCode DMDAGetNeighborsRank(DM da, PetscMPIInt neighbors[])
   PetscBool      IPeriodic = PETSC_FALSE, JPeriodic = PETSC_FALSE;
   MPI_Comm       comm;
   PetscMPIInt    rank;
-  PetscMPIInt  **procs, pi, pj, pim, pip, pjm, pjp;
+  PetscMPIInt  **procs, pi, pj, pim, pip, pjm, pjp, PIi, PJi;
   PetscInt       PI, PJ;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)da, &comm));
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   PetscCall(DMDAGetInfo(da, NULL, NULL, NULL, NULL, &PI, &PJ, NULL, NULL, NULL, &bx, &by, NULL, NULL));
-
+  PetscCall(PetscMPIIntCast(PI, &PIi));
+  PetscCall(PetscMPIIntCast(PJ, &PJi));
   if (bx == DM_BOUNDARY_PERIODIC) IPeriodic = PETSC_TRUE;
   if (by == DM_BOUNDARY_PERIODIC) JPeriodic = PETSC_TRUE;
 
@@ -712,11 +742,11 @@ static PetscErrorCode DMDAGetNeighborsRank(DM da, PetscMPIInt neighbors[])
   pi  = neighbors[0] % PI;
   pj  = neighbors[0] / PI;
   pim = pi - 1;
-  if (pim < 0) pim = (PetscMPIInt)PI - 1;
-  pip = (pi + 1) % (PetscMPIInt)PI;
+  if (pim < 0) pim = PIi - 1;
+  pip = (pi + 1) % PIi;
   pjm = pj - 1;
-  if (pjm < 0) pjm = (PetscMPIInt)PJ - 1;
-  pjp = (pj + 1) % (PetscMPIInt)PJ;
+  if (pjm < 0) pjm = PJi - 1;
+  pjp = (pj + 1) % PJi;
 
   neighbors[1] = procs[pj][pim];
   neighbors[2] = procs[pjp][pim];

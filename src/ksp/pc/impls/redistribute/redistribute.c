@@ -57,7 +57,7 @@ static PetscErrorCode PCView_Redistribute(PC pc, PetscViewer viewer)
   if (iascii) {
     PetscCallMPI(MPIU_Allreduce(&red->dcnt, &ncnt, 1, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)pc)));
     PetscCall(MatGetSize(pc->pmat, &N, NULL));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "    Number rows eliminated %" PetscInt_FMT " Percentage rows eliminated %g\n", ncnt, (double)(100.0 * ((PetscReal)ncnt) / ((PetscReal)N))));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "    Number rows eliminated %" PetscInt_FMT " Percentage rows eliminated %g\n", ncnt, (double)(100 * ((PetscReal)ncnt) / ((PetscReal)N))));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Redistribute preconditioner: \n"));
     PetscCall(KSPView(red->ksp, viewer));
   } else if (isstring) {
@@ -96,9 +96,9 @@ static PetscErrorCode PCSetUp_Redistribute(PC pc)
     PetscCall(MatCreateSubMatrix(pc->pmat, red->is, red->is, MAT_REUSE_MATRIX, &tmat));
     PetscCall(KSPSetOperators(red->ksp, tmat, tmat));
   } else {
-    PetscInt     NN;
-    PC           ipc;
-    PetscVoidFn *fptr;
+    PetscInt  NN;
+    PC        ipc;
+    PetscBool fptr;
 
     PetscCall(PetscObjectGetComm((PetscObject)pc, &comm));
     PetscCallMPI(MPI_Comm_size(comm, &size));
@@ -253,7 +253,7 @@ static PetscErrorCode PCSetUp_Redistribute(PC pc)
 
     /* Map the PCFIELDSPLIT fields to redistributed KSP */
     PetscCall(KSPGetPC(red->ksp, &ipc));
-    PetscCall(PetscObjectQueryFunction((PetscObject)ipc, "PCFieldSplitSetIS_C", &fptr));
+    PetscCall(PetscObjectHasFunction((PetscObject)ipc, "PCFieldSplitSetIS_C", &fptr));
     if (fptr && *next) {
       PetscScalar       *atvec;
       const PetscScalar *ab;
@@ -455,7 +455,7 @@ static PetscErrorCode PCDestroy_Redistribute(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_Redistribute(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_Redistribute(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_Redistribute *red = (PC_Redistribute *)pc->data;
 

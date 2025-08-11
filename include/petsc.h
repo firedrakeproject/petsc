@@ -3,12 +3,15 @@
 */
 #pragma once
 
+/* MANSEC = Sys */
+
 #include <petscbag.h>
 #include <petsctime.h>
 #include <petscbt.h>
 #include <petscmatlab.h>
 #include <petscdraw.h>
 #include <petscdevice.h>
+#include <petscbm.h>
 
 #include <petscsf.h>
 #include <petscsection.h>
@@ -22,6 +25,13 @@
 #include <petscdmsliced.h>
 #include <petscdmswarm.h>
 #include <petscdmstag.h>
+#include <petscdmforest.h>
+#include <petscdmnetwork.h>
+#include <petscdmadaptor.h>
+
+#include <petscdmlabelephemeral.h>
+
+#include <petsclandau.h>
 
 #include <petscdt.h>
 #include <petscds.h>
@@ -30,3 +40,5 @@
 
 #include <petscts.h>
 #include <petsctao.h>
+
+#include <petscml.h>

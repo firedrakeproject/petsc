@@ -59,8 +59,6 @@ PetscErrorCode PCSetType(PC pc, PCType type)
   PetscCheck(r, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_UNKNOWN_TYPE, "Unable to find requested PC type %s", type);
   /* Destroy the previous private PC context */
   PetscTryTypeMethod(pc, destroy);
-  pc->ops->destroy = NULL;
-  pc->data         = NULL;
 
   PetscCall(PetscFunctionListDestroy(&((PetscObject)pc)->qlist));
   /* Reinitialize function pointers in PCOps structure */
@@ -69,7 +67,7 @@ PetscErrorCode PCSetType(PC pc, PCType type)
   pc->modifysubmatrices  = NULL;
   pc->modifysubmatricesP = NULL;
   /* Call the PCCreate_XXX routine for this particular preconditioner */
-  pc->setupcalled = 0;
+  pc->setupcalled = PETSC_FALSE;
 
   PetscCall(PetscObjectChangeTypeName((PetscObject)pc, type));
   PetscCall((*r)(pc));
@@ -222,18 +220,23 @@ PetscErrorCode PCGetDM(PC pc, DM *dm)
   Logically Collective
 
   Input Parameters:
-+ pc   - the `PC` context
-- usrP - optional user context
++ pc  - the `PC` context
+- ctx - optional user context
 
   Level: advanced
 
+  Fortran Note:
+  This only works when `ctx` is a Fortran derived type (it cannot be a `PetscObject`), we recommend writing a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is passed in as the `ctx` argument. See `PCGetApplicationContext()` for
+  an example.
+
 .seealso: [](ch_ksp), `PC`, `PCGetApplicationContext()`, `KSPSetApplicationContext()`, `KSPGetApplicationContext()`, `PetscObjectCompose()`
 @*/
-PetscErrorCode PCSetApplicationContext(PC pc, void *usrP)
+PetscErrorCode PCSetApplicationContext(PC pc, void *ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
-  pc->user = usrP;
+  pc->ctx = ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -246,16 +249,36 @@ PetscErrorCode PCSetApplicationContext(PC pc, void *usrP)
 . pc - `PC` context
 
   Output Parameter:
-. usrP - user context
+. ctx - user context
 
   Level: intermediate
 
+  Fortran Notes:
+  This only works when the context is a Fortran derived type (it cannot be a `PetscObject`) and you **must** write a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is returned as the `ctx` argument. For example,
+.vb
+  Interface PCGetApplicationContext
+    Subroutine PCGetApplicationContext(pc,ctx,ierr)
+  #include <petsc/finclude/petscpc.h>
+      use petscpc
+      PC pc
+      type(tUsertype), pointer :: ctx
+      PetscErrorCode ierr
+    End Subroutine
+  End Interface PCGetApplicationContext
+.ve
+
+  The prototype for `ctx` must be
+.vb
+  type(tUsertype), pointer :: ctx
+.ve
+
 .seealso: [](ch_ksp), `PC`, `PCSetApplicationContext()`, `KSPSetApplicationContext()`, `KSPGetApplicationContext()`
 @*/
-PetscErrorCode PCGetApplicationContext(PC pc, void *usrP)
+PetscErrorCode PCGetApplicationContext(PC pc, PeCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
-  *(void **)usrP = pc->user;
+  *(void **)ctx = pc->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

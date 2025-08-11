@@ -298,6 +298,7 @@ int main(int argc, char **argv)
   testset:
     requires: exodusii
     args: -orig_dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/blockcylinder-50.exo
+    output_file: output/empty.out
     test:
       suffix: 2
       nsize: {{1 2 4 8}separate output}
@@ -398,6 +399,7 @@ int main(int argc, char **argv)
     nsize: 2
     args: -orig_dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/TwoQuads.exo -new_dm_view ascii:ex5_new_dm_view.log:ascii_info_detail
     args: -dm_plex_view_hdf5_storage_version {{1.0.0 2.0.0 3.0.0}}
+    output_file: output/empty.out
 
   # test backward compatibility with petsc_hdf5 format version 1.0.0, serial idempotence
   testset:

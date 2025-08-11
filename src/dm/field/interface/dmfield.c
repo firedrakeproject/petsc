@@ -210,21 +210,21 @@ PetscErrorCode DMFieldGetDM(DMField field, DM *dm)
   Input Parameters:
 + field    - The `DMField` object
 . points   - The points at which to evaluate the field.  Should have size d x n,
-           where d is the coordinate dimension of the manifold and n is the number
-           of points
+             where d is the coordinate dimension of the manifold and n is the number
+             of points
 - datatype - The PetscDataType of the output arrays: either `PETSC_REAL` or `PETSC_SCALAR`.
              If the field is complex and datatype is `PETSC_REAL`, the real part of the
              field is returned.
 
   Output Parameters:
 + B - pointer to data of size c * n * sizeof(datatype), where c is the number of components in the field.
-      If B is not NULL, the values of the field are written in this array, varying first by component,
+      If B is not `NULL`, the values of the field are written in this array, varying first by component,
       then by point.
 . D - pointer to data of size d * c * n * sizeof(datatype).
-      If D is not NULL, the values of the field's spatial derivatives are written in this array,
+      If `D` is not `NULL`, the values of the field's spatial derivatives are written in this array,
       varying first by the partial derivative component, then by field component, then by point.
 - H - pointer to data of size d * d * c * n * sizeof(datatype).
-      If H is not NULL, the values of the field's second spatial derivatives are written in this array,
+      If `H` is not `NULL`, the values of the field's second spatial derivatives are written in this array,
       varying first by the second partial derivative component, then by field component, then by point.
 
   Level: intermediate
@@ -343,7 +343,7 @@ PetscErrorCode DMFieldEvaluateFV(DMField field, IS cellIS, PetscDataType datatyp
 
 .seealso: `DMField`, `IS`, `DMFieldEvaluateFE()`
 @*/
-PetscErrorCode DMFieldGetDegree(DMField field, IS cellIS, PetscInt *minDegree, PetscInt *maxDegree)
+PetscErrorCode DMFieldGetDegree(DMField field, IS cellIS, PeOp PetscInt *minDegree, PeOp PetscInt *maxDegree)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(field, DMFIELD_CLASSID, 1);
@@ -373,7 +373,7 @@ PetscErrorCode DMFieldGetDegree(DMField field, IS cellIS, PetscInt *minDegree, P
 
   Level: developer
 
-.seealso: `DMField`, `PetscQuadrature`, `IS`, `DMFieldEvaluteFE()`, `DMFieldGetDegree()`
+.seealso: `DMFieldCreateDefaultFaceQuadrature()`, `DMField`, `PetscQuadrature`, `IS`, `DMFieldEvaluteFE()`, `DMFieldGetDegree()`
 @*/
 PetscErrorCode DMFieldCreateDefaultQuadrature(DMField field, IS pointIS, PetscQuadrature *quad)
 {
@@ -387,27 +387,58 @@ PetscErrorCode DMFieldCreateDefaultQuadrature(DMField field, IS pointIS, PetscQu
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/*@
+  DMFieldCreateDefaultFaceQuadrature - Creates a quadrature sufficient to integrate the field on all faces of the selected cells via pullback onto the reference element
+
+  Not Collective
+
+  Input Parameters:
++ field   - the `DMField` object
+- pointIS - the index set of points over which we wish to integrate the field over faces
+
+  Output Parameter:
+. quad - a `PetscQuadrature` object
+
+  Level: developer
+
+.seealso: `DMFieldCreateDefaultQuadrature()`, `DMField`, `PetscQuadrature`, `IS`, `DMFieldEvaluteFE()`, `DMFieldGetDegree()`
+@*/
+PetscErrorCode DMFieldCreateDefaultFaceQuadrature(DMField field, IS pointIS, PetscQuadrature *quad)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(field, DMFIELD_CLASSID, 1);
+  PetscValidHeaderSpecific(pointIS, IS_CLASSID, 2);
+  PetscAssertPointer(quad, 3);
+
+  *quad = NULL;
+  PetscTryTypeMethod(field, createDefaultFaceQuadrature, pointIS, quad);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /*@C
   DMFieldCreateFEGeom - Compute and create the geometric factors of a coordinate field
 
   Not Collective
 
   Input Parameters:
-+ field    - the `DMField` object
-. pointIS  - the index set of points over which we wish to integrate the field
-. quad     - the quadrature points at which to evaluate the geometric factors
-- faceData - whether additional data for facets (the normal vectors and adjacent cells) should
-  be calculated
++ field   - the `DMField` object
+. pointIS - the index set of points over which we wish to integrate the field
+. quad    - the quadrature points at which to evaluate the geometric factors
+- mode    - Type of geometry data to store
 
   Output Parameter:
 . geom - the geometric factors
 
   Level: developer
 
+  Note:
+  For some modes, the normal vectors and adjacent cells are calculated
+
 .seealso: `DMField`, `PetscQuadrature`, `IS`, `PetscFEGeom`, `DMFieldEvaluateFE()`, `DMFieldCreateDefaulteQuadrature()`, `DMFieldGetDegree()`
 @*/
-PetscErrorCode DMFieldCreateFEGeom(DMField field, IS pointIS, PetscQuadrature quad, PetscBool faceData, PetscFEGeom **geom)
+PetscErrorCode DMFieldCreateFEGeom(DMField field, IS pointIS, PetscQuadrature quad, PetscFEGeomMode mode, PetscFEGeom **geom)
 {
+  PetscBool    faceData = mode == PETSC_FEGEOM_BOUNDARY || mode == PETSC_FEGEOM_COHESIVE ? PETSC_TRUE : PETSC_FALSE;
   PetscInt     dim, dE;
   PetscInt     nPoints;
   PetscInt     maxDegree;
@@ -419,7 +450,7 @@ PetscErrorCode DMFieldCreateFEGeom(DMField field, IS pointIS, PetscQuadrature qu
   PetscValidHeader(quad, 3);
   PetscCall(ISGetLocalSize(pointIS, &nPoints));
   dE = field->numComponents;
-  PetscCall(PetscFEGeomCreate(quad, nPoints, dE, faceData, &g));
+  PetscCall(PetscFEGeomCreate(quad, nPoints, dE, mode, &g));
   PetscCall(DMFieldEvaluateFE(field, pointIS, quad, PETSC_REAL, g->v, g->J, NULL));
   dim = g->dim;
   if (dE > dim) {
@@ -427,7 +458,7 @@ PetscErrorCode DMFieldCreateFEGeom(DMField field, IS pointIS, PetscQuadrature qu
     PetscInt i, j, k, N = g->numPoints * g->numCells;
 
     for (i = N - 1; i >= 0; i--) {
-      PetscReal J[9] = {0};
+      PetscReal J[16] = {0};
 
       for (j = 0; j < dE; j++) {
         for (k = 0; k < dim; k++) J[j * dE + k] = g->J[i * dE * dim + j * dim + k];

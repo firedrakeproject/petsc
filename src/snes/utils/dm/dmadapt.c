@@ -325,7 +325,7 @@ static PetscErrorCode PetscViewerAndFormatCreate_Internal(PetscViewer viewer, Pe
 + adaptor        - the `DMAdaptor`
 . monitor        - pointer to function (if this is `NULL`, it turns off monitoring
 . ctx            - [optional] context for private data for the monitor routine (use `NULL` if no context is needed)
-- monitordestroy - [optional] routine that frees monitor context (may be `NULL`)
+- monitordestroy - [optional] routine that frees monitor context (may be `NULL`), see `PetscCtxDestroyFn` for its calling sequence
 
   Calling sequence of `monitor`:
 + adaptor - the `DMAdaptor`
@@ -337,9 +337,6 @@ static PetscErrorCode PetscViewerAndFormatCreate_Internal(PetscViewer viewer, Pe
 . error   - `Vec` of cellwise errors
 - ctx     - optional monitoring context, as set by `DMAdaptorMonitorSet()`
 
-  Calling sequence of `monitordestroy`:
-. ctx - optional monitoring context, as set by `DMAdaptorMonitorSet()`
-
   Options Database Keys:
 + -adaptor_monitor_size                - sets `DMAdaptorMonitorSize()`
 . -adaptor_monitor_error               - sets `DMAdaptorMonitorError()`
@@ -349,9 +346,9 @@ static PetscErrorCode PetscViewerAndFormatCreate_Internal(PetscViewer viewer, Pe
 
   Level: beginner
 
-.seealso: [](ch_snes), `DMAdaptorMonitorError()`, `DMAdaptor`
+.seealso: [](ch_snes), `DMAdaptorMonitorError()`, `DMAdaptor`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode DMAdaptorMonitorSet(DMAdaptor adaptor, PetscErrorCode (*monitor)(DMAdaptor adaptor, PetscInt it, DM odm, DM adm, PetscInt Nf, PetscReal enorms[], Vec error, void *ctx), void *ctx, PetscErrorCode (*monitordestroy)(void **ctx))
+PetscErrorCode DMAdaptorMonitorSet(DMAdaptor adaptor, PetscErrorCode (*monitor)(DMAdaptor adaptor, PetscInt it, DM odm, DM adm, PetscInt Nf, PetscReal enorms[], Vec error, void *ctx), void *ctx, PetscCtxDestroyFn *monitordestroy)
 {
   PetscBool identical;
 
@@ -364,7 +361,7 @@ PetscErrorCode DMAdaptorMonitorSet(DMAdaptor adaptor, PetscErrorCode (*monitor)(
   PetscCheck(adaptor->numbermonitors < MAXDMADAPTORMONITORS, PetscObjectComm((PetscObject)adaptor), PETSC_ERR_ARG_OUTOFRANGE, "Too many DMAdaptor monitors set");
   adaptor->monitor[adaptor->numbermonitors]          = monitor;
   adaptor->monitordestroy[adaptor->numbermonitors]   = monitordestroy;
-  adaptor->monitorcontext[adaptor->numbermonitors++] = (void *)ctx;
+  adaptor->monitorcontext[adaptor->numbermonitors++] = ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -437,7 +434,7 @@ PetscErrorCode DMAdaptorMonitorSetFromOptions(DMAdaptor adaptor, const char opt[
 
   PetscCall((*cfunc)(viewer, format, ctx, &vf));
   PetscCall(PetscViewerDestroy(&viewer));
-  PetscCall(DMAdaptorMonitorSet(adaptor, mfunc, vf, (PetscErrorCode (*)(void **))dfunc));
+  PetscCall(DMAdaptorMonitorSet(adaptor, mfunc, vf, (PetscCtxDestroyFn *)dfunc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1193,7 +1190,7 @@ PetscErrorCode DMAdaptorMonitorErrorDraw(DMAdaptor adaptor, PetscInt n, DM odm, 
 
   Level: intermediate
 
-.seealso: [](ch_snes), `PETSCVIEWERDRAW`, `DMAdaptor`, `DMAdaptorMonitorSet()`, `DMAdaptorMonitorErrorDrawLG()`
+.seealso: [](ch_snes), `PETSCVIEWERDRAW`, `PetscViewerMonitorGLSetUp()`, `DMAdaptor`, `DMAdaptorMonitorSet()`, `DMAdaptorMonitorErrorDrawLG()`
 @*/
 PetscErrorCode DMAdaptorMonitorErrorDrawLGCreate(PetscViewer viewer, PetscViewerFormat format, void *ctx, PetscViewerAndFormat **vf)
 {
@@ -1217,7 +1214,7 @@ PetscErrorCode DMAdaptorMonitorErrorDrawLGCreate(PetscViewer viewer, PetscViewer
   }
   PetscCall(PetscViewerAndFormatCreate(viewer, format, vf));
   (*vf)->data = ctx;
-  PetscCall(KSPMonitorLGCreate(PetscObjectComm((PetscObject)viewer), NULL, NULL, "Log Error Norm", Nf, (const char **)names, PETSC_DECIDE, PETSC_DECIDE, 400, 300, &(*vf)->lg));
+  PetscCall(PetscViewerMonitorLGSetUp(viewer, NULL, NULL, "Log Error Norm", Nf, (const char **)names, PETSC_DECIDE, PETSC_DECIDE, 400, 300));
   for (PetscInt f = 0; f < Nf; ++f) PetscCall(PetscFree(names[f]));
   PetscCall(PetscFree(names));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1236,7 +1233,7 @@ PetscErrorCode DMAdaptorMonitorErrorDrawLGCreate(PetscViewer viewer, PetscViewer
 . Nf      - number of fields
 . enorms  - 2-norm error values for each field (may be estimated).
 . error   - `Vec` of cellwise errors
-- vf      - The viewer context
+- vf      - The viewer context, obtained via `DMAdaptorMonitorErrorDrawLGCreate()`
 
   Options Database Key:
 . -adaptor_error draw::draw_lg - Activates `DMAdaptorMonitorErrorDrawLG()`
@@ -1249,19 +1246,19 @@ PetscErrorCode DMAdaptorMonitorErrorDrawLGCreate(PetscViewer viewer, PetscViewer
 
   Call `DMAdaptorMonitorErrorDrawLGCreate()` to create the context needed for this monitor
 
-.seealso: [](ch_snes), `PETSCVIEWERDRAW`, `DMAdaptor`, `DMAdaptorMonitorSet()`, `DMAdadptorMonitorErrorDraw()`, `DMAdadptorMonitorError()`,
+.seealso: [](ch_snes), `PETSCVIEWERDRAW`, `DMAdaptor`, `DMAdaptorMonitorSet()`, `DMAdaptorMonitorErrorDraw()`, `DMAdaptorMonitorError()`,
           `DMAdaptorMonitorTrueResidualDrawLGCreate()`
 @*/
 PetscErrorCode DMAdaptorMonitorErrorDrawLG(DMAdaptor adaptor, PetscInt n, DM odm, DM adm, PetscInt Nf, PetscReal enorms[], Vec error, PetscViewerAndFormat *vf)
 {
   PetscViewer       viewer = vf->viewer;
   PetscViewerFormat format = vf->format;
-  PetscDrawLG       lg     = vf->lg;
+  PetscDrawLG       lg;
   PetscReal        *x, *e;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 8);
-  PetscValidHeaderSpecific(lg, PETSC_DRAWLG_CLASSID, 8);
+  PetscCall(PetscViewerDrawGetDrawLG(viewer, 0, &lg));
   PetscCall(PetscCalloc2(Nf, &x, Nf, &e));
   PetscCall(PetscViewerPushFormat(viewer, format));
   if (!n) PetscCall(PetscDrawLGReset(lg));
@@ -1500,7 +1497,7 @@ static PetscErrorCode DMAdaptorAdapt_Sequence_Private(DMAdaptor adaptor, Vec inx
       PetscCall(DMClone(dm, &dmMetric));
       N = adaptor->Nadapt >= 0 ? adaptor->Nadapt : PetscPowRealInt(adaptor->refinementFactor, dim) * ((PetscReal)(vEnd - vStart));
       // TODO This was where the old monitor was, figure out how to show metric and target N
-      PetscCall(DMPlexMetricSetTargetComplexity(dmMetric, (PetscReal)N));
+      PetscCall(DMPlexMetricSetTargetComplexity(dmMetric, N));
       if (higherOrder) {
         /*   Project Hessian into P1 space, if required */
         PetscCall(DMPlexMetricCreate(dmMetric, 0, &metric));
@@ -1657,7 +1654,7 @@ PetscErrorCode DMAdaptorSetMixedSetupFunction(DMAdaptor adaptor, PetscErrorCode 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMAdaptorGetCriterion - Get the adaptation criterion
 
   Not Collective
@@ -1670,7 +1667,7 @@ PetscErrorCode DMAdaptorSetMixedSetupFunction(DMAdaptor adaptor, PetscErrorCode 
 
   Level: advanced
 
-.seealso: `DMAdaptor`, `DMAdaptorSetCrierion()`, `DMAdaptationCriterion`
+.seealso: `DMAdaptor`, `DMAdaptorSetCriterion()`, `DMAdaptationCriterion`
 @*/
 PetscErrorCode DMAdaptorGetCriterion(DMAdaptor adaptor, DMAdaptationCriterion *criterion)
 {
@@ -1681,7 +1678,7 @@ PetscErrorCode DMAdaptorGetCriterion(DMAdaptor adaptor, DMAdaptationCriterion *c
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMAdaptorSetCriterion - Set the adaptation criterion
 
   Not Collective

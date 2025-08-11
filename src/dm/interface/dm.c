@@ -12,16 +12,13 @@
   #include <petscfeceed.h>
 #endif
 
-#if !defined(PETSC_HAVE_WINDOWS_COMPILERS)
-  #include <petsc/private/valgrind/memcheck.h>
-#endif
-
 PetscClassId DM_CLASSID;
 PetscClassId DMLABEL_CLASSID;
-PetscLogEvent DM_Convert, DM_GlobalToLocal, DM_LocalToGlobal, DM_LocalToLocal, DM_LocatePoints, DM_Coarsen, DM_Refine, DM_CreateInterpolation, DM_CreateRestriction, DM_CreateInjection, DM_CreateMatrix, DM_CreateMassMatrix, DM_Load, DM_AdaptInterpolator, DM_ProjectFunction;
+PetscLogEvent DM_Convert, DM_GlobalToLocal, DM_LocalToGlobal, DM_LocalToLocal, DM_LocatePoints, DM_Coarsen, DM_Refine, DM_CreateInterpolation, DM_CreateRestriction, DM_CreateInjection, DM_CreateMatrix, DM_CreateMassMatrix, DM_Load, DM_View, DM_AdaptInterpolator, DM_ProjectFunction;
 
 const char *const DMBoundaryTypes[]          = {"NONE", "GHOSTED", "MIRROR", "PERIODIC", "TWIST", "DMBoundaryType", "DM_BOUNDARY_", NULL};
-const char *const DMBoundaryConditionTypes[] = {"INVALID", "ESSENTIAL", "NATURAL", "INVALID", "INVALID", "ESSENTIAL_FIELD", "NATURAL_FIELD", "INVALID", "INVALID", "ESSENTIAL_BD_FIELD", "NATURAL_RIEMANN", "DMBoundaryConditionType", "DM_BC_", NULL};
+const char *const DMBoundaryConditionTypes[] = {"INVALID", "ESSENTIAL", "NATURAL", "INVALID", "LOWER_BOUND", "ESSENTIAL_FIELD", "NATURAL_FIELD", "INVALID", "UPPER_BOUND", "ESSENTIAL_BD_FIELD", "NATURAL_RIEMANN", "DMBoundaryConditionType",
+                                                "DM_BC_",  NULL};
 const char *const DMBlockingTypes[]          = {"TOPOLOGICAL_POINT", "FIELD_NODE", "DMBlockingType", "DM_BLOCKING_", NULL};
 const char *const DMPolytopeTypes[] =
   {"vertex",  "segment",      "tensor_segment", "triangle", "quadrilateral",  "tensor_quad",  "tetrahedron", "hexahedron", "triangular_prism", "tensor_triangular_prism", "tensor_quadrilateral_prism", "pyramid", "FV_ghost_cell", "interior_ghost_cell",
@@ -30,7 +27,7 @@ const char *const DMCopyLabelsModes[] = {"replace", "keep", "fail", "DMCopyLabel
 
 /*@
   DMCreate - Creates an empty `DM` object. `DM`s are the abstract objects in PETSc that mediate between meshes and discretizations and the
-  algebraic solvers, time integrators, and optimization algorithms.
+  algebraic solvers, time integrators, and optimization algorithms in PETSc.
 
   Collective
 
@@ -46,7 +43,9 @@ const char *const DMCopyLabelsModes[] = {"replace", "keep", "fail", "DMCopyLabel
   See `DMType` for a brief summary of available `DM`.
 
   The type must then be set with `DMSetType()`. If you never call `DMSetType()` it will generate an
-  error when you try to use the dm.
+  error when you try to use the `dm`.
+
+  `DM` is an orphan initialism or orphan acronym, the letters have no meaning and never did.
 
 .seealso: [](ch_dmbase), `DM`, `DMSetType()`, `DMType`, `DMDACreate()`, `DMDA`, `DMSLICED`, `DMCOMPOSITE`, `DMPLEX`, `DMMOAB`, `DMNETWORK`
 @*/
@@ -83,13 +82,6 @@ PetscErrorCode DMCreate(MPI_Comm comm, DM *dm)
   v->coordinates[1].dim        = PETSC_DEFAULT;
   v->sparseLocalize            = PETSC_TRUE;
   v->dim                       = PETSC_DETERMINE;
-  {
-    PetscInt i;
-    for (i = 0; i < 10; ++i) {
-      v->nullspaceConstructors[i]     = NULL;
-      v->nearnullspaceConstructors[i] = NULL;
-    }
-  }
   PetscCall(PetscDSCreate(PETSC_COMM_SELF, &ds));
   PetscCall(DMSetRegionDS(v, NULL, NULL, ds, NULL));
   PetscCall(PetscDSDestroy(&ds));
@@ -555,10 +547,6 @@ PetscErrorCode DMAppendOptionsPrefix(DM dm, const char prefix[])
 
   Level: advanced
 
-  Fortran Note:
-  Pass in a string 'prefix' of
-  sufficient length to hold the prefix.
-
 .seealso: [](ch_dmbase), `DM`, `DMSetOptionsPrefix()`, `DMAppendOptionsPrefix()`, `DMSetFromOptions()`
 @*/
 PetscErrorCode DMGetOptionsPrefix(DM dm, const char *prefix[])
@@ -714,7 +702,7 @@ PetscErrorCode DMDestroy(DM *dm)
   /* Destroy the work arrays */
   {
     DMWorkLink link, next;
-    PetscCheck(!(*dm)->workout, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Work array still checked out %p %p", (void *)(*dm)->workout, (void *)(*dm)->workout->mem);
+    PetscCheck(!(*dm)->workout, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Work array still checked out %p %p", (void *)(*dm)->workout, (*dm)->workout->mem);
     for (link = (*dm)->workin; link; link = next) {
       next = link->next;
       PetscCall(PetscFree(link->mem));
@@ -767,6 +755,7 @@ PetscErrorCode DMDestroy(DM *dm)
   PetscCall(PetscFree((*dm)->Lstart));
   PetscCall(PetscFree((*dm)->L));
   PetscCall(PetscFree((*dm)->maxCell));
+  PetscCall(PetscFree2((*dm)->nullspaceConstructors, (*dm)->nearnullspaceConstructors));
   PetscCall(DMDestroyCoordinates_Private(&(*dm)->coordinates[0]));
   PetscCall(DMDestroyCoordinates_Private(&(*dm)->coordinates[1]));
   if ((*dm)->transformDestroy) PetscCall((*(*dm)->transformDestroy)(*dm, (*dm)->transformCtx));
@@ -834,6 +823,7 @@ PetscErrorCode DMSetUp(DM dm)
 . -dm_mat_type <type>                                - type of matrix to create inside `DM`
 . -dm_is_coloring_type                               - <global or local>
 . -dm_bind_below <n>                                 - bind (force execution on CPU) for `Vec` and `Mat` objects with local size (number of vector entries or matrix rows) below n; currently only supported for `DMDA`
+. -dm_plex_option_phases <ph0_, ph1_, ...>           - List of prefixes for option processing phases
 . -dm_plex_filename <str>                            - File containing a mesh
 . -dm_plex_boundary_filename <str>                   - File containing a mesh boundary
 . -dm_plex_name <str>                                - Name of the mesh in the file
@@ -843,8 +833,10 @@ PetscErrorCode DMSetUp(DM dm)
 . -dm_plex_dim <dim>                                 - Set the topological dimension
 . -dm_plex_simplex <bool>                            - `PETSC_TRUE` for simplex elements, `PETSC_FALSE` for tensor elements
 . -dm_plex_interpolate <bool>                        - `PETSC_TRUE` turns on topological interpolation (creating edges and faces)
+. -dm_plex_orient <bool>                             - `PETSC_TRUE` turns on topological orientation (flipping edges and faces)
 . -dm_plex_scale <sc>                                - Scale factor for mesh coordinates
 . -dm_coord_remap <bool>                             - Map coordinates using a function
+. -dm_plex_coordinate_dim <dim>                      - Change the coordinate dimension of a mesh (usually given with cdm_ prefix)
 . -dm_coord_map <mapname>                            - Select a builtin coordinate map
 . -dm_coord_map_params <p0,p1,p2,...>                - Set coordinate mapping parameters
 . -dm_plex_box_faces <m,n,p>                         - Number of faces along each dimension
@@ -861,6 +853,7 @@ PetscErrorCode DMSetUp(DM dm)
 . -dm_refine_volume_limit_pre <v>                    - The maximum cell volume after refinement before distribution
 . -dm_refine <n>                                     - The number of refinements after distribution
 . -dm_extrude <l>                                    - Activate extrusion and specify the number of layers to extrude
+. -dm_plex_save_transform <bool>                     - Save the `DMPlexTransform` that produced this mesh
 . -dm_plex_transform_extrude_thickness <t>           - The total thickness of extruded layers
 . -dm_plex_transform_extrude_use_tensor <bool>       - Use tensor cells when extruding
 . -dm_plex_transform_extrude_symmetric <bool>        - Extrude layers symmetrically about the surface
@@ -925,7 +918,7 @@ PetscErrorCode DMSetFromOptions(DM dm)
 
   Input Parameters:
 + dm   - the `DM` object
-. obj  - optional object that provides the prefix for the options database (if `NULL` then the prefix in obj is used)
+. obj  - optional object that provides the prefix for the options database (if `NULL` then the prefix in `obj` is used)
 - name - option string that is used to activate viewing
 
   Level: intermediate
@@ -935,7 +928,7 @@ PetscErrorCode DMSetFromOptions(DM dm)
 
 .seealso: [](ch_dmbase), `DM`, `DMView()`, `PetscObjectViewFromOptions()`, `DMCreate()`
 @*/
-PetscErrorCode DMViewFromOptions(DM dm, PetscObject obj, const char name[])
+PetscErrorCode DMViewFromOptions(DM dm, PeOp PetscObject obj, const char name[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
@@ -953,6 +946,13 @@ PetscErrorCode DMViewFromOptions(DM dm, PetscObject obj, const char name[])
 + dm - the `DM` object to view
 - v  - the viewer
 
+  Options Database Keys:
++ -view_pyvista_warp <f>                 - Warps the mesh by the active scalar with factor f
+. -view_pyvista_clip <xl,xu,yl,yu,zl,zu> - Defines the clipping box
+. -dm_view_draw_line_color <int>         - Specify the X-window color for cell borders
+. -dm_view_draw_cell_color <int>         - Specify the X-window color for cells
+- -dm_view_draw_affine <bool>            - Flag to ignore high-order edges
+
   Level: beginner
 
   Notes:
@@ -966,7 +966,7 @@ PetscErrorCode DMViewFromOptions(DM dm, PetscObject obj, const char name[])
 
   If `dm` has been distributed, only the part of the `DM` on MPI rank 0 (including "ghost" cells and vertices) will be written.
 
-  Only TRI, TET, QUAD, and HEX cells are supported.
+  Only TRI, TET, QUAD, and HEX cells are supported in ExodusII.
 
   `DMPLEX` only represents geometry while most post-processing software expect that a mesh also provides information on the discretization space. This function assumes that the file represents Lagrange finite elements of order 1 or 2.
   The order of the mesh shall be set using `PetscViewerExodusIISetOrder()`
@@ -995,6 +995,7 @@ PetscErrorCode DMView(DM dm, PetscViewer v)
   /* PetscCheckSameComm(dm,1,v,2); */
   PetscCall(PetscViewerCheckWritable(v));
 
+  PetscCall(PetscLogEventBegin(DM_View, v, 0, 0, 0));
   PetscCall(PetscViewerGetFormat(v, &format));
   PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)dm), &size));
   if (size == 1 && format == PETSC_VIEWER_LOAD_BALANCE) PetscFunctionReturn(PETSC_SUCCESS);
@@ -1009,6 +1010,7 @@ PetscErrorCode DMView(DM dm, PetscViewer v)
     PetscCall(PetscViewerBinaryWrite(v, type, 256, PETSC_CHAR));
   }
   PetscTryTypeMethod(dm, view, v);
+  PetscCall(PetscLogEventEnd(DM_View, v, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1427,6 +1429,36 @@ PetscErrorCode DMCreateMassMatrixLumped(DM dm, Vec *llm, Vec *lm)
 }
 
 /*@
+  DMCreateGradientMatrix - Gets the gradient matrix between two `DM` objects, M_(ic)j = \int \partial_c \phi_i \psi_j where the \phi are Galerkin basis functions for a Galerkin finite element model on the `DM`
+
+  Collective
+
+  Input Parameters:
++ dmc - the target `DM` object
+- dmf - the source `DM` object, can be `NULL`
+
+  Output Parameter:
+. mat - the gradient matrix
+
+  Level: developer
+
+  Notes:
+  For `DMPLEX` the finite element model for the `DM` must have been already provided.
+
+.seealso: [](ch_dmbase), `DM`, `DMCreateMassMatrix()`, `DMCreateMassMatrixLumped()`, `DMCreateMatrix()`, `DMRefine()`, `DMCoarsen()`, `DMCreateRestriction()`, `DMCreateInterpolation()`, `DMCreateInjection()`
+@*/
+PetscErrorCode DMCreateGradientMatrix(DM dmc, DM dmf, Mat *mat)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(dmc, DM_CLASSID, 1);
+  if (!dmf) dmf = dmc;
+  PetscValidHeaderSpecific(dmf, DM_CLASSID, 2);
+  PetscAssertPointer(mat, 3);
+  PetscUseTypeMethod(dmc, creategradientmatrix, dmf, mat);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
   DMCreateColoring - Gets coloring of a graph associated with the `DM`. Often the graph represents the operator matrix associated with the discretization
   of a PDE on the `DM`.
 
@@ -1512,7 +1544,7 @@ PetscErrorCode DMCreateMatrix(DM dm, Mat *mat)
 
     PetscCall(DMGetNumFields(dm, &Nf));
     for (f = 0; f < Nf; ++f) {
-      if (dm->nullspaceConstructors[f]) {
+      if (dm->nullspaceConstructors && dm->nullspaceConstructors[f]) {
         PetscCall((*dm->nullspaceConstructors[f])(dm, f, f, &nullSpace));
         PetscCall(MatSetNullSpace(*mat, nullSpace));
         PetscCall(MatNullSpaceDestroy(&nullSpace));
@@ -1520,7 +1552,7 @@ PetscErrorCode DMCreateMatrix(DM dm, Mat *mat)
       }
     }
     for (f = 0; f < Nf; ++f) {
-      if (dm->nearnullspaceConstructors[f]) {
+      if (dm->nearnullspaceConstructors && dm->nearnullspaceConstructors[f]) {
         PetscCall((*dm->nearnullspaceConstructors[f])(dm, f, f, &nullSpace));
         PetscCall(MatSetNearNullSpace(*mat, nullSpace));
         PetscCall(MatNullSpaceDestroy(&nullSpace));
@@ -1584,14 +1616,14 @@ PetscErrorCode DMSetMatrixPreallocateOnly(DM dm, PetscBool only)
 }
 
 /*@
-  DMSetMatrixStructureOnly - When `DMCreateMatrix()` is called, the matrix structure will be created
+  DMSetMatrixStructureOnly - When `DMCreateMatrix()` is called, the matrix nonzero structure will be created
   but the array for numerical values will not be allocated.
 
   Logically Collective
 
   Input Parameters:
 + dm   - the `DM`
-- only - `PETSC_TRUE` if you only want matrix structure
+- only - `PETSC_TRUE` if you only want matrix nonzero structure
 
   Level: developer
 
@@ -1710,12 +1742,8 @@ PetscErrorCode DMGetWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, void *m
     PetscCall(PetscMalloc(dsize * count, &link->mem));
     link->bytes = dsize * count;
   }
-  link->next  = dm->workout;
-  dm->workout = link;
-#if defined(__MEMCHECK_H) && (defined(PLAT_amd64_linux) || defined(PLAT_x86_linux) || defined(PLAT_amd64_darwin))
-  VALGRIND_MAKE_MEM_NOACCESS((char *)link->mem + (size_t)dsize * count, link->bytes - (size_t)dsize * count);
-  VALGRIND_MAKE_MEM_UNDEFINED(link->mem, (size_t)dsize * count);
-#endif
+  link->next    = dm->workout;
+  dm->workout   = link;
   *(void **)mem = link->mem;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1745,7 +1773,6 @@ PetscErrorCode DMRestoreWorkArray(DM dm, PetscInt count, MPI_Datatype dtype, voi
   DMWorkLink *p, link;
 
   PetscFunctionBegin;
-  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscAssertPointer(mem, 4);
   (void)count;
   (void)dtype;
@@ -1787,7 +1814,8 @@ PetscErrorCode DMSetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscCheck(field < 10, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= 10 fields", field);
+  PetscCheck(field < dm->Nf, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= %" PetscInt_FMT " fields", field, dm->Nf);
+  PetscCheck(dm->nullspaceConstructors, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must call DMCreateDS() to setup nullspaces");
   dm->nullspaceConstructors[field] = nullsp;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1819,7 +1847,8 @@ PetscErrorCode DMGetNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCode (
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscAssertPointer(nullsp, 3);
-  PetscCheck(field < 10, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= 10 fields", field);
+  PetscCheck(field < dm->Nf, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= %" PetscInt_FMT " fields", field, dm->Nf);
+  PetscCheck(dm->nullspaceConstructors, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must call DMCreateDS() to setup nullspaces");
   *nullsp = dm->nullspaceConstructors[field];
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1849,7 +1878,8 @@ PetscErrorCode DMSetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCo
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
-  PetscCheck(field < 10, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= 10 fields", field);
+  PetscCheck(field < dm->Nf, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= %" PetscInt_FMT " fields", field, dm->Nf);
+  PetscCheck(dm->nearnullspaceConstructors, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must call DMCreateDS() to setup nullspaces");
   dm->nearnullspaceConstructors[field] = nullsp;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1882,7 +1912,8 @@ PetscErrorCode DMGetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCo
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscAssertPointer(nullsp, 3);
-  PetscCheck(field < 10, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= 10 fields", field);
+  PetscCheck(field < dm->Nf, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Cannot handle %" PetscInt_FMT " >= %" PetscInt_FMT " fields", field, dm->Nf);
+  PetscCheck(dm->nearnullspaceConstructors, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must call DMCreateDS() to setup nullspaces");
   *nullsp = dm->nearnullspaceConstructors[field];
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1897,7 +1928,7 @@ PetscErrorCode DMGetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCo
 
   Output Parameters:
 + numFields  - The number of fields (or `NULL` if not requested)
-. fieldNames - The number of each field (or `NULL` if not requested)
+. fieldNames - The name of each field (or `NULL` if not requested)
 - fields     - The global indices for each field (or `NULL` if not requested)
 
   Level: intermediate
@@ -1914,7 +1945,7 @@ PetscErrorCode DMGetNearNullSpaceConstructor(DM dm, PetscInt field, PetscErrorCo
 .seealso: [](ch_dmbase), `DM`, `DMAddField()`, `DMGetField()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`,
           `DMCreateFieldDecomposition()`
 @*/
-PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, IS **fields)
+PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, IS *fields[])
 {
   PetscSection section, sectionGlobal;
 
@@ -1990,7 +2021,7 @@ PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, I
         const char *fieldName;
 
         PetscCall(PetscSectionGetFieldName(section, f, &fieldName));
-        PetscCall(PetscStrallocpy(fieldName, (char **)&(*fieldNames)[f]));
+        PetscCall(PetscStrallocpy(fieldName, &(*fieldNames)[f]));
       }
     }
     if (fields) {
@@ -2038,6 +2069,18 @@ PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, I
   `PetscFree()`, every entry of `islist` should be destroyed with `ISDestroy()`, every entry of `dmlist` should be destroyed with `DMDestroy()`,
   and all of the arrays should be freed with `PetscFree()`.
 
+  Fortran Notes:
+  Use the declarations
+.vb
+  character(80), pointer :: namelist(:)
+  IS, pointer :: islist(:)
+  DM, pointer :: dmlist(:)
+.ve
+
+  `namelist` must be provided, `islist` may be `PETSC_NULL_IS_POINTER` and `dmlist` may be `PETSC_NULL_DM_POINTER`
+
+  Use `DMDestroyFieldDecomposition()` to free the returned objects
+
   Developer Notes:
   It is not clear why this function and `DMCreateFieldIS()` exist. Having two seems redundant and confusing.
 
@@ -2046,7 +2089,7 @@ PetscErrorCode DMCreateFieldIS(DM dm, PetscInt *numFields, char ***fieldNames, I
 
 .seealso: [](ch_dmbase), `DM`, `DMAddField()`, `DMCreateFieldIS()`, `DMCreateSubDM()`, `DMCreateDomainDecomposition()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMRefine()`, `DMCoarsen()`
 @*/
-PetscErrorCode DMCreateFieldDecomposition(DM dm, PetscInt *len, char ***namelist, IS **islist, DM **dmlist)
+PetscErrorCode DMCreateFieldDecomposition(DM dm, PetscInt *len, char ***namelist, IS *islist[], DM *dmlist[])
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
@@ -2089,7 +2132,7 @@ PetscErrorCode DMCreateFieldDecomposition(DM dm, PetscInt *len, char ***namelist
         PetscCall(DMCreateSubDM(dm, 1, &f, islist ? &(*islist)[f] : NULL, dmlist ? &(*dmlist)[f] : NULL));
         if (namelist) {
           PetscCall(PetscSectionGetFieldName(section, f, &fieldName));
-          PetscCall(PetscStrallocpy(fieldName, (char **)&(*namelist)[f]));
+          PetscCall(PetscStrallocpy(fieldName, &(*namelist)[f]));
         }
       }
     } else {
@@ -2121,7 +2164,7 @@ PetscErrorCode DMCreateFieldDecomposition(DM dm, PetscInt *len, char ***namelist
   Note:
   You need to call `DMPlexSetMigrationSF()` on the original `DM` if you want the Global-To-Natural map to be automatically constructed
 
-.seealso: [](ch_dmbase), `DM`, `DMCreateFieldIS()`, `DMCreateFieldDecomposition()`, `DMAddField()`, `DMCreateSuperDM()`, `IS`, `DMPlexSetMigrationSF()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`
+.seealso: [](ch_dmbase), `DM`, `DMCreateFieldIS()`, `DMCreateFieldDecomposition()`, `DMAddField()`, `DMCreateSuperDM()`, `IS`, `VecISCopy()`, `DMPlexSetMigrationSF()`, `DMDestroy()`, `DMView()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`
 @*/
 PetscErrorCode DMCreateSubDM(DM dm, PetscInt numFields, const PetscInt fields[], IS *is, DM *subdm)
 {
@@ -2135,7 +2178,7 @@ PetscErrorCode DMCreateSubDM(DM dm, PetscInt numFields, const PetscInt fields[],
 }
 
 /*@C
-  DMCreateSuperDM - Returns an arrays of `IS` and `DM` encapsulating a superproblem defined by multiple `DM`s passed in.
+  DMCreateSuperDM - Returns an arrays of `IS` and a single `DM` encapsulating a superproblem defined by multiple `DM`s passed in.
 
   Not collective
 
@@ -2144,7 +2187,7 @@ PetscErrorCode DMCreateSubDM(DM dm, PetscInt numFields, const PetscInt fields[],
 - n   - The number of `DM`s
 
   Output Parameters:
-+ is      - The global indices for each of subproblem within the super `DM`, or NULL
++ is      - The global indices for each of subproblem within the super `DM`, or `NULL`, its length is `n`
 - superdm - The `DM` for the superproblem
 
   Level: intermediate
@@ -2182,7 +2225,7 @@ PetscErrorCode DMCreateSuperDM(DM dms[], PetscInt n, IS *is[], DM *superdm)
 . dm - the `DM` object
 
   Output Parameters:
-+ n           - The number of subproblems in the domain decomposition (or `NULL` if not requested)
++ n           - The number of subproblems in the domain decomposition (or `NULL` if not requested), also the length of the four arrays below
 . namelist    - The name for each subdomain (or `NULL` if not requested)
 . innerislist - The global indices for each inner subdomain (or `NULL`, if not requested)
 . outerislist - The global indices for each outer subdomain (or `NULL`, if not requested)
@@ -2209,7 +2252,7 @@ PetscErrorCode DMCreateSuperDM(DM dms[], PetscInt n, IS *is[], DM *superdm)
 .seealso: [](ch_dmbase), `DM`, `DMCreateFieldDecomposition()`, `DMDestroy()`, `DMCreateDomainDecompositionScatters()`, `DMView()`, `DMCreateInterpolation()`,
           `DMSubDomainHookAdd()`, `DMSubDomainHookRemove()`,`DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMRefine()`, `DMCoarsen()`
 @*/
-PetscErrorCode DMCreateDomainDecomposition(DM dm, PetscInt *n, char ***namelist, IS **innerislist, IS **outerislist, DM **dmlist)
+PetscErrorCode DMCreateDomainDecomposition(DM dm, PetscInt *n, char ***namelist, IS *innerislist[], IS *outerislist[], DM *dmlist[])
 {
   DMSubDomainHookLink link;
   PetscInt            i, l;
@@ -3703,13 +3746,14 @@ PetscErrorCode DMCoarsenHierarchy(DM dm, PetscInt nlevels, DM dmc[])
 
   Input Parameters:
 + dm      - the `DM` object
-- destroy - the destroy function
+- destroy - the destroy function, see `PetscCtxDestroyFn` for the calling sequence
 
   Level: intermediate
 
-.seealso: [](ch_dmbase), `DM`, `DMSetApplicationContext()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`
+.seealso: [](ch_dmbase), `DM`, `DMSetApplicationContext()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`,
+          `DMGetApplicationContext()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode DMSetApplicationContextDestroy(DM dm, PetscErrorCode (*destroy)(void **))
+PetscErrorCode DMSetApplicationContextDestroy(DM dm, PetscCtxDestroyFn *destroy)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
@@ -3728,10 +3772,15 @@ PetscErrorCode DMSetApplicationContextDestroy(DM dm, PetscErrorCode (*destroy)(v
 
   Level: intermediate
 
-  Notes:
+  Note:
   A user context is a way to pass problem specific information that is accessible whenever the `DM` is available
   In a multilevel solver, the user context is shared by all the `DM` in the hierarchy; it is thus not advisable
   to store objects that represent discretized quantities inside the context.
+
+  Fortran Note:
+  This only works when `ctx` is a Fortran derived type (it cannot be a `PetscObject`), we recommend writing a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is passed in as the `ctx` argument. See `DMGetApplicationContext()` for
+  an example.
 
 .seealso: [](ch_dmbase), `DM`, `DMGetApplicationContext()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`
 @*/
@@ -3744,7 +3793,7 @@ PetscErrorCode DMSetApplicationContext(DM dm, void *ctx)
 }
 
 /*@
-  DMGetApplicationContext - Gets a user context from a `DM` object
+  DMGetApplicationContext - Gets a user context from a `DM` object provided with `DMSetApplicationContext()`
 
   Not Collective
 
@@ -3752,16 +3801,36 @@ PetscErrorCode DMSetApplicationContext(DM dm, void *ctx)
 . dm - the `DM` object
 
   Output Parameter:
-. ctx - the user context
+. ctx - a pointer to the user context
 
   Level: intermediate
 
   Note:
   A user context is a way to pass problem specific information that is accessible whenever the `DM` is available
 
+  Fortran Notes:
+  This only works when the context is a Fortran derived type (it cannot be a `PetscObject`) and you **must** write a Fortran interface definition for this
+  function that tells the Fortran compiler the derived data type that is returned as the `ctx` argument. For example,
+.vb
+  Interface DMGetApplicationContext
+    Subroutine DMGetApplicationContext(dm,ctx,ierr)
+  #include <petsc/finclude/petscdm.h>
+      use petscdm
+      DM dm
+      type(tUsertype), pointer :: ctx
+      PetscErrorCode ierr
+    End Subroutine
+  End Interface DMGetApplicationContext
+.ve
+
+  The prototype for `ctx` must be
+.vb
+  type(tUsertype), pointer :: ctx
+.ve
+
 .seealso: [](ch_dmbase), `DM`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`
 @*/
-PetscErrorCode DMGetApplicationContext(DM dm, void *ctx)
+PetscErrorCode DMGetApplicationContext(DM dm, PeCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
@@ -3776,9 +3845,12 @@ PetscErrorCode DMGetApplicationContext(DM dm, void *ctx)
 
   Input Parameters:
 + dm - the DM object
-- f  - the function that computes variable bounds used by SNESVI (use `NULL` to cancel a previous function that was set)
+- f  - the function that computes variable bounds used by `SNESVI` (use `NULL` to cancel a previous function that was set)
 
   Level: intermediate
+
+  Developer Note:
+  Should be called `DMSetComputeVIBounds()` or something similar
 
 .seealso: [](ch_dmbase), `DM`, `DMComputeVariableBounds()`, `DMHasVariableBounds()`, `DMView()`, `DMCreateGlobalVector()`, `DMCreateInterpolation()`, `DMCreateColoring()`, `DMCreateMatrix()`, `DMCreateMassMatrix()`, `DMGetApplicationContext()`,
          `DMSetJacobian()`
@@ -4094,8 +4166,6 @@ PetscErrorCode DMConvert(DM dm, DMType newtype, DM *M)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*--------------------------------------------------------------------------------------------------------------------*/
-
 /*@C
   DMRegister -  Adds a new `DM` type implementation
 
@@ -4173,7 +4243,7 @@ PetscErrorCode DMLoad(DM newdm, PetscViewer viewer)
     char     type[256];
 
     PetscCall(PetscViewerBinaryRead(viewer, &classid, 1, NULL, PETSC_INT));
-    PetscCheck(classid == DM_FILE_CLASSID, PetscObjectComm((PetscObject)newdm), PETSC_ERR_ARG_WRONG, "Not DM next in file, classid found %d", (int)classid);
+    PetscCheck(classid == DM_FILE_CLASSID, PetscObjectComm((PetscObject)newdm), PETSC_ERR_ARG_WRONG, "Not DM next in file, classid found %" PetscInt_FMT, classid);
     PetscCall(PetscViewerBinaryRead(viewer, type, 256, NULL, PETSC_CHAR));
     PetscCall(DMSetType(newdm, type));
     PetscTryTypeMethod(newdm, load, viewer);
@@ -4261,34 +4331,6 @@ PetscErrorCode DMPrintLocalVec(DM dm, const char name[], PetscReal tol, Vec X)
 }
 
 /*@
-  DMGetSection - Get the `PetscSection` encoding the local data layout for the `DM`.   This is equivalent to `DMGetLocalSection()`. Deprecated in v3.12
-
-  Input Parameter:
-. dm - The `DM`
-
-  Output Parameter:
-. section - The `PetscSection`
-
-  Options Database Key:
-. -dm_petscsection_view - View the `PetscSection` created by the `DM`
-
-  Level: advanced
-
-  Notes:
-  Use `DMGetLocalSection()` in new code.
-
-  This gets a borrowed reference, so the user should not destroy this `PetscSection`.
-
-.seealso: [](ch_dmbase), `DM`, `DMGetLocalSection()`, `DMSetLocalSection()`, `DMGetGlobalSection()`
-@*/
-PetscErrorCode DMGetSection(DM dm, PetscSection *section)
-{
-  PetscFunctionBegin;
-  PetscCall(DMGetLocalSection(dm, section));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/*@
   DMGetLocalSection - Get the `PetscSection` encoding the local data layout for the `DM`.
 
   Input Parameter:
@@ -4337,29 +4379,6 @@ PetscErrorCode DMGetLocalSection(DM dm, PetscSection *section)
     if (dm->localSection) PetscCall(PetscObjectViewFromOptions((PetscObject)dm->localSection, NULL, "-dm_petscsection_view"));
   }
   *section = dm->localSection;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/*@
-  DMSetSection - Set the `PetscSection` encoding the local data layout for the `DM`.  This is equivalent to `DMSetLocalSection()`. Deprecated in v3.12
-
-  Input Parameters:
-+ dm      - The `DM`
-- section - The `PetscSection`
-
-  Level: advanced
-
-  Notes:
-  Use `DMSetLocalSection()` in new code.
-
-  Any existing `PetscSection` will be destroyed
-
-.seealso: [](ch_dmbase), `DM`, `DMSetLocalSection()`, `DMGetLocalSection()`, `DMSetGlobalSection()`
-@*/
-PetscErrorCode DMSetSection(DM dm, PetscSection section)
-{
-  PetscFunctionBegin;
-  PetscCall(DMSetLocalSection(dm, section));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -4601,7 +4620,7 @@ static PetscErrorCode DMDefaultSectionCheckConsistency_Internal(DM dm, PetscSect
 }
 #endif
 
-static PetscErrorCode DMGetIsoperiodicPointSF_Internal(DM dm, PetscSF *sf)
+PetscErrorCode DMGetIsoperiodicPointSF_Internal(DM dm, PetscSF *sf)
 {
   PetscErrorCode (*f)(DM, PetscSF *);
 
@@ -4936,6 +4955,7 @@ PetscErrorCode DMClearFields(DM dm)
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
+  if (!dm->fields) PetscFunctionReturn(PETSC_SUCCESS); // DMDA does not use fields field in DM
   for (f = 0; f < dm->Nf; ++f) {
     PetscCall(PetscObjectDestroy(&dm->fields[f].disc));
     PetscCall(DMLabelDestroy(&dm->fields[f].label));
@@ -5023,8 +5043,13 @@ PetscErrorCode DMGetField(DM dm, PetscInt f, DMLabel *label, PetscObject *disc)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscAssertPointer(disc, 4);
   PetscCheck((f >= 0) && (f < dm->Nf), PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Field number %" PetscInt_FMT " must be in [0, %" PetscInt_FMT ")", f, dm->Nf);
-  if (label) *label = dm->fields[f].label;
-  if (disc) *disc = dm->fields[f].disc;
+  if (!dm->fields) {
+    if (label) *label = NULL;
+    if (disc) *disc = NULL;
+  } else { // some DM such as DMDA do not have dm->fields
+    if (label) *label = dm->fields[f].label;
+    if (disc) *disc = dm->fields[f].disc;
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -5038,7 +5063,7 @@ PetscErrorCode DMSetField_Internal(DM dm, PetscInt f, DMLabel label, PetscObject
   dm->fields[f].label = label;
   dm->fields[f].disc  = disc;
   PetscCall(PetscObjectReference((PetscObject)label));
-  PetscCall(PetscObjectReference((PetscObject)disc));
+  PetscCall(PetscObjectReference(disc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -5091,6 +5116,9 @@ PetscErrorCode DMSetField(DM dm, PetscInt f, DMLabel label, PetscObject disc)
   within each cell. Thus a specific function in the space is defined by the combination of a `Vec` containing the coefficients, a `DM` defining the
   geometry entities, a `DMLabel` indicating a subset of those geometric entities, and a discretization object, such as a `PetscFE`.
 
+  Fortran Note:
+  Use the argument `PetscObjectCast(disc)` as the second argument
+
 .seealso: [](ch_dmbase), `DM`, `DMSetLabel()`, `DMSetField()`, `DMGetField()`, `PetscFE`
 @*/
 PetscErrorCode DMAddField(DM dm, DMLabel label, PetscObject disc)
@@ -5105,7 +5133,7 @@ PetscErrorCode DMAddField(DM dm, DMLabel label, PetscObject disc)
   dm->fields[Nf].label = label;
   dm->fields[Nf].disc  = disc;
   PetscCall(PetscObjectReference((PetscObject)label));
-  PetscCall(PetscObjectReference((PetscObject)disc));
+  PetscCall(PetscObjectReference(disc));
   PetscCall(DMSetDefaultAdjacency_Private(dm, Nf, disc));
   PetscCall(DMClearDS(dm));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -5201,6 +5229,11 @@ PetscErrorCode DMCopyFields(DM dm, PetscInt minDegree, PetscInt maxDegree, DM ne
     }
     PetscCall(DMGetAdjacency(dm, f, &useCone, &useClosure));
     PetscCall(DMSetAdjacency(newdm, f, useCone, useClosure));
+  }
+  // Create nullspace constructor slots
+  if (dm->nullspaceConstructors) {
+    PetscCall(PetscFree2(newdm->nullspaceConstructors, newdm->nearnullspaceConstructors));
+    PetscCall(PetscCalloc2(Nf, &newdm->nullspaceConstructors, Nf, &newdm->nearnullspaceConstructors));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -5408,7 +5441,7 @@ PetscErrorCode DMCompleteBCLabels_Internal(DM dm)
       PetscCall(PetscDSGetBoundary(dsBC, bd, NULL, NULL, NULL, &label, NULL, NULL, &field, NULL, NULL, NULL, NULL, NULL));
       PetscCall(DMGetField(dm, field, NULL, &obj));
       PetscCall(PetscObjectGetClassId(obj, &id));
-      if (!(id == PETSCFE_CLASSID) || !label) continue;
+      if (id != PETSCFE_CLASSID || !label) continue;
       for (l = 0; l < Nl; ++l)
         if (labels[l] == label) break;
       if (l == Nl) labels[Nl++] = label;
@@ -5541,6 +5574,9 @@ PetscErrorCode DMClearDS(DM dm)
 . ds - The default `PetscDS`
 
   Level: intermediate
+
+  Note:
+  The `ds` is owned by the `dm` and should not be destroyed directly.
 
 .seealso: [](ch_dmbase), `DM`, `DMGetCellDS()`, `DMGetRegionDS()`
 @*/
@@ -5890,6 +5926,9 @@ PetscErrorCode DMCreateFEDefault(DM dm, PetscInt Nc, const char prefix[], PetscI
 
   Level: intermediate
 
+  Developer Note:
+  The name of this function is wrong. Create functions always return the created object as one of the arguments.
+
 .seealso: [](ch_dmbase), `DM`, `DMSetField`, `DMAddField()`, `DMGetDS()`, `DMGetCellDS()`, `DMGetRegionDS()`, `DMSetRegionDS()`
 @*/
 PetscErrorCode DMCreateDS(DM dm)
@@ -5905,6 +5944,9 @@ PetscErrorCode DMCreateDS(DM dm)
   if (!dm->fields) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   PetscCall(DMGetCoordinateDim(dm, &dE));
+  // Create nullspace constructor slots
+  PetscCall(PetscFree2(dm->nullspaceConstructors, dm->nearnullspaceConstructors));
+  PetscCall(PetscCalloc2(Nf, &dm->nullspaceConstructors, Nf, &dm->nearnullspaceConstructors));
   /* Determine how many regions we have */
   PetscCall(PetscMalloc1(Nf, &labelSet));
   Nl   = 0;
@@ -6487,6 +6529,7 @@ PetscErrorCode DMGetOutputDM(DM dm, DM *odm)
   PetscSection section;
   IS           perm;
   PetscBool    hasConstraints, newDM, gnewDM;
+  PetscInt     num_face_sfs = 0;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
@@ -6494,7 +6537,8 @@ PetscErrorCode DMGetOutputDM(DM dm, DM *odm)
   PetscCall(DMGetLocalSection(dm, &section));
   PetscCall(PetscSectionHasConstraints(section, &hasConstraints));
   PetscCall(PetscSectionGetPermutation(section, &perm));
-  newDM = hasConstraints || perm ? PETSC_TRUE : PETSC_FALSE;
+  PetscCall(DMPlexGetIsoperiodicFaceSF(dm, &num_face_sfs, NULL));
+  newDM = hasConstraints || perm || (num_face_sfs > 0) ? PETSC_TRUE : PETSC_FALSE;
   PetscCallMPI(MPIU_Allreduce(&newDM, &gnewDM, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
   if (!gnewDM) {
     *odm = dm;
@@ -6502,7 +6546,7 @@ PetscErrorCode DMGetOutputDM(DM dm, DM *odm)
   }
   if (!dm->dmBC) {
     PetscSection newSection, gsection;
-    PetscSF      sf;
+    PetscSF      sf, sfNatural;
     PetscBool    usePerm = dm->ignorePermOutput ? PETSC_FALSE : PETSC_TRUE;
 
     PetscCall(DMClone(dm, &dm->dmBC));
@@ -6510,6 +6554,8 @@ PetscErrorCode DMGetOutputDM(DM dm, DM *odm)
     PetscCall(PetscSectionClone(section, &newSection));
     PetscCall(DMSetLocalSection(dm->dmBC, newSection));
     PetscCall(PetscSectionDestroy(&newSection));
+    PetscCall(DMGetNaturalSF(dm, &sfNatural));
+    PetscCall(DMSetNaturalSF(dm->dmBC, sfNatural));
     PetscCall(DMGetPointSF(dm->dmBC, &sf));
     PetscCall(PetscSectionCreateGlobalSection(section, sf, usePerm, PETSC_TRUE, PETSC_FALSE, &gsection));
     PetscCall(DMSetGlobalSection(dm->dmBC, gsection));
@@ -7601,7 +7647,7 @@ PetscErrorCode DMCopyLabels(DM dmA, DM dmB, PetscCopyMode mode, PetscBool all, D
 - dm1 - Second `DM` object
 
   Output Parameters:
-+ equal   - (Optional) Flag whether labels of dm0 and dm1 are the same
++ equal   - (Optional) Flag whether labels of `dm0` and `dm1` are the same
 - message - (Optional) Message describing the difference, or `NULL` if there is no difference
 
   Level: intermediate
@@ -7617,7 +7663,7 @@ PetscErrorCode DMCopyLabels(DM dmA, DM dmB, PetscCopyMode mode, PetscBool all, D
 
   message must be freed with `PetscFree()`
 
-  If message is passed as `NULL` and a difference is found, the difference description is printed to stderr in synchronized manner.
+  If message is passed as `NULL` and a difference is found, the difference description is printed to `stderr` in synchronized manner.
 
   Make sure to pass message as `NULL` on all processes or no processes.
 
@@ -7625,11 +7671,11 @@ PetscErrorCode DMCopyLabels(DM dmA, DM dmB, PetscCopyMode mode, PetscBool all, D
   `DMLabelCompare()` is used to compare each pair of labels with the same name.
 
   Developer Note:
-  Can automatically generate the Fortran stub because `message` must be freed with `PetscFree()`
+  Cannot automatically generate the Fortran stub because `message` must be freed with `PetscFree()`
 
 .seealso: [](ch_dmbase), `DM`, `DMLabel`, `DMAddLabel()`, `DMCopyLabelsMode`, `DMLabelCompare()`
 @*/
-PetscErrorCode DMCompareLabels(DM dm0, DM dm1, PetscBool *equal, char **message)
+PetscErrorCode DMCompareLabels(DM dm0, DM dm1, PetscBool *equal, char *message[]) PeNS
 {
   PetscInt    n, i;
   char        msg[PETSC_MAX_PATH_LEN] = "";
@@ -7971,7 +8017,7 @@ PetscErrorCode DMSetFineDM(DM dm, DM fdm)
 }
 
 /*@C
-  DMAddBoundary - Add a boundary condition to a model represented by a `DM`
+  DMAddBoundary - Add a boundary condition, for a single field, to a model represented by a `DM`
 
   Collective
 
@@ -7983,7 +8029,7 @@ PetscErrorCode DMSetFineDM(DM dm, DM fdm)
 . Nv       - The number of `DMLabel` values for constrained points
 . values   - An array of values for constrained points
 . field    - The field to constrain
-. Nc       - The number of constrained field components (0 will constrain all fields)
+. Nc       - The number of constrained field components (0 will constrain all components)
 . comps    - An array of constrained component numbers
 . bcFunc   - A pointwise function giving boundary values
 . bcFunc_t - A pointwise function giving the time deriative of the boundary values, or NULL
@@ -7999,6 +8045,8 @@ PetscErrorCode DMSetFineDM(DM dm, DM fdm)
   Level: intermediate
 
   Notes:
+  If the `DM` is of type `DMPLEX` and the field is of type `PetscFE`, then this function completes the label using `DMPlexLabelComplete()`.
+
   Both bcFunc and bcFunc_t will depend on the boundary condition type. If the type if `DM_BC_ESSENTIAL`, then the calling sequence is\:
 .vb
  void bcFunc(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar bcval[])
@@ -8124,6 +8172,58 @@ PetscErrorCode DMIsBoundaryPoint(DM dm, PetscInt point, PetscBool *isBd)
       for (i = 0; i < dsb->Nv && !*isBd; ++i) PetscCall(DMLabelStratumHasPoint(label, dsb->values[i], point, isBd));
     }
     b = b->next;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  DMHasBound - Determine whether a bound condition was specified
+
+  Logically collective
+
+  Input Parameter:
+. dm - The `DM`, with a `PetscDS` that matches the problem being constrained
+
+  Output Parameter:
+. hasBound - Flag indicating if a bound condition was specified
+
+  Level: intermediate
+
+.seealso: [](ch_dmbase), `DM`, `DSAddBoundary()`, `PetscDSAddBoundary()`
+@*/
+PetscErrorCode DMHasBound(DM dm, PetscBool *hasBound)
+{
+  PetscDS  ds;
+  PetscInt Nf, numBd;
+
+  PetscFunctionBegin;
+  *hasBound = PETSC_FALSE;
+  PetscCall(DMGetDS(dm, &ds));
+  PetscCall(PetscDSGetNumFields(ds, &Nf));
+  for (PetscInt f = 0; f < Nf; ++f) {
+    PetscSimplePointFn *lfunc, *ufunc;
+
+    PetscCall(PetscDSGetLowerBound(ds, f, &lfunc, NULL));
+    PetscCall(PetscDSGetUpperBound(ds, f, &ufunc, NULL));
+    if (lfunc || ufunc) *hasBound = PETSC_TRUE;
+  }
+
+  PetscCall(PetscDSGetNumBoundary(ds, &numBd));
+  PetscCall(PetscDSUpdateBoundaryLabels(ds, dm));
+  for (PetscInt b = 0; b < numBd; ++b) {
+    PetscWeakForm           wf;
+    DMBoundaryConditionType type;
+    const char             *name;
+    DMLabel                 label;
+    PetscInt                numids;
+    const PetscInt         *ids;
+    PetscInt                field, Nc;
+    const PetscInt         *comps;
+    void (*bvfunc)(void);
+    void *ctx;
+
+    PetscCall(PetscDSGetBoundary(ds, b, &wf, &type, &name, &label, &numids, &ids, &field, &Nc, &comps, &bvfunc, NULL, &ctx));
+    if (type == DM_BC_LOWER_BOUND || type == DM_BC_UPPER_BOUND) *hasBound = PETSC_TRUE;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -8894,11 +8994,11 @@ PetscErrorCode DMGetCompatibility(DM dm1, DM dm2, PetscBool *compatible, PetscBo
 + dm             - the `DM`
 . f              - the monitor function
 . mctx           - [optional] user-defined context for private data for the monitor routine (use `NULL` if no context is desired)
-- monitordestroy - [optional] routine that frees monitor context (may be `NULL`)
+- monitordestroy - [optional] routine that frees monitor context (may be `NULL`), see `PetscCtxDestroyFn` for the calling sequence
 
   Options Database Key:
 . -dm_monitor_cancel - cancels all monitors that have been hardwired into a code by calls to `DMMonitorSet()`, but
-                            does not cancel those set via the options database.
+                       does not cancel those set via the options database.
 
   Level: intermediate
 
@@ -8913,9 +9013,9 @@ PetscErrorCode DMGetCompatibility(DM dm1, DM dm2, PetscBool *compatible, PetscBo
   Developer Note:
   This API has a generic name but seems specific to a very particular aspect of the use of `DM`
 
-.seealso: [](ch_dmbase), `DM`, `DMMonitorCancel()`, `DMMonitorSetFromOptions()`, `DMMonitor()`
+.seealso: [](ch_dmbase), `DM`, `DMMonitorCancel()`, `DMMonitorSetFromOptions()`, `DMMonitor()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode DMMonitorSet(DM dm, PetscErrorCode (*f)(DM, void *), void *mctx, PetscErrorCode (*monitordestroy)(void **))
+PetscErrorCode DMMonitorSet(DM dm, PetscErrorCode (*f)(DM, void *), void *mctx, PetscCtxDestroyFn *monitordestroy)
 {
   PetscInt m;
 
@@ -8930,7 +9030,7 @@ PetscErrorCode DMMonitorSet(DM dm, PetscErrorCode (*f)(DM, void *), void *mctx, 
   PetscCheck(dm->numbermonitors < MAXDMMONITORS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many monitors set");
   dm->monitor[dm->numbermonitors]          = f;
   dm->monitordestroy[dm->numbermonitors]   = monitordestroy;
-  dm->monitorcontext[dm->numbermonitors++] = (void *)mctx;
+  dm->monitorcontext[dm->numbermonitors++] = mctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -8977,7 +9077,7 @@ PetscErrorCode DMMonitorCancel(DM dm)
 . name         - the monitor type one is seeking
 . help         - message indicating what monitoring is done
 . manual       - manual page for the monitor
-. monitor      - the monitor function
+. monitor      - the monitor function, this must use a `PetscViewerFormat` as its context
 - monitorsetup - a function that is called once ONLY if the user selected this monitor that may set additional features of the `DM` or `PetscViewer` objects
 
   Output Parameter:
@@ -9007,7 +9107,7 @@ PetscErrorCode DMMonitorSetFromOptions(DM dm, const char name[], const char help
     PetscCall(PetscViewerAndFormatCreate(viewer, format, &vf));
     PetscCall(PetscViewerDestroy(&viewer));
     if (monitorsetup) PetscCall((*monitorsetup)(dm, vf));
-    PetscCall(DMMonitorSet(dm, (PetscErrorCode (*)(DM, void *))monitor, vf, (PetscErrorCode (*)(void **))PetscViewerAndFormatDestroy));
+    PetscCall(DMMonitorSet(dm, monitor, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -35,7 +35,7 @@ struct _TaoOps {
   PetscErrorCode (*setup)(Tao);
   PetscErrorCode (*solve)(Tao);
   PetscErrorCode (*view)(Tao, PetscViewer);
-  PetscErrorCode (*setfromoptions)(Tao, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(Tao, PetscOptionItems);
   PetscErrorCode (*destroy)(Tao);
 };
 
@@ -43,7 +43,7 @@ struct _TaoOps {
 
 struct _p_Tao {
   PETSCHEADER(struct _TaoOps);
-  void *user;
+  void *ctx; /* user provided context */
   void *user_objP;
   void *user_objgradP;
   void *user_gradP;
@@ -62,7 +62,7 @@ struct _p_Tao {
   void *user_update;
 
   PetscErrorCode (*monitor[MAXTAOMONITORS])(Tao, void *);
-  PetscErrorCode (*monitordestroy[MAXTAOMONITORS])(void **);
+  PetscCtxDestroyFn *monitordestroy[MAXTAOMONITORS];
   void              *monitorcontext[MAXTAOMONITORS];
   PetscInt           numbermonitors;
   void              *cnvP;

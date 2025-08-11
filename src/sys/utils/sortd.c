@@ -231,11 +231,11 @@ PetscErrorCode PetscFindReal(PetscReal key, PetscCount n, const PetscReal t[], P
   Not Collective
 
   Input Parameters:
-+ n - number of values
-- v - array of doubles
++ n - initial number of values
+- v - array of values
 
-  Output Parameter:
-. n - number of non-redundant values
+  Note:
+  On output both `n` and `v` are modified with non-redundant values.
 
   Level: intermediate
 

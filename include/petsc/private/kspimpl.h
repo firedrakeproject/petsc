@@ -25,7 +25,7 @@ struct _KSPOps {
   PetscErrorCode (*solve)(KSP);                          /* actual solver */
   PetscErrorCode (*matsolve)(KSP, Mat, Mat);             /* multiple dense RHS solver */
   PetscErrorCode (*setup)(KSP);
-  PetscErrorCode (*setfromoptions)(KSP, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(KSP, PetscOptionItems);
   PetscErrorCode (*publishoptions)(KSP);
   PetscErrorCode (*computeextremesingularvalues)(KSP, PetscReal *, PetscReal *);
   PetscErrorCode (*computeeigenvalues)(KSP, PetscInt, PetscReal *, PetscReal *, PetscInt *);
@@ -124,29 +124,28 @@ struct _p_KSP {
   PetscInt nmax; /* maximum number of right-hand sides to be handled simultaneously */
 
   /* --------User (or default) routines (most return -1 on error) --------*/
-  PetscErrorCode (*monitor[MAXKSPMONITORS])(KSP, PetscInt, PetscReal, void *); /* returns control to user after */
-  PetscErrorCode (*monitordestroy[MAXKSPMONITORS])(void **);                   /* */
-  void     *monitorcontext[MAXKSPMONITORS];                                    /* residual calculation, allows user */
-  PetscInt  numbermonitors;                                                    /* to, for instance, print residual norm, etc. */
-  PetscBool pauseFinal;                                                        /* Pause all drawing monitor at the final iterate */
+  KSPMonitorFn      *monitor[MAXKSPMONITORS];
+  PetscCtxDestroyFn *monitordestroy[MAXKSPMONITORS];
+  void              *monitorcontext[MAXKSPMONITORS]; /* residual calculation, allows user */
+  PetscInt           numbermonitors;                 /* to, for instance, print residual norm, etc. */
+  PetscBool          pauseFinal;                     /* Pause all drawing monitor at the final iterate */
 
-  PetscViewer       convergedreasonviewer;
-  PetscViewerFormat convergedreasonformat;
-  PetscErrorCode (*reasonview[MAXKSPREASONVIEWS])(KSP, void *);    /* KSP converged reason view */
-  PetscErrorCode (*reasonviewdestroy[MAXKSPREASONVIEWS])(void **); /* Optional destroy routine */
-  void    *reasonviewcontext[MAXKSPREASONVIEWS];                   /* User context */
-  PetscInt numberreasonviews;                                      /* Number if reason viewers */
+  PetscViewer               convergedreasonviewer;
+  PetscViewerFormat         convergedreasonformat;
+  KSPConvergedReasonViewFn *reasonview[MAXKSPREASONVIEWS];        /* KSP converged reason view */
+  PetscCtxDestroyFn        *reasonviewdestroy[MAXKSPREASONVIEWS]; /* optional destroy routine */
+  void                     *reasonviewcontext[MAXKSPREASONVIEWS]; /* viewer context */
+  PetscInt                  numberreasonviews;                    /* current number of reason viewers */
 
-  PetscErrorCode (*converged)(KSP, PetscInt, PetscReal, KSPConvergedReason *, void *);
-  PetscErrorCode (*convergeddestroy)(void *);
-  void *cnvP;
+  KSPConvergenceTestFn *converged;
+  PetscCtxDestroyFn    *convergeddestroy;
+  void                 *cnvP;
 
-  void *user; /* optional user-defined context */
+  void *ctx; /* optional user-defined context */
 
   PC pc;
 
-  void *data; /* holder for misc stuff associated
-                                   with a particular iterative solver */
+  void *data; /* holder for misc stuff associated with a particular iterative solver */
 
   PetscBool         view, viewPre, viewRate, viewMat, viewPMat, viewRhs, viewSol, viewMatExp, viewEV, viewSV, viewEVExp, viewFinalRes, viewPOpExp, viewDScale;
   PetscViewer       viewer, viewerPre, viewerRate, viewerMat, viewerPMat, viewerRhs, viewerSol, viewerMatExp, viewerEV, viewerSV, viewerEVExp, viewerFinalRes, viewerPOpExp, viewerDScale;
@@ -261,17 +260,20 @@ static inline PetscScalar KSPNoisyHash_Private(PetscInt xx)
   return (PetscScalar)(((PetscInt64)x - 2147483648) * 5.e-10); /* center around zero, scaled about -1. to 1.*/
 }
 
-static inline PetscErrorCode KSPSetNoisy_Private(Vec v)
+static inline PetscErrorCode KSPSetNoisy_Private(Mat A, Vec v)
 {
   PetscScalar *a;
   PetscInt     n, istart;
+  MatNullSpace nullsp = NULL;
 
   PetscFunctionBegin;
+  if (A) PetscCall(MatGetNullSpace(A, &nullsp));
   PetscCall(VecGetOwnershipRange(v, &istart, NULL));
   PetscCall(VecGetLocalSize(v, &n));
   PetscCall(VecGetArrayWrite(v, &a));
   for (PetscInt i = 0; i < n; ++i) a[i] = KSPNoisyHash_Private(i + istart);
   PetscCall(VecRestoreArrayWrite(v, &a));
+  if (nullsp) PetscCall(MatNullSpaceRemove(nullsp, v));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -440,24 +442,16 @@ static inline PetscErrorCode KSP_PCApplyHermitianTranspose(KSP ksp, Vec x, Vec y
 static inline PetscErrorCode KSP_PCMatApply(KSP ksp, Mat X, Mat Y)
 {
   PetscFunctionBegin;
-  if (ksp->transpose_solve) {
-    PetscBool flg;
-    PetscCall(PetscObjectTypeCompareAny((PetscObject)ksp->pc, &flg, PCNONE, PCICC, PCCHOLESKY, ""));
-    PetscCheck(flg, PetscObjectComm((PetscObject)ksp), PETSC_ERR_SUP, "PCMatApplyTranspose() not yet implemented for nonsymmetric PC");
-  }
-  PetscCall(PCMatApply(ksp->pc, X, Y));
+  if (ksp->transpose_solve) PetscCall(PCMatApplyTranspose(ksp->pc, X, Y));
+  else PetscCall(PCMatApply(ksp->pc, X, Y));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 static inline PetscErrorCode KSP_PCMatApplyTranspose(KSP ksp, Mat X, Mat Y)
 {
   PetscFunctionBegin;
-  if (!ksp->transpose_solve) {
-    PetscBool flg;
-    PetscCall(PetscObjectTypeCompareAny((PetscObject)ksp->pc, &flg, PCNONE, PCICC, PCCHOLESKY, ""));
-    PetscCheck(flg, PetscObjectComm((PetscObject)ksp), PETSC_ERR_SUP, "PCMatApplyTranspose() not yet implemented for nonsymmetric PC");
-  }
-  PetscCall(PCMatApply(ksp->pc, X, Y));
+  if (!ksp->transpose_solve) PetscCall(PCMatApplyTranspose(ksp->pc, X, Y));
+  else PetscCall(PCMatApply(ksp->pc, X, Y));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

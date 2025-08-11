@@ -432,6 +432,13 @@ PetscErrorCode DMSwarmDataBucketCreateFromSubset(DMSwarmDataBucket DBIn, const P
   for (f = 0; f < nfields; ++f) PetscCall(DMSwarmDataBucketRegisterField(*DB, "DMSwarmDataBucketCreateFromSubset", fields[f]->name, fields[f]->atomic_size, NULL));
   PetscCall(DMSwarmDataBucketFinalize(*DB));
   PetscCall(DMSwarmDataBucketSetSizes(*DB, L, buffer));
+  for (f = 0; f < nfields; ++f) {
+    DMSwarmDataField gfield;
+
+    PetscCall(DMSwarmDataBucketGetDMSwarmDataFieldByName(*DB, fields[f]->name, &gfield));
+    PetscCall(DMSwarmDataFieldSetBlockSize(gfield, fields[f]->bs));
+    gfield->petsc_type = fields[f]->petsc_type;
+  }
   /* now copy the desired guys from DBIn => DB */
   for (p = 0; p < N; ++p) PetscCall(DMSwarmDataBucketCopyPoint(DBIn, list[p], *DB, list[p]));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -531,7 +538,7 @@ PetscErrorCode DMSwarmDataBucketZeroPoint(const DMSwarmDataBucket db, const Pets
 PetscErrorCode DMSwarmDataBucketAddPoint(DMSwarmDataBucket db)
 {
   PetscFunctionBegin;
-  PetscCall(DMSwarmDataBucketSetSizes(db, db->L + 1, DMSWARM_DATA_BUCKET_BUFFER_DEFAULT));
+  PetscCall(DMSwarmDataBucketSetSizes(db, PetscMax(db->L, 0) + 1, DMSWARM_DATA_BUCKET_BUFFER_DEFAULT));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -539,6 +546,7 @@ PetscErrorCode DMSwarmDataBucketAddPoint(DMSwarmDataBucket db)
 PetscErrorCode DMSwarmDataBucketRemovePoint(DMSwarmDataBucket db)
 {
   PetscFunctionBegin;
+  PetscCheck(db->L > 0, PetscObjectComm((PetscObject)db), PETSC_ERR_ARG_WRONG, "Swarm has no points to be removed");
   PetscCall(DMSwarmDataBucketSetSizes(db, db->L - 1, DMSWARM_DATA_BUCKET_BUFFER_DEFAULT));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -716,7 +724,7 @@ PetscErrorCode DMSwarmDataBucketFillPackedArray(DMSwarmDataBucket db, const Pets
     DMSwarmDataField df = db->field[f];
 
     asize  = df->atomic_size;
-    data   = (void *)df->data;
+    data   = df->data;
     data_p = (void *)((char *)data + index * asize);
     PetscCall(PetscMemcpy((void *)((char *)buf + offset), data_p, asize));
     offset = offset + asize;
@@ -736,7 +744,7 @@ PetscErrorCode DMSwarmDataBucketInsertPackedArray(DMSwarmDataBucket db, const Pe
     DMSwarmDataField df = db->field[f];
 
     data_p = (void *)((char *)data + offset);
-    PetscCall(DMSwarmDataFieldInsertPoint(df, idx, (void *)data_p));
+    PetscCall(DMSwarmDataFieldInsertPoint(df, idx, data_p));
     offset = offset + df->atomic_size;
   }
   PetscFunctionReturn(PETSC_SUCCESS);

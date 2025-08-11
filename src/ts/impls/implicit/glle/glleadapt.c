@@ -9,7 +9,7 @@ struct _TSGLLEAdaptOps {
   PetscErrorCode (*choose)(TSGLLEAdapt, PetscInt, const PetscInt[], const PetscReal[], const PetscReal[], PetscInt, PetscReal, PetscReal, PetscInt *, PetscReal *, PetscBool *);
   PetscErrorCode (*destroy)(TSGLLEAdapt);
   PetscErrorCode (*view)(TSGLLEAdapt, PetscViewer);
-  PetscErrorCode (*setfromoptions)(TSGLLEAdapt, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(TSGLLEAdapt, PetscOptionItems);
 };
 
 struct _p_TSGLLEAdapt {
@@ -41,9 +41,13 @@ PETSC_EXTERN PetscErrorCode TSGLLEAdaptCreate_Both(TSGLLEAdapt);
 .ve
 
   Then, your scheme can be chosen with the procedural interface via
-$     TSGLLEAdaptSetType(ts, "my_scheme")
+.vb
+  TSGLLEAdaptSetType(ts, "my_scheme")
+.ve
   or at runtime via the option
-$     -ts_adapt_type my_scheme
+.vb
+  -ts_adapt_type my_scheme
+.ve
 
 .seealso: [](ch_ts), `TSGLLE`, `TSGLLEAdapt`, `TSGLLEAdaptRegisterAll()`
 @*/
@@ -162,7 +166,7 @@ PetscErrorCode TSGLLEAdaptDestroy(TSGLLEAdapt *adapt)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode TSGLLEAdaptSetFromOptions(TSGLLEAdapt adapt, PetscOptionItems *PetscOptionsObject)
+PetscErrorCode TSGLLEAdaptSetFromOptions(TSGLLEAdapt adapt, PetscOptionItems PetscOptionsObject)
 {
   char      type[256] = TSGLLEADAPT_BOTH;
   PetscBool flg;

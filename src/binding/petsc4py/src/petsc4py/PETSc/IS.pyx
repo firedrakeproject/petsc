@@ -384,6 +384,55 @@ cdef class IS(Object):
         CHKERR(ISInvertPermutation(self.iset, cnlocal, &iset.iset))
         return iset
 
+    def partitioningToNumbering(self) -> IS:
+        """Return the new global numbering after a partitioning.
+
+        Collective.
+
+        Assuming that the index set represents a partitioning, generate another
+        index set with the new global node number in the new ordering.
+
+        See Also
+        --------
+        petsc.ISPartitioningToNumbering
+
+        """
+        cdef IS iset = IS()
+        CHKERR(ISPartitioningToNumbering(self.iset, &iset.iset))
+        return iset
+
+    def partitioningCount(self, npart: int | None = None) -> ArrayInt:
+        """Return the number of elements per process after a partitioning.
+
+        Collective.
+
+        Assuming that the index set represents a partitioning, determine the
+        number of elements on each (partition) rank.
+
+        Parameters
+        ----------
+        npart
+            The number of partitions,
+            defaults to the size of the communicator.
+
+        See Also
+        --------
+        petsc.ISPartitioningCount
+
+        """
+        cdef PetscInt size
+        if npart is None: size = getCommSize(self.iset)
+        else: size = asInt(npart)
+        cdef PetscInt *counts = NULL
+        CHKERR(PetscMalloc(<size_t>size*sizeof(PetscInt), &counts))
+        CHKERR(ISPartitioningCount(self.iset, size, counts))
+        cdef object ocounts = None
+        try:
+            ocounts = array_i(size, counts)
+        finally:
+            CHKERR(PetscFree(counts))
+        return ocounts
+
     def getSize(self) -> int:
         """Return the global length of an index set.
 
@@ -1164,12 +1213,30 @@ cdef class LGMap(Object):
 
         See Also
         --------
-        petsc.ISLocalToGlobalMappingView
+        load, petsc.ISLocalToGlobalMappingView
 
         """
         cdef PetscViewer cviewer = NULL
         if viewer is not None: cviewer = viewer.vwr
         CHKERR(ISLocalToGlobalMappingView(self.lgm, cviewer))
+
+    def load(self, Viewer viewer) -> Self:
+        """Load a local-to-global mapping.
+
+        Collective.
+
+        See Also
+        --------
+        view, petsc.ISLocalToGlobalMappingLoad
+
+        """
+        cdef MPI_Comm comm = MPI_COMM_NULL
+        cdef PetscObject obj = <PetscObject>(viewer.vwr)
+        if self.lgm == NULL:
+            CHKERR(PetscObjectGetComm(obj, &comm))
+            CHKERR(ISLocalToGlobalMappingCreate(comm, 1, 0, NULL, PETSC_USE_POINTER, &self.lgm))
+        CHKERR(ISLocalToGlobalMappingLoad(self.lgm, viewer.vwr))
+        return self
 
     def destroy(self) -> Self:
         """Destroy the local-to-global mapping.

@@ -37,7 +37,7 @@
   ! assembling a diagonal matrix
   do row = istart,iend-1
 
-    cols = [row]; vals = [one]; rows = [row];
+    cols = [row]; vals = [one]; rows = [row]
     PetscCallA(MatSetValues(L,i1,rows,i1,cols,vals,ADD_VALUES,ierr))
 
   end do
@@ -58,7 +58,7 @@
       rows = [row]
       PetscCallA(MatSetValues(L,i1,rows,i1,cols,vals,ADD_VALUES,ierr))
     end if
-    cols = [row]; vals = [one] ; rows = [ row];
+    cols = [row]; vals = [one] ; rows = [ row]
     PetscCallA(MatSetValues(L,i1,rows,i1,cols,vals,ADD_VALUES,ierr))
 
   end do
@@ -78,5 +78,6 @@ end program test_assembly
 !
 !   test:
 !      nsize: 2
+!      output_file: output/empty.out
 !
 !TEST*/

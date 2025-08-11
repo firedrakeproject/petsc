@@ -35,18 +35,18 @@ program ex95f90
     endif
 
     PetscCallA(PetscOptionsBegin(PETSC_COMM_WORLD,PETSC_NULL_CHARACTER,'PetscViewer_ExodusII test','ex95f90',ierr))
-    PetscCallA(PetscOptionsString("-i", "Filename to read", "ex95f90", ifilename, ifilename, flg, ierr));
+    PetscCallA(PetscOptionsString("-i", "Filename to read", "ex95f90", ifilename, ifilename, flg, ierr))
     PetscCheckA(flg,PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,'missing input file name -i <input file name>')
-    PetscCallA(PetscOptionsString("-o", "Filename to write", "ex95f90", ofilename, ofilename, flg, ierr));
+    PetscCallA(PetscOptionsString("-o", "Filename to write", "ex95f90", ofilename, ofilename, flg, ierr))
     PetscCheckA(flg,PETSC_COMM_WORLD,PETSC_ERR_ARG_OUTOFRANGE,'missing output file name -o <output file name>')
     PetscCallA(PetscOptionsEnd(ierr))
 
     ! Read the mesh in any supported format
     PetscCallA(DMPlexCreateFromFile(PETSC_COMM_WORLD, ifilename,PETSC_NULL_CHARACTER,PETSC_TRUE,dm,ierr))
-    PetscCallA(DMPlexDistributeSetDefault(dm, PETSC_FALSE,ierr));
-    PetscCallA(DMSetFromOptions(dm,ierr));
-    PetscCallA(PetscObjectSetName(dm, "ex95f90", ierr));
-    PetscCallA(DMViewFromOptions(dm, PETSC_NULL_OPTIONS,'-dm_view',ierr));
+    PetscCallA(DMPlexDistributeSetDefault(dm, PETSC_FALSE,ierr))
+    PetscCallA(DMSetFromOptions(dm,ierr))
+    PetscCallA(PetscObjectSetName(dm, "ex95f90", ierr))
+    PetscCallA(DMViewFromOptions(dm, PETSC_NULL_OBJECT,'-dm_view',ierr))
 
     ! enable exodus debugging information
 #ifdef PETSC_USE_DEBUG
@@ -130,13 +130,13 @@ program ex95f90
     PetscCallA(PetscFinalize(ierr))
 end program ex95f90
 
-/*TEST
-
-  build:
-    requires: exodusii pnetcdf !complex
-  test:
-    suffix: 0
-    nsize: 1
-    args: -i ${wPETSC_DIR}/share/petsc/datafiles/meshes/FourSquareT-large.exo -o FourSquareT-large_out.exo
-
-TEST*/
+!/*TEST
+!
+!  build:
+!    requires: exodusii pnetcdf !complex
+!  test:
+!    suffix: 0
+!    nsize: 1
+!    args: -i ${wPETSC_DIR}/share/petsc/datafiles/meshes/FourSquareT-large.exo -o FourSquareT-large_out.exo
+!
+!TEST*/

@@ -44,8 +44,8 @@ PetscErrorCode MatMFFDComputeJacobian(SNES snes, Vec x, Mat jac, Mat B, void *du
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PETSC_EXTERN PetscErrorCode MatAssemblyEnd_MFFD(Mat, MatAssemblyType);
-PETSC_EXTERN PetscErrorCode MatMFFDSetBase_MFFD(Mat, Vec, Vec);
+PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL PetscErrorCode MatAssemblyEnd_MFFD(Mat, MatAssemblyType);
+PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL PetscErrorCode MatMFFDSetBase_MFFD(Mat, Vec, Vec);
 
 /*@
   MatSNESMFGetSNES - returns the `SNES` associated with a matrix created with `MatCreateSNESMF()`
@@ -234,7 +234,7 @@ PetscErrorCode MatSNESMFGetReuseBase(Mat J, PetscBool *use)
 
   Notes:
   You can call `SNESSetJacobian()` with `MatMFFDComputeJacobian()` if you are not using a different
-  preconditioner matrix
+  matrix to construct the preconditioner.
 
   If you wish to provide a different function to do differencing on to compute the matrix-free operator than
   that provided to `SNESSetFunction()` then call `MatMFFDSetFunction()` with your function after this call.

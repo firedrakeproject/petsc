@@ -36,7 +36,7 @@ typedef struct {
 
 /* The context used to input PETSc matrix into ML at fine grid */
 typedef struct {
-  Mat          A;    /* Petsc matrix in aij format */
+  Mat          A;    /* PETSc matrix in aij format */
   Mat          Aloc; /* local portion of A to be used by ML */
   Vec          x, y;
   ML_Operator *mlmat;
@@ -442,7 +442,6 @@ static PetscErrorCode PCSetCoordinates_ML(PC pc, PetscInt ndm, PetscInt a_nloc, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-extern PetscErrorCode PCReset_MG(PC);
 static PetscErrorCode PCReset_ML(PC pc)
 {
   PC_MG   *mg    = (PC_MG *)pc->data;
@@ -503,9 +502,6 @@ static PetscErrorCode PCReset_ML(PC pc)
    The interface routine PCSetUp() is not usually called directly by
    the user, but instead is called by PCApply() if necessary.
 */
-extern PetscErrorCode PCSetFromOptions_MG(PC, PetscOptionItems *PetscOptionsObject);
-extern PetscErrorCode PCReset_MG(PC);
-
 static PetscErrorCode PCSetUp_ML(PC pc)
 {
   PetscMPIInt      size;
@@ -936,7 +932,7 @@ static PetscErrorCode PCSetUp_ML(PC pc)
   }
 
   /* setupcalled is set to 0 so that MG is setup from scratch */
-  pc->setupcalled = 0;
+  pc->setupcalled = PETSC_FALSE;
   PetscCall(PCSetUp_MG(pc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -963,7 +959,7 @@ static PetscErrorCode PCDestroy_ML(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_ML(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_ML(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscInt    indx, PrintLevel, partindx;
   const char *scheme[] = {"Uncoupled", "Coupled", "MIS", "METIS"};

@@ -134,7 +134,7 @@ static PetscErrorCode ISRestoreIndices_General(IS in, const PetscInt *idx[])
   IS_General *sub = (IS_General *)in->data;
 
   PetscFunctionBegin;
-  /* F90Array1dCreate() inside ISRestoreArrayF90() does not keep array when zero length array */
+  /* F90Array1dCreate() inside ISRestoreArray() does not keep array when zero length array */
   PetscCheck(in->map->n <= 0 || *idx == sub->idx, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Must restore with value from ISGetIndices()");
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -220,15 +220,15 @@ static PetscErrorCode ISFindRun_Private(const PetscInt indices[], PetscInt len, 
 
 static PetscErrorCode ISGeneralCheckCompress(IS is, PetscBool *compress)
 {
-  const PetscInt  minRun    = 8;
-  PetscBool       lcompress = PETSC_TRUE, test = PETSC_FALSE;
+  const PetscInt  minRun = 8;
+  PetscBool       lcompress;
   const PetscInt *idx;
   PetscInt        n, off = 0;
 
   PetscFunctionBegin;
   *compress = PETSC_FALSE;
-  PetscCall(PetscOptionsGetBool(NULL, is->hdr.prefix, "-is_view_compress", &test, NULL));
-  if (!test) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(ISGetCompressOutput(is, &lcompress));
+  if (!lcompress) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(ISGetIndices(is, &idx));
   PetscCall(ISGetLocalSize(is, &n));
   while (off < n) {
@@ -520,7 +520,10 @@ static PetscErrorCode ISView_General(IS is, PetscViewer viewer)
     PetscCall(ISView_Binary(is, viewer));
   } else if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
-    if (compress) PetscCall(ISView_General_HDF5_Compressed(is, viewer));
+    PetscBool vcompress;
+
+    PetscCall(PetscViewerHDF5GetCompress(viewer, &vcompress));
+    if (vcompress && compress) PetscCall(ISView_General_HDF5_Compressed(is, viewer));
     else PetscCall(ISView_General_HDF5(is, viewer));
 #endif
   }

@@ -4,13 +4,12 @@ import os
 class Configure(config.package.GNUPackage):
   def __init__(self, framework):
     config.package.GNUPackage.__init__(self, framework)
-    self.version         = '2.31.0'
+    self.version         = '2.33.0'
     self.minversion      = '2.14'
     self.versionname     = 'HYPRE_RELEASE_VERSION'
     self.versioninclude  = 'HYPRE_config.h'
     self.requiresversion = 1
-    #self.gitcommit       = 'v'+self.version
-    self.gitcommit       = 'ee74c20e7a84e4e48eec142c6bb6ff2a75db72f1' # master feb-16-2024 (2.31.0+recursive-make-fix)
+    self.gitcommit       = '6352ec37bd105b6f46f14a5c73549053edcdddff' # master (v2.33.0 + ROCm fix) apr-03-2025
     self.download        = ['git://https://github.com/hypre-space/hypre','https://github.com/hypre-space/hypre/archive/'+self.gitcommit+'.tar.gz']
     self.functions       = ['HYPRE_IJMatrixCreate']
     self.includes        = ['HYPRE.h']
@@ -19,24 +18,25 @@ class Configure(config.package.GNUPackage):
     self.precisions        = ['single', 'double', '__float128']
     self.hastests          = 1
     self.hastestsdatafiles = 1
+    self.brokengnu23       = 1
 
   def setupHelp(self, help):
     config.package.GNUPackage.setupHelp(self,help)
     import nargs
     help.addArgument('HYPRE', '-with-hypre-gpu-arch=<string>',  nargs.ArgString(None, 0, 'Value passed to hypre\'s --with-gpu-arch= configure option'))
-    help.addArgument('HYPRE', '-download-hypre-openmp', nargs.ArgBool(None, 1, 'Let hypre use OpenMP if available'))    
+    help.addArgument('HYPRE', '-download-hypre-openmp', nargs.ArgBool(None, 1, 'Let hypre use OpenMP if available'))
     return
 
   def setupDependencies(self, framework):
     config.package.GNUPackage.setupDependencies(self, framework)
-    self.openmp        = framework.require('config.packages.openmp',self)
+    self.openmp        = framework.require('config.packages.OpenMP',self)
     self.cxxlibs       = framework.require('config.packages.cxxlibs',self)
     self.blasLapack    = framework.require('config.packages.BlasLapack',self)
     self.mpi           = framework.require('config.packages.MPI',self)
     self.mathlib       = framework.require('config.packages.mathlib',self)
-    self.cuda          = framework.require('config.packages.cuda',self)
-    self.hip           = framework.require('config.packages.hip',self)
-    self.openmp        = framework.require('config.packages.openmp',self)
+    self.cuda          = framework.require('config.packages.CUDA',self)
+    self.hip           = framework.require('config.packages.HIP',self)
+    self.openmp        = framework.require('config.packages.OpenMP',self)
     self.compilerFlags = framework.require('config.compilerFlags', self)
     self.scalar        = framework.require('PETSc.options.scalarTypes',self)
     self.deps          = [self.mpi,self.blasLapack,self.cxxlibs,self.mathlib]
@@ -110,8 +110,10 @@ class Configure(config.package.GNUPackage):
       devflags += ' '.join(self.removeVisibilityFlag(self.getCompilerFlags().split())) + ' ' + self.setCompilers.HIPPPFLAGS + ' ' + self.mpi.includepaths + ' ' + self.headers.toString(self.dinclude)
       self.popLanguage()
     elif self.cuda.found:
-      stdflag   = '-std=c++11'
+      stdflag   = '-std=c++14'
       cudabuild = True
+      if not hasattr(self.cuda, 'cudaDir'):
+        raise RuntimeError('CUDA directory not detected! Mail configure.log to petsc-maint@mcs.anl.gov.')
       args.append('CUDA_HOME="'+self.cuda.cudaDir+'"')
       args.append('--with-cuda')
       if not hasharch:
@@ -185,6 +187,7 @@ class Configure(config.package.GNUPackage):
     if 'MSYSTEM' in os.environ and os.environ['MSYSTEM'].endswith('64'):
       args.append('--host=x86_64-linux-gnu')
 
+    self.logPrintBox('hypre examples are available at '+os.path.join(self.packageDir,'examples'))
     return args
 
   def consistencyChecks(self):
@@ -200,6 +203,18 @@ class Configure(config.package.GNUPackage):
     flagsArg = self.getPreprocessorFlagsArg()
     oldFlags = getattr(self.compilers, flagsArg)
     setattr(self.compilers, flagsArg, oldFlags+' '+self.headers.toString(self.include))
+    # check complex/real
+    scn  = '!' if self.scalar.scalartype == 'complex' else ''
+    code = '#if {0}defined(HYPRE_COMPLEX)\n#error Mismatch between HYPRE and PETSc scalar types\n#endif'.format(scn)
+    if not self.checkCompile('#include "HYPRE_config.h"',code):
+      msg  = 'HYPRE scalar numbers configuration is different than the requested type {0}\n'.format(self.scalar.scalartype)
+      raise RuntimeError('Hypre specified is incompatible!\n'+msg+'Suggest using --download-hypre for a compatible hypre')
+    # check precision
+    b = self.scalar.precisionToBytes()
+    size = self.types.checkSizeof('HYPRE_Real', (8, 4, 16), otherInclude='HYPRE_utilities.h', save=False)
+    if size != b:
+      msg  = 'HYPRE Real numbers configuration is incompatible with the requested precision {0}\n'.format(self.scalar.precision)
+      raise RuntimeError('Hypre specified is incompatible!\n'+msg+'Suggest using --download-hypre for a compatible hypre')
     # check integers
     if self.defaultIndexSize == 64:
       code = '#if !defined(HYPRE_BIGINT) && !defined(HYPRE_MIXEDINT)\n#error HYPRE_BIGINT or HYPRE_MIXEDINT not defined!\n#endif'

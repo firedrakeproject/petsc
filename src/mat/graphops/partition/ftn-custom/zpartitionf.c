@@ -1,5 +1,5 @@
 #include <../src/mat/impls/adj/mpi/mpiadj.h>
-#include <petsc/private/fortranimpl.h>
+#include <petsc/private/ftnimpl.h>
 #include <petscmat.h>
 
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
@@ -8,7 +8,7 @@
   #define matpartitioningsetvertexweights_ matpartitioningsetvertexweights
 #endif
 
-PETSC_EXTERN void matpartitioningsetvertexweights_(MatPartitioning *part, const PetscInt weights[], PetscErrorCode *ierr)
+PETSC_EXTERN void matpartitioningsetvertexweights_NOTODAY(MatPartitioning *part, const PetscInt weights[], PetscErrorCode *ierr)
 {
   PetscInt  len;
   PetscInt *array;

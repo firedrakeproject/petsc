@@ -31,10 +31,10 @@ class Configure(config.package.CMakePackage):
     #  requires HYPRE install because AMReX CMake requires HYPRE in path to compile AMReX PETSc code
     #  Src/Extern/PETSc/AMReX_PETSc.cpp:10:10: fatal error: 'AMReX_HypreABec_F.H' file not found
     self.hypre          = framework.require('config.packages.hypre',self)
-    self.cuda           = framework.require('config.packages.cuda',self)
-    self.hip            = framework.require('config.packages.hip',self)
-    self.sycl           = framework.require('config.packages.sycl',self)
-    self.openmp         = framework.require('config.packages.openmp',self)
+    self.cuda           = framework.require('config.packages.CUDA',self)
+    self.hip            = framework.require('config.packages.HIP',self)
+    self.sycl           = framework.require('config.packages.SYCL',self)
+    self.openmp         = framework.require('config.packages.OpenMP',self)
     self.odeps          = [self.mpi,self.blasLapack,self.cuda,self.hip,self.sycl,self.openmp]
     self.deps           = [self.hypre,self.mpi,self.blasLapack]
     return
@@ -94,8 +94,6 @@ class Configure(config.package.CMakePackage):
     fd.close()
 
     if not self.installNeeded(conffile):
-      self.addMakeRule('amrex-build','')
-      self.addMakeRule('amrex-install','')
       return self.installDir
     if not self.cmake.found:
       raise RuntimeError('CMake not found, needed to build '+self.PACKAGE+'. Rerun configure with --download-cmake.')
@@ -135,35 +133,6 @@ class Configure(config.package.CMakePackage):
 
     self.addDefine('HAVE_AMREX',1)
     self.addMakeMacro('AMREX','yes')
-    self.addMakeRule('amrexbuild','', \
-                       ['@echo "*** Building amrex ***"',\
-                          '@${RM} ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/amrex.errorflg',\
-                          '@cd '+os.path.join(self.packageDir,'petsc-build')+' && \\\n\
-           '+carg+' '+self.cmake.cmake+' .. '+args+'  > ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/amrex.log 2>&1 &&'+\
-           self.make.make_jnp+' '+self.makerulename+'  >> ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/amrex.log 2>&1  || \\\n\
-             (echo "**************************ERROR*************************************" && \\\n\
-             echo "Error building amrex. Check ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/amrex.log" && \\\n\
-             echo "********************************************************************" && \\\n\
-             touch ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/amrex.errorflg && \\\n\
-             exit 1)'])
-    self.addMakeRule('amrexinstall','', \
-                       ['@echo "*** Installing amrex ***"',\
-                          '@(cd '+os.path.join(self.packageDir,'petsc-build')+' && \\\n\
-           '+'${OMAKE} install) >> ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/amrex.log 2>&1 || \\\n\
-             (echo "**************************ERROR*************************************" && \\\n\
-             echo "Error installing amrex. Check ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/amrex.log" && \\\n\
-             echo "********************************************************************" && \\\n\
-             exit 1)'])
-    if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
-      self.addMakeRule('amrex-build','')
-      # the build must be done at install time because PETSc shared libraries must be in final location before building amrex
-      self.addMakeRule('amrex-install','amrexbuild amrexinstall')
-    else:
-      self.addMakeRule('amrex-build','amrexbuild amrexinstall')
-      self.addMakeRule('amrex-install','')
+    self.addPost(os.path.join(self.packageDir,'petsc-build'), [carg + ' ' + self.cmake.cmake + ' .. ' + args, self.make.make_jnp + '  ' + self.makerulename,
+                                                              '${OMAKE} install'])
     return self.installDir
-
-  def alternateConfigureLibrary(self):
-    '''Adds rules for building AMReX to PETSc makefiles'''
-    self.addMakeRule('amrex-build','')
-    self.addMakeRule('amrex-install','')

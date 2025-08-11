@@ -147,7 +147,7 @@ static PetscErrorCode PCDestroy_Eisenstat(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_Eisenstat(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_Eisenstat(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_Eisenstat *eis = (PC_Eisenstat *)pc->data;
   PetscBool     set, flg;
@@ -388,7 +388,7 @@ static PetscErrorCode PCPreSolveChangeRHS_Eisenstat(PC pc, PetscBool *change)
 
 /*MC
      PCEISENSTAT - An implementation of SSOR (symmetric successive over relaxation, symmetric Gauss-Seidel)
-           preconditioning that incorporates Eisenstat's trick to reduce the amount of computation needed.
+                   preconditioning that incorporates Eisenstat's trick to reduce the amount of computation needed.
 
    Options Database Keys:
 +  -pc_eisenstat_omega <omega> - Sets omega

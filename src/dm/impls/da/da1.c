@@ -38,7 +38,7 @@ static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
       nzlocal = info.xm;
       PetscCall(PetscMalloc1(size, &nz));
       PetscCallMPI(MPI_Allgather(&nzlocal, 1, MPIU_INT, nz, 1, MPIU_INT, PetscObjectComm((PetscObject)da)));
-      for (i = 0; i < (PetscInt)size; i++) {
+      for (i = 0; i < size; i++) {
         nmax = PetscMax(nmax, nz[i]);
         nmin = PetscMin(nmin, nz[i]);
         navg += nz[i];
@@ -48,7 +48,7 @@ static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
       PetscCall(PetscViewerASCIIPrintf(viewer, "  Load Balance - Grid Points: Min %" PetscInt_FMT "  avg %" PetscInt_FMT "  max %" PetscInt_FMT "\n", nmin, navg, nmax));
       PetscFunctionReturn(PETSC_SUCCESS);
     }
-    if (format != PETSC_VIEWER_ASCII_VTK_DEPRECATED && format != PETSC_VIEWER_ASCII_VTK_CELL_DEPRECATED && format != PETSC_VIEWER_ASCII_GLVIS) {
+    if (format != PETSC_VIEWER_ASCII_GLVIS) {
       DMDALocalInfo info;
       PetscCall(DMDAGetLocalInfo(da, &info));
       PetscCall(PetscViewerASCIIPushSynchronized(viewer));
@@ -57,7 +57,6 @@ static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
       PetscCall(PetscViewerFlush(viewer));
       PetscCall(PetscViewerASCIIPopSynchronized(viewer));
     } else if (format == PETSC_VIEWER_ASCII_GLVIS) PetscCall(DMView_DA_GLVis(da, viewer));
-    else PetscCall(DMView_DA_VTK(da, viewer));
   } else if (isdraw) {
     PetscDraw draw;
     double    ymin = -1, ymax = 1, xmin = -1, xmax = dd->M, x;
@@ -102,7 +101,7 @@ static PetscErrorCode DMView_DA_1d(DM da, PetscViewer viewer)
     /* Put in index numbers */
     base = dd->base / dd->w;
     for (x = xmin; x <= xmax; x++) {
-      PetscCall(PetscSNPrintf(node, sizeof(node), "%d", (int)base++));
+      PetscCall(PetscSNPrintf(node, sizeof(node), "%" PetscInt_FMT, base++));
       PetscCall(PetscDrawString(draw, x, ymin, PETSC_DRAW_RED, node));
     }
     PetscDrawCollectiveEnd(draw);
@@ -172,8 +171,8 @@ PetscErrorCode DMSetUp_DA_1D(DM da)
     } else { /* The odd nodes are evenly distributed across the first k nodes */
       /* Regular PETSc Distribution */
       x = M / m + ((M % m) > rank);
-      if (rank >= (M % m)) xs = (rank * (PetscInt)(M / m) + M % m);
-      else xs = rank * (PetscInt)(M / m) + rank;
+      if (rank >= (M % m)) xs = (rank * (M / m) + M % m);
+      else xs = rank * (M / m) + rank;
     }
     PetscCallMPI(MPI_Allgather(&xs, 1, MPIU_INT, dd->lx, 1, MPIU_INT, comm));
     for (i = 0; i < m - 1; i++) dd->lx[i] = dd->lx[i + 1] - dd->lx[i];

@@ -273,13 +273,13 @@ static PetscErrorCode SetUpBC_Advect(DM dm, PetscDS prob, Physics phys)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsCreate_Advect(Model mod, Physics phys, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PhysicsCreate_Advect(Model mod, Physics phys, PetscOptionItems PetscOptionsObject)
 {
   Physics_Advect *advect;
 
   PetscFunctionBeginUser;
   phys->field_desc = PhysicsFields_Advect;
-  phys->riemann    = (PetscRiemannFunc)PhysicsRiemann_Advect;
+  phys->riemann    = (PetscRiemannFn *)PhysicsRiemann_Advect;
   PetscCall(PetscNew(&advect));
   phys->data   = advect;
   mod->setupbc = SetUpBC_Advect;
@@ -420,7 +420,7 @@ static PetscErrorCode SetupCEED_SW(DM dm, Physics physics)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsCreate_SW(Model mod, Physics phys, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PhysicsCreate_SW(Model mod, Physics phys, PetscOptionItems PetscOptionsObject)
 {
   Physics_SW *sw;
   char        sw_riemann[64] = "rusanov";
@@ -445,7 +445,7 @@ static PetscErrorCode PhysicsCreate_SW(Model mod, Physics phys, PetscOptionItems
     PetscCall(PetscOptionsReal("-sw_gravity", "Gravitational constant", "", sw->gravity, &sw->gravity, NULL));
     PetscCall(PetscOptionsFList("-sw_riemann", "Riemann solver", "", PhysicsRiemannList_SW, sw_riemann, sw_riemann, sizeof sw_riemann, NULL));
     PetscCall(PetscFunctionListFind(PhysicsRiemannList_SW, sw_riemann, &PhysicsRiemann_SW));
-    phys->riemann = (PetscRiemannFunc)PhysicsRiemann_SW;
+    phys->riemann = (PetscRiemannFn *)PhysicsRiemann_SW;
   }
   PetscOptionsHeadEnd();
   phys->maxspeed = PetscSqrtReal(2.0 * sw->gravity); /* Mach 1 for depth of 2 */
@@ -627,13 +627,13 @@ static PetscErrorCode SetupCEED_Euler(DM dm, Physics physics)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsCreate_Euler(Model mod, Physics phys, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PhysicsCreate_Euler(Model mod, Physics phys, PetscOptionItems PetscOptionsObject)
 {
   Physics_Euler *eu;
 
   PetscFunctionBeginUser;
   phys->field_desc = PhysicsFields_Euler;
-  phys->riemann    = (PetscRiemannFunc)PhysicsRiemann_Euler_Godunov;
+  phys->riemann    = (PetscRiemannFn *)PhysicsRiemann_Euler_Godunov;
   PetscCall(PetscNew(&eu));
   phys->data     = eu;
   mod->setupbc   = SetUpBC_Euler;
@@ -657,7 +657,7 @@ static PetscErrorCode PhysicsCreate_Euler(Model mod, Physics phys, PetscOptionIt
     eu->itana = 0.57735026918963; /* angle of Euler self similar (SS) shock */
     PetscCall(PetscOptionsFList("-eu_riemann", "Riemann solver", "", PhysicsRiemannList_Euler, eu_riemann, eu_riemann, sizeof eu_riemann, NULL));
     PetscCall(PetscFunctionListFind(PhysicsRiemannList_Euler, eu_riemann, &PhysicsRiemann_Euler));
-    phys->riemann = (PetscRiemannFunc)PhysicsRiemann_Euler;
+    phys->riemann = (PetscRiemannFn *)PhysicsRiemann_Euler;
     PetscCall(PetscOptionsReal("-eu_gamma", "Heat capacity ratio", "", eu->gamma, &eu->gamma, NULL));
     PetscCall(PetscOptionsReal("-eu_amach", "Shock speed (Mach)", "", eu->amach, &eu->amach, NULL));
     PetscCall(PetscOptionsReal("-eu_rho2", "Density right of discontinuity", "", eu->rhoR, &eu->rhoR, NULL));
@@ -856,7 +856,7 @@ static PetscErrorCode ModelFunctionalRegister(Model mod, const char *name, Petsc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode ModelFunctionalSetFromOptions(Model mod, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode ModelFunctionalSetFromOptions(Model mod, PetscOptionItems PetscOptionsObject)
 {
   PetscInt       i, j;
   FunctionalLink link;
@@ -1068,17 +1068,22 @@ static PetscErrorCode MonitorVTK(TS ts, PetscInt stepnum, PetscReal time, Vec X,
 
 static PetscErrorCode initializeTS(DM dm, User user, TS *ts)
 {
+#ifdef PETSC_HAVE_LIBCEED
   PetscBool useCeed;
+#endif
 
   PetscFunctionBeginUser;
   PetscCall(TSCreate(PetscObjectComm((PetscObject)dm), ts));
   PetscCall(TSSetType(*ts, TSSSP));
   PetscCall(TSSetDM(*ts, dm));
   if (user->vtkmon) PetscCall(TSMonitorSet(*ts, MonitorVTK, user, NULL));
-  PetscCall(DMPlexGetUseCeed(dm, &useCeed));
   PetscCall(DMTSSetBoundaryLocal(dm, DMPlexTSComputeBoundary, user));
+#ifdef PETSC_HAVE_LIBCEED
+  PetscCall(DMPlexGetUseCeed(dm, &useCeed));
   if (useCeed) PetscCall(DMTSSetRHSFunctionLocal(dm, DMPlexTSComputeRHSFunctionFVMCEED, user));
-  else PetscCall(DMTSSetRHSFunctionLocal(dm, DMPlexTSComputeRHSFunctionFVM, user));
+  else
+#endif
+    PetscCall(DMTSSetRHSFunctionLocal(dm, DMPlexTSComputeRHSFunctionFVM, user));
   PetscCall(TSSetMaxTime(*ts, 2.0));
   PetscCall(TSSetExactFinalTime(*ts, TS_EXACTFINALTIME_STEPOVER));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1309,7 +1314,7 @@ int main(int argc, char **argv)
 
   PetscOptionsBegin(comm, NULL, "Unstructured Finite Volume Physics Options", "");
   {
-    PetscErrorCode (*physcreate)(Model, Physics, PetscOptionItems *);
+    PetscErrorCode (*physcreate)(Model, Physics, PetscOptionItems);
     PetscCall(PetscOptionsFList("-physics", "Physics module to solve", "", PhysicsList, physname, physname, sizeof physname, NULL));
     PetscCall(PetscFunctionListFind(PhysicsList, physname, &physcreate));
     PetscCall(PetscMemzero(phys, sizeof(struct _n_Physics)));
@@ -1482,7 +1487,7 @@ int main(int argc, char **argv)
       PetscBool      resize;
 
       PetscCall(PetscMemoryGetCurrentUsage(&bytes));
-      PetscCall(PetscInfo(ts, "refinement loop %" PetscInt_FMT ": memory used %g\n", adaptIter, (double)bytes));
+      PetscCall(PetscInfo(ts, "refinement loop %" PetscInt_FMT ": memory used %g\n", adaptIter, bytes));
       PetscCall(DMViewFromOptions(dm, NULL, "-initial_dm_view"));
       PetscCall(VecViewFromOptions(X, NULL, "-initial_vec_view"));
 
@@ -1892,6 +1897,15 @@ int initLinearWave(EulerNode *ux, const PetscReal gamma, const PetscReal coord[]
       args: -ufv_vtk_interval 0 -ufv_vtk_monitor 0 -bc_inflow 1,2,4 -bc_outflow 3 \
             -dm_refine 5 -dm_plex_separate_marker \
             -ts_monitor_solution cgns:sol.cgns -ts_max_steps 0
+
+    # Test CGNS file writing, cgns_batch_size, ts_run_steps, ts_monitor_skip_initial
+    test:
+      suffix: cgns_adv_2d_tri_monitor
+      requires: cgns
+      args: -ufv_vtk_interval 0 -ufv_vtk_monitor 0 \
+            -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square_periodic.msh -dm_plex_gmsh_periodic 0 \
+            -ts_monitor_solution cgns:sol-%d.cgns -ts_run_steps 4 -ts_monitor_solution_interval 2 \
+            -viewer_cgns_batch_size 1 -ts_monitor_solution_skip_initial
 
     # Test VTK file writing for PetscFV fields with -ts_monitor_solution_vtk
     test:

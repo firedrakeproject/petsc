@@ -103,7 +103,7 @@
     PetscFunctionBegin; \
     if (!idx) { \
       u += start * MBS; \
-      if (u != p) PetscCall(PetscArraycpy(u, p, count *MBS)); \
+      if (u != p) PetscCall(PetscArraycpy(u, p, count * MBS)); \
     } else if (opt) { /* has optimizations available */ \
       for (r = 0; r < opt->n; r++) { \
         u2 = u + opt->start[r] * MBS; \
@@ -869,6 +869,7 @@ static inline PetscErrorCode PetscSFLinkUnpackDataWithMPIReduceLocal(PetscSF sf,
       */
       for (i = 0; i < count; i++) PetscCallMPI(MPI_Reduce_local((const char *)buf + i * link->unitbytes, (char *)data + indices[i] * link->unitbytes, 1, link->unit, op));
     } else {
+      PetscCheck(op != MPI_REPLACE, PETSC_COMM_SELF, PETSC_ERR_PLIB, "MPI_REPLACE is not an allowed op in MPI_Reduce_local() per MPI standard");
       PetscCallMPI(MPIU_Reduce_local(buf, (char *)data + start * link->unitbytes, count, link->unit, op));
     }
   }
@@ -887,6 +888,7 @@ static inline PetscErrorCode PetscSFLinkScatterDataWithMPIReduceLocal(PetscSF sf
     if (!srcIdx) {
       PetscCall(PetscSFLinkUnpackDataWithMPIReduceLocal(sf, link, count, dstStart, dstIdx, dst, (const char *)src + srcStart * link->unitbytes, op));
     } else {
+      PetscCheck(op != MPI_REPLACE, PETSC_COMM_SELF, PETSC_ERR_PLIB, "MPI_REPLACE is not an allowed op in MPI_Reduce_local() per MPI standard");
       for (i = 0; i < count; i++) {
         disp = dstIdx ? dstIdx[i] : dstStart + i;
         PetscCallMPI(MPIU_Reduce_local((const char *)src + srcIdx[i] * link->unitbytes, (char *)dst + disp * link->unitbytes, 1, link->unit, op));
@@ -955,7 +957,7 @@ PetscErrorCode PetscSFLinkPackRootData(PetscSF sf, PetscSFLink link, PetscSFScop
   PetscSF_Basic *bas = (PetscSF_Basic *)sf->data;
 
   PetscFunctionBegin;
-  if (scope == PETSCSF_REMOTE) { /* Sync the device if rootdata is not on petsc default stream */
+  if (scope == PETSCSF_REMOTE) { /* Sync the device if rootdata is not on PETSc default stream */
     if (PetscMemTypeDevice(link->rootmtype) && link->SyncDevice && sf->unknown_input_stream) PetscCall((*link->SyncDevice)(link));
     if (link->PrePack) PetscCall((*link->PrePack)(sf, link, PETSCSF_ROOT2LEAF)); /* Used by SF nvshmem */
   }

@@ -58,7 +58,7 @@ int main(int argc, char **argv)
   AppCtx    user;       /* user-defined work context */
   PetscReal zero = 0.0; /* lower bound on all variables */
 
-  /* Initialize PETSC and TAO */
+  /* Initialize PETSc and TAO */
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "\n---- Journal Bearing Problem SHB-----\n"));
   PetscCall(PetscPrintf(PETSC_COMM_WORLD, "mx: %" PetscInt_FMT ",  my: %" PetscInt_FMT ",  ecc: %g \n\n", user.nx, user.ny, (double)user.ecc));
 
-  /* Let Petsc determine the grid division */
+  /* Let PETSc determine the grid division */
   Nx = PETSC_DECIDE;
   Ny = PETSC_DECIDE;
 

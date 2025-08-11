@@ -15,8 +15,9 @@ struct _PCOps {
   PetscErrorCode (*applyrichardson)(PC, Vec, Vec, Vec, PetscReal, PetscReal, PetscReal, PetscInt, PetscBool, PetscInt *, PCRichardsonConvergedReason *);
   PetscErrorCode (*applyBA)(PC, PCSide, Vec, Vec, Vec);
   PetscErrorCode (*applytranspose)(PC, Vec, Vec);
+  PetscErrorCode (*matapplytranspose)(PC, Mat, Mat);
   PetscErrorCode (*applyBAtranspose)(PC, PetscInt, Vec, Vec, Vec);
-  PetscErrorCode (*setfromoptions)(PC, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(PC, PetscOptionItems);
   PetscErrorCode (*presolve)(PC, KSP, Vec, Vec);
   PetscErrorCode (*postsolve)(PC, KSP, Vec, Vec);
   PetscErrorCode (*getfactoredmatrix)(PC, Mat *);
@@ -35,7 +36,7 @@ struct _PCOps {
 struct _p_PC {
   PETSCHEADER(struct _PCOps);
   DM               dm;
-  PetscInt         setupcalled;
+  PetscBool        setupcalled;
   PetscObjectState matstate, matnonzerostate; /* last known nonzero state of the pmat associated with this PC */
   PetscBool        reusepreconditioner;
   MatStructure     flag; /* reset each PCSetUp() to indicate to PC implementations if nonzero structure has changed */
@@ -49,13 +50,11 @@ struct _p_PC {
   PetscErrorCode (*modifysubmatrices)(PC, PetscInt, const IS[], const IS[], Mat[], void *); /* user provided routine */
   void          *modifysubmatricesP;                                                        /* context for user routine */
   void          *data;
-  PetscInt       presolvedone;     /* has PCPreSolve() already been run */
-  void          *user;             /* optional user-defined context */
+  void          *ctx;              /* optional user-defined context */
   PCFailedReason failedreason;     /* after VecNorm or VecDot contains maximum of all rank failed reasons */
   PCFailedReason failedreasonrank; /* failed reason on this rank */
-
-  PetscErrorCode (*presolve)(PC, KSP);
-
+  PetscInt       presolvedone;
+  PetscErrorCode (*postsetup)(PC);
   PetscInt kspnestlevel; /* how many levels of nesting does the KSP have that contains the PC */
 };
 
@@ -64,7 +63,6 @@ PETSC_EXTERN PetscLogEvent PC_SetUpOnBlocks;
 PETSC_EXTERN PetscLogEvent PC_Apply;
 PETSC_EXTERN PetscLogEvent PC_MatApply;
 PETSC_EXTERN PetscLogEvent PC_ApplyCoarse;
-PETSC_EXTERN PetscLogEvent PC_ApplyMultiple;
 PETSC_EXTERN PetscLogEvent PC_ApplySymmetricLeft;
 PETSC_EXTERN PetscLogEvent PC_ApplySymmetricRight;
 PETSC_EXTERN PetscLogEvent PC_ModifySubMatrices;

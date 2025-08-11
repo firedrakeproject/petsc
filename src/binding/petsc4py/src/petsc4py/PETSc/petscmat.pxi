@@ -40,6 +40,9 @@ cdef extern from * nogil:
     PetscMatType MATDENSECUDA
     PetscMatType   MATSEQDENSECUDA
     PetscMatType   MATMPIDENSECUDA
+    PetscMatType MATDENSEHIP
+    PetscMatType   MATSEQDENSEHIP
+    PetscMatType   MATMPIDENSEHIP
     PetscMatType MATELEMENTAL
     PetscMatType MATBAIJ
     PetscMatType   MATSEQBAIJ
@@ -216,6 +219,7 @@ cdef extern from * nogil:
 
     PetscErrorCode MatCreateNormal(PetscMat, PetscMat*)
     PetscErrorCode MatCreateTranspose(PetscMat, PetscMat*)
+    PetscErrorCode MatTransposeGetMat(PetscMat, PetscMat*)
     PetscErrorCode MatCreateNormalHermitian(PetscMat, PetscMat*)
     PetscErrorCode MatCreateHermitianTranspose(PetscMat, PetscMat*)
     PetscErrorCode MatCreateLRC(PetscMat, PetscMat, PetscVec, PetscMat, PetscMat*)
@@ -256,6 +260,8 @@ cdef extern from * nogil:
     PetscErrorCode MatSeqDenseSetPreallocation(PetscMat, PetscScalar[])
     PetscErrorCode MatMPIDenseSetPreallocation(PetscMat, PetscScalar[])
     PetscErrorCode MatISSetPreallocation(PetscMat, PetscInt, PetscInt[], PetscInt, PetscInt[])
+    PetscErrorCode MatSetPreallocationCOO(PetscMat, PetscCount, PetscInt[], PetscInt[])
+    PetscErrorCode MatSetPreallocationCOOLocal(PetscMat, PetscCount, PetscInt[], PetscInt[])
 
     PetscErrorCode MatSetOptionsPrefix(PetscMat, char[])
     PetscErrorCode MatAppendOptionsPrefix(PetscMat, char[])
@@ -294,12 +300,14 @@ cdef extern from * nogil:
     PetscErrorCode MatIsSymmetricKnown(PetscMat, PetscBool*, PetscBool*)
     PetscErrorCode MatIsHermitianKnown(PetscMat, PetscBool*, PetscBool*)
     PetscErrorCode MatIsTranspose(PetscMat, PetscMat, PetscReal, PetscBool*)
+    PetscErrorCode MatIsLinear(PetscMat, PetscInt, PetscBool*)
 
     PetscErrorCode MatCreateVecs(PetscMat, PetscVec*, PetscVec*)
 
     PetscErrorCode MatSetValue(PetscMat, PetscInt, PetscInt, PetscScalar, PetscInsertMode)
     PetscErrorCode MatSetValues(PetscMat, PetscInt, const PetscInt[], PetscInt, const PetscInt[], const PetscScalar[], PetscInsertMode)
     PetscErrorCode MatSetValuesBlocked(PetscMat, PetscInt, const PetscInt[], PetscInt, const PetscInt[], const PetscScalar[], PetscInsertMode)
+    PetscErrorCode MatSetValuesCOO(PetscMat, const PetscScalar[], PetscInsertMode)
 
     PetscErrorCode MatSetLocalToGlobalMapping(PetscMat, PetscLGMap, PetscLGMap)
     PetscErrorCode MatGetLocalToGlobalMapping(PetscMat, PetscLGMap*, PetscLGMap*)
@@ -416,6 +424,11 @@ cdef extern from * nogil:
     PetscErrorCode MatH2OpusCompress(PetscMat, PetscReal)
     PetscErrorCode MatH2OpusLowRankUpdate(PetscMat, PetscMat, PetscMat, PetscScalar)
 
+    PetscErrorCode MatLMVMGetJ0(PetscMat, PetscMat*)
+    PetscErrorCode MatLMVMSetJ0(PetscMat, PetscMat)
+    PetscErrorCode MatLMVMGetJ0KSP(PetscMat, PetscKSP*)
+    PetscErrorCode MatLMVMSetJ0KSP(PetscMat, PetscKSP)
+
     PetscErrorCode MatMissingDiagonal(Mat, PetscBool*, PetscInt*)
 
     ctypedef enum PetscMatFactorShiftType "MatFactorShiftType":
@@ -498,12 +511,14 @@ cdef extern from * nogil:
     PetscErrorCode MatDenseRestoreColumnVecRead(PetscMat, PetscInt, PetscVec*)
     PetscErrorCode MatDenseGetColumnVecWrite(PetscMat, PetscInt, PetscVec*)
     PetscErrorCode MatDenseRestoreColumnVecWrite(PetscMat, PetscInt, PetscVec*)
-    PetscErrorCode MatDenseCUDAGetArray(PetscMat, PetscScalar*[])
-    PetscErrorCode MatDenseCUDARestoreArray(PetscMat, PetscScalar*[])
-    PetscErrorCode MatDenseCUDAGetArrayWrite(PetscMat, PetscScalar*[])
-    PetscErrorCode MatDenseCUDARestoreArrayWrite(PetscMat, PetscScalar*[])
-    PetscErrorCode MatDenseCUDAGetArrayRead(PetscMat, const PetscScalar*[])
-    PetscErrorCode MatDenseCUDARestoreArrayRead(PetscMat, const PetscScalar*[])
+    PetscErrorCode MatDenseGetArrayWriteAndMemType(PetscMat, PetscScalar*[], PetscMemType*)
+    PetscErrorCode MatDenseRestoreArrayWriteAndMemType(PetscMat, PetscScalar*[])
+    PetscErrorCode MatDenseGetArrayReadAndMemType(PetscMat, const PetscScalar*[], PetscMemType*)
+    PetscErrorCode MatDenseRestoreArrayReadAndMemType(PetscMat, const PetscScalar*[])
+    PetscErrorCode MatDenseGetArrayAndMemType(PetscMat, PetscScalar*[], PetscMemType*)
+    PetscErrorCode MatDenseRestoreArrayAndMemType(PetscMat, PetscScalar*[])
+    PetscErrorCode MatDenseGetSubMatrix(PetscMat, PetscInt, PetscInt, PetscInt, PetscInt, PetscMat*)
+    PetscErrorCode MatDenseRestoreSubMatrix(PetscMat, PetscMat*)
 
     PetscErrorCode MatProductGetType(PetscMat, PetscMatProductType*)
     PetscErrorCode MatProductGetMats(PetscMat, PetscMat*, PetscMat*, PetscMat*)
@@ -1040,6 +1055,18 @@ cdef inline PetscErrorCode matsetvalues_ijv(PetscMat A,
             CHKERR(setvalues(A, 1, &irow, ncol, icol, sval, addv))
     return PETSC_SUCCESS
 
+cdef inline PetscErrorCode matsetvalues_coo(PetscMat A,
+                                            object ocoo_v,
+                                            object oaddv) except PETSC_ERR_PYTHON:
+    cdef PetscScalar *v = NULL
+    cdef PetscInsertMode addv
+
+    ocoo_v = iarray_s(ocoo_v, NULL, &v)
+    addv = insertmode(oaddv)
+
+    CHKERR(MatSetValuesCOO(A, v, addv))
+    return PETSC_SUCCESS
+
 cdef inline PetscErrorCode matsetvalues_csr(PetscMat A,
                                             object oi, object oj, object ov,
                                             object oaddv,
@@ -1210,7 +1237,7 @@ cdef mat_get_dlpack_ctx(Mat self):
     else:
         (_, _, ndim, s1, s2) = ctx0
 
-    devType_ = {PETSC_MEMTYPE_HOST : kDLCPU, PETSC_MEMTYPE_CUDA : kDLCUDA}
+    devType_ = {PETSC_MEMTYPE_HOST : kDLCPU, PETSC_MEMTYPE_CUDA : kDLCUDA, PETSC_MEMTYPE_HIP : kDLROCM}
     CHKERR(MatGetCurrentMemType(self.mat, &mtype))
     dtype = devType_.get(mtype, kDLCPU)
     if dtype != kDLCPU:

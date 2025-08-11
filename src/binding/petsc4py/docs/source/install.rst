@@ -6,10 +6,9 @@ Installation
 Install from PyPI using **pip**
 -------------------------------
 
-You can use :program:`pip` to install :mod:`petsc4py` and its
-dependencies (:mod:`mpi4py` is optional but highly recommended)::
+You can use :program:`pip` to install :mod:`petsc4py` and its dependencies::
 
-  $ python -m pip install mpi4py petsc petsc4py
+  $ python -m pip install petsc petsc4py
 
 Install from the PETSc source tree
 ----------------------------------
@@ -69,7 +68,7 @@ Building the documentation
 
 Install the documentation dependencies::
 
-  $ python -m pip install -r ${PETSC_DIR/doc/requirements.txt
+  $ python -m pip install -r src/binding/petsc4py/conf/requirements-docs.txt
 
 Then::
 

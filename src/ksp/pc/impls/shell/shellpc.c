@@ -19,6 +19,7 @@ typedef struct {
   PetscErrorCode (*postsolve)(PC, KSP, Vec, Vec);
   PetscErrorCode (*view)(PC, PetscViewer);
   PetscErrorCode (*applytranspose)(PC, Vec, Vec);
+  PetscErrorCode (*matapplytranspose)(PC, Mat, Mat);
   PetscErrorCode (*applyrich)(PC, Vec, Vec, Vec, PetscReal, PetscReal, PetscReal, PetscInt, PetscBool, PetscInt *, PCRichardsonConvergedReason *);
 
   char *name;
@@ -42,7 +43,7 @@ typedef struct {
 
   Fortran Note:
   To use this from Fortran you must write a Fortran interface definition for this
-  function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
+  function that tells Fortran the Fortran derived data type that you are passing in as the `ctx` argument.
 
 .seealso: [](ch_ksp), `PC`, `PCSHELL`, `PCShellSetContext()`, `PCShellSetApply()`, `PCShellSetDestroy()`
 @*/
@@ -77,7 +78,7 @@ PetscErrorCode PCShellGetContext(PC pc, void *ctx)
 
   Fortran Notes:
   To use this from Fortran you must write a Fortran interface definition for this
-  function that tells Fortran the Fortran derived data type that you are passing in as the ctx argument.
+  function that tells Fortran the Fortran derived data type that you are passing in as the `ctx` argument.
 
 .seealso: [](ch_ksp), `PC`, `PCShellGetContext()`, `PCSHELL`, `PCShellSetApply()`, `PCShellSetDestroy()`
 @*/
@@ -210,6 +211,21 @@ static PetscErrorCode PCApplyTranspose_Shell(PC pc, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode PCMatApplyTranspose_Shell(PC pc, Mat x, Mat y)
+{
+  PC_Shell        *shell = (PC_Shell *)pc->data;
+  PetscObjectState instate, outstate;
+
+  PetscFunctionBegin;
+  PetscCheck(shell->matapplytranspose, PetscObjectComm((PetscObject)pc), PETSC_ERR_USER, "No matapplytranspose() routine provided to Shell PC");
+  PetscCall(PetscObjectStateGet((PetscObject)y, &instate));
+  PetscCallBack("PCSHELL callback matapplytranspose", (*shell->matapplytranspose)(pc, x, y));
+  PetscCall(PetscObjectStateGet((PetscObject)y, &outstate));
+  /* increase the state of the output matrix if the user did not update its state themself as should have been done */
+  if (instate == outstate) PetscCall(PetscObjectStateIncrease((PetscObject)y));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PCApplyRichardson_Shell(PC pc, Vec x, Vec y, Vec w, PetscReal rtol, PetscReal abstol, PetscReal dtol, PetscInt it, PetscBool guesszero, PetscInt *outits, PCRichardsonConvergedReason *reason)
 {
   PC_Shell        *shell = (PC_Shell *)pc->data;
@@ -243,6 +259,7 @@ static PetscErrorCode PCDestroy_Shell(PC pc)
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetPostSolve_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetView_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetApplyTranspose_C", NULL));
+  PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetMatApplyTranspose_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetName_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellGetName_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetApplyRichardson_C", NULL));
@@ -339,7 +356,7 @@ static PetscErrorCode PCShellSetApplyBA_Shell(PC pc, PetscErrorCode (*applyBA)(P
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCShellSetPreSolve_Shell(PC pc, PetscErrorCode (*presolve)(PC, KSP, Vec, Vec))
+static PetscErrorCode PCShellSetPreSolve_Shell(PC pc, PCShellPSolveFn *presolve)
 {
   PC_Shell *shell = (PC_Shell *)pc->data;
 
@@ -355,7 +372,7 @@ static PetscErrorCode PCShellSetPreSolve_Shell(PC pc, PetscErrorCode (*presolve)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCShellSetPostSolve_Shell(PC pc, PetscErrorCode (*postsolve)(PC, KSP, Vec, Vec))
+static PetscErrorCode PCShellSetPostSolve_Shell(PC pc, PCShellPSolveFn *postsolve)
 {
   PC_Shell *shell = (PC_Shell *)pc->data;
 
@@ -383,6 +400,17 @@ static PetscErrorCode PCShellSetApplyTranspose_Shell(PC pc, PetscErrorCode (*app
   shell->applytranspose = applytranspose;
   if (applytranspose) pc->ops->applytranspose = PCApplyTranspose_Shell;
   else pc->ops->applytranspose = NULL;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode PCShellSetMatApplyTranspose_Shell(PC pc, PetscErrorCode (*matapplytranspose)(PC, Mat, Mat))
+{
+  PC_Shell *shell = (PC_Shell *)pc->data;
+
+  PetscFunctionBegin;
+  shell->matapplytranspose = matapplytranspose;
+  if (matapplytranspose) pc->ops->matapplytranspose = PCMatApplyTranspose_Shell;
+  else pc->ops->matapplytranspose = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -662,13 +690,42 @@ PetscErrorCode PCShellSetApplyBA(PC pc, PetscErrorCode (*applyBA)(PC pc, PCSide 
   Note:
   You can get the `PCSHELL` context set with `PCShellSetContext()` using `PCShellGetContext()` if needed by `applytranspose`.
 
-.seealso: [](ch_ksp), `PCSHELL`, `PCShellSetApplyRichardson()`, `PCShellSetSetUp()`, `PCShellSetApply()`, `PCSetContext()`, `PCShellSetApplyBA()`, `PCGetContext()`
+.seealso: [](ch_ksp), `PCSHELL`, `PCShellSetApplyRichardson()`, `PCShellSetSetUp()`, `PCShellSetApply()`, `PCShellSetContext()`, `PCShellSetApplyBA()`, `PCShellGetContext()`
 @*/
 PetscErrorCode PCShellSetApplyTranspose(PC pc, PetscErrorCode (*applytranspose)(PC pc, Vec xin, Vec xout))
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscTryMethod(pc, "PCShellSetApplyTranspose_C", (PC, PetscErrorCode (*)(PC, Vec, Vec)), (pc, applytranspose));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  PCShellSetMatApplyTranspose - Sets routine to use as preconditioner transpose.
+
+  Logically Collective
+
+  Input Parameters:
++ pc                - the preconditioner context
+- matapplytranspose - the application-provided preconditioning transpose routine
+
+  Calling sequence of `matapplytranspose`:
++ pc   - the preconditioner
+. xin  - input matrix
+- xout - output matrix
+
+  Level: intermediate
+
+  Note:
+  You can get the `PCSHELL` context set with `PCShellSetContext()` using `PCShellGetContext()` if needed by `matapplytranspose`.
+
+.seealso: [](ch_ksp), `PCSHELL`, `PCShellSetApplyRichardson()`, `PCShellSetSetUp()`, `PCShellSetApply()`, `PCShellSetContext()`, `PCShellSetApplyBA()`, `PCShellGetContext()`
+@*/
+PetscErrorCode PCShellSetMatApplyTranspose(PC pc, PetscErrorCode (*matapplytranspose)(PC pc, Mat xin, Mat xout))
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
+  PetscTryMethod(pc, "PCShellSetMatApplyTranspose_C", (PC, PetscErrorCode (*)(PC, Mat, Mat)), (pc, matapplytranspose));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -681,26 +738,20 @@ PetscErrorCode PCShellSetApplyTranspose(PC pc, PetscErrorCode (*applytranspose)(
 
   Input Parameters:
 + pc       - the preconditioner context
-- presolve - the application-provided presolve routine
-
-  Calling sequence of `presolve`:
-+ pc   - the preconditioner
-. ksp  - the `KSP` that contains `pc`
-. xin  - input vector
-- xout - output vector
+- presolve - the application-provided presolve routine, see `PCShellPSolveFn`
 
   Level: advanced
 
   Note:
   You can get the `PCSHELL` context set with `PCShellSetContext()` using `PCShellGetContext()` if needed by `presolve`.
 
-.seealso: [](ch_ksp), `PCSHELL`, `PCShellSetApplyRichardson()`, `PCShellSetSetUp()`, `PCShellSetApplyTranspose()`, `PCShellSetPostSolve()`, `PCShellSetContext()`, `PCGetContext()`
+.seealso: [](ch_ksp), `PCSHELL`, `PCShellPSolveFn`, `PCShellSetApplyRichardson()`, `PCShellSetSetUp()`, `PCShellSetApplyTranspose()`, `PCShellSetPostSolve()`, `PCShellSetContext()`, `PCShellGetContext()`
 @*/
-PetscErrorCode PCShellSetPreSolve(PC pc, PetscErrorCode (*presolve)(PC pc, KSP ksp, Vec xin, Vec xout))
+PetscErrorCode PCShellSetPreSolve(PC pc, PCShellPSolveFn *presolve)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
-  PetscTryMethod(pc, "PCShellSetPreSolve_C", (PC, PetscErrorCode (*)(PC, KSP, Vec, Vec)), (pc, presolve));
+  PetscTryMethod(pc, "PCShellSetPreSolve_C", (PC, PCShellPSolveFn *), (pc, presolve));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -713,26 +764,20 @@ PetscErrorCode PCShellSetPreSolve(PC pc, PetscErrorCode (*presolve)(PC pc, KSP k
 
   Input Parameters:
 + pc        - the preconditioner context
-- postsolve - the application-provided presolve routine
-
-  Calling sequence of `postsolve`:
-+ pc   - the preconditioner
-. ksp  - the `KSP` that contains `pc`
-. xin  - input vector
-- xout - output vector
+- postsolve - the application-provided postsolve routine, see `PCShellPSolveFn`
 
   Level: advanced
 
   Note:
   You can get the `PCSHELL` context set with `PCShellSetContext()` using `PCShellGetContext()` if needed by `postsolve`.
 
-.seealso: [](ch_ksp), `PCSHELL`, `PCShellSetApplyRichardson()`, `PCShellSetSetUp()`, `PCShellSetApplyTranspose()`, `PCShellSetPreSolve()`, `PCShellSetContext()`, `PCGetContext()`
+.seealso: [](ch_ksp), `PCSHELL`, `PCShellPSolveFn`, `PCShellSetApplyRichardson()`, `PCShellSetSetUp()`, `PCShellSetApplyTranspose()`, `PCShellSetPreSolve()`, `PCShellSetContext()`, `PCShellGetContext()`
 @*/
-PetscErrorCode PCShellSetPostSolve(PC pc, PetscErrorCode (*postsolve)(PC pc, KSP ksp, Vec xin, Vec xout))
+PetscErrorCode PCShellSetPostSolve(PC pc, PCShellPSolveFn *postsolve)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
-  PetscTryMethod(pc, "PCShellSetPostSolve_C", (PC, PetscErrorCode (*)(PC, KSP, Vec, Vec)), (pc, postsolve));
+  PetscTryMethod(pc, "PCShellSetPostSolve_C", (PC, PCShellPSolveFn *), (pc, postsolve));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -811,10 +856,13 @@ PetscErrorCode PCShellGetName(PC pc, const char *name[])
 
   Level: advanced
 
-  Note:
+  Notes:
   You can get the `PCSHELL` context set with `PCShellSetContext()` using `PCShellGetContext()` if needed by `apply`.
 
-.seealso: [](ch_ksp), `PCSHELL`, `PCShellSetApply()`, `PCShellSetContext()`, `PCRichardsonConvergedReason()`, `PCShellGetContext()`
+  This is used when one can provide code for multiple steps of Richardson's method that is more efficient than computing a single step,
+  recomputing the residual via $ r = b - A x $, and then computing the next step. SOR is an algorithm for which this is true.
+
+.seealso: [](ch_ksp), `PCSHELL`, `PCShellSetApply()`, `PCShellSetContext()`, `PCRichardsonConvergedReason()`, `PCShellGetContext()`, `KSPRICHARDSON`
 @*/
 PetscErrorCode PCShellSetApplyRichardson(PC pc, PetscErrorCode (*apply)(PC pc, Vec b, Vec x, Vec r, PetscReal rtol, PetscReal abstol, PetscReal dtol, PetscInt maxits, PetscBool zeroinitialguess, PetscInt *its, PCRichardsonConvergedReason *reason))
 {
@@ -825,32 +873,36 @@ PetscErrorCode PCShellSetApplyRichardson(PC pc, PetscErrorCode (*apply)(PC pc, V
 }
 
 /*MC
-   PCSHELL - Creates a new preconditioner class for use with a users
-              own private data storage format and preconditioner application code
+  PCSHELL - Creates a new preconditioner class for use with a users
+            own private data storage format and preconditioner application code
 
-   Level: advanced
+  Level: advanced
 
   Usage:
 .vb
-       extern PetscErrorCode apply(PC,Vec,Vec);
-       extern PetscErrorCode applyba(PC,PCSide,Vec,Vec,Vec);
-       extern PetscErrorCode applytranspose(PC,Vec,Vec);
-       extern PetscErrorCode setup(PC);
-       extern PetscErrorCode destroy(PC);
+  extern PetscErrorCode apply(PC,Vec,Vec);
+  extern PetscErrorCode applyba(PC,PCSide,Vec,Vec,Vec);
+  extern PetscErrorCode applytranspose(PC,Vec,Vec);
+  extern PetscErrorCode setup(PC);
+  extern PetscErrorCode destroy(PC);
 
-       PCCreate(comm,&pc);
-       PCSetType(pc,PCSHELL);
-       PCShellSetContext(pc,ctx)
-       PCShellSetApply(pc,apply);
-       PCShellSetApplyBA(pc,applyba);               (optional)
-       PCShellSetApplyTranspose(pc,applytranspose); (optional)
-       PCShellSetSetUp(pc,setup);                   (optional)
-       PCShellSetDestroy(pc,destroy);               (optional)
+  PCCreate(comm,&pc);
+  PCSetType(pc,PCSHELL);
+  PCShellSetContext(pc,ctx)
+  PCShellSetApply(pc,apply);
+  PCShellSetApplyBA(pc,applyba);               (optional)
+  PCShellSetApplyTranspose(pc,applytranspose); (optional)
+  PCShellSetSetUp(pc,setup);                   (optional)
+  PCShellSetDestroy(pc,destroy);               (optional)
 .ve
 
-   Note:
-   Information required for the preconditioner and its internal datastructures can be set with `PCShellSetContext()` and then accessed
-   with `PCShellGetContext()` inside the routines provided above
+  Notes:
+  Information required for the preconditioner and its internal datastructures can be set with `PCShellSetContext()` and then accessed
+  with `PCShellGetContext()` inside the routines provided above.
+
+  When using `MATSHELL`, where the explicit entries of matrix are not available to build the preconditioner, `PCSHELL` can be used
+  to construct a custom preconditioner for the `MATSHELL`, assuming the user knows enough about their problem to provide a
+  custom preconditioner.
 
 .seealso: [](ch_ksp), `PCCreate()`, `PCSetType()`, `PCType`, `PC`,
           `MATSHELL`, `PCShellSetSetUp()`, `PCShellSetApply()`, `PCShellSetView()`, `PCShellSetDestroy()`, `PCShellSetPostSolve()`,
@@ -902,6 +954,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_Shell(PC pc)
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetPostSolve_C", PCShellSetPostSolve_Shell));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetView_C", PCShellSetView_Shell));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetApplyTranspose_C", PCShellSetApplyTranspose_Shell));
+  PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetMatApplyTranspose_C", PCShellSetMatApplyTranspose_Shell));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetName_C", PCShellSetName_Shell));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellGetName_C", PCShellGetName_Shell));
   PetscCall(PetscObjectComposeFunction((PetscObject)pc, "PCShellSetApplyRichardson_C", PCShellSetApplyRichardson_Shell));

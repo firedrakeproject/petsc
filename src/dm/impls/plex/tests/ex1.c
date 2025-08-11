@@ -319,6 +319,7 @@ int main(int argc, char **argv)
   test:
     suffix: 1d_extruded
     args: -dm_plex_dim 1 -dm_plex_box_faces 5 -dm_extrude 3 -dm_plex_check_all -dm_view draw
+    output_file: output/empty.out
 
   test:
     # This test needs a non-tensor prism so we can make a coordinate space
@@ -376,8 +377,8 @@ int main(int argc, char **argv)
   # CGNS reader tests 10-11 (need to find smaller test meshes)
   test:
     suffix: cgns_0
-    requires: cgns
-    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/tut21.cgns -dm_view
+    requires: datafilespath cgns
+    args: -dm_plex_filename ${DATAFILESPATH}/meshes/tut21.cgns -dm_view
 
   # ExodusII reader tests
   testset:
@@ -495,9 +496,6 @@ int main(int argc, char **argv)
     suffix: gmsh_15_hyb3d
     args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/hybrid_tetwedge.msh -dm_view -dm_plex_check_all
   test:
-    suffix: gmsh_15_hyb3d_vtk
-    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/hybrid_tetwedge.msh -dm_view vtk: -dm_plex_gmsh_hybrid -dm_plex_check_all
-  test:
     suffix: gmsh_15_hyb3d_s2t
     args: -dm_coord_space 0 -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/hybrid_tetwedge.msh -dm_view -dm_plex_check_all -ref_dm_refine 1 -ref_dm_plex_transform_type refine_tobox
   test:
@@ -609,25 +607,43 @@ int main(int argc, char **argv)
       args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/gmsh-3d-binary-64.msh -viewer_binary_mpiio
 
   # Fluent mesh reader tests
-  # TODO: Geometry checks fail
   test:
     suffix: fluent_0
     requires: !complex
-    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square.cas -dm_view -final_diagnostics 0
+    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square.cas -dm_view
   test:
     suffix: fluent_1
     nsize: 3
     requires: !complex
-    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square.cas -dist_dm_distribute -petscpartitioner_type simple -dm_view -final_diagnostics 0
+    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square.cas -dist_dm_distribute -petscpartitioner_type simple -dm_view
   test:
     suffix: fluent_2
     requires: !complex
-    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/cube_5tets_ascii.cas -dm_view -final_diagnostics 0
+    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/cube_5tets_ascii.cas -dm_view
   test:
     suffix: fluent_3
     requires: !complex
     TODO: Fails on non-linux: fseek(), fileno() ? https://gitlab.com/petsc/petsc/merge_requests/2206#note_238166382
     args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/cube_5tets.cas -dm_view -final_diagnostics 0
+  test:
+    suffix: fluent_4
+    requires: !complex defined(PETSC_USE_INFO)
+    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/testcase3D.cas -info :viewer -dm_view
+  test:
+    suffix: fluent_5
+    requires: !complex defined(PETSC_USE_INFO)
+    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/wedge_cylinder.cas -info :viewer -dm_view
+
+  # STL mesh reader tests
+  test:
+    suffix: stl_0
+    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/cube.stl -dm_view
+
+  # Shapefile reader tests
+  test:
+    suffix: shp_0
+    requires: datafilespath
+    args: -dm_plex_filename ${DATAFILESPATH}/meshes/NYState.shp -dm_view
 
   # Test shape quality
   test:
@@ -655,13 +671,6 @@ int main(int argc, char **argv)
     test:
       suffix: cylinder_per
       args: -dm_plex_cylinder_bd periodic -ref_dm_refine 1 -ref_dm_refine_remap 0
-    test:
-      suffix: cylinder_wedge
-      args: -dm_coord_space 0 -dm_plex_interpolate 0 -dm_plex_cell tensor_triangular_prism -dm_view vtk:
-    test:
-      suffix: cylinder_wedge_int
-      output_file: output/ex1_cylinder_wedge.out
-      args: -dm_coord_space 0 -dm_plex_cell tensor_triangular_prism -dm_view vtk:
 
   test:
     suffix: box_2d
@@ -817,9 +826,11 @@ int main(int argc, char **argv)
     test:
       suffix: p4est_par_gmsh_surface
       args: -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 1 -conv_par_1_dm_p4est_refine_pattern hash -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/surfacesphere_bin.msh -dm_plex_gmsh_spacedim 3
+      output_file: output/empty.out
     test:
       suffix: p4est_par_gmsh_s2t_3d
       args: -conv_par_1_dm_forest_initial_refinement 1 -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/doublet-tet.msh
+      output_file: output/empty.out
     test:
       TODO: interface cones do not conform
       suffix: p4est_par_gmsh_s2t_3d_hash
@@ -836,6 +847,7 @@ int main(int argc, char **argv)
     test:
       suffix: p4est_par_ovl_periodic
       args: -dm_plex_simplex 0 -dm_plex_box_bd periodic,periodic -dm_plex_box_faces 3,5 -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 2 -conv_par_1_dm_p4est_refine_pattern hash
+      output_file: output/empty.out
     # Problem for -dm_plex_box_faces 3,5,4 -conv_par_1_dm_forest_maximum_refinement 2
     test:
       suffix: p4est_par_ovl_periodic_3d
@@ -843,29 +855,37 @@ int main(int argc, char **argv)
               -dm_plex_box_faces 3,5,2 \
               -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 1 \
                 -conv_par_1_dm_p4est_refine_pattern hash
+      output_file: output/empty.out
     test:
       suffix: p4est_par_ovl_gmsh_periodic
       args: -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 1 -conv_par_1_dm_p4est_refine_pattern hash -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/square_periodic.msh
+      output_file: output/empty.out
     test:
       suffix: p4est_par_ovl_gmsh_surface
       args: -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 1 -conv_par_1_dm_p4est_refine_pattern hash -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/surfacesphere_bin.msh -dm_plex_gmsh_spacedim 3
+      output_file: output/empty.out
     test:
       suffix: p4est_par_ovl_gmsh_s2t_3d
       args: -conv_par_1_dm_forest_initial_refinement 1 -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/doublet-tet.msh
+      output_file: output/empty.out
     test:
       suffix: p4est_par_ovl_gmsh_s2t_3d_hash
       args: -conv_par_1_dm_forest_initial_refinement 1 -conv_par_1_dm_forest_maximum_refinement 2 -conv_par_1_dm_p4est_refine_pattern hash -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/doublet-tet.msh
+      output_file: output/empty.out
     test:
       requires: long_runtime
       suffix: p4est_par_ovl_gmsh_periodic_3d
       args: -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 1 -conv_par_1_dm_p4est_refine_pattern hash -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/mesh-3d-box-innersphere.msh
+      output_file: output/empty.out
     test:
       suffix: p4est_par_ovl_hyb_2d
       args: -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 1 -conv_par_1_dm_p4est_refine_pattern hash -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/hybrid_triquad.msh
+      output_file: output/empty.out
     # -conv_par_1_dm_forest_maximum_refinement 1 was too expensive
     test:
       suffix: p4est_par_ovl_hyb_3d
       args: -conv_par_1_dm_forest_initial_refinement 0 -conv_par_1_dm_forest_maximum_refinement 0 -conv_par_1_dm_p4est_refine_pattern hash -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/hybrid_tetwedge.msh
+      output_file: output/empty.out
 
   test:
     TODO: broken
@@ -951,29 +971,67 @@ int main(int argc, char **argv)
     args: -dm_plex_shape schwarz_p -dm_plex_tps_extent 1,1,1 -dm_plex_tps_layers 1 -dm_plex_tps_thickness .2 -dm_view
 
   test:
+    suffix: schwarz_p_refine
+    args: -dm_plex_shape schwarz_p -dm_plex_tps_extent 1,1,1 -dm_plex_tps_refine 1 -dm_plex_tps_layers 1 -dm_plex_tps_thickness .2 -dm_view
+
+  test:
     suffix: pyr_mixed_0
     args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/pyr_tet.msh -dm_plex_check_all -dm_view
 
   test:
     suffix: hypercubic_0
-    args: -dm_plex_dim 2 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3 -dm_plex_check_all -dm_view
+    args: -dm_plex_dim 2 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3 -dm_plex_check_all \
+          -dm_view -dm_plex_print_adj 3
+
+  test:
+    suffix: hypercubic_0_par
+    nsize: 4
+    args: -dm_plex_dim 2 -dm_plex_shape hypercubic -dm_plex_box_faces 4,4 -dm_view -dm_plex_print_adj 3 -final_diagnostics 0 \
+          -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_faces -dm_plex_check_pointsf
 
   test:
     suffix: hypercubic_1
-    args: -dm_plex_dim 3 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3 -dm_plex_check_all -dm_view
+    args: -dm_plex_dim 3 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3 -dm_plex_check_all \
+          -dm_view -dm_plex_print_adj 3
+
+  test:
+    suffix: hypercubic_1_par
+    requires: !quad
+    nsize: 8
+    args: -dm_plex_dim 3 -dm_plex_shape hypercubic -dm_plex_box_faces 4,4,4 -dm_view -dm_plex_print_adj 3 -final_diagnostics 0 \
+          -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_faces -dm_plex_check_pointsf
+
+  test:
+    suffix: hypercubic_1_par_ov_3
+    requires: !quad
+    nsize: 8
+    args: -dm_plex_dim 3 -dm_plex_shape hypercubic -dm_plex_box_faces 6,6,6 -dm_distribute_overlap 3 -dm_view -dm_plex_print_adj 3 -final_diagnostics 0 \
+          -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_faces -dm_plex_check_pointsf
 
   test:
     suffix: hypercubic_2
-    args: -dm_plex_dim 4 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3,3 -dm_view \
+    args: -dm_plex_dim 4 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3,3 -dm_view -dm_plex_print_adj 3 \
           -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_faces -dm_plex_check_pointsf -final_diagnostics 0
 
   test:
+    suffix: hypercubic_2_par
+    requires: !quad
+    nsize: 16
+    args: -dm_plex_dim 4 -dm_plex_shape hypercubic -dm_plex_box_faces 4,4,4,4 -dm_view -dm_plex_print_adj 3 -final_diagnostics 0 \
+          -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_faces -dm_plex_check_pointsf
+
+  test:
     suffix: hypercubic_3
-    args: -dm_plex_dim 5 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3,3,3 -dm_view \
+    args: -dm_plex_dim 5 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3,3,3 -dm_view -dm_plex_print_adj 3 \
           -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_faces -dm_plex_check_pointsf -final_diagnostics 0
 
   test:
     suffix: hypercubic_4
-    args: -dm_plex_dim 6 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3,3,3,3 -dm_view \
+    args: -dm_plex_dim 6 -dm_plex_shape hypercubic -dm_plex_box_faces 3,3,3,3,3,3 -dm_view -dm_plex_print_adj 3 \
           -dm_plex_check_symmetry -dm_plex_check_skeleton -dm_plex_check_faces -dm_plex_check_pointsf -final_diagnostics 0
+
+  test:
+    suffix: crisscross
+    args: -dm_plex_box_crisscross -dm_plex_box_faces 4,8 -dm_plex_check_all -final_diagnostics -dm_view ::ascii_info_detail -dm_plex_box_lower -1,-2 -dm_plex_box_upper 1,2 -dm_plex_box_bd {{none,none periodic,none none,periodic periodic,periodic}separate output}
+
 TEST*/

@@ -13,10 +13,11 @@ struct _LineSearchOps {
   PetscErrorCode (*view)(SNESLineSearch, PetscViewer);
   SNESLineSearchApplyFn *apply;
   PetscErrorCode (*precheck)(SNESLineSearch, Vec, Vec, PetscBool *, void *);
-  SNESLineSearchVIProjectFn *viproject;
-  SNESLineSearchVINormFn    *vinorm;
+  SNESLineSearchVIProjectFn  *viproject;
+  SNESLineSearchVINormFn     *vinorm;
+  SNESLineSearchVIDirDerivFn *vidirderiv;
   PetscErrorCode (*postcheck)(SNESLineSearch, Vec, Vec, Vec, PetscBool *, PetscBool *, void *);
-  PetscErrorCode (*setfromoptions)(SNESLineSearch, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(SNESLineSearch, PetscOptionItems);
   PetscErrorCode (*reset)(SNESLineSearch);
   PetscErrorCode (*destroy)(SNESLineSearch);
   PetscErrorCode (*setup)(SNESLineSearch);
@@ -68,7 +69,7 @@ struct _p_LineSearch {
 
   PetscViewer monitor;
   PetscErrorCode (*monitorftns[MAXSNESLSMONITORS])(SNESLineSearch, void *); /* monitor routine */
-  PetscErrorCode (*monitordestroy[MAXSNESLSMONITORS])(void **);             /* monitor context destroy routine */
-  void    *monitorcontext[MAXSNESLSMONITORS];                               /* monitor context */
-  PetscInt numbermonitors;                                                  /* number of monitors */
+  PetscCtxDestroyFn *monitordestroy[MAXSNESLSMONITORS];                     /* monitor context destroy routine */
+  void              *monitorcontext[MAXSNESLSMONITORS];                     /* monitor context */
+  PetscInt           numbermonitors;                                        /* number of monitors */
 };

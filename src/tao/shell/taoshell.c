@@ -75,9 +75,6 @@ PetscErrorCode TaoShellGetContext(Tao tao, void *ctx)
 
   Level: advanced
 
-  Fortran Notes:
-  The context can only be an integer or a `PetscObject`
-
 .seealso: `Tao`, `TAOSHELL`, `TaoShellGetContext()`
 @*/
 PetscErrorCode TaoShellSetContext(Tao tao, void *ctx)
@@ -116,7 +113,7 @@ static PetscErrorCode TaoSetUp_Shell(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TaoSetFromOptions_Shell(Tao tao, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TaoSetFromOptions_Shell(Tao tao, PetscOptionItems PetscOptionsObject)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);

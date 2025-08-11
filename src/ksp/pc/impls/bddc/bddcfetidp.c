@@ -76,6 +76,8 @@ PetscErrorCode PCBDDCDestroyFETIDPMat(Mat A)
   PetscCall(VecDestroy(&mat_ctx->temp_solution_B));
   PetscCall(MatDestroy(&mat_ctx->B_delta));
   PetscCall(MatDestroy(&mat_ctx->B_Ddelta));
+  PetscCall(ISDestroy(&mat_ctx->lP_I));
+  PetscCall(ISDestroy(&mat_ctx->lP_B));
   PetscCall(MatDestroy(&mat_ctx->B_BB));
   PetscCall(MatDestroy(&mat_ctx->B_BI));
   PetscCall(MatDestroy(&mat_ctx->Bt_BB));
@@ -214,6 +216,14 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
 
     PetscCall(PetscObjectQuery((PetscObject)fetidpmat_ctx->pc, "__KSPFETIDP_flip", (PetscObject *)&fetidpmat_ctx->rhs_flip));
     if (fetidpmat_ctx->rhs_flip) PetscCall(PetscObjectReference((PetscObject)fetidpmat_ctx->rhs_flip));
+
+    PetscCall(PetscObjectQuery((PetscObject)fetidpmat_ctx->pc, "__KSPFETIDP_lP_I", (PetscObject *)&fetidpmat_ctx->lP_I));
+    PetscCheck(fetidpmat_ctx->lP_I, PETSC_COMM_SELF, PETSC_ERR_PLIB, "lP_I not present");
+    PetscCall(PetscObjectReference((PetscObject)fetidpmat_ctx->lP_I));
+
+    PetscCall(PetscObjectQuery((PetscObject)fetidpmat_ctx->pc, "__KSPFETIDP_lP_B", (PetscObject *)&fetidpmat_ctx->lP_B));
+    PetscCheck(fetidpmat_ctx->lP_B, PETSC_COMM_SELF, PETSC_ERR_PLIB, "lP_B not present");
+    PetscCall(PetscObjectReference((PetscObject)fetidpmat_ctx->lP_B));
   }
 
   /* Default type of lagrange multipliers is non-redundant */
@@ -311,6 +321,7 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
     PetscInt    *ptrs_buffer, neigh_position;
     PetscScalar *send_buffer, *recv_buffer;
     MPI_Request *send_reqs, *recv_reqs;
+    PetscMPIInt  nreqs;
 
     partial_sum = 0;
     PetscCall(PetscMalloc1(pcis->n_neigh, &ptrs_buffer));
@@ -343,7 +354,8 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
       PetscCallMPI(MPIU_Irecv(&recv_buffer[ptrs_buffer[i - 1]], buf_size, MPIU_SCALAR, neigh, 0, comm, &recv_reqs[i - 1]));
     }
     PetscCall(VecRestoreArrayRead(pcis->vec1_N, (const PetscScalar **)&array));
-    if (pcis->n_neigh > 0) PetscCallMPI(MPI_Waitall((PetscMPIInt)(pcis->n_neigh - 1), recv_reqs, MPI_STATUSES_IGNORE));
+    PetscCall(PetscMPIIntCast(pcis->n_neigh - 1, &nreqs));
+    if (pcis->n_neigh > 0) PetscCallMPI(MPI_Waitall(nreqs, recv_reqs, MPI_STATUSES_IGNORE));
     /* put values in correct places */
     for (i = 1; i < pcis->n_neigh; i++) {
       for (j = 0; j < pcis->n_shared[i]; j++) {
@@ -353,7 +365,7 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
         all_factors[k][neigh_position] = recv_buffer[ptrs_buffer[i - 1] + j];
       }
     }
-    if (pcis->n_neigh > 0) PetscCallMPI(MPI_Waitall((PetscMPIInt)(pcis->n_neigh - 1), send_reqs, MPI_STATUSES_IGNORE));
+    if (pcis->n_neigh > 0) PetscCallMPI(MPI_Waitall(nreqs, send_reqs, MPI_STATUSES_IGNORE));
     PetscCall(PetscFree(send_reqs));
     PetscCall(PetscFree(recv_reqs));
     PetscCall(PetscFree(send_buffer));
@@ -515,7 +527,7 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
         PetscCall(PetscFPTrapPush(PETSC_FP_TRAP_OFF));
         PetscCallBLAS("LAPACKgetri", LAPACKgetri_(&B_N, &dummy, &B_N, &B_N, &lwork, &B_lwork, &B_ierr));
         PetscCall(PetscFPTrapPop());
-        PetscCheck(!B_ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in query to GETRI Lapack routine %d", (int)B_ierr);
+        PetscCheck(!B_ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in query to GETRI Lapack routine %" PetscBLASInt_FMT, B_ierr);
         PetscCall(PetscBLASIntCast((PetscInt)PetscRealPart(lwork), &B_lwork));
       }
       PetscCall(PetscMalloc3(mss * mss, &W, mss, &pivots, B_lwork, &Bwork));
@@ -531,9 +543,9 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
         PetscCall(MatDenseRestoreArrayRead(deluxe_ctx->seq_mat[i], &M));
         PetscCall(PetscFPTrapPush(PETSC_FP_TRAP_OFF));
         PetscCallBLAS("LAPACKgetrf", LAPACKgetrf_(&B_N, &B_N, W, &B_N, pivots, &B_ierr));
-        PetscCheck(!B_ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in GETRF Lapack routine %d", (int)B_ierr);
+        PetscCheck(!B_ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in GETRF Lapack routine %" PetscBLASInt_FMT, B_ierr);
         PetscCallBLAS("LAPACKgetri", LAPACKgetri_(&B_N, W, &B_N, pivots, Bwork, &B_lwork, &B_ierr));
-        PetscCheck(!B_ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in GETRI Lapack routine %d", (int)B_ierr);
+        PetscCheck(!B_ierr, PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in GETRI Lapack routine %" PetscBLASInt_FMT, B_ierr);
         PetscCall(PetscFPTrapPop());
         /* silent static analyzer */
         PetscCheck(idxs, PETSC_COMM_SELF, PETSC_ERR_PLIB, "IDXS not present");
@@ -726,7 +738,7 @@ PetscErrorCode PCBDDCSetupFETIDPPCContext(Mat fetimat, FETIDPPC_ctx fetidppc_ctx
     PetscCall(KSPGetPC(ctx->kBD, &mpc));
     PetscCall(KSPGetPC(pcbddc->ksp_D, &pc));
     PetscCall(PCSetType(mpc, PCLU));
-    PetscCall(PCFactorGetMatSolverType(pc, (MatSolverType *)&solver));
+    PetscCall(PCFactorGetMatSolverType(pc, &solver));
     if (solver) PetscCall(PCFactorSetMatSolverType(mpc, solver));
     PetscCall(MatGetOptionsPrefix(fetimat, &prefix));
     PetscCall(KSPSetOptionsPrefix(ctx->kBD, prefix));
@@ -804,7 +816,7 @@ PetscErrorCode PCBDDCSetupFETIDPPCContext(Mat fetimat, FETIDPPC_ctx fetidppc_ctx
         PCType        pctype;
 
         PetscCall(PCGetType(pc, &pctype));
-        PetscCall(PCFactorGetMatSolverType(pc, (MatSolverType *)&solver));
+        PetscCall(PCFactorGetMatSolverType(pc, &solver));
         PetscCall(KSPGetPC(sksp, &pc));
         PetscCall(PCSetType(pc, pctype));
         if (solver) PetscCall(PCFactorSetMatSolverType(pc, solver));
@@ -905,12 +917,14 @@ static PetscErrorCode FETIDPMatMult_Kernel(Mat fetimat, Vec x, Vec y, PetscBool 
   }
   /* Add contribution from saddle point */
   if (mat_ctx->l2g_p) {
+    PetscCall(VecISSet(pcis->vec1_B, mat_ctx->lP_B, 0));
     if (trans) {
       PetscCall(MatMultTranspose(mat_ctx->Bt_BB, pcis->vec1_B, mat_ctx->vP));
     } else {
       PetscCall(MatMult(mat_ctx->B_BB, pcis->vec1_B, mat_ctx->vP));
     }
     if (pcbddc->switch_static) {
+      PetscCall(VecISSet(pcis->vec1_D, mat_ctx->lP_I, 0));
       if (trans) {
         PetscCall(MatMultTransposeAdd(mat_ctx->Bt_BI, pcis->vec1_D, mat_ctx->vP, mat_ctx->vP));
       } else {

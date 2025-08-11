@@ -36,10 +36,10 @@ class Configure(config.package.CMakePackage):
     self.cxxlibs         = framework.require('config.packages.cxxlibs',self)
     self.mathlib         = framework.require('config.packages.mathlib',self)
     self.deps            = [self.blasLapack,self.flibs,self.cxxlibs,self.mathlib]
-    self.openmp          = framework.require('config.packages.openmp',self)
+    self.openmp          = framework.require('config.packages.OpenMP',self)
     self.pthread         = framework.require('config.packages.pthread',self)
-    self.cuda            = framework.require('config.packages.cuda',self)
-    self.hip             = framework.require('config.packages.hip',self)
+    self.cuda            = framework.require('config.packages.CUDA',self)
+    self.hip             = framework.require('config.packages.HIP',self)
     self.hwloc           = framework.require('config.packages.hwloc',self)
     self.mpi             = framework.require('config.packages.MPI',self)
     self.odeps           = [self.mpi,self.openmp,self.hwloc,self.cuda,self.hip,self.pthread]
@@ -50,10 +50,6 @@ class Configure(config.package.CMakePackage):
     args.append('-DUSE_XSDK_DEFAULTS=YES')
     if not self.compilerFlags.debugging:
       args.append('-DXSDK_ENABLE_DEBUG=NO')
-
-    if self.checkSharedLibrariesEnabled():
-      args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
-      args.append('-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON')
 
     if self.openmp.found:
       args.append('-DENABLE_OPENMP:BOOL=ON')

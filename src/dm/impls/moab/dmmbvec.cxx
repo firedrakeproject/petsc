@@ -7,13 +7,13 @@
 #define USE_NATIVE_PETSCVEC
 
 /* declare some private DMMoab specific overrides */
-static PetscErrorCode DMCreateVector_Moab_Private(DM dm, moab::Tag tag, const moab::Range *userrange, PetscBool is_global_vec, PetscBool destroy_tag, Vec *vec);
-static PetscErrorCode DMVecUserDestroy_Moab(void *user);
-static PetscErrorCode DMVecDuplicate_Moab(Vec x, Vec *y);
+static PetscErrorCode DMCreateVector_Moab_Private(DM, moab::Tag, const moab::Range *, PetscBool, PetscBool, Vec *);
+static PetscErrorCode DMVecCtxDestroy_Moab(void **);
+static PetscErrorCode DMVecDuplicate_Moab(Vec, Vec *);
 #ifdef MOAB_HAVE_MPI
-static PetscErrorCode DMVecCreateTagName_Moab_Private(moab::Interface *mbiface, moab::ParallelComm *pcomm, char **tag_name);
+static PetscErrorCode DMVecCreateTagName_Moab_Private(moab::Interface *, moab::ParallelComm *, char **);
 #else
-static PetscErrorCode DMVecCreateTagName_Moab_Private(moab::Interface *mbiface, char **tag_name);
+static PetscErrorCode DMVecCreateTagName_Moab_Private(moab::Interface *, char **);
 #endif
 
 /*@C
@@ -511,7 +511,7 @@ static PetscErrorCode DMCreateVector_Moab_Private(DM dm, moab::Tag tag, const mo
   PetscCall(VecSetFromOptions(*vec));
 
   /* create a container and store the internal MOAB data for faster access based on Entities etc */
-  PetscCall(PetscObjectContainerCompose((PetscObject)*vec, "MOABData", vmoab, DMVecUserDestroy_Moab));
+  PetscCall(PetscObjectContainerCompose((PetscObject)*vec, "MOABData", vmoab, DMVecCtxDestroy_Moab));
   (*vec)->ops->duplicate = DMVecDuplicate_Moab;
 
   /* Vector created, manually set local to global mapping */
@@ -550,7 +550,7 @@ static PetscErrorCode DMVecCreateTagName_Moab_Private(moab::Interface *mbiface, 
   moab::EntityHandle rootset = mbiface->get_root_set();
 
   /* Check to see if there are any PETSc vectors defined */
-  /* Create a tag in MOAB mesh to index and keep track of number of Petsc vec tags */
+  /* Create a tag in MOAB mesh to index and keep track of number of PETSc vec tags */
   mberr = mbiface->tag_get_handle("__PETSC_VECS__", 1, moab::MB_TYPE_INTEGER, indexTag, moab::MB_TAG_SPARSE | moab::MB_TAG_CREAT, 0);
   MBERRNM(mberr);
   mberr = mbiface->tag_get_data(indexTag, &rootset, 1, &n);
@@ -618,9 +618,9 @@ static PetscErrorCode DMVecDuplicate_Moab(Vec x, Vec *y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMVecUserDestroy_Moab(void *user)
+static PetscErrorCode DMVecCtxDestroy_Moab(void **user)
 {
-  Vec_MOAB       *vmoab = (Vec_MOAB *)user;
+  Vec_MOAB       *vmoab = (Vec_MOAB *)*user;
   moab::ErrorCode merr;
 
   PetscFunctionBegin;

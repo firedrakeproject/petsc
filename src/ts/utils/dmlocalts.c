@@ -76,6 +76,13 @@ static PetscErrorCode TSComputeIFunction_DMLocal(TS ts, PetscReal time, Vec X, V
   PetscCall(DMRestoreLocalVector(dm, &locX));
   PetscCall(DMRestoreLocalVector(dm, &locX_t));
   PetscCall(DMRestoreLocalVector(dm, &locF));
+
+  /* remove nullspace from residual */
+  {
+    MatNullSpace nullsp;
+    PetscCall(PetscObjectQuery((PetscObject)dm, "__dmtsnullspace", (PetscObject *)&nullsp));
+    if (nullsp) PetscCall(MatNullSpaceRemove(nullsp, F));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -152,7 +159,7 @@ static PetscErrorCode TSComputeIJacobian_DMLocal(TS ts, PetscReal time, Vec X, V
       PetscCall(ISColoringDestroy(&coloring));
       switch (dm->coloringtype) {
       case IS_COLORING_GLOBAL:
-        PetscCall(MatFDColoringSetFunction(fdcoloring, (PetscErrorCode (*)(void))TSComputeIFunction_DMLocal, dmlocalts));
+        PetscCall(MatFDColoringSetFunction(fdcoloring, (MatFDColoringFn *)TSComputeIFunction_DMLocal, dmlocalts));
         break;
       default:
         SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "No support for coloring type '%s'", ISColoringTypes[dm->coloringtype]);

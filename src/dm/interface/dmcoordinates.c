@@ -310,6 +310,8 @@ PetscErrorCode DMSetCoordinateSection(DM dm, PetscInt dim, PetscSection section)
       }
     }
     if (d >= 0) PetscCall(DMSetCoordinateDim(dm, d));
+  } else {
+    PetscCall(DMSetCoordinateDim(dm, dim));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -389,6 +391,8 @@ PetscErrorCode DMSetCellCoordinateSection(DM dm, PetscInt dim, PetscSection sect
       }
     }
     if (d >= 0) PetscCall(DMSetCoordinateDim(dm, d));
+  } else {
+    PetscCall(DMSetCoordinateDim(dm, dim));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -396,7 +400,7 @@ PetscErrorCode DMSetCellCoordinateSection(DM dm, PetscInt dim, PetscSection sect
 /*@
   DMGetCoordinates - Gets a global vector with the coordinates associated with the `DM`.
 
-  Collective
+  Collective if the global vector with coordinates has not been set yet but the local vector with coordinates has been set
 
   Input Parameter:
 . dm - the `DM`
@@ -410,10 +414,12 @@ PetscErrorCode DMSetCellCoordinateSection(DM dm, PetscInt dim, PetscSection sect
   This is a borrowed reference, so the user should NOT destroy this vector. When the `DM` is
   destroyed `c` will no longer be valid.
 
-  Each process has only the locally-owned portion of the global coordinates (does NOT have the ghost coordinates).
+  Each process has only the locally-owned portion of the global coordinates (does NOT have the ghost coordinates), see `DMGetCoordinatesLocal()`.
 
   For `DMDA`, in two and three dimensions coordinates are interlaced (x_0,y_0,x_1,y_1,...)
   and (x_0,y_0,z_0,x_1,y_1,z_1...)
+
+  Does not work for `DMSTAG`
 
 .seealso: `DM`, `DMDA`, `DMSetCoordinates()`, `DMGetCoordinatesLocal()`, `DMGetCoordinateDM()`, `DMDASetUniformCoordinates()`
 @*/
@@ -438,7 +444,7 @@ PetscErrorCode DMGetCoordinates(DM dm, Vec *c)
 /*@
   DMSetCoordinates - Sets into the `DM` a global vector that holds the coordinates
 
-  Collective
+  Logically Collective
 
   Input Parameters:
 + dm - the `DM`
@@ -861,6 +867,17 @@ PetscErrorCode DMSetCoordinateField(DM dm, DMField field)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+PetscErrorCode DMSetCellCoordinateField(DM dm, DMField field)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
+  if (field) PetscValidHeaderSpecific(field, DMFIELD_CLASSID, 2);
+  PetscCall(PetscObjectReference((PetscObject)field));
+  PetscCall(DMFieldDestroy(&dm->coordinates[1].field));
+  dm->coordinates[1].field = field;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode DMGetLocalBoundingBox_Coordinates(DM dm, PetscReal lmin[], PetscReal lmax[], PetscInt cs[], PetscInt ce[])
 {
   Vec         coords = NULL;
@@ -970,15 +987,13 @@ PetscErrorCode DMGetBoundingBox(DM dm, PetscReal gmin[], PetscReal gmax[])
   PetscReal        lmin[3], lmax[3];
   const PetscReal *L, *Lstart;
   PetscInt         cdim;
-  PetscMPIInt      count;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCall(DMGetCoordinateDim(dm, &cdim));
-  PetscCall(PetscMPIIntCast(cdim, &count));
   PetscCall(DMGetLocalBoundingBox(dm, lmin, lmax));
-  if (gmin) PetscCallMPI(MPIU_Allreduce(lmin, gmin, count, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)dm)));
-  if (gmax) PetscCallMPI(MPIU_Allreduce(lmax, gmax, count, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)dm)));
+  if (gmin) PetscCallMPI(MPIU_Allreduce(lmin, gmin, cdim, MPIU_REAL, MPIU_MIN, PetscObjectComm((PetscObject)dm)));
+  if (gmax) PetscCallMPI(MPIU_Allreduce(lmax, gmax, cdim, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)dm)));
   PetscCall(DMGetPeriodicity(dm, NULL, &Lstart, &L));
   if (L) {
     for (PetscInt d = 0; d < cdim; ++d)
@@ -990,7 +1005,7 @@ PetscErrorCode DMGetBoundingBox(DM dm, PetscReal gmin[], PetscReal gmax[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCreateAffineCoordinates_Internal(DM dm)
+static PetscErrorCode DMCreateAffineCoordinates_Internal(DM dm, PetscBool localized)
 {
   DM             cdm;
   PetscFE        feLinear;
@@ -998,7 +1013,12 @@ static PetscErrorCode DMCreateAffineCoordinates_Internal(DM dm)
   PetscInt       dim, dE, height, cStart, cEnd, gct;
 
   PetscFunctionBegin;
-  PetscCall(DMGetCoordinateDM(dm, &cdm));
+  if (!localized) {
+    PetscCall(DMGetCoordinateDM(dm, &cdm));
+  } else {
+    PetscCall(DMGetCellCoordinateDM(dm, &cdm));
+  }
+  PetscCheck(cdm, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONGSTATE, "No coordinateDM defined");
   PetscCall(DMGetDimension(dm, &dim));
   PetscCall(DMGetCoordinateDim(dm, &dE));
   PetscCall(DMPlexGetVTKCellHeight(dm, &height));
@@ -1012,6 +1032,13 @@ static PetscErrorCode DMCreateAffineCoordinates_Internal(DM dm)
   //   Can be seen in plex_tutorials-ex10_1
   if (ct != DM_POLYTOPE_SEG_PRISM_TENSOR && ct != DM_POLYTOPE_TRI_PRISM_TENSOR && ct != DM_POLYTOPE_QUAD_PRISM_TENSOR) {
     PetscCall(PetscFECreateLagrangeByCell(PETSC_COMM_SELF, dim, dE, ct, 1, -1, &feLinear));
+    if (localized) {
+      PetscFE dgfe = NULL;
+
+      PetscCall(PetscFECreateBrokenElement(feLinear, &dgfe));
+      PetscCall(PetscFEDestroy(&feLinear));
+      feLinear = dgfe;
+    }
     PetscCall(DMSetField(cdm, 0, NULL, (PetscObject)feLinear));
     PetscCall(PetscFEDestroy(&feLinear));
     PetscCall(DMCreateDS(cdm));
@@ -1037,13 +1064,19 @@ PetscErrorCode DMGetCoordinateDegree_Internal(DM dm, PetscInt *degree)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static void evaluate_coordinates(PetscInt dim, PetscInt Nf, PetscInt NfAux, const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[], const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[], PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar xnew[])
+{
+  for (PetscInt i = 0; i < dim; i++) xnew[i] = x[i];
+}
+
 /*@
   DMSetCoordinateDisc - Set a coordinate space
 
   Input Parameters:
-+ dm      - The `DM` object
-. disc    - The new coordinate discretization or `NULL` to ensure a coordinate discretization exists
-- project - Project coordinates to new discretization
++ dm        - The `DM` object
+. disc      - The new coordinate discretization or `NULL` to ensure a coordinate discretization exists
+. localized - Set a localized (DG) coordinate space
+- project   - Project coordinates to new discretization
 
   Level: intermediate
 
@@ -1058,12 +1091,11 @@ PetscErrorCode DMGetCoordinateDegree_Internal(DM dm, PetscInt *degree)
 
 .seealso: `DM`, `PetscFE`, `DMGetCoordinateField()`
 @*/
-PetscErrorCode DMSetCoordinateDisc(DM dm, PetscFE disc, PetscBool project)
+PetscErrorCode DMSetCoordinateDisc(DM dm, PetscFE disc, PetscBool localized, PetscBool project)
 {
   DM           cdmOld, cdmNew;
   PetscFE      discOld;
   PetscClassId classid;
-  Vec          coordsOld, coordsNew;
   PetscBool    same_space = PETSC_TRUE;
   const char  *prefix;
 
@@ -1071,13 +1103,24 @@ PetscErrorCode DMSetCoordinateDisc(DM dm, PetscFE disc, PetscBool project)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   if (disc) PetscValidHeaderSpecific(disc, PETSCFE_CLASSID, 2);
 
-  PetscCall(DMGetCoordinateDM(dm, &cdmOld));
+  /* Note that plexgmsh.c can pass DG element with localized = PETSC_FALSE. */
+  if (!localized) {
+    PetscCall(DMGetCoordinateDM(dm, &cdmOld));
+  } else {
+    PetscCall(DMGetCellCoordinateDM(dm, &cdmOld));
+    if (!cdmOld) {
+      PetscUseTypeMethod(dm, createcellcoordinatedm, &cdmOld);
+      PetscCall(DMSetCellCoordinateDM(dm, cdmOld));
+      PetscCall(DMDestroy(&cdmOld));
+      PetscCall(DMGetCellCoordinateDM(dm, &cdmOld));
+    }
+  }
   /* Check current discretization is compatible */
   PetscCall(DMGetField(cdmOld, 0, NULL, (PetscObject *)&discOld));
   PetscCall(PetscObjectGetClassId((PetscObject)discOld, &classid));
   if (classid != PETSCFE_CLASSID) {
     if (classid == PETSC_CONTAINER_CLASSID) {
-      PetscCall(DMCreateAffineCoordinates_Internal(dm));
+      PetscCall(DMCreateAffineCoordinates_Internal(dm, localized));
       PetscCall(DMGetField(cdmOld, 0, NULL, (PetscObject *)&discOld));
     } else {
       const char *discname;
@@ -1110,29 +1153,65 @@ PetscErrorCode DMSetCoordinateDisc(DM dm, PetscFE disc, PetscBool project)
     PetscCall(PetscDSCopyConstants(ds, nds));
   }
   if (cdmOld->periodic.setup) {
+    PetscSF dummy;
+    // Force IsoperiodicPointSF to be built, required for periodic coordinate setup
+    PetscCall(DMGetIsoperiodicPointSF_Internal(dm, &dummy));
     cdmNew->periodic.setup = cdmOld->periodic.setup;
     PetscCall(cdmNew->periodic.setup(cdmNew));
   }
   if (dm->setfromoptionscalled) PetscCall(DMSetFromOptions(cdmNew));
   if (project) {
-    PetscCall(DMGetCoordinates(dm, &coordsOld));
-    PetscCall(DMCreateGlobalVector(cdmNew, &coordsNew));
-    if (same_space) {
-      // Need to copy so that the new vector has the right dm
-      PetscCall(VecCopy(coordsOld, coordsNew));
-    } else {
-      Mat In;
+    Vec      coordsOld, coordsNew;
+    PetscInt num_face_sfs = 0;
 
-      PetscCall(DMCreateInterpolation(cdmOld, cdmNew, &In, NULL));
-      PetscCall(MatMult(In, coordsOld, coordsNew));
-      PetscCall(MatDestroy(&In));
+    PetscCall(DMPlexGetIsoperiodicFaceSF(dm, &num_face_sfs, NULL));
+    if (num_face_sfs) { // Isoperiodicity requires projecting the local coordinates
+      PetscCall(DMGetCoordinatesLocal(dm, &coordsOld));
+      PetscCall(DMCreateLocalVector(cdmNew, &coordsNew));
+      PetscCall(PetscObjectSetName((PetscObject)coordsNew, "coordinates"));
+      if (same_space) {
+        // Need to copy so that the new vector has the right dm
+        PetscCall(VecCopy(coordsOld, coordsNew));
+      } else {
+        void (*funcs[])(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]) = {evaluate_coordinates};
+
+        // We can't call DMProjectField directly because it depends on KSP for DMGlobalToLocalSolve(), but we can use the core strategy
+        PetscCall(DMSetCoordinateDM(cdmNew, cdmOld));
+        // See DMPlexRemapGeometry() for a similar pattern handling the coordinate field
+        DMField cf;
+        PetscCall(DMGetCoordinateField(dm, &cf));
+        cdmNew->coordinates[0].field = cf;
+        PetscCall(DMProjectFieldLocal(cdmNew, 0.0, NULL, funcs, INSERT_VALUES, coordsNew));
+        cdmNew->coordinates[0].field = NULL;
+        PetscCall(DMSetCoordinateDM(cdmNew, NULL));
+      }
+      PetscCall(DMSetCoordinatesLocal(dm, coordsNew));
+      PetscCall(VecDestroy(&coordsNew));
+    } else {
+      PetscCall(DMGetCoordinates(dm, &coordsOld));
+      PetscCall(DMCreateGlobalVector(cdmNew, &coordsNew));
+      if (same_space) {
+        // Need to copy so that the new vector has the right dm
+        PetscCall(VecCopy(coordsOld, coordsNew));
+      } else {
+        Mat In;
+
+        PetscCall(DMCreateInterpolation(cdmOld, cdmNew, &In, NULL));
+        PetscCall(MatMult(In, coordsOld, coordsNew));
+        PetscCall(MatDestroy(&In));
+      }
+      PetscCall(DMSetCoordinates(dm, coordsNew));
+      PetscCall(VecDestroy(&coordsNew));
     }
-    PetscCall(DMSetCoordinates(dm, coordsNew));
-    PetscCall(VecDestroy(&coordsNew));
   }
   /* Set new coordinate structures */
-  PetscCall(DMSetCoordinateField(dm, NULL));
-  PetscCall(DMSetCoordinateDM(dm, cdmNew));
+  if (!localized) {
+    PetscCall(DMSetCoordinateField(dm, NULL));
+    PetscCall(DMSetCoordinateDM(dm, cdmNew));
+  } else {
+    PetscCall(DMSetCellCoordinateField(dm, NULL));
+    PetscCall(DMSetCellCoordinateDM(dm, cdmNew));
+  }
   PetscCall(DMDestroy(&cdmNew));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

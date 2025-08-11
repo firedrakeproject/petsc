@@ -117,7 +117,7 @@ typedef struct _p_PetscObject {
   PetscErrorCode (*python_destroy)(void *);
 
   PetscInt noptionhandler;
-  PetscErrorCode (*optionhandler[PETSC_MAX_OPTIONS_HANDLER])(PetscObject, PetscOptionItems *, void *);
+  PetscErrorCode (*optionhandler[PETSC_MAX_OPTIONS_HANDLER])(PetscObject, PetscOptionItems, void *);
   PetscErrorCode (*optiondestroy[PETSC_MAX_OPTIONS_HANDLER])(PetscObject, void *);
   void *optionctx[PETSC_MAX_OPTIONS_HANDLER];
 #if defined(PETSC_HAVE_SAWS)
@@ -177,18 +177,16 @@ PETSC_EXTERN_TYPEDEF typedef PetscObjectViewFn *PetscObjectViewFunction;
   #include <petsc/private/petscimpl.h>
   PetscErrorCode PetscHeaderCreate(PetscObject h, PetscClassId classid, const char class_name[], const char descr[], const char mansec[], MPI_Comm comm, PetscObjectDestroyFn * destroy, PetscObjectViewFn * view)
 
+  Collective
+
   Input Parameters:
 + classid    - The classid associated with this object (for example `VEC_CLASSID`)
-. class_name - String name of class; should be static (for example "Vec"), may be
-               `PETSC_NULLPTR`
-. descr      - String containing short description; should be static (for example "Vector"),
-               may be `PETSC_NULLPTR`
-. mansec     - String indicating section in manual pages; should be static (for example "Vec"),
-               may be `PETSC_NULLPTR`
+. class_name - String name of class; should be static (for example "Vec"), may be `PETSC_NULLPTR`
+. descr      - String containing short description; should be static (for example "Vector"), may be `PETSC_NULLPTR`
+. mansec     - String indicating section in manual pages; should be static (for example "Vec"), may be `PETSC_NULLPTR`
 . comm       - The MPI Communicator
 . destroy    - The destroy routine for this object (for example `VecDestroy()`)
-- view       - The view routine for this object (for example `VecView()`), may be
-               `PETSC_NULLPTR`
+- view       - The view routine for this object (for example `VecView()`), may be `PETSC_NULLPTR`
 
   Output Parameter:
 . h - The newly created `PetscObject`
@@ -315,6 +313,8 @@ PETSC_INTERN PetscObjectId  PetscObjectNewId_Internal(void);
   #include <petsc/private/petscimpl.h>
   PetscErrorCode PetscHeaderDestroy(PetscObject *obj)
 
+  Collective
+
   Input Parameter:
 . h - A pointer to the header created with `PetscHeaderCreate()`
 
@@ -376,7 +376,7 @@ PETSC_INTERN PetscErrorCode PetscFreeMPIResources(void);
 PETSC_INTERN PetscErrorCode PetscOptionsHasHelpIntro_Internal(PetscOptions, PetscBool *);
 
 /* Code shared between C and Fortran */
-PETSC_INTERN PetscErrorCode PetscInitialize_Common(const char *, const char *, const char *, PetscBool, PetscBool, PetscInt);
+PETSC_INTERN PetscErrorCode PetscInitialize_Common(const char *, const char *, const char *, PetscBool, PetscInt);
 
 #if PetscDefined(HAVE_SETJMP_H)
 PETSC_EXTERN PetscBool PetscCheckPointer(const void *, PetscDataType);
@@ -633,6 +633,11 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
         (void)(a); \
         (void)(b); \
       } while (0)
+    #define PetscValidLogicalCollectiveIntComm(a, b, arg) \
+      do { \
+        (void)(a); \
+        (void)(b); \
+      } while (0)
     #define PetscValidLogicalCollectiveCount(a, b, arg) \
       do { \
         (void)(a); \
@@ -692,14 +697,14 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
       do { \
         PetscBool _7_match; \
         PetscCall(PetscObjectTypeCompare(((PetscObject)(a)), (type), &_7_match)); \
-        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s", (char *)(((PetscObject)(a))->type_name), type); \
+        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s", ((PetscObject)(a))->type_name, type); \
       } while (0)
 
     #define PetscCheckTypeNames(a, type1, type2) \
       do { \
         PetscBool _7_match; \
         PetscCall(PetscObjectTypeCompareAny(((PetscObject)(a)), &_7_match, (type1), (type2), "")); \
-        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s or %s", (char *)(((PetscObject)(a))->type_name), type1, type2); \
+        PetscCheck(_7_match, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Object (%s) is not %s or %s", ((PetscObject)(a))->type_name, type1, type2); \
       } while (0)
 
     /*
@@ -726,7 +731,7 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
     #define PetscValidLogicalCollectiveScalar(a, b, arg) \
       do { \
         PetscScalar b0 = (b); \
-        PetscReal   b1[5], b2[5]; \
+        PetscReal   b1[5]; \
         if (PetscIsNanScalar(b0)) { \
           b1[4] = 1; \
         } else { \
@@ -736,13 +741,13 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
         b1[1] = PetscRealPart(b0); \
         b1[2] = -PetscImaginaryPart(b0); \
         b1[3] = PetscImaginaryPart(b0); \
-        PetscCallMPI(MPIU_Allreduce(b1, b2, 5, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(b2[4] > 0 || (PetscEqualReal(-b2[0], b2[1]) && PetscEqualReal(-b2[2], b2[3])), PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Scalar value must be same on all processes, argument # %d", arg); \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 5, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(b1[4] > 0 || (PetscEqualReal(-b1[0], b1[1]) && PetscEqualReal(-b1[2], b1[3])), PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Scalar value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscValidLogicalCollectiveReal(a, b, arg) \
       do { \
-        PetscReal b0 = (b), b1[3], b2[3]; \
+        PetscReal b0 = (b), b1[3]; \
         if (PetscIsNanReal(b0)) { \
           b1[2] = 1; \
         } else { \
@@ -750,53 +755,62 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
         }; \
         b1[0] = -b0; \
         b1[1] = b0; \
-        PetscCallMPI(MPIU_Allreduce(b1, b2, 3, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(b2[2] > 0 || PetscEqualReal(-b2[0], b2[1]), PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Real value must be same on all processes, argument # %d", arg); \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 3, MPIU_REAL, MPIU_MAX, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(b1[2] > 0 || PetscEqualReal(-b1[0], b1[1]), PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Real value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscValidLogicalCollectiveInt(a, b, arg) \
       do { \
-        PetscInt b0 = (b), b1[2], b2[2]; \
+        PetscInt b0 = (b), b1[2]; \
         b1[0]       = -b0; \
         b1[1]       = b0; \
-        PetscCallMPI(MPIU_Allreduce(b1, b2, 2, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(-b2[0] == b2[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Int value must be same on all processes, argument # %d", arg); \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(-b1[0] == b1[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Int value must be same on all processes, argument # %d", arg); \
+      } while (0)
+
+    #define PetscValidLogicalCollectiveIntComm(a, b, arg) \
+      do { \
+        PetscInt b1[2]; \
+        b1[0] = -b; \
+        b1[1] = b; \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPIU_INT, MPI_MAX, a)); \
+        PetscCheck(-b1[0] == b1[1], a, PETSC_ERR_ARG_WRONG, "Int value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscValidLogicalCollectiveCount(a, b, arg) \
       do { \
-        PetscCount b0 = (b), b1[2], b2[2]; \
+        PetscCount b0 = (b), b1[2]; \
         b1[0]         = -b0; \
         b1[1]         = b0; \
-        PetscCallMPI(MPIU_Allreduce(b1, b2, 2, MPIU_COUNT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(-b2[0] == b2[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Int value must be same on all processes, argument # %d", arg); \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPIU_COUNT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(-b1[0] == b1[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Int value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscValidLogicalCollectiveMPIInt(a, b, arg) \
       do { \
-        PetscMPIInt b0 = (b), b1[2], b2[2]; \
+        PetscMPIInt b0 = (b), b1[2]; \
         b1[0]          = -b0; \
         b1[1]          = b0; \
-        PetscCallMPI(MPIU_Allreduce(b1, b2, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(-b2[0] == b2[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "PetscMPIInt value must be same on all processes, argument # %d", arg); \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(-b1[0] == b1[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "PetscMPIInt value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscValidLogicalCollectiveBool(a, b, arg) \
       do { \
-        PetscMPIInt b0 = (PetscMPIInt)(b), b1[2], b2[2]; \
+        PetscMPIInt b0 = (PetscMPIInt)(b), b1[2]; \
         b1[0]          = -b0; \
         b1[1]          = b0; \
-        PetscCallMPI(MPIU_Allreduce(b1, b2, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(-b2[0] == b2[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Bool value must be same on all processes, argument # %d", arg); \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(-b1[0] == b1[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Bool value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscValidLogicalCollectiveEnum(a, b, arg) \
       do { \
-        PetscMPIInt b0 = (PetscMPIInt)(b), b1[2], b2[2]; \
+        PetscMPIInt b0 = (PetscMPIInt)(b), b1[2]; \
         b1[0]          = -b0; \
         b1[1]          = b0; \
-        PetscCallMPI(MPIU_Allreduce(b1, b2, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(-b2[0] == b2[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Enum value must be same on all processes, argument # %d", arg); \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(-b1[0] == b1[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Enum value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscCheckSorted(n, idx) \
@@ -1017,7 +1031,7 @@ M*/
    as `VecSet()` or `MatScale()` already call this routine. It is also called, as a
    precaution, in `VecRestoreArray()`, `MatRestoreRow()`, `MatDenseRestoreArray()`.
 
-   Routines such as `VecNorm()` can by-pass the computation if the norm has already been computed and the vector's state has not changed.
+   Routines such as `VecNorm()` can bypass the computation if the norm has already been computed and the vector's state has not changed.
 
    This routine is logically collective because state equality comparison needs to be possible without communication.
 
@@ -1025,7 +1039,7 @@ M*/
 
 .seealso: `PetscObjectStateGet()`, `PetscObject`
 M*/
-#define PetscObjectStateIncrease(obj) ((obj)->state++, PETSC_SUCCESS)
+#define PetscObjectStateIncrease(obj) ((PetscErrorCode)((obj)->state++, PETSC_SUCCESS))
 
 PETSC_EXTERN PetscErrorCode PetscObjectStateGet(PetscObject, PetscObjectState *);
 PETSC_EXTERN PetscErrorCode PetscObjectStateSet(PetscObject, PetscObjectState);
@@ -1093,7 +1107,7 @@ M*/
           `PetscObjectComposedDataGetIntstar()`, `PetscObjectComposedDataSetIntstar()`, `PetscObject`,
           `PetscObjectCompose()`, `PetscObjectQuery()`
 M*/
-#define PetscObjectComposedDataGetInt(obj, id, data, flag) (((obj)->intcomposedstate ? (data = (obj)->intcomposeddata[id], flag = (PetscBool)((obj)->intcomposedstate[id] == (obj)->state)) : (flag = PETSC_FALSE)), PETSC_SUCCESS)
+#define PetscObjectComposedDataGetInt(obj, id, data, flag) ((PetscErrorCode)(((obj)->intcomposedstate ? (data = (obj)->intcomposeddata[id], flag = (PetscBool)((obj)->intcomposedstate[id] == (obj)->state)) : (flag = PETSC_FALSE)), PETSC_SUCCESS))
 
 /*MC
    PetscObjectComposedDataSetIntstar - attach `PetscInt` array data to a `PetscObject` that may be accessed later with `PetscObjectComposedDataGetIntstar()`
@@ -1396,16 +1410,16 @@ M*/
   #define PetscObjectComposedDataGetScalarstar(obj, id, data, flag) PetscObjectComposedDataGetRealstar(obj, id, data, flag)
 #endif
 
-PETSC_EXTERN PetscMPIInt Petsc_Counter_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_InnerComm_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_OuterComm_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_Seq_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_ShmComm_keyval;
+PETSC_INTERN PetscMPIInt Petsc_Counter_keyval;
+PETSC_INTERN PetscMPIInt Petsc_InnerComm_keyval;
+PETSC_INTERN PetscMPIInt Petsc_OuterComm_keyval;
+PETSC_INTERN PetscMPIInt Petsc_Seq_keyval;
+PETSC_INTERN PetscMPIInt Petsc_ShmComm_keyval;
 PETSC_EXTERN PetscMPIInt Petsc_CreationIdx_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_Garbage_HMap_keyval;
+PETSC_INTERN PetscMPIInt Petsc_Garbage_HMap_keyval;
 
-PETSC_EXTERN PetscMPIInt Petsc_SharedWD_keyval;
-PETSC_EXTERN PetscMPIInt Petsc_SharedTmp_keyval;
+PETSC_INTERN PetscMPIInt Petsc_SharedWD_keyval;
+PETSC_INTERN PetscMPIInt Petsc_SharedTmp_keyval;
 
 struct PetscCommStash {
   struct PetscCommStash *next;

@@ -12,7 +12,8 @@
 . symmetric   - Flag to extrude symmetrically about the surface
 . periodic    - Flag to extrude periodically
 . normal      - Surface normal vector, or `NULL`
-- thicknesses - Thickness of each layer, or `NULL`
+. thicknesses - Thickness of each layer, or `NULL`
+- activeLabel - `DMLabel` to extrude from, or `NULL` to extrude entire mesh
 
   Output Parameter:
 . edm - The volumetric mesh
@@ -48,7 +49,7 @@
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMExtrude()`, `DMPlexTransform`, `DMPlexTransformExtrudeSetThickness()`, `DMPlexTransformExtrudeSetTensor()`
 @*/
-PetscErrorCode DMPlexExtrude(DM dm, PetscInt layers, PetscReal thickness, PetscBool tensor, PetscBool symmetric, PetscBool periodic, const PetscReal normal[], const PetscReal thicknesses[], DM *edm)
+PetscErrorCode DMPlexExtrude(DM dm, PetscInt layers, PetscReal thickness, PetscBool tensor, PetscBool symmetric, PetscBool periodic, const PetscReal normal[], const PetscReal thicknesses[], DMLabel activeLabel, DM *edm)
 {
   DMPlexTransform tr;
   DM              cdm;
@@ -56,18 +57,18 @@ PetscErrorCode DMPlexExtrude(DM dm, PetscInt layers, PetscReal thickness, PetscB
   PetscClassId    id;
   const char     *prefix;
   PetscOptions    options;
-  PetscBool       useCeed;
   PetscBool       cutMarker = PETSC_FALSE;
 
   PetscFunctionBegin;
   PetscCall(DMPlexTransformCreate(PetscObjectComm((PetscObject)dm), &tr));
   PetscCall(PetscObjectSetName((PetscObject)tr, "Extrusion Transform"));
   PetscCall(DMPlexTransformSetDM(tr, dm));
-  PetscCall(DMPlexTransformSetType(tr, DMPLEXEXTRUDE));
+  PetscCall(DMPlexTransformSetType(tr, DMPLEXEXTRUDETYPE));
   PetscCall(PetscObjectGetOptionsPrefix((PetscObject)dm, &prefix));
   PetscCall(PetscObjectSetOptionsPrefix((PetscObject)tr, prefix));
   PetscCall(PetscObjectGetOptions((PetscObject)dm, &options));
   PetscCall(PetscObjectSetOptions((PetscObject)tr, options));
+  if (activeLabel) PetscCall(DMPlexTransformSetActive(tr, activeLabel));
   PetscCall(DMPlexTransformExtrudeSetLayers(tr, layers));
   if (thickness > 0.) PetscCall(DMPlexTransformExtrudeSetThickness(tr, thickness));
   PetscCall(DMPlexTransformExtrudeSetTensor(tr, tensor));
@@ -80,8 +81,6 @@ PetscErrorCode DMPlexExtrude(DM dm, PetscInt layers, PetscReal thickness, PetscB
   PetscCall(DMPlexTransformSetUp(tr));
   PetscCall(PetscObjectViewFromOptions((PetscObject)tr, NULL, "-dm_plex_transform_view"));
   PetscCall(DMPlexTransformApply(tr, dm, edm));
-  PetscCall(DMPlexGetUseCeed(dm, &useCeed));
-  PetscCall(DMPlexSetUseCeed(*edm, useCeed));
   PetscCall(DMCopyDisc(dm, *edm));
   // Handle periodic viewing
   PetscCall(PetscOptionsGetBool(options, ((PetscObject)dm)->prefix, "-dm_plex_periodic_cut", &cutMarker, NULL));
@@ -122,21 +121,18 @@ PetscErrorCode DMPlexExtrude(DM dm, PetscInt layers, PetscReal thickness, PetscB
 
     PetscCall(PetscFEGetBasisSpace((PetscFE)disc, &sp));
     PetscCall(PetscSpaceGetDegree(sp, &deg, NULL));
-    PetscCall(DMPlexCreateCoordinateSpace(*edm, deg, PETSC_TRUE, NULL));
+    PetscCall(DMPlexCreateCoordinateSpace(*edm, deg, PETSC_FALSE, PETSC_TRUE));
   }
   PetscCall(DMPlexTransformCreateDiscLabels(tr, *edm));
   PetscCall(DMPlexTransformDestroy(&tr));
-  if (*edm) {
-    ((DM_Plex *)(*edm)->data)->printFEM = ((DM_Plex *)dm->data)->printFEM;
-    ((DM_Plex *)(*edm)->data)->printL2  = ((DM_Plex *)dm->data)->printL2;
-  }
+  PetscCall(DMPlexCopy_Internal(dm, PETSC_FALSE, PETSC_FALSE, *edm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode DMExtrude_Plex(DM dm, PetscInt layers, DM *edm)
 {
   PetscFunctionBegin;
-  PetscCall(DMPlexExtrude(dm, layers, PETSC_DETERMINE, PETSC_TRUE, PETSC_FALSE, PETSC_FALSE, NULL, NULL, edm));
+  PetscCall(DMPlexExtrude(dm, layers, PETSC_DETERMINE, PETSC_TRUE, PETSC_FALSE, PETSC_FALSE, NULL, NULL, NULL, edm));
   PetscCall(DMSetMatType(*edm, dm->mattype));
   PetscCall(DMViewFromOptions(*edm, NULL, "-check_extrude"));
   PetscFunctionReturn(PETSC_SUCCESS);

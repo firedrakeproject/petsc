@@ -162,9 +162,9 @@ static PetscErrorCode DMCoarsen_SNESVI(DM dm1, MPI_Comm comm, DM *dm2)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMDestroy_SNESVI(void *ctx)
+static PetscErrorCode DMDestroy_SNESVI(void **ctx)
 {
-  DM_SNESVI *dmsnesvi = (DM_SNESVI *)ctx;
+  DM_SNESVI *dmsnesvi = (DM_SNESVI *)*ctx;
 
   PetscFunctionBegin;
   /* reset the base methods in the DM object that were changed when the DM_SNESVI was reset */
@@ -245,7 +245,7 @@ PetscErrorCode DMDestroyVI(DM dm)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* Create active and inactive set vectors. The local size of this vector is set and petsc computes the global size */
+/* Create active and inactive set vectors. The local size of this vector is set and PETSc computes the global size */
 static PetscErrorCode SNESCreateSubVectors_VINEWTONRSLS(SNES snes, PetscInt n, Vec *newv)
 {
   Vec v;
@@ -319,7 +319,7 @@ static PetscErrorCode SNESSolve_VINEWTONRSLS(SNES snes)
   F      = snes->vec_func; /* residual vector */
   Y      = snes->work[0];  /* work vectors */
 
-  PetscCall(SNESLineSearchSetVIFunctions(snes->linesearch, SNESVIProjectOntoBounds, SNESVIComputeInactiveSetFnorm));
+  PetscCall(SNESLineSearchSetVIFunctions(snes->linesearch, SNESVIProjectOntoBounds, SNESVIComputeInactiveSetFnorm, SNESVIComputeInactiveSetFtY));
   PetscCall(SNESLineSearchSetVecs(snes->linesearch, X, NULL, NULL, NULL, NULL));
   PetscCall(SNESLineSearchSetUp(snes->linesearch));
 

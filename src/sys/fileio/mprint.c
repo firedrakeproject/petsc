@@ -229,36 +229,6 @@ PetscErrorCode PetscVSNPrintf(char str[], size_t len, const char format[], size_
       str[ncnt] = 0;
     }
   }
-#if defined(PETSC_HAVE_WINDOWS_H) && !defined(PETSC_HAVE__SET_OUTPUT_FORMAT)
-  /* older Windows OS always produces e-+0np for floating point output; remove the extra 0 */
-  {
-    size_t cnt = 0, ncnt = 0, leng;
-    PetscCall(PetscStrlen(str, &leng));
-    if (leng > 5) {
-      for (cnt = 0; cnt < leng - 4; cnt++) {
-        if (str[cnt] == 'e' && (str[cnt + 1] == '-' || str[cnt + 1] == '+') && str[cnt + 2] == '0' && str[cnt + 3] >= '0' && str[cnt + 3] <= '9' && str[cnt + 4] >= '0' && str[cnt + 4] <= '9') {
-          str[ncnt] = str[cnt];
-          ncnt++;
-          cnt++;
-          str[ncnt] = str[cnt];
-          ncnt++;
-          cnt++;
-          cnt++;
-          str[ncnt] = str[cnt];
-        } else {
-          str[ncnt] = str[cnt];
-        }
-        ncnt++;
-      }
-      while (cnt < leng) {
-        str[ncnt] = str[cnt];
-        ncnt++;
-        cnt++;
-      }
-      str[ncnt] = 0;
-    }
-  }
-#endif
   if (fullLength) *fullLength = 1 + (size_t)flen;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -288,11 +258,17 @@ PetscErrorCode PetscVSNPrintf(char str[], size_t len, const char format[], size_
 @*/
 PetscErrorCode PetscFFlush(FILE *fd)
 {
+  int err;
+
   PetscFunctionBegin;
   if (fd) PetscAssertPointer(fd, 1);
+  err = fflush(fd);
+#if !defined(PETSC_MISSING_SIGPIPE) && defined(EPIPE) && defined(ECONNRESET)
+  if (fd && err && (errno == EPIPE || errno == ECONNRESET)) err = 0; /* ignore error, rely on SIGPIPE */
+#endif
   // could also use PetscCallExternal() here, but since we can get additional error explanation
   // from strerror() we opted for a manual check
-  PetscCheck(0 == fflush(fd), PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE, "Error in fflush() due to \"%s\"", strerror(errno));
+  PetscCheck(0 == err, PETSC_COMM_SELF, PETSC_ERR_FILE_WRITE, "Error in fflush() due to \"%s\"", strerror(errno));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -318,7 +294,6 @@ PetscErrorCode PetscFFlush(FILE *fd)
 .vb
    PetscErrorCode mypetscvfprintf(FILE *fd, const char format[], va_list Argp)
    {
-     PetscErrorCode ierr;
 
      PetscFunctionBegin;
       if (fd != stdout && fd != stderr) {  handle regular files

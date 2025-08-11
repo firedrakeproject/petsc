@@ -183,7 +183,7 @@ const PetscScalar PETSC_CUSPARSE_ZERO = 0.0;
 #define THRUSTINTARRAY   thrust::device_vector<PetscInt>
 #define THRUSTARRAY      thrust::device_vector<PetscScalar>
 
-/* A CSR matrix structure */
+/* A CSR matrix nonzero structure */
 struct CsrMatrix {
   PetscInt          num_rows;
   PetscInt          num_cols;
@@ -228,7 +228,6 @@ struct Mat_SeqAIJCUSPARSETriFactors {
   cudaDeviceProp   dev_prop;
   PetscBool        init_dev_prop;
 
-  PetscBool factorizeOnDevice; /* Do factorization on device or not */
 #if PETSC_PKG_CUDA_VERSION_GE(11, 4, 0)
   /* csrilu0/csric0 appeared in cusparse-8.0, but we use it along with cusparseSpSV,
      which first appeared in cusparse-11.5 with cuda-11.3.
@@ -263,7 +262,8 @@ struct Mat_SeqAIJCUSPARSETriFactors {
 
   /* In MatSolveTranspose() for ILU0, we use the two flags to do on-demand solve */
   PetscBool createdTransposeSpSVDescr;    /* Have we created SpSV descriptors for Lt, Ut? */
-  PetscBool updatedTransposeSpSVAnalysis; /* Have we updated SpSV analysis with the latest L, U values? */
+  PetscBool updatedTransposeSpSVAnalysis; /* Have we ever updated (done) SpSV analysis for Lt, Ut */
+  PetscBool updatedSpSVAnalysis;          /* Have we ever updated (done) SpSV Analysis for L, U? */
 
   PetscLogDouble numericFactFlops; /* Estimated FLOPs in ILU0/ICC0 numeric factorization */
 #endif

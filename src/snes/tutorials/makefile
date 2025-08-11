@@ -6,7 +6,7 @@ CLEANFILES       = ex5f90t
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules
 
-ex55: ex55.o ex55k.o
+ex55: ex55k.o
 
 #-------------------------------------------------------------------------
 
@@ -65,7 +65,7 @@ runex19_hypre_cuda:
              fi; \
 	   ${RM} -f ex19_1.tmp
 runex19_hypre_hip:
-	-@${MPIEXEC} -n 2 ${MPIEXEC_TAIL} ./ex19 -dm_vec_type hip -da_refine 3 -snes_monitor_short -ksp_norm_type unpreconditioned -pc_type hypre > ex19_1.tmp 2>&1; \
+	-@${MPIEXEC} -n 2 ${MPIEXEC_TAIL} ./ex19 -dm_vec_type hip -dm_mat_type aijhipsparse -da_refine 3 -snes_monitor_short -ksp_norm_type unpreconditioned -pc_type hypre > ex19_1.tmp 2>&1; \
 	   if (${DIFF} output/ex19_hypre.out ex19_1.tmp) then \
            echo "C/C++ example src/snes/tutorials/ex19 run successfully with HYPRE/HIP"; \
            else \
@@ -128,7 +128,7 @@ runex19_suitesparse:
            fi; \
 	   ${RM} -f ex19_1.tmp
 runex3k_kokkos: ex3k.PETSc
-	-@OMP_PROC_BIND=false ${MPIEXEC} -n 2 ${MPIEXEC_TAIL} ./ex3k -view_initial -dm_vec_type kokkos -dm_mat_type aijkokkos -use_gpu_aware_mpi 0 -snes_monitor > ex3k_1.tmp 2>&1 ;\
+	-@KOKKOS_DISABLE_WARNINGS=1 ${MPIEXEC} -n 2 ${MPIEXEC_TAIL} ./ex3k -view_initial -dm_vec_type kokkos -dm_mat_type aijkokkos -use_gpu_aware_mpi 0 -snes_monitor > ex3k_1.tmp 2>&1 ;\
 	if (${DIFF} output/ex3k_1.out ex3k_1.tmp) then \
           echo "C/C++ example src/snes/tutorials/ex3k run successfully with Kokkos Kernels"; \
         else \

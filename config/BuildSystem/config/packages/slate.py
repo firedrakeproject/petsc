@@ -4,7 +4,7 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    self.version           = '2023.06.00'
+    self.version           = '2025.05.28'
     self.gitcommit         = 'v{0}'.format(self.version)
     self.versionname       = 'PACKAGE_VERSION'
     self.download          = ['git://https://github.com/icl-utk-edu/slate']
@@ -25,11 +25,11 @@ class Configure(config.package.CMakePackage):
     self.cxxlibs    = framework.require('config.packages.cxxlibs',self)
     self.mpi        = framework.require('config.packages.MPI',self)
     self.blasLapack = framework.require('config.packages.BlasLapack',self)
-    self.scalapack  = framework.require('config.packages.scalapack',self)
+    self.scalapack  = framework.require('config.packages.ScaLAPACK',self)
     self.mathlib    = framework.require('config.packages.mathlib',self)
-    self.openmp     = framework.require('config.packages.openmp',self)
-    self.cuda       = framework.require('config.packages.cuda',self)
-    self.hip        = framework.require('config.packages.hip',self)
+    self.openmp     = framework.require('config.packages.OpenMP',self)
+    self.cuda       = framework.require('config.packages.CUDA',self)
+    self.hip        = framework.require('config.packages.HIP',self)
     self.deps       = [self.mpi,self.blasLapack,self.cxxlibs,self.mathlib,self.openmp]
     self.odeps      = [self.cuda,self.hip]
     return

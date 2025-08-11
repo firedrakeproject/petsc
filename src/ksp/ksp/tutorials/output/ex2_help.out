@@ -14,7 +14,7 @@ Options for all PETSc programs:
  -version: prints PETSc version
  -help intro: prints example description and PETSc version, and exits
  -help: prints example description, PETSc version, and available options for used routines
- -on_error_abort: cause an abort when an error is detected. Useful 
+ -on_error_abort: cause an abort when an error is detected. Useful
         only when run in the debugger
  -on_error_attach_debugger [gdb,dbx,xxgdb,ups,noxterm]
        start the debugger in new xterm
@@ -68,13 +68,13 @@ Matrix (Mat) options:
 Options for SEQAIJ matrix:
   -mat_no_unroll: <now FALSE : formerly FALSE> Do not optimize for inodes (slower) (None)
   -mat_no_inode: <now FALSE : formerly FALSE> Do not optimize for inodes -slower- (None)
-  -mat_inode_limit: <now 5 : formerly 5>: Do not use inodes larger then this value (None)
+  -mat_inode_limit: <now 5 : formerly 5>: Do not use inodes larger than this value (None)
   -mat_is_symmetric: Checks if mat is symmetric on MatAssemblyEnd() (MatIsSymmetric)
   -mat_is_symmetric: <now 0. : formerly 0.>: Checks if mat is symmetric on MatAssemblyEnd() (MatIsSymmetric)
   -mat_null_space_test: <now FALSE : formerly FALSE> Checks if provided null space is correct in MatAssemblyEnd() (MatSetNullSpaceTest)
   -mat_error_if_failure: <now FALSE : formerly FALSE> Generate an error if an error occurs when factoring the matrix (MatSetErrorIfFailure)
-  -mat_new_nonzero_location_err: <now FALSE : formerly FALSE> Generate an error if new nonzeros are created in the matrix structure (useful to test preallocation) (MatSetOption)
-  -mat_new_nonzero_allocation_err: <now FALSE : formerly FALSE> Generate an error if new nonzeros are allocated in the matrix structure (useful to test preallocation) (MatSetOption)
+  -mat_new_nonzero_location_err: <now FALSE : formerly FALSE> Generate an error if new nonzeros are created in the matrix nonzero structure (useful to test preallocation) (MatSetOption)
+  -mat_new_nonzero_allocation_err: <now FALSE : formerly FALSE> Generate an error if new nonzeros are allocated in the matrix nonzero structure (useful to test preallocation) (MatSetOption)
   -mat_ignore_zero_entries: <now FALSE : formerly FALSE> For AIJ/IS matrices this will stop zero values from creating a zero location in the matrix (MatSetOption)
   -mat_form_explicit_transpose: <now FALSE : formerly FALSE> Hint to form an explicit transpose for operations like MatMultTranspose (MatSetOption)
   -mat_bind_below: <now 0 : formerly 0>: Set the size threshold (in local rows) below which the Mat is bound to the CPU (MatBindToCPU)
@@ -104,8 +104,10 @@ Preconditioner (PC) options:
 Options for SEQSBAIJ matrix:
   -mat_no_unroll: <now FALSE : formerly FALSE> Do not optimize for inodes (slower) (None)
   -mat_no_inode: <now FALSE : formerly FALSE> Do not optimize for inodes (slower) (None)
-  -mat_inode_limit: <now 5 : formerly 5>: Do not use inodes larger then this value (None)
+  -mat_inode_limit: <now 5 : formerly 5>: Do not use inodes larger than this value (None)
   -pc_factor_mat_ordering_type <now natural : formerly natural>: Reordering to reduce nonzeros in factored matrix (one of) rowlength spectral nd qmd natural rcm 1wd (PCFactorSetMatOrderingType)
+  -pc_factor_mat_factor_on_host: <now FALSE : formerly FALSE> Do mat factorization on host (with device matrix types) (MatGetFactor)
+  -pc_factor_mat_solve_on_host: <now FALSE : formerly FALSE> Do mat solve on host with the factor (with device matrix types) (MatGetFactor)
   -pc_factor_levels: <now 0. : formerly 0.>: levels of fill (PCFactorSetLevels)
 Krylov Method (KSP) options:
   -ksp_type <now gmres : formerly gmres>: Krylov method (one of) fetidp pipefgmres stcg tsirm tcqmr groppcg nash fcg symmlq lcd minres cgs preonly lgmres pipecgrr fbcgs pipeprcg pipecg ibcgs fgmres qcg gcr cgne pipefcg pipecr pipebcgs bcgsl pipecg2 pipelcg gltr cg tfqmr pgmres lsqr pipegcr bicg cgls bcgs cr dgmres none qmrcgs gmres richardson chebyshev fbcgsr (KSPSetType)

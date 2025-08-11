@@ -3,14 +3,23 @@
 #include <petsc/private/dmpleximpl.h>
 #include <petscdmplextransform.h>
 
+PETSC_EXTERN PetscLogEvent DMPLEXTRANSFORM_SetUp;
+PETSC_EXTERN PetscLogEvent DMPLEXTRANSFORM_Apply;
+PETSC_EXTERN PetscLogEvent DMPLEXTRANSFORM_SetConeSizes;
+PETSC_EXTERN PetscLogEvent DMPLEXTRANSFORM_SetCones;
+PETSC_EXTERN PetscLogEvent DMPLEXTRANSFORM_CreateSF;
+PETSC_EXTERN PetscLogEvent DMPLEXTRANSFORM_CreateLabels;
+PETSC_EXTERN PetscLogEvent DMPLEXTRANSFORM_SetCoordinates;
+
 typedef struct _p_DMPlexTransformOps *DMPlexTransformOps;
 struct _p_DMPlexTransformOps {
   PetscErrorCode (*view)(DMPlexTransform, PetscViewer);
-  PetscErrorCode (*setfromoptions)(DMPlexTransform, PetscOptionItems *);
+  PetscErrorCode (*setfromoptions)(DMPlexTransform, PetscOptionItems);
   PetscErrorCode (*setup)(DMPlexTransform);
   PetscErrorCode (*destroy)(DMPlexTransform);
   PetscErrorCode (*setdimensions)(DMPlexTransform, DM, DM);
   PetscErrorCode (*celltransform)(DMPlexTransform, DMPolytopeType, PetscInt, PetscInt *, PetscInt *, DMPolytopeType *[], PetscInt *[], PetscInt *[], PetscInt *[]);
+  PetscErrorCode (*ordersupports)(DMPlexTransform, DM, DM);
   PetscErrorCode (*getsubcellorientation)(DMPlexTransform, DMPolytopeType, PetscInt, PetscInt, DMPolytopeType, PetscInt, PetscInt, PetscInt *, PetscInt *);
   PetscErrorCode (*mapcoordinates)(DMPlexTransform, DMPolytopeType, DMPolytopeType, PetscInt, PetscInt, PetscInt, PetscInt, const PetscScalar[], PetscScalar[]);
 };
@@ -22,7 +31,7 @@ struct _p_DMPlexTransform {
   DM            dm;            /* This is the DM for which the transform has been computed */
   DMLabel       active;        /* If not NULL, indicates points that are participating in the transform */
   DMLabel       trType;        /* If not NULL, this holds the transformation type for each point */
-  PetscInt      setupcalled;   /* Flag to indicate the setup stage */
+  PetscBool     setupcalled;   /* true if setup has been called */
   PetscInt     *ctOrderOld;    /* [i] = ct: An array with original cell types in depth order */
   PetscInt     *ctOrderInvOld; /* [ct] = i: An array with the ordinal numbers for each original cell type */
   PetscInt     *ctStart;       /* [ct]: The number for the first cell of each polytope type in the original mesh */

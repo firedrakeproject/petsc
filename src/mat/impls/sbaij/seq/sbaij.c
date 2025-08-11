@@ -191,7 +191,7 @@ PetscErrorCode MatDestroy_SeqSBAIJ(Mat A)
   PetscCall(ISDestroy(&a->col));
   PetscCall(ISDestroy(&a->icol));
   PetscCall(PetscFree(a->idiag));
-  PetscCall(PetscFree(a->inode.size));
+  PetscCall(PetscFree(a->inode.size_csr));
   if (a->free_imax_ilen) PetscCall(PetscFree2(a->imax, a->ilen));
   PetscCall(PetscFree(a->solve_work));
   PetscCall(PetscFree(a->sor_work));
@@ -253,12 +253,6 @@ static PetscErrorCode MatSetOption_SeqSBAIJ(Mat A, MatOption op, PetscBool flg)
   case MAT_UNUSED_NONZERO_LOCATION_ERR:
     a->nounused = (flg ? -1 : 0);
     break;
-  case MAT_FORCE_DIAGONAL_ENTRIES:
-  case MAT_IGNORE_OFF_PROC_ENTRIES:
-  case MAT_USE_HASH_TABLE:
-  case MAT_SORTED_FULL:
-    PetscCall(PetscInfo(A, "Option %s ignored\n", MatOptions[op]));
-    break;
   case MAT_HERMITIAN:
 #if defined(PETSC_USE_COMPLEX)
     if (flg) { /* disable transpose ops */
@@ -278,14 +272,6 @@ static PetscErrorCode MatSetOption_SeqSBAIJ(Mat A, MatOption op, PetscBool flg)
     }
 #endif
     break;
-    /* These options are handled directly by MatSetOption() */
-  case MAT_STRUCTURALLY_SYMMETRIC:
-  case MAT_SYMMETRY_ETERNAL:
-  case MAT_STRUCTURAL_SYMMETRY_ETERNAL:
-  case MAT_STRUCTURE_ONLY:
-  case MAT_SPD_ETERNAL:
-    /* These options are handled directly by MatSetOption() */
-    break;
   case MAT_IGNORE_LOWER_TRIANGULAR:
     a->ignore_ltriangular = flg;
     break;
@@ -295,10 +281,8 @@ static PetscErrorCode MatSetOption_SeqSBAIJ(Mat A, MatOption op, PetscBool flg)
   case MAT_GETROW_UPPERTRIANGULAR:
     a->getrow_utriangular = flg;
     break;
-  case MAT_SUBMAT_SINGLEIS:
-    break;
   default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "unknown option %d", op);
+    break;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -405,7 +389,7 @@ static PetscErrorCode MatView_SeqSBAIJ_ASCII(Mat A, PetscViewer viewer)
           PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->j[diag[i]], (double)PetscRealPart(1.0 / a->a[diag[i]])));
         }
 #else
-        PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->j[diag[i]], (double)(1.0 / a->a[diag[i]])));
+        PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->j[diag[i]], (double)(1 / a->a[diag[i]])));
 #endif
         /* off-diagonal entries */
         for (k = a->i[i]; k < a->i[i + 1] - 1; k++) {
@@ -1164,7 +1148,7 @@ static PetscErrorCode MatZeroRowsColumns_SeqSBAIJ(Mat A, PetscInt is_n, const Pe
         for (k = 0; k < bs; k++) {
           col = bs * baij->j[j] + k;
           if (col <= i) continue;
-          aa = ((MatScalar *)baij->a) + j * bs2 + (i % bs) + bs * k;
+          aa = baij->a + j * bs2 + (i % bs) + bs * k;
           if (!zeroed[i] && zeroed[col]) bb[i] -= aa[0] * xx[col];
           if (zeroed[i] && !zeroed[col]) bb[col] -= aa[0] * xx[i];
         }
@@ -1180,7 +1164,7 @@ static PetscErrorCode MatZeroRowsColumns_SeqSBAIJ(Mat A, PetscInt is_n, const Pe
         for (k = 0; k < bs; k++) {
           col = bs * baij->j[j] + k;
           if (zeroed[col]) {
-            aa    = ((MatScalar *)baij->a) + j * bs2 + (i % bs) + bs * k;
+            aa    = baij->a + j * bs2 + (i % bs) + bs * k;
             aa[0] = 0.0;
           }
         }
@@ -1197,7 +1181,7 @@ static PetscErrorCode MatZeroRowsColumns_SeqSBAIJ(Mat A, PetscInt is_n, const Pe
   for (i = 0; i < is_n; i++) {
     row   = is_idx[i];
     count = (baij->i[row / bs + 1] - baij->i[row / bs]) * bs;
-    aa    = ((MatScalar *)baij->a) + baij->i[row / bs] * bs2 + (row % bs);
+    aa    = baij->a + baij->i[row / bs] * bs2 + (row % bs);
     for (k = 0; k < count; k++) {
       aa[0] = zero;
       aa += bs;
@@ -1333,52 +1317,52 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSBAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       /* 69*/ MatGetRowMaxAbs_SeqSBAIJ,
-                                       NULL,
+                                       MatGetRowMaxAbs_SeqSBAIJ,
+                                       /* 69*/ NULL,
                                        MatConvert_MPISBAIJ_Basic,
+                                       NULL,
                                        NULL,
                                        NULL,
                                        /* 74*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       /* 79*/ NULL,
-                                       NULL,
-                                       NULL,
                                        MatGetInertia_SeqSBAIJ,
                                        MatLoad_SeqSBAIJ,
-                                       /* 84*/ NULL,
+                                       /* 79*/ NULL,
                                        NULL,
                                        MatIsStructurallySymmetric_SeqSBAIJ,
+                                       NULL,
+                                       NULL,
+                                       /* 84*/ NULL,
+                                       NULL,
+                                       NULL,
                                        NULL,
                                        NULL,
                                        /* 89*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
+                                       MatConjugate_SeqSBAIJ,
                                        /* 94*/ NULL,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /* 99*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       MatConjugate_SeqSBAIJ,
-                                       NULL,
-                                       /*104*/ NULL,
                                        MatRealPart_SeqSBAIJ,
                                        MatImaginaryPart_SeqSBAIJ,
                                        MatGetRowUpperTriangular_SeqSBAIJ,
-                                       MatRestoreRowUpperTriangular_SeqSBAIJ,
+                                       /* 99*/ MatRestoreRowUpperTriangular_SeqSBAIJ,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       /*104*/ MatMissingDiagonal_SeqSBAIJ,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        /*109*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       MatMissingDiagonal_SeqSBAIJ,
+                                       NULL,
                                        /*114*/ NULL,
                                        NULL,
                                        NULL,
@@ -1392,35 +1376,22 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSBAIJ,
                                        /*124*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
+                                       MatSetBlockSizes_Default,
                                        NULL,
                                        /*129*/ NULL,
                                        NULL,
-                                       NULL,
+                                       MatCreateMPIMatConcatenateSeqMat_SeqSBAIJ,
                                        NULL,
                                        NULL,
                                        /*134*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       /*139*/ MatSetBlockSizes_Default,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*144*/ MatCreateMPIMatConcatenateSeqMat_SeqSBAIJ,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*150*/ NULL,
                                        MatEliminateZeros_SeqSBAIJ,
                                        NULL,
+                                       /*139*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL};
+                                       MatCopyHashToXAIJ_Seq_Hash};
 
 static PetscErrorCode MatStoreValues_SeqSBAIJ(Mat mat)
 {
@@ -1471,7 +1442,7 @@ static PetscErrorCode MatSeqSBAIJSetPreallocation_SeqSBAIJ(Mat B, PetscInt bs, P
   }
   if (nz >= 0 || nnz) realalloc = PETSC_TRUE;
 
-  PetscCall(MatSetBlockSize(B, PetscAbs(bs)));
+  PetscCall(MatSetBlockSize(B, bs));
   PetscCall(PetscLayoutSetUp(B->rmap));
   PetscCall(PetscLayoutSetUp(B->cmap));
   PetscCheck(B->rmap->N <= B->cmap->N, PETSC_COMM_SELF, PETSC_ERR_SUP, "SEQSBAIJ matrix cannot have more rows %" PetscInt_FMT " than columns %" PetscInt_FMT, B->rmap->N, B->cmap->N);
@@ -1930,7 +1901,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_SeqSBAIJ(Mat B)
   if (no_unroll) PetscCall(PetscInfo(B, "Not using Inode routines due to -mat_no_unroll\n"));
   PetscCall(PetscOptionsBool("-mat_no_inode", "Do not optimize for inodes (slower)", NULL, no_inode, &no_inode, NULL));
   if (no_inode) PetscCall(PetscInfo(B, "Not using Inode routines due to -mat_no_inode\n"));
-  PetscCall(PetscOptionsInt("-mat_inode_limit", "Do not use inodes larger then this value", NULL, b->inode.limit, &b->inode.limit, NULL));
+  PetscCall(PetscOptionsInt("-mat_inode_limit", "Do not use inodes larger than this value", NULL, b->inode.limit, &b->inode.limit, NULL));
   PetscOptionsEnd();
   b->inode.use = (PetscBool)(!(no_unroll || no_inode));
   if (b->inode.limit > b->inode.max_limit) b->inode.limit = b->inode.max_limit;

@@ -319,7 +319,7 @@ PetscErrorCode PetscViewerSocketOpen(MPI_Comm comm, const char machine[], int po
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscViewerSetFromOptions_Socket(PetscViewer v, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PetscViewerSetFromOptions_Socket(PetscViewer v, PetscOptionItems PetscOptionsObject)
 {
   PetscInt  def = -1;
   char      sdef[256];
@@ -430,7 +430,7 @@ PetscErrorCode PetscViewerSocketSetConnection(PetscViewer v, const char machine[
     if (tflg) {
       PetscInt pport;
       PetscCall(PetscOptionsStringToInt(portn, &pport));
-      port = (int)pport;
+      PetscCall(PetscMPIIntCast(pport, &port));
     } else port = PETSCSOCKETDEFAULTPORT;
   }
   if (!machine) {

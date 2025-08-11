@@ -4349,7 +4349,7 @@ static PetscErrorCode DMConvert_pforest_plex(DM dm, DMType newtype, DM *plex)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSetFromOptions_pforest(DM dm, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode DMSetFromOptions_pforest(DM dm, PetscOptionItems PetscOptionsObject)
 {
   DM_Forest_pforest *pforest = (DM_Forest_pforest *)((DM_Forest *)dm->data)->data;
   char               stringBuffer[256];
@@ -5132,6 +5132,7 @@ static PetscErrorCode DMInitialize_pforest(DM dm)
   dm->ops->createinjection           = DMCreateInjection_pforest;
   dm->ops->setfromoptions            = DMSetFromOptions_pforest;
   dm->ops->createcoordinatedm        = DMCreateCoordinateDM_pforest;
+  dm->ops->createcellcoordinatedm    = NULL;
   dm->ops->createglobalvector        = DMCreateGlobalVector_pforest;
   dm->ops->createlocalvector         = DMCreateLocalVector_pforest;
   dm->ops->creatematrix              = DMCreateMatrix_pforest;

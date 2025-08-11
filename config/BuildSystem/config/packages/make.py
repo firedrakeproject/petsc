@@ -22,11 +22,12 @@ class Configure(config.package.GNUPackage):
     self.printdirflag      = ''
     self.noprintdirflag    = ''
     self.paroutflg         = ''
-    self.haveGNUMake       = 0
+    self.shuffleflg        = ''
     self.publicInstall     = 0  # always install in PETSC_DIR/PETSC_ARCH (not --prefix) since this is not used by users
     self.parallelMake      = 0
     self.skippackagelibincludedirs = 1
     self.executablename    = 'make'
+    self.skipMPIDependency = 1
     return
 
   def setupHelp(self, help):
@@ -88,12 +89,12 @@ class Configure(config.package.GNUPackage):
     if 'with-make-dir' in self.argDB:
       d = self.argDB['with-make-dir']
       self.log.write('Looking in user provided directory '+d+'\n')
-      yield os.path.join(d,'bin','gmake')
       yield os.path.join(d,'bin','make')
+      yield os.path.join(d,'bin','gmake')
       raise RuntimeError('Error! User provided --with-make-dir=%s but %s/bin does not contain GNU make' % (d, d))
 
-    yield 'gmake'
     yield 'make'
+    yield 'gmake'
 
   def configureMake(self):
     '''Check Guesses for GNU make'''
@@ -101,7 +102,7 @@ class Configure(config.package.GNUPackage):
     # Check internal make (found in PATH or specified with --download-make, --with-make-exec, --with-make-dir)
     # Store in self.make
     for gmake in self.generateGMakeGuesses():
-      self.foundversion, self.haveGNUMake, self.haveGNUMake4 = self.checkGNUMake(gmake)
+      self.foundversion, self.haveGNUMake, self.haveGNUMake4, self.haveGNUMake44 = self.checkGNUMake(gmake)
       if self.haveGNUMake:
         self.getExecutable(gmake,getFullPath = 1,resultName = 'make')
         break
@@ -131,9 +132,10 @@ Otherwise try --download-make or install "make" with a package manager.''' % sel
 
   def checkGNUMake(self,make):
     '''Check for GNU make'''
-    foundVersion = None
-    haveGNUMake  = False
-    haveGNUMake4 = False
+    foundVersion  = None
+    haveGNUMake   = False
+    haveGNUMake4  = False
+    haveGNUMake44 = False
     try:
       import re
       # accept gnumake version >= self.minversion only [as older version break with gmakefile]
@@ -145,14 +147,17 @@ Otherwise try --download-make or install "make" with a package manager.''' % sel
         if (major,minor) >= self.versionToTuple(self.minversion): haveGNUMake = True
         if (major > 3): haveGNUMake4 = True
         foundVersion = ".".join([str(major),str(minor)])
+        if (major,minor) >= (4,4): haveGNUMake44 = True
     except RuntimeError as e:
       self.log.write('GNUMake check failed: '+str(e)+'\n')
-    return foundVersion, haveGNUMake, haveGNUMake4
+    return foundVersion, haveGNUMake, haveGNUMake4, haveGNUMake44
 
   def setupGNUMake(self):
     '''Setup other GNU make stuff'''
     if self.haveGNUMake4 and not self.setCompilers.isDarwin(self.log) and not self.setCompilers.isFreeBSD(self.log):
       self.paroutflg = "--output-sync=recurse"
+    if self.haveGNUMake44:
+      self.shuffleflg = "--shuffle"
 
     # Setup make flags
     self.printdirflag = ' --print-directory'
@@ -166,6 +171,7 @@ Otherwise try --download-make or install "make" with a package manager.''' % sel
     self.addMakeMacro('OMAKE', self.make+self.noprintdirflag)
     self.addDefine('OMAKE','"'+self.make+self.noprintdirflag+'"')
     self.addMakeMacro('MAKE_PAR_OUT_FLG', self.paroutflg)
+    self.addMakeMacro('MAKE_SHUFFLE_FLG', self.shuffleflg)
     return
 
   def compute_make_np(self,i):
@@ -191,8 +197,8 @@ Otherwise try --download-make or install "make" with a package manager.''' % sel
     return
 
   def compute_make_load(self,i):
-    f64 = 1.5
-    f99 = 1.1
+    f64 = 1.0
+    f99 = .8
     if (i<=64):   return i*f64
     else:         return 64*f64+(i-64)*f99
     return

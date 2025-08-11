@@ -14,11 +14,11 @@
       ! Settings:
       integer, parameter        :: verbose=0               ! 0: silent, >=1 : increasing amount of debugging output
       integer, parameter        :: msgLen = 30             ! number of reals which is sent with MPI_Isend
-      PetscReal, parameter      :: second=0.1;             ! time is sped up by a factor 10
+      PetscReal, parameter      :: second=0.1             ! time is sped up by a factor 10
 
       ! Codes
       integer, parameter        :: BOY=1, GIRL=2, TEACHER=0
-      PetscMPIInt, parameter    :: tagMsg   = 1200;
+      PetscMPIInt, parameter    :: tagMsg   = 1200
 
       ! Timers
       PetscLogEvent :: Morning,  Afternoon
@@ -44,7 +44,7 @@
       integer4,parameter        :: one=1
 
 !     Initializations
-      PetscCallA( PetscInitialize(ierr))
+      PetscCallA(PetscInitialize(ierr))
       PetscCallMPIA(MPI_Comm_size(PETSC_COMM_WORLD, size,ierr))
       PetscCallMPIA(MPI_Comm_rank(PETSC_COMM_WORLD, rank,ierr))
 
@@ -254,7 +254,7 @@
 !
 ! testset:
 !   args: -log_view ascii:filename.txt
-!   output_file: output/ex3f90.out
+!   output_file: output/empty.out
 !   requires: defined(PETSC_USE_LOG)
 !   test:
 !     suffix: 1
@@ -269,7 +269,7 @@
 ! testset:
 !   suffix: detail
 !   args: -log_view ascii:filename.txt:ascii_info_detail
-!   output_file: output/ex3f90.out
+!   output_file: output/empty.out
 !   requires: defined(PETSC_USE_LOG)
 !   test:
 !     suffix: 1
@@ -284,7 +284,7 @@
 ! testset:
 !   suffix: xml
 !   args: -log_view ascii:filename.xml:ascii_xml
-!   output_file: output/ex3f90.out
+!   output_file: output/empty.out
 !   requires: defined(PETSC_USE_LOG)
 !   test:
 !     suffix: 1

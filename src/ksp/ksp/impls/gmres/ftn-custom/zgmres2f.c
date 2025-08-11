@@ -1,4 +1,4 @@
-#include <petsc/private/fortranimpl.h>
+#include <petsc/private/ftnimpl.h>
 #include <petscksp.h>
 
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
@@ -15,15 +15,8 @@ static struct {
   PetscFortranCallbackId orthog;
 } _cb;
 
-PETSC_EXTERN void kspgmresmodifiedgramschmidtorthogonalization_(KSP *ksp, PetscInt *n, PetscErrorCode *ierr)
-{
-  *ierr = KSPGMRESModifiedGramSchmidtOrthogonalization(*ksp, *n);
-}
-
-PETSC_EXTERN void kspgmresclassicalgramschmidtorthogonalization_(KSP *ksp, PetscInt *n, PetscErrorCode *ierr)
-{
-  *ierr = KSPGMRESClassicalGramSchmidtOrthogonalization(*ksp, *n);
-}
+PETSC_EXTERN void kspgmresmodifiedgramschmidtorthogonalization_(KSP *, PetscInt *, PetscErrorCode *);
+PETSC_EXTERN void kspgmresclassicalgramschmidtorthogonalization_(KSP *, PetscInt *, PetscErrorCode *);
 
 static PetscErrorCode ourorthog(KSP ksp, PetscInt n)
 {

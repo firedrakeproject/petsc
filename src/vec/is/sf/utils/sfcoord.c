@@ -118,7 +118,7 @@ PetscSF Object: 3 MPI processes
 PetscErrorCode PetscSFSetGraphFromCoordinates(PetscSF sf, PetscInt nroots, PetscInt nleaves, PetscInt dim, PetscReal tol, const PetscReal *rootcoords, const PetscReal *leafcoords)
 {
   PetscReal    bbox[6], *bboxes, *target_coords;
-  PetscMPIInt  size, *ranks_needed, num_ranks;
+  PetscMPIInt  size, *ranks_needed, num_ranks, msize;
   PetscInt    *root_sizes, *root_starts;
   PetscSFNode *premote, *lremote;
   PetscSF      psf;
@@ -130,7 +130,8 @@ PetscErrorCode PetscSFSetGraphFromCoordinates(PetscSF sf, PetscInt nroots, Petsc
   PetscCall(GetBoundingBox_Internal(nroots, dim, rootcoords, bbox));
   PetscCallMPI(MPI_Comm_size(comm, &size));
   PetscCall(PetscMalloc1(size * 2 * dim, &bboxes));
-  PetscCallMPI(MPI_Allgather(bbox, (PetscMPIInt)(2 * dim), MPIU_REAL, bboxes, (PetscMPIInt)(2 * dim), MPIU_REAL, comm));
+  PetscCall(PetscMPIIntCast(2 * dim, &msize));
+  PetscCallMPI(MPI_Allgather(bbox, msize, MPIU_REAL, bboxes, msize, MPIU_REAL, comm));
   PetscCall(GetBoundingBox_Internal(nleaves, dim, leafcoords, bbox));
   PetscCall(PetscMalloc1(size, &root_sizes));
   PetscCallMPI(MPI_Allgather(&nroots, 1, MPIU_INT, root_sizes, 1, MPIU_INT, comm));
@@ -155,7 +156,8 @@ PetscErrorCode PetscSFSetGraphFromCoordinates(PetscSF sf, PetscInt nroots, Petsc
   PetscCall(PetscSFCreate(comm, &psf));
   PetscCall(PetscSFSetGraph(psf, nroots, root_starts[num_ranks], NULL, PETSC_USE_POINTER, premote, PETSC_USE_POINTER));
   PetscCall(PetscMalloc1(root_starts[num_ranks] * dim, &target_coords));
-  PetscCallMPI(MPI_Type_contiguous((PetscMPIInt)dim, MPIU_REAL, &unit));
+  PetscCall(PetscMPIIntCast(dim, &msize));
+  PetscCallMPI(MPI_Type_contiguous(msize, MPIU_REAL, &unit));
   PetscCallMPI(MPI_Type_commit(&unit));
   PetscCall(PetscSFBcastBegin(psf, unit, rootcoords, target_coords, MPI_REPLACE));
   PetscCall(PetscSFBcastEnd(psf, unit, rootcoords, target_coords, MPI_REPLACE));
@@ -175,25 +177,29 @@ PetscErrorCode PetscSFSetGraphFromCoordinates(PetscSF sf, PetscInt nroots, Petsc
   PetscCall(PetscFree2(ranks_needed, root_starts));
 
   PetscCall(PetscMalloc1(nleaves, &lremote));
+  PetscKDTree tree;
+  PetscCount *indices;
+  PetscReal  *distances;
+
+  PetscCall(PetscKDTreeCreate(num_targets, dim, target_coords, PETSC_USE_POINTER, PETSC_DETERMINE, &tree));
+  PetscCall(PetscMalloc2(nleaves, &indices, nleaves, &distances));
+  PetscCall(PetscKDTreeQueryPointsNearestNeighbor(tree, nleaves, leafcoords, tol, indices, distances));
   for (PetscInt i = 0; i < nleaves; i++) {
-    for (PetscInt j = 0; j < num_targets; j++) {
-      PetscReal sum = 0;
-      for (PetscInt d = 0; d < dim; d++) sum += PetscSqr(leafcoords[i * dim + d] - target_coords[j * dim + d]);
-      if (sum < tol * tol) {
-        lremote[i] = premote[j];
-        goto matched;
+    if (distances[i] < tol) {
+      lremote[i] = premote[indices[i]];
+    } else {
+      switch (dim) {
+      case 1:
+        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "No target found for leaf coordinate %g", (double)leafcoords[i * dim + 0]);
+      case 2:
+        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "No target found for leaf coordinate (%g, %g)", (double)leafcoords[i * dim + 0], (double)leafcoords[i * dim + 1]);
+      case 3:
+        SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "No target found for leaf coordinate (%g, %g, %g)", (double)leafcoords[i * dim + 0], (double)leafcoords[i * dim + 1], (double)leafcoords[i * dim + 2]);
       }
     }
-    switch (dim) {
-    case 1:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "No target found for leaf coordinate %g", (double)leafcoords[i * dim + 0]);
-    case 2:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "No target found for leaf coordinate (%g, %g)", (double)leafcoords[i * dim + 0], (double)leafcoords[i * dim + 1]);
-    case 3:
-      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "No target found for leaf coordinate (%g, %g, %g)", (double)leafcoords[i * dim + 0], (double)leafcoords[i * dim + 1], (double)leafcoords[i * dim + 2]);
-    }
-  matched:;
   }
+  PetscCall(PetscFree2(indices, distances));
+  PetscCall(PetscKDTreeDestroy(&tree));
   PetscCall(PetscFree(premote));
   PetscCall(PetscFree(target_coords));
   PetscCall(PetscSFSetGraph(sf, nroots, nleaves, NULL, PETSC_USE_POINTER, lremote, PETSC_OWN_POINTER));

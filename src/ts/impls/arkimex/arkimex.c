@@ -1318,7 +1318,7 @@ static PetscErrorCode TSARKIMEXTestMassIdentity(TS ts, PetscBool *id)
     *id = PETSC_TRUE;
   } else {
     *id = PETSC_FALSE;
-    PetscCall(PetscInfo((PetscObject)ts, "IFunction(Udot = random) - IFunction(Udot = 0) is not near Udot, %g, suspect mass matrix implied in IFunction() is not the identity as required\n", (double)norm));
+    PetscCall(PetscInfo(ts, "IFunction(Udot = random) - IFunction(Udot = 0) is not near Udot, %g, suspect mass matrix implied in IFunction() is not the identity as required\n", (double)norm));
   }
   PetscCall(VecDestroy(&Udot));
   PetscCall(VecDestroy(&Y1));
@@ -1821,7 +1821,7 @@ static PetscErrorCode TSARKIMEXRestoreVecs(TS ts, DM dm, Vec *Z, Vec *Ydot)
   DAEs need special handling for algebraic variables when restarting DIRK methods with explicit
   first stage. In particular, we need:
      - to zero the nonlinear function (in case the dual variables are not consistent in the first step)
-     - to modify the preconditioning matrix by calling MatZeroRows with identity on these variables.
+     - to modify the matrix by calling MatZeroRows with identity on these variables.
 */
 static PetscErrorCode TSARKIMEXComputeAlgebraicIS(TS ts, PetscReal time, Vec X, IS *alg_is)
 {
@@ -2066,7 +2066,7 @@ static PetscErrorCode TSAdjointSetUp_ARKIMEX(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TSSetFromOptions_ARKIMEX(TS ts, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TSSetFromOptions_ARKIMEX(TS ts, PetscOptionItems PetscOptionsObject)
 {
   TS_ARKIMEX *ark = (TS_ARKIMEX *)ts->data;
   PetscBool   dirk;
@@ -2214,7 +2214,7 @@ PetscErrorCode TSARKIMEXSetType(TS ts, TSARKIMEXType arktype)
 
   Level: intermediate
 
-.seealso: [](ch_ts), `TSARKIMEXc`
+.seealso: [](ch_ts), `TSARKIMEX`
 @*/
 PetscErrorCode TSARKIMEXGetType(TS ts, TSARKIMEXType *arktype)
 {

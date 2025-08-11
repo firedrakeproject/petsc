@@ -82,7 +82,7 @@ int main(int argc, char **argv)
   /* Calculate any derived values from parameters */
   N = user.mx * user.my;
 
-  /* Let Petsc determine the dimensions of the local vectors */
+  /* Let PETSc determine the dimensions of the local vectors */
   Nx = PETSC_DECIDE;
   Ny = PETSC_DECIDE;
 
@@ -385,7 +385,7 @@ PetscErrorCode FormFunctionGradient(Tao tao, Vec X, PetscReal *fcn, Vec G, void 
 
    Output Parameters:
 .  A    - Hessian matrix
-.  B    - optionally different preconditioning matrix
+.  B    - optionally different matrix used to construct the preconditioner
 
    Notes:
    Due to mesh point reordering with DMs, we must always work

@@ -278,7 +278,7 @@ PetscErrorCode DMPlexGetAdjacency_Internal(DM dm, PetscInt p, PetscBool useCone,
 + adjSize - The maximum size of `adj` if it is non-`NULL`, or `PETSC_DETERMINE`;
             on output the number of adjacent points
 - adj     - Either `NULL` so that the array is allocated, or an existing array with size `adjSize`;
-        on output contains the adjacent points
+            on output contains the adjacent points
 
   Level: advanced
 
@@ -322,7 +322,7 @@ PetscErrorCode DMPlexGetAdjacency(DM dm, PetscInt p, PetscInt *adjSize, PetscInt
 
 .seealso: `DMPLEX`, `PetscSFCreate()`, `DMPlexCreateProcessSF()`
 @*/
-PetscErrorCode DMPlexCreateTwoSidedProcessSF(DM dm, PetscSF sfPoint, PetscSection rootRankSection, IS rootRanks, PetscSection leafRankSection, IS leafRanks, IS *processRanks, PetscSF *sfProcess)
+PetscErrorCode DMPlexCreateTwoSidedProcessSF(DM dm, PetscSF sfPoint, PetscSection rootRankSection, IS rootRanks, PetscSection leafRankSection, IS leafRanks, PeOp IS *processRanks, PeOp PetscSF *sfProcess)
 {
   const PetscSFNode *remotePoints;
   PetscInt          *localPointsNew;
@@ -450,7 +450,7 @@ PetscErrorCode DMPlexDistributeOwnership(DM dm, PetscSection rootSection, IS *ro
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMPlexCreateOverlapLabel - Compute a label indicating what overlap points should be sent to new processes
 
   Collective
@@ -1554,7 +1554,7 @@ PetscErrorCode DMPlexCreatePointSF(DM dm, PetscSF migrationSF, PetscBool ownersh
     PetscCallMPI(MPI_Op_free(&op));
     PetscCallMPI(MPI_Type_free(&datatype));
     for (p = 0; p < nroots; p++) {
-      rootNodes[p].rank  = (PetscMPIInt)rootVote[p].rank;
+      rootNodes[p].rank  = rootVote[p].rank;
       rootNodes[p].index = rootVote[p].index;
     }
     PetscCall(PetscFree(leafVote));
@@ -1690,7 +1690,7 @@ PetscErrorCode DMPlexMigrate(DM dm, PetscSF sf, DM targetDM)
 @*/
 PetscErrorCode DMPlexRemapMigrationSF(PetscSF sfOverlap, PetscSF sfMigration, PetscSF *sfMigrationNew)
 {
-  PetscSFNode       *newRemote, *permRemote;
+  PetscSFNode       *newRemote, *permRemote = NULL;
   const PetscInt    *oldLeaves;
   const PetscSFNode *oldRemote;
   PetscInt           nroots, nleaves, noldleaves;
@@ -1709,7 +1709,7 @@ PetscErrorCode DMPlexRemapMigrationSF(PetscSF sfOverlap, PetscSF sfMigration, Pe
   }
   PetscCall(PetscSFBcastBegin(sfOverlap, MPIU_SF_NODE, oldRemote, newRemote, MPI_REPLACE));
   PetscCall(PetscSFBcastEnd(sfOverlap, MPIU_SF_NODE, oldRemote, newRemote, MPI_REPLACE));
-  if (oldLeaves) PetscCall(PetscFree(oldRemote));
+  PetscCall(PetscFree(permRemote));
   PetscCall(PetscSFCreate(PetscObjectComm((PetscObject)sfOverlap), sfMigrationNew));
   PetscCall(PetscSFSetGraph(*sfMigrationNew, nroots, nleaves, NULL, PETSC_OWN_POINTER, newRemote, PETSC_OWN_POINTER));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1738,7 +1738,7 @@ PetscErrorCode DMPlexRemapMigrationSF(PetscSF sfOverlap, PetscSF sfMigration, Pe
 
 .seealso: `DMPLEX`, `DM`, `DMPlexCreate()`, `DMSetAdjacency()`, `DMPlexGetOverlap()`
 @*/
-PetscErrorCode DMPlexDistribute(DM dm, PetscInt overlap, PetscSF *sf, DM *dmParallel)
+PetscErrorCode DMPlexDistribute(DM dm, PetscInt overlap, PeOp PetscSF *sf, DM *dmParallel)
 {
   MPI_Comm         comm;
   PetscPartitioner partitioner;
@@ -1863,6 +1863,13 @@ PetscErrorCode DMPlexDistribute(DM dm, PetscInt overlap, PetscSF *sf, DM *dmPara
   PetscCall(DMPlexCopy_Internal(dm, PETSC_TRUE, PETSC_FALSE, *dmParallel));
   // Create sfNatural, need discretization information
   PetscCall(DMCopyDisc(dm, *dmParallel));
+  if (dm->localSection) {
+    PetscSection psection;
+    PetscCall(PetscSectionCreate(PetscObjectComm((PetscObject)dm), &psection));
+    PetscCall(PetscSFDistributeSection(sfMigration, dm->localSection, NULL, psection));
+    PetscCall(DMSetLocalSection(*dmParallel, psection));
+    PetscCall(PetscSectionDestroy(&psection));
+  }
   if (dm->useNatural) {
     PetscSection section;
 
@@ -2028,7 +2035,7 @@ PetscErrorCode DMPlexDistributeOverlap_Internal(DM dm, PetscInt overlap, MPI_Com
 
 .seealso: `DMPLEX`, `PetscSF`, `DM`, `DMPlexCreate()`, `DMSetAdjacency()`, `DMPlexDistribute()`, `DMPlexCreateOverlapLabel()`, `DMPlexGetOverlap()`
 @*/
-PetscErrorCode DMPlexDistributeOverlap(DM dm, PetscInt overlap, PetscSF *sf, DM *dmOverlap)
+PetscErrorCode DMPlexDistributeOverlap(DM dm, PetscInt overlap, PeOp PetscSF *sf, DM *dmOverlap)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
@@ -2181,7 +2188,7 @@ PetscErrorCode DMPlexDistributeGetDefault(DM dm, PetscBool *dist)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMPlexGetGatherDM - Get a copy of the `DMPLEX` that gathers all points on the
   root process of the original's communicator.
 
@@ -2198,7 +2205,7 @@ PetscErrorCode DMPlexDistributeGetDefault(DM dm, PetscBool *dist)
 
 .seealso: `DMPLEX`, `DM`, `PetscSF`, `DMPlexDistribute()`, `DMPlexGetRedundantDM()`
 @*/
-PetscErrorCode DMPlexGetGatherDM(DM dm, PetscSF *sf, DM *gatherMesh)
+PetscErrorCode DMPlexGetGatherDM(DM dm, PetscSF *sf, PeOp DM *gatherMesh)
 {
   MPI_Comm         comm;
   PetscMPIInt      size;
@@ -2225,7 +2232,7 @@ PetscErrorCode DMPlexGetGatherDM(DM dm, PetscSF *sf, DM *gatherMesh)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*@C
+/*@
   DMPlexGetRedundantDM - Get a copy of the `DMPLEX` that is completely copied on each process.
 
   Collective
@@ -2241,7 +2248,7 @@ PetscErrorCode DMPlexGetGatherDM(DM dm, PetscSF *sf, DM *gatherMesh)
 
 .seealso: `DMPLEX`, `DMPlexDistribute()`, `DMPlexGetGatherDM()`
 @*/
-PetscErrorCode DMPlexGetRedundantDM(DM dm, PetscSF *sf, DM *redundantMesh)
+PetscErrorCode DMPlexGetRedundantDM(DM dm, PetscSF *sf, PeOp DM *redundantMesh)
 {
   MPI_Comm     comm;
   PetscMPIInt  size, rank;

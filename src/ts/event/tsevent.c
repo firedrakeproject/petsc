@@ -95,27 +95,27 @@ PetscErrorCode TSEventDestroy(TSEvent *event)
   the originally planned trajectory, and is assumed by default.
 
   To describe the way `PETSC_DECIDE` affects the post-event steps, consider a trajectory of time points t1 -> t2 -> t3 -> t4.
-  Suppose the TS has reached and calculated the solution at point t3, and has planned the next move: t3 -> t4.
+  Suppose the `TS` has reached and calculated the solution at point t3, and has planned the next move: t3 -> t4.
   At this moment, an event between t2 and t3 is detected, and after a few iterations it is resolved at point `te`, t2 < te < t3.
   After event `te`, two post-event steps can be specified: the first one dt1 (`TSSetPostEventStep()`),
   and the second one dt2 (`TSSetPostEventSecondStep()`). Both post-event steps can be either `PETSC_DECIDE`, or a number.
   Four different combinations are possible\:
 
-  1. dt1 = `PETSC_DECIDE`, dt2 = `PETSC_DECIDE`. Then, after `te` TS goes to t3, and then to t4. This is the all-default behaviour.
+  1. dt1 = `PETSC_DECIDE`, dt2 = `PETSC_DECIDE`. Then, after `te` `TS` goes to t3, and then to t4. This is the all-default behaviour.
 
-  2. dt1 = `PETSC_DECIDE`, dt2 = x2 (numerical). Then, after `te` TS goes to t3, and then to t3+x2.
+  2. dt1 = `PETSC_DECIDE`, dt2 = x2 (numerical). Then, after `te` `TS` goes to t3, and then to t3+x2.
 
-  3. dt1 = x1 (numerical), dt2 = x2 (numerical). Then, after `te` TS goes to te+x1, and then to te+x1+x2.
+  3. dt1 = x1 (numerical), dt2 = x2 (numerical). Then, after `te` `TS` goes to te+x1, and then to te+x1+x2.
 
-  4. dt1 = x1 (numerical), dt2 = `PETSC_DECIDE`. Then, after `te` TS goes to te+x1, and event handler does not interfere to the subsequent steps.
+  4. dt1 = x1 (numerical), dt2 = `PETSC_DECIDE`. Then, after `te` `TS` goes to te+x1, and event handler does not interfere to the subsequent steps.
 
   In the special case when `te` == t3 with a good precision, the post-event step te -> t3 is not performed, so behaviour of (1) and (2) becomes\:
 
-  1a. After `te` TS goes to t4, and event handler does not interfere to the subsequent steps.
+  1a. After `te` `TS` goes to t4, and event handler does not interfere to the subsequent steps.
 
-  2a. After `te` TS goes to t4, and then to t4+x2.
+  2a. After `te` `TS` goes to t4, and then to t4+x2.
 
-  Warning! When the second post-event step (either PETSC_DECIDE or a numerical value) is managed by the event handler, i.e. in cases 1, 2, 3 and 2a,
+  Warning! When the second post-event step (either `PETSC_DECIDE` or a numerical value) is managed by the event handler, i.e. in cases 1, 2, 3 and 2a,
   `TSAdapt` will never analyse (and never do a reasonable rejection of) the first post-event step. The first post-event step will always be accepted.
   In this situation, it is the user's responsibility to make sure the step size is appropriate!
   In cases 4 and 1a, however, `TSAdapt` will analyse the first post-event step, and is allowed to reject it.
@@ -166,27 +166,27 @@ PetscErrorCode TSSetPostEventStep(TS ts, PetscReal dt1)
   This function accepts either a numerical value for `dt2`, or `PETSC_DECIDE` (default).
 
   To describe the way `PETSC_DECIDE` affects the post-event steps, consider a trajectory of time points t1 -> t2 -> t3 -> t4.
-  Suppose the TS has reached and calculated the solution at point t3, and has planned the next move: t3 -> t4.
+  Suppose the `TS` has reached and calculated the solution at point t3, and has planned the next move: t3 -> t4.
   At this moment, an event between t2 and t3 is detected, and after a few iterations it is resolved at point `te`, t2 < te < t3.
   After event `te`, two post-event steps can be specified: the first one dt1 (`TSSetPostEventStep()`),
   and the second one dt2 (`TSSetPostEventSecondStep()`). Both post-event steps can be either `PETSC_DECIDE`, or a number.
   Four different combinations are possible\:
 
-  1. dt1 = `PETSC_DECIDE`, dt2 = `PETSC_DECIDE`. Then, after `te` TS goes to t3, and then to t4. This is the all-default behaviour.
+  1. dt1 = `PETSC_DECIDE`, dt2 = `PETSC_DECIDE`. Then, after `te` `TS` goes to t3, and then to t4. This is the all-default behaviour.
 
-  2. dt1 = `PETSC_DECIDE`, dt2 = x2 (numerical). Then, after `te` TS goes to t3, and then to t3+x2.
+  2. dt1 = `PETSC_DECIDE`, dt2 = x2 (numerical). Then, after `te` `TS` goes to t3, and then to t3+x2.
 
-  3. dt1 = x1 (numerical), dt2 = x2 (numerical). Then, after `te` TS goes to te+x1, and then to te+x1+x2.
+  3. dt1 = x1 (numerical), dt2 = x2 (numerical). Then, after `te` `TS` goes to te+x1, and then to te+x1+x2.
 
-  4. dt1 = x1 (numerical), dt2 = `PETSC_DECIDE`. Then, after `te` TS goes to te+x1, and event handler does not interfere to the subsequent steps.
+  4. dt1 = x1 (numerical), dt2 = `PETSC_DECIDE`. Then, after `te` `TS` goes to te+x1, and event handler does not interfere to the subsequent steps.
 
   In the special case when `te` == t3 with a good precision, the post-event step te -> t3 is not performed, so behaviour of (1) and (2) becomes\:
 
-  1a. After `te` TS goes to t4, and event handler does not interfere to the subsequent steps.
+  1a. After `te` `TS` goes to t4, and event handler does not interfere to the subsequent steps.
 
-  2a. After `te` TS goes to t4, and then to t4+x2.
+  2a. After `te` `TS` goes to t4, and then to t4+x2.
 
-  Warning! When the second post-event step (either PETSC_DECIDE or a numerical value) is managed by the event handler, i.e. in cases 1, 2, 3 and 2a,
+  Warning! When the second post-event step (either `PETSC_DECIDE` or a numerical value) is managed by the event handler, i.e. in cases 1, 2, 3 and 2a,
   `TSAdapt` will never analyse (and never do a reasonable rejection of) the first post-event step. The first post-event step will always be accepted.
   In this situation, it is the user's responsibility to make sure the step size is appropriate!
   In cases 4 and 1a, however, `TSAdapt` will analyse the first post-event step, and is allowed to reject it.
@@ -597,10 +597,10 @@ static inline PetscInt TSEventTestBracket(PetscInt fsign_left, PetscInt fsign, P
 }
 
 /*
-  Caps the time steps, accounting for time span points.
-  It uses 'event->timestep_cache' as a time step to calculate the tolerance for tspan points detection. This
+  Caps the time steps, accounting for evaluation time points.
+  It uses 'event->timestep_cache' as a time step to calculate the tolerance for eval_times points detection. This
   is done since the event resolution may result in significant time step refinement, and we don't use these small steps for tolerances.
-  To enhance the consistency of tspan points detection, tolerance 'tspan->worktol' is reused later in the TSSolve iteration.
+  To enhance the consistency of eval_times points detection, tolerance 'eval_times->worktol' is reused later in the TSSolve iteration.
   If a user-defined step is cut by this function, the input uncut step is saved to adapt->dt_span_cached.
   Flag 'user_dt' indicates if the step was defined by user.
 */
@@ -608,22 +608,22 @@ static inline PetscReal TSEvent_dt_cap(TS ts, PetscReal t, PetscReal dt, PetscBo
 {
   PetscReal res = dt;
   if (ts->exact_final_time == TS_EXACTFINALTIME_MATCHSTEP) {
-    PetscReal maxdt    = ts->max_time - t; // this may be overridden by tspan
+    PetscReal maxdt    = ts->max_time - t; // this may be overridden by eval_times
     PetscBool cut_made = PETSC_FALSE;
     PetscReal eps      = 10 * PETSC_MACHINE_EPSILON;
-    if (ts->tspan) {
-      PetscInt   ctr = ts->tspan->spanctr;
-      PetscInt   Ns  = ts->tspan->num_span_times;
-      PetscReal *st  = ts->tspan->span_times;
+    if (ts->eval_times) {
+      PetscInt   idx = ts->eval_times->time_point_idx;
+      PetscInt   Ns  = ts->eval_times->num_time_points;
+      PetscReal *st  = ts->eval_times->time_points;
 
-      if (ts->tspan->worktol == 0) ts->tspan->worktol = ts->tspan->reltol * ts->event->timestep_cache + ts->tspan->abstol; // in case TSAdaptChoose() has not defined it
-      if (ctr < Ns && PetscIsCloseAtTol(t, st[ctr], ts->tspan->worktol, 0)) {                                              // just hit a time span point
-        if (ctr + 1 < Ns) maxdt = st[ctr + 1] - t;                                                                         // ok to use the next time span point
-        else maxdt = ts->max_time - t;                                                                                     // can't use the next time span point: they have finished
-      } else if (ctr < Ns) maxdt = st[ctr] - t;                                                                            // haven't hit a time span point, use the nearest one
+      if (ts->eval_times->worktol == 0) ts->eval_times->worktol = ts->eval_times->reltol * ts->event->timestep_cache + ts->eval_times->abstol; // in case TSAdaptChoose() has not defined it
+      if (idx < Ns && PetscIsCloseAtTol(t, st[idx], ts->eval_times->worktol, 0)) {                                                             // just hit a evaluation time point
+        if (idx + 1 < Ns) maxdt = st[idx + 1] - t;                                                                                             // ok to use the next evaluation time point
+        else maxdt = ts->max_time - t;                                                                                                         // can't use the next evaluation time point: they have finished
+      } else if (idx < Ns) maxdt = st[idx] - t;                                                                                                // haven't hit a evaluation time point, use the nearest one
     }
     maxdt = PetscMin(maxdt, ts->max_time - t);
-    PetscCheck((maxdt > eps) || (PetscAbsReal(maxdt) <= eps && PetscIsCloseAtTol(t, ts->max_time, eps, 0)), PetscObjectComm((PetscObject)ts), PETSC_ERR_PLIB, "Unexpected state: bad maxdt in TSEvent_dt_cap()");
+    PetscCheck((maxdt > eps) || (PetscAbsReal(maxdt) <= eps && PetscIsCloseAtTol(t, ts->max_time, eps, 0)), PetscObjectComm((PetscObject)ts), PETSC_ERR_PLIB, "Unexpected state: bad maxdt (%g) in TSEvent_dt_cap()", (double)maxdt);
 
     if (PetscIsCloseAtTol(dt, maxdt, eps, 0)) res = maxdt; // no cut
     else {
@@ -633,8 +633,8 @@ static inline PetscReal TSEvent_dt_cap(TS ts, PetscReal t, PetscReal dt, PetscBo
       } else res = dt; // no cut
     }
     if (ts->adapt && user_dt) { // only update dt_span_cached for the user-defined step
-      if (cut_made) ts->adapt->dt_span_cached = dt;
-      else ts->adapt->dt_span_cached = 0;
+      if (cut_made) ts->adapt->dt_eval_times_cached = dt;
+      else ts->adapt->dt_eval_times_cached = 0;
     }
   }
   return res;

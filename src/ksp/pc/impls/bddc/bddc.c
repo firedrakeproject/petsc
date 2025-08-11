@@ -35,7 +35,7 @@ const char *const PCBDDCInterfaceExtTypes[] = {"DIRICHLET", "LUMP", "PCBDDCInter
 
 static PetscErrorCode PCApply_BDDC(PC, Vec, Vec);
 
-static PetscErrorCode PCSetFromOptions_BDDC(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_BDDC(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_BDDC  *pcbddc = (PC_BDDC *)pc->data;
   PetscInt  nt, i;
@@ -218,15 +218,15 @@ static PetscErrorCode PCView_BDDC(PC pc, PetscViewer viewer)
     PetscCall(PetscViewerASCIIPrintf(viewer, "********************************** STATISTICS AT LEVEL %" PetscInt_FMT " **********************************\n", pcbddc->current_level));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Global dofs sizes: all %" PetscInt_FMT " interface %" PetscInt_FMT " coarse %" PetscInt_FMT "\n", pc->pmat->rmap->N, (PetscInt)PetscRealPart(interface_size), pcbddc->coarse_size));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Coarsening ratios: all/coarse %" PetscInt_FMT " interface/coarse %" PetscInt_FMT "\n", (PetscInt)ratio1, (PetscInt)ratio2));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  Active processes : %" PetscInt_FMT "\n", (PetscInt)gsum[0]));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  Total subdomains : %" PetscInt_FMT "\n", (PetscInt)gsum[5]));
-    if (pcbddc->benign_have_null) PetscCall(PetscViewerASCIIPrintf(viewer, "  Benign subs      : %" PetscInt_FMT "\n", (PetscInt)totbenign));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  Active processes : %" PetscInt64_FMT "\n", gsum[0]));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  Total subdomains : %" PetscInt64_FMT "\n", gsum[5]));
+    if (pcbddc->benign_have_null) PetscCall(PetscViewerASCIIPrintf(viewer, "  Benign subs      : %" PetscInt64_FMT "\n", totbenign));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Dofs type        :\tMIN\tMAX\tMEAN\n"));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  Interior  dofs   :\t%" PetscInt_FMT "\t%" PetscInt_FMT "\t%" PetscInt_FMT "\n", (PetscInt)gmin[1], (PetscInt)gmax[1], (PetscInt)(gsum[1] / gsum[0])));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  Interface dofs   :\t%" PetscInt_FMT "\t%" PetscInt_FMT "\t%" PetscInt_FMT "\n", (PetscInt)gmin[2], (PetscInt)gmax[2], (PetscInt)(gsum[2] / gsum[0])));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  Primal    dofs   :\t%" PetscInt_FMT "\t%" PetscInt_FMT "\t%" PetscInt_FMT "\n", (PetscInt)gmin[3], (PetscInt)gmax[3], (PetscInt)(gsum[3] / gsum[0])));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  Local     dofs   :\t%" PetscInt_FMT "\t%" PetscInt_FMT "\t%" PetscInt_FMT "\n", (PetscInt)gmin[4], (PetscInt)gmax[4], (PetscInt)(gsum[4] / gsum[0])));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  Local     subs   :\t%" PetscInt_FMT "\t%" PetscInt_FMT "\n", (PetscInt)gmin[5], (PetscInt)gmax[5]));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  Interior  dofs   :\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\n", gmin[1], gmax[1], gsum[1] / gsum[0]));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  Interface dofs   :\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\n", gmin[2], gmax[2], gsum[2] / gsum[0]));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  Primal    dofs   :\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\n", gmin[3], gmax[3], gsum[3] / gsum[0]));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  Local     dofs   :\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\n", gmin[4], gmax[4], gsum[4] / gsum[0]));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  Local     subs   :\t%" PetscInt64_FMT "\t%" PetscInt64_FMT "\n", gmin[5], gmax[5]));
     PetscCall(PetscViewerFlush(viewer));
 
     PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)pc), &rank));
@@ -349,14 +349,14 @@ static PetscErrorCode PCBDDCSetDivergenceMat_BDDC(PC pc, Mat divudotp, PetscBool
 . divudotp - the matrix (must be of type `MATIS`)
 . trans    - if `PETSC_FALSE` (resp. `PETSC_TRUE`), then pressures are in the test (trial) space and velocities are in the trial (test) space.
 - vl2l     - optional index set describing the local (wrt the local matrix in `divudotp`) to local (wrt the local matrix
-   in the preconditioning matrix) map for the velocities
+             in the matrix used to construct the preconditioner) map for the velocities
 
   Level: advanced
 
   Notes:
   This auxiliary matrix is used to compute quadrature weights representing the net-flux across subdomain boundaries
 
-  If `vl2l` is `NULL`, the local ordering for velocities in `divudotp` should match that of the preconditioning matrix
+  If `vl2l` is `NULL`, the local ordering for velocities in `divudotp` should match that of the matrix used to construct the preconditioner
 
 .seealso: [](ch_ksp), `PCBDDC`, `PCBDDCSetDiscreteGradient()`
 @*/
@@ -976,7 +976,7 @@ static PetscErrorCode PCBDDCGetNeumannBoundariesLocal_BDDC(PC pc, IS *NeumannBou
   or a global-to-local map of the global `IS` (if provided with `PCBDDCSetNeumannBoundaries()`).
   In the latter case, the `IS` will be available after `PCSetUp()`.
 
-.seealso: [](ch_ksp), `PCBDDC`, `PCBDDCSetNeumannBoundaries()`, `PCBDDCSetNeumannBoundariesLocal)`, `PCBDDCGetNeumannBoundaries()`
+.seealso: [](ch_ksp), `PCBDDC`, `PCBDDCSetNeumannBoundaries()`, `PCBDDCSetNeumannBoundariesLocal()`, `PCBDDCGetNeumannBoundaries()`
 @*/
 PetscErrorCode PCBDDCGetNeumannBoundariesLocal(PC pc, IS *NeumannBoundaries)
 {
@@ -1054,7 +1054,7 @@ static PetscErrorCode PCBDDCSetLocalAdjacencyGraph_BDDC(PC pc, PetscInt nvtxs, c
 @*/
 PetscErrorCode PCBDDCSetLocalAdjacencyGraph(PC pc, PetscInt nvtxs, const PetscInt xadj[], const PetscInt adjncy[], PetscCopyMode copymode)
 {
-  void (*f)(void) = NULL;
+  PetscBool f = PETSC_FALSE;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
@@ -1064,7 +1064,7 @@ PetscErrorCode PCBDDCSetLocalAdjacencyGraph(PC pc, PetscInt nvtxs, const PetscIn
   }
   PetscTryMethod(pc, "PCBDDCSetLocalAdjacencyGraph_C", (PC, PetscInt, const PetscInt[], const PetscInt[], PetscCopyMode), (pc, nvtxs, xadj, adjncy, copymode));
   /* free arrays if PCBDDC is not the PC type */
-  PetscCall(PetscObjectQueryFunction((PetscObject)pc, "PCBDDCSetLocalAdjacencyGraph_C", &f));
+  PetscCall(PetscObjectHasFunction((PetscObject)pc, "PCBDDCSetLocalAdjacencyGraph_C", &f));
   if (!f && copymode == PETSC_OWN_POINTER) {
     PetscCall(PetscFree(xadj));
     PetscCall(PetscFree(adjncy));
@@ -1422,7 +1422,7 @@ static PetscErrorCode PCSetUp_BDDC(PC pc)
   PetscCall(PetscObjectTypeCompare((PetscObject)pc->pmat, MATIS, &ismatis));
   PetscCheck(ismatis, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_WRONG, "PCBDDC preconditioner requires matrix of type MATIS");
   PetscCall(MatGetSize(pc->pmat, &nrows, &ncols));
-  PetscCheck(nrows == ncols, PetscObjectComm((PetscObject)pc), PETSC_ERR_SUP, "PCBDDC preconditioner requires a square preconditioning matrix");
+  PetscCheck(nrows == ncols, PetscObjectComm((PetscObject)pc), PETSC_ERR_SUP, "PCBDDC preconditioner requires a square matrix for constructing the preconditioner");
   PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)pc), &size));
 
   matis = (Mat_IS *)pc->pmat->data;
@@ -1484,7 +1484,7 @@ static PetscErrorCode PCSetUp_BDDC(PC pc)
 
   /*
      Compute change of basis on local pressures (aka zerodiag dofs) with the benign trick
-     This should come earlier then PCISSetUp for extracting the correct subdomain matrices
+     This should come earlier than PCISSetUp for extracting the correct subdomain matrices
   */
   PetscCall(PCBDDCBenignShellMat(pc, PETSC_TRUE));
   if (pcbddc->benign_saddle_point) {
@@ -2194,8 +2194,12 @@ static PetscErrorCode PCBDDCMatFETIDPGetRHS_BDDC(Mat fetidp_mat, Vec standard_rh
   PetscCall(VecScatterEnd(mat_ctx->l2g_lambda, mat_ctx->lambda_local, fetidp_flux_rhs, ADD_VALUES, SCATTER_FORWARD));
   /* Add contribution to interface pressures */
   if (mat_ctx->l2g_p) {
+    PetscCall(VecISSet(pcis->vec1_B, mat_ctx->lP_B, 0));
     PetscCall(MatMult(mat_ctx->B_BB, pcis->vec1_B, mat_ctx->vP));
-    if (pcbddc->switch_static) PetscCall(MatMultAdd(mat_ctx->B_BI, pcis->vec1_D, mat_ctx->vP, mat_ctx->vP));
+    if (pcbddc->switch_static) {
+      PetscCall(VecISSet(pcis->vec1_D, mat_ctx->lP_I, 0));
+      PetscCall(MatMultAdd(mat_ctx->B_BI, pcis->vec1_D, mat_ctx->vP, mat_ctx->vP));
+    }
     PetscCall(VecScatterBegin(mat_ctx->l2g_p, mat_ctx->vP, fetidp_flux_rhs, ADD_VALUES, SCATTER_FORWARD));
     PetscCall(VecScatterEnd(mat_ctx->l2g_p, mat_ctx->vP, fetidp_flux_rhs, ADD_VALUES, SCATTER_FORWARD));
   }
@@ -2419,6 +2423,22 @@ PetscErrorCode PCBDDCMatFETIDPGetSolution(Mat fetidp_mat, Vec fetidp_flux_sol, V
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode MatISSubMatrixEmbedLocalIS(Mat A, IS oldis, IS *newis)
+{
+  Mat_IS                *matis = (Mat_IS *)A->data;
+  ISLocalToGlobalMapping ltog;
+  IS                     is;
+
+  PetscFunctionBegin;
+  PetscCheck(matis->getsub_ris, PetscObjectComm((PetscObject)A), PETSC_ERR_PLIB, "Missing getsub IS");
+  PetscCall(ISLocalToGlobalMappingCreateIS(matis->getsub_ris, &ltog));
+  PetscCall(ISGlobalToLocalMappingApplyIS(ltog, IS_GTOLM_DROP, oldis, &is));
+  PetscCall(ISOnComm(is, PetscObjectComm((PetscObject)A), PETSC_COPY_VALUES, newis));
+  PetscCall(ISLocalToGlobalMappingDestroy(&ltog));
+  PetscCall(ISDestroy(&is));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PCBDDCCreateFETIDPOperators_BDDC(PC pc, PetscBool fully_redundant, const char *prefix, Mat *fetidp_mat, PC *fetidp_pc)
 {
   FETIDPMat_ctx fetidpmat_ctx;
@@ -2540,6 +2560,7 @@ static PetscErrorCode PCBDDCCreateFETIDPOperators_BDDC(PC pc, PetscBool fully_re
       /* Olof's idea: interface Schur complement preconditioner for the mass matrix */
       PetscCall(KSPGetPC(ksps[1], &ppc));
       if (fake) {
+        PC_BDDC       *pcbddc = (PC_BDDC *)fetidpmat_ctx->pc->data;
         BDDCIPC_ctx    bddcipc_ctx;
         PetscContainer c;
 
@@ -2550,6 +2571,35 @@ static PetscErrorCode PCBDDCCreateFETIDPOperators_BDDC(PC pc, PetscBool fully_re
         PetscCall(PCCreate(comm, &bddcipc_ctx->bddc));
         PetscCall(PCSetType(bddcipc_ctx->bddc, PCBDDC));
         PetscCall(PCSetOperators(bddcipc_ctx->bddc, M, M));
+        PetscCall(PetscObjectTypeCompare((PetscObject)M, MATIS, &ismatis));
+        PetscCheck(ismatis, comm, PETSC_ERR_PLIB, "Matrix type %s not of type MATIS", ((PetscObject)M)->type_name);
+        /* the inner bddc for FETI-DP is already setup, we have local info available */
+        if (pcbddc->user_primal_vertices_local || pcbddc->n_ISForDofsLocal > 2) {
+          if (pcbddc->user_primal_vertices_local) {
+            IS primals;
+
+            PetscCall(MatISSubMatrixEmbedLocalIS(M, pcbddc->user_primal_vertices_local, &primals));
+            PetscCall(PCBDDCSetPrimalVerticesLocalIS(bddcipc_ctx->bddc, primals));
+            PetscCall(ISDestroy(&primals));
+          }
+          if (pcbddc->n_ISForDofsLocal > 2) { /* no need to propagate info if nfields < 3 */
+            IS      *split;
+            PetscInt i, nf;
+
+            PetscCall(PetscCalloc1(pcbddc->n_ISForDofsLocal, &split));
+            for (i = 0, nf = 0; i < pcbddc->n_ISForDofsLocal; i++) {
+              PetscInt ns;
+
+              PetscCall(MatISSubMatrixEmbedLocalIS(M, pcbddc->ISForDofsLocal[i], &split[nf]));
+              PetscCall(ISGetSize(split[nf], &ns));
+              if (!ns) PetscCall(ISDestroy(&split[nf]));
+              else nf++;
+            }
+            PetscCall(PCBDDCSetDofsSplittingLocal(bddcipc_ctx->bddc, nf, split));
+            for (i = 0; i < nf; i++) PetscCall(ISDestroy(&split[i]));
+            PetscCall(PetscFree(split));
+          }
+        }
         PetscCall(PetscObjectQuery((PetscObject)pc, "__KSPFETIDP_pCSR", (PetscObject *)&c));
         PetscCall(PetscObjectTypeCompare((PetscObject)M, MATIS, &ismatis));
         if (c && ismatis) {
@@ -2685,7 +2735,7 @@ PetscErrorCode PCBDDCCreateFETIDPOperators(PC pc, PetscBool fully_redundant, con
 
    Requires `MATIS` matrices (Pmat) with local matrices (inside the `MATIS`) of type `MATSEQAIJ`, `MATSEQBAIJ` or `MATSEQSBAIJ`
 
-   It also works with unsymmetric and indefinite problems.
+   Works with unsymmetric and indefinite problems.
 
    Unlike 'conventional' interface preconditioners, `PCBDDC` iterates over all degrees of freedom, not just those on the interface. This allows the use
    of approximate solvers on the subdomains.
@@ -2693,7 +2743,7 @@ PetscErrorCode PCBDDCCreateFETIDPOperators(PC pc, PetscBool fully_redundant, con
    Approximate local solvers are automatically adapted (see {cite}`dohrmann2007approximate`,) if the user has attached a nullspace object to the subdomain matrices, and informed
    `PCBDDC` of using approximate solvers (via the command line).
 
-   Boundary nodes are split in vertices, edges and faces classes using information from the local to global mapping of dofs and the local connectivity graph of nodes.
+   Boundary nodes are split into vertices, edges and faces classes using information from the local to global mapping of dofs and the local connectivity graph of nodes.
    The latter can be customized by using `PCBDDCSetLocalAdjacencyGraph()`
 
    Additional information on dofs can be provided by using `PCBDDCSetDofsSplitting()`, `PCBDDCSetDirichletBoundaries()`, `PCBDDCSetNeumannBoundaries()`, and

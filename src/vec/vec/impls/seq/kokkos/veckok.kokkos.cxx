@@ -11,58 +11,34 @@
 #include <KokkosBlas.hpp>
 #include <Kokkos_Functional.hpp>
 
-#include <petscerror.h>
 #include <../src/vec/vec/impls/dvecimpl.h> /* for VecCreate_Seq_Private */
 #include <../src/vec/vec/impls/seq/kokkos/veckokkosimpl.hpp>
-
-// Sync a Kokkos::DualView<Type *> to <MemorySpace> in execution space <exec>
-// If <MemorySpace> is HostSpace, fence the exec so that the data on host is immediately available.
-template <class MemorySpace, typename Type>
-static PetscErrorCode KokkosDualViewSync(Kokkos::DualView<Type *> &v_dual, const Kokkos::DefaultExecutionSpace &exec)
-{
-  size_t bytes = v_dual.extent(0) * sizeof(Type);
-
-  PetscFunctionBegin;
-  PetscCall(PetscLogGpuTimeBegin());
-  if (std::is_same_v<MemorySpace, Kokkos::HostSpace>) {
-    if (v_dual.need_sync_host()) {
-      PetscCallCXX(v_dual.sync_host(exec));
-      PetscCallCXX(exec.fence()); // make sure one can access the host copy immediately
-      PetscCall(PetscLogGpuToCpu(bytes));
-    }
-  } else {
-    if (v_dual.need_sync_device()) {
-      PetscCallCXX(v_dual.sync_device(exec));
-      PetscCall(PetscLogCpuToGpu(bytes));
-    }
-  }
-  PetscCall(PetscLogGpuTimeEnd());
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
 
 template <class MemorySpace>
 static PetscErrorCode VecGetKokkosView_Private(Vec v, PetscScalarKokkosViewType<MemorySpace> *kv, PetscBool overwrite)
 {
-  Vec_Kokkos *veckok = static_cast<Vec_Kokkos *>(v->spptr);
+  Vec_Kokkos *veckok   = static_cast<Vec_Kokkos *>(v->spptr);
+  using ExecutionSpace = typename PetscScalarKokkosViewType<MemorySpace>::traits::device_type;
 
   PetscFunctionBegin;
   VecErrorIfNotKokkos(v);
   if (!overwrite) { /* If overwrite=true, no need to sync the space, since caller will overwrite the data */
-    PetscCall(KokkosDualViewSync<MemorySpace>(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+    PetscCallCXX(veckok->v_dual.sync<ExecutionSpace>());
   }
-  *kv = veckok->v_dual.view<MemorySpace>();
+  PetscCallCXX(*kv = veckok->v_dual.view<ExecutionSpace>());
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 template <class MemorySpace>
 static PetscErrorCode VecRestoreKokkosView_Private(Vec v, PetscScalarKokkosViewType<MemorySpace> *kv, PetscBool overwrite)
 {
-  Vec_Kokkos *veckok = static_cast<Vec_Kokkos *>(v->spptr);
+  Vec_Kokkos *veckok   = static_cast<Vec_Kokkos *>(v->spptr);
+  using ExecutionSpace = typename PetscScalarKokkosViewType<MemorySpace>::traits::device_type;
 
   PetscFunctionBegin;
   VecErrorIfNotKokkos(v);
-  if (overwrite) veckok->v_dual.clear_sync_state(); /* If overwrite=true, clear the old sync state since user forced an overwrite */
-  veckok->v_dual.modify<MemorySpace>();
+  if (overwrite) PetscCallCXX(veckok->v_dual.clear_sync_state()); /* If overwrite=true, clear the old sync state since user forced an overwrite */
+  PetscCallCXX(veckok->v_dual.modify<ExecutionSpace>());
   PetscCall(PetscObjectStateIncrease((PetscObject)v));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -70,12 +46,13 @@ static PetscErrorCode VecRestoreKokkosView_Private(Vec v, PetscScalarKokkosViewT
 template <class MemorySpace>
 PetscErrorCode VecGetKokkosView(Vec v, ConstPetscScalarKokkosViewType<MemorySpace> *kv)
 {
-  Vec_Kokkos *veckok = static_cast<Vec_Kokkos *>(v->spptr);
+  Vec_Kokkos *veckok   = static_cast<Vec_Kokkos *>(v->spptr);
+  using ExecutionSpace = typename PetscScalarKokkosViewType<MemorySpace>::traits::device_type;
 
   PetscFunctionBegin;
   VecErrorIfNotKokkos(v);
-  PetscCall(KokkosDualViewSync<MemorySpace>(veckok->v_dual, PetscGetKokkosExecutionSpace()));
-  *kv = veckok->v_dual.view<MemorySpace>();
+  PetscCallCXX(veckok->v_dual.sync<ExecutionSpace>());
+  PetscCallCXX(*kv = veckok->v_dual.view<ExecutionSpace>());
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -102,7 +79,7 @@ PETSC_VISIBILITY_PUBLIC PetscErrorCode VecRestoreKokkosViewWrite(Vec v, PetscSca
   return VecRestoreKokkosView_Private(v, kv, PETSC_TRUE);
 }
 
-#if !defined(KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_HOST) /* Get host views if the default memory space is not host space */
+#if !defined(KOKKOS_ENABLE_UNIFIED_MEMORY) /* Get host views if the default memory space is not host space */
 template PETSC_VISIBILITY_PUBLIC PetscErrorCode VecGetKokkosView(Vec, ConstPetscScalarKokkosViewHost *);
 template <>
 PETSC_VISIBILITY_PUBLIC PetscErrorCode VecGetKokkosView(Vec v, PetscScalarKokkosViewHost *kv)
@@ -142,7 +119,7 @@ PetscErrorCode VecSetRandom_SeqKokkos(Vec xin, PetscRandom r)
 PetscErrorCode VecAbs_SeqKokkos(Vec xin)
 {
   PetscScalarKokkosView xv;
-  auto                 &exec = PetscGetKokkosExecutionSpace();
+  auto                  exec = PetscGetKokkosExecutionSpace();
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
@@ -172,21 +149,21 @@ PetscErrorCode VecReciprocal_SeqKokkos(Vec xin)
 
 PetscErrorCode VecMin_SeqKokkos(Vec xin, PetscInt *p, PetscReal *val)
 {
-  ConstPetscScalarKokkosView                      xv;
-  Kokkos::MinLoc<PetscReal, PetscInt>::value_type result;
+  ConstPetscScalarKokkosView                           xv;
+  Kokkos::MinFirstLoc<PetscReal, PetscInt>::value_type result;
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
   PetscCall(VecGetKokkosView(xin, &xv));
   PetscCallCXX(Kokkos::parallel_reduce(
     "VecMin", Kokkos::RangePolicy<>(PetscGetKokkosExecutionSpace(), 0, xin->map->n),
-    KOKKOS_LAMBDA(const PetscInt &i, Kokkos::MinLoc<PetscReal, PetscInt>::value_type &lupdate) {
+    KOKKOS_LAMBDA(const PetscInt &i, Kokkos::MinFirstLoc<PetscReal, PetscInt>::value_type &lupdate) {
       if (PetscRealPart(xv(i)) < lupdate.val) {
         lupdate.val = PetscRealPart(xv(i));
         lupdate.loc = i;
       }
     },
-    Kokkos::MinLoc<PetscReal, PetscInt>(result)));
+    Kokkos::MinFirstLoc<PetscReal, PetscInt>(result)));
   *val = result.val;
   if (p) *p = result.loc;
   PetscCall(VecRestoreKokkosView(xin, &xv));
@@ -196,21 +173,21 @@ PetscErrorCode VecMin_SeqKokkos(Vec xin, PetscInt *p, PetscReal *val)
 
 PetscErrorCode VecMax_SeqKokkos(Vec xin, PetscInt *p, PetscReal *val)
 {
-  ConstPetscScalarKokkosView                      xv;
-  Kokkos::MaxLoc<PetscReal, PetscInt>::value_type result;
+  ConstPetscScalarKokkosView                           xv;
+  Kokkos::MaxFirstLoc<PetscReal, PetscInt>::value_type result;
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
   PetscCall(VecGetKokkosView(xin, &xv));
   PetscCallCXX(Kokkos::parallel_reduce(
     "VecMax", Kokkos::RangePolicy<>(PetscGetKokkosExecutionSpace(), 0, xin->map->n),
-    KOKKOS_LAMBDA(const PetscInt &i, Kokkos::MaxLoc<PetscReal, PetscInt>::value_type &lupdate) {
+    KOKKOS_LAMBDA(const PetscInt &i, Kokkos::MaxFirstLoc<PetscReal, PetscInt>::value_type &lupdate) {
       if (PetscRealPart(xv(i)) > lupdate.val) {
         lupdate.val = PetscRealPart(xv(i));
         lupdate.loc = i;
       }
     },
-    Kokkos::MaxLoc<PetscReal, PetscInt>(result)));
+    Kokkos::MaxFirstLoc<PetscReal, PetscInt>(result)));
   *val = result.val;
   if (p) *p = result.loc;
   PetscCall(VecRestoreKokkosView(xin, &xv));
@@ -368,7 +345,7 @@ PetscErrorCode VecMultiDot_Private(Vec xin, PetscInt nv, const Vec yin[], PetscS
   PetscInt                   i, j, cur = 0, ngroup = nv / 8, rem = nv % 8, N = xin->map->n;
   ConstPetscScalarKokkosView xv, yv[8];
   PetscScalarKokkosViewHost  zv(z, nv);
-  auto                      &exec = PetscGetKokkosExecutionSpace();
+  auto                       exec = PetscGetKokkosExecutionSpace();
 
   PetscFunctionBegin;
   PetscCall(VecGetKokkosView(xin, &xv));
@@ -563,7 +540,7 @@ static PetscErrorCode VecMultiDot_SeqKokkos_GEMV(PetscBool conjugate, Vec xin, P
 
   PetscFunctionBegin;
   PetscCall(VecGetKokkosView(xin, &xv));
-#if defined(KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_HOST)
+#if defined(KOKKOS_ENABLE_UNIFIED_MEMORY)
   z_d = z_h;
 #endif
   i = nfail = 0;
@@ -602,8 +579,7 @@ static PetscErrorCode VecMultiDot_SeqKokkos_GEMV(PetscBool conjugate, Vec xin, P
       PetscCallCXX(KokkosBlas::gemv(PetscGetKokkosExecutionSpace(), trans, 1.0, Y, xv, 0.0, zv.view_device()));
       PetscCall(PetscLogGpuTimeEnd());
       PetscCallCXX(zv.modify_device());
-      PetscCallCXX(zv.sync_host());
-      PetscCall(PetscLogGpuToCpu(zv.extent(0) * sizeof(PetscScalar)));
+      PetscCall(KokkosDualViewSyncHost(zv, PetscGetKokkosExecutionSpace()));
       PetscCall(PetscLogGpuFlops(PetscMax(m * (2.0 * n - 1), 0.0)));
     } else {
       // we only allow falling back on VecDot once, to avoid doing VecMultiDot via individual VecDots
@@ -640,7 +616,7 @@ PetscErrorCode VecMTDot_SeqKokkos_GEMV(Vec xin, PetscInt nv, const Vec yin[], Pe
 PetscErrorCode VecSet_SeqKokkos(Vec xin, PetscScalar alpha)
 {
   PetscScalarKokkosView xv;
-  auto                 &exec = PetscGetKokkosExecutionSpace();
+  auto                  exec = PetscGetKokkosExecutionSpace();
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
@@ -654,7 +630,7 @@ PetscErrorCode VecSet_SeqKokkos(Vec xin, PetscScalar alpha)
 /* x = alpha x */
 PetscErrorCode VecScale_SeqKokkos(Vec xin, PetscScalar alpha)
 {
-  auto &exec = PetscGetKokkosExecutionSpace();
+  auto exec = PetscGetKokkosExecutionSpace();
 
   PetscFunctionBegin;
   if (alpha == (PetscScalar)0.0) {
@@ -676,7 +652,7 @@ PetscErrorCode VecScale_SeqKokkos(Vec xin, PetscScalar alpha)
 PetscErrorCode VecDot_SeqKokkos(Vec xin, Vec yin, PetscScalar *z)
 {
   ConstPetscScalarKokkosView xv, yv;
-  auto                      &exec = PetscGetKokkosExecutionSpace();
+  auto                       exec = PetscGetKokkosExecutionSpace();
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
@@ -693,7 +669,7 @@ PetscErrorCode VecDot_SeqKokkos(Vec xin, Vec yin, PetscScalar *z)
 /* y = x, where x is VECKOKKOS, but y may be not */
 PetscErrorCode VecCopy_SeqKokkos(Vec xin, Vec yin)
 {
-  auto &exec = PetscGetKokkosExecutionSpace();
+  auto exec = PetscGetKokkosExecutionSpace();
 
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
@@ -717,7 +693,8 @@ PetscErrorCode VecCopy_SeqKokkos(Vec xin, Vec yin)
         PetscCallCXX(exec.fence());                                            // finish the deep copy
         PetscCall(PetscLogGpuToCpu(xkok->v_dual.extent(0) * sizeof(PetscScalar)));
       } else {
-        PetscCallCXX(Kokkos::deep_copy(exec, yv, xkok->v_dual.view_host())); // cpu2cpu
+        PetscCallCXX(exec.fence());                                          // make sure xkok->v_dual.view_host() in ready for use on host;  Kokkos might also call it inside deep_copy(). We do it here for safety.
+        PetscCallCXX(Kokkos::deep_copy(exec, yv, xkok->v_dual.view_host())); // Host view to host view deep copy, done on host
       }
       PetscCall(VecRestoreArrayWrite(yin, &yarray));
     }
@@ -871,7 +848,7 @@ PetscErrorCode VecMAXPY_SeqKokkos_GEMV(Vec yin, PetscInt nv, const PetscScalar *
   PetscFunctionBegin;
   PetscCall(PetscLogGpuTimeBegin());
   PetscCall(VecGetKokkosView(yin, &yv));
-#if defined(KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_HOST)
+#if defined(KOKKOS_ENABLE_UNIFIED_MEMORY)
   a_d = const_cast<PetscScalar *>(a_h);
 #endif
   i = nfail = 0;
@@ -905,8 +882,7 @@ PetscErrorCode VecMAXPY_SeqKokkos_GEMV(Vec yin, PetscInt nv, const PetscScalar *
       const auto &A  = Kokkos::subview(B, std::pair<PetscInt, PetscInt>(0, n), Kokkos::ALL);
       auto        av = PetscScalarKokkosDualView(PetscScalarKokkosView(a_d + i, m), PetscScalarKokkosViewHost(const_cast<PetscScalar *>(a_h) + i, m));
       av.modify_host();
-      av.sync_device();
-      PetscCall(PetscLogCpuToGpu(av.extent(0) * sizeof(PetscScalar)));
+      PetscCall(KokkosDualViewSyncDevice(av, PetscGetKokkosExecutionSpace()));
       PetscCallCXX(KokkosBlas::gemv(PetscGetKokkosExecutionSpace(), "N", 1.0, A, av.view_device(), 1.0, yv));
       PetscCall(PetscLogGpuFlops(m * 2.0 * n));
     } else {
@@ -1076,7 +1052,7 @@ PetscErrorCode VecNorm_SeqKokkos(Vec xin, NormType type, PetscReal *z)
 {
   const PetscInt             n = xin->map->n;
   ConstPetscScalarKokkosView xv;
-  auto                      &exec = PetscGetKokkosExecutionSpace();
+  auto                       exec = PetscGetKokkosExecutionSpace();
 
   PetscFunctionBegin;
   if (type == NORM_1_AND_2) {
@@ -1276,7 +1252,7 @@ PetscErrorCode VecPlaceArray_SeqKokkos(Vec vin, const PetscScalar *a)
 
   PetscFunctionBegin;
   PetscCall(VecPlaceArray_Seq(vin, a));
-  PetscCall(veckok->UpdateArray<Kokkos::HostSpace>(vecseq->array));
+  PetscCall(veckok->UpdateArray<HostMirrorMemorySpace>(vecseq->array));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1287,9 +1263,80 @@ PetscErrorCode VecResetArray_SeqKokkos(Vec vin)
 
   PetscFunctionBegin;
   /* User wants to unhook the provided host array. Sync it so that user can get the latest */
-  PetscCall(KokkosDualViewSync<Kokkos::HostSpace>(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+  PetscCall(KokkosDualViewSyncHost(veckok->v_dual, PetscGetKokkosExecutionSpace()));
   PetscCall(VecResetArray_Seq(vin)); /* Swap back the old host array, assuming its has the latest value */
-  PetscCall(veckok->UpdateArray<Kokkos::HostSpace>(vecseq->array));
+  PetscCall(veckok->UpdateArray<HostMirrorMemorySpace>(vecseq->array));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  VecKokkosPlaceArray - Allows one to replace the device array in a VecKokkos vector with a
+  device array provided by the user. This is useful to avoid copying an array into a vector.
+
+  Logically Collective; No Fortran Support
+
+  Input Parameters:
++ v - the VecKokkos vector
+- a - the device array
+
+  Level: developer
+
+  Notes:
+
+  You can return to the original array with a call to `VecKokkosResetArray()`. `vec` does not take
+  ownership of `array` in any way.
+
+  The user manages the device array so PETSc doesn't care how it was allocated.
+
+  The user must free `array` themselves but be careful not to
+  do so before the vector has either been destroyed, had its original array restored with
+  `VecKokkosResetArray()` or permanently replaced with `VecReplaceArray()`.
+
+.seealso: [](ch_vectors), `Vec`, `VecGetArray()`, `VecKokkosResetArray()`, `VecReplaceArray()`, `VecResetArray()`
+@*/
+PetscErrorCode VecKokkosPlaceArray(Vec v, PetscScalar *a)
+{
+  Vec_Kokkos *veckok = static_cast<Vec_Kokkos *>(v->spptr);
+
+  PetscFunctionBegin;
+  VecErrorIfNotKokkos(v);
+  // Sync the old device view before replacing it; so that when it is put back, it has the saved value.
+  PetscCall(KokkosDualViewSyncDevice(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+  PetscCallCXX(veckok->unplaced_d = veckok->v_dual.view_device());
+  // We assume a[] contains the latest data and discard the vector's old sync state
+  PetscCall(veckok->UpdateArray<DefaultMemorySpace>(a));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  VecKokkosResetArray - Resets a vector to use its default memory. Call this
+  after the use of `VecKokkosPlaceArray()`.
+
+  Not Collective
+
+  Input Parameter:
+. v - the vector
+
+  Level: developer
+
+  Notes:
+
+  After the call, the original array placed in with `VecKokkosPlaceArray()` will contain the latest value of the vector.
+  Note that device kernels are asynchronous. Users are responsible to sync the device if they wish to have immediate access
+  to the data in the array. Also, after the call, `v` will contain whatever data before `VecKokkosPlaceArray()`.
+
+.seealso: [](ch_vectors), `Vec`, `VecGetArray()`, `VecRestoreArray()`, `VecReplaceArray()`, `VecKokkosPlaceArray()`
+@*/
+PetscErrorCode VecKokkosResetArray(Vec v)
+{
+  Vec_Kokkos *veckok = static_cast<Vec_Kokkos *>(v->spptr);
+
+  PetscFunctionBegin;
+  VecErrorIfNotKokkos(v);
+  // User wants to unhook the provided device array. Sync it so that user can get the latest
+  PetscCall(KokkosDualViewSyncDevice(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+  // Put the unplaced device array back, and set an appropriate modify flag
+  PetscCall(veckok->UpdateArray<DefaultMemorySpace>(veckok->unplaced_d.data()));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1301,9 +1348,9 @@ PetscErrorCode VecReplaceArray_SeqKokkos(Vec vin, const PetscScalar *a)
 
   PetscFunctionBegin;
   /* Make sure the users array has the latest values */
-  if (vecseq->array != vecseq->array_allocated) PetscCall(KokkosDualViewSync<Kokkos::HostSpace>(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+  if (vecseq->array != vecseq->array_allocated) PetscCall(KokkosDualViewSyncHost(veckok->v_dual, PetscGetKokkosExecutionSpace()));
   PetscCall(VecReplaceArray_Seq(vin, a));
-  PetscCall(veckok->UpdateArray<Kokkos::HostSpace>(vecseq->array));
+  PetscCall(veckok->UpdateArray<HostMirrorMemorySpace>(vecseq->array));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1347,7 +1394,7 @@ PetscErrorCode VecGetArray_SeqKokkos(Vec v, PetscScalar **a)
   Vec_Kokkos *veckok = static_cast<Vec_Kokkos *>(v->spptr);
 
   PetscFunctionBegin;
-  PetscCall(KokkosDualViewSync<Kokkos::HostSpace>(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+  PetscCall(KokkosDualViewSyncHost(veckok->v_dual, PetscGetKokkosExecutionSpace()));
   *a = *((PetscScalar **)v->data);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1378,7 +1425,7 @@ PetscErrorCode VecGetArrayAndMemType_SeqKokkos(Vec v, PetscScalar **a, PetscMemT
 
   PetscFunctionBegin;
   /* Always return up-to-date in the default memory space */
-  PetscCall(KokkosDualViewSync<DefaultMemorySpace>(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+  PetscCall(KokkosDualViewSyncDevice(veckok->v_dual, PetscGetKokkosExecutionSpace()));
   *a = veckok->v_dual.view_device().data();
   if (mtype) *mtype = PETSC_MEMTYPE_KOKKOS; // Could be PETSC_MEMTYPE_HOST when Kokkos was not configured with cuda etc.
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1389,7 +1436,7 @@ PetscErrorCode VecRestoreArrayAndMemType_SeqKokkos(Vec v, PetscScalar **a)
   Vec_Kokkos *veckok = static_cast<Vec_Kokkos *>(v->spptr);
 
   PetscFunctionBegin;
-  if (std::is_same<DefaultMemorySpace, Kokkos::HostSpace>::value) {
+  if (PetscMemTypeHost(PETSC_MEMTYPE_KOKKOS)) {
     PetscCallCXX(veckok->v_dual.modify_host());
   } else {
     PetscCallCXX(veckok->v_dual.modify_device());
@@ -1404,7 +1451,7 @@ PetscErrorCode VecGetArrayWriteAndMemType_SeqKokkos(Vec v, PetscScalar **a, Pets
   PetscFunctionBegin;
   // Since the data will be overwritten, we clear the sync state to suppress potential memory copying in sync'ing
   PetscCallCXX(veckok->v_dual.clear_sync_state()); // So that in restore, we can safely modify_device()
-  PetscCall(KokkosDualViewSync<DefaultMemorySpace>(veckok->v_dual, PetscGetKokkosExecutionSpace()));
+  PetscCall(KokkosDualViewSyncDevice(veckok->v_dual, PetscGetKokkosExecutionSpace()));
   *a = veckok->v_dual.view_device().data();
   if (mtype) *mtype = PETSC_MEMTYPE_KOKKOS; // Could be PETSC_MEMTYPE_HOST when Kokkos was not configured with cuda etc.
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1501,13 +1548,13 @@ PetscErrorCode VecRestoreSubVector_SeqKokkos(Vec x, IS is, Vec *y)
     PetscCheck(!state, PetscObjectComm((PetscObject)x), PETSC_ERR_ARG_WRONGSTATE, "Vec x is locked for read-only or read/write access");
 
     /* The tricky part: one has to carefully sync the arrays */
-    auto &exec = PetscGetKokkosExecutionSpace();
+    auto exec = PetscGetKokkosExecutionSpace();
     if (xkok->v_dual.need_sync_device()) { /* x's host has newer data */
       /* Move y's latest values to host (since y is just a subset of x) */
-      PetscCall(KokkosDualViewSync<Kokkos::HostSpace>(ykok->v_dual, exec));
-    } else if (xkok->v_dual.need_sync_host()) {                              /* x's device has newer data */
-      PetscCall(KokkosDualViewSync<DefaultMemorySpace>(ykok->v_dual, exec)); /* Move y's latest data to device */
-    } else {                                                                 /* x's host and device data is already sync'ed; Copy y's sync state to x */
+      PetscCall(KokkosDualViewSyncHost(ykok->v_dual, exec));
+    } else if (xkok->v_dual.need_sync_host()) {                /* x's device has newer data */
+      PetscCall(KokkosDualViewSyncDevice(ykok->v_dual, exec)); /* Move y's latest data to device */
+    } else {                                                   /* x's host and device data is already sync'ed; Copy y's sync state to x */
       PetscCall(VecCopySyncState_Kokkos_Private(*y, x));
     }
     PetscCall(PetscObjectStateIncrease((PetscObject)x)); /* Since x is updated */
@@ -1563,11 +1610,15 @@ static PetscErrorCode VecSetValuesCOO_SeqKokkos(Vec x, const PetscScalar v[], In
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode VecCreate_SeqKokkos_Common(Vec); // forward declaration
+
 /* Duplicate layout etc but not the values in the input vector */
 static PetscErrorCode VecDuplicate_SeqKokkos(Vec win, Vec *v)
 {
   PetscFunctionBegin;
   PetscCall(VecDuplicate_Seq(win, v)); /* It also dups ops of win */
+  PetscCall(VecCreate_SeqKokkos_Common(*v));
+  (*v)->ops[0] = win->ops[0]; // recover the ops[]. We need to always follow ops in win
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1583,7 +1634,8 @@ static PetscErrorCode VecDestroy_SeqKokkos(Vec v)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode VecSetOps_SeqKokkos(Vec v)
+// Shared by all VecCreate/Duplicate routines for VecSeqKokkos
+static PetscErrorCode VecCreate_SeqKokkos_Common(Vec v)
 {
   PetscFunctionBegin;
   v->ops->abs             = VecAbs_SeqKokkos;
@@ -1642,6 +1694,8 @@ static PetscErrorCode VecSetOps_SeqKokkos(Vec v)
 
   v->ops->setpreallocationcoo = VecSetPreallocationCOO_SeqKokkos;
   v->ops->setvaluescoo        = VecSetValuesCOO_SeqKokkos;
+
+  v->offloadmask = PETSC_OFFLOAD_KOKKOS; // Mark this is a VECKOKKOS; We use this flag for cheap VECKOKKOS test.
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1693,7 +1747,7 @@ PetscErrorCode VecCreateSeqKokkosWithArray(MPI_Comm comm, PetscInt bs, PetscInt 
     PetscCall(VecSetType(w, VECSEQKOKKOS));
   } else {
     /* Build a VECSEQ, get its harray, and then build Vec_Kokkos along with darray */
-    if (std::is_same<DefaultMemorySpace, Kokkos::HostSpace>::value) {
+    if (std::is_same<DefaultMemorySpace, HostMirrorMemorySpace>::value) {
       harray = const_cast<PetscScalar *>(darray);
       PetscCall(VecCreate_Seq_Private(w, harray)); /* Build a sequential vector with harray */
     } else {
@@ -1701,11 +1755,10 @@ PetscErrorCode VecCreateSeqKokkosWithArray(MPI_Comm comm, PetscInt bs, PetscInt 
       harray = static_cast<Vec_Seq *>(w->data)->array;
     }
     PetscCall(PetscObjectChangeTypeName((PetscObject)w, VECSEQKOKKOS)); /* Change it to Kokkos */
-    PetscCall(VecSetOps_SeqKokkos(w));
+    PetscCall(VecCreate_SeqKokkos_Common(w));
     PetscCallCXX(veckok = new Vec_Kokkos{n, harray, const_cast<PetscScalar *>(darray)});
     PetscCallCXX(veckok->v_dual.modify_device()); /* Mark the device is modified */
-    w->offloadmask = PETSC_OFFLOAD_KOKKOS;
-    w->spptr       = static_cast<void *>(veckok);
+    w->spptr = static_cast<void *>(veckok);
   }
   *v = w;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1719,11 +1772,10 @@ PetscErrorCode VecConvert_Seq_SeqKokkos_inplace(Vec v)
   PetscCall(PetscKokkosInitializeCheck());
   PetscCall(PetscLayoutSetUp(v->map));
   PetscCall(PetscObjectChangeTypeName((PetscObject)v, VECSEQKOKKOS));
-  PetscCall(VecSetOps_SeqKokkos(v));
+  PetscCall(VecCreate_SeqKokkos_Common(v));
   PetscCheck(!v->spptr, PETSC_COMM_SELF, PETSC_ERR_PLIB, "v->spptr not NULL");
   vecseq = static_cast<Vec_Seq *>(v->data);
   PetscCallCXX(v->spptr = new Vec_Kokkos(v->map->n, vecseq->array, NULL));
-  v->offloadmask = PETSC_OFFLOAD_KOKKOS;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1734,15 +1786,14 @@ static PetscErrorCode VecCreateSeqKokkosWithLayoutAndArrays_Private(PetscLayout 
 
   PetscFunctionBegin;
   if (map->n > 0) PetscCheck(darray, map->comm, PETSC_ERR_ARG_WRONG, "darray cannot be NULL");
-#if defined(KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_HOST)
+#if defined(KOKKOS_ENABLE_UNIFIED_MEMORY)
   PetscCheck(harray == darray, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "harray and darray must be the same");
 #endif
   PetscCall(VecCreateSeqWithLayoutAndArray_Private(map, harray, &w));
   PetscCall(PetscObjectChangeTypeName((PetscObject)w, VECSEQKOKKOS)); // Change it to VECKOKKOS
-  PetscCall(VecSetOps_SeqKokkos(w));
+  PetscCall(VecCreate_SeqKokkos_Common(w));
   PetscCallCXX(w->spptr = new Vec_Kokkos(map->n, const_cast<PetscScalar *>(harray), const_cast<PetscScalar *>(darray)));
-  w->offloadmask = PETSC_OFFLOAD_KOKKOS;
-  *v             = w;
+  *v = w;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1822,42 +1873,36 @@ PetscErrorCode VecCreateSeqKokkos(MPI_Comm comm, PetscInt n, Vec *v)
 // Duplicate a VECSEQKOKKOS
 static PetscErrorCode VecDuplicateVecs_SeqKokkos_GEMV(Vec w, PetscInt m, Vec *V[])
 {
-  PetscInt64   lda; // use 64-bit as we will do "m * lda"
-  PetscScalar *array_h, *array_d;
-  PetscLayout  map;
+  PetscInt64                lda; // use 64-bit as we will do "m * lda"
+  PetscScalar              *array_h, *array_d;
+  PetscLayout               map;
+  PetscScalarKokkosDualView w_dual;
 
   PetscFunctionBegin;
   PetscCall(PetscKokkosInitializeCheck()); // as we'll call kokkos_malloc()
   PetscCall(PetscMalloc1(m, V));
   PetscCall(VecGetLayout(w, &map));
   VecGetLocalSizeAligned(w, 64, &lda); // get in lda the 64-bytes aligned local size
-  // allocate raw arrays on host and device for the whole m vectors
-  PetscCall(PetscCalloc1(m * lda, &array_h));
-#if defined(KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_HOST)
-  array_d = array_h;
-#else
-  PetscCallCXX(array_d = static_cast<PetscScalar *>(Kokkos::kokkos_malloc("VecDuplicateVecs", sizeof(PetscScalar) * (m * lda))));
-#endif
+  // See comments in VecCreate_SeqKokkos() on why we use DualView to allocate the memory
+  PetscCallCXX(w_dual = PetscScalarKokkosDualView("VecDuplicateVecs", m * lda)); // Kokkos init's w_dual to zero
 
-  // create the m vectors with raw arrays
+  // create the m vectors with raw arrays from v_dual
+  array_h = w_dual.view_host().data();
+  array_d = w_dual.view_device().data();
   for (PetscInt i = 0; i < m; i++) {
     Vec v;
     PetscCall(VecCreateSeqKokkosWithLayoutAndArrays_Private(map, &array_h[i * lda], &array_d[i * lda], &v));
-    PetscCallCXX(static_cast<Vec_Kokkos *>(v->spptr)->v_dual.modify_host()); // as we only init'ed array_h
     PetscCall(PetscObjectListDuplicate(((PetscObject)w)->olist, &((PetscObject)v)->olist));
     PetscCall(PetscFunctionListDuplicate(((PetscObject)w)->qlist, &((PetscObject)v)->qlist));
     v->ops[0] = w->ops[0];
     (*V)[i]   = v;
   }
 
-  // let the first vector own the raw arrays, so when it is destroyed it will free the arrays
+  // let the first vector own the long DualView, so when it is destroyed it will free the v_dual
   if (m) {
     Vec v = (*V)[0];
 
-    static_cast<Vec_Seq *>(v->data)->array_allocated = array_h;
-#if !defined(KOKKOS_ENABLE_DEFAULT_DEVICE_TYPE_HOST)
-    static_cast<Vec_Kokkos *>(v->spptr)->raw_array_d_allocated = array_d;
-#endif
+    static_cast<Vec_Kokkos *>(v->spptr)->w_dual = w_dual; // stash the memory
     // disable replacearray of the first vector, as freeing its memory also frees others in the group.
     // But replacearray of others is ok, as they don't own their array.
     if (m > 1) v->ops->replacearray = VecReplaceArray_Default_GEMV_Error;
@@ -1877,20 +1922,29 @@ static PetscErrorCode VecDuplicateVecs_SeqKokkos_GEMV(Vec w, PetscInt m, Vec *V[
 M*/
 PetscErrorCode VecCreate_SeqKokkos(Vec v)
 {
-  Vec_Seq  *vecseq;
-  PetscBool mdot_use_gemv  = PETSC_TRUE;
-  PetscBool maxpy_use_gemv = PETSC_FALSE; // default is false as we saw bad performance with vendors' GEMV with tall skinny matrices.
+  PetscBool                 mdot_use_gemv  = PETSC_TRUE;
+  PetscBool                 maxpy_use_gemv = PETSC_FALSE; // default is false as we saw bad performance with vendors' GEMV with tall skinny matrices.
+  PetscScalarKokkosDualView v_dual;
 
   PetscFunctionBegin;
   PetscCall(PetscKokkosInitializeCheck());
   PetscCall(PetscLayoutSetUp(v->map));
-  PetscCall(VecCreate_Seq(v)); /* Build a sequential vector, allocate array */
+
+  // Use DualView to allocate both the host array and the device array.
+  // DualView first allocates the device array and then mirrors it to host.
+  // With unified memory (e.g., on AMD MI300A APU), the two arrays are the same, with the host array
+  // sharing the device array allocated by hipMalloc(), but not the other way around if we call
+  // VecCreate_Seq() first and let the device array share the host array allocated by malloc().
+  // hipMalloc() has an advantage over malloc() as it gives great binding and page size settings automatically, see
+  // https://hpc.llnl.gov/documentation/user-guides/using-el-capitan-systems/introduction-and-quickstart/pro-tips
+  PetscCallCXX(v_dual = PetscScalarKokkosDualView("v_dual", v->map->n)); // Kokkos init's v_dual to zero
+
+  PetscCall(VecCreate_Seq_Private(v, v_dual.view_host().data()));
   PetscCall(PetscObjectChangeTypeName((PetscObject)v, VECSEQKOKKOS));
-  PetscCall(VecSetOps_SeqKokkos(v));
+  PetscCall(VecCreate_SeqKokkos_Common(v));
   PetscCheck(!v->spptr, PETSC_COMM_SELF, PETSC_ERR_PLIB, "v->spptr not NULL");
-  vecseq = static_cast<Vec_Seq *>(v->data);
-  PetscCallCXX(v->spptr = new Vec_Kokkos(v->map->n, vecseq->array, NULL)); // Let host claim it has the latest data (zero)
-  v->offloadmask = PETSC_OFFLOAD_KOKKOS;
+  PetscCallCXX(v->spptr = new Vec_Kokkos(v_dual));
+
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-vec_mdot_use_gemv", &mdot_use_gemv, NULL));
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-vec_maxpy_use_gemv", &maxpy_use_gemv, NULL));
 

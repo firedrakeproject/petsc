@@ -4,8 +4,7 @@ PetscFunctionList DMGeomModelList              = NULL;
 PetscBool         DMGeomModelRegisterAllCalled = PETSC_FALSE;
 
 #if defined(PETSC_HAVE_EGADS)
-PETSC_EXTERN PetscErrorCode DMSnapToGeomModel_EGADS(DM, PetscInt, PetscInt, const PetscScalar[], PetscScalar[]);
-PETSC_EXTERN PetscErrorCode DMSnapToGeomModel_EGADSLite(DM, PetscInt, PetscInt, const PetscScalar[], PetscScalar[]);
+PETSC_INTERN PetscErrorCode DMSnapToGeomModel_EGADS(DM, PetscInt, PetscInt, const PetscScalar[], PetscScalar[]);
 #endif
 
 static PetscErrorCode DMSnapToGeomModelBall(DM dm, PetscInt p, PetscInt dE, const PetscScalar mcoords[], PetscScalar gcoords[])
@@ -39,7 +38,7 @@ static PetscErrorCode DMSnapToGeomModelCylinder(DM dm, PetscInt p, PetscInt dE, 
 
     for (PetscInt d = 0; d < dE - 1; ++d) norm += PetscSqr(PetscRealPart(mcoords[d]));
     norm = PetscSqrtReal(norm);
-    for (PetscInt d = 0; d < dE - 1; ++d) gcoords[d] = gmax[0] * mcoords[d] / norm;
+    for (PetscInt d = 0; d < dE - 1; ++d) gcoords[d] = mcoords[d] * gmax[0] / norm;
     gcoords[dE - 1] = mcoords[dE - 1];
   } else {
     for (PetscInt d = 0; d < dE; ++d) gcoords[d] = mcoords[d];
@@ -64,8 +63,8 @@ PetscErrorCode DMGeomModelRegisterAll(void)
   PetscCall(DMGeomModelRegister("ball", DMSnapToGeomModelBall));
   PetscCall(DMGeomModelRegister("cylinder", DMSnapToGeomModelCylinder));
 #if defined(PETSC_HAVE_EGADS)
+  // FIXME: Brandon uses DMPlexSnapToGeomModel() here instead
   PetscCall(DMGeomModelRegister("egads", DMSnapToGeomModel_EGADS));
-  PetscCall(DMGeomModelRegister("egadslite", DMSnapToGeomModel_EGADSLite));
 #endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -85,9 +84,13 @@ PetscErrorCode DMGeomModelRegisterAll(void)
 .ve
 
   Then, your generator can be chosen with the procedural interface via
-$     DMSetGeomModel(dm, "my_geom_model",...)
+.vb
+  DMSetGeomModel(dm, "my_geom_model",...)
+.ve
   or at runtime via the option
-$     -dm_geom_model my_geom_model
+.vb
+  -dm_geom_model my_geom_model
+.ve
 
   Level: advanced
 
@@ -99,11 +102,9 @@ $     -dm_geom_model my_geom_model
 PetscErrorCode DMGeomModelRegister(const char sname[], PetscErrorCode (*fnc)(DM, PetscInt, PetscInt, const PetscScalar[], PetscScalar[]))
 {
   PetscFunctionBegin;
-  PetscCall(PetscFunctionListAdd(&DMGeomModelList, sname, (PetscVoidFn *)fnc));
+  PetscCall(PetscFunctionListAdd(&DMGeomModelList, sname, fnc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-extern PetscBool DMGeomModelRegisterAllCalled;
 
 PetscErrorCode DMGeomModelRegisterDestroy(void)
 {
@@ -138,11 +139,11 @@ PetscErrorCode DMSetSnapToGeomModel(DM dm, const char name[])
   if (!name) {
     PetscObject modelObj;
 
-    PetscCall(PetscObjectQuery((PetscObject)dm, "EGADS Model", (PetscObject *)&modelObj));
+    PetscCall(PetscObjectQuery((PetscObject)dm, "EGADS Model", &modelObj));
     if (modelObj) name = "egads";
     else {
-      PetscCall(PetscObjectQuery((PetscObject)dm, "EGADSLite Model", (PetscObject *)&modelObj));
-      if (modelObj) name = "egadslite";
+      PetscCall(PetscObjectQuery((PetscObject)dm, "EGADSlite Model", &modelObj));
+      if (modelObj) name = "egads";
     }
   }
   if (!name) PetscFunctionReturn(PETSC_SUCCESS);

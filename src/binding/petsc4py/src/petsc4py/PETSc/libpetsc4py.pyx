@@ -49,14 +49,14 @@ cdef inline PetscErrorCode FunctionEnd() noexcept nogil:
     FUNCT = fstack[istack]
     return PETSC_SUCCESS
 
-cdef PetscErrorCode PetscSETERR(PetscErrorCode ierr, char msg[]) noexcept nogil:
+cdef PetscErrorCode PetscSETERR(PetscErrorCode ierr, const char msg[]) noexcept nogil:
     global istack, fstack
     istack = 0
     fstack[istack] = NULL
     return PetscERROR(PETSC_COMM_SELF, FUNCT, ierr,
                       PETSC_ERROR_INITIAL, msg, NULL)
 
-cdef PetscErrorCode UNSUPPORTED(char msg[]) noexcept nogil:
+cdef PetscErrorCode UNSUPPORTED(const char msg[]) noexcept nogil:
     return PetscERROR(PETSC_COMM_SELF, FUNCT, PETSC_ERR_USER,
                       PETSC_ERROR_INITIAL, b"method %s()", msg)
 
@@ -280,7 +280,7 @@ cdef int viewcontext(_PyObj ctx, PetscViewer viewer) except -1:
     CHKERR(PetscObjectTypeCompare(<PetscObject>viewer, PETSCVIEWERSTRING, &isstring))
     cdef char *name = ctx.getname()
     if isascii:
-        if name == NULL: name = b"unknown/no yet set"
+        if name == NULL: name = b"unknown/not yet set"
         CHKERR(PetscViewerASCIIPrintf(viewer, b"  Python: %s\n", name))
     if isstring:
         if name == NULL: name = b"<unknown>"
@@ -290,9 +290,241 @@ cdef int viewcontext(_PyObj ctx, PetscViewer viewer) except -1:
 # --------------------------------------------------------------------
 
 cdef extern from * nogil:
+    struct _PetscViewerOps:
+        PetscErrorCode (*destroy)(PetscViewer) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setup)(PetscViewer) except PETSC_ERR_PYTHON
+        PetscErrorCode (*flush)(PetscViewer) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setfromoptions)(PetscViewer, PetscOptionItems) except PETSC_ERR_PYTHON
+        PetscErrorCode (*view)(PetscViewer, PetscViewer) except PETSC_ERR_PYTHON
+    ctypedef _PetscViewerOps *PetscViewerOps
+    struct _p_PetscViewer:
+        void *data
+        PetscViewerOps ops
+
+
+@cython.internal
+cdef class _PyVwr(_PyObj):
+
+    cdef bytes filename
+
+    cdef int setfilename(self, const char name[]) except -1:
+        if name != NULL and name[0] != 0:
+            self.filename = name
+        else:
+            self.filename = None
+        return 0
+
+    cdef char* getfilename(self) except? NULL:
+        if self.self is None:
+            return NULL
+        if self.filename is not None:
+            return self.filename
+        return NULL
+
+cdef inline _PyVwr PyVwr(PetscViewer viewer):
+    if viewer != NULL and viewer.data != NULL:
+        return <_PyVwr>viewer.data
+    else:
+        return _PyVwr.__new__(_PyVwr)
+
+cdef public PetscErrorCode PetscViewerPythonGetContext(PetscViewer viewer, void **ctx) \
+    except PETSC_ERR_PYTHON:
+    FunctionBegin(b"PetscViewerPythonGetContext")
+    PyVwr(viewer).getcontext(ctx)
+    return FunctionEnd()
+
+cdef public PetscErrorCode PetscViewerPythonSetContext(PetscViewer viewer, void *ctx) \
+    except PETSC_ERR_PYTHON:
+    FunctionBegin(b"PetscViewerPythonSetContext")
+    PyVwr(viewer).setcontext(ctx, Viewer_(viewer))
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerPythonSetType_PYTHON(PetscViewer viewer, const char *name) \
+    except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerPythonSetType_PYTHON")
+    if name == NULL: return FunctionEnd() # XXX
+    cdef object ctx = createcontext(name)
+    PetscViewerPythonSetContext(viewer, <void*>ctx)
+    PyVwr(viewer).setname(name)
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerPythonGetType_PYTHON(PetscViewer viewer, const char *name[]) \
+    except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerPythonGetType_PYTHON")
+    name[0] = PyVwr(viewer).getname()
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerPythonSetFilename_PYTHON(PetscViewer viewer, const char *name) \
+    except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerPythonSetFilename_PYTHON")
+    PyVwr(viewer).setfilename(name)
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerPythonGetFilename_PYTHON(PetscViewer viewer, const char *name[]) \
+    except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerPythonGetFilename_PYTHON")
+    name[0] = PyVwr(viewer).getfilename()
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerPythonViewObject_PYTHON(PetscViewer viewer, PetscObject obj) \
+    except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerPythonViewObject_PYTHON")
+    cdef viewObject = PyVwr(viewer).viewObject
+    cdef Object pobj = PyPetscObject_New(obj)
+    if viewObject is not None:
+        viewObject(Viewer_(viewer), pobj)
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerCreate_Python(
+    PetscViewer viewer,
+    ) except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerCreate_Python")
+    cdef PetscViewerOps ops    = viewer.ops
+    ops.destroy        = PetscViewerDestroy_Python
+    ops.view           = PetscViewerView_Python
+    ops.setup          = PetscViewerSetUp_Python
+    ops.setfromoptions = PetscViewerSetFromOptions_Python
+    ops.flush          = PetscViewerFlush_Python
+    #
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerPythonSetType_C",
+            <PetscVoidFunction>PetscViewerPythonSetType_PYTHON))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerPythonGetType_C",
+            <PetscVoidFunction>PetscViewerPythonGetType_PYTHON))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerFileSetName_C",
+            <PetscVoidFunction>PetscViewerPythonSetFilename_PYTHON))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerFileGetName_C",
+            <PetscVoidFunction>PetscViewerPythonGetFilename_PYTHON))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerPythonViewObject_C",
+            <PetscVoidFunction>PetscViewerPythonViewObject_PYTHON))
+    #
+    cdef ctx = PyVwr(NULL)
+    viewer.data = <void*> ctx
+    Py_INCREF(<PyObject*>viewer.data)
+    return FunctionEnd()
+
+cdef inline PetscErrorCode PetscViewerDestroy_Python_inner(
+    PetscViewer viewer,
+    ) except PETSC_ERR_PYTHON with gil:
+    try:
+        addRef(viewer)
+        PetscViewerPythonSetContext(viewer, NULL)
+    finally:
+        delRef(viewer)
+        Py_DECREF(<PyObject*>viewer.data)
+        viewer.data = NULL
+    return PETSC_SUCCESS
+
+cdef PetscErrorCode PetscViewerDestroy_Python(
+    PetscViewer viewer,
+    ) except PETSC_ERR_PYTHON nogil:
+    FunctionBegin(b"PetscViewerDestroy_Python")
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerPythonSetType_C",
+            <PetscVoidFunction>NULL))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerPythonGetType_C",
+            <PetscVoidFunction>NULL))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerFileSetName_C",
+            <PetscVoidFunction>NULL))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerFileGetName_C",
+            <PetscVoidFunction>NULL))
+    CHKERR(PetscObjectComposeFunction(
+            <PetscObject>viewer, b"PetscViewerPythonViewObject_C",
+            <PetscVoidFunction>NULL))
+    #
+    if Py_IsInitialized(): PetscViewerDestroy_Python_inner(viewer)
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerSetUp_Python(
+    PetscViewer viewer,
+    ) except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerSetUp_Python")
+    cdef char name[2048]
+    cdef PetscBool found = PETSC_FALSE
+    if PyVwr(viewer).self is None:
+        CHKERR(PetscOptionsGetString(NULL,
+               getPrefix(viewer), b"-viewer_python_type",
+               name, sizeof(name), &found))
+        if found and name[0]:
+            CHKERR(PetscViewerPythonSetType_PYTHON(viewer, name))
+    cdef char fname[2048]
+    cdef const char *fdefault = NULL
+    CHKERR(PetscViewerFileGetName(viewer, &fdefault))
+    if not fdefault:
+        CHKERR(PetscOptionsGetString(NULL,
+               getPrefix(viewer), b"-viewer_python_filename",
+               fname, sizeof(fname), &found))
+        if found and fname[0]:
+            CHKERR(PetscViewerPythonSetFilename_PYTHON(viewer, fname))
+    if PyVwr(viewer).self is None:
+        return PetscSETERR(PETSC_ERR_USER,
+                           "Python context not set, call one of \n"
+                           " * PetscViewerPythonSetType(viewer, \"[package.]module.class\")\n"
+                           " * PetscViewerSetFromOptions(viewer) and pass option "
+                           "-viewer_python_type [package.]module.class")
+    #
+    cdef setUp = PyVwr(viewer).setUp
+    if setUp is not None:
+        setUp(Viewer_(viewer))
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerSetFromOptions_Python(
+    PetscViewer viewer,
+    PetscOptionItems PetscOptionsObject,
+    ) except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerSetFromOptions_Python")
+    cdef char name[2048], *defval = PyVwr(viewer).getname()
+    cdef PetscBool found = PETSC_FALSE
+    cdef PetscOptionItems opts "PetscOptionsObject" = PetscOptionsObject
+    CHKERR(PetscOptionsString(
+           b"-viewer_python_type", b"Python [package.]module[.{class|function}]",
+           b"PetscViewerPythonSetType", defval, name, sizeof(name), &found)); <void>opts
+    if found and name[0]:
+        CHKERR(PetscViewerPythonSetType_PYTHON(viewer, name))
+    #
+    cdef char fname[2048], *fdefval = PyVwr(viewer).getfilename()
+    CHKERR(PetscOptionsString(
+           b"-viewer_python_filename", b"Output filename for viewer",
+           b"PetscViewerPythonSetFilename", fdefval, fname, sizeof(fname), &found)); <void>opts
+    if found and fname[0]:
+        CHKERR(PetscViewerPythonSetFilename_PYTHON(viewer, fname))
+    cdef setFromOptions = PyVwr(viewer).setFromOptions
+    if setFromOptions is not None:
+        setFromOptions(Viewer_(viewer))
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerView_Python(
+    PetscViewer viewer,
+    PetscViewer vwr,
+    ) except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerView_Python")
+    viewcontext(PyVwr(viewer), vwr)
+    cdef view = PyVwr(viewer).view
+    if view is not None:
+        view(Viewer_(viewer), Viewer_(vwr))
+    return FunctionEnd()
+
+cdef PetscErrorCode PetscViewerFlush_Python(
+    PetscViewer viewer,
+    ) except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PetscViewerFlush_Python")
+    cdef flush = PyVwr(viewer).flush
+    if flush is not None:
+        flush(Viewer_(viewer))
+    return FunctionEnd()
+# --------------------------------------------------------------------
+
+cdef extern from * nogil:
     struct _MatOps:
         PetscErrorCode (*destroy)(PetscMat) except PETSC_ERR_PYTHON
-        PetscErrorCode (*setfromoptions)(PetscMat, PetscOptionItems*) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setfromoptions)(PetscMat, PetscOptionItems) except PETSC_ERR_PYTHON
         PetscErrorCode (*view)(PetscMat, PetscViewer) except PETSC_ERR_PYTHON
         PetscErrorCode (*duplicate)(PetscMat, PetscMatDuplicateOption, PetscMat*) except PETSC_ERR_PYTHON
         PetscErrorCode (*copy)(PetscMat, PetscMat, PetscMatStructure) except PETSC_ERR_PYTHON
@@ -402,14 +634,14 @@ cdef dict dMatOps = {
                       47 : 'setDiagonal',
                       48 : 'zeroRowsColumns',
                       59 : 'createSubMatrix',
-                      88 : 'getVecs', # FIXME -> createVecs
-                      102 : 'conjugate',
-                      105 : 'realPart',
-                      106 : 'imagPart',
-                      113 : 'missingDiagonal',
-                      119 : 'multDiagonalBlock',
-                      121 : 'multHermitian',
-                      122 : 'multHermitianAdd',
+                      83 : 'getVecs', # FIXME -> createVecs
+                      93 : 'conjugate',
+                      96 : 'realPart',
+                      97 : 'imagPart',
+                      104 : 'missingDiagonal',
+                      110 : 'multDiagonalBlock',
+                      112 : 'multHermitian',
+                      113 : 'multHermitianAdd',
                     }
 
 cdef PetscErrorCode MatCreate_Python(
@@ -511,12 +743,12 @@ cdef PetscErrorCode MatDestroy_Python(
 
 cdef PetscErrorCode MatSetFromOptions_Python(
     PetscMat mat,
-    PetscOptionItems *PetscOptionsObject,
+    PetscOptionItems PetscOptionsObject,
     ) except PETSC_ERR_PYTHON with gil:
     FunctionBegin(b"MatSetFromOptions_Python")
     cdef char name[2048], *defval = PyMat(mat).getname()
     cdef PetscBool found = PETSC_FALSE
-    cdef PetscOptionItems *opts "PetscOptionsObject" = PetscOptionsObject
+    cdef PetscOptionItems opts "PetscOptionsObject" = PetscOptionsObject
     CHKERR(PetscOptionsString(
             b"-mat_python_type", b"Python [package.]module[.{class|function}]",
             b"MatPythonSetType", defval, name, sizeof(name), &found)); <void>opts
@@ -1194,13 +1426,14 @@ cdef extern from * nogil:
         PetscErrorCode (*destroy)(PetscPC) except PETSC_ERR_PYTHON
         PetscErrorCode (*setup)(PetscPC) except PETSC_ERR_PYTHON
         PetscErrorCode (*reset)(PetscPC) except PETSC_ERR_PYTHON
-        PetscErrorCode (*setfromoptions)(PetscPC, PetscOptionItems*) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setfromoptions)(PetscPC, PetscOptionItems) except PETSC_ERR_PYTHON
         PetscErrorCode (*view)(PetscPC, PetscViewer) except PETSC_ERR_PYTHON
         PetscErrorCode (*presolve)(PetscPC, PetscKSP, PetscVec, PetscVec) except PETSC_ERR_PYTHON
         PetscErrorCode (*postsolve)(PetscPC, PetscKSP, PetscVec, PetscVec) except PETSC_ERR_PYTHON
         PetscErrorCode (*apply)(PetscPC, PetscVec, PetscVec) except PETSC_ERR_PYTHON
         PetscErrorCode (*matapply)(PetscPC, PetscMat, PetscMat) except PETSC_ERR_PYTHON
         PetscErrorCode (*applytranspose)(PetscPC, PetscVec, PetscVec) except PETSC_ERR_PYTHON
+        PetscErrorCode (*matapplytranspose)(PetscPC, PetscMat, PetscMat) except PETSC_ERR_PYTHON
         PetscErrorCode (*applysymmetricleft)(PetscPC, PetscVec, PetscVec) except PETSC_ERR_PYTHON
         PetscErrorCode (*applysymmetricright)(PetscPC, PetscVec, PetscVec) except PETSC_ERR_PYTHON
     ctypedef _PCOps *PCOps
@@ -1259,6 +1492,7 @@ cdef PetscErrorCode PCCreate_Python(
     ops.apply               = PCApply_Python
     ops.matapply            = PCMatApply_Python
     ops.applytranspose      = PCApplyTranspose_Python
+    ops.matapplytranspose   = PCMatApplyTranspose_Python
     ops.applysymmetricleft  = PCApplySymmetricLeft_Python
     ops.applysymmetricright = PCApplySymmetricRight_Python
     #
@@ -1352,12 +1586,12 @@ cdef PetscErrorCode PCReset_Python(
 
 cdef PetscErrorCode PCSetFromOptions_Python(
     PetscPC pc,
-    PetscOptionItems *PetscOptionsObject,
+    PetscOptionItems PetscOptionsObject,
     ) except PETSC_ERR_PYTHON with gil:
     FunctionBegin(b"PCSetFromOptions_Python")
     cdef char name[2048], *defval = PyPC(pc).getname()
     cdef PetscBool found = PETSC_FALSE
-    cdef PetscOptionItems *opts "PetscOptionsObject" = PetscOptionsObject
+    cdef PetscOptionItems opts "PetscOptionsObject" = PetscOptionsObject
     CHKERR(PetscOptionsString(
             b"-pc_python_type", b"Python [package.]module[.{class|function}]",
             b"PCPythonSetType", defval, name, sizeof(name), &found)); <void>opts
@@ -1461,6 +1695,22 @@ cdef PetscErrorCode PCMatApply_Python(
     matApply(PC_(pc), Mat_(X), Mat_(Y))
     return FunctionEnd()
 
+cdef PetscErrorCode PCMatApplyTranspose_Python(
+    PetscPC  pc,
+    PetscMat X,
+    PetscMat Y,
+    ) except PETSC_ERR_PYTHON with gil:
+    FunctionBegin(b"PCMatApplyTranspose_Python")
+    cdef matApplyTranspose = PyPC(pc).matApplyTranspose
+    if matApplyTranspose is None:
+        try:
+            pc.ops.matapplytranspose = NULL
+            CHKERR(PCMatApplyTranspose(pc, X, Y))
+        finally:
+            pc.ops.matapplytranspose = PCMatApplyTranspose_Python
+        return FunctionEnd()
+    matApplyTranspose(PC_(pc), Mat_(X), Mat_(Y))
+    return FunctionEnd()
 
 # --------------------------------------------------------------------
 
@@ -1469,7 +1719,7 @@ cdef extern from * nogil:
         PetscErrorCode (*destroy)(PetscKSP) except PETSC_ERR_PYTHON
         PetscErrorCode (*setup)(PetscKSP) except PETSC_ERR_PYTHON
         PetscErrorCode (*reset)(PetscKSP) except PETSC_ERR_PYTHON
-        PetscErrorCode (*setfromoptions)(PetscKSP, PetscOptionItems*) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setfromoptions)(PetscKSP, PetscOptionItems) except PETSC_ERR_PYTHON
         PetscErrorCode (*view)(PetscKSP, PetscViewer) except PETSC_ERR_PYTHON
         PetscErrorCode (*solve)(PetscKSP) except PETSC_ERR_PYTHON
         PetscErrorCode (*buildsolution)(PetscKSP, PetscVec, PetscVec*) except PETSC_ERR_PYTHON
@@ -1632,12 +1882,12 @@ cdef PetscErrorCode KSPReset_Python(
 
 cdef PetscErrorCode KSPSetFromOptions_Python(
     PetscKSP ksp,
-    PetscOptionItems *PetscOptionsObject
+    PetscOptionItems PetscOptionsObject
     ) except PETSC_ERR_PYTHON with gil:
     FunctionBegin(b"KSPSetFromOptions_Python")
     cdef char name[2048], *defval = PyKSP(ksp).getname()
     cdef PetscBool found = PETSC_FALSE
-    cdef PetscOptionItems *opts "PetscOptionsObject" = PetscOptionsObject
+    cdef PetscOptionItems opts "PetscOptionsObject" = PetscOptionsObject
     CHKERR(PetscOptionsString(
             b"-ksp_python_type", b"Python [package.]module[.{class|function}]",
             b"KSPPythonSetType", defval, name, sizeof(name), &found)); <void>opts
@@ -1812,7 +2062,7 @@ cdef extern from * nogil:
         PetscErrorCode (*destroy)(PetscSNES) except PETSC_ERR_PYTHON
         PetscErrorCode (*setup)(PetscSNES) except PETSC_ERR_PYTHON
         PetscErrorCode (*reset)(PetscSNES) except PETSC_ERR_PYTHON
-        PetscErrorCode (*setfromoptions)(PetscSNES, PetscOptionItems*) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setfromoptions)(PetscSNES, PetscOptionItems) except PETSC_ERR_PYTHON
         PetscErrorCode (*view)(PetscSNES, PetscViewer) except PETSC_ERR_PYTHON
         PetscErrorCode (*solve)(PetscSNES) except PETSC_ERR_PYTHON
     ctypedef _SNESOps *SNESOps
@@ -1964,12 +2214,12 @@ cdef PetscErrorCode SNESReset_Python(
 
 cdef PetscErrorCode SNESSetFromOptions_Python(
     PetscSNES snes,
-    PetscOptionItems *PetscOptionsObject,
+    PetscOptionItems PetscOptionsObject,
     ) except PETSC_ERR_PYTHON with gil:
     FunctionBegin(b"SNESSetFromOptions_Python")
     cdef char name[2048], *defval = PySNES(snes).getname()
     cdef PetscBool found = PETSC_FALSE
-    cdef PetscOptionItems *opts "PetscOptionsObject" = PetscOptionsObject
+    cdef PetscOptionItems opts "PetscOptionsObject" = PetscOptionsObject
     CHKERR(PetscOptionsString(
             b"-snes_python_type", b"Python [package.]module[.{class|function}]",
             b"SNESPythonSetType", defval, name, sizeof(name), &found)); <void>opts
@@ -2112,7 +2362,7 @@ cdef extern from * nogil:
         PetscErrorCode (*destroy)(PetscTS) except PETSC_ERR_PYTHON
         PetscErrorCode (*setup)(PetscTS) except PETSC_ERR_PYTHON
         PetscErrorCode (*reset)(PetscTS) except PETSC_ERR_PYTHON
-        PetscErrorCode (*setfromoptions)(PetscTS, PetscOptionItems*) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setfromoptions)(PetscTS, PetscOptionItems) except PETSC_ERR_PYTHON
         PetscErrorCode (*view)(PetscTS, PetscViewer) except PETSC_ERR_PYTHON
         PetscErrorCode (*step)(PetscTS) except PETSC_ERR_PYTHON
         PetscErrorCode (*rollback)(PetscTS) except PETSC_ERR_PYTHON
@@ -2303,12 +2553,12 @@ cdef PetscErrorCode TSReset_Python(
 
 cdef PetscErrorCode TSSetFromOptions_Python(
     PetscTS ts,
-    PetscOptionItems *PetscOptionsObject,
+    PetscOptionItems PetscOptionsObject,
     ) except PETSC_ERR_PYTHON with gil:
     FunctionBegin(b"TSSetFromOptions_Python")
     cdef char name[2048], *defval = PyTS(ts).getname()
     cdef PetscBool found = PETSC_FALSE
-    cdef PetscOptionItems *opts "PetscOptionsObject" = PetscOptionsObject
+    cdef PetscOptionItems opts "PetscOptionsObject" = PetscOptionsObject
     CHKERR(PetscOptionsString(
             b"-ts_python_type", b"Python [package.]module[.{class|function}]",
             b"TSPythonSetType", defval, name, sizeof(name), &found)); <void>opts
@@ -2528,7 +2778,7 @@ cdef extern from * nogil:
         PetscErrorCode (*destroy)(PetscTAO) except PETSC_ERR_PYTHON
         PetscErrorCode (*setup)(PetscTAO) except PETSC_ERR_PYTHON
         PetscErrorCode (*solve)(PetscTAO) except PETSC_ERR_PYTHON
-        PetscErrorCode (*setfromoptions)(PetscTAO, PetscOptionItems*) except PETSC_ERR_PYTHON
+        PetscErrorCode (*setfromoptions)(PetscTAO, PetscOptionItems) except PETSC_ERR_PYTHON
         PetscErrorCode (*view)(PetscTAO, PetscViewer) except PETSC_ERR_PYTHON
     ctypedef _TaoOps *TaoOps
     struct _p_TAO:
@@ -2668,12 +2918,12 @@ cdef PetscErrorCode TaoSetUp_Python(
 
 cdef PetscErrorCode TaoSetFromOptions_Python(
     PetscTAO tao,
-    PetscOptionItems *PetscOptionsObject,
+    PetscOptionItems PetscOptionsObject,
     ) except PETSC_ERR_PYTHON with gil:
     FunctionBegin(b"TaoSetFromOptions_Python")
     cdef char name[2048], *defval = PyTao(tao).getname()
     cdef PetscBool found = PETSC_FALSE
-    cdef PetscOptionItems *opts "PetscOptionsObject" = PetscOptionsObject
+    cdef PetscOptionItems opts "PetscOptionsObject" = PetscOptionsObject
     CHKERR(PetscOptionsString(
             b"-tao_python_type", b"Python [package.]module[.{class|function}]",
             b"TaoPythonSetType", defval, name, sizeof(name), &found)); <void>opts
@@ -2845,6 +3095,7 @@ cdef extern from * nogil:
     ctypedef PetscErrorCode SNESCreateFunction (PetscSNES) except PETSC_ERR_PYTHON
     ctypedef PetscErrorCode TSCreateFunction   (PetscTS)   except PETSC_ERR_PYTHON
     ctypedef PetscErrorCode TaoCreateFunction  (PetscTAO)  except PETSC_ERR_PYTHON
+    ctypedef PetscErrorCode PetscViewerCreateFunction  (PetscViewer)  except PETSC_ERR_PYTHON
 
     PetscErrorCode MatRegister  (const char[], MatCreateFunction*)
     PetscErrorCode PCRegister   (const char[], PCCreateFunction*)
@@ -2852,6 +3103,7 @@ cdef extern from * nogil:
     PetscErrorCode SNESRegister (const char[], SNESCreateFunction*)
     PetscErrorCode TSRegister   (const char[], TSCreateFunction*)
     PetscErrorCode TaoRegister  (const char[], TaoCreateFunction*)
+    PetscErrorCode PetscViewerRegister  (const char[], PetscViewerCreateFunction*)
 
     PetscErrorCode (*PetscPythonMonitorSet_C) \
         (PetscObject, const char[]) except PETSC_ERR_PYTHON
@@ -2867,6 +3119,7 @@ cdef public PetscErrorCode PetscPythonRegisterAll() except PETSC_ERR_PYTHON:
     CHKERR(SNESRegister(SNESPYTHON, SNESCreate_Python))
     CHKERR(TSRegister(TSPYTHON, TSCreate_Python))
     CHKERR(TaoRegister(TAOPYTHON, TaoCreate_Python))
+    CHKERR(PetscViewerRegister(PETSCVIEWERPYTHON, PetscViewerCreate_Python))
 
     # Python monitors
     global PetscPythonMonitorSet_C

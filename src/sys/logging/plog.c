@@ -101,6 +101,9 @@ PetscBool PetscLogSyncOn = PETSC_FALSE;
 
 PetscBool PetscLogGpuTimeFlag = PETSC_FALSE;
 
+PetscInt PetscLogNumViewersCreated   = 0;
+PetscInt PetscLogNumViewersDestroyed = 0;
+
 PetscLogState petsc_log_state = NULL;
 
 #define PETSC_LOG_HANDLER_HOT_BLANK {NULL, NULL, NULL, NULL, NULL, NULL}
@@ -277,7 +280,7 @@ PetscErrorCode PetscLogHandlerStart(PetscLogHandler h)
         petsc_log_state->stage_stack   = temp_stack;
         petsc_log_state->current_stage = -1;
         for (int s = 0; s < stack_height; s++) {
-          PetscLogStage stage = (PetscLogStage)orig_stack->stack[s];
+          PetscLogStage stage = orig_stack->stack[s];
           PetscCall(PetscLogHandlerStagePush(h, stage));
           PetscCall(PetscIntStackPush(temp_stack, stage));
           petsc_log_state->current_stage = stage;
@@ -329,7 +332,7 @@ PetscErrorCode PetscLogHandlerStop(PetscLogHandler h)
         orig_stack                   = petsc_log_state->stage_stack;
         petsc_log_state->stage_stack = temp_stack;
         for (int s = 0; s < stack_height; s++) {
-          PetscLogStage stage = (PetscLogStage)orig_stack->stack[s];
+          PetscLogStage stage = orig_stack->stack[s];
 
           PetscCall(PetscIntStackPush(temp_stack, stage));
         }
@@ -356,7 +359,7 @@ PetscErrorCode PetscLogHandlerStop(PetscLogHandler h)
 }
 
 /*@
-  PetscLogIsActive - Check if logging is currently in progress.
+  PetscLogIsActive - Check if logging (profiling) is currently in progress.
 
   Not Collective
 
@@ -427,15 +430,15 @@ PETSC_INTERN PetscErrorCode PetscLogTypeBegin(PetscLogHandlerType type)
 }
 
 /*@
-  PetscLogDefaultBegin - Turns on logging of objects and events using the default log handler. This logs flop
-  rates and object creation and should not slow programs down too much.
-  This routine may be called more than once.
+  PetscLogDefaultBegin - Turns on logging (profiling) of PETSc code using the default log handler (profiler). This logs time, flop
+  rates, and object creation and should not slow programs down too much.
 
   Logically Collective on `PETSC_COMM_WORLD`
 
   Options Database Key:
-. -log_view [viewertype:filename:viewerformat] - Prints summary of flop and timing information to the
-                                                 screen (for code configured with --with-log=1 (which is the default))
+. -log_view [viewertype:filename:viewerformat] - Prints summary of flop and timing (profiling) information to the
+                                                 screen (for PETSc configured with `--with-log=1` (which is the default)).
+                                                 This option must be provided before `PetscInitialize()`.
 
   Example Usage:
 .vb
@@ -448,9 +451,14 @@ PETSC_INTERN PetscErrorCode PetscLogTypeBegin(PetscLogHandlerType type)
 
   Level: advanced
 
-  Note:
+  Notes:
   `PetscLogView()` or `PetscLogDump()` actually cause the printing of
   the logging information.
+
+  This routine may be called more than once.
+
+  To provide the `-log_view` option in your source code you must call  PetscCall(PetscOptionsSetValue(NULL, "-log_view", NULL));
+  before you call `PetscInitialize()`
 
 .seealso: [](ch_profiling), `PetscLogDump()`, `PetscLogView()`, `PetscLogTraceBegin()`
 @*/
@@ -2065,12 +2073,21 @@ PetscErrorCode PetscLogViewFromOptions(void)
 
   PetscFunctionBegin;
   PetscCall(PetscOptionsCreateViewers(PETSC_COMM_WORLD, NULL, NULL, "-log_view", &n_max, viewers, formats, &flg));
+  /*
+     PetscLogHandlerView_Default_Info() wants to be sure that the only objects still around are these viewers, so keep track of how many there are
+   */
+  PetscLogNumViewersCreated = n_max;
   for (PetscInt i = 0; i < n_max; i++) {
+    PetscInt refct;
+
     PetscCall(PetscViewerPushFormat(viewers[i], formats[i]));
     PetscCall(PetscLogView(viewers[i]));
     PetscCall(PetscViewerPopFormat(viewers[i]));
+    PetscCall(PetscObjectGetReference((PetscObject)viewers[i], &refct));
     PetscCall(PetscViewerDestroy(&viewers[i]));
+    if (refct == 1) PetscLogNumViewersDestroyed++;
   }
+  PetscLogNumViewersDestroyed = 0;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2360,12 +2377,12 @@ PetscErrorCode PetscLogGpuTime(void)
 
   Developer Notes:
   The GPU event timer captures the execution time of all the kernels launched in the default
-  stream by the CPU between `PetscLogGpuTimeBegin()` and `PetsLogGpuTimeEnd()`.
+  stream by the CPU between `PetscLogGpuTimeBegin()` and `PetscLogGpuTimeEnd()`.
 
-  `PetscLogGpuTimeBegin()` and `PetsLogGpuTimeEnd()` insert the begin and end events into the
+  `PetscLogGpuTimeBegin()` and `PetscLogGpuTimeEnd()` insert the begin and end events into the
   default stream (stream 0). The device will record a time stamp for the event when it reaches
   that event in the stream. The function xxxEventSynchronize() is called in
-  `PetsLogGpuTimeEnd()` to block CPU execution, but not continued GPU execution, until the
+  `PetscLogGpuTimeEnd()` to block CPU execution, but not continued GPU execution, until the
   timer event is recorded.
 
 .seealso: [](ch_profiling), `PetscLogView()`, `PetscLogGpuFlops()`, `PetscLogGpuTimeEnd()`, `PetscLogGpuTime()`

@@ -41,7 +41,7 @@ PetscErrorCode MatTransposeSymbolic_SeqAIJ(Mat A, Mat *B)
   PetscCall(PetscFree(atfill));
 
   PetscCall(MatCreateSeqAIJWithArrays(PetscObjectComm((PetscObject)A), an, am, ati, atj, NULL, &At));
-  PetscCall(MatSetBlockSizes(At, PetscAbs(A->cmap->bs), PetscAbs(A->rmap->bs)));
+  PetscCall(MatSetBlockSizes(At, A->cmap->bs, A->rmap->bs));
   PetscCall(MatSetType(At, ((PetscObject)A)->type_name));
   at          = (Mat_SeqAIJ *)At->data;
   at->free_a  = PETSC_FALSE;
@@ -122,7 +122,7 @@ PetscErrorCode MatTranspose_SeqAIJ(Mat A, MatReuse reuse, Mat *B)
 
   if (reuse == MAT_INITIAL_MATRIX || reuse == MAT_INPLACE_MATRIX || nonzerochange) {
     PetscCall(MatCreateSeqAIJWithArrays(PetscObjectComm((PetscObject)A), an, am, ati, atj, ata, &At));
-    PetscCall(MatSetBlockSizes(At, PetscAbs(A->cmap->bs), PetscAbs(A->rmap->bs)));
+    PetscCall(MatSetBlockSizes(At, A->cmap->bs, A->rmap->bs));
     PetscCall(MatSetType(At, ((PetscObject)A)->type_name));
     at          = (Mat_SeqAIJ *)At->data;
     at->free_a  = PETSC_TRUE;
@@ -143,7 +143,7 @@ PetscErrorCode MatTranspose_SeqAIJ(Mat A, MatReuse reuse, Mat *B)
 }
 
 /*
-   Get symbolic matrix structure of a submatrix of A, A[rstart:rend,:],
+   Get symbolic matrix nonzero structure of a submatrix of A, A[rstart:rend,:],
 */
 PetscErrorCode MatGetSymbolicTransposeReduced_SeqAIJ(Mat A, PetscInt rstart, PetscInt rend, PetscInt *Ati[], PetscInt *Atj[])
 {

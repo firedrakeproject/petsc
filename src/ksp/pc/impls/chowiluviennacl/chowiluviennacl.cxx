@@ -40,7 +40,7 @@ static PetscErrorCode PCSetUp_CHOWILUVIENNACL(PC pc)
   PetscFunctionBegin;
   PetscCall(PetscObjectTypeCompare((PetscObject)pc->pmat, MATSEQAIJVIENNACL, &flg));
   PetscCheck(flg, PetscObjectComm((PetscObject)pc), PETSC_ERR_SUP, "Currently only handles ViennaCL matrices");
-  if (pc->setupcalled != 0) {
+  if (pc->setupcalled) {
     try {
       delete ilu->CHOWILUVIENNACL;
     } catch (char *ex) {
@@ -138,7 +138,7 @@ static PetscErrorCode PCDestroy_CHOWILUVIENNACL(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_CHOWILUVIENNACL(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_CHOWILUVIENNACL(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "CHOWILUVIENNACL options");

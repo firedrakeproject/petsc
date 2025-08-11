@@ -86,6 +86,12 @@ class TAOBNCGType:
     SSML_BFGS  = TAO_BNCG_SSML_BFGS
     SSML_DFP   = TAO_BNCG_SSML_DFP
     SSML_BRDN  = TAO_BNCG_SSML_BRDN
+
+
+class TAOALMMType:
+    """TAO Augmented Lagrangian Multiplier method (ALMM) Type."""
+    CLASSIC = TAO_ALMM_CLASSIC
+    PHR     = TAO_ALMM_PHR
 # --------------------------------------------------------------------
 
 
@@ -103,6 +109,7 @@ cdef class TAO(Object):
     Type = TAOType
     ConvergedReason = TAOConvergedReason
     BNCGType = TAOBNCGType
+    ALMMType = TAOALMMType
     # FIXME backward compatibility
     Reason = TAOConvergedReason
 
@@ -413,6 +420,19 @@ cdef class TAO(Object):
         self.set_attr("__gradient__", context)
         CHKERR(TaoSetGradient(self.tao, gvec, TAO_Gradient, <void*>context))
 
+    def getObjective(self) -> TAOObjectiveFunction:
+        """Return the objective evaluation callback.
+
+        Not collective.
+
+        See Also
+        --------
+        setObjective, petsc.TaoGetObjective
+
+        """
+        cdef object objective = self.get_attr("__objective__")
+        return objective
+
     def getGradient(self) -> tuple[Vec, TAOGradientFunction]:
         """Return the vector used to store the gradient and the evaluation callback.
 
@@ -476,7 +496,7 @@ cdef class TAO(Object):
         return (vec, objgrad)
 
     def setVariableBounds(self, varbounds: tuple[Vec, Vec] | TAOVariableBoundsFunction, args: tuple[Any, ...] | None = None, kargs: dict[str, Any] | None = None) -> None:
-        """Set the upper and lower bounds for the optimization problem.
+        """Set the lower and upper bounds for the optimization problem.
 
         Logically collective.
 
@@ -686,6 +706,34 @@ cdef class TAO(Object):
         CHKERR(TaoSetJacobianDesignRoutine(self.tao, Jmat,
                                            TAO_JacobianDesign, <void*>context))
 
+    def getLMVMMat(self) -> Mat:
+        """Get the LMVM matrix.
+
+        Not collective.
+
+        See Also
+        --------
+        setLMVMMat, petsc.TaoGetLMVMMatrix
+
+        """
+        cdef Mat M = Mat()
+        CHKERR(TaoGetLMVMMatrix(self.tao, &M.mat))
+        CHKERR(PetscINCREF(M.obj))
+        return M
+
+    def setLMVMMat(self, Mat M) -> None:
+        """Set the LMVM matrix.
+
+        Logically collective.
+
+        See Also
+        --------
+        getLMVMMat, petsc.TaoSetLMVMMatrix
+
+        """
+        cdef PetscMat ctype = M.mat
+        CHKERR(TaoSetLMVMMatrix(self.tao, ctype))
+
     def setEqualityConstraints(self, equality_constraints, Vec c,
                                args: tuple[Any, ...] | None = None, kargs: dict[str, Any] | None = None) -> None:
         """Set equality constraints callback.
@@ -725,6 +773,46 @@ cdef class TAO(Object):
         self.set_attr("__jacobian_equality__", context)
         CHKERR(TaoSetJacobianEqualityRoutine(self.tao, Jmat, Pmat,
                                              TAO_JacobianEquality, <void*>context))
+
+    def setInequalityConstraints(self, inequality_constraints, Vec c,
+                                 args: tuple[Any, ...] | None = None, kargs: dict[str, Any] | None = None) -> None:
+        """Set inequality constraints callback.
+
+        Logically collective.
+
+        See Also
+        --------
+        petsc.TaoSetInequalityConstraintsRoutine
+
+        """
+        if args is None: args = ()
+        if kargs is None: kargs = {}
+        context = (inequality_constraints, args, kargs)
+        self.set_attr("__inequality_constraints__", context)
+        CHKERR(TaoSetInequalityConstraintsRoutine(self.tao, c.vec,
+                                                  TAO_InequalityConstraints, <void*>context))
+
+    def setJacobianInequality(self, jacobian_inequality, Mat J=None, Mat P=None,
+                              args: tuple[Any, ...] | None = None, kargs: dict[str, Any] | None = None) -> None:
+        """Set Jacobian inequality constraints callback.
+
+        Logically collective.
+
+        See Also
+        --------
+        petsc.TaoSetJacobianInequalityRoutine
+
+        """
+        cdef PetscMat Jmat = NULL
+        if J is not None: Jmat = J.mat
+        cdef PetscMat Pmat = Jmat
+        if P is not None: Pmat = P.mat
+        if args is None: args = ()
+        if kargs is None: kargs = {}
+        context = (jacobian_inequality, args, kargs)
+        self.set_attr("__jacobian_inequality__", context)
+        CHKERR(TaoSetJacobianInequalityRoutine(self.tao, Jmat, Pmat,
+                                               TAO_JacobianInequality, <void*>context))
 
     def setUpdate(self, update: TAOUpdateFunction, args: tuple[Any, ...] | None = None, kargs: dict[str, Any] | None = None) -> None:
         """Set the callback to compute update at each optimization step.
@@ -1386,7 +1474,7 @@ cdef class TAO(Object):
         return ksp
 
     def getVariableBounds(self) -> tuple[Vec, Vec]:
-        """Return the upper and lower bounds vectors.
+        """Return the lower and upper bounds vectors.
 
         Not collective.
 
@@ -1558,6 +1646,68 @@ cdef class TAO(Object):
         CHKERR(TaoGetKSP(self.tao, &ksp.ksp))
         CHKERR(PetscINCREF(ksp.obj))
         return ksp
+
+    # ALMM routines
+
+    def getALMMSubsolver(self) -> TAO:
+        """Return the subsolver inside the ALMM solver.
+
+        Not collective.
+
+        See Also
+        --------
+        setALMMSubsolver, petsc.TaoALMMGetSubsolver
+
+        """
+        cdef TAO subsolver = TAO()
+        CHKERR(TaoALMMGetSubsolver(self.tao, &subsolver.tao))
+        CHKERR(PetscINCREF(subsolver.obj))
+        return subsolver
+
+    def getALMMType(self) -> ALMMType:
+        """Return the type of the ALMM solver.
+
+        Not collective.
+
+        See Also
+        --------
+        setALMMType, petsc.TaoALMMGetType
+
+        """
+        cdef PetscTAOALMMType almm_type = TAO_ALMM_PHR
+        CHKERR(TaoALMMGetType(self.tao, &almm_type))
+        return almm_type
+
+    def setALMMSubsolver(self, subsolver: TAO) -> None:
+        """Set the subsolver inside the ALMM solver.
+
+        Logically collective.
+
+        See Also
+        --------
+        getALMMSubsolver, petsc.TaoALMMSetSubsolver
+
+        """
+        cdef TAO ctype = subsolver
+        CHKERR(TaoALMMSetSubsolver(self.tao, ctype.tao))
+
+    def setALMMType(self, tao_almm_type: ALMMType) -> None:
+        """Set the ALMM type of the solver.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        tao_almm_type
+            The type of the solver.
+
+        See Also
+        --------
+        getALMMType, petsc.TaoALMMSetType
+
+        """
+        cdef PetscTAOALMMType ctype = tao_almm_type
+        CHKERR(TaoALMMSetType(self.tao, ctype))
 
     # BRGN routines
 
@@ -1883,6 +2033,7 @@ cdef class TAO(Object):
 del TAOType
 del TAOConvergedReason
 del TAOBNCGType
+del TAOALMMType
 
 # --------------------------------------------------------------------
 

@@ -19,11 +19,11 @@ struct _SNESOps {
   PetscErrorCode (*setup)(SNES); /* routine to set up the nonlinear solver */
   PetscErrorCode (*solve)(SNES); /* actual nonlinear solver */
   PetscErrorCode (*view)(SNES, PetscViewer);
-  PetscErrorCode (*setfromoptions)(SNES, PetscOptionItems *); /* sets options from database */
+  PetscErrorCode (*setfromoptions)(SNES, PetscOptionItems); /* sets options from database */
   PetscErrorCode (*destroy)(SNES);
   PetscErrorCode (*reset)(SNES);
   PetscErrorCode (*usercompute)(SNES, void **);
-  PetscErrorCode (*userdestroy)(void **);
+  PetscCtxDestroyFn *ctxdestroy;
   PetscErrorCode (*computevariablebounds)(SNES, Vec, Vec); /* user provided routine to set box constrained variable bounds */
   PetscErrorCode (*computepfunction)(SNES, Vec, Vec, void *);
   PetscErrorCode (*computepjacobian)(SNES, Vec, Mat, Mat, void *);
@@ -45,7 +45,7 @@ struct _p_SNES {
   PetscBool usesnpc; /* type can use a nonlinear preconditioner */
 
   /*  ------------------------ User-provided stuff -------------------------------*/
-  void *user; /* user-defined context */
+  void *ctx; /* user-defined context */
 
   Vec vec_rhs; /* If non-null, solve F(x) = rhs */
   Vec vec_sol; /* pointer to solution */
@@ -53,8 +53,8 @@ struct _p_SNES {
   Vec vec_func; /* pointer to function */
 
   Mat            jacobian;      /* Jacobian matrix */
-  Mat            jacobian_pre;  /* preconditioner matrix */
-  Mat            picard;        /* copy of preconditioner matrix needed for Picard with -snes_mf_operator */
+  Mat            jacobian_pre;  /* matrix used to construct the preconditioner of the Jacobian */
+  Mat            picard;        /* copy of jacobian_pre needed for Picard with -snes_mf_operator */
   void          *initialguessP; /* user-defined initial guess context */
   KSP            ksp;           /* linear solver context */
   SNESLineSearch linesearch;    /* line search context */
@@ -73,7 +73,7 @@ struct _p_SNES {
   /* ---------------- PETSc-provided (or user-provided) stuff ---------------------*/
 
   PetscErrorCode (*monitor[MAXSNESMONITORS])(SNES, PetscInt, PetscReal, void *); /* monitor routine */
-  PetscErrorCode (*monitordestroy[MAXSNESMONITORS])(void **);                    /* monitor context destroy routine */
+  PetscCtxDestroyFn  *monitordestroy[MAXSNESMONITORS];                           /* monitor context destroy routine */
   void               *monitorcontext[MAXSNESMONITORS];                           /* monitor context */
   PetscInt            numbermonitors;                                            /* number of monitors */
   PetscBool           pauseFinal;                                                /* pause all drawing monitor at the final iterate */
@@ -82,11 +82,11 @@ struct _p_SNES {
 
   PetscViewer       convergedreasonviewer;
   PetscViewerFormat convergedreasonformat;
-  PetscErrorCode (*reasonview[MAXSNESREASONVIEWS])(SNES, void *);   /* snes converged reason view */
-  PetscErrorCode (*reasonviewdestroy[MAXSNESREASONVIEWS])(void **); /* reason view context destroy routine */
-  void     *reasonviewcontext[MAXSNESREASONVIEWS];                  /* reason view context */
-  PetscInt  numberreasonviews;                                      /* number of reason views */
-  PetscBool errorifnotconverged;
+  PetscErrorCode (*reasonview[MAXSNESREASONVIEWS])(SNES, void *); /* snes converged reason view */
+  PetscCtxDestroyFn *reasonviewdestroy[MAXSNESREASONVIEWS];       /* reason view context destroy routine */
+  void              *reasonviewcontext[MAXSNESREASONVIEWS];       /* reason view context */
+  PetscInt           numberreasonviews;                           /* number of reason views */
+  PetscBool          errorifnotconverged;
 
   /* --- Routines and data that are unique to each particular solver --- */
 
@@ -125,6 +125,10 @@ struct _p_SNES {
 
   PetscInt nwork;
   Vec     *work;
+
+  /* ---------------------------------- Testing --------------------------------- */
+  PetscBool testFunc; // Test the function routine
+  PetscBool testJac;  // Test the Jacobian routine
 
   /* ------------------------- Miscellaneous Information ------------------------ */
 
@@ -280,7 +284,7 @@ PETSC_INTERN PetscErrorCode SNESVICheckLocalMin_Private(SNES, Mat, Vec, Vec, Pet
 PETSC_INTERN PetscErrorCode SNESReset_VI(SNES);
 PETSC_INTERN PetscErrorCode SNESDestroy_VI(SNES);
 PETSC_INTERN PetscErrorCode SNESView_VI(SNES, PetscViewer);
-PETSC_INTERN PetscErrorCode SNESSetFromOptions_VI(SNES, PetscOptionItems *);
+PETSC_INTERN PetscErrorCode SNESSetFromOptions_VI(SNES, PetscOptionItems);
 PETSC_INTERN PetscErrorCode SNESSetUp_VI(SNES);
 PETSC_EXTERN_TYPEDEF typedef PetscErrorCode(SNESVIComputeVariableBoundsFn)(SNES, Vec, Vec);
 PETSC_EXTERN_TYPEDEF typedef SNESVIComputeVariableBoundsFn *SNESVIComputeVariableBoundsFunction; // deprecated version
@@ -288,9 +292,8 @@ PETSC_INTERN PetscErrorCode                                 SNESVISetComputeVari
 PETSC_INTERN PetscErrorCode                                 SNESVISetVariableBounds_VI(SNES, Vec, Vec);
 PETSC_INTERN PetscErrorCode                                 SNESConvergedDefault_VI(SNES, PetscInt, PetscReal, PetscReal, PetscReal, SNESConvergedReason *, void *);
 
-PETSC_EXTERN PetscErrorCode DMSNESUnsetFunctionContext_Internal(DM);
+PETSC_INTERN PetscErrorCode DMSNESUnsetFunctionContext_Internal(DM);
 PETSC_EXTERN PetscErrorCode DMSNESUnsetJacobianContext_Internal(DM);
-PETSC_EXTERN PetscErrorCode DMSNESCheck_Internal(SNES, DM, Vec);
 
 PETSC_EXTERN PetscLogEvent SNES_Solve;
 PETSC_EXTERN PetscLogEvent SNES_SetUp;
@@ -306,9 +309,9 @@ PETSC_INTERN PetscBool  SNEScite;
 PETSC_INTERN const char SNESCitation[];
 
 /* Used by TAOBNK solvers */
-PETSC_EXTERN PetscErrorCode KSPPostSolve_SNESEW(KSP, Vec, Vec, void *);
-PETSC_EXTERN PetscErrorCode KSPPreSolve_SNESEW(KSP, Vec, Vec, void *);
-PETSC_EXTERN PetscErrorCode SNESEWSetFromOptions_Private(SNESKSPEW *, PetscBool, MPI_Comm, const char *);
+PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL PetscErrorCode KSPPostSolve_SNESEW(KSP, Vec, Vec, void *);
+PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL PetscErrorCode KSPPreSolve_SNESEW(KSP, Vec, Vec, void *);
+PETSC_SINGLE_LIBRARY_VISIBILITY_INTERNAL PetscErrorCode SNESEWSetFromOptions_Private(SNESKSPEW *, PetscBool, MPI_Comm, const char *);
 
 /*
     Either generate an error or mark as diverged when a real from a SNES function norm is Nan or Inf.

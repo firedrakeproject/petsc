@@ -131,7 +131,7 @@ static PetscErrorCode PCDestroy_H2OPUS(PC pc)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_H2OPUS(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_H2OPUS(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PC_H2OPUS *pch2opus = (PC_H2OPUS *)pc->data;
 
@@ -605,7 +605,7 @@ static PetscErrorCode PCSetUp_H2OPUS(PC pc)
     PetscCall(PCH2OpusSetUpInit(pc));
     PetscCall(MatScale(pch2opus->M, pch2opus->s0));
   }
-  /* A and M have the same h2 matrix structure, save on reordering routines */
+  /* A and M have the same h2 matrix nonzero structure, save on reordering routines */
   PetscCall(MatH2OpusSetNativeMult(pch2opus->A, PETSC_TRUE));
   PetscCall(MatH2OpusSetNativeMult(pch2opus->M, PETSC_TRUE));
   if (norm == NORM_1 || norm == NORM_2 || norm == NORM_INFINITY) PetscCall(MatNorm(pch2opus->T, norm, &initerr));

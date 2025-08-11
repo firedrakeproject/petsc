@@ -1,4 +1,4 @@
-#include <petsc/private/fortranimpl.h>
+#include <petsc/private/ftnimpl.h>
 #include <petscsnes.h>
 
 #if defined(PETSC_HAVE_FORTRAN_CAPS)
@@ -11,7 +11,6 @@
   #define sneslinesearchgetprecheck_  sneslinesearchgetprecheck
   #define sneslinesearchsetpostcheck_ sneslinesearchsetpostcheck
   #define sneslinesearchgetpostcheck_ sneslinesearchgetpostcheck
-
 #endif
 
 /* fortranpointers go: shell, precheck, postcheck */

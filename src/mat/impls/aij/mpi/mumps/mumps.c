@@ -54,11 +54,11 @@ typedef MUMPS_INT PetscMUMPSInt;
 
 #if PETSC_PKG_MUMPS_VERSION_GE(5, 3, 0)
   #if defined(MUMPS_INTSIZE64) /* MUMPS_INTSIZE64 is in MUMPS headers if it is built in full 64-bit mode, therefore the macro is more reliable */
-    #error "Petsc has not been tested with full 64-bit MUMPS and we choose to error out"
+    #error "PETSc has not been tested with full 64-bit MUMPS and we choose to error out"
   #endif
 #else
   #if defined(INTSIZE64) /* INTSIZE64 is a command line macro one used to build MUMPS in full 64-bit mode */
-    #error "Petsc has not been tested with full 64-bit MUMPS and we choose to error out"
+    #error "PETSc has not been tested with full 64-bit MUMPS and we choose to error out"
   #endif
 #endif
 
@@ -78,7 +78,7 @@ static inline PetscErrorCode PetscMUMPSIntCast(PetscCount a, PetscMUMPSInt *b)
 }
 
 /* Put these utility routines here since they are only used in this file */
-static inline PetscErrorCode PetscOptionsMUMPSInt_Private(PetscOptionItems *PetscOptionsObject, const char opt[], const char text[], const char man[], PetscMUMPSInt currentvalue, PetscMUMPSInt *value, PetscBool *set, PetscMUMPSInt lb, PetscMUMPSInt ub)
+static inline PetscErrorCode PetscOptionsMUMPSInt_Private(PetscOptionItems PetscOptionsObject, const char opt[], const char text[], const char man[], PetscMUMPSInt currentvalue, PetscMUMPSInt *value, PetscBool *set, PetscMUMPSInt lb, PetscMUMPSInt ub)
 {
   PetscInt  myval;
   PetscBool myset;
@@ -199,7 +199,7 @@ struct Mat_MUMPS {
   /* stuff used by petsc/mumps OpenMP support*/
   PetscBool    use_petsc_omp_support;
   PetscOmpCtrl omp_ctrl;             /* an OpenMP controller that blocked processes will release their CPU (MPI_Barrier does not have this guarantee) */
-  MPI_Comm     petsc_comm, omp_comm; /* petsc_comm is petsc matrix's comm */
+  MPI_Comm     petsc_comm, omp_comm; /* petsc_comm is PETSc matrix's comm */
   PetscCount  *recvcount;            /* a collection of nnz on omp_master */
   PetscMPIInt  tag, omp_comm_size;
   PetscBool    is_omp_master; /* is this rank the master of omp_comm */
@@ -350,7 +350,7 @@ static PetscErrorCode MatMumpsHandleSchur_Private(Mat F, PetscBool expansion)
 }
 
 /*
-  MatConvertToTriples_A_B - convert Petsc matrix to triples: row[nz], col[nz], val[nz]
+  MatConvertToTriples_A_B - convert PETSc matrix to triples: row[nz], col[nz], val[nz]
 
   input:
     A       - matrix in aij,baij or sbaij format
@@ -1054,6 +1054,46 @@ static PetscErrorCode MatConvertToTriples_dense_xaij(Mat A, PETSC_UNUSED PetscIn
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+// If the input Mat (sub) is either MATTRANSPOSEVIRTUAL or MATHERMITIANTRANSPOSEVIRTUAL, this function gets the parent Mat until it is not a
+// MATTRANSPOSEVIRTUAL or MATHERMITIANTRANSPOSEVIRTUAL itself and returns the appropriate shift, scaling, and whether the parent Mat should be conjugated
+// and its rows and columns permuted
+// TODO FIXME: this should not be in this file and should instead be refactored where the same logic applies, e.g., MatAXPY_Dense_Nest()
+static PetscErrorCode MatGetTranspose_TransposeVirtual(Mat *sub, PetscBool *conjugate, PetscScalar *vshift, PetscScalar *vscale, PetscBool *swap)
+{
+  Mat         A;
+  PetscScalar s[2];
+  PetscBool   isTrans, isHTrans, compare;
+
+  PetscFunctionBegin;
+  do {
+    PetscCall(PetscObjectTypeCompare((PetscObject)*sub, MATTRANSPOSEVIRTUAL, &isTrans));
+    if (isTrans) {
+      PetscCall(MatTransposeGetMat(*sub, &A));
+      isHTrans = PETSC_FALSE;
+    } else {
+      PetscCall(PetscObjectTypeCompare((PetscObject)*sub, MATHERMITIANTRANSPOSEVIRTUAL, &isHTrans));
+      if (isHTrans) PetscCall(MatHermitianTransposeGetMat(*sub, &A));
+    }
+    compare = (PetscBool)(isTrans || isHTrans);
+    if (compare) {
+      if (vshift && vscale) {
+        PetscCall(MatShellGetScalingShifts(*sub, s, s + 1, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
+        if (!*conjugate) {
+          *vshift += s[0] * *vscale;
+          *vscale *= s[1];
+        } else {
+          *vshift += PetscConj(s[0]) * *vscale;
+          *vscale *= PetscConj(s[1]);
+        }
+      }
+      if (swap) *swap = (PetscBool)!*swap;
+      if (isHTrans && conjugate) *conjugate = (PetscBool)!*conjugate;
+      *sub = A;
+    }
+  } while (compare);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode MatConvertToTriples_nest_xaij(Mat A, PetscInt shift, MatReuse reuse, Mat_MUMPS *mumps)
 {
   Mat     **mats;
@@ -1066,7 +1106,7 @@ static PetscErrorCode MatConvertToTriples_nest_xaij(Mat A, PetscInt shift, MatRe
     PetscMUMPSInt *irns, *jcns;
     PetscScalar   *vals;
     PetscCount     totnnz, cumnnz, maxnnz;
-    PetscInt      *pjcns_w;
+    PetscInt      *pjcns_w, Mbs = 0;
     IS            *rows, *cols;
     PetscInt     **rows_idx, **cols_idx;
 
@@ -1081,15 +1121,10 @@ static PetscErrorCode MatConvertToTriples_nest_xaij(Mat A, PetscInt shift, MatRe
         if (chol && c < r) continue; /* skip lower-triangular block for Cholesky */
         if (sub) {
           PetscErrorCode (*convert_to_triples)(Mat, PetscInt, MatReuse, Mat_MUMPS *) = NULL;
-          PetscBool isSeqAIJ, isMPIAIJ, isSeqBAIJ, isMPIBAIJ, isSeqSBAIJ, isMPISBAIJ, isTrans, isHTrans = PETSC_FALSE, isDiag, isDense;
+          PetscBool isSeqAIJ, isMPIAIJ, isSeqBAIJ, isMPIBAIJ, isSeqSBAIJ, isMPISBAIJ, isDiag, isDense;
           MatInfo   info;
 
-          PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATTRANSPOSEVIRTUAL, &isTrans));
-          if (isTrans) PetscCall(MatTransposeGetMat(sub, &sub));
-          else {
-            PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATHERMITIANTRANSPOSEVIRTUAL, &isHTrans));
-            if (isHTrans) PetscCall(MatHermitianTransposeGetMat(sub, &sub));
-          }
+          PetscCall(MatGetTranspose_TransposeVirtual(&sub, NULL, NULL, NULL, NULL));
           PetscCall(PetscObjectBaseTypeCompare((PetscObject)sub, MATSEQAIJ, &isSeqAIJ));
           PetscCall(PetscObjectBaseTypeCompare((PetscObject)sub, MATMPIAIJ, &isMPIAIJ));
           PetscCall(PetscObjectBaseTypeCompare((PetscObject)sub, MATSEQBAIJ, &isSeqBAIJ));
@@ -1149,26 +1184,30 @@ static PetscErrorCode MatConvertToTriples_nest_xaij(Mat A, PetscInt shift, MatRe
     cumnnz = 0;
     for (PetscInt r = 0; r < nr; r++) {
       for (PetscInt c = 0; c < nc; c++) {
-        Mat             sub  = mats[r][c];
-        const PetscInt *ridx = rows_idx[r];
-        const PetscInt *cidx = cols_idx[c];
-        PetscInt        rst;
+        Mat             sub    = mats[r][c];
+        const PetscInt *ridx   = rows_idx[r];
+        const PetscInt *cidx   = cols_idx[c];
+        PetscScalar     vscale = 1.0, vshift = 0.0;
+        PetscInt        rst, size, bs;
         PetscSF         csf;
-        PetscBool       isTrans, isHTrans = PETSC_FALSE, swap;
+        PetscBool       conjugate = PETSC_FALSE, swap = PETSC_FALSE;
         PetscLayout     cmap;
         PetscInt        innz;
 
         mumps->nest_vals_start[r * nc + c] = cumnnz;
+        if (c == r) {
+          PetscCall(ISGetSize(rows[r], &size));
+          if (!mumps->nest_convert_to_triples[r * nc + c]) {
+            for (PetscInt c = 0; c < nc && !sub; ++c) sub = mats[r][c]; // diagonal Mat is NULL, so start over from the beginning of the current row
+          }
+          PetscCall(MatGetBlockSize(sub, &bs));
+          Mbs += size / bs;
+        }
         if (!mumps->nest_convert_to_triples[r * nc + c]) continue;
 
         /* Extract inner blocks if needed */
-        PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATTRANSPOSEVIRTUAL, &isTrans));
-        if (isTrans) PetscCall(MatTransposeGetMat(sub, &sub));
-        else {
-          PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATHERMITIANTRANSPOSEVIRTUAL, &isHTrans));
-          if (isHTrans) PetscCall(MatHermitianTransposeGetMat(sub, &sub));
-        }
-        swap = (PetscBool)(isTrans || isHTrans);
+        PetscCall(MatGetTranspose_TransposeVirtual(&sub, &conjugate, &vshift, &vscale, &swap));
+        PetscCheck(vshift == 0.0, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Nonzero shift in parent MatShell");
 
         /* Get column layout to map off-process columns */
         PetscCall(MatGetLayouts(sub, NULL, &cmap));
@@ -1213,11 +1252,13 @@ static PetscErrorCode MatConvertToTriples_nest_xaij(Mat A, PetscInt shift, MatRe
         }
 
         /* Import values to full COO */
-        PetscCall(PetscArraycpy(vals + cumnnz, mumps->val, mumps->nnz));
-        if (isHTrans) { /* conjugate the entries */
+        if (conjugate) { /* conjugate the entries */
           PetscScalar *v = vals + cumnnz;
-          for (PetscInt k = 0; k < mumps->nnz; k++) v[k] = PetscConj(v[k]);
-        }
+          for (PetscInt k = 0; k < mumps->nnz; k++) v[k] = vscale * PetscConj(mumps->val[k]);
+        } else if (vscale != 1.0) {
+          PetscScalar *v = vals + cumnnz;
+          for (PetscInt k = 0; k < mumps->nnz; k++) v[k] = vscale * mumps->val[k];
+        } else PetscCall(PetscArraycpy(vals + cumnnz, mumps->val, mumps->nnz));
 
         /* Shift new starting point and sanity check */
         cumnnz += mumps->nnz;
@@ -1229,6 +1270,35 @@ static PetscErrorCode MatConvertToTriples_nest_xaij(Mat A, PetscInt shift, MatRe
         mumps->val = NULL;
         mumps->nnz = 0;
       }
+    }
+    if (mumps->id.ICNTL(15) == 1) {
+      if (Mbs != A->rmap->N) {
+        PetscMPIInt rank, size;
+
+        PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)A), &rank));
+        PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)A), &size));
+        if (rank == 0) {
+          PetscInt shift = 0;
+
+          PetscCall(PetscMUMPSIntCast(Mbs, &mumps->id.nblk));
+          PetscCall(PetscFree(mumps->id.blkptr));
+          PetscCall(PetscMalloc1(Mbs + 1, &mumps->id.blkptr));
+          mumps->id.blkptr[0] = 1;
+          for (PetscInt i = 0; i < size; ++i) {
+            for (PetscInt r = 0; r < nr; r++) {
+              Mat             sub = mats[r][r];
+              const PetscInt *ranges;
+              PetscInt        bs;
+
+              for (PetscInt c = 0; c < nc && !sub; ++c) sub = mats[r][c]; // diagonal Mat is NULL, so start over from the beginning of the current row
+              PetscCall(MatGetOwnershipRanges(sub, &ranges));
+              PetscCall(MatGetBlockSize(sub, &bs));
+              for (PetscInt j = 0, start = mumps->id.blkptr[shift] + bs; j < ranges[i + 1] - ranges[i]; j += bs) PetscCall(PetscMUMPSIntCast(start + j, mumps->id.blkptr + shift + j / bs + 1));
+              shift += (ranges[i + 1] - ranges[i]) / bs;
+            }
+          }
+        }
+      } else mumps->id.ICNTL(15) = 0;
     }
     if (PetscDefined(USE_64BIT_INDICES)) PetscCall(PetscFree(pjcns_w));
     for (PetscInt r = 0; r < nr; r++) PetscCall(ISRestoreIndices(rows[r], (const PetscInt **)&rows_idx[r]));
@@ -1248,22 +1318,22 @@ static PetscErrorCode MatConvertToTriples_nest_xaij(Mat A, PetscInt shift, MatRe
     PetscScalar *oval = mumps->nest_vals;
     for (PetscInt r = 0; r < nr; r++) {
       for (PetscInt c = 0; c < nc; c++) {
-        PetscBool isTrans, isHTrans = PETSC_FALSE;
-        Mat       sub  = mats[r][c];
-        PetscInt  midx = r * nc + c;
+        PetscBool   conjugate = PETSC_FALSE;
+        Mat         sub       = mats[r][c];
+        PetscScalar vscale = 1.0, vshift = 0.0;
+        PetscInt    midx = r * nc + c;
 
         if (!mumps->nest_convert_to_triples[midx]) continue;
-        PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATTRANSPOSEVIRTUAL, &isTrans));
-        if (isTrans) PetscCall(MatTransposeGetMat(sub, &sub));
-        else {
-          PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATHERMITIANTRANSPOSEVIRTUAL, &isHTrans));
-          if (isHTrans) PetscCall(MatHermitianTransposeGetMat(sub, &sub));
-        }
+        PetscCall(MatGetTranspose_TransposeVirtual(&sub, &conjugate, &vshift, &vscale, NULL));
+        PetscCheck(vshift == 0.0, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Nonzero shift in parent MatShell");
         mumps->val = oval + mumps->nest_vals_start[midx];
         PetscCall((*mumps->nest_convert_to_triples[midx])(sub, shift, MAT_REUSE_MATRIX, mumps));
-        if (isHTrans) {
+        if (conjugate) {
           PetscCount nnz = mumps->nest_vals_start[midx + 1] - mumps->nest_vals_start[midx];
-          for (PetscCount k = 0; k < nnz; k++) mumps->val[k] = PetscConj(mumps->val[k]);
+          for (PetscCount k = 0; k < nnz; k++) mumps->val[k] = vscale * PetscConj(mumps->val[k]);
+        } else if (vscale != 1.0) {
+          PetscCount nnz = mumps->nest_vals_start[midx + 1] - mumps->nest_vals_start[midx];
+          for (PetscCount k = 0; k < nnz; k++) mumps->val[k] *= vscale;
         }
       }
     }
@@ -1283,6 +1353,8 @@ static PetscErrorCode MatDestroy_MUMPS(Mat A)
   PetscCall(VecDestroy(&mumps->b_seq));
   PetscCall(VecDestroy(&mumps->x_seq));
   PetscCall(PetscFree(mumps->id.perm_in));
+  PetscCall(PetscFree(mumps->id.blkvar));
+  PetscCall(PetscFree(mumps->id.blkptr));
   PetscCall(PetscFree2(mumps->irn, mumps->jcn));
   PetscCall(PetscFree(mumps->val_alloc));
   PetscCall(PetscFree(mumps->info));
@@ -1329,6 +1401,7 @@ static PetscErrorCode MatDestroy_MUMPS(Mat A)
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatMumpsGetNullPivots_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatMumpsGetInverse_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatMumpsGetInverseTranspose_C", NULL));
+  PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatMumpsSetBlk_C", NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1510,7 +1583,7 @@ static PetscErrorCode MatSolve_MUMPS(Mat A, Vec b, Vec x)
     }
   }
 
-  if (mumps->petsc_size > 1) { /* convert mumps distributed solution to petsc mpi x */
+  if (mumps->petsc_size > 1) { /* convert mumps distributed solution to PETSc mpi x */
     if (mumps->scat_sol && mumps->ICNTL9_pre != mumps->id.ICNTL(9)) {
       /* when id.ICNTL(9) changes, the contents of lsol_loc may change (not its size, lsol_loc), recreates scat_sol */
       PetscCall(VecScatterDestroy(&mumps->scat_sol));
@@ -1560,7 +1633,7 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
   Mat                Bt = NULL;
   PetscBool          denseX, denseB, flg, flgT;
   Mat_MUMPS         *mumps = (Mat_MUMPS *)A->data;
-  PetscInt           i, nrhs, M;
+  PetscInt           i, nrhs, M, nrhsM;
   PetscScalar       *array;
   const PetscScalar *rbray;
   PetscInt           lsol_loc, nlsol_loc, *idxx, iidx = 0;
@@ -1588,14 +1661,16 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
   } else {                   /* sparse B */
     PetscCheck(X != B, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_IDN, "X and B must be different matrices");
     PetscCall(PetscObjectTypeCompare((PetscObject)B, MATTRANSPOSEVIRTUAL, &flgT));
-    if (flgT) { /* input B is transpose of actual RHS matrix,
-                 because mumps requires sparse compressed COLUMN storage! See MatMatTransposeSolve_MUMPS() */
-      PetscCall(MatTransposeGetMat(B, &Bt));
-    } else SETERRQ(PetscObjectComm((PetscObject)B), PETSC_ERR_ARG_WRONG, "Matrix B must be MATTRANSPOSEVIRTUAL matrix");
+    PetscCheck(flgT, PetscObjectComm((PetscObject)B), PETSC_ERR_ARG_WRONG, "Matrix B must be MATTRANSPOSEVIRTUAL matrix");
+    PetscCall(MatShellGetScalingShifts(B, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
+    /* input B is transpose of actual RHS matrix,
+     because mumps requires sparse compressed COLUMN storage! See MatMatTransposeSolve_MUMPS() */
+    PetscCall(MatTransposeGetMat(B, &Bt));
     mumps->id.ICNTL(20) = 1; /* sparse RHS */
   }
 
   PetscCall(MatGetSize(B, &M, &nrhs));
+  PetscCall(PetscIntMultError(nrhs, M, &nrhsM));
   mumps->id.nrhs = (PetscMUMPSInt)nrhs;
   mumps->id.lrhs = (PetscMUMPSInt)M;
   mumps->id.rhs  = NULL;
@@ -1611,7 +1686,7 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
     if (denseB) {
       /* copy B to X */
       PetscCall(MatDenseGetArrayRead(B, &rbray));
-      PetscCall(PetscArraycpy(array, rbray, M * nrhs));
+      PetscCall(PetscArraycpy(array, rbray, nrhsM));
       PetscCall(MatDenseRestoreArrayRead(B, &rbray));
     } else { /* sparse B */
       PetscCall(MatSeqAIJGetArray(Bt, &aa));
@@ -1663,8 +1738,8 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
   isol_loc_save = mumps->id.isol_loc; /* save it for MatSolve() */
   sol_loc_save  = (PetscScalar *)mumps->id.sol_loc;
 
-  lsol_loc  = mumps->id.lsol_loc;
-  nlsol_loc = nrhs * lsol_loc; /* length of sol_loc */
+  lsol_loc = mumps->id.lsol_loc;
+  PetscCall(PetscIntMultError(nrhs, lsol_loc, &nlsol_loc)); /* length of sol_loc */
   PetscCall(PetscMalloc2(nlsol_loc, &sol_loc, lsol_loc, &isol_loc));
   mumps->id.sol_loc  = (MumpsScalar *)sol_loc;
   mumps->id.isol_loc = isol_loc;
@@ -1678,7 +1753,7 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
       PetscCall(MatMumpsSetUpDistRHSInfo(A, nrhs, rbray));
       PetscCall(MatDenseRestoreArrayRead(B, &rbray));
       PetscCall(MatGetLocalSize(B, &m, NULL));
-      PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)B), 1, nrhs * m, nrhs * M, NULL, &v_mpi));
+      PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)B), 1, nrhs * m, nrhsM, NULL, &v_mpi));
     } else {
       mumps->id.ICNTL(20) = 0; /* dense centralized RHS */
       /* TODO: Because of non-contiguous indices, the created vecscatter scat_rhs is not done in MPI_Gather, resulting in
@@ -1690,25 +1765,24 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
       /* wrap dense rhs matrix B into a vector v_mpi */
       PetscCall(MatGetLocalSize(B, &m, NULL));
       PetscCall(MatDenseGetArray(B, &bray));
-      PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)B), 1, nrhs * m, nrhs * M, (const PetscScalar *)bray, &v_mpi));
+      PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)B), 1, nrhs * m, nrhsM, (const PetscScalar *)bray, &v_mpi));
       PetscCall(MatDenseRestoreArray(B, &bray));
 
       /* scatter v_mpi to b_seq in proc[0]. MUMPS requires rhs to be centralized on the host! */
       if (!mumps->myid) {
         PetscInt *idx;
         /* idx: maps from k-th index of v_mpi to (i,j)-th global entry of B */
-        PetscCall(PetscMalloc1(nrhs * M, &idx));
+        PetscCall(PetscMalloc1(nrhsM, &idx));
         PetscCall(MatGetOwnershipRanges(B, &rstart));
-        k = 0;
-        for (proc = 0; proc < mumps->petsc_size; proc++) {
+        for (proc = 0, k = 0; proc < mumps->petsc_size; proc++) {
           for (j = 0; j < nrhs; j++) {
             for (i = rstart[proc]; i < rstart[proc + 1]; i++) idx[k++] = j * M + i;
           }
         }
 
-        PetscCall(VecCreateSeq(PETSC_COMM_SELF, nrhs * M, &b_seq));
-        PetscCall(ISCreateGeneral(PETSC_COMM_SELF, nrhs * M, idx, PETSC_OWN_POINTER, &is_to));
-        PetscCall(ISCreateStride(PETSC_COMM_SELF, nrhs * M, 0, 1, &is_from));
+        PetscCall(VecCreateSeq(PETSC_COMM_SELF, nrhsM, &b_seq));
+        PetscCall(ISCreateGeneral(PETSC_COMM_SELF, nrhsM, idx, PETSC_OWN_POINTER, &is_to));
+        PetscCall(ISCreateStride(PETSC_COMM_SELF, nrhsM, 0, 1, &is_from));
       } else {
         PetscCall(VecCreateSeq(PETSC_COMM_SELF, 0, &b_seq));
         PetscCall(ISCreateStride(PETSC_COMM_SELF, 0, 0, 1, &is_to));
@@ -1732,7 +1806,7 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
     /* wrap dense X into a vector v_mpi */
     PetscCall(MatGetLocalSize(X, &m, NULL));
     PetscCall(MatDenseGetArray(X, &bray));
-    PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)X), 1, nrhs * m, nrhs * M, (const PetscScalar *)bray, &v_mpi));
+    PetscCall(VecCreateMPIWithArray(PetscObjectComm((PetscObject)X), 1, nrhs * m, nrhsM, (const PetscScalar *)bray, &v_mpi));
     PetscCall(MatDenseRestoreArray(X, &bray));
 
     if (!mumps->myid) {
@@ -1754,13 +1828,13 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
   PetscMUMPS_c(mumps);
   PetscCheck(mumps->id.INFOG(1) >= 0, PETSC_COMM_SELF, PETSC_ERR_LIB, "MUMPS error in solve: INFOG(1)=%d " MUMPS_MANUALS, mumps->id.INFOG(1));
 
-  /* scatter mumps distributed solution to petsc vector v_mpi, which shares local arrays with solution matrix X */
+  /* scatter mumps distributed solution to PETSc vector v_mpi, which shares local arrays with solution matrix X */
   PetscCall(MatDenseGetArray(X, &array));
   PetscCall(VecPlaceArray(v_mpi, array));
 
   /* create scatter scat_sol */
   PetscCall(MatGetOwnershipRanges(X, &rstart));
-  /* iidx: index for scatter mumps solution to petsc X */
+  /* iidx: index for scatter mumps solution to PETSc X */
 
   PetscCall(ISCreateStride(PETSC_COMM_SELF, nlsol_loc, 0, 1, &is_from));
   PetscCall(PetscMalloc1(nlsol_loc, &idxx));
@@ -1770,8 +1844,8 @@ static PetscErrorCode MatMatSolve_MUMPS(Mat A, Mat B, Mat X)
     for (proc = 0; proc < mumps->petsc_size; proc++) {
       if (isol_loc[i] >= rstart[proc] && isol_loc[i] < rstart[proc + 1]) {
         myrstart = rstart[proc];
-        k        = isol_loc[i] - myrstart;          /* local index on 1st column of petsc vector X */
-        iidx     = k + myrstart * nrhs;             /* maps mumps isol_loc[i] to petsc index in X */
+        k        = isol_loc[i] - myrstart;          /* local index on 1st column of PETSc vector X */
+        iidx     = k + myrstart * nrhs;             /* maps mumps isol_loc[i] to PETSc index in X */
         m        = rstart[proc + 1] - rstart[proc]; /* rows of X for this proc */
         break;
       }
@@ -2083,9 +2157,10 @@ static PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
   PetscFunctionBegin;
   PetscOptionsBegin(PetscObjectComm((PetscObject)F), ((PetscObject)F)->prefix, "MUMPS Options", "Mat");
   if (mumps->id.job == JOB_NULL) { /* MatSetFromOptions_MUMPS() has never been called before */
-    PetscInt nthreads   = 0;
-    PetscInt nCNTL_pre  = mumps->CNTL_pre ? mumps->CNTL_pre[0] : 0;
-    PetscInt nICNTL_pre = mumps->ICNTL_pre ? mumps->ICNTL_pre[0] : 0;
+    PetscInt      nthreads   = 0;
+    PetscInt      nCNTL_pre  = mumps->CNTL_pre ? mumps->CNTL_pre[0] : 0;
+    PetscInt      nICNTL_pre = mumps->ICNTL_pre ? mumps->ICNTL_pre[0] : 0;
+    PetscMUMPSInt nblk, *blkvar, *blkptr;
 
     mumps->petsc_comm = PetscObjectComm((PetscObject)A);
     PetscCallMPI(MPI_Comm_size(mumps->petsc_comm, &mumps->petsc_size));
@@ -2130,6 +2205,15 @@ static PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
     size          = mumps->id.size_schur;
     arr           = mumps->id.schur;
     listvar_schur = mumps->id.listvar_schur;
+    nblk          = mumps->id.nblk;
+    blkvar        = mumps->id.blkvar;
+    blkptr        = mumps->id.blkptr;
+    if (PetscDefined(USE_DEBUG)) {
+      for (PetscInt i = 0; i < size; i++)
+        PetscCheck(listvar_schur[i] - 1 >= 0 && listvar_schur[i] - 1 < A->rmap->N, PETSC_COMM_SELF, PETSC_ERR_USER, "Invalid Schur index at position %" PetscInt_FMT "! %" PetscInt_FMT " must be in [0, %" PetscInt_FMT ")", i, (PetscInt)listvar_schur[i] - 1,
+                   A->rmap->N);
+    }
+
     PetscMUMPS_c(mumps);
     PetscCheck(mumps->id.INFOG(1) >= 0, PETSC_COMM_SELF, PETSC_ERR_LIB, "MUMPS error: INFOG(1)=%d " MUMPS_MANUALS, mumps->id.INFOG(1));
 
@@ -2142,6 +2226,12 @@ static PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
     } else {
       mumps->id.ICNTL(18) = 3; /* distributed assembled matrix input */
       mumps->id.ICNTL(21) = 1; /* distributed solution */
+    }
+    if (nblk && blkptr) {
+      mumps->id.ICNTL(15) = 1;
+      mumps->id.nblk      = nblk;
+      mumps->id.blkvar    = blkvar;
+      mumps->id.blkptr    = blkptr;
     }
 
     /* restore cached ICNTL and CNTL values */
@@ -2212,8 +2302,39 @@ static PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
   if (rbs == cbs && rbs > 1) mumps->id.ICNTL(15) = (PetscMUMPSInt)-rbs;
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_15", "ICNTL(15): compression of the input matrix resulting from a block format", "None", mumps->id.ICNTL(15), &mumps->id.ICNTL(15), &flg));
   if (flg) {
-    PetscCheck(mumps->id.ICNTL(15) <= 0, PETSC_COMM_SELF, PETSC_ERR_SUP, "Positive -mat_mumps_icntl_15 not handled");
-    PetscCheck((-mumps->id.ICNTL(15) % cbs == 0) && (-mumps->id.ICNTL(15) % rbs == 0), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "The opposite of -mat_mumps_icntl_15 must be a multiple of the column and row blocksizes");
+    if (mumps->id.ICNTL(15) < 0) PetscCheck((-mumps->id.ICNTL(15) % cbs == 0) && (-mumps->id.ICNTL(15) % rbs == 0), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "The opposite of -mat_mumps_icntl_15 must be a multiple of the column and row blocksizes");
+    else if (mumps->id.ICNTL(15) > 0) {
+      const PetscInt *bsizes;
+      PetscInt        nblocks, p, *blkptr = NULL;
+      PetscMPIInt    *recvcounts, *displs, n;
+      PetscMPIInt     rank, size = 0;
+
+      PetscCall(MatGetVariableBlockSizes(A, &nblocks, &bsizes));
+      flg = PETSC_TRUE;
+      for (p = 0; p < nblocks; ++p) {
+        if (bsizes[p] > 1) break;
+      }
+      if (p == nblocks) flg = PETSC_FALSE;
+      PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &flg, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)A)));
+      if (flg) { // if at least one process supplies variable block sizes and they are not all set to 1
+        PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)A), &rank));
+        if (rank == 0) PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)A), &size));
+        PetscCall(PetscCalloc2(size, &recvcounts, size + 1, &displs));
+        PetscCall(PetscMPIIntCast(nblocks, &n));
+        PetscCallMPI(MPI_Gather(&n, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, PetscObjectComm((PetscObject)A)));
+        for (PetscInt p = 0; p < size; ++p) displs[p + 1] = displs[p] + recvcounts[p];
+        PetscCall(PetscMalloc1(displs[size] + 1, &blkptr));
+        PetscCallMPI(MPI_Bcast(displs + size, 1, MPIU_INT, 0, PetscObjectComm((PetscObject)A)));
+        PetscCallMPI(MPI_Gatherv(bsizes, n, MPIU_INT, blkptr + 1, recvcounts, displs, MPIU_INT, 0, PetscObjectComm((PetscObject)A)));
+        if (rank == 0) {
+          blkptr[0] = 1;
+          for (PetscInt p = 0; p < n; ++p) blkptr[p + 1] += blkptr[p];
+          PetscCall(MatMumpsSetBlk(F, displs[size], NULL, blkptr));
+        }
+        PetscCall(PetscFree2(recvcounts, displs));
+        PetscCall(PetscFree(blkptr));
+      }
+    }
   }
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_19", "ICNTL(19): computes the Schur complement", "None", mumps->id.ICNTL(19), &mumps->id.ICNTL(19), NULL));
   if (mumps->id.ICNTL(19) <= 0 || mumps->id.ICNTL(19) > 3) { /* reset any schur data (if any) */
@@ -2228,12 +2349,9 @@ static PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
      see https://github.com/pmodels/mpich/issues/5589. This bug was fixed by https://github.com/pmodels/mpich/pull/5590.
      In short, we could not use distributed RHS until with MPICH v4.0b1 or we enabled a workaround in mumps-5.6.2+
    */
-#if PETSC_PKG_MUMPS_VERSION_GE(5, 6, 2) && defined(PETSC_HAVE_MUMPS_AVOID_MPI_IN_PLACE)
-  mumps->ICNTL20 = 10;
-#elif PETSC_PKG_MUMPS_VERSION_LT(5, 3, 0) || (defined(PETSC_HAVE_MPICH) && (MPICH_NUMVERSION < 40000101))
-  mumps->ICNTL20 = 0; /* Centralized dense RHS*/
-#else
-  mumps->ICNTL20 = 10; /* Distributed dense RHS*/
+  mumps->ICNTL20 = 10; /* Distributed dense RHS, by default */
+#if PETSC_PKG_MUMPS_VERSION_LT(5, 3, 0) || (PetscDefined(HAVE_MPICH) && MPICH_NUMVERSION < 40000101) || PetscDefined(HAVE_MSMPI)
+  mumps->ICNTL20 = 0; /* Centralized dense RHS, if need be */
 #endif
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_20", "ICNTL(20): give mumps centralized (0) or distributed (10) dense right-hand sides", "None", mumps->ICNTL20, &mumps->ICNTL20, &flg));
   PetscCheck(!flg || mumps->ICNTL20 == 10 || mumps->ICNTL20 == 0, PETSC_COMM_SELF, PETSC_ERR_SUP, "ICNTL(20)=%d is not supported by the PETSc/MUMPS interface. Allowed values are 0, 10", (int)mumps->ICNTL20);
@@ -2258,8 +2376,10 @@ static PetscErrorCode MatSetFromOptions_MUMPS(Mat F, Mat A)
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_33", "ICNTL(33): compute determinant", "None", mumps->id.ICNTL(33), &mumps->id.ICNTL(33), NULL));
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_35", "ICNTL(35): activates Block Low Rank (BLR) based factorization", "None", mumps->id.ICNTL(35), &mumps->id.ICNTL(35), NULL));
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_36", "ICNTL(36): choice of BLR factorization variant", "None", mumps->id.ICNTL(36), &mumps->id.ICNTL(36), NULL));
+  PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_37", "ICNTL(37): compression of the contribution blocks (CB)", "None", mumps->id.ICNTL(37), &mumps->id.ICNTL(37), NULL));
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_38", "ICNTL(38): estimated compression rate of LU factors with BLR", "None", mumps->id.ICNTL(38), &mumps->id.ICNTL(38), NULL));
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_48", "ICNTL(48): multithreading with tree parallelism", "None", mumps->id.ICNTL(48), &mumps->id.ICNTL(48), NULL));
+  PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_56", "ICNTL(56): postponing and rank-revealing factorization", "None", mumps->id.ICNTL(56), &mumps->id.ICNTL(56), NULL));
   PetscCall(PetscOptionsMUMPSInt("-mat_mumps_icntl_58", "ICNTL(58): defines options for symbolic factorization", "None", mumps->id.ICNTL(58), &mumps->id.ICNTL(58), NULL));
 
   PetscCall(PetscOptionsReal("-mat_mumps_cntl_1", "CNTL(1): relative pivoting threshold", "None", mumps->id.CNTL(1), &mumps->id.CNTL(1), NULL));
@@ -2375,7 +2495,7 @@ static PetscErrorCode MatLUFactorSymbolic_AIJMUMPS(Mat F, Mat A, IS r, PETSC_UNU
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* Note the Petsc r and c permutations are ignored */
+/* Note the PETSc r and c permutations are ignored */
 static PetscErrorCode MatLUFactorSymbolic_BAIJMUMPS(Mat F, Mat A, PETSC_UNUSED IS r, PETSC_UNUSED IS c, const MatFactorInfo *info)
 {
   Mat_MUMPS     *mumps = (Mat_MUMPS *)F->data;
@@ -2430,7 +2550,7 @@ static PetscErrorCode MatLUFactorSymbolic_BAIJMUMPS(Mat F, Mat A, PETSC_UNUSED I
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* Note the Petsc r permutation and factor info are ignored */
+/* Note the PETSc r permutation and factor info are ignored */
 static PetscErrorCode MatCholeskyFactorSymbolic_MUMPS(Mat F, Mat A, PETSC_UNUSED IS r, const MatFactorInfo *info)
 {
   Mat_MUMPS     *mumps = (Mat_MUMPS *)F->data;
@@ -2552,8 +2672,10 @@ static PetscErrorCode MatView_MUMPS(Mat A, PetscViewer viewer)
         PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(33) (compute determinant):                        %d\n", mumps->id.ICNTL(33)));
         PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(35) (activate BLR based factorization):           %d\n", mumps->id.ICNTL(35)));
         PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(36) (choice of BLR factorization variant):        %d\n", mumps->id.ICNTL(36)));
+        PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(37) (compression of the contribution blocks):     %d\n", mumps->id.ICNTL(37)));
         PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(38) (estimated compression rate of LU factors):   %d\n", mumps->id.ICNTL(38)));
         PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(48) (multithreading with tree parallelism):       %d\n", mumps->id.ICNTL(48)));
+        PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(56) (postponing and rank-revealing factorization):%d\n", mumps->id.ICNTL(56)));
         PetscCall(PetscViewerASCIIPrintf(viewer, "  ICNTL(58) (options for symbolic factorization):         %d\n", mumps->id.ICNTL(58)));
 
         PetscCall(PetscViewerASCIIPrintf(viewer, "  CNTL(1) (relative pivoting threshold):      %g\n", (double)mumps->id.CNTL(1)));
@@ -2796,14 +2918,17 @@ static PetscErrorCode MatMumpsGetIcntl_MUMPS(Mat F, PetscInt icntl, PetscInt *iv
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
-. icntl - index of MUMPS parameter array ICNTL()
-- ival  - value of MUMPS ICNTL(icntl)
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
+. icntl - index of MUMPS parameter array `ICNTL()`
+- ival  - value of MUMPS `ICNTL(icntl)`
 
   Options Database Key:
-. -mat_mumps_icntl_<icntl> <ival> - change the option numbered icntl to ival
+. -mat_mumps_icntl_<icntl> <ival> - change the option numbered `icntl` to `ival`
 
   Level: beginner
+
+  Note:
+  Ignored if MUMPS is not installed or `F` is not a MUMPS matrix
 
 .seealso: [](ch_matrices), `Mat`, `MatGetFactor()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
@@ -2814,7 +2939,7 @@ PetscErrorCode MatMumpsSetIcntl(Mat F, PetscInt icntl, PetscInt ival)
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
   PetscValidLogicalCollectiveInt(F, icntl, 2);
   PetscValidLogicalCollectiveInt(F, ival, 3);
-  PetscCheck((icntl >= 1 && icntl <= 38) || icntl == 48 || icntl == 58, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONG, "Unsupported ICNTL value %" PetscInt_FMT, icntl);
+  PetscCheck((icntl >= 1 && icntl <= 38) || icntl == 48 || icntl == 56 || icntl == 58, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONG, "Unsupported ICNTL value %" PetscInt_FMT, icntl);
   PetscTryMethod(F, "MatMumpsSetIcntl_C", (Mat, PetscInt, PetscInt), (F, icntl, ival));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -2825,7 +2950,7 @@ PetscErrorCode MatMumpsSetIcntl(Mat F, PetscInt icntl, PetscInt ival)
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 - icntl - index of MUMPS parameter array ICNTL()
 
   Output Parameter:
@@ -2888,14 +3013,17 @@ static PetscErrorCode MatMumpsGetCntl_MUMPS(Mat F, PetscInt icntl, PetscReal *va
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
-. icntl - index of MUMPS parameter array CNTL()
-- val   - value of MUMPS CNTL(icntl)
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
+. icntl - index of MUMPS parameter array `CNTL()`
+- val   - value of MUMPS `CNTL(icntl)`
 
   Options Database Key:
 . -mat_mumps_cntl_<icntl> <val> - change the option numbered icntl to ival
 
   Level: beginner
+
+  Note:
+  Ignored if MUMPS is not installed or `F` is not a MUMPS matrix
 
 .seealso: [](ch_matrices), `Mat`, `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`
 @*/
@@ -2917,7 +3045,7 @@ PetscErrorCode MatMumpsSetCntl(Mat F, PetscInt icntl, PetscReal val)
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 - icntl - index of MUMPS parameter array CNTL()
 
   Output Parameter:
@@ -3002,9 +3130,9 @@ static PetscErrorCode MatMumpsGetInverse_MUMPS(Mat F, Mat spRHS)
   PetscFunctionBegin;
   PetscAssertPointer(spRHS, 2);
   PetscCall(PetscObjectTypeCompare((PetscObject)spRHS, MATTRANSPOSEVIRTUAL, &flg));
-  if (flg) {
-    PetscCall(MatTransposeGetMat(spRHS, &Bt));
-  } else SETERRQ(PetscObjectComm((PetscObject)spRHS), PETSC_ERR_ARG_WRONG, "Matrix spRHS must be type MATTRANSPOSEVIRTUAL matrix");
+  PetscCheck(flg, PetscObjectComm((PetscObject)spRHS), PETSC_ERR_ARG_WRONG, "Matrix spRHS must be type MATTRANSPOSEVIRTUAL matrix");
+  PetscCall(MatShellGetScalingShifts(spRHS, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, (PetscScalar *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Vec *)MAT_SHELL_NOT_ALLOWED, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
+  PetscCall(MatTransposeGetMat(spRHS, &Bt));
 
   PetscCall(MatMumpsSetIcntl(F, 30, 1));
 
@@ -3054,7 +3182,7 @@ static PetscErrorCode MatMumpsGetInverse_MUMPS(Mat F, Mat spRHS)
   Logically Collective
 
   Input Parameter:
-. F - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
+. F - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 
   Output Parameter:
 . spRHS - sequential sparse matrix in `MATTRANSPOSEVIRTUAL` format with requested entries of inverse of `A`
@@ -3089,7 +3217,7 @@ static PetscErrorCode MatMumpsGetInverseTranspose_MUMPS(Mat F, Mat spRHST)
   Logically Collective
 
   Input Parameter:
-. F - the factored matrix of A obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
+. F - the factored matrix of A obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 
   Output Parameter:
 . spRHST - sequential sparse matrix in `MATAIJ` format containing the requested entries of inverse of `A`^T
@@ -3107,8 +3235,56 @@ PetscErrorCode MatMumpsGetInverseTranspose(Mat F, Mat spRHST)
   PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
   PetscCall(PetscObjectTypeCompareAny((PetscObject)spRHST, &flg, MATSEQAIJ, MATMPIAIJ, NULL));
   PetscCheck(flg, PetscObjectComm((PetscObject)spRHST), PETSC_ERR_ARG_WRONG, "Matrix spRHST must be MATAIJ matrix");
-
   PetscUseMethod(F, "MatMumpsGetInverseTranspose_C", (Mat, Mat), (F, spRHST));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode MatMumpsSetBlk_MUMPS(Mat F, PetscInt nblk, const PetscInt blkvar[], const PetscInt blkptr[])
+{
+  Mat_MUMPS *mumps = (Mat_MUMPS *)F->data;
+
+  PetscFunctionBegin;
+  if (nblk) {
+    PetscAssertPointer(blkptr, 4);
+    PetscCall(PetscMUMPSIntCast(nblk, &mumps->id.nblk));
+    PetscCall(PetscFree(mumps->id.blkptr));
+    PetscCall(PetscMalloc1(nblk + 1, &mumps->id.blkptr));
+    for (PetscInt i = 0; i < nblk + 1; ++i) PetscCall(PetscMUMPSIntCast(blkptr[i], mumps->id.blkptr + i));
+    mumps->id.ICNTL(15) = 1;
+    if (blkvar) {
+      PetscCall(PetscFree(mumps->id.blkvar));
+      PetscCall(PetscMalloc1(F->rmap->N, &mumps->id.blkvar));
+      for (PetscInt i = 0; i < F->rmap->N; ++i) PetscCall(PetscMUMPSIntCast(blkvar[i], mumps->id.blkvar + i));
+    }
+  } else {
+    PetscCall(PetscFree(mumps->id.blkptr));
+    PetscCall(PetscFree(mumps->id.blkvar));
+    mumps->id.ICNTL(15) = 0;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  MatMumpsSetBlk - Set user-specified variable block sizes to be used with `-mat_mumps_icntl_15 1`
+
+  Not collective, only relevant on the first process of the MPI communicator
+
+  Input Parameters:
++ F      - the factored matrix of A obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
+. nblk   - the number of blocks
+. blkvar - see MUMPS documentation, `blkvar(blkptr(iblk):blkptr(iblk+1)-1)`, (`iblk=1, nblk`) holds the variables associated to block `iblk`
+- blkptr - array starting at 1 and of size `nblk + 1` storing the prefix sum of all blocks
+
+  Level: advanced
+
+.seealso: [](ch_matrices), `MATSOLVERMUMPS`, `Mat`, `MatGetFactor()`, `MatMumpsSetIcntl()`, `MatSetVariableBlockSizes()`
+@*/
+PetscErrorCode MatMumpsSetBlk(Mat F, PetscInt nblk, const PetscInt blkvar[], const PetscInt blkptr[])
+{
+  PetscFunctionBegin;
+  PetscValidType(F, 1);
+  PetscCheck(F->factortype, PetscObjectComm((PetscObject)F), PETSC_ERR_ARG_WRONGSTATE, "Only for factored matrix");
+  PetscUseMethod(F, "MatMumpsSetBlk_C", (Mat, PetscInt, const PetscInt[], const PetscInt[]), (F, nblk, blkvar, blkptr));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -3118,7 +3294,7 @@ PetscErrorCode MatMumpsGetInverseTranspose(Mat F, Mat spRHST)
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 - icntl - index of MUMPS parameter array INFO()
 
   Output Parameter:
@@ -3144,7 +3320,7 @@ PetscErrorCode MatMumpsGetInfo(Mat F, PetscInt icntl, PetscInt *ival)
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 - icntl - index of MUMPS parameter array INFOG()
 
   Output Parameter:
@@ -3170,7 +3346,7 @@ PetscErrorCode MatMumpsGetInfog(Mat F, PetscInt icntl, PetscInt *ival)
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 - icntl - index of MUMPS parameter array RINFO()
 
   Output Parameter:
@@ -3196,7 +3372,7 @@ PetscErrorCode MatMumpsGetRinfo(Mat F, PetscInt icntl, PetscReal *val)
   Logically Collective
 
   Input Parameters:
-+ F     - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
++ F     - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 - icntl - index of MUMPS parameter array RINFOG()
 
   Output Parameter:
@@ -3222,12 +3398,12 @@ PetscErrorCode MatMumpsGetRinfog(Mat F, PetscInt icntl, PetscReal *val)
   Logically Collective
 
   Input Parameter:
-. F - the factored matrix obtained by calling `MatGetFactor()` from PETSc-MUMPS interface
+. F - the factored matrix obtained by calling `MatGetFactor()` with a `MatSolverType` of `MATSOLVERMUMPS` and a `MatFactorType` of `MAT_FACTOR_LU` or `MAT_FACTOR_CHOLESKY`
 
   Output Parameters:
-+ size  - local size of the array. The size of the array is non-zero only on the host.
++ size  - local size of the array. The size of the array is non-zero only on MPI rank 0
 - array - array of rows with null pivot, these rows follow 0-based indexing. The array gets allocated within the function and the user is responsible
-           for freeing this array.
+          for freeing this array.
 
   Level: beginner
 
@@ -3246,7 +3422,7 @@ PetscErrorCode MatMumpsGetNullPivots(Mat F, PetscInt *size, PetscInt **array)
 
 /*MC
   MATSOLVERMUMPS -  A matrix type providing direct solvers (LU and Cholesky) for
-  distributed and sequential matrices via the external package MUMPS <https://mumps-solver.org/index.php?page=doc>
+  MPI distributed and sequential matrices via the external package MUMPS <https://mumps-solver.org/index.php?page=doc>
 
   Works with `MATAIJ` and `MATSBAIJ` matrices
 
@@ -3258,34 +3434,35 @@ PetscErrorCode MatMumpsGetNullPivots(Mat F, PetscInt *size, PetscInt **array)
   Use `-pc_type cholesky` or `lu` `-pc_factor_mat_solver_type mumps` to use this direct solver
 
   Options Database Keys:
-+  -mat_mumps_icntl_1   - ICNTL(1): output stream for error messages
-.  -mat_mumps_icntl_2   - ICNTL(2): output stream for diagnostic printing, statistics, and warning
-.  -mat_mumps_icntl_3   - ICNTL(3): output stream for global information, collected on the host
-.  -mat_mumps_icntl_4   - ICNTL(4): level of printing (0 to 4)
-.  -mat_mumps_icntl_6   - ICNTL(6): permutes to a zero-free diagonal and/or scale the matrix (0 to 7)
-.  -mat_mumps_icntl_7   - ICNTL(7): computes a symmetric permutation in sequential analysis, 0=AMD, 2=AMF, 3=Scotch, 4=PORD, 5=Metis, 6=QAMD, and 7=auto
++  -mat_mumps_icntl_1  - ICNTL(1): output stream for error messages
+.  -mat_mumps_icntl_2  - ICNTL(2): output stream for diagnostic printing, statistics, and warning
+.  -mat_mumps_icntl_3  - ICNTL(3): output stream for global information, collected on the host
+.  -mat_mumps_icntl_4  - ICNTL(4): level of printing (0 to 4)
+.  -mat_mumps_icntl_6  - ICNTL(6): permutes to a zero-free diagonal and/or scale the matrix (0 to 7)
+.  -mat_mumps_icntl_7  - ICNTL(7): computes a symmetric permutation in sequential analysis, 0=AMD, 2=AMF, 3=Scotch, 4=PORD, 5=Metis, 6=QAMD, and 7=auto
                           Use -pc_factor_mat_ordering_type <type> to have PETSc perform the ordering (sequential only)
-.  -mat_mumps_icntl_8   - ICNTL(8): scaling strategy (-2 to 8 or 77)
-.  -mat_mumps_icntl_10  - ICNTL(10): max num of refinements
-.  -mat_mumps_icntl_11  - ICNTL(11): statistics related to an error analysis (via -ksp_view)
-.  -mat_mumps_icntl_12  - ICNTL(12): an ordering strategy for symmetric matrices (0 to 3)
-.  -mat_mumps_icntl_13  - ICNTL(13): parallelism of the root node (enable ScaLAPACK) and its splitting
-.  -mat_mumps_icntl_14  - ICNTL(14): percentage increase in the estimated working space
-.  -mat_mumps_icntl_15  - ICNTL(15): compression of the input matrix resulting from a block format
-.  -mat_mumps_icntl_19  - ICNTL(19): computes the Schur complement
-.  -mat_mumps_icntl_20  - ICNTL(20): give MUMPS centralized (0) or distributed (10) dense RHS
-.  -mat_mumps_icntl_22  - ICNTL(22): in-core/out-of-core factorization and solve (0 or 1)
-.  -mat_mumps_icntl_23  - ICNTL(23): max size of the working memory (MB) that can allocate per processor
-.  -mat_mumps_icntl_24  - ICNTL(24): detection of null pivot rows (0 or 1)
-.  -mat_mumps_icntl_25  - ICNTL(25): compute a solution of a deficient matrix and a null space basis
-.  -mat_mumps_icntl_26  - ICNTL(26): drives the solution phase if a Schur complement matrix
-.  -mat_mumps_icntl_28  - ICNTL(28): use 1 for sequential analysis and ICNTL(7) ordering, or 2 for parallel analysis and ICNTL(29) ordering
+.  -mat_mumps_icntl_8  - ICNTL(8): scaling strategy (-2 to 8 or 77)
+.  -mat_mumps_icntl_10 - ICNTL(10): max num of refinements
+.  -mat_mumps_icntl_11 - ICNTL(11): statistics related to an error analysis (via -ksp_view)
+.  -mat_mumps_icntl_12 - ICNTL(12): an ordering strategy for symmetric matrices (0 to 3)
+.  -mat_mumps_icntl_13 - ICNTL(13): parallelism of the root node (enable ScaLAPACK) and its splitting
+.  -mat_mumps_icntl_14 - ICNTL(14): percentage increase in the estimated working space
+.  -mat_mumps_icntl_15 - ICNTL(15): compression of the input matrix resulting from a block format
+.  -mat_mumps_icntl_19 - ICNTL(19): computes the Schur complement
+.  -mat_mumps_icntl_20 - ICNTL(20): give MUMPS centralized (0) or distributed (10) dense RHS
+.  -mat_mumps_icntl_22 - ICNTL(22): in-core/out-of-core factorization and solve (0 or 1)
+.  -mat_mumps_icntl_23 - ICNTL(23): max size of the working memory (MB) that can allocate per processor
+.  -mat_mumps_icntl_24 - ICNTL(24): detection of null pivot rows (0 or 1)
+.  -mat_mumps_icntl_25 - ICNTL(25): compute a solution of a deficient matrix and a null space basis
+.  -mat_mumps_icntl_26 - ICNTL(26): drives the solution phase if a Schur complement matrix
+.  -mat_mumps_icntl_28 - ICNTL(28): use 1 for sequential analysis and ICNTL(7) ordering, or 2 for parallel analysis and ICNTL(29) ordering
 .  -mat_mumps_icntl_29 - ICNTL(29): parallel ordering 1 = ptscotch, 2 = parmetis
 .  -mat_mumps_icntl_30 - ICNTL(30): compute user-specified set of entries in inv(A)
 .  -mat_mumps_icntl_31 - ICNTL(31): indicates which factors may be discarded during factorization
 .  -mat_mumps_icntl_33 - ICNTL(33): compute determinant
 .  -mat_mumps_icntl_35 - ICNTL(35): level of activation of BLR (Block Low-Rank) feature
 .  -mat_mumps_icntl_36 - ICNTL(36): controls the choice of BLR factorization variant
+.  -mat_mumps_icntl_37 - ICNTL(37): compression of the contribution blocks (CB)
 .  -mat_mumps_icntl_38 - ICNTL(38): sets the estimated compression rate of LU factors with BLR
 .  -mat_mumps_icntl_48 - ICNTL(48): multithreading with tree parallelism
 .  -mat_mumps_icntl_58 - ICNTL(58): options for symbolic factorization
@@ -3296,7 +3473,7 @@ PetscErrorCode MatMumpsGetNullPivots(Mat F, PetscInt *size, PetscInt **array)
 .  -mat_mumps_cntl_5   - CNTL(5): fixation for null pivots
 .  -mat_mumps_cntl_7   - CNTL(7): precision of the dropping parameter used during BLR factorization
 -  -mat_mumps_use_omp_threads [m] - run MUMPS in MPI+OpenMP hybrid mode as if omp_set_num_threads(m) is called before calling MUMPS.
-                                   Default might be the number of cores per CPU package (socket) as reported by hwloc and suggested by the MUMPS manual.
+                                    Default might be the number of cores per CPU package (socket) as reported by hwloc and suggested by the MUMPS manual.
 
   Level: beginner
 
@@ -3315,7 +3492,7 @@ PetscErrorCode MatMumpsGetNullPivots(Mat F, PetscInt *size, PetscInt **array)
           MatMumpsGetInfo(mat,....);
           MatMumpsGetInfog(mat,....); etc.
 .ve
-    Or run with `-ksp_error_if_not_converged` and the program will be stopped and the information printed in the error message.
+  Or run with `-ksp_error_if_not_converged` and the program will be stopped and the information printed in the error message.
 
   MUMPS provides 64-bit integer support in two build modes:
   full 64-bit: here MUMPS is built with C preprocessing flag -DINTSIZE64 and Fortran compiler option -i8, -fdefault-integer-8 or equivalent, and
@@ -3330,20 +3507,20 @@ PetscErrorCode MatMumpsGetNullPivots(Mat F, PetscInt *size, PetscInt **array)
 
   Two modes to run MUMPS/PETSc with OpenMP
 .vb
-     Set OMP_NUM_THREADS and run with fewer MPI ranks than cores. For example, if you want to have 16 OpenMP
-     threads per rank, then you may use "export OMP_NUM_THREADS=16 && mpirun -n 4 ./test".
+   Set `OMP_NUM_THREADS` and run with fewer MPI ranks than cores. For example, if you want to have 16 OpenMP
+   threads per rank, then you may use "export `OMP_NUM_THREADS` = 16 && mpirun -n 4 ./test".
 .ve
 
 .vb
-     -mat_mumps_use_omp_threads [m] and run your code with as many MPI ranks as the number of cores. For example,
-    if a compute node has 32 cores and you run on two nodes, you may use "mpirun -n 64 ./test -mat_mumps_use_omp_threads 16"
+   `-mat_mumps_use_omp_threads` [m] and run your code with as many MPI ranks as the number of cores. For example,
+   if a compute node has 32 cores and you run on two nodes, you may use "mpirun -n 64 ./test -mat_mumps_use_omp_threads 16"
 .ve
 
    To run MUMPS in MPI+OpenMP hybrid mode (i.e., enable multithreading in MUMPS), but still run the non-MUMPS part
    (i.e., PETSc part) of your code in the so-called flat-MPI (aka pure-MPI) mode, you need to configure PETSc with `--with-openmp` `--download-hwloc`
    (or `--with-hwloc`), and have an MPI that supports MPI-3.0's process shared memory (which is usually available). Since MUMPS calls BLAS
    libraries, to really get performance, you should have multithreaded BLAS libraries such as Intel MKL, AMD ACML, Cray libSci or OpenBLAS
-   (PETSc will automatically try to utilized a threaded BLAS if --with-openmp is provided).
+   (PETSc will automatically try to utilized a threaded BLAS if `--with-openmp` is provided).
 
    If you run your code through a job submission system, there are caveats in MPI rank mapping. We use MPI_Comm_split_type() to obtain MPI
    processes on each compute node. Listing the processes in rank ascending order, we split processes on a node into consecutive groups of
@@ -3352,10 +3529,10 @@ PetscErrorCode MatMumpsGetNullPivots(Mat F, PetscInt *size, PetscInt **array)
    by CPU binding policies in job scripts) and make the CPUs available to the master so that OMP threads spawned by MUMPS can run on the CPUs.
    In a multi-socket compute node, MPI rank mapping is an issue. Still use the above example and suppose your compute node has two sockets,
    if you interleave MPI ranks on the two sockets, in other words, even ranks are placed on socket 0, and odd ranks are on socket 1, and bind
-   MPI ranks to cores, then with -mat_mumps_use_omp_threads 16, a master rank (and threads it spawns) will use half cores in socket 0, and half
+   MPI ranks to cores, then with `-mat_mumps_use_omp_threads` 16, a master rank (and threads it spawns) will use half cores in socket 0, and half
    cores in socket 1, that definitely hurts locality. On the other hand, if you map MPI ranks consecutively on the two sockets, then the
-   problem will not happen. Therefore, when you use -mat_mumps_use_omp_threads, you need to keep an eye on your MPI rank mapping and CPU binding.
-   For example, with the Slurm job scheduler, one can use srun --cpu-bind=verbose -m block:block to map consecutive MPI ranks to sockets and
+   problem will not happen. Therefore, when you use `-mat_mumps_use_omp_threads`, you need to keep an eye on your MPI rank mapping and CPU binding.
+   For example, with the Slurm job scheduler, one can use srun `--cpu-bind`=verbose -m block:block to map consecutive MPI ranks to sockets and
    examine the mapping result.
 
    PETSc does not control thread binding in MUMPS. So to get best performance, one still has to set `OMP_PROC_BIND` and `OMP_PLACES` in job scripts,
@@ -3364,7 +3541,7 @@ PetscErrorCode MatMumpsGetNullPivots(Mat F, PetscInt *size, PetscInt **array)
 
    See {cite}`heroux2011bi` and {cite}`gutierrez2017accommodating`
 
-.seealso: [](ch_matrices), `Mat`, `PCFactorSetMatSolverType()`, `MatSolverType`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`, `KSPGetPC()`, `PCFactorGetMatrix()`
+.seealso: [](ch_matrices), `Mat`, `PCFactorSetMatSolverType()`, `MatSolverType`, `MatMumpsSetIcntl()`, `MatMumpsGetIcntl()`, `MatMumpsSetCntl()`, `MatMumpsGetCntl()`, `MatMumpsGetInfo()`, `MatMumpsGetInfog()`, `MatMumpsGetRinfo()`, `MatMumpsGetRinfog()`, `MatMumpsSetBlk()`, `KSPGetPC()`, `PCFactorGetMatrix()`
 M*/
 
 static PetscErrorCode MatFactorGetSolverType_mumps(PETSC_UNUSED Mat A, MatSolverType *type)
@@ -3418,6 +3595,7 @@ static PetscErrorCode MatGetFactor_aij_mumps(Mat A, MatFactorType ftype, Mat *F)
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetNullPivots_C", MatMumpsGetNullPivots_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverse_C", MatMumpsGetInverse_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverseTranspose_C", MatMumpsGetInverseTranspose_MUMPS));
+  PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsSetBlk_C", MatMumpsSetBlk_MUMPS));
 
   if (ftype == MAT_FACTOR_LU) {
     B->ops->lufactorsymbolic = MatLUFactorSymbolic_AIJMUMPS;
@@ -3510,6 +3688,7 @@ static PetscErrorCode MatGetFactor_sbaij_mumps(Mat A, PETSC_UNUSED MatFactorType
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetNullPivots_C", MatMumpsGetNullPivots_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverse_C", MatMumpsGetInverse_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverseTranspose_C", MatMumpsGetInverseTranspose_MUMPS));
+  PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsSetBlk_C", MatMumpsSetBlk_MUMPS));
 
   B->factortype = MAT_FACTOR_CHOLESKY;
 #if defined(PETSC_USE_COMPLEX)
@@ -3581,6 +3760,7 @@ static PetscErrorCode MatGetFactor_baij_mumps(Mat A, MatFactorType ftype, Mat *F
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetNullPivots_C", MatMumpsGetNullPivots_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverse_C", MatMumpsGetInverse_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverseTranspose_C", MatMumpsGetInverseTranspose_MUMPS));
+  PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsSetBlk_C", MatMumpsSetBlk_MUMPS));
 
   /* set solvertype */
   PetscCall(PetscFree(B->solvertype));
@@ -3713,15 +3893,10 @@ static PetscErrorCode MatGetFactor_nest_mumps(Mat A, MatFactorType ftype, Mat *F
   for (PetscInt r = 0; r < nr; r++) {
     for (PetscInt c = 0; c < nc; c++) {
       Mat       sub = mats[r][c];
-      PetscBool isSeqAIJ, isMPIAIJ, isSeqBAIJ, isMPIBAIJ, isSeqSBAIJ, isMPISBAIJ, isTrans, isDiag, isDense;
+      PetscBool isSeqAIJ, isMPIAIJ, isSeqBAIJ, isMPIBAIJ, isSeqSBAIJ, isMPISBAIJ, isDiag, isDense;
 
       if (!sub || (ftype == MAT_FACTOR_CHOLESKY && c < r)) continue;
-      PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATTRANSPOSEVIRTUAL, &isTrans));
-      if (isTrans) PetscCall(MatTransposeGetMat(sub, &sub));
-      else {
-        PetscCall(PetscObjectTypeCompare((PetscObject)sub, MATHERMITIANTRANSPOSEVIRTUAL, &isTrans));
-        if (isTrans) PetscCall(MatHermitianTransposeGetMat(sub, &sub));
-      }
+      PetscCall(MatGetTranspose_TransposeVirtual(&sub, NULL, NULL, NULL, NULL));
       PetscCall(PetscObjectBaseTypeCompare((PetscObject)sub, MATSEQAIJ, &isSeqAIJ));
       PetscCall(PetscObjectBaseTypeCompare((PetscObject)sub, MATMPIAIJ, &isMPIAIJ));
       PetscCall(PetscObjectBaseTypeCompare((PetscObject)sub, MATSEQBAIJ, &isSeqBAIJ));
@@ -3773,6 +3948,7 @@ static PetscErrorCode MatGetFactor_nest_mumps(Mat A, MatFactorType ftype, Mat *F
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetNullPivots_C", MatMumpsGetNullPivots_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverse_C", MatMumpsGetInverse_MUMPS));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsGetInverseTranspose_C", MatMumpsGetInverseTranspose_MUMPS));
+  PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMumpsSetBlk_C", MatMumpsSetBlk_MUMPS));
 
   if (ftype == MAT_FACTOR_LU) {
     B->ops->lufactorsymbolic = MatLUFactorSymbolic_AIJMUMPS;

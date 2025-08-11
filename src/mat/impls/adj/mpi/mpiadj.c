@@ -305,12 +305,7 @@ static PetscErrorCode MatSetOption_MPIAdj(Mat A, MatOption op, PetscBool flg)
   case MAT_SPD:
     a->symmetric = flg;
     break;
-  case MAT_SYMMETRY_ETERNAL:
-  case MAT_STRUCTURAL_SYMMETRY_ETERNAL:
-  case MAT_SPD_ETERNAL:
-    break;
   default:
-    PetscCall(PetscInfo(A, "Option %s ignored\n", MatOptions[op]));
     break;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -335,12 +330,6 @@ static PetscErrorCode MatGetRow_MPIAdj(Mat A, PetscInt row, PetscInt *nz, PetscI
     *v = (*nz) ? a->rowvalues : NULL;
   }
   if (idx) *idx = (*nz) ? a->j + a->i[row] : NULL;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode MatRestoreRow_MPIAdj(Mat A, PetscInt row, PetscInt *nz, PetscInt **idx, PetscScalar **v)
-{
-  PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -575,7 +564,7 @@ static PetscErrorCode MatAssemblyEnd_MPIAdj(Mat A, MatAssemblyType type)
 
 static struct _MatOps MatOps_Values = {MatSetValues_MPIAdj,
                                        MatGetRow_MPIAdj,
-                                       MatRestoreRow_MPIAdj,
+                                       NULL,
                                        NULL,
                                        /* 4*/ NULL,
                                        NULL,
@@ -692,7 +681,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPIAdj,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       /*119*/ NULL,
+                                       /*119*/ MatCreateSubMatricesMPI_MPIAdj,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -701,7 +690,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPIAdj,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       MatCreateSubMatricesMPI_MPIAdj,
+                                       NULL,
                                        /*129*/ NULL,
                                        NULL,
                                        NULL,
@@ -713,19 +702,6 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPIAdj,
                                        NULL,
                                        NULL,
                                        /*139*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*144*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*150*/ NULL,
-                                       NULL,
-                                       NULL,
                                        NULL,
                                        NULL,
                                        NULL};
@@ -1104,7 +1080,7 @@ PetscErrorCode MatMPIAdjSetPreallocation(Mat B, PetscInt *i, PetscInt *j, PetscI
 
 .seealso: [](ch_matrices), `Mat`, `MatCreate()`, `MatConvert()`, `MatGetOrdering()`, `MATMPIADJ`, `MatMPIAdjSetPreallocation()`
 @*/
-PetscErrorCode MatCreateMPIAdj(MPI_Comm comm, PetscInt m, PetscInt N, PetscInt *i, PetscInt *j, PetscInt *values, Mat *A)
+PetscErrorCode MatCreateMPIAdj(MPI_Comm comm, PetscInt m, PetscInt N, PetscInt i[], PetscInt j[], PetscInt values[], Mat *A) PeNSS
 {
   PetscFunctionBegin;
   PetscCall(MatCreate(comm, A));

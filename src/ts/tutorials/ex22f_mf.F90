@@ -2,7 +2,7 @@
 !
 !     u_t + a1*u_x = -k1*u + k2*v + s1
 !     v_t + a2*v_x = k1*u - k2*v + s2
-!     0 < x < 1;
+!     0 < x < 1
 !     a1 = 1, k1 = 10^6, s1 = 0,
 !     a2 = 0, k2 = 2*k1, s2 = 1
 !
@@ -25,7 +25,7 @@
 
 program main
   use ex22f_mfmodule
-  use petscdmda
+  use petscdm
   implicit none
 
   !
@@ -37,11 +37,6 @@ program main
   PetscReal user(6)
   integer user_a,user_k,user_s
   parameter (user_a = 0,user_k = 2,user_s = 4)
-
-  external FormRHSFunction,FormIFunction
-  external FormInitialSolution
-  external FormIJacobian
-  external MyMult,FormIJacobianMF
 
   TS             ts
   Vec            X
@@ -74,7 +69,7 @@ program main
   PetscCallA(DMSetUp(da,ierr))
 
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  !    Extract global vectors from DMDA;
+  !    Extract global vectors from DMDA
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   PetscCallA(DMCreateGlobalVector(da,X,ierr))
 
@@ -134,7 +129,7 @@ program main
   PetscCallA(TSSetSolution(ts,X,ierr))
   PetscCallA(VecGetSize(X,mx,ierr))
   !  Advective CFL, I don't know why it needs so much safety factor.
-  dt = pone * max(user(user_a+1),user(user_a+2)) / mx;
+  dt = pone * max(user(user_a+1),user(user_a+2)) / mx
   PetscCallA(TSSetTimeStep(ts,dt,ierr))
 
   ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -163,11 +158,11 @@ program main
   PetscCallA(TSDestroy(ts,ierr))
   PetscCallA(DMDestroy(da,ierr))
   PetscCallA(PetscFinalize(ierr))
-end program main
+  contains
 
 ! Small helper to extract the layout, result uses 1-based indexing.
   subroutine GetLayout(da,mx,xs,xe,gxs,gxe,ierr)
-  use petscdmda
+  use petscdm
   implicit none
 
   DM da
@@ -199,7 +194,7 @@ subroutine FormIFunctionLocal(mx,xs,xe,gxs,gxe,x,xdot,f,a,k,s,ierr)
 end subroutine FormIFunctionLocal
 
 subroutine FormIFunction(ts,t,X,Xdot,F,user,ierr)
-  use petscdmda
+  use petscdm
   use petscts
   implicit none
 
@@ -219,15 +214,15 @@ subroutine FormIFunction(ts,t,X,Xdot,F,user,ierr)
   PetscCall(GetLayout(da,mx,xs,xe,gxs,gxe,ierr))
 
   ! Get access to vector data
-  PetscCall(VecGetArrayReadF90(X,xx,ierr))
-  PetscCall(VecGetArrayReadF90(Xdot,xxdot,ierr))
-  PetscCall(VecGetArrayF90(F,ff,ierr))
+  PetscCall(VecGetArrayRead(X,xx,ierr))
+  PetscCall(VecGetArrayRead(Xdot,xxdot,ierr))
+  PetscCall(VecGetArray(F,ff,ierr))
 
   PetscCall(FormIFunctionLocal(mx,xs,xe,gxs,gxe,xx,xxdot,ff,user(user_a),user(user_k),user(user_s),ierr))
 
-  PetscCall(VecRestoreArrayReadF90(X,xx,ierr))
-  PetscCall(VecRestoreArrayReadF90(Xdot,xxdot,ierr))
-  PetscCall(VecRestoreArrayF90(F,ff,ierr))
+  PetscCall(VecRestoreArrayRead(X,xx,ierr))
+  PetscCall(VecRestoreArrayRead(Xdot,xxdot,ierr))
+  PetscCall(VecRestoreArray(F,ff,ierr))
 end subroutine FormIFunction
 
 subroutine FormRHSFunctionLocal(mx,xs,xe,gxs,gxe,t,x,f,a,k,s,ierr)
@@ -284,7 +279,7 @@ end subroutine FormRHSFunctionLocal
 
 subroutine FormRHSFunction(ts,t,X,F,user,ierr)
   use petscts
-  use petscdmda
+  use petscdm
   implicit none
 
   TS ts
@@ -311,13 +306,13 @@ subroutine FormRHSFunction(ts,t,X,F,user,ierr)
   PetscCall(DMGlobalToLocalEnd(da,X,INSERT_VALUES,Xloc,ierr))
 
   ! Get access to vector data
-  PetscCall(VecGetArrayReadF90(Xloc,xx,ierr))
-  PetscCall(VecGetArrayF90(F,ff,ierr))
+  PetscCall(VecGetArrayRead(Xloc,xx,ierr))
+  PetscCall(VecGetArray(F,ff,ierr))
 
   PetscCall(FormRHSFunctionLocal(mx,xs,xe,gxs,gxe,t,xx,ff,user(user_a),user(user_k),user(user_s),ierr))
 
-  PetscCall(VecRestoreArrayReadF90(Xloc,xx,ierr))
-  PetscCall(VecRestoreArrayF90(F,ff,ierr))
+  PetscCall(VecRestoreArrayRead(Xloc,xx,ierr))
+  PetscCall(VecRestoreArray(F,ff,ierr))
   PetscCall(DMRestoreLocalVector(da,Xloc,ierr))
 end subroutine FormRHSFunction
 
@@ -327,7 +322,7 @@ end subroutine FormRHSFunction
 !
 subroutine FormIJacobian(ts,t,X,Xdot,shift,J,Jpre,user,ierr)
   use petscts
-  use petscdmda
+  use petscdm
   implicit none
 
   TS ts
@@ -342,7 +337,7 @@ subroutine FormIJacobian(ts,t,X,Xdot,shift,J,Jpre,user,ierr)
   DM             da
   PetscInt       mx,xs,xe,gxs,gxe
   PetscInt       i,i1,row,col
-  PetscReal      k1,k2;
+  PetscReal      k1,k2
   PetscScalar    val(4)
 
   PetscCall(TSGetDM(ts,da,ierr))
@@ -393,7 +388,7 @@ end subroutine FormInitialSolutionLocal
 
 subroutine FormInitialSolution(ts,X,user,ierr)
   use petscts
-  use petscdmda
+  use petscdm
   implicit none
 
   TS ts
@@ -411,11 +406,11 @@ subroutine FormInitialSolution(ts,X,user,ierr)
   PetscCall(GetLayout(da,mx,xs,xe,gxs,gxe,ierr))
 
   ! Get access to vector data
-  PetscCall(VecGetArrayF90(X,xx,ierr))
+  PetscCall(VecGetArray(X,xx,ierr))
 
   PetscCall(FormInitialSolutionLocal(mx,xs,xe,gxs,gxe,xx,user(user_a),user(user_k),user(user_s),ierr))
 
-  PetscCall(VecRestoreArrayF90(X,xx,ierr))
+  PetscCall(VecRestoreArray(X,xx,ierr))
 end subroutine FormInitialSolution
 
 ! ---------------------------------------------------------------------
@@ -467,7 +462,7 @@ subroutine  MyMult(A,X,F,ierr)
   DM             da
   PetscInt       mx,xs,xe,gxs,gxe
   PetscInt       i,i1,row,col
-  PetscReal      k1,k2;
+  PetscReal      k1,k2
   PetscScalar    val(4)
 
   shift=PETSC_SHIFT
@@ -503,7 +498,7 @@ end subroutine MyMult
 
 !
 subroutine SaveSolutionToDisk(da,X,gdof,xs,xe)
-  use petscdmda
+  use petscdm
   implicit none
 
   Vec X
@@ -514,7 +509,7 @@ subroutine SaveSolutionToDisk(da,X,gdof,xs,xe)
   PetscScalar data2(2,xs:xe),data(gdof)
   PetscScalar,pointer :: xx(:)
 
-  PetscCall(VecGetArrayReadF90(X,xx,ierr))
+  PetscCall(VecGetArrayRead(X,xx,ierr))
 
   two = 2
   data2=reshape(xx(gdof:gdof),(/two,xe-xs+1/))
@@ -525,14 +520,15 @@ subroutine SaveSolutionToDisk(da,X,gdof,xs,xe)
   end do
   close(1020)
 
-  PetscCall(VecRestoreArrayReadF90(X,xx,ierr))
+  PetscCall(VecRestoreArrayRead(X,xx,ierr))
 end subroutine SaveSolutionToDisk
+end program main
 
 !/*TEST
 !
 !    test:
 !      args: -da_grid_x 200 -ts_arkimex_type 4
 !      requires: !single
-!      output_file: output/ex22f_mf_1.out
+!      output_file: output/empty.out
 !
 !TEST*/

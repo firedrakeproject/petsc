@@ -3,9 +3,12 @@
 /* SUBMANSEC = DM */
 
 /*S
-     DM - Abstract PETSc object that manages an abstract grid-like object and its interactions with the algebraic solvers
+   DM - Abstract PETSc object that manages an abstract grid-like object and its interactions with the algebraic solvers
 
    Level: intermediate
+
+   Note:
+   `DM` is an orphan initialism or orphan acronym, the letters have no meaning and never did.
 
 .seealso: [](ch_dmbase), `DMType`, `DMGetType()`, `DMCompositeCreate()`, `DMDACreate()`, `DMSetType()`, `DMType`, `DMDA`, `DMPLEX`
 S*/
@@ -55,7 +58,9 @@ typedef enum {
 . `DM_BC_ESSENTIAL_BD_FIELD` - A Dirichlet condition using a function of the coordinates, facet normal, and auxiliary field data
 . `DM_BC_NATURAL`            - A Neumann condition using a function of the coordinates
 . `DM_BC_NATURAL_FIELD`      - A Neumann condition using a function of the coordinates and auxiliary field data
-- `DM_BC_NATURAL_RIEMANN`    - A flux condition which determines the state in ghost cells
+. `DM_BC_NATURAL_RIEMANN`    - A flux condition which determines the state in ghost cells
+. `DM_BC_LOWER_BOUND`        - A lower bound on the solution along a boundary
+- `DM_BC_UPPER_BOUND`        - An upper bound on the solution along a boundary
 
   Level: beginner
 
@@ -71,7 +76,9 @@ typedef enum {
   DM_BC_NATURAL            = 2,
   DM_BC_NATURAL_FIELD      = 6,
   DM_BC_ESSENTIAL_BD_FIELD = 9,
-  DM_BC_NATURAL_RIEMANN    = 10
+  DM_BC_NATURAL_RIEMANN    = 10,
+  DM_BC_LOWER_BOUND        = 4,
+  DM_BC_UPPER_BOUND        = 8
 } DMBoundaryConditionType;
 
 /*E
@@ -172,12 +179,12 @@ PETSC_EXTERN const char *const DMAdaptationCriteria[];
 .seealso: [](ch_dmbase), `DM`, `DMAdaptor`, `DMAdaptationStrategy`, `DMAdaptationCriterion`, `DMAdaptorSolve()`, `DMAdaptLabel()`
 E*/
 typedef enum {
-  DM_ADAPT_DETERMINE = PETSC_DETERMINE,
-  DM_ADAPT_KEEP      = 0,
-  DM_ADAPT_REFINE,
-  DM_ADAPT_COARSEN,
-  DM_ADAPT_COARSEN_LAST,
-  DM_ADAPT_RESERVED_COUNT
+  DM_ADAPT_DETERMINE      = PETSC_DETERMINE,
+  DM_ADAPT_KEEP           = 0,
+  DM_ADAPT_REFINE         = 1,
+  DM_ADAPT_COARSEN        = 2,
+  DM_ADAPT_COARSEN_LAST   = 3,
+  DM_ADAPT_RESERVED_COUNT = 4
 } DMAdaptFlag;
 
 /*E
@@ -291,7 +298,7 @@ E*/
 typedef enum {
   DM_REORDER_DEFAULT_NOTSET = -1,
   DM_REORDER_DEFAULT_FALSE  = 0,
-  DM_REORDER_DEFAULT_TRUE
+  DM_REORDER_DEFAULT_TRUE   = 1
 } DMReorderDefaultFlag;
 
 /*S

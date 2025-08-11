@@ -32,7 +32,6 @@ class PCType(object):
     GALERKIN           = S_(PCGALERKIN)
     EXOTIC             = S_(PCEXOTIC)
     CP                 = S_(PCCP)
-    BFBT               = S_(PCBFBT)
     LSC                = S_(PCLSC)
     PYTHON             = S_(PCPYTHON)
     PFMG               = S_(PCPFMG)
@@ -638,6 +637,25 @@ cdef class PC(Object):
         """
         CHKERR(PCApplyTranspose(self.pc, x.vec, y.vec))
 
+    def matApplyTranspose(self, Mat x, Mat y) -> None:
+        """Apply the transpose of the `PC` to many vectors stored as `Mat.Type.DENSE`.
+
+        Collective.
+
+        Parameters
+        ----------
+        x
+            The input matrix.
+        y
+            The output matrix, cannot be the same as ``x``.
+
+        See Also
+        --------
+        petsc.PCMatApply, petsc.PCMatApplyTranspose
+
+        """
+        CHKERR(PCMatApplyTranspose(self.pc, x.mat, y.mat))
+
     def applySymmetricLeft(self, Vec x, Vec y) -> None:
         """Apply the left part of a symmetric `PC` to a vector.
 
@@ -818,6 +836,23 @@ cdef class PC(Object):
         cdef const char *cval = NULL
         CHKERR(PCPythonGetType(self.pc, &cval))
         return bytes2str(cval)
+
+    # --- Block Jacobi ---
+
+    def getBJacobiSubKSP(self) -> list[KSP]:
+        """Return the local `KSP` object for all blocks on this process.
+
+        Not collective.
+
+        See Also
+        --------
+        petsc.PCBJacobiGetSubKSP
+
+        """
+        cdef PetscInt n = 0
+        cdef PetscKSP *p = NULL
+        CHKERR(PCBJacobiGetSubKSP(self.pc, &n, NULL, &p))
+        return [ref_KSP(p[i]) for i from 0 <= i <n]
 
     # --- ASM ---
 

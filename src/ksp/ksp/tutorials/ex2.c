@@ -147,7 +147,7 @@ int main(int argc, char **args)
 
   /*
      Set operators. Here the matrix that defines the linear system
-     also serves as the preconditioning matrix.
+     also serves as the matrix from which the preconditioner is constructed.
   */
   PetscCall(KSPSetOperators(ksp, A, A));
 
@@ -156,7 +156,7 @@ int main(int argc, char **args)
      - By extracting the KSP and PC contexts from the KSP context,
        we can then directly call any KSP and PC routines to set
        various options.
-     - The following two statements are optional; all of these
+     - The following statement is optional; all of these
        parameters could alternatively be specified at runtime via
        KSPSetFromOptions().  All of these defaults can be
        overridden at runtime, as indicated below.

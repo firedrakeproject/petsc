@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 
   /*
      Note that in this case we create separate matrices for the Jacobian
-     and preconditioner matrix.  Both of these are computed in the
+     and matrix used to compute the preconditioner.  Both of these are computed in the
      routine FormJacobian()
   */
   /*  PetscCall(SNESSetJacobian(snes,NULL,JPrec,FormJacobian,0)); */
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
      Store right-hand side of PDE and exact solution
    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-  /* set right-hand side and initial guess to be exact solution of continuim problem */
+  /* set right-hand side and initial guess to be exact solution of continuum problem */
 #define SQR(x) ((x) * (x))
   xp = 0.0;
   for (i = 0; i < n; i++) {

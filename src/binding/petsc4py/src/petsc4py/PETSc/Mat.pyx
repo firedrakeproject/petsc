@@ -43,10 +43,13 @@ class MatType(object):
     SHELL           = S_(MATSHELL)
     DENSE           = S_(MATDENSE)
     DENSECUDA       = S_(MATDENSECUDA)
+    DENSEHIP        = S_(MATDENSEHIP)
     SEQDENSE        = S_(MATSEQDENSE)
     SEQDENSECUDA    = S_(MATSEQDENSECUDA)
+    SEQDENSEHIP     = S_(MATSEQDENSEHIP)
     MPIDENSE        = S_(MATMPIDENSE)
     MPIDENSECUDA    = S_(MATMPIDENSECUDA)
+    MPIDENSEHIP     = S_(MATMPIDENSEHIP)
     ELEMENTAL       = S_(MATELEMENTAL)
     BAIJ            = S_(MATBAIJ)
     SEQBAIJ         = S_(MATSEQBAIJ)
@@ -896,6 +899,70 @@ cdef class Mat(Object):
         Mat_AllocAIJ_NNZ(self.mat, nnz)
         return self
 
+    def setPreallocationCOO(self, coo_i: Sequence[int], coo_j: Sequence[int]) -> Self:
+        """Set preallocation using coordinate format with global indices.
+
+        Collective.
+
+        Parameters
+        ----------
+        coo_i
+            Row indices in COO format.
+        coo_j
+            Column indices in COO format.
+
+        See Also
+        --------
+        setValuesCOO, setPreallocationNNZ, setPreallocationCSR
+        petsc.MatSetPreallocationCOO
+
+        """
+        cdef PetscInt ncoo_i = 0, ncoo_j = 0
+        cdef PetscInt *ccoo_i = NULL, *ccoo_j = NULL
+        cdef PetscCount ncoo = 0
+
+        coo_i = iarray_i(coo_i, &ncoo_i, &ccoo_i)
+        coo_j = iarray_i(coo_j, &ncoo_j, &ccoo_j)
+
+        if ncoo_i != ncoo_j:
+            raise ValueError("coo_i and coo_j must have the same length")
+
+        ncoo = <PetscCount> ncoo_i
+        CHKERR(MatSetPreallocationCOO(self.mat, ncoo, ccoo_i, ccoo_j))
+        return self
+
+    def setPreallocationCOOLocal(self, coo_i: Sequence[int], coo_j: Sequence[int]) -> Self:
+        """Set preallocation using coordinate format with local indices.
+
+        Collective.
+
+        Parameters
+        ----------
+        coo_i
+            Row indices in COO format.
+        coo_j
+            Column indices in COO format.
+
+        See Also
+        --------
+        setPreallocationCOO, setValuesCOO, setLGMap
+        petsc.MatSetPreallocationCOOLocal, petsc.MatSetPreallocationCOOLocal
+
+        """
+        cdef PetscInt ncoo_i = 0, ncoo_j = 0
+        cdef PetscInt *ccoo_i = NULL, *ccoo_j = NULL
+        cdef PetscCount ncoo = 0
+
+        coo_i = iarray_i(coo_i, &ncoo_i, &ccoo_i)
+        coo_j = iarray_i(coo_j, &ncoo_j, &ccoo_j)
+
+        if ncoo_i != ncoo_j:
+            raise ValueError("coo_i and coo_j must have the same length")
+
+        ncoo = <PetscCount> ncoo_i
+        CHKERR(MatSetPreallocationCOOLocal(self.mat, ncoo, ccoo_i, ccoo_j))
+        return self
+
     def setPreallocationCSR(self, csr: CSRIndicesSpec) -> Self:
         """Preallocate memory for the matrix with a CSR layout.
 
@@ -1235,6 +1302,26 @@ cdef class Mat(Object):
         CHKERR(PetscCLEAR(self.obj)); self.mat = newmat
         return self
 
+    def getTransposeMat(self) -> Mat:
+        """Return the internal matrix of a `Type.TRANSPOSE` matrix.
+
+        Not collective.
+
+        Parameters
+        ----------
+        mat
+            Matrix A of type `Type.TRANSPOSE`.
+
+        See Also
+        --------
+        petsc.MatTransposeGetMat
+
+        """
+        cdef Mat mat = type(self)()
+        CHKERR(MatTransposeGetMat(self.mat, &mat.mat))
+        CHKERR(PetscINCREF(mat.obj))
+        return mat
+
     def createNormalHermitian(self, Mat mat) -> Self:
         """Create a `Type.NORMALHERMITIAN` matrix representing (A*)ᵀA.
 
@@ -1285,7 +1372,12 @@ cdef class Mat(Object):
         CHKERR(PetscCLEAR(self.obj)); self.mat = newmat
         return self
 
-    def createLRC(self, Mat A, Mat U, Vec c, Mat V) -> Self:
+    def createLRC(
+        self,
+        Mat A or None: Mat | None,
+        Mat U,
+        Vec c or None: Vec | None,
+        Mat V or None: Mat | None) -> Self:
         """Create a low-rank correction `Type.LRC` matrix representing A + UCVᵀ.
 
         Collective.
@@ -1294,17 +1386,19 @@ cdef class Mat(Object):
         ----------
         A
             Sparse matrix, can be `None`.
-        U, V
-            Dense rectangular matrices.
+        U
+            Dense rectangular matrix.
         c
-            Vector containing the diagonal of C, can be `None`.
+            Vector containing the diagonal of ``C``, can be `None`.
+        V
+            Dense rectangular matrix, can be set to ``U`` or 'None'.
 
         Notes
         -----
         The matrix A + UCVᵀ is never actually formed.
 
         C is a diagonal matrix (represented as a vector) of order k, where k
-        is the number of columns of both U and V.
+        is the number of columns of both ``U`` and ``V``.
 
         If A is `None` then the new object behaves like a low-rank matrix UCVᵀ.
 
@@ -2377,6 +2471,25 @@ cdef class Mat(Object):
         CHKERR(MatIsStructurallySymmetric(self.mat, &flag))
         return toBool(flag)
 
+    def isLinear(self, n: int = 1) -> bool:
+        """Return whether the Mat is a linear operator.
+
+        Collective.
+
+        Parameters
+        ----------
+        n
+            Number of random vectors to be tested.
+
+        See Also
+        --------
+        petsc.MatIsLinear
+
+        """
+        cdef PetscBool flag = PETSC_FALSE
+        CHKERR(MatIsLinear(self.mat, n, &flag))
+        return toBool(flag)
+
     def zeroEntries(self) -> None:
         """Zero the entries of the matrix.
 
@@ -2639,6 +2752,27 @@ cdef class Mat(Object):
 
         """
         matsetvalues_ijv(self.mat, I, J, V, addv, rowmap, 0, 0)
+
+    def setValuesCOO(
+        self,
+        coo_v: Sequence[Scalar],
+        addv: InsertModeSpec = None) -> None:
+        """Set values after preallocation with coordinate format.
+
+        Collective.
+
+        Parameters
+        ----------
+        coo_v
+            The matrix values.
+        addv
+            Insertion mode.
+
+        See Also
+        --------
+        setPreallocationCOO, petsc.MatSetValuesCOO
+        """
+        matsetvalues_coo(self.mat, coo_v, addv)
 
     def setValuesCSR(
         self,
@@ -3976,8 +4110,8 @@ cdef class Mat(Object):
         A00
             the upper-left block of the original matrix A = [A00 A01; A10 A11].
         Ap00
-            preconditioning matrix for use in ksp(A00,Ap00) to approximate the
-            action of A00^{-1}.
+            used to construct the preconditioner used in ksp(A00,Ap00) to
+            approximate the action of A00^{-1}.
         A01
             the upper-right block of the original matrix A = [A00 A01; A10 A11].
         A10
@@ -5034,6 +5168,70 @@ cdef class Mat(Object):
         CHKERR(MatH2OpusLowRankUpdate(self.mat, U.mat, vmat, _s))
         return self
 
+    # LMVM
+
+    def getLMVMJ0(self) -> Mat:
+        """Get the initial Jacobian of the LMVM matrix.
+
+        Not collective.
+
+        See Also
+        --------
+        setLMVMJ0, petsc.MatLMVMGetJ0
+        """
+        cdef Mat M = Mat()
+        CHKERR(MatLMVMGetJ0(self.mat, &M.mat))
+        CHKERR(PetscINCREF(M.obj))
+        return M
+
+    def setLMVMJ0(self, Mat J0) -> None:
+        """Set the initial Jacobian of the LMVM matrix.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        J0:
+            The initial Jacobian matrix.
+
+        See Also
+        --------
+        getLMVMJ0, petsc.MatLMVMSetJ0
+        """
+        cdef PetscMat ctype = J0.mat
+        CHKERR(MatLMVMSetJ0(self.mat, ctype))
+
+    def getLMVMJ0KSP(self) -> Mat:
+        """Get the KSP of the LMVM matrix.
+
+        Not collective.
+
+        See Also
+        --------
+        setLMVMJ0KSP, petsc.MatLMVMGetJ0KSP
+        """
+        cdef KSP ksp = KSP()
+        CHKERR(MatLMVMGetJ0KSP(self.mat, &ksp.ksp))
+        CHKERR(PetscINCREF(ksp.obj))
+        return ksp
+
+    def setLMVMJ0KSP(self, KSP ksp) -> None:
+        """Set the KSP of the LMVM matrix.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        ksp:
+            The KSP.
+
+        See Also
+        --------
+        getLMVMJ0KSP, petsc.MatLMVMSetJ0KSP
+        """
+        cdef PetscKSP ctype = ksp.ksp
+        CHKERR(MatLMVMSetJ0KSP(self.mat, ctype))
+
     # MUMPS
 
     def setMumpsIcntl(self, icntl: int, ival: int) -> None:
@@ -5425,6 +5623,59 @@ cdef class Mat(Object):
         CHKERR(PetscINCREF(mat.obj))
         return mat
 
+    def getDenseSubMatrix(self,
+                          rbegin: int = DECIDE,
+                          rend: int = DECIDE,
+                          cbegin: int = DECIDE,
+                          cend: int = DECIDE) -> Mat:
+        """Get access to a submatrix of a `Type.DENSE` matrix.
+
+        Collective.
+
+        Parameters
+        ----------
+        rbegin
+            the first global row index.
+        rend
+            the global row index past the last one.
+        cbegin
+            the first global column index.
+        cend
+            the global column index past the last one.
+
+        See Also
+        --------
+        restoreDenseSubMatrix, petsc.MatDenseGetSubMatrix
+
+        """
+        cdef Mat mat = type(self)()
+        cdef PetscInt crbegin = asInt(rbegin)
+        cdef PetscInt crend = asInt(rend)
+        cdef PetscInt ccbegin = asInt(cbegin)
+        cdef PetscInt ccend = asInt(cend)
+        CHKERR(MatDenseGetSubMatrix(self.mat, crbegin, crend, ccbegin, ccend, &mat.mat))
+        CHKERR(PetscINCREF(mat.obj))
+        return mat
+
+    def restoreDenseSubMatrix(self, Mat mat) -> None:
+        """Restore access to a submatrix of a `Type.DENSE` matrix.
+
+        Collective.
+
+        Parameters
+        ----------
+        mat
+            the matrix obtained from `getDenseSubMatrix`.
+
+        See Also
+        --------
+        getDenseSubMatrix, petsc.MatDenseRestoreSubMatrix
+
+        """
+        cdef PetscMat v = mat.mat
+        CHKERR(MatDenseRestoreSubMatrix(self.mat, &v))
+        CHKERR(PetscCLEAR(mat.obj))
+
     def getDenseColumnVec(self, i: int, mode: AccessModeSpec = 'rw') -> Vec:
         """Return the iᵗʰ column vector of the dense matrix.
 
@@ -5435,7 +5686,7 @@ cdef class Mat(Object):
         i
             The column index to access.
         mode
-            The access type of the returned array
+            The access type of the vector to be returned.
 
         See Also
         --------
@@ -5457,7 +5708,7 @@ cdef class Mat(Object):
         CHKERR(PetscINCREF(v.obj))
         return v
 
-    def restoreDenseColumnVec(self, i: int, mode: AccessModeSpec = 'rw') -> None:
+    def restoreDenseColumnVec(self, i: int, mode: AccessModeSpec = 'rw', Vec V=None) -> None:
         """Restore the iᵗʰ column vector of the dense matrix.
 
         Collective.
@@ -5467,7 +5718,9 @@ cdef class Mat(Object):
         i
             The column index to be restored.
         mode
-            The access type of the restored array
+            The access type of the vector to be restored.
+        V
+            The vector obtained from calling `getDenseColumnVec`.
 
         See Also
         --------
@@ -5475,13 +5728,18 @@ cdef class Mat(Object):
         petsc.MatDenseRestoreColumnVecRead, petsc.MatDenseRestoreColumnVecWrite
 
         """
+        cdef PetscVec v = NULL
+        if V is not None:
+            v = V.vec
         cdef PetscInt _i = asInt(i)
         if mode == 'rw':
-            CHKERR(MatDenseRestoreColumnVec(self.mat, _i, NULL))
+            CHKERR(MatDenseRestoreColumnVec(self.mat, _i, &v))
         elif mode == 'r':
-            CHKERR(MatDenseRestoreColumnVecRead(self.mat, _i, NULL))
+            CHKERR(MatDenseRestoreColumnVecRead(self.mat, _i, &v))
         else:
-            CHKERR(MatDenseRestoreColumnVecWrite(self.mat, _i, NULL))
+            CHKERR(MatDenseRestoreColumnVecWrite(self.mat, _i, &v))
+        if V is not None:
+            CHKERR(PetscCLEAR(V.obj))
 
     # Nest
 
@@ -5698,22 +5956,22 @@ cdef class Mat(Object):
                 CHKERR(MatDenseGetArrayWrite(self.mat, <PetscScalar**>&a))
                 CHKERR(MatDenseRestoreArrayWrite(self.mat, NULL))
             else:
-                CHKERR(MatDenseCUDAGetArrayWrite(self.mat, <PetscScalar**>&a))
-                CHKERR(MatDenseCUDARestoreArrayWrite(self.mat, NULL))
+                CHKERR(MatDenseGetArrayWriteAndMemType(self.mat, <PetscScalar**>&a, NULL))
+                CHKERR(MatDenseRestoreArrayWriteAndMemType(self.mat, NULL))
         elif mode == 'r':
             if hostmem:
                 CHKERR(MatDenseGetArrayRead(self.mat, <const PetscScalar**>&a))
                 CHKERR(MatDenseRestoreArrayRead(self.mat, NULL))
             else:
-                CHKERR(MatDenseCUDAGetArrayRead(self.mat, <const PetscScalar**>&a))
-                CHKERR(MatDenseCUDARestoreArrayRead(self.mat, NULL))
+                CHKERR(MatDenseGetArrayReadAndMemType(self.mat, <const PetscScalar**>&a, NULL))
+                CHKERR(MatDenseRestoreArrayReadAndMemType(self.mat, NULL))
         else:
             if hostmem:
                 CHKERR(MatDenseGetArray(self.mat, <PetscScalar**>&a))
                 CHKERR(MatDenseRestoreArray(self.mat, NULL))
             else:
-                CHKERR(MatDenseCUDAGetArray(self.mat, <PetscScalar**>&a))
-                CHKERR(MatDenseCUDARestoreArray(self.mat, NULL))
+                CHKERR(MatDenseGetArrayAndMemType(self.mat, <PetscScalar**>&a, NULL))
+                CHKERR(MatDenseRestoreArrayAndMemType(self.mat, NULL))
         dl_tensor.data = <void *>a
 
         cdef DLContext* ctx = &dl_tensor.ctx

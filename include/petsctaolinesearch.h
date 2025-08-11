@@ -46,6 +46,7 @@ typedef enum {
   TAOLINESEARCH_HALTED_RTOL         = 7,
   TAOLINESEARCH_HALTED_USER         = 8
 } TaoLineSearchConvergedReason;
+PETSC_EXTERN const char *const *TaoLineSearchConvergedReasons;
 
 /*J
    TaoLineSearchType - String with the name of a `TaoLineSearch` method
@@ -84,7 +85,7 @@ PETSC_EXTERN PetscErrorCode TaoLineSearchMonitor(TaoLineSearch, PetscInt, PetscR
 PETSC_EXTERN PetscErrorCode TaoLineSearchView(TaoLineSearch, PetscViewer);
 PETSC_EXTERN PetscErrorCode TaoLineSearchViewFromOptions(TaoLineSearch, PetscObject, const char[]);
 
-PETSC_EXTERN PetscErrorCode TaoLineSearchSetOptionsPrefix(TaoLineSearch, const char prefix[]);
+PETSC_EXTERN PetscErrorCode TaoLineSearchSetOptionsPrefix(TaoLineSearch, const char[]);
 PETSC_EXTERN PetscErrorCode TaoLineSearchReset(TaoLineSearch);
 PETSC_EXTERN PetscErrorCode TaoLineSearchAppendOptionsPrefix(TaoLineSearch, const char[]);
 PETSC_EXTERN PetscErrorCode TaoLineSearchGetOptionsPrefix(TaoLineSearch, const char *[]);

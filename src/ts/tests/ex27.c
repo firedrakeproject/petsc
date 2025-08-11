@@ -161,9 +161,11 @@ static PetscErrorCode SetInitialConditions(DM dmSw, Vec u)
 
 static PetscErrorCode CreateParticles(DM dm, DM *sw, AppCtx *user)
 {
-  PetscInt *cellid;
-  PetscInt  dim, cStart, cEnd, c, Np = user->N, p;
-  PetscBool view = PETSC_FALSE;
+  DMSwarmCellDM celldm;
+  PetscInt     *swarm_cellid;
+  PetscInt      dim, cStart, cEnd, c, Np = user->N, p;
+  PetscBool     view = PETSC_FALSE;
+  const char   *cellid;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(dm, &dim));
@@ -181,17 +183,19 @@ static PetscErrorCode CreateParticles(DM dm, DM *sw, AppCtx *user)
   PetscCall(DMSwarmRegisterPetscDatatypeField(*sw, "velocity", dim, PETSC_REAL));
   PetscCall(DMSwarmRegisterPetscDatatypeField(*sw, "w_q", 1, PETSC_SCALAR));
   PetscCall(DMSwarmFinalizeFieldRegister(*sw));
+  PetscCall(DMSwarmGetCellDMActive(*sw, &celldm));
+  PetscCall(DMSwarmCellDMGetCellID(celldm, &cellid));
   PetscCall(DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd));
   PetscCall(DMSwarmSetLocalSizes(*sw, (cEnd - cStart) * Np, 0));
   PetscCall(DMSetFromOptions(*sw));
-  PetscCall(DMSwarmGetField(*sw, DMSwarmPICField_cellid, NULL, NULL, (void **)&cellid));
+  PetscCall(DMSwarmGetField(*sw, cellid, NULL, NULL, (void **)&swarm_cellid));
   for (c = cStart; c < cEnd; ++c) {
     for (p = 0; p < Np; ++p) {
       const PetscInt n = c * Np + p;
-      cellid[n]        = c;
+      swarm_cellid[n]  = c;
     }
   }
-  PetscCall(DMSwarmRestoreField(*sw, DMSwarmPICField_cellid, NULL, NULL, (void **)&cellid));
+  PetscCall(DMSwarmRestoreField(*sw, cellid, NULL, NULL, (void **)&swarm_cellid));
   PetscCall(PetscObjectSetName((PetscObject)*sw, "Particles"));
   PetscCall(DMViewFromOptions(*sw, NULL, "-sw_view"));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -461,5 +465,5 @@ int main(int argc, char **argv)
    test:
      suffix: midpoint
      args: -N 3 -dm_plex_dim 2 -dm_plex_simplex 0 -dm_plex_box_faces 1,1 -dm_plex_box_lower -1,-1 -dm_plex_box_upper 1,1 -dm_view \
-           -ts_type theta -ts_theta_theta 0.5 -ts_dmswarm_monitor_moments -ts_monitor_frequency 1 -snes_fd
+           -ts_type theta -ts_theta_theta 0.5 -ts_dmswarm_monitor_moments -ts_dmswarm_monitor_moments_interval 1 -snes_fd
 TEST*/

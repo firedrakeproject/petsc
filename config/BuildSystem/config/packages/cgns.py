@@ -5,9 +5,8 @@ import os
 class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
-    #self.version    = '4.3.0'
-    #self.gitcommit  = 'v' + self.version
-    self.gitcommit  = '30157c3a893074f0ff28cddff9d746ab613c84ba'  # develop Mar-5-2024 (v4.4.0+)
+    self.version    = '4.5.0'
+    self.gitcommit  = 'v' + self.version
     self.download   = ['git://https://github.com/cgns/cgns', 'https://github.com/cgns/cgns/archive/{}.tar.gz'.format(self.gitcommit)]
     self.functions  = ['cgp_close']
     self.includes   = ['cgnslib.h']
@@ -16,7 +15,7 @@ class Configure(config.package.CMakePackage):
 
   def setupDependencies(self, framework):
     config.package.CMakePackage.setupDependencies(self, framework)
-    self.hdf5 = framework.require('config.packages.hdf5', self)
+    self.hdf5 = framework.require('config.packages.HDF5', self)
     self.mpi = framework.require('config.packages.MPI',self)
     self.deps = [self.hdf5]
     self.odeps = [self.mpi]

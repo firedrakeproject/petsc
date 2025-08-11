@@ -1,4 +1,4 @@
-#define PETSC_SKIP_CXX_COMPLEX_FIX // Kokkos::complex does not need the petsc complex fix
+#define PETSC_SKIP_CXX_COMPLEX_FIX // Kokkos::complex does not need the PetscComplex fix
 
 #include <petsc/private/pcbjkokkosimpl.h>
 
@@ -169,7 +169,7 @@ static KOKKOS_INLINE_FUNCTION PetscErrorCode BJSolve_TFQMR(const team_member tea
   if (monitor) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf("%3d KSP Residual norm %14.12e\n", 0, (double)dp); });
 #endif
   if (dp < atol) {
-    metad->reason = KSP_CONVERGED_ATOL_NORMAL;
+    metad->reason = KSP_CONVERGED_ATOL_NORMAL_EQUATIONS;
     it            = 0;
     goto done;
   }
@@ -250,11 +250,11 @@ static KOKKOS_INLINE_FUNCTION PetscErrorCode BJSolve_TFQMR(const team_member tea
       if (monitor && m == 1) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf("%3d KSP Residual norm %14.12e\n", it + 1, (double)dpest); });
 #endif
       if (dpest < atol) {
-        metad->reason = KSP_CONVERGED_ATOL_NORMAL;
+        metad->reason = KSP_CONVERGED_ATOL_NORMAL_EQUATIONS;
         goto done;
       }
       if (dpest / r0 < rtol) {
-        metad->reason = KSP_CONVERGED_RTOL_NORMAL;
+        metad->reason = KSP_CONVERGED_RTOL_NORMAL_EQUATIONS;
         goto done;
       }
 #if defined(PETSC_USE_DEBUG) && !defined(PETSC_HAVE_SYCL)
@@ -400,7 +400,7 @@ static KOKKOS_INLINE_FUNCTION PetscErrorCode BJSolve_BICG(const team_member team
   if (monitor) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf("%3d KSP Residual norm %14.12e\n", 0, (double)dp); });
 #endif
   if (dp < atol) {
-    metad->reason = KSP_CONVERGED_ATOL_NORMAL;
+    metad->reason = KSP_CONVERGED_ATOL_NORMAL_EQUATIONS;
     it            = 0;
     goto done;
   }
@@ -471,11 +471,11 @@ static KOKKOS_INLINE_FUNCTION PetscErrorCode BJSolve_BICG(const team_member team
     if (monitor) Kokkos::single(Kokkos::PerTeam(team), [=]() { printf("%3d KSP Residual norm %14.12e\n", it + 1, (double)dp); });
 #endif
     if (dp < atol) {
-      metad->reason = KSP_CONVERGED_ATOL_NORMAL;
+      metad->reason = KSP_CONVERGED_ATOL_NORMAL_EQUATIONS;
       goto done;
     }
     if (dp / r0 < rtol) {
-      metad->reason = KSP_CONVERGED_RTOL_NORMAL;
+      metad->reason = KSP_CONVERGED_RTOL_NORMAL_EQUATIONS;
       goto done;
     }
 #if defined(PETSC_USE_DEBUG) && !defined(PETSC_HAVE_SYCL)
@@ -1066,7 +1066,7 @@ static PetscErrorCode PCView_BJKOKKOS(PC pc, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCSetFromOptions_BJKOKKOS(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_BJKOKKOS(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "PC BJKOKKOS options");
@@ -1173,20 +1173,18 @@ static PetscErrorCode PCPreSolve_BJKOKKOS(PC pc, KSP ksp, Vec b, Vec x)
 }
 
 /*MC
-     PCBJKOKKOS -  Defines a preconditioner that applies a Krylov solver and preconditioner to the blocks in a `MATSEQAIJ` matrix on the GPU using Kokkos
+     PCBJKOKKOS - A batched Krylov/block Jacobi solver that runs a solve of each diagaonl block of a block diagonal `MATSEQAIJ` in a Kokkos thread group
 
    Options Database Key:
-.     -pc_bjkokkos_ - options prefix for its `KSP` options
+.  -pc_bjkokkos_ - options prefix for its `KSP` options
 
    Level: intermediate
 
    Note:
-    For use with -ksp_type preonly to bypass any computation on the CPU
+   For use with `-ksp_type preonly` to bypass any computation on the CPU
 
    Developer Notes:
-   The documentation is incomplete. Is this a block Jacobi preconditioner?
-
-   Why does it have its own `KSP`? Where is the `KSP` run if used with -ksp_type preonly?
+   The entire Krylov (TFQMR or BICG) with diagonal preconditioning for each block of a block diagnaol matrix runs in a Kokkos thread group (eg, one block per SM on NVIDIA). It supports taking a non-block diagonal matrix but this is not tested. One should create an explicit block diagonal matrix and use that as the matrix for constructing the preconditioner in the outer `KSP` solver. Variable block size are supported and tested in src/ts/utils/dmplexlandau/tutorials/ex[1|2].c
 
 .seealso: [](ch_ksp), `PCCreate()`, `PCSetType()`, `PCType`, `PC`, `PCBJACOBI`,
           `PCSHELL`, `PCCOMPOSITE`, `PCSetUseAmat()`, `PCBJKOKKOSGetKSP()`

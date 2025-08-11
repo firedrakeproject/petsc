@@ -70,7 +70,7 @@ int main(int argc, char **argv)
   PetscCall(TaoSetType(tao, TAOCG));
 
   /*
-     Extract global vector from DA for the vector of variables --  PETSC routine
+     Extract global vector from DA for the vector of variables --  PETSc routine
      Compute the initial solution                              --  application specific, see below
      Set this vector for use by TAO                            --  TAO routine
   */
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
   /*
      Create a matrix data structure to store the Hessian and set
      the Hessian evaluation routine.
-     Set the matrix structure to be used for Hessian evaluations
+     Set the matrix nonzero structure to be used for Hessian evaluations
   */
   PetscCall(DMCreateMatrix(user.dm, &user.H));
   PetscCall(MatSetOption(user.H, MAT_SYMMETRIC, PETSC_TRUE));
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     PetscCall(DMCreateColoring(user.dm, IS_COLORING_GLOBAL, &iscoloring));
     PetscCall(MatFDColoringCreate(user.H, iscoloring, &matfdcoloring));
     PetscCall(ISColoringDestroy(&iscoloring));
-    PetscCall(MatFDColoringSetFunction(matfdcoloring, (PetscErrorCode (*)(void))FormGradient, (void *)&user));
+    PetscCall(MatFDColoringSetFunction(matfdcoloring, (MatFDColoringFn *)FormGradient, (void *)&user));
     PetscCall(MatFDColoringSetFromOptions(matfdcoloring));
     PetscCall(TaoSetHessian(tao, user.H, user.H, TaoDefaultComputeHessianColor, (void *)matfdcoloring));
   } else if (fddefault) {
@@ -475,8 +475,7 @@ PetscErrorCode FormGradient(Tao tao, Vec X, Vec G, void *userCtx)
 
    Output Parameters:
 .  H    - Hessian matrix
-.  Hpre - optionally different preconditioning matrix
-.  flg  - flag indicating matrix structure
+.  Hpre - optionally different matrix used to compute the preconditioner
 
 */
 PetscErrorCode FormHessian(Tao tao, Vec X, Mat H, Mat Hpre, void *ptr)

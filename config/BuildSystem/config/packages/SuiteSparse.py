@@ -6,7 +6,7 @@ class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
     self.minversion        = '5.6.0'
-    self.version           = '7.8.2'
+    self.version           = '7.11.0'
     self.versioninclude    = 'SuiteSparse_config.h'
     self.versionname       = 'SUITESPARSE_MAIN_VERSION.SUITESPARSE_SUB_VERSION.SUITESPARSE_SUBSUB_VERSION'
     self.gitcommit         = 'v'+self.version
@@ -27,13 +27,19 @@ class Configure(config.package.CMakePackage):
     self.minCmakeVersion   = (3,22,0)
     return
 
+  def setupHelp(self, help):
+    import nargs
+    config.package.Package.setupHelp(self, help)
+    help.addArgument('SUITESPARSE', '-with-suitesparse-cuda=<bool>', nargs.ArgBool(None, 0, 'Compile SuiteSparse with CUDA enabled'))
+    return
+
   def setupDependencies(self, framework):
     config.package.CMakePackage.setupDependencies(self, framework)
     self.blasLapack = framework.require('config.packages.BlasLapack',self)
     self.mathlib    = framework.require('config.packages.mathlib',self)
     self.deps       = [self.blasLapack,self.mathlib]
-    self.cuda       = framework.require('config.packages.cuda',self)
-    self.openmp     = framework.require('config.packages.openmp',self)
+    self.cuda       = framework.require('config.packages.CUDA',self)
+    self.openmp     = framework.require('config.packages.OpenMP',self)
     self.odeps      = [self.openmp,self.cuda]
     return
 
@@ -46,13 +52,21 @@ class Configure(config.package.CMakePackage):
   def formCMakeConfigureArgs(self):
     args = config.package.CMakePackage.formCMakeConfigureArgs(self)
     args.append('-DSUITESPARSE_ENABLE_PROJECTS="amd;cholmod;klu;umfpack;spqr"')
-    args.append('-DCMAKE_INSTALL_RPATH_USE_LINK_PATH:BOOL=ON')
 
     args.append('-DBLA_VENDOR:STRING=Generic')
     args.append('-DBLAS_LIBRARIES:STRING="'+self.libraries.toString(self.blasLapack.dlib)+'"')
     args.append('-DLAPACK_LIBRARIES:STRING=""')
 
-    args.append('-DSUITESPARSE_USE_CUDA:BOOL='+('ON' if self.cuda.found else 'OFF'))
+    enablecuda = 0
+    if self.cuda.found and self.openmp.found:
+      enablecuda = 1
+    if 'with-suitesparse-cuda' in self.framework.clArgDB:
+      if self.argDB['with-suitesparse-cuda']:
+        if not enablecuda:
+          raise RuntimeError('SuiteSparse build with CUDA enabled requires --with-cuda=1 and --with-openmp=1')
+      else:
+        enablecuda = 0
+    args.append('-DSUITESPARSE_USE_CUDA:BOOL='+('ON' if enablecuda else 'OFF'))
     args.append('-DSUITESPARSE_USE_OPENMP:BOOL='+('ON' if self.openmp.found else 'OFF'))
     args.append('-DSUITESPARSE_USE_64BIT_BLAS:BOOL='+('ON' if self.blasLapack.has64bitindices else 'OFF'))
 

@@ -1,28 +1,11 @@
 #pragma once
 #include <petscis.h>
 
+/* SUBMANSEC = DM */
+
 PETSC_EXTERN PetscClassId DMLABEL_CLASSID;
 
-typedef const char *DMLabelType;
-#define DMLABELCONCRETE  "concrete"
-#define DMLABELEPHEMERAL "ephemeral"
-
-/* SUBMANSEC = DMLabel */
-
-/*S
-  DMLabel - Object which encapsulates a subset of the mesh from a `DM`
-
-  Level: developer
-
-  Note:
-  A label consists of a set of points on a `DM`
-
-.seealso: [](ch_dmbase), `DM`, `DMPlexCreate()`, `DMLabelCreate()`, `DMLabelView()`, `DMLabelDestroy()`, `DMPlexCreateLabelField()`,
-          `DMLabelGetDefaultValue()`, `DMLabelSetDefaultValue()`, `DMLabelDuplicate()`, `DMLabelGetValue()`, `DMLabelSetValue()`,
-          `DMLabelAddStratum()`, `DMLabelAddStrata()`, `DMLabelInsertIS()`, `DMLabelGetNumValues()`, `DMLabelGetValueIS()`,
-          `DMLabelGetStratumSize()`, `DMLabelComputeIndex()`, `DMLabelDestroyIndex()`, `DMLabelDistribute()`, `DMLabelConvertToSection()`
-S*/
-typedef struct _p_DMLabel *DMLabel;
+#include <petscdmlabeltypes.h>
 
 PETSC_EXTERN PetscFunctionList DMLabelList;
 PETSC_EXTERN PetscErrorCode    DMLabelCreate(MPI_Comm, const char[], DMLabel *);
@@ -71,6 +54,8 @@ PETSC_EXTERN PetscErrorCode DMLabelGetBounds(DMLabel, PetscInt *, PetscInt *);
 PETSC_EXTERN PetscErrorCode DMLabelGetValueBounds(DMLabel, PetscInt *, PetscInt *);
 PETSC_EXTERN PetscErrorCode DMLabelFilter(DMLabel, PetscInt, PetscInt);
 PETSC_EXTERN PetscErrorCode DMLabelPermute(DMLabel, IS, DMLabel *);
+PETSC_EXTERN PetscErrorCode DMLabelPermuteValues(DMLabel, IS);
+PETSC_EXTERN PetscErrorCode DMLabelRewriteValues(DMLabel, IS);
 PETSC_EXTERN PetscErrorCode DMLabelDistribute(DMLabel, PetscSF, DMLabel *);
 PETSC_EXTERN PetscErrorCode DMLabelGather(DMLabel, PetscSF, DMLabel *);
 PETSC_EXTERN PetscErrorCode DMLabelConvertToSection(DMLabel, PetscSection *, IS *);

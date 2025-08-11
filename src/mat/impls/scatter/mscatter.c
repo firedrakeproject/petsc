@@ -236,19 +236,6 @@ static struct _MatOps MatOps_Values = {NULL,
                                        /*139*/ NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       /*144*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /*150*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
                                        NULL};
 
 /*MC
@@ -341,7 +328,7 @@ PetscErrorCode MatScatterSetVecScatter(Mat mat, VecScatter scatter)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(mat, MAT_CLASSID, 1);
   PetscValidHeaderSpecific(scatter, PETSCSF_CLASSID, 2);
-  PetscCheckSameComm((PetscObject)scatter, 2, (PetscObject)mat, 1);
+  PetscCheckSameComm(scatter, 2, mat, 1);
   PetscCheck(mat->rmap->n == scatter->vscat.to_n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Number of local rows in matrix %" PetscInt_FMT " not equal local scatter size %" PetscInt_FMT, mat->rmap->n, scatter->vscat.to_n);
   PetscCheck(mat->cmap->n == scatter->vscat.from_n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Number of local columns in matrix %" PetscInt_FMT " not equal local scatter size %" PetscInt_FMT, mat->cmap->n, scatter->vscat.from_n);
 

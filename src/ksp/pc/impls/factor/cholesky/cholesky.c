@@ -10,7 +10,7 @@ typedef struct {
   IS        row, col; /* index sets used for reordering */
 } PC_Cholesky;
 
-static PetscErrorCode PCSetFromOptions_Cholesky(PC pc, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode PCSetFromOptions_Cholesky(PC pc, PetscOptionItems PetscOptionsObject)
 {
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "Cholesky options");
@@ -228,6 +228,19 @@ static PetscErrorCode PCApplyTranspose_Cholesky(PC pc, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode PCMatApplyTranspose_Cholesky(PC pc, Mat X, Mat Y)
+{
+  PC_Cholesky *dir = (PC_Cholesky *)pc->data;
+
+  PetscFunctionBegin;
+  if (dir->hdr.inplace) {
+    PetscCall(MatMatSolveTranspose(pc->pmat, X, Y));
+  } else {
+    PetscCall(MatMatSolveTranspose(((PC_Factor *)dir)->fact, X, Y));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /*@
   PCFactorSetReuseOrdering - When similar matrices are factored, this
   causes the ordering computed in the first factor to be used for all
@@ -259,16 +272,20 @@ PetscErrorCode PCFactorSetReuseOrdering(PC pc, PetscBool flag)
    PCCHOLESKY - Uses a direct solver, based on Cholesky factorization, as a preconditioner
 
    Options Database Keys:
-+  -pc_factor_reuse_ordering - Activate `PCFactorSetReuseOrdering()`
-.  -pc_factor_mat_solver_type - Actives `PCFactorSetMatSolverType()` to choose the direct solver, like superlu
-.  -pc_factor_reuse_fill - Activates `PCFactorSetReuseFill()`
-.  -pc_factor_fill <fill> - Sets fill amount
-.  -pc_factor_in_place - Activates in-place factorization
--  -pc_factor_mat_ordering_type <nd,rcm,...> - Sets ordering routine
++  -pc_factor_reuse_ordering                 - Activate `PCFactorSetReuseOrdering()`
+.  -pc_factor_mat_solver_type                - Actives `PCFactorSetMatSolverType()` to choose the direct solver, like superlu
+.  -pc_factor_reuse_fill                     - Activates `PCFactorSetReuseFill()`
+.  -pc_factor_fill <fill>                    - Sets the explected fill amount
+.  -pc_factor_in_place                       - Activates in-place factorization
+-  -pc_factor_mat_ordering_type <nd,rcm,...> - Sets ordering routine used to determine the order the rows are used in the factorization to reduce fill
+                                               and thus be more effective
 
    Level: beginner
 
    Notes:
+   The Cholesky factorization direct solver, `PCCHOLESKY` is only for symmetric positive-definite (SPD) matrices. For such
+   SPD matrices it is more efficient than using the LU factorization direct solver, `PCLU`.
+
    Not all options work for all matrix formats
 
    Usually this will compute an "exact" solution in one iteration and does
@@ -299,6 +316,7 @@ PETSC_EXTERN PetscErrorCode PCCreate_Cholesky(PC pc)
   pc->ops->applysymmetricleft  = PCApplySymmetricLeft_Cholesky;
   pc->ops->applysymmetricright = PCApplySymmetricRight_Cholesky;
   pc->ops->applytranspose      = PCApplyTranspose_Cholesky;
+  pc->ops->matapplytranspose   = PCMatApplyTranspose_Cholesky;
   pc->ops->setup               = PCSetUp_Cholesky;
   pc->ops->setfromoptions      = PCSetFromOptions_Cholesky;
   pc->ops->view                = PCView_Factor;

@@ -5,9 +5,9 @@ class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
     self.minversion       = '6.3.0'
-    self.version          = '9.0.0'
+    self.version          = '9.1.0'
     self.versionname      = 'SUPERLU_DIST_MAJOR_VERSION.SUPERLU_DIST_MINOR_VERSION.SUPERLU_DIST_PATCH_VERSION'
-    self.gitcommit        = '2e39ceca001f594dc63426f2b500c82f5ce312a3' # v9.0.0+, i.e.: master May 20, 2024
+    self.gitcommit        = 'd2356a4491f105674b2ef0831b0e84d5922ebf42' # v9.1.0+, i.e.: master Jul 18, 2025
     self.download         = ['git://https://github.com/xiaoyeli/superlu_dist','https://github.com/xiaoyeli/superlu_dist/archive/'+self.gitcommit+'.tar.gz']
     self.functions        = ['set_default_options_dist']
     self.includes         = ['superlu_ddefs.h']
@@ -21,15 +21,20 @@ class Configure(config.package.CMakePackage):
     self.minCmakeVersion  = (3,18,1)
     return
 
+  def setupHelp(self, help):
+    config.package.CMakePackage.setupHelp(self,help)
+    import nargs
+    help.addArgument('SUPERLU_DIST', '-with-superlu_dist-fortran-bindings', nargs.ArgBool(None, 1, 'Use/build SuperLU_DIST Fortran interface (PETSc does not need it)'))
+
   def setupDependencies(self, framework):
     config.package.CMakePackage.setupDependencies(self, framework)
     self.scalartypes    = framework.require('PETSc.options.scalarTypes',self)
     self.blasLapack     = framework.require('config.packages.BlasLapack',self)
-    self.parmetis       = framework.require('config.packages.parmetis',self)
+    self.parmetis       = framework.require('config.packages.ParMETIS',self)
     self.mpi            = framework.require('config.packages.MPI',self)
-    self.cuda           = framework.require('config.packages.cuda',self)
-    self.hip            = framework.require('config.packages.hip',self)
-    self.openmp         = framework.require('config.packages.openmp',self)
+    self.cuda           = framework.require('config.packages.CUDA',self)
+    self.hip            = framework.require('config.packages.HIP',self)
+    self.openmp         = framework.require('config.packages.OpenMP',self)
     self.odeps          = [self.parmetis,self.cuda,self.hip,self.openmp]
     self.deps           = [self.mpi,self.blasLapack]
     return
@@ -73,7 +78,7 @@ class Configure(config.package.CMakePackage):
     if self.getDefaultIndexSize() == 64:
       args.append('-DXSDK_INDEX_SIZE=64')
 
-    if hasattr(self.compilers, 'FC'):
+    if self.argDB['with-superlu_dist-fortran-bindings'] and hasattr(self.compilers, 'FC'):
       args.append('-DXSDK_ENABLE_Fortran=ON')
     else:
       args.append('-DXSDK_ENABLE_Fortran=OFF')
@@ -91,6 +96,8 @@ class Configure(config.package.CMakePackage):
     return args
 
   def configureLibrary(self):
+    if self.scalartypes.precision == 'single' and self.scalartypes.scalartype == 'complex':
+      raise RuntimeError('SuperLU_DIST does not handle single-precision complex scalars')
     config.package.Package.configureLibrary(self)
     self.pushLanguage('C')
     oldFlags = self.compilers.CPPFLAGS # Disgusting save and restore

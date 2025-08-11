@@ -663,6 +663,12 @@ static PetscErrorCode MatView_SeqAIJ_Binary(Mat mat, PetscViewer viewer)
   /* fill in and store row lengths */
   PetscCall(PetscMalloc1(m, &rowlens));
   for (i = 0; i < m; i++) rowlens[i] = A->i[i + 1] - A->i[i];
+  if (PetscDefined(USE_DEBUG)) {
+    PetscInt mnz = 0;
+
+    for (i = 0; i < m; i++) mnz += rowlens[i];
+    PetscCheck(nz == mnz, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Row lens %" PetscInt_FMT " do not sum to nz %" PetscInt_FMT, mnz, nz);
+  }
   PetscCall(PetscViewerBinaryWrite(viewer, rowlens, m, PETSC_INT));
   PetscCall(PetscFree(rowlens));
   /* store column indices */
@@ -692,8 +698,6 @@ static PetscErrorCode MatView_SeqAIJ_ASCII_structonly(Mat A, PetscViewer viewer)
   PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_TRUE));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-extern PetscErrorCode MatSeqAIJFactorInfo_Matlab(Mat, PetscViewer);
 
 static PetscErrorCode MatView_SeqAIJ_ASCII(Mat A, PetscViewer viewer)
 {
@@ -905,14 +909,14 @@ static PetscErrorCode MatView_SeqAIJ_ASCII(Mat A, PetscViewer viewer)
         j = a->diag[i];
 #if defined(PETSC_USE_COMPLEX)
         if (PetscImaginaryPart(a->a[j]) > 0.0) {
-          PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g + %g i)", a->j[j], (double)PetscRealPart(1.0 / a->a[j]), (double)PetscImaginaryPart(1.0 / a->a[j])));
+          PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g + %g i)", a->j[j], (double)PetscRealPart(1 / a->a[j]), (double)PetscImaginaryPart(1 / a->a[j])));
         } else if (PetscImaginaryPart(a->a[j]) < 0.0) {
-          PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g - %g i)", a->j[j], (double)PetscRealPart(1.0 / a->a[j]), (double)(-PetscImaginaryPart(1.0 / a->a[j]))));
+          PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g - %g i)", a->j[j], (double)PetscRealPart(1 / a->a[j]), (double)(-PetscImaginaryPart(1 / a->a[j]))));
         } else {
-          PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->j[j], (double)PetscRealPart(1.0 / a->a[j])));
+          PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->j[j], (double)PetscRealPart(1 / a->a[j])));
         }
 #else
-        PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->j[j], (double)(1.0 / a->a[j])));
+        PetscCall(PetscViewerASCIIPrintf(viewer, " (%" PetscInt_FMT ", %g) ", a->j[j], (double)(1 / a->a[j])));
 #endif
 
         /* U part */
@@ -1099,8 +1103,8 @@ PetscErrorCode MatAssemblyEnd_SeqAIJ(Mat A, MatAssemblyType mode)
   if (mode == MAT_FLUSH_ASSEMBLY) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(MatSeqAIJInvalidateDiagonal(A));
   if (A->was_assembled && A->ass_nonzerostate == A->nonzerostate) {
-    /* we need to respect users asking to use or not the inodes routine in between matrix assemblies */
-    PetscCall(MatAssemblyEnd_SeqAIJ_Inode(A, mode));
+    /* we need to respect users asking to use or not the inodes routine in between matrix assemblies, e.g., via MatSetOption(A, MAT_USE_INODES, val) */
+    PetscCall(MatAssemblyEnd_SeqAIJ_Inode(A, mode)); /* read the sparsity pattern */
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
@@ -1199,7 +1203,7 @@ PetscErrorCode MatZeroEntries_SeqAIJ(Mat A)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MatDestroy_SeqAIJ(Mat A)
+static PetscErrorCode MatReset_SeqAIJ(Mat A)
 {
   Mat_SeqAIJ *a = (Mat_SeqAIJ *)A->data;
 
@@ -1226,6 +1230,23 @@ PetscErrorCode MatDestroy_SeqAIJ(Mat A)
   PetscCall(PetscFree(a->saved_values));
   PetscCall(PetscFree2(a->compressedrow.i, a->compressedrow.rindex));
   PetscCall(MatDestroy_SeqAIJ_Inode(A));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode MatResetHash_SeqAIJ(Mat A)
+{
+  PetscFunctionBegin;
+  PetscCall(MatReset_SeqAIJ(A));
+  PetscCall(MatCreate_SeqAIJ_Inode(A));
+  PetscCall(MatSetUp_Seq_Hash(A));
+  A->nonzerostate++;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode MatDestroy_SeqAIJ(Mat A)
+{
+  PetscFunctionBegin;
+  PetscCall(MatReset_SeqAIJ(A));
   PetscCall(PetscFree(A->data));
 
   /* MatMatMultNumeric_SeqAIJ_SeqAIJ_Sorted may allocate this.
@@ -1279,6 +1300,7 @@ PetscErrorCode MatDestroy_SeqAIJ(Mat A)
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatIsHermitianTranspose_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatSeqAIJSetPreallocation_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatResetPreallocation_C", NULL));
+  PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatResetHash_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatSeqAIJSetPreallocationCSR_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatReorderForNonzeroDiagonal_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatProductSetFromOptions_is_seqaij_C", NULL));
@@ -1324,21 +1346,6 @@ PetscErrorCode MatSetOption_SeqAIJ(Mat A, MatOption op, PetscBool flg)
   case MAT_IGNORE_ZERO_ENTRIES:
     a->ignorezeroentries = flg;
     break;
-  case MAT_SPD:
-  case MAT_SYMMETRIC:
-  case MAT_STRUCTURALLY_SYMMETRIC:
-  case MAT_HERMITIAN:
-  case MAT_SYMMETRY_ETERNAL:
-  case MAT_STRUCTURE_ONLY:
-  case MAT_STRUCTURAL_SYMMETRY_ETERNAL:
-  case MAT_SPD_ETERNAL:
-    /* if the diagonal matrix is square it inherits some of the properties above */
-    break;
-  case MAT_FORCE_DIAGONAL_ENTRIES:
-  case MAT_IGNORE_OFF_PROC_ENTRIES:
-  case MAT_USE_HASH_TABLE:
-    PetscCall(PetscInfo(A, "Option %s ignored\n", MatOptions[op]));
-    break;
   case MAT_USE_INODES:
     PetscCall(MatSetOption_SeqAIJ_Inode(A, MAT_USE_INODES, flg));
     break;
@@ -1353,7 +1360,7 @@ PetscErrorCode MatSetOption_SeqAIJ(Mat A, MatOption op, PetscBool flg)
     A->form_explicit_transpose = flg;
     break;
   default:
-    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "unknown option %d", op);
+    break;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1491,7 +1498,7 @@ PetscErrorCode MatMult_SeqAIJ(Mat A, Vec xx, Vec yy)
       PetscScalar        sum = 0.0;
       PetscSparseDensePlusDot(sum, x, aa, aj, n);
       /* for (j=0; j<n; j++) sum += (*aa++)*x[*aj++]; */
-      y[*ridx++] = sum;
+      y[ridx[i]] = sum;
     }
   } else { /* do not use compressed row format */
 #if defined(PETSC_USE_FORTRAN_KERNEL_MULTAIJ)
@@ -1672,7 +1679,7 @@ PetscErrorCode MatMultAdd_SeqAIJ(Mat A, Vec xx, Vec yy, Vec zz)
 }
 
 /*
-     Adds diagonal pointers to sparse matrix structure.
+     Adds diagonal pointers to sparse matrix nonzero structure.
 */
 PetscErrorCode MatMarkDiagonal_SeqAIJ(Mat A)
 {
@@ -2731,7 +2738,7 @@ PetscErrorCode MatDestroySubMatrix_Private(Mat_SubSppt *submatj)
 
   if (!submatj->allcolumns) {
 #if defined(PETSC_USE_CTABLE)
-    PetscCall(PetscHMapIDestroy((PetscHMapI *)&submatj->cmap));
+    PetscCall(PetscHMapIDestroy(&submatj->cmap));
 #else
     PetscCall(PetscFree(submatj->cmap));
 #endif
@@ -2805,7 +2812,7 @@ static PetscErrorCode MatIncreaseOverlap_SeqAIJ(Mat A, PetscInt is_max, IS is[],
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
   PetscInt        row, i, j, k, l, ll, m, n, *nidx, isz, val;
   const PetscInt *idx;
-  PetscInt        start, end, *ai, *aj, bs = (A->rmap->bs > 0 && A->rmap->bs == A->cmap->bs) ? A->rmap->bs : 1;
+  PetscInt        start, end, *ai, *aj, bs = A->rmap->bs == A->cmap->bs ? A->rmap->bs : 1;
   PetscBT         table;
 
   PetscFunctionBegin;
@@ -2938,12 +2945,16 @@ PetscErrorCode MatCopy_SeqAIJ(Mat A, Mat B, MatStructure str)
     Mat_SeqAIJ        *a = (Mat_SeqAIJ *)A->data;
     Mat_SeqAIJ        *b = (Mat_SeqAIJ *)B->data;
     const PetscScalar *aa;
+    PetscScalar       *bb;
 
     PetscCall(MatSeqAIJGetArrayRead(A, &aa));
+    PetscCall(MatSeqAIJGetArrayWrite(B, &bb));
+
     PetscCheck(a->i[A->rmap->n] == b->i[B->rmap->n], PETSC_COMM_SELF, PETSC_ERR_ARG_INCOMP, "Number of nonzeros in two matrices are different %" PetscInt_FMT " != %" PetscInt_FMT, a->i[A->rmap->n], b->i[B->rmap->n]);
-    PetscCall(PetscArraycpy(b->a, aa, a->i[A->rmap->n]));
+    PetscCall(PetscArraycpy(bb, aa, a->i[A->rmap->n]));
     PetscCall(PetscObjectStateIncrease((PetscObject)B));
     PetscCall(MatSeqAIJRestoreArrayRead(A, &aa));
+    PetscCall(MatSeqAIJRestoreArrayWrite(B, &bb));
   } else {
     PetscCall(MatCopy_Basic(A, B, str));
   }
@@ -3086,13 +3097,13 @@ static PetscErrorCode MatGetRowMaxAbs_SeqAIJ(Mat A, Vec v, PetscInt idx[])
   ai = a->i;
   aj = a->j;
 
-  PetscCall(VecSet(v, 0.0));
   PetscCall(VecGetArrayWrite(v, &x));
   PetscCall(VecGetLocalSize(v, &n));
   PetscCheck(n == A->rmap->n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nonconforming matrix and vector");
   for (i = 0; i < m; i++) {
     ncols = ai[1] - ai[0];
     ai++;
+    x[i] = 0;
     for (j = 0; j < ncols; j++) {
       atmp = PetscAbsScalar(*aa);
       if (PetscAbsScalar(x[i]) < atmp) {
@@ -3121,13 +3132,13 @@ static PetscErrorCode MatGetRowSumAbs_SeqAIJ(Mat A, Vec v)
   aa = av;
   ai = a->i;
 
-  PetscCall(VecSet(v, 0.0));
   PetscCall(VecGetArrayWrite(v, &x));
   PetscCall(VecGetLocalSize(v, &n));
   PetscCheck(n == A->rmap->n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nonconforming matrix and vector");
   for (i = 0; i < m; i++) {
     ncols = ai[1] - ai[0];
     ai++;
+    x[i] = 0;
     for (j = 0; j < ncols; j++) {
       x[i] += PetscAbsScalar(*aa);
       aa++;
@@ -3152,7 +3163,6 @@ static PetscErrorCode MatGetRowMax_SeqAIJ(Mat A, Vec v, PetscInt idx[])
   ai = a->i;
   aj = a->j;
 
-  PetscCall(VecSet(v, 0.0));
   PetscCall(VecGetArrayWrite(v, &x));
   PetscCall(VecGetLocalSize(v, &n));
   PetscCheck(n == A->rmap->n, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nonconforming matrix and vector");
@@ -3202,7 +3212,6 @@ static PetscErrorCode MatGetRowMinAbs_SeqAIJ(Mat A, Vec v, PetscInt idx[])
   ai = a->i;
   aj = a->j;
 
-  PetscCall(VecSet(v, 0.0));
   PetscCall(VecGetArrayWrite(v, &x));
   PetscCall(VecGetLocalSize(v, &n));
   PetscCheck(n == m, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nonconforming matrix and vector, %" PetscInt_FMT " vs. %" PetscInt_FMT " rows", m, n);
@@ -3254,7 +3263,6 @@ static PetscErrorCode MatGetRowMin_SeqAIJ(Mat A, Vec v, PetscInt idx[])
   ai = a->i;
   aj = a->j;
 
-  PetscCall(VecSet(v, 0.0));
   PetscCall(VecGetArrayWrite(v, &x));
   PetscCall(VecGetLocalSize(v, &n));
   PetscCheck(n == m, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nonconforming matrix and vector");
@@ -3294,7 +3302,7 @@ static PetscErrorCode MatGetRowMin_SeqAIJ(Mat A, Vec v, PetscInt idx[])
 static PetscErrorCode MatInvertBlockDiagonal_SeqAIJ(Mat A, const PetscScalar **values)
 {
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
-  PetscInt        i, bs = PetscAbs(A->rmap->bs), mbs = A->rmap->n / bs, ipvt[5], bs2 = bs * bs, *v_pivots, ij[7], *IJ, j;
+  PetscInt        i, bs = A->rmap->bs, mbs = A->rmap->n / bs, ipvt[5], bs2 = bs * bs, *v_pivots, ij[7], *IJ, j;
   MatScalar      *diag, work[25], *v_work;
   const PetscReal shift = 0.0;
   PetscBool       allowzeropivot, zeropivotdetected = PETSC_FALSE;
@@ -3487,7 +3495,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqAIJ,
                                        NULL,
                                        MatSOR_SeqAIJ,
                                        MatTranspose_SeqAIJ,
-                                       /*1 5*/ MatGetInfo_SeqAIJ,
+                                       /* 15*/ MatGetInfo_SeqAIJ,
                                        MatEqual_SeqAIJ,
                                        MatGetDiagonal_SeqAIJ,
                                        MatDiagonalScale_SeqAIJ,
@@ -3536,98 +3544,85 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqAIJ,
                                        MatView_SeqAIJ,
                                        NULL,
                                        NULL,
-                                       /* 64*/ NULL,
-                                       MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqAIJ,
+                                       /* 64*/ MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       /* 69*/ MatGetRowMaxAbs_SeqAIJ,
-                                       MatGetRowMinAbs_SeqAIJ,
+                                       MatGetRowMaxAbs_SeqAIJ,
+                                       /* 69*/ MatGetRowMinAbs_SeqAIJ,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       /* 74*/ NULL,
                                        MatFDColoringApply_AIJ,
                                        NULL,
-                                       NULL,
-                                       NULL,
-                                       /* 79*/ MatFindZeroDiagonals_SeqAIJ,
+                                       /* 74*/ MatFindZeroDiagonals_SeqAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
                                        MatLoad_SeqAIJ,
+                                       /* 79*/ NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
+                                       NULL,
                                        /* 84*/ NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       NULL,
-                                       /* 89*/ NULL,
-                                       NULL,
                                        MatMatMultNumeric_SeqAIJ_SeqAIJ,
-                                       NULL,
-                                       NULL,
-                                       /* 94*/ MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy,
-                                       NULL,
+                                       MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy,
                                        NULL,
                                        MatMatTransposeMultNumeric_SeqAIJ_SeqAIJ,
-                                       NULL,
-                                       /* 99*/ MatProductSetFromOptions_SeqAIJ,
+                                       /* 90*/ NULL,
+                                       MatProductSetFromOptions_SeqAIJ,
                                        NULL,
                                        NULL,
                                        MatConjugate_SeqAIJ,
-                                       NULL,
-                                       /*104*/ MatSetValuesRow_SeqAIJ,
+                                       /* 94*/ NULL,
+                                       MatSetValuesRow_SeqAIJ,
                                        MatRealPart_SeqAIJ,
                                        MatImaginaryPart_SeqAIJ,
                                        NULL,
-                                       NULL,
-                                       /*109*/ MatMatSolve_SeqAIJ,
+                                       /* 99*/ NULL,
+                                       MatMatSolve_SeqAIJ,
                                        NULL,
                                        MatGetRowMin_SeqAIJ,
                                        NULL,
-                                       MatMissingDiagonal_SeqAIJ,
-                                       /*114*/ NULL,
+                                       /*104*/ MatMissingDiagonal_SeqAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       /*119*/ NULL,
+                                       /*109*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       MatGetMultiProcBlock_SeqAIJ,
-                                       /*124*/ MatFindNonzeroRows_SeqAIJ,
+                                       NULL,
+                                       /*114*/ MatGetMultiProcBlock_SeqAIJ,
+                                       MatFindNonzeroRows_SeqAIJ,
                                        MatGetColumnReductions_SeqAIJ,
                                        MatInvertBlockDiagonal_SeqAIJ,
                                        MatInvertVariableBlockDiagonal_SeqAIJ,
-                                       NULL,
-                                       /*129*/ NULL,
+                                       /*119*/ NULL,
                                        NULL,
                                        NULL,
                                        MatTransposeMatMultNumeric_SeqAIJ_SeqAIJ,
                                        MatTransposeColoringCreate_SeqAIJ,
-                                       /*134*/ MatTransColoringApplySpToDen_SeqAIJ,
+                                       /*124*/ MatTransColoringApplySpToDen_SeqAIJ,
                                        MatTransColoringApplyDenToSp_SeqAIJ,
-                                       NULL,
-                                       NULL,
                                        MatRARtNumeric_SeqAIJ_SeqAIJ,
+                                       NULL,
+                                       NULL,
+                                       /*129*/ MatFDColoringSetUp_SeqXAIJ,
+                                       MatFindOffBlockDiagonalEntries_SeqAIJ,
+                                       MatCreateMPIMatConcatenateSeqMat_SeqAIJ,
+                                       MatDestroySubMatrices_SeqAIJ,
+                                       NULL,
+                                       /*134*/ NULL,
+                                       MatCreateGraph_Simple_AIJ,
+                                       MatTransposeSymbolic_SeqAIJ,
+                                       MatEliminateZeros_SeqAIJ,
+                                       MatGetRowSumAbs_SeqAIJ,
                                        /*139*/ NULL,
                                        NULL,
                                        NULL,
-                                       MatFDColoringSetUp_SeqXAIJ,
-                                       MatFindOffBlockDiagonalEntries_SeqAIJ,
-                                       MatCreateMPIMatConcatenateSeqMat_SeqAIJ,
-                                       /*145*/ MatDestroySubMatrices_SeqAIJ,
-                                       NULL,
-                                       NULL,
-                                       MatCreateGraph_Simple_AIJ,
-                                       NULL,
-                                       /*150*/ MatTransposeSymbolic_SeqAIJ,
-                                       MatEliminateZeros_SeqAIJ,
-                                       MatGetRowSumAbs_SeqAIJ,
-                                       NULL,
-                                       NULL,
-                                       NULL};
+                                       MatCopyHashToXAIJ_Seq_Hash};
 
 static PetscErrorCode MatSeqAIJSetColumnIndices_SeqAIJ(Mat mat, PetscInt *indices)
 {
@@ -4045,7 +4040,7 @@ PetscErrorCode MatSeqAIJSetPreallocation_SeqAIJ(Mat B, PetscInt nz, const PetscI
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatResetPreallocation_SeqAIJ(Mat A)
+PetscErrorCode MatResetPreallocation_SeqAIJ_Private(Mat A, PetscBool *memoryreset)
 {
   Mat_SeqAIJ *a;
   PetscInt    i;
@@ -4054,6 +4049,9 @@ static PetscErrorCode MatResetPreallocation_SeqAIJ(Mat A)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(A, MAT_CLASSID, 1);
 
+  PetscCheck(A->insertmode == NOT_SET_VALUES, PETSC_COMM_SELF, PETSC_ERR_SUP, "Cannot reset preallocation after setting some values but not yet calling MatAssemblyBegin()/MatAssemblyEnd()");
+  if (A->num_ass == 0) PetscFunctionReturn(PETSC_SUCCESS);
+
   /* Check local size. If zero, then return */
   if (!A->rmap->n) PetscFunctionReturn(PETSC_SUCCESS);
 
@@ -4061,10 +4059,11 @@ static PetscErrorCode MatResetPreallocation_SeqAIJ(Mat A)
   /* if no saved info, we error out */
   PetscCheck(a->ipre, PETSC_COMM_SELF, PETSC_ERR_ARG_NULL, "No saved preallocation info ");
 
-  PetscCheck(a->i && a->imax && a->ilen, PETSC_COMM_SELF, PETSC_ERR_ARG_NULL, "Memory info is incomplete, and can not reset preallocation ");
+  PetscCheck(a->i && a->imax && a->ilen, PETSC_COMM_SELF, PETSC_ERR_ARG_NULL, "Memory info is incomplete, and cannot reset preallocation ");
 
   PetscCall(PetscArraycmp(a->ipre, a->ilen, A->rmap->n, &skipreset));
-  if (!skipreset) {
+  if (skipreset) PetscCall(MatZeroEntries(A));
+  else {
     PetscCall(PetscArraycpy(a->imax, a->ipre, A->rmap->n));
     PetscCall(PetscArrayzero(a->ilen, A->rmap->n));
     a->i[0] = 0;
@@ -4075,7 +4074,18 @@ static PetscErrorCode MatResetPreallocation_SeqAIJ(Mat A)
     A->info.nz_unneeded = (double)a->maxnz;
     A->was_assembled    = PETSC_FALSE;
     A->assembled        = PETSC_FALSE;
+    A->nonzerostate++;
+    /* Log that the state of this object has changed; this will help guarantee that preconditioners get re-setup */
+    PetscCall(PetscObjectStateIncrease((PetscObject)A));
   }
+  if (memoryreset) *memoryreset = (PetscBool)!skipreset;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode MatResetPreallocation_SeqAIJ(Mat A)
+{
+  PetscFunctionBegin;
+  PetscCall(MatResetPreallocation_SeqAIJ_Private(A, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -4391,10 +4401,7 @@ PETSC_INTERN PetscErrorCode MatProductSetFromOptions_IS_XAIJ(Mat);
 
   Level: intermediate
 
-  Fortran Notes:
-  `MatSeqAIJGetArray()` Fortran binding is deprecated (since PETSc 3.19), use `MatSeqAIJGetArrayF90()`
-
-.seealso: [](ch_matrices), `Mat`, `MatSeqAIJRestoreArray()`, `MatSeqAIJGetArrayF90()`
+.seealso: [](ch_matrices), `Mat`, `MatSeqAIJRestoreArray()`
 @*/
 PetscErrorCode MatSeqAIJGetArray(Mat A, PetscScalar *array[])
 {
@@ -4420,10 +4427,7 @@ PetscErrorCode MatSeqAIJGetArray(Mat A, PetscScalar *array[])
 
   Level: intermediate
 
-  Fortran Notes:
-  `MatSeqAIJRestoreArray()` Fortran binding is deprecated (since PETSc 3.19), use `MatSeqAIJRestoreArrayF90()`
-
-.seealso: [](ch_matrices), `Mat`, `MatSeqAIJGetArray()`, `MatSeqAIJRestoreArrayF90()`
+.seealso: [](ch_matrices), `Mat`, `MatSeqAIJGetArray()`
 @*/
 PetscErrorCode MatSeqAIJRestoreArray(Mat A, PetscScalar *array[])
 {
@@ -4609,7 +4613,7 @@ PetscErrorCode MatSeqAIJGetCSRAndMemType(Mat mat, const PetscInt *i[], const Pet
 
   Level: intermediate
 
-.seealso: [](ch_matrices), `Mat`, `MatSeqAIJRestoreArray()`, `MatSeqAIJGetArrayF90()`
+.seealso: [](ch_matrices), `Mat`, `MatSeqAIJRestoreArray()`
 @*/
 PetscErrorCode MatSeqAIJGetMaxRowNonzeros(Mat A, PetscInt *nz)
 {
@@ -4620,9 +4624,9 @@ PetscErrorCode MatSeqAIJGetMaxRowNonzeros(Mat A, PetscInt *nz)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatCOOStructDestroy_SeqAIJ(void *data)
+static PetscErrorCode MatCOOStructDestroy_SeqAIJ(void **data)
 {
-  MatCOOStruct_SeqAIJ *coo = (MatCOOStruct_SeqAIJ *)data;
+  MatCOOStruct_SeqAIJ *coo = (MatCOOStruct_SeqAIJ *)*data;
 
   PetscFunctionBegin;
   PetscCall(PetscFree(coo->perm));
@@ -4646,7 +4650,6 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
   MatCOOStruct_SeqAIJ *coo;
   PetscBool            isorted;
   PetscBool            hypre;
-  const char          *name;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)mat, &comm));
@@ -4669,6 +4672,7 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
 
   /* Sort by row if not already */
   if (!isorted) PetscCall(PetscSortIntWithIntCountArrayPair(coo_n, i, j, perm));
+  PetscCheck(i == NULL || i[coo_n - 1] < M, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "COO row index %" PetscInt_FMT " is >= the matrix row size %" PetscInt_FMT, i[coo_n - 1], M);
 
   /* Advance k to the first row with a non-negative index */
   for (k = 0; k < coo_n; k++)
@@ -4682,8 +4686,7 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
   PetscCall(PetscArrayzero(Ai, M + 1));
   PetscCall(PetscShmgetAllocateArray(coo_n - nneg, sizeof(PetscInt), (void **)&Aj)); /* We have at most coo_n-nneg unique nonzeros */
 
-  PetscCall(PetscObjectGetName((PetscObject)mat, &name));
-  PetscCall(PetscStrcmp("_internal_COO_mat_for_hypre", name, &hypre));
+  PetscCall(PetscStrcmp("_internal_COO_mat_for_hypre", ((PetscObject)mat)->name, &hypre));
 
   /* In each row, sort by column, then unique column indices to get row length */
   Ai++;  /* Inc by 1 for convenience */
@@ -4715,10 +4718,10 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
         PetscCount tmp;
         for (p = start; p < end; p++) {
           if (j[p] == row && p != start) {
-            j[p]        = j[start];
+            j[p]        = j[start]; // swap j[], so that the diagonal value will go first (manipulated by perm[])
             j[start]    = row;
             tmp         = perm[start];
-            perm[start] = perm[p];
+            perm[start] = perm[p]; // also swap perm[] so we can save the call to PetscSortIntWithCountArray() below
             perm[p]     = tmp;
             break;
           }
@@ -4737,8 +4740,9 @@ PetscErrorCode MatSetPreallocationCOO_SeqAIJ(Mat mat, PetscCount coo_n, PetscInt
         }
       }
     }
-    // sort by columns in a row
+    // sort by columns in a row. perm[] indicates their original order
     if (!strictly_sorted) PetscCall(PetscSortIntWithCountArray(end - start, j + start, perm + start));
+    PetscCheck(end == start || j[end - 1] < N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "COO column index %" PetscInt_FMT " is >= the matrix column size %" PetscInt_FMT, j[end - 1], N);
 
     if (strictly_sorted) { // fast path to set Aj[], jmap[], Ai[], nnz, q
       for (p = start; p < end; p++, q++) {
@@ -4933,6 +4937,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_SeqAIJ(Mat B)
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatIsHermitianTranspose_C", MatIsHermitianTranspose_SeqAIJ));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatSeqAIJSetPreallocation_C", MatSeqAIJSetPreallocation_SeqAIJ));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatResetPreallocation_C", MatResetPreallocation_SeqAIJ));
+  PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatResetHash_C", MatResetHash_SeqAIJ));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatSeqAIJSetPreallocationCSR_C", MatSeqAIJSetPreallocationCSR_SeqAIJ));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatReorderForNonzeroDiagonal_C", MatReorderForNonzeroDiagonal_SeqAIJ));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatProductSetFromOptions_is_seqaij_C", MatProductSetFromOptions_IS_XAIJ));
@@ -5307,7 +5312,7 @@ PetscErrorCode MatCreateSeqAIJWithArrays(MPI_Comm comm, PetscInt m, PetscInt n, 
 
 .seealso: [](ch_matrices), `Mat`, `MatCreate()`, `MatCreateAIJ()`, `MatCreateSeqAIJ()`, `MatCreateSeqAIJWithArrays()`, `MatMPIAIJSetPreallocationCSR()`, `MatSetValuesCOO()`, `MatSetPreallocationCOO()`
 @*/
-PetscErrorCode MatCreateSeqAIJFromTriple(MPI_Comm comm, PetscInt m, PetscInt n, PetscInt i[], PetscInt j[], PetscScalar a[], Mat *mat, PetscInt nz, PetscBool idx)
+PetscErrorCode MatCreateSeqAIJFromTriple(MPI_Comm comm, PetscInt m, PetscInt n, PetscInt i[], PetscInt j[], PetscScalar a[], Mat *mat, PetscCount nz, PetscBool idx)
 {
   PetscInt ii, *nnz, one = 1, row, col;
 
@@ -5512,7 +5517,9 @@ PetscErrorCode MatSeqAIJSetType(Mat mat, MatType matype)
   `MatSeqAIJRegister()` may be called multiple times to add several user-defined solvers.
 
   Then, your matrix can be chosen with the procedural interface at runtime via the option
-$     -mat_seqaij_type my_mat
+.vb
+  -mat_seqaij_type my_mat
+.ve
 
 .seealso: [](ch_matrices), `Mat`, `MatSeqAIJRegisterAll()`
 @*/

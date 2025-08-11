@@ -56,7 +56,7 @@ typedef struct {
   PetscInt          reallocs;           /* number of mallocs done during MatSetValues() \
                                         as more values are set than were prealloced */ \
   PetscInt          rmax;               /* max nonzeros in any row */ \
-  PetscBool         keepnonzeropattern; /* keeps matrix structure same in calls to MatZeroRows()*/ \
+  PetscBool         keepnonzeropattern; /* keeps matrix nonzero structure same in calls to MatZeroRows()*/ \
   PetscBool         ignorezeroentries; \
   PetscBool         free_ij;       /* free the column indices j and row offsets i when the matrix is destroyed */ \
   PetscBool         free_a;        /* free the numerical values when matrix is destroy */ \
@@ -127,7 +127,7 @@ typedef struct {
 
   PetscBool        use;
   PetscInt         node_count;       /* number of inodes */
-  PetscInt        *size;             /* size of each inode */
+  PetscInt        *size_csr;         /* inode sizes in csr with size_csr[0] = 0 and i-th node size = size_csr[i+1] - size_csr[i], to facilitate parallel computation */
   PetscInt         limit;            /* inode limit */
   PetscInt         max_limit;        /* maximum supported inode limit */
   PetscBool        checked;          /* if inodes have been checked for */
@@ -238,7 +238,7 @@ static inline PetscErrorCode MatSeqXAIJFreeAIJ(Mat AA, MatScalar **a, PetscInt *
 \
       PetscCheck(NONEW != -2, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "New nonzero at (%" PetscInt_FMT ",%" PetscInt_FMT ") caused a malloc. Use MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE) to turn off this check", ROW, COL); \
       /* malloc new storage space */ \
-      PetscCall(PetscShmgetAllocateArray(BS2 *new_nz, sizeof(PetscScalar), (void **)&new_a)); \
+      PetscCall(PetscShmgetAllocateArray(BS2 * new_nz, sizeof(PetscScalar), (void **)&new_a)); \
       PetscCall(PetscShmgetAllocateArray(new_nz, sizeof(PetscInt), (void **)&new_j)); \
       PetscCall(PetscShmgetAllocateArray(AM + 1, sizeof(PetscInt), (void **)&new_i)); \
       Ain->free_a  = PETSC_TRUE; \
@@ -249,13 +249,13 @@ static inline PetscErrorCode MatSeqXAIJFreeAIJ(Mat AA, MatScalar **a, PetscInt *
       PetscCall(PetscArraycpy(new_j, AJ, AI[ROW] + NROW)); \
       len = (new_nz - CHUNKSIZE - AI[ROW] - NROW); \
       PetscCall(PetscArraycpy(new_j + AI[ROW] + NROW + CHUNKSIZE, PetscSafePointerPlusOffset(AJ, AI[ROW] + NROW), len)); \
-      PetscCall(PetscArraycpy(new_a, AA, BS2 *(AI[ROW] + NROW))); \
+      PetscCall(PetscArraycpy(new_a, AA, BS2 * (AI[ROW] + NROW))); \
       PetscCall(PetscArrayzero(new_a + BS2 * (AI[ROW] + NROW), BS2 * CHUNKSIZE)); \
       PetscCall(PetscArraycpy(new_a + BS2 * (AI[ROW] + NROW + CHUNKSIZE), PetscSafePointerPlusOffset(AA, BS2 * (AI[ROW] + NROW)), BS2 * len)); \
       /* free up old matrix storage */ \
       PetscCall(MatSeqXAIJFreeAIJ(A, &Ain->a, &Ain->j, &Ain->i)); \
       AA     = new_a; \
-      Ain->a = (MatScalar *)new_a; \
+      Ain->a = new_a; \
       AI = Ain->i = new_i; \
       AJ = Ain->j = new_j; \
 \
@@ -459,7 +459,7 @@ PETSC_INTERN PetscErrorCode MatReorderForNonzeroDiagonal_SeqAIJ(Mat, PetscReal, 
 PETSC_INTERN PetscErrorCode MatRARt_SeqAIJ_SeqAIJ(Mat, Mat, MatReuse, PetscReal, Mat *);
 PETSC_EXTERN PetscErrorCode MatCreate_SeqAIJ(Mat);
 PETSC_INTERN PetscErrorCode MatAssemblyEnd_SeqAIJ(Mat, MatAssemblyType);
-PETSC_EXTERN PetscErrorCode MatZeroEntries_SeqAIJ(Mat);
+PETSC_INTERN PetscErrorCode MatZeroEntries_SeqAIJ(Mat);
 
 PETSC_INTERN PetscErrorCode MatAXPYGetPreallocation_SeqX_private(PetscInt, const PetscInt *, const PetscInt *, const PetscInt *, const PetscInt *, PetscInt *);
 PETSC_INTERN PetscErrorCode MatCreateMPIMatConcatenateSeqMat_SeqAIJ(MPI_Comm, Mat, PetscInt, MatReuse, Mat *);
@@ -474,6 +474,8 @@ PETSC_INTERN PetscErrorCode MatDestroySubMatrices_Dummy(PetscInt, Mat *[]);
 PETSC_INTERN PetscErrorCode MatCreateSubMatrix_SeqAIJ(Mat, IS, IS, PetscInt, MatReuse, Mat *);
 
 PETSC_INTERN PetscErrorCode MatSetSeqAIJWithArrays_private(MPI_Comm, PetscInt, PetscInt, PetscInt[], PetscInt[], PetscScalar[], MatType, Mat);
+
+PETSC_INTERN PetscErrorCode MatResetPreallocation_SeqAIJ_Private(Mat A, PetscBool *memoryreset);
 
 PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode MatSeqAIJCompactOutExtraColumns_SeqAIJ(Mat, ISLocalToGlobalMapping *);
 

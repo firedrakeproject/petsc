@@ -1,7 +1,8 @@
 #pragma once
 #include <petscsystypes.h>
 
-/* SUBMANSEC = Profiling */
+/* MANSEC = Sys */
+/* SUBMANSEC = Log */
 
 /*S
   PetscEventPerfInfo - statistics on how many times the event is used, how much time it takes, etc.
@@ -137,6 +138,7 @@ typedef struct _p_PetscLogHandler *PetscLogHandler;
 . `PETSCLOGHANDLERPERFSTUBS` (`PetscLogPerfstubsBegin()`)    - outputs instrumentation data for PerfStubs/TAU
 . `PETSCLOGHANDLERLEGACY` (`PetscLogLegacyCallbacksBegin()`) - adapts legacy callbacks to the `PetscLogHandler` interface
 - `PETSCLOGHANDLERNVTX`                                      - creates NVTX ranges for events that are visible in Nsight
+- `PETSCLOGHANDLERROCTX`                                     - creates ROCTx ranges for events that are visible in rocprof
 
 .seealso: [](ch_profiling), `PetscLogHandler`, `PetscLogHandlerSetType()`, `PetscLogHandlerGetType()`
 J*/
@@ -149,6 +151,7 @@ typedef const char *PetscLogHandlerType;
 #define PETSCLOGHANDLERPERFSTUBS "perfstubs"
 #define PETSCLOGHANDLERLEGACY    "legacy"
 #define PETSCLOGHANDLERNVTX      "nvtx"
+#define PETSCLOGHANDLERROCTX     "roctx"
 
 typedef struct _n_PetscLogRegistry *PetscLogRegistry;
 
@@ -218,6 +221,6 @@ typedef struct {
 
 .seealso: [](ch_profiling), `PetscLogStage`, `PetscLogState`, `PetscLogStateClassGetInfo()`
 S*/
-typedef struct _PetscLogStageInfo {
+typedef struct {
   char *name; /* The stage name */
 } PetscLogStageInfo;

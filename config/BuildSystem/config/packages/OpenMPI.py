@@ -4,7 +4,7 @@ import os
 class Configure(config.package.GNUPackage):
   def __init__(self, framework):
     config.package.GNUPackage.__init__(self, framework)
-    self.version                = '5.0.5'
+    self.version                = '5.0.8'
     self.download               = ['https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-'+self.version+'.tar.gz',
                                    'https://web.cels.anl.gov/projects/petsc/download/externalpackages/openmpi-'+self.version+'.tar.gz']
     self.download_git           = ['git://https://github.com/open-mpi/ompi.git']
@@ -13,15 +13,17 @@ class Configure(config.package.GNUPackage):
     self.gitsubmodules          = ['.']
     self.downloaddirnames       = ['openmpi','ompi']
     self.skippackagewithoptions = 1
-    self.isMPI                  = 1
+    self.skipMPIDependency      = 1
     self.buildLanguages         = ['C','Cxx']
     return
 
   def setupDependencies(self, framework):
     config.package.GNUPackage.setupDependencies(self, framework)
-    self.cuda           = framework.require('config.packages.cuda',self)
+    self.cuda           = framework.require('config.packages.CUDA',self)
+    self.hip            = framework.require('config.packages.HIP',self)
+    self.ucx            = framework.require('config.packages.ucx',self)
     self.hwloc          = framework.require('config.packages.hwloc',self)
-    self.odeps          = [self.hwloc]
+    self.odeps          = [self.hwloc, self.cuda, self.hip, self.ucx]
     return
 
   def formGNUConfigureArgs(self):
@@ -47,7 +49,19 @@ class Configure(config.package.GNUPackage):
       args.append('--enable-static=yes')
     args.append('--disable-vt')
     if self.cuda.found:
-      args.append('--with-cuda='+self.cuda.cudaDir)
+      if not hasattr(self.cuda, 'cudaDir'):
+        raise RuntimeError('CUDA directory not detected! Mail configure.log to petsc-maint@mcs.anl.gov.')
+      args.append('--with-cuda='+self.cuda.cudaDir) # use openmpi's cuda support until it switches to ucx
+    elif self.hip.found:
+      if not self.ucx.found:
+        self.logPrintWarning('Found ROCm but not UCX, so Open MPI will NOT be configured with ROCm support. Consider having UCX by simply adding --download-ucx')
+      elif not self.ucx.enabled_rocm:
+        self.logPrintWarning('Found ROCm and UCX, but UCX was not configured with ROCm, so Open MPI will NOT be configured with ROCm support. Consider using a ROCm-enabled UCX, or letting PETSc build one for you with --download-ucx')
+      else:
+        # see https://docs.open-mpi.org/en/main/tuning-apps/networking/rocm.html#building-open-mpi-with-rocm-support
+        # One may need either mpirun -n 2 --mca pml ucx ./myapp or export OMPI_MCA_pml="ucx" to use UCX
+        args.append('--with-rocm='+self.hip.hipDir)
+        args.append('--with-ucx='+self.ucx.directory)
     if self.hwloc.found:
       args.append('--with-hwloc="'+self.hwloc.directory+'"')
     else:

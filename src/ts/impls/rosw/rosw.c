@@ -956,7 +956,7 @@ PetscErrorCode TSRosWRegister(TSRosWType name, PetscInt order, PetscInt s, const
   It is used here to implement several methods from the book and can be used to experiment with new methods.
   It was written this way instead of by copying coefficients in order to provide better than double precision satisfaction of the order conditions.
 
-.seealso: [](ch_ts), `TSRosW`, `TSRosWRegister()`
+.seealso: [](ch_ts), `TSROSW`, `TSRosWRegister()`
 @*/
 PetscErrorCode TSRosWRegisterRos4(TSRosWType name, PetscReal gamma, PetscReal a2, PetscReal a3, PetscReal b3, PetscReal e4)
 {
@@ -1519,7 +1519,7 @@ static PetscErrorCode TSSetUp_RosW(TS ts)
 }
 /*------------------------------------------------------------*/
 
-static PetscErrorCode TSSetFromOptions_RosW(TS ts, PetscOptionItems *PetscOptionsObject)
+static PetscErrorCode TSSetFromOptions_RosW(TS ts, PetscOptionItems PetscOptionsObject)
 {
   TS_RosW *ros = (TS_RosW *)ts->data;
   SNES     snes;
@@ -1565,7 +1565,7 @@ static PetscErrorCode TSView_RosW(TS ts, PetscViewer viewer)
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Rosenbrock-W %s\n", rostype));
     PetscCall(PetscFormatRealArray(buf, sizeof(buf), "% 8.6f", tab->s, tab->ASum));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Abscissa of A       = %s\n", buf));
-    for (i = 0; i < tab->s; i++) abscissa[i] = tab->ASum[i] + tab->Gamma[i];
+    for (i = 0; i < tab->s; i++) abscissa[i] = tab->ASum[i] + tab->GammaSum[i];
     PetscCall(PetscFormatRealArray(buf, sizeof(buf), "% 8.6f", tab->s, abscissa));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Abscissa of A+Gamma = %s\n", buf));
   }
@@ -1730,48 +1730,47 @@ static PetscErrorCode TSDestroy_RosW(TS ts)
 
   Developer Notes:
   Rosenbrock-W methods are typically specified for autonomous ODE
-
-$  udot = f(u)
-
+.vb
+  udot = f(u)
+.ve
   by the stage equations
-
-$  k_i = h f(u_0 + sum_j alpha_ij k_j) + h J sum_j gamma_ij k_j
-
+.vb
+  k_i = h f(u_0 + sum_j alpha_ij k_j) + h J sum_j gamma_ij k_j
+.ve
   and step completion formula
-
-$  u_1 = u_0 + sum_j b_j k_j
-
+.vb
+  u_1 = u_0 + sum_j b_j k_j
+.ve
   with step size h and coefficients alpha_ij, gamma_ij, and b_i. Implementing the method in this form would require f(u)
   and the Jacobian J to be available, in addition to the shifted matrix I - h gamma_ii J. Following Hairer and Wanner,
   we define new variables for the stage equations
-
-$  y_i = gamma_ij k_j
-
+.vb
+  y_i = gamma_ij k_j
+.ve
   The k_j can be recovered because Gamma is invertible. Let C be the lower triangular part of Gamma^{-1} and define
-
-$  A = Alpha Gamma^{-1}, bt^T = b^T Gamma^{-1}
-
+.vb
+  A = Alpha Gamma^{-1}, bt^T = b^T Gamma^{-1}
+.ve
   to rewrite the method as
-
 .vb
   [M/(h gamma_ii) - J] y_i = f(u_0 + sum_j a_ij y_j) + M sum_j (c_ij/h) y_j
   u_1 = u_0 + sum_j bt_j y_j
 .ve
 
    where we have introduced the mass matrix M. Continue by defining
-
-$  ydot_i = 1/(h gamma_ii) y_i - sum_j (c_ij/h) y_j
-
+.vb
+  ydot_i = 1/(h gamma_ii) y_i - sum_j (c_ij/h) y_j
+.ve
    or, more compactly in tensor notation
-
-$  Ydot = 1/h (Gamma^{-1} \otimes I) Y .
-
+.vb
+  Ydot = 1/h (Gamma^{-1} \otimes I) Y .
+.ve
    Note that Gamma^{-1} is lower triangular. With this definition of Ydot in terms of known quantities and the current
    stage y_i, the stage equations reduce to performing one Newton step (typically with a lagged Jacobian) on the
    equation
-
-$  g(u_0 + sum_j a_ij y_j + y_i, ydot_i) = 0
-
+.vb
+  g(u_0 + sum_j a_ij y_j + y_i, ydot_i) = 0
+.ve
    with initial guess y_i = 0.
 
 .seealso: [](ch_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSRosWSetType()`, `TSRosWRegister()`, `TSROSWTHETA1`, `TSROSWTHETA2`, `TSROSW2M`, `TSROSW2P`, `TSROSWRA3PW`, `TSROSWRA34PW2`, `TSROSWRODAS3`,

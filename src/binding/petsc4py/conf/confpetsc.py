@@ -350,7 +350,7 @@ class PetscConfig:
         ldshared = [
             flg
             for flg in split_quoted(ldshared)
-            if flg not in ldcmd and (flg.find('/lib/spack/env') < 0)
+            if flg not in ldcmd and (flg.find('/lib/spack/env') < 0) and (flg.find('/libexec/spack/') < 0)
         ]
         ldshared = str.join(' ', ldshared)
 
@@ -375,6 +375,8 @@ class PetscConfig:
         PCC = self['PCC']
         PCC_FLAGS = get_flags(cc) + ' ' + self['PCC_FLAGS']
         PCC_FLAGS = PCC_FLAGS.replace('-fvisibility=hidden', '')
+        PCC_FLAGS = PCC_FLAGS.replace('-Wpedantic', '-Wno-pedantic')
+        PCC_FLAGS = PCC_FLAGS.replace('-Wextra-semi-stmt', '-Wno-extra-semi-stmt')
         PCC = getenv('PCC', PCC) + ' ' + getenv('PCCFLAGS', PCC_FLAGS)
         PCC_SHARED = str.join(' ', (PCC, ccshared, cflags))
         # PETSc C++ compiler
@@ -750,6 +752,13 @@ class build_ext(_build_ext):
                 outfile = os.path.join(self.build_lib, filename)
                 outputs.append(outfile)
         return list(set(outputs))
+
+    def get_source_files(self):
+        orig = log.set_threshold(log.WARN)
+        try:
+            return super().get_source_files()
+        finally:
+            log.set_threshold(orig)
 
 
 class install(_install):

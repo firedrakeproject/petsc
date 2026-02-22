@@ -5721,7 +5721,7 @@ static PetscErrorCode DMInitialize_Plex(DM dm)
   dm->ops->createcoordinatedm        = DMCreateCoordinateDM_Plex;
   dm->ops->createcellcoordinatedm    = DMCreateCellCoordinateDM_Plex;
   dm->ops->createcoordinatefield     = DMCreateCoordinateField_Plex;
-  dm->ops->getcoloring               = NULL;
+  dm->ops->getcoloring               = DMCreateColoring_Plex;
   dm->ops->creatematrix              = DMCreateMatrix_Plex;
   dm->ops->createinterpolation       = DMCreateInterpolation_Plex;
   dm->ops->createmassmatrix          = DMCreateMassMatrix_Plex;

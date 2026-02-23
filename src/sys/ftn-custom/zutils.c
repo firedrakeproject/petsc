@@ -39,7 +39,7 @@ void *PETSC_NULL_SCALAR_POINTER_Fortran  = NULL;
 void *PETSC_NULL_REAL_POINTER_Fortran    = NULL;
 
 EXTERN_C_BEGIN
-void (*PETSC_NULL_FUNCTION_Fortran)(void) = NULL;
+PetscFortranCallbackFn *PETSC_NULL_FUNCTION_Fortran = NULL;
 EXTERN_C_END
 void *PETSC_NULL_MPI_COMM_Fortran = NULL;
 
@@ -189,7 +189,7 @@ PetscErrorCode PetscScalarAddressFromFortran(PetscObject obj, PetscScalar *base,
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery(obj, "GetArrayPtr", (PetscObject *)&container));
   if (container) {
-    PetscCall(PetscContainerGetPointer(container, (void **)lx));
+    PetscCall(PetscContainerGetPointer(container, lx));
     tlx = base + addr;
 
     shift = *(PetscInt *)*lx;

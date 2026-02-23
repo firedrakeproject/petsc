@@ -73,9 +73,9 @@ static PetscErrorCode SNESTR_KSPConverged_Private(KSP ksp, PetscInt n, PetscReal
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESTR_KSPConverged_Destroy(void **cctx)
+static PetscErrorCode SNESTR_KSPConverged_Destroy(PetscCtxRt cctx)
 {
-  SNES_TR_KSPConverged_Ctx *ctx = (SNES_TR_KSPConverged_Ctx *)*cctx;
+  SNES_TR_KSPConverged_Ctx *ctx = *(SNES_TR_KSPConverged_Ctx **)cctx;
 
   PetscFunctionBegin;
   PetscCall((*ctx->convdestroy)(&ctx->convctx));
@@ -136,7 +136,7 @@ PetscErrorCode SNESNewtonTRSetNormType(SNES snes, NormType norm)
   Level: intermediate
 
   Notes:
-  Options for the approximations can be set with the snes_tr_qn_ and snes_tr_qn_pre_ prefixes.
+  Options for the approximations can be set with the `snes_tr_qn_` and `snes_tr_qn_pre_` prefixes.
 
 .seealso: `SNESNEWTONTR`, `SNESNewtonTRQNType`, `MATLMVM`
 @*/
@@ -199,7 +199,7 @@ PetscErrorCode SNESNewtonTRSetFallbackType(SNES snes, SNESNewtonTRFallbackType f
 
 .seealso: [](ch_snes), `SNESNEWTONTR`, `SNESNewtonTRPreCheck()`, `SNESNewtonTRGetPreCheck()`, `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRGetPostCheck()`,
 @*/
-PetscErrorCode SNESNewtonTRSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, PetscBool *, void *), void *ctx)
+PetscErrorCode SNESNewtonTRSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, PetscBool *, void *), PetscCtx ctx)
 {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
   PetscBool      flg;
@@ -230,7 +230,7 @@ PetscErrorCode SNESNewtonTRSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, V
 
 .seealso: [](ch_snes), `SNESNEWTONTR`, `SNESNewtonTRSetPreCheck()`, `SNESNewtonTRPreCheck()`
 @*/
-PetscErrorCode SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, PetscBool *, void *), void **ctx)
+PetscErrorCode SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, PetscBool *, void *), PetscCtxRt ctx)
 {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
   PetscBool      flg;
@@ -240,7 +240,7 @@ PetscErrorCode SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, 
   PetscCall(PetscObjectTypeCompare((PetscObject)snes, SNESNEWTONTR, &flg));
   PetscAssert(flg, PetscObjectComm((PetscObject)snes), PETSC_ERR_ARG_WRONG, "Not for type %s", ((PetscObject)snes)->type_name);
   if (func) *func = tr->precheck;
-  if (ctx) *ctx = tr->precheckctx;
+  if (ctx) *(void **)ctx = tr->precheckctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -263,7 +263,7 @@ PetscErrorCode SNESNewtonTRGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, 
 
 .seealso: [](ch_snes), `SNESNEWTONTR`, `SNESNewtonTRPostCheck()`, `SNESNewtonTRGetPostCheck()`, `SNESNewtonTRSetPreCheck()`, `SNESNewtonTRGetPreCheck()`
 @*/
-PetscErrorCode SNESNewtonTRSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void *ctx)
+PetscErrorCode SNESNewtonTRSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), PetscCtx ctx)
 {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
   PetscBool      flg;
@@ -294,7 +294,7 @@ PetscErrorCode SNESNewtonTRSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, 
 
 .seealso: [](ch_snes), `SNESNEWTONTR`, `SNESNewtonTRSetPostCheck()`, `SNESNewtonTRPostCheck()`
 @*/
-PetscErrorCode SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void **ctx)
+PetscErrorCode SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), PetscCtxRt ctx)
 {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
   PetscBool      flg;
@@ -304,7 +304,7 @@ PetscErrorCode SNESNewtonTRGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES,
   PetscCall(PetscObjectTypeCompare((PetscObject)snes, SNESNEWTONTR, &flg));
   PetscAssert(flg, PetscObjectComm((PetscObject)snes), PETSC_ERR_ARG_WRONG, "Not for type %s", ((PetscObject)snes)->type_name);
   if (func) *func = tr->postcheck;
-  if (ctx) *ctx = tr->postcheckctx;
+  if (ctx) *(void **)ctx = tr->postcheckctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -425,8 +425,11 @@ static PetscErrorCode SNESNewtonTRObjective(SNES snes, PetscBool has_objective, 
 
   PetscCall(SNESComputeFunction(snes, W, G)); /*  F(Xkp1) = G */
   PetscCall(VecNorm(G, NORM_2, gnorm));
-  if (has_objective) PetscCall(SNESComputeObjective(snes, W, fkp1));
-  else *fkp1 = 0.5 * PetscSqr(*gnorm);
+  SNESCheckFunctionDomainError(snes, *gnorm);
+  if (has_objective) {
+    PetscCall(SNESComputeObjective(snes, W, fkp1));
+    SNESCheckObjectiveDomainError(snes, *fkp1);
+  } else *fkp1 = 0.5 * PetscSqr(*gnorm);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -538,7 +541,7 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
   } else snes->vec_func_init_set = PETSC_FALSE;
 
   PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- || F || */
-  SNESCheckFunctionNorm(snes, fnorm);
+  SNESCheckFunctionDomainError(snes, fnorm);
   PetscCall(VecNorm(X, NORM_2, &xnorm)); /* xnorm <- || X || */
 
   PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
@@ -554,8 +557,10 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
   PetscCall(SNESMonitor(snes, 0, fnorm));
   if (snes->reason) PetscFunctionReturn(PETSC_SUCCESS);
 
-  if (has_objective) PetscCall(SNESComputeObjective(snes, X, &fk));
-  else fk = 0.5 * PetscSqr(fnorm); /* obj(x) = 0.5 * ||F(x)||^2 */
+  if (has_objective) {
+    PetscCall(SNESComputeObjective(snes, X, &fk));
+    SNESCheckObjectiveDomainError(snes, fk);
+  } else fk = 0.5 * PetscSqr(fnorm); /* obj(x) = 0.5 * ||F(x)||^2 */
 
   /* hook state vector to BFGS preconditioner */
   PetscCall(KSPGetPC(snes->ksp, &pc));
@@ -591,6 +596,7 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
       Jp = NULL;
       if (!neP->qnB) {
         PetscCall(SNESComputeJacobian(snes, X, snes->jacobian, snes->jacobian_pre));
+        SNESCheckJacobianDomainError(snes);
         J  = snes->jacobian;
         Jp = snes->jacobian_pre;
       } else { /* QN model */
@@ -598,12 +604,15 @@ static PetscErrorCode SNESSolve_NEWTONTR(SNES snes)
         J  = neP->qnB;
         Jp = neP->qnB_pre;
       }
-      SNESCheckJacobianDomainerror(snes);
+      SNESCheckJacobianDomainError(snes);
 
       /* objective function */
       PetscCall(VecNorm(F, NORM_2, &fnorm));
-      if (has_objective) PetscCall(SNESComputeObjective(snes, X, &fk));
-      else fk = 0.5 * PetscSqr(fnorm); /* obj(x) = 0.5 * ||F(x)||^2 */
+      SNESCheckFunctionDomainError(snes, fnorm);
+      if (has_objective) {
+        PetscCall(SNESComputeObjective(snes, X, &fk));
+        SNESCheckObjectiveDomainError(snes, fk);
+      } else fk = 0.5 * PetscSqr(fnorm); /* obj(x) = 0.5 * ||F(x)||^2 */
 
       /* GradF */
       if (has_objective) gfnorm = fnorm;
@@ -864,11 +873,11 @@ static PetscErrorCode SNESSetFromOptions_NEWTONTR(SNES snes, PetscOptionItems Pe
 static PetscErrorCode SNESView_NEWTONTR(SNES snes, PetscViewer viewer)
 {
   SNES_NEWTONTR *tr = (SNES_NEWTONTR *)snes->data;
-  PetscBool      iascii;
+  PetscBool      isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Trust region parameters:\n"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "    eta1=%g, eta2=%g, eta3=%g\n", (double)tr->eta1, (double)tr->eta2, (double)tr->eta3));
     PetscCall(PetscViewerASCIIPrintf(viewer, "    t1=%g, t2=%g\n", (double)tr->t1, (double)tr->t2));
@@ -979,23 +988,25 @@ PetscErrorCode SNESNewtonTRGetTolerances(SNES snes, PetscReal *delta_min, PetscR
 - t2   - enlarge factor
 
   Options Database Key:
-+ -snes_tr_eta1 <tol> - Set eta1
-. -snes_tr_eta2 <tol> - Set eta2
-. -snes_tr_eta3 <tol> - Set eta3
-. -snes_tr_t1   <tol> - Set t1
-- -snes_tr_t2   <tol> - Set t2
++ -snes_tr_eta1 <tol> - Set `eta1`
+. -snes_tr_eta2 <tol> - Set `eta2`
+. -snes_tr_eta3 <tol> - Set `eta3`
+. -snes_tr_t1   <tol> - Set `t1`
+- -snes_tr_t2   <tol> - Set `t2`
 
   Notes:
   Given the ratio $\rho = \frac{f(x_k) - f(x_k+s_k)}{m(0) - m(s_k)}$, with $x_k$ the current iterate,
   $s_k$ the computed step, $f$ the objective function, and $m$ the quadratic model, the trust region
   radius is modified as follows
-  $$
+
+  $
   \delta =
   \begin{cases}
   \delta * t_1 ,& \rho < \eta_2 \\
   \delta * t_2 ,& \rho > \eta_3 \\
   \end{cases}
-  $$
+  $
+
   The step is accepted if $\rho > \eta_1$.
   Use `PETSC_DETERMINE` to use the default value for the given `SNES`.
   Use `PETSC_CURRENT` to retain a value.
@@ -1085,12 +1096,12 @@ PetscErrorCode SNESNewtonTRGetUpdateParameters(SNES snes, PetscReal *eta1, Petsc
 +  -snes_tr_deltamin <deltamin>                  - trust region parameter, minimum size of trust region
 .  -snes_tr_deltamax <deltamax>                  - trust region parameter, max size of trust region (default: 1e10)
 .  -snes_tr_delta0 <delta0>                      - trust region parameter, initial size of trust region (default: 0.2)
-.  -snes_tr_eta1 <eta1>                          - trust region parameter eta1 <= eta2, rho > eta1 breaks out of the inner iteration (default: 0.001)
-.  -snes_tr_eta2 <eta2>                          - trust region parameter, rho <= eta2 shrinks the trust region (default: 0.25)
-.  -snes_tr_eta3 <eta3>                          - trust region parameter eta3 > eta2, rho >= eta3 expands the trust region (default: 0.75)
+.  -snes_tr_eta1 <eta1>                          - trust region parameter $eta1 \le eta2$, $rho > eta1$ breaks out of the inner iteration (default: 0.001)
+.  -snes_tr_eta2 <eta2>                          - trust region parameter, $rho \le eta2$ shrinks the trust region (default: 0.25)
+.  -snes_tr_eta3 <eta3>                          - trust region parameter $eta3 > eta2$, $rho \ge eta3$ expands the trust region (default: 0.75)
 .  -snes_tr_t1 <t1>                              - trust region parameter, shrinking factor of trust region (default: 0.25)
 .  -snes_tr_t2 <t2>                              - trust region parameter, expanding factor of trust region (default: 2.0)
-.  -snes_tr_norm_type <1,2,infinity>             - Type of norm for trust region bounds (default: "2")
+.  -snes_tr_norm_type <1,2,infinity>             - Type of norm for trust region bounds (default: 2)
 -  -snes_tr_fallback_type <newton,cauchy,dogleg> - Solution strategy to test reduction when step is outside of trust region. Can use scaled Newton direction, Cauchy point (Steepest Descent direction) or dogleg method.
 
    Level: beginner

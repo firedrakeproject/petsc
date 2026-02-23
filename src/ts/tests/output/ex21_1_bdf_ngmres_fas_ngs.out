@@ -31,8 +31,11 @@ X range of indices: 0 5, Y range of indices: 0 5
 TS Object: 1 MPI process
   type: bdf
     Order=2
+  initial time step=0.001
   maximum steps=5
   maximum time=1.
+  maximum number of step rejections=10
+  maximum number of SNES failures allowed=1
   using relative error tolerance of 0.0001,   using absolute error tolerance of 0.0001
   TSAdapt Object: 1 MPI process
     type: none
@@ -47,7 +50,7 @@ TS Object: 1 MPI process
     norm schedule ALWAYS
     SNESLineSearch Object: 1 MPI process
       type: basic
-      maxstep=1.000000e+08, minlambda=1.000000e-12
+      maxlambda=1.000000e+00, minlambda=1.000000e-12
       tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
       maximum iterations=1
     SNES Object: (npc_) 1 MPI process
@@ -64,13 +67,13 @@ TS Object: 1 MPI process
             type: bt
               interpolation: cubic
               alpha=1.000000e-04
-            maxstep=1.000000e+08, minlambda=1.000000e-12
+            maxlambda=1.000000e+00, minlambda=1.000000e-12
             tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
             maximum iterations=40
           KSP Object: (npc_fas_coarse_) 1 MPI process
             type: gmres
-              restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-              happy breakdown tolerance 1e-30
+              restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+              happy breakdown tolerance=1e-30
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
@@ -82,14 +85,14 @@ TS Object: 1 MPI process
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (npc_fas_coarse_) 1 MPI process
                     type: seqaij
                     rows=25, cols=25
                     package used to perform factorization: petsc
                     total: nonzeros=105, allocated nonzeros=105
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: 1 MPI process
               type: seqaij
               rows=25, cols=25

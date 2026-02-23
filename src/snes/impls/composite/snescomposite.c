@@ -92,7 +92,7 @@ static PetscErrorCode SNESCompositeApply_Multiplicative(SNES snes, Vec X, Vec B,
       } else {
         PetscCall(VecNorm(F, NORM_2, fnorm));
       }
-      SNESCheckFunctionNorm(snes, *fnorm);
+      SNESCheckFunctionDomainError(snes, *fnorm);
     }
   } else if (snes->normschedule == SNES_NORM_ALWAYS) {
     PetscCall(SNESComputeFunction(snes, X, F));
@@ -102,7 +102,7 @@ static PetscErrorCode SNESCompositeApply_Multiplicative(SNES snes, Vec X, Vec B,
       } else {
         PetscCall(VecNorm(F, NORM_2, fnorm));
       }
-      SNESCheckFunctionNorm(snes, *fnorm);
+      SNESCheckFunctionDomainError(snes, *fnorm);
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -164,7 +164,7 @@ static PetscErrorCode SNESCompositeApply_Additive(SNES snes, Vec X, Vec B, Vec F
       } else {
         PetscCall(VecNorm(F, NORM_2, fnorm));
       }
-      SNESCheckFunctionNorm(snes, *fnorm);
+      SNESCheckFunctionDomainError(snes, *fnorm);
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -284,6 +284,7 @@ static PetscErrorCode SNESCompositeApply_AdditiveOptimal(SNES snes, Vec X, Vec B
   } else {
     PetscCall(VecNorm(F, NORM_2, fnorm));
   }
+  SNESCheckFunctionDomainError(snes, *fnorm);
 
   /* take the minimum-normed candidate if it beats the combination by a factor of rtol or the combination has stagnated */
   min_fnorm = jac->fnorms[0];
@@ -449,21 +450,21 @@ static PetscErrorCode SNESView_Composite(SNES snes, PetscViewer viewer)
 {
   SNES_Composite    *jac  = (SNES_Composite *)snes->data;
   SNES_CompositeLink next = jac->head;
-  PetscBool          iascii;
+  PetscBool          isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  type - %s\n", SNESCompositeTypes[jac->type]));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  SNESes on composite preconditioner follow\n"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  ---------------------------------\n"));
   }
-  if (iascii) PetscCall(PetscViewerASCIIPushTab(viewer));
+  if (isascii) PetscCall(PetscViewerASCIIPushTab(viewer));
   while (next) {
     PetscCall(SNESView(next->snes, viewer));
     next = next->next;
   }
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPopTab(viewer));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  ---------------------------------\n"));
   }
@@ -706,16 +707,15 @@ static PetscErrorCode SNESSolve_Composite(SNES snes)
   snes->reason = SNES_CONVERGED_ITERATING;
   PetscCall(SNESGetNormSchedule(snes, &normtype));
   if (normtype == SNES_NORM_ALWAYS || normtype == SNES_NORM_INITIAL_ONLY || normtype == SNES_NORM_INITIAL_FINAL_ONLY) {
-    if (!snes->vec_func_init_set) {
-      PetscCall(SNESComputeFunction(snes, X, F));
-    } else snes->vec_func_init_set = PETSC_FALSE;
+    if (!snes->vec_func_init_set) PetscCall(SNESComputeFunction(snes, X, F));
+    else snes->vec_func_init_set = PETSC_FALSE;
 
     if (snes->xl && snes->xu) {
       PetscCall(SNESVIComputeInactiveSetFnorm(snes, F, X, &fnorm));
     } else {
       PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- ||F||  */
     }
-    SNESCheckFunctionNorm(snes, fnorm);
+    SNESCheckFunctionDomainError(snes, fnorm);
     PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
     snes->iter = 0;
     snes->norm = fnorm;
@@ -770,7 +770,7 @@ static PetscErrorCode SNESSolve_Composite(SNES snes)
         PetscCall(VecNormEnd(X, NORM_2, &xnorm));
         PetscCall(VecNormEnd(Y, NORM_2, &snorm));
       }
-      SNESCheckFunctionNorm(snes, fnorm);
+      SNESCheckFunctionDomainError(snes, fnorm);
     } else if (normtype == SNES_NORM_ALWAYS) {
       PetscCall(VecNormBegin(X, NORM_2, &xnorm));
       PetscCall(VecNormBegin(Y, NORM_2, &snorm));

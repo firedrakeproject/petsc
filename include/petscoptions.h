@@ -913,7 +913,7 @@ M*/
 
   Output Parameters:
 + flg - `PETSC_TRUE` or `PETSC_FALSE`
-- set - `PETSC_TRUE` if found, else `PETSC_FALSE`
+- set - `PETSC_TRUE` if found, else `PETSC_FALSE`, pass `NULL` if not needed
 
   Level: beginner
 
@@ -938,6 +938,49 @@ M*/
           `PetscOptionsFList()`, `PetscOptionsEList()`
 M*/
   #define PetscOptionsBool(opt, text, man, currentvalue, value, set)                PetscOptionsBool_Private(PetscOptionsObject, opt, text, man, currentvalue, value, set)
+
+/*MC
+  PetscOptionsBool3 - Determines if a particular option is in the database with a true, false, or unknown
+
+  Synopsis:
+  #include <petscoptions.h>
+  PetscErrorCode PetscOptionsBool3(const char opt[], const char text[], const char man[], PetscBool currentvalue, PetscBool3 *flg, PetscBool *set)
+
+  Logically Collective on the communicator passed in `PetscOptionsBegin()`
+
+  Input Parameters:
++ opt          - option name
+. text         - short string that describes the option
+. man          - manual page with additional information on option
+- currentvalue - the current value
+
+  Output Parameters:
++ flg - `PETSC_BOOL3_TRUE`, `PETSC_BOOL3_FALSE`, or `PETSC_BOOL3_UNKNOWN`
+- set - `PETSC_TRUE` if found, else `PETSC_FALSE`
+
+  Level: beginner
+
+  Notes:
+  TRUE, true, YES, yes, nostring, and 1 all translate to `PETSC_TRUE`
+  FALSE, false, NO, no, and 0 all translate to `PETSC_FALSE`
+
+  If the option is given, but no value is provided, then `flg` and `set` are both given the value `PETSC_BOOL3_TRUE`. That is `-requested_bool`
+  is equivalent to `-requested_bool true`
+
+  If the user does not supply the option at all `flg` is NOT changed. Thus
+  you should ALWAYS initialize the `flg` variable if you access it without first checking that the `set` flag is `PETSC_TRUE`.
+
+  Must be between a `PetscOptionsBegin()` and a `PetscOptionsEnd()`
+
+.seealso: `PetscOptionsGetReal()`, `PetscOptionsHasName()`, `PetscOptionsGetString()`, `PetscOptionsGetInt()`,
+          `PetscOptionsGetIntArray()`, `PetscOptionsGetRealArray()`, `PetscOptionsGetBool()`,
+          `PetscOptionsInt()`, `PetscOptionsString()`, `PetscOptionsReal()`,
+          `PetscOptionsName()`, `PetscOptionsBegin()`, `PetscOptionsEnd()`, `PetscOptionsHeadBegin()`,
+          `PetscOptionsStringArray()`, `PetscOptionsRealArray()`, `PetscOptionsScalar()`,
+          `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
+          `PetscOptionsFList()`, `PetscOptionsEList()`
+M*/
+  #define PetscOptionsBool3(opt, text, man, currentvalue, value, set)               PetscOptionsBool3_Private(PetscOptionsObject, opt, text, man, currentvalue, value, set)
 
 /*MC
   PetscOptionsBoolGroupBegin - First in a series of logical queries on the options database for
@@ -1170,7 +1213,7 @@ M*/
           `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
           `PetscOptionsFList()`, `PetscOptionsEList()`
 M*/
-  #define PetscOptionsRealArray(opt, text, man, currentvalue, value, set)           PetscOptionsRealArray_Private(PetscOptionsObject, opt, text, man, currentvalue, value, set)
+  #define PetscOptionsRealArray(opt, text, man, value, n, set)                      PetscOptionsRealArray_Private(PetscOptionsObject, opt, text, man, value, n, set)
 
 /*MC
   PetscOptionsScalarArray - Gets an array of `PetscScalar` values for a particular
@@ -1206,7 +1249,7 @@ M*/
           `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
           `PetscOptionsFList()`, `PetscOptionsEList()`
 M*/
-  #define PetscOptionsScalarArray(opt, text, man, currentvalue, value, set)         PetscOptionsScalarArray_Private(PetscOptionsObject, opt, text, man, currentvalue, value, set)
+  #define PetscOptionsScalarArray(opt, text, man, value, n, set)                    PetscOptionsScalarArray_Private(PetscOptionsObject, opt, text, man, value, n, set)
 
 /*MC
   PetscOptionsIntArray - Gets an array of integers for a particular
@@ -1249,7 +1292,7 @@ M*/
           `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
           `PetscOptionsFList()`, `PetscOptionsEList()`
 M*/
-  #define PetscOptionsIntArray(opt, text, man, currentvalue, value, set)            PetscOptionsIntArray_Private(PetscOptionsObject, opt, text, man, currentvalue, value, set)
+  #define PetscOptionsIntArray(opt, text, man, value, n, set)                       PetscOptionsIntArray_Private(PetscOptionsObject, opt, text, man, value, n, set)
 
 /*MC
   PetscOptionsStringArray - Gets an array of string values for a particular
@@ -1266,11 +1309,11 @@ M*/
 + opt  - the option one is seeking
 . text - short string describing option
 . man  - manual page for option
-- nmax - maximum number of strings
+- n    - maximum number of strings
 
   Output Parameters:
 + value - location to copy strings
-. nmax  - actual number of strings found
+. n     - actual number of strings found
 - set   - `PETSC_TRUE` if found, else `PETSC_FALSE`
 
   Level: beginner
@@ -1291,7 +1334,7 @@ M*/
           `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
           `PetscOptionsFList()`, `PetscOptionsEList()`
 M*/
-  #define PetscOptionsStringArray(opt, text, man, currentvalue, value, set)         PetscOptionsStringArray_Private(PetscOptionsObject, opt, text, man, currentvalue, value, set)
+  #define PetscOptionsStringArray(opt, text, man, value, n, set)                    PetscOptionsStringArray_Private(PetscOptionsObject, opt, text, man, value, n, set)
 
 /*MC
   PetscOptionsBoolArray - Gets an array of logical values (true or false) for a particular
@@ -1329,7 +1372,7 @@ M*/
           `PetscOptionsBoolGroupBegin()`, `PetscOptionsBoolGroup()`, `PetscOptionsBoolGroupEnd()`,
           `PetscOptionsFList()`, `PetscOptionsEList()`
 M*/
-  #define PetscOptionsBoolArray(opt, text, man, currentvalue, value, set)           PetscOptionsBoolArray_Private(PetscOptionsObject, opt, text, man, currentvalue, value, set)
+  #define PetscOptionsBoolArray(opt, text, man, value, n, set)                      PetscOptionsBoolArray_Private(PetscOptionsObject, opt, text, man, value, n, set)
 
 /*MC
   PetscOptionsEnumArray - Gets an array of enum values for a particular
@@ -1449,6 +1492,7 @@ PETSC_EXTERN PetscErrorCode PetscOptionsScalar_Private(PetscOptionItems, const c
 PETSC_EXTERN PetscErrorCode PetscOptionsName_Private(PetscOptionItems, const char[], const char[], const char[], PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscOptionsString_Private(PetscOptionItems, const char[], const char[], const char[], const char[], char *, size_t, PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscOptionsBool_Private(PetscOptionItems, const char[], const char[], const char[], PetscBool, PetscBool *, PetscBool *);
+PETSC_EXTERN PetscErrorCode PetscOptionsBool3_Private(PetscOptionItems, const char[], const char[], const char[], PetscBool3, PetscBool3 *, PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscOptionsBoolGroupBegin_Private(PetscOptionItems, const char[], const char[], const char[], PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscOptionsBoolGroup_Private(PetscOptionItems, const char[], const char[], const char[], PetscBool *);
 PETSC_EXTERN PetscErrorCode PetscOptionsBoolGroupEnd_Private(PetscOptionItems, const char[], const char[], const char[], PetscBool *);

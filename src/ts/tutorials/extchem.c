@@ -20,7 +20,7 @@ static const char help[] = "Integrate chemistry using TChem.\n";
     See also h2_10sp.inp for another example
 
     Determine sensitivity of final temperature on each variables initial conditions
-    -ts_dt 1.e-5 -ts_type cn -ts_adjoint_solve -ts_adjoint_view_solution draw
+    -ts_time_step 1.e-5 -ts_type cn -ts_adjoint_solve -ts_adjoint_view_solution draw
 
     The solution for component i = 0 is the temperature.
 
@@ -274,7 +274,7 @@ static PetscErrorCode FormRHSJacobian(TS ts, PetscReal t, Vec X, Mat Amat, Mat P
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode FormInitialSolution(TS ts, Vec X, void *ctx)
+PetscErrorCode FormInitialSolution(TS ts, Vec X, PetscCtx ctx)
 {
   PetscScalar   *x;
   PetscInt       i;
@@ -298,7 +298,7 @@ PetscErrorCode FormInitialSolution(TS ts, Vec X, void *ctx)
   for (i = 0; i < smax; i++) sum += molefracs[i];
   for (i = 0; i < smax; i++) molefracs[i] = molefracs[i] / sum;
   for (i = 0; i < smax; i++) {
-    int ispec = TC_getSpos(names[i], strlen(names[i]));
+    int ispec = TC_getSpos(names[i], (int)strlen(names[i]));
     PetscCheck(ispec >= 0, PETSC_COMM_SELF, PETSC_ERR_USER, "Could not find species %s", names[i]);
     PetscCall(PetscPrintf(PETSC_COMM_SELF, "Species %" PetscInt_FMT ": %s %g\n", i, names[i], (double)molefracs[i]));
     x[1 + ispec] = molefracs[i];
@@ -350,14 +350,14 @@ PetscErrorCode MoleFractionToMassFraction(User user, Vec molef, Vec *massf)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode ComputeMassConservation(Vec x, PetscReal *mass, void *ctx)
+PetscErrorCode ComputeMassConservation(Vec x, PetscReal *mass, PetscCtx ctx)
 {
   PetscFunctionBeginUser;
   PetscCall(VecSum(x, mass));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MonitorMassConservation(TS ts, PetscInt step, PetscReal time, Vec x, void *ctx)
+PetscErrorCode MonitorMassConservation(TS ts, PetscInt step, PetscReal time, Vec x, PetscCtx ctx)
 {
   const PetscScalar *T;
   PetscReal          mass;
@@ -371,7 +371,7 @@ PetscErrorCode MonitorMassConservation(TS ts, PetscInt step, PetscReal time, Vec
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MonitorTempature(TS ts, PetscInt step, PetscReal time, Vec x, void *ctx)
+PetscErrorCode MonitorTempature(TS ts, PetscInt step, PetscReal time, Vec x, PetscCtx ctx)
 {
   User               user = (User)ctx;
   const PetscScalar *T;

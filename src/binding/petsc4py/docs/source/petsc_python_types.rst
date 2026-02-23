@@ -62,7 +62,7 @@ arguments to specify that our preconditioner should be used:
   PC Object: 1 MPI process
     type: python
       Python: pc.myJacobi
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 1 MPI process
       type: python
       rows=256, cols=256
@@ -89,8 +89,45 @@ PETSc Python ode-integrator type (TODO)
 
 .. _petsc_python_tao:
 
-PETSc Python optimization solver type (TODO)
---------------------------------------------
+PETSc Python optimization solver type
+-------------------------------------
+
+The protocol for the `petsc4py.PETSc.TAO.Type.PYTHON` TAO optimizer is:
+
+.. literalinclude:: ../../demo/python_types/tao.py
+
+In the example below, we create a simple gradient based (first order)
+optimization solver. A `petsc4py.PETSc.TAOLineSearch.Type.UNIT` line search
+with step size :math:`0.2` is used. Therefore the update becomes
+
+.. math::
+
+  x^{k+1} = x^k + 0.2 \nabla f(x^k).
+
+
+.. note::
+
+  This setup is also well suited for non-linesearch-based quasi-Newton
+  optimization algorithms. It provides a general interface for using the TAO
+  provided state and functionality on a custom algorithm.
+
+The optimizer can be used from Python as
+
+.. code-block:: python
+
+  PETSc.TAO().createPython(myGradientDescent())
+
+or selected through the PETSc options as 
+
+.. code-block:: console
+
+  python tao.py -tao_type python -tao_python_type tao.myGradientDescent
+
+.. tip::
+
+  The prefix **tao** to **tao_python_type** is dependant on the Python module in
+  which the optimizer is located. It aligns with the fully qualified Python
+  module name.
 
 .. _petsc_python_viewer:
 

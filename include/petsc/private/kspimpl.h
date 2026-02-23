@@ -141,7 +141,7 @@ struct _p_KSP {
   PetscCtxDestroyFn    *convergeddestroy;
   void                 *cnvP;
 
-  void *ctx; /* optional user-defined context */
+  PetscCtx ctx; /* optional user-defined context */
 
   PC pc;
 
@@ -164,7 +164,7 @@ struct _p_KSP {
   PetscBool transpose_solve; /* solve transpose system instead */
   struct {
     Mat       AT, BT;
-    PetscBool use_explicittranspose; /* transpose the system explicitly in KSPSolveTranspose */
+    PetscBool use_explicittranspose; /* transpose the system explicitly in KSP[Mat]SolveTranspose() */
     PetscBool reuse_transpose;       /* reuse the previous transposed system */
   } transpose;
 
@@ -495,7 +495,7 @@ PETSC_INTERN PetscErrorCode MatGetSchurComplement_Basic(Mat, IS, IS, IS, IS, Mat
 PETSC_INTERN PetscErrorCode PCPreSolveChangeRHS(PC, PetscBool *);
 
 /*MC
-   KSPCheckDot - Checks if the result of a dot product used by the corresponding `KSP` contains Inf or NaN. These indicate that the previous
+   KSPCheckDot - Checks if the result of a dot product used by the corresponding `KSP` contains infinity or NaN. These indicate that the previous
       application of the preconditioner generated an error. Sets a `KSPConvergedReason` and returns if the `PC` set a `PCFailedReason`.
 
    Collective
@@ -519,7 +519,7 @@ M*/
 #define KSPCheckDot(ksp, beta) \
   do { \
     if (PetscIsInfOrNanScalar(beta)) { \
-      PetscCheck(!ksp->errorifnotconverged, PetscObjectComm((PetscObject)ksp), PETSC_ERR_NOT_CONVERGED, "KSPSolve has not converged due to Nan or Inf inner product"); \
+      PetscCheck(!ksp->errorifnotconverged, PetscObjectComm((PetscObject)ksp), PETSC_ERR_NOT_CONVERGED, "KSPSolve has not converged due to infinity or NaN inner product"); \
       { \
         PCFailedReason pcreason; \
         PetscCall(PCReduceFailedReason(ksp->pc)); \
@@ -560,7 +560,7 @@ M*/
 #define KSPCheckNorm(ksp, beta) \
   do { \
     if (PetscIsInfOrNanReal(beta)) { \
-      PetscCheck(!ksp->errorifnotconverged, PetscObjectComm((PetscObject)ksp), PETSC_ERR_NOT_CONVERGED, "KSPSolve has not converged due to Nan or Inf norm"); \
+      PetscCheck(!ksp->errorifnotconverged, PetscObjectComm((PetscObject)ksp), PETSC_ERR_NOT_CONVERGED, "KSPSolve has not converged due to infinity or NaN norm"); \
       { \
         PCFailedReason pcreason; \
         PetscCall(PCReduceFailedReason(ksp->pc)); \

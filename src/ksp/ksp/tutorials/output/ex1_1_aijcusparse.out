@@ -6,8 +6,8 @@
   5 KSP Residual norm < 1.e-11
 KSP Object: 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with one step of iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with one step of iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-25, divergence=10000.
   left preconditioning
@@ -15,7 +15,7 @@ KSP Object: 1 MPI process
 PC Object: 1 MPI process
   type: jacobi
     type DIAGONAL
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaijcusparse
     rows=10, cols=10
@@ -31,8 +31,8 @@ Norm of error 5.26414e-07, Iterations 5
   5 KSP Residual norm < 1.e-11
 KSP Object: 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with one step of iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with one step of iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-25, divergence=10000.
   left preconditioning
@@ -40,7 +40,7 @@ KSP Object: 1 MPI process
 PC Object: 1 MPI process
   type: jacobi
     type DIAGONAL
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaijcusparse
     rows=10, cols=10

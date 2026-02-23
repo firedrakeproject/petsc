@@ -7,7 +7,6 @@ class Configure(config.package.Package):
     self.download               = ['git://https://gitlab.com/knepley/bamg.git','https://gitlab.com/knepley/bamg/archive/'+self.gitcommit+'.tar.gz']
     self.functions              = []
     self.includes               = []
-    self.useddirectly           = 0
     self.linkedbypetsc          = 0
     self.builtafterpetsc        = 1
     return
@@ -24,14 +23,6 @@ class Configure(config.package.Package):
     self.parch           = framework.require('PETSc.options.arch',self)
     self.scalartypes     = framework.require('PETSc.options.scalarTypes',self)
     self.deps            = [self.blasLapack,self.mathlib,self.mpi,self.slepc]
-
-    # Must force --have-petsc4py into SLEPc configure arguments so it does not test PETSc before BAMG is built
-    if self.argDB['download-'+self.downloadname.lower()]:
-      if 'download-slepc-configure-arguments' in self.argDB:
-        if not '--have-petsc4py' in self.argDB['download-slepc-configure-arguments']:
-          self.argDB['download-slepc-configure-arguments'] = self.argDB['download-slepc-configure-arguments']+' --have-petsc4py'
-      else:
-        self.argDB['download-slepc-configure-arguments'] = '--have-petsc4py'
     return
 
   def Install(self):
@@ -50,11 +41,7 @@ class Configure(config.package.Package):
          barg = ' BAMG_DIR='+self.packageDir+' SLEPC_DIR='+self.slepc.installDir+' '
          prefix = os.path.join(self.petscdir.dir,self.arch)
          iarch  = self.arch
-      if not hasattr(self.framework, 'packages'):
-        self.framework.packages = []
-      self.framework.packages.append(self)
       oldFlags = self.compilers.CPPFLAGS
-      self.addMakeMacro('BAMG','yes')
       self.addPost(self.packageDir,[carg + self.python.pyexe + ' ./configure --prefix=' + prefix + ' --with-clean',
                                     'mkdir -p ' + os.path.join(iarch,'tests'),
                                     'touch ' + os.path.join(iarch,'tests','testfiles'),

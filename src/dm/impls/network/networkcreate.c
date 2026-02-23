@@ -1,4 +1,3 @@
-#define PETSCDM_DLL
 #include <petsc/private/dmnetworkimpl.h> /*I   "petscdmnetwork.h"   I*/
 #include <petsc/private/vecimpl.h>
 
@@ -200,16 +199,16 @@ static PetscErrorCode VecView_Network(Vec v, PetscViewer viewer)
 {
   DM        dm;
   PetscBool isseq;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
   PetscCall(VecGetDM(v, &dm));
   PetscCheck(dm, PetscObjectComm((PetscObject)v), PETSC_ERR_ARG_WRONG, "Vector not generated from a DM");
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)v, VECSEQ, &isseq));
 
   /* Use VecView_Network if the viewer is ASCII; use VecView_Seq/MPI for other viewer formats */
-  if (iascii) {
+  if (isascii) {
     if (isseq) PetscCall(VecView_Network_Seq(dm, v, viewer));
     else PetscCall(VecView_Network_MPI(dm, v, viewer));
   } else {
@@ -225,7 +224,7 @@ static PetscErrorCode DMCreateGlobalVector_Network(DM dm, Vec *vec)
 
   PetscFunctionBegin;
   PetscCall(DMCreateGlobalVector(network->plex, vec));
-  PetscCall(VecSetOperation(*vec, VECOP_VIEW, (void (*)(void))VecView_Network));
+  PetscCall(VecSetOperation(*vec, VECOP_VIEW, (PetscErrorCodeFn *)VecView_Network));
   PetscCall(VecSetDM(*vec, dm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -159,7 +159,7 @@ static void g3_lap_alpha(PetscInt dim, PetscInt Nf, PetscInt NfAux, const PetscI
     rad += t * t;
   }
   rad = PetscSqrtReal(rad);
-  if (rad > 0.25) { lambda *= s_soft_alpha; /* we could keep the bulk the same like rubberish */ }
+  if (rad > 0.25) lambda *= s_soft_alpha; /* we could keep the bulk the same like rubberish */
   for (int d = 0; d < dim; ++d) g3[d * dim + d] = lambda;
 }
 
@@ -176,11 +176,11 @@ static void f0_u_x4(PetscInt dim, PetscInt Nf, PetscInt NfAux, const PetscInt uO
 {
   for (int comp = 0; comp < Nf; ++comp) {
     f0[comp] = 1e5;
-    for (int i = 0; i < dim; ++i) { f0[comp] *= /* (comp+1)* */ (x[i] * x[i] * x[i] * x[i] - x[i] * x[i]); /* assumes (0,1]^D domain */ }
+    for (int i = 0; i < dim; ++i) f0[comp] *= /* (comp+1)* */ (x[i] * x[i] * x[i] * x[i] - x[i] * x[i]); /* assumes (0,1]^D domain */
   }
 }
 
-PetscErrorCode zero(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx)
+PetscErrorCode zero(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx)
 {
   const PetscInt Ncomp = dim;
   PetscInt       comp;
@@ -334,10 +334,10 @@ int main(int argc, char **args)
       if (run_type != 0) {
         PetscInt id = 1;
         PetscCall(DMGetLabel(dm, "boundary", &label));
-        PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))zero, NULL, NULL, NULL));
+        PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)zero, NULL, NULL, NULL));
       } else {
         PetscCall(DMGetLabel(dm, "Faces", &label));
-        PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "fixed", label, Nfid, fid, 0, Ncomp, components, (void (*)(void))zero, NULL, NULL, NULL));
+        PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "fixed", label, Nfid, fid, 0, Ncomp, components, (PetscVoidFn *)zero, NULL, NULL, NULL));
       }
       PetscCall(PetscFEDestroy(&fe));
     }

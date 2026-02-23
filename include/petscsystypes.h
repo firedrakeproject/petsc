@@ -9,6 +9,7 @@
 #include <petscfix.h>
 #include <petscmacros.h> // PETSC_NODISCARD, PETSC_CPP_VERSION
 #include <stddef.h>
+#include <stdbool.h>
 
 /* SUBMANSEC = Sys */
 
@@ -130,7 +131,7 @@ PETSC_ERROR_CODE_TYPEDEF enum PETSC_ERROR_CODE_NODISCARD {
   PETSC_ERR_MAX_SIGNED_BOUND_DO_NOT_USE = INT_MAX
 } PETSC_ERROR_CODE_ENUM_NAME;
 
-#ifndef PETSC_USE_STRICT_PETSCERRORCODE
+#if !defined(PETSC_USE_STRICT_PETSCERRORCODE)
 typedef int PetscErrorCode;
 
   /*
@@ -166,13 +167,13 @@ M*/
 typedef int PetscClassId;
 
 /*MC
-    PetscMPIInt - datatype used to represent 'int' parameters to MPI functions.
+    PetscMPIInt - datatype used to represent `int` parameters to MPI functions.
 
     Level: intermediate
 
     Notes:
-    This is always a 32-bit integer, sometimes it is the same as `PetscInt`, but if PETSc was built with `--with-64-bit-indices` but
-    standard C/Fortran integers are 32-bit then this is NOT the same as `PetscInt`; it remains 32-bit.
+    This is always a 32-bit integer even if PETSc was built with `--with-64-bit-indices`.
+    Hence, it is not guaranteed that it is the same as `PetscInt`.
 
     `PetscMPIIntCast`(a,&b) checks if the given `PetscInt` a will fit in a `PetscMPIInt`, if not it
     generates a `PETSC_ERR_ARG_OUTOFRANGE` error.
@@ -440,20 +441,27 @@ M*/
 typedef float PetscExodusIIFloat;
 
 /*E
-   PetscBool  - Logical variable. Actually an enum in C and a logical in Fortran.
+   PetscBool  - Logical variable.
 
    Level: beginner
 
+   Notes:
+   This is a C bool.
+
+   Use `MPI_C_BOOL` for communicating with MPI calls in C, C++, and Fortran.
+
+   Fortran Note:
+   This is a `logical(C_BOOL)` with an internal representation that is equivalent to that of a `bool` in C and C++.
+   It typically has a size of 1 byte, in contrast to a default `logical` which has the size of a default integer (typically 4 bytes).
+
    Developer Note:
-   Why have `PetscBool`, why not use bool in C? The problem is that K and R C, C99 and C++ all have different mechanisms for
-   Boolean values. It is not easy to have a simple macro that will work properly in all circumstances with all three mechanisms.
+   We should deprecate this definition since there is a native representation in all the languages.
 
 .seealso: `PETSC_TRUE`, `PETSC_FALSE`, `PetscNot()`, `PetscBool3`
 E*/
-typedef enum {
-  PETSC_FALSE,
-  PETSC_TRUE
-} PetscBool;
+typedef bool PetscBool;
+#define PETSC_FALSE false
+#define PETSC_TRUE  true
 PETSC_EXTERN const char *const PetscBools[];
 
 /*E
@@ -471,6 +479,7 @@ typedef enum {
   PETSC_BOOL3_TRUE    = 1,
   PETSC_BOOL3_UNKNOWN = -1 /* the value is unknown at the time of query, but might be determined later */
 } PetscBool3;
+PETSC_EXTERN const char *const PetscBool3s[];
 
 #define PetscBool3ToBool(a) ((a) == PETSC_BOOL3_TRUE ? PETSC_TRUE : PETSC_FALSE)
 #define PetscBoolToBool3(a) ((a) == PETSC_TRUE ? PETSC_BOOL3_TRUE : PETSC_BOOL3_FALSE)
@@ -632,7 +641,7 @@ typedef PetscReal PetscScalar;
 
    Level: beginner
 
-.seealso: `PetscInsertMode`
+.seealso: `InsertMode`
 E*/
 typedef enum {
   PETSC_COPY_VALUES,

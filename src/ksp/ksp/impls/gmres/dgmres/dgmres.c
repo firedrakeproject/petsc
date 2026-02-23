@@ -457,12 +457,12 @@ PetscErrorCode KSPBuildSolution_DGMRES(KSP ksp, Vec ptr, Vec *result)
 static PetscErrorCode KSPView_DGMRES(KSP ksp, PetscViewer viewer)
 {
   KSP_DGMRES *dgmres = (KSP_DGMRES *)ksp->data;
-  PetscBool   iascii, isharmonic;
+  PetscBool   isascii, isharmonic;
 
   PetscFunctionBegin;
   PetscCall(KSPView_GMRES(ksp, viewer));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "    Adaptive strategy is used: %s\n", PetscBools[dgmres->force]));
     PetscCall(PetscOptionsHasName(((PetscObject)ksp)->options, ((PetscObject)ksp)->prefix, "-ksp_dgmres_harmonic_ritz", &isharmonic));
     if (isharmonic) {
@@ -1062,7 +1062,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_DGMRES(KSP ksp)
   PetscCall(PetscLogEventRegister("DGMRESApplyDefl", KSP_CLASSID, &KSP_DGMRESApplyDeflation));
 
   dgmres->haptol         = 1.0e-30;
-  dgmres->q_preallocate  = 0;
+  dgmres->q_preallocate  = PETSC_FALSE;
   dgmres->delta_allocate = GMRES_DELTA_DIRECTIONS;
   dgmres->orthog         = KSPGMRESClassicalGramSchmidtOrthogonalization;
   dgmres->nrs            = NULL;

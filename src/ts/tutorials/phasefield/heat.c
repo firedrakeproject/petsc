@@ -19,7 +19,7 @@ Evolve the  Allen-Cahn equation: zoom in on part of the domain
 ./heat -ts_monitor -snes_monitor  -pc_type lu   -snes_converged_reason     -ts_type cn  -da_refine 5   -allen-cahn -kappa .001 -ts_max_time 5  -zoom .25,.45  -mymonitor
 
 The option -square_initial indicates it should use a square wave initial condition otherwise it loads the file InitialSolution.heat as the initial solution. You should run with
-./heat -square_initial -ts_monitor -snes_monitor  -pc_type lu   -snes_converged_reason    -ts_type cn  -da_refine 9 -ts_max_time 1.e-4 -ts_dt .125e-6 -snes_atol 1.e-25 -snes_rtol 1.e-25  -ts_max_steps 15
+./heat -square_initial -ts_monitor -snes_monitor  -pc_type lu   -snes_converged_reason    -ts_type cn  -da_refine 9 -ts_max_time 1.e-4 -ts_time_step .125e-6 -snes_atol 1.e-25 -snes_rtol 1.e-25  -ts_max_steps 15
 to generate InitialSolution.heat
 
 */
@@ -31,12 +31,13 @@ to generate InitialSolution.heat
 /*
    User-defined routines
 */
-extern PetscErrorCode FormFunction(TS, PetscReal, Vec, Vec, void *), FormInitialSolution(DM, Vec), MyMonitor(TS, PetscInt, PetscReal, Vec, void *), MyDestroy(void **);
+extern PetscErrorCode    FormFunction(TS, PetscReal, Vec, Vec, PetscCtx), FormInitialSolution(DM, Vec), MyMonitor(TS, PetscInt, PetscReal, Vec, PetscCtx);
+extern PetscCtxDestroyFn MyDestroy;
 typedef struct {
   PetscReal           kappa;
   PetscBool           allencahn;
   PetscDrawViewPorts *ports;
-} UserCtx;
+} AppCtx;
 
 int main(int argc, char **argv)
 {
@@ -45,7 +46,7 @@ int main(int argc, char **argv)
   PetscInt    steps, Mx;
   DM          da;
   PetscReal   dt;
-  UserCtx     ctx;
+  AppCtx      ctx;
   PetscBool   mymonitor;
   PetscViewer viewer;
   PetscBool   flg;
@@ -146,14 +147,14 @@ int main(int argc, char **argv)
    Output Parameter:
 .  F - function vector
  */
-PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, void *ptr)
+PetscErrorCode FormFunction(TS ts, PetscReal ftime, Vec X, Vec F, PetscCtx Ctx)
 {
   DM           da;
   PetscInt     i, Mx, xs, xm;
   PetscReal    hx, sx;
   PetscScalar *x, *f;
   Vec          localX;
-  UserCtx     *ctx = (UserCtx *)ptr;
+  AppCtx      *ctx = (AppCtx *)Ctx;
 
   PetscFunctionBegin;
   PetscCall(TSGetDM(ts, &da));
@@ -227,7 +228,7 @@ PetscErrorCode FormInitialSolution(DM da, Vec U)
   PetscCall(DMDAGetCorners(da, &xs, NULL, NULL, &xm, NULL, NULL));
 
   /*  InitialSolution is obtained with
-      ./heat -ts_monitor -snes_monitor  -pc_type lu   -snes_converged_reason    -ts_type cn  -da_refine 9 -ts_max_time 1.e-4 -ts_dt .125e-6 -snes_atol 1.e-25 -snes_rtol 1.e-25  -ts_max_steps 15
+      ./heat -ts_monitor -snes_monitor  -pc_type lu   -snes_converged_reason    -ts_type cn  -da_refine 9 -ts_max_time 1.e-4 -ts_time_step .125e-6 -snes_atol 1.e-25 -snes_rtol 1.e-25  -ts_max_steps 15
   */
   PetscCall(PetscOptionsHasName(NULL, NULL, "-square_initial", &flg));
   if (!flg) {
@@ -270,9 +271,9 @@ PetscErrorCode FormInitialSolution(DM da, Vec U)
 /*
     This routine is not parallel
 */
-PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
+PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, PetscCtx Ctx)
 {
-  UserCtx            *ctx = (UserCtx *)ptr;
+  AppCtx             *ctx = (AppCtx *)Ctx;
   PetscDrawLG         lg;
   PetscScalar        *u;
   PetscInt            Mx, i, xs, xm, cnt;
@@ -400,9 +401,9 @@ PetscErrorCode MyMonitor(TS ts, PetscInt step, PetscReal time, Vec U, void *ptr)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MyDestroy(void **ptr)
+PetscErrorCode MyDestroy(PetscCtxRt Ctx)
 {
-  UserCtx *ctx = *(UserCtx **)ptr;
+  AppCtx *ctx = *(AppCtx **)Ctx;
 
   PetscFunctionBegin;
   PetscCall(PetscDrawViewPortsDestroy(ctx->ports));

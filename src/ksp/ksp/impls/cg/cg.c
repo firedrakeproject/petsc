@@ -237,7 +237,7 @@ static PetscErrorCode KSPSolve_CG(KSP ksp)
         PetscCall(VecNorm(P, NORM_2, &norm_p));
         norm_p *= norm_p;
         dMp = 0.0;
-        if (!ksp->guess_zero) { PetscCall(VecDotRealPart(X, P, &dMp)); }
+        if (!ksp->guess_zero) PetscCall(VecDotRealPart(X, P, &dMp));
       }
       b = 0.0;
     } else {
@@ -339,8 +339,8 @@ static PetscErrorCode KSPSolve_CG(KSP ksp)
       norm_d *= norm_d;
     }
 
-    if ((ksp->normtype != KSP_NORM_PRECONDITIONED && (ksp->normtype != KSP_NORM_NATURAL)) || (ksp->chknorm >= i + 2)) { PetscCall(KSP_PCApply(ksp, R, Z)); /*     z <- Br                          */ }
-    if ((ksp->normtype != KSP_NORM_NATURAL) || (ksp->chknorm >= i + 2)) {
+    if ((ksp->normtype != KSP_NORM_PRECONDITIONED && ksp->normtype != KSP_NORM_NATURAL) || ksp->chknorm >= i + 2) PetscCall(KSP_PCApply(ksp, R, Z)); /*     z <- Br                          */
+    if (ksp->normtype != KSP_NORM_NATURAL || ksp->chknorm >= i + 2) {
       PetscCall(VecXDot(Z, R, &beta)); /*     beta <- z'*r                     */
       KSPCheckDot(ksp, beta);
     }
@@ -432,7 +432,7 @@ static PetscErrorCode KSPSolve_CG_SingleReduction(KSP ksp)
   PetscCall((*ksp->converged)(ksp, 0, dp, &ksp->reason, ksp->cnvP)); /* test for convergence */
   if (ksp->reason) PetscFunctionReturn(PETSC_SUCCESS);
 
-  if (ksp->normtype != KSP_NORM_PRECONDITIONED && (ksp->normtype != KSP_NORM_NATURAL)) { PetscCall(KSP_PCApply(ksp, R, Z)); /*    z <- Br                           */ }
+  if (ksp->normtype != KSP_NORM_PRECONDITIONED && (ksp->normtype != KSP_NORM_NATURAL)) PetscCall(KSP_PCApply(ksp, R, Z)); /*    z <- Br                           */
   if (ksp->normtype != KSP_NORM_NATURAL) {
     PetscCall(KSP_MatMult(ksp, Amat, Z, S));
     PetscCall(VecXDot(Z, S, &delta)); /*    delta <- z'*A*z = r'*B*A*B*r      */
@@ -514,11 +514,11 @@ static PetscErrorCode KSPSolve_CG_SingleReduction(KSP ksp)
     PetscCall((*ksp->converged)(ksp, i + 1, dp, &ksp->reason, ksp->cnvP));
     if (ksp->reason) break;
 
-    if ((ksp->normtype != KSP_NORM_PRECONDITIONED && (ksp->normtype != KSP_NORM_NATURAL)) || (ksp->chknorm >= i + 2)) {
+    if ((ksp->normtype != KSP_NORM_PRECONDITIONED && ksp->normtype != KSP_NORM_NATURAL) || ksp->chknorm >= i + 2) {
       PetscCall(KSP_PCApply(ksp, R, Z)); /*    z <- Br                           */
       PetscCall(KSP_MatMult(ksp, Amat, Z, S));
     }
-    if ((ksp->normtype != KSP_NORM_NATURAL) || (ksp->chknorm >= i + 2)) {
+    if (ksp->normtype != KSP_NORM_NATURAL || ksp->chknorm >= i + 2) {
       tmpvecs[0] = S;
       tmpvecs[1] = R;
       PetscCall(VecMDot(Z, 2, tmpvecs, tmp));
@@ -562,11 +562,11 @@ PetscErrorCode KSPDestroy_CG(KSP ksp)
 PetscErrorCode KSPView_CG(KSP ksp, PetscViewer viewer)
 {
   KSP_CG   *cg = (KSP_CG *)ksp->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
 #if defined(PETSC_USE_COMPLEX)
     PetscCall(PetscViewerASCIIPrintf(viewer, "  variant %s\n", KSPCGTypes[cg->type]));
 #endif
@@ -694,11 +694,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_CG(KSP ksp)
 
   PetscFunctionBegin;
   PetscCall(PetscNew(&cg));
-#if !defined(PETSC_USE_COMPLEX)
-  cg->type = KSP_CG_SYMMETRIC;
-#else
-  cg->type = KSP_CG_HERMITIAN;
-#endif
+  cg->type    = !PetscDefined(USE_COMPLEX) ? KSP_CG_SYMMETRIC : KSP_CG_HERMITIAN;
   cg->obj_min = 0.0;
   ksp->data   = (void *)cg;
 

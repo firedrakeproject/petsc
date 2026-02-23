@@ -3,7 +3,7 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self, framework):
     config.package.Package.__init__(self, framework)
-    self.version          = '5.8.1'
+    self.version          = '5.8.2'
     self.minversion       = '5.2.1'
     self.versionname      = 'MUMPS_VERSION'
     self.requiresversion  = 1
@@ -12,7 +12,6 @@ class Configure(config.package.Package):
                              'https://web.cels.anl.gov/projects/petsc/download/externalpackages/MUMPS_'+self.version+'.tar.gz']
     self.downloaddirnames = ['petsc-pkg-mumps','MUMPS']
     self.buildLanguages   = ['C','FC']
-    self.precisions       = ['single','double']
     self.downloadonWindows= 1
     self.hastests         = 1
     self.hastestsdatafiles= 1
@@ -51,22 +50,33 @@ class Configure(config.package.Package):
     for arg in ['with-64-bit-blas-indices','known-64-bit-blas-indices']:
       if self.argDB.get(arg):
         raise RuntimeError('MUMPS cannot be used with %s' % arg)
-    if self.scalartypes.precision == 'single':
-      if self.scalartypes.scalartype == 'real': l = 's'
-      else: l = 'c'
-    else:
-      if self.scalartypes.scalartype == 'real': l = 'd'
-      else: l = 'z'
-    self.functions = [l+'mumps_c']
-    self.includes  = [l+'mumps_c.h']
     liblist_common = [['libmumps_common.a','libpord.a','libpthread.a'],
-                     ['libmumps_common.a','libpord.a'],
-                     ['libmumps_common.a','libpord.a','libmpiseq.a'],
-                     ['libmumps_common.a','libpord.a','libpthread.a','libmpiseq.a']]
-    self.liblist   = []
-    for libc in liblist_common:
-       self.liblist.append(['lib'+l+'mumps.a'] + libc)
-    config.package.Package.configureLibrary(self)
+                      ['libmumps_common.a','libpord.a'],
+                      ['libmumps_common.a','libpord.a','libmpiseq.a'],
+                      ['libmumps_common.a','libpord.a','libpthread.a','libmpiseq.a']]
+    try: # Check if the MUMPS installation supports all precisions with either complex or real, in other words, it is a full installation.
+      self.functions = ['smumps_c', 'dmumps_c', 'cmumps_c', 'zmumps_c',]
+      self.includes  = ['smumps_c.h', 'dmumps_c.h', 'cmumps_c.h', 'zmumps_c.h']
+      self.liblist   = []
+      for libc in liblist_common:
+        self.liblist.append(['libsmumps.a', 'libdmumps.a', 'libcmumps.a', 'libzmumps.a'] + libc)
+      config.package.Package.configureLibrary(self)
+      self.addDefine('HAVE_MUMPS_MIXED_PRECISION',1)
+    except Exception as e:
+      self.log.write('MUMPS mixed precision with '+str(e)+'. Now only try the precision PetscScalar uses.\n')
+      if self.scalartypes.precision == 'single':
+        if self.scalartypes.scalartype == 'real': l = 's'
+        else: l = 'c'
+      elif self.scalartypes.precision == 'double':
+        if self.scalartypes.scalartype == 'real': l = 'd'
+        else: l = 'z'
+      else: raise RuntimeError('With a partial installation of MUMPS, you can only use single or double precision')
+      self.functions = [l+'mumps_c']
+      self.includes  = [l+'mumps_c.h']
+      self.liblist   = []
+      for libc in liblist_common:
+        self.liblist.append(['lib'+l+'mumps.a'] + libc)
+      config.package.Package.configureLibrary(self)
 
   def consistencyChecks(self):
     config.package.Package.consistencyChecks(self)
@@ -109,7 +119,7 @@ class Configure(config.package.Package):
     if self.ptscotch.found:
       g.write('ISCOTCH = '+self.headers.toString(self.ptscotch.include)+'\n')
       g.write('LSCOTCH = '+self.libraries.toString(self.ptscotch.lib)+'\n')
-      orderingsc += ' -Dscotch  -Dptscotch'
+      orderingsc += ' -Dscotch -Dptscotch'
       orderingsf += ' '+self.fortran.FortranDefineCompilerOption+'scotch '+self.fortran.FortranDefineCompilerOption+'ptscotch'
 
     g.write('ORDERINGSC = '+orderingsc+'\n')
@@ -195,8 +205,8 @@ class Configure(config.package.Package):
         self.logPrintBox('Installing MUMPS; this may take several minutes')
         output,err,ret = config.package.Package.executeShellCommandSeq(
           ['mkdir -p '+libDir+' '+includeDir,
-           'cp -f lib/*.* '+libDir+'/.',
-           'cp -f include/*.* '+includeDir+'/.'
+           'cp -f lib/*.* '+libDir,
+           'cp -f include/*.* '+includeDir
           ], cwd=self.packageDir, timeout=60, log = self.log)
         if self.argDB['with-mumps-serial']:
           output,err,ret = config.package.Package.executeShellCommand(['cp', '-f', 'libseq/libmpiseq.a', libDir+'/.'], cwd=self.packageDir, timeout=60, log = self.log)
@@ -205,4 +215,3 @@ class Configure(config.package.Package):
         raise RuntimeError('Error running make on MUMPS')
       self.postInstall(output2+err2+output3+err3,'Makefile.inc')
     return self.installDir
-

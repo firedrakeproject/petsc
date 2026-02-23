@@ -11,13 +11,13 @@ SNES Object: 1 MPI process
     type: bt
       interpolation: cubic
       alpha=1.000000e-04
-    maxstep=1.000000e+08, minlambda=1.000000e-12
+    maxlambda=1.000000e+00, minlambda=1.000000e-12
     tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
     maximum iterations=40
   KSP Object: 1 MPI process
     type: gmres
-      restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-      happy breakdown tolerance 1e-30
+      restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+      happy breakdown tolerance=1e-30
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
@@ -28,32 +28,32 @@ SNES Object: 1 MPI process
       restriction/interpolation type - RESTRICT
       Local solver information for first block is in the following KSP and PC objects on rank 0:
       Use -ksp_view ::ascii_info_detail to display information for all blocks
-    KSP Object: (sub_) 1 MPI process
-      type: preonly
-      maximum iterations=10000, initial guess is zero
-      tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
-      left preconditioning
-      using NONE norm type for convergence test
-    PC Object: (sub_) 1 MPI process
-      type: ilu
-        out-of-place factorization
-        0 levels of fill
-        tolerance for zero pivot 2.22045e-14
-        matrix ordering: external
-        factor fill ratio given 0., needed 0.
-          Factored matrix follows:
-            Mat Object: (sub_) 1 MPI process
-              type: seqdense
-              rows=64, cols=64
-              package used to perform factorization: petsc
-              total: nonzeros=4096, allocated nonzeros=4096
-      linear system matrix = precond matrix:
-      Mat Object: (sub_) 1 MPI process
-        type: seqdense
-        rows=64, cols=64
-        total: nonzeros=4096, allocated nonzeros=4096
-        total number of mallocs used during MatSetValues calls=0
-    linear system matrix = precond matrix:
+      KSP Object: (sub_) 1 MPI process
+        type: preonly
+        maximum iterations=10000, initial guess is zero
+        tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
+        left preconditioning
+        not checking for convergence
+      PC Object: (sub_) 1 MPI process
+        type: ilu
+          out-of-place factorization
+          0 levels of fill
+          tolerance for zero pivot 2.22045e-14
+          matrix ordering: external
+          factor fill ratio given 0., needed 0.
+            Factored matrix:
+              Mat Object: (sub_) 1 MPI process
+                type: seqdense
+                rows=64, cols=64
+                package used to perform factorization: petsc
+                total: nonzeros=4096, allocated nonzeros=4096
+        linear system matrix, which is also used to construct the preconditioner:
+        Mat Object: (sub_) 1 MPI process
+          type: seqdense
+          rows=64, cols=64
+          total: nonzeros=4096, allocated nonzeros=4096
+          total number of mallocs used during MatSetValues calls=0
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 1 MPI process
       type: seqaij
       rows=64, cols=64, bs=4

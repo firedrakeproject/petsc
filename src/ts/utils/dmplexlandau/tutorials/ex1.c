@@ -1,4 +1,4 @@
-static char help[] = "Landau collision operator with amnisotropic thermalization verification test as per Hager et al.\n 'A fully non-linear multi-species Fokker-Planck-Landau collision operator for simulation of fusion plasma', and "
+static char help[] = "Landau collision operator with anisotropic thermalization verification test as per Hager et al.\n 'A fully non-linear multi-species Fokker-Planck-Landau collision operator for simulation of fusion plasma', and "
                      "published as 'A performance portable, fully implicit Landau collision operator with batched linear solvers' https://arxiv.org/abs/2209.03228\n\n";
 
 #include <petscts.h>
@@ -212,7 +212,7 @@ PetscErrorCode Monitor_nrl(TS ts, PetscInt stepi, PetscReal time, Vec X, void *a
   if (stepi % 100 == 0) {
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "nrl-step %d time= %g ", (int)stepi, (double)(time / ctx->t_0)));
     PetscCall(VecGetArrayRead(X, &x));
-    for (PetscInt i = 0; i < NUM_TEMPS; i++) { PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%g ", (double)PetscRealPart(x[i]))); }
+    for (PetscInt i = 0; i < NUM_TEMPS; i++) PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%g ", (double)PetscRealPart(x[i])));
     PetscCall(VecRestoreArrayRead(X, &x));
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "\n"));
   }
@@ -320,7 +320,7 @@ PetscErrorCode Monitor(TS ts, PetscInt stepi, PetscReal time, Vec X, void *actx)
     PetscCall(TSSetMaxSteps(ts_nrl, stepi + 1)); // next step
     PetscCall(TSSolve(ts_nrl, NULL));
   } else if (printing) PetscCall(PetscPrintf(PETSC_COMM_WORLD, "\n"));
-  if (printing) { PetscCall(DMPlexLandauPrintNorms(X, stepi /*id + 1*/)); }
+  if (printing) PetscCall(DMPlexLandauPrintNorms(X, stepi /*id + 1*/));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -442,7 +442,7 @@ int main(int argc, char **argv)
     requires: p4est !complex double defined(PETSC_USE_DMLANDAU_2D)
     output_file: output/ex1_0.out
     filter: grep -v "DM"
-    args: -dm_landau_amr_levels_max 0,2 -dm_landau_amr_post_refine 0 -dm_landau_amr_re_levels 2 -dm_landau_domain_radius 6,6 -dm_landau_electron_shift 1.5 -dm_landau_ion_charges 1 -dm_landau_ion_masses 2 -dm_landau_n 1,1 -dm_landau_n_0 1e20 -dm_landau_num_cells 2,4 -dm_landau_num_species_grid 1,1 -dm_landau_re_radius 2 -use_nrl true -print_nrl false -dm_landau_thermal_temps .3,.2 -dm_landau_type p4est -dm_landau_verbose -1 -dm_preallocate_only false -ex1_dm_view_e -ksp_type preonly -pc_type lu -petscspace_degree 3 -snes_converged_reason -snes_rtol 1.e-14 -snes_stol 1.e-14 -ts_adapt_clip .5,1.5 -ts_adapt_dt_max 5 -ts_adapt_monitor -ts_adapt_scale_solve_failed 0.5 -ts_arkimex_type 1bee -ts_dt .01 -ts_max_snes_failures unlimited -ts_max_steps 1 -ts_max_time 8 -ts_monitor -ts_rtol 1e-2 -ts_type arkimex
+    args: -dm_landau_amr_levels_max 0,2 -dm_landau_amr_post_refine 0 -dm_landau_amr_re_levels 2 -dm_landau_domain_radius 6,6 -dm_landau_electron_shift 1.5 -dm_landau_ion_charges 1 -dm_landau_ion_masses 2 -dm_landau_n 1,1 -dm_landau_n_0 1e20 -dm_landau_num_cells 2,4 -dm_landau_num_species_grid 1,1 -dm_landau_re_radius 2 -use_nrl true -print_nrl false -dm_landau_thermal_temps .3,.2 -dm_landau_type p4est -dm_landau_verbose -1 -dm_preallocate_only false -ex1_dm_view_e -ksp_type preonly -pc_type lu -petscspace_degree 3 -snes_converged_reason -snes_rtol 1.e-14 -snes_stol 1.e-14 -ts_adapt_clip .5,1.5 -ts_adapt_dt_max 5 -ts_adapt_monitor -ts_adapt_scale_solve_failed 0.5 -ts_arkimex_type 1bee -ts_time_step .01 -ts_max_snes_failures unlimited -ts_max_steps 1 -ts_max_time 8 -ts_monitor -ts_rtol 1e-2 -ts_type arkimex
     test:
       suffix: cpu
       args: -dm_landau_device_type cpu -dm_landau_use_relativistic_corrections
@@ -453,7 +453,7 @@ int main(int argc, char **argv)
 
   testset:
     requires: !complex defined(PETSC_USE_DMLANDAU_2D) p4est
-    args: -dm_landau_type p4est -dm_landau_num_species_grid 1,1 -dm_landau_n 1,1 -dm_landau_thermal_temps 2,1 -dm_landau_ion_charges 1 -dm_landau_ion_masses 2 -petscspace_degree 2 -ts_type beuler -ts_dt .1 -ts_max_steps 1 -dm_landau_verbose 2 -ksp_type preonly -pc_type lu -dm_landau_device_type cpu -use_nrl false -print_nrl -snes_rtol 1.e-14 -snes_stol 1.e-14 -snes_converged_reason -dm_landau_device_type cpu
+    args: -dm_landau_type p4est -dm_landau_num_species_grid 1,1 -dm_landau_n 1,1 -dm_landau_thermal_temps 2,1 -dm_landau_ion_charges 1 -dm_landau_ion_masses 2 -petscspace_degree 2 -ts_type beuler -ts_time_step .1 -ts_max_steps 1 -dm_landau_verbose 2 -ksp_type preonly -pc_type lu -dm_landau_device_type cpu -use_nrl false -print_nrl -snes_rtol 1.e-14 -snes_stol 1.e-14 -snes_converged_reason -dm_landau_device_type cpu
     nsize: 1
     test:
       suffix: sphere

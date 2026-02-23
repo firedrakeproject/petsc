@@ -132,9 +132,6 @@ PetscErrorCode testPTAPRectangular(void)
   /* compute C */
   PetscCall(MatPtAP(A, P, MAT_INITIAL_MATRIX, 1.0, &C));
 
-  PetscCall(MatAssemblyBegin(C, MAT_FINAL_ASSEMBLY));
-  PetscCall(MatAssemblyEnd(C, MAT_FINAL_ASSEMBLY));
-
   /* compare results */
   /*
   printf("C:\n");
@@ -143,9 +140,7 @@ PetscErrorCode testPTAPRectangular(void)
   blitz::Array<double,2> actualC(cols, cols);
   actualC = 0.0;
   for (int i=0; i<cols; i++) {
-    for (int j=0; j<cols; j++) {
-      PetscCall(MatGetValues(C, 1, &i, 1, &j, &actualC(i,j)));
-    }
+    for (int j=0; j<cols; j++) PetscCall(MatGetValues(C, 1, &i, 1, &j, &actualC(i,j)));
   }
   blitz::Array<double,2> expectedC(cols, cols);
   expectedC = 0.0;

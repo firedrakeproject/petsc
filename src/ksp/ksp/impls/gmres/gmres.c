@@ -443,33 +443,33 @@ PetscErrorCode KSPView_GMRES(KSP ksp, PetscViewer viewer)
 {
   KSP_GMRES  *gmres = (KSP_GMRES *)ksp->data;
   const char *cstr;
-  PetscBool   iascii, isstring;
+  PetscBool   isascii, isstring;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
   if (gmres->orthog == KSPGMRESClassicalGramSchmidtOrthogonalization) {
     switch (gmres->cgstype) {
-    case (KSP_GMRES_CGS_REFINE_NEVER):
-      cstr = "Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement";
+    case KSP_GMRES_CGS_REFINE_NEVER:
+      cstr = "classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement";
       break;
-    case (KSP_GMRES_CGS_REFINE_ALWAYS):
-      cstr = "Classical (unmodified) Gram-Schmidt Orthogonalization with one step of iterative refinement";
+    case KSP_GMRES_CGS_REFINE_ALWAYS:
+      cstr = "classical (unmodified) Gram-Schmidt orthogonalization with one step of iterative refinement";
       break;
-    case (KSP_GMRES_CGS_REFINE_IFNEEDED):
-      cstr = "Classical (unmodified) Gram-Schmidt Orthogonalization with one step of iterative refinement when needed";
+    case KSP_GMRES_CGS_REFINE_IFNEEDED:
+      cstr = "classical (unmodified) Gram-Schmidt orthogonalization with one step of iterative refinement when needed";
       break;
     default:
       SETERRQ(PetscObjectComm((PetscObject)ksp), PETSC_ERR_ARG_OUTOFRANGE, "Unknown orthogonalization");
     }
   } else if (gmres->orthog == KSPGMRESModifiedGramSchmidtOrthogonalization) {
-    cstr = "Modified Gram-Schmidt Orthogonalization";
+    cstr = "modified Gram-Schmidt orthogonalization";
   } else {
     cstr = "unknown orthogonalization";
   }
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  restart=%" PetscInt_FMT ", using %s\n", gmres->max_k, cstr));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  happy breakdown tolerance %g\n", (double)gmres->haptol));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  happy breakdown tolerance=%g\n", (double)gmres->haptol));
   } else if (isstring) {
     PetscCall(PetscViewerStringSPrintf(viewer, "%s restart %" PetscInt_FMT, cstr, gmres->max_k));
   }
@@ -482,10 +482,10 @@ PetscErrorCode KSPView_GMRES(KSP ksp, PetscViewer viewer)
   Collective
 
   Input Parameters:
-+ ksp    - the `KSP` context
-. its    - iteration number
-. fgnorm - 2-norm of residual (or gradient)
-- dummy  - a collection of viewers created with `PetscViewersCreate()`
++ ksp     - the `KSP` context
+. its     - iteration number
+. fgnorm  - 2-norm of residual (or gradient)
+- Viewers - a collection of viewers created with `PetscViewersCreate()`
 
   Options Database Key:
 . -ksp_gmres_krylov_monitor <bool> - Plot the Krylov directions
@@ -497,9 +497,9 @@ PetscErrorCode KSPView_GMRES(KSP ksp, PetscViewer viewer)
 
 .seealso: [](ch_ksp), `KSPGMRES`, `KSPMonitorSet()`, `KSPMonitorResidual()`, `VecView()`, `PetscViewersCreate()`, `PetscViewersDestroy()`
 @*/
-PetscErrorCode KSPGMRESMonitorKrylov(KSP ksp, PetscInt its, PetscReal fgnorm, void *dummy)
+PetscErrorCode KSPGMRESMonitorKrylov(KSP ksp, PetscInt its, PetscReal fgnorm, void *Viewers)
 {
-  PetscViewers viewers = (PetscViewers)dummy;
+  PetscViewers viewers = (PetscViewers)Viewers;
   KSP_GMRES   *gmres   = (KSP_GMRES *)ksp->data;
   Vec          x;
   PetscViewer  viewer;
@@ -522,7 +522,7 @@ PetscErrorCode KSPSetFromOptions_GMRES(KSP ksp, PetscOptionItems PetscOptionsObj
   PetscInt   restart;
   PetscReal  haptol, breakdowntol;
   KSP_GMRES *gmres = (KSP_GMRES *)ksp->data;
-  PetscBool  flg;
+  PetscBool  flg, set;
 
   PetscFunctionBegin;
   PetscOptionsHeadBegin(PetscOptionsObject, "KSP GMRES Options");
@@ -533,11 +533,12 @@ PetscErrorCode KSPSetFromOptions_GMRES(KSP ksp, PetscOptionItems PetscOptionsObj
   PetscCall(PetscOptionsReal("-ksp_gmres_breakdown_tolerance", "Divergence breakdown tolerance during GMRES restart", "KSPGMRESSetBreakdownTolerance", gmres->breakdowntol, &breakdowntol, &flg));
   if (flg) PetscCall(KSPGMRESSetBreakdownTolerance(ksp, breakdowntol));
   flg = PETSC_FALSE;
-  PetscCall(PetscOptionsBool("-ksp_gmres_preallocate", "Preallocate Krylov vectors", "KSPGMRESSetPreAllocateVectors", flg, &flg, NULL));
-  if (flg) PetscCall(KSPGMRESSetPreAllocateVectors(ksp));
-  PetscCall(PetscOptionsBoolGroupBegin("-ksp_gmres_classicalgramschmidt", "Classical (unmodified) Gram-Schmidt (fast)", "KSPGMRESSetOrthogonalization", &flg));
+  PetscCall(PetscOptionsBool("-ksp_gmres_preallocate", "Preallocate Krylov vectors", "KSPGMRESSetPreAllocateVectors", gmres->q_preallocate, &flg, &set));
+  PetscCheck(!set || flg, PetscObjectComm((PetscObject)ksp), PETSC_ERR_SUP, "Cannot turn off preallocation with -ksp_gmres_preallocate false");
+  if (set) PetscCall(KSPGMRESSetPreAllocateVectors(ksp));
+  PetscCall(PetscOptionsBoolGroupBegin("-ksp_gmres_classicalgramschmidt", "classical (unmodified) Gram-Schmidt (fast)", "KSPGMRESSetOrthogonalization", &flg));
   if (flg) PetscCall(KSPGMRESSetOrthogonalization(ksp, KSPGMRESClassicalGramSchmidtOrthogonalization));
-  PetscCall(PetscOptionsBoolGroupEnd("-ksp_gmres_modifiedgramschmidt", "Modified Gram-Schmidt (slow,more stable)", "KSPGMRESSetOrthogonalization", &flg));
+  PetscCall(PetscOptionsBoolGroupEnd("-ksp_gmres_modifiedgramschmidt", "modified Gram-Schmidt (slow, more stable)", "KSPGMRESSetOrthogonalization", &flg));
   if (flg) PetscCall(KSPGMRESSetOrthogonalization(ksp, KSPGMRESModifiedGramSchmidtOrthogonalization));
   PetscCall(PetscOptionsEnum("-ksp_gmres_cgs_refinement_type", "Type of iterative refinement for classical (unmodified) Gram-Schmidt", "KSPGMRESSetCGSRefinementType", KSPGMRESCGSRefinementTypes, (PetscEnum)gmres->cgstype, (PetscEnum *)&gmres->cgstype, &flg));
   flg = PETSC_FALSE;
@@ -622,7 +623,7 @@ PetscErrorCode KSPGMRESSetPreAllocateVectors_GMRES(KSP ksp)
 
   PetscFunctionBegin;
   gmres                = (KSP_GMRES *)ksp->data;
-  gmres->q_preallocate = 1;
+  gmres->q_preallocate = PETSC_TRUE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -906,7 +907,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_GMRES(KSP ksp)
 
   gmres->haptol         = 1.0e-30;
   gmres->breakdowntol   = 0.1;
-  gmres->q_preallocate  = 0;
+  gmres->q_preallocate  = PETSC_FALSE;
   gmres->delta_allocate = GMRES_DELTA_DIRECTIONS;
   gmres->orthog         = KSPGMRESClassicalGramSchmidtOrthogonalization;
   gmres->nrs            = NULL;

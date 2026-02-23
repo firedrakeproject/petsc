@@ -85,7 +85,7 @@ static PetscErrorCode SNESDestroy_NASM(SNES snes)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMGlobalToLocalSubDomainDirichletHook_Private(DM dm, Vec g, InsertMode mode, Vec l, void *ctx)
+static PetscErrorCode DMGlobalToLocalSubDomainDirichletHook_Private(DM dm, Vec g, InsertMode mode, Vec l, PetscCtx ctx)
 {
   Vec bcs = (Vec)ctx;
 
@@ -122,10 +122,10 @@ static PetscErrorCode SNESSetUp_NASM(SNES snes)
         PetscCall(SNESAppendOptionsPrefix(nasm->subsnes[i], optionsprefix));
         PetscCall(SNESAppendOptionsPrefix(nasm->subsnes[i], "sub_"));
         PetscCall(SNESSetDM(nasm->subsnes[i], subdms[i]));
-        if (snes->ops->usercompute) {
-          PetscCall(SNESSetComputeApplicationContext(nasm->subsnes[i], snes->ops->usercompute, snes->ops->ctxdestroy));
+        if (snes->ops->ctxcompute) {
+          PetscCall(SNESSetComputeApplicationContext(nasm->subsnes[i], snes->ops->ctxcompute, snes->ops->ctxdestroy));
         } else {
-          void *ctx;
+          PetscCtx ctx;
 
           PetscCall(SNESGetApplicationContext(snes, &ctx));
           PetscCall(SNESSetApplicationContext(nasm->subsnes[i], ctx));
@@ -192,7 +192,7 @@ static PetscErrorCode SNESView_NASM(SNES snes, PetscViewer viewer)
   SNES_NASM        *nasm = (SNES_NASM *)snes->data;
   PetscMPIInt       rank, size;
   PetscInt          i, N, bsz;
-  PetscBool         iascii, isstring;
+  PetscBool         isascii, isstring;
   PetscViewer       sviewer;
   MPI_Comm          comm;
   PetscViewerFormat format;
@@ -200,12 +200,12 @@ static PetscErrorCode SNESView_NASM(SNES snes, PetscViewer viewer)
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)snes, &comm));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   PetscCallMPI(MPI_Comm_size(comm, &size));
   PetscCallMPI(MPIU_Allreduce(&nasm->n, &N, 1, MPIU_INT, MPI_SUM, comm));
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  total subdomain blocks = %" PetscInt_FMT "\n", N));
     PetscCall(PetscViewerGetFormat(viewer, &format));
     if (format != PETSC_VIEWER_ASCII_INFO_DETAIL) {
@@ -680,6 +680,7 @@ static PetscErrorCode SNESNASMComputeFinalJacobian_Private(SNES snes, Vec Xfinal
   F = snes->vec_func;
   if (snes->normschedule == SNES_NORM_NONE) PetscCall(SNESComputeFunction(snes, X, F));
   PetscCall(SNESComputeJacobian(snes, X, snes->jacobian, snes->jacobian_pre));
+  SNESCheckJacobianDomainError(snes);
   PetscCall(SNESGetDM(snes, &dm));
   if (nasm->eventrestrictinterp) PetscCall(PetscLogEventBegin(nasm->eventrestrictinterp, snes, 0, 0, 0));
   if (nasm->fjtype != 1) {
@@ -741,12 +742,11 @@ static PetscErrorCode SNESSolve_NASM(SNES snes)
   PetscCall(SNESGetNormSchedule(snes, &normschedule));
   if (normschedule == SNES_NORM_ALWAYS || normschedule == SNES_NORM_INITIAL_ONLY || normschedule == SNES_NORM_INITIAL_FINAL_ONLY || !snes->max_its) {
     /* compute the initial function and preconditioned update delX */
-    if (!snes->vec_func_init_set) {
-      PetscCall(SNESComputeFunction(snes, X, F));
-    } else snes->vec_func_init_set = PETSC_FALSE;
+    if (!snes->vec_func_init_set) PetscCall(SNESComputeFunction(snes, X, F));
+    else snes->vec_func_init_set = PETSC_FALSE;
 
     PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- ||F||  */
-    SNESCheckFunctionNorm(snes, fnorm);
+    SNESCheckFunctionDomainError(snes, fnorm);
     PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
     snes->iter = 0;
     snes->norm = fnorm;
@@ -773,7 +773,7 @@ static PetscErrorCode SNESSolve_NASM(SNES snes)
     if (normschedule == SNES_NORM_ALWAYS || ((i == snes->max_its - 1) && (normschedule == SNES_NORM_INITIAL_FINAL_ONLY || normschedule == SNES_NORM_FINAL_ONLY))) {
       PetscCall(SNESComputeFunction(snes, X, F));
       PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- ||F||  */
-      SNESCheckFunctionNorm(snes, fnorm);
+      SNESCheckFunctionDomainError(snes, fnorm);
     }
     /* Monitor convergence */
     PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
@@ -790,7 +790,7 @@ static PetscErrorCode SNESSolve_NASM(SNES snes)
   }
   if (nasm->finaljacobian) {
     PetscCall(SNESNASMComputeFinalJacobian_Private(snes, X));
-    SNESCheckJacobianDomainerror(snes);
+    SNESCheckJacobianDomainError(snes);
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

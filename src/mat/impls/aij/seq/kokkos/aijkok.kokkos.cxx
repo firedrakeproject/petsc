@@ -16,9 +16,8 @@
 // warning: 'cusparseStatus_t cusparseDbsrmm(cusparseHandle_t, cusparseDirection_t, cusparseOperation_t,
 // cusparseOperation_t, int, int, int, int, const double*, cusparseMatDescr_t, const double*, const int*, const int*,
 // int, const double*, int, const double*, double*, int)' is deprecated: please use cusparseSpMM instead [-Wdeprecated-declarations]
-PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN("-Wdeprecated-declarations")
+#define DISABLE_CUSPARSE_DEPRECATED
 #include <KokkosSparse_spmv.hpp>
-PETSC_PRAGMA_DIAGNOSTIC_IGNORED_END()
 
 #include <KokkosSparse_spiluk.hpp>
 #include <KokkosSparse_sptrsv.hpp>
@@ -94,9 +93,12 @@ static PetscErrorCode MatAssemblyEnd_SeqAIJKokkos(Mat A, MatAssemblyType mode)
       */
     }
     delete aijkok;
-    aijkok   = new Mat_SeqAIJKokkos(A->rmap->n, A->cmap->n, aijseq, A->nonzerostate, PETSC_FALSE /*don't copy mat values to device*/);
+    aijkok   = new Mat_SeqAIJKokkos(A, A->rmap->n, A->cmap->n, aijseq, A->nonzerostate, PETSC_FALSE /* don't copy mat values to device */);
     A->spptr = aijkok;
   } else if (A->rmap->n && aijkok->diag_dual.extent(0) == 0) { // MatProduct might directly produce AIJ on device, but not the diag.
+    const PetscInt *adiag;
+    /* the a->diag is created at assmebly here because the rest of the Kokkos AIJ code assumes it always exists. This needs to be fixed since it is now only created when needed! */
+    PetscCall(MatGetDiagonalMarkers_SeqAIJ(A, &adiag, NULL));
     MatRowMapKokkosViewHost diag_h(aijseq->diag, A->rmap->n);
     auto                    diag_d = Kokkos::create_mirror_view_and_copy(DefaultMemorySpace(), diag_h);
     aijkok->diag_dual              = MatRowMapKokkosDualView(diag_d, diag_h);
@@ -131,7 +133,6 @@ PETSC_INTERN PetscErrorCode MatSeqAIJKokkosModifyDevice(Mat A)
   aijkok->a_dual.modify_device();
   aijkok->transpose_updated = PETSC_FALSE;
   aijkok->hermitian_updated = PETSC_FALSE;
-  PetscCall(MatSeqAIJInvalidateDiagonal(A));
   PetscCall(PetscObjectStateIncrease((PetscObject)A));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -238,6 +239,13 @@ static PetscErrorCode MatSeqAIJGetCSRAndMemType_SeqAIJKokkos(Mat A, const PetscI
     *a = aijkok->a_device_data();
   }
   if (mtype) *mtype = PETSC_MEMTYPE_KOKKOS;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode MatGetCurrentMemType_SeqAIJKokkos(PETSC_UNUSED Mat A, PetscMemType *mtype)
+{
+  PetscFunctionBegin;
+  *mtype = PETSC_MEMTYPE_KOKKOS;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -353,7 +361,7 @@ static PetscErrorCode MatSeqAIJKokkosGenerateHermitian_Private(Mat A, KokkosCsrM
   if (A->hermitian == PETSC_BOOL3_TRUE) {
     *csrmatH = akok->csrmat;
   } else {
-    // See if we already have a cached hermitian and its value is up to date
+    // See if we already have a cached Hermitian and its value is up to date
     if (T.numRows() == n && T.numCols() == m) {  // this indicates csrmatT had been generated before, otherwise T has 0 rows/cols after construction
       if (!akok->hermitian_updated) {            // if the value is out of date, update the cached version
         const auto &perm = akok->transpose_perm; // get the permutation array
@@ -579,7 +587,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJKokkos(Mat A, MatType mtype,
     aseq = static_cast<Mat_SeqAIJ *>(A->data);
     if (A->assembled) { /* Copy i, j (but not values) to device for an assembled matrix if not yet */
       PetscCheck(!A->spptr, PETSC_COMM_WORLD, PETSC_ERR_PLIB, "Expect NULL (Mat_SeqAIJKokkos*)A->spptr");
-      A->spptr = new Mat_SeqAIJKokkos(A->rmap->n, A->cmap->n, aseq, A->nonzerostate, PETSC_FALSE);
+      A->spptr = new Mat_SeqAIJKokkos(A, A->rmap->n, A->cmap->n, aseq, A->nonzerostate, PETSC_FALSE);
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -600,7 +608,7 @@ static PetscErrorCode MatDuplicate_SeqAIJKokkos(Mat A, MatDuplicateOption dupOpt
   mat = *B;
   if (A->assembled) {
     bseq = static_cast<Mat_SeqAIJ *>(mat->data);
-    bkok = new Mat_SeqAIJKokkos(mat->rmap->n, mat->cmap->n, bseq, mat->nonzerostate, PETSC_FALSE);
+    bkok = new Mat_SeqAIJKokkos(mat, mat->rmap->n, mat->cmap->n, bseq, mat->nonzerostate, PETSC_FALSE);
     bkok->a_dual.clear_sync_state(); /* Clear B's sync state as it will be decided below */
     /* Now copy values to B if needed */
     if (dupOption == MAT_COPY_VALUES) {
@@ -783,27 +791,27 @@ PetscErrorCode MatSeqAIJKokkosMergeMats(Mat A, Mat B, MatReuse reuse, Mat *C)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatProductDataDestroy_SeqAIJKokkos(void *pdata)
+static PetscErrorCode MatProductCtxDestroy_SeqAIJKokkos(PetscCtxRt pdata)
 {
   PetscFunctionBegin;
-  delete static_cast<MatProductData_SeqAIJKokkos *>(pdata);
+  delete *reinterpret_cast<MatProductCtx_SeqAIJKokkos **>(pdata);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 static PetscErrorCode MatProductNumeric_SeqAIJKokkos_SeqAIJKokkos(Mat C)
 {
-  Mat_Product                 *product = C->product;
-  Mat                          A, B;
-  bool                         transA, transB; /* use bool, since KK needs this type */
-  Mat_SeqAIJKokkos            *akok, *bkok, *ckok;
-  Mat_SeqAIJ                  *c;
-  MatProductData_SeqAIJKokkos *pdata;
-  KokkosCsrMatrix              csrmatA, csrmatB;
+  Mat_Product                *product = C->product;
+  Mat                         A, B;
+  bool                        transA, transB; /* use bool, since KK needs this type */
+  Mat_SeqAIJKokkos           *akok, *bkok, *ckok;
+  Mat_SeqAIJ                 *c;
+  MatProductCtx_SeqAIJKokkos *pdata;
+  KokkosCsrMatrix             csrmatA, csrmatB;
 
   PetscFunctionBegin;
   MatCheckProduct(C, 1);
   PetscCheck(C->product->data, PetscObjectComm((PetscObject)C), PETSC_ERR_PLIB, "Product data empty");
-  pdata = static_cast<MatProductData_SeqAIJKokkos *>(C->product->data);
+  pdata = static_cast<MatProductCtx_SeqAIJKokkos *>(C->product->data);
 
   // See if numeric has already been done in symbolic (e.g., user calls MatMatMult(A,B,MAT_INITIAL_MATRIX,..,C)).
   // If yes, skip the numeric, but reset the flag so that next time when user calls MatMatMult(E,F,MAT_REUSE_MATRIX,..,C),
@@ -864,7 +872,7 @@ static PetscErrorCode MatProductNumeric_SeqAIJKokkos_SeqAIJKokkos(Mat C)
   PetscCall(MatSeqAIJKokkosModifyDevice(C));
   /* shorter version of MatAssemblyEnd_SeqAIJ */
   c = (Mat_SeqAIJ *)C->data;
-  PetscCall(PetscInfo(C, "Matrix size: %" PetscInt_FMT " X %" PetscInt_FMT "; storage space: 0 unneeded,%" PetscInt_FMT " used\n", C->rmap->n, C->cmap->n, c->nz));
+  PetscCall(PetscInfo(C, "Matrix size: %" PetscInt_FMT " X %" PetscInt_FMT "; storage space: 0 unneeded, %" PetscInt_FMT " used\n", C->rmap->n, C->cmap->n, c->nz));
   PetscCall(PetscInfo(C, "Number of mallocs during MatSetValues() is 0\n"));
   PetscCall(PetscInfo(C, "Maximum nonzeros in any row is %" PetscInt_FMT "\n", c->rmax));
   c->reallocs         = 0;
@@ -877,14 +885,14 @@ static PetscErrorCode MatProductNumeric_SeqAIJKokkos_SeqAIJKokkos(Mat C)
 
 static PetscErrorCode MatProductSymbolic_SeqAIJKokkos_SeqAIJKokkos(Mat C)
 {
-  Mat_Product                 *product = C->product;
-  MatProductType               ptype;
-  Mat                          A, B;
-  bool                         transA, transB;
-  Mat_SeqAIJKokkos            *akok, *bkok, *ckok;
-  MatProductData_SeqAIJKokkos *pdata;
-  MPI_Comm                     comm;
-  KokkosCsrMatrix              csrmatA, csrmatB, csrmatC;
+  Mat_Product                *product = C->product;
+  MatProductType              ptype;
+  Mat                         A, B;
+  bool                        transA, transB;
+  Mat_SeqAIJKokkos           *akok, *bkok, *ckok;
+  MatProductCtx_SeqAIJKokkos *pdata;
+  MPI_Comm                    comm;
+  KokkosCsrMatrix             csrmatA, csrmatB, csrmatC;
 
   PetscFunctionBegin;
   MatCheckProduct(C, 1);
@@ -931,7 +939,7 @@ static PetscErrorCode MatProductSymbolic_SeqAIJKokkos_SeqAIJKokkos(Mat C)
   default:
     SETERRQ(comm, PETSC_ERR_PLIB, "Unsupported product type %s", MatProductTypes[product->type]);
   }
-  PetscCallCXX(product->data = pdata = new MatProductData_SeqAIJKokkos());
+  PetscCallCXX(product->data = pdata = new MatProductCtx_SeqAIJKokkos());
   pdata->reusesym = product->api_user;
 
   /* TODO: add command line options to select spgemm algorithms */
@@ -973,7 +981,7 @@ static PetscErrorCode MatProductSymbolic_SeqAIJKokkos_SeqAIJKokkos(Mat C)
 
   PetscCallCXX(ckok = new Mat_SeqAIJKokkos(csrmatC));
   PetscCall(MatSetSeqAIJKokkosWithCSRMatrix(C, ckok));
-  C->product->destroy = MatProductDataDestroy_SeqAIJKokkos;
+  C->product->destroy = MatProductCtxDestroy_SeqAIJKokkos;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1029,7 +1037,7 @@ static PetscErrorCode MatShift_SeqAIJKokkos(Mat A, PetscScalar a)
   Mat_SeqAIJ *aijseq = static_cast<Mat_SeqAIJ *>(A->data);
 
   PetscFunctionBegin;
-  if (A->assembled && aijseq->diagonaldense) { // no missing diagonals
+  if (A->assembled && aijseq->diagDense) { // no missing diagonals
     PetscInt n = PetscMin(A->rmap->n, A->cmap->n);
 
     PetscCall(PetscLogGpuTimeBegin());
@@ -1052,7 +1060,7 @@ static PetscErrorCode MatDiagonalSet_SeqAIJKokkos(Mat Y, Vec D, InsertMode is)
   Mat_SeqAIJ *aijseq = static_cast<Mat_SeqAIJ *>(Y->data);
 
   PetscFunctionBegin;
-  if (Y->assembled && aijseq->diagonaldense) { // no missing diagonals
+  if (Y->assembled && aijseq->diagDense) { // no missing diagonals
     ConstPetscScalarKokkosView dv;
     PetscInt                   n, nv;
 
@@ -1303,7 +1311,9 @@ static PetscErrorCode MatAXPY_SeqAIJKokkos(Mat Y, PetscScalar alpha, Mat X, MatS
             } else {
             // If not found, it indicates the input is wrong (X is not a SUBSET_NONZERO_PATTERN of Y).
             // Just insert a NaN at the beginning of row i if it is not empty, to make the result wrong.
-#if PETSC_PKG_KOKKOS_VERSION_GE(3, 7, 0)
+#if PETSC_PKG_KOKKOS_VERSION_GE(5, 0, 0)
+              if (Yi(i) != Yi(i + 1)) Ya(Yi(i)) = KokkosKernels::ArithTraits<PetscScalar>::nan();
+#elif PETSC_PKG_KOKKOS_VERSION_GE(3, 7, 0)
               if (Yi(i) != Yi(i + 1)) Ya(Yi(i)) = Kokkos::ArithTraits<PetscScalar>::nan();
 #else
               if (Yi(i) != Yi(i + 1)) Ya(Yi(i)) = Kokkos::Experimental::nan("1");
@@ -1347,10 +1357,10 @@ struct MatCOOStruct_SeqAIJKokkos {
   }
 };
 
-static PetscErrorCode MatCOOStructDestroy_SeqAIJKokkos(void **data)
+static PetscErrorCode MatCOOStructDestroy_SeqAIJKokkos(PetscCtxRt data)
 {
   PetscFunctionBegin;
-  PetscCallCXX(delete static_cast<MatCOOStruct_SeqAIJKokkos *>(*data));
+  PetscCallCXX(delete *static_cast<MatCOOStruct_SeqAIJKokkos **>(data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1367,12 +1377,12 @@ static PetscErrorCode MatSetPreallocationCOO_SeqAIJKokkos(Mat mat, PetscCount co
   aseq = static_cast<Mat_SeqAIJ *>(mat->data);
   akok = static_cast<Mat_SeqAIJKokkos *>(mat->spptr);
   delete akok;
-  mat->spptr = akok = new Mat_SeqAIJKokkos(mat->rmap->n, mat->cmap->n, aseq, mat->nonzerostate + 1, PETSC_FALSE);
+  mat->spptr = akok = new Mat_SeqAIJKokkos(mat, mat->rmap->n, mat->cmap->n, aseq, mat->nonzerostate + 1, PETSC_FALSE);
   PetscCall(MatZeroEntries_SeqAIJKokkos(mat));
 
   // Copy the COO struct to device
   PetscCall(PetscObjectQuery((PetscObject)mat, "__PETSc_MatCOOStruct_Host", (PetscObject *)&container_h));
-  PetscCall(PetscContainerGetPointer(container_h, (void **)&coo_h));
+  PetscCall(PetscContainerGetPointer(container_h, &coo_h));
   PetscCallCXX(coo_d = new MatCOOStruct_SeqAIJKokkos(coo_h));
 
   // Put the COO struct in a container and then attach that to the matrix
@@ -1390,7 +1400,7 @@ static PetscErrorCode MatSetValuesCOO_SeqAIJKokkos(Mat A, const PetscScalar v[],
 
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)A, "__PETSc_MatCOOStruct_Device", (PetscObject *)&container));
-  PetscCall(PetscContainerGetPointer(container, (void **)&coo));
+  PetscCall(PetscContainerGetPointer(container, &coo));
 
   const auto &n    = coo->n;
   const auto &Annz = coo->nz;
@@ -1449,6 +1459,7 @@ static PetscErrorCode MatSetOps_SeqAIJKokkos(Mat A)
   A->ops->shift                     = MatShift_SeqAIJKokkos;
   A->ops->diagonalset               = MatDiagonalSet_SeqAIJKokkos;
   A->ops->diagonalscale             = MatDiagonalScale_SeqAIJKokkos;
+  A->ops->getcurrentmemtype         = MatGetCurrentMemType_SeqAIJKokkos;
   a->ops->getarray                  = MatSeqAIJGetArray_SeqAIJKokkos;
   a->ops->restorearray              = MatSeqAIJRestoreArray_SeqAIJKokkos;
   a->ops->getarrayread              = MatSeqAIJGetArrayRead_SeqAIJKokkos;
@@ -1809,9 +1820,7 @@ static PetscErrorCode MatSolve_SeqAIJKokkos_Cholesky(Mat A, Vec bb, Vec xx)
   PetscCallCXX(sptrsv_solve(exec, &factors->khU, factors->iU_d, factors->jU_d, factors->aU_d, Y, X));
 
   // Reorder X with the inverse column (row) permutation
-  if (!identity) {
-    PetscCallCXX(Kokkos::parallel_for(Kokkos::RangePolicy<>(exec, 0, m), KOKKOS_LAMBDA(const PetscInt i) { x(rowperm(i)) = X(i); }));
-  }
+  if (!identity) PetscCallCXX(Kokkos::parallel_for(Kokkos::RangePolicy<>(exec, 0, m), KOKKOS_LAMBDA(const PetscInt i) { x(rowperm(i)) = X(i); }));
 
   PetscCall(VecRestoreKokkosView(bb, &b));
   PetscCall(VecRestoreKokkosViewWrite(xx, &x));
@@ -1861,9 +1870,7 @@ static PetscErrorCode MatSolve_SeqAIJKokkos_LU(Mat A, Vec bb, Vec xx)
   PetscCallCXX(sptrsv_solve(exec, &factors->khU, factors->iU_d, factors->jU_d, factors->aU_d, Y, X));
 
   // x = C X; Reorder X with the inverse col permutation
-  if (!col_identity) {
-    PetscCallCXX(Kokkos::parallel_for(Kokkos::RangePolicy<>(exec, 0, m), KOKKOS_LAMBDA(const PetscInt i) { x(colperm(i)) = X(i); }));
-  }
+  if (!col_identity) PetscCallCXX(Kokkos::parallel_for(Kokkos::RangePolicy<>(exec, 0, m), KOKKOS_LAMBDA(const PetscInt i) { x(colperm(i)) = X(i); }));
 
   PetscCall(VecRestoreKokkosView(bb, &b));
   PetscCall(VecRestoreKokkosViewWrite(xx, &x));
@@ -1914,9 +1921,7 @@ static PetscErrorCode MatSolveTranspose_SeqAIJKokkos_LU(Mat A, Vec bb, Vec xx)
   PetscCallCXX(sptrsv_solve(exec, &factors->khLt, factors->iLt_d, factors->jLt_d, factors->aLt_d, Y, X));
 
   // x = R^- X = R^T X; Reorder X with the inverse row permutation
-  if (!row_identity) {
-    PetscCallCXX(Kokkos::parallel_for(Kokkos::RangePolicy<>(exec, 0, m), KOKKOS_LAMBDA(const PetscInt i) { x(rowperm(i)) = X(i); }));
-  }
+  if (!row_identity) PetscCallCXX(Kokkos::parallel_for(Kokkos::RangePolicy<>(exec, 0, m), KOKKOS_LAMBDA(const PetscInt i) { x(rowperm(i)) = X(i); }));
 
   PetscCall(VecRestoreKokkosView(bb, &b));
   PetscCall(VecRestoreKokkosViewWrite(xx, &x));
@@ -1956,11 +1961,11 @@ static PetscErrorCode MatLUFactorNumeric_SeqAIJKokkos(Mat B, Mat A, const MatFac
         PetscInt llen = Bi[i + 1] - Bi[i];       // exclusive of the diagonal entry
         PetscInt ulen = Bdiag[i] - Bdiag[i + 1]; // inclusive of the diagonal entry
 
-        PetscArraycpy(Lj + Li[i], Bj + Bi[i], llen); // entries of L on the left of the diagonal
-        Lj[Li[i] + llen] = i;                        // diagonal entry of L
+        PetscCall(PetscArraycpy(Lj + Li[i], Bj + Bi[i], llen)); // entries of L on the left of the diagonal
+        Lj[Li[i] + llen] = i;                                   // diagonal entry of L
 
-        Uj[Ui[i]] = i;                                                  // diagonal entry of U
-        PetscArraycpy(Uj + Ui[i] + 1, Bj + Bdiag[i + 1] + 1, ulen - 1); // entries of U on  the right of the diagonal
+        Uj[Ui[i]] = i;                                                             // diagonal entry of U
+        PetscCall(PetscArraycpy(Uj + Ui[i] + 1, Bj + Bdiag[i + 1] + 1, ulen - 1)); // entries of U on  the right of the diagonal
 
         Li[i + 1] = Li[i] + llen + 1;
         Ui[i + 1] = Ui[i] + ulen;
@@ -2022,11 +2027,11 @@ static PetscErrorCode MatLUFactorNumeric_SeqAIJKokkos(Mat B, Mat A, const MatFac
       PetscScalar *La = factors->aL_h.data();
       PetscScalar *Ua = factors->aU_h.data();
 
-      PetscArraycpy(La + Li[i], Ba + Bi[i], llen); // entries of L
-      La[Li[i] + llen] = 1.0;                      // diagonal entry
+      PetscCall(PetscArraycpy(La + Li[i], Ba + Bi[i], llen)); // entries of L
+      La[Li[i] + llen] = 1.0;                                 // diagonal entry
 
-      Ua[Ui[i]] = 1.0 / Ba[Bdiag[i]];                                 // diagonal entry
-      PetscArraycpy(Ua + Ui[i] + 1, Ba + Bdiag[i + 1] + 1, ulen - 1); // entries of U
+      Ua[Ui[i]] = 1.0 / Ba[Bdiag[i]];                                            // diagonal entry
+      PetscCall(PetscArraycpy(Ua + Ui[i] + 1, Ba + Bdiag[i + 1] + 1, ulen - 1)); // entries of U
     }
 
     PetscCallCXX(Kokkos::deep_copy(factors->aL_d, factors->aL_h));
@@ -2303,7 +2308,7 @@ static PetscErrorCode MatFactorGetSolverType_SeqAIJKokkos_Kokkos(Mat A, MatSolve
 
   Level: beginner
 
-.seealso: [](ch_matrices), `Mat`, `PCFactorSetMatSolverType()`, `MatSolverType`, `MatCreateSeqAIJKokkos()`, `MATAIJKOKKOS`, `MatKokkosSetFormat()`, `MatKokkosStorageFormat`, `MatKokkosFormatOperation`
+.seealso: [](ch_matrices), `Mat`, `PCFactorSetMatSolverType()`, `MatSolverType`, `MatCreateSeqAIJKokkos()`, `MATAIJKOKKOS`
 M*/
 PETSC_EXTERN PetscErrorCode MatGetFactor_SeqAIJKokkos_Kokkos(Mat A, MatFactorType ftype, Mat *B) /* MatGetFactor_<MatType>_<MatSolverType> */
 {

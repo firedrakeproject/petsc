@@ -15,7 +15,7 @@ typedef struct {
   PetscBool strong; /* Do not integrate the Laplacian by parts */
 } AppCtx;
 
-static PetscErrorCode trig_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode trig_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   *u = 0.0;
@@ -41,7 +41,7 @@ static void g3_uu(PetscInt dim, PetscInt Nf, PetscInt NfAux, const PetscInt uOff
   for (d = 0; d < dim; ++d) g3[d * dim + d] = 1.0;
 }
 
-static PetscErrorCode quadratic_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode quadratic_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   *u = PetscSqr(x[0]) + PetscSqr(x[1]);
   return PETSC_SUCCESS;
@@ -108,12 +108,12 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
   if (user->strong) {
     PetscCall(PetscDSSetResidual(ds, 0, f0_strong_u, NULL));
     PetscCall(PetscDSSetExactSolution(ds, 0, quadratic_u, user));
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))quadratic_u, NULL, user, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscFortranCallbackFn *)quadratic_u, NULL, user, NULL));
   } else {
     PetscCall(PetscDSSetResidual(ds, 0, f0_trig_u, f1_u));
     PetscCall(PetscDSSetJacobian(ds, 0, 0, NULL, NULL, NULL, g3_uu));
     PetscCall(PetscDSSetExactSolution(ds, 0, trig_u, user));
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))trig_u, NULL, user, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)trig_u, NULL, user, NULL));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

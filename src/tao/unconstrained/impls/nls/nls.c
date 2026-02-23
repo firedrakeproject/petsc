@@ -95,7 +95,7 @@ static PetscErrorCode TaoSolve_NLS(Tao tao)
   /* Check convergence criteria */
   PetscCall(TaoComputeObjectiveAndGradient(tao, tao->solution, &f, tao->gradient));
   PetscCall(TaoGradientNorm(tao, tao->gradient, NORM_2, &gnorm));
-  PetscCheck(!PetscIsInfOrNanReal(f) && !PetscIsInfOrNanReal(gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
+  PetscCheck(!PetscIsInfOrNanReal(f) && !PetscIsInfOrNanReal(gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated infinity or NaN");
 
   tao->reason = TAO_CONTINUE_ITERATING;
   PetscCall(TaoLogConvergenceHistory(tao, f, gnorm, 0.0, tao->ksp_its));
@@ -219,7 +219,7 @@ static PetscErrorCode TaoSolve_NLS(Tao tao)
           PetscCall(TaoComputeGradient(tao, tao->solution, tao->gradient));
 
           PetscCall(TaoGradientNorm(tao, tao->gradient, NORM_2, &gnorm));
-          PetscCheck(!PetscIsInfOrNanReal(gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute gradient generated Inf or NaN");
+          PetscCheck(!PetscIsInfOrNanReal(gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute gradient generated infinity or NaN");
           needH = 1;
 
           PetscCall(TaoLogConvergenceHistory(tao, f, gnorm, 0.0, tao->ksp_its));
@@ -343,7 +343,7 @@ static PetscErrorCode TaoSolve_NLS(Tao tao)
     /* Check for success (descent direction) */
     PetscCall(VecDot(nlsP->D, tao->gradient, &gdx));
     if ((gdx >= 0.0) || PetscIsInfOrNanReal(gdx)) {
-      /* Newton step is not descent or direction produced Inf or NaN
+      /* Newton step is not descent or direction produced infinity or NaN
          Update the perturbation for next time */
       if (pert <= 0.0) {
         /* Initialize the perturbation */
@@ -694,7 +694,6 @@ static PetscErrorCode TaoSolve_NLS(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------- */
 static PetscErrorCode TaoSetUp_NLS(Tao tao)
 {
   TAO_NLS *nlsP = (TAO_NLS *)tao->data;
@@ -711,7 +710,6 @@ static PetscErrorCode TaoSetUp_NLS(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoDestroy_NLS(Tao tao)
 {
   TAO_NLS *nlsP = (TAO_NLS *)tao->data;
@@ -728,7 +726,6 @@ static PetscErrorCode TaoDestroy_NLS(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoSetFromOptions_NLS(Tao tao, PetscOptionItems PetscOptionsObject)
 {
   TAO_NLS *nlsP = (TAO_NLS *)tao->data;
@@ -788,7 +785,6 @@ static PetscErrorCode TaoSetFromOptions_NLS(Tao tao, PetscOptionItems PetscOptio
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoView_NLS(Tao tao, PetscViewer viewer)
 {
   TAO_NLS  *nlsP = (TAO_NLS *)tao->data;
@@ -814,7 +810,6 @@ static PetscErrorCode TaoView_NLS(Tao tao, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------- */
 /*MC
   TAONLS - Newton's method with linesearch for unconstrained minimization.
   At each iteration, the Newton line search method solves the symmetric

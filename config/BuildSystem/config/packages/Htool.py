@@ -3,7 +3,8 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self,framework):
     config.package.Package.__init__(self,framework)
-    self.gitcommit              = 'e436420e0a835187c47e883a8fa78fc90bca4167' # main may-23-2025
+    self.version                = '1.0.2'
+    self.gitcommit              = '3b9e00d869885c59d0ba2d8ee600a4b41b6447ff' # (v1.0.2+) v'+self.version # main feb-18-2026
     self.download               = ['git://https://github.com/htool-ddm/htool','https://github.com/htool-ddm/htool/archive/'+self.gitcommit+'.tar.gz']
     self.minversion             = '0.9.0'
     self.versionname            = 'HTOOL_VERSION_MAJOR.HTOOL_VERSION_MINOR.HTOOL_VERSION_SUBMINOR'
@@ -15,6 +16,7 @@ class Configure(config.package.Package):
     self.precisions             = ['single', 'double']
     self.usesopenmp             = 'yes'
     self.requires32bitint       = 1
+    self.minCxxVersion          = 'c++14'
     return
 
   def setupDependencies(self,framework):
@@ -34,9 +36,6 @@ class Configure(config.package.Package):
     import os
     incDir = os.path.join(self.installDir,self.includedir)
     self.include = [incDir]
-    if not hasattr(self.framework,'packages'):
-      self.framework.packages = []
-    self.framework.packages.append(self)
     srcdir = os.path.join(self.packageDir,'include','htool')
     destdir = os.path.join(incDir,'htool')
     try:

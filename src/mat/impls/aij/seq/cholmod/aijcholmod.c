@@ -11,8 +11,7 @@ static PetscErrorCode MatWrapCholmod_seqaij(Mat A, PetscBool values, cholmod_spa
   PetscBool          vain = PETSC_FALSE;
 
   PetscFunctionBegin;
-  PetscCall(MatMarkDiagonal_SeqAIJ(A));
-  adiag = aij->diag;
+  PetscCall(MatGetDiagonalMarkers_SeqAIJ(A, &adiag, NULL));
   for (i = 0, nz = 0; i < m; i++) nz += ai[i + 1] - adiag[i];
   PetscCall(PetscMalloc2(m + 1, &ci, nz, &cj));
   if (values) {
@@ -64,13 +63,11 @@ PETSC_INTERN PetscErrorCode MatGetFactor_seqaij_cholmod(Mat A, MatFactorType fty
   PetscInt     m = A->rmap->n, n = A->cmap->n;
 
   PetscFunctionBegin;
-#if defined(PETSC_USE_COMPLEX)
-  if (A->hermitian != PETSC_BOOL3_TRUE) {
+  if (PetscDefined(USE_COMPLEX) && A->hermitian != PETSC_BOOL3_TRUE) {
     PetscCall(PetscInfo(A, "Only for Hermitian matrices.\n"));
     *F = NULL;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
-#endif
   /* Create the factorization matrix F */
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), &B));
   PetscCall(MatSetSizes(B, PETSC_DECIDE, PETSC_DECIDE, m, n));

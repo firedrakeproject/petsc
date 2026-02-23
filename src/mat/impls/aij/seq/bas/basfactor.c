@@ -6,11 +6,10 @@ static PetscErrorCode MatICCFactorSymbolic_SeqAIJ_Bas(Mat fact, Mat A, IS perm, 
 {
   Mat_SeqAIJ     *a = (Mat_SeqAIJ *)A->data;
   Mat_SeqSBAIJ   *b;
-  PetscBool       perm_identity, missing;
+  PetscBool       perm_identity, diagDense;
   PetscInt        reallocs = 0, i, *ai = a->i, *aj = a->j, am = A->rmap->n, *ui;
-  const PetscInt *rip, *riip;
+  const PetscInt *rip, *riip, *adiag;
   PetscInt        j;
-  PetscInt        d;
   PetscInt        ncols, *cols, *uj;
   PetscReal       fill = info->fill, levels = info->levels;
   IS              iperm;
@@ -18,8 +17,8 @@ static PetscErrorCode MatICCFactorSymbolic_SeqAIJ_Bas(Mat fact, Mat A, IS perm, 
 
   PetscFunctionBegin;
   PetscCheck(A->rmap->n == A->cmap->n, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Must be square matrix, rows %" PetscInt_FMT " columns %" PetscInt_FMT, A->rmap->n, A->cmap->n);
-  PetscCall(MatMissingDiagonal(A, &missing, &d));
-  PetscCheck(!missing, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Matrix is missing diagonal entry %" PetscInt_FMT, d);
+  PetscCall(MatGetDiagonalMarkers_SeqAIJ(A, &adiag, &diagDense));
+  PetscCheck(diagDense, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Matrix is missing diagonal entries");
   PetscCall(ISIdentity(perm, &perm_identity));
   PetscCall(ISInvertPermutation(perm, PETSC_DECIDE, &iperm));
 
@@ -28,11 +27,11 @@ static PetscErrorCode MatICCFactorSymbolic_SeqAIJ_Bas(Mat fact, Mat A, IS perm, 
     PetscCall(PetscMalloc1(am + 1, &ui));
     ui[0] = 0;
 
-    for (i = 0; i < am; i++) ui[i + 1] = ui[i] + ai[i + 1] - a->diag[i];
+    for (i = 0; i < am; i++) ui[i + 1] = ui[i] + ai[i + 1] - adiag[i];
     PetscCall(PetscMalloc1(ui[am] + 1, &uj));
     cols = uj;
     for (i = 0; i < am; i++) {
-      aj    = a->j + a->diag[i];
+      aj    = a->j + adiag[i];
       ncols = ui[i + 1] - ui[i];
       for (j = 0; j < ncols; j++) *cols++ = *aj++;
     }
@@ -61,7 +60,7 @@ static PetscErrorCode MatICCFactorSymbolic_SeqAIJ_Bas(Mat fact, Mat A, IS perm, 
   /* put together the new matrix in MATSEQSBAIJ format */
 
   b = (Mat_SeqSBAIJ *)fact->data;
-  PetscCall(PetscMalloc1(ui[am] + 1, &b->a));
+  PetscCall(PetscMalloc1(ui[am], &b->a));
 
   b->j    = uj;
   b->i    = ui;
@@ -76,7 +75,7 @@ static PetscErrorCode MatICCFactorSymbolic_SeqAIJ_Bas(Mat fact, Mat A, IS perm, 
 
   b->icol          = iperm;
   b->pivotinblocks = PETSC_FALSE; /* need to get from MatFactorInfo */
-  PetscCall(PetscMalloc1(am + 1, &b->solve_work));
+  PetscCall(PetscMalloc1(am, &b->solve_work));
   b->maxnz = b->nz = ui[am];
   b->free_a        = PETSC_TRUE;
   b->free_ij       = PETSC_TRUE;
@@ -183,16 +182,15 @@ PETSC_INTERN PetscErrorCode MatGetFactor_seqaij_bas(Mat A, MatFactorType ftype, 
   PetscFunctionBegin;
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), B));
   PetscCall(MatSetSizes(*B, n, n, n, n));
-  if (ftype == MAT_FACTOR_ICC) {
-    PetscCall(MatSetType(*B, MATSEQSBAIJ));
-    PetscCall(MatSeqSBAIJSetPreallocation(*B, 1, MAT_SKIP_ALLOCATION, NULL));
+  PetscCheck(ftype == MAT_FACTOR_ICC, PETSC_COMM_SELF, PETSC_ERR_SUP, "Factor type not supported");
+  PetscCall(MatSetType(*B, MATSEQSBAIJ));
+  PetscCall(MatSeqSBAIJSetPreallocation(*B, 1, MAT_SKIP_ALLOCATION, NULL));
 
-    (*B)->ops->iccfactorsymbolic     = MatICCFactorSymbolic_SeqAIJ_Bas;
-    (*B)->ops->choleskyfactornumeric = MatCholeskyFactorNumeric_SeqAIJ_Bas;
-    PetscCall(PetscObjectComposeFunction((PetscObject)*B, "MatFactorGetSolverType_C", MatFactorGetSolverType_seqaij_bas));
-    PetscCall(PetscStrallocpy(MATORDERINGND, (char **)&(*B)->preferredordering[MAT_FACTOR_LU]));
-    PetscCall(PetscStrallocpy(MATORDERINGND, (char **)&(*B)->preferredordering[MAT_FACTOR_CHOLESKY]));
-  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Factor type not supported");
+  (*B)->ops->iccfactorsymbolic     = MatICCFactorSymbolic_SeqAIJ_Bas;
+  (*B)->ops->choleskyfactornumeric = MatCholeskyFactorNumeric_SeqAIJ_Bas;
+  PetscCall(PetscObjectComposeFunction((PetscObject)*B, "MatFactorGetSolverType_C", MatFactorGetSolverType_seqaij_bas));
+  PetscCall(PetscStrallocpy(MATORDERINGND, (char **)&(*B)->preferredordering[MAT_FACTOR_LU]));
+  PetscCall(PetscStrallocpy(MATORDERINGND, (char **)&(*B)->preferredordering[MAT_FACTOR_CHOLESKY]));
   (*B)->factortype = ftype;
 
   PetscCall(PetscFree((*B)->solvertype));

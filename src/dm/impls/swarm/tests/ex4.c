@@ -126,7 +126,7 @@ static PetscErrorCode CreateSwarm(DM dm, AppCtx *user, DM *sw)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec G, void *ctx)
+static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec G, PetscCtx ctx)
 {
   const PetscReal    omega = ((AppCtx *)ctx)->omega;
   DM                 sw;
@@ -156,7 +156,7 @@ static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec G, void *ctx)
    J_p = (  0   1)
          (-w^2  0)
 */
-static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat J, Mat P, void *ctx)
+static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat J, Mat P, PetscCtx ctx)
 {
   PetscScalar vals[4] = {0., 1., -PetscSqr(((AppCtx *)ctx)->omega), 0.};
   DM          sw;
@@ -179,7 +179,7 @@ static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat J, Mat P, void 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSFunctionX(TS ts, PetscReal t, Vec V, Vec Xres, void *ctx)
+static PetscErrorCode RHSFunctionX(TS ts, PetscReal t, Vec V, Vec Xres, PetscCtx ctx)
 {
   const PetscScalar *v;
   PetscScalar       *xres;
@@ -195,7 +195,7 @@ static PetscErrorCode RHSFunctionX(TS ts, PetscReal t, Vec V, Vec Xres, void *ct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSFunctionV(TS ts, PetscReal t, Vec X, Vec Vres, void *ctx)
+static PetscErrorCode RHSFunctionV(TS ts, PetscReal t, Vec X, Vec Vres, PetscCtx ctx)
 {
   const PetscReal    omega = ((AppCtx *)ctx)->omega;
   const PetscScalar *x;
@@ -212,7 +212,7 @@ static PetscErrorCode RHSFunctionV(TS ts, PetscReal t, Vec X, Vec Vres, void *ct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode RHSJacobianS(TS ts, PetscReal t, Vec U, Mat S, void *ctx)
+PetscErrorCode RHSJacobianS(TS ts, PetscReal t, Vec U, Mat S, PetscCtx ctx)
 {
   PetscScalar vals[4] = {0., 1., -1., 0.};
   DM          sw;
@@ -235,7 +235,7 @@ PetscErrorCode RHSJacobianS(TS ts, PetscReal t, Vec U, Mat S, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode RHSObjectiveF(TS ts, PetscReal t, Vec U, PetscScalar *F, void *ctx)
+PetscErrorCode RHSObjectiveF(TS ts, PetscReal t, Vec U, PetscScalar *F, PetscCtx ctx)
 {
   const PetscReal    omega = ((AppCtx *)ctx)->omega;
   DM                 sw;
@@ -260,7 +260,7 @@ PetscErrorCode RHSObjectiveF(TS ts, PetscReal t, Vec U, PetscScalar *F, void *ct
 }
 
 /* dF/dx = omega^2 x   dF/dv = v */
-PetscErrorCode RHSFunctionG(TS ts, PetscReal t, Vec U, Vec G, void *ctx)
+PetscErrorCode RHSFunctionG(TS ts, PetscReal t, Vec U, Vec G, PetscCtx ctx)
 {
   const PetscReal    omega = ((AppCtx *)ctx)->omega;
   DM                 sw;
@@ -312,7 +312,7 @@ static PetscErrorCode SetProblem(TS ts)
 
   PetscFunctionBegin;
   PetscCall(TSGetDM(ts, &sw));
-  PetscCall(DMGetApplicationContext(sw, (void **)&user));
+  PetscCall(DMGetApplicationContext(sw, &user));
   // Define unified system for (X, V)
   {
     Mat      J;
@@ -438,7 +438,7 @@ static PetscErrorCode ComputeError(TS ts, Vec U, Vec E)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode EnergyMonitor(TS ts, PetscInt step, PetscReal t, Vec U, void *ctx)
+static PetscErrorCode EnergyMonitor(TS ts, PetscInt step, PetscReal t, Vec U, PetscCtx ctx)
 {
   const PetscReal    omega = ((AppCtx *)ctx)->omega;
   const PetscInt     ostep = ((AppCtx *)ctx)->ostep;
@@ -531,7 +531,7 @@ int main(int argc, char **argv)
        args: -ts_basicsymplectic_type 3
      test:
        suffix: bsi_4
-       args: -ts_basicsymplectic_type 4 -ts_dt 0.0001
+       args: -ts_basicsymplectic_type 4 -ts_time_step 0.0001
 
    testset:
      args: -dm_plex_dim 2 -dm_plex_simplex 0 -dm_plex_box_faces 1,1 -dm_plex_box_lower -1,-1 -dm_plex_box_upper 1,1 \
@@ -549,7 +549,7 @@ int main(int argc, char **argv)
        args: -ts_basicsymplectic_type 3
      test:
        suffix: bsi_2d_4
-       args: -ts_basicsymplectic_type 4 -ts_dt 0.0001
+       args: -ts_basicsymplectic_type 4 -ts_time_step 0.0001
 
    testset:
      args: -dm_plex_dim 3 -dm_plex_simplex 0 -dm_plex_box_faces 1,1 -dm_plex_box_lower -1,-1,-1 -dm_plex_box_upper 1,1,1 \
@@ -567,7 +567,7 @@ int main(int argc, char **argv)
        args: -ts_basicsymplectic_type 3
      test:
        suffix: bsi_3d_4
-       args: -ts_basicsymplectic_type 4 -ts_dt 0.0001
+       args: -ts_basicsymplectic_type 4 -ts_time_step 0.0001
 
    testset:
      args: -dm_swarm_num_particles 2 -dm_swarm_coordinate_density constant \

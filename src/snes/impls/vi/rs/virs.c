@@ -55,7 +55,7 @@ static PetscErrorCode DMCreateGlobalVector_SNESVI(DM dm, Vec *vec)
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)dm, "VI", (PetscObject *)&isnes));
   PetscCheck(isnes, PetscObjectComm((PetscObject)dm), PETSC_ERR_PLIB, "Composed SNES is missing");
-  PetscCall(PetscContainerGetPointer(isnes, (void **)&dmsnesvi));
+  PetscCall(PetscContainerGetPointer(isnes, &dmsnesvi));
   PetscCall(VecCreateMPI(PetscObjectComm((PetscObject)dm), dmsnesvi->n, PETSC_DETERMINE, vec));
   PetscCall(VecSetDM(*vec, dm));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -73,10 +73,10 @@ static PetscErrorCode DMCreateInterpolation_SNESVI(DM dm1, DM dm2, Mat *mat, Vec
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)dm1, "VI", (PetscObject *)&isnes));
   PetscCheck(isnes, PetscObjectComm((PetscObject)dm1), PETSC_ERR_PLIB, "Composed VI data structure is missing");
-  PetscCall(PetscContainerGetPointer(isnes, (void **)&dmsnesvi1));
+  PetscCall(PetscContainerGetPointer(isnes, &dmsnesvi1));
   PetscCall(PetscObjectQuery((PetscObject)dm2, "VI", (PetscObject *)&isnes));
   PetscCheck(isnes, PetscObjectComm((PetscObject)dm2), PETSC_ERR_PLIB, "Composed VI data structure is missing");
-  PetscCall(PetscContainerGetPointer(isnes, (void **)&dmsnesvi2));
+  PetscCall(PetscContainerGetPointer(isnes, &dmsnesvi2));
 
   PetscCall((*dmsnesvi1->createinterpolation)(dm1, dm2, &interp, NULL));
   PetscCall(MatCreateSubMatrix(interp, dmsnesvi2->inactive, dmsnesvi1->inactive, MAT_INITIAL_MATRIX, mat));
@@ -102,7 +102,7 @@ static PetscErrorCode DMCoarsen_SNESVI(DM dm1, MPI_Comm comm, DM *dm2)
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)dm1, "VI", (PetscObject *)&isnes));
   PetscCheck(isnes, PetscObjectComm((PetscObject)dm1), PETSC_ERR_PLIB, "Composed VI data structure is missing");
-  PetscCall(PetscContainerGetPointer(isnes, (void **)&dmsnesvi1));
+  PetscCall(PetscContainerGetPointer(isnes, &dmsnesvi1));
 
   /* get the original coarsen */
   PetscCall((*dmsnesvi1->coarsen)(dm1, comm, dm2));
@@ -162,9 +162,9 @@ static PetscErrorCode DMCoarsen_SNESVI(DM dm1, MPI_Comm comm, DM *dm2)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMDestroy_SNESVI(void **ctx)
+static PetscErrorCode DMDestroy_SNESVI(PetscCtxRt ctx)
 {
-  DM_SNESVI *dmsnesvi = (DM_SNESVI *)*ctx;
+  DM_SNESVI *dmsnesvi = *(DM_SNESVI **)ctx;
 
   PetscFunctionBegin;
   /* reset the base methods in the DM object that were changed when the DM_SNESVI was reset */
@@ -222,7 +222,7 @@ PetscErrorCode DMSetVI(DM dm, IS inactive)
     dmsnesvi->hascreateinjection  = dm->ops->hascreateinjection;
     dm->ops->hascreateinjection   = NULL;
   } else {
-    PetscCall(PetscContainerGetPointer(isnes, (void **)&dmsnesvi));
+    PetscCall(PetscContainerGetPointer(isnes, &dmsnesvi));
     PetscCall(ISDestroy(&dmsnesvi->inactive));
   }
   PetscCall(DMClearGlobalVectors(dm));
@@ -297,7 +297,7 @@ static PetscErrorCode SNESSolve_VINEWTONRSLS(SNES snes)
 {
   SNES_VINEWTONRSLS   *vi = (SNES_VINEWTONRSLS *)snes->data;
   PetscInt             maxits, i, lits;
-  SNESLineSearchReason lssucceed;
+  SNESLineSearchReason lsreason;
   PetscReal            fnorm, gnorm, xnorm = 0, ynorm;
   Vec                  Y, X, F;
   KSPConvergedReason   kspreason;
@@ -332,7 +332,7 @@ static PetscErrorCode SNESSolve_VINEWTONRSLS(SNES snes)
   PetscCall(SNESComputeFunction(snes, X, F));
   PetscCall(SNESVIComputeInactiveSetFnorm(snes, F, X, &fnorm));
   PetscCall(VecNorm(X, NORM_2, &xnorm)); /* xnorm <- ||x||  */
-  SNESCheckFunctionNorm(snes, fnorm);
+  SNESCheckFunctionDomainError(snes, fnorm);
   PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
   snes->norm = fnorm;
   PetscCall(PetscObjectSAWsGrantAccess((PetscObject)snes));
@@ -355,7 +355,7 @@ static PetscErrorCode SNESSolve_VINEWTONRSLS(SNES snes)
     /* Call general purpose update function */
     PetscTryTypeMethod(snes, update, snes->iter);
     PetscCall(SNESComputeJacobian(snes, X, snes->jacobian, snes->jacobian_pre));
-    SNESCheckJacobianDomainerror(snes);
+    SNESCheckJacobianDomainError(snes);
 
     /* Create active and inactive index sets */
 
@@ -443,9 +443,8 @@ static PetscErrorCode SNESSolve_VINEWTONRSLS(SNES snes)
 
     /* Active set direction = 0 */
     PetscCall(VecSet(Y_act, 0));
-    if (snes->jacobian != snes->jacobian_pre) {
-      PetscCall(MatCreateSubMatrix(snes->jacobian_pre, vi->IS_inact, vi->IS_inact, MAT_INITIAL_MATRIX, &prejac_inact_inact));
-    } else prejac_inact_inact = jac_inact_inact;
+    if (snes->jacobian != snes->jacobian_pre) PetscCall(MatCreateSubMatrix(snes->jacobian_pre, vi->IS_inact, vi->IS_inact, MAT_INITIAL_MATRIX, &prejac_inact_inact));
+    else prejac_inact_inact = jac_inact_inact;
 
     PetscCall(ISEqual(vi->IS_inact_prev, vi->IS_inact, &isequal));
     if (!isequal) {
@@ -536,25 +535,36 @@ static PetscErrorCode SNESSolve_VINEWTONRSLS(SNES snes)
     ynorm = 1;
     gnorm = fnorm;
     PetscCall(SNESLineSearchApply(snes->linesearch, X, F, &gnorm, Y));
-    PetscCall(SNESLineSearchGetReason(snes->linesearch, &lssucceed));
-    PetscCall(SNESLineSearchGetNorms(snes->linesearch, &xnorm, &gnorm, &ynorm));
-    PetscCall(PetscInfo(snes, "fnorm=%18.16e, gnorm=%18.16e, ynorm=%18.16e, lssucceed=%d\n", (double)fnorm, (double)gnorm, (double)ynorm, (int)lssucceed));
-    if (snes->reason == SNES_DIVERGED_FUNCTION_COUNT) break;
-    if (snes->domainerror) {
-      snes->reason = SNES_DIVERGED_FUNCTION_DOMAIN;
-      PetscCall(DMDestroyVI(snes->dm));
-      PetscFunctionReturn(PETSC_SUCCESS);
-    }
-    if (lssucceed) {
-      if (++snes->numFailures >= snes->maxFailures) {
+    PetscCall(DMDestroyVI(snes->dm));
+    if (snes->reason) break;
+    PetscCall(SNESLineSearchGetReason(snes->linesearch, &lsreason));
+    if (lsreason) {
+      if (snes->stol * xnorm > ynorm) {
+        snes->reason = SNES_CONVERGED_SNORM_RELATIVE;
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_FUNCTION_DOMAIN) {
+        snes->reason = SNES_DIVERGED_FUNCTION_DOMAIN;
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_NANORINF) {
+        snes->reason = SNES_DIVERGED_FUNCTION_NANORINF;
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_OBJECTIVE_DOMAIN) {
+        snes->reason = SNES_DIVERGED_OBJECTIVE_DOMAIN;
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_JACOBIAN_DOMAIN) {
+        snes->reason = SNES_DIVERGED_JACOBIAN_DOMAIN;
+        break;
+      } else if (++snes->numFailures >= snes->maxFailures) {
         PetscBool ismin;
+
         snes->reason = SNES_DIVERGED_LINE_SEARCH;
         PetscCall(SNESVICheckLocalMin_Private(snes, snes->jacobian, F, X, gnorm, &ismin));
         if (ismin) snes->reason = SNES_DIVERGED_LOCAL_MIN;
         break;
       }
     }
-    PetscCall(DMDestroyVI(snes->dm));
+    PetscCall(SNESLineSearchGetNorms(snes->linesearch, &xnorm, &gnorm, &ynorm));
+    PetscCall(PetscInfo(snes, "fnorm=%18.16e, gnorm=%18.16e, ynorm=%18.16e, lssucceed=%d\n", (double)fnorm, (double)gnorm, (double)ynorm, (int)lsreason));
     /* Update function and solution vectors */
     fnorm = gnorm;
     /* Monitor convergence */
@@ -594,7 +604,7 @@ static PetscErrorCode SNESSolve_VINEWTONRSLS(SNES snes)
 
 .seealso: [](ch_snes), `SNES`, `SNESVINEWTONRSLS`, `SNESVIGetInactiveSet()`, `DMSetVI()`
  @*/
-PetscErrorCode SNESVISetRedundancyCheck(SNES snes, PetscErrorCode (*func)(SNES, IS, IS *, void *), void *ctx)
+PetscErrorCode SNESVISetRedundancyCheck(SNES snes, PetscErrorCode (*func)(SNES, IS, IS *, void *), PetscCtx ctx)
 {
   SNES_VINEWTONRSLS *vi = (SNES_VINEWTONRSLS *)snes->data;
 
@@ -613,7 +623,7 @@ typedef struct {
   mxArray *ctx;
 } SNESMatlabContext;
 
-PetscErrorCode SNESVIRedundancyCheck_Matlab(SNES snes, IS is_act, IS *is_redact, void *ctx)
+PetscErrorCode SNESVIRedundancyCheck_Matlab(SNES snes, IS is_act, IS *is_redact, PetscCtx ctx)
 {
   SNESMatlabContext *sctx = (SNESMatlabContext *)ctx;
   int                nlhs = 1, nrhs = 5;
@@ -677,8 +687,8 @@ static PetscErrorCode SNESSetUp_VINEWTONRSLS(SNES snes)
   /* Set up previous active index set for the first snes solve
    vi->IS_inact_prev = 0,1,2,....N */
 
-  PetscCall(VecGetOwnershipRange(snes->vec_sol, &rstart, &rend));
-  PetscCall(VecGetLocalSize(snes->vec_sol, &n));
+  PetscCall(VecGetOwnershipRange(snes->work[0], &rstart, &rend));
+  PetscCall(VecGetLocalSize(snes->work[0], &n));
   PetscCall(PetscMalloc1(n, &indices));
   for (i = 0; i < n; i++) indices[i] = rstart + i;
   PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)snes), n, indices, PETSC_OWN_POINTER, &vi->IS_inact_prev));

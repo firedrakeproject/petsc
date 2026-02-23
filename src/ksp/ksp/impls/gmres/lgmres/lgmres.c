@@ -557,12 +557,12 @@ static PetscErrorCode KSPBuildSolution_LGMRES(KSP ksp, Vec ptr, Vec *result)
 static PetscErrorCode KSPView_LGMRES(KSP ksp, PetscViewer viewer)
 {
   KSP_LGMRES *lgmres = (KSP_LGMRES *)ksp->data;
-  PetscBool   iascii;
+  PetscBool   isascii;
 
   PetscFunctionBegin;
   PetscCall(KSPView_GMRES(ksp, viewer));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     /* LGMRES_MOD */
     PetscCall(PetscViewerASCIIPrintf(viewer, "  aug. dimension=%" PetscInt_FMT "\n", lgmres->aug_dim));
     if (lgmres->approx_constant) PetscCall(PetscViewerASCIIPrintf(viewer, "  approx. space size was kept constant.\n"));
@@ -693,7 +693,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_LGMRES(KSP ksp)
 
   /* defaults */
   lgmres->haptol         = 1.0e-30;
-  lgmres->q_preallocate  = 0;
+  lgmres->q_preallocate  = PETSC_FALSE;
   lgmres->delta_allocate = LGMRES_DELTA_DIRECTIONS;
   lgmres->orthog         = KSPGMRESClassicalGramSchmidtOrthogonalization;
   lgmres->nrs            = NULL;

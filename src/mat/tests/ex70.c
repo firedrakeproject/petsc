@@ -48,9 +48,9 @@ typedef struct {
   Mat R;
 } proj_data;
 
-PetscErrorCode proj_destroy(void *ctx)
+PetscErrorCode proj_destroy(PetscCtxRt ctx)
 {
-  proj_data *userdata = (proj_data *)ctx;
+  proj_data *userdata = *(proj_data **)ctx;
 
   PetscFunctionBegin;
   PetscCheck(userdata, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing userdata");
@@ -116,7 +116,7 @@ PetscErrorCode MyPtShellPMultSymbolic(Mat S, Mat P, Mat PtAP, void **ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MyPtShellPMultNumeric(Mat S, Mat P, Mat PtAP, void *ctx)
+PetscErrorCode MyPtShellPMultNumeric(Mat S, Mat P, Mat PtAP, PetscCtx ctx)
 {
   Mat        A;
   proj_data *userdata = (proj_data *)ctx;
@@ -130,7 +130,7 @@ PetscErrorCode MyPtShellPMultNumeric(Mat S, Mat P, Mat PtAP, void *ctx)
   PetscCall(MatDestroy(&userdata->R));
   userdata->A = A;
   userdata->P = P;
-  PetscCall(MatShellSetOperation(PtAP, MATOP_MULT, (void (*)(void))proj_mult));
+  PetscCall(MatShellSetOperation(PtAP, MATOP_MULT, (PetscErrorCodeFn *)proj_mult));
   PetscCall(MatSetUp(PtAP));
   PetscCall(MatAssemblyBegin(PtAP, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(PtAP, MAT_FINAL_ASSEMBLY));
@@ -148,7 +148,7 @@ PetscErrorCode MyRShellRtMultSymbolic(Mat S, Mat R, Mat RARt, void **ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MyRShellRtMultNumeric(Mat S, Mat R, Mat RARt, void *ctx)
+PetscErrorCode MyRShellRtMultNumeric(Mat S, Mat R, Mat RARt, PetscCtx ctx)
 {
   Mat        A;
   proj_data *userdata = (proj_data *)ctx;
@@ -162,14 +162,14 @@ PetscErrorCode MyRShellRtMultNumeric(Mat S, Mat R, Mat RARt, void *ctx)
   PetscCall(MatDestroy(&userdata->R));
   userdata->A = A;
   userdata->R = R;
-  PetscCall(MatShellSetOperation(RARt, MATOP_MULT, (void (*)(void))proj_mult));
+  PetscCall(MatShellSetOperation(RARt, MATOP_MULT, (PetscErrorCodeFn *)proj_mult));
   PetscCall(MatSetUp(RARt));
   PetscCall(MatAssemblyBegin(RARt, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(RARt, MAT_FINAL_ASSEMBLY));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MyMatShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
+PetscErrorCode MyMatShellMatMultNumeric(Mat S, Mat B, Mat C, PetscCtx ctx)
 {
   Mat A;
 
@@ -179,7 +179,7 @@ PetscErrorCode MyMatShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MyMatTransposeShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
+PetscErrorCode MyMatTransposeShellMatMultNumeric(Mat S, Mat B, Mat C, PetscCtx ctx)
 {
   Mat A;
 
@@ -189,7 +189,7 @@ PetscErrorCode MyMatTransposeShellMatMultNumeric(Mat S, Mat B, Mat C, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MyMatShellMatTransposeMultNumeric(Mat S, Mat B, Mat C, void *ctx)
+PetscErrorCode MyMatShellMatTransposeMultNumeric(Mat S, Mat B, Mat C, PetscCtx ctx)
 {
   Mat A;
 
@@ -805,7 +805,7 @@ int main(int argc, char **args)
     requires: cuda
     nsize: 2
     suffix: 1_par_cuda
-    args: -local {{0 1}} -xgpu {{0 1}} -bgpu {{0 1}} -A_mat_type {{mpiaijcusparse mpiaij}} -testnest 0 -testmatmatt 0 -matmatmult_Bbn 3
+    args: -local {{0 1}} -xgpu {{0 1}} -bgpu {{0 1}} -A_mat_type {{mpiaijcusparse mpiaij}} -testnest 0 -testmatmatt 0 -matproduct_batch_size 3
 
   test:
     output_file: output/empty.out

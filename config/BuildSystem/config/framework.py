@@ -52,7 +52,7 @@ import re
 import sys
 import platform
 import pickle
-from hashlib import md5 as new_md5
+from hashlib import sha256 as checksum_algo
 
 class Framework(config.base.Configure, script.LanguageProcessor):
   '''This needs to manage configure information in itself just as Builder manages it for configurations'''
@@ -176,6 +176,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     help.addArgument('Framework', '-ignoreCompileOutput=<bool>', nargs.ArgBool(None, 1, 'Ignore compiler terminal output when checking if compiles succeed'))
     help.addArgument('Framework', '-ignoreLinkOutput=<bool>',    nargs.ArgBool(None, 1, 'Ignore linker terminal output when checking if links succeed'))
     help.addArgument('Framework', '-ignoreWarnings=<bool>',      nargs.ArgBool(None, 0, 'Ignore compiler and linker warnings in terminal output when checking if it succeeded'))
+    help.addArgument('Framework', '-ignoreCxxBoundCheck=<bool>', nargs.ArgBool(None, 0, 'Ignore Cxx dialect bound check'))
     help.addArgument('Framework', '-doCleanup=<bool>',           nargs.ArgBool(None, 1, 'Delete any configure generated files (turn off for debugging)'))
     help.addArgument('Framework', '-with-executables-search-path', nargs.Arg(None, searchdirs, 'A list of directories used to search for executables'))
     help.addArgument('Framework', '-with-packages-search-path',  nargs.Arg(None, packagedirs, 'A list of directories used to search for packages'))
@@ -212,6 +213,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
 
     buf = 'Environmental variables'
     for key,val in os.environ.items():
+      if key.find('KEY') > -1: continue
       buf += '\n'+str(key)+'='+str(val)
     self.logPrint(buf)
     def logPrintFilesInPath(path):
@@ -406,7 +408,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
         dependency = depPath
       else:
         dependency = os.path.dirname(dependency.__file__)
-    self.dependencies[dependency] = new_md5(pickle.dumps(framework)).hexdigest()
+    self.dependencies[dependency] = checksum_algo( pickle.dumps(framework) ).hexdigest()
     self.logPrint('Added configure dependency from '+dependency+'('+str(self.dependencies[dependency])+')')
     for child in framework.childGraph.vertices:
       child.argDB = self.argDB
@@ -419,7 +421,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
   def updatePackageDependencies(self):
     for dependency, digest in self.dependencies.items():
       framework = self.loadFramework(dependency)
-      if digest == new_md5(pickle.dumps(framework)).hexdigest():
+      if digest == checksum_algo( pickle.dumps(framework) ).hexdigest():
         continue
       self.logPrint('Configure dependency from '+dependency+' has changed. Reloading...')
       for child in framework.childGraph.vertices:
@@ -741,7 +743,6 @@ class Framework(config.base.Configure, script.LanguageProcessor):
         else:
           print(pair[0]+'  --->  '+str(self.argDB[pair[1]]))
     return
-
 
   def storeSubstitutions(self, argDB):
     '''Store all the substitutions in the argument database'''
@@ -1375,6 +1376,7 @@ class Framework(config.base.Configure, script.LanguageProcessor):
     minCxxVersionBlameList = {}
     maxCxxVersionBlameList = {}
     for child in ndepGraph:
+      if self.argDB['ignoreCxxBoundCheck']: continue
       if (self.argDB['with-batch'] and
           hasattr(child,'package') and
           'download-'+child.package in self.framework.clArgDB and

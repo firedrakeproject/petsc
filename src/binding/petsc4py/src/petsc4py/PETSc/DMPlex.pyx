@@ -421,6 +421,48 @@ cdef class DMPlex(DM):
         CHKERR(DMPlexCreateCohesiveSubmesh(self.dm, flag, NULL, cvalue, &subdm.dm))
         return subdm
 
+    def filter(self, label: DMLabel | None = None, value: int | None = None, ignoreHalo: bool = False,
+               sanitizeSubMesh: bool = False, comm: Comm | None = None) -> tuple[DMPlex, SF]:
+        """Extract a subset of mesh cells defined by a label as a separate mesh.
+
+        Collective.
+
+        Parameters
+        ----------
+        cellLabel
+            label marking cells to be contained in the new mesh
+        value
+            label value to use
+        ignoreHalo
+            Flag indicating if labeled points that are in the halo are ignored
+        sanitizeSubmesh
+            Flag indicating if a subpoint is forced to be owned by a rank that owns
+            a subcell that contains that point in its closure
+        comm
+           The communicator you want the mesh on
+
+        See Also
+        --------
+        DM, DMPlex, petsc.DMPlexFilter
+
+        """
+        cdef DM subdm = DMPlex()
+        cdef PetscDMLabel clbl = NULL
+        cdef MPI_Comm ccomm = MPI_COMM_NULL
+        cdef MPI_Comm dmcomm = MPI_COMM_NULL
+        cdef PetscInt cvalue = -1
+        cdef PetscBool cignoreHalo = ignoreHalo
+        cdef PetscBool csanitize = sanitizeSubMesh
+        cdef SF sf = SF()
+        if label is not None:
+            clbl = (<DMLabel?>label).dmlabel
+        if value is not None:
+            cvalue = asInt(value)
+        CHKERR(PetscObjectGetComm(<PetscObject>self.dm, &dmcomm))
+        ccomm = def_Comm(comm, dmcomm)
+        CHKERR(DMPlexFilter(self.dm, clbl, cvalue, cignoreHalo, csanitize, ccomm, &sf.sf, &subdm.dm))
+        return subdm, sf
+
     def getChart(self) -> tuple[int, int]:
         """Return the interval for all mesh points [``pStart``, ``pEnd``).
 
@@ -1582,7 +1624,7 @@ cdef class DMPlex(DM):
         CHKERR(DMPlexRebalanceSharedPoints(self.dm, centityDepth, cuseInitialGuess, cparallel, &csuccess))
         return toBool(csuccess)
 
-    def distribute(self, overlap: int | None = 0) -> SF or None:
+    def distribute(self, overlap: int | None = 0) -> SF | None:
         """Distribute the mesh and any associated sections.
 
         Collective.
@@ -3471,6 +3513,123 @@ cdef class DMPlex(DM):
 
         """
         CHKERR(DMPlexLocalVectorLoad(self.dm, viewer.vwr, sectiondm.dm, sf.sf, vec.vec))
+
+    def createNaturalVec(self) -> Vec:
+        """Return a natural vector.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.DMPlexCreateNaturalVector
+
+        """
+        cdef Vec nv = Vec()
+        CHKERR(DMPlexCreateNaturalVector(self.dm, &nv.vec))
+        return nv
+
+    def naturalToGlobalBegin(self, Vec nv, Vec gv) -> None:
+        """Rearrange a `Vec` in the natural order to the Global order.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.DMPlexNaturalToGlobalBegin
+
+        """
+        CHKERR(DMPlexNaturalToGlobalBegin(self.dm, nv.vec, gv.vec))
+
+    def naturalToGlobalEnd(self, Vec nv, Vec gv) -> None:
+        """Rearrange a `Vec` in the natural order to the Global order.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.DMPlexNaturalToGlobalEnd
+
+        """
+        CHKERR(DMPlexNaturalToGlobalEnd(self.dm, nv.vec, gv.vec))
+
+    def globalToNaturalBegin(self, Vec gv, Vec nv) -> None:
+        """Rearrange a `Vec` in the Global order to the natural order.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.DMPlexGlobalToNaturalBegin
+
+        """
+        CHKERR(DMPlexGlobalToNaturalBegin(self.dm, gv.vec, nv.vec))
+
+    def globalToNaturalEnd(self, Vec gv, Vec nv) -> None:
+        """Rearrange a `Vec` in the Global order to the natural order.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.DMPlexGlobalToNaturalEnd
+
+        """
+        CHKERR(DMPlexGlobalToNaturalEnd(self.dm, gv.vec, nv.vec))
+
+    def setMigrationSF(self, SF sf) -> None:
+        """Set the `SF` for migrating from a parent `DM` into this `DM`.
+
+        Not collective.
+
+        See Also
+        --------
+        petsc.DMPlexSetMigrationSF
+
+        """
+        CHKERR(DMPlexSetMigrationSF(self.dm, sf.sf))
+
+    def getMigrationSF(self) -> SF:
+        """Get the `SF` for migrating from a parent `DM` into this `DM`.
+
+        Not collective.
+
+        See Also
+        --------
+        petsc.DMPlexGetMigrationSF
+
+        """
+        cdef SF sf = SF()
+        CHKERR(DMPlexGetMigrationSF(self.dm, &sf.sf))
+        CHKERR(PetscINCREF(sf.obj))
+        return sf
+
+    def createGlobalToNaturalSF(self, Section section, SF sfMigration) -> SF:
+        """Create the `SF` for mapping Global `Vec` to the Natural `Vec`.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.DMPlexCreateGlobalToNaturalSF
+
+        """
+        cdef SF sf = SF()
+        CHKERR(DMPlexCreateGlobalToNaturalSF(self.dm, section.sec, sfMigration.sf, &sf.sf))
+        return sf
+
+    def migrateGlobalToNaturalSF(self, DM dmOld, SF sfNaturalOld, SF sfMigration) -> SF:
+        """Create the `SF` for mapping Global `Vec` to the Natural `Vec` in the new `DM`.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.DMPlexMigrateGlobalToNaturalSF
+
+        """
+        cdef SF sf = SF()
+        CHKERR(DMPlexMigrateGlobalToNaturalSF(dmOld.dm, self.dm, sfNaturalOld.sf, sfMigration.sf, &sf.sf))
+        return sf
 
 # --------------------------------------------------------------------
 

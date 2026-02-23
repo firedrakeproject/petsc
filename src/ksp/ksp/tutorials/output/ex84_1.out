@@ -45,15 +45,15 @@ KSP Object: 2 MPI processes
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
-  using NONE norm type for convergence test
+  not checking for convergence
 PC Object: 2 MPI processes
   type: redistribute
       Number rows eliminated 3 Percentage rows eliminated 50.
     Redistribute preconditioner: 
   KSP Object: (redistribute_) 2 MPI processes
     type: gmres
-      restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-      happy breakdown tolerance 1e-30
+      restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+      happy breakdown tolerance=1e-30
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
@@ -68,7 +68,7 @@ PC Object: 2 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (redistribute_fieldsplit_0_) 2 MPI processes
       type: bjacobi
         number of blocks = 2
@@ -79,7 +79,7 @@ PC Object: 2 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (redistribute_fieldsplit_0_sub_) 1 MPI process
           type: ilu
             out-of-place factorization
@@ -87,21 +87,21 @@ PC Object: 2 MPI processes
             tolerance for zero pivot 2.22045e-14
             matrix ordering: natural
             factor fill ratio given 1., needed 1.
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: (redistribute_fieldsplit_0_sub_) 1 MPI process
                   type: seqaij
                   rows=1, cols=1
                   package used to perform factorization: petsc
                   total: nonzeros=1, allocated nonzeros=1
                     not using I-node routines
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (redistribute_fieldsplit_0_sub_) 1 MPI process
             type: seqaij
             rows=1, cols=1
             total: nonzeros=1, allocated nonzeros=1
             total number of mallocs used during MatSetValues calls=0
               not using I-node routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (redistribute_fieldsplit_0_) 2 MPI processes
         type: mpiaij
         rows=1, cols=1
@@ -114,7 +114,7 @@ PC Object: 2 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (redistribute_fieldsplit_1_) 2 MPI processes
       type: bjacobi
         number of blocks = 2
@@ -125,7 +125,7 @@ PC Object: 2 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (redistribute_fieldsplit_1_sub_) 1 MPI process
           type: ilu
             out-of-place factorization
@@ -133,35 +133,35 @@ PC Object: 2 MPI processes
             tolerance for zero pivot 2.22045e-14
             matrix ordering: natural
             factor fill ratio given 1., needed 1.
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: (redistribute_fieldsplit_1_sub_) 1 MPI process
                   type: seqaij
                   rows=1, cols=1
                   package used to perform factorization: petsc
                   total: nonzeros=1, allocated nonzeros=1
                     not using I-node routines
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (redistribute_fieldsplit_1_sub_) 1 MPI process
             type: seqaij
             rows=1, cols=1
             total: nonzeros=1, allocated nonzeros=1
             total number of mallocs used during MatSetValues calls=0
               not using I-node routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (redistribute_fieldsplit_1_) 2 MPI processes
         type: mpiaij
         rows=2, cols=2
         total: nonzeros=2, allocated nonzeros=2
         total number of mallocs used during MatSetValues calls=0
           not using I-node (on process 0) routines
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 2 MPI processes
       type: mpiaij
       rows=3, cols=3
       total: nonzeros=5, allocated nonzeros=5
       total number of mallocs used during MatSetValues calls=0
         not using I-node (on process 0) routines
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 2 MPI processes
     type: mpiaij
     rows=6, cols=6
@@ -177,15 +177,15 @@ KSP Object: 2 MPI processes
   maximum iterations=10000, nonzero initial guess
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
-  using NONE norm type for convergence test
+  not checking for convergence
 PC Object: 2 MPI processes
   type: redistribute
       Number rows eliminated 3 Percentage rows eliminated 50.
     Redistribute preconditioner: 
   KSP Object: (redistribute_) 2 MPI processes
     type: gmres
-      restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-      happy breakdown tolerance 1e-30
+      restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+      happy breakdown tolerance=1e-30
     maximum iterations=10000, nonzero initial guess
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
@@ -200,7 +200,7 @@ PC Object: 2 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (redistribute_fieldsplit_0_) 2 MPI processes
       type: bjacobi
         number of blocks = 2
@@ -211,7 +211,7 @@ PC Object: 2 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (redistribute_fieldsplit_0_sub_) 1 MPI process
           type: ilu
             out-of-place factorization
@@ -219,21 +219,21 @@ PC Object: 2 MPI processes
             tolerance for zero pivot 2.22045e-14
             matrix ordering: natural
             factor fill ratio given 1., needed 1.
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: (redistribute_fieldsplit_0_sub_) 1 MPI process
                   type: seqaij
                   rows=1, cols=1
                   package used to perform factorization: petsc
                   total: nonzeros=1, allocated nonzeros=1
                     not using I-node routines
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (redistribute_fieldsplit_0_sub_) 1 MPI process
             type: seqaij
             rows=1, cols=1
             total: nonzeros=1, allocated nonzeros=1
             total number of mallocs used during MatSetValues calls=0
               not using I-node routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (redistribute_fieldsplit_0_) 2 MPI processes
         type: mpiaij
         rows=1, cols=1
@@ -246,7 +246,7 @@ PC Object: 2 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (redistribute_fieldsplit_1_) 2 MPI processes
       type: bjacobi
         number of blocks = 2
@@ -257,7 +257,7 @@ PC Object: 2 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (redistribute_fieldsplit_1_sub_) 1 MPI process
           type: ilu
             out-of-place factorization
@@ -265,35 +265,35 @@ PC Object: 2 MPI processes
             tolerance for zero pivot 2.22045e-14
             matrix ordering: natural
             factor fill ratio given 1., needed 1.
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: (redistribute_fieldsplit_1_sub_) 1 MPI process
                   type: seqaij
                   rows=1, cols=1
                   package used to perform factorization: petsc
                   total: nonzeros=1, allocated nonzeros=1
                     not using I-node routines
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (redistribute_fieldsplit_1_sub_) 1 MPI process
             type: seqaij
             rows=1, cols=1
             total: nonzeros=1, allocated nonzeros=1
             total number of mallocs used during MatSetValues calls=0
               not using I-node routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (redistribute_fieldsplit_1_) 2 MPI processes
         type: mpiaij
         rows=2, cols=2
         total: nonzeros=2, allocated nonzeros=2
         total number of mallocs used during MatSetValues calls=0
           not using I-node (on process 0) routines
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 2 MPI processes
       type: mpiaij
       rows=3, cols=3
       total: nonzeros=5, allocated nonzeros=5
       total number of mallocs used during MatSetValues calls=0
         not using I-node (on process 0) routines
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 2 MPI processes
     type: mpiaij
     rows=6, cols=6

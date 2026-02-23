@@ -5,9 +5,9 @@ class Configure(config.package.CMakePackage):
   def __init__(self, framework):
     config.package.CMakePackage.__init__(self, framework)
     self.minversion       = '6.3.0'
-    self.version          = '9.1.0'
+    self.version          = '9.2.1'
     self.versionname      = 'SUPERLU_DIST_MAJOR_VERSION.SUPERLU_DIST_MINOR_VERSION.SUPERLU_DIST_PATCH_VERSION'
-    self.gitcommit        = 'd2356a4491f105674b2ef0831b0e84d5922ebf42' # v9.1.0+, i.e.: master Jul 18, 2025
+    self.gitcommit        = 'v'+self.version
     self.download         = ['git://https://github.com/xiaoyeli/superlu_dist','https://github.com/xiaoyeli/superlu_dist/archive/'+self.gitcommit+'.tar.gz']
     self.functions        = ['set_default_options_dist']
     self.includes         = ['superlu_ddefs.h']
@@ -24,7 +24,7 @@ class Configure(config.package.CMakePackage):
   def setupHelp(self, help):
     config.package.CMakePackage.setupHelp(self,help)
     import nargs
-    help.addArgument('SUPERLU_DIST', '-with-superlu_dist-fortran-bindings', nargs.ArgBool(None, 1, 'Use/build SuperLU_DIST Fortran interface (PETSc does not need it)'))
+    help.addArgument('SUPERLU_DIST', '-with-superlu_dist-fortran-bindings', nargs.ArgBool(None, 0, 'Use/build SuperLU_DIST Fortran bindings (PETSc does not need it)'))
 
   def setupDependencies(self, framework):
     config.package.CMakePackage.setupDependencies(self, framework)
@@ -51,7 +51,6 @@ class Configure(config.package.CMakePackage):
         if item.find('CMAKE_C_FLAGS') >= 0 or item.find('CMAKE_CXX_FLAGS') >= 0:
           args[place]=item[:-1]+' '+self.headers.toString(self.cuda.include)+' -DDEBUGlevel=0 -DPRNTlevel=0"'
       args.append('-DTPL_ENABLE_CUDALIB=TRUE')
-      args.append('-DTPL_CUDA_LIBRARIES="'+self.libraries.toString(self.cuda.dlib)+'"')
       args.extend(self.cuda.getCmakeCUDAArchFlag())
       with self.Language('CUDA'):
         # already set in package.py so could be removed, but why are MPI include paths listed here
@@ -91,7 +90,6 @@ class Configure(config.package.CMakePackage):
     if empty:
       args.append('-DMPI_C_COMPILE_FLAGS:STRING=""')
       args.append('-DMPI_C_INCLUDE_PATH:STRING=""')
-      args.append('-DMPI_C_HEADER_DIR:STRING=""')
       args.append('-DMPI_C_LIBRARIES:STRING=""')
     return args
 

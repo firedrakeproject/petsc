@@ -134,6 +134,28 @@ class BaseTestPlex:
         self.assertNotEqual(numInterior, pEnd - pStart)
         self.assertEqual(numBoundary + numInterior, pEnd - pStart)
 
+    def testLocalSubmesh(self):
+        for ovl in [0, 1, 2]:
+            plex = self.plex.refine()
+            sf = plex.distribute(overlap=ovl)
+            if sf:
+                sf.destroy()
+            gis = plex.getCellNumbering()
+
+            for ignore in [True, False]:
+                locplex, _ = plex.filter(comm=PETSc.COMM_SELF, ignoreHalo=ignore)
+                lis = locplex.getCellNumbering()
+                if ignore:
+                    self.assertEqual(
+                        lis.getLocalSize(), len(np.where(gis.getIndices() > -1)[0])
+                    )
+                else:
+                    self.assertEqual(lis.getLocalSize(), gis.getLocalSize())
+                lis.destroy()
+                locplex.destroy()
+            gis.destroy()
+            plex.destroy()
+
     def testMetric(self):
         if self.DIM == 1:
             return
@@ -233,6 +255,21 @@ class BaseTestPlex:
             if exc.ierr != ERR_ARG_OUTOFRANGE:
                 raise
 
+    def testNatural(self):
+        dim = self.plex.getDimension()
+        ct = self.plex.getCellType(0)
+        fe = PETSc.FE().createByCell(dim, 1, ct)
+        self.plex.setField(0, fe)
+        self.plex.createDS()
+        self.plex.setUseNatural(True)
+        self.plex.distribute()
+        self.plex.view()
+        gv = self.plex.createGlobalVec()
+        nv = self.plex.createNaturalVec()
+        self.plex.globalToNaturalBegin(gv, nv)
+        self.plex.globalToNaturalEnd(gv, nv)
+        self.plex.naturalToGlobalBegin(nv, gv)
+        self.plex.naturalToGlobalEnd(nv, gv)
 
 # --------------------------------------------------------------------
 

@@ -789,12 +789,11 @@ void PetscCallMPINull(PetscMPIInt);
 #endif
 
 /*MC
-  CHKERRMPI - Checks error code returned from MPI calls, if non-zero it calls the error
-  handler and then returns
+  CHKERRMPI - Checks the error code returned from MPI calls, if different from `MPI_SUCCESS` it calls the error handler and then returns
 
   Synopsis:
   #include <petscsys.h>
-  void CHKERRMPI(PetscErrorCode ierr)
+  void CHKERRMPI(PetscMPIInt ierr)
 
   Not Collective
 
@@ -1006,10 +1005,9 @@ void PETSCABORT(MPI_Comm, PetscErrorCode);
   #define PETSCABORT(comm, ...) \
     do { \
       PetscErrorCode ierr_petsc_abort_; \
-      if (petscwaitonerrorflg) { ierr_petsc_abort_ = PetscSleep(1000); } \
-      if (petscindebugger) { \
-        abort(); \
-      } else { \
+      if (petscwaitonerrorflg) ierr_petsc_abort_ = PetscSleep(1000); \
+      if (petscindebugger) abort(); \
+      else { \
         ierr_petsc_abort_ = __VA_ARGS__; \
         PETSCABORTWITHIERR_Private(comm, ierr_petsc_abort_); \
       } \
@@ -1254,9 +1252,9 @@ M*/
    Level: beginner
 
    Notes:
-   We recommend using Valgrind <https://petsc.org/release/faq/#valgrind> or for NVIDIA CUDA systems
-   <https://docs.nvidia.com/cuda/cuda-memcheck/index.html> for finding memory problems. The ``CHKMEMQ`` macro is useful on systems that
-   do not have valgrind, but is not as good as valgrind or cuda-memcheck.
+   We recommend using Valgrind <https://petsc.org/release/faq/#valgrind> or Compute Sanitizer
+   <https://developer.nvidia.com/compute-sanitizer> on NVIDIA CUDA systems for finding memory problems. The ``CHKMEMQ``
+   macro is useful on systems that do not have `valgrind`, but is not as good as `valgrind` or `compute-sanitizer`.
 
    Must run with the option `-malloc_debug` (`-malloc_test` in debug mode; or if `PetscMallocSetDebug()` called) to enable this option
 
@@ -1302,8 +1300,7 @@ typedef enum {
 #if defined(__clang_analyzer__)
 __attribute__((analyzer_noreturn))
 #endif
-PETSC_EXTERN PetscErrorCode
-PetscError(MPI_Comm, int, const char *, const char *, PetscErrorCode, PetscErrorType, const char *, ...) PETSC_ATTRIBUTE_COLD PETSC_ATTRIBUTE_FORMAT(7, 8);
+PETSC_EXTERN PetscErrorCode PetscError(MPI_Comm, int, const char *, const char *, PetscErrorCode, PetscErrorType, const char *, ...) PETSC_ATTRIBUTE_COLD PETSC_ATTRIBUTE_FORMAT(7, 8);
 
 PETSC_EXTERN PetscErrorCode PetscErrorPrintfInitialize(void);
 PETSC_EXTERN PetscErrorCode PetscErrorMessage(PetscErrorCode, const char *[], char **);
@@ -1545,7 +1542,7 @@ M*/
 M*/
   #define PetscStackUpdateLine \
     do { \
-      if (petscstack.currentsize > 0 && petscstack.currentsize < PETSCSTACKSIZE && petscstack.function[petscstack.currentsize - 1] == PETSC_FUNCTION_NAME) { petscstack.line[petscstack.currentsize - 1] = __LINE__; } \
+      if (petscstack.currentsize > 0 && petscstack.currentsize < PETSCSTACKSIZE && petscstack.function[petscstack.currentsize - 1] == PETSC_FUNCTION_NAME) petscstack.line[petscstack.currentsize - 1] = __LINE__; \
     } while (0)
 
   /*MC

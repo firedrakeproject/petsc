@@ -952,7 +952,7 @@ cdef class Vec(Object):
     def createNest(
         self,
         vecs: Sequence[Vec],
-        isets: Sequence[IS] = None,
+        isets: Sequence[IS] | None = None,
         comm: Comm | None = None) -> Self:
         """Create a `Type.NEST` vector containing multiple nested subvectors.
 
@@ -2175,6 +2175,20 @@ cdef class Vec(Object):
         """
         cdef PetscScalar sval = 0
         CHKERR(VecSum(self.vec, &sval))
+        return toScalar(sval)
+
+    def mean(self) -> Scalar:
+        """Return the arithmetic mean of all the entries of the vector.
+
+        Collective.
+
+        See Also
+        --------
+        petsc.VecMean
+
+        """
+        cdef PetscScalar sval = 0
+        CHKERR(VecMean(self.vec, &sval))
         return toScalar(sval)
 
     def min(self) -> tuple[int, float]:

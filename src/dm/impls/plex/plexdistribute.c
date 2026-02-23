@@ -1,5 +1,6 @@
 #include <petsc/private/dmpleximpl.h>  /*I      "petscdmplex.h"   I*/
 #include <petsc/private/dmlabelimpl.h> /*I      "petscdmlabel.h"  I*/
+#include <petsc/private/partitionerimpl.h>
 
 /*@C
   DMPlexSetAdjacencyUser - Define adjacency in the mesh using a user-provided callback
@@ -18,7 +19,7 @@
 
 .seealso: `DMPLEX`, `DMSetAdjacency()`, `DMPlexDistribute()`, `DMPlexPreallocateOperator()`, `DMPlexGetAdjacency()`, `DMPlexGetAdjacencyUser()`
 @*/
-PetscErrorCode DMPlexSetAdjacencyUser(DM dm, PetscErrorCode (*user)(DM, PetscInt, PetscInt *, PetscInt[], void *), void *ctx)
+PetscErrorCode DMPlexSetAdjacencyUser(DM dm, PetscErrorCode (*user)(DM, PetscInt, PetscInt *, PetscInt[], void *), PetscCtx ctx)
 {
   DM_Plex *mesh = (DM_Plex *)dm->data;
 
@@ -176,10 +177,53 @@ static PetscErrorCode DMPlexGetAdjacency_Transitive_Internal(DM dm, PetscInt p, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+// Returns the maximum number of adjacent points in the DMPlex
+PetscErrorCode DMPlexGetMaxAdjacencySize_Internal(DM dm, PetscBool useAnchors, PetscInt *max_adjacency_size)
+{
+  PetscInt depth, maxC, maxS, maxP, pStart, pEnd, asiz, maxAnchors = 1;
+
+  PetscFunctionBeginUser;
+  if (useAnchors) {
+    PetscSection aSec = NULL;
+    IS           aIS  = NULL;
+    PetscInt     aStart, aEnd;
+    PetscCall(DMPlexGetAnchors(dm, &aSec, &aIS));
+    if (aSec) {
+      PetscCall(PetscSectionGetMaxDof(aSec, &maxAnchors));
+      maxAnchors = PetscMax(1, maxAnchors);
+      PetscCall(PetscSectionGetChart(aSec, &aStart, &aEnd));
+    }
+  }
+
+  PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
+  PetscCall(DMPlexGetDepth(dm, &depth));
+  depth = PetscMax(depth, -depth);
+  PetscCall(DMPlexGetMaxSizes(dm, &maxC, &maxS));
+  maxP = maxS * maxC;
+  /* Adjacency can be as large as supp(cl(cell)) or cl(supp(vertex)),
+          supp(cell) + supp(maxC faces) + supp(maxC^2 edges) + supp(maxC^3 vertices)
+        = 0 + maxS*maxC + maxS^2*maxC^2 + maxS^3*maxC^3
+        = \sum^d_{i=0} (maxS*maxC)^i - 1
+        = (maxS*maxC)^{d+1} - 1 / (maxS*maxC - 1) - 1
+    We could improve this by getting the max by strata:
+          supp[d](cell) + supp[d-1](maxC[d] faces) + supp[1](maxC[d]*maxC[d-1] edges) + supp[0](maxC[d]*maxC[d-1]*maxC[d-2] vertices)
+        = 0 + maxS[d-1]*maxC[d] + maxS[1]*maxC[d]*maxC[d-1] + maxS[0]*maxC[d]*maxC[d-1]*maxC[d-2]
+    and the same with S and C reversed
+  */
+  if ((depth == 3 && maxP > 200) || (depth == 2 && maxP > 580)) asiz = pEnd - pStart;
+  else asiz = (maxP > 1) ? ((PetscPowInt(maxP, depth + 1) - 1) / (maxP - 1)) : depth + 1;
+  asiz *= maxAnchors;
+  *max_adjacency_size = PetscMin(asiz, pEnd - pStart);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+// Returns Adjacent mesh points to the selected point given specific criteria
+//
+// + adjSize - Number of adjacent points
+// - adj - Array of the adjacent points
 PetscErrorCode DMPlexGetAdjacency_Internal(DM dm, PetscInt p, PetscBool useCone, PetscBool useTransitiveClosure, PetscBool useAnchors, PetscInt *adjSize, PetscInt *adj[])
 {
-  static PetscInt asiz       = 0;
-  PetscInt        maxAnchors = 1;
+  static PetscInt asiz   = 0;
   PetscInt        aStart = -1, aEnd = -1;
   PetscInt        maxAdjSize;
   PetscSection    aSec = NULL;
@@ -191,34 +235,12 @@ PetscErrorCode DMPlexGetAdjacency_Internal(DM dm, PetscInt p, PetscBool useCone,
   if (useAnchors) {
     PetscCall(DMPlexGetAnchors(dm, &aSec, &aIS));
     if (aSec) {
-      PetscCall(PetscSectionGetMaxDof(aSec, &maxAnchors));
-      maxAnchors = PetscMax(1, maxAnchors);
       PetscCall(PetscSectionGetChart(aSec, &aStart, &aEnd));
       PetscCall(ISGetIndices(aIS, &anchors));
     }
   }
   if (!*adj) {
-    PetscInt depth, maxC, maxS, maxP, pStart, pEnd;
-
-    PetscCall(DMPlexGetChart(dm, &pStart, &pEnd));
-    PetscCall(DMPlexGetDepth(dm, &depth));
-    depth = PetscMax(depth, -depth);
-    PetscCall(DMPlexGetMaxSizes(dm, &maxC, &maxS));
-    maxP = maxS * maxC;
-    /* Adjacency can be as large as supp(cl(cell)) or cl(supp(vertex)),
-           supp(cell) + supp(maxC faces) + supp(maxC^2 edges) + supp(maxC^3 vertices)
-         = 0 + maxS*maxC + maxS^2*maxC^2 + maxS^3*maxC^3
-         = \sum^d_{i=0} (maxS*maxC)^i - 1
-         = (maxS*maxC)^{d+1} - 1 / (maxS*maxC - 1) - 1
-      We could improve this by getting the max by strata:
-           supp[d](cell) + supp[d-1](maxC[d] faces) + supp[1](maxC[d]*maxC[d-1] edges) + supp[0](maxC[d]*maxC[d-1]*maxC[d-2] vertices)
-         = 0 + maxS[d-1]*maxC[d] + maxS[1]*maxC[d]*maxC[d-1] + maxS[0]*maxC[d]*maxC[d-1]*maxC[d-2]
-      and the same with S and C reversed
-    */
-    if ((depth == 3 && maxP > 200) || (depth == 2 && maxP > 580)) asiz = pEnd - pStart;
-    else asiz = (maxP > 1) ? ((PetscPowInt(maxP, depth + 1) - 1) / (maxP - 1)) : depth + 1;
-    asiz *= maxAnchors;
-    asiz = PetscMin(asiz, pEnd - pStart);
+    PetscCall(DMPlexGetMaxAdjacencySize_Internal(dm, useAnchors, &asiz));
     PetscCall(PetscMalloc1(asiz, adj));
   }
   if (*adjSize < 0) *adjSize = asiz;
@@ -938,7 +960,7 @@ PetscErrorCode DMPlexStratifyMigrationSF(DM dm, PetscSF sf, PetscSF *migrationSF
     for (c = 0; c < DM_NUM_POLYTOPES; ++c) {
       const PetscInt ctDim = DMPolytopeTypeGetDim((DMPolytopeType)c);
 
-      if ((ctDim < 0 || ctDim > dim) && (c != DM_POLYTOPE_FV_GHOST && c != DM_POLYTOPE_INTERIOR_GHOST && c != DM_POLYTOPE_UNKNOWN_CELL)) {
+      if ((ctDim < 0 || ctDim > dim) && c != DM_POLYTOPE_FV_GHOST && c != DM_POLYTOPE_INTERIOR_GHOST && c != DM_POLYTOPE_UNKNOWN_CELL) {
         ctShift[c] = shift;
         shift += ctRecv[c];
       }
@@ -978,7 +1000,7 @@ PetscErrorCode DMPlexStratifyMigrationSF(DM dm, PetscSF sf, PetscSF *migrationSF
 
   Level: developer
 
-.seealso: `DMPLEX`, `DMPlexDistribute()`, `DMPlexDistributeFieldIS()`, `DMPlexDistributeData()`
+.seealso: `DMPLEX`, `DMPlexDistribute()`, `DMPlexDistributeFieldIS()`, `DMPlexDistributeData()`, `PetscSectionMigrateData()`
 @*/
 PetscErrorCode DMPlexDistributeField(DM dm, PetscSF pointSF, PetscSection originalSection, Vec originalVec, PetscSection newSection, Vec newVec)
 {
@@ -1024,28 +1046,20 @@ PetscErrorCode DMPlexDistributeField(DM dm, PetscSF pointSF, PetscSection origin
 
   Level: developer
 
-.seealso: `DMPLEX`, `DMPlexDistribute()`, `DMPlexDistributeField()`, `DMPlexDistributeData()`
+.seealso: `DMPLEX`, `DMPlexDistribute()`, `DMPlexDistributeField()`, `DMPlexDistributeData()`, `PetscSectionMigrateData()`
 @*/
 PetscErrorCode DMPlexDistributeFieldIS(DM dm, PetscSF pointSF, PetscSection originalSection, IS originalIS, PetscSection newSection, IS *newIS)
 {
-  PetscSF         fieldSF;
-  PetscInt       *newValues, *remoteOffsets, fieldSize;
+  PetscInt       *newValues, fieldSize;
   const PetscInt *originalValues;
 
   PetscFunctionBegin;
   PetscCall(PetscLogEventBegin(DMPLEX_DistributeField, dm, 0, 0, 0));
-  PetscCall(PetscSFDistributeSection(pointSF, originalSection, &remoteOffsets, newSection));
+  PetscCall(ISGetIndices(originalIS, &originalValues));
+  PetscCall(PetscSectionMigrateData(pointSF, MPIU_INT, originalSection, originalValues, newSection, (void **)&newValues, NULL));
+  PetscCall(ISRestoreIndices(originalIS, &originalValues));
 
   PetscCall(PetscSectionGetStorageSize(newSection, &fieldSize));
-  PetscCall(PetscMalloc1(fieldSize, &newValues));
-
-  PetscCall(ISGetIndices(originalIS, &originalValues));
-  PetscCall(PetscSFCreateSectionSF(pointSF, originalSection, remoteOffsets, newSection, &fieldSF));
-  PetscCall(PetscFree(remoteOffsets));
-  PetscCall(PetscSFBcastBegin(fieldSF, MPIU_INT, (PetscInt *)originalValues, newValues, MPI_REPLACE));
-  PetscCall(PetscSFBcastEnd(fieldSF, MPIU_INT, (PetscInt *)originalValues, newValues, MPI_REPLACE));
-  PetscCall(PetscSFDestroy(&fieldSF));
-  PetscCall(ISRestoreIndices(originalIS, &originalValues));
   PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)pointSF), fieldSize, newValues, PETSC_OWN_POINTER, newIS));
   PetscCall(PetscLogEventEnd(DMPLEX_DistributeField, dm, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1069,27 +1083,16 @@ PetscErrorCode DMPlexDistributeFieldIS(DM dm, PetscSF pointSF, PetscSection orig
 
   Level: developer
 
-.seealso: `DMPLEX`, `DMPlexDistribute()`, `DMPlexDistributeField()`
+  Note:
+  This is simply a wrapper around `PetscSectionMigrateData()`, but includes DM-specific logging.
+
+.seealso: `DMPLEX`, `DMPlexDistribute()`, `DMPlexDistributeField()`, `PetscSectionMigrateData()`
 @*/
 PetscErrorCode DMPlexDistributeData(DM dm, PetscSF pointSF, PetscSection originalSection, MPI_Datatype datatype, void *originalData, PetscSection newSection, void **newData)
 {
-  PetscSF     fieldSF;
-  PetscInt   *remoteOffsets, fieldSize;
-  PetscMPIInt dataSize;
-
   PetscFunctionBegin;
   PetscCall(PetscLogEventBegin(DMPLEX_DistributeData, dm, 0, 0, 0));
-  PetscCall(PetscSFDistributeSection(pointSF, originalSection, &remoteOffsets, newSection));
-
-  PetscCall(PetscSectionGetStorageSize(newSection, &fieldSize));
-  PetscCallMPI(MPI_Type_size(datatype, &dataSize));
-  PetscCall(PetscMalloc(fieldSize * dataSize, newData));
-
-  PetscCall(PetscSFCreateSectionSF(pointSF, originalSection, remoteOffsets, newSection, &fieldSF));
-  PetscCall(PetscFree(remoteOffsets));
-  PetscCall(PetscSFBcastBegin(fieldSF, datatype, originalData, *newData, MPI_REPLACE));
-  PetscCall(PetscSFBcastEnd(fieldSF, datatype, originalData, *newData, MPI_REPLACE));
-  PetscCall(PetscSFDestroy(&fieldSF));
+  PetscCall(PetscSectionMigrateData(pointSF, datatype, originalSection, originalData, newSection, newData, NULL));
   PetscCall(PetscLogEventEnd(DMPLEX_DistributeData, dm, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1262,7 +1265,7 @@ static PetscErrorCode DMPlexDistributeLabels(DM dm, PetscSF migrationSF, DM dmPa
   PetscCall(DMPlexGetDepthLabel(dm, &depthLabel));
   if (depthLabel) PetscCall(PetscObjectStateGet((PetscObject)depthLabel, &depthState));
   lsendDepth = mesh->depthState != depthState ? PETSC_TRUE : PETSC_FALSE;
-  PetscCallMPI(MPIU_Allreduce(&lsendDepth, &sendDepth, 1, MPIU_BOOL, MPI_LOR, comm));
+  PetscCallMPI(MPIU_Allreduce(&lsendDepth, &sendDepth, 1, MPI_C_BOOL, MPI_LOR, comm));
   if (sendDepth) {
     PetscCall(DMPlexGetDepthLabel(dmParallel, &dmParallel->depthLabel));
     PetscCall(DMRemoveLabelBySelf(dmParallel, &dmParallel->depthLabel, PETSC_FALSE));
@@ -1285,7 +1288,7 @@ static PetscErrorCode DMPlexDistributeLabels(DM dm, PetscSF migrationSF, DM dmPa
     } else {
       isDepth = PETSC_FALSE;
     }
-    PetscCallMPI(MPI_Bcast(&isDepth, 1, MPIU_BOOL, 0, comm));
+    PetscCallMPI(MPI_Bcast(&isDepth, 1, MPI_C_BOOL, 0, comm));
     if (isDepth && !sendDepth) continue;
     PetscCall(DMLabelDistribute(label, migrationSF, &labelNew));
     if (isDepth) {
@@ -1304,7 +1307,7 @@ static PetscErrorCode DMPlexDistributeLabels(DM dm, PetscSF migrationSF, DM dmPa
     PetscCall(DMAddLabel(dmParallel, labelNew));
     /* Put the output flag in the new label */
     if (hasLabels) PetscCall(DMGetLabelOutput(dm, name, &lisOutput));
-    PetscCallMPI(MPIU_Allreduce(&lisOutput, &isOutput, 1, MPIU_BOOL, MPI_LAND, comm));
+    PetscCallMPI(MPIU_Allreduce(&lisOutput, &isOutput, 1, MPI_C_BOOL, MPI_LAND, comm));
     PetscCall(PetscObjectGetName((PetscObject)labelNew, &name));
     PetscCall(DMSetLabelOutput(dmParallel, name, isOutput));
     PetscCall(DMLabelDestroy(&labelNew));
@@ -1715,6 +1718,93 @@ PetscErrorCode DMPlexRemapMigrationSF(PetscSF sfOverlap, PetscSF sfMigration, Pe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/* For DG-like methods, the code below is equivalent (but faster) than calling
+   DMPlexCreateClosureIndex(dm,section) */
+static PetscErrorCode DMPlexCreateClosureIndex_CELL(DM dm, PetscSection section)
+{
+  PetscSection clSection;
+  IS           clPoints;
+  PetscInt     pStart, pEnd, point;
+  PetscInt    *closure, pos = 0;
+
+  PetscFunctionBegin;
+  if (!section) PetscCall(DMGetLocalSection(dm, &section));
+  PetscCall(DMPlexGetHeightStratum(dm, 0, &pStart, &pEnd));
+  PetscCall(PetscSectionCreate(PetscObjectComm((PetscObject)dm), &clSection));
+  PetscCall(PetscSectionSetChart(clSection, pStart, pEnd));
+  PetscCall(PetscMalloc1((2 * (pEnd - pStart)), &closure));
+  for (point = pStart; point < pEnd; point++) {
+    PetscCall(PetscSectionSetDof(clSection, point, 2));
+    closure[pos++] = point; /* point */
+    closure[pos++] = 0;     /* orientation */
+  }
+  PetscCall(PetscSectionSetUp(clSection));
+  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, 2 * (pEnd - pStart), closure, PETSC_OWN_POINTER, &clPoints));
+  PetscCall(PetscSectionSetClosureIndex(section, (PetscObject)dm, clSection, clPoints));
+  PetscCall(PetscSectionDestroy(&clSection));
+  PetscCall(ISDestroy(&clPoints));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode DMPlexDistribute_Multistage(DM dm, PetscInt overlap, PetscSF *sf, DM *dmParallel)
+{
+  MPI_Comm         comm = PetscObjectComm((PetscObject)dm);
+  PetscPartitioner part;
+  PetscBool        balance, printHeader;
+  PetscInt         nl = 0;
+
+  PetscFunctionBegin;
+  if (sf) *sf = NULL;
+  *dmParallel = NULL;
+
+  PetscCall(DMPlexGetPartitioner(dm, &part));
+  printHeader = part->printHeader;
+  PetscCall(DMPlexGetPartitionBalance(dm, &balance));
+  PetscCall(PetscPartitionerSetUp(part));
+  PetscCall(PetscLogEventBegin(DMPLEX_DistributeMultistage, dm, 0, 0, 0));
+  PetscCall(PetscPartitionerMultistageGetStages_Multistage(part, &nl, NULL));
+  for (PetscInt l = 0; l < nl; l++) {
+    PetscInt ovl = (l < nl - 1) ? 0 : overlap;
+    PetscSF  sfDist;
+    DM       dmDist;
+
+    PetscCall(DMPlexSetPartitionBalance(dm, balance));
+    PetscCall(DMViewFromOptions(dm, (PetscObject)part, "-petscpartitioner_multistage_dm_view"));
+    PetscCall(PetscPartitionerMultistageSetStage_Multistage(part, l, (PetscObject)dm));
+    PetscCall(DMPlexSetPartitioner(dm, part));
+    PetscCall(DMPlexDistribute(dm, ovl, &sfDist, &dmDist));
+    PetscCheck(dmDist, comm, PETSC_ERR_PLIB, "No distributed DM generated (stage %" PetscInt_FMT ")", l);
+    PetscCheck(sfDist, comm, PETSC_ERR_PLIB, "No SF generated (stage %" PetscInt_FMT ")", l);
+    part->printHeader = PETSC_FALSE;
+
+    /* Propagate cell weights to the next level (if any, and if not the final dm) */
+    if (part->usevwgt && dm->localSection && l != nl - 1) {
+      PetscSection oldSection, newSection;
+
+      PetscCall(DMGetLocalSection(dm, &oldSection));
+      PetscCall(DMGetLocalSection(dmDist, &newSection));
+      PetscCall(PetscSFDistributeSection(sfDist, oldSection, NULL, newSection));
+      PetscCall(DMPlexCreateClosureIndex_CELL(dmDist, newSection));
+    }
+    if (!sf) PetscCall(PetscSFDestroy(&sfDist));
+    if (l > 0) PetscCall(DMDestroy(&dm));
+
+    if (sf && *sf) {
+      PetscSF sfA = *sf, sfB = sfDist;
+      PetscCall(PetscSFCompose(sfA, sfB, &sfDist));
+      PetscCall(PetscSFDestroy(&sfA));
+      PetscCall(PetscSFDestroy(&sfB));
+    }
+
+    if (sf) *sf = sfDist;
+    dm = *dmParallel = dmDist;
+  }
+  PetscCall(PetscPartitionerMultistageSetStage_Multistage(part, 0, NULL)); /* reset */
+  PetscCall(PetscLogEventEnd(DMPLEX_DistributeMultistage, dm, 0, 0, 0));
+  part->printHeader = printHeader;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /*@
   DMPlexDistribute - Distributes the mesh and any associated sections.
 
@@ -1747,7 +1837,7 @@ PetscErrorCode DMPlexDistribute(DM dm, PetscInt overlap, PeOp PetscSF *sf, DM *d
   DM               dmCoord;
   DMLabel          lblPartition, lblMigration;
   PetscSF          sfMigration, sfStratified, sfPoint;
-  PetscBool        flg, balance;
+  PetscBool        flg, balance, isms;
   PetscMPIInt      rank, size;
 
   PetscFunctionBegin;
@@ -1763,11 +1853,22 @@ PetscErrorCode DMPlexDistribute(DM dm, PetscInt overlap, PeOp PetscSF *sf, DM *d
   PetscCallMPI(MPI_Comm_size(comm, &size));
   if (size == 1) PetscFunctionReturn(PETSC_SUCCESS);
 
+  /* Handle multistage partitioner */
+  PetscCall(DMPlexGetPartitioner(dm, &partitioner));
+  PetscCall(PetscObjectTypeCompare((PetscObject)partitioner, PETSCPARTITIONERMULTISTAGE, &isms));
+  if (isms) {
+    PetscObject stagedm;
+
+    PetscCall(PetscPartitionerMultistageGetStage_Multistage(partitioner, NULL, &stagedm));
+    if (!stagedm) { /* No stage dm present, start the multistage algorithm */
+      PetscCall(DMPlexDistribute_Multistage(dm, overlap, sf, dmParallel));
+      PetscFunctionReturn(PETSC_SUCCESS);
+    }
+  }
   PetscCall(PetscLogEventBegin(DMPLEX_Distribute, dm, 0, 0, 0));
   /* Create cell partition */
   PetscCall(PetscLogEventBegin(DMPLEX_Partition, dm, 0, 0, 0));
   PetscCall(PetscSectionCreate(comm, &cellPartSection));
-  PetscCall(DMPlexGetPartitioner(dm, &partitioner));
   PetscCall(PetscPartitionerDMPlexPartition(partitioner, dm, NULL, cellPartSection, &cellPart));
   PetscCall(PetscLogEventBegin(DMPLEX_PartSelf, dm, 0, 0, 0));
   {

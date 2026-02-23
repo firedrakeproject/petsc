@@ -486,7 +486,7 @@ screen. This can also be set with the command
 It is also possible to trap signals by using the command
 
 ```
-PetscPushSignalHandler(PetscErrorCode (*Handler)(int, void *), void *ctx);
+PetscPushSignalHandler(PetscErrorCode (*Handler)(int, PetscCtx), PetscCtx ctx);
 ```
 
 The default handler `PetscSignalHandlerDefault()` calls
@@ -860,6 +860,8 @@ additional option `--with-x=0`
 (sec_developer_environments)=
 
 # Developer Environments
+
+Coding styles for most editors or integrated development environments are defined with [EditorConfig](https://editorconfig.org') in `.editorconfig`.
 
 ## Emacs Users
 

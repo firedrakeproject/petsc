@@ -152,9 +152,9 @@ static PetscErrorCode MatProductNumeric_Nest_Dense(Mat C)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatNest_DenseDestroy(void *ctx)
+static PetscErrorCode MatNest_DenseDestroy(PetscCtxRt ctx)
 {
-  Nest_Dense *contents = (Nest_Dense *)ctx;
+  Nest_Dense *contents = *(Nest_Dense **)ctx;
   PetscInt    i;
 
   PetscFunctionBegin;
@@ -456,28 +456,6 @@ static PetscErrorCode MatDestroy_Nest(Mat A)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatMissingDiagonal_Nest(Mat mat, PetscBool *missing, PetscInt *dd)
-{
-  Mat_Nest *vs = (Mat_Nest *)mat->data;
-  PetscInt  i;
-
-  PetscFunctionBegin;
-  if (dd) *dd = 0;
-  if (!vs->nr) {
-    *missing = PETSC_TRUE;
-    PetscFunctionReturn(PETSC_SUCCESS);
-  }
-  *missing = PETSC_FALSE;
-  for (i = 0; i < vs->nr && !*missing; i++) {
-    *missing = PETSC_TRUE;
-    if (vs->m[i][i]) {
-      PetscCall(MatMissingDiagonal(vs->m[i][i], missing, NULL));
-      PetscCheck(!*missing || !dd, PetscObjectComm((PetscObject)mat), PETSC_ERR_SUP, "First missing entry not yet implemented");
-    }
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode MatAssemblyBegin_Nest(Mat A, MatAssemblyType type)
 {
   Mat_Nest *vs = (Mat_Nest *)A->data;
@@ -712,16 +690,16 @@ static PetscErrorCode MatCreateSubMatrix_Nest(Mat A, IS isrow, IS iscol, MatReus
   PetscCall(MatNestFindSubMat(A, &vs->isglobal, isrow, iscol, &sub));
   switch (reuse) {
   case MAT_INITIAL_MATRIX:
-    if (sub) PetscCall(PetscObjectReference((PetscObject)sub));
+    PetscCall(PetscObjectReference((PetscObject)sub));
+    if (sub) PetscCall(PetscObjectStateIncrease((PetscObject)sub));
     *B = sub;
     break;
   case MAT_REUSE_MATRIX:
     PetscCheck(sub == *B, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_WRONGSTATE, "Submatrix was not used before in this call");
+    if (sub) PetscCall(PetscObjectStateIncrease((PetscObject)sub));
     break;
-  case MAT_IGNORE_MATRIX: /* Nothing to do */
+  default:
     break;
-  case MAT_INPLACE_MATRIX: /* Nothing to do */
-    SETERRQ(PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "MAT_INPLACE_MATRIX is not supported yet");
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -940,11 +918,8 @@ static PetscErrorCode MatView_Nest(Mat A, PetscViewer viewer)
       PetscFunctionReturn(PETSC_SUCCESS);
     }
     PetscCall(PetscOptionsGetBool(((PetscObject)A)->options, ((PetscObject)A)->prefix, "-mat_view_nest_sub", &viewSub, NULL));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "Matrix object:\n"));
     PetscCall(PetscViewerASCIIPushTab(viewer));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "type=nest, rows=%" PetscInt_FMT ", cols=%" PetscInt_FMT "\n", bA->nr, bA->nc));
-
-    PetscCall(PetscViewerASCIIPrintf(viewer, "MatNest structure:\n"));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "MatNest, rows=%" PetscInt_FMT ", cols=%" PetscInt_FMT ", structure:\n", bA->nr, bA->nc));
     for (i = 0; i < bA->nr; i++) {
       for (j = 0; j < bA->nc; j++) {
         MatType   type;
@@ -1462,10 +1437,9 @@ static PetscErrorCode MatNestSetSubMats_Nest(Mat A, PetscInt nr, const IS is_row
     for (i = 0; cong && i < nr; i++) PetscCall(ISEqualUnsorted(s->isglobal.row[i], s->isglobal.col[i], &cong));
   }
   if (!cong) {
-    A->ops->missingdiagonal = NULL;
-    A->ops->getdiagonal     = NULL;
-    A->ops->shift           = NULL;
-    A->ops->diagonalset     = NULL;
+    A->ops->getdiagonal = NULL;
+    A->ops->shift       = NULL;
+    A->ops->diagonalset = NULL;
   }
 
   PetscCall(PetscCalloc2(nr, &s->left, nc, &s->right));
@@ -2223,9 +2197,8 @@ static PetscErrorCode MatConvert_Nest_AIJ(Mat A, MatType newtype, MatReuse reuse
   PetscCall(MatMPIAIJSetPreallocation(C, 0, dnnz, 0, onnz));
   PetscCall(PetscFree(dnnz));
   PetscCall(MatAXPY_Dense_Nest(C, 1.0, A));
-  if (reuse == MAT_INPLACE_MATRIX) {
-    PetscCall(MatHeaderReplace(A, &C));
-  } else *newmat = C;
+  if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &C));
+  else *newmat = C;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2244,9 +2217,8 @@ static PetscErrorCode MatConvert_Nest_Dense(Mat A, MatType newtype, MatReuse reu
     PetscCall(MatCreateDense(PetscObjectComm((PetscObject)A), m, PETSC_DECIDE, M, N, NULL, &B));
   }
   PetscCall(MatAXPY_Dense_Nest(B, 1.0, A));
-  if (reuse == MAT_INPLACE_MATRIX) {
-    PetscCall(MatHeaderReplace(A, &B));
-  } else if (reuse == MAT_INITIAL_MATRIX) *newmat = B;
+  if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &B));
+  else if (reuse == MAT_INITIAL_MATRIX) *newmat = B;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2332,7 +2304,6 @@ PETSC_EXTERN PetscErrorCode MatCreate_Nest(Mat A)
   A->ops->diagonalset               = MatDiagonalSet_Nest;
   A->ops->setrandom                 = MatSetRandom_Nest;
   A->ops->hasoperation              = MatHasOperation_Nest;
-  A->ops->missingdiagonal           = MatMissingDiagonal_Nest;
 
   A->spptr     = NULL;
   A->assembled = PETSC_FALSE;

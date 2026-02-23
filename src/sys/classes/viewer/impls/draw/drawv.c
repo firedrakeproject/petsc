@@ -318,11 +318,11 @@ static PetscErrorCode PetscViewerView_Draw(PetscViewer viewer, PetscViewer v)
   PetscDraw         draw;
   PetscInt          i;
   PetscViewer_Draw *vdraw = (PetscViewer_Draw *)viewer->data;
-  PetscBool         iascii;
+  PetscBool         isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscViewerASCIIPrintf(v, "Draw viewer is of type %s\n", vdraw->drawtype));
+  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscViewerASCIIPrintf(v, "Draw viewer is of type %s\n", vdraw->drawtype));
   /*  If the PetscViewer has just been created then no vdraw->draw yet
       exists so this will not actually call the viewer on any draws. */
   for (i = 0; i < vdraw->draw_base; i++) {
@@ -566,15 +566,15 @@ PetscMPIInt Petsc_Viewer_Draw_keyval = MPI_KEYVAL_INVALID;
 @*/
 PetscViewer PETSC_VIEWER_DRAW_(MPI_Comm comm)
 {
-  PetscMPIInt flag;
+  PetscMPIInt iflg;
   PetscViewer viewer;
   MPI_Comm    ncomm;
 
   PetscFunctionBegin;
   PetscCallNull(PetscCommDuplicate(comm, &ncomm, NULL));
-  if (Petsc_Viewer_Draw_keyval == MPI_KEYVAL_INVALID) { PetscCallMPINull(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN, MPI_COMM_NULL_DELETE_FN, &Petsc_Viewer_Draw_keyval, NULL)); }
-  PetscCallMPINull(MPI_Comm_get_attr(ncomm, Petsc_Viewer_Draw_keyval, (void **)&viewer, &flag));
-  if (!flag) { /* PetscViewer not yet created */
+  if (Petsc_Viewer_Draw_keyval == MPI_KEYVAL_INVALID) PetscCallMPINull(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN, MPI_COMM_NULL_DELETE_FN, &Petsc_Viewer_Draw_keyval, NULL));
+  PetscCallMPINull(MPI_Comm_get_attr(ncomm, Petsc_Viewer_Draw_keyval, (void **)&viewer, &iflg));
+  if (!iflg) { /* PetscViewer not yet created */
     PetscCallNull(PetscViewerDrawOpen(ncomm, NULL, NULL, PETSC_DECIDE, PETSC_DECIDE, 300, 300, &viewer));
     PetscCallNull(PetscObjectRegisterDestroy((PetscObject)viewer));
     PetscCallMPINull(MPI_Comm_set_attr(ncomm, Petsc_Viewer_Draw_keyval, (void *)viewer));

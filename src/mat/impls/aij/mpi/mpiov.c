@@ -733,7 +733,7 @@ static PetscErrorCode MatIncreaseOverlap_MPIAIJ_Once(Mat C, PetscInt imax, IS is
 
   /* Now  post the sends */
   PetscCall(PetscMalloc1(nrqr, &s_waits2));
-  for (PetscMPIInt i = 0; i < nrqr; ++i) { PetscCallMPI(MPIU_Isend(xdata[i], isz1[i], MPIU_INT, recv_status[i].MPI_SOURCE, tag2, comm, s_waits2 + i)); }
+  for (PetscMPIInt i = 0; i < nrqr; ++i) PetscCallMPI(MPIU_Isend(xdata[i], isz1[i], MPIU_INT, recv_status[i].MPI_SOURCE, tag2, comm, s_waits2 + i));
 
   /* receive work done on other processors */
   {
@@ -2848,7 +2848,7 @@ PetscErrorCode MatSetSeqMats_MPIAIJ(Mat C, IS rowemb, IS dcolemb, IS ocolemb, Ma
   Mat_MPIAIJ     *aij;
   Mat_SeqAIJ     *Baij;
   PetscBool       seqaij, Bdisassembled;
-  PetscInt        m, n, *nz, ngcol, col, rstart, rend, shift, count;
+  PetscInt        m, n, *nz, ngcol, col, cstart, cend, shift, count;
   PetscScalar     v;
   const PetscInt *rowindices, *colindices;
 
@@ -2946,8 +2946,8 @@ PetscErrorCode MatSetSeqMats_MPIAIJ(Mat C, IS rowemb, IS dcolemb, IS ocolemb, Ma
       PetscCall(PetscFree(nz));
     }
 
-    PetscCall(PetscLayoutGetRange(C->rmap, &rstart, &rend));
-    shift      = rend - rstart;
+    PetscCall(PetscLayoutGetRange(C->cmap, &cstart, &cend));
+    shift      = cend - cstart;
     count      = 0;
     rowindices = NULL;
     colindices = NULL;
@@ -2960,7 +2960,7 @@ PetscErrorCode MatSetSeqMats_MPIAIJ(Mat C, IS rowemb, IS dcolemb, IS ocolemb, Ma
       for (PetscInt j = Baij->i[i]; j < Baij->i[i + 1]; j++) {
         col = Baij->j[count];
         if (colindices) col = colindices[col];
-        if (Bdisassembled && col >= rstart) col += shift;
+        if (Bdisassembled && col >= cstart) col += shift;
         v = Baij->a[count];
         PetscCall(MatSetValues(aij->B, 1, &row, 1, &col, &v, INSERT_VALUES));
         ++count;

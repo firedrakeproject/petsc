@@ -43,7 +43,7 @@ static PetscErrorCode ISInvertPermutation_Stride(IS is, PetscInt nlocal, IS *per
 
   PetscFunctionBegin;
   PetscCall(ISGetInfo(is, IS_IDENTITY, IS_GLOBAL, PETSC_TRUE, &isident));
-  if (isident && nlocal != PETSC_DECIDE) PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &samelocal, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
+  if (isident && nlocal != PETSC_DECIDE) PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &samelocal, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
   if (isident) {
     PetscInt start = is->map->rstart, n = is->map->n;
 
@@ -168,13 +168,13 @@ static PetscErrorCode ISView_Stride(IS is, PetscViewer viewer)
   IS_Stride        *sub = (IS_Stride *)is->data;
   PetscInt          i, n = is->map->n;
   PetscMPIInt       rank, size;
-  PetscBool         iascii, ibinary;
+  PetscBool         isascii, ibinary;
   PetscViewerFormat fmt;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &ibinary));
-  if (iascii) {
+  if (isascii) {
     PetscBool matl, isperm;
 
     PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)is), &rank));

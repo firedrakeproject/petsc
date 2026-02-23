@@ -1,24 +1,21 @@
 !
 ! Description: Demonstrates using a local ordering to set values into a parallel vector
 !
-
-  program main
 #include <petsc/finclude/petscvec.h>
+program main
   use petscvec
 
   implicit none
 
   PetscErrorCode ierr
-  PetscMPIInt    rank
-  PetscInt    ::   i,ng,rstart,rend,M
+  PetscMPIInt rank
+  PetscInt    ::   i, ng, rstart, rend, M
   PetscInt, pointer, dimension(:) :: gindices
-  PetscScalar, parameter :: sone = 1.0
   Vec   ::         x
   ISLocalToGlobalMapping :: ltog
-  PetscInt,parameter :: one = 1
 
   PetscCallA(PetscInitialize(ierr))
-  PetscCallMPIA(MPI_Comm_rank(PETSC_COMM_WORLD,rank,ierr))
+  PetscCallMPIA(MPI_Comm_rank(PETSC_COMM_WORLD, rank, ierr))
 
 !
 !     Create a parallel vector.
@@ -27,12 +24,20 @@
 !        PETSc could determine the vector's distribution if we specify
 !        just the global size.
 !
-  PetscCallA(VecCreate(PETSC_COMM_WORLD,x,ierr))
-  PetscCallA(VecSetSizes(x,rank+one,PETSC_DECIDE,ierr))
-  PetscCallA(VecSetFromOptions(x,ierr))
+  PetscCallA(VecCreate(PETSC_COMM_WORLD, x, ierr))
+  PetscCallA(VecSetSizes(x, rank + 1_PETSC_INT_KIND, PETSC_DECIDE, ierr))
+  PetscCallA(VecSetFromOptions(x, ierr))
 
-  PetscCallA(VecSet(x,sone,ierr))
-
+#if defined(PETSC_USE_COMPLEX)
+  ! Fortran () automatically sets the complex KIND to correspond to the KIND of the constant arguments
+  PetscCallA(VecSet(x, (1.0_PETSC_REAL_KIND, 0.0_PETSC_REAL_KIND), ierr))
+  ! Alternatively one can set it explicitly using
+  PetscCallA(VecSet(x, cmplx(1.0_PETSC_REAL_KIND, 0.0_PETSC_REAL_KIND, PETSC_REAL_KIND), ierr))
+#else
+  PetscCallA(VecSet(x, 1.0_PETSC_REAL_KIND, ierr))
+  ! Alternatively one can set it explicitly using
+  PetscCallA(VecSet(x, 1.0_PETSC_REAL_KIND, ierr))
+#endif
 !
 !     Set the local to global ordering for the vector. Each processor
 !     generates a list of the global indices for each local index. Note that
@@ -41,38 +46,42 @@
 !     have one ghost point on each end of the blocks owned by each processor.
 !
 
-  PetscCallA(VecGetSize(x,M,ierr))
-  PetscCallA(VecGetOwnershipRange(x,rstart,rend,ierr))
+  PetscCallA(VecGetSize(x, M, ierr))
+  PetscCallA(VecGetOwnershipRange(x, rstart, rend, ierr))
   ng = rend - rstart + 2
-  allocate(gindices(0:ng-1))
-  gindices(0) = rstart -1
+  allocate (gindices(0:ng - 1))
+  gindices(0) = rstart - 1
 
-  do i=0,ng-2
-   gindices(i+1) = gindices(i) + 1
+  do i = 0, ng - 2
+    gindices(i + 1) = gindices(i) + 1
   end do
 
 ! map the first and last point as periodic
 
   if (gindices(0) == -1) gindices(0) = M - 1
 
-  if (gindices(ng-1) == M) gindices(ng-1) = 0
+  if (gindices(ng - 1) == M) gindices(ng - 1) = 0
 
-  PetscCallA(ISLocalToGlobalMappingCreate(PETSC_COMM_SELF,one,ng,gindices,PETSC_COPY_VALUES,ltog,ierr))
-  PetscCallA(VecSetLocalToGlobalMapping(x,ltog,ierr))
-  PetscCallA(ISLocalToGlobalMappingDestroy(ltog,ierr))
-  deallocate(gindices)
+  PetscCallA(ISLocalToGlobalMappingCreate(PETSC_COMM_SELF, 1_PETSC_INT_KIND, ng, gindices, PETSC_COPY_VALUES, ltog, ierr))
+  PetscCallA(VecSetLocalToGlobalMapping(x, ltog, ierr))
+  PetscCallA(ISLocalToGlobalMappingDestroy(ltog, ierr))
+  deallocate (gindices)
 
-     ! Set the vector elements.
-     ! - In this case set the values using the local ordering
-     ! - Each processor can contribute any vector entries,
-     !   regardless of which processor "owns" them; any nonlocal
-     !   contributions will be transferred to the appropriate processor
-     !   during the assembly process.
-     ! - In this example, the flag ADD_VALUES indicates that all
-     !   contributions will be added together.
+  ! Set the vector elements.
+  ! - In this case set the values using the local ordering
+  ! - Each processor can contribute any vector entries,
+  !   regardless of which processor "owns" them; any nonlocal
+  !   contributions will be transferred to the appropriate processor
+  !   during the assembly process.
+  ! - In this example, the flag ADD_VALUES indicates that all
+  !   contributions will be added together.
 
-  do i=0,ng-1
-   PetscCallA(VecSetValuesLocal(x,one,[i],[sone],ADD_VALUES,ierr))
+  do i = 0, ng - 1
+#if defined(PETSC_USE_COMPLEX)
+    PetscCallA(VecSetValuesLocal(x, 1_PETSC_INT_KIND, [i], [(1.0_PETSC_REAL_KIND, 0.0_PETSC_REAL_KIND)], ADD_VALUES, ierr))
+#else
+    PetscCallA(VecSetValuesLocal(x, 1_PETSC_INT_KIND, [i], [1.0_PETSC_REAL_KIND], ADD_VALUES, ierr))
+#endif
   end do
 
   !
@@ -81,13 +90,13 @@
   ! Computations can be done while messages are in transition
   ! by placing code between these two statements.
   !
-  PetscCallA(VecAssemblyBegin(x,ierr))
-  PetscCallA(VecAssemblyEnd(x,ierr))
+  PetscCallA(VecAssemblyBegin(x, ierr))
+  PetscCallA(VecAssemblyEnd(x, ierr))
   !
   ! View the vector; then destroy it.
   !
-  PetscCallA(VecView(x,PETSC_VIEWER_STDOUT_WORLD,ierr))
-  PetscCallA(VecDestroy(x,ierr))
+  PetscCallA(VecView(x, PETSC_VIEWER_STDOUT_WORLD, ierr))
+  PetscCallA(VecDestroy(x, ierr))
   PetscCallA(PetscFinalize(ierr))
 
 end program

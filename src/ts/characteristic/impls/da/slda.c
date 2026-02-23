@@ -5,13 +5,13 @@
 static PetscErrorCode CharacteristicView_DA(Characteristic c, PetscViewer viewer)
 {
   Characteristic_DA *da = (Characteristic_DA *)c->data;
-  PetscBool          iascii, isstring;
+  PetscBool          isascii, isstring;
 
   PetscFunctionBegin;
   /* Pull out field names from DM */
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  DMDA: dummy=%" PetscInt_FMT "\n", da->dummy));
   } else if (isstring) {
     PetscCall(PetscViewerStringSPrintf(viewer, "dummy %" PetscInt_FMT, da->dummy));
@@ -84,10 +84,10 @@ PETSC_EXTERN PetscErrorCode CharacteristicCreate_DA(Characteristic c)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* -----------------------------------------------------------------------------
+/*
    Checks for periodicity of a DM and Maps points outside of a domain back onto the domain
    using appropriate periodicity. At the moment assumes only a 2-D DMDA.
-   ----------------------------------------------------------------------------------------*/
+ */
 PetscErrorCode DMDAMapCoordsToPeriodicDomain(DM da, PetscScalar *x, PetscScalar *y)
 {
   DMBoundaryType bx, by;

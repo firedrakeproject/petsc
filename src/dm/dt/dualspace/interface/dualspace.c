@@ -243,14 +243,14 @@ PetscErrorCode PetscDualSpaceViewFromOptions(PetscDualSpace A, PeOp PetscObject 
 @*/
 PetscErrorCode PetscDualSpaceView(PetscDualSpace sp, PetscViewer v)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sp, PETSCDUALSPACE_CLASSID, 1);
   if (v) PetscValidHeaderSpecific(v, PETSC_VIEWER_CLASSID, 2);
   if (!v) PetscCall(PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)sp), &v));
-  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscDualSpaceView_ASCII(sp, v));
+  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscDualSpaceView_ASCII(sp, v));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -487,7 +487,7 @@ PetscErrorCode PetscDualSpaceDuplicate(PetscDualSpace sp, PetscDualSpace *spNew)
   PetscAssertPointer(spNew, 2);
   PetscCall(PetscDualSpaceCreate(PetscObjectComm((PetscObject)sp), spNew));
   name = ((PetscObject)sp)->name;
-  if (name) { PetscCall(PetscObjectSetName((PetscObject)*spNew, name)); }
+  if (name) PetscCall(PetscObjectSetName((PetscObject)*spNew, name));
   PetscCall(PetscDualSpaceGetType(sp, &type));
   PetscCall(PetscDualSpaceSetType(*spNew, type));
   PetscCall(PetscDualSpaceGetDM(sp, &dm));
@@ -695,9 +695,8 @@ PetscErrorCode PetscDualSpaceGetDimension(PetscDualSpace sp, PetscInt *dim)
     PetscSection section;
 
     PetscCall(PetscDualSpaceGetSection(sp, &section));
-    if (section) {
-      PetscCall(PetscSectionGetStorageSize(section, &sp->spdim));
-    } else sp->spdim = 0;
+    if (section) PetscCall(PetscSectionGetStorageSize(section, &sp->spdim));
+    else sp->spdim = 0;
   }
   *dim = sp->spdim;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -727,9 +726,8 @@ PetscErrorCode PetscDualSpaceGetInteriorDimension(PetscDualSpace sp, PetscInt *i
     PetscSection section;
 
     PetscCall(PetscDualSpaceGetSection(sp, &section));
-    if (section) {
-      PetscCall(PetscSectionGetConstrainedStorageSize(section, &sp->spintdim));
-    } else sp->spintdim = 0;
+    if (section) PetscCall(PetscSectionGetConstrainedStorageSize(section, &sp->spintdim));
+    else sp->spintdim = 0;
   }
   *intdim = sp->spintdim;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1048,14 +1046,14 @@ PetscErrorCode PetscDualSpacePushForwardSubspaces_Internal(PetscDualSpace sp, Pe
 
   Calling sequence:
 .vb
-  PetscErrorCode func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt numComponents, PetscScalar values[], void *ctx)
+  PetscErrorCode func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt numComponents, PetscScalar values[], PetscCtx ctx)
 .ve
 
   Level: beginner
 
 .seealso: `PetscDualSpace`, `PetscDualSpaceCreate()`
 @*/
-PetscErrorCode PetscDualSpaceApply(PetscDualSpace sp, PetscInt f, PetscReal time, PetscFEGeom *cgeom, PetscInt numComp, PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void *ctx, PetscScalar *value)
+PetscErrorCode PetscDualSpaceApply(PetscDualSpace sp, PetscInt f, PetscReal time, PetscFEGeom *cgeom, PetscInt numComp, PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), PetscCtx ctx, PetscScalar *value)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(sp, PETSCDUALSPACE_CLASSID, 1);
@@ -1126,7 +1124,7 @@ PetscErrorCode PetscDualSpaceApplyInterior(PetscDualSpace sp, const PetscScalar 
 
   Calling sequence:
 .vb
-   PetscErrorCode func(PetscInt dim, PetscReal time, const PetscReal x[],PetscInt numComponents, PetscScalar values[], void *ctx)
+   PetscErrorCode func(PetscInt dim, PetscReal time, const PetscReal x[],PetscInt numComponents, PetscScalar values[], PetscCtx ctx)
 .ve
 
   Level: advanced
@@ -1136,7 +1134,7 @@ PetscErrorCode PetscDualSpaceApplyInterior(PetscDualSpace sp, const PetscScalar 
 
 .seealso: `PetscDualSpace`, `PetscDualSpaceCreate()`
 @*/
-PetscErrorCode PetscDualSpaceApplyDefault(PetscDualSpace sp, PetscInt f, PetscReal time, PetscFEGeom *cgeom, PetscInt Nc, PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void *ctx, PetscScalar *value)
+PetscErrorCode PetscDualSpaceApplyDefault(PetscDualSpace sp, PetscInt f, PetscReal time, PetscFEGeom *cgeom, PetscInt Nc, PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), PetscCtx ctx, PetscScalar *value)
 {
   DM               dm;
   PetscQuadrature  n;
@@ -1553,7 +1551,7 @@ PetscErrorCode PetscDualSpaceEqual(PetscDualSpace A, PetscDualSpace B, PetscBool
 
   Calling sequence:
 .vb
-  PetscErrorCode func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt numComponents, PetscScalar values[], void *ctx)
+  PetscErrorCode func(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt numComponents, PetscScalar values[], PetscCtx ctx)
 .ve
 
   Level: advanced
@@ -1563,7 +1561,7 @@ PetscErrorCode PetscDualSpaceEqual(PetscDualSpace A, PetscDualSpace B, PetscBool
 
 .seealso: `PetscDualSpace`, `PetscDualSpaceCreate()`
 @*/
-PetscErrorCode PetscDualSpaceApplyFVM(PetscDualSpace sp, PetscInt f, PetscReal time, PetscFVCellGeom *cgeom, PetscInt Nc, PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void *ctx, PetscScalar *value)
+PetscErrorCode PetscDualSpaceApplyFVM(PetscDualSpace sp, PetscInt f, PetscReal time, PetscFVCellGeom *cgeom, PetscInt Nc, PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), PetscCtx ctx, PetscScalar *value)
 {
   DM               dm;
   PetscQuadrature  n;

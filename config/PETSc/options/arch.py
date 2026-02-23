@@ -84,7 +84,6 @@ PETSC_ARCH from environment does not match command-line or name of script. Using
     except:
       self.logPrint('Unable to delete configure hash file: '+hashfile)
 
-
   def checkDependency(self):
     '''Checks if files in config have changed, the command line options have changed or the PATH has changed'''
     '''  By default - checks if configure needs to be run'''
@@ -137,7 +136,7 @@ PETSC_ARCH from environment does not match command-line or name of script. Using
         raise RuntimeError('Do not set the environmental variable PETSC_ARCH and use --arch-hash')
     if 'arch-hash' in self.argDB or 'package-prefix-hash' in self.argDB:
       import hashlib
-      m = hashlib.md5()
+      m = hashlib.sha256()
       m.update(hash.encode('utf-8'))
       hprefix = m.hexdigest()
       self.logPrint('Computed hash to be used with --package-prefix-hash option: '+hprefix)

@@ -1,5 +1,5 @@
 -include ../../../../../petscdir.mk
-#requirespackage 'PETSC_HAVE_CXX'
+#requirespackage 'PETSC_HAVE_CUPM'
 
 MANSEC   = KSP
 

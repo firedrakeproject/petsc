@@ -1,5 +1,4 @@
 #include "petscdmswarm.h"
-#define PETSCDM_DLL
 #include <petsc/private/dmswarmimpl.h> /*I   "petscdmswarm.h"   I*/
 #include <petsc/private/hashsetij.h>
 #include <petsc/private/petscfeimpl.h>
@@ -244,7 +243,7 @@ static PetscErrorCode DMCreateGlobalVector_Swarm(DM sw, Vec *vec)
   PetscCall(VecSetBlockSize(x, bs));
   PetscCall(VecSetDM(x, sw));
   PetscCall(VecSetFromOptions(x));
-  PetscCall(VecSetOperation(x, VECOP_VIEW, (void (*)(void))VecView_Swarm));
+  PetscCall(VecSetOperation(x, VECOP_VIEW, (PetscErrorCodeFn *)VecView_Swarm));
   *vec = x;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -342,7 +341,7 @@ static PetscErrorCode DMSwarmCreateVectorFromField_Private(DM dm, const char fie
   PetscCall(PetscObjectComposedDataSetInt((PetscObject)*vec, SwarmDataFieldId, fid));
 
   PetscCall(VecSetDM(*vec, dm));
-  PetscCall(VecSetOperation(*vec, VECOP_VIEW, (void (*)(void))VecView_Swarm));
+  PetscCall(VecSetOperation(*vec, VECOP_VIEW, (PetscErrorCodeFn *)VecView_Swarm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -441,7 +440,7 @@ static PetscErrorCode DMSwarmCreateVectorFromFields_Private(DM sw, PetscInt Nf, 
   PetscCall(PetscObjectComposedDataSetInt((PetscObject)*vec, SwarmDataFieldId, id));
 
   PetscCall(VecSetDM(*vec, sw));
-  PetscCall(VecSetOperation(*vec, VECOP_VIEW, (void (*)(void))VecView_Swarm));
+  PetscCall(VecSetOperation(*vec, VECOP_VIEW, (PetscErrorCodeFn *)VecView_Swarm));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -464,7 +463,7 @@ static PetscErrorCode DMSwarmCreateVectorFromFields_Private(DM sw, PetscInt Nf, 
    The way Dave May does particles, they amount to quadratue weights rather than delta functions, so he has |J| is in
    his integral. We allow this with the boolean flag.
 */
-static PetscErrorCode DMSwarmComputeMassMatrix_Private(DM dmc, DM dmf, Mat mass, PetscBool useDeltaFunction, void *ctx)
+static PetscErrorCode DMSwarmComputeMassMatrix_Private(DM dmc, DM dmf, Mat mass, PetscBool useDeltaFunction, PetscCtx ctx)
 {
   const char   *name = "Mass Matrix";
   MPI_Comm      comm;
@@ -559,10 +558,9 @@ static PetscErrorCode DMSwarmComputeMassMatrix_Private(DM dmc, DM dmf, Mat mass,
                 key.i = cindices[j] * totNc + c + rStart; /* global cols (from Swarm) */
                 if (key.i < 0) continue;
                 PetscCall(PetscHSetIJQueryAdd(ht, key, &missing));
-                if (missing) {
-                  if ((key.j >= colStart) && (key.j < colEnd)) ++dnz[key.i - rStart];
-                  else ++onz[key.i - rStart];
-                } else SETERRQ(PetscObjectComm((PetscObject)dmf), PETSC_ERR_SUP, "Set new value at %" PetscInt_FMT ",%" PetscInt_FMT, key.i, key.j);
+                PetscCheck(missing, PetscObjectComm((PetscObject)dmf), PETSC_ERR_SUP, "Set new value at %" PetscInt_FMT ",%" PetscInt_FMT, key.i, key.j);
+                if ((key.j >= colStart) && (key.j < colEnd)) ++dnz[key.i - rStart];
+                else ++onz[key.i - rStart];
               }
             }
           }
@@ -688,7 +686,7 @@ static PetscErrorCode DMCreateMassMatrix_Swarm(DM dmCoarse, DM dmFine, Mat *mass
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSwarmComputeMassMatrixSquare_Private(DM dmc, DM dmf, Mat mass, PetscBool useDeltaFunction, void *ctx)
+static PetscErrorCode DMSwarmComputeMassMatrixSquare_Private(DM dmc, DM dmf, Mat mass, PetscBool useDeltaFunction, PetscCtx ctx)
 {
   const char   *name = "Mass Matrix Square";
   MPI_Comm      comm;
@@ -941,7 +939,7 @@ PetscErrorCode DMSwarmCreateMassMatrixSquare(DM dmCoarse, DM dmFine, Mat *mass)
    The way Dave May does particles, they amount to quadratue weights rather than delta functions, so he has |J| is in
    his integral. We allow this with the boolean flag.
 */
-static PetscErrorCode DMSwarmComputeGradientMatrix_Private(DM sw, DM dm, Mat derv, PetscBool useDeltaFunction, void *ctx)
+static PetscErrorCode DMSwarmComputeGradientMatrix_Private(DM sw, DM dm, Mat derv, PetscBool useDeltaFunction, PetscCtx ctx)
 {
   const char   *name = "Derivative Matrix";
   MPI_Comm      comm;
@@ -1038,7 +1036,7 @@ static PetscErrorCode DMSwarmComputeGradientMatrix_Private(DM sw, DM dm, Mat der
       PetscCall(PetscArrayzero(elemMat, Npc * cdim * totDim));
       for (PetscInt i = 0; i < numFIndices; ++i) {
         for (PetscInt j = 0; j < Npc; ++j) {
-          /* D[((p*pdim + i)*Nc + c)*cdim + d] is the value at point p for basis function i, component c, derviative d */
+          /* D[((p*pdim + i)*Nc + c)*cdim + d] is the value at point p for basis function i, component c, derivative d */
           for (PetscInt d = 0; d < cdim; ++d) {
             xi[d] = 0.;
             for (PetscInt e = 0; e < cdim; ++e) xi[d] += invJ[e * cdim + d] * Tcoarse->T[1][(j * numFIndices + i) * cdim + e];
@@ -2367,13 +2365,11 @@ static PetscErrorCode DMSetup_Swarm(DM sw)
       swarm->migrate_type = DMSWARM_MIGRATE_DMCELLEXACT;
     } else {
       /* check methods exist for point location AND rank neighbor identification */
-      if (celldm->dm->ops->locatepoints) {
-        PetscCall(PetscInfo(sw, "DMSWARM_PIC: Using method CellDM->LocatePoints\n"));
-      } else SETERRQ(PetscObjectComm((PetscObject)sw), PETSC_ERR_USER, "DMSWARM_PIC requires the method CellDM->ops->locatepoints be defined");
+      PetscCheck(celldm->dm->ops->locatepoints, PetscObjectComm((PetscObject)sw), PETSC_ERR_USER, "DMSWARM_PIC requires the method CellDM->ops->locatepoints be defined");
+      PetscCall(PetscInfo(sw, "DMSWARM_PIC: Using method CellDM->LocatePoints\n"));
 
-      if (celldm->dm->ops->getneighbors) {
-        PetscCall(PetscInfo(sw, "DMSWARM_PIC: Using method CellDM->GetNeigbors\n"));
-      } else SETERRQ(PetscObjectComm((PetscObject)sw), PETSC_ERR_USER, "DMSWARM_PIC requires the method CellDM->ops->getneighbors be defined");
+      PetscCheck(celldm->dm->ops->getneighbors, PetscObjectComm((PetscObject)sw), PETSC_ERR_USER, "DMSWARM_PIC requires the method CellDM->ops->getneighbors be defined");
+      PetscCall(PetscInfo(sw, "DMSWARM_PIC: Using method CellDM->GetNeigbors\n"));
 
       swarm->migrate_type = DMSWARM_MIGRATE_DMCELLNSCATTER;
     }
@@ -2489,7 +2485,7 @@ static PetscErrorCode DMView_Swarm_Ascii(DM dm, PetscViewer viewer)
 static PetscErrorCode DMView_Swarm(DM dm, PetscViewer viewer)
 {
   DM_Swarm *swarm = (DM_Swarm *)dm->data;
-  PetscBool iascii, ibinary, isvtk, isdraw, ispython;
+  PetscBool isascii, ibinary, isvtk, isdraw, ispython;
 #if defined(PETSC_HAVE_HDF5)
   PetscBool ishdf5;
 #endif
@@ -2497,7 +2493,7 @@ static PetscErrorCode DMView_Swarm(DM dm, PetscViewer viewer)
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &ibinary));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERVTK, &isvtk));
 #if defined(PETSC_HAVE_HDF5)
@@ -2505,7 +2501,7 @@ static PetscErrorCode DMView_Swarm(DM dm, PetscViewer viewer)
 #endif
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
   PetscCall(PetscObjectHasFunction((PetscObject)viewer, "PetscViewerPythonViewObject_C", &ispython));
-  if (iascii) {
+  if (isascii) {
     PetscViewerFormat format;
 
     PetscCall(PetscViewerGetFormat(viewer, &format));
@@ -2574,7 +2570,7 @@ PetscErrorCode DMSwarmGetCellSwarm(DM sw, PetscInt cellID, DM cellswarm)
   PetscCall(DMLabelCreate(PetscObjectComm((PetscObject)sw), "singlecell", &label));
   PetscCall(DMAddLabel(dmc, label));
   PetscCall(DMLabelSetValue(label, cellID, 1));
-  PetscCall(DMPlexFilter(dmc, label, 1, PETSC_FALSE, PETSC_FALSE, NULL, &subdmc));
+  PetscCall(DMPlexFilter(dmc, label, 1, PETSC_FALSE, PETSC_FALSE, PetscObjectComm((PetscObject)dmc), NULL, &subdmc));
   PetscCall(PetscObjectGetName((PetscObject)dmc, &name));
   PetscCall(PetscObjectSetName((PetscObject)subdmc, name));
   PetscCall(DMSwarmSetCellDM(cellswarm, subdmc));

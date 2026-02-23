@@ -45,8 +45,8 @@ typedef struct {
   PetscBool   change5;          // flag to change the state vector at t=5 PostEvent
 } AppCtx;
 
-PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *ctx);
-PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, void *ctx);
+PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], PetscCtx ctx);
+PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, PetscCtx ctx);
 
 int main(int argc, char **argv)
 {
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 /*
   User callback for defining the event-functions
 */
-PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *ctx)
+PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], PetscCtx ctx)
 {
   PetscInt n   = 0;
   AppCtx  *Ctx = (AppCtx *)ctx;
@@ -193,14 +193,14 @@ PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *
   }
 
   // third event -- on rank = 1%ctx.size
-  if (Ctx->rank == 1 % Ctx->size) { gval[n++] = Ctx->V * PetscSinReal(Ctx->pi * t); }
+  if (Ctx->rank == 1 % Ctx->size) gval[n++] = Ctx->V * PetscSinReal(Ctx->pi * t);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*
   User callback for the post-event stuff
 */
-PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, void *ctx)
+PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, PetscCtx ctx)
 {
   PetscInt     n = 0;
   PetscScalar *x;

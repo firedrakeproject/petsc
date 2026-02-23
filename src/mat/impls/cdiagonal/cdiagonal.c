@@ -80,13 +80,12 @@ static PetscErrorCode MatNorm_ConstantDiagonal(Mat A, NormType type, PetscReal *
   Mat_ConstantDiagonal *ctx = (Mat_ConstantDiagonal *)A->data;
 
   PetscFunctionBegin;
-  if (type == NORM_FROBENIUS || type == NORM_2 || type == NORM_1 || type == NORM_INFINITY) *nrm = PetscAbsScalar(ctx->diag);
-  else SETERRQ(PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Unsupported norm");
+  PetscCheck(type == NORM_FROBENIUS || type == NORM_2 || type == NORM_1 || type == NORM_INFINITY, PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Unsupported norm");
+  *nrm = PetscAbsScalar(ctx->diag);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 static PetscErrorCode MatCreateSubMatrices_ConstantDiagonal(Mat A, PetscInt n, const IS irow[], const IS icol[], MatReuse scall, Mat *submat[])
-
 {
   Mat B;
 
@@ -115,19 +114,10 @@ static PetscErrorCode MatDuplicate_ConstantDiagonal(Mat A, MatDuplicateOption op
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatMissingDiagonal_ConstantDiagonal(Mat mat, PetscBool *missing, PetscInt *dd)
-{
-  PetscFunctionBegin;
-  *missing = PETSC_FALSE;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode MatDestroy_ConstantDiagonal(Mat mat)
 {
   PetscFunctionBegin;
   PetscCall(PetscFree(mat->data));
-  mat->structural_symmetry_eternal = PETSC_FALSE;
-  mat->symmetry_eternal            = PETSC_FALSE;
   PetscCall(PetscObjectComposeFunction((PetscObject)mat, "MatConstantDiagonalGetConstant_C", NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -135,11 +125,11 @@ static PetscErrorCode MatDestroy_ConstantDiagonal(Mat mat)
 static PetscErrorCode MatView_ConstantDiagonal(Mat J, PetscViewer viewer)
 {
   Mat_ConstantDiagonal *ctx = (Mat_ConstantDiagonal *)J->data;
-  PetscBool             iascii;
+  PetscBool             isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscViewerFormat format;
 
     PetscCall(PetscViewerGetFormat(viewer, &format));
@@ -398,7 +388,6 @@ PETSC_EXTERN PetscErrorCode MatCreate_ConstantDiagonal(Mat A)
   A->ops->norm                      = MatNorm_ConstantDiagonal;
   A->ops->createsubmatrices         = MatCreateSubMatrices_ConstantDiagonal;
   A->ops->duplicate                 = MatDuplicate_ConstantDiagonal;
-  A->ops->missingdiagonal           = MatMissingDiagonal_ConstantDiagonal;
   A->ops->getrow                    = MatGetRow_ConstantDiagonal;
   A->ops->restorerow                = MatRestoreRow_ConstantDiagonal;
   A->ops->sor                       = MatSOR_ConstantDiagonal;

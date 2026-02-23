@@ -3,14 +3,14 @@
 #include <petsc/private/dmimpl.h>
 
 typedef struct {
-  Vec        Xglobal;
-  Vec        Xlocal;
-  Mat        A;
-  VecScatter gtol;
-  VecScatter ltog;
-  VecScatter ltol;
-  void      *ctx;
-  PetscErrorCode (*destroyctx)(void *);
+  Vec                Xglobal;
+  Vec                Xlocal;
+  Mat                A;
+  VecScatter         gtol;
+  VecScatter         ltog;
+  VecScatter         ltol;
+  PetscCtx           ctx;
+  PetscCtxDestroyFn *destroyctx;
 } DM_Shell;
 
 /*@
@@ -180,16 +180,16 @@ static PetscErrorCode DMCreateMatrix_Shell(DM dm, Mat *J)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscAssertPointer(J, 2);
   if (!shell->A) {
-    if (shell->Xglobal) {
-      PetscInt m, M;
-      PetscCall(PetscInfo(dm, "Naively creating matrix using global vector distribution without preallocation\n"));
-      PetscCall(VecGetSize(shell->Xglobal, &M));
-      PetscCall(VecGetLocalSize(shell->Xglobal, &m));
-      PetscCall(MatCreate(PetscObjectComm((PetscObject)dm), &shell->A));
-      PetscCall(MatSetSizes(shell->A, m, m, M, M));
-      PetscCall(MatSetType(shell->A, dm->mattype));
-      PetscCall(MatSetUp(shell->A));
-    } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_USER, "Must call DMShellSetMatrix(), DMShellSetCreateMatrix(), or provide a vector");
+    PetscInt m, M;
+
+    PetscCheck(shell->Xglobal, PetscObjectComm((PetscObject)dm), PETSC_ERR_USER, "Must call DMShellSetMatrix(), DMShellSetCreateMatrix(), or provide a vector");
+    PetscCall(PetscInfo(dm, "Naively creating matrix using global vector distribution without preallocation\n"));
+    PetscCall(VecGetSize(shell->Xglobal, &M));
+    PetscCall(VecGetLocalSize(shell->Xglobal, &m));
+    PetscCall(MatCreate(PetscObjectComm((PetscObject)dm), &shell->A));
+    PetscCall(MatSetSizes(shell->A, m, m, M, M));
+    PetscCall(MatSetType(shell->A, dm->mattype));
+    PetscCall(MatSetUp(shell->A));
   }
   A = shell->A;
   PetscCall(MatDuplicate(A, MAT_SHARE_NONZERO_PATTERN, J));
@@ -246,7 +246,7 @@ static PetscErrorCode DMCreateLocalVector_Shell(DM dm, Vec *gvec)
 
 .seealso: `DM`, `DMSHELL`, `DMShellSetContext()`, `DMShellGetContext()`
 @*/
-PetscErrorCode DMShellSetDestroyContext(DM dm, PetscErrorCode (*destroyctx)(void *))
+PetscErrorCode DMShellSetDestroyContext(DM dm, PetscCtxDestroyFn *destroyctx)
 {
   DM_Shell *shell = (DM_Shell *)dm->data;
   PetscBool isshell;
@@ -272,7 +272,7 @@ PetscErrorCode DMShellSetDestroyContext(DM dm, PetscErrorCode (*destroyctx)(void
 
 .seealso: `DM`, `DMSHELL`, `DMCreateMatrix()`, `DMShellGetContext()`
 @*/
-PetscErrorCode DMShellSetContext(DM dm, void *ctx)
+PetscErrorCode DMShellSetContext(DM dm, PetscCtx ctx)
 {
   DM_Shell *shell = (DM_Shell *)dm->data;
   PetscBool isshell;
@@ -298,9 +298,15 @@ PetscErrorCode DMShellSetContext(DM dm, void *ctx)
 
   Level: advanced
 
+  Fortran Notes:
+  This only works when the context is a Fortran derived type or a `PetscObject`. Declare `ctx` with
+.vb
+  type(tUsertype), pointer :: ctx
+.ve
+
 .seealso: `DM`, `DMSHELL`, `DMCreateMatrix()`, `DMShellSetContext()`
 @*/
-PetscErrorCode DMShellGetContext(DM dm, void *ctx)
+PetscErrorCode DMShellGetContext(DM dm, PetscCtxRt ctx)
 {
   DM_Shell *shell = (DM_Shell *)dm->data;
   PetscBool isshell;
@@ -1080,7 +1086,7 @@ static PetscErrorCode DMDestroy_Shell(DM dm)
   DM_Shell *shell = (DM_Shell *)dm->data;
 
   PetscFunctionBegin;
-  if (shell->destroyctx) PetscCallBack("Destroy Context", (*shell->destroyctx)(shell->ctx));
+  if (shell->destroyctx) PetscCallBack("Destroy Context", (*shell->destroyctx)(&shell->ctx));
   PetscCall(MatDestroy(&shell->A));
   PetscCall(VecDestroy(&shell->Xglobal));
   PetscCall(VecDestroy(&shell->Xlocal));

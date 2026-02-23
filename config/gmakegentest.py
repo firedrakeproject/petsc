@@ -17,12 +17,10 @@ sys.path.insert(0,thisscriptdir)
 import testparse
 import example_template
 
-
 """
 
 There are 2 modes of running tests: Normal builds and run from prefix of
 install.  They affect where to find things:
-
 
 Case 1.  Normal builds:
 
@@ -41,7 +39,6 @@ Case 1.  Normal builds:
      +---------------------+----------------------------------+
      | PETSC_GMAKEGENTEST  | PETSC_DIR/config/gmakegentest.py |
      +---------------------+----------------------------------+
-
 
 Case 2.  From install dir:
 
@@ -189,7 +186,7 @@ class generateExamples(Petsc):
     if srcext in ".F".split(): langReq="F"
     if srcext in ".cxx".split(): langReq="cxx"
     if srcext in ".kokkos.cxx".split(): langReq="kokkos_cxx"
-    if srcext in ".hip.cpp".split(): langReq="hip_cpp"
+    if srcext in ".hip.cxx".split(): langReq="hip_cxx"
     if srcext in ".raja.cxx".split(): langReq="raja_cxx"
     if srcext in ".cpp".split(): langReq="cpp"
     if srcext == ".cu": langReq="cu"
@@ -212,7 +209,6 @@ class generateExamples(Petsc):
       if os.path.isfile(fullaf): altlist.append(srcaf)
 
     return altlist
-
 
   def _getLoopVars(self,inDict,testname, isSubtest=False):
     """
@@ -675,8 +671,6 @@ class generateExamples(Petsc):
     if (lang=="F" or lang=="F90"):
       if not self.have_fortran:
         srcDict["SKIP"].append("Fortran required for this test")
-      elif lang=="F90" and 'PETSC_USING_F90FREEFORM' not in self.conf:
-        srcDict["SKIP"].append("Fortran f90freeform required for this test")
     if lang=="cu" and 'PETSC_HAVE_CUDA' not in self.conf:
       srcDict["SKIP"].append("CUDA required for this test")
     if lang=="hip" and 'PETSC_HAVE_HIP' not in self.conf:
@@ -702,7 +696,6 @@ class generateExamples(Petsc):
         return self._isRun(srcDict)
 
     return srcDict['SKIP'] == []
-
 
   def _isRun(self,testDict, debug=False):
     """
@@ -1092,7 +1085,7 @@ if __name__ == '__main__':
     parser.add_option('-s', '--single_executable', dest='single_executable', action="store_false", help='Whether there should be single executable per src subdir.  Default is false')
     parser.add_option('-t', '--testdir', dest='testdir',  help='Test directory [$PETSC_ARCH/tests]')
     parser.add_option('-c', '--check-output', dest='check_output', action="store_true",
-                      help='Check whether output files are in output director')
+                      help='Check whether output files are in output directory')
     parser.add_option('--pkg-dir', help='Set the directory of the package (different from PETSc) you want to generate the makefile rules for', default=None)
     parser.add_option('--pkg-name', help='Set the name of the package you want to generate the makefile rules for', default=None)
     parser.add_option('--pkg-arch', help='Set the package arch name you want to generate the makefile rules for', default=None)

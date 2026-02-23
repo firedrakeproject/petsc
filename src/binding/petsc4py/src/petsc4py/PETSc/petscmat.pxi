@@ -428,8 +428,9 @@ cdef extern from * nogil:
     PetscErrorCode MatLMVMSetJ0(PetscMat, PetscMat)
     PetscErrorCode MatLMVMGetJ0KSP(PetscMat, PetscKSP*)
     PetscErrorCode MatLMVMSetJ0KSP(PetscMat, PetscKSP)
-
-    PetscErrorCode MatMissingDiagonal(Mat, PetscBool*, PetscInt*)
+    PetscErrorCode MatLMVMAllocate(PetscMat, PetscVec, PetscVec)
+    PetscErrorCode MatLMVMUpdate(PetscMat, PetscVec, PetscVec)
+    PetscErrorCode MatLMVMReset(PetscMat, PetscBool)
 
     ctypedef enum PetscMatFactorShiftType "MatFactorShiftType":
         MAT_SHIFT_NONE
@@ -707,6 +708,13 @@ cdef inline PetscMatStructure matstructure(object structure) \
     elif structure is False: return MAT_DIFFERENT_NONZERO_PATTERN
     elif structure is True:  return MAT_SAME_NONZERO_PATTERN
     else:                    return structure
+
+cdef inline PetscMatDuplicateOption matduplicateoption(object copy) \
+    except <PetscMatDuplicateOption>(-1):
+    if   copy is None:  return MAT_DO_NOT_COPY_VALUES
+    elif copy is False: return MAT_DO_NOT_COPY_VALUES
+    elif copy is True:  return MAT_COPY_VALUES
+    else:               return copy
 
 cdef inline PetscMatAssemblyType assemblytype(object assembly) \
     except <PetscMatAssemblyType>(-1):

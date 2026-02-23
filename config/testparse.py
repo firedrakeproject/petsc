@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Parse the PETSc tutorial or test file (example) and return a dictionary containing information about the tests to be run for the example 
+Parse the PETSc tutorial or test file (example) and return a dictionary containing information about the tests to be run for the example
 
 Quick usage::
 
@@ -343,7 +343,6 @@ def splitTests(testname,sdict):
 
   return testnames, sdicts
 
-
 def testSplit(striptest):
   """
   Split up a test into lines, but use a shell parser to detect when newlines are within quotation marks
@@ -386,7 +385,6 @@ def testSplit(striptest):
       print(striptest)
       raise ValueError
   yield last_line
-
 
 def parseTest(testStr,srcfile,verbosity):
   """
@@ -461,6 +459,12 @@ def parseTest(testStr,srcfile,verbosity):
 
   if len(comments): subdict['comments']="\n".join(comments).lstrip("\n")
 
+  # add in error check: if 'requires' is added to subtests, make sure 'suffix' is also added.
+  if 'subtests' in subdict:
+    for stest in subdict['subtests']:
+      if 'requires' in  subdict[stest] and not 'suffix' in subdict[stest]:
+        raise Exception("\n\nError in test harness parsing file: "+srcfile+"\nA test in a testset with 'requires' directive should also have a 'suffix' directive!")
+
   # A test block can create multiple tests.  This does that logic
   testnames,subdicts=splitTests(testname,subdict)
   return testnames,subdicts
@@ -499,7 +503,6 @@ def parseTests(testStr,srcfile,fileNums,verbosity):
          if 'datafilespath' in testDict['build']['requires']:
              newreqs=re.sub('datafilespath','',testDict['build']['requires'])
              testDict['build']['requires']=newreqs.strip()
-
 
   # Now go through each test.  First elem in split is blank
   for test in re.split("\ntest(?:set)?:",newTestStr)[1:]:
@@ -552,7 +555,6 @@ def parseTestFile(srcfile,verbosity):
   if 'build' in testDict[basename]:
     testDict[basename].update(testDict[basename]['build'])
     del testDict[basename]['build']
-
 
   os.chdir(curdir)
   return testDict

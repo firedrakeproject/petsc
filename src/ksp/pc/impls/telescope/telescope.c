@@ -218,6 +218,7 @@ static PetscErrorCode PCTelescopeMatCreate_default(PC pc, PC_Telescope sred, Mat
 
     PetscCall(MatGetSize(Blocal, &mm, NULL));
     PetscCall(MatCreateMPIMatConcatenateSeqMat(subcomm, Blocal, mm, reuse, &Bred));
+    PetscCall(MatPropagateSymmetryOptions(B, Bred));
   }
   *A = Bred;
   PetscCall(ISDestroy(&iscol));
@@ -311,13 +312,13 @@ static PetscErrorCode PCTelescopeMatNullSpaceCreate_default(PC pc, PC_Telescope 
 static PetscErrorCode PCView_Telescope(PC pc, PetscViewer viewer)
 {
   PC_Telescope sred = (PC_Telescope)pc->data;
-  PetscBool    iascii, isstring;
+  PetscBool    isascii, isstring;
   PetscViewer  subviewer;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
-  if (iascii) {
+  if (isascii) {
     {
       MPI_Comm    comm, subcomm;
       PetscMPIInt comm_size, subcomm_size;
@@ -727,7 +728,7 @@ static PetscErrorCode PCSetFromOptions_Telescope(PC pc, PetscOptionItems PetscOp
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* PC simplementation specific API's */
+/* PC implementation specific API's */
 
 static PetscErrorCode PCTelescopeGetKSP_Telescope(PC pc, KSP *ksp)
 {

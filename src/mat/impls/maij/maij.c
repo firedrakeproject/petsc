@@ -522,9 +522,8 @@ static PetscErrorCode MatProductSetFromOptions_SeqAIJ_SeqMAIJ(Mat C)
   Mat_Product *product = C->product;
 
   PetscFunctionBegin;
-  if (product->type == MATPRODUCT_PtAP) {
-    C->ops->productsymbolic = MatProductSymbolic_PtAP_SeqAIJ_SeqMAIJ;
-  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Mat Product type %s is not supported for SeqAIJ and SeqMAIJ matrices", MatProductTypes[product->type]);
+  PetscCheck(product->type == MATPRODUCT_PtAP, PETSC_COMM_SELF, PETSC_ERR_SUP, "Mat Product type %s is not supported for SeqAIJ and SeqMAIJ matrices", MatProductTypes[product->type]);
+  C->ops->productsymbolic = MatProductSymbolic_PtAP_SeqAIJ_SeqMAIJ;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -766,12 +765,12 @@ static PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqMAIJ(Mat A, Mat PP, PetscReal fi
   /* nnz is now stored in ci[ptm], column indices are in the list of free space */
   /* Allocate space for cj, initialize cj, and */
   /* destroy list of free space and other temporary array(s) */
-  PetscCall(PetscMalloc1(ci[cn] + 1, &cj));
+  PetscCall(PetscMalloc1(ci[cn], &cj));
   PetscCall(PetscFreeSpaceContiguous(&free_space, cj));
   PetscCall(PetscFree4(ptadenserow, ptasparserow, denserow, sparserow));
 
   /* Allocate space for ca */
-  PetscCall(PetscCalloc1(ci[cn] + 1, &ca));
+  PetscCall(PetscCalloc1(ci[cn], &ca));
 
   /* put together the new matrix */
   PetscCall(MatSetSeqAIJWithArrays_private(PetscObjectComm((PetscObject)A), cn, cn, ci, cj, ca, NULL, C));
@@ -863,13 +862,10 @@ PETSC_INTERN PetscErrorCode MatProductSymbolic_PtAP_MPIAIJ_MPIMAIJ(Mat C)
   }
 
   PetscCall(PetscStrcmp(product->alg, "allatonce_merged", &flg));
-  if (flg) {
-    PetscCall(MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce_merged(A, P, product->fill, C));
-    C->ops->productnumeric = MatProductNumeric_PtAP;
-    PetscFunctionReturn(PETSC_SUCCESS);
-  }
-
-  SETERRQ(PetscObjectComm((PetscObject)C), PETSC_ERR_SUP, "Mat Product Algorithm is not supported");
+  PetscCheck(flg, PetscObjectComm((PetscObject)C), PETSC_ERR_SUP, "Mat Product Algorithm is not supported");
+  PetscCall(MatPtAPSymbolic_MPIAIJ_MPIMAIJ_allatonce_merged(A, P, product->fill, C));
+  C->ops->productnumeric = MatProductNumeric_PtAP;
+  PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PETSC_INTERN PetscErrorCode MatConvert_SeqMAIJ_SeqAIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)

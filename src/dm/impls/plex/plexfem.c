@@ -47,9 +47,9 @@ static PetscErrorCode DMPlexConvertPlex(DM dm, DM *plex, PetscBool copy)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscContainerCtxDestroy_PetscFEGeom(void **ctx)
+static PetscErrorCode PetscContainerCtxDestroy_PetscFEGeom(PetscCtxRt ctx)
 {
-  PetscFEGeom *geom = (PetscFEGeom *)*ctx;
+  PetscFEGeom *geom = *(PetscFEGeom **)ctx;
 
   PetscFunctionBegin;
   PetscCall(PetscFEGeomDestroy(&geom));
@@ -67,7 +67,7 @@ static PetscErrorCode DMPlexGetFEGeom(DMField coordField, IS pointIS, PetscQuadr
   PetscCall(PetscSNPrintf(composeStr, 32, "DMPlexGetFEGeom_%" PetscInt64_FMT "\n", id));
   PetscCall(PetscObjectQuery((PetscObject)pointIS, composeStr, (PetscObject *)&container));
   if (container) {
-    PetscCall(PetscContainerGetPointer(container, (void **)geom));
+    PetscCall(PetscContainerGetPointer(container, geom));
   } else {
     PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, mode, geom));
     PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container));
@@ -251,7 +251,7 @@ PetscErrorCode DMPlexSetUseMatClosurePermutation(DM dm, PetscBool useClPerm)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexProjectRigidBody_Private(PetscInt dim, PetscReal t, const PetscReal X[], PetscInt Nc, PetscScalar *mode, void *ctx)
+static PetscErrorCode DMPlexProjectRigidBody_Private(PetscInt dim, PetscReal t, const PetscReal X[], PetscInt Nc, PetscScalar *mode, PetscCtx ctx)
 {
   const PetscInt eps[3][3][3] = {
     {{0, 0, 0},  {0, 0, 1},  {0, -1, 0}},
@@ -270,7 +270,7 @@ static PetscErrorCode DMPlexProjectRigidBody_Private(PetscInt dim, PetscReal t, 
     mode[d] = 1.; /* Translation along axis d */
   } else {
     for (i = 0; i < dim; i++) {
-      for (j = 0; j < dim; j++) { mode[j] += eps[i][j][k] * X[i]; /* Rotation about axis d */ }
+      for (j = 0; j < dim; j++) mode[j] += eps[i][j][k] * X[i]; /* Rotation about axis d */
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -338,8 +338,20 @@ PetscErrorCode DMPlexCreateRigidBody(DM dm, PetscInt field, MatNullSpace *sp)
   /* Orthonormalize system */
   for (i = 0; i < mmin; ++i) {
     PetscScalar dots[6];
+    PetscReal   norm;
 
-    PetscCall(VecNormalize(mode[i], NULL));
+    PetscCall(VecNormalize(mode[i], &norm));
+    if (PetscAbsReal(norm) <= PETSC_SQRT_MACHINE_EPSILON) {
+      PetscCall(VecDestroy(&mode[i]));
+      if (i < mmin - 1) {
+        for (j = i; j < mmin - 1; j++) mode[j] = mode[j + 1];
+        mode[mmin - 1] = NULL;
+      }
+      m--;
+      mmin--;
+      i--;
+      continue;
+    }
     PetscCall(VecMDot(mode[i], mmin - i - 1, mode + i + 1, dots + i + 1));
     for (j = i + 1; j < mmin; ++j) {
       dots[j] *= -1.0;
@@ -495,7 +507,7 @@ typedef struct {
   $ The XYZ system rotates again about the x axis by beta. The Z axis is now at angle beta with respect to the z axis.
   $ The XYZ system rotates a third time about the z axis by gamma.
 */
-static PetscErrorCode DMPlexBasisTransformSetUp_Rotation_Internal(DM dm, void *ctx)
+static PetscErrorCode DMPlexBasisTransformSetUp_Rotation_Internal(DM dm, PetscCtx ctx)
 {
   RotCtx   *rc  = (RotCtx *)ctx;
   PetscInt  dim = rc->dim;
@@ -539,7 +551,7 @@ static PetscErrorCode DMPlexBasisTransformSetUp_Rotation_Internal(DM dm, void *c
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexBasisTransformDestroy_Rotation_Internal(DM dm, void *ctx)
+static PetscErrorCode DMPlexBasisTransformDestroy_Rotation_Internal(DM dm, PetscCtx ctx)
 {
   RotCtx *rc = (RotCtx *)ctx;
 
@@ -549,7 +561,7 @@ static PetscErrorCode DMPlexBasisTransformDestroy_Rotation_Internal(DM dm, void 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexBasisTransformGetMatrix_Rotation_Internal(DM dm, const PetscReal x[], PetscBool l2g, const PetscScalar **A, void *ctx)
+static PetscErrorCode DMPlexBasisTransformGetMatrix_Rotation_Internal(DM dm, const PetscReal x[], PetscBool l2g, const PetscScalar **A, PetscCtx ctx)
 {
   RotCtx *rc = (RotCtx *)ctx;
 
@@ -563,7 +575,7 @@ static PetscErrorCode DMPlexBasisTransformGetMatrix_Rotation_Internal(DM dm, con
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexBasisTransformApplyReal_Internal(DM dm, const PetscReal x[], PetscBool l2g, PetscInt dim, const PetscReal *y, PetscReal *z, void *ctx)
+PetscErrorCode DMPlexBasisTransformApplyReal_Internal(DM dm, const PetscReal x[], PetscBool l2g, PetscInt dim, const PetscReal *y, PetscReal *z, PetscCtx ctx)
 {
   PetscFunctionBegin;
 #if defined(PETSC_USE_COMPLEX)
@@ -590,7 +602,7 @@ PetscErrorCode DMPlexBasisTransformApplyReal_Internal(DM dm, const PetscReal x[]
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexBasisTransformApply_Internal(DM dm, const PetscReal x[], PetscBool l2g, PetscInt dim, const PetscScalar *y, PetscScalar *z, void *ctx)
+PetscErrorCode DMPlexBasisTransformApply_Internal(DM dm, const PetscReal x[], PetscBool l2g, PetscInt dim, const PetscScalar *y, PetscScalar *z, PetscCtx ctx)
 {
   const PetscScalar *A;
 
@@ -891,7 +903,7 @@ PetscErrorCode DMPlexCreateBasisRotation(DM dm, PetscReal alpha, PetscReal beta,
 . numids - The number of `DMLabel` ids for constrained points
 . ids    - An array of ids for constrained points
 . func   - A pointwise function giving boundary values
-- ctx    - An optional user context for bcFunc
+- ctx    - An optional application context for `bcFunc`
 
   Output Parameter:
 . locX - A local vector to receives the boundary values
@@ -900,9 +912,9 @@ PetscErrorCode DMPlexCreateBasisRotation(DM dm, PetscReal alpha, PetscReal beta,
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMLabel`, `DMPlexInsertBoundaryValuesEssentialField()`, `DMPlexInsertBoundaryValuesEssentialBdField()`, `DMAddBoundary()`
 @*/
-PetscErrorCode DMPlexInsertBoundaryValuesEssential(DM dm, PetscReal time, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void *ctx, Vec locX)
+PetscErrorCode DMPlexInsertBoundaryValuesEssential(DM dm, PetscReal time, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], PetscErrorCode (*func)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), PetscCtx ctx, Vec locX)
 {
-  PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal x[], PetscInt, PetscScalar *u, void *ctx);
+  PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal x[], PetscInt, PetscScalar *u, PetscCtx ctx);
   void   **ctxs;
   PetscInt numFields;
 
@@ -930,7 +942,7 @@ PetscErrorCode DMPlexInsertBoundaryValuesEssential(DM dm, PetscReal time, PetscI
 . numids - The number of `DMLabel` ids for constrained points
 . ids    - An array of ids for constrained points
 . func   - A pointwise function giving boundary values
-- ctx    - An optional user context for bcFunc
+- ctx    - An optional application context for `bcFunc`
 
   Output Parameter:
 . locX - A local vector to receives the boundary values
@@ -939,7 +951,7 @@ PetscErrorCode DMPlexInsertBoundaryValuesEssential(DM dm, PetscReal time, PetscI
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexInsertBoundaryValuesEssential()`, `DMPlexInsertBoundaryValuesEssentialBdField()`, `DMAddBoundary()`
 @*/
-PetscErrorCode DMPlexInsertBoundaryValuesEssentialField(DM dm, PetscReal time, Vec locU, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], void (*func)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), void *ctx, Vec locX)
+PetscErrorCode DMPlexInsertBoundaryValuesEssentialField(DM dm, PetscReal time, Vec locU, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], void (*func)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), PetscCtx ctx, Vec locX)
 {
   void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]);
   void   **ctxs;
@@ -971,7 +983,7 @@ PetscErrorCode DMPlexInsertBoundaryValuesEssentialField(DM dm, PetscReal time, V
 . numids - The number of `DMLabel` ids for constrained points
 . ids    - An array of ids for constrained points
 . func   - A pointwise function giving boundary values, the calling sequence is given in `DMProjectBdFieldLabelLocal()`
-- ctx    - An optional user context for `func`
+- ctx    - An optional application context for `func`
 
   Output Parameter:
 . locX - A local vector to receive the boundary values
@@ -980,7 +992,7 @@ PetscErrorCode DMPlexInsertBoundaryValuesEssentialField(DM dm, PetscReal time, V
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMProjectBdFieldLabelLocal()`, `DMPlexInsertBoundaryValuesEssential()`, `DMPlexInsertBoundaryValuesEssentialField()`, `DMAddBoundary()`
 @*/
-PetscErrorCode DMPlexInsertBoundaryValuesEssentialBdField(DM dm, PetscReal time, Vec locU, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], void (*func)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), void *ctx, Vec locX)
+PetscErrorCode DMPlexInsertBoundaryValuesEssentialBdField(DM dm, PetscReal time, Vec locU, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], void (*func)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), PetscCtx ctx, Vec locX)
 {
   void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]);
   void   **ctxs;
@@ -1012,7 +1024,7 @@ PetscErrorCode DMPlexInsertBoundaryValuesEssentialBdField(DM dm, PetscReal time,
 . numids       - The number of `DMLabel` ids for constrained points
 . ids          - An array of ids for constrained points
 . func         - A pointwise function giving boundary values
-- ctx          - An optional user context for bcFunc
+- ctx          - An optional application context for bcFunc
 
   Output Parameter:
 . locX - A local vector to receives the boundary values
@@ -1024,7 +1036,7 @@ PetscErrorCode DMPlexInsertBoundaryValuesEssentialBdField(DM dm, PetscReal time,
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexInsertBoundaryValuesEssential()`, `DMPlexInsertBoundaryValuesEssentialField()`, `DMAddBoundary()`
 @*/
-PetscErrorCode DMPlexInsertBoundaryValuesRiemann(DM dm, PetscReal time, Vec faceGeometry, Vec cellGeometry, Vec Grad, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], PetscErrorCode (*func)(PetscReal, const PetscReal *, const PetscReal *, const PetscScalar *, PetscScalar *, void *), void *ctx, Vec locX)
+PetscErrorCode DMPlexInsertBoundaryValuesRiemann(DM dm, PetscReal time, Vec faceGeometry, Vec cellGeometry, Vec Grad, PetscInt field, PetscInt Nc, const PetscInt comps[], DMLabel label, PetscInt numids, const PetscInt ids[], PetscErrorCode (*func)(PetscReal, const PetscReal *, const PetscReal *, const PetscScalar *, PetscScalar *, void *), PetscCtx ctx, Vec locX)
 {
   PetscDS            prob;
   PetscSF            sf;
@@ -1119,7 +1131,7 @@ cleanup:
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode zero(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode zero(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt c;
   for (c = 0; c < Nc; ++c) u[c] = 0.0;
@@ -1146,10 +1158,10 @@ PetscErrorCode DMPlexInsertBoundaryValues_Plex(DM dm, PetscBool insertEssential,
     const PetscInt         *comps;
     PetscObject             obj;
     PetscClassId            id;
-    void (*bvfunc)(void);
-    PetscInt        numids;
-    const PetscInt *ids;
-    void           *ctx;
+    PetscVoidFn            *bvfunc;
+    PetscInt                numids;
+    const PetscInt         *ids;
+    void                   *ctx;
 
     PetscCall(PetscDSGetBoundary(prob, b, &wf, &type, &name, &label, &numids, &ids, &field, &Nc, &comps, &bvfunc, NULL, &ctx));
     if (insertEssential != (type & DM_BC_ESSENTIAL)) continue;
@@ -1210,8 +1222,8 @@ PetscErrorCode DMPlexInsertTimeDerivativeBoundaryValues_Plex(DM dm, PetscBool in
     PetscClassId            id;
     PetscInt                numids;
     const PetscInt         *ids;
-    void (*bvfunc)(void);
-    void *ctx;
+    PetscVoidFn            *bvfunc;
+    void                   *ctx;
 
     PetscCall(PetscDSGetBoundary(prob, b, &wf, &type, &name, &label, &numids, &ids, &field, &Nc, &comps, NULL, &bvfunc, &ctx));
     if (insertEssential != (type & DM_BC_ESSENTIAL)) continue;
@@ -1261,15 +1273,15 @@ PetscErrorCode DMPlexInsertBounds_Plex(DM dm, PetscBool lower, PetscReal time, V
     const PetscInt         *ids;
     PetscInt                field, Nc;
     const PetscInt         *comps;
-    void (*bvfunc)(void);
-    void *ctx;
+    PetscVoidFn            *bvfunc;
+    void                   *ctx;
 
     PetscCall(PetscDSGetBoundary(ds, b, &wf, &type, &name, &label, &numids, &ids, &field, &Nc, &comps, &bvfunc, NULL, &ctx));
     if (lower && type != DM_BC_LOWER_BOUND) continue;
     if (!lower && type != DM_BC_UPPER_BOUND) continue;
     PetscCall(DMPlexLabelAddCells(dm, label));
     {
-      PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal x[], PetscInt, PetscScalar *u, void *ctx);
+      PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal x[], PetscInt, PetscScalar *u, PetscCtx ctx);
       void   **ctxs;
       PetscInt Nf;
 
@@ -2217,8 +2229,8 @@ PetscErrorCode DMPlexComputeClementInterpolant(DM dm, Vec locX, Vec locC)
           qgeom.invJ     = &fegeom.invJ[q * cdim * cdim];
           qgeom.detJ     = &fegeom.detJ[q];
           PetscCheck(fegeom.detJ[q] > 0.0, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Invalid determinant %g for element %" PetscInt_FMT ", quadrature points %" PetscInt_FMT, (double)fegeom.detJ[q], cell, q);
-          if (id == PETSCFE_CLASSID) PetscCall(PetscFEInterpolate_Static((PetscFE)obj, &x[foff], &qgeom, q, interpolant));
-          else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %" PetscInt_FMT, f);
+          PetscCheck(id == PETSCFE_CLASSID, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %" PetscInt_FMT, f);
+          PetscCall(PetscFEInterpolate_Static((PetscFE)obj, &x[foff], &qgeom, q, interpolant));
           for (fc = 0; fc < fNc; ++fc) val[foff + fc] += interpolant[fc] * wt;
           vol += wt;
         }
@@ -2348,8 +2360,8 @@ PetscErrorCode DMPlexComputeGradientClementInterpolant(DM dm, Vec locX, Vec locC
           qgeom.invJ     = &fegeom.invJ[q * coordDim * coordDim];
           qgeom.detJ     = &fegeom.detJ[q];
           PetscCheck(fegeom.detJ[q] > 0.0, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Invalid determinant %g for element %" PetscInt_FMT ", quadrature points %" PetscInt_FMT, (double)fegeom.detJ[q], cell, q);
-          if (id == PETSCFE_CLASSID) PetscCall(PetscFEInterpolateGradient_Static((PetscFE)obj, 1, &x[fieldOffset], &qgeom, q, interpolant));
-          else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %" PetscInt_FMT, field);
+          PetscCheck(id == PETSCFE_CLASSID, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Unknown discretization type for field %" PetscInt_FMT, field);
+          PetscCall(PetscFEInterpolateGradient_Static((PetscFE)obj, 1, &x[fieldOffset], &qgeom, q, interpolant));
           for (fc = 0; fc < Nc; ++fc) {
             const PetscReal wt = quadWeights[q * qNc + qc];
 
@@ -2386,7 +2398,7 @@ PetscErrorCode DMPlexComputeGradientClementInterpolant(DM dm, Vec locX, Vec locC
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec locX, PetscInt cStart, PetscInt cEnd, PetscScalar *cintegral, void *user)
+PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec locX, PetscInt cStart, PetscInt cEnd, PetscScalar *cintegral, PetscCtx ctx)
 {
   DM           dmAux = NULL, plexA = NULL;
   PetscDS      prob, probAux       = NULL;
@@ -2574,9 +2586,9 @@ PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec locX, PetscInt cStart, 
   DMPlexComputeIntegralFEM - Form the integral over the domain from the global input X using pointwise functions specified by the user
 
   Input Parameters:
-+ dm   - The mesh
-. X    - Global input vector
-- user - The user context
++ dm  - The mesh
+. X   - Global input vector
+- ctx - The application context
 
   Output Parameter:
 . integral - Integral for each field
@@ -2585,7 +2597,7 @@ PetscErrorCode DMPlexComputeIntegral_Internal(DM dm, Vec locX, PetscInt cStart, 
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexSNESComputeResidualFEM()`
 @*/
-PetscErrorCode DMPlexComputeIntegralFEM(DM dm, Vec X, PetscScalar *integral, void *user)
+PetscErrorCode DMPlexComputeIntegralFEM(DM dm, Vec X, PetscScalar *integral, PetscCtx ctx)
 {
   PetscInt     printFEM;
   PetscScalar *cintegral, *lintegral;
@@ -2608,7 +2620,7 @@ PetscErrorCode DMPlexComputeIntegralFEM(DM dm, Vec X, PetscScalar *integral, voi
   PetscCall(DMPlexInsertBoundaryValues(dm, PETSC_TRUE, locX, 0.0, NULL, NULL, NULL));
   PetscCall(DMGlobalToLocalBegin(dm, X, INSERT_VALUES, locX));
   PetscCall(DMGlobalToLocalEnd(dm, X, INSERT_VALUES, locX));
-  PetscCall(DMPlexComputeIntegral_Internal(dm, locX, cStart, cEnd, cintegral, user));
+  PetscCall(DMPlexComputeIntegral_Internal(dm, locX, cStart, cEnd, cintegral, ctx));
   PetscCall(DMRestoreLocalVector(dm, &locX));
   printFEM = ((DM_Plex *)dm->data)->printFEM;
   /* Sum up values */
@@ -2634,9 +2646,9 @@ PetscErrorCode DMPlexComputeIntegralFEM(DM dm, Vec X, PetscScalar *integral, voi
   DMPlexComputeCellwiseIntegralFEM - Form the vector of cellwise integrals F from the global input X using pointwise functions specified by the user
 
   Input Parameters:
-+ dm   - The mesh
-. X    - Global input vector
-- user - The user context
++ dm  - The mesh
+. X   - Global input vector
+- ctx - The application context
 
   Output Parameter:
 . F - Cellwise integrals for each field
@@ -2645,7 +2657,7 @@ PetscErrorCode DMPlexComputeIntegralFEM(DM dm, Vec X, PetscScalar *integral, voi
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexSNESComputeResidualFEM()`
 @*/
-PetscErrorCode DMPlexComputeCellwiseIntegralFEM(DM dm, Vec X, Vec F, void *user)
+PetscErrorCode DMPlexComputeCellwiseIntegralFEM(DM dm, Vec X, Vec F, PetscCtx ctx)
 {
   PetscInt     printFEM;
   DM           dmF;
@@ -2670,7 +2682,7 @@ PetscErrorCode DMPlexComputeCellwiseIntegralFEM(DM dm, Vec X, Vec F, void *user)
   PetscCall(DMPlexInsertBoundaryValues(dm, PETSC_TRUE, locX, 0.0, NULL, NULL, NULL));
   PetscCall(DMGlobalToLocalBegin(dm, X, INSERT_VALUES, locX));
   PetscCall(DMGlobalToLocalEnd(dm, X, INSERT_VALUES, locX));
-  PetscCall(DMPlexComputeIntegral_Internal(dm, locX, cStart, cEnd, cintegral, user));
+  PetscCall(DMPlexComputeIntegral_Internal(dm, locX, cStart, cEnd, cintegral, ctx));
   PetscCall(DMRestoreLocalVector(dm, &locX));
   /* Put values in F */
   PetscCall(VecGetArray(F, &af));
@@ -2698,7 +2710,7 @@ PetscErrorCode DMPlexComputeCellwiseIntegralFEM(DM dm, Vec X, Vec F, void *user)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexComputeBdIntegral_Internal(DM dm, Vec locX, IS pointIS, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), PetscScalar *fintegral, void *user)
+static PetscErrorCode DMPlexComputeBdIntegral_Internal(DM dm, Vec locX, IS pointIS, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), PetscScalar *fintegral, PetscCtx ctx)
 {
   DM                 plex = NULL, plexA = NULL;
   DMEnclosureType    encAux;
@@ -2835,7 +2847,7 @@ static PetscErrorCode DMPlexComputeBdIntegral_Internal(DM dm, Vec locX, IS point
 . numVals - The number of label values to use, or `PETSC_DETERMINE` for all values
 . vals    - The label values to use, or NULL for all values
 . funcs   - The functions to integrate along the boundary for each field
-- user    - The user context
+- ctx     - The application context
 
   Output Parameter:
 . integral - Integral for each field
@@ -2844,7 +2856,7 @@ static PetscErrorCode DMPlexComputeBdIntegral_Internal(DM dm, Vec locX, IS point
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexComputeIntegralFEM()`, `DMPlexComputeBdResidualFEM()`
 @*/
-PetscErrorCode DMPlexComputeBdIntegral(DM dm, Vec X, DMLabel label, PetscInt numVals, const PetscInt vals[], void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), PetscScalar *integral, void *user)
+PetscErrorCode DMPlexComputeBdIntegral(DM dm, Vec X, DMLabel label, PetscInt numVals, const PetscInt vals[], void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), PetscScalar *integral, PetscCtx ctx)
 {
   Vec          locX;
   PetscSection section;
@@ -2888,7 +2900,7 @@ PetscErrorCode DMPlexComputeBdIntegral(DM dm, Vec X, DMLabel label, PetscInt num
     }
     PetscCall(ISGetLocalSize(pointIS, &numFaces));
     PetscCall(PetscCalloc1(numFaces * Nf, &fintegral));
-    PetscCall(DMPlexComputeBdIntegral_Internal(dm, locX, pointIS, funcs, fintegral, user));
+    PetscCall(DMPlexComputeBdIntegral_Internal(dm, locX, pointIS, funcs, fintegral, ctx));
     /* Sum point contributions into integral */
     for (f = 0; f < Nf; ++f)
       for (face = 0; face < numFaces; ++face) integral[f] += fintegral[face * Nf + f];
@@ -2908,7 +2920,7 @@ PetscErrorCode DMPlexComputeBdIntegral(DM dm, Vec X, DMLabel label, PetscInt num
 + dmc       - The coarse mesh
 . dmf       - The fine mesh
 . isRefined - Flag indicating regular refinement, rather than the same topology
-- user      - The user context
+- ctx       - The application context
 
   Output Parameter:
 . In - The interpolation matrix
@@ -2917,7 +2929,7 @@ PetscErrorCode DMPlexComputeBdIntegral(DM dm, Vec X, DMLabel label, PetscInt num
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexComputeInterpolatorGeneral()`
 @*/
-PetscErrorCode DMPlexComputeInterpolatorNested(DM dmc, DM dmf, PetscBool isRefined, Mat In, void *user)
+PetscErrorCode DMPlexComputeInterpolatorNested(DM dmc, DM dmf, PetscBool isRefined, Mat In, PetscCtx ctx)
 {
   DM_Plex     *mesh = (DM_Plex *)dmc->data;
   const char  *name = "Interpolator";
@@ -3136,7 +3148,7 @@ PetscErrorCode DMPlexComputeInterpolatorNested(DM dmc, DM dmf, PetscBool isRefin
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexComputeMassMatrixNested(DM dmc, DM dmf, Mat mass, void *user)
+PetscErrorCode DMPlexComputeMassMatrixNested(DM dmc, DM dmf, Mat mass, PetscCtx ctx)
 {
   SETERRQ(PetscObjectComm((PetscObject)dmc), PETSC_ERR_SUP, "Laziness");
 }
@@ -3145,9 +3157,9 @@ PetscErrorCode DMPlexComputeMassMatrixNested(DM dmc, DM dmf, Mat mass, void *use
   DMPlexComputeInterpolatorGeneral - Form the local portion of the interpolation matrix from the coarse `DM` to a non-nested fine `DM`.
 
   Input Parameters:
-+ dmf  - The fine mesh
-. dmc  - The coarse mesh
-- user - The user context
++ dmf - The fine mesh
+. dmc - The coarse mesh
+- ctx - The application context
 
   Output Parameter:
 . In - The interpolation matrix
@@ -3156,7 +3168,7 @@ PetscErrorCode DMPlexComputeMassMatrixNested(DM dmc, DM dmf, Mat mass, void *use
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexComputeInterpolatorNested()`
 @*/
-PetscErrorCode DMPlexComputeInterpolatorGeneral(DM dmc, DM dmf, Mat In, void *user)
+PetscErrorCode DMPlexComputeInterpolatorGeneral(DM dmc, DM dmf, Mat In, PetscCtx ctx)
 {
   DM_Plex     *mesh = (DM_Plex *)dmf->data;
   const char  *name = "Interpolator";
@@ -3317,9 +3329,9 @@ PetscErrorCode DMPlexComputeInterpolatorGeneral(DM dmc, DM dmf, Mat In, void *us
   DMPlexComputeMassMatrixGeneral - Form the local portion of the mass matrix from the coarse `DM` to a non-nested fine `DM`.
 
   Input Parameters:
-+ dmf  - The fine mesh
-. dmc  - The coarse mesh
-- user - The user context
++ dmf - The fine mesh
+. dmc - The coarse mesh
+- ctx - The application context
 
   Output Parameter:
 . mass - The mass matrix
@@ -3328,7 +3340,7 @@ PetscErrorCode DMPlexComputeInterpolatorGeneral(DM dmc, DM dmf, Mat In, void *us
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexComputeMassMatrixNested()`, `DMPlexComputeInterpolatorNested()`, `DMPlexComputeInterpolatorGeneral()`
 @*/
-PetscErrorCode DMPlexComputeMassMatrixGeneral(DM dmc, DM dmf, Mat mass, void *user)
+PetscErrorCode DMPlexComputeMassMatrixGeneral(DM dmc, DM dmf, Mat mass, PetscCtx ctx)
 {
   DM_Plex     *mesh = (DM_Plex *)dmf->data;
   const char  *name = "Mass Matrix";
@@ -3552,9 +3564,9 @@ PetscErrorCode DMPlexComputeMassMatrixGeneral(DM dmc, DM dmf, Mat mass, void *us
   DMPlexComputeInjectorFEM - Compute a mapping from coarse unknowns to fine unknowns
 
   Input Parameters:
-+ dmc  - The coarse mesh
-. dmf  - The fine mesh
-- user - The user context
++ dmc - The coarse mesh
+. dmf - The fine mesh
+- ctx - The application context
 
   Output Parameter:
 . sc - The mapping
@@ -3563,7 +3575,7 @@ PetscErrorCode DMPlexComputeMassMatrixGeneral(DM dmc, DM dmf, Mat mass, void *us
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexComputeInterpolatorNested()`
 @*/
-PetscErrorCode DMPlexComputeInjectorFEM(DM dmc, DM dmf, VecScatter *sc, void *user)
+PetscErrorCode DMPlexComputeInjectorFEM(DM dmc, DM dmf, VecScatter *sc, PetscCtx ctx)
 {
   PetscDS      prob;
   PetscFE     *feRef;
@@ -3673,9 +3685,8 @@ PetscErrorCode DMPlexComputeInjectorFEM(DM dmc, DM dmf, VecScatter *sc, void *us
       }
       if (!found) {
         /* TODO We really want the average here, but some asshole put VecScatter in the interface */
-        if (fvRef[field] || (feRef[field] && order == 0)) {
-          cmap[offsetC + c] = offsetF + 0;
-        } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Could not locate matching functional for injection");
+        PetscCheck(fvRef[field] || (feRef[field] && order == 0), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Could not locate matching functional for injection");
+        cmap[offsetC + c] = offsetF + 0;
       }
     }
     offsetC += cpdim;
@@ -3845,8 +3856,8 @@ static PetscErrorCode DMPlexGetHybridCellFields(DM dm, IS cellIS, Vec locX, Vec 
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(cellIS, IS_CLASSID, 2);
   PetscValidHeaderSpecific(locX, VEC_CLASSID, 3);
-  if (locX_t) { PetscValidHeaderSpecific(locX_t, VEC_CLASSID, 4); }
-  if (locA) { PetscValidHeaderSpecific(locA, VEC_CLASSID, 5); }
+  if (locX_t) PetscValidHeaderSpecific(locX_t, VEC_CLASSID, 4);
+  if (locA) PetscValidHeaderSpecific(locA, VEC_CLASSID, 5);
   PetscAssertPointer(u, 6);
   PetscAssertPointer(u_t, 7);
   PetscAssertPointer(a, 8);
@@ -4356,7 +4367,7 @@ PetscErrorCode DMSNESGetFEGeom(DMField coordField, IS pointIS, PetscQuadrature q
   PetscCall(PetscSNPrintf(composeStr, 32, "DMSNESGetFEGeom_%" PetscInt64_FMT "\n", id));
   PetscCall(PetscObjectQuery((PetscObject)pointIS, composeStr, (PetscObject *)&container));
   if (container) {
-    PetscCall(PetscContainerGetPointer(container, (void **)geom));
+    PetscCall(PetscContainerGetPointer(container, geom));
   } else {
     PetscCall(DMFieldCreateFEGeom(coordField, pointIS, quad, mode, geom));
     PetscCall(PetscContainerCreate(PETSC_COMM_SELF, &container));
@@ -4375,7 +4386,7 @@ PetscErrorCode DMSNESRestoreFEGeom(DMField coordField, IS pointIS, PetscQuadratu
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexComputeResidual_Patch_Internal(DM dm, PetscSection section, IS cellIS, PetscReal t, Vec locX, Vec locX_t, Vec locF, void *user)
+PetscErrorCode DMPlexComputeResidual_Patch_Internal(DM dm, PetscSection section, IS cellIS, PetscReal t, Vec locX, Vec locX_t, Vec locF, PetscCtx ctx)
 {
   DM_Plex        *mesh       = (DM_Plex *)dm->data;
   const char     *name       = "Residual";
@@ -4604,7 +4615,7 @@ PetscErrorCode DMPlexComputeResidual_Patch_Internal(DM dm, PetscSection section,
   X   - The local solution vector
   X_t - The local solution time derivative vector, or NULL
 */
-PetscErrorCode DMPlexComputeJacobian_Patch_Internal(DM dm, PetscSection section, PetscSection globalSection, IS cellIS, PetscReal t, PetscReal X_tShift, Vec X, Vec X_t, Mat Jac, Mat JacP, void *ctx)
+PetscErrorCode DMPlexComputeJacobian_Patch_Internal(DM dm, PetscSection section, PetscSection globalSection, IS cellIS, PetscReal t, PetscReal X_tShift, Vec X, Vec X_t, Mat Jac, Mat JacP, PetscCtx ctx)
 {
   DM_Plex        *mesh = (DM_Plex *)dm->data;
   const char     *name = "Jacobian", *nameP = "JacobianPre";
@@ -4635,7 +4646,7 @@ PetscErrorCode DMPlexComputeJacobian_Patch_Internal(DM dm, PetscSection section,
   }
   /* Get flags */
   PetscCall(PetscDSGetNumFields(prob, &Nf));
-  PetscCall(DMGetWorkArray(dm, Nf, MPIU_BOOL, &isFE));
+  PetscCall(DMGetWorkArray(dm, Nf, MPI_C_BOOL, &isFE));
   for (fieldI = 0; fieldI < Nf; ++fieldI) {
     PetscObject  disc;
     PetscClassId id;
@@ -4677,7 +4688,7 @@ PetscErrorCode DMPlexComputeJacobian_Patch_Internal(DM dm, PetscSection section,
     numChunks = 1;
   }
   /* Get work space */
-  wsz = (((X ? 1 : 0) + (X_t ? 1 : 0) + (dmAux ? 1 : 0)) * totDim + ((hasJac ? 1 : 0) + (hasPrec ? 1 : 0) + (hasDyn ? 1 : 0)) * totDim * totDim) * chunkSize;
+  wsz = (((X ? 1 : 0) + (X_t ? 1 : 0)) * totDim + (dmAux ? 1 : 0) * totDimAux + ((hasJac ? 1 : 0) + (hasPrec ? 1 : 0) + (hasDyn ? 1 : 0)) * totDim * totDim) * chunkSize;
   PetscCall(DMGetWorkArray(dm, wsz, MPIU_SCALAR, &work));
   PetscCall(PetscArrayzero(work, wsz));
   off      = 0;
@@ -4777,7 +4788,7 @@ PetscErrorCode DMPlexComputeJacobian_Patch_Internal(DM dm, PetscSection section,
   PetscCall(DMSNESRestoreFEGeom(coordField, cellIS, qGeom, PETSC_FALSE, &cgeomFEM));
   PetscCall(PetscQuadratureDestroy(&qGeom));
   if (hasFV) PetscCall(MatSetOption(JacP, MAT_IGNORE_ZERO_ENTRIES, PETSC_FALSE));
-  PetscCall(DMRestoreWorkArray(dm, Nf, MPIU_BOOL, &isFE));
+  PetscCall(DMRestoreWorkArray(dm, Nf, MPI_C_BOOL, &isFE));
   PetscCall(DMRestoreWorkArray(dm, ((1 + (X_t ? 1 : 0) + (dmAux ? 1 : 0)) * totDim + ((hasJac ? 1 : 0) + (hasPrec ? 1 : 0) + (hasDyn ? 1 : 0)) * totDim * totDim) * chunkSize, MPIU_SCALAR, &work));
   /* Compute boundary integrals */
   /* PetscCall(DMPlexComputeBdJacobian_Internal(dm, X, X_t, t, X_tShift, Jac, JacP, ctx)); */
@@ -5088,7 +5099,7 @@ PetscErrorCode DMPlexComputeBdResidualSingle(DM dm, PetscWeakForm wf, PetscFormK
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexComputeBdResidual_Internal(DM dm, Vec locX, Vec locX_t, PetscReal t, Vec locF, void *user)
+static PetscErrorCode DMPlexComputeBdResidual_Internal(DM dm, Vec locX, Vec locX_t, PetscReal t, Vec locF, PetscCtx ctx)
 {
   PetscDS  prob;
   PetscInt numBd, bd;
@@ -5152,7 +5163,7 @@ static PetscErrorCode DMPlexComputeBdResidual_Internal(DM dm, Vec locX, Vec locX
 . locX   - The local solution
 . locX_t - The time derivative of the local solution, or `NULL` for time-independent problems
 . t      - The time
-- user   - An optional user context, passed to the pointwise functions
+- ctx    - An optional application context, passed to the pointwise functions
 
   Output Parameter:
 . locF - The local residual
@@ -5161,7 +5172,7 @@ static PetscErrorCode DMPlexComputeBdResidual_Internal(DM dm, Vec locX, Vec locX
 
 .seealso: `DMPlexComputeJacobianByKey()`, `DMPlexComputeResidualHybridByKey()`, `DMPlexComputeJacobianHybridByKey()`, `PetscFormKey`
 @*/
-PetscErrorCode DMPlexComputeResidualByKey(DM dm, PetscFormKey key, IS cellIS, PetscReal time, Vec locX, Vec locX_t, PetscReal t, Vec locF, void *user)
+PetscErrorCode DMPlexComputeResidualByKey(DM dm, PetscFormKey key, IS cellIS, PetscReal time, Vec locX, Vec locX_t, PetscReal t, Vec locF, PetscCtx ctx)
 {
   DM_Plex        *mesh       = (DM_Plex *)dm->data;
   const char     *name       = "Residual";
@@ -5450,7 +5461,7 @@ PetscErrorCode DMPlexComputeResidualByKey(DM dm, PetscFormKey key, IS cellIS, Pe
   PetscCall(ISRestorePointRange(cellIS, &cStart, &cEnd, &cells));
 
   if (useFEM) {
-    PetscCall(DMPlexComputeBdResidual_Internal(dm, locX, locX_t, t, locF, user));
+    PetscCall(DMPlexComputeBdResidual_Internal(dm, locX, locX_t, t, locF, ctx));
 
     if (maxDegree <= 1) {
       PetscCall(DMSNESRestoreFEGeom(coordField, cellIS, affineQuad, PETSC_FALSE, &affineGeom));
@@ -5532,7 +5543,7 @@ end:
 . locX   - The local solution
 . locX_t - The time derivative of the local solution, or `NULL` for time-independent problems
 . t      - The time
-- user   - An optional user context, passed to the pointwise functions
+- ctx    - An optional application context, passed to the pointwise functions
 
   Output Parameter:
 . locF - The local residual
@@ -5541,7 +5552,7 @@ end:
 
 .seealso: `DMPlexComputeResidualByKey()`, `DMPlexComputeJacobianByKey()`, `DMPlexComputeJacobianHybridByKey()`, `PetscFormKey`
 @*/
-PetscErrorCode DMPlexComputeResidualHybridByKey(DM dm, PetscFormKey key[], IS cellIS, PetscReal time, Vec locX, Vec locX_t, PetscReal t, Vec locF, void *user)
+PetscErrorCode DMPlexComputeResidualHybridByKey(DM dm, PetscFormKey key[], IS cellIS, PetscReal time, Vec locX, Vec locX_t, PetscReal t, Vec locF, PetscCtx ctx)
 {
   DM_Plex        *mesh       = (DM_Plex *)dm->data;
   const char     *name       = "Hybrid Residual";
@@ -6100,7 +6111,7 @@ PetscErrorCode DMPlexComputeBdJacobianSingle(DM dm, PetscWeakForm wf, DMLabel la
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMPlexComputeBdJacobian_Internal(DM dm, Vec locX, Vec locX_t, PetscReal t, PetscReal X_tShift, Mat Jac, Mat JacP, void *user)
+static PetscErrorCode DMPlexComputeBdJacobian_Internal(DM dm, Vec locX, Vec locX_t, PetscReal t, PetscReal X_tShift, Mat Jac, Mat JacP, PetscCtx ctx)
 {
   PetscDS  prob;
   PetscInt dim, numBd, bd;
@@ -6148,7 +6159,7 @@ static PetscErrorCode DMPlexComputeBdJacobian_Internal(DM dm, Vec locX, Vec locX
 . X_tShift - The multiplier for the Jacobian with respect to $X_t$
 . locX     - The local solution
 . locX_t   - The time derivative of the local solution, or `NULL` for time-independent problems
-- user     - An optional user context, passed to the pointwise functions
+- ctx      - An optional application context, passed to the pointwise functions
 
   Output Parameters:
 + Jac  - The local Jacobian
@@ -6158,7 +6169,7 @@ static PetscErrorCode DMPlexComputeBdJacobian_Internal(DM dm, Vec locX, Vec locX
 
 .seealso: `DMPlexComputeResidualByKey()`, `DMPlexComputeResidualHybridByKey()`, `DMPlexComputeJacobianHybridByKey()`, `PetscFormKey`
 @*/
-PetscErrorCode DMPlexComputeJacobianByKey(DM dm, PetscFormKey key, IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Mat Jac, Mat JacP, void *user)
+PetscErrorCode DMPlexComputeJacobianByKey(DM dm, PetscFormKey key, IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Mat Jac, Mat JacP, PetscCtx ctx)
 {
   DM_Plex        *mesh  = (DM_Plex *)dm->data;
   const char     *name  = "Jacobian";
@@ -6353,13 +6364,13 @@ PetscErrorCode DMPlexComputeJacobianByKey(DM dm, PetscFormKey key, IS cellIS, Pe
   PetscCall(PetscFree5(u, u_t, elemMat, elemMatP, elemMatD));
   if (dmAux) PetscCall(PetscFree(a));
   /* Compute boundary integrals */
-  PetscCall(DMPlexComputeBdJacobian_Internal(dm, locX, locX_t, t, X_tShift, Jac, JacP, user));
+  PetscCall(DMPlexComputeBdJacobian_Internal(dm, locX, locX_t, t, X_tShift, Jac, JacP, ctx));
   /* Assemble matrix */
 end: {
   PetscBool assOp = hasJac && hasPrec ? PETSC_TRUE : PETSC_FALSE, gassOp;
 
   if (dmAux) PetscCall(DMDestroy(&plex));
-  PetscCallMPI(MPIU_Allreduce(&assOp, &gassOp, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(&assOp, &gassOp, 1, MPI_C_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
   if (hasJac && hasPrec) {
     PetscCall(MatAssemblyBegin(Jac, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(Jac, MAT_FINAL_ASSEMBLY));
@@ -6371,7 +6382,7 @@ end: {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexComputeJacobianByKeyGeneral(DM dmr, DM dmc, PetscFormKey key, IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Mat Jac, Mat JacP, void *user)
+PetscErrorCode DMPlexComputeJacobianByKeyGeneral(DM dmr, DM dmc, PetscFormKey key, IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Mat Jac, Mat JacP, PetscCtx ctx)
 {
   DM_Plex        *mesh     = (DM_Plex *)dmr->data;
   const char     *name     = "Jacobian";
@@ -6576,13 +6587,13 @@ PetscErrorCode DMPlexComputeJacobianByKeyGeneral(DM dmr, DM dmc, PetscFormKey ke
   PetscCall(PetscFree5(u, u_t, elemMat, elemMatP, elemMatD));
   if (dmAux) PetscCall(PetscFree(a));
   /* Compute boundary integrals */
-  PetscCall(DMPlexComputeBdJacobian_Internal(dmr, locX, locX_t, t, X_tShift, Jac, JacP, user));
+  PetscCall(DMPlexComputeBdJacobian_Internal(dmr, locX, locX_t, t, X_tShift, Jac, JacP, ctx));
   /* Assemble matrix */
 end: {
   PetscBool assOp = hasJac && hasPrec ? PETSC_TRUE : PETSC_FALSE, gassOp;
 
   if (dmAux) PetscCall(DMDestroy(&plex));
-  PetscCallMPI(MPIU_Allreduce(&assOp, &gassOp, 1, MPIU_BOOL, MPI_LOR, comm));
+  PetscCallMPI(MPIU_Allreduce(&assOp, &gassOp, 1, MPI_C_BOOL, MPI_LOR, comm));
   if (hasJac && hasPrec) {
     PetscCall(MatAssemblyBegin(Jac, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(Jac, MAT_FINAL_ASSEMBLY));
@@ -6607,7 +6618,7 @@ end: {
 . X_tShift - The multiplier for the Jacobian with respect to $X_t$
 . locX     - The local solution
 . locX_t   - The time derivative of the local solution, or `NULL` for time-independent problems
-- user     - An optional user context, passed to the pointwise functions
+- ctx      - An optional application context, passed to the pointwise functions
 
   Output Parameters:
 + Jac  - The local Jacobian
@@ -6617,7 +6628,7 @@ end: {
 
 .seealso: `DMPlexComputeResidualByKey()`, `DMPlexComputeJacobianByKey()`, `DMPlexComputeResidualHybridByKey()`, `PetscFormKey`
 @*/
-PetscErrorCode DMPlexComputeJacobianHybridByKey(DM dm, PetscFormKey key[], IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Mat Jac, Mat JacP, void *user)
+PetscErrorCode DMPlexComputeJacobianHybridByKey(DM dm, PetscFormKey key[], IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Mat Jac, Mat JacP, PetscCtx ctx)
 {
   DM_Plex        *mesh          = (DM_Plex *)dm->data;
   const char     *name          = "Hybrid Jacobian";
@@ -6979,7 +6990,7 @@ end:
 . locX     - The local solution
 . locX_t   - The time derivative of the local solution, or `NULL` for time-independent problems
 . locY     - The local vector acted on by J
-- user     - An optional user context, passed to the pointwise functions
+- ctx      - An optional application context, passed to the pointwise functions
 
   Output Parameter:
 . locF - The local residual F = J(X) Y
@@ -6988,7 +6999,7 @@ end:
 
 .seealso: `DMPlexComputeResidualByKey()`, `DMPlexComputeJacobianByKey()`, `DMPlexComputeResidualHybridByKey()`, `DMPlexComputeJacobianHybridByKey()`, `PetscFormKey`
 @*/
-PetscErrorCode DMPlexComputeJacobianActionByKey(DM dm, PetscFormKey key, IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Vec locY, Vec locF, void *user)
+PetscErrorCode DMPlexComputeJacobianActionByKey(DM dm, PetscFormKey key, IS cellIS, PetscReal t, PetscReal X_tShift, Vec locX, Vec locX_t, Vec locY, Vec locF, PetscCtx ctx)
 {
   DM_Plex        *mesh  = (DM_Plex *)dm->data;
   const char     *name  = "Jacobian";
@@ -7179,28 +7190,28 @@ PetscErrorCode DMPlexComputeMoments(DM dm, Vec u, PetscReal moments[])
   const PetscScalar *oldConstants;
   PetscInt           cdim, Nf, field = 0, Ncon;
   MPI_Comm           comm;
-  void              *user;
+  void              *ctx;
 
   PetscFunctionBeginUser;
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   PetscCall(DMGetCoordinateDim(dm, &cdim));
-  PetscCall(DMGetApplicationContext(dm, &user));
+  PetscCall(DMGetApplicationContext(dm, &ctx));
   PetscCall(DMGetDS(dm, &ds));
   PetscCall(PetscDSGetNumFields(ds, &Nf));
   PetscCall(PetscDSGetConstants(ds, &Ncon, &oldConstants));
   PetscCheck(Nf == 1, comm, PETSC_ERR_ARG_WRONG, "We currently only support 1 field, not %" PetscInt_FMT, Nf);
   PetscCall(PetscDSSetObjective(ds, field, &f0_1));
-  PetscCall(DMPlexComputeIntegralFEM(dm, u, &mom, user));
+  PetscCall(DMPlexComputeIntegralFEM(dm, u, &mom, ctx));
   moments[0] = PetscRealPart(mom);
   for (PetscInt c = 0; c < cdim; ++c) {
     constants[0] = c;
     PetscCall(PetscDSSetConstants(ds, 1, constants));
     PetscCall(PetscDSSetObjective(ds, field, &f0_x));
-    PetscCall(DMPlexComputeIntegralFEM(dm, u, &mom, user));
+    PetscCall(DMPlexComputeIntegralFEM(dm, u, &mom, ctx));
     moments[c + 1] = PetscRealPart(mom);
   }
   PetscCall(PetscDSSetObjective(ds, field, &f0_x2));
-  PetscCall(DMPlexComputeIntegralFEM(dm, u, &mom, user));
+  PetscCall(DMPlexComputeIntegralFEM(dm, u, &mom, ctx));
   moments[cdim + 1] = PetscRealPart(mom);
   PetscCall(PetscDSSetConstants(ds, Ncon, (PetscScalar *)oldConstants));
   PetscFunctionReturn(PETSC_SUCCESS);

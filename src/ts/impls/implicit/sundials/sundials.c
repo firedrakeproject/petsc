@@ -78,7 +78,7 @@ static int TSPSolve_Sundials_Private(realtype tn, N_Vector y, N_Vector fy, N_Vec
 /*
         TSFunction_Sundials - routine that we provide to SUNDIALS that applies the right-hand side.
 */
-static int TSFunction_Sundials(realtype t, N_Vector y, N_Vector ydot, void *ctx)
+static int TSFunction_Sundials(realtype t, N_Vector y, N_Vector ydot, PetscCtx ctx)
 {
   TS             ts = (TS)ctx;
   DM             dm;
@@ -413,7 +413,7 @@ static PetscErrorCode TSView_Sundials(TS ts, PetscViewer viewer)
   char        *type;
   char         atype[] = "Adams";
   char         btype[] = "BDF: backward differentiation formula";
-  PetscBool    iascii, isstring;
+  PetscBool    isascii, isstring;
   long int     nsteps, its, nfevals, nlinsetups, nfails, itmp;
   PetscInt     qlast, qcur;
   PetscReal    hinused, hlast, hcur, tcur, tolsfac;
@@ -423,9 +423,9 @@ static PetscErrorCode TSView_Sundials(TS ts, PetscViewer viewer)
   if (cvode->cvode_type == SUNDIALS_ADAMS) type = atype;
   else type = btype;
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "SUNDIALS integrator does not use SNES!\n"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "SUNDIALS integrator type %s\n", type));
     PetscCall(PetscViewerASCIIPrintf(viewer, "SUNDIALS maxord %" PetscInt_FMT "\n", cvode->maxord));

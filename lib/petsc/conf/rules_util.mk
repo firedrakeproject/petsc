@@ -54,28 +54,27 @@ PETSCCLANGFORMAT ?= clang-format
 checkclangformatversion:
 	@version=`${PETSCCLANGFORMAT} --version | cut -d" " -f3 | cut -d"." -f 1` ;\
          if [ "$$version" = "version" ]; then version=`${PETSCCLANGFORMAT} --version | cut -d" " -f4 | cut -d"." -f 1`; fi;\
-         if [ $$version != 20 ]; then echo "Require clang-format version 20! Currently used ${PETSCCLANGFORMAT} version is $$version" ;false ; fi
+         if [ $$version != 21 ]; then echo "Require clang-format version 21! Currently used ${PETSCCLANGFORMAT} version is $$version" ;false ; fi
 
 # Format all the source code in the given directory and down according to the file $PETSC_DIR/.clang_format
 clangformat: checkclangformatversion
 	-@git --no-pager ls-files -z ${GITCFSRC} | xargs -0 -P $(MAKE_NP) -L 10 ${PETSCCLANGFORMAT} -i
 
-GITSRC = '*.[chF]' '*.F90' '*.hpp' '*.cpp' '*.cxx' '*.cu' ${GITSRCEXCL}
+GITFSRC = '*.[hF]90' '*/finclude/*.h'
+GITSRC = '*.[ch]' '*.hpp' '*.cxx' '*.cu' ${GITFSRC} ${GITSRCEXCL}
+GITMAKE = '*[Mm]akefile*' 'lib/petsc/conf/*' 'lib/slepc/conf/*'
 GITSRCEXCL = \
 ':!*khash/*' \
 ':!*valgrind/*' \
 ':!*yaml/*' \
 ':!*perfstubs/*'
-GITCFSRC = '*.[ch]' '*.hpp' '*.cpp' '*.cxx' '*.cu' ${GITSRCEXCL} ${GITCFSRCEXCL}
+GITCFSRC = '*.[ch]' '*.hpp' '*.cxx' '*.cu' ${GITSRCEXCL} ${GITCFSRCEXCL}
 GITCFSRCEXCL = \
 ':!*petscversion.h' \
-':!*mpif.h' \
 ':!*mpiunifdef.h' \
 ':!*finclude/*' \
 ':!systems/*' \
-':!*benchmarks/*' \
-':!*binding/*' \
-':!*ftn-mod/*'
+':!*binding/*'
 
 # Check that copies of external source code that live in the PETSc repository have not been changed by developer
 checkbadFileChange:
@@ -83,7 +82,7 @@ checkbadFileChange:
 
 vermin:
 	@vermin --violations -t=3.4- ${VERMIN_OPTIONS} ${PETSC_DIR}/config
-	@vermin --violations -t=3.6- ${VERMIN_OPTIONS} ${PETSC_DIR}/src/binding/petsc4py
+	@vermin --violations -t=3.6- --exclude-regex '\.pyi$$' ${VERMIN_OPTIONS} ${PETSC_DIR}/src/binding/petsc4py
 
 # Check that source code does not violate basic PETSc coding standards
 checkbadsource: checkbadSource
@@ -94,33 +93,33 @@ checkbadSource:
 	-@touch checkbadSource.out
 	-@${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/check_header_guard.py --action=check --kind=pragma_once -- ./src ./include >> checkbadSource.out
 	-@echo "----- Double blank lines in file -----------------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P '^$$' -- ${GITSRC} > doublelinecheck.out
+	-@git --no-pager grep -n -P '^$$' -- ${GITSRC} ${GITMAKE} 'config/*' > doublelinecheck.out
 	-@${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/doublelinecheck.py doublelinecheck.out >> checkbadSource.out
 	-@${RM} -f doublelinecheck.out
 	-@echo "----- Tabs in file -------------------------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P '\t' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Tabs in makefiles --------------------------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P '[ ]*[#A-Za-z0-9][ :=_A-Za-z0-9]*\t' -- makefile  >> checkbadSource.out;true
+	-@git --no-pager grep -n -P '^[^#][ ]*[#A-Za-z0-9][ :=_A-Za-z0-9]*\t' -- ${GITMAKE} >> checkbadSource.out;true
 	-@echo "----- White space at end of line -----------------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P ' $$' -- ${GITSRC} >> checkbadSource.out;true
+	-@git --no-pager grep -n -P ' $$' -- ${GITSRC} ${GITMAKE} 'config/*' >> checkbadSource.out;true
 	-@echo "----- Two ;; -------------------------------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -e ';;' -- ${GITSRC} | grep -v ' for (' >> checkbadSource.out;true
 	-@echo "----- PetscCall for an MPI error code ------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -e 'PetscCall\(MPI[U]*_\w*\(.*\)\);' -- ${GITSRC} | grep -Ev 'MPIU_File' >> checkbadSource.out;true
 	-@echo "----- DOS file (with DOS newlines) ---------------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P '\r' -- ${GITSRC} >> checkbadSource.out;true
+	-@git --no-pager grep -n -P '\r' -- ${GITSRC} ${GITMAKE} 'config/*' >> checkbadSource.out;true
 	-@echo "----- { before SETERRQ ---------------------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P '{SETERRQ' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- PetscCall following SETERRQ ----------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P 'SETERRQ' -- ${GITSRC} | grep ";PetscCall" >> checkbadSource.out;true
 	-@echo "----- SETERRQ() without defined error code -------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P 'SETERRQ\((?!\))' -- ${GITSRC} | grep -v PETSC_ERR  | grep " if " | grep -v "__VA_ARGS__" | grep -v "then;" | grep -v flow.c >> checkbadSource.out;true
+	-@git --no-pager grep -n -P 'SETERRQ\((?!\))' -- ${GITSRC} | grep -v PETSC_ERR | grep " if " | grep -v "__VA_ARGS__" | grep -v "then;" | grep -v flow.c >> checkbadSource.out;true
 	-@echo "----- SETERRQ() with trailing newline ------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P "SETERRQ[1-9]?.*\\\n\"" -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Define keyword used in test definition -----------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -e 'requires:.*define\(' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Using if (condition) SETERRQ(...) instead of PetscCheck() ----" >> checkbadSource.out
-	-@git --no-pager grep -n -P ' if +(.*) *SETERRQ' -- ${GITSRC} | grep -v 'PetscUnlikelyDebug' | grep -v 'petscerror.h' | grep -v "then;" | grep -v "__VA_ARGS__"  >> checkbadSource.out;true
+	-@git --no-pager grep -n -P ' if +(.*) *SETERRQ' -- ${GITSRC} | grep -v 'PetscUnlikelyDebug' | grep -v 'petscerror.h' | grep -v "then;" | grep -v "__VA_ARGS__" >> checkbadSource.out;true
 	-@echo "----- Using if (PetscUnlikelyDebug(condition)) SETERRQ(...) instead of PetscAssert()" >> checkbadSource.out
 	-@git --no-pager grep -n -P -E ' if +\(PetscUnlikelyDebug.*\) *SETERRQ' -- ${GITSRC} | grep -v petscerror.h >> checkbadSource.out;true
 	-@echo "----- Using PetscFunctionReturn(ierr) ------------------------------" >> checkbadSource.out
@@ -146,7 +145,9 @@ checkbadSource:
 	-@echo "----- Extra \"\" after format specifier ending a string --------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -E '_FMT \"\",' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- First blank line ---------------------------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P \^\$$ -- ${GITSRC} | grep ':1:' >> checkbadSource.out;true
+	-@git --no-pager grep -n -P \^\$$ -- ${GITSRC} ${GITMAKE} 'config/*' | grep ':1:' >> checkbadSource.out;true
+	-@echo "----- Last blank line ----------------------------------------------" >> checkbadSource.out
+	-@git ls-files ${GITFSRC} ${GITMAKE} 'config/*' ':!*petscdm.h90' ':!*petscts.h90' ':!*/__init__.py' | xargs -I{} sh -c 'tail -n1 "{}" | grep -q . || echo "{}"' >> checkbadSource.out;true
 	-@echo "----- Blank line after PetscFunctionBegin and derivatives ----------" >> checkbadSource.out
 	-@git --no-pager grep -n -E -A 1 '  PetscFunctionBegin(User|Hot){0,1};' -- ${GITSRC} | grep -E '\-[0-9]+-$$' | grep -v '^--$$' >> checkbadSource.out;true
 	-@echo "----- Blank line before PetscFunctionReturn ------------------------" >> checkbadSource.out
@@ -154,16 +155,32 @@ checkbadSource:
 	-@echo "----- No blank line before PetscFunctionBegin and derivatives ------" >> checkbadSource.out
 	-@git --no-pager grep -n -E -B 1 '  PetscFunctionBegin(User|Hot){0,1};' -- ${GITSRC} ':!src/sys/tests/*' ':!src/sys/tutorials/*' | grep -E '\-[0-9]+-.*;' | grep -v '^--$$' | grep -v '\\' >> checkbadSource.out;true
 	-@echo "----- Unneeded parentheses [!&~*](foo[->|.]bar) --------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P -E '([\!\&\~\*\(]|\)\)|\([^,\*\(]+\**\))\(([a-zA-Z0-9_]+((\.|->)[a-zA-Z0-9_]+|\[[a-zA-Z0-9_ \%\+\*\-]+\])+)\)' -- ${GITSRC} >> checkbadSource.out;true
+	-@git --no-pager grep -n -P -E '([\!\&\~\*\(]|\-\-|\+\+|\)\)|\([^,\*\(]+\**\))\(([a-zA-Z0-9_]+((\.|->)[a-zA-Z0-9_]+|\[[a-zA-Z0-9_ \%\+\*\-]+\])+)\)' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Use PetscSafePointerPlusOffset(ptr, n) instead of ptr ? ptr + n : NULL" >> checkbadSource.out
 	-@git --no-pager grep -n -Po ' ([^()\ ]+) \? (?1) \+ (.)* : NULL' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Wrong PETSc capitalization -----------------------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -E '[^a-zA-Z_*>{.]petsc [^+=]' -- ${GITSRC} | grep -v 'mat_solver_type petsc' | grep -v ' PETSc ' >> checkbadSource.out;true
-	-@echo "----- Semi-colon at end of Fortran line ----------------------------" >> checkbadSource.out
-	-@git --no-pager grep -n -P -E ";$$" -- '*.[hF]90' >> checkbadSource.out;true
+	-@echo "----- Fortran: Semi-colon at end of line ---------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E ";$$" -- ${GITFSRC} >> checkbadSource.out;true
 	-@echo "----- Empty test harness output_file not named output/empty.out ----" >> checkbadSource.out
 	-@git --no-pager grep -L . -- '*.out' | grep -Ev '(/empty|/[a-zA-Z0-9_-]+_alt).out' >> checkbadSource.out;true
-	@a=`cat checkbadSource.out | wc -l`; l=`expr $$a - 34` ;\
+	-@echo "----- Unnecessary braces around one-liners -------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '[ ]*(if|for|while|do|else) \(.*\) \{[^;]*;[^;]*\}( \\)?$$' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- MPI_(Allreduce|Irecv|Isend) instead of MPIU_(Allreduce|Irecv|Isend)" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '\(MPI_(Allreduce|Irecv|Isend)\([^\)]' -- ${GITSRC} ':!*/tests/*' ':!*/tutorials/*' ':!src/sys/objects/pinit.c' >> checkbadSource.out;true
+	-@echo "----- Fortran: #include <petsc/finclude/...> not 1st line (examples/tutorials)" >> checkbadSource.out
+	-@git --no-pager grep -H -B9999 '#include <petsc/finclude/.*>' -- '*/tutorials/*.F90' '*/tests/*.F90' | grep -v -e '!' -e 'F90-$$' -e '#include <petsc/finclude/.*>' -e '--' >> checkbadSource.out;true
+	-@echo "----- Fortran: labeled do loop -------------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n "[[:space:]]*do[[:space:]]*[0-9]" -- ${GITFSRC} >> checkbadSource.out;true
+	-@echo "----- Duplicate CUDA/Kokkos file names -----------------------------" >> checkbadSource.out
+	-@git ls-files *.cu *.kokkos.cxx | xargs -I{} sh -c 'basename "{}"' | sort | uniq -d  >> checkbadSource.out;true
+	-@echo "----- #if [!]defined with a trailing white space -------------------" >> checkbadSource.out
+	-@git --no-pager grep -n "#if [!]defined " -- ${GITFSRC} ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- #if[n]def should use #if [!]defined()-------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n "#if[n]def " -- ${GITFSRC} ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Use of the .cpp file extension instead of .cxx ---------------" >> checkbadSource.out
+	-@git ls-files *.cpp >> checkbadSource.out;true
+	@a=`cat checkbadSource.out | wc -l`; l=`expr $$a - 43` ;\
          if [ $$l -gt 0 ] ; then \
            echo $$l " files with errors detected in source code formatting" ;\
            cat checkbadSource.out ;\
@@ -234,7 +251,6 @@ test-lint: checkvermin_exist checkmypy_exist
 	${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/petsclinter/petsclinter/pkg_consistency_checks.py
 	${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/petsclinter ${PETSC_DIR}/src/sys/tests/linter --test -j0 --werror --replace=${REPLACE} --verbose=${V} $(LINTER_OPTIONS)
 
-
 #  Lists all the URLs in the PETSc repository that are unaccessible, nonexistent, or permanently moved (301)
 #  REPLACE=1 locations marked as permanently moved (301) are replaced in the repository
 #  This code is fragile; always check the changes after a use of REPLACE=1 before committing the changes
@@ -246,7 +262,7 @@ test-lint: checkvermin_exist checkmypy_exist
 #    The code recursively follows the permanently moved (301) redirections until it reaches the final URL
 #    For DropBox we need to check the validity of the new URL but do not want to return to user the internal "raw" URL
 checkbadURLS:
-	-@x=`git grep "http[s]*://" -- '*.[chF]' '*.html' '*.cpp' '*.cxx' '*.cu' '*.F90' '*.py' '*.tex' | grep -E -v "(config/packages|HandsOnExercises)" | tr '[[:blank:]]' '\n' | grep 'http[s]*://' | sed 's!.*(\(http[s]*://[-a-zA-Z0-9_./()?=&+%~]*\))!\1!g' | sed 's!.*\(http[s]*://[-a-zA-Z0-9_./()?=&+%~]*\).*!\1!g' | sed 's/\.$$//g' | sort | uniq| awk '{ print length, $$0 }' | sort -r -n -s | cut -d" " -f2` ; \
+	-@x=`git grep "http[s]*://" -- '*.[chF]' '*.html' '*.cxx' '*.cu' '*.F90' '*.py' '*.tex' | grep -E -v "(config/packages|HandsOnExercises)" | tr '[[:blank:]]' '\n' | grep 'http[s]*://' | sed 's!.*(\(http[s]*://[-a-zA-Z0-9_./()?=&+%~]*\))!\1!g' | sed 's!.*\(http[s]*://[-a-zA-Z0-9_./()?=&+%~]*\).*!\1!g' | sed 's/\.$$//g' | sort | uniq| awk '{ print length, $$0 }' | sort -r -n -s | cut -d" " -f2` ; \
         for i in $$x; do \
           url=$$i; \
           msg=''; \

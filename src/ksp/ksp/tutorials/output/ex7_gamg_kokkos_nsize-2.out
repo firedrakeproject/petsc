@@ -6,8 +6,8 @@
   5 KSP Residual norm 6.59975e-06
 KSP Object: 2 MPI processes
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -37,7 +37,7 @@ PC Object: 2 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_coarse_) 2 MPI processes
       type: bjacobi
         number of blocks = 2
@@ -48,7 +48,7 @@ PC Object: 2 MPI processes
           maximum iterations=1, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (mg_coarse_sub_) 1 MPI process
           type: lu
             out-of-place factorization
@@ -56,21 +56,21 @@ PC Object: 2 MPI processes
             using diagonal shift on blocks to prevent zero pivot [INBLOCKS]
             matrix ordering: nd
             factor fill ratio given 5., needed 1.
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: (mg_coarse_sub_) 1 MPI process
                   type: seqaijkokkos
                   rows=5, cols=5
                   package used to perform factorization: kokkos
                   total: nonzeros=21, allocated nonzeros=21
                     using I-node routines: found 3 nodes, limit used is 5
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (mg_coarse_sub_) 1 MPI process
             type: seqaijkokkos
             rows=5, cols=5
             total: nonzeros=21, allocated nonzeros=21
             total number of mallocs used during MatSetValues calls=0
               not using I-node routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 2 MPI processes
         type: mpiaijkokkos
         rows=5, cols=5
@@ -86,11 +86,11 @@ PC Object: 2 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_levels_1_) 2 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 2 MPI processes
         type: mpiaijkokkos
         rows=24, cols=24
@@ -98,7 +98,7 @@ PC Object: 2 MPI processes
         total number of mallocs used during MatSetValues calls=0
           not using I-node (on process 0) routines
   Up solver (post-smoother) same as down solver (pre-smoother)
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 2 MPI processes
     type: mpiaijkokkos
     rows=24, cols=24

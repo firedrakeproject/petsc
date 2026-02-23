@@ -26,7 +26,6 @@ configure_options = [
   '--download-superlu_dist=1',
   '--download-scalapack=1',
   '--download-mumps=1',
-  '--download-elemental=1',
   '--download-spai=1',
   '--download-parms=1',
   '--download-moab=1',
@@ -46,6 +45,7 @@ configure_options = [
   '--download-libpng=1',
   '--download-libjpeg=1',
   '--download-slepc=1',
+  '--with-slepc4py=1',
   '--download-hpddm=1',
   '--download-bamg=1',
   '--download-mmg=1',
@@ -55,6 +55,7 @@ configure_options = [
   '--download-opencascade=1',
   '--with-strict-petscerrorcode',
   '--with-coverage',
+  '--with-devicelanguage=cxx',
   ]
 
 if __name__ == '__main__':

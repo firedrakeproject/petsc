@@ -61,7 +61,7 @@ PC Object: 8 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (pc_bddc_dirichlet_) 1 MPI process
       type: gamg
         type is MULTIPLICATIVE, levels=2 cycles=v
@@ -87,7 +87,7 @@ PC Object: 8 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_dirichlet_mg_coarse_) 1 MPI process
           type: bjacobi
             number of blocks = 1
@@ -98,7 +98,7 @@ PC Object: 8 MPI processes
               maximum iterations=1, initial guess is zero
               tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
               left preconditioning
-              using NONE norm type for convergence test
+              not checking for convergence
             PC Object: (pc_bddc_dirichlet_mg_coarse_sub_) 1 MPI process
               type: lu
                 out-of-place factorization
@@ -106,19 +106,19 @@ PC Object: 8 MPI processes
                 using diagonal shift on blocks to prevent zero pivot [INBLOCKS]
                 matrix ordering: nd
                 factor fill ratio given 5., needed 1.
-                  Factored matrix follows:
+                  Factored matrix:
                     Mat Object: (pc_bddc_dirichlet_mg_coarse_sub_) 1 MPI process
                       type: seqaij
                       rows=18, cols=18, bs=6
                       package used to perform factorization: cusparse
                       total: nonzeros=324, allocated nonzeros=324
-              linear system matrix = precond matrix:
+              linear system matrix, which is also used to construct the preconditioner:
               Mat Object: (pc_bddc_dirichlet_mg_coarse_sub_) 1 MPI process
                 type: seqaij
                 rows=18, cols=18, bs=6
                 total: nonzeros=324, allocated nonzeros=324
                 total number of mallocs used during MatSetValues calls=0
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (pc_bddc_dirichlet_mg_coarse_sub_) 1 MPI process
             type: seqaij
             rows=18, cols=18, bs=6
@@ -133,11 +133,11 @@ PC Object: 8 MPI processes
           maximum iterations=2, nonzero initial guess
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_dirichlet_mg_levels_1_) 1 MPI process
           type: jacobi
             type DIAGONAL
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (pc_bddc_dirichlet_) 1 MPI process
             type: seqaij
             rows=144, cols=144, bs=3
@@ -145,7 +145,7 @@ PC Object: 8 MPI processes
             total number of mallocs used during MatSetValues calls=0
               has attached near null space
       Up solver (post-smoother) same as down solver (pre-smoother)
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (pc_bddc_dirichlet_) 1 MPI process
         type: seqaij
         rows=144, cols=144, bs=3
@@ -158,7 +158,7 @@ PC Object: 8 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (pc_bddc_neumann_) 1 MPI process
       type: gamg
         type is MULTIPLICATIVE, levels=2 cycles=v
@@ -184,7 +184,7 @@ PC Object: 8 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_neumann_mg_coarse_) 1 MPI process
           type: bjacobi
             number of blocks = 1
@@ -195,7 +195,7 @@ PC Object: 8 MPI processes
               maximum iterations=1, initial guess is zero
               tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
               left preconditioning
-              using NONE norm type for convergence test
+              not checking for convergence
             PC Object: (pc_bddc_neumann_mg_coarse_sub_) 1 MPI process
               type: lu
                 out-of-place factorization
@@ -203,19 +203,19 @@ PC Object: 8 MPI processes
                 using diagonal shift on blocks to prevent zero pivot [INBLOCKS]
                 matrix ordering: nd
                 factor fill ratio given 5., needed 1.
-                  Factored matrix follows:
+                  Factored matrix:
                     Mat Object: (pc_bddc_neumann_mg_coarse_sub_) 1 MPI process
                       type: seqaij
                       rows=18, cols=18, bs=6
                       package used to perform factorization: cusparse
                       total: nonzeros=324, allocated nonzeros=324
-              linear system matrix = precond matrix:
+              linear system matrix, which is also used to construct the preconditioner:
               Mat Object: (pc_bddc_neumann_mg_coarse_sub_) 1 MPI process
                 type: seqaij
                 rows=18, cols=18, bs=6
                 total: nonzeros=324, allocated nonzeros=324
                 total number of mallocs used during MatSetValues calls=0
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (pc_bddc_neumann_mg_coarse_sub_) 1 MPI process
             type: seqaij
             rows=18, cols=18, bs=6
@@ -230,11 +230,11 @@ PC Object: 8 MPI processes
           maximum iterations=2, nonzero initial guess
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_neumann_mg_levels_1_) 1 MPI process
           type: jacobi
             type DIAGONAL
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (pc_bddc_neumann_) 1 MPI process
             type: seqaij
             rows=279, cols=279, bs=3
@@ -242,7 +242,7 @@ PC Object: 8 MPI processes
             total number of mallocs used during MatSetValues calls=0
               has attached near null space
       Up solver (post-smoother) same as down solver (pre-smoother)
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (pc_bddc_neumann_) 1 MPI process
         type: seqaij
         rows=279, cols=279, bs=3
@@ -255,7 +255,7 @@ PC Object: 8 MPI processes
       maximum iterations=1, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (pc_bddc_coarse_) 8 MPI processes
       type: redundant
         First (color=0) of 8 PCs follows
@@ -264,25 +264,25 @@ PC Object: 8 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_coarse_redundant_) 1 MPI process
           type: svd
             All singular values smaller than 1e-12 treated as zero
             Provided essential rank of the matrix 0 (all other eigenvalues are zeroed)
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: 1 MPI process
             type: seqaij
             rows=82, cols=82
             total: nonzeros=3962, allocated nonzeros=3962
             total number of mallocs used during MatSetValues calls=0
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (pc_bddc_coarse_) 8 MPI processes
         type: mpiaij
         rows=82, cols=82
-        total: nonzeros=3962, allocated nonzeros=4997
+        total: nonzeros=3962, allocated nonzeros=3962
         total number of mallocs used during MatSetValues calls=0
           using I-node (on process 0) routines: found 3 nodes, limit used is 5
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 8 MPI processes
     type: is
     rows=2160, cols=2160, bs=3

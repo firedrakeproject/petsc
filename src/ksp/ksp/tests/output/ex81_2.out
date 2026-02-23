@@ -9,14 +9,14 @@ PC Object: (beta_) 2 MPI processes
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (beta_sub_) 1 MPI process
     type: lu
       out-of-place factorization
       tolerance for zero pivot 2.22045e-14
       matrix ordering: external
       factor fill ratio given 0., needed 0.
-        Factored matrix follows:
+        Factored matrix:
           Mat Object: (beta_sub_) 1 MPI process
             type: mumps
             rows=2, cols=2
@@ -52,14 +52,14 @@ PC Object: (beta_) 2 MPI processes
                 INFOG(37) (after analysis: estimated size of all MUMPS internal data for running BLR in-core - sum over all processors): 0
                 INFOG(38) (after analysis: estimated size of all MUMPS internal data for running BLR out-of-core - value on the most memory consuming processor): 0
                 INFOG(39) (after analysis: estimated size of all MUMPS internal data for running BLR out-of-core - sum over all processors): 0
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: (beta_sub_) 1 MPI process
       type: seqaij
       rows=2, cols=2
       total: nonzeros=2, allocated nonzeros=2
       total number of mallocs used during MatSetValues calls=0
         not using I-node routines
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: (alpha_) 2 MPI processes
     type: mpiaij
     rows=4, cols=4
@@ -77,14 +77,14 @@ PC Object: (beta_) 2 MPI processes
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (beta_sub_) 1 MPI process
     type: lu
       out-of-place factorization
       tolerance for zero pivot 2.22045e-14
       matrix ordering: external
       factor fill ratio given 0., needed 0.
-        Factored matrix follows:
+        Factored matrix:
           Mat Object: (beta_sub_) 1 MPI process
             type: mumps
             rows=2, cols=2
@@ -120,14 +120,14 @@ PC Object: (beta_) 2 MPI processes
                 INFOG(37) (after analysis: estimated size of all MUMPS internal data for running BLR in-core - sum over all processors): 0
                 INFOG(38) (after analysis: estimated size of all MUMPS internal data for running BLR out-of-core - value on the most memory consuming processor): 0
                 INFOG(39) (after analysis: estimated size of all MUMPS internal data for running BLR out-of-core - sum over all processors): 0
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: (beta_sub_) 1 MPI process
       type: seqaij
       rows=2, cols=2
       total: nonzeros=2, allocated nonzeros=2
       total number of mallocs used during MatSetValues calls=0
         not using I-node routines
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: (gamma_) 2 MPI processes
     type: mpiaij
     rows=4, cols=4

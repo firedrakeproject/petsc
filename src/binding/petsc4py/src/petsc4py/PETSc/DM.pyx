@@ -346,6 +346,43 @@ cdef class DM(Object):
 
     #
 
+    def getUseNatural(self) -> bool:
+        """Get the flag for constructing a global-to-natural map.
+
+        Not collective.
+
+        Returns
+        -------
+        useNatural : bool
+            Whether a global-to-natural map is created.
+
+        See Also
+        --------
+        petsc.DMGetUseNatural
+
+        """
+        cdef PetscBool uN  = PETSC_FALSE
+        CHKERR(DMGetUseNatural(self.dm, &uN))
+        return toBool(uN)
+
+    def setUseNatural(self, useNatural : bool) -> None:
+        """Set the flag for constructing a global-to-natural map.
+
+        Not collective.
+
+        Parameters
+        ----------
+        useNatural : bool
+            Whether a global-to-natural map is created.
+
+        See Also
+        --------
+        petsc.DMSetUseNatural
+
+        """
+        cdef PetscBool uN  = useNatural
+        CHKERR(DMSetUseNatural(self.dm, uN))
+
     def setBasicAdjacency(self, useCone: bool, useClosure: bool) -> None:
         """Set the flags for determining variable influence.
 
@@ -2287,14 +2324,10 @@ cdef class DM(Object):
         self.set_attr('__operators__', context)
         CHKERR(DMKSPSetComputeOperators(self.dm, KSP_ComputeOps, <void*>context))
 
-    def createFieldDecomposition(self) -> tuple[list, list, list] :
-        """Return a list of `IS` objects.
+    def createFieldDecomposition(self) -> tuple[list, list, list]:
+        """Return field splitting information.
 
-        Not collective.
-
-        Notes
-        -----
-        The user is responsible for freeing all requested arrays.
+        Collective.
 
         See Also
         --------
@@ -2319,21 +2352,24 @@ cdef class DM(Object):
                 dm.dm = cdm[i]
                 CHKERR(PetscINCREF(dm.obj))
                 dms.append(dm)
+                CHKERR(DMDestroy(&cdm[i]))
             else:
                 dms.append(None)
 
-            name = bytes2str(cnamelist[i])
-            names.append(name)
-            CHKERR(PetscFree(cnamelist[i]))
+            if cnamelist != NULL:
+                name = bytes2str(cnamelist[i])
+                names.append(name)
+                CHKERR(PetscFree(cnamelist[i]))
+            else:
+                names.append(None)
 
             CHKERR(ISDestroy(&cis[i]))
-            CHKERR(DMDestroy(&cdm[i]))
 
         CHKERR(PetscFree(cis))
         CHKERR(PetscFree(cdm))
         CHKERR(PetscFree(cnamelist))
 
-        return (names, isets, dms) # TODO REVIEW
+        return (names, isets, dms)
 
     def setSNESFunction(
         self, function: SNESFunction,

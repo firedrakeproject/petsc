@@ -35,7 +35,7 @@ static void g3_uu(PetscInt dim, PetscInt Nf, PetscInt NfAux, const PetscInt uOff
   for (d = 0; d < dim; ++d) g3[d * dim + d] = 1.0;
 }
 
-static PetscErrorCode trig_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode trig_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   *u = 0.0;
@@ -43,7 +43,7 @@ static PetscErrorCode trig_u(PetscInt dim, PetscReal time, const PetscReal x[], 
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode quad_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode quad_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   *u = 1.0;
@@ -127,13 +127,13 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
     PetscCall(PetscDSSetResidual(ds, 0, f0_trig_u, f1_u));
     PetscCall(PetscDSSetJacobian(ds, 0, 0, g0_uu, NULL, NULL, g3_uu));
     PetscCall(PetscDSSetExactSolution(ds, 0, trig_u, user));
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))trig_u, NULL, user, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)trig_u, NULL, user, NULL));
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Trig Exact Solution\n"));
   } else {
     PetscCall(PetscDSSetResidual(ds, 0, f0_quad_u, f1_u));
     PetscCall(PetscDSSetJacobian(ds, 0, 0, g0_uu, NULL, NULL, g3_uu));
     PetscCall(PetscDSSetExactSolution(ds, 0, quad_u, user));
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))quad_u, NULL, user, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)quad_u, NULL, user, NULL));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

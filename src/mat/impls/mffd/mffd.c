@@ -144,7 +144,7 @@ static PetscErrorCode MatMFFDSetFunctioni_MFFD(Mat mat, FCN2 funci)
   PetscFunctionBegin;
   PetscCall(MatShellGetContext(mat, &ctx));
   ctx->funci = funci;
-  PetscCall(MatShellSetOperation(mat, MATOP_GET_DIAGONAL, (void (*)(void))MatGetDiagonal_MFFD));
+  PetscCall(MatShellSetOperation(mat, MATOP_GET_DIAGONAL, (PetscErrorCodeFn *)MatGetDiagonal_MFFD));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -236,13 +236,13 @@ static PetscErrorCode MatDestroy_MFFD(Mat mat)
 static PetscErrorCode MatView_MFFD(Mat J, PetscViewer viewer)
 {
   MatMFFD     ctx;
-  PetscBool   iascii, viewbase, viewfunction;
+  PetscBool   isascii, viewbase, viewfunction;
   const char *prefix;
 
   PetscFunctionBegin;
   PetscCall(MatShellGetContext(J, &ctx));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "Matrix-free approximation:\n"));
     PetscCall(PetscViewerASCIIPushTab(viewer));
     PetscCall(PetscViewerASCIIPrintf(viewer, "err=%g (relative error in function evaluation)\n", (double)ctx->error_rel));
@@ -333,7 +333,7 @@ static PetscErrorCode MatMult_MFFD(Mat mat, Vec a, Vec y)
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
-  PetscCheck(!mat->erroriffailure || !PetscIsInfOrNanScalar(h), PETSC_COMM_SELF, PETSC_ERR_PLIB, "Computed Nan differencing parameter h");
+  PetscCheck(!mat->erroriffailure || !PetscIsInfOrNanScalar(h), PETSC_COMM_SELF, PETSC_ERR_PLIB, "Computed NaN differencing parameter h");
   if (ctx->checkh) PetscCall((*ctx->checkh)(ctx->checkhctx, U, a, &h));
 
   /* keep a record of the current differencing parameter h */
@@ -616,11 +616,11 @@ PETSC_EXTERN PetscErrorCode MatCreate_MFFD(Mat A)
 
   PetscCall(MatSetType(A, MATSHELL));
   PetscCall(MatShellSetContext(A, mfctx));
-  PetscCall(MatShellSetOperation(A, MATOP_MULT, (void (*)(void))MatMult_MFFD));
-  PetscCall(MatShellSetOperation(A, MATOP_DESTROY, (void (*)(void))MatDestroy_MFFD));
-  PetscCall(MatShellSetOperation(A, MATOP_VIEW, (void (*)(void))MatView_MFFD));
-  PetscCall(MatShellSetOperation(A, MATOP_ASSEMBLY_END, (void (*)(void))MatAssemblyEnd_MFFD));
-  PetscCall(MatShellSetOperation(A, MATOP_SET_FROM_OPTIONS, (void (*)(void))MatSetFromOptions_MFFD));
+  PetscCall(MatShellSetOperation(A, MATOP_MULT, (PetscErrorCodeFn *)MatMult_MFFD));
+  PetscCall(MatShellSetOperation(A, MATOP_DESTROY, (PetscErrorCodeFn *)MatDestroy_MFFD));
+  PetscCall(MatShellSetOperation(A, MATOP_VIEW, (PetscErrorCodeFn *)MatView_MFFD));
+  PetscCall(MatShellSetOperation(A, MATOP_ASSEMBLY_END, (PetscErrorCodeFn *)MatAssemblyEnd_MFFD));
+  PetscCall(MatShellSetOperation(A, MATOP_SET_FROM_OPTIONS, (PetscErrorCodeFn *)MatSetFromOptions_MFFD));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatShellSetContext_C", MatShellSetContext_Immutable));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatShellSetContextDestroy_C", MatShellSetContextDestroy_Immutable));
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatShellSetManageScalingShifts_C", MatShellSetManageScalingShifts_Immutable));
@@ -996,7 +996,7 @@ PetscErrorCode MatMFFDSetBase(Mat J, Vec U, Vec F)
 
 .seealso: [](ch_matrices), `Mat`, `MATMFFD`, `MatMFFDCheckhFn`, `MatMFFDCheckPositivity()`
 @*/
-PetscErrorCode MatMFFDSetCheckh(Mat J, MatMFFDCheckhFn *fun, void *ctx)
+PetscErrorCode MatMFFDSetCheckh(Mat J, MatMFFDCheckhFn *fun, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(J, MAT_CLASSID, 1);

@@ -3,7 +3,6 @@
 
 /* TRON Routines */
 static PetscErrorCode TronGradientProjections(Tao, TAO_TRON *);
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoDestroy_TRON(Tao tao)
 {
   TAO_TRON *tron = (TAO_TRON *)tao->data;
@@ -24,7 +23,6 @@ static PetscErrorCode TaoDestroy_TRON(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoSetFromOptions_TRON(Tao tao, PetscOptionItems PetscOptionsObject)
 {
   TAO_TRON *tron = (TAO_TRON *)tao->data;
@@ -38,7 +36,6 @@ static PetscErrorCode TaoSetFromOptions_TRON(Tao tao, PetscOptionItems PetscOpti
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoView_TRON(Tao tao, PetscViewer viewer)
 {
   TAO_TRON *tron = (TAO_TRON *)tao->data;
@@ -53,7 +50,6 @@ static PetscErrorCode TaoView_TRON(Tao tao, PetscViewer viewer)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------- */
 static PetscErrorCode TaoSetup_TRON(Tao tao)
 {
   TAO_TRON *tron = (TAO_TRON *)tao->data;
@@ -89,7 +85,7 @@ static PetscErrorCode TaoSolve_TRON(Tao tao)
   /* Compute the objective function and gradient */
   PetscCall(TaoComputeObjectiveAndGradient(tao, tao->solution, &tron->f, tao->gradient));
   PetscCall(VecNorm(tao->gradient, NORM_2, &tron->gnorm));
-  PetscCheck(!PetscIsInfOrNanReal(tron->f) && !PetscIsInfOrNanReal(tron->gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
+  PetscCheck(!PetscIsInfOrNanReal(tron->f) && !PetscIsInfOrNanReal(tron->gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated infinity or NaN");
 
   /* Project the gradient and calculate the norm */
   PetscCall(VecBoundGradientProjection(tao->gradient, tao->solution, tao->XL, tao->XU, tao->gradient));
@@ -295,7 +291,6 @@ static PetscErrorCode TaoComputeDual_TRON(Tao tao, Vec DXL, Vec DXU)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 /*MC
   TAOTRON - The TRON algorithm is an active-set Newton trust region method
   for bound-constrained minimization.

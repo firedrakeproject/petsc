@@ -446,11 +446,11 @@ static PetscErrorCode DMLabelView_Concrete_Ascii(DMLabel label, PetscViewer view
 
 static PetscErrorCode DMLabelView_Concrete(DMLabel label, PetscViewer viewer)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(DMLabelView_Concrete_Ascii(label, viewer));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(DMLabelView_Concrete_Ascii(label, viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -475,6 +475,31 @@ PetscErrorCode DMLabelView(DMLabel label, PetscViewer viewer)
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCall(DMLabelMakeAllValid_Private(label));
   PetscUseTypeMethod(label, view, viewer);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  DMLabelViewFromOptions - View a `DMLabel` in a particular way based on a request in the options database
+
+  Collective
+
+  Input Parameters:
++ label - the `DMLabel` object
+. obj   - optional object that provides the prefix for the options database (if `NULL` then the prefix in `obj` is used)
+- name  - option string that is used to activate viewing
+
+  Level: intermediate
+
+  Note:
+  See `PetscObjectViewFromOptions()` for a list of values that can be provided in the options database to determine how the `DMLabel` is viewed
+
+.seealso: [](ch_dmbase), `DMLabel`, `DMLabelView()`, `PetscObjectViewFromOptions()`, `DMLabelCreate()`
+@*/
+PetscErrorCode DMLabelViewFromOptions(DMLabel label, PeOp PetscObject obj, const char name[])
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 1);
+  PetscCall(PetscObjectViewFromOptions((PetscObject)label, obj, name));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -655,7 +680,7 @@ PetscErrorCode DMLabelCompare(MPI_Comm comm, DMLabel l0, DMLabel l1, PetscBool *
     PetscCall(DMLabelGetDefaultValue(l1, &v1));
     eq = (PetscBool)(v0 == v1);
     if (!eq) PetscCall(PetscSNPrintf(msg, sizeof(msg), "Default value of DMLabel l0 \"%s\" = %" PetscInt_FMT " != %" PetscInt_FMT " = Default value of DMLabel l1 \"%s\"", name0, v0, v1, name1));
-    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &eq, 1, MPIU_BOOL, MPI_LAND, comm));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &eq, 1, MPI_C_BOOL, MPI_LAND, comm));
     if (!eq) goto finish;
   }
   {
@@ -667,7 +692,7 @@ PetscErrorCode DMLabelCompare(MPI_Comm comm, DMLabel l0, DMLabel l1, PetscBool *
     PetscCall(ISDestroy(&is0));
     PetscCall(ISDestroy(&is1));
     if (!eq) PetscCall(PetscSNPrintf(msg, sizeof(msg), "Stratum values in DMLabel l0 \"%s\" are different than in DMLabel l1 \"%s\"", name0, name1));
-    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &eq, 1, MPIU_BOOL, MPI_LAND, comm));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &eq, 1, MPI_C_BOOL, MPI_LAND, comm));
     if (!eq) goto finish;
   }
   {
@@ -691,7 +716,7 @@ PetscErrorCode DMLabelCompare(MPI_Comm comm, DMLabel l0, DMLabel l1, PetscBool *
         break;
       }
     }
-    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &eq, 1, MPIU_BOOL, MPI_LAND, comm));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &eq, 1, MPI_C_BOOL, MPI_LAND, comm));
   }
 finish:
   /* If message output arg not set, print to stderr */
@@ -897,15 +922,15 @@ PetscErrorCode DMLabelHasValue(DMLabel label, PetscInt value, PetscBool *contain
 @*/
 PetscErrorCode DMLabelHasPoint(DMLabel label, PetscInt point, PetscBool *contains)
 {
+  PetscInt pStart, pEnd;
+
   PetscFunctionBeginHot;
   PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 1);
   PetscAssertPointer(contains, 3);
+  /* DMLabelGetBounds() calls DMLabelCreateIndex() only if needed */
+  PetscCall(DMLabelGetBounds(label, &pStart, &pEnd));
   PetscCall(DMLabelMakeAllValid_Private(label));
-  if (PetscDefined(USE_DEBUG)) {
-    PetscCheck(label->bt, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Must call DMLabelCreateIndex() before DMLabelHasPoint()");
-    PetscCheck(!(point < label->pStart) && !(point >= label->pEnd), PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Label point %" PetscInt_FMT " is not in [%" PetscInt_FMT ", %" PetscInt_FMT ")", point, label->pStart, label->pEnd);
-  }
-  *contains = PetscBTLookup(label->bt, point - label->pStart) ? PETSC_TRUE : PETSC_FALSE;
+  *contains = point >= pStart && point < pEnd && (PetscBTLookup(label->bt, point - label->pStart) ? PETSC_TRUE : PETSC_FALSE);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1117,10 +1142,7 @@ PetscErrorCode DMLabelClearValue(DMLabel label, PetscInt point, PetscInt value)
   PetscCall(DMLabelLookupStratum(label, value, &v));
   if (v < 0) PetscFunctionReturn(PETSC_SUCCESS);
 
-  if (label->bt) {
-    PetscCheck(!(point < label->pStart) && !(point >= label->pEnd), PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Label point %" PetscInt_FMT " is not in [%" PetscInt_FMT ", %" PetscInt_FMT ")", point, label->pStart, label->pEnd);
-    PetscCall(PetscBTClear(label->bt, point - label->pStart));
-  }
+  if (label->bt && point >= label->pStart && point < label->pEnd) PetscCall(PetscBTClear(label->bt, point - label->pStart));
 
   /* Delete key */
   PetscCall(DMLabelMakeInvalid_Private(label, v));
@@ -1201,11 +1223,13 @@ PetscErrorCode DMLabelGetNumValues(DMLabel label, PetscInt *numValues)
   Level: intermediate
 
   Notes:
-  The output `IS` should be destroyed when no longer needed.
+  The `values` should be destroyed when no longer needed.
+
   Strata which are allocated but empty [`DMLabelGetStratumSize()` yields 0] are counted.
+
   If you need to count only nonempty strata, use `DMLabelGetNonEmptyStratumValuesIS()`.
 
-.seealso: `DMLabel`, `DM`, `DMLabelGetNonEmptyStratumValuesIS()`, `DMLabelCreate()`, `DMLabelGetValue()`, `DMLabelSetValue()`, `DMLabelClearValue()`
+.seealso: `DMLabel`, `DM`, `DMLabelGetNonEmptyStratumValuesIS()`, `DMLabelGetValueISGlobal()`, `DMLabelCreate()`, `DMLabelGetValue()`, `DMLabelSetValue()`, `DMLabelClearValue()`
 @*/
 PetscErrorCode DMLabelGetValueIS(DMLabel label, IS *values)
 {
@@ -1267,10 +1291,11 @@ PetscErrorCode DMLabelGetValueBounds(DMLabel label, PetscInt *minValue, PetscInt
   Level: intermediate
 
   Notes:
-  The output `IS` should be destroyed when no longer needed.
+  The `values` should be destroyed when no longer needed.
+
   This is similar to `DMLabelGetValueIS()` but counts only nonempty strata.
 
-.seealso: `DMLabel`, `DM`, `DMLabelGetValueIS()`, `DMLabelCreate()`, `DMLabelGetValue()`, `DMLabelSetValue()`, `DMLabelClearValue()`
+.seealso: `DMLabel`, `DM`, `DMLabelGetValueIS()`, `DMLabelGetValueISGlobal()`, `DMLabelCreate()`, `DMLabelGetValue()`, `DMLabelSetValue()`, `DMLabelClearValue()`
 @*/
 PetscErrorCode DMLabelGetNonEmptyStratumValuesIS(DMLabel label, IS *values)
 {
@@ -1293,6 +1318,91 @@ PetscErrorCode DMLabelGetNonEmptyStratumValuesIS(DMLabel label, IS *values)
     PetscCall(ISCreateGeneral(PETSC_COMM_SELF, j, valuesArr, PETSC_COPY_VALUES, values));
   }
   PetscCall(PetscFree(valuesArr));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  DMLabelGetValueISGlobal - Get an `IS` of all values that the `DMlabel` takes across all ranks
+
+  Collective
+
+  Input Parameter:
++ comm         - MPI communicator to collect values
+. label        - the `DMLabel`, may be `NULL` for ranks in `comm` which do not have the corresponding `DMLabel`
+- get_nonempty - whether to get nonempty stratum values (akin to `DMLabelGetNonEmptyStratumValuesIS()`)
+
+  Output Parameter:
+. values - the value `IS`
+
+  Level: intermediate
+
+  Notes:
+  The `values` should be destroyed when no longer needed.
+
+  This is similar to `DMLabelGetValueIS()` and `DMLabelGetNonEmptyStratumValuesIS()`, but gets the (nonempty) values across all ranks in `comm`.
+
+.seealso: `DMLabel`, `DM`, `DMLabelGetValueIS()`, `DMLabelGetNonEmptyStratumValuesIS()`, `DMLabelCreate()`, `DMLabelGetValue()`, `DMLabelSetValue()`, `DMLabelClearValue()`
+@*/
+PetscErrorCode DMLabelGetValueISGlobal(MPI_Comm comm, DMLabel label, PetscBool get_nonempty, IS *values)
+{
+  PetscInt        num_values_local = 0, num_values_global, minmax_values[2], minmax_values_loc[2] = {PETSC_INT_MAX, PETSC_INT_MIN};
+  IS              is_values    = NULL;
+  const PetscInt *values_local = NULL;
+  PetscInt       *values_global;
+
+  PetscFunctionBegin;
+  if (label) PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 2);
+  if (PetscDefined(USE_DEBUG)) {
+    // Shenanigans because PetscValidLogicalCollectiveBool must have a PetscObject to get a MPI_Comm from, but there is no such object in this function (generally, DMLabel is only PETSC_COMM_SELF)
+    IS dummy;
+    PetscCall(ISCreate(comm, &dummy));
+    PetscValidLogicalCollectiveBool(dummy, get_nonempty, 3);
+    PetscCall(ISDestroy(&dummy));
+  }
+  PetscAssertPointer(values, 4);
+
+  if (label) {
+    if (get_nonempty) PetscCall(DMLabelGetNonEmptyStratumValuesIS(label, &is_values));
+    else PetscCall(DMLabelGetValueIS(label, &is_values));
+    PetscCall(ISGetIndices(is_values, &values_local));
+    PetscCall(ISGetLocalSize(is_values, &num_values_local));
+  }
+  for (PetscInt i = 0; i < num_values_local; i++) {
+    minmax_values_loc[0] = PetscMin(minmax_values_loc[0], values_local[i]);
+    minmax_values_loc[1] = PetscMax(minmax_values_loc[1], values_local[i]);
+  }
+
+  PetscCall(PetscGlobalMinMaxInt(comm, minmax_values_loc, minmax_values));
+  PetscInt value_range = minmax_values[1] - minmax_values[0] + 1;
+  PetscBT  local_values_bt, global_values_bt;
+
+  // Create a "ballot" where each rank marks which values they have into the PetscBT.
+  // An Allreduce using bitwise-OR over the ranks then communicates which values are owned by a rank in comm
+  PetscCall(PetscBTCreate(value_range, &local_values_bt));
+  PetscCall(PetscBTCreate(value_range, &global_values_bt));
+  for (PetscInt i = 0; i < num_values_local; i++) PetscCall(PetscBTSet(local_values_bt, values_local[i] - minmax_values[0]));
+  PetscCallMPI(MPIU_Allreduce(local_values_bt, global_values_bt, PetscBTLength(value_range), MPI_CHAR, MPI_BOR, comm));
+  PetscCall(PetscBTDestroy(&local_values_bt));
+  {
+    PetscCount num_values_global_count;
+    num_values_global_count = PetscBTCountSet(global_values_bt, value_range);
+    PetscCall(PetscIntCast(num_values_global_count, &num_values_global));
+  }
+
+  PetscCall(PetscMalloc1(num_values_global, &values_global));
+  for (PetscInt i = 0, a = 0; i < value_range; i++) {
+    if (PetscBTLookup(global_values_bt, i)) {
+      values_global[a] = i + minmax_values[0];
+      a++;
+    }
+  }
+  PetscCall(ISCreateGeneral(PETSC_COMM_SELF, num_values_global, values_global, PETSC_OWN_POINTER, values));
+
+  PetscCall(PetscBTDestroy(&global_values_bt));
+  if (is_values) {
+    PetscCall(ISRestoreIndices(is_values, &values_local));
+    PetscCall(ISDestroy(&is_values));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1547,8 +1657,7 @@ PetscErrorCode DMLabelClearStratum(DMLabel label, PetscInt value)
       for (i = 0; i < label->stratumSizes[v]; ++i) {
         const PetscInt point = points[i];
 
-        PetscCheck(!(point < label->pStart) && !(point >= label->pEnd), PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Label point %" PetscInt_FMT " is not in [%" PetscInt_FMT ", %" PetscInt_FMT ")", point, label->pStart, label->pEnd);
-        PetscCall(PetscBTClear(label->bt, point - label->pStart));
+        if (point >= label->pStart && point < label->pEnd) PetscCall(PetscBTClear(label->bt, point - label->pStart));
       }
       PetscCall(ISRestoreIndices(label->points[v], &points));
     }
@@ -2088,7 +2197,7 @@ static PetscErrorCode DMLabelPropagateInit_Internal(DMLabel label, PetscSF point
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMLabelPropagateFini_Internal(DMLabel label, PetscSF pointSF, PetscInt valArray[], PetscErrorCode (*markPoint)(DMLabel, PetscInt, PetscInt, void *), void *ctx)
+static PetscErrorCode DMLabelPropagateFini_Internal(DMLabel label, PetscSF pointSF, PetscInt valArray[], PetscErrorCode (*markPoint)(DMLabel, PetscInt, PetscInt, void *), PetscCtx ctx)
 {
   const PetscInt *degree;
   const PetscInt *points;
@@ -2202,7 +2311,7 @@ PetscErrorCode DMLabelPropagateEnd(DMLabel label, PetscSF pointSF)
 
 .seealso: `DMLabel`, `DM`, `DMLabelPropagateBegin()`, `DMLabelPropagateEnd()`
 @*/
-PetscErrorCode DMLabelPropagatePush(DMLabel label, PetscSF pointSF, PetscErrorCode (*markPoint)(DMLabel label, PetscInt p, PetscInt val, void *ctx), void *ctx)
+PetscErrorCode DMLabelPropagatePush(DMLabel label, PetscSF pointSF, PetscErrorCode (*markPoint)(DMLabel label, PetscInt p, PetscInt val, PetscCtx ctx), PetscCtx ctx)
 {
   PetscInt   *valArray = label->propArray, Nr;
   PetscMPIInt size;

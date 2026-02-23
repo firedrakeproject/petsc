@@ -255,27 +255,26 @@ static PetscErrorCode MatGetValues_MPISELL(Mat mat, PetscInt m, const PetscInt i
   for (i = 0; i < m; i++) {
     if (idxm[i] < 0) continue; /* negative row */
     PetscCheck(idxm[i] < mat->rmap->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Row too large: row %" PetscInt_FMT " max %" PetscInt_FMT, idxm[i], mat->rmap->N - 1);
-    if (idxm[i] >= rstart && idxm[i] < rend) {
-      row = idxm[i] - rstart;
-      for (j = 0; j < n; j++) {
-        if (idxn[j] < 0) continue; /* negative column */
-        PetscCheck(idxn[j] < mat->cmap->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Column too large: col %" PetscInt_FMT " max %" PetscInt_FMT, idxn[j], mat->cmap->N - 1);
-        if (idxn[j] >= cstart && idxn[j] < cend) {
-          col = idxn[j] - cstart;
-          PetscCall(MatGetValues(sell->A, 1, &row, 1, &col, v + i * n + j));
-        } else {
-          if (!sell->colmap) PetscCall(MatCreateColmap_MPISELL_Private(mat));
+    PetscCheck(idxm[i] >= rstart && idxm[i] < rend, PETSC_COMM_SELF, PETSC_ERR_SUP, "Only local values currently supported");
+    row = idxm[i] - rstart;
+    for (j = 0; j < n; j++) {
+      if (idxn[j] < 0) continue; /* negative column */
+      PetscCheck(idxn[j] < mat->cmap->N, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Column too large: col %" PetscInt_FMT " max %" PetscInt_FMT, idxn[j], mat->cmap->N - 1);
+      if (idxn[j] >= cstart && idxn[j] < cend) {
+        col = idxn[j] - cstart;
+        PetscCall(MatGetValues(sell->A, 1, &row, 1, &col, v + i * n + j));
+      } else {
+        if (!sell->colmap) PetscCall(MatCreateColmap_MPISELL_Private(mat));
 #if defined(PETSC_USE_CTABLE)
-          PetscCall(PetscHMapIGetWithDefault(sell->colmap, idxn[j] + 1, 0, &col));
-          col--;
+        PetscCall(PetscHMapIGetWithDefault(sell->colmap, idxn[j] + 1, 0, &col));
+        col--;
 #else
-          col = sell->colmap[idxn[j]] - 1;
+        col = sell->colmap[idxn[j]] - 1;
 #endif
-          if ((col < 0) || (sell->garray[col] != idxn[j])) *(v + i * n + j) = 0.0;
-          else PetscCall(MatGetValues(sell->B, 1, &row, 1, &col, v + i * n + j));
-        }
+        if (col < 0 || sell->garray[col] != idxn[j]) *(v + i * n + j) = 0.0;
+        else PetscCall(MatGetValues(sell->B, 1, &row, 1, &col, v + i * n + j));
       }
-    } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Only local values currently supported");
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -330,7 +329,7 @@ PetscErrorCode MatAssemblyEnd_MPISELL(Mat mat, MatAssemblyType mode)
      no process disassembled thus we can skip this stuff
   */
   if (!((Mat_SeqSELL *)sell->B->data)->nonew) {
-    PetscCallMPI(MPIU_Allreduce(&mat->was_assembled, &all_assembled, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
+    PetscCallMPI(MPIU_Allreduce(&mat->was_assembled, &all_assembled, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)mat)));
     if (mat->was_assembled && !all_assembled) PetscCall(MatDisAssemble_MPISELL(mat));
   }
   if (!mat->was_assembled && mode == MAT_FINAL_ASSEMBLY) PetscCall(MatSetUpMultiply_MPISELL(mat));
@@ -535,15 +534,15 @@ static PetscErrorCode MatView_MPISELL_ASCIIorDraworSocket(Mat mat, PetscViewer v
 {
   Mat_MPISELL      *sell = (Mat_MPISELL *)mat->data;
   PetscMPIInt       rank = sell->rank, size = sell->size;
-  PetscBool         isdraw, iascii, isbinary;
+  PetscBool         isdraw, isascii, isbinary;
   PetscViewer       sviewer;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerGetFormat(viewer, &format));
     if (format == PETSC_VIEWER_ASCII_INFO_DETAIL) {
       MatInfo   info;
@@ -669,14 +668,14 @@ static PetscErrorCode MatView_MPISELL_ASCIIorDraworSocket(Mat mat, PetscViewer v
 
 static PetscErrorCode MatView_MPISELL(Mat mat, PetscViewer viewer)
 {
-  PetscBool iascii, isdraw, issocket, isbinary;
+  PetscBool isascii, isdraw, issocket, isbinary;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSOCKET, &issocket));
-  if (iascii || isdraw || isbinary || issocket) PetscCall(MatView_MPISELL_ASCIIorDraworSocket(mat, viewer));
+  if (isascii || isdraw || isbinary || issocket) PetscCall(MatView_MPISELL_ASCIIorDraworSocket(mat, viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -848,7 +847,7 @@ static PetscErrorCode MatEqual_MPISELL(Mat A, Mat B, PetscBool *flag)
 
   PetscCall(MatEqual(a, c, &flg));
   if (flg) PetscCall(MatEqual(b, d, &flg));
-  PetscCallMPI(MPIU_Allreduce(&flg, flag, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)A)));
+  PetscCallMPI(MPIU_Allreduce(&flg, flag, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)A)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -882,33 +881,11 @@ static PetscErrorCode MatSetUp_MPISELL(Mat A)
 
 static PetscErrorCode MatConjugate_MPISELL(Mat mat)
 {
-  PetscFunctionBegin;
-  if (PetscDefined(USE_COMPLEX)) {
-    Mat_MPISELL *sell = (Mat_MPISELL *)mat->data;
-
-    PetscCall(MatConjugate_SeqSELL(sell->A));
-    PetscCall(MatConjugate_SeqSELL(sell->B));
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode MatRealPart_MPISELL(Mat A)
-{
-  Mat_MPISELL *a = (Mat_MPISELL *)A->data;
+  Mat_MPISELL *sell = (Mat_MPISELL *)mat->data;
 
   PetscFunctionBegin;
-  PetscCall(MatRealPart(a->A));
-  PetscCall(MatRealPart(a->B));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode MatImaginaryPart_MPISELL(Mat A)
-{
-  Mat_MPISELL *a = (Mat_MPISELL *)A->data;
-
-  PetscFunctionBegin;
-  PetscCall(MatImaginaryPart(a->A));
-  PetscCall(MatImaginaryPart(a->B));
+  PetscCall(MatConjugate_SeqSELL(sell->A));
+  PetscCall(MatConjugate_SeqSELL(sell->B));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -956,21 +933,6 @@ static PetscErrorCode MatShift_MPISELL(Mat Y, PetscScalar a)
     sell->nonew = nonew;
   }
   PetscCall(MatShift_Basic(Y, a));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-static PetscErrorCode MatMissingDiagonal_MPISELL(Mat A, PetscBool *missing, PetscInt *d)
-{
-  Mat_MPISELL *a = (Mat_MPISELL *)A->data;
-
-  PetscFunctionBegin;
-  PetscCheck(A->rmap->n == A->cmap->n, PETSC_COMM_SELF, PETSC_ERR_SUP, "Only works for square matrices");
-  PetscCall(MatMissingDiagonal(a->A, missing, d));
-  if (d) {
-    PetscInt rstart;
-    PetscCall(MatGetOwnershipRange(A, &rstart, NULL));
-    *d += rstart;
-  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1184,26 +1146,25 @@ static const struct _MatOps MatOps_Values = {MatSetValues_MPISELL,
                                              MatConjugate_MPISELL,
                                              /*94*/ NULL,
                                              NULL,
-                                             MatRealPart_MPISELL,
-                                             MatImaginaryPart_MPISELL,
+                                             NULL,
+                                             NULL,
                                              NULL,
                                              /*99*/ NULL,
                                              NULL,
                                              NULL,
                                              NULL,
                                              NULL,
-                                             /*104*/ MatMissingDiagonal_MPISELL,
-                                             NULL,
+                                             /*104*/ NULL,
                                              NULL,
                                              MatGetGhosts_MPISELL,
                                              NULL,
-                                             /*109*/ NULL,
-                                             MatMultDiagonalBlock_MPISELL,
+                                             NULL,
+                                             /*109*/ MatMultDiagonalBlock_MPISELL,
+                                             NULL,
                                              NULL,
                                              NULL,
                                              NULL,
                                              /*114*/ NULL,
-                                             NULL,
                                              NULL,
                                              MatInvertBlockDiagonal_MPISELL,
                                              NULL,
@@ -1228,6 +1189,8 @@ static const struct _MatOps MatOps_Values = {MatSetValues_MPISELL,
                                              NULL,
                                              NULL,
                                              /*139*/ NULL,
+                                             NULL,
+                                             NULL,
                                              NULL,
                                              NULL,
                                              NULL};

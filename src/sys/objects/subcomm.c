@@ -97,29 +97,28 @@ PetscErrorCode PetscSubcommSetOptionsPrefix(PetscSubcomm psubcomm, const char pr
 @*/
 PetscErrorCode PetscSubcommView(PetscSubcomm psubcomm, PetscViewer viewer)
 {
-  PetscBool         iascii;
+  PetscBool         isascii;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
-    PetscCall(PetscViewerGetFormat(viewer, &format));
-    if (format == PETSC_VIEWER_DEFAULT) {
-      MPI_Comm    comm = psubcomm->parent;
-      PetscMPIInt rank, size, subsize, subrank, duprank;
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  PetscCheck(isascii, PETSC_COMM_SELF, PETSC_ERR_SUP, "Not supported yet");
+  PetscCall(PetscViewerGetFormat(viewer, &format));
+  if (format == PETSC_VIEWER_DEFAULT) {
+    MPI_Comm    comm = psubcomm->parent;
+    PetscMPIInt rank, size, subsize, subrank, duprank;
 
-      PetscCallMPI(MPI_Comm_size(comm, &size));
-      PetscCall(PetscViewerASCIIPrintf(viewer, "PetscSubcomm type %s with total %d MPI processes:\n", PetscSubcommTypes[psubcomm->type], size));
-      PetscCallMPI(MPI_Comm_rank(comm, &rank));
-      PetscCallMPI(MPI_Comm_size(psubcomm->child, &subsize));
-      PetscCallMPI(MPI_Comm_rank(psubcomm->child, &subrank));
-      PetscCallMPI(MPI_Comm_rank(psubcomm->dupparent, &duprank));
-      PetscCall(PetscViewerASCIIPushSynchronized(viewer));
-      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "  [%d], color %d, sub-size %d, sub-rank %d, duprank %d\n", rank, psubcomm->color, subsize, subrank, duprank));
-      PetscCall(PetscViewerFlush(viewer));
-      PetscCall(PetscViewerASCIIPopSynchronized(viewer));
-    }
-  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Not supported yet");
+    PetscCallMPI(MPI_Comm_size(comm, &size));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "PetscSubcomm type %s with total %d MPI processes:\n", PetscSubcommTypes[psubcomm->type], size));
+    PetscCallMPI(MPI_Comm_rank(comm, &rank));
+    PetscCallMPI(MPI_Comm_size(psubcomm->child, &subsize));
+    PetscCallMPI(MPI_Comm_rank(psubcomm->child, &subrank));
+    PetscCallMPI(MPI_Comm_rank(psubcomm->dupparent, &duprank));
+    PetscCall(PetscViewerASCIIPushSynchronized(viewer));
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "  [%d], color %d, sub-size %d, sub-rank %d, duprank %d\n", rank, psubcomm->color, subsize, subrank, duprank));
+    PetscCall(PetscViewerFlush(viewer));
+    PetscCall(PetscViewerASCIIPopSynchronized(viewer));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

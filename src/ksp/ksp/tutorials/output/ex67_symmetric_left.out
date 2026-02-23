@@ -10,8 +10,8 @@
 Linear solve converged due to CONVERGED_RTOL iterations 8
 KSP Object: 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=12, initial guess is zero
   tolerances: relative=1e-14, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -19,7 +19,7 @@ KSP Object: 1 MPI process
 PC Object: 1 MPI process
   type: sor
     type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=10, cols=10
@@ -39,8 +39,8 @@ PC Object: 1 MPI process
 Linear solve converged due to CONVERGED_RTOL iterations 8
 KSP Object: 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=12, initial guess is zero
   tolerances: relative=1e-14, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -48,7 +48,7 @@ KSP Object: 1 MPI process
 PC Object: 1 MPI process
   type: sor
     type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=10, cols=10

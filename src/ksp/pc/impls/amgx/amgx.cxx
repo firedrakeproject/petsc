@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <map>
 #include <numeric>
-#include "cuda_runtime.h"
 
 enum class AmgXSmoother {
   PCG,
@@ -540,11 +539,11 @@ static PetscErrorCode PCSetFromOptions_AMGX(PC pc, PetscOptionItems PetscOptions
 static PetscErrorCode PCView_AMGX(PC pc, PetscViewer viewer)
 {
   PC_AMGX  *amgx = (PC_AMGX *)pc->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     std::string output_cfg(amgx->cfg_contents);
     std::replace(output_cfg.begin(), output_cfg.end(), ',', '\n');
     PetscCall(PetscViewerASCIIPrintf(viewer, "\n%s\n", output_cfg.c_str()));

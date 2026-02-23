@@ -5,11 +5,11 @@
 #include <../src/ksp/ksp/impls/cheby/chebyshevimpl.h> /*I "petscksp.h" I*/
 
 #if defined(PETSC_HAVE_CUDA)
-  #include <cuda_runtime.h>
+  #include <petscdevice_cuda.h>
 #endif
 
 #if defined(PETSC_HAVE_HIP)
-  #include <hip/hip_runtime.h>
+  #include <petscdevice_hip.h>
 #endif
 
 PetscLogEvent petsc_gamg_setup_events[GAMG_NUM_SET];
@@ -284,7 +284,7 @@ static PetscErrorCode PCGAMGCreateLevel_GAMG(PC pc, Mat Amat_fine, PetscInt cr_b
         PetscCall(PetscMalloc1(ncrs_eq, &newproc_idx));
         PetscCall(ISGetIndices(proc_is, &is_idx));
         for (kk = jj = 0; kk < nloc_old; kk++) {
-          for (ii = 0; ii < cr_bs; ii++, jj++) { newproc_idx[jj] = is_idx[kk] * expand_factor; /* distribution */ }
+          for (ii = 0; ii < cr_bs; ii++, jj++) newproc_idx[jj] = is_idx[kk] * expand_factor; /* distribution */
         }
         PetscCall(ISRestoreIndices(proc_is, &is_idx));
         PetscCall(ISDestroy(&proc_is));
@@ -717,7 +717,7 @@ static PetscErrorCode PCSetUp_GAMG(PC pc)
         for (row = nn = 0; row < prol_n; row += pc_gamg->injection_index_size) {
           for (PetscInt jj = 0; jj < pc_gamg->injection_index_size; jj++) {
             PetscInt idx = row * pc_gamg->injection_index_size + jj * pc_gamg->injection_index_size;
-            for (PetscInt kk = 0; kk < pc_gamg->injection_index_size; kk++, nn++) { pc_gamg->data[idx + kk] = (jj == kk) ? 1 : 0; }
+            for (PetscInt kk = 0; kk < pc_gamg->injection_index_size; kk++, nn++) pc_gamg->data[idx + kk] = (jj == kk) ? 1 : 0;
           }
         }
         PetscCheck(nn == pc_gamg->data_sz, PETSC_COMM_SELF, PETSC_ERR_PLIB, "nn != pc_gamg->data_sz %" PetscInt_FMT " %" PetscInt_FMT, pc_gamg->data_sz, nn);
@@ -1886,8 +1886,8 @@ static PetscErrorCode PCSetFromOptions_GAMG(PC pc, PetscOptionItems PetscOptions
   Options Database Keys for Aggregation:
 + -pc_gamg_agg_nsmooths <nsmooth, default=1>                 - number of smoothing steps to use with smooth aggregation to construct prolongation
 . -pc_gamg_aggressive_coarsening <n,default=1>               - number of aggressive coarsening (MIS-2) levels from finest.
-. -pc_gamg_aggressive_square_graph <bool,default=false>      - Use square graph (A'A) or MIS-k (k=2) for aggressive coarsening
-. -pc_gamg_mis_k_minimum_degree_ordering <bool,default=true> - Use minimum degree ordering in greedy MIS algorithm
+. -pc_gamg_aggressive_square_graph <bool,default=true>       - Use square graph $ A^T A$ for coarsening. Otherwise, MIS-k (k=2) is used, see `PCGAMGMISkSetAggressive()`.
+. -pc_gamg_mis_k_minimum_degree_ordering <bool,default=false>- Use minimum degree ordering in greedy MIS algorithm
 . -pc_gamg_pc_gamg_asm_hem_aggs <n,default=0>                - Number of HEM aggregation steps for `PCASM` smoother
 - -pc_gamg_aggressive_mis_k <n,default=2>                    - Number (k) distance in MIS coarsening (>2 is 'aggressive')
 

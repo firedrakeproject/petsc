@@ -30,13 +30,13 @@ static PetscErrorCode Petsc_ScaLAPACK_keyval_free(void)
 static PetscErrorCode MatView_ScaLAPACK(Mat A, PetscViewer viewer)
 {
   Mat_ScaLAPACK    *a = (Mat_ScaLAPACK *)A->data;
-  PetscBool         iascii;
+  PetscBool         isascii;
   PetscViewerFormat format;
   Mat               Adense;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerGetFormat(viewer, &format));
     if (format == PETSC_VIEWER_ASCII_INFO || format == PETSC_VIEWER_ASCII_INFO_DETAIL) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "block sizes: %d,%d\n", (int)a->mb, (int)a->nb));
@@ -574,13 +574,6 @@ static PetscErrorCode MatDiagonalScale_ScaLAPACK(Mat A, Vec L, Vec R)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatMissingDiagonal_ScaLAPACK(Mat A, PetscBool *missing, PetscInt *d)
-{
-  PetscFunctionBegin;
-  *missing = PETSC_FALSE;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 static PetscErrorCode MatScale_ScaLAPACK(Mat X, PetscScalar a)
 {
   Mat_ScaLAPACK *x = (Mat_ScaLAPACK *)X->data;
@@ -1067,9 +1060,8 @@ static PetscErrorCode MatConvert_ScaLAPACK_Dense(Mat A, MatType newtype, MatReus
 
     PetscCall(MatAssemblyBegin(Bmpi, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(Bmpi, MAT_FINAL_ASSEMBLY));
-    if (reuse == MAT_INPLACE_MATRIX) {
-      PetscCall(MatHeaderReplace(A, &Bmpi));
-    } else *B = Bmpi;
+    if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &Bmpi));
+    else *B = Bmpi;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1152,9 +1144,8 @@ PETSC_INTERN PetscErrorCode MatConvert_Dense_ScaLAPACK(Mat A, MatType newtype, M
   PetscCall(MatDenseRestoreArrayRead(A, &aarray));
   PetscCall(MatAssemblyBegin(Bmpi, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(Bmpi, MAT_FINAL_ASSEMBLY));
-  if (reuse == MAT_INPLACE_MATRIX) {
-    PetscCall(MatHeaderReplace(A, &Bmpi));
-  } else *B = Bmpi;
+  if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &Bmpi));
+  else *B = Bmpi;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1256,7 +1247,7 @@ static PetscErrorCode MatDestroy_ScaLAPACK(Mat A)
 {
   Mat_ScaLAPACK      *a = (Mat_ScaLAPACK *)A->data;
   Mat_ScaLAPACK_Grid *grid;
-  PetscBool           flg;
+  PetscMPIInt         iflg;
   MPI_Comm            icomm;
 
   PetscFunctionBegin;
@@ -1264,7 +1255,7 @@ static PetscErrorCode MatDestroy_ScaLAPACK(Mat A)
   PetscCall(PetscFree(a->loc));
   PetscCall(PetscFree(a->pivots));
   PetscCall(PetscCommDuplicate(PetscObjectComm((PetscObject)A), &icomm, NULL));
-  PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_ScaLAPACK_keyval, (void **)&grid, (int *)&flg));
+  PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_ScaLAPACK_keyval, (void **)&grid, &iflg));
   if (--grid->grid_refct == 0) {
     Cblacs_gridexit(grid->ictxt);
     Cblacs_gridexit(grid->ictxrow);
@@ -1479,23 +1470,22 @@ static struct _MatOps MatOps_Values = {MatSetValues_ScaLAPACK,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       /*104*/ MatMissingDiagonal_ScaLAPACK,
+                                       /*104*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
                                        NULL,
                                        /*109*/ NULL,
-                                       NULL,
                                        MatHermitianTranspose_ScaLAPACK,
                                        MatMultHermitianTranspose_ScaLAPACK,
                                        MatMultHermitianTransposeAdd_ScaLAPACK,
+                                       NULL,
                                        /*114*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
                                        NULL,
                                        /*119*/ NULL,
-                                       NULL,
                                        NULL,
                                        MatTransposeMatMultNumeric_ScaLAPACK,
                                        NULL,
@@ -1516,6 +1506,8 @@ static struct _MatOps MatOps_Values = {MatSetValues_ScaLAPACK,
                                        NULL,
                                        NULL,
                                        /*140*/ NULL,
+                                       NULL,
+                                       NULL,
                                        NULL,
                                        NULL};
 
@@ -1781,7 +1773,8 @@ M*/
 PETSC_EXTERN PetscErrorCode MatCreate_ScaLAPACK(Mat A)
 {
   Mat_ScaLAPACK      *a;
-  PetscBool           flg, flg1;
+  PetscBool           flg;
+  PetscMPIInt         iflg;
   Mat_ScaLAPACK_Grid *grid;
   MPI_Comm            icomm;
   PetscBLASInt        nprow, npcol, myrow, mycol;
@@ -1808,16 +1801,16 @@ PETSC_EXTERN PetscErrorCode MatCreate_ScaLAPACK(Mat A)
     PetscCall(PetscCitationsRegister(ScaLAPACKCitation, &ScaLAPACKCite));
   }
   PetscCall(PetscCommDuplicate(PetscObjectComm((PetscObject)A), &icomm, NULL));
-  PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_ScaLAPACK_keyval, (void **)&grid, (int *)&flg));
-  if (!flg) {
+  PetscCallMPI(MPI_Comm_get_attr(icomm, Petsc_ScaLAPACK_keyval, (void **)&grid, &iflg));
+  if (!iflg) {
     PetscCall(PetscNew(&grid));
 
     PetscCallMPI(MPI_Comm_size(icomm, &size));
     PetscCall(PetscBLASIntCast(PetscSqrtReal((PetscReal)size) + 0.001, &grid->nprow));
 
     PetscOptionsBegin(PetscObjectComm((PetscObject)A), ((PetscObject)A)->prefix, "ScaLAPACK Grid Options", "Mat");
-    PetscCall(PetscOptionsInt("-mat_scalapack_grid_height", "Grid Height", "None", grid->nprow, &optv1, &flg1));
-    if (flg1) {
+    PetscCall(PetscOptionsInt("-mat_scalapack_grid_height", "Grid Height", "None", grid->nprow, &optv1, &flg));
+    if (flg) {
       PetscCheck(size % optv1 == 0, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_INCOMP, "Grid Height %" PetscInt_FMT " must evenly divide CommSize %d", optv1, size);
       PetscCall(PetscBLASIntCast(optv1, &grid->nprow));
     }

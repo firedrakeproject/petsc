@@ -1,12 +1,12 @@
 #include <../src/tao/leastsquares/impls/pounders/pounders.h>
 
-static PetscErrorCode pounders_h(Tao subtao, Vec v, Mat H, Mat Hpre, void *ctx)
+static PetscErrorCode pounders_h(Tao subtao, Vec v, Mat H, Mat Hpre, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode pounders_fg(Tao subtao, Vec x, PetscReal *f, Vec g, void *ctx)
+static PetscErrorCode pounders_fg(Tao subtao, Vec x, PetscReal *f, Vec g, PetscCtx ctx)
 {
   TAO_POUNDERS *mfqP = (TAO_POUNDERS *)ctx;
   PetscReal     d1, d2;
@@ -49,7 +49,7 @@ static PetscErrorCode pounders_feval(Tao tao, Vec x, Vec F, PetscReal *fsum)
     PetscCall(VecDot(F, F, fsum));
   }
   PetscCall(PetscInfo(tao, "Least-squares residual norm: %20.19e\n", (double)*fsum));
-  PetscCheck(!PetscIsInfOrNanReal(*fsum), PETSC_COMM_SELF, PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
+  PetscCheck(!PetscIsInfOrNanReal(*fsum), PETSC_COMM_SELF, PETSC_ERR_USER, "User provided compute function generated infinity or NaN");
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

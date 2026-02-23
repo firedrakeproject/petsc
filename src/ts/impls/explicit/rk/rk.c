@@ -587,9 +587,9 @@ static PetscErrorCode TSEvaluateStep_RK(TS ts, PetscInt order, Vec X, PetscBool 
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 unavailable:
-  if (done) *done = PETSC_FALSE;
-  else
-    SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "RK '%s' of order %" PetscInt_FMT " cannot evaluate step at order %" PetscInt_FMT ". Consider using -ts_adapt_type none or a different method that has an embedded estimate.", tab->name, tab->order, order);
+  PetscCheck(done, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "RK '%s' of order %" PetscInt_FMT " cannot evaluate step at order %" PetscInt_FMT ". Consider using -ts_adapt_type none or a different method that has an embedded estimate.", tab->name,
+             tab->order, order);
+  *done = PETSC_FALSE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -896,10 +896,10 @@ static PetscErrorCode TSAdjointStep_RK(TS ts)
     }
     rk->stage_time = t + h * (1.0 - c[i]);
     PetscCall(TSComputeSNESJacobian(ts, Y[i], J, Jpre));
-    if (quadts) { PetscCall(TSComputeRHSJacobian(quadts, rk->stage_time, Y[i], Jquad, Jquad)); /* get r_u^T */ }
+    if (quadts) PetscCall(TSComputeRHSJacobian(quadts, rk->stage_time, Y[i], Jquad, Jquad)); /* get r_u^T */
     if (ts->vecs_sensip) {
-      PetscCall(TSComputeRHSJacobianP(ts, rk->stage_time, Y[i], ts->Jacprhs)); /* get f_p */
-      if (quadts) { PetscCall(TSComputeRHSJacobianP(quadts, rk->stage_time, Y[i], quadts->Jacprhs)); /* get f_p for the quadrature */ }
+      PetscCall(TSComputeRHSJacobianP(ts, rk->stage_time, Y[i], ts->Jacprhs));                     /* get f_p */
+      if (quadts) PetscCall(TSComputeRHSJacobianP(quadts, rk->stage_time, Y[i], quadts->Jacprhs)); /* get f_p for the quadrature */
     }
 
     if (b[i]) {
@@ -1079,8 +1079,6 @@ static PetscErrorCode TSInterpolate_RK(TS ts, PetscReal itime, Vec X)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 static PetscErrorCode TSRKTableauReset(TS ts)
 {
   TS_RK    *rk  = (TS_RK *)ts->data;
@@ -1106,25 +1104,25 @@ static PetscErrorCode TSReset_RK(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCoarsenHook_TSRK(DM fine, DM coarse, void *ctx)
+static PetscErrorCode DMCoarsenHook_TSRK(DM fine, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMRestrictHook_TSRK(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
+static PetscErrorCode DMRestrictHook_TSRK(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainHook_TSRK(DM dm, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainHook_TSRK(DM dm, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainRestrictHook_TSRK(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainRestrictHook_TSRK(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1197,11 +1195,11 @@ static PetscErrorCode TSSetFromOptions_RK(TS ts, PetscOptionItems PetscOptionsOb
 static PetscErrorCode TSView_RK(TS ts, PetscViewer viewer)
 {
   TS_RK    *rk = (TS_RK *)ts->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     RKTableau        tab = rk->tableau;
     TSRKType         rktype;
     const PetscReal *c;

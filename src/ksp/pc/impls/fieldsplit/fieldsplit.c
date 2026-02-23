@@ -1,5 +1,6 @@
 #include <petsc/private/pcimpl.h>  /*I "petscpc.h" I*/
 #include <petsc/private/kspimpl.h> /*  This is needed to provide the appropriate PETSC_EXTERN for KSP_Solve_FS ....*/
+#include <petsc/private/matimpl.h> /* MatScatterDense_Private() for PCMatApply() */
 #include <petscdm.h>
 #include <petscdevice.h>
 #if PetscDefined(HAVE_CUDA)
@@ -18,6 +19,7 @@ typedef struct _PC_FieldSplitLink *PC_FieldSplitLink;
 struct _PC_FieldSplitLink {
   KSP               ksp;
   Vec               x, y, z;
+  Mat               X, Y, Z;
   char             *splitname;
   PetscInt          nfields;
   PetscInt         *fields, *fields_col;
@@ -106,14 +108,14 @@ static Mat FieldSplitSchurPre(PC_FieldSplit *jac)
 static PetscErrorCode PCView_FieldSplit(PC pc, PetscViewer viewer)
 {
   PC_FieldSplit    *jac = (PC_FieldSplit *)pc->data;
-  PetscBool         iascii, isdraw;
+  PetscBool         isascii, isdraw;
   PetscInt          i, j;
   PC_FieldSplitLink ilink = jac->head;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
-  if (iascii) {
+  if (isascii) {
     if (jac->bs > 0) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "  FieldSplit with %s composition: total splits = %" PetscInt_FMT ", blocksize = %" PetscInt_FMT "\n", PCCompositeTypes[jac->type], jac->nsplits, jac->bs));
     } else {
@@ -164,15 +166,15 @@ static PetscErrorCode PCView_FieldSplit(PC pc, PetscViewer viewer)
 static PetscErrorCode PCView_FieldSplit_Schur(PC pc, PetscViewer viewer)
 {
   PC_FieldSplit             *jac = (PC_FieldSplit *)pc->data;
-  PetscBool                  iascii, isdraw;
+  PetscBool                  isascii, isdraw;
   PetscInt                   i, j;
   PC_FieldSplitLink          ilink = jac->head;
   MatSchurComplementAinvType atype;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
-  if (iascii) {
+  if (isascii) {
     if (jac->bs > 0) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "  FieldSplit with Schur preconditioner, blocksize = %" PetscInt_FMT ", factorization %s\n", jac->bs, PCFieldSplitSchurFactTypes[jac->schurfactorization]));
     } else {
@@ -224,9 +226,8 @@ static PetscErrorCode PCView_FieldSplit_Schur(PC pc, PetscViewer viewer)
     }
     PetscCall(PetscViewerASCIIPrintf(viewer, "KSP solver for A00 block\n"));
     PetscCall(PetscViewerASCIIPushTab(viewer));
-    if (jac->head) {
-      PetscCall(KSPView(jac->head->ksp, viewer));
-    } else PetscCall(PetscViewerASCIIPrintf(viewer, "  not yet available\n"));
+    if (jac->head) PetscCall(KSPView(jac->head->ksp, viewer));
+    else PetscCall(PetscViewerASCIIPrintf(viewer, "  not yet available\n"));
     PetscCall(PetscViewerASCIIPopTab(viewer));
     if (jac->head && jac->kspupper != jac->head->ksp) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "KSP solver for upper A00 in upper triangular factor\n"));
@@ -288,14 +289,14 @@ static PetscErrorCode PCView_FieldSplit_Schur(PC pc, PetscViewer viewer)
 static PetscErrorCode PCView_FieldSplit_GKB(PC pc, PetscViewer viewer)
 {
   PC_FieldSplit    *jac = (PC_FieldSplit *)pc->data;
-  PetscBool         iascii, isdraw;
+  PetscBool         isascii, isdraw;
   PetscInt          i, j;
   PC_FieldSplitLink ilink = jac->head;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
-  if (iascii) {
+  if (isascii) {
     if (jac->bs > 0) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "  FieldSplit with %s composition: total splits = %" PetscInt_FMT ", blocksize = %" PetscInt_FMT "\n", PCCompositeTypes[jac->type], jac->nsplits, jac->bs));
     } else {
@@ -467,9 +468,8 @@ static PetscErrorCode PCFieldSplitSetDefaults(PC pc)
       }
     } else {
       if (jac->bs <= 0) {
-        if (pc->pmat) {
-          PetscCall(MatGetBlockSize(pc->pmat, &jac->bs));
-        } else jac->bs = 1;
+        if (pc->pmat) PetscCall(MatGetBlockSize(pc->pmat, &jac->bs));
+        else jac->bs = 1;
       }
 
       if (jac->detect) {
@@ -559,7 +559,7 @@ static PetscErrorCode MatGolubKahanComputeExplicitOperator(Mat A, Mat B, Mat C, 
   PetscCall(MatAXPY(T, -1.0, B, DIFFERENT_NONZERO_PATTERN));
   PetscCall(MatNorm(T, NORM_1, &nrmT));
   PetscCall(MatNorm(B, NORM_1, &nrmB));
-  PetscCheck(nrmB <= 0 || nrmT / nrmB < PETSC_SMALL, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Matrix is not symmetric/hermitian, GKB is not applicable.");
+  PetscCheck(nrmB <= 0 || nrmT / nrmB < PETSC_SMALL, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Matrix is not symmetric/Hermitian, GKB is not applicable.");
 
   /* Compute augmented Lagrangian matrix H = A00 + nu*A01*A01'. This corresponds to */
   /* setting N := 1/nu*I in [Ar13].                                                 */
@@ -579,7 +579,7 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
   PC_FieldSplit    *jac = (PC_FieldSplit *)pc->data;
   PC_FieldSplitLink ilink;
   PetscInt          i, nsplit;
-  PetscBool         sorted, sorted_col, matnest = PETSC_FALSE;
+  PetscBool         matnest = PETSC_FALSE;
 
   PetscFunctionBegin;
   pc->failedreason = PC_NOERROR;
@@ -615,31 +615,43 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
       for (i = 0; i < nsplit; i++) {
         if (jac->defaultsplit) {
           PetscCall(ISCreateStride(PetscObjectComm((PetscObject)pc), nslots, rstart + i, nsplit, &ilink->is));
-          PetscCall(ISDuplicate(ilink->is, &ilink->is_col));
+          PetscCall(PetscObjectReference((PetscObject)ilink->is));
+          ilink->is_col = ilink->is;
         } else if (!ilink->is) {
+          PetscBool same_fields = PETSC_TRUE;
+
+          for (PetscInt k = 0; k < ilink->nfields; k++) {
+            if (ilink->fields[k] != ilink->fields_col[k]) same_fields = PETSC_FALSE;
+          }
+
           if (ilink->nfields > 1) {
             PetscInt *ii, *jj, j, k, nfields = ilink->nfields, *fields = ilink->fields, *fields_col = ilink->fields_col;
 
             PetscCall(PetscMalloc1(ilink->nfields * nslots, &ii));
-            PetscCall(PetscMalloc1(ilink->nfields * nslots, &jj));
+            if (!same_fields) PetscCall(PetscMalloc1(ilink->nfields * nslots, &jj));
             for (j = 0; j < nslots; j++) {
               for (k = 0; k < nfields; k++) {
                 ii[nfields * j + k] = rstart + bs * j + fields[k];
-                jj[nfields * j + k] = rstart + bs * j + fields_col[k];
+                if (!same_fields) jj[nfields * j + k] = rstart + bs * j + fields_col[k];
               }
             }
             PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)pc), nslots * nfields, ii, PETSC_OWN_POINTER, &ilink->is));
-            PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)pc), nslots * nfields, jj, PETSC_OWN_POINTER, &ilink->is_col));
+            if (!same_fields) PetscCall(ISCreateGeneral(PetscObjectComm((PetscObject)pc), nslots * nfields, jj, PETSC_OWN_POINTER, &ilink->is_col));
+            else {
+              PetscCall(PetscObjectReference((PetscObject)ilink->is));
+              ilink->is_col = ilink->is;
+            }
             PetscCall(ISSetBlockSize(ilink->is, nfields));
             PetscCall(ISSetBlockSize(ilink->is_col, nfields));
           } else {
             PetscCall(ISCreateStride(PetscObjectComm((PetscObject)pc), nslots, rstart + ilink->fields[0], bs, &ilink->is));
-            PetscCall(ISCreateStride(PetscObjectComm((PetscObject)pc), nslots, rstart + ilink->fields_col[0], bs, &ilink->is_col));
+            if (!same_fields) PetscCall(ISCreateStride(PetscObjectComm((PetscObject)pc), nslots, rstart + ilink->fields_col[0], bs, &ilink->is_col));
+            else {
+              PetscCall(PetscObjectReference((PetscObject)ilink->is));
+              ilink->is_col = ilink->is;
+            }
           }
         }
-        PetscCall(ISSorted(ilink->is, &sorted));
-        if (ilink->is_col) PetscCall(ISSorted(ilink->is_col, &sorted_col));
-        PetscCheck(sorted && sorted_col, PETSC_COMM_SELF, PETSC_ERR_USER, "Fields must be sorted when creating split");
         ilink = ilink->next;
       }
     } else { /* use the IS that define the MATNEST to determine the index sets that define the submatrices */
@@ -654,7 +666,8 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
       for (i = 0; i < nsplit; i++) {
         if (jac->defaultsplit) {
           PetscCall(ISDuplicate(rowis[i], &ilink->is));
-          PetscCall(ISDuplicate(ilink->is, &ilink->is_col));
+          PetscCall(PetscObjectReference((PetscObject)ilink->is));
+          ilink->is_col = ilink->is;
         } else if (!ilink->is) {
           if (ilink->nfields > 1) {
             for (PetscInt j = 0; j < ilink->nfields; j++) ises[j] = rowis[ilink->fields[j]];
@@ -662,7 +675,8 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
           } else {
             PetscCall(ISDuplicate(rowis[ilink->fields[0]], &ilink->is));
           }
-          PetscCall(ISDuplicate(ilink->is, &ilink->is_col));
+          PetscCall(PetscObjectReference((PetscObject)ilink->is));
+          ilink->is_col = ilink->is;
         }
         ilink = ilink->next;
       }
@@ -829,9 +843,7 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
   }
 
   if (jac->type == PC_COMPOSITE_SCHUR) {
-    IS          ccis;
     PetscBool   isset, isspd = PETSC_FALSE, issym = PETSC_FALSE, flg;
-    PetscInt    rstart, rend;
     char        lscname[256];
     PetscObject LSC_L;
 
@@ -842,8 +854,6 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
     if (jac->schurscale == (PetscScalar)-1.0) jac->schurscale = (isset && isspd) ? 1.0 : -1.0;
     PetscCall(MatIsSymmetricKnown(pc->pmat, &isset, &issym));
 
-    /* When extracting off-diagonal submatrices, we take complements from this range */
-    PetscCall(MatGetOwnershipRangeColumn(pc->mat, &rstart, &rend));
     PetscCall(PetscObjectTypeCompareAny(jac->offdiag_use_amat ? (PetscObject)pc->mat : (PetscObject)pc->pmat, &flg, MATSEQSBAIJ, MATMPISBAIJ, ""));
 
     if (jac->schur) {
@@ -858,27 +868,14 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
 
       PetscCall(MatSchurComplementGetKSP(jac->schur, &kspInner));
       ilink = jac->head;
-      PetscCall(ISComplement(ilink->is_col, rstart, rend, &ccis));
-      if (jac->offdiag_use_amat) {
-        PetscCall(MatCreateSubMatrix(pc->mat, ilink->is, ccis, scall, &jac->B));
-      } else {
-        PetscCall(MatCreateSubMatrix(pc->pmat, ilink->is, ccis, scall, &jac->B));
-      }
-      PetscCall(ISDestroy(&ccis));
-      if (!flg) {
-        ilink = ilink->next;
-        PetscCall(ISComplement(ilink->is_col, rstart, rend, &ccis));
-        if (jac->offdiag_use_amat) {
-          PetscCall(MatCreateSubMatrix(pc->mat, ilink->is, ccis, scall, &jac->C));
-        } else {
-          PetscCall(MatCreateSubMatrix(pc->pmat, ilink->is, ccis, scall, &jac->C));
-        }
-        PetscCall(ISDestroy(&ccis));
-      } else {
+      PetscCall(MatCreateSubMatrix(jac->offdiag_use_amat ? pc->mat : pc->pmat, ilink->is, ilink->next->is, scall, &jac->B));
+      if (!flg) PetscCall(MatCreateSubMatrix(jac->offdiag_use_amat ? pc->mat : pc->pmat, ilink->next->is, ilink->is, scall, &jac->C));
+      else {
         PetscCall(MatIsHermitianKnown(jac->offdiag_use_amat ? pc->mat : pc->pmat, &isset, &flg));
         if (isset && flg) PetscCall(MatCreateHermitianTranspose(jac->B, &jac->C));
         else PetscCall(MatCreateTranspose(jac->B, &jac->C));
       }
+      ilink = ilink->next;
       PetscCall(MatSchurComplementUpdateSubMatrices(jac->schur, jac->mat[0], jac->pmat[0], jac->B, jac->C, jac->mat[1]));
       if (jac->schurpre == PC_FIELDSPLIT_SCHUR_PRE_SELFP) {
         PetscCall(MatDestroy(&jac->schurp));
@@ -899,27 +896,14 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
 
       /* extract the A01 and A10 matrices */
       ilink = jac->head;
-      PetscCall(ISComplement(ilink->is_col, rstart, rend, &ccis));
-      if (jac->offdiag_use_amat) {
-        PetscCall(MatCreateSubMatrix(pc->mat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->B));
-      } else {
-        PetscCall(MatCreateSubMatrix(pc->pmat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->B));
-      }
-      PetscCall(ISDestroy(&ccis));
-      ilink = ilink->next;
-      if (!flg) {
-        PetscCall(ISComplement(ilink->is_col, rstart, rend, &ccis));
-        if (jac->offdiag_use_amat) {
-          PetscCall(MatCreateSubMatrix(pc->mat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->C));
-        } else {
-          PetscCall(MatCreateSubMatrix(pc->pmat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->C));
-        }
-        PetscCall(ISDestroy(&ccis));
-      } else {
+      PetscCall(MatCreateSubMatrix(jac->offdiag_use_amat ? pc->mat : pc->pmat, ilink->is, ilink->next->is, MAT_INITIAL_MATRIX, &jac->B));
+      if (!flg) PetscCall(MatCreateSubMatrix(jac->offdiag_use_amat ? pc->mat : pc->pmat, ilink->next->is, ilink->is, MAT_INITIAL_MATRIX, &jac->C));
+      else {
         PetscCall(MatIsHermitianKnown(jac->offdiag_use_amat ? pc->mat : pc->pmat, &isset, &flg));
         if (isset && flg) PetscCall(MatCreateHermitianTranspose(jac->B, &jac->C));
         else PetscCall(MatCreateTranspose(jac->B, &jac->C));
       }
+      ilink = ilink->next;
       /* Use mat[0] (diagonal block of Amat) preconditioned by pmat[0] to define Schur complement */
       PetscCall(MatCreate(((PetscObject)jac->mat[0])->comm, &jac->schur));
       PetscCall(MatSetType(jac->schur, MATSCHURCOMPLEMENT));
@@ -1054,35 +1038,15 @@ static PetscErrorCode PCSetUp_FieldSplit(PC pc)
     if (!LSC_L) PetscCall(PetscObjectQuery((PetscObject)pc->mat, lscname, &LSC_L));
     if (LSC_L) PetscCall(PetscObjectCompose((PetscObject)jac->schur, "LSC_Lp", LSC_L));
   } else if (jac->type == PC_COMPOSITE_GKB) {
-    IS       ccis;
-    PetscInt rstart, rend;
-
     PetscCheck(nsplit == 2, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_INCOMP, "To use GKB preconditioner you must have exactly 2 fields");
-
     ilink = jac->head;
-
-    /* When extracting off-diagonal submatrices, we take complements from this range */
-    PetscCall(MatGetOwnershipRangeColumn(pc->mat, &rstart, &rend));
-
-    PetscCall(ISComplement(ilink->is_col, rstart, rend, &ccis));
-    if (jac->offdiag_use_amat) {
-      PetscCall(MatCreateSubMatrix(pc->mat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->B));
-    } else {
-      PetscCall(MatCreateSubMatrix(pc->pmat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->B));
-    }
-    PetscCall(ISDestroy(&ccis));
+    PetscCall(MatCreateSubMatrix(jac->offdiag_use_amat ? pc->mat : pc->pmat, ilink->is, ilink->next->is, MAT_INITIAL_MATRIX, &jac->B));
     /* Create work vectors for GKB algorithm */
     PetscCall(VecDuplicate(ilink->x, &jac->u));
     PetscCall(VecDuplicate(ilink->x, &jac->Hu));
     PetscCall(VecDuplicate(ilink->x, &jac->w2));
+    PetscCall(MatCreateSubMatrix(jac->offdiag_use_amat ? pc->mat : pc->pmat, ilink->next->is, ilink->is, MAT_INITIAL_MATRIX, &jac->C));
     ilink = ilink->next;
-    PetscCall(ISComplement(ilink->is_col, rstart, rend, &ccis));
-    if (jac->offdiag_use_amat) {
-      PetscCall(MatCreateSubMatrix(pc->mat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->C));
-    } else {
-      PetscCall(MatCreateSubMatrix(pc->pmat, ilink->is, ccis, MAT_INITIAL_MATRIX, &jac->C));
-    }
-    PetscCall(ISDestroy(&ccis));
     /* Create work vectors for GKB algorithm */
     PetscCall(VecDuplicate(ilink->x, &jac->v));
     PetscCall(VecDuplicate(ilink->x, &jac->d));
@@ -1157,7 +1121,7 @@ static PetscErrorCode PCSetUpOnBlocks_FieldSplit_Schur(PC pc)
   if (jac->schurpre != PC_FIELDSPLIT_SCHUR_PRE_FULL) {
     PetscCall(KSPSetUp(jac->kspschur));
     PetscCall(KSPSetUpOnBlocks(jac->kspschur));
-  } else if (kspUpper == kspA) {
+  } else if (kspUpper == kspA && jac->schurfactorization == PC_FIELDSPLIT_SCHUR_FACT_FULL) {
     Mat          A;
     PetscInt     m, M, N;
     VecType      vtype;
@@ -1169,16 +1133,28 @@ static PetscErrorCode PCSetUpOnBlocks_FieldSplit_Schur(PC pc)
     PetscCall(MatGetVecType(jac->B, &vtype));
     PetscCall(VecGetArrayAndMemType(ilinkA->x, &array, &mtype));
     PetscCall(VecRestoreArrayAndMemType(ilinkA->x, &array));
-    if (PetscMemTypeHost(mtype) || (!PetscDefined(HAVE_CUDA) && !PetscDefined(HAVE_HIP))) PetscCall(PetscMalloc1(m * (N + 1), &array));
+    PetscCall(PetscObjectQuery((PetscObject)jac->schur, "AinvB", (PetscObject *)&A));
+    if (A) {
+      PetscInt P;
+
+      PetscCall(MatGetSize(A, NULL, &P));
+      if (P < N + 1) { // need to recreate AinvB, otherwise, the Schur complement won't be updated
+        PetscCall(PetscObjectCompose((PetscObject)jac->schur, "AinvB", NULL));
+        A = NULL;
+      }
+    }
+    if (!A) {
+      if (PetscMemTypeHost(mtype) || (!PetscDefined(HAVE_CUDA) && !PetscDefined(HAVE_HIP))) PetscCall(PetscMalloc1(m * (N + 1), &array));
 #if PetscDefined(HAVE_CUDA)
-    else if (PetscMemTypeCUDA(mtype)) PetscCallCUDA(cudaMalloc((void **)&array, sizeof(PetscScalar) * m * (N + 1)));
+      else if (PetscMemTypeCUDA(mtype)) PetscCallCUDA(cudaMalloc((void **)&array, sizeof(PetscScalar) * m * (N + 1)));
 #endif
 #if PetscDefined(HAVE_HIP)
-    else if (PetscMemTypeHIP(mtype)) PetscCallHIP(hipMalloc((void **)&array, sizeof(PetscScalar) * m * (N + 1)));
+      else if (PetscMemTypeHIP(mtype)) PetscCallHIP(hipMalloc((void **)&array, sizeof(PetscScalar) * m * (N + 1)));
 #endif
-    PetscCall(MatCreateDenseFromVecType(PetscObjectComm((PetscObject)jac->schur), vtype, m, PETSC_DECIDE, M, N + 1, -1, array, &A)); // number of columns of the Schur complement plus one
-    PetscCall(PetscObjectCompose((PetscObject)jac->schur, "AinvB", (PetscObject)A));
-    PetscCall(MatDestroy(&A));
+      PetscCall(MatCreateDenseFromVecType(PetscObjectComm((PetscObject)jac->schur), vtype, m, PETSC_DECIDE, M, N + 1, -1, array, &A)); // number of columns of the Schur complement plus one
+      PetscCall(PetscObjectCompose((PetscObject)jac->schur, "AinvB", (PetscObject)A));
+      PetscCall(MatDestroy(&A));
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1362,6 +1338,216 @@ static PetscErrorCode PCApply_FieldSplit_Schur(PC pc, Vec x, Vec y)
     PetscCall(VecScatterEnd(ilinkD->sctx, ilinkD->y, y, INSERT_VALUES, SCATTER_REVERSE));
     PetscCall(VecScatterBegin(ilinkA->sctx, ilinkA->y, y, INSERT_VALUES, SCATTER_REVERSE));
     PetscCall(VecScatterEnd(ilinkA->sctx, ilinkA->y, y, INSERT_VALUES, SCATTER_REVERSE));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*
+  PCFieldSplitCreateWorkMats_Private - Allocate per-field dense work matrices for multi-RHS
+
+  Input Parameters:
++ pc - the PC context
+- X  - matrix to copy column-layout from
+
+  Notes:
+  If matrices already exist with correct column count, they are reused.
+  If column count changed, old matrices are destroyed and new ones created.
+*/
+static PetscErrorCode PCFieldSplitCreateWorkMats_Private(PC pc, Mat X)
+{
+  PC_FieldSplit    *jac   = (PC_FieldSplit *)pc->data;
+  PC_FieldSplitLink ilink = jac->head;
+  PetscInt          mx, Mx, my, My, N;
+
+  PetscFunctionBegin;
+  while (ilink) {
+    /* check if reallocation needed (previous allocation with wrong column count) */
+    if (ilink->X) {
+      PetscCall(MatGetSize(ilink->X, NULL, &N));
+      if (N != X->cmap->N) {
+        PetscCall(MatDestroy(&ilink->X));
+        PetscCall(MatDestroy(&ilink->Y));
+        PetscCall(MatDestroy(&ilink->Z));
+      }
+    }
+    /* create if needed */
+    if (!ilink->X) {
+      VecType xtype, ytype;
+
+      PetscCall(VecGetType(ilink->x, &xtype));
+      PetscCall(VecGetType(ilink->y, &ytype));
+      PetscCall(VecGetLocalSize(ilink->x, &mx));
+      PetscCall(VecGetSize(ilink->x, &Mx));
+      PetscCall(VecGetLocalSize(ilink->y, &my));
+      PetscCall(VecGetSize(ilink->y, &My));
+      /* use default lda */
+      PetscCall(MatCreateDenseFromVecType(PetscObjectComm((PetscObject)pc), xtype, mx, X->cmap->n, Mx, X->cmap->N, -1, NULL, &ilink->X));
+      PetscCall(MatCreateDenseFromVecType(PetscObjectComm((PetscObject)pc), ytype, my, X->cmap->n, My, X->cmap->N, -1, NULL, &ilink->Y));
+    }
+    ilink = ilink->next;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode PCMatApply_FieldSplit_Schur(PC pc, Mat X, Mat Y)
+{
+  PC_FieldSplit    *jac    = (PC_FieldSplit *)pc->data;
+  PC_FieldSplitLink ilinkA = jac->head, ilinkD = ilinkA->next;
+  KSP               kspA = ilinkA->ksp, kspLower = kspA, kspUpper = jac->kspupper;
+  Mat               AinvB = NULL;
+  PetscInt          N, P;
+
+  PetscFunctionBegin;
+  /* create working matrices with the correct number of columns */
+  PetscCall(PCFieldSplitCreateWorkMats_Private(pc, X));
+  switch (jac->schurfactorization) {
+  case PC_FIELDSPLIT_SCHUR_FACT_DIAG:
+    /* [A00 0; 0 -S], positive definite, suitable for MINRES */
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, X, ilinkA->X, INSERT_VALUES, SCATTER_FORWARD));
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, X, ilinkD->X, INSERT_VALUES, SCATTER_FORWARD));
+    PetscCall(PetscLogEventBegin(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+    PetscCall(KSPMatSolve(kspA, ilinkA->X, ilinkA->Y));
+    PetscCall(PetscLogEventEnd(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, ilinkA->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
+    PetscCall(PetscLogEventBegin(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, 1));
+    PetscCall(KSPMatSolve(jac->kspschur, ilinkD->X, ilinkD->Y));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, -1));
+    PetscCall(PetscLogEventEnd(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(MatScale(ilinkD->Y, jac->schurscale));
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, ilinkD->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
+    break;
+  case PC_FIELDSPLIT_SCHUR_FACT_LOWER:
+    /* [A00 0; A10 S], suitable for left preconditioning */
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, X, ilinkA->X, INSERT_VALUES, SCATTER_FORWARD));
+    PetscCall(PetscLogEventBegin(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+    PetscCall(KSPMatSolve(kspA, ilinkA->X, ilinkA->Y));
+    PetscCall(PetscLogEventEnd(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+    PetscCall(MatMatMult(jac->C, ilinkA->Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilinkD->X));
+    PetscCall(MatScale(ilinkD->X, -1.0));
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, X, ilinkD->X, ADD_VALUES, SCATTER_FORWARD));
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, ilinkA->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
+    PetscCall(PetscLogEventBegin(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, 1));
+    PetscCall(KSPMatSolve(jac->kspschur, ilinkD->X, ilinkD->Y));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, -1));
+    PetscCall(PetscLogEventEnd(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, ilinkD->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
+    break;
+  case PC_FIELDSPLIT_SCHUR_FACT_UPPER:
+    /* [A00 A01; 0 S], suitable for right preconditioning */
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, X, ilinkD->X, INSERT_VALUES, SCATTER_FORWARD));
+    PetscCall(PetscLogEventBegin(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, 1));
+    PetscCall(KSPMatSolve(jac->kspschur, ilinkD->X, ilinkD->Y));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, -1));
+    PetscCall(PetscLogEventEnd(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(MatMatMult(jac->B, ilinkD->Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilinkA->X));
+    PetscCall(MatScale(ilinkA->X, -1.0));
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, X, ilinkA->X, ADD_VALUES, SCATTER_FORWARD));
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, ilinkD->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
+    PetscCall(PetscLogEventBegin(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+    PetscCall(KSPMatSolve(kspA, ilinkA->X, ilinkA->Y));
+    PetscCall(PetscLogEventEnd(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, ilinkA->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
+    break;
+  case PC_FIELDSPLIT_SCHUR_FACT_FULL:
+    /* [1 0; A10 A00^{-1} 1] [A00 0; 0 S] [1 A00^{-1}A01; 0 1] */
+    PetscCall(MatGetSize(jac->B, NULL, &P));
+    N = P;
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, X, ilinkA->X, INSERT_VALUES, SCATTER_FORWARD));
+    PetscCall(PetscLogEventBegin(KSP_Solve_FS_L, kspLower, ilinkA->X, ilinkA->Y, NULL));
+    if (kspUpper == kspA) {
+      PetscCall(PetscObjectQuery((PetscObject)jac->schur, "AinvB", (PetscObject *)&AinvB));
+      if (AinvB) {
+        PetscCall(MatGetSize(AinvB, NULL, &N));
+        if (N > P) { // first time PCApply_FieldSplit_Schur() is called
+          PetscMemType mtype;
+          Mat          C = NULL;
+          PetscScalar *array;
+          PetscInt     m, M, q, Q, p;
+
+          PetscCall(MatGetSize(jac->B, &M, NULL));
+          PetscCall(MatGetLocalSize(jac->B, &m, NULL));
+          PetscCall(MatGetSize(X, NULL, &Q));
+          PetscCall(MatGetLocalSize(X, NULL, &q));
+          PetscCall(MatDenseGetArrayAndMemType(AinvB, &array, &mtype));
+          if (N != P + Q) {
+            Mat replace;
+
+            PetscCall(MatGetLocalSize(jac->B, NULL, &p));
+            if (PetscMemTypeHost(mtype) || (!PetscDefined(HAVE_CUDA) && !PetscDefined(HAVE_HIP))) {
+              PetscCall(PetscFree(array));
+              PetscCall(PetscMalloc1(m * (P + Q), &array));
+              PetscCall(MatCreateDense(PetscObjectComm((PetscObject)jac->schur), m, PETSC_DECIDE, M, P + Q, array, &replace));
+            }
+#if PetscDefined(HAVE_CUDA)
+            else if (PetscMemTypeCUDA(mtype)) {
+              PetscCallCUDA(cudaFree(array));
+              PetscCallCUDA(cudaMalloc((void **)&array, sizeof(PetscScalar) * m * (P + Q)));
+              PetscCall(MatCreateDenseCUDA(PetscObjectComm((PetscObject)jac->schur), m, PETSC_DECIDE, M, P + Q, array, &replace));
+            }
+#endif
+#if PetscDefined(HAVE_HIP)
+            else if (PetscMemTypeHIP(mtype)) {
+              PetscCallHIP(hipFree(array));
+              PetscCallHIP(hipMalloc((void **)&array, sizeof(PetscScalar) * m * (P + Q)));
+              PetscCall(MatCreateDenseHIP(PetscObjectComm((PetscObject)jac->schur), m, PETSC_DECIDE, M, P + Q, array, &replace));
+            }
+#endif
+            PetscCall(MatHeaderReplace(AinvB, &replace));
+          }
+          if (PetscMemTypeHost(mtype) || (!PetscDefined(HAVE_CUDA) && !PetscDefined(HAVE_HIP))) PetscCall(MatCreateDense(PetscObjectComm((PetscObject)jac->schur), m, q, M, Q, array + m * P, &C));
+#if PetscDefined(HAVE_CUDA)
+          else if (PetscMemTypeCUDA(mtype)) PetscCall(MatCreateDenseCUDA(PetscObjectComm((PetscObject)jac->schur), m, q, M, Q, array + m * P, &C));
+#endif
+#if PetscDefined(HAVE_HIP)
+          else if (PetscMemTypeHIP(mtype)) PetscCall(MatCreateDenseHIP(PetscObjectComm((PetscObject)jac->schur), m, q, M, Q, array + m * P, &C));
+#endif
+          PetscCall(MatDenseRestoreArrayAndMemType(AinvB, &array));
+          PetscCall(MatCopy(ilinkA->X, C, SAME_NONZERO_PATTERN));
+          PetscCall(MatSchurComplementComputeExplicitOperator(jac->schur, &jac->schur_user));
+          PetscCall(KSPSetOperators(jac->kspschur, jac->schur, jac->schur_user));
+          PetscCall(MatCopy(C, ilinkA->Y, SAME_NONZERO_PATTERN)); // retrieve solutions as last columns of the composed Mat
+          PetscCall(MatDestroy(&C));
+        }
+      }
+    }
+    if (N == P) PetscCall(KSPMatSolve(kspLower, ilinkA->X, ilinkA->Y));
+    PetscCall(PetscLogEventEnd(KSP_Solve_FS_L, kspLower, ilinkA->X, ilinkA->Y, NULL));
+    PetscCall(MatMatMult(jac->C, ilinkA->Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilinkD->X));
+    PetscCall(MatScale(ilinkD->X, -1.0));
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, X, ilinkD->X, ADD_VALUES, SCATTER_FORWARD));
+
+    PetscCall(PetscLogEventBegin(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, 1));
+    PetscCall(KSPMatSolve(jac->kspschur, ilinkD->X, ilinkD->Y));
+    PetscCall(PetscObjectIncrementTabLevel((PetscObject)kspA, (PetscObject)kspA, -1));
+    PetscCall(PetscLogEventEnd(KSP_Solve_FS_S, jac->kspschur, ilinkD->X, ilinkD->Y, NULL));
+    PetscCall(MatDenseScatter_Private(ilinkD->sctx, ilinkD->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
+
+    if (kspUpper == kspA) {
+      if (!AinvB) {
+        PetscCall(MatMatMult(jac->B, ilinkD->Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilinkA->Y));
+        PetscCall(MatAXPY(ilinkA->X, -1.0, ilinkA->Y, SAME_NONZERO_PATTERN));
+        PetscCall(PetscLogEventBegin(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+        PetscCall(KSPMatSolve(kspA, ilinkA->X, ilinkA->Y));
+        PetscCall(PetscLogEventEnd(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+      } else {
+        PetscCall(MatMatMult(AinvB, ilinkD->Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilinkA->X));
+        PetscCall(MatAXPY(ilinkA->Y, 1.0, ilinkA->X, SAME_NONZERO_PATTERN));
+      }
+    } else {
+      PetscCall(PetscLogEventBegin(ilinkA->event, kspA, ilinkA->X, ilinkA->Y, NULL));
+      PetscCall(KSPMatSolve(kspA, ilinkA->X, ilinkA->Y));
+      PetscCall(MatMatMult(jac->B, ilinkD->Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilinkA->X));
+      if (!ilinkA->Z) PetscCall(MatDuplicate(ilinkA->X, MAT_DO_NOT_COPY_VALUES, &ilinkA->Z));
+      PetscCall(PetscLogEventBegin(KSP_Solve_FS_U, kspUpper, ilinkA->X, ilinkA->Z, NULL));
+      PetscCall(KSPMatSolve(kspUpper, ilinkA->X, ilinkA->Z));
+      PetscCall(PetscLogEventEnd(KSP_Solve_FS_U, kspUpper, ilinkA->X, ilinkA->Z, NULL));
+      PetscCall(MatAXPY(ilinkA->Y, -1.0, ilinkA->Z, SAME_NONZERO_PATTERN));
+    }
+    PetscCall(MatDenseScatter_Private(ilinkA->sctx, ilinkA->Y, Y, INSERT_VALUES, SCATTER_REVERSE));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1591,6 +1777,85 @@ static PetscErrorCode PCApply_FieldSplit(PC pc, Vec x, Vec y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode PCMatApply_FieldSplit(PC pc, Mat X, Mat Y)
+{
+  PC_FieldSplit    *jac   = (PC_FieldSplit *)pc->data;
+  PC_FieldSplitLink ilink = jac->head;
+  PetscInt          cnt;
+
+  PetscFunctionBegin;
+  /* create working matrices with the correct number of columns */
+  PetscCall(PCFieldSplitCreateWorkMats_Private(pc, X));
+  if (jac->type == PC_COMPOSITE_ADDITIVE) {
+    PetscCall(MatZeroEntries(Y));
+    while (ilink) {
+      PetscCall(MatDenseScatter_Private(ilink->sctx, X, ilink->X, INSERT_VALUES, SCATTER_FORWARD));
+      PetscCall(PetscLogEventBegin(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+      PetscCall(KSPMatSolve(ilink->ksp, ilink->X, ilink->Y));
+      PetscCall(PetscLogEventEnd(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+      PetscCall(MatDenseScatter_Private(ilink->sctx, ilink->Y, Y, ADD_VALUES, SCATTER_REVERSE));
+      ilink = ilink->next;
+    }
+  } else if (jac->type == PC_COMPOSITE_MULTIPLICATIVE && jac->nsplits == 2) {
+    PetscCall(MatZeroEntries(Y));
+    PetscCall(MatDenseScatter_Private(ilink->sctx, X, ilink->X, INSERT_VALUES, SCATTER_FORWARD));
+    PetscCall(PetscLogEventBegin(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+    PetscCall(KSPMatSolve(ilink->ksp, ilink->X, ilink->Y));
+    PetscCall(PetscLogEventEnd(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+    PetscCall(MatDenseScatter_Private(ilink->sctx, ilink->Y, Y, ADD_VALUES, SCATTER_REVERSE));
+
+    /* compute the residual only onto second block variables using first block variables */
+    PetscCall(MatMatMult(jac->Afield[1], ilink->Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilink->next->X));
+    ilink = ilink->next;
+    PetscCall(MatScale(ilink->X, -1.0));
+    PetscCall(MatDenseScatter_Private(ilink->sctx, X, ilink->X, ADD_VALUES, SCATTER_FORWARD));
+
+    /* solve on second block variables */
+    PetscCall(PetscLogEventBegin(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+    PetscCall(KSPMatSolve(ilink->ksp, ilink->X, ilink->Y));
+    PetscCall(PetscLogEventEnd(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+    PetscCall(MatDenseScatter_Private(ilink->sctx, ilink->Y, Y, ADD_VALUES, SCATTER_REVERSE));
+  } else if (jac->type == PC_COMPOSITE_MULTIPLICATIVE || jac->type == PC_COMPOSITE_SYMMETRIC_MULTIPLICATIVE) {
+    /* general multiplicative with any number of splits */
+    PetscCall(MatZeroEntries(Y));
+    /* first split */
+    PetscCall(MatDenseScatter_Private(ilink->sctx, X, ilink->X, INSERT_VALUES, SCATTER_FORWARD));
+    PetscCall(PetscLogEventBegin(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+    PetscCall(KSPMatSolve(ilink->ksp, ilink->X, ilink->Y));
+    PetscCall(PetscLogEventEnd(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+    PetscCall(MatDenseScatter_Private(ilink->sctx, ilink->Y, Y, ADD_VALUES, SCATTER_REVERSE));
+    cnt = 1;
+    /* forward sweep */
+    while (ilink->next) {
+      ilink = ilink->next;
+      /* compute the residual only over the part of the vector needed */
+      PetscCall(MatMatMult(jac->Afield[cnt++], Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilink->X));
+      PetscCall(MatScale(ilink->X, -1.0));
+      PetscCall(MatDenseScatter_Private(ilink->sctx, X, ilink->X, ADD_VALUES, SCATTER_FORWARD));
+      PetscCall(PetscLogEventBegin(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+      PetscCall(KSPMatSolve(ilink->ksp, ilink->X, ilink->Y));
+      PetscCall(PetscLogEventEnd(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+      PetscCall(MatDenseScatter_Private(ilink->sctx, ilink->Y, Y, ADD_VALUES, SCATTER_REVERSE));
+    }
+    /* backward sweep for symmetric multiplicative */
+    if (jac->type == PC_COMPOSITE_SYMMETRIC_MULTIPLICATIVE) {
+      cnt -= 2;
+      while (ilink->previous) {
+        ilink = ilink->previous;
+        /* compute the residual only over the part of the vector needed */
+        PetscCall(MatMatMult(jac->Afield[cnt--], Y, MAT_REUSE_MATRIX, PETSC_DETERMINE, &ilink->X));
+        PetscCall(MatScale(ilink->X, -1.0));
+        PetscCall(MatDenseScatter_Private(ilink->sctx, X, ilink->X, ADD_VALUES, SCATTER_FORWARD));
+        PetscCall(PetscLogEventBegin(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+        PetscCall(KSPMatSolve(ilink->ksp, ilink->X, ilink->Y));
+        PetscCall(PetscLogEventEnd(ilink->event, ilink->ksp, ilink->X, ilink->Y, NULL));
+        PetscCall(MatDenseScatter_Private(ilink->sctx, ilink->Y, Y, ADD_VALUES, SCATTER_REVERSE));
+      }
+    }
+  } else SETERRQ(PetscObjectComm((PetscObject)pc), PETSC_ERR_SUP, "PCMatApply() not implemented for this fieldsplit type");
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PCApply_FieldSplit_GKB(PC pc, Vec x, Vec y)
 {
   PC_FieldSplit    *jac    = (PC_FieldSplit *)pc->data;
@@ -1798,6 +2063,9 @@ static PetscErrorCode PCReset_FieldSplit(PC pc)
     PetscCall(VecDestroy(&ilink->x));
     PetscCall(VecDestroy(&ilink->y));
     PetscCall(VecDestroy(&ilink->z));
+    PetscCall(MatDestroy(&ilink->X));
+    PetscCall(MatDestroy(&ilink->Y));
+    PetscCall(MatDestroy(&ilink->Z));
     PetscCall(VecScatterDestroy(&ilink->sctx));
     PetscCall(ISDestroy(&ilink->is));
     PetscCall(ISDestroy(&ilink->is_col));
@@ -1884,7 +2152,7 @@ static PetscErrorCode PCSetFromOptions_FieldSplit(PC pc, PetscOptionItems PetscO
   PetscCall(PetscOptionsEnum("-pc_fieldsplit_type", "Type of composition", "PCFieldSplitSetType", PCCompositeTypes, (PetscEnum)jac->type, (PetscEnum *)&ctype, &flg));
   if (flg) PetscCall(PCFieldSplitSetType(pc, ctype));
   /* Only setup fields once */
-  if ((jac->bs > 0) && (jac->nsplits == 0)) {
+  if (jac->bs > 0 && jac->nsplits == 0) {
     /* only allow user to set fields from command line.
        otherwise user can set them in PCFieldSplitSetDefaults() */
     PetscCall(PCFieldSplitSetRuntimeSplits_Private(pc));
@@ -1944,7 +2212,7 @@ static PetscErrorCode PCFieldSplitSetFields_FieldSplit(PC pc, const char splitna
     PetscCall(PetscInfo(pc, "Ignoring new split \"%s\" because the splits have already been defined\n", splitname));
     PetscFunctionReturn(PETSC_SUCCESS);
   }
-  for (i = 0; i < n; i++) { PetscCheck(fields[i] >= 0, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Negative field %" PetscInt_FMT " requested", fields[i]); }
+  for (i = 0; i < n; i++) PetscCheck(fields[i] >= 0, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Negative field %" PetscInt_FMT " requested", fields[i]);
   PetscCall(PetscNew(&ilink));
   if (splitname) {
     PetscCall(PetscStrallocpy(splitname, &ilink->splitname));
@@ -3051,6 +3319,7 @@ static PetscErrorCode PCFieldSplitSetType_FieldSplit(PC pc, PCCompositeType type
   if (type == PC_COMPOSITE_SCHUR) {
     pc->ops->apply          = PCApply_FieldSplit_Schur;
     pc->ops->applytranspose = PCApplyTranspose_FieldSplit_Schur;
+    pc->ops->matapply       = PCMatApply_FieldSplit_Schur;
     pc->ops->view           = PCView_FieldSplit_Schur;
     pc->ops->setuponblocks  = PCSetUpOnBlocks_FieldSplit_Schur;
 
@@ -3062,6 +3331,7 @@ static PetscErrorCode PCFieldSplitSetType_FieldSplit(PC pc, PCCompositeType type
   } else if (type == PC_COMPOSITE_GKB) {
     pc->ops->apply          = PCApply_FieldSplit_GKB;
     pc->ops->applytranspose = NULL;
+    pc->ops->matapply       = NULL;
     pc->ops->view           = PCView_FieldSplit_GKB;
     pc->ops->setuponblocks  = PCSetUpOnBlocks_FieldSplit_GKB;
 
@@ -3073,6 +3343,7 @@ static PetscErrorCode PCFieldSplitSetType_FieldSplit(PC pc, PCCompositeType type
   } else {
     pc->ops->apply          = PCApply_FieldSplit;
     pc->ops->applytranspose = PCApplyTranspose_FieldSplit;
+    pc->ops->matapply       = PCMatApply_FieldSplit;
     pc->ops->view           = PCView_FieldSplit;
     pc->ops->setuponblocks  = PCSetUpOnBlocks_FieldSplit;
 

@@ -11,7 +11,7 @@ typedef struct {
   PC pc; /* The linear patch preconditioner */
 } SNES_Patch;
 
-static PetscErrorCode SNESPatchComputeResidual_Private(SNES snes, Vec x, Vec F, void *ctx)
+static PetscErrorCode SNESPatchComputeResidual_Private(SNES snes, Vec x, Vec F, PetscCtx ctx)
 {
   PC                 pc      = (PC)ctx;
   PC_PATCH          *pcpatch = (PC_PATCH *)pc->data;
@@ -39,7 +39,7 @@ static PetscErrorCode SNESPatchComputeResidual_Private(SNES snes, Vec x, Vec F, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESPatchComputeJacobian_Private(SNES snes, Vec x, Mat J, Mat M, void *ctx)
+static PetscErrorCode SNESPatchComputeJacobian_Private(SNES snes, Vec x, Mat J, Mat M, PetscCtx ctx)
 {
   PC                 pc      = (PC)ctx;
   PC_PATCH          *pcpatch = (PC_PATCH *)pc->data;
@@ -237,11 +237,11 @@ static PetscErrorCode SNESSetFromOptions_Patch(SNES snes, PetscOptionItems Petsc
 static PetscErrorCode SNESView_Patch(SNES snes, PetscViewer viewer)
 {
   SNES_Patch *patch = (SNES_Patch *)snes->data;
-  PetscBool   iascii;
+  PetscBool   isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscViewerASCIIPrintf(viewer, "SNESPATCH\n"));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscViewerASCIIPrintf(viewer, "SNESPATCH\n"));
   PetscCall(PetscViewerASCIIPushTab(viewer));
   PetscCall(PCView(patch->pc, viewer));
   PetscCall(PetscViewerASCIIPopTab(viewer));
@@ -273,6 +273,7 @@ static PetscErrorCode SNESSolve_Patch(SNES snes)
 
   PetscCall(VecNorm(state, NORM_2, &xnorm));
   PetscCall(VecNorm(residual, NORM_2, &fnorm));
+  SNESCheckFunctionDomainError(snes, fnorm);
   snes->ttol = fnorm * snes->rtol;
 
   if (snes->ops->converged) {
@@ -382,7 +383,7 @@ PetscErrorCode SNESPatchSetDiscretisationInfo(SNES snes, PetscInt nsubspaces, DM
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SNESPatchSetComputeOperator(SNES snes, PetscErrorCode (*func)(PC, PetscInt, Vec, Mat, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *ctx)
+PetscErrorCode SNESPatchSetComputeOperator(SNES snes, PetscErrorCode (*func)(PC, PetscInt, Vec, Mat, IS, PetscInt, const PetscInt *, const PetscInt *, void *), PetscCtx ctx)
 {
   SNES_Patch *patch = (SNES_Patch *)snes->data;
 
@@ -391,7 +392,7 @@ PetscErrorCode SNESPatchSetComputeOperator(SNES snes, PetscErrorCode (*func)(PC,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SNESPatchSetComputeFunction(SNES snes, PetscErrorCode (*func)(PC, PetscInt, Vec, Vec, IS, PetscInt, const PetscInt *, const PetscInt *, void *), void *ctx)
+PetscErrorCode SNESPatchSetComputeFunction(SNES snes, PetscErrorCode (*func)(PC, PetscInt, Vec, Vec, IS, PetscInt, const PetscInt *, const PetscInt *, void *), PetscCtx ctx)
 {
   SNES_Patch *patch = (SNES_Patch *)snes->data;
 
@@ -400,7 +401,7 @@ PetscErrorCode SNESPatchSetComputeFunction(SNES snes, PetscErrorCode (*func)(PC,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SNESPatchSetConstructType(SNES snes, PCPatchConstructType ctype, PetscErrorCode (*func)(PC, PetscInt *, IS **, IS *, void *), void *ctx)
+PetscErrorCode SNESPatchSetConstructType(SNES snes, PCPatchConstructType ctype, PetscErrorCode (*func)(PC, PetscInt *, IS **, IS *, void *), PetscCtx ctx)
 {
   SNES_Patch *patch = (SNES_Patch *)snes->data;
 

@@ -35,14 +35,12 @@ static PetscErrorCode TSGLLEGetVecs(TS ts, DM dm, Vec *Z, Vec *Ydotstage)
 
   PetscFunctionBegin;
   if (Z) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSGLLE_Z", Z));
-    } else *Z = gl->Z;
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSGLLE_Z", Z));
+    else *Z = gl->Z;
   }
   if (Ydotstage) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSGLLE_Ydot", Ydotstage));
-    } else *Ydotstage = gl->Ydot[gl->stage];
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSGLLE_Ydot", Ydotstage));
+    else *Ydotstage = gl->Ydot[gl->stage];
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -59,13 +57,13 @@ static PetscErrorCode TSGLLERestoreVecs(TS ts, DM dm, Vec *Z, Vec *Ydotstage)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCoarsenHook_TSGLLE(DM fine, DM coarse, void *ctx)
+static PetscErrorCode DMCoarsenHook_TSGLLE(DM fine, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMRestrictHook_TSGLLE(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
+static PetscErrorCode DMRestrictHook_TSGLLE(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec Ydot, Ydot_c;
@@ -80,13 +78,13 @@ static PetscErrorCode DMRestrictHook_TSGLLE(DM fine, Mat restrct, Vec rscale, Ma
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainHook_TSGLLE(DM dm, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainHook_TSGLLE(DM dm, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainRestrictHook_TSGLLE(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainRestrictHook_TSGLLE(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec Ydot, Ydot_s;
@@ -310,12 +308,12 @@ static PetscErrorCode TSGLLEDestroy_Default(TS_GLLE *gl)
 
 static PetscErrorCode TSGLLEViewTable_Private(PetscViewer viewer, PetscInt m, PetscInt n, const PetscScalar a[], const char name[])
 {
-  PetscBool iascii;
+  PetscBool isascii;
   PetscInt  i, j;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "%30s = [", name));
     for (i = 0; i < m; i++) {
       if (i) PetscCall(PetscViewerASCIIPrintf(viewer, "%30s   [", ""));
@@ -330,31 +328,30 @@ static PetscErrorCode TSGLLEViewTable_Private(PetscViewer viewer, PetscInt m, Pe
 
 static PetscErrorCode TSGLLESchemeView(TSGLLEScheme sc, PetscBool view_details, PetscViewer viewer)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
-    PetscCall(PetscViewerASCIIPrintf(viewer, "GL scheme p,q,r,s = %" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT "\n", sc->p, sc->q, sc->r, sc->s));
-    PetscCall(PetscViewerASCIIPushTab(viewer));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "Stiffly accurate: %s,  FSAL: %s\n", sc->stiffly_accurate ? "yes" : "no", sc->fsal ? "yes" : "no"));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "Leading error constants: %10.3e  %10.3e  %10.3e\n", (double)PetscRealPart(sc->alpha[0]), (double)PetscRealPart(sc->beta[0]), (double)PetscRealPart(sc->gamma[0])));
-    PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->s, sc->c, "Abscissas c"));
-    if (view_details) {
-      PetscCall(TSGLLEViewTable_Private(viewer, sc->s, sc->s, sc->a, "A"));
-      PetscCall(TSGLLEViewTable_Private(viewer, sc->r, sc->s, sc->b, "B"));
-      PetscCall(TSGLLEViewTable_Private(viewer, sc->s, sc->r, sc->u, "U"));
-      PetscCall(TSGLLEViewTable_Private(viewer, sc->r, sc->r, sc->v, "V"));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  PetscCheck(isascii, PETSC_COMM_SELF, PETSC_ERR_SUP, "Viewer type %s not supported", ((PetscObject)viewer)->type_name);
+  PetscCall(PetscViewerASCIIPrintf(viewer, "GL scheme p,q,r,s = %" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT ",%" PetscInt_FMT "\n", sc->p, sc->q, sc->r, sc->s));
+  PetscCall(PetscViewerASCIIPushTab(viewer));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "Stiffly accurate: %s,  FSAL: %s\n", sc->stiffly_accurate ? "yes" : "no", sc->fsal ? "yes" : "no"));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "Leading error constants: %10.3e  %10.3e  %10.3e\n", (double)PetscRealPart(sc->alpha[0]), (double)PetscRealPart(sc->beta[0]), (double)PetscRealPart(sc->gamma[0])));
+  PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->s, sc->c, "Abscissas c"));
+  if (view_details) {
+    PetscCall(TSGLLEViewTable_Private(viewer, sc->s, sc->s, sc->a, "A"));
+    PetscCall(TSGLLEViewTable_Private(viewer, sc->r, sc->s, sc->b, "B"));
+    PetscCall(TSGLLEViewTable_Private(viewer, sc->s, sc->r, sc->u, "U"));
+    PetscCall(TSGLLEViewTable_Private(viewer, sc->r, sc->r, sc->v, "V"));
 
-      PetscCall(TSGLLEViewTable_Private(viewer, 3, sc->s, sc->phi, "Error estimate phi"));
-      PetscCall(TSGLLEViewTable_Private(viewer, 3, sc->r, sc->psi, "Error estimate psi"));
-      PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->r, sc->alpha, "Modify alpha"));
-      PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->r, sc->beta, "Modify beta"));
-      PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->r, sc->gamma, "Modify gamma"));
-      PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->s, sc->stage_error, "Stage error xi"));
-    }
-    PetscCall(PetscViewerASCIIPopTab(viewer));
-  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Viewer type %s not supported", ((PetscObject)viewer)->type_name);
+    PetscCall(TSGLLEViewTable_Private(viewer, 3, sc->s, sc->phi, "Error estimate phi"));
+    PetscCall(TSGLLEViewTable_Private(viewer, 3, sc->r, sc->psi, "Error estimate psi"));
+    PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->r, sc->alpha, "Modify alpha"));
+    PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->r, sc->beta, "Modify beta"));
+    PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->r, sc->gamma, "Modify gamma"));
+    PetscCall(TSGLLEViewTable_Private(viewer, 1, sc->s, sc->stage_error, "Stage error xi"));
+  }
+  PetscCall(PetscViewerASCIIPopTab(viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1006,8 +1003,6 @@ static PetscErrorCode TSSolve_GLLE(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 static PetscErrorCode TSReset_GLLE(TS ts)
 {
   TS_GLLE *gl = (TS_GLLE *)ts->data;
@@ -1121,7 +1116,6 @@ static PetscErrorCode TSSetUp_GLLE(TS ts)
   PetscCall(DMSubDomainHookAdd(dm, DMSubDomainHook_TSGLLE, DMSubDomainRestrictHook_TSGLLE, ts));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-/*------------------------------------------------------------*/
 
 static PetscErrorCode TSSetFromOptions_GLLE(TS ts, PetscOptionItems PetscOptionsObject)
 {
@@ -1170,11 +1164,11 @@ static PetscErrorCode TSView_GLLE(TS ts, PetscViewer viewer)
 {
   TS_GLLE  *gl = (TS_GLLE *)ts->data;
   PetscInt  i;
-  PetscBool iascii, details;
+  PetscBool isascii, details;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  min order %" PetscInt_FMT ", max order %" PetscInt_FMT ", current order %" PetscInt_FMT "\n", gl->min_order, gl->max_order, gl->schemes[gl->current_scheme]->p));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Error estimation: %s\n", TSGLLEErrorDirections[gl->error_direction]));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Extrapolation: %s\n", gl->extrapolate ? "yes" : "no"));
@@ -1322,7 +1316,6 @@ PetscErrorCode TSGLLEFinalizePackage(void)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ------------------------------------------------------------ */
 /*MC
   TSGLLE - DAE solver using implicit General Linear methods {cite}`butcher_2007` {cite}`butcher2016numerical`
 

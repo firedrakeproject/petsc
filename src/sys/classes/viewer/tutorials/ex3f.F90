@@ -1,17 +1,16 @@
-      program ex1f90
-
 #include <petsc/finclude/petscsys.h>
-      use petscsys
-      implicit none
-      integer4 unit
+program ex1f90
+  use petscsys
+  implicit none
+  integer4 unit
 
-      PetscErrorCode ierr
-      PetscCallA(PetscInitialize(ierr))
+  PetscErrorCode ierr
+  PetscCallA(PetscInitialize(ierr))
 
-      unit = 22
-      call PetscViewerASCIIStdoutSetFileUnit(unit,ierr)
-      PetscCallA(PetscFinalize(ierr))
-      end
+  unit = 22
+  call PetscViewerASCIIStdoutSetFileUnit(unit, ierr)
+  PetscCallA(PetscFinalize(ierr))
+end
 
 !/*TEST
 !

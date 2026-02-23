@@ -59,6 +59,10 @@ important. We use several conventions
 
 10. Typedefs for functions should end in `Fn` as in, for example, `SNESFunctionFn`.
 
+11. Use the phrase `infinity or NaN` not `NaN or infinity`.
+
+12. Use the abbreviation NaN for Not-a-Number.
+
 (stylepetsccount)=
 
 ## PETSc and standard datatypes
@@ -231,7 +235,7 @@ Even with the use of `clang-format` there are still many decisions about code fo
 
 14. Use appropriate grammar and spelling in the comments.
 
-15. All variables must be declared at the beginning of the code block (C89
+15. All variables must be declared at the beginning of the code block (C90
     style), never mixed in with code. However, when variables are only used in a limited
     scope, it is encouraged to declare them in that scope. For example:
 
@@ -681,6 +685,14 @@ where noted, add a newline after the section headings.
     This includes each item listed in the `.seealso:` lines.
 
 [^footnote-1]: Type also refers to the string name of the subclass.
+
+### Makefile formatting
+
+1. The line continuation character `"\"` should not have any spaces to its left or right
+
+2. Avoid double spaces in makefile rules. For example `"cat file | tr ..."` not `"cat  file   |  tr ..."`
+
+3. Single space after `";"` but not before it. For example `"make ex1; make ex2"` not `"make ex1 ;make ex2"`
 
 ### Spelling and Capitalization
 

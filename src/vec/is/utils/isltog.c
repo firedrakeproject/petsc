@@ -122,8 +122,6 @@ PetscErrorCode ISGetPointSubrange(IS subpointIS, PetscInt pStart, PetscInt pEnd,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* -----------------------------------------------------------------------------------------*/
-
 /*
     Creates the global mapping information in the ISLocalToGlobalMapping structure
 
@@ -363,7 +361,7 @@ PetscErrorCode ISLocalToGlobalMappingViewFromOptions(ISLocalToGlobalMapping A, P
 @*/
 PetscErrorCode ISLocalToGlobalMappingView(ISLocalToGlobalMapping mapping, PetscViewer viewer)
 {
-  PetscBool         iascii, isbinary;
+  PetscBool         isascii, isbinary;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
@@ -371,10 +369,10 @@ PetscErrorCode ISLocalToGlobalMappingView(ISLocalToGlobalMapping mapping, PetscV
   if (!viewer) PetscCall(PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)mapping), &viewer));
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
   PetscCall(PetscViewerGetFormat(viewer, &format));
-  if (iascii) {
+  if (isascii) {
     if (format == PETSC_VIEWER_ASCII_MATLAB) {
       const PetscInt *idxs;
       IS              is;
@@ -1315,7 +1313,7 @@ static PetscErrorCode ISLocalToGlobalMappingSetUpBlockInfo_Private(ISLocalToGlob
   PetscCall(PetscHMapICreate(&neighs));
   for (i = 0; i < newnleaves; i++) PetscCall(PetscHMapIPut(neighs, newleafdata[i], &iter, &missing));
   PetscCall(PetscHMapIGetSize(neighs, &mapping->info_nproc));
-  PetscCall(PetscMalloc1(mapping->info_nproc + 1, &mapping->info_procs));
+  PetscCall(PetscMalloc1(mapping->info_nproc, &mapping->info_procs));
   PetscCall(PetscHMapIGetKeys(neighs, (i = 0, &i), mapping->info_procs));
   for (i = 0; i < mapping->info_nproc; i++) { /* put info for self first */
     if (mapping->info_procs[i] == rank) {

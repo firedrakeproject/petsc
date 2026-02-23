@@ -2,38 +2,38 @@
 !
 !   This program demonstrates use of MatSeqAIJGetArray()
 !
-      program main
-
 #include <petsc/finclude/petscmat.h>
-      use petscmat
-      implicit none
+program main
 
-      Mat                            A
-      PetscErrorCode                 ierr
-      PetscViewer                    v
-      PetscScalar, pointer ::        aa(:)
-      character*(PETSC_MAX_PATH_LEN) f
-      PetscBool                      flg
+  use petscmat
+  implicit none
 
-      PetscCallA(PetscInitialize(ierr))
+  Mat A
+  PetscErrorCode ierr
+  PetscViewer v
+  PetscScalar, pointer ::        aa(:)
+  character*(PETSC_MAX_PATH_LEN) f
+  PetscBool flg
 
-      PetscCallA(PetscOptionsGetString(PETSC_NULL_OPTIONS,PETSC_NULL_CHARACTER,'-f',f,flg,ierr))
-      PetscCallA(PetscViewerBinaryOpen(PETSC_COMM_WORLD,f,FILE_MODE_READ,v,ierr))
+  PetscCallA(PetscInitialize(ierr))
 
-      PetscCallA(MatCreate(PETSC_COMM_WORLD,A,ierr))
-      PetscCallA(MatSetType(A, MATSEQAIJ,ierr))
-      PetscCallA(MatLoad(A,v,ierr))
+  PetscCallA(PetscOptionsGetString(PETSC_NULL_OPTIONS, PETSC_NULL_CHARACTER, '-f', f, flg, ierr))
+  PetscCallA(PetscViewerBinaryOpen(PETSC_COMM_WORLD, f, FILE_MODE_READ, v, ierr))
 
-      PetscCallA(MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr))
+  PetscCallA(MatCreate(PETSC_COMM_WORLD, A, ierr))
+  PetscCallA(MatSetType(A, MATSEQAIJ, ierr))
+  PetscCallA(MatLoad(A, v, ierr))
 
-      PetscCallA(MatSeqAIJGetArray(A,aa,ierr))
-      print*,aa(3)
+  PetscCallA(MatView(A, PETSC_VIEWER_STDOUT_WORLD, ierr))
 
-      PetscCallA(MatDestroy(A,ierr))
-      PetscCallA(PetscViewerDestroy(v,ierr))
+  PetscCallA(MatSeqAIJGetArray(A, aa, ierr))
+  print *, aa(3)
 
-      PetscCallA(PetscFinalize(ierr))
-      end
+  PetscCallA(MatDestroy(A, ierr))
+  PetscCallA(PetscViewerDestroy(v, ierr))
+
+  PetscCallA(PetscFinalize(ierr))
+end
 
 !/*TEST
 !

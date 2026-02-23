@@ -66,7 +66,7 @@ To solve an ODE or DAE one uses:
 - Function $F(t,u,\dot{u})$
 
   ```
-  TSSetIFunction(TS ts,Vec R,PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,Vec,void*),void *funP);
+  TSSetIFunction(TS ts, Vec R, PetscErrorCode (*f)(TS, PetscReal, Vec, Vec, Vec, PetscCtx), PetscCtxfunP);
   ```
 
   The vector `R` is an optional location to store the residual. The
@@ -80,7 +80,7 @@ To solve an ODE or DAE one uses:
   function
 
   ```
-  TSSetRHSFunction(TS ts,Vec R,PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,void*),void *funP);
+  TSSetRHSFunction(TS ts, Vec R, PetscErrorCode (*f)(TS, PetscReal, Vec, Vec, PetscCtx), PetscCtxfunP);
   ```
 
 - Jacobian
@@ -97,7 +97,7 @@ To solve an ODE or DAE one uses:
   .
 
   ```
-  TSSetIJacobian(TS ts,Mat A,Mat B,PetscErrorCode (*fjac)(TS,PetscReal,Vec,Vec,PetscReal,Mat,Mat,void*),void *jacP);
+  TSSetIJacobian(TS ts, Mat A, Mat B, PetscErrorCode (*fjac)(TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, PetscCtx), PetscCtx jacP);
   ```
 
   The arguments for the function `fjac()` are the timestep context,
@@ -167,13 +167,12 @@ To solve an ODE or DAE one uses:
   provided, one also can provide an appropriate (approximate)
   Jacobian matrix of 
 
-  $G()$
-
-  .
+  $G()$.
+  
 
   ```
-  TSSetRHSJacobian(TS ts,Mat A,Mat B,
-  PetscErrorCode (*fjac)(TS,PetscReal,Vec,Mat,Mat,void*),void *jacP);
+  TSSetRHSJacobian(TS ts, Mat A, Mat B, 
+  PetscErrorCode (*fjac)(TS, PetscReal, Vec, Mat, Mat, PetscCtx), PetscCtx jacP);
   ```
 
   The arguments for the function `fjac()` are the timestep context,
@@ -701,6 +700,8 @@ TSARKIMEX. This is achieved by using the following APIs:
 
 Note that this ODE system can also be solved by padding zeros in the implicit part and using the standard IMEX methods. However, one needs to provide the full-dimensional Jacobian whereas only a partial Jacobian is needed for the fast-slow split which is more efficient in storage and speed.
 
+(sec_ts_glee)=
+
 ## GLEE methods
 
 In this section, we describe explicit and implicit time stepping methods
@@ -968,6 +969,9 @@ scheme, `TSRK3` - $3$rd-order, $3$-stage RK scheme,
   at each iteration to a file in vtk format,
   `TSMonitorSolutionVTK()`.
 
+
+(sec_ts_error_control)=
+
 ## Error control via variable time-stepping
 
 Most of the time stepping methods available in PETSc have an error
@@ -1059,11 +1063,6 @@ accepted and the next step is modified according to
 {eq}`hnew`; otherwise, the step is rejected and retaken
 with the step length computed in {eq}`hnew`.
 
-`TSADAPTGLEE` is an extension of the basic
-adaptor to treat ${\rm Tol}_{\rm A}$ and ${\rm Tol}_{\rm R}$
-as separate criteria. it can also control global errors if the
-integrator (e.g., `TSGLEE`) provides this information.
-
 ## Handling of discontinuities
 
 For problems that involve discontinuous right-hand sides, one can set an
@@ -1072,7 +1071,7 @@ of discontinuities (zeros of $g(t,u)$). Events can be defined
 through the event monitoring routine
 
 ```
-TSSetEventHandler(TS ts,PetscInt nevents,PetscInt *direction,PetscBool *terminate,PetscErrorCode (*indicator)(TS,PetscReal,Vec,PetscScalar*,void* eventP),PetscErrorCode (*postevent)(TS,PetscInt,PetscInt[],PetscReal,Vec,PetscBool,void* eventP),void *eventP);
+TSSetEventHandler(TS ts,PetscInt nevents,PetscInt *direction,PetscBool *terminate,PetscErrorCode (*indicator)(TS,PetscReal,Vec,PetscScalar*,PetscCtx eventP),PetscErrorCode (*postevent)(TS,PetscInt,PetscInt[],PetscReal,Vec,PetscBool,PetscCtx eventP),PetscCtxeventP);
 ```
 
 Here, `nevents` denotes the number of events, `direction` sets the
@@ -1171,13 +1170,13 @@ If $F()$ is a function of $p$ one needs to also provide the
 Jacobian $-F_p$ with
 
 ```
-TSSetRHSJacobianP(TS ts,Mat Amat,PetscErrorCode (*fp)(TS,PetscReal,Vec,Mat,void*),void *ctx)
+TSSetRHSJacobianP(TS ts,Mat Amat,PetscErrorCode (*fp)(TS,PetscReal,Vec,Mat,PetscCtx),PetscCtx ctx)
 ```
 
 or
 
 ```
-TSSetIJacobianP(TS ts,Mat Amat,PetscErrorCode (*fp)(TS,PetscReal,Vec,Vec,PetscReal,Mat,void*),void *ctx)
+TSSetIJacobianP(TS ts,Mat Amat,PetscErrorCode (*fp)(TS,PetscReal,Vec,Vec,PetscReal,Mat,PetscCtx),PetscCtx ctx)
 ```
 
 or both, depending on which form is used to define the ODE.
@@ -1198,15 +1197,15 @@ and provide the ODE RHS function (which evaluates the integrand
 $r$) with
 
 ```
-TSSetRHSFunction(TS quadts,Vec R,PetscErrorCode (*rf)(TS,PetscReal,Vec,Vec,void*),void *ctx)
+TSSetRHSFunction(TS quadts,Vec R,PetscErrorCode (*rf)(TS,PetscReal,Vec,Vec,PetscCtx),PetscCtxctx)
 ```
 
 Similar to the settings for the original ODE, Jacobians of the integrand
 can be provided with
 
 ```
-TSSetRHSJacobian(TS quadts,Vec DRDU,Vec DRDU,PetscErrorCode (*drdyf)(TS,PetscReal,Vec,Vec*,void*),void *ctx)
-TSSetRHSJacobianP(TS quadts,Vec DRDU,Vec DRDU,PetscErrorCode (*drdyp)(TS,PetscReal,Vec,Vec*,void*),void *ctx)
+TSSetRHSJacobian(TS quadts,Vec DRDU,Vec DRDU,PetscErrorCode (*drdyf)(TS,PetscReal,Vec,Vec*,PetscCtx),PetscCtxctx)
+TSSetRHSJacobianP(TS quadts,Vec DRDU,Vec DRDU,PetscErrorCode (*drdyp)(TS,PetscReal,Vec,Vec*,PetscCtx),PetscCtxctx)
 ```
 
 where $\mathrm{drdyf}= dr /dy$, $\mathrm{drdpf} = dr /dp$.
@@ -1304,7 +1303,7 @@ $F_u$ for the forward solve one still does need it for the
 backward solve and thus must call
 
 ```
-TSSetRHSJacobian(TS ts,Mat Amat, Mat Pmat,PetscErrorCode (*f)(TS,PetscReal,Vec,Mat,Mat,void*),void *fP);
+TSSetRHSJacobian(TS ts,Mat Amat, Mat Pmat,PetscErrorCode (*f)(TS,PetscReal,Vec,Mat,Mat,PetscCtx),PetscCtxfP);
 ```
 
 Examples include:
@@ -1513,7 +1512,7 @@ as follows.
 - Provide the function `G(u)` with the routine
 
   ```
-  TSSetRHSFunction(TS ts,Vec r,PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,void*),void *fP);
+  TSSetRHSFunction(TS ts,Vec r,PetscErrorCode (*f)(TS,PetscReal,Vec,Vec,PetscCtx),PetscCtxfP);
   ```
 
   The arguments to the function `f()` are the timestep context, the
@@ -1524,7 +1523,7 @@ as follows.
   to compute it at each Newton iteration. This is done with the command
 
   ```
-  TSSetRHSJacobian(TS ts,Mat Amat, Mat Pmat,PetscErrorCode (*f)(TS,PetscReal,Vec,Mat,Mat,void*),void *fP);
+  TSSetRHSJacobian(TS ts,Mat Amat, Mat Pmat,PetscErrorCode (*f)(TS,PetscReal,Vec,Mat,Mat,PetscCtx),PetscCtxfP);
   ```
 
   The arguments for the function `f()` are the timestep context, the
@@ -1542,12 +1541,12 @@ a constant timestep over the entire grid, or it varies with location.
 - For location-independent pseudo-timestepping, one uses the routine
 
   ```
-  TSPseudoSetTimeStep(TS ts,PetscInt(*dt)(TS,PetscReal*,void*),void* dtctx);
+  TSPseudoSetTimeStep(TS ts,PetscInt(*dt)(TS,PetscReal*,PetscCtx),PetscCtx dtctx);
   ```
 
   The function `dt` is a user-provided function that computes the
   next pseudo-timestep. As a default one can use
-  `TSPseudoTimeStepDefault(TS,PetscReal*,void*)` for `dt`. This
+  `TSPseudoTimeStepDefault(TS,PetscReal*,PetscCtx)` for `dt`. This
   routine updates the pseudo-timestep with one of two strategies: the
   default
 

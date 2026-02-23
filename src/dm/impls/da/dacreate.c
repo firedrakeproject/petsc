@@ -146,7 +146,7 @@ static PetscErrorCode DMLoad_DA(DM da, PetscViewer viewer)
   PetscCall(DMDASetStencilType(da, stencil));
   PetscCall(DMDASetStencilWidth(da, swidth));
   PetscCall(DMSetUp(da));
-  PetscCall(PetscViewerBinaryRead(viewer, &coors, 1, NULL, PETSC_ENUM));
+  PetscCall(PetscViewerBinaryRead(viewer, &coors, 1, NULL, PETSC_BOOL));
   if (coors) {
     PetscCall(DMGetCoordinateDM(da, &dac));
     PetscCall(DMCreateGlobalVector(dac, &c));
@@ -225,9 +225,8 @@ static PetscErrorCode DMCreateFieldDecomposition_DA(DM dm, PetscInt *len, char *
   }
   if (namelist) {
     PetscCall(PetscMalloc1(dof, namelist));
-    if (dd->fieldname) {
-      for (i = 0; i < dof; i++) PetscCall(PetscStrallocpy(dd->fieldname[i], &(*namelist)[i]));
-    } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Currently DMDA must have fieldnames");
+    PetscCheck(dd->fieldname, PETSC_COMM_SELF, PETSC_ERR_SUP, "Currently DMDA must have fieldnames");
+    for (i = 0; i < dof; i++) PetscCall(PetscStrallocpy(dd->fieldname[i], &(*namelist)[i]));
   }
   if (dmlist) {
     DM da;

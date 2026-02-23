@@ -9,38 +9,38 @@
 ```{rubric} General:
 ```
 
-- Add `PETSCPYTHONPATH` to the generated `$PETSC_DIR/$PETSC_ARCH/lib/petsc/conf/petscvariables` file so it is available to users through the makefile system
-- Add `PETSCPYTHONPATH` to the generated `$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig/PETSc.pc` file so it is available to users with
-  `PKG_CONFIG_PATH=$PETSC_DIR/$PETSC_ARCH/lib/pkgconfig pkg-config --variable=PETSCPYTHONPATH PETSc.pc`
+- Change behavior of `-options_left` when set to `true`: it no longer triggers a call to `PetscOptionsView()`
+- Change $PETSC_DIR/lib/petsc/bin/petscfreesharedmemory to $PETSC_DIR/lib/petsc/bin/petscfreesharedmemory.sh
 
 ```{rubric} Configure/Build:
 ```
 
-- Change `make sphinxhtml` in the `doc` directory to be `make docs`
-- Change `make docs` to put all its artifacts in `${PETSC_ARCH}-doc` instead of `doc`
-- Add support for `--download-xxx`, `--with-xxx`, and `-with-xxx-dir` for Python packages that install with pip. See packages.py
-- Change `make alletags` to `make etags`
+- Make `SYCL` a `devicePackage`, i.e., builds `--with-sycl` now have `PETSC_HAVE_DEVICE` defined
+- Add the option `--with-devicelanguage` to compile `PetscDevice` code using either a C or C++ compiler
+- Add `Caliper`, an instrumentation and performance profiling library that can be used to profile `Hypre`.
+- Add typing stubs for the Python extension module `petsc4py.PETSc`.
 
 ```{rubric} Sys:
 ```
 
-- Add `PETSC_E`
+- Add `PetscCallHYPRE()` to check HYPRE error codes and print error messages on failure
+- Add `PetscBTCountSet()` to count set bits in `PetscBT`
+- Add the option `-hypre_umpire_device_pool_size <n>` to set the Umpire device memory pool size (in MiB), which is used by HYPRE and 4 Gib by default
 
-- Deprecate `PetscSSEIsEnabled()`
-- Add `PetscBTCopy()`
 
 ```{rubric} Event Logging:
 ```
 
+- Add two approaches for GPU energy monitoring:  `-log_view_gpu_energy` and `-log_view_gpu_energy_meter`
+- Add API `PetscLogGpuEnergy()`, `PetscLogGpuEnergyMeter()`, `PetscLogGpuEnergyMeterBegin()` and `PetscLogGpuEnergyMeterEnd()` for GPU energy monitoring
+
 ```{rubric} PetscViewer:
 ```
 
-- Add `PetscViewerHDF5SetCompress()` and `PetscViewerHDF5GetCompress()`
+- Change the final argument of `PetscViewerGLVisSetFields()` to `PetscCtxDestroyFn *`. This means the destroy function must dereference the argument before operating on it
 
 ```{rubric} PetscDraw:
 ```
-
-- Add `PetscDrawLGGetData()`
 
 ```{rubric} AO:
 ```
@@ -60,17 +60,18 @@
 ```{rubric} PetscSection:
 ```
 
+- Add `PetscSectionMigrateData()`, akin to `DMPlexDistributeData()`
+
 ```{rubric} PetscPartitioner:
 ```
 
 ```{rubric} Mat:
 ```
 
-- Add `MatConstantDiagonalGetConstant()`
-- Add `MatNullSpaceRemoveFn` type definition
-- Add `MatMFFDFn`, `MatMFFDiFn`, `MatMFFDiBaseFn`, and `MatMFFDCheckhFn` type definitions
-- Add `MatFDColoringFn` type definition
-- Add support for `-mat_mumps_icntl_15 1` with the companion function `MatMumpsSetBlk()`
+- Change the `destroy()` function argument of `MatShellSetMatProductOperation()` to type `PetscCtxDestroyFn *`. This means the destroy function must dereference the argument before operating on it
+- Remove `MatMissingDiagonal()`. Developers should use `MatGetDiagonalMarkers_SeqXXX()` when the functionality is needed
+- Change `MatSetOption(A, MAT_HERMITIAN, PETSC_TRUE)` for `MatSBAIJ` to no longer automatically set the option `MAT_SYMMETRIC` to `PETSC_FALSE`. It is now the duty of the user to call `MatSetOption(A, MAT_SYMMETRIC, PETSC_FALSE)` if a `MatSBAIJ` is Hermitian but not symmetric
+- Deprecate `-matmatmult_Bbn` in favor of `-matproduct_batch_size`
 
 ```{rubric} MatCoarsen:
 ```
@@ -78,32 +79,23 @@
 ```{rubric} PC:
 ```
 
-- Add `PCMatApplyTranspose()` and `PCShellSetMatApplyTranspose()`
-- Remove `PC_ApplyMultiple`
-- Add `PCShellPSolveFn`
-- Add `PCModifySubMatricesFn`
+- Add multi-precision support for MUMPS. One could use `-pc_precision <single, double>` to set the precision to be used by MUMPS, which can be different from `PetscScalar`'s precision
+- Add support for MUMPS out-of-core facility with the option `-mat_mumps_ooc_tmpdir <dir>` and new functions `MatMumpsSetOocTmpDir()`, `MatMumpsGetOocTmpDir()`
 
 ```{rubric} KSP:
 ```
 
-- Add `MatLMVMGetLastUpdate()`
-- Add `MatLMVMMultAlgorithm`, `MatLMVMSetMultAlgorithm()`, and `MatLMVMGetMultAlgorithm()`
-- Add `MatLMVMSymBroydenGetPhi()` and `MatLMVMSymBroydenSetPhi()`
-- Add `MatLMVMSymBadBroydenGetPsi()` and `MatLMVMSymBadBroydenSetPsi()`
-- Deprecate `KSP_CONVERGED_RTOL_NORMAL` in favor of `KSP_CONVERGED_RTOL_NORMAL_EQUATIONS` and `KSP_CONVERGED_ATOL_NORMAL` in favor of `KSP_CONVERGED_ATOL_NORMAL_EQUATIONS`
-- Add `KSPFlexibleSetModifyPC()` to provide a common API for setting the modification function for all flexible `KSP` methods
-- Add `KSPFlexibleModifyPCFn` function prototype
-- Change the function signature of the `destroy()` argument to `KSPSetConvergenceTest()` to `PetscCtxDestroyFn*`. If you provide custom destroy
-  functions to `KSPSetConvergenceTest()` you must change them to expect a `void **` argument and immediately dereference the input
-- Add `KSPPSolveFn`
-- Change `KSPMonitorResidualDraw()` to `KSPMonitorResidualView()`
-- Change `KSPMonitorTrueResidualDraw()` to `KSPMonitorTrueResidualView()`
+- Remove `KSPHPDDMPrecision` in favor of `PetscPrecision`
 
 ```{rubric} SNES:
 ```
 
-- Change `SNESTestJacobian()` to report the norms
-- Add `SNESNormSchedule` support to `SNESKSPONLY`
+- Change the `destroy()` function argument of `SNESSetConvergenceTest()` to type `PetscCtxDestroyFn *`. This means the destroy function must dereference the argument before operating on it
+- Add `SNESSetObjectiveDomainError()`
+- Change `SNES_DIVERGED_FNORM_NAN` to `SNES_DIVERGED_FUNCTION_NANORINF`
+- Add `SNES_DIVERGED_OBJECTIVE_NANORINF`
+- Add `SNES_DIVERGED_OBJECTIVE_DOMAIN`
+- Add developer functions `SNESCheckFunctionDomainError()`, `SNESLineSearchCheckFunctionDomainError()`, `SNESCheckObjectiveDomainError()`, `SNESLineSearchCheckObjectiveDomainError()`, `SNESCheckJacobianDomainError()`, and `SNESLineSearchCheckJacobianDomainError()`
 
 ```{rubric} SNESLineSearch:
 ```
@@ -111,61 +103,38 @@
 ```{rubric} TS:
 ```
 
-- Add `TSSetRunSteps()` and `-ts_run_steps` for better control of restarted jobs
-- Add `-ts_monitor_solution_skip_initial` to skip first call to the solution monitor
-- Add `-ts_monitor_wall_clock_time` to display the elapsed wall-clock time for every step
-- Change `TSDiscGradIsGonzalez()`, `TSDiscGradUseGonzalez()` to `TSDiscGradSetType()`,`TSDiscGradGetType()`
+- Add `TSPseudoComputeFunction()` to get nonlinear residual while avoiding recalculation if possible
+- Remove unused `TSPseudoVerifyTimeStepDefault()`
+- Remove `TSPseudoComputeTimeStep()` and `TSPseudoVerifyTimeStep()`
+- Change the `destroy()` function argument of `TSTrajectorySetTransform()` to type `PetscCtxDestroyFn *`. This means the destroy function must dereference the argument before operating on it
+- Correct option `-ts_max_reject` to `-ts_max_step_rejections`
+- Correct option `-ts_dt` to `-ts_time_step`
 
 ```{rubric} TAO:
 ```
 
-- Add `TaoBRGNSetRegularizationType()`, `TaoBRGNGetRegularizationType()`
-
 ```{rubric} PetscRegressor:
 ```
-
-- Add new component to support regression and classification machine learning tasks: [](ch_regressor)
-- Add `PetscRegressor` type `PETSCREGRESSORLINEAR` for solving linear regression problems with optional regularization
 
 ```{rubric} DM/DA:
 ```
 
-- Add `DMHasBound()`, `DM_BC_LOWER_BOUND` and `DM_BC_LOWER_BOUND`
-- Add `DMSetCellCoordinateField()`
-- Add ``localized`` argument to `DMSetCoordinateDisc()` and `DMCreateAffineCoordinates_Internal()`
-- Add `DMCreateGradientMatrix()`
+- Change the final argument of `DMShellSetDestroyContext()` to `PetscCtxDestroyFn *`. This means the destroy function must dereference the argument before operating on it
+- Add `DMLabelGetValueISGlobal()` to get globally consistent `IS` of values in a `DMLabel`
 
 ```{rubric} DMSwarm:
 ```
 
-- Add `DMSwarmProjectFields()` and `DMSwarmProjectGradientFields()`
-
 ```{rubric} DMPlex:
 ```
 
-- Add `DMPlexGetTransform()`, `DMPlexSetTransform()`, `DMPlexGetSaveTransform()`, and `DMPlexSetSaveTransform()`
-- Add `DMPlexGetCoordinateMap()` and `DMPlexSetCoordinateMap()`
-- Add `DMPlexTransformCohesiveExtrudeGetUnsplit()`
-- Add `DMFieldCreateDefaultFaceQuadrature()`
-- Rename `DMPlexComputeResidual_Internal()` to `DMPlexComputeResidualForKey()`
-- Rename `DMPlexComputeJacobian_Internal()` to `DMPlexComputeJacobianByKey()`
-- Rename `DMPlexComputeJacobian_Action_Internal()` to `DMPlexComputeJacobianActionByKey()`
-- Rename `DMPlexComputeResidual_Hybrid_Internal()` to `DMPlexComputeResidualHybridByKey()`
-- Rename `DMPlexComputeJacobian_Hybrid_Internal()` to `DMPlexComputeJacobianHybridByKey()`
-- Add `DMPlexInsertBounds()`
-- Change argument order for `DMPlexComputeBdResidualSingle()` and `DMPlexComputeBdJacobianSingle()` to match domain functions
-- Add `DMPlexComputeBdResidualSingleByKey()` and `DMPlexComputeBdJacobianSingleByLabel()`
-- Add ``localized`` argument to `DMPlexCreateCoordinateSpace()`
-- Remove ``coordFunc`` argument from `DMPlexCreateCoordinateSpace()`
-- Change `DMPlexExtrude()` to take a label argument
-- Rename `DMPlexVecGetOrientedClosure_Internal()` to `DMPlexVecGetOrientedClosure()`
+- Add `DMPlexVecGetClosureAtDepth()`
+- Add an extra communicator argument to `DMPlexFilter()` to allow extracting local meshes
+- Add `DMPlexGetLETKFLocalizationMatrix` to compute localization weight matrix for LETKF
+- Change `verticesAdjSaved` parameter in `DMPlexCreateFromCell*Parallel*()` functions to be allocated by function rather than by user
 
 ```{rubric} FE/FV:
 ```
-
-- Add `PetscFEExpandFaceQuadrature()`
-- Add `PetscFECreateBrokenElement()`
-- Change `PetscFEIntegrateJacobian()` signature to allow rectangular operators
 
 ```{rubric} DMNetwork:
 ```
@@ -176,16 +145,12 @@
 ```{rubric} DT:
 ```
 
-- Deprecate `PetscSimplePointFunc` in favor of `PetscSimplePointFn *`
-- Deprecate `PetscPointFunc` in favor of `PetscPointFn *`
-- Deprecate `PetscPointJac` in favor of `PetscPointJacFn *`
-- Deprecate `PetscBdPointFunc` in favor of `PetscBdPointFn *`
-- Deprecate `PetscBdPointJac` in favor of `PetscBdPointJacFn *`
-- Deprecate `PetscRiemannFunc` in favor of `PetscRiemannFn *`
-- Deprecate `PetscProbFunc` in favor of `PetscProbFn *`
-- Add `PetscDTCreateQuadratureByCell()`
-
 ```{rubric} Fortran:
 ```
 
-- Add `PetscObjectNullify()`
+- Replace `./configure` option `--with-mpi-f90module-visibility` with `--with-mpi-ftn-module=<mpi or mpi_f08>`
+- Add `PETSC_INT_KIND` and `PETSC_MPIINT_KIND`
+- Fortran code should now use `MPIU_Comm` instead of `MPI_Comm`, and similarly for other MPI types, see section "Fortran and MPI" in the users guide
+- Fortran interface definitions are now automatically generated for all functions that take context variable arguments, represented in the C source code with a type of `PetscCtx`, allowing the use of any Fortran derived type (or PETSc object) as the context
+- For all PETSc functions `XXXGetYYY()` that return a context variable as an argument, represented in the C source code with an argument type of `PetscCtxRt`, a macro is generated used with `Interface_XXXGetYYY(AppCtx)` which tells the Fortran compiler that a pointer to that derived type `type(AppCtx)` is returned from the Fortran version of `XXXGetYYY()`. See src/snes/tutorials/ex5f90.F90`
+

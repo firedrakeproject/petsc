@@ -144,7 +144,7 @@ PetscErrorCode PetscSignalHandlerDefault(int sig, void *ptr)
   (void)(*PetscErrorPrintf)("Try option -start_in_debugger or -on_error_attach_debugger\n");
   (void)(*PetscErrorPrintf)("or see https://petsc.org/release/faq/#valgrind and https://petsc.org/release/faq/\n");
 #if defined(PETSC_HAVE_CUDA)
-  (void)(*PetscErrorPrintf)("or try https://docs.nvidia.com/cuda/cuda-memcheck/index.html on NVIDIA CUDA systems to find memory corruption errors\n");
+  (void)(*PetscErrorPrintf)("or try https://docs.nvidia.com/compute-sanitizer/ComputeSanitizer/index.html on NVIDIA CUDA systems to find memory corruption errors\n");
 #endif
 #if PetscDefined(USE_DEBUG)
   #if !PetscDefined(HAVE_THREADSAFETY)
@@ -193,7 +193,7 @@ PetscErrorCode PetscSignalHandlerDefault(int sig, void *ptr)
 
 .seealso: [](sec_errors), `PetscPopSignalHandler()`, `PetscSignalHandlerDefault()`, `PetscPushErrorHandler()`
 @*/
-PetscErrorCode PetscPushSignalHandler(PetscErrorCode (*routine)(int, void *), void *ctx)
+PetscErrorCode PetscPushSignalHandler(PetscErrorCode (*routine)(int, void *), PetscCtx ctx)
 {
   struct SH *newsh;
 

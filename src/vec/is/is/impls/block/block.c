@@ -114,12 +114,11 @@ static PetscErrorCode ISInvertPermutation_Block(IS is, PetscInt nlocal, IS *isou
   PetscCall(PetscLayoutGetBlockSize(is->map, &bs));
   PetscCall(PetscLayoutGetLocalSize(is->map, &n));
   n /= bs;
-  if (size == 1) {
-    PetscCall(PetscMalloc1(n, &ii));
-    for (i = 0; i < n; i++) ii[idx[i]] = i;
-    PetscCall(ISCreateBlock(PETSC_COMM_SELF, bs, n, ii, PETSC_OWN_POINTER, isout));
-    PetscCall(ISSetPermutation(*isout));
-  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "No inversion written yet for block IS");
+  PetscCheck(size == 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "No inversion written yet for block IS");
+  PetscCall(PetscMalloc1(n, &ii));
+  for (i = 0; i < n; i++) ii[idx[i]] = i;
+  PetscCall(ISCreateBlock(PETSC_COMM_SELF, bs, n, ii, PETSC_OWN_POINTER, isout));
+  PetscCall(ISSetPermutation(*isout));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -127,15 +126,15 @@ static PetscErrorCode ISView_Block(IS is, PetscViewer viewer)
 {
   IS_Block *sub = (IS_Block *)is->data;
   PetscInt  i, bs, n, *idx = sub->idx;
-  PetscBool iascii, ibinary;
+  PetscBool isascii, ibinary;
 
   PetscFunctionBegin;
   PetscCall(PetscLayoutGetBlockSize(is->map, &bs));
   PetscCall(PetscLayoutGetLocalSize(is->map, &n));
   n /= bs;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &ibinary));
-  if (iascii) {
+  if (isascii) {
     PetscViewerFormat fmt;
 
     PetscCall(PetscViewerGetFormat(viewer, &fmt));

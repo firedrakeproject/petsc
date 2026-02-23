@@ -1,10 +1,10 @@
 PetscRegressor Object: 1 MPI process
   type: linear
     PetscRegressor Linear Type: ols
-    Intercept=0.466667
+    Intercept=0.0857143
   Tao Object: (regressor_linear_) 1 MPI process
     type: brgn
-      Regularizer weight: 1.
+      Regularizer weight: 0.
       BRGN Regularization Type: l2prox
       Tao Object: (tao_brgn_subsolver_) 1 MPI process
         type: bnls
@@ -37,7 +37,11 @@ PetscRegressor Object: 1 MPI process
           Scaled gradient steps: 0
           Gradient steps: 0
           KSP termination reasons:
+            atol: 0
+            rtol: 1
+            ctol: 0
             negc: 0
+            dtol: 0
             iter: 0
             othr: 0
         TaoLineSearch Object: (tao_brgn_subsolver_) 1 MPI process
@@ -74,14 +78,14 @@ PetscRegressor Object: 1 MPI process
               Rescale history: 1
               Rescale params: alpha=1., beta=0.5, rho=1.
               Rescale convex factor: theta=0.125
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: 1 MPI process
             type: shell
             rows=2, cols=2
         total KSP iterations: 2
         convergence tolerances: gatol=1e-08,         grtol=1e-08,         steptol=0.,         gttol=0.
-        Residual in Function/Gradient:=2.22045e-16
-        Objective value=0.590476
+        Residual in Function/Gradient:=1.00074e-16
+        Objective value=0.0571429
         total number of iterations=1,                                (max: 10000)
         total number of function evaluations=3,                        (max: unlimited)
         total number of function/gradient evaluations=3,            (max: unlimited)
@@ -96,17 +100,17 @@ PetscRegressor Object: 1 MPI process
     total number of function/gradient evaluations=3,        (max: unlimited)
     total number of Hessian evaluations=1
     Solution converged:      ||g(X)|| <= gatol
-Intercept is 0.466667
+Intercept is 0.085714
 Coefficients are
 Vec Object: 1 MPI process
   type: seq
-0.285714
-0.666667
+0.4
+1.42857
 Predicted values are
 Vec Object: 1 MPI process
   type: seq
-0.847619
-0.490476
-0.466667
-0.77619
-1.41905
+1.11429
+0.242857
+0.0857143
+0.642857
+1.91429

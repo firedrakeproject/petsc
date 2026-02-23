@@ -1,8 +1,8 @@
   Linear solve converged due to CONVERGED_RTOL iterations 18
 KSP Object: 4 MPI processes
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -20,28 +20,29 @@ PC Object: 4 MPI processes
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (pc_hpddm_levels_1_) 4 MPI processes
     type: shell
       no name
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 4 MPI processes
       type: htool
       rows=800, cols=800
         symmetry: N
-        minimum cluster size: 10
+        maximal cluster leaf size: 10
         epsilon: 0.01
         eta: 10.
         minimum target depth: 0
         minimum source depth: 0
         compressor: sympartialACA
         clustering: PCARegular
-        compression ratio: 1.084470
-        space saving: 0.077891
+        compression ratio: 1.086263
+        space saving: 0.079412
         block tree consistency: TRUE
-        (minimum, mean, maximum) dense block sizes: (144, 156.512445, 169)
-        (minimum, mean, maximum) low rank block sizes: (144, 165.169518, 625)
-        (minimum, mean, maximum) ranks: (2, 4.945568, 8)
+        recompression: FALSE
+        (minimum, mean, maximum) dense block sizes: (36, 39.341459, 169)
+        (minimum, mean, maximum) low rank block sizes: (36, 127.619256, 625)
+        (minimum, mean, maximum) ranks: (2, 4.356674, 8)
   PC Object: (pc_hpddm_levels_1_) 4 MPI processes
     type: asm
       total subdomain blocks = 4, user-defined overlap
@@ -53,47 +54,48 @@ PC Object: 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (pc_hpddm_levels_1_sub_) 1 MPI process
         type: lu
           out-of-place factorization
           tolerance for zero pivot 2.22045e-14
           matrix ordering: external
           factor fill ratio given 0., needed 0.
-            Factored matrix follows:
+            Factored matrix:
               Mat Object: (pc_hpddm_levels_1_sub_) 1 MPI process
                 type: seqdense
                 rows=202, cols=202
                 package used to perform factorization: petsc
                 total: nonzeros=40804, allocated nonzeros=40804
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (pc_hpddm_levels_1_sub_) 1 MPI process
           type: seqdense
           rows=202, cols=202
           total: nonzeros=40804, allocated nonzeros=40804
           total number of mallocs used during MatSetValues calls=0
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 4 MPI processes
       type: htool
       rows=800, cols=800
         symmetry: N
-        minimum cluster size: 10
+        maximal cluster leaf size: 10
         epsilon: 0.01
         eta: 10.
         minimum target depth: 0
         minimum source depth: 0
         compressor: sympartialACA
         clustering: PCARegular
-        compression ratio: 1.084470
-        space saving: 0.077891
+        compression ratio: 1.086263
+        space saving: 0.079412
         block tree consistency: TRUE
-        (minimum, mean, maximum) dense block sizes: (144, 156.512445, 169)
-        (minimum, mean, maximum) low rank block sizes: (144, 165.169518, 625)
-        (minimum, mean, maximum) ranks: (2, 4.945568, 8)
+        recompression: FALSE
+        (minimum, mean, maximum) dense block sizes: (36, 39.341459, 169)
+        (minimum, mean, maximum) low rank block sizes: (36, 127.619256, 625)
+        (minimum, mean, maximum) ranks: (2, 4.356674, 8)
     KSP Object: (pc_hpddm_coarse_) 1 MPI process
       type: gmres
-        restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-        happy breakdown tolerance 1e-30
+        restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+        happy breakdown tolerance=1e-30
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
@@ -104,33 +106,34 @@ PC Object: 4 MPI processes
         tolerance for zero pivot 2.22045e-14
         matrix ordering: external
         factor fill ratio given 0., needed 0.
-          Factored matrix follows:
+          Factored matrix:
             Mat Object: (pc_hpddm_coarse_) 1 MPI process
               type: seqdense
               rows=4, cols=4
               package used to perform factorization: petsc
               total: nonzeros=16, allocated nonzeros=16
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (pc_hpddm_coarse_) 1 MPI process
         type: seqdense
         rows=4, cols=4
         total: nonzeros=16, allocated nonzeros=16
         total number of mallocs used during MatSetValues calls=0
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 4 MPI processes
     type: htool
     rows=800, cols=800
       symmetry: N
-      minimum cluster size: 10
+      maximal cluster leaf size: 10
       epsilon: 0.01
       eta: 10.
       minimum target depth: 0
       minimum source depth: 0
       compressor: sympartialACA
       clustering: PCARegular
-      compression ratio: 1.084470
-      space saving: 0.077891
+      compression ratio: 1.086263
+      space saving: 0.079412
       block tree consistency: TRUE
-      (minimum, mean, maximum) dense block sizes: (144, 156.512445, 169)
-      (minimum, mean, maximum) low rank block sizes: (144, 165.169518, 625)
-      (minimum, mean, maximum) ranks: (2, 4.945568, 8)
+      recompression: FALSE
+      (minimum, mean, maximum) dense block sizes: (36, 39.341459, 169)
+      (minimum, mean, maximum) low rank block sizes: (36, 127.619256, 625)
+      (minimum, mean, maximum) ranks: (2, 4.356674, 8)

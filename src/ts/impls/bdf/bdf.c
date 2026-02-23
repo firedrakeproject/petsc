@@ -84,13 +84,13 @@ static PetscErrorCode TSBDF_RestoreVecs(TS ts, DM dm, Vec *Xdot, Vec *Ydot)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCoarsenHook_TSBDF(DM fine, DM coarse, void *ctx)
+static PetscErrorCode DMCoarsenHook_TSBDF(DM fine, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMRestrictHook_TSBDF(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
+static PetscErrorCode DMRestrictHook_TSBDF(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec Ydot, Ydot_c;
@@ -269,6 +269,7 @@ static PetscErrorCode TSStep_BDF(TS ts)
 
     bdf->time[0] = ts->ptime + ts->time_step;
     if (bdf->extrapolate) PetscCall(TSBDF_Extrapolate(ts, bdf->k - (accept ? 0 : 1), bdf->time[0], bdf->work[0]));
+    else if (!accept) PetscCall(VecCopy(ts->vec_sol, bdf->work[0]));
     PetscCall(TSPreStage(ts, bdf->time[0]));
     PetscCall(TSBDF_SNESSolve(ts, NULL, bdf->work[0]));
     PetscCall(TSPostStage(ts, bdf->time[0], 0, &bdf->work[0]));
@@ -339,7 +340,7 @@ static PetscErrorCode TSResizeRegister_BDF(TS ts, PetscBool reg)
   PetscFunctionBegin;
   PetscAssert(maxn == 8, PetscObjectComm((PetscObject)ts), PETSC_ERR_PLIB, "names need to be redefined");
   if (reg) {
-    for (i = 1; i < PetscMin(bdf->n + 1, maxn); i++) { PetscCall(TSResizeRegisterVec(ts, names[i], bdf->work[i])); }
+    for (i = 1; i < PetscMin(bdf->n + 1, maxn); i++) PetscCall(TSResizeRegisterVec(ts, names[i], bdf->work[i]));
   } else {
     for (i = 1; i < maxn; i++) {
       PetscCall(TSResizeRetrieveVec(ts, names[i], &bdf->work[i]));
@@ -480,15 +481,13 @@ static PetscErrorCode TSSetFromOptions_BDF(TS ts, PetscOptionItems PetscOptionsO
 static PetscErrorCode TSView_BDF(TS ts, PetscViewer viewer)
 {
   TS_BDF   *bdf = (TS_BDF *)ts->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  Order=%" PetscInt_FMT "\n", bdf->order));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  Order=%" PetscInt_FMT "\n", bdf->order));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* ------------------------------------------------------------ */
 
 static PetscErrorCode TSBDFSetOrder_BDF(TS ts, PetscInt order)
 {
@@ -510,14 +509,16 @@ static PetscErrorCode TSBDFGetOrder_BDF(TS ts, PetscInt *order)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ------------------------------------------------------------ */
-
 /*MC
-      TSBDF - DAE solver using BDF methods
+  TSBDF - DAE solver using implicit backward differentiation formula (BDF) methods suitable for stiff ODEs.
 
   Level: beginner
 
-.seealso: [](ch_ts), `TS`, `TSCreate()`, `TSSetType()`, `TSType`
+  Options Database Keys:
++  -ts_bdf_order <n>                               - Order of the BDF method
+-  -ts_bdf_initial_guess_extrapolate <true, false> - Extrapolate the initial guess of the nonlinear solve from previous time steps, defaults to true
+
+.seealso: [](ch_ts), `TS`, `TSCreate()`, `TSSetType()`, `TSType`, `TSBDFSetOrder()`
 M*/
 PETSC_EXTERN PetscErrorCode TSCreate_BDF(TS ts)
 {
@@ -544,15 +545,13 @@ PETSC_EXTERN PetscErrorCode TSCreate_BDF(TS ts)
 
   bdf->extrapolate = PETSC_TRUE;
   bdf->status      = TS_STEP_COMPLETE;
-  for (size_t i = 0; i < PETSC_STATIC_ARRAY_LENGTH(bdf->work); i++) { bdf->work[i] = bdf->tvwork[i] = NULL; }
+  for (size_t i = 0; i < PETSC_STATIC_ARRAY_LENGTH(bdf->work); i++) bdf->work[i] = bdf->tvwork[i] = NULL;
 
   PetscCall(PetscObjectComposeFunction((PetscObject)ts, "TSBDFSetOrder_C", TSBDFSetOrder_BDF));
   PetscCall(PetscObjectComposeFunction((PetscObject)ts, "TSBDFGetOrder_C", TSBDFGetOrder_BDF));
   PetscCall(TSBDFSetOrder(ts, 2));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* ------------------------------------------------------------ */
 
 /*@
   TSBDFSetOrder - Set the order of the `TSBDF` method

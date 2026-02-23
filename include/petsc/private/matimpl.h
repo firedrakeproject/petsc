@@ -160,52 +160,53 @@ struct _MatOps {
   PetscErrorCode (*getrowmin)(Mat, Vec, PetscInt[]);
   PetscErrorCode (*getcolumnvector)(Mat, Vec, PetscInt);
   /*104*/
-  PetscErrorCode (*missingdiagonal)(Mat, PetscBool *, PetscInt *);
   PetscErrorCode (*getseqnonzerostructure)(Mat, Mat *);
   PetscErrorCode (*create)(Mat);
   PetscErrorCode (*getghosts)(Mat, PetscInt *, const PetscInt *[]);
   PetscErrorCode (*getlocalsubmatrix)(Mat, IS, IS, Mat *);
-  /*109*/
   PetscErrorCode (*restorelocalsubmatrix)(Mat, IS, IS, Mat *);
+  /*109*/
   PetscErrorCode (*multdiagonalblock)(Mat, Vec, Vec);
   PetscErrorCode (*hermitiantranspose)(Mat, MatReuse, Mat *);
   PetscErrorCode (*multhermitiantranspose)(Mat, Vec, Vec);
   PetscErrorCode (*multhermitiantransposeadd)(Mat, Vec, Vec, Vec);
-  /*114*/
   PetscErrorCode (*getmultiprocblock)(Mat, MPI_Comm, MatReuse, Mat *);
+  /*114*/
   PetscErrorCode (*findnonzerorows)(Mat, IS *);
   PetscErrorCode (*getcolumnreductions)(Mat, PetscInt, PetscReal *);
   PetscErrorCode (*invertblockdiagonal)(Mat, const PetscScalar **);
   PetscErrorCode (*invertvariableblockdiagonal)(Mat, PetscInt, const PetscInt *, PetscScalar *);
-  /*119*/
   PetscErrorCode (*createsubmatricesmpi)(Mat, PetscInt, const IS[], const IS[], MatReuse, Mat **);
+  /*119*/
   PetscErrorCode (*setvaluesbatch)(Mat, PetscInt, PetscInt, PetscInt *, const PetscScalar *);
   PetscErrorCode (*transposematmultsymbolic)(Mat, Mat, PetscReal, Mat);
   PetscErrorCode (*transposematmultnumeric)(Mat, Mat, Mat);
   PetscErrorCode (*transposecoloringcreate)(Mat, ISColoring, MatTransposeColoring);
-  /*124*/
   PetscErrorCode (*transcoloringapplysptoden)(MatTransposeColoring, Mat, Mat);
+  /*124*/
   PetscErrorCode (*transcoloringapplydentosp)(MatTransposeColoring, Mat, Mat);
   PetscErrorCode (*rartnumeric)(Mat, Mat, Mat); /* double dispatch wrapper routine */
   PetscErrorCode (*setblocksizes)(Mat, PetscInt, PetscInt);
   PetscErrorCode (*residual)(Mat, Vec, Vec, Vec);
-  /*129*/
   PetscErrorCode (*fdcoloringsetup)(Mat, ISColoring, MatFDColoring);
+  /*129*/
   PetscErrorCode (*findoffblockdiagonalentries)(Mat, IS *);
   PetscErrorCode (*creatempimatconcatenateseqmat)(MPI_Comm, Mat, PetscInt, MatReuse, Mat *);
   PetscErrorCode (*destroysubmatrices)(PetscInt, Mat *[]);
   PetscErrorCode (*mattransposesolve)(Mat, Mat, Mat);
-  /*134*/
   PetscErrorCode (*getvalueslocal)(Mat, PetscInt, const PetscInt[], PetscInt, const PetscInt[], PetscScalar[]);
+  /*134*/
   PetscErrorCode (*creategraph)(Mat, PetscBool, PetscBool, PetscReal, PetscInt, PetscInt[], Mat *);
   PetscErrorCode (*transposesymbolic)(Mat, Mat *);
   PetscErrorCode (*eliminatezeros)(Mat, PetscBool);
   PetscErrorCode (*getrowsumabs)(Mat, Vec);
-  /*139*/
   PetscErrorCode (*getfactor)(Mat, MatSolverType, MatFactorType, Mat *);
+  /*139*/
   PetscErrorCode (*getblockdiagonal)(Mat, Mat *);  // NOTE: the caller of get{block, vblock}diagonal owns the returned matrix;
   PetscErrorCode (*getvblockdiagonal)(Mat, Mat *); // they must destroy it after use
   PetscErrorCode (*copyhashtoxaij)(Mat, Mat);
+  PetscErrorCode (*getcurrentmemtype)(Mat, PetscMemType *);
+  PetscErrorCode (*zerorowscolumnslocal)(Mat, PetscInt, const PetscInt[], PetscScalar, Vec, Vec);
 };
 /*
     If you add MatOps entries above also add them to the MATOP enum
@@ -241,11 +242,14 @@ PETSC_INTERN PetscErrorCode MatShellSetContextDestroy_Immutable(Mat, PetscCtxDes
 PETSC_INTERN PetscErrorCode MatShellSetManageScalingShifts_Immutable(Mat);
 PETSC_INTERN PetscErrorCode MatCopy_Basic(Mat, Mat, MatStructure);
 PETSC_INTERN PetscErrorCode MatDiagonalSet_Default(Mat, Vec, InsertMode);
-#if defined(PETSC_HAVE_SCALAPACK)
+#if defined(PETSC_HAVE_SCALAPACK) && (defined(PETSC_USE_REAL_SINGLE) || defined(PETSC_USE_REAL_DOUBLE))
 PETSC_INTERN PetscErrorCode MatConvert_Dense_ScaLAPACK(Mat, MatType, MatReuse, Mat *);
 #endif
 PETSC_INTERN PetscErrorCode MatSetPreallocationCOO_Basic(Mat, PetscCount, PetscInt[], PetscInt[]);
 PETSC_INTERN PetscErrorCode MatSetValuesCOO_Basic(Mat, const PetscScalar[], InsertMode);
+
+/* Scattering of dense matrices with strided PetscSF */
+PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode MatDenseScatter_Private(PetscSF, Mat, Mat, InsertMode, ScatterMode);
 
 /* This can be moved to the public header after implementing some missing MatProducts */
 PETSC_INTERN PetscErrorCode MatCreateFromISLocalToGlobalMapping(ISLocalToGlobalMapping, Mat, PetscBool, PetscBool, MatType, Mat *);
@@ -444,9 +448,9 @@ typedef struct { /* used by MatProduct() */
   PetscErrorCode (*view)(Mat, PetscViewer);
 
   /* many products have intermediate data structures, each specific to Mat types and product type */
-  PetscBool clear;                   /* whether or not to clear the data structures after MatProductNumeric has been called */
-  void     *data;                    /* where to stash those structures */
-  PetscErrorCode (*destroy)(void *); /* destroy routine */
+  PetscBool          clear;   /* whether or not to clear the data structures after MatProductNumeric has been called */
+  void              *data;    /* where to stash those structures */
+  PetscCtxDestroyFn *destroy; /* freeing data */
 } Mat_Product;
 
 struct _p_Mat {
@@ -642,31 +646,32 @@ typedef struct {
 
 struct _p_MatFDColoring {
   PETSCHEADER(int);
-  PetscInt         M, N, m;                       /* total rows, columns; local rows */
-  PetscInt         rstart;                        /* first row owned by local processor */
-  PetscInt         ncolors;                       /* number of colors */
-  PetscInt        *ncolumns;                      /* number of local columns for a color */
-  PetscInt       **columns;                       /* lists the local columns of each color (using global column numbering) */
-  IS              *isa;                           /* these are the IS that contain the column values given in columns */
-  PetscInt        *nrows;                         /* number of local rows for each color */
-  MatEntry        *matentry;                      /* holds (row, column, address of value) for Jacobian matrix entry */
-  MatEntry2       *matentry2;                     /* holds (row, address of value) for Jacobian matrix entry */
-  PetscScalar     *dy;                            /* store a block of F(x+dx)-F(x) when J is in BAIJ format */
-  PetscReal        error_rel;                     /* square root of relative error in computing function */
-  PetscReal        umin;                          /* minimum allowable u'dx value */
-  Vec              w1, w2, w3;                    /* work vectors used in computing Jacobian */
-  PetscBool        fset;                          /* indicates that the initial function value F(X) is set */
-  MatFDColoringFn *f;                             /* function that defines Jacobian */
-  void            *fctx;                          /* optional user-defined context for use by the function f */
-  Vec              vscale;                        /* holds FD scaling, i.e. 1/dx for each perturbed column */
-  PetscInt         currentcolor;                  /* color for which function evaluation is being done now */
-  const char      *htype;                         /* "wp" or "ds" */
-  ISColoringType   ctype;                         /* IS_COLORING_GLOBAL or IS_COLORING_LOCAL */
-  PetscInt         brows, bcols;                  /* number of block rows or columns for speedup inserting the dense matrix into sparse Jacobian */
-  PetscBool        setupcalled;                   /* true if setup has been called */
-  PetscBool        viewed;                        /* true if the -mat_fd_coloring_view has been triggered already */
-  void (*ftn_func_pointer)(void), *ftn_func_cntx; /* serve the same purpose as *fortran_func_pointers in PETSc objects */
-  PetscObjectId matid;                            /* matrix this object was created with, must always be the same */
+  PetscInt                M, N, m;          /* total rows, columns; local rows */
+  PetscInt                rstart;           /* first row owned by local processor */
+  PetscInt                ncolors;          /* number of colors */
+  PetscInt               *ncolumns;         /* number of local columns for a color */
+  PetscInt              **columns;          /* lists the local columns of each color (using global column numbering) */
+  IS                     *isa;              /* these are the IS that contain the column values given in columns */
+  PetscInt               *nrows;            /* number of local rows for each color */
+  MatEntry               *matentry;         /* holds (row, column, address of value) for Jacobian matrix entry */
+  MatEntry2              *matentry2;        /* holds (row, address of value) for Jacobian matrix entry */
+  PetscScalar            *dy;               /* store a block of F(x+dx)-F(x) when J is in BAIJ format */
+  PetscReal               error_rel;        /* square root of relative error in computing function */
+  PetscReal               umin;             /* minimum allowable u'dx value */
+  Vec                     w1, w2, w3;       /* work vectors used in computing Jacobian */
+  PetscBool               fset;             /* indicates that the initial function value F(X) is set */
+  MatFDColoringFn        *f;                /* function that defines Jacobian */
+  void                   *fctx;             /* optional user-defined context for use by the function f */
+  Vec                     vscale;           /* holds FD scaling, i.e. 1/dx for each perturbed column */
+  PetscInt                currentcolor;     /* color for which function evaluation is being done now */
+  const char             *htype;            /* "wp" or "ds" */
+  ISColoringType          ctype;            /* IS_COLORING_GLOBAL or IS_COLORING_LOCAL */
+  PetscInt                brows, bcols;     /* number of block rows or columns for speedup inserting the dense matrix into sparse Jacobian */
+  PetscBool               setupcalled;      /* true if setup has been called */
+  PetscBool               viewed;           /* true if the -mat_fd_coloring_view has been triggered already */
+  PetscFortranCallbackFn *ftn_func_pointer; /* serve the same purpose as *fortran_func_pointers in PETSc objects */
+  void                   *ftn_func_cntx;
+  PetscObjectId           matid; /* matrix this object was created with, must always be the same */
 };
 
 typedef struct _MatColoringOps *MatColoringOps;
@@ -1779,3 +1784,74 @@ PETSC_EXTERN PetscLogEvent MAT_H2Opus_Orthog;
 PETSC_EXTERN PetscLogEvent MAT_H2Opus_LR;
 PETSC_EXTERN PetscLogEvent MAT_CUDACopyToGPU;
 PETSC_EXTERN PetscLogEvent MAT_HIPCopyToGPU;
+
+#if defined(PETSC_CLANG_STATIC_ANALYZER)
+  #define MatGetDiagonalMarkers(SeqXXX, bs)
+#else
+  /*
+   Adds diagonal pointers to sparse matrix nonzero structure and determines if all diagonal entries are present
+
+   Rechecks the matrix data structure automatically if the nonzero structure of the matrix changed since the last call
+
+   Potential optimization: since the a->j[j] are sorted this could use bisection to find the diagonal
+
+   Developer Note:
+   Uses the C preprocessor as a template mechanism to produce MatGetDiagonal_Seq[SB]AIJ() to avoid duplicate code
+*/
+  #define MatGetDiagonalMarkers(SeqXXX, bs) \
+    PetscErrorCode MatGetDiagonalMarkers_##SeqXXX(Mat A, const PetscInt **diag, PetscBool *diagDense) \
+    { \
+      Mat_##SeqXXX *a = (Mat_##SeqXXX *)A->data; \
+\
+      PetscFunctionBegin; \
+      if (A->factortype != MAT_FACTOR_NONE) { \
+        if (diagDense) *diagDense = PETSC_TRUE; \
+        if (diag) *diag = a->diag; \
+        PetscFunctionReturn(PETSC_SUCCESS); \
+      } \
+      PetscCheck(diag || diagDense, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "At least one of diag or diagDense must be requested"); \
+      if (a->diagNonzeroState != A->nonzerostate || (diag && !a->diag)) { \
+        const PetscInt m = A->rmap->n / bs; \
+\
+        if (!diag && !a->diag) { \
+          a->diagDense = PETSC_TRUE; \
+          for (PetscInt i = 0; i < m; i++) { \
+            PetscBool found = PETSC_FALSE; \
+\
+            for (PetscInt j = a->i[i]; j < a->i[i + 1]; j++) { \
+              if (a->j[j] == i) { \
+                found = PETSC_TRUE; \
+                break; \
+              } \
+            } \
+            if (!found) { \
+              a->diagDense        = PETSC_FALSE; \
+              *diagDense          = a->diagDense; \
+              a->diagNonzeroState = A->nonzerostate; \
+              PetscFunctionReturn(PETSC_SUCCESS); \
+            } \
+          } \
+        } else { \
+          if (!a->diag) PetscCall(PetscMalloc1(m, &a->diag)); \
+          a->diagDense = PETSC_TRUE; \
+          for (PetscInt i = 0; i < m; i++) { \
+            PetscBool found = PETSC_FALSE; \
+\
+            a->diag[i] = a->i[i + 1]; \
+            for (PetscInt j = a->i[i]; j < a->i[i + 1]; j++) { \
+              if (a->j[j] == i) { \
+                a->diag[i] = j; \
+                found      = PETSC_TRUE; \
+                break; \
+              } \
+            } \
+            if (!found) a->diagDense = PETSC_FALSE; \
+          } \
+        } \
+        a->diagNonzeroState = A->nonzerostate; \
+      } \
+      if (diag) *diag = a->diag; \
+      if (diagDense) *diagDense = a->diagDense; \
+      PetscFunctionReturn(PETSC_SUCCESS); \
+    }
+#endif

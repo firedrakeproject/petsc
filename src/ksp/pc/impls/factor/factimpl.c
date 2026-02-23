@@ -29,7 +29,7 @@ PetscErrorCode PCFactorSetShiftType_Factor(PC pc, MatFactorShiftType shifttype)
   if (shifttype == (MatFactorShiftType)PETSC_DECIDE) dir->info.shifttype = (PetscReal)MAT_SHIFT_NONE;
   else {
     dir->info.shifttype = (PetscReal)shifttype;
-    if ((shifttype == MAT_SHIFT_NONZERO || shifttype == MAT_SHIFT_INBLOCKS) && dir->info.shiftamount == 0.0) { dir->info.shiftamount = 100.0 * PETSC_MACHINE_EPSILON; /* set default amount if user has not called PCFactorSetShiftAmount() yet */ }
+    if ((shifttype == MAT_SHIFT_NONZERO || shifttype == MAT_SHIFT_INBLOCKS) && dir->info.shiftamount == 0.0) dir->info.shiftamount = 100.0 * PETSC_MACHINE_EPSILON; /* set default amount if user has not called PCFactorSetShiftAmount() yet */
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -256,15 +256,15 @@ PetscErrorCode PCSetFromOptions_Factor(PC pc, PetscOptionItems PetscOptionsObjec
 PetscErrorCode PCView_Factor(PC pc, PetscViewer viewer)
 {
   PC_Factor        *factor = (PC_Factor *)pc->data;
-  PetscBool         isstring, iascii, canuseordering;
+  PetscBool         isstring, isascii, canuseordering;
   MatInfo           info;
   MatOrderingType   ordering;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     if (factor->inplace) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "  in-place factorization\n"));
     } else {
@@ -301,7 +301,7 @@ PetscErrorCode PCView_Factor(PC pc, PetscViewer viewer)
       } else {
         PetscCall(MatGetInfo(factor->fact, MAT_LOCAL, &info));
         PetscCall(PetscViewerASCIIPrintf(viewer, "  factor fill ratio given %g, needed %g\n", info.fill_ratio_given, info.fill_ratio_needed));
-        PetscCall(PetscViewerASCIIPrintf(viewer, "    Factored matrix follows:\n"));
+        PetscCall(PetscViewerASCIIPrintf(viewer, "    Factored matrix:\n"));
         PetscCall(PetscViewerASCIIPushTab(viewer));
         PetscCall(PetscViewerASCIIPushTab(viewer));
         PetscCall(PetscViewerASCIIPushTab(viewer));

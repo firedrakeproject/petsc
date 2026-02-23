@@ -115,7 +115,7 @@ PetscSF Object: 3 MPI processes
 
 .seealso: `PetscSFCreate()`, `PetscSFSetGraph()`, `PetscSFCreateByMatchingIndices()`
 @*/
-PetscErrorCode PetscSFSetGraphFromCoordinates(PetscSF sf, PetscInt nroots, PetscInt nleaves, PetscInt dim, PetscReal tol, const PetscReal *rootcoords, const PetscReal *leafcoords)
+PetscErrorCode PetscSFSetGraphFromCoordinates(PetscSF sf, PetscInt nroots, PetscInt nleaves, PetscInt dim, PetscReal tol, const PetscReal rootcoords[], const PetscReal leafcoords[])
 {
   PetscReal    bbox[6], *bboxes, *target_coords;
   PetscMPIInt  size, *ranks_needed, num_ranks, msize;
@@ -126,6 +126,11 @@ PetscErrorCode PetscSFSetGraphFromCoordinates(PetscSF sf, PetscInt nroots, Petsc
   MPI_Comm     comm;
 
   PetscFunctionBegin;
+  PetscValidHeaderSpecific(sf, PETSCSF_CLASSID, 1);
+  PetscValidLogicalCollectiveInt(sf, dim, 4);
+  PetscValidLogicalCollectiveReal(sf, tol, 5);
+  if (nroots != 0) PetscAssertPointer(rootcoords, 6);
+  if (nleaves != 0) PetscAssertPointer(leafcoords, 7);
   PetscCall(PetscObjectGetComm((PetscObject)sf, &comm));
   PetscCall(GetBoundingBox_Internal(nroots, dim, rootcoords, bbox));
   PetscCallMPI(MPI_Comm_size(comm, &size));

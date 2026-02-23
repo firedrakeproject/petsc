@@ -7,18 +7,19 @@ static PetscErrorCode SNESLineSearchApply_Bisection(SNESLineSearch linesearch)
   Vec         X, F, Y, W, G;
   SNES        snes;
   PetscReal   ynorm;
-  PetscReal   lambda_left, lambda, lambda_right, lambda_old;
+  PetscReal   lambda_left, lambda, lambda_right, lambda_old, fnorm;
   PetscScalar fty_left, fty, fty_initial;
   PetscViewer monitor;
   PetscReal   rtol, atol, ltol;
-  PetscInt    it, max_its;
+  PetscInt    it, max_it;
 
   PetscFunctionBegin;
   PetscCall(SNESLineSearchGetVecs(linesearch, &X, &F, &Y, &W, &G));
   PetscCall(SNESLineSearchGetLambda(linesearch, &lambda));
   PetscCall(SNESLineSearchGetSNES(linesearch, &snes));
-  PetscCall(SNESLineSearchGetTolerances(linesearch, NULL, NULL, &rtol, &atol, &ltol, &max_its));
+  PetscCall(SNESLineSearchGetTolerances(linesearch, NULL, NULL, &rtol, &atol, &ltol, &max_it));
   PetscCall(SNESLineSearchGetDefaultMonitor(linesearch, &monitor));
+  PetscCall(SNESLineSearchSetReason(linesearch, SNES_LINESEARCH_SUCCEEDED));
 
   /* pre-check */
   PetscCall(SNESLineSearchPreCheck(linesearch, X, Y, &changed_y));
@@ -67,14 +68,18 @@ static PetscErrorCode SNESLineSearchApply_Bisection(SNESLineSearch linesearch)
     it         = 0;
 
     while (PETSC_TRUE) {
-      /* check for NaN or Inf */
+      /* check for infinity or NaN */
       if (PetscIsInfOrNanScalar(fty)) {
         if (monitor) {
           PetscCall(PetscViewerASCIIAddTab(monitor, ((PetscObject)linesearch)->tablevel));
-          PetscCall(PetscViewerASCIIPrintf(monitor, "      Line search fty is NaN or Inf!\n"));
+          PetscCall(PetscViewerASCIIPrintf(monitor, "      Line search fty is infinity or NaN!\n"));
           PetscCall(PetscViewerASCIISubtractTab(monitor, ((PetscObject)linesearch)->tablevel));
         }
-        PetscCall(SNESLineSearchSetReason(linesearch, SNES_LINESEARCH_FAILED_NANORINF));
+        PetscCheck(!snes->errorifnotconverged, PetscObjectComm((PetscObject)snes), PETSC_ERR_CONV_FAILED, "infinity or NaN in function evaluation");
+        if (snes->functiondomainerror) {
+          PetscCall(SNESLineSearchSetReason(linesearch, SNES_LINESEARCH_FAILED_FUNCTION_DOMAIN));
+          snes->functiondomainerror = PETSC_FALSE;
+        } else PetscCall(SNESLineSearchSetReason(linesearch, SNES_LINESEARCH_FAILED_NANORINF));
         PetscFunctionReturn(PETSC_SUCCESS);
         break;
       }
@@ -100,14 +105,13 @@ static PetscErrorCode SNESLineSearchApply_Bisection(SNESLineSearch linesearch)
       }
 
       /* check maximum number of iterations */
-      if (it > max_its) {
+      if (it > max_it) {
         if (monitor) {
           PetscCall(PetscViewerASCIIAddTab(monitor, ((PetscObject)linesearch)->tablevel));
           PetscCall(PetscViewerASCIIPrintf(monitor, "      Line search: maximum iterations reached\n"));
           PetscCall(PetscViewerASCIISubtractTab(monitor, ((PetscObject)linesearch)->tablevel));
         }
         PetscCall(SNESLineSearchSetReason(linesearch, SNES_LINESEARCH_FAILED_REDUCT));
-        PetscFunctionReturn(PETSC_SUCCESS);
         break;
       }
 
@@ -176,29 +180,30 @@ static PetscErrorCode SNESLineSearchApply_Bisection(SNESLineSearch linesearch)
   PetscCall(VecCopy(W, X));
   PetscCall((*linesearch->ops->snesfunc)(snes, X, F));
   PetscCall(SNESLineSearchComputeNorms(linesearch));
-
-  /* finalization */
-  PetscCall(SNESLineSearchSetReason(linesearch, SNES_LINESEARCH_SUCCEEDED));
+  PetscCall(SNESLineSearchGetNorms(linesearch, NULL, &fnorm, NULL));
+  SNESLineSearchCheckFunctionDomainError(snes, linesearch, fnorm);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*MC
    SNESLINESEARCHBISECTION - Bisection line search.
    Similar to the critical point line search, `SNESLINESEARCHCP`, the bisection line search assumes that there exists some $G(x)$ for which the `SNESFunctionFn` $F(x) = grad G(x)$.
-   This line search seeks to find the root of the directional derivative along the search direction $F^T Y$ through bisection.
+   This line search seeks to find the root of the directional derivative, that is $F(x_k - \lambda Y_k) \cdot Y_k / ||Y_k|| = 0$, along the search direction $Y_k$ through bisection.
 
    Options Database Keys:
-+  -snes_linesearch_max_it <50> - maximum number of iterations for the line search
-.  -snes_linesearch_damping <1.0> - initial trial step length on entry to the line search
-.  -snes_linesearch_rtol <1e\-8> - relative tolerance for the directional derivative
-.  -snes_linesearch_atol <1e\-6> - absolute tolerance for the directional derivative
--  -snes_linesearch_ltol <1e\-6> - minimum absolute change in lambda allowed
++  -snes_linesearch_max_it <50>   - maximum number of bisection iterations for the line search
+.  -snes_linesearch_damping <1.0> - initial `lambda` on entry to the line search
+.  -snes_linesearch_rtol <1e\-8>  - relative tolerance for the directional derivative
+.  -snes_linesearch_atol <1e\-6>  - absolute tolerance for the directional derivative
+-  -snes_linesearch_ltol <1e\-6>  - minimum absolute change in `lambda` allowed (this is an alternative to setting a maximum number of iterations)
 
    Level: intermediate
 
-   Note:
+   Notes:
+   `lambda` is the scaling of the search direction (vector) that is computed by this algorithm.
+   If there is no change of sign in the directional derivative from $\lambda=0$ to the initial `lambda` (the damping), then the initial `lambda` will be used.
+   Hence, this line search will always give a `lambda` in the interval $[0, damping]$.
    This method does NOT use the objective function if it is provided with `SNESSetObjective()`.
-   This line search will always give a step size in the interval [0, damping].
 
 .seealso: [](ch_snes), `SNESLineSearch`, `SNESLineSearchType`, `SNESLineSearchCreate()`, `SNESLineSearchSetType()`, `SNESLINESEARCHCP`
 M*/
@@ -213,9 +218,9 @@ PETSC_EXTERN PetscErrorCode SNESLineSearchCreate_Bisection(SNESLineSearch linese
   linesearch->ops->setup          = NULL;
 
   /* set default option values */
-  linesearch->max_its = 50;
-  linesearch->rtol    = 1e-8;
-  linesearch->atol    = 1e-6;
-  linesearch->ltol    = 1e-6;
+  linesearch->max_it = 50;
+  linesearch->rtol   = 1e-8;
+  linesearch->atol   = 1e-6;
+  linesearch->ltol   = 1e-6;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

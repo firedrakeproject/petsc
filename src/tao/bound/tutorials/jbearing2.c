@@ -424,7 +424,7 @@ PetscErrorCode FormHessian(Tao tao, Vec X, Mat hes, Mat Hpre, void *ptr)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode Monitor(Tao tao, void *ctx)
+PetscErrorCode Monitor(Tao tao, PetscCtx ctx)
 {
   PetscInt           its;
   PetscReal          f, gnorm, cnorm, xdiff;
@@ -436,7 +436,7 @@ PetscErrorCode Monitor(Tao tao, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode ConvergenceTest(Tao tao, void *ctx)
+PetscErrorCode ConvergenceTest(Tao tao, PetscCtx ctx)
 {
   PetscInt           its;
   PetscReal          f, gnorm, cnorm, xdiff;
@@ -503,17 +503,17 @@ PetscErrorCode ConvergenceTest(Tao tao, void *ctx)
 
    test:
       suffix: 10
-      args: -tao_monitor_short -mx 8 -my 12 -tao_type bnls -tao_gatol 1e-5 -tao_bnk_max_cg_its 3
+      args: -tao_monitor_short -mx 8 -my 12 -tao_type bnls -tao_gatol 1e-5 -tao_bnk_max_cg_its 3 -tao_bnk_cg_tao_monitor_short
       requires: !single
 
    test:
       suffix: 11
-      args: -tao_monitor_short -mx 8 -my 12 -tao_type bntr -tao_gatol 1e-5 -tao_bnk_max_cg_its 3
+      args: -tao_monitor_short -mx 8 -my 12 -tao_type bntr -tao_gatol 1e-5 -tao_bnk_max_cg_its 3 -tao_bnk_cg_tao_monitor_short
       requires: !single
 
    test:
       suffix: 12
-      args: -tao_monitor_short -mx 8 -my 12 -tao_type bntl -tao_gatol 1e-5 -tao_bnk_max_cg_its 3
+      args: -tao_monitor_short -mx 8 -my 12 -tao_type bntl -tao_gatol 1e-5 -tao_bnk_max_cg_its 3 -tao_bnk_cg_tao_monitor_short
       requires: !single
 
    test:

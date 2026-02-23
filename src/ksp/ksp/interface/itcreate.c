@@ -105,7 +105,7 @@ PetscErrorCode KSPLoad(KSP newdm, PetscViewer viewer)
 @*/
 PetscErrorCode KSPView(KSP ksp, PetscViewer viewer)
 {
-  PetscBool iascii, isbinary, isdraw, isstring;
+  PetscBool isascii, isbinary, isdraw, isstring;
 #if defined(PETSC_HAVE_SAWS)
   PetscBool issaws;
 #endif
@@ -116,14 +116,14 @@ PetscErrorCode KSPView(KSP ksp, PetscViewer viewer)
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCheckSameComm(ksp, 1, viewer, 2);
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
 #if defined(PETSC_HAVE_SAWS)
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSAWS, &issaws));
 #endif
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)ksp, viewer));
     PetscCall(PetscViewerASCIIPushTab(viewer));
     PetscTryTypeMethod(ksp, view, viewer);
@@ -149,7 +149,8 @@ PetscErrorCode KSPView(KSP ksp, PetscViewer viewer)
       PetscCall(PetscViewerASCIIPopTab(viewer));
     }
     if (ksp->dscale) PetscCall(PetscViewerASCIIPrintf(viewer, "  diagonally scaled system\n"));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  using %s norm type for convergence test\n", KSPNormTypes[ksp->normtype]));
+    if (ksp->converged == KSPConvergedSkip || ksp->normtype == KSP_NORM_NONE) PetscCall(PetscViewerASCIIPrintf(viewer, "  not checking for convergence\n"));
+    else PetscCall(PetscViewerASCIIPrintf(viewer, "  using %s norm type for convergence test\n", KSPNormTypes[ksp->normtype]));
   } else if (isbinary) {
     PetscInt    classid = KSP_FILE_CLASSID;
     MPI_Comm    comm;
@@ -406,7 +407,7 @@ PetscErrorCode KSPSetUpNorms_Private(KSP ksp, PetscBool errorifnotsupported, KSP
   best = 0;
   for (i = 0; i < KSP_NORM_MAX; i++) {
     for (j = 0; j < PC_SIDE_MAX; j++) {
-      if ((ksp->normtype == KSP_NORM_DEFAULT || ksp->normtype == i) && (ksp->pc_side == PC_SIDE_DEFAULT || ksp->pc_side == j) && (ksp->normsupporttable[i][j] > best)) {
+      if ((ksp->normtype == KSP_NORM_DEFAULT || ksp->normtype == i) && (ksp->pc_side == PC_SIDE_DEFAULT || ksp->pc_side == j) && ksp->normsupporttable[i][j] > best) {
         best  = ksp->normsupporttable[i][j];
         ibest = i;
         jbest = j;
@@ -467,6 +468,21 @@ PetscErrorCode KSPGetNormType(KSP ksp, KSPNormType *normtype)
   Level: beginner
 
   Notes:
+.vb
+  KSPSetOperators(ksp, Amat, Pmat);
+.ve
+  is the same as
+.vb
+  KSPGetPC(ksp, &pc);
+  PCSetOperators(pc, Amat, Pmat);
+.ve
+  and is equivalent to
+.vb
+  PCCreate(PetscObjectComm((PetscObject)ksp), &pc);
+  PCSetOperators(pc, Amat, Pmat);
+  KSPSetPC(ksp, pc);
+.ve
+
   If you know the operator `Amat` has a null space you can use `MatSetNullSpace()` and `MatSetTransposeNullSpace()` to supply the null
   space to `Amat` and the `KSP` solvers will automatically use that null space as needed during the solution process.
 
@@ -618,7 +634,7 @@ PetscErrorCode KSPGetOperatorsSet(KSP ksp, PetscBool *mat, PetscBool *pmat)
 
 .seealso: [](ch_ksp), `KSPPSolveFn`, `KSPSetUp()`, `KSPSolve()`, `KSPDestroy()`, `KSP`, `KSPSetPostSolve()`, `PCEISENSTAT`, `PCPreSolve()`, `PCPostSolve()`
 @*/
-PetscErrorCode KSPSetPreSolve(KSP ksp, KSPPSolveFn *presolve, void *ctx)
+PetscErrorCode KSPSetPreSolve(KSP ksp, KSPPSolveFn *presolve, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -641,7 +657,7 @@ PetscErrorCode KSPSetPreSolve(KSP ksp, KSPPSolveFn *presolve, void *ctx)
 
 .seealso: [](ch_ksp), `KSPPSolveFn`, `KSPSetUp()`, `KSPSolve()`, `KSPDestroy()`, `KSP`, `KSPSetPreSolve()`, `PCEISENSTAT`
 @*/
-PetscErrorCode KSPSetPostSolve(KSP ksp, KSPPSolveFn *postsolve, void *ctx)
+PetscErrorCode KSPSetPostSolve(KSP ksp, KSPPSolveFn *postsolve, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ksp, KSP_CLASSID, 1);
@@ -720,8 +736,8 @@ PetscErrorCode KSPGetNestLevel(KSP ksp, PetscInt *level)
 @*/
 PetscErrorCode KSPCreate(MPI_Comm comm, KSP *inksp)
 {
-  KSP   ksp;
-  void *ctx;
+  KSP      ksp;
+  PetscCtx ctx;
 
   PetscFunctionBegin;
   PetscAssertPointer(inksp, 2);
@@ -786,7 +802,7 @@ PetscErrorCode KSPCreate(MPI_Comm comm, KSP *inksp)
 - type - a known method
 
   Options Database Key:
-. -ksp_type  <method> - Sets the method; see `KSPGType` or use `-help` for a list  of available methods (for instance, cg or gmres)
+. -ksp_type  <method> - Sets the method; see `KSPType` or use `-help` for a list  of available methods (for instance, cg or gmres)
 
   Level: intermediate
 

@@ -44,13 +44,13 @@ SNES Object: 4 MPI processes
     type: bt
       interpolation: cubic
       alpha=1.000000e-04
-    maxstep=1.000000e+08, minlambda=1.000000e-12
+    maxlambda=1.000000e+00, minlambda=1.000000e-12
     tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
     maximum iterations=40
   KSP Object: 4 MPI processes
     type: gmres
-      restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-      happy breakdown tolerance 1e-30
+      restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+      happy breakdown tolerance=1e-30
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
@@ -66,7 +66,7 @@ SNES Object: 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_coarse_) 4 MPI processes
         type: redundant
           First (color=0) of 4 PCs follows
@@ -75,7 +75,7 @@ SNES Object: 4 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (mg_coarse_redundant_) 1 MPI process
             type: lu
               out-of-place factorization
@@ -83,21 +83,21 @@ SNES Object: 4 MPI processes
               using diagonal shift on blocks to prevent zero pivot [INBLOCKS]
               matrix ordering: nd
               factor fill ratio given 5., needed 1.875
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (mg_coarse_redundant_) 1 MPI process
                     type: seqaij
                     rows=64, cols=64, bs=4
                     package used to perform factorization: petsc
                     total: nonzeros=1920, allocated nonzeros=1920
                       using I-node routines: found 16 nodes, limit used is 5
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: 1 MPI process
               type: seqaij
               rows=64, cols=64, bs=4
               total: nonzeros=1024, allocated nonzeros=1024
               total number of mallocs used during MatSetValues calls=0
                 using I-node routines: found 16 nodes, limit used is 5
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 4 MPI processes
           type: mpiaij
           rows=64, cols=64, bs=4
@@ -112,8 +112,8 @@ SNES Object: 4 MPI processes
           eigenvalues estimated using gmres with transform: [0. 0.1; 0. 1.1]
           KSP Object: (mg_levels_1_esteig_) 4 MPI processes
             type: gmres
-              restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-              happy breakdown tolerance 1e-30
+              restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+              happy breakdown tolerance=1e-30
             maximum iterations=10, initial guess is zero
             tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
             left preconditioning
@@ -122,11 +122,11 @@ SNES Object: 4 MPI processes
         maximum iterations=2, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_1_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 4 MPI processes
           type: mpiaij
           rows=196, cols=196, bs=4
@@ -142,8 +142,8 @@ SNES Object: 4 MPI processes
           eigenvalues estimated using gmres with transform: [0. 0.1; 0. 1.1]
           KSP Object: (mg_levels_2_esteig_) 4 MPI processes
             type: gmres
-              restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-              happy breakdown tolerance 1e-30
+              restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+              happy breakdown tolerance=1e-30
             maximum iterations=10, initial guess is zero
             tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
             left preconditioning
@@ -152,11 +152,11 @@ SNES Object: 4 MPI processes
         maximum iterations=2, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_2_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 4 MPI processes
           type: mpiaij
           rows=676, cols=676, bs=4
@@ -172,8 +172,8 @@ SNES Object: 4 MPI processes
           eigenvalues estimated using gmres with transform: [0. 0.1; 0. 1.1]
           KSP Object: (mg_levels_3_esteig_) 4 MPI processes
             type: gmres
-              restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-              happy breakdown tolerance 1e-30
+              restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+              happy breakdown tolerance=1e-30
             maximum iterations=10, initial guess is zero
             tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
             left preconditioning
@@ -182,11 +182,11 @@ SNES Object: 4 MPI processes
         maximum iterations=2, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_3_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 4 MPI processes
           type: mpiaij
           rows=2500, cols=2500, bs=4
@@ -202,8 +202,8 @@ SNES Object: 4 MPI processes
           eigenvalues estimated using gmres with transform: [0. 0.1; 0. 1.1]
           KSP Object: (mg_levels_4_esteig_) 4 MPI processes
             type: gmres
-              restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-              happy breakdown tolerance 1e-30
+              restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+              happy breakdown tolerance=1e-30
             maximum iterations=10, initial guess is zero
             tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
             left preconditioning
@@ -212,11 +212,11 @@ SNES Object: 4 MPI processes
         maximum iterations=2, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_4_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 4 MPI processes
           type: mpiaij
           rows=9604, cols=9604, bs=4
@@ -232,8 +232,8 @@ SNES Object: 4 MPI processes
           eigenvalues estimated using gmres with transform: [0. 0.1; 0. 1.1]
           KSP Object: (mg_levels_5_esteig_) 4 MPI processes
             type: gmres
-              restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-              happy breakdown tolerance 1e-30
+              restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+              happy breakdown tolerance=1e-30
             maximum iterations=10, initial guess is zero
             tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
             left preconditioning
@@ -242,18 +242,18 @@ SNES Object: 4 MPI processes
         maximum iterations=2, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_5_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 4 MPI processes
           type: mpiaij
           rows=37636, cols=37636, bs=4
           total: nonzeros=746512, allocated nonzeros=746512
           total number of mallocs used during MatSetValues calls=0
     Up solver (post-smoother) same as down solver (pre-smoother)
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 4 MPI processes
       type: mpiaij
       rows=37636, cols=37636, bs=4

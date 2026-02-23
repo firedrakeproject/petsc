@@ -246,8 +246,6 @@ static PetscErrorCode TSStep_Mimex(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 static PetscErrorCode TSSetUp_Mimex(TS ts)
 {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
@@ -275,7 +273,6 @@ static PetscErrorCode TSDestroy_Mimex(TS ts)
   PetscCall(PetscFree(ts->data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-/*------------------------------------------------------------*/
 
 static PetscErrorCode TSSetFromOptions_Mimex(TS ts, PetscOptionItems PetscOptionsObject)
 {
@@ -293,11 +290,11 @@ static PetscErrorCode TSSetFromOptions_Mimex(TS ts, PetscOptionItems PetscOption
 static PetscErrorCode TSView_Mimex(TS ts, PetscViewer viewer)
 {
   TS_Mimex *mimex = (TS_Mimex *)ts->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  Version = %" PetscInt_FMT "\n", mimex->version));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  Version = %" PetscInt_FMT "\n", mimex->version));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -317,7 +314,6 @@ static PetscErrorCode TSComputeLinearStability_Mimex(TS ts, PetscReal xr, PetscR
   *yi = xi;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-/* ------------------------------------------------------------ */
 
 /*MC
       TSMIMEX - ODE solver using the explicit forward Mimex method

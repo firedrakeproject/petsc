@@ -1,37 +1,34 @@
-!
-!  These are Fortran interfaces that are custom hand coded because
-!  they cannot currently be generated automatically
-!
+interface
+  subroutine PetscLayoutRestoreRanges(map, ranges, ierr)
+    use, intrinsic :: ISO_C_binding
+    import tPetscLayout
+    PetscLayout map
+    PetscInt, pointer :: ranges(:)
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
 
-      Interface
-        Subroutine PetscLayoutRestoreRanges(a,b,z)
-      use, intrinsic :: ISO_C_binding
-          import tPetscLayout
-          PetscLayout a
-          PetscInt, pointer :: b(:)
-          PetscErrorCode  z
-        End Subroutine
-      End Interface
+  subroutine PetscSectionRestoreConstraintIndices(s, point, indices, ierr)
+    use, intrinsic :: ISO_C_binding
+    import tPetscSection
+    PetscInt point
+    PetscInt, pointer :: indices(:)
+    PetscErrorCode, intent(out) :: ierr
+    PetscSection s
+  end subroutine
 
-      Interface
-      Subroutine PetscSectionRestoreConstraintIndices(s,p,a,ierr)
-      use, intrinsic :: ISO_C_binding
-          import tPetscSection
-          PetscInt p
-          PetscInt, pointer :: a(:)
-          PetscErrorCode  ierr
-          PetscSection       s
-        End Subroutine
-      End Interface
+  subroutine PetscSectionRestoreFieldConstraintIndices(s, point, field, indices, ierr)
+    use, intrinsic :: ISO_C_binding
+    import tPetscSection
+    PetscSection      :: s
+    PetscInt          :: point
+    PetscInt          :: field
+    PetscInt, pointer :: indices(:)
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
+end interface
 
-      Interface
-        Subroutine PetscSectionRestoreFieldConstraintIndices(s,p,f,a,ierr)
-      use, intrinsic :: ISO_C_binding
-          import tPetscSection
-          PetscSection      :: s
-          PetscInt          :: p
-          PetscInt          :: f
-          PetscInt, pointer :: a(:)
-          PetscErrorCode    :: ierr
-        End Subroutine
-      End Interface
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PetscLayoutRestoreRanges
+!DEC$ ATTRIBUTES DLLEXPORT::PetscSectionRestoreConstraintIndices
+!DEC$ ATTRIBUTES DLLEXPORT::PetscSectionRestoreFieldConstraintIndices
+#endif

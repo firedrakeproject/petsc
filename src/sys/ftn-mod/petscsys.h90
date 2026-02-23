@@ -1,124 +1,116 @@
-      Interface
-       Subroutine PetscPrintf(m,c,ierr)
-      use, intrinsic :: ISO_C_binding
-          MPI_Comm :: m
-          character(len=*) :: c
-          PetscErrorCode :: ierr
-       End Subroutine
+interface
+  subroutine PetscPrintf(comm, msg, ierr)
+    use, intrinsic :: ISO_C_binding
+    use petscmpi
+    MPIU_Comm :: comm
+    character(len=*) :: msg
+    PetscErrorCode :: ierr
+  end subroutine
+
+  subroutine PetscSynchronizedPrintf(comm, msg, ierr)
+    use, intrinsic :: ISO_C_binding
+    use petscmpi
+    MPIU_Comm :: comm
+    character(len=*) :: msg
+    PetscErrorCode :: ierr
+  end subroutine
 
 #if defined(PETSC_HAVE_FORTRAN_FREE_LINE_LENGTH_NONE)
-      subroutine PetscErrorf(ierr,line,file)
-      use, intrinsic :: ISO_C_binding
-       PetscErrorCode, intent(in) :: ierr
-       integer, intent(in) ::  line
-       character(*) file
-      end Subroutine PetscErrorf
+  subroutine PetscErrorf(ierr, line, file)
+    use, intrinsic :: ISO_C_binding
+    PetscErrorCode, intent(in) :: ierr
+    integer, intent(in) ::  line
+    character(*) file
+  end subroutine
 
-      subroutine PetscErrorMPI(ierr,line,file)
-      use, intrinsic :: ISO_C_binding
-       PetscErrorCode, intent(inout) :: ierr
-       integer, intent(in) ::  line
-       character(*) file
-      end Subroutine PetscErrorMPI
+  subroutine PetscErrorMPI(ierr, line, file)
+    use, intrinsic :: ISO_C_binding
+    PetscErrorCode, intent(inout) :: ierr
+    integer, intent(in) ::  line
+    character(*) file
+  end subroutine
 #else
-      subroutine PetscErrorf(ierr)
-      use, intrinsic :: ISO_C_binding
-       PetscErrorCode, intent(in) :: ierr
-      end Subroutine PetscErrorf
+  subroutine PetscErrorf(ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscErrorCode, intent(in) :: ierr
+  end subroutine
 
-      subroutine PetscErrorMPI(ierr)
-      use, intrinsic :: ISO_C_binding
-       PetscErrorCode, intent(inout) :: ierr
-      end Subroutine PetscErrorMPI
+  subroutine PetscErrorMPI(ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscErrorCode, intent(inout) :: ierr
+  end subroutine
 #endif
 
-      subroutine MPIU_abort(comm,ierr)
-      use, intrinsic :: ISO_C_binding
-      MPI_Comm,intent(in) ::  comm
-      PetscErrorCode,intent(in) ::  ierr
-      end subroutine
+  subroutine MPIU_abort(comm, ierr)
+    use, intrinsic :: ISO_C_binding
+    use petscmpi
+    MPIU_Comm, intent(in) ::  comm
+    PetscErrorCode, intent(in) ::  ierr
+  end subroutine
 
-      subroutine PetscViewerASCIIStdoutSetFileUnit(unit,z)
-      use, intrinsic :: ISO_C_binding
-        integer4 unit
-        PetscErrorCode,intent(out) :: z
-      end subroutine
+  subroutine PetscViewerASCIIStdoutSetFileUnit(unit, ierr)
+    use, intrinsic :: ISO_C_binding
+    integer4 unit
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
 
-      subroutine PetscLogEventBegin(event,ierr)
-      use, intrinsic :: ISO_C_binding
-        PetscLogEvent, intent(in) :: event
-        PetscErrorCode, intent(out) :: ierr
-      end subroutine PetscLogEventBegin
+  subroutine PetscLogEventBegin(event, ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscLogEvent, intent(in) :: event
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
 
-      subroutine PetscLogEventEnd(event,ierr)
-      use, intrinsic :: ISO_C_binding
-        PetscLogEvent, intent(in) :: event
-        PetscErrorCode, intent(out) :: ierr
-      end subroutine PetscLogEventEnd
-      end Interface
+  subroutine PetscLogEventEnd(event, ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscLogEvent, intent(in) :: event
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
 
-      Interface
-      function PetscASend(c, d) bind(c,name='PetscASend') result(i)
-          use,intrinsic :: iso_c_binding
-          implicit none
-          integer(c_int), value :: c
-          integer(c_int), value :: d
-          integer(c_int)        :: i
-      end function PetscASend
+  subroutine PetscIntArray1dDestroy(a, ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscInt, pointer :: a(:)
+    PetscErrorCode    :: ierr
+  end subroutine
 
-      function PetscARecv(c, d) bind(c,name='PetscARecv') result(i)
-          use,intrinsic :: iso_c_binding
-          implicit none
-          integer(c_int), value :: c
-          integer(c_int), value :: d
-          integer(c_int)        :: i
-      end function PetscARecv
+  subroutine PetscShmgetAllocateArrayScalar(start, len, d1, ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscInt :: start, len
+    PetscScalar, pointer :: d1(:)
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
 
-      function PetscAReduce() bind(c,name='PetscAReduce') result(i)
-          use,intrinsic :: iso_c_binding
-          implicit none
-          integer(c_int) :: i
-      end function PetscAReduce
-      end Interface
+  subroutine PetscShmgetDeallocateArrayScalar(d1, ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscScalar, pointer :: d1(:)
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
 
-      Interface
-        Subroutine PetscIntArray1dDestroy(a,ierr)
-      use, intrinsic :: ISO_C_binding
-          PetscInt, Pointer :: a(:)
-          PetscErrorCode    :: ierr
-        End Subroutine
-      End Interface
+  subroutine PetscShmgetAllocateArrayInt(start, len, d1, ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscInt :: start, len
+    PetscInt, pointer :: d1(:)
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
 
-      Interface PetscShmgetAllocateArrayScalar
-        Subroutine PetscShmgetAllocateArrayScalar(start, len, d1, ierr)
-      use, intrinsic :: ISO_C_binding
-          PetscInt :: start, len
-          PetscScalar, pointer :: d1(:)
-          PetscErrorCode ierr
-        End Subroutine
-      End Interface
+  subroutine PetscShmgetDeallocateArrayInt(d1, ierr)
+    use, intrinsic :: ISO_C_binding
+    PetscInt, pointer :: d1(:)
+    PetscErrorCode, intent(out) :: ierr
+  end subroutine
+end interface
 
-      Interface PetscShmgetDeallocateArrayScalar
-        Subroutine PetscShmgetDeallocateArrayScalar(d1, ierr)
-      use, intrinsic :: ISO_C_binding
-          PetscScalar, pointer :: d1(:)
-          PetscErrorCode ierr
-        End Subroutine
-      End Interface
-
-      Interface PetscShmgetAllocateArrayInt
-        Subroutine PetscShmgetAllocateArrayInt(start, len, d1, ierr)
-      use, intrinsic :: ISO_C_binding
-          PetscInt :: start, len
-          PetscInt, pointer :: d1(:)
-          PetscErrorCode ierr
-        End Subroutine
-      End Interface
-
-      Interface PetscShmgetDeallocateArrayInt
-        Subroutine PetscShmgetDeallocateArrayInt(d1, ierr)
-      use, intrinsic :: ISO_C_binding
-          PetscInt, pointer :: d1(:)
-          PetscErrorCode ierr
-        End Subroutine
-      End Interface
+#if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
+!DEC$ ATTRIBUTES DLLEXPORT::PetscPrintf
+!DEC$ ATTRIBUTES DLLEXPORT::PetscSynchronizedPrintf
+!DEC$ ATTRIBUTES DLLEXPORT::PetscErrorf
+!DEC$ ATTRIBUTES DLLEXPORT::PetscErrorMPI
+!DEC$ ATTRIBUTES DLLEXPORT::MPIU_abort
+!DEC$ ATTRIBUTES DLLEXPORT::PetscViewerASCIIStdoutSetFileUnit
+!DEC$ ATTRIBUTES DLLEXPORT::PetscLogEventBegin
+!DEC$ ATTRIBUTES DLLEXPORT::PetscLogEventEnd
+!DEC$ ATTRIBUTES DLLEXPORT::PetscIntArray1dDestroy
+!DEC$ ATTRIBUTES DLLEXPORT::PetscShmgetAllocateArrayScalar
+!DEC$ ATTRIBUTES DLLEXPORT::PetscShmgetDeallocateArrayScalar
+!DEC$ ATTRIBUTES DLLEXPORT::PetscShmgetAllocateArrayInt
+!DEC$ ATTRIBUTES DLLEXPORT::PetscShmgetDeallocateArrayInt
+#endif

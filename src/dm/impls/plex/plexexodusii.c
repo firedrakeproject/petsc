@@ -1,4 +1,3 @@
-#define PETSCDM_DLL
 #include <petsc/private/dmpleximpl.h> /*I   "petscdmplex.h"   I*/
 #include <petsc/private/viewerimpl.h>
 
@@ -26,7 +25,7 @@ PetscErrorCode PetscViewerExodusIIGetId(PetscViewer viewer, int *exoid)
 }
 
 /*@
-  PetscViewerExodusIISetOrder - Set the elements order in the exodusII file.
+  PetscViewerExodusIISetOrder - Set the elements order in the ExodusII file.
 
   Collective
 
@@ -49,7 +48,7 @@ PetscErrorCode PetscViewerExodusIISetOrder(PetscViewer viewer, PetscInt order)
 }
 
 /*@
-  PetscViewerExodusIIGetOrder - Get the elements order in the exodusII file.
+  PetscViewerExodusIIGetOrder - Get the elements order in the ExodusII file.
 
   Collective
 

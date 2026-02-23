@@ -113,13 +113,13 @@ static PetscMPIInt MPIU_Iallreduce(void *sendbuf, void *recvbuf, PetscMPIInt cou
 
 static PetscErrorCode KSPView_PIPELCG(KSP ksp, PetscViewer viewer)
 {
-  KSP_CG_PIPE_L *plcg   = (KSP_CG_PIPE_L *)ksp->data;
-  PetscBool      iascii = PETSC_FALSE, isstring = PETSC_FALSE;
+  KSP_CG_PIPE_L *plcg    = (KSP_CG_PIPE_L *)ksp->data;
+  PetscBool      isascii = PETSC_FALSE, isstring = PETSC_FALSE;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Pipeline depth: %" PetscInt_FMT "\n", plcg->l));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Minimal eigenvalue estimate %g\n", (double)plcg->lmin));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Maximal eigenvalue estimate %g\n", (double)plcg->lmax));
@@ -189,7 +189,7 @@ static PetscErrorCode KSPSolve_InnerLoop_PIPELCG(KSP ksp)
       /* MPI_Wait until the dot products,started l iterations ago,are completed */
       PetscCallMPI(MPI_Wait(&req(it - l + 1), MPI_STATUS_IGNORE));
       if (it >= 2 * l) {
-        for (j = PetscMax(0, it - 3 * l + 1); j <= it - 2 * l; j++) { G(j, it - l + 1) = G(it - 2 * l + 1, j + l); /* exploit symmetry in G matrix */ }
+        for (j = PetscMax(0, it - 3 * l + 1); j <= it - 2 * l; j++) G(j, it - l + 1) = G(it - 2 * l + 1, j + l); /* exploit symmetry in G matrix */
       }
 
       if (it <= 2 * l - 1) {
@@ -296,8 +296,8 @@ static PetscErrorCode KSPSolve_InnerLoop_PIPELCG(KSP ksp)
     } else if ((it >= l) && (it < max_it)) {
       middle = it - l + 2;
       end    = it + 2;
-      PetscCall((*U[0]->ops->dot_local)(U[0], V[0], &G(it - l + 1, it + 1))); /* dot-product (U[0],V[0]) */
-      for (j = middle; j < end; ++j) { PetscCall((*U[0]->ops->dot_local)(U[0], plcg->Z[it + 1 - j], &G(j, it + 1))); /* dot-products (U[0],Z[j]) */ }
+      PetscCall((*U[0]->ops->dot_local)(U[0], V[0], &G(it - l + 1, it + 1)));                                      /* dot-product (U[0],V[0]) */
+      for (j = middle; j < end; ++j) PetscCall((*U[0]->ops->dot_local)(U[0], plcg->Z[it + 1 - j], &G(j, it + 1))); /* dot-products (U[0],Z[j]) */
       PetscCall(PetscMPIIntCast(l + 1, &mpin));
       PetscCallMPI(MPIU_Iallreduce(MPI_IN_PLACE, &G(it - l + 1, it + 1), mpin, MPIU_SCALAR, MPIU_SUM, comm, &req(it + 1)));
     }

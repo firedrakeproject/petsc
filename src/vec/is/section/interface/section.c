@@ -328,7 +328,7 @@ PetscErrorCode PetscSectionCompare(PetscSection s1, PetscSection s2, PetscBool *
 
   flg = PETSC_TRUE;
 not_congruent:
-  PetscCallMPI(MPIU_Allreduce(&flg, congruent, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)s1)));
+  PetscCallMPI(MPIU_Allreduce(&flg, congruent, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)s1)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -624,6 +624,10 @@ PetscErrorCode PetscSectionSetFieldComponents(PetscSection s, PetscInt field, Pe
 
   Level: intermediate
 
+  Note:
+  The chart may be thought of as the bounds on the points (indices) one may use to index into numerical data that is associated with
+  the `PetscSection` data layout.
+
 .seealso: [PetscSection](ch_petscsection), `PetscSection`, `PetscSectionSetChart()`, `PetscSectionCreate()`
 @*/
 PetscErrorCode PetscSectionGetChart(PetscSection s, PetscInt *pStart, PetscInt *pEnd)
@@ -642,12 +646,15 @@ PetscErrorCode PetscSectionGetChart(PetscSection s, PetscInt *pStart, PetscInt *
 
   Input Parameters:
 + s      - the `PetscSection`
-. pStart - the first point
+. pStart - the first `point`
 - pEnd   - one past the last point, `pStart` $ \le $ `pEnd`
 
   Level: intermediate
 
   Notes:
+  The chart may be thought of as the bounds on the points (indices) one may use to index into numerical data that is associated with
+  the `PetscSection` data layout.
+
   The charts on different MPI processes may (and often do) overlap
 
   If you intend to use `PetscSectionSetNumFields()` it must be called before this call.
@@ -1114,9 +1121,8 @@ PetscErrorCode PetscSectionGetConstraintDof(PetscSection s, PetscInt point, Pets
   PetscFunctionBegin;
   PetscValidHeaderSpecific(s, PETSC_SECTION_CLASSID, 1);
   PetscAssertPointer(numDof, 3);
-  if (s->bc) {
-    PetscCall(PetscSectionGetDof(s->bc, point, numDof));
-  } else *numDof = 0;
+  if (s->bc) PetscCall(PetscSectionGetDof(s->bc, point, numDof));
+  else *numDof = 0;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -2588,14 +2594,146 @@ PetscErrorCode PetscSectionLoad(PetscSection s, PetscViewer viewer)
   PetscValidHeaderSpecific(s, PETSC_SECTION_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERHDF5, &ishdf5));
-  if (ishdf5) {
+  PetscCheck(ishdf5, PetscObjectComm((PetscObject)s), PETSC_ERR_SUP, "Viewer type %s not yet supported for PetscSection loading", ((PetscObject)viewer)->type_name);
 #if PetscDefined(HAVE_HDF5)
-    PetscCall(PetscSectionLoad_HDF5_Internal(s, viewer));
-    PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(PetscSectionLoad_HDF5_Internal(s, viewer));
+  PetscFunctionReturn(PETSC_SUCCESS);
 #else
-    SETERRQ(PetscObjectComm((PetscObject)s), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
+  SETERRQ(PetscObjectComm((PetscObject)s), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
-  } else SETERRQ(PetscObjectComm((PetscObject)s), PETSC_ERR_SUP, "Viewer type %s not yet supported for PetscSection loading", ((PetscObject)viewer)->type_name);
+}
+
+static inline PetscErrorCode PrintArrayElement(void *array, PetscDataType data_type, PetscCount index, PetscViewer viewer)
+{
+  PetscFunctionBeginUser;
+  switch (data_type) {
+  case PETSC_INT: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %2" PetscInt_FMT, ((PetscInt *)array)[index]));
+    break;
+  }
+  case PETSC_INT32: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %2" PetscInt32_FMT, ((PetscInt32 *)array)[index]));
+    break;
+  }
+  case PETSC_INT64: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %2" PetscInt64_FMT, ((PetscInt64 *)array)[index]));
+    break;
+  }
+  case PETSC_COUNT: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %2" PetscCount_FMT, ((PetscCount *)array)[index]));
+    break;
+  }
+  // PETSC_SCALAR is set to the appropriate type
+  case PETSC_DOUBLE: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %g", ((double *)array)[index]));
+    break;
+  }
+  case PETSC_FLOAT: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %g", (double)((float *)array)[index]));
+    break;
+  }
+#if defined(PETSC_USE_REAL___FLOAT128)
+  case PETSC___FLOAT128: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %g", (double)((PetscReal *)array)[index]));
+    break;
+  }
+#endif
+#if defined(PETSC_USE_REAL___FP16)
+  case PETSC___FP16: {
+    PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %g", (double)((PetscReal *)array)[index]));
+    break;
+  }
+#endif
+#if defined(PETSC_HAVE_COMPLEX)
+  case PETSC_COMPLEX: {
+    PetscComplex v = ((PetscComplex *)array)[index];
+    if (PetscImaginaryPartComplex(v) > 0.0) {
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %g + %g i", (double)PetscRealPartComplex(v), (double)PetscImaginaryPartComplex(v)));
+    } else if (PetscImaginaryPartComplex(v) < 0.0) {
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %g - %g i", (double)PetscRealPartComplex(v), (double)(-PetscImaginaryPartComplex(v))));
+    } else {
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %g", (double)PetscRealPartComplex(v)));
+    }
+    break;
+  }
+#endif
+  default:
+    SETERRQ(PetscObjectComm((PetscObject)viewer), PETSC_ERR_SUP, "PetscDataType %d (%s) not supported", data_type, PetscDataTypes[data_type]);
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode PetscSectionArrayView_ASCII_Internal(PetscSection s, void *array, PetscDataType data_type, PetscViewer viewer)
+{
+  PetscInt    p, i;
+  PetscMPIInt rank;
+
+  PetscFunctionBegin;
+  PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)viewer), &rank));
+  PetscCall(PetscViewerASCIIPushSynchronized(viewer));
+  PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "Process %d:\n", rank));
+  for (p = 0; p < s->pEnd - s->pStart; ++p) {
+    if (s->bc && (s->bc->atlasDof[p] > 0)) {
+      PetscInt b;
+
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "  (%4" PetscInt_FMT ") dof %2" PetscInt_FMT " offset %3" PetscInt_FMT, p + s->pStart, s->atlasDof[p], s->atlasOff[p]));
+      for (i = s->atlasOff[p]; i < s->atlasOff[p] + s->atlasDof[p]; ++i) PetscCall(PrintArrayElement(array, data_type, i, viewer));
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " constrained"));
+      for (b = 0; b < s->bc->atlasDof[p]; ++b) PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, " %" PetscInt_FMT, s->bcIndices[s->bc->atlasOff[p] + b]));
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "\n"));
+    } else {
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "  (%4" PetscInt_FMT ") dof %2" PetscInt_FMT " offset %3" PetscInt_FMT, p + s->pStart, s->atlasDof[p], s->atlasOff[p]));
+      for (i = s->atlasOff[p]; i < s->atlasOff[p] + s->atlasDof[p]; ++i) PetscCall(PrintArrayElement(array, data_type, i, viewer));
+      PetscCall(PetscViewerASCIISynchronizedPrintf(viewer, "\n"));
+    }
+  }
+  PetscCall(PetscViewerFlush(viewer));
+  PetscCall(PetscViewerASCIIPopSynchronized(viewer));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  PetscSectionArrayView - View an array, using the section to structure the values
+
+  Collective
+
+  Input Parameters:
++ s         - the organizing `PetscSection`
+. array     - the array of values
+. data_type - the `PetscDataType` of the array
+- viewer    - the `PetscViewer`
+
+  Level: developer
+
+.seealso: `PetscSection`, `PetscViewer`, `PetscSectionCreate()`, `VecSetValuesSection()`, `PetscSectionVecView()`
+@*/
+PetscErrorCode PetscSectionArrayView(PetscSection s, void *array, PetscDataType data_type, PetscViewer viewer)
+{
+  PetscBool isascii;
+  PetscInt  f;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(s, PETSC_SECTION_CLASSID, 1);
+  if (!array) {
+    PetscInt size;
+    PetscCall(PetscSectionGetStorageSize(s, &size));
+    PetscCheck(size == 0, PetscObjectComm((PetscObject)s), PETSC_ERR_ARG_SIZ, "NULL array passed, but section's storage size is non-zero");
+  } else PetscAssertPointer(array, 2);
+  if (!viewer) PetscCall(PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)s), &viewer));
+  PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 4);
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
+    if (s->numFields) {
+      PetscCall(PetscViewerASCIIPrintf(viewer, "Array with %" PetscInt_FMT " fields\n", s->numFields));
+      for (f = 0; f < s->numFields; ++f) {
+        PetscCall(PetscViewerASCIIPrintf(viewer, "  field %" PetscInt_FMT " with %" PetscInt_FMT " components\n", f, s->numFieldComponents[f]));
+        PetscCall(PetscSectionArrayView_ASCII_Internal(s->field[f], array, data_type, viewer));
+      }
+    } else {
+      PetscCall(PetscSectionArrayView_ASCII_Internal(s, array, data_type, viewer));
+    }
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
@@ -2839,9 +2977,8 @@ PetscErrorCode PetscSectionGetConstraintIndices(PetscSection s, PetscInt point, 
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(s, PETSC_SECTION_CLASSID, 1);
-  if (s->bc) {
-    PetscCall(VecIntGetValuesSection_Private(s->bcIndices, s->bc, point, indices));
-  } else *indices = NULL;
+  if (s->bc) PetscCall(VecIntGetValuesSection_Private(s->bcIndices, s->bc, point, indices));
+  else *indices = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -3576,9 +3713,9 @@ PetscErrorCode PetscSectionGetFieldSym(PetscSection section, PetscInt field, Pet
        PetscSectionGetDof(section,point,&dof);
        PetscSectionGetOffset(section,point,&sOffset);
 
-       if (perm) {for (j = 0; j < dof; j++) {lArray[lOffset + perm[j]]  = sArray[sOffset + j];}}
-       else      {for (j = 0; j < dof; j++) {lArray[lOffset +      j ]  = sArray[sOffset + j];}}
-       if (rot)  {for (j = 0; j < dof; j++) {lArray[lOffset +      j ] *= rot[j];             }}
+       if (perm) { for (j = 0; j < dof; j++) lArray[lOffset + perm[j]]  = sArray[sOffset + j]; }
+       else      { for (j = 0; j < dof; j++) lArray[lOffset +      j ]  = sArray[sOffset + j]; }
+       if (rot)  { for (j = 0; j < dof; j++) lArray[lOffset +      j ] *= rot[j];              }
        lOffset += dof;
      }
      PetscSectionRestorePointSyms(section,numPoints,points,&perms,&rots);
@@ -3599,8 +3736,8 @@ PetscErrorCode PetscSectionGetFieldSym(PetscSection section, PetscInt field, Pet
        PetscSectionGetDof(section,point,&dof);
        PetscSectionGetOffset(section,point,&sOff);
 
-       if (perm) {for (j = 0; j < dof; j++) {sArray[sOffset + j] += lArray[lOffset + perm[j]] * (rot ? PetscConj(rot[perm[j]]) : 1.);}}
-       else      {for (j = 0; j < dof; j++) {sArray[sOffset + j] += lArray[lOffset +      j ] * (rot ? PetscConj(rot[     j ]) : 1.);}}
+       if (perm) { for (j = 0; j < dof; j++) sArray[sOffset + j] += lArray[lOffset + perm[j]] * (rot ? PetscConj(rot[perm[j]]) : 1.); }
+       else      { for (j = 0; j < dof; j++) sArray[sOffset + j] += lArray[lOffset +      j ] * (rot ? PetscConj(rot[     j ]) : 1.); }
        offset += dof;
      }
      PetscSectionRestorePointSyms(section,numPoints,points,&perms,&rots);
@@ -3927,5 +4064,70 @@ PetscErrorCode PetscSectionExtractDofsFromArray(PetscSection origSection, MPI_Da
     PetscCall(PetscSectionDestroy(&s));
   }
   PetscCall(ISRestoreIndices(points, &points_));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@
+  PetscSectionMigrateData - Migrate data described by a `PetscSection` using a `PetscSF` that defines a original-to-new (root-to-leaf) point mapping
+
+  Collective
+
+  Input Parameters:
++ migratePointSF - defines the mapping (communication) of the root points to the leaf points
+. datatype       - the type of data
+. rootSection    - the `PetscSection` that describes the data layout on the root points (how many dof and what fields are associated with each root point)
+- rootData       - the existing data array described by `rootSection`, may be `NULL` is storage size of `rootSection` is zero
+
+  Output Parameters:
++ leafSection   - the new `PetscSection` that describes the data layout on the leaf points
+. leafData      - the redistributed data array that is associated with the leaf points
+- migrateDataSF - defines the mapping (communication) of the `rootData` array to the `leafData` array, may be `NULL` if not needed
+
+  Level: advanced
+
+  Notes:
+  This function can best be thought of as applying `PetscSFBcastBegin()` to an array described by a `PetscSection`.
+  While `PetscSFBcastBegin()` is limited to broadcasting data that is of the same size for every index, this function allows the data to be a different size for each index.
+  The size and layout of that irregularly sized data before and after `PetscSFBcastBegin()` is described by the `rootSection` and `leafSection`, respectively.
+
+  This function combines `PetscSFDistributeSection()`, `PetscSFCreateSectionSF()`, and `PetscSFBcastBegin()`/`PetscSFBcastEnd()` into a single call.
+  `migrateDataSF` can be used to repeat the `PetscSFBcastBegin()`/`PetscSFBcastEnd()` on a different data array described by the same `rootSection`.
+
+  This should not be used for global-to-local type communciation patterns.
+  For this use case, see `PetscSectionCreateGlobalSection()` and `PetscSFSetGraphSection()`.
+
+.seealso: [PetscSection](ch_petscsection), `PetscSection`, `PetscSFDistributeSection()`, `PetscSFCreateSectionSF()`, `DMPlexDistributeData()`
+@*/
+PetscErrorCode PetscSectionMigrateData(PetscSF migratePointSF, MPI_Datatype datatype, PetscSection rootSection, const void *rootData, PetscSection leafSection, void *leafData[], PetscSF *migrateDataSF)
+{
+  PetscSF     fieldSF;
+  PetscInt   *remoteOffsets, fieldSize;
+  PetscMPIInt dataSize;
+
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(migratePointSF, PETSCSF_CLASSID, 1);
+  PetscValidHeaderSpecific(rootSection, PETSC_SECTION_CLASSID, 3);
+  if (rootData) PetscAssertPointer(rootData, 4);
+  else {
+    PetscInt size;
+    PetscCall(PetscSectionGetStorageSize(rootSection, &size));
+    PetscCheck(size == 0, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "originalData may be NULL iff the storage size of originalSection is zero, but is %" PetscInt_FMT, size);
+  }
+  PetscValidHeaderSpecific(leafSection, PETSC_SECTION_CLASSID, 5);
+  PetscAssertPointer(leafData, 6);
+  if (migrateDataSF) PetscAssertPointer(migrateDataSF, 7);
+
+  PetscCall(PetscSFDistributeSection(migratePointSF, rootSection, &remoteOffsets, leafSection));
+  PetscCall(PetscSFCreateSectionSF(migratePointSF, rootSection, remoteOffsets, leafSection, &fieldSF));
+  PetscCall(PetscFree(remoteOffsets));
+
+  PetscCall(PetscSectionGetStorageSize(leafSection, &fieldSize));
+  PetscCallMPI(MPI_Type_size(datatype, &dataSize));
+  PetscCall(PetscMalloc(fieldSize * dataSize, leafData));
+  PetscCall(PetscSFBcastBegin(fieldSF, datatype, rootData, *leafData, MPI_REPLACE));
+  PetscCall(PetscSFBcastEnd(fieldSF, datatype, rootData, *leafData, MPI_REPLACE));
+
+  if (migrateDataSF) *migrateDataSF = fieldSF;
+  else PetscCall(PetscSFDestroy(&fieldSF));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

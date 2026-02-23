@@ -3,8 +3,8 @@ import config.package
 class Configure(config.package.Package):
   def __init__(self,framework):
     config.package.Package.__init__(self,framework)
-    self.version                = '2.3.4'
-    self.gitcommit              = 'v'+self.version # main aug-02-2025
+    self.version                = '2.3.5'
+    self.gitcommit              = '87ea17ced9fb56b90ab45298489116883743fd15' # main feb-19-2026 'v'+self.version # main sep-27-2025
     self.download               = ['git://https://github.com/hpddm/hpddm','https://github.com/hpddm/hpddm/archive/'+self.gitcommit+'.tar.gz']
     self.minversion             = '2.2.1'
     self.versionname            = 'HPDDM_VERSION'
@@ -51,11 +51,7 @@ class Configure(config.package.Package):
       prefix     = os.path.join(self.petscdir.dir,self.arch)
     incDir = os.path.join(prefix,'include')
     libDir = os.path.join(prefix,self.libDirs[0])
-    self.addMakeMacro('HPDDM','yes')
     self.include = [incDir]
-    if not hasattr(self.framework,'packages'):
-      self.framework.packages = []
-    self.framework.packages.append(self)
     try:
       self.logPrintBox('Copying HPDDM; this may take several seconds')
       output,err,ret = config.package.Package.executeShellCommand(['cp','-rf',os.path.join(self.packageDir,'include'),prefix],timeout=100,log=self.log) # cannot use shutil.copytree since target directory likely exists

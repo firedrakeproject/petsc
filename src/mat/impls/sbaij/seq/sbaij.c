@@ -28,60 +28,12 @@
 #if defined(PETSC_HAVE_ELEMENTAL)
 PETSC_INTERN PetscErrorCode MatConvert_SeqSBAIJ_Elemental(Mat, MatType, MatReuse, Mat *);
 #endif
-#if defined(PETSC_HAVE_SCALAPACK)
+#if defined(PETSC_HAVE_SCALAPACK) && (defined(PETSC_USE_REAL_SINGLE) || defined(PETSC_USE_REAL_DOUBLE))
 PETSC_INTERN PetscErrorCode MatConvert_SBAIJ_ScaLAPACK(Mat, MatType, MatReuse, Mat *);
 #endif
 PETSC_INTERN PetscErrorCode MatConvert_MPISBAIJ_Basic(Mat, MatType, MatReuse, Mat *);
 
-/*
-     Checks for missing diagonals
-*/
-static PetscErrorCode MatMissingDiagonal_SeqSBAIJ(Mat A, PetscBool *missing, PetscInt *dd)
-{
-  Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A->data;
-  PetscInt     *diag, *ii = a->i, i;
-
-  PetscFunctionBegin;
-  PetscCall(MatMarkDiagonal_SeqSBAIJ(A));
-  *missing = PETSC_FALSE;
-  if (A->rmap->n > 0 && !ii) {
-    *missing = PETSC_TRUE;
-    if (dd) *dd = 0;
-    PetscCall(PetscInfo(A, "Matrix has no entries therefore is missing diagonal\n"));
-  } else {
-    diag = a->diag;
-    for (i = 0; i < a->mbs; i++) {
-      if (diag[i] >= ii[i + 1]) {
-        *missing = PETSC_TRUE;
-        if (dd) *dd = i;
-        break;
-      }
-    }
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-PetscErrorCode MatMarkDiagonal_SeqSBAIJ(Mat A)
-{
-  Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A->data;
-  PetscInt      i, j;
-
-  PetscFunctionBegin;
-  if (!a->diag) {
-    PetscCall(PetscMalloc1(a->mbs, &a->diag));
-    a->free_diag = PETSC_TRUE;
-  }
-  for (i = 0; i < a->mbs; i++) {
-    a->diag[i] = a->i[i + 1];
-    for (j = a->i[i]; j < a->i[i + 1]; j++) {
-      if (a->j[j] == i) {
-        a->diag[i] = j;
-        break;
-      }
-    }
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
+MatGetDiagonalMarkers(SeqSBAIJ, A->rmap->bs)
 
 static PetscErrorCode MatGetRowIJ_SeqSBAIJ(Mat A, PetscInt oshift, PetscBool symmetric, PetscBool blockcompressed, PetscInt *nn, const PetscInt *inia[], const PetscInt *inja[], PetscBool *done)
 {
@@ -186,7 +138,7 @@ PetscErrorCode MatDestroy_SeqSBAIJ(Mat A)
   }
   PetscCall(PetscLogObjectState((PetscObject)A, "Rows=%" PetscInt_FMT ", NZ=%" PetscInt_FMT, A->rmap->N, a->nz));
   PetscCall(MatSeqXAIJFreeAIJ(A, &a->a, &a->j, &a->i));
-  if (a->free_diag) PetscCall(PetscFree(a->diag));
+  PetscCall(PetscFree(a->diag));
   PetscCall(ISDestroy(&a->row));
   PetscCall(ISDestroy(&a->col));
   PetscCall(ISDestroy(&a->icol));
@@ -216,7 +168,7 @@ PetscErrorCode MatDestroy_SeqSBAIJ(Mat A)
 #if defined(PETSC_HAVE_ELEMENTAL)
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatConvert_seqsbaij_elemental_C", NULL));
 #endif
-#if defined(PETSC_HAVE_SCALAPACK)
+#if defined(PETSC_HAVE_SCALAPACK) && (defined(PETSC_USE_REAL_SINGLE) || defined(PETSC_USE_REAL_DOUBLE))
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatConvert_seqsbaij_scalapack_C", NULL));
 #endif
   PetscCall(PetscObjectComposeFunction((PetscObject)A, "MatFactorGetSolverType_C", NULL));
@@ -226,14 +178,8 @@ PetscErrorCode MatDestroy_SeqSBAIJ(Mat A)
 static PetscErrorCode MatSetOption_SeqSBAIJ(Mat A, MatOption op, PetscBool flg)
 {
   Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A->data;
-#if defined(PETSC_USE_COMPLEX)
-  PetscInt bs;
-#endif
 
   PetscFunctionBegin;
-#if defined(PETSC_USE_COMPLEX)
-  PetscCall(MatGetBlockSize(A, &bs));
-#endif
   switch (op) {
   case MAT_ROW_ORIENTED:
     a->roworiented = flg;
@@ -254,23 +200,21 @@ static PetscErrorCode MatSetOption_SeqSBAIJ(Mat A, MatOption op, PetscBool flg)
     a->nounused = (flg ? -1 : 0);
     break;
   case MAT_HERMITIAN:
-#if defined(PETSC_USE_COMPLEX)
-    if (flg) { /* disable transpose ops */
+    if (PetscDefined(USE_COMPLEX) && flg) { /* disable transpose ops */
+      PetscInt bs;
+
+      PetscCall(MatGetBlockSize(A, &bs));
       PetscCheck(bs <= 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "No support for Hermitian with block size greater than 1");
       A->ops->multtranspose    = NULL;
       A->ops->multtransposeadd = NULL;
-      A->symmetric             = PETSC_BOOL3_FALSE;
     }
-#endif
     break;
   case MAT_SYMMETRIC:
   case MAT_SPD:
-#if defined(PETSC_USE_COMPLEX)
-    if (flg) { /* An hermitian and symmetric matrix has zero imaginary part (restore back transpose ops) */
+    if (PetscDefined(USE_COMPLEX) && flg) { /* An Hermitian and symmetric matrix has zero imaginary part (restore back transpose ops) */
       A->ops->multtranspose    = A->ops->mult;
       A->ops->multtransposeadd = A->ops->multadd;
     }
-#endif
     break;
   case MAT_IGNORE_LOWER_TRIANGULAR:
     a->ignore_ltriangular = flg;
@@ -342,13 +286,12 @@ static PetscErrorCode MatView_SeqSBAIJ_ASCII(Mat A, PetscViewer viewer)
   Mat_SeqSBAIJ     *a = (Mat_SeqSBAIJ *)A->data;
   PetscInt          i, j, bs = A->rmap->bs, k, l, bs2 = a->bs2;
   PetscViewerFormat format;
-  PetscInt         *diag;
+  const PetscInt   *diag;
   const char       *matname;
 
   PetscFunctionBegin;
   PetscCall(PetscViewerGetFormat(viewer, &format));
   if (format == PETSC_VIEWER_ASCII_INFO || format == PETSC_VIEWER_ASCII_INFO_DETAIL) {
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  block size is %" PetscInt_FMT "\n", bs));
   } else if (format == PETSC_VIEWER_ASCII_MATLAB) {
     Mat aij;
 
@@ -375,8 +318,7 @@ static PetscErrorCode MatView_SeqSBAIJ_ASCII(Mat A, PetscViewer viewer)
     PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_FALSE));
     if (A->factortype) { /* for factored matrix */
       PetscCheck(bs <= 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "matrix is factored with bs>1. Not implemented yet");
-
-      diag = a->diag;
+      PetscCall(MatGetDiagonalMarkers_SeqSBAIJ(A, &diag, NULL));
       for (i = 0; i < a->mbs; i++) { /* for row block i */
         PetscCall(PetscViewerASCIIPrintf(viewer, "row %" PetscInt_FMT ":", i));
         /* diagonal entry */
@@ -541,13 +483,13 @@ static PetscErrorCode MatView_SeqSBAIJ_Draw(Mat A, PetscViewer viewer)
 
 PetscErrorCode MatView_SeqSBAIJ(Mat A, PetscViewer viewer)
 {
-  PetscBool iascii, isbinary, isdraw;
+  PetscBool isascii, isbinary, isdraw;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
-  if (iascii) {
+  if (isascii) {
     PetscCall(MatView_SeqSBAIJ_ASCII(A, viewer));
   } else if (isbinary) {
     PetscCall(MatView_SeqSBAIJ_Binary(A, viewer));
@@ -658,8 +600,8 @@ PetscErrorCode MatSetValuesBlocked_SeqSBAIJ(Mat A, PetscInt m, const PetscInt im
       col = in[l];
       PetscCheck(col < a->nbs, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Block index column too large %" PetscInt_FMT " max %" PetscInt_FMT, col, a->nbs - 1);
       if (col < row) {
-        if (a->ignore_ltriangular) continue; /* ignore lower triangular block */
-        else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Lower triangular value cannot be set for sbaij format. Ignoring these values, run with -mat_ignore_lower_triangular or call MatSetOption(mat,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE)");
+        PetscCheck(a->ignore_ltriangular, PETSC_COMM_SELF, PETSC_ERR_USER, "Lower triangular value cannot be set for sbaij format. Ignoring these values, run with -mat_ignore_lower_triangular or call MatSetOption(mat,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE)");
+        continue; /* ignore lower triangular block */
       }
       if (roworiented) value = v + k * (stepval + bs) * bs + l * bs;
       else value = v + l * (stepval + bs) * bs + k * bs;
@@ -762,8 +704,6 @@ static PetscErrorCode MatAssemblyEnd_SeqSBAIJ(Mat A, MatAssemblyType mode)
   for (i = 0; i < mbs; i++) ailen[i] = imax[i] = ai[i + 1] - ai[i];
   a->nz = ai[mbs];
 
-  /* diagonals may have moved, reset it */
-  if (a->diag) PetscCall(PetscArraycpy(a->diag, ai, mbs));
   PetscCheck(!fshift || a->nounused != -1, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Unused space detected in matrix: %" PetscInt_FMT " X %" PetscInt_FMT " block size %" PetscInt_FMT ", %" PetscInt_FMT " unneeded", m, A->cmap->n, A->rmap->bs, fshift * bs2);
 
   PetscCall(PetscInfo(A, "Matrix size: %" PetscInt_FMT " X %" PetscInt_FMT ", block size %" PetscInt_FMT "; storage space: %" PetscInt_FMT " unneeded, %" PetscInt_FMT " used\n", m, A->rmap->N, A->rmap->bs, fshift * bs2, a->nz * bs2));
@@ -822,8 +762,8 @@ PetscErrorCode MatSetValues_SeqSBAIJ(Mat A, PetscInt m, const PetscInt im[], Pet
       bcol = col / bs; /* block col number */
 
       if (brow > bcol) {
-        if (a->ignore_ltriangular) continue; /* ignore lower triangular values */
-        else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_USER, "Lower triangular value cannot be set for sbaij format. Ignoring these values, run with -mat_ignore_lower_triangular or call MatSetOption(mat,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE)");
+        PetscCheck(a->ignore_ltriangular, PETSC_COMM_SELF, PETSC_ERR_USER, "Lower triangular value cannot be set for sbaij format. Ignoring these values, run with -mat_ignore_lower_triangular or call MatSetOption(mat,MAT_IGNORE_LOWER_TRIANGULAR,PETSC_TRUE)");
+        continue; /* ignore lower triangular values */
       }
 
       ridx = row % bs;
@@ -894,12 +834,11 @@ static PetscErrorCode MatICCFactor_SeqSBAIJ(Mat inA, IS row, const MatFactorInfo
   PetscCheck(row_identity, PETSC_COMM_SELF, PETSC_ERR_SUP, "Matrix reordering is not supported");
   PetscCheck(inA->rmap->bs == 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "Matrix block size %" PetscInt_FMT " is not supported", inA->rmap->bs); /* Need to replace MatCholeskyFactorSymbolic_SeqSBAIJ_MSR()! */
 
-  outA            = inA;
-  inA->factortype = MAT_FACTOR_ICC;
+  outA = inA;
   PetscCall(PetscFree(inA->solvertype));
   PetscCall(PetscStrallocpy(MATSOLVERPETSC, &inA->solvertype));
 
-  PetscCall(MatMarkDiagonal_SeqSBAIJ(inA));
+  inA->factortype = MAT_FACTOR_ICC;
   PetscCall(MatSeqSBAIJSetNumericFactorization_inplace(inA, row_identity));
 
   PetscCall(PetscObjectReference((PetscObject)row));
@@ -1081,16 +1020,12 @@ static PetscErrorCode MatIsStructurallySymmetric_SeqSBAIJ(Mat A, PetscBool *flg)
 
 static PetscErrorCode MatConjugate_SeqSBAIJ(Mat A)
 {
-#if defined(PETSC_USE_COMPLEX)
   Mat_SeqSBAIJ *a = (Mat_SeqSBAIJ *)A->data;
   PetscInt      i, nz = a->bs2 * a->i[a->mbs];
   MatScalar    *aa = a->a;
 
   PetscFunctionBegin;
   for (i = 0; i < nz; i++) aa[i] = PetscConj(aa[i]);
-#else
-  PetscFunctionBegin;
-#endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1353,7 +1288,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSBAIJ,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       /*104*/ MatMissingDiagonal_SeqSBAIJ,
+                                       /*104*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -1375,23 +1310,24 @@ static struct _MatOps MatOps_Values = {MatSetValues_SeqSBAIJ,
                                        NULL,
                                        /*124*/ NULL,
                                        NULL,
-                                       NULL,
                                        MatSetBlockSizes_Default,
                                        NULL,
-                                       /*129*/ NULL,
                                        NULL,
+                                       /*129*/ NULL,
                                        MatCreateMPIMatConcatenateSeqMat_SeqSBAIJ,
+                                       NULL,
                                        NULL,
                                        NULL,
                                        /*134*/ NULL,
                                        NULL,
-                                       NULL,
                                        MatEliminateZeros_SeqSBAIJ,
+                                       NULL,
                                        NULL,
                                        /*139*/ NULL,
                                        NULL,
+                                       MatCopyHashToXAIJ_Seq_Hash,
                                        NULL,
-                                       MatCopyHashToXAIJ_Seq_Hash};
+                                       NULL};
 
 static PetscErrorCode MatStoreValues_SeqSBAIJ(Mat mat)
 {
@@ -1731,25 +1667,22 @@ PETSC_INTERN PetscErrorCode MatGetFactor_seqsbaij_petsc(Mat A, MatFactorType fty
   PetscInt n = A->rmap->n;
 
   PetscFunctionBegin;
-#if defined(PETSC_USE_COMPLEX)
-  if ((ftype == MAT_FACTOR_CHOLESKY || ftype == MAT_FACTOR_ICC) && A->hermitian == PETSC_BOOL3_TRUE && A->symmetric != PETSC_BOOL3_TRUE) {
+  if (PetscDefined(USE_COMPLEX) && (ftype == MAT_FACTOR_CHOLESKY || ftype == MAT_FACTOR_ICC) && A->hermitian == PETSC_BOOL3_TRUE && A->symmetric != PETSC_BOOL3_TRUE) {
     PetscCall(PetscInfo(A, "Hermitian MAT_FACTOR_CHOLESKY or MAT_FACTOR_ICC are not supported. Use MAT_FACTOR_LU instead.\n"));
     *B = NULL;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
-#endif
 
   PetscCall(MatCreate(PetscObjectComm((PetscObject)A), B));
   PetscCall(MatSetSizes(*B, n, n, n, n));
-  if (ftype == MAT_FACTOR_CHOLESKY || ftype == MAT_FACTOR_ICC) {
-    PetscCall(MatSetType(*B, MATSEQSBAIJ));
-    PetscCall(MatSeqSBAIJSetPreallocation(*B, A->rmap->bs, MAT_SKIP_ALLOCATION, NULL));
+  PetscCheck(ftype == MAT_FACTOR_CHOLESKY || ftype == MAT_FACTOR_ICC, PETSC_COMM_SELF, PETSC_ERR_SUP, "Factor type not supported");
+  PetscCall(MatSetType(*B, MATSEQSBAIJ));
+  PetscCall(MatSeqSBAIJSetPreallocation(*B, A->rmap->bs, MAT_SKIP_ALLOCATION, NULL));
 
-    (*B)->ops->choleskyfactorsymbolic = MatCholeskyFactorSymbolic_SeqSBAIJ;
-    (*B)->ops->iccfactorsymbolic      = MatICCFactorSymbolic_SeqSBAIJ;
-    PetscCall(PetscStrallocpy(MATORDERINGNATURAL, (char **)&(*B)->preferredordering[MAT_FACTOR_CHOLESKY]));
-    PetscCall(PetscStrallocpy(MATORDERINGNATURAL, (char **)&(*B)->preferredordering[MAT_FACTOR_ICC]));
-  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Factor type not supported");
+  (*B)->ops->choleskyfactorsymbolic = MatCholeskyFactorSymbolic_SeqSBAIJ;
+  (*B)->ops->iccfactorsymbolic      = MatICCFactorSymbolic_SeqSBAIJ;
+  PetscCall(PetscStrallocpy(MATORDERINGNATURAL, (char **)&(*B)->preferredordering[MAT_FACTOR_CHOLESKY]));
+  PetscCall(PetscStrallocpy(MATORDERINGNATURAL, (char **)&(*B)->preferredordering[MAT_FACTOR_ICC]));
 
   (*B)->factortype     = ftype;
   (*B)->canuseordering = PETSC_TRUE;
@@ -1880,7 +1813,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_SeqSBAIJ(Mat B)
 #if defined(PETSC_HAVE_ELEMENTAL)
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatConvert_seqsbaij_elemental_C", MatConvert_SeqSBAIJ_Elemental));
 #endif
-#if defined(PETSC_HAVE_SCALAPACK)
+#if defined(PETSC_HAVE_SCALAPACK) && (defined(PETSC_USE_REAL_SINGLE) || defined(PETSC_USE_REAL_DOUBLE))
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatConvert_seqsbaij_scalapack_C", MatConvert_SBAIJ_ScaLAPACK));
 #endif
 
@@ -1888,9 +1821,7 @@ PETSC_EXTERN PetscErrorCode MatCreate_SeqSBAIJ(Mat B)
   B->structural_symmetry_eternal = PETSC_TRUE;
   B->symmetric                   = PETSC_BOOL3_TRUE;
   B->structurally_symmetric      = PETSC_BOOL3_TRUE;
-#if defined(PETSC_USE_COMPLEX)
-  B->hermitian = PETSC_BOOL3_FALSE;
-#else
+#if !defined(PETSC_USE_COMPLEX)
   B->hermitian = PETSC_BOOL3_TRUE;
 #endif
 
@@ -2126,21 +2057,10 @@ PetscErrorCode MatDuplicate_SeqSBAIJ(Mat A, MatDuplicateOption cpvalues, Mat *B)
 
   c->roworiented = a->roworiented;
   c->nonew       = a->nonew;
-
-  if (a->diag) {
-    if (cpvalues == MAT_SHARE_NONZERO_PATTERN) {
-      c->diag      = a->diag;
-      c->free_diag = PETSC_FALSE;
-    } else {
-      PetscCall(PetscMalloc1(mbs, &c->diag));
-      for (i = 0; i < mbs; i++) c->diag[i] = a->diag[i];
-      c->free_diag = PETSC_TRUE;
-    }
-  }
-  c->nz         = a->nz;
-  c->maxnz      = a->nz; /* Since we allocate exactly the right amount */
-  c->solve_work = NULL;
-  c->mult_work  = NULL;
+  c->nz          = a->nz;
+  c->maxnz       = a->nz; /* Since we allocate exactly the right amount */
+  c->solve_work  = NULL;
+  c->mult_work   = NULL;
 
   *B = C;
   PetscCall(PetscFunctionListDuplicate(((PetscObject)A)->qlist, &((PetscObject)C)->qlist));

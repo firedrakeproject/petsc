@@ -75,7 +75,7 @@ SNESLineSearch Object: 2 MPI processes
     type: bt
       interpolation: cubic
       alpha=1.000000e-04
-    maxstep=1.000000e+08, minlambda=1.000000e-12
+    maxlambda=1.000000e+00, minlambda=1.000000e-12
     tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
     maximum iterations=40
   KSP Object: 2 MPI processes
@@ -96,28 +96,28 @@ SNESLineSearch Object: 2 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (sub_) 1 MPI process
       type: lu
         out-of-place factorization
         tolerance for zero pivot 2.22045e-14
         matrix ordering: nd
         factor fill ratio given 5., needed 1.35714
-          Factored matrix follows:
+          Factored matrix:
             Mat Object: (sub_) 1 MPI process
               type: seqaij
               rows=8, cols=8
               package used to perform factorization: petsc
               total: nonzeros=38, allocated nonzeros=38
                 not using I-node routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (sub_) 1 MPI process
         type: seqaij
         rows=8, cols=8
         total: nonzeros=28, allocated nonzeros=28
         total number of mallocs used during MatSetValues calls=0
           not using I-node routines
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 2 MPI processes
       type: mpiaij
       rows=32, cols=32

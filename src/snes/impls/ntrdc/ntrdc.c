@@ -47,9 +47,9 @@ static PetscErrorCode SNESTRDC_KSPConverged_Private(KSP ksp, PetscInt n, PetscRe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESTRDC_KSPConverged_Destroy(void **cctx)
+static PetscErrorCode SNESTRDC_KSPConverged_Destroy(PetscCtxRt cctx)
 {
-  SNES_TRDC_KSPConverged_Ctx *ctx = (SNES_TRDC_KSPConverged_Ctx *)*cctx;
+  SNES_TRDC_KSPConverged_Ctx *ctx = *(SNES_TRDC_KSPConverged_Ctx **)cctx;
 
   PetscFunctionBegin;
   PetscCall((*ctx->convdestroy)(&ctx->convctx));
@@ -122,7 +122,7 @@ PetscErrorCode SNESNewtonTRDCGetRhoFlag(SNES snes, PetscBool *rho_flag)
 .seealso: [](ch_snes), `SNES`, `SNESNEWTONTRDC`, `SNESNewtonTRDCPreCheck()`, `SNESNewtonTRDCGetPreCheck()`, `SNESNewtonTRDCSetPostCheck()`, `SNESNewtonTRDCGetPostCheck()`,
           `SNESNewtonTRDCGetRhoFlag()`
 @*/
-PetscErrorCode SNESNewtonTRDCSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, PetscBool *, void *), void *ctx)
+PetscErrorCode SNESNewtonTRDCSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, PetscBool *, void *), PetscCtx ctx)
 {
   SNES_NEWTONTRDC *tr = (SNES_NEWTONTRDC *)snes->data;
 
@@ -149,14 +149,14 @@ PetscErrorCode SNESNewtonTRDCSetPreCheck(SNES snes, PetscErrorCode (*func)(SNES,
 
 .seealso: [](ch_snes), `SNES`, `SNESNEWTONTRDC`, `SNESNewtonTRDCSetPreCheck()`, `SNESNewtonTRDCPreCheck()`
 @*/
-PetscErrorCode SNESNewtonTRDCGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, PetscBool *, void *), void **ctx)
+PetscErrorCode SNESNewtonTRDCGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, PetscBool *, void *), PetscCtxRt ctx)
 {
   SNES_NEWTONTRDC *tr = (SNES_NEWTONTRDC *)snes->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   if (func) *func = tr->precheck;
-  if (ctx) *ctx = tr->precheckctx;
+  if (ctx) *(void **)ctx = tr->precheckctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -179,7 +179,7 @@ PetscErrorCode SNESNewtonTRDCGetPreCheck(SNES snes, PetscErrorCode (**func)(SNES
 
 .seealso: [](ch_snes), `SNES`, `SNESNEWTONTRDC`, `SNESNewtonTRDCPostCheck()`, `SNESNewtonTRDCGetPostCheck()`, `SNESNewtonTRDCSetPreCheck()`, `SNESNewtonTRDCGetPreCheck()`
 @*/
-PetscErrorCode SNESNewtonTRDCSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void *ctx)
+PetscErrorCode SNESNewtonTRDCSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), PetscCtx ctx)
 {
   SNES_NEWTONTRDC *tr = (SNES_NEWTONTRDC *)snes->data;
 
@@ -206,14 +206,14 @@ PetscErrorCode SNESNewtonTRDCSetPostCheck(SNES snes, PetscErrorCode (*func)(SNES
 
 .seealso: [](ch_snes), `SNES`, `SNESNEWTONTRDC`, `SNESNewtonTRDCSetPostCheck()`, `SNESNewtonTRDCPostCheck()`, `SNESNewtonTRDCSetPreCheck()`, `SNESNewtonTRDCGetPreCheck()`
 @*/
-PetscErrorCode SNESNewtonTRDCGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void **ctx)
+PetscErrorCode SNESNewtonTRDCGetPostCheck(SNES snes, PetscErrorCode (**func)(SNES, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), PetscCtxRt ctx)
 {
   SNES_NEWTONTRDC *tr = (SNES_NEWTONTRDC *)snes->data;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
   if (func) *func = tr->postcheck;
-  if (ctx) *ctx = tr->postcheckctx;
+  if (ctx) *(void **)ctx = tr->postcheckctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -346,7 +346,7 @@ static PetscErrorCode SNESSolve_NEWTONTRDC(SNES snes)
   } else snes->vec_func_init_set = PETSC_FALSE;
 
   PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- || F || */
-  SNESCheckFunctionNorm(snes, fnorm);
+  SNESCheckFunctionDomainError(snes, fnorm);
   PetscCall(VecNorm(X, NORM_2, &xnorm)); /* xnorm <- || X || */
 
   PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
@@ -370,7 +370,7 @@ static PetscErrorCode SNESSolve_NEWTONTRDC(SNES snes)
 
     /* dogleg method */
     PetscCall(SNESComputeJacobian(snes, X, snes->jacobian, snes->jacobian_pre));
-    SNESCheckJacobianDomainerror(snes);
+    SNESCheckJacobianDomainError(snes);
     PetscCall(KSPSetOperators(snes->ksp, snes->jacobian, snes->jacobian));
     PetscCall(KSPSolve(snes->ksp, F, YNtmp)); /* Quasi Newton Solution */
     SNESCheckKSPSolve(snes);                  /* this is necessary but old tr.c did not have it*/
@@ -481,7 +481,7 @@ static PetscErrorCode SNESSolve_NEWTONTRDC(SNES snes)
       PetscCall(VecCopy(Y, snes->vec_sol_update));
       PetscCall(SNESComputeFunction(snes, W, G)); /*  F(X-Y) = G */
       PetscCall(VecNorm(G, NORM_2, &gnorm));      /* gnorm <- || g || */
-      SNESCheckFunctionNorm(snes, gnorm);
+      SNESCheckFunctionDomainError(snes, gnorm);
       g = 0.5 * PetscSqr(gnorm); /* minimizing function g(W) */
       if (f0 == mp) rho = 0.0;
       else rho = (f0 - g) / (f0 - mp); /* actual improvement over predicted improvement */
@@ -614,11 +614,11 @@ static PetscErrorCode SNESSetFromOptions_NEWTONTRDC(SNES snes, PetscOptionItems 
 static PetscErrorCode SNESView_NEWTONTRDC(SNES snes, PetscViewer viewer)
 {
   SNES_NEWTONTRDC *tr = (SNES_NEWTONTRDC *)snes->data;
-  PetscBool        iascii;
+  PetscBool        isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Trust region tolerance %g\n", (double)tr->deltatol));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  eta1=%g, eta2=%g, eta3=%g\n", (double)tr->eta1, (double)tr->eta2, (double)tr->eta3));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  delta0=%g, t1=%g, t2=%g, deltaM=%g\n", (double)tr->delta0, (double)tr->t1, (double)tr->t2, (double)tr->deltaM));

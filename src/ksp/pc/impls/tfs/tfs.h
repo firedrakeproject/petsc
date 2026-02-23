@@ -3,7 +3,7 @@
   #pragma GCC diagnostic ignored "-Wconversion"
 #endif
 
-/**********************************const.h*************************************
+/*
 
 Author: Henry M. Tufo III
 
@@ -16,13 +16,9 @@ Providence, RI 02912
 
 Last Modification:
 6.21.97
-***********************************const.h************************************/
 
-/**********************************const.h*************************************
 File Description:
------------------
-
-***********************************const.h************************************/
+*/
 #include <petscsys.h>
 #include <petscblaslapack.h>
 
@@ -79,15 +75,18 @@ File Description:
 #define MPI 1
 #define NX  2
 
-#define LOG2(x) (PetscScalar)log((double)x) / log(2)
 #define SWAP(a, b) \
-  temp = (a); \
-  (a)  = (b); \
-  (b)  = temp;
+  do { \
+    temp = (a); \
+    (a)  = (b); \
+    (b)  = temp; \
+  } while (0)
 #define P_SWAP(a, b) \
-  ptr = (a); \
-  (a) = (b); \
-  (b) = ptr;
+  do { \
+    ptr = (a); \
+    (a) = (b); \
+    (b) = ptr; \
+  } while (0)
 
 #define MAX_FABS(x, y) (PetscAbsScalar(x) > PetscAbsScalar(y)) ? ((PetscScalar)x) : ((PetscScalar)y)
 #define MIN_FABS(x, y) (PetscAbsScalar(x) < PetscAbsScalar(y)) ? ((PetscScalar)x) : ((PetscScalar)y)
@@ -99,8 +98,7 @@ File Description:
 #define NEG(a)          (a) |= BIT_31;
 #define POS(a)          (a) &= INT_MAX;
 
-/**********************************types.h*************************************
-
+/*
 Author: Henry M. Tufo III
 
 e-mail: hmt@cs.brown.edu
@@ -112,13 +110,13 @@ Providence, RI 02912
 
 Last Modification:
 6.21.97
-***********************************types.h************************************/
+*/
 
 typedef PetscErrorCode (*vfp)(void *, void *, PetscInt, ...);
 typedef PetscErrorCode (*rbfp)(PetscScalar *, PetscScalar *, PetscInt);
 typedef PetscInt (*bfp)(void *, void *, PetscInt *, MPI_Datatype *);
 
-/***********************************comm.h*************************************
+/*
 
 Author: Henry M. Tufo III
 
@@ -131,7 +129,7 @@ Providence, RI 02912
 
 Last Modification:
 6.21.97
-***********************************comm.h*************************************/
+*/
 PETSC_INTERN PetscMPIInt PCTFS_my_id;
 PETSC_INTERN PetscMPIInt PCTFS_num_nodes;
 PETSC_INTERN PetscMPIInt PCTFS_floor_num_nodes;
@@ -215,8 +213,7 @@ PETSC_INTERN PetscErrorCode PCTFS_rvec_min(PetscScalar *, PetscScalar *, PetscIn
 PETSC_INTERN PetscErrorCode PCTFS_rvec_min_abs(PetscScalar *, PetscScalar *, PetscInt);
 PETSC_INTERN PetscErrorCode PCTFS_vec_exists(PetscScalar *, PetscScalar *, PetscInt);
 
-/***********************************gs.h***************************************
-
+/*
 Author: Henry M. Tufo III
 
 e-mail: hmt@cs.brown.edu
@@ -228,7 +225,7 @@ Providence, RI 02912
 
 Last Modification:
 6.21.97
-************************************gs.h**************************************/
+*/
 
 typedef struct gather_scatter_id *PCTFS_gs_ADT;
 
@@ -239,7 +236,7 @@ PETSC_INTERN PetscErrorCode PCTFS_gs_free(PCTFS_gs_ADT);
 PETSC_INTERN PetscErrorCode PCTFS_gs_init_msg_buf_sz(PetscInt);
 PETSC_INTERN PetscErrorCode PCTFS_gs_init_vec_sz(PetscInt);
 
-/*************************************xxt.h************************************
+/*
 Module Name: xxt
 Module Info: need xxt.{c,h} gs.{c,h} comm.{c,h} ivec.{c,h} error.{c,h}
 
@@ -255,30 +252,30 @@ contact:
 +--------------------------------+--------------------------------+
 
 Last Modification: 3.20.01
-**************************************xxt.h***********************************/
+*/
 
 typedef struct xxt_CDT *xxt_ADT;
 
-/*************************************xxt.h************************************
+/*
 Function: XXT_new()
 
 Return: ADT ptr or NULL upon failure.
 Description: This function allocates and returns an xxt handle
 Usage: xxt_handle = xxt_new();
-**************************************xxt.h***********************************/
+*/
 PETSC_INTERN xxt_ADT XXT_new(void);
 
-/*************************************xxt.h************************************
+/*
 Function: XXT_free()
 
 Input : pointer to ADT.
 
 Description: This function frees the storage associated with an xxt handle
 Usage: XXT_free(xxt_handle);
-**************************************xxt.h***********************************/
+*/
 PETSC_INTERN PetscErrorCode XXT_free(xxt_ADT);
 
-/*************************************xxt.h************************************
+/*
 Function: XXT_factor
 
 Input : ADT ptr,  and pointer to object
@@ -306,7 +303,7 @@ ML beliefs/usage: move this to ML_XXT_factor routine
       A_matvec(grid_data,v,u);
 
 Usage:
-**************************************xxt.h***********************************/
+*/
 PETSC_INTERN PetscErrorCode XXT_factor(xxt_ADT,                                                  /* prev. allocated xxt  handle */
                                        PetscInt *,                                               /* global column mapping       */
                                        PetscInt,                                                 /* local num rows              */
@@ -314,7 +311,7 @@ PETSC_INTERN PetscErrorCode XXT_factor(xxt_ADT,                                 
                                        PetscErrorCode (*)(void *, PetscScalar *, PetscScalar *), /* b_loc=A_local.x_loc         */
                                        void *);                                                  /* grid data for matvec        */
 
-/*************************************xxt.h************************************
+/*
 Function: XXT_solve
 
 Input : ADT ptr, b (rhs)
@@ -325,10 +322,10 @@ Usage:
 XXT_solve(xxt_handle, double *x, double *b)
 XXT_solve(xxt_handle, double *x, NULL)
 assumes x has been initialized to be b
-**************************************xxt.h***********************************/
+*/
 PETSC_INTERN PetscErrorCode XXT_solve(xxt_ADT, PetscScalar *, PetscScalar *);
 
-/*************************************xxt.h************************************
+/*
 Function: XXT_sp_1()
 
 Input : pointer to ADT
@@ -338,9 +335,9 @@ Description: sets xxt parameter 1 in xxt_handle
 Usage: implement later
 
 void XXT_sp_1(xxt_handle,parameter 1 value)
-**************************************xxt.h***********************************/
+*/
 
-/*************************************xyt.h************************************
+/*
 Module Name: xyt
 Module Info: need xyt.{c,h} gs.{c,h} comm.{c,h} ivec.{c,h} error.{c,h}
 
@@ -356,29 +353,29 @@ contact:
 +--------------------------------+--------------------------------+
 
 Last Modification: 3.20.01
-**************************************xyt.h***********************************/
+*/
 
 typedef struct xyt_CDT *xyt_ADT;
 
-/*************************************xyt.h************************************
+/*
 Function: XYT_new()
 
 Return: ADT ptr or NULL upon failure.
 Description: This function allocates and returns an xyt handle
 Usage: xyt_handle = xyt_new();
-**************************************xyt.h***********************************/
+*/
 PETSC_INTERN xyt_ADT XYT_new(void);
 
-/*************************************xyt.h************************************
+/*
 Function: XYT_free()
 
 Input : pointer to ADT.
 Description: This function frees the storage associated with an xyt handle
 Usage: XYT_free(xyt_handle);
-**************************************xyt.h***********************************/
+*/
 PETSC_INTERN PetscErrorCode XYT_free(xyt_ADT);
 
-/*************************************xyt.h************************************
+/*
 Function: XYT_factor
 
 Input : ADT ptr,  and pointer to object
@@ -407,7 +404,7 @@ ML beliefs/usage: move this to ML_XYT_factor routine
       A_matvec(grid_data,v,u);
 
 Usage:
-**************************************xyt.h***********************************/
+*/
 PETSC_INTERN PetscErrorCode XYT_factor(xyt_ADT,                                                  /* prev. allocated xyt  handle */
                                        PetscInt *,                                               /* global column mapping       */
                                        PetscInt,                                                 /* local num rows              */
@@ -415,7 +412,7 @@ PETSC_INTERN PetscErrorCode XYT_factor(xyt_ADT,                                 
                                        PetscErrorCode (*)(void *, PetscScalar *, PetscScalar *), /* b_loc=A_local.x_loc         */
                                        void *);                                                  /* grid data for matvec        */
 
-/*************************************xyt.h************************************
+/*
 Function: XYT_solve
 
 Input : ADT ptr, b (rhs)
@@ -423,17 +420,17 @@ Output: x (soln)
 Return:
 Description: This function performs x = E^-1.b
 Usage: XYT_solve(xyt_handle, double *x, double *b)
-**************************************xyt.h***********************************/
+*/
 PETSC_INTERN PetscErrorCode XYT_solve(xyt_ADT, PetscScalar *, PetscScalar *);
 
-/*************************************xyt.h************************************
+/*
 Function: XYT_stats
 
 Input : handle
-**************************************xyt.h***********************************/
+*/
 PETSC_INTERN PetscErrorCode XYT_stats(xyt_ADT);
 
-/********************************bit_mask.h************************************
+/*
 
 Author: Henry M. Tufo III
 
@@ -446,7 +443,7 @@ Providence, RI 02912
 
 Last Modification:
 11.21.97
-*********************************bit_mask.h***********************************/
+*/
 PETSC_INTERN PetscInt       PCTFS_div_ceil(PetscInt, PetscInt);
 PETSC_INTERN PetscErrorCode PCTFS_set_bit_mask(PetscInt *, PetscInt, PetscInt);
 PETSC_INTERN PetscInt       PCTFS_len_bit_mask(PetscInt);

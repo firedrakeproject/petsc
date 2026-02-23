@@ -53,7 +53,7 @@ int main(int argc, char **args)
   MatFactorInfo info;
   PetscRandom   rand;
   PetscBool     flg, symm, testMatSolve = PETSC_TRUE, testMatMatSolve = PETSC_TRUE, testMatMatSolveTranspose = PETSC_TRUE, testMatSolveTranspose = PETSC_TRUE, match = PETSC_FALSE;
-  PetscBool     chol = PETSC_FALSE, view = PETSC_FALSE, matsolvexx = PETSC_FALSE;
+  PetscBool     chol = PETSC_FALSE, view = PETSC_FALSE, matsolvexx = PETSC_FALSE, test_inertia;
 #if defined(PETSC_HAVE_MUMPS)
   PetscBool test_mumps_opts = PETSC_FALSE;
 #endif
@@ -90,7 +90,11 @@ int main(int argc, char **args)
   PetscCall(MatIsSymmetric(A, 0.0, &symm));
   PetscCall(MatSetOption(A, MAT_SYMMETRIC, symm));
 
+  test_inertia = symm;
+  PetscCall(PetscOptionsGetBool(NULL, NULL, "-test_inertia", &test_inertia, NULL));
+
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-cholesky", &chol, NULL));
+  PetscCall(PetscOptionsGetReal(NULL, NULL, "-tol", &tol, NULL));
 
   /* test MATNEST support */
   flg = PETSC_FALSE;
@@ -368,7 +372,7 @@ skipoptions:
 
   #if !defined(PETSC_USE_COMPLEX)
       /* Test MatGetInertia() */
-      if (symm) { /* A is symmetric */
+      if (test_inertia) { /* A is symmetric */
         PetscCall(MatGetInertia(F, &nneg, &nzero, &npos));
         PetscCall(PetscViewerASCIIPrintf(PETSC_VIEWER_STDOUT_WORLD, " MatInertia: nneg: %" PetscInt_FMT ", nzero: %" PetscInt_FMT ", npos: %" PetscInt_FMT "\n", nneg, nzero, npos));
       }
@@ -564,24 +568,45 @@ skipoptions:
       args: -mat_solver_type mkl_pardiso
       output_file: output/ex125_mkl_pardiso.out
 
-   test:
-      suffix: mumps
+   testset:
       requires: mumps datafilespath !complex double !defined(PETSC_USE_64BIT_INDICES)
       args: -f ${DATAFILESPATH}/matrices/small -mat_solver_type mumps
       output_file: output/ex125_mumps_seq.out
 
-   test:
-      suffix: mumps_nest
+      test:
+        requires: defined(PETSC_HAVE_MUMPS_MIXED_PRECISION)
+        suffix: mumps_single
+        args: -pc_precision single -tol 1e-5
+      test:
+        suffix: mumps_double
+        args: -pc_precision double
+
+   testset:
       requires: mumps datafilespath !complex double !defined(PETSC_USE_64BIT_INDICES)
       args: -f ${DATAFILESPATH}/matrices/small -mat_solver_type mumps -test_nest -test_nest_bordered {{0 1}}
       output_file: output/ex125_mumps_seq.out
 
-   test:
-      suffix: mumps_2
+      test:
+        requires: defined(PETSC_HAVE_MUMPS_MIXED_PRECISION)
+        suffix: mumps_nest_single
+        args: -pc_precision single -tol 1e-4
+      test:
+        suffix: mumps_nest_double
+        args: -pc_precision double
+
+   testset:
       nsize: 3
       requires: mumps datafilespath !complex double !defined(PETSC_USE_64BIT_INDICES)
       args: -f ${DATAFILESPATH}/matrices/small -mat_solver_type mumps
       output_file: output/ex125_mumps_par.out
+
+      test:
+        requires: defined(PETSC_HAVE_MUMPS_MIXED_PRECISION)
+        suffix: mumps_2_single
+        args: -pc_precision single -tol 1e-5
+      test:
+        suffix: mumps_2_double
+        args: -pc_precision double
 
    test:
       suffix: mumps_2_nest
@@ -596,11 +621,18 @@ skipoptions:
       args: -mat_solver_type mumps
       output_file: output/ex125_mumps_seq.out
 
-   test:
-      suffix: mumps_3_nest
+   testset:
       requires: mumps
       args: -mat_solver_type mumps -test_nest -test_nest_bordered {{0 1}}
       output_file: output/ex125_mumps_seq.out
+
+      test:
+        requires: !__float128
+        suffix: mumps_3_nest
+      test:
+        suffix: mumps_3_nest_fp128
+        requires: __float128
+        args: -tol 1e-8
 
    test:
       suffix: mumps_4
@@ -609,12 +641,19 @@ skipoptions:
       args: -mat_solver_type mumps
       output_file: output/ex125_mumps_par.out
 
-   test:
-      suffix: mumps_4_nest
+   testset:
       nsize: 3
       requires: mumps
       args: -mat_solver_type mumps -test_nest -test_nest_bordered {{0 1}}
       output_file: output/ex125_mumps_par.out
+
+      test:
+        requires: !__float128
+        suffix: mumps_4_nest
+      test:
+        suffix: mumps_4_nest_fp128
+        requires: __float128
+        args: -tol 1e-8
 
    test:
       suffix: mumps_5
@@ -623,19 +662,33 @@ skipoptions:
       args: -mat_solver_type mumps -cholesky
       output_file: output/ex125_mumps_par_cholesky.out
 
-   test:
-      suffix: mumps_5_nest
+   testset:
       nsize: 3
       requires: mumps
       args: -mat_solver_type mumps -cholesky -test_nest -test_nest_bordered {{0 1}}
       output_file: output/ex125_mumps_par_cholesky.out
 
+      test:
+        requires: !__float128
+        suffix: mumps_5_nest
+      test:
+        suffix: mumps_5_nest_fp128
+        requires: __float128
+        args: -tol 1e-8
+
    test:
-      suffix: mumps_6
       nsize: 2
       requires: mumps
       args: -mat_solver_type mumps -test_nest -test_nest_bordered -m 13 -n 13
       output_file: output/ex125_mumps_par.out
+
+      test:
+        requires: !__float128
+        suffix: mumps_6
+      test:
+        suffix: mumps_6_fp128
+        requires: __float128
+        args: -tol 1e-8
 
    test:
       suffix: superlu
@@ -690,5 +743,22 @@ skipoptions:
       suffix: cusparse_2
       requires: cuda
       args: -mat_type aijcusparse -mat_solver_type cusparse -cholesky {{0 1}separate output}
+
+   testset:
+      nsize: {{1 2}separate output}
+      requires: double !defined(PETSC_USE_64BIT_INDICES) datafilespath !complex
+      args: -f ${DATAFILESPATH}/matrices/mixed_poisson
+      test:
+        requires: superlu_dist TODO # superlu_dist is broken
+        suffix: saddle_point_superlu_dist
+        args: -mat_solver_type superlu_dist -mat_superlu_dist_rowperm {{norowperm largediag_mc64}} -test_inertia 0
+      test:
+        requires: mumps
+        suffix: saddle_point_mumps_lu
+        args: -mat_solver_type mumps -mat_mumps_icntl_14 100
+      test:
+        requires: mumps
+        suffix: saddle_point_mumps_cholesky
+        args: -cholesky -mat_solver_type mumps
 
 TEST*/

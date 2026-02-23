@@ -41,18 +41,20 @@ cdef extern from * nogil:
         SNES_CONVERGED_ITS
         # diverged
         SNES_DIVERGED_FUNCTION_DOMAIN
+        SNES_DIVERGED_FUNCTION_NANORINF
+        SNES_DIVERGED_OBJECTIVE_DOMAIN
+        SNES_DIVERGED_OBJECTIVE_NANORINF
+        SNES_DIVERGED_JACOBIAN_DOMAIN
         SNES_DIVERGED_FUNCTION_COUNT
         SNES_DIVERGED_LINEAR_SOLVE
-        SNES_DIVERGED_FNORM_NAN
         SNES_DIVERGED_MAX_IT
         SNES_DIVERGED_LINE_SEARCH
         SNES_DIVERGED_INNER
         SNES_DIVERGED_LOCAL_MIN
         SNES_DIVERGED_DTOL
-        SNES_DIVERGED_JACOBIAN_DOMAIN
         SNES_DIVERGED_TR_DELTA
 
-    ctypedef PetscErrorCode (*PetscSNESCtxDel)(void*)
+    ctypedef PetscErrorCode (*PetscSNESCtxDel)(void**)
 
     ctypedef PetscErrorCode (*PetscSNESInitialGuessFunction)(PetscSNES,
                                                              PetscVec,
@@ -211,6 +213,7 @@ cdef extern from * nogil:
                                           PetscReal*, PetscReal*, PetscReal*, PetscReal*)
 
     PetscErrorCode SNESVISetVariableBounds(PetscSNES, PetscVec, PetscVec)
+    PetscErrorCode SNESVIGetVariableBounds(PetscSNES, PetscVec*, PetscVec*)
     PetscErrorCode SNESVIGetInactiveSet(PetscSNES, PetscIS*)
 
     PetscErrorCode SNESCompositeGetSNES(PetscSNES, PetscInt, PetscSNES*)
@@ -237,7 +240,7 @@ cdef extern from * nogil:
     PetscSNESLineSearchType SNESLINESEARCHNLEQERR
     PetscSNESLineSearchType SNESLINESEARCHBASIC
     PetscSNESLineSearchType SNESLINESEARCHNONE
-    PetscSNESLineSearchType SNESLINESEARCHL2
+    PetscSNESLineSearchType SNESLINESEARCHSECANT
     PetscSNESLineSearchType SNESLINESEARCHCP
     PetscSNESLineSearchType SNESLINESEARCHSHELL
     PetscSNESLineSearchType SNESLINESEARCHNCGLINEAR

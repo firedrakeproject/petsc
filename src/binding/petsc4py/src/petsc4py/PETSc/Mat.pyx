@@ -1355,7 +1355,7 @@ cdef class Mat(Object):
         Parameters
         ----------
         mat
-            Matrix A to represent the hermitian transpose of.
+            Matrix A to represent the Hermitian transpose of.
 
         Notes
         -----
@@ -2075,7 +2075,7 @@ cdef class Mat(Object):
         CHKERR(MatGetOwnershipIS(self.mat, &rows.iset, &cols.iset))
         return (rows, cols)
 
-    def getInfo(self, info: InfoType = None) -> dict[str, float]:
+    def getInfo(self, info: InfoType | None = None) -> dict[str, float]:
         """Return summary information.
 
         Collective.
@@ -2095,7 +2095,7 @@ cdef class Mat(Object):
         CHKERR(MatGetInfo(self.mat, itype, &cinfo))
         return cinfo
 
-    def duplicate(self, copy: bool = False) -> Mat:
+    def duplicate(self, copy: DuplicateOption | bool = False) -> Mat:
         """Return a clone of the matrix.
 
         Collective.
@@ -2110,9 +2110,7 @@ cdef class Mat(Object):
         petsc.MatDuplicate
 
         """
-        cdef PetscMatDuplicateOption flag = MAT_DO_NOT_COPY_VALUES
-        if copy: flag = MAT_COPY_VALUES
-        if copy > MAT_COPY_VALUES: flag = MAT_SHARE_NONZERO_PATTERN
+        cdef PetscMatDuplicateOption flag = matduplicateoption(copy)
         cdef Mat mat = type(self)()
         CHKERR(MatDuplicate(self.mat, flag, &mat.mat))
         return mat
@@ -2162,7 +2160,7 @@ cdef class Mat(Object):
         CHKERR(MatLoad(self.mat, viewer.vwr))
         return self
 
-    def convert(self, mat_type: Type | str = None, Mat out=None) -> Mat:
+    def convert(self, mat_type: Type | str | None = None, Mat out=None) -> Mat:
         """Convert the matrix type.
 
         Collective.
@@ -2518,7 +2516,7 @@ cdef class Mat(Object):
         CHKERR(MatGetValues(self.mat, 1, &ival1, 1, &ival2, &sval))
         return toScalar(sval)
 
-    def getValues(self, rows: Sequence[int], cols: Sequence[int], values: ArrayScalar = None) -> ArrayScalar:
+    def getValues(self, rows: Sequence[int], cols: Sequence[int], values: ArrayScalar | None = None) -> ArrayScalar:
         """Return the values in the ``zip(rows, cols)`` positions.
 
         Not collective.
@@ -2728,7 +2726,7 @@ cdef class Mat(Object):
         J: Sequence[int],
         V: Sequence[Scalar],
         addv: InsertModeSpec = None,
-        rowmap: Sequence[int] = None) -> None:
+        rowmap: Sequence[int] | None = None) -> None:
         """Set a subset of values stored in CSR format.
 
         Not collective.
@@ -2842,7 +2840,7 @@ cdef class Mat(Object):
         J: Sequence[int],
         V: Sequence[Scalar],
         addv: InsertModeSpec = None,
-        rowmap: Sequence[int] = None) -> None:
+        rowmap: Sequence[int] | None = None) -> None:
         """Set a subset of values stored in block CSR format.
 
         Not collective.
@@ -3003,7 +3001,7 @@ cdef class Mat(Object):
         J: Sequence[int],
         V: Sequence[Scalar],
         addv: InsertModeSpec = None,
-        rowmap: Sequence[int] = None) -> None:
+        rowmap: Sequence[int] | None = None) -> None:
         """Set a subset of values stored in CSR format.
 
         Not collective.
@@ -3096,7 +3094,7 @@ cdef class Mat(Object):
         J: Sequence[int],
         V: Sequence[Scalar],
         addv: InsertModeSpec = None,
-        rowmap: Sequence[int] = None) -> None:
+        rowmap: Sequence[int] | None = None) -> None:
         """Set a subset of values stored in block CSR format.
 
         Not collective.
@@ -3241,7 +3239,7 @@ cdef class Mat(Object):
         """Not implemented."""
         raise NotImplementedError
 
-    def zeroRows(self, rows: IS | Sequence[int], diag: Scalar = 1, Vec x=None, Vec b=None) -> None:
+    def zeroRows(self, rows: IS | Sequence[int], diag: Scalar = 1.0, Vec x=None, Vec b=None) -> None:
         """Zero selected rows of the matrix.
 
         Collective.
@@ -3274,7 +3272,7 @@ cdef class Mat(Object):
             rows = iarray_i(rows, &ni, &i)
             CHKERR(MatZeroRows(self.mat, ni, i, sval, xvec, bvec))
 
-    def zeroRowsLocal(self, rows: IS | Sequence[int], diag: Scalar = 1, Vec x=None, Vec b=None) -> None:
+    def zeroRowsLocal(self, rows: IS | Sequence[int], diag: Scalar = 1.0, Vec x=None, Vec b=None) -> None:
         """Zero selected rows of the matrix in local ordering.
 
         Collective.
@@ -3307,7 +3305,7 @@ cdef class Mat(Object):
             rows = iarray_i(rows, &ni, &i)
             CHKERR(MatZeroRowsLocal(self.mat, ni, i, sval, xvec, bvec))
 
-    def zeroRowsColumns(self, rows: IS | Sequence[int], diag: Scalar = 1, Vec x=None, Vec b=None) -> None:
+    def zeroRowsColumns(self, rows: IS | Sequence[int], diag: Scalar = 1.0, Vec x=None, Vec b=None) -> None:
         """Zero selected rows and columns of the matrix.
 
         Collective.
@@ -3341,7 +3339,7 @@ cdef class Mat(Object):
             rows = iarray_i(rows, &ni, &i)
             CHKERR(MatZeroRowsColumns(self.mat, ni, i, sval, xvec, bvec))
 
-    def zeroRowsColumnsLocal(self, rows: IS | Sequence[int], diag: Scalar = 1, Vec x=None, Vec b=None) -> None:
+    def zeroRowsColumnsLocal(self, rows: IS | Sequence[int], diag: Scalar = 1.0, Vec x=None, Vec b=None) -> None:
         """Zero selected rows and columns of the matrix in local ordering.
 
         Collective.
@@ -3375,7 +3373,7 @@ cdef class Mat(Object):
             rows = iarray_i(rows, &ni, &i)
             CHKERR(MatZeroRowsColumnsLocal(self.mat, ni, i, sval, xvec, bvec))
 
-    def zeroRowsColumnsStencil(self, rows: Sequence[Stencil], diag: Scalar = 1, Vec x=None, Vec b=None) -> None:
+    def zeroRowsColumnsStencil(self, rows: Sequence[Stencil], diag: Scalar = 1.0, Vec x=None, Vec b=None) -> None:
         """Zero selected rows and columns of the matrix.
 
         Collective.
@@ -3527,12 +3525,12 @@ cdef class Mat(Object):
         ----------
         side
             If `None` returns a 2-tuple of vectors ``(right, left)``.
-            Otherwise it just return a left or right vector.
+            Otherwise it just returns a left or right vector.
 
         Notes
         -----
-        ``right`` vectors are vectors in the column space of the matrix.
-        ``left`` vectors are vectors in the row space of the matrix.
+        ``right`` is a vector that the matrix can be multiplied against.
+        ``left`` is a vector that the matrix-vector product can be stored in.
 
         See Also
         --------
@@ -4046,8 +4044,8 @@ cdef class Mat(Object):
     def createSubMatrices(
         self,
         isrows: IS | Sequence[IS],
-        iscols: IS | Sequence[IS] = None,
-        submats: Mat | Sequence[Mat] = None) -> Sequence[Mat]:
+        iscols: IS | Sequence[IS] | None = None,
+        submats: Mat | Sequence[Mat] | None = None) -> Sequence[Mat]:
         """Return several sequential submatrices.
 
         Collective.
@@ -4284,7 +4282,7 @@ cdef class Mat(Object):
         if random is not None: rnd = random.rnd
         CHKERR(MatSetRandom(self.mat, rnd))
 
-    def axpy(self, alpha: Scalar, Mat X, structure: Structure = None) -> None:
+    def axpy(self, alpha: Scalar, Mat X, structure: Structure | None = None) -> None:
         """Perform the matrix summation ``self`` + = ɑ·X.
 
         Collective.
@@ -4307,7 +4305,7 @@ cdef class Mat(Object):
         cdef PetscMatStructure flag = matstructure(structure)
         CHKERR(MatAXPY(self.mat, sval, X.mat, flag))
 
-    def aypx(self, alpha: Scalar, Mat X, structure: Structure = None) -> None:
+    def aypx(self, alpha: Scalar, Mat X, structure: Structure | None = None) -> None:
         """Perform the matrix summation ``self`` = ɑ·``self`` + X.
 
         Collective.
@@ -5232,6 +5230,63 @@ cdef class Mat(Object):
         cdef PetscKSP ctype = ksp.ksp
         CHKERR(MatLMVMSetJ0KSP(self.mat, ctype))
 
+    def allocateLMVM(self, Vec x, Vec f) -> None:
+        """Allocate all necessary common memory LMVM matrix.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        x:
+            Solution vector.
+        f:
+            Function vector.
+
+        See Also
+        --------
+        petsc.MatLMVMAllocate
+        """
+        cdef PetscVec xvec = x.vec
+        cdef PetscVec fvec = f.vec
+        CHKERR(MatLMVMAllocate(self.mat, xvec, fvec))
+
+    def updateLMVM(self, Vec x, Vec f) -> None:
+        """Adds (X-Xprev) and (F-Fprev) updates to LMVM matrix.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        x:
+            Solution vector.
+        f:
+            Function vector.
+
+        See Also
+        --------
+        petsc.MatLMVMUpdate
+        """
+        cdef PetscVec xvec = x.vec
+        cdef PetscVec fvec = f.vec
+        CHKERR(MatLMVMUpdate(self.mat, xvec, fvec))
+
+    def resetLMVM(self, destructive: bool = False) -> None:
+        """Flushes all of the accumulated updates out of the LMVM matrix.
+
+        Logically collective.
+
+        Parameters
+        ----------
+        destructive:
+            Flag for enabling destruction of data structures.
+
+        See Also
+        --------
+        petsc.MatLMVMReset
+        """
+        cdef PetscBool cdestructive = asBool(destructive)
+        CHKERR(MatLMVMReset(self.mat, cdestructive))
+
     # MUMPS
 
     def setMumpsIcntl(self, icntl: int, ival: int) -> None:
@@ -5596,12 +5651,15 @@ cdef class Mat(Object):
             CHKERR(MatDenseGetArray(self.mat, &data))
         cdef int typenum = NPY_PETSC_SCALAR
         cdef int itemsize = <int>sizeof(PetscScalar)
-        cdef int flags = NPY_ARRAY_FARRAY
+        cdef int flags = NPY_ARRAY_FARRAY_RO if readonly else NPY_ARRAY_FARRAY
         cdef npy_intp dims[2], strides[2]
         dims[0] = <npy_intp>m; strides[0] = <npy_intp>sizeof(PetscScalar)
         dims[1] = <npy_intp>N; strides[1] = <npy_intp>(lda*sizeof(PetscScalar))
-        array = <object>PyArray_New(<PyTypeObject*>ndarray, 2, dims, typenum,
-                                    strides, data, itemsize, flags, NULL)
+        cdef ndarray array = PyArray_New(<PyTypeObject*>ndarray, 2,
+                                         dims, typenum, strides,
+                                         data, itemsize, flags, NULL)
+        Py_INCREF(<PyObject*>self)
+        PyArray_SetBaseObject(array, self)
         if readonly:
             CHKERR(MatDenseRestoreArrayRead(self.mat, <const PetscScalar**>&data))
         else:

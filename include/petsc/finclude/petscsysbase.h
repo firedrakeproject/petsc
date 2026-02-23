@@ -2,10 +2,10 @@
 !  Manually maintained part of the base include file for Fortran use of PETSc.
 !  Note: This file should contain only define statements
 !
-#if !defined (PETSCSYSBASEDEF_H)
+#if !defined(PETSCSYSBASEDEF_H)
 #define PETSCSYSBASEDEF_H
 #include "petscconf.h"
-#if defined (PETSC_HAVE_MPIUNI)
+#if defined(PETSC_HAVE_MPIUNI)
 #include "petsc/mpiuni/mpiunifdef.h"
 #endif
 #include "petscversion.h"
@@ -15,7 +15,7 @@
 #define integer4 integer(kind=C_INT32_T)
 #define integer2 integer(kind=C_INT16_T)
 #define integer1 integer(kind=C_INT8_T)
-#define PetscBool  logical(kind=4)
+#define PetscBool logical(kind=C_BOOL)
 
 #if (PETSC_SIZEOF_VOID_P == 8)
 #define PetscOffset integer8
@@ -43,8 +43,21 @@
 !
 #define PetscSizeT integer(kind=C_SIZE_T)
 !
-#define MPI_Comm integer4
-#define MPI_Group integer4
+#if defined(PETSC_USE_MPI_F08)
+#define MPIU_Comm type(MPI_Comm)
+#define MPIU_Group type(MPI_Group)
+#define MPIU_Datatype type(MPI_Datatype)
+#define MPIU_Op type(MPI_Op)
+#define MPIU_Request type(MPI_Request)
+#define MPIU_Status type(MPI_Status)
+#else
+#define MPIU_Comm integer4
+#define MPIU_Group integer4
+#define MPIU_Datatype integer4
+#define MPIU_Op integer4
+#define MPIU_Status integer4
+#define MPIU_Request integer4
+#endif
 !
 #define PetscEnum integer4
 #define PetscVoid PetscFortranAddr
@@ -93,7 +106,7 @@
 #define PetscConj(a) conjg(a)
 #define PetscImaginaryPart(a) aimag(a)
 #else
-#if defined (PETSC_USE_REAL_SINGLE)
+#if defined(PETSC_USE_REAL_SINGLE)
 #define PetscScalar PetscFortranFloat
 #elif defined(PETSC_USE_REAL___FLOAT128)
 #define PetscScalar PetscFortranLongDouble
@@ -105,7 +118,7 @@
 #define PetscImaginaryPart(a) 0.0
 #endif
 
-#if defined (PETSC_USE_REAL_SINGLE)
+#if defined(PETSC_USE_REAL_SINGLE)
 #define PetscReal PetscFortranFloat
 #elif defined(PETSC_USE_REAL___FLOAT128)
 #define PetscReal PetscFortranLongDouble
@@ -115,13 +128,14 @@
 
 #define PetscReal2d type(tPetscReal2d)
 
-#define PetscObjectIsNull(obj) (obj%v == 0 .or. obj%v == -2 .or. obj%v == -3)
-#define PetscObjectNullify(obj) obj%v PETSC_FORTRAN_TYPE_INITIALIZE
+#define PETSC_FORTRAN_TYPE_INITIALIZE -2
+#define PetscObjectIsNull(obj) (obj%v == 0 .or. obj%v ==  PETSC_FORTRAN_TYPE_INITIALIZE .or. obj%v == -3)
+#define PetscObjectNullify(obj) obj%v = PETSC_FORTRAN_TYPE_INITIALIZE
 !
 !     Macros for error checking
 !
-#define SETERRQ(c, ierr, s)  call PetscError(c, ierr, 0, s); return
-#define SETERRA(c, ierr, s)  call PetscError(c, ierr, 0, s); call MPIU_Abort(c, ierr)
+#define SETERRQ(c, ierr, s)  call PetscError(c, ierr, PETSC_ERROR_INITIAL, s); return
+#define SETERRA(c, ierr, s)  call PetscError(c, ierr, PETSC_ERROR_INITIAL, s); call MPIU_Abort(c, ierr)
 #if defined(PETSC_HAVE_FORTRAN_FREE_LINE_LENGTH_NONE)
 #define CHKERRQ(ierr) if (ierr .ne. 0) then;call PetscErrorF(ierr,__LINE__,__FILE__);return;endif
 #define CHKERRA(ierr) if (ierr .ne. 0) then;call PetscErrorF(ierr,__LINE__,__FILE__);call MPIU_Abort(PETSC_COMM_SELF,ierr);endif

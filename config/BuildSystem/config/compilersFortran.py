@@ -20,11 +20,6 @@ class Configure(config.base.Configure):
     self.substPrefix  = ''
     return
 
-  def setupHelp(self, help):
-    import nargs
-    help.addArgument('Compilers', '-with-fortran-type-initialize=<bool>',   nargs.ArgBool(None, 1, 'Initialize PETSc objects in Fortran'))
-    return
-
   def setupDependencies(self, framework):
     config.base.Configure.setupDependencies(self, framework)
     self.setCompilers = framework.require('config.setCompilers', self)
@@ -52,7 +47,6 @@ class Configure(config.base.Configure):
     config.base.Configure.__setattr__(self, name, value)
     return
 
-
   def checkFortranTypeSizes(self):
     '''Check whether real*8 is supported and suggest flags which will allow support'''
     self.pushLanguage('FC')
@@ -68,7 +62,6 @@ class Configure(config.base.Configure):
         self.logPrint('Looks like ifc compiler, adding -w90 -w flags to avoid warnings about real*8 etc', 4, 'compilers')
     self.popLanguage()
     return
-
 
   def checkFortranPreprocessor(self):
     '''Determine if Fortran handles preprocessing properly'''
@@ -123,16 +116,6 @@ class Configure(config.base.Configure):
     self.popLanguage()
     return
 
-  def checkFortranTypeInitialize(self):
-    '''Determines if PETSc objects in Fortran are initialized by default (doesn't work with common blocks)'''
-    if self.argDB['with-fortran-type-initialize']:
-      self.addDefine('FORTRAN_TYPE_INITIALIZE', ' = -2') # If change -2, please also update PETSC_FORTRAN_OBJECT_F_DESTROYED_TO_C_NULL() etc.
-      self.logPrint('Initializing Fortran objects')
-    else:
-      self.addDefine('FORTRAN_TYPE_INITIALIZE', ' ')
-      self.logPrint('Not initializing Fortran objects')
-    return
-
   def checkFortranTypeStar(self):
     '''Determine whether the Fortran compiler handles type(*)'''
     '''Newer nvfortran support (*) but they introduce extra arguments at the end that interfere with char * lengths'''
@@ -163,6 +146,34 @@ class Configure(config.base.Configure):
     self.popLanguage()
     return
 
+  def checkFortranBool(self):
+    '''
+    Determine whether the Fortran compiler has interoperable Bool/logical
+
+    requires '-fpscomp logicals' or similar for Intel compilers
+    requires '-Munixlogical' for NVIDIA compilers
+    '''
+    self.fortranBoolIsInteroperable = 1
+    if self.argDB['with-batch']:
+      self.logPrint('Using --with-batch, so assume that Fortran Bool is interoperable', 3, 'compilers')
+      return
+    self.pushLanguage('FC')
+    if not self.checkRun(None,
+      '''
+        use, intrinsic :: ISO_C_binding
+        implicit none
+        integer(C_INT8_T) :: int8_t
+
+        if (transfer(.true._C_BOOL,int8_t) /= 1_C_INT8_T) error stop 'true !=1'
+        if (transfer(.false._C_BOOL,int8_t) /= 0_C_INT8_T) error stop 'false !=0'
+      '''):
+      self.fortranBoolIsInteroperable = 0
+      self.logPrint('Fortran compiler uses non-interoperable Bool representation', 3, 'compilers')
+    else:
+      self.logPrint('Fortran compiler uses interoperable Bool representation', 3, 'compilers')
+    self.popLanguage()
+    return
+
   def checkFortran90LineLength(self):
     '''Determine whether the Fortran compiler has infinite line length'''
     self.pushLanguage('FC')
@@ -171,6 +182,22 @@ class Configure(config.base.Configure):
       self.logPrint('Fortran compiler has unlimited line length')
     else:
       self.logPrint('Fortran compiler does not have unlimited line length')
+    self.popLanguage()
+    return
+
+  def checkFortranPointerInit(self):
+    '''Determine whether the Fortran compiler supports initializing a pointer in the declaration'''
+    self.pushLanguage('FC')
+    if self.checkLink(body = '''
+      implicit none
+      integer, target :: targ
+      integer, pointer :: point => targ
+      targ = 3'''):
+      self.logPrint('Fortran compiler has pointer initialization in the declaration')
+      self.fortranInitializePtrInDecl = 1
+    else:
+      self.logPrint('Fortran compiler does not have pointer initialization in the declaration')
+      self.fortranInitializePtrInDecl = 0
     self.popLanguage()
     return
 
@@ -312,7 +339,7 @@ class Configure(config.base.Configure):
     return
 
   def checkFortran90AssumedType(self):
-    '''Check if Fortran compiler array pointer is a raw pointer in C''' 
+    '''Check if Fortran compiler array pointer is a raw pointer in C'''
     if config.setCompilers.Configure.isIBM(self.setCompilers.FC, self.log):
       self.addDefine('HAVE_F90_ASSUMED_TYPE_NOT_PTR', 1)
       self.logPrint('IBM F90 compiler detected so using HAVE_F90_ASSUMED_TYPE_NOT_PTR', 3, 'compilers')
@@ -475,6 +502,7 @@ class Configure(config.base.Configure):
       self.executeTest(self.checkFortranPreprocessor)
       self.executeTest(self.checkFortranDefineCompilerOption)
       self.executeTest(self.checkFortran90)
+      self.executeTest(self.checkFortranBool)
       self.executeTest(self.checkFortran90FreeForm)
       self.executeTest(self.checkFortran2003)
       self.executeTest(self.checkFortran90Array)
@@ -482,9 +510,8 @@ class Configure(config.base.Configure):
       self.executeTest(self.checkFortranModuleInclude)
       self.executeTest(self.checkFortranModuleOutput)
       self.executeTest(self.checkFortranTypeStar)
-      self.executeTest(self.checkFortranTypeInitialize)
       self.executeTest(self.configureFortranFlush)
       self.executeTest(self.checkDependencyGenerationFlag)
       self.executeTest(self.checkFortran90LineLength)
+      self.executeTest(self.checkFortranPointerInit)
     return
-

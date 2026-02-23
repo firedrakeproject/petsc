@@ -145,9 +145,8 @@ static PetscErrorCode KSPSolve_LSQR(KSP ksp)
     PetscCall(VecCopy(Z, W));
   }
 
-  if (lsqr->exact_norm) {
-    PetscCall(MatNorm(Amat, NORM_FROBENIUS, &lsqr->anorm));
-  } else lsqr->anorm = 0.0;
+  if (lsqr->exact_norm) PetscCall(MatNorm(Amat, NORM_FROBENIUS, &lsqr->anorm));
+  else lsqr->anorm = 0.0;
 
   lsqr->arnorm = alpha * beta;
   phibar       = beta;
@@ -504,7 +503,7 @@ PetscErrorCode KSPLSQRMonitorResidualDrawLG(KSP ksp, PetscInt n, PetscReal rnorm
 
 .seealso: [](ch_ksp), `KSPLSQR`, `KSPMonitorSet()`, `KSPLSQRMonitorResidual()`, `KSPLSQRMonitorResidualDrawLG()`
 @*/
-PetscErrorCode KSPLSQRMonitorResidualDrawLGCreate(PetscViewer viewer, PetscViewerFormat format, void *ctx, PetscViewerAndFormat **vf)
+PetscErrorCode KSPLSQRMonitorResidualDrawLGCreate(PetscViewer viewer, PetscViewerFormat format, PetscCtx ctx, PetscViewerAndFormat **vf)
 {
   const char *names[] = {"residual", "normal eqn residual"};
 
@@ -531,11 +530,11 @@ static PetscErrorCode KSPSetFromOptions_LSQR(KSP ksp, PetscOptionItems PetscOpti
 static PetscErrorCode KSPView_LSQR(KSP ksp, PetscViewer viewer)
 {
   KSP_LSQR *lsqr = (KSP_LSQR *)ksp->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     if (lsqr->se) {
       PetscReal rnorm;
       PetscCall(VecNorm(lsqr->se, NORM_2, &rnorm));
@@ -584,7 +583,7 @@ static PetscErrorCode KSPView_LSQR(KSP ksp, PetscViewer viewer)
           `KSPConvergedDefaultSetUIRNorm()`, `KSPConvergedDefaultSetUMIRNorm()`, `KSPConvergedDefaultCreate()`, `KSPConvergedDefaultDestroy()`,
           `KSPConvergedDefault()`, `KSPLSQRGetNorms()`, `KSPLSQRSetExactMatNorm()`
 @*/
-PetscErrorCode KSPLSQRConvergedDefault(KSP ksp, PetscInt n, PetscReal rnorm, KSPConvergedReason *reason, void *ctx)
+PetscErrorCode KSPLSQRConvergedDefault(KSP ksp, PetscInt n, PetscReal rnorm, KSPConvergedReason *reason, PetscCtx ctx)
 {
   KSP_LSQR *lsqr = (KSP_LSQR *)ksp->data;
   PetscReal xnorm;

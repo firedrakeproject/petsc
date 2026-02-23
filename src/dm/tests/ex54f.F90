@@ -1,10 +1,7 @@
 ! test verifies DMShellSetCreateFieldDecomposition interface in Fortran
-program main
 #include "petsc/finclude/petsc.h"
-#include "petsc/finclude/petscdmshell.h"
-
+program main
   use petsc
-  use petscdmshell
   implicit none
   type(tDM)          :: dm
   PetscErrorCode     :: ierr
@@ -46,9 +43,9 @@ subroutine myFieldDecomp(dm, nfields, fieldNames, isFields, subDms, ierr)
   PetscInt :: i
   ! defining a simple decomposition with two fields
   nfields = 2
-  allocate(fieldNames(nfields))
-  allocate(isFields(nfields))
-  allocate(subDms(nfields))
+  allocate (fieldNames(nfields))
+  allocate (isFields(nfields))
+  allocate (subDms(nfields))
   fieldNames(1) = 'field1'
   fieldNames(2) = 'field2'
   ! set the pointer arrays to NULL (using pointer assignment)

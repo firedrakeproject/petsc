@@ -361,7 +361,7 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
       for (j = 0; j < pcis->n_shared[i]; j++) {
         k              = pcis->shared[i][j];
         neigh_position = 0;
-        while (neighbours_set[k][neigh_position] != pcis->neigh[i]) { neigh_position++; }
+        while (neighbours_set[k][neigh_position] != pcis->neigh[i]) neigh_position++;
         all_factors[k][neigh_position] = recv_buffer[ptrs_buffer[i - 1] + j];
       }
     }
@@ -394,7 +394,7 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
     for (s = 1; s < j; s++) aux_sums[s] = aux_sums[s - 1] + j - s + 1;
     if (all_factors) array = all_factors[aux_local_numbering_1[i]];
     n_neg_values = 0;
-    while (n_neg_values < j && neighbours_set[aux_local_numbering_1[i]][n_neg_values] < rank) { n_neg_values++; }
+    while (n_neg_values < j && neighbours_set[aux_local_numbering_1[i]][n_neg_values] < rank) n_neg_values++;
     n_pos_values = j - n_neg_values;
     if (fully_redundant) {
       for (s = 0; s < n_neg_values; s++) {
@@ -608,9 +608,9 @@ PetscErrorCode PCBDDCSetupFETIDPMatContext(FETIDPMat_ctx fetidpmat_ctx)
     PetscCall(PetscNew(&ctx));
     PetscCall(MatSetType(fetidpmat_ctx->B_Ddelta, MATSHELL));
     PetscCall(MatShellSetContext(fetidpmat_ctx->B_Ddelta, ctx));
-    PetscCall(MatShellSetOperation(fetidpmat_ctx->B_Ddelta, MATOP_MULT, (void (*)(void))MatMult_BDdelta_deluxe_nonred));
-    PetscCall(MatShellSetOperation(fetidpmat_ctx->B_Ddelta, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_BDdelta_deluxe_nonred));
-    PetscCall(MatShellSetOperation(fetidpmat_ctx->B_Ddelta, MATOP_DESTROY, (void (*)(void))MatDestroy_BDdelta_deluxe_nonred));
+    PetscCall(MatShellSetOperation(fetidpmat_ctx->B_Ddelta, MATOP_MULT, (PetscErrorCodeFn *)MatMult_BDdelta_deluxe_nonred));
+    PetscCall(MatShellSetOperation(fetidpmat_ctx->B_Ddelta, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)MatMultTranspose_BDdelta_deluxe_nonred));
+    PetscCall(MatShellSetOperation(fetidpmat_ctx->B_Ddelta, MATOP_DESTROY, (PetscErrorCodeFn *)MatDestroy_BDdelta_deluxe_nonred));
     PetscCall(MatSetUp(fetidpmat_ctx->B_Ddelta));
 
     PetscCall(PetscObjectReference((PetscObject)BD1));
@@ -997,12 +997,12 @@ PetscErrorCode FETIDPPCApplyTranspose(PC pc, Vec x, Vec y)
 PetscErrorCode FETIDPPCView(PC pc, PetscViewer viewer)
 {
   FETIDPPC_ctx pc_ctx;
-  PetscBool    iascii;
+  PetscBool    isascii;
   PetscViewer  sviewer;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscMPIInt rank;
     PetscBool   isschur, isshell;
 

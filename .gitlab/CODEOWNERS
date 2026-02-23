@@ -24,7 +24,7 @@ src/ts/event/             @abhyshr @caidao22 @BarrySmith
 
 /src/binding/petsc4py/    @dalcinl @wence @pefarrell @joseroman @jedbrown @knepley @psanan @stefanozampini
 
-/src/sys/classes/viewer/  @petsc/integrators @haplav
+/src/sys/classes/viewer/  @BarrySmith @knepley @haplav
 
 /src/sys/objects/device/  @Jfaibussowitsch @jczhang07
 
@@ -39,5 +39,5 @@ gmakefile*                @krugers @jedbrown @BarrySmith
 /lib/petsc                @krugers @sbalay
 
 **/*.kokkos.cxx           @jczhang07 @jedbrown @stefanozampini @markadams4
-**/*.hip.cpp              @jczhang07 @jedbrown @stefanozampini @markadams4 @krugers
+**/*.hip.cxx              @jczhang07 @jedbrown @stefanozampini @markadams4 @krugers
 **/*.cu                   @jczhang07 @stefanozampini @markadams4 @karlrupp

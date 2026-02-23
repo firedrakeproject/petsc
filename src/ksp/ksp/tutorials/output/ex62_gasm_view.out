@@ -1,7 +1,7 @@
 KSP Object: 8 MPI processes
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -20,7 +20,7 @@ PC Object: 8 MPI processes
     [5|8] number of locally-supported subdomains = 2
     [6|8] number of locally-supported subdomains = 2
     [7|8] number of locally-supported subdomains = 2
-    Subdomain solver info is as follows:
+    Subdomain solver info:
       - - - - - - - - - - - - - - - - - -
       [0|8] (subcomm [0|5]) local subdomain number 0, local size = 20
       KSP Object: (sub_) 5 MPI processes
@@ -28,7 +28,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -39,7 +39,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -47,21 +47,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=20, cols=20
                     package used to perform factorization: petsc
                     total: nonzeros=66, allocated nonzeros=66
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=20, cols=20
               total: nonzeros=66, allocated nonzeros=66
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=90, cols=90
@@ -79,7 +79,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -90,7 +90,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -98,21 +98,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=16, cols=16
                     package used to perform factorization: petsc
                     total: nonzeros=56, allocated nonzeros=56
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=16, cols=16
               total: nonzeros=56, allocated nonzeros=56
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=80, cols=80
@@ -130,7 +130,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -141,7 +141,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -149,21 +149,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=8, cols=8
                     package used to perform factorization: petsc
                     total: nonzeros=22, allocated nonzeros=22
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=8, cols=8
               total: nonzeros=22, allocated nonzeros=22
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=81, cols=81
@@ -181,7 +181,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -192,7 +192,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -200,21 +200,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=1, cols=1
                     package used to perform factorization: petsc
                     total: nonzeros=1, allocated nonzeros=1
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=1, cols=1
               total: nonzeros=1, allocated nonzeros=1
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=72, cols=72
@@ -226,7 +226,7 @@ PC Object: 8 MPI processes
       [5|8] (subcomm [2|5]) local subdomain number 1, local size = 18
       [6|8] (subcomm [3|5]) local subdomain number 1, local size = 18
       [7|8] (subcomm [4|5]) local subdomain number 1, local size = 17
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 8 MPI processes
     type: mpiaij
     rows=255, cols=255
@@ -235,8 +235,8 @@ PC Object: 8 MPI processes
       not using I-node (on process 0) routines
 KSP Object: 8 MPI processes
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -255,7 +255,7 @@ PC Object: 8 MPI processes
     [5|8] number of locally-supported subdomains = 2
     [6|8] number of locally-supported subdomains = 2
     [7|8] number of locally-supported subdomains = 2
-    Subdomain solver info is as follows:
+    Subdomain solver info:
       - - - - - - - - - - - - - - - - - -
       [0|8] (subcomm [0|5]) local subdomain number 0, local size = 20
       KSP Object: (sub_) 5 MPI processes
@@ -263,7 +263,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -274,7 +274,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -282,21 +282,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=20, cols=20
                     package used to perform factorization: petsc
                     total: nonzeros=66, allocated nonzeros=66
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=20, cols=20
               total: nonzeros=66, allocated nonzeros=66
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=90, cols=90
@@ -314,7 +314,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -325,7 +325,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -333,21 +333,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=16, cols=16
                     package used to perform factorization: petsc
                     total: nonzeros=56, allocated nonzeros=56
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=16, cols=16
               total: nonzeros=56, allocated nonzeros=56
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=80, cols=80
@@ -365,7 +365,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -376,7 +376,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -384,21 +384,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=8, cols=8
                     package used to perform factorization: petsc
                     total: nonzeros=22, allocated nonzeros=22
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=8, cols=8
               total: nonzeros=22, allocated nonzeros=22
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=81, cols=81
@@ -416,7 +416,7 @@ PC Object: 8 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (sub_) 5 MPI processes
         type: bjacobi
           number of blocks = 5
@@ -427,7 +427,7 @@ PC Object: 8 MPI processes
             maximum iterations=10000, initial guess is zero
             tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
             left preconditioning
-            using NONE norm type for convergence test
+            not checking for convergence
           PC Object: (sub_sub_) 1 MPI process
             type: ilu
               out-of-place factorization
@@ -435,21 +435,21 @@ PC Object: 8 MPI processes
               tolerance for zero pivot 2.22045e-14
               matrix ordering: natural
               factor fill ratio given 1., needed 1.
-                Factored matrix follows:
+                Factored matrix:
                   Mat Object: (sub_sub_) 1 MPI process
                     type: seqaij
                     rows=1, cols=1
                     package used to perform factorization: petsc
                     total: nonzeros=1, allocated nonzeros=1
                       not using I-node routines
-            linear system matrix = precond matrix:
+            linear system matrix, which is also used to construct the preconditioner:
             Mat Object: (sub_sub_) 1 MPI process
               type: seqaij
               rows=1, cols=1
               total: nonzeros=1, allocated nonzeros=1
               total number of mallocs used during MatSetValues calls=0
                 not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (sub_) 5 MPI processes
           type: mpiaij
           rows=72, cols=72
@@ -461,7 +461,7 @@ PC Object: 8 MPI processes
       [5|8] (subcomm [2|5]) local subdomain number 1, local size = 18
       [6|8] (subcomm [3|5]) local subdomain number 1, local size = 18
       [7|8] (subcomm [4|5]) local subdomain number 1, local size = 17
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 8 MPI processes
     type: mpiaij
     rows=255, cols=255

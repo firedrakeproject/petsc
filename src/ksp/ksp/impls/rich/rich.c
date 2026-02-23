@@ -62,8 +62,6 @@ static PetscErrorCode KSPSolve_Richardson(KSP ksp)
     PetscCall(PCApplyRichardson(ksp->pc, b, x, r, ksp->rtol, ksp->abstol, ksp->divtol, maxit, ksp->guess_zero, &ksp->its, &reason));
     ksp->reason = (KSPConvergedReason)reason;
     PetscFunctionReturn(PETSC_SUCCESS);
-  } else {
-    PetscCall(PetscInfo(ksp, "KSPSolve_Richardson: Warning, skipping optimized PCApplyRichardson()\n"));
   }
 
   if (!ksp->guess_zero) { /*   r <- b - A x     */
@@ -111,7 +109,7 @@ static PetscErrorCode KSPSolve_Richardson(KSP ksp)
       PetscCall(KSPLogResidualHistory(ksp, rnorm));
       PetscCall((*ksp->converged)(ksp, i, rnorm, &ksp->reason, ksp->cnvP));
       if (ksp->reason) break;
-      if (ksp->normtype != KSP_NORM_PRECONDITIONED) { PetscCall(KSP_PCApply(ksp, r, z)); /*   z <- B r          */ }
+      if (ksp->normtype != KSP_NORM_PRECONDITIONED) PetscCall(KSP_PCApply(ksp, r, z)); /*   z <- B r          */
 
       PetscCall(VecAXPY(x, richardsonP->scale, z)); /*   x  <- x + scale z */
       ksp->its++;
@@ -149,11 +147,11 @@ static PetscErrorCode KSPSolve_Richardson(KSP ksp)
 static PetscErrorCode KSPView_Richardson(KSP ksp, PetscViewer viewer)
 {
   KSP_Richardson *richardsonP = (KSP_Richardson *)ksp->data;
-  PetscBool       iascii;
+  PetscBool       isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     if (richardsonP->selfscale) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "  using self-scale best computed damping factor\n"));
     } else {

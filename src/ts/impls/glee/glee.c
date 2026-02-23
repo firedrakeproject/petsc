@@ -62,7 +62,17 @@ typedef struct {
 } TS_GLEE;
 
 /*MC
-     TSGLEE23 - Second order three stage GLEE method
+     TSGLEEi1 - Second order three stage implicit GLEE method
+
+     This method has two stages.
+     s = 3, r = 2
+
+     Level: advanced
+
+.seealso: [](ch_ts), `TSGLEE`
+M*/
+/*MC
+     TSGLEE23 - Second order three stage explicit GLEE method
 
      This method has three stages.
      s = 3, r = 2
@@ -72,7 +82,7 @@ typedef struct {
 .seealso: [](ch_ts), `TSGLEE`
 M*/
 /*MC
-     TSGLEE24 - Second order four stage GLEE method
+     TSGLEE24 - Second order four stage explicit GLEE method
 
      This method has four stages.
      s = 4, r = 2
@@ -82,7 +92,7 @@ M*/
 .seealso: [](ch_ts), `TSGLEE`
 M*/
 /*MC
-     TSGLEE25i - Second order five stage GLEE method
+     TSGLEE25i - Second order five stage explicit GLEE method
 
      This method has five stages.
      s = 5, r = 2
@@ -92,7 +102,7 @@ M*/
 .seealso: [](ch_ts), `TSGLEE`
 M*/
 /*MC
-     TSGLEE35  - Third order five stage GLEE method
+     TSGLEE35  - Third order five stage explicit GLEE method
 
      This method has five stages.
      s = 5, r = 2
@@ -102,7 +112,7 @@ M*/
 .seealso: [](ch_ts), `TSGLEE`
 M*/
 /*MC
-     TSGLEEEXRK2A  - Second order six stage GLEE method
+     TSGLEEEXRK2A  - Second order six stage explicit GLEE method
 
      This method has six stages.
      s = 6, r = 2
@@ -112,7 +122,7 @@ M*/
 .seealso: [](ch_ts), `TSGLEE`
 M*/
 /*MC
-     TSGLEERK32G1  - Third order eight stage GLEE method
+     TSGLEERK32G1  - Third order eight stage explicit GLEE method
 
      This method has eight stages.
      s = 8, r = 2
@@ -122,7 +132,7 @@ M*/
 .seealso: [](ch_ts), `TSGLEE`
 M*/
 /*MC
-     TSGLEERK285EX  - Second order nine stage GLEE method
+     TSGLEERK285EX  - Second order nine stage explicit GLEE method
 
      This method has nine stages.
      s = 9, r = 2
@@ -477,8 +487,8 @@ static PetscErrorCode TSEvaluateStep_GLEE(TS ts, PetscInt order, Vec X, PetscBoo
     if (done) *done = PETSC_TRUE;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
-  if (done) *done = PETSC_FALSE;
-  else SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "GLEE '%s' of order %" PetscInt_FMT " cannot evaluate step at order %" PetscInt_FMT, tab->name, tab->order, order);
+  PetscCheck(done, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "GLEE '%s' of order %" PetscInt_FMT " cannot evaluate step at order %" PetscInt_FMT, tab->name, tab->order, order);
+  *done = PETSC_FALSE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -611,7 +621,6 @@ static PetscErrorCode TSInterpolate_GLEE(TS ts, PetscReal itime, Vec X)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TSReset_GLEE(TS ts)
 {
   TS_GLEE *glee = (TS_GLEE *)ts->data;
@@ -638,9 +647,8 @@ static PetscErrorCode TSGLEEGetVecs(TS ts, DM dm, Vec *Ydot)
 
   PetscFunctionBegin;
   if (Ydot) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSGLEE_Ydot", Ydot));
-    } else *Ydot = glee->Ydot;
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSGLEE_Ydot", Ydot));
+    else *Ydot = glee->Ydot;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -701,25 +709,25 @@ static PetscErrorCode SNESTSFormJacobian_GLEE(SNES snes, Vec X, Mat A, Mat B, TS
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCoarsenHook_TSGLEE(DM fine, DM coarse, void *ctx)
+static PetscErrorCode DMCoarsenHook_TSGLEE(DM fine, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMRestrictHook_TSGLEE(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
+static PetscErrorCode DMRestrictHook_TSGLEE(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainHook_TSGLEE(DM dm, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainHook_TSGLEE(DM dm, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainRestrictHook_TSGLEE(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainRestrictHook_TSGLEE(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -767,8 +775,6 @@ static PetscErrorCode TSStartingMethod_GLEE(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 static PetscErrorCode TSSetFromOptions_GLEE(TS ts, PetscOptionItems PetscOptionsObject)
 {
   char gleetype[256];
@@ -797,11 +803,11 @@ static PetscErrorCode TSView_GLEE(TS ts, PetscViewer viewer)
 {
   TS_GLEE    *glee = (TS_GLEE *)ts->data;
   GLEETableau tab  = glee->tableau;
-  PetscBool   iascii;
+  PetscBool   isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     TSGLEEType gleetype;
     char       buf[512];
     PetscCall(TSGLEEGetType(ts, &gleetype));
@@ -923,9 +929,8 @@ static PetscErrorCode TSGetSolutionComponents_GLEE(TS ts, PetscInt *n, Vec *Y)
   PetscFunctionBegin;
   if (!Y) *n = tab->r;
   else {
-    if ((*n >= 0) && (*n < tab->r)) {
-      PetscCall(VecCopy(glee->Y[*n], *Y));
-    } else SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_OUTOFRANGE, "Second argument (%" PetscInt_FMT ") out of range[0,%" PetscInt_FMT "].", *n, tab->r - 1);
+    PetscCheck(*n >= 0 && *n < tab->r, PetscObjectComm((PetscObject)ts), PETSC_ERR_ARG_OUTOFRANGE, "Second argument (%" PetscInt_FMT ") out of range[0,%" PetscInt_FMT "].", *n, tab->r - 1);
+    PetscCall(VecCopy(glee->Y[*n], *Y));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1000,18 +1005,20 @@ static PetscErrorCode TSDestroy_GLEE(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ------------------------------------------------------------ */
 /*MC
-      TSGLEE - ODE and DAE solver using General Linear with Error Estimation schemes
+  TSGLEE - ODE and DAE solver using General Linear with Error Estimation schemes
 
-  The user should provide the right-hand side of the equation using `TSSetRHSFunction()`.
+  The user should provide the right-hand side of the equation using `TSSetRHSFunction()`
+  and for `TSGLEEi1` the Jacobian of the right-hand side using `TSSetRHSJacobian()`
 
   Level: beginner
 
-  Note:
-  The default is `TSGLEE35`, it can be changed with `TSGLEESetType()` or -ts_glee_type
+  Notes:
+  The default is `TSGLEE35`, it can be changed with `TSGLEESetType()` or `-ts_glee_type type`
 
-.seealso: [](ch_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSGLEESetType()`, `TSGLEEGetType()`,
+  The only implicit scheme is `TSGLEEi1`
+
+.seealso: [](ch_ts), [](sec_ts_glee), `TSCreate()`, `TS`, `TSSetType()`, `TSGLEESetType()`, `TSGLEEGetType()`,
           `TSGLEE23`, `TSGLEE24`, `TSGLEE35`, `TSGLEE25I`, `TSGLEEEXRK2A`,
           `TSGLEERK32G1`, `TSGLEERK285EX`, `TSGLEEType`, `TSGLEERegister()`, `TSType`
 M*/

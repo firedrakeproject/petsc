@@ -139,7 +139,7 @@ static PetscErrorCode KSPSolve_FCG(KSP ksp)
   if (ksp->reason) PetscFunctionReturn(PETSC_SUCCESS);
 
   /* Apply PC if not already done for convergence check */
-  if (ksp->normtype == KSP_NORM_UNPRECONDITIONED || ksp->normtype == KSP_NORM_NONE) { PetscCall(KSP_PCApply(ksp, R, Z)); /*   z <- Br         */ }
+  if (ksp->normtype == KSP_NORM_UNPRECONDITIONED || ksp->normtype == KSP_NORM_NONE) PetscCall(KSP_PCApply(ksp, R, Z)); /*   z <- Br         */
 
   i = 0;
   do {
@@ -257,7 +257,7 @@ static PetscErrorCode KSPSolve_FCG(KSP ksp)
     if (ksp->reason) break;
 
     /* Apply PC if not already done for convergence check */
-    if (ksp->normtype == KSP_NORM_UNPRECONDITIONED || ksp->normtype == KSP_NORM_NONE) { PetscCall(KSP_PCApply(ksp, R, Z)); /*   z <- Br         */ }
+    if (ksp->normtype == KSP_NORM_UNPRECONDITIONED || ksp->normtype == KSP_NORM_NONE) PetscCall(KSP_PCApply(ksp, R, Z)); /*   z <- Br         */
 
     /* Compute current C (which is W/dpi) */
     PetscCall(VecScale(Ccurr, 1.0 / dpi)); /*   w <- ci/dpi   */
@@ -267,23 +267,29 @@ static PetscErrorCode KSPSolve_FCG(KSP ksp)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode KSPDestroy_FCG(KSP ksp)
+static PetscErrorCode KSPReset_FCG(KSP ksp)
 {
   PetscInt i;
   KSP_FCG *fcg = (KSP_FCG *)ksp->data;
 
   PetscFunctionBegin;
-  /* Destroy "standard" work vecs */
-  PetscCall(VecDestroyVecs(ksp->nwork, &ksp->work));
-
   /* Destroy P and C vectors and the arrays that manage pointers to them */
   if (fcg->nvecs) {
     for (i = 0; i < fcg->nchunks; ++i) {
       PetscCall(VecDestroyVecs(fcg->chunksizes[i], &fcg->pPvecs[i]));
       PetscCall(VecDestroyVecs(fcg->chunksizes[i], &fcg->pCvecs[i]));
     }
+    fcg->nchunks = fcg->nvecs = 0;
   }
   PetscCall(PetscFree5(fcg->Pvecs, fcg->Cvecs, fcg->pPvecs, fcg->pCvecs, fcg->chunksizes));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode KSPDestroy_FCG(KSP ksp)
+{
+  KSP_FCG *fcg = (KSP_FCG *)ksp->data;
+
+  PetscFunctionBegin;
   /* free space used for singular value calculations */
   if (ksp->calc_sings) PetscCall(PetscFree4(fcg->e, fcg->d, fcg->ee, fcg->dd));
   PetscCall(KSPDestroyDefault(ksp));
@@ -293,18 +299,18 @@ static PetscErrorCode KSPDestroy_FCG(KSP ksp)
 static PetscErrorCode KSPView_FCG(KSP ksp, PetscViewer viewer)
 {
   KSP_FCG    *fcg = (KSP_FCG *)ksp->data;
-  PetscBool   iascii, isstring;
+  PetscBool   isascii, isstring;
   const char *truncstr;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
 
   if (fcg->truncstrat == KSP_FCD_TRUNC_TYPE_STANDARD) truncstr = "Using standard truncation strategy";
   else if (fcg->truncstrat == KSP_FCD_TRUNC_TYPE_NOTAY) truncstr = "Using Notay's truncation strategy";
   else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Undefined FCG truncation strategy");
 
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  m_max=%" PetscInt_FMT "\n", fcg->mmax));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  preallocated %" PetscInt_FMT " directions\n", PetscMin(fcg->nprealloc, fcg->mmax + 1)));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  %s\n", truncstr));
@@ -528,11 +534,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_FCG(KSP ksp)
 
   PetscFunctionBegin;
   PetscCall(PetscNew(&fcg));
-#if !defined(PETSC_USE_COMPLEX)
-  fcg->type = KSP_CG_SYMMETRIC;
-#else
-  fcg->type = KSP_CG_HERMITIAN;
-#endif
+  fcg->type       = !PetscDefined(USE_COMPLEX) ? KSP_CG_SYMMETRIC : KSP_CG_HERMITIAN;
   fcg->mmax       = KSPFCG_DEFAULT_MMAX;
   fcg->nprealloc  = KSPFCG_DEFAULT_NPREALLOC;
   fcg->nvecs      = 0;
@@ -549,6 +551,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_FCG(KSP ksp)
 
   ksp->ops->setup          = KSPSetUp_FCG;
   ksp->ops->solve          = KSPSolve_FCG;
+  ksp->ops->reset          = KSPReset_FCG;
   ksp->ops->destroy        = KSPDestroy_FCG;
   ksp->ops->view           = KSPView_FCG;
   ksp->ops->setfromoptions = KSPSetFromOptions_FCG;

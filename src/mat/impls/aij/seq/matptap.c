@@ -33,7 +33,7 @@ PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqAIJ(Mat C)
   /* "rap" */
   PetscCall(PetscStrcmp(alg, "rap", &flg));
   if (flg) {
-    Mat_MatTransMatMult *atb;
+    MatProductCtx_MatTransMatMult *atb;
 
     PetscCall(PetscNew(&atb));
     PetscCall(MatTranspose(P, MAT_INITIAL_MATRIX, &Pt));
@@ -43,7 +43,7 @@ PetscErrorCode MatProductSymbolic_PtAP_SeqAIJ_SeqAIJ(Mat C)
     atb->data              = C->product->data;
     atb->destroy           = C->product->destroy;
     C->product->data       = atb;
-    C->product->destroy    = MatDestroy_SeqAIJ_MatTransMatMult;
+    C->product->destroy    = MatProductCtxDestroy_SeqAIJ_MatTransMatMult;
     C->ops->ptapnumeric    = MatPtAPNumeric_SeqAIJ_SeqAIJ;
     C->ops->productnumeric = MatProductNumeric_PtAP;
     PetscFunctionReturn(PETSC_SUCCESS);
@@ -145,12 +145,12 @@ PetscErrorCode MatPtAPSymbolic_SeqAIJ_SeqAIJ_SparseAxpy(Mat A, Mat P, PetscReal 
   /* nnz is now stored in ci[ptm], column indices are in the list of free space */
   /* Allocate space for cj, initialize cj, and */
   /* destroy list of free space and other temporary array(s) */
-  PetscCall(PetscMalloc1(ci[pn] + 1, &cj));
+  PetscCall(PetscMalloc1(ci[pn], &cj));
   PetscCall(PetscFreeSpaceContiguous(&free_space, cj));
   PetscCall(PetscFree(ptadenserow));
   PetscCall(PetscLLDestroy(lnk, lnkbt));
 
-  PetscCall(PetscCalloc1(ci[pn] + 1, &ca));
+  PetscCall(PetscCalloc1(ci[pn], &ca));
 
   /* put together the new matrix */
   PetscCall(MatSetSeqAIJWithArrays_private(PetscObjectComm((PetscObject)A), pn, pn, ci, cj, ca, ((PetscObject)A)->type_name, C));
@@ -203,11 +203,11 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy(Mat A, Mat P, Mat C)
   /* trigger CPU copies if needed and flag CPU mask for C */
 #if defined(PETSC_HAVE_DEVICE)
   {
-    const PetscScalar *dummy;
-    PetscCall(MatSeqAIJGetArrayRead(A, &dummy));
-    PetscCall(MatSeqAIJRestoreArrayRead(A, &dummy));
-    PetscCall(MatSeqAIJGetArrayRead(P, &dummy));
-    PetscCall(MatSeqAIJRestoreArrayRead(P, &dummy));
+    const PetscScalar *unused;
+    PetscCall(MatSeqAIJGetArrayRead(A, &unused));
+    PetscCall(MatSeqAIJRestoreArrayRead(A, &unused));
+    PetscCall(MatSeqAIJGetArrayRead(P, &unused));
+    PetscCall(MatSeqAIJRestoreArrayRead(P, &unused));
     if (C->offloadmask != PETSC_OFFLOAD_UNALLOCATED) C->offloadmask = PETSC_OFFLOAD_CPU;
   }
 #endif
@@ -277,11 +277,11 @@ PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ_SparseAxpy(Mat A, Mat P, Mat C)
 
 PetscErrorCode MatPtAPNumeric_SeqAIJ_SeqAIJ(Mat A, Mat P, Mat C)
 {
-  Mat_MatTransMatMult *atb;
+  MatProductCtx_MatTransMatMult *atb;
 
   PetscFunctionBegin;
   MatCheckProduct(C, 3);
-  atb = (Mat_MatTransMatMult *)C->product->data;
+  atb = (MatProductCtx_MatTransMatMult *)C->product->data;
   PetscCheck(atb, PetscObjectComm((PetscObject)C), PETSC_ERR_PLIB, "Missing data structure");
   PetscCall(MatTranspose(P, MAT_REUSE_MATRIX, &atb->At));
   PetscCheck(C->ops->matmultnumeric, PetscObjectComm((PetscObject)C), PETSC_ERR_PLIB, "Missing numeric operation");

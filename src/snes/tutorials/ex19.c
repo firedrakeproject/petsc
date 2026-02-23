@@ -365,7 +365,7 @@ PetscErrorCode FormFunctionLocal(DMDALocalInfo *info, Field **x, Field **f, void
 /*
     Performs sweeps of point block nonlinear Gauss-Seidel on all the local grid points
 */
-PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, void *ctx)
+PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, PetscCtx ctx)
 {
   DMDALocalInfo info;
   Field       **x, **b;
@@ -1029,6 +1029,13 @@ PetscErrorCode NonlinearGS(SNES snes, Vec X, Vec B, void *ctx)
       nsize: 2
       requires: superlu_dist defined(PETSC_HAVE_SUPERLU_DIST_SINGLE)
       args: -da_grid_x 20 -da_grid_y 20 -pc_type lu -pc_factor_mat_solver_type superlu_dist -pc_precision single
+      output_file: output/ex19_superlu.out
+
+   test:
+      suffix: mumps_mixed
+      nsize: 2
+      requires: mumps defined(PETSC_HAVE_MUMPS_MIXED_PRECISION)
+      args: -da_grid_x 20 -da_grid_y 20 -pc_type lu -pc_factor_mat_solver_type mumps -pc_precision {{single double}}
       output_file: output/ex19_superlu.out
 
    test:

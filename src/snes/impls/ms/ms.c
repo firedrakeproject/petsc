@@ -300,7 +300,7 @@ static PetscErrorCode SNESMSStep_Norms(SNES snes, PetscInt iter, Vec F)
   PetscFunctionBegin;
   if (SNESNeedNorm_Private(snes, iter)) {
     PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- ||F||  */
-    SNESCheckFunctionNorm(snes, fnorm);
+    SNESCheckFunctionDomainError(snes, fnorm);
     /* Monitor convergence */
     PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
     snes->iter = iter;
@@ -333,9 +333,8 @@ static PetscErrorCode SNESSolve_MS(SNES snes)
   snes->norm = 0;
   PetscCall(PetscObjectSAWsGrantAccess((PetscObject)snes));
 
-  if (!snes->vec_func_init_set) {
-    PetscCall(SNESComputeFunction(snes, X, F));
-  } else snes->vec_func_init_set = PETSC_FALSE;
+  if (!snes->vec_func_init_set) PetscCall(SNESComputeFunction(snes, X, F));
+  else snes->vec_func_init_set = PETSC_FALSE;
 
   PetscCall(SNESMSStep_Norms(snes, 0, F));
   if (snes->reason) PetscFunctionReturn(PETSC_SUCCESS);
@@ -347,7 +346,7 @@ static PetscErrorCode SNESSolve_MS(SNES snes)
     if (i == 0 && snes->jacobian) {
       /* This method does not require a Jacobian, but it is usually preconditioned by PBJacobi */
       PetscCall(SNESComputeJacobian(snes, snes->vec_sol, snes->jacobian, snes->jacobian_pre));
-      SNESCheckJacobianDomainerror(snes);
+      SNESCheckJacobianDomainError(snes);
       PetscCall(KSPSetOperators(snes->ksp, snes->jacobian, snes->jacobian_pre));
     }
 
@@ -387,13 +386,13 @@ static PetscErrorCode SNESDestroy_MS(SNES snes)
 
 static PetscErrorCode SNESView_MS(SNES snes, PetscViewer viewer)
 {
-  PetscBool     iascii;
+  PetscBool     isascii;
   SNES_MS      *ms  = (SNES_MS *)snes->data;
   SNESMSTableau tab = ms->tableau;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  multi-stage method type: %s\n", tab->name));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  multi-stage method type: %s\n", tab->name));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

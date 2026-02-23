@@ -351,7 +351,7 @@ PetscErrorCode MatKAIJSetS(Mat A, PetscInt p, PetscInt q, const PetscScalar S[])
   PetscCall(PetscFree(a->S));
   if (S) {
     PetscCall(PetscMalloc1(p * q, &a->S));
-    PetscCall(PetscMemcpy(a->S, S, p * q * sizeof(PetscScalar)));
+    PetscCall(PetscArraycpy(a->S, S, p * q));
   } else a->S = NULL;
 
   a->p = p;
@@ -447,7 +447,7 @@ PetscErrorCode MatKAIJSetT(Mat A, PetscInt p, PetscInt q, const PetscScalar T[])
   PetscCall(PetscFree(a->T));
   if (T && (!isTI)) {
     PetscCall(PetscMalloc1(p * q, &a->T));
-    PetscCall(PetscMemcpy(a->T, T, p * q * sizeof(PetscScalar)));
+    PetscCall(PetscArraycpy(a->T, T, p * q));
   } else a->T = NULL;
 
   a->p = p;
@@ -756,9 +756,9 @@ static PetscErrorCode MatInvertBlockDiagonal_SeqKAIJ(Mat A, const PetscScalar **
   PetscCall(PetscMalloc2(dof, &v_work, dof, &v_pivots));
   for (i = 0; i < m; i++) {
     if (S) {
-      PetscCall(PetscMemcpy(diag, S, dof2 * sizeof(PetscScalar)));
+      PetscCall(PetscArraycpy(diag, S, dof2));
     } else {
-      PetscCall(PetscMemzero(diag, dof2 * sizeof(PetscScalar)));
+      PetscCall(PetscArrayzero(diag, dof2));
     }
     if (b->isTI) {
       aval = 0;
@@ -791,11 +791,12 @@ static PetscErrorCode MatGetDiagonalBlock_MPIKAIJ(Mat A, Mat *B)
 
 static PetscErrorCode MatConvert_KAIJ_AIJ(Mat A, MatType newtype, MatReuse reuse, Mat *newmat)
 {
-  Mat_SeqKAIJ   *a = (Mat_SeqKAIJ *)A->data;
-  Mat            AIJ, OAIJ, B;
-  PetscInt      *d_nnz, *o_nnz = NULL, nz, i, j, m, d;
-  const PetscInt p = a->p, q = a->q;
-  PetscBool      ismpikaij, missing;
+  Mat_SeqKAIJ    *a = (Mat_SeqKAIJ *)A->data;
+  Mat             AIJ, OAIJ, B;
+  PetscInt       *d_nnz, *o_nnz = NULL, nz, i, j, m, d;
+  const PetscInt  p = a->p, q = a->q;
+  PetscBool       ismpikaij, diagDense;
+  const PetscInt *aijdiag;
 
   PetscFunctionBegin;
   if (reuse != MAT_REUSE_MATRIX) {
@@ -812,8 +813,19 @@ static PetscErrorCode MatConvert_KAIJ_AIJ(Mat A, MatType newtype, MatReuse reuse
     PetscCall(MatSetSizes(B, A->rmap->n, A->cmap->n, A->rmap->N, A->cmap->N));
     PetscCall(MatSetType(B, MATAIJ));
     PetscCall(MatGetSize(AIJ, &m, NULL));
-    PetscCall(MatMissingDiagonal(AIJ, &missing, &d)); /* assumption that all successive rows will have a missing diagonal */
-    if (!missing || !a->S) d = m;
+
+    /*
+      Determine the first row of AIJ with missing diagonal and assume all successive rows also have a missing diagonal
+    */
+    PetscCall(MatGetDiagonalMarkers_SeqAIJ(AIJ, &aijdiag, &diagDense));
+    if (diagDense || !a->S) d = m;
+    else {
+      Mat_SeqAIJ *aij = (Mat_SeqAIJ *)AIJ->data;
+
+      for (d = 0; d < m; d++) {
+        if (aijdiag[d] == aij->i[d + 1]) break;
+      }
+    }
     PetscCall(PetscMalloc1(m * p, &d_nnz));
     for (i = 0; i < m; ++i) {
       PetscCall(MatGetRow_SeqAIJ(AIJ, i, &nz, NULL, NULL));
@@ -835,9 +847,8 @@ static PetscErrorCode MatConvert_KAIJ_AIJ(Mat A, MatType newtype, MatReuse reuse
     PetscCall(PetscFree(o_nnz));
   } else B = *newmat;
   PetscCall(MatConvert_Basic(A, newtype, MAT_REUSE_MATRIX, &B));
-  if (reuse == MAT_INPLACE_MATRIX) {
-    PetscCall(MatHeaderReplace(A, &B));
-  } else *newmat = B;
+  if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &B));
+  else *newmat = B;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -865,7 +876,7 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
 
   if (!kaij->ibdiagvalid) PetscCall(MatInvertBlockDiagonal_SeqKAIJ(A, NULL));
   idiag = kaij->ibdiag;
-  diag  = a->diag;
+  PetscCall(MatGetDiagonalMarkers_SeqAIJ(kaij->AIJ, &diag, NULL));
 
   if (!kaij->sor.setup) {
     PetscCall(PetscMalloc5(bs, &kaij->sor.w, bs, &kaij->sor.y, m * bs, &kaij->sor.work, m * bs, &kaij->sor.t, m * bs2, &kaij->sor.arr));
@@ -883,7 +894,7 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
   if (flag & SOR_ZERO_INITIAL_GUESS) {
     if (flag & SOR_FORWARD_SWEEP || flag & SOR_LOCAL_FORWARD_SWEEP) {
       PetscKernel_w_gets_Ar_times_v(bs, bs, b, idiag, x); /* x[0:bs] <- D^{-1} b[0:bs] */
-      PetscCall(PetscMemcpy(t, b, bs * sizeof(PetscScalar)));
+      PetscCall(PetscArraycpy(t, b, bs));
       i2 = bs;
       idiag += bs2;
       for (i = 1; i < m; i++) {
@@ -892,19 +903,19 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
         nz = diag[i] - ai[i];
 
         if (T) { /* b - T (Arow * x) */
-          PetscCall(PetscMemzero(w, bs * sizeof(PetscScalar)));
+          PetscCall(PetscArrayzero(w, bs));
           for (j = 0; j < nz; j++) {
             for (k = 0; k < bs; k++) w[k] -= v[j] * x[vi[j] * bs + k];
           }
           PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs, w, T, &t[i2]);
           for (k = 0; k < bs; k++) t[i2 + k] += b[i2 + k];
         } else if (kaij->isTI) {
-          PetscCall(PetscMemcpy(t + i2, b + i2, bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(t + i2, b + i2, bs));
           for (j = 0; j < nz; j++) {
             for (k = 0; k < bs; k++) t[i2 + k] -= v[j] * x[vi[j] * bs + k];
           }
         } else {
-          PetscCall(PetscMemcpy(t + i2, b + i2, bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(t + i2, b + i2, bs));
         }
 
         PetscKernel_w_gets_Ar_times_v(bs, bs, t + i2, idiag, y);
@@ -920,7 +931,7 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
     if (flag & SOR_BACKWARD_SWEEP || flag & SOR_LOCAL_BACKWARD_SWEEP) {
       idiag = kaij->ibdiag + bs2 * (m - 1);
       i2    = bs * (m - 1);
-      PetscCall(PetscMemcpy(w, xb + i2, bs * sizeof(PetscScalar)));
+      PetscCall(PetscArraycpy(w, xb + i2, bs));
       PetscKernel_w_gets_Ar_times_v(bs, bs, w, idiag, x + i2);
       i2 -= bs;
       idiag -= bs2;
@@ -930,22 +941,22 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
         nz = ai[i + 1] - diag[i] - 1;
 
         if (T) { /* FIXME: This branch untested */
-          PetscCall(PetscMemcpy(w, xb + i2, bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(w, xb + i2, bs));
           /* copy all rows of x that are needed into contiguous space */
           workt = work;
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemcpy(workt, x + bs * (*vi++), bs * sizeof(PetscScalar)));
+            PetscCall(PetscArraycpy(workt, x + bs * (*vi++), bs));
             workt += bs;
           }
           arrt = arr;
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemcpy(arrt, T, bs2 * sizeof(PetscScalar)));
+            PetscCall(PetscArraycpy(arrt, T, bs2));
             for (k = 0; k < bs2; k++) arrt[k] *= v[j];
             arrt += bs2;
           }
           PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs * nz, w, arr, work);
         } else if (kaij->isTI) {
-          PetscCall(PetscMemcpy(w, t + i2, bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(w, t + i2, bs));
           for (j = 0; j < nz; j++) {
             for (k = 0; k < bs; k++) w[k] -= v[j] * x[vi[j] * bs + k];
           }
@@ -966,53 +977,53 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
       i2    = 0;
       idiag = kaij->ibdiag;
       for (i = 0; i < m; i++) {
-        PetscCall(PetscMemcpy(w, b + i2, bs * sizeof(PetscScalar)));
+        PetscCall(PetscArraycpy(w, b + i2, bs));
 
         v     = aa + ai[i];
         vi    = aj + ai[i];
         nz    = diag[i] - ai[i];
         workt = work;
         for (j = 0; j < nz; j++) {
-          PetscCall(PetscMemcpy(workt, x + bs * (*vi++), bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(workt, x + bs * (*vi++), bs));
           workt += bs;
         }
         arrt = arr;
         if (T) {
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemcpy(arrt, T, bs2 * sizeof(PetscScalar)));
+            PetscCall(PetscArraycpy(arrt, T, bs2));
             for (k = 0; k < bs2; k++) arrt[k] *= v[j];
             arrt += bs2;
           }
           PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs * nz, w, arr, work);
         } else if (kaij->isTI) {
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemzero(arrt, bs2 * sizeof(PetscScalar)));
+            PetscCall(PetscArrayzero(arrt, bs2));
             for (k = 0; k < bs; k++) arrt[k + bs * k] = v[j];
             arrt += bs2;
           }
           PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs * nz, w, arr, work);
         }
-        PetscCall(PetscMemcpy(t + i2, w, bs * sizeof(PetscScalar)));
+        PetscCall(PetscArraycpy(t + i2, w, bs));
 
         v     = aa + diag[i] + 1;
         vi    = aj + diag[i] + 1;
         nz    = ai[i + 1] - diag[i] - 1;
         workt = work;
         for (j = 0; j < nz; j++) {
-          PetscCall(PetscMemcpy(workt, x + bs * (*vi++), bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(workt, x + bs * (*vi++), bs));
           workt += bs;
         }
         arrt = arr;
         if (T) {
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemcpy(arrt, T, bs2 * sizeof(PetscScalar)));
+            PetscCall(PetscArraycpy(arrt, T, bs2));
             for (k = 0; k < bs2; k++) arrt[k] *= v[j];
             arrt += bs2;
           }
           PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs * nz, w, arr, work);
         } else if (kaij->isTI) {
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemzero(arrt, bs2 * sizeof(PetscScalar)));
+            PetscCall(PetscArrayzero(arrt, bs2));
             for (k = 0; k < bs; k++) arrt[k + bs * k] = v[j];
             arrt += bs2;
           }
@@ -1032,27 +1043,27 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
       i2    = bs * (m - 1);
       if (xb == b) {
         for (i = m - 1; i >= 0; i--) {
-          PetscCall(PetscMemcpy(w, b + i2, bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(w, b + i2, bs));
 
           v     = aa + ai[i];
           vi    = aj + ai[i];
           nz    = diag[i] - ai[i];
           workt = work;
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemcpy(workt, x + bs * (*vi++), bs * sizeof(PetscScalar)));
+            PetscCall(PetscArraycpy(workt, x + bs * (*vi++), bs));
             workt += bs;
           }
           arrt = arr;
           if (T) {
             for (j = 0; j < nz; j++) {
-              PetscCall(PetscMemcpy(arrt, T, bs2 * sizeof(PetscScalar)));
+              PetscCall(PetscArraycpy(arrt, T, bs2));
               for (k = 0; k < bs2; k++) arrt[k] *= v[j];
               arrt += bs2;
             }
             PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs * nz, w, arr, work);
           } else if (kaij->isTI) {
             for (j = 0; j < nz; j++) {
-              PetscCall(PetscMemzero(arrt, bs2 * sizeof(PetscScalar)));
+              PetscCall(PetscArrayzero(arrt, bs2));
               for (k = 0; k < bs; k++) arrt[k + bs * k] = v[j];
               arrt += bs2;
             }
@@ -1064,20 +1075,20 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
           nz    = ai[i + 1] - diag[i] - 1;
           workt = work;
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemcpy(workt, x + bs * (*vi++), bs * sizeof(PetscScalar)));
+            PetscCall(PetscArraycpy(workt, x + bs * (*vi++), bs));
             workt += bs;
           }
           arrt = arr;
           if (T) {
             for (j = 0; j < nz; j++) {
-              PetscCall(PetscMemcpy(arrt, T, bs2 * sizeof(PetscScalar)));
+              PetscCall(PetscArraycpy(arrt, T, bs2));
               for (k = 0; k < bs2; k++) arrt[k] *= v[j];
               arrt += bs2;
             }
             PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs * nz, w, arr, work);
           } else if (kaij->isTI) {
             for (j = 0; j < nz; j++) {
-              PetscCall(PetscMemzero(arrt, bs2 * sizeof(PetscScalar)));
+              PetscCall(PetscArrayzero(arrt, bs2));
               for (k = 0; k < bs; k++) arrt[k + bs * k] = v[j];
               arrt += bs2;
             }
@@ -1089,26 +1100,26 @@ static PetscErrorCode MatSOR_SeqKAIJ(Mat A, Vec bb, PetscReal omega, MatSORType 
         }
       } else {
         for (i = m - 1; i >= 0; i--) {
-          PetscCall(PetscMemcpy(w, xb + i2, bs * sizeof(PetscScalar)));
+          PetscCall(PetscArraycpy(w, xb + i2, bs));
           v     = aa + diag[i] + 1;
           vi    = aj + diag[i] + 1;
           nz    = ai[i + 1] - diag[i] - 1;
           workt = work;
           for (j = 0; j < nz; j++) {
-            PetscCall(PetscMemcpy(workt, x + bs * (*vi++), bs * sizeof(PetscScalar)));
+            PetscCall(PetscArraycpy(workt, x + bs * (*vi++), bs));
             workt += bs;
           }
           arrt = arr;
           if (T) {
             for (j = 0; j < nz; j++) {
-              PetscCall(PetscMemcpy(arrt, T, bs2 * sizeof(PetscScalar)));
+              PetscCall(PetscArraycpy(arrt, T, bs2));
               for (k = 0; k < bs2; k++) arrt[k] *= v[j];
               arrt += bs2;
             }
             PetscKernel_w_gets_w_minus_Ar_times_v(bs, bs * nz, w, arr, work);
           } else if (kaij->isTI) {
             for (j = 0; j < nz; j++) {
-              PetscCall(PetscMemzero(arrt, bs2 * sizeof(PetscScalar)));
+              PetscCall(PetscArrayzero(arrt, bs2));
               for (k = 0; k < bs; k++) arrt[k + bs * k] = v[j];
               arrt += bs2;
             }

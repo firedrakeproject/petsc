@@ -20,7 +20,7 @@ typedef struct {
   PetscInt  maxbounces;
 } AppCtx;
 
-static PetscErrorCode Event(TS ts, PetscReal t, Vec U, PetscReal *fvalue, void *ctx)
+static PetscErrorCode Event(TS ts, PetscReal t, Vec U, PetscReal *fvalue, PetscCtx ctx)
 {
   Vec                V;
   const PetscScalar *u;
@@ -34,7 +34,7 @@ static PetscErrorCode Event(TS ts, PetscReal t, Vec U, PetscReal *fvalue, void *
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PostEvent(TS ts, PetscInt nevents, PetscInt event_list[], PetscReal t, Vec U, PetscBool forwardsolve, void *ctx)
+static PetscErrorCode PostEvent(TS ts, PetscInt nevents, PetscInt event_list[], PetscReal t, Vec U, PetscBool forwardsolve, PetscCtx ctx)
 {
   AppCtx      *app = (AppCtx *)ctx;
   Vec          V;
@@ -60,12 +60,12 @@ static PetscErrorCode PostEvent(TS ts, PetscInt nevents, PetscInt event_list[], 
     PetscCall(PetscPrintf(PETSC_COMM_SELF, "Processor [%d]: Ball bounced %" PetscInt_FMT " times\n", rank, app->bounces));
     inflag = PETSC_TRUE; // current process requested to terminate
   }
-  PetscCallMPI(MPIU_Allreduce(&inflag, &outflag, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)ts)));
+  PetscCallMPI(MPIU_Allreduce(&inflag, &outflag, 1, MPI_C_BOOL, MPI_LOR, PetscObjectComm((PetscObject)ts)));
   if (outflag) PetscCall(TSSetConvergedReason(ts, TS_CONVERGED_USER)); // request TS to terminate, sync on all ranks
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode I2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F, void *ctx)
+static PetscErrorCode I2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F, PetscCtx ctx)
 {
   AppCtx            *app = (AppCtx *)ctx;
   const PetscScalar *u, *v, *a;
@@ -86,7 +86,7 @@ static PetscErrorCode I2Function(TS ts, PetscReal t, Vec U, Vec V, Vec A, Vec F,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode I2Jacobian(TS ts, PetscReal t, Vec U, Vec V, Vec A, PetscReal shiftV, PetscReal shiftA, Mat J, Mat P, void *ctx)
+static PetscErrorCode I2Jacobian(TS ts, PetscReal t, Vec U, Vec V, Vec A, PetscReal shiftV, PetscReal shiftA, Mat J, Mat P, PetscCtx ctx)
 {
   AppCtx            *app = (AppCtx *)ctx;
   const PetscScalar *u, *v, *a;
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
 
     test:
       requires: !single
-      args: -ts_dt 0.25 -ts_adapt_type basic -ts_adapt_wnormtype INFINITY -ts_adapt_monitor
-      args: -ts_max_steps 1 -ts_max_reject {{0 1 2}separate_output} -ts_error_if_step_fails false
+      args: -ts_time_step 0.25 -ts_adapt_type basic -ts_adapt_wnormtype INFINITY -ts_adapt_monitor
+      args: -ts_max_steps 1 -ts_max_step_rejections {{0 1 2}separate_output} -ts_error_if_step_fails false
 
 TEST*/

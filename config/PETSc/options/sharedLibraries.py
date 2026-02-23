@@ -44,7 +44,6 @@ class Configure(config.base.Configure):
     if self.framework.argDB['with-shared-libraries'] and not self.framework.argDB['with-pic']: self.framework.argDB['with-pic'] = 1
     return
 
-
   def configureSharedLibraries(self):
     '''Checks whether shared libraries should be used, for which you must
       - Specify --with-shared-libraries
@@ -114,7 +113,10 @@ class Configure(config.base.Configure):
       if self.ftm.defines.get('_GNU_SOURCE'): ftm = '#define _GNU_SOURCE\n'
       if self.checkCompile('%s#include<stdlib.h>\n#include <dlfcn.h>\n' % ftm, 'Dl_info info;\nif (dladdr(*(void **)&exit, &info) == 0) return 1;\n'):
         self.addDefine('HAVE_DLADDR', 1)
-        self.headers.check('cxxabi.h')
+        if hasattr(self.headers.setCompilers, 'CXX'):
+          self.headers.pushLanguage('C++')
+          self.headers.check('cxxabi.h')
+          self.headers.popLanguage()
 
   def configure(self):
     self.executeTest(self.checkSharedDynamicPicOptions)

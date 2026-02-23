@@ -34,11 +34,11 @@ static PetscErrorCode PetscFEView_Basic_Ascii(PetscFE fe, PetscViewer v)
 
 static PetscErrorCode PetscFEView_Basic(PetscFE fe, PetscViewer v)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscFEView_Basic_Ascii(fe, v));
+  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscFEView_Basic_Ascii(fe, v));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -210,13 +210,14 @@ PETSC_INTERN PetscErrorCode PetscFEIntegrate_Basic(PetscDS ds, PetscInt field, P
 
     fegeom.dim      = cgeom->dim;
     fegeom.dimEmbed = cgeom->dimEmbed;
+    fegeom.xi       = NULL;
     if (isAffine) {
       fegeom.v    = x;
       fegeom.xi   = cgeom->xi;
       fegeom.J    = &cgeom->J[e * Np * dE * dE];
       fegeom.invJ = &cgeom->invJ[e * Np * dE * dE];
       fegeom.detJ = &cgeom->detJ[e * Np];
-    }
+    } else fegeom.xi = NULL;
     for (q = 0; q < Nq; ++q) {
       PetscScalar integrand = 0.;
       PetscReal   w;
@@ -304,6 +305,7 @@ PETSC_INTERN PetscErrorCode PetscFEIntegrateBd_Basic(PetscDS ds, PetscInt field,
     const PetscInt face = fgeom->face[e][0]; /* Local face number in cell */
     fegeom.n            = NULL;
     fegeom.v            = NULL;
+    fegeom.xi           = NULL;
     fegeom.J            = NULL;
     fegeom.invJ         = NULL;
     fegeom.detJ         = NULL;
@@ -322,7 +324,7 @@ PETSC_INTERN PetscErrorCode PetscFEIntegrateBd_Basic(PetscDS ds, PetscInt field,
       cgeom.J    = &fgeom->suppJ[0][e * Np * dE * dE];
       cgeom.invJ = &fgeom->suppInvJ[0][e * Np * dE * dE];
       cgeom.detJ = &fgeom->suppDetJ[0][e * Np];
-    }
+    } else fegeom.xi = NULL;
     for (q = 0; q < Nq; ++q) {
       PetscScalar integrand = 0.;
       PetscReal   w;
@@ -344,7 +346,7 @@ PETSC_INTERN PetscErrorCode PetscFEIntegrateBd_Basic(PetscDS ds, PetscInt field,
       w = fegeom.detJ[0] * quadWeights[q];
       if (debug > 1 && q < Np) {
         PetscCall(PetscPrintf(PETSC_COMM_SELF, "  detJ: %g\n", (double)fegeom.detJ[0]));
-#ifndef PETSC_USE_COMPLEX
+#if !defined(PETSC_USE_COMPLEX)
         PetscCall(DMPrintCellMatrix(e, "invJ", dim, dim, fegeom.invJ));
 #endif
       }
@@ -562,7 +564,7 @@ PetscErrorCode PetscFEIntegrateBdResidual_Basic(PetscDS ds, PetscWeakForm wf, Pe
       PetscCall(PetscDSSetCellParameters(ds, fegeom.detJ[0] * cellScale));
       w = fegeom.detJ[0] * quadWeights[q];
       if (debug > 1) {
-        if ((fgeom->isAffine && q == 0) || (!fgeom->isAffine)) {
+        if ((fgeom->isAffine && q == 0) || !fgeom->isAffine) {
           PetscCall(PetscPrintf(PETSC_COMM_SELF, "  detJ: %g\n", (double)fegeom.detJ[0]));
 #if !defined(PETSC_USE_COMPLEX)
           PetscCall(DMPrintCellMatrix(e, "invJ", dim, dim, fegeom.invJ));
@@ -823,13 +825,14 @@ PetscErrorCode PetscFEIntegrateJacobian_Basic(PetscDS rds, PetscDS cds, PetscFEJ
 
     fegeom.dim      = cgeom->dim;
     fegeom.dimEmbed = cgeom->dimEmbed;
+    fegeom.xi       = NULL;
     if (isAffine) {
       fegeom.v    = x;
       fegeom.xi   = cgeom->xi;
       fegeom.J    = &cgeom->J[e * Np * dE * dE];
       fegeom.invJ = &cgeom->invJ[e * Np * dE * dE];
       fegeom.detJ = &cgeom->detJ[e * Np];
-    }
+    } else fegeom.xi = NULL;
     for (PetscInt q = 0; q < Nq; ++q) {
       PetscReal w;
 
@@ -965,6 +968,7 @@ PETSC_INTERN PetscErrorCode PetscFEIntegrateBdJacobian_Basic(PetscDS ds, PetscWe
     const PetscInt face = fgeom->face[e][0];
     fegeom.n            = NULL;
     fegeom.v            = NULL;
+    fegeom.xi           = NULL;
     fegeom.J            = NULL;
     fegeom.detJ         = NULL;
     fegeom.dim          = fgeom->dim;
@@ -982,7 +986,7 @@ PETSC_INTERN PetscErrorCode PetscFEIntegrateBdJacobian_Basic(PetscDS ds, PetscWe
       cgeom.J    = &fgeom->suppJ[0][e * Np * dE * dE];
       cgeom.invJ = &fgeom->suppInvJ[0][e * Np * dE * dE];
       cgeom.detJ = &fgeom->suppDetJ[0][e * Np];
-    }
+    } else fegeom.xi = NULL;
     for (q = 0; q < Nq; ++q) {
       PetscReal w;
       PetscInt  c;

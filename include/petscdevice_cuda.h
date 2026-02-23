@@ -10,14 +10,16 @@
 #endif
 
 #if PetscDefined(HAVE_CUDA)
-PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN("-Wdeprecated-declarations")
   #include <cuda.h>
   #include <cuda_runtime.h>
   #include <cublas_v2.h>
+  #define DISABLE_CUSPARSE_DEPRECATED
+  #include <cusparse.h>
   #include <cusolverDn.h>
   #include <cusolverSp.h>
   #include <cufft.h>
-PETSC_PRAGMA_DIAGNOSTIC_IGNORED_END()
+  #include <curand.h>
+  #include <nvml.h> // NVML comes with the NVIDIA GPU driver
 
 /* cuBLAS does not have cublasGetErrorName(). We create one on our own. */
 PETSC_EXTERN const char *PetscCUBLASGetErrorName(cublasStatus_t); /* PETSC_EXTERN since it is exposed by the CHKERRCUBLAS macro */
@@ -185,7 +187,7 @@ PETSC_EXTERN PetscErrorCode PetscGetCurrentCUDAStream(cudaStream_t *);
   #define PETSC_CONSTMEM_DECL  __constant__
 #endif
 
-#ifndef PETSC_HOST_DECL // use HOST_DECL as canary
+#if !defined(PETSC_HOST_DECL) // use HOST_DECL as canary
   #define PETSC_HOST_DECL
   #define PETSC_DEVICE_DECL
   #define PETSC_KERNEL_DECL
@@ -194,7 +196,7 @@ PETSC_EXTERN PetscErrorCode PetscGetCurrentCUDAStream(cudaStream_t *);
   #define PETSC_CONSTMEM_DECL
 #endif
 
-#ifndef PETSC_DEVICE_DEFINED_DECLS_PRIVATE
+#if !defined(PETSC_DEVICE_DEFINED_DECLS_PRIVATE)
   #define PETSC_DEVICE_DEFINED_DECLS_PRIVATE
   #define PETSC_HOSTDEVICE_DECL        PETSC_HOST_DECL PETSC_DEVICE_DECL
   #define PETSC_DEVICE_INLINE_DECL     PETSC_DEVICE_DECL PETSC_FORCEINLINE

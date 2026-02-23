@@ -59,11 +59,13 @@ configure_options = [
   '--download-kokkos-kernels=1',
   '--download-htool=1',
   '--download-exodusii',
+  '--with-exodusii-fortran-bindings',
   '--download-ks',
   '--download-ml',
   '--download-netcdf',
   '--download-pnetcdf',
   '--download-zlib',
+  '--download-pflare=1',
   '--with-strict-petscerrorcode',
   ]
 

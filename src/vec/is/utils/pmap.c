@@ -172,16 +172,17 @@ PetscErrorCode PetscLayoutCreateFromRanges(MPI_Comm comm, const PetscInt range[]
     PetscCall(PetscArraycpy(map->range, range, map->size + 1));
     break;
   case PETSC_USE_POINTER:
-    map->range_alloc = PETSC_FALSE;
-    break;
-  default:
+    map->range_alloc = PETSC_FALSE; /* fall through */
+  case PETSC_OWN_POINTER:
     map->range = (PetscInt *)range;
     break;
+  default:
+    SETERRQ(PETSC_COMM_SELF, PETSC_ERR_PLIB, "Received invalid PetscCopyMode somehow");
   }
   map->rstart = map->range[rank];
   map->rend   = map->range[rank + 1];
   map->n      = map->rend - map->rstart;
-  map->N      = map->range[map->size];
+  map->N      = map->range[map->size] - map->range[0];
   if (PetscDefined(USE_DEBUG)) { /* just check that n, N and bs are consistent */
     PetscInt tmp;
     PetscCallMPI(MPIU_Allreduce(&map->n, &tmp, 1, MPIU_INT, MPI_SUM, map->comm));
@@ -366,7 +367,7 @@ PetscErrorCode PetscLayoutSetISLocalToGlobalMapping(PetscLayout in, ISLocalToGlo
 
   Input Parameters:
 + map - pointer to the map
-- n   - the local size
+- n   - the local size, pass `PETSC_DECIDE` (the default) to have this value determined by the global size set with `PetscLayoutSetSize()`
 
   Level: developer
 
@@ -414,7 +415,7 @@ PetscErrorCode PetscLayoutGetLocalSize(PetscLayout map, PetscInt *n)
 
   Input Parameters:
 + map - pointer to the map
-- n   - the global size
+- n   - the global size, use `PETSC_DETERMINE` (the default) to have this value computed as the sum of the local sizes set with `PetscLayoutSetLocalSize()`
 
   Level: developer
 

@@ -65,25 +65,27 @@ class SNESConvergedReason(object):
 
     """
     # iterating
-    CONVERGED_ITERATING      = SNES_CONVERGED_ITERATING
-    ITERATING                = SNES_CONVERGED_ITERATING
+    CONVERGED_ITERATING         = SNES_CONVERGED_ITERATING
+    ITERATING                   = SNES_CONVERGED_ITERATING
     # converged
-    CONVERGED_FNORM_ABS      = SNES_CONVERGED_FNORM_ABS
-    CONVERGED_FNORM_RELATIVE = SNES_CONVERGED_FNORM_RELATIVE
-    CONVERGED_SNORM_RELATIVE = SNES_CONVERGED_SNORM_RELATIVE
-    CONVERGED_ITS            = SNES_CONVERGED_ITS
+    CONVERGED_FNORM_ABS         = SNES_CONVERGED_FNORM_ABS
+    CONVERGED_FNORM_RELATIVE    = SNES_CONVERGED_FNORM_RELATIVE
+    CONVERGED_SNORM_RELATIVE    = SNES_CONVERGED_SNORM_RELATIVE
+    CONVERGED_ITS               = SNES_CONVERGED_ITS
     # diverged
-    DIVERGED_FUNCTION_DOMAIN = SNES_DIVERGED_FUNCTION_DOMAIN
-    DIVERGED_FUNCTION_COUNT  = SNES_DIVERGED_FUNCTION_COUNT
-    DIVERGED_LINEAR_SOLVE    = SNES_DIVERGED_LINEAR_SOLVE
-    DIVERGED_FNORM_NAN       = SNES_DIVERGED_FNORM_NAN
-    DIVERGED_MAX_IT          = SNES_DIVERGED_MAX_IT
-    DIVERGED_LINE_SEARCH     = SNES_DIVERGED_LINE_SEARCH
-    DIVERGED_INNER           = SNES_DIVERGED_INNER
-    DIVERGED_LOCAL_MIN       = SNES_DIVERGED_LOCAL_MIN
-    DIVERGED_DTOL            = SNES_DIVERGED_DTOL
-    DIVERGED_JACOBIAN_DOMAIN = SNES_DIVERGED_JACOBIAN_DOMAIN
-    DIVERGED_TR_DELTA        = SNES_DIVERGED_TR_DELTA
+    DIVERGED_FUNCTION_DOMAIN    = SNES_DIVERGED_FUNCTION_DOMAIN
+    DIVERGED_FUNCTION_NANORINF  = SNES_DIVERGED_FUNCTION_NANORINF
+    DIVERGED_OBJECTIVE_DOMAIN   = SNES_DIVERGED_OBJECTIVE_DOMAIN
+    DIVERGED_OBJECTIVE_NANORINF = SNES_DIVERGED_OBJECTIVE_NANORINF
+    DIVERGED_JACOBIAN_DOMAIN    = SNES_DIVERGED_JACOBIAN_DOMAIN
+    DIVERGED_FUNCTION_COUNT     = SNES_DIVERGED_FUNCTION_COUNT
+    DIVERGED_LINEAR_SOLVE       = SNES_DIVERGED_LINEAR_SOLVE
+    DIVERGED_MAX_IT             = SNES_DIVERGED_MAX_IT
+    DIVERGED_LINE_SEARCH        = SNES_DIVERGED_LINE_SEARCH
+    DIVERGED_INNER              = SNES_DIVERGED_INNER
+    DIVERGED_LOCAL_MIN          = SNES_DIVERGED_LOCAL_MIN
+    DIVERGED_DTOL               = SNES_DIVERGED_DTOL
+    DIVERGED_TR_DELTA           = SNES_DIVERGED_TR_DELTA
 
 
 class SNESNewtonALCorrectionType(object):
@@ -321,7 +323,7 @@ cdef class SNES(Object):
 
     # --- TR ---
 
-    def setTRTolerances(self, delta_min: float = None, delta_max: float = None, delta_0: float = None) -> None:
+    def setTRTolerances(self, delta_min: float | None = None, delta_max: float | None = None, delta_0: float | None = None) -> None:
         """Set the tolerance parameters used for the trust region.
 
         Logically collective.
@@ -373,8 +375,8 @@ cdef class SNES(Object):
         return (toReal(cdmin), toReal(cdmax), toReal(cd0))
 
     def setTRUpdateParameters(self,
-                              eta1: float = None, eta2: float = None, eta3: float = None,
-                              t1: float = None, t2: float = None) -> None:
+                              eta1: float | None = None, eta2: float | None = None, eta3: float | None = None,
+                              t1: float | None = None, t2: float | None = None) -> None:
         """Set the update parameters used for the trust region.
 
         Logically collective.
@@ -540,7 +542,7 @@ cdef class SNES(Object):
         cdef PetscInt clevel = asInt(level)
         CHKERR(SNESFASSetRScale(self.snes, clevel, vec.vec))
 
-    def setFASLevels(self, levels: int, comms: Sequence[Comm] = None) -> None:
+    def setFASLevels(self, levels: int, comms: Sequence[Comm] | None = None) -> None:
         """Set the number of levels to use with FAS.
 
         Collective.
@@ -1167,7 +1169,7 @@ cdef class SNES(Object):
 
     # --- tolerances and convergence ---
 
-    def setTolerances(self, rtol: float = None, atol: float = None, stol: float = None, max_it: int = None) -> None:
+    def setTolerances(self, rtol: float | None = None, atol: float | None = None, stol: float | None = None, max_it: int | None = None) -> None:
         """Set the tolerance parameters used in the solver convergence tests.
 
         Logically collective.
@@ -2000,13 +2002,13 @@ cdef class SNES(Object):
         return toBool(flag)
 
     def setParamsEW(self,
-                    version: int = None,
-                    rtol_0: float = None,
-                    rtol_max: float = None,
-                    gamma: float = None,
-                    alpha: float = None,
-                    alpha2: float = None,
-                    threshold: float = None) -> None:
+                    version: int | None = None,
+                    rtol_0: float | None = None,
+                    rtol_max: float | None = None,
+                    gamma: float | None = None,
+                    alpha: float | None = None,
+                    alpha2: float | None = None,
+                    threshold: float | None = None) -> None:
         """Set the parameters for the Eisenstat and Walker trick.
 
         Logically collective.
@@ -2145,7 +2147,7 @@ cdef class SNES(Object):
         cdef PetscBool bval = flag
         CHKERR(SNESSetUseFDColoring(self.snes, bval))
 
-    def getUseFD(self) -> False:
+    def getUseFD(self) -> bool:
         """Return ``true`` if the solver uses color finite-differencing for the Jacobian.
 
         Not collective.
@@ -2168,10 +2170,25 @@ cdef class SNES(Object):
 
         See Also
         --------
-        petsc.SNESVISetVariableBounds
+        getVariableBounds, petsc.SNESVISetVariableBounds
 
         """
         CHKERR(SNESVISetVariableBounds(self.snes, xl.vec, xu.vec))
+
+    def getVariableBounds(self) -> tuple[Vec, Vec]:
+        """Get the vectors for the variable bounds.
+
+        Collective.
+
+        See Also
+        --------
+        setVariableBounds, petsc.SNESVIGetVariableBounds
+
+        """
+        cdef Vec xl = Vec(), xu = Vec()
+        CHKERR(SNESVIGetVariableBounds(self.snes, &xl.vec, &xu.vec))
+        CHKERR(PetscINCREF(xl.obj)); CHKERR(PetscINCREF(xu.obj))
+        return (xl, xu)
 
     def getVIInactiveSet(self) -> IS:
         """Return the index set for the inactive set.
@@ -2371,7 +2388,7 @@ cdef class SNES(Object):
         for i in range(numSubSpaces):
             cdms[i] = (<DM?>dms[i]).dm
             _, nodes = asarray(cellNodeMaps[i]).shape
-            cellNodeMaps[i] = iarray_i(cellNodeMaps[i], NULL, <PetscInt**>&(ccellNodeMaps[i]))
+            cellNodeMaps[i] = iarray_i(cellNodeMaps[i], NULL, <PetscInt**>&ccellNodeMaps[i])
             nodesPerCell[i] = asInt(nodes)
 
         # TODO: refactor on the PETSc side to take ISes?
@@ -2709,7 +2726,7 @@ class SNESLineSearchType(object):
     NLEQERR    = S_(SNESLINESEARCHNLEQERR)
     BASIC      = S_(SNESLINESEARCHBASIC)
     NONE       = S_(SNESLINESEARCHNONE)
-    L2         = S_(SNESLINESEARCHL2)
+    SECANT     = S_(SNESLINESEARCHSECANT)
     CP         = S_(SNESLINESEARCHCP)
     SHELL      = S_(SNESLINESEARCHSHELL)
     NCGLINEAR  = S_(SNESLINESEARCHNCGLINEAR)
@@ -2840,7 +2857,7 @@ cdef class SNESLineSearch(Object):
         CHKERR(SNESLineSearchGetTolerances(self.snesls, &minstep, &maxstep, &rtol, &atol, &ltol, &max_its))
         return (toReal(minstep), toReal(maxstep), toReal(rtol), toReal(atol), toReal(ltol), toInt(max_its))
 
-    def setTolerances(self, minstep: float = None, maxstep: float = None, rtol: float = None, atol: float = None, ltol: float = None, max_its: int = None) -> None:
+    def setTolerances(self, minstep: float | None = None, maxstep: float | None = None, rtol: float | None = None, atol: float | None = None, ltol: float | None = None, max_its: int | None = None) -> None:
         """Set the tolerance parameters used in the linesearch.
 
         Logically collective.
@@ -2905,7 +2922,7 @@ cdef class SNESLineSearch(Object):
         cdef PetscInt iorder = asInt(order)
         CHKERR(SNESLineSearchSetOrder(self.snesls, iorder))
 
-    def destroy(self) -> None:
+    def destroy(self) -> Self:
         """Destroy the linesearch object.
 
         Collective.
@@ -2916,6 +2933,7 @@ cdef class SNESLineSearch(Object):
 
         """
         CHKERR(SNESLineSearchDestroy(&self.snesls))
+        return self
 
 del SNESType
 del SNESNormSchedule

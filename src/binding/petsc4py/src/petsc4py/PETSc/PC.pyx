@@ -401,6 +401,11 @@ cdef class PC(Object):
             the matrix to be used in constructing the preconditioner, usually
             the same as ``A``
 
+        Notes
+        -----
+        Using this directly is rarely needed, the preferred, and equivalent, usage
+        is to call `KSP.setOperators`.
+
         See Also
         --------
         petsc.PCSetOperators
@@ -1501,7 +1506,7 @@ cdef class PC(Object):
         cdef PetscPCCompositeType cval = ctype
         CHKERR(PCFieldSplitSetType(self.pc, cval))
 
-    def setFieldSplitIS(self, *fields: Tuple[str, IS]) -> None:
+    def setFieldSplitIS(self, *fields: tuple[str, IS]) -> None:
         """Set the elements for the field split by `IS`.
 
         Logically collective.
@@ -1527,7 +1532,7 @@ cdef class PC(Object):
             name = str2bytes(name, &cname)
             CHKERR(PCFieldSplitSetIS(self.pc, cname, field.iset))
 
-    def setFieldSplitFields(self, bsize: int, *fields: Tuple[str, Sequence[int]]) -> None:
+    def setFieldSplitFields(self, bsize: int, *fields: tuple[str, Sequence[int]]) -> None:
         """Sets the elements for the field split.
 
         Collective.
@@ -2447,7 +2452,7 @@ cdef class PC(Object):
         for i in range(numSubSpaces):
             cdms[i] = (<DM?>dms[i]).dm
             _, nodes = asarray(cellNodeMaps[i]).shape
-            cellNodeMaps[i] = iarray_i(cellNodeMaps[i], NULL, <PetscInt**>&(ccellNodeMaps[i]))
+            cellNodeMaps[i] = iarray_i(cellNodeMaps[i], NULL, <PetscInt**>&ccellNodeMaps[i])
             nodesPerCell[i] = asInt(nodes)
 
         # TODO: refactor on the PETSc side to take ISes?

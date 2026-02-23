@@ -43,7 +43,7 @@ Exact 3D solution:
   u = 3t + x^2 + y^2 + z^2
   F(u) = 3 - (2 + 2 + 2) + 3 = 0
 */
-static PetscErrorCode mms_quad_lin(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_quad_lin(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
 
@@ -52,7 +52,7 @@ static PetscErrorCode mms_quad_lin(PetscInt dim, PetscReal time, const PetscReal
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode mms_quad_lin_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_quad_lin_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   *u = dim;
   return PETSC_SUCCESS;
@@ -78,7 +78,7 @@ Exact 3D solution:
   u = 3*cos(t) + x^2 + y^2 + z^2
   F(u) = -3*sin(t) - (2 + 2 + 2) + 3*sin(t) + 6 = 0
 */
-static PetscErrorCode mms_quad_trig(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_quad_trig(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
 
@@ -87,7 +87,7 @@ static PetscErrorCode mms_quad_trig(PetscInt dim, PetscReal time, const PetscRea
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode mms_quad_trig_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_quad_trig_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   *u = -dim * PetscSinReal(time);
   return PETSC_SUCCESS;
@@ -113,7 +113,7 @@ Exact 3D solution:
   u = 3\pi^2 t + cos(\pi x) + cos(\pi y) + cos(\pi z)
   F(u) = 3\pi^2 - \pi^2 (cos(\pi x) + cos(\pi y) + cos(\pi z)) + \pi^2 (cos(\pi x) + cos(\pi y) + cos(\pi z)) - 3\pi^2 = 0
 */
-static PetscErrorCode mms_trig_lin(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_trig_lin(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
 
@@ -122,7 +122,7 @@ static PetscErrorCode mms_trig_lin(PetscInt dim, PetscReal time, const PetscReal
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode mms_trig_lin_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_trig_lin_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   *u = dim * PetscSqr(PETSC_PI);
   return PETSC_SUCCESS;
@@ -150,7 +150,7 @@ Exact 3D solution:
   f    = pi^2 sin(t) - \pi^2 (cos(\pi x) + cos(\pi y) + cos(\pi z))
   F(u) = -\pi^2 sin(t) + \pi^2 (cos(\pi x) + cos(\pi y) + cos(\pi z)) - \pi^2 (cos(\pi x) + cos(\pi y) + cos(\pi z)) + \pi^2 sin(t) = 0
 */
-static PetscErrorCode mms_trig_trig(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_trig_trig(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
 
@@ -159,7 +159,7 @@ static PetscErrorCode mms_trig_trig(PetscInt dim, PetscReal time, const PetscRea
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode mms_trig_trig_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode mms_trig_trig_t(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   *u = -PetscSqr(PETSC_PI) * PetscSinReal(time);
   return PETSC_SUCCESS;
@@ -261,20 +261,20 @@ static PetscErrorCode SetupProblem(DM dm, AppCtx *ctx)
     PetscCall(PetscDSSetRHSResidual(ds, 0, f0_quad_lin_exp, f1_temp_exp));
     PetscCall(PetscDSSetExactSolution(ds, 0, mms_quad_lin, ctx));
     PetscCall(PetscDSSetExactSolutionTimeDerivative(ds, 0, mms_quad_lin_t, ctx));
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))mms_quad_lin, (void (*)(void))mms_quad_lin_t, ctx, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)mms_quad_lin, (PetscVoidFn *)mms_quad_lin_t, ctx, NULL));
     break;
   case SOL_QUADRATIC_TRIG:
     PetscCall(PetscDSSetResidual(ds, 0, f0_quad_trig, f1_temp));
     PetscCall(PetscDSSetRHSResidual(ds, 0, f0_quad_trig_exp, f1_temp_exp));
     PetscCall(PetscDSSetExactSolution(ds, 0, mms_quad_trig, ctx));
     PetscCall(PetscDSSetExactSolutionTimeDerivative(ds, 0, mms_quad_trig_t, ctx));
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))mms_quad_trig, (void (*)(void))mms_quad_trig_t, ctx, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)mms_quad_trig, (PetscVoidFn *)mms_quad_trig_t, ctx, NULL));
     break;
   case SOL_TRIG_LINEAR:
     PetscCall(PetscDSSetResidual(ds, 0, f0_trig_lin, f1_temp));
     PetscCall(PetscDSSetExactSolution(ds, 0, mms_trig_lin, ctx));
     PetscCall(PetscDSSetExactSolutionTimeDerivative(ds, 0, mms_trig_lin_t, ctx));
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))mms_trig_lin, (void (*)(void))mms_trig_lin_t, ctx, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)mms_trig_lin, (PetscVoidFn *)mms_trig_lin_t, ctx, NULL));
     break;
   case SOL_TRIG_TRIG:
     PetscCall(PetscDSSetResidual(ds, 0, f0_trig_trig, f1_temp));
@@ -503,168 +503,168 @@ int main(int argc, char **argv)
     suffix: 2d_p1
     requires: triangle
     args: -sol_type quadratic_linear -dm_refine 1 -temp_petscspace_degree 1 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     suffix: 2d_p1_exp
     requires: triangle
     args: -sol_type quadratic_linear -dm_refine 1 -temp_petscspace_degree 1 -explicit \
-          -ts_type euler -ts_max_steps 4 -ts_dt 1e-3 -ts_monitor_error
+          -ts_type euler -ts_max_steps 4 -ts_time_step 1e-3 -ts_monitor_error
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [1.9]
     suffix: 2d_p1_sconv
     requires: triangle
     args: -sol_type quadratic_linear -temp_petscspace_degree 1 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [2.1]
     suffix: 2d_p1_sconv_2
     requires: triangle
     args: -sol_type trig_trig -temp_petscspace_degree 1 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 1e-6 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 1e-6 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 4 -convest_num_refine 3 get L_2 convergence rate: [1.2]
     suffix: 2d_p1_tconv
     requires: triangle
     args: -sol_type quadratic_trig -temp_petscspace_degree 1 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 6 -convest_num_refine 3 get L_2 convergence rate: [1.0]
     suffix: 2d_p1_tconv_2
     requires: triangle
     args: -sol_type trig_trig -temp_petscspace_degree 1 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # The L_2 convergence rate cannot be seen since stability of the explicit integrator requires that is be more accurate than the grid
     suffix: 2d_p1_exp_tconv_2
     requires: triangle
     args: -sol_type trig_trig -temp_petscspace_degree 1 -explicit -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type euler -ts_max_steps 4 -ts_dt 1e-4 -lumped 0 -mass_pc_type lu
+          -ts_type euler -ts_max_steps 4 -ts_time_step 1e-4 -lumped 0 -mass_pc_type lu
   test:
     # The L_2 convergence rate cannot be seen since stability of the explicit integrator requires that is be more accurate than the grid
     suffix: 2d_p1_exp_tconv_2_lump
     requires: triangle
     args: -sol_type trig_trig -temp_petscspace_degree 1 -explicit -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type euler -ts_max_steps 4 -ts_dt 1e-4
+          -ts_type euler -ts_max_steps 4 -ts_time_step 1e-4
   test:
     suffix: 2d_p2
     requires: triangle
     args: -sol_type quadratic_linear -dm_refine 0 -temp_petscspace_degree 2 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [2.9]
     suffix: 2d_p2_sconv
     requires: triangle
     args: -sol_type trig_linear -temp_petscspace_degree 2 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00000001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00000001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [3.1]
     suffix: 2d_p2_sconv_2
     requires: triangle
     args: -sol_type trig_trig -temp_petscspace_degree 2 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00000001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00000001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 3 -convest_num_refine 3 get L_2 convergence rate: [1.0]
     suffix: 2d_p2_tconv
     requires: triangle
     args: -sol_type quadratic_trig -temp_petscspace_degree 2 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 3 -convest_num_refine 3 get L_2 convergence rate: [1.0]
     suffix: 2d_p2_tconv_2
     requires: triangle
     args: -sol_type trig_trig -temp_petscspace_degree 2 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     suffix: 2d_q1
     args: -sol_type quadratic_linear -dm_plex_simplex 0 -dm_refine 1 -temp_petscspace_degree 1 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [1.9]
     suffix: 2d_q1_sconv
     args: -sol_type quadratic_linear -dm_plex_simplex 0 -temp_petscspace_degree 1 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 4 -convest_num_refine 3 get L_2 convergence rate: [1.2]
     suffix: 2d_q1_tconv
     args: -sol_type quadratic_trig -dm_plex_simplex 0 -temp_petscspace_degree 1 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     suffix: 2d_q2
     args: -sol_type quadratic_linear -dm_plex_simplex 0 -dm_refine 0 -temp_petscspace_degree 2 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [2.9]
     suffix: 2d_q2_sconv
     args: -sol_type trig_linear -dm_plex_simplex 0 -temp_petscspace_degree 2 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00000001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00000001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 3 -convest_num_refine 3 get L_2 convergence rate: [1.0]
     suffix: 2d_q2_tconv
     args: -sol_type quadratic_trig -dm_plex_simplex 0 -temp_petscspace_degree 2 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
 
   test:
     suffix: 3d_p1
     requires: ctetgen
     args: -sol_type quadratic_linear -dm_refine 1 -temp_petscspace_degree 1 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [1.9]
     suffix: 3d_p1_sconv
     requires: ctetgen
     args: -sol_type quadratic_linear -temp_petscspace_degree 1 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 4 -convest_num_refine 3 get L_2 convergence rate: [1.2]
     suffix: 3d_p1_tconv
     requires: ctetgen
     args: -sol_type quadratic_trig -temp_petscspace_degree 1 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     suffix: 3d_p2
     requires: ctetgen
     args: -sol_type quadratic_linear -dm_refine 0 -temp_petscspace_degree 2 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [2.9]
     suffix: 3d_p2_sconv
     requires: ctetgen
     args: -sol_type trig_linear -temp_petscspace_degree 2 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00000001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00000001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 3 -convest_num_refine 3 get L_2 convergence rate: [1.0]
     suffix: 3d_p2_tconv
     requires: ctetgen
     args: -sol_type quadratic_trig -temp_petscspace_degree 2 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     suffix: 3d_q1
     args: -sol_type quadratic_linear -dm_plex_simplex 0 -dm_refine 1 -temp_petscspace_degree 1 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [1.9]
     suffix: 3d_q1_sconv
     args: -sol_type quadratic_linear -dm_plex_simplex 0 -temp_petscspace_degree 1 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 4 -convest_num_refine 3 get L_2 convergence rate: [1.2]
     suffix: 3d_q1_tconv
     args: -sol_type quadratic_trig -dm_plex_simplex 0 -temp_petscspace_degree 1 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     suffix: 3d_q2
     args: -sol_type quadratic_linear -dm_plex_simplex 0 -dm_refine 0 -temp_petscspace_degree 2 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 2 -convest_num_refine 3 get L_2 convergence rate: [2.9]
     suffix: 3d_q2_sconv
     args: -sol_type trig_linear -dm_plex_simplex 0 -temp_petscspace_degree 2 -ts_convergence_estimate -ts_convergence_temporal 0 -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 1 -ts_dt 0.00000001 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 1 -ts_time_step 0.00000001 -snes_error_if_not_converged -pc_type lu
   test:
     # -dm_refine 3 -convest_num_refine 3 get L_2 convergence rate: [1.0]
     suffix: 3d_q2_tconv
     args: -sol_type quadratic_trig -dm_plex_simplex 0 -temp_petscspace_degree 2 -ts_convergence_estimate -convest_num_refine 1 \
-          -ts_type beuler -ts_max_steps 4 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 4 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
 
   test:
     # For a nice picture, -bd_dm_refine 2 -dm_refine 1 -dm_view hdf5:${PETSC_DIR}/sol.h5 -ts_monitor_solution hdf5:${PETSC_DIR}/sol.h5::append
@@ -673,12 +673,12 @@ int main(int argc, char **argv)
     args: -sol_type quadratic_linear \
           -dm_plex_boundary_filename ${DATAFILESPATH}/meshes/cad/sphere_example.egadslite -dm_plex_boundary_label marker \
           -temp_petscspace_degree 2 -dmts_check .0001 \
-          -ts_type beuler -ts_max_steps 5 -ts_dt 0.1 -snes_error_if_not_converged -pc_type lu
+          -ts_type beuler -ts_max_steps 5 -ts_time_step 0.1 -snes_error_if_not_converged -pc_type lu
 
   test:
     suffix: remesh
     requires: triangle mmg
-    args: -sol_type quadratic_trig -dm_refine 2 -temp_petscspace_degree 1 -ts_type beuler -ts_dt 0.01 -snes_error_if_not_converged -pc_type lu -grad_petscspace_degree 1 -dm_adaptor mmg -dm_plex_hash_location -remesh_every 5
+    args: -sol_type quadratic_trig -dm_refine 2 -temp_petscspace_degree 1 -ts_type beuler -ts_time_step 0.01 -snes_error_if_not_converged -pc_type lu -grad_petscspace_degree 1 -dm_adaptor mmg -dm_plex_hash_location -remesh_every 5
     output_file: output/empty.out
 
 TEST*/

@@ -22,6 +22,7 @@ PETSC_EXTERN PetscLogEvent DMPLEX_PartLabelCreateSF;
 PETSC_EXTERN PetscLogEvent DMPLEX_PartStratSF;
 PETSC_EXTERN PetscLogEvent DMPLEX_CreatePointSF;
 PETSC_EXTERN PetscLogEvent DMPLEX_Distribute;
+PETSC_EXTERN PetscLogEvent DMPLEX_DistributeMultistage;
 PETSC_EXTERN PetscLogEvent DMPLEX_DistributeCones;
 PETSC_EXTERN PetscLogEvent DMPLEX_DistributeLabels;
 PETSC_EXTERN PetscLogEvent DMPLEX_DistributeSF;
@@ -306,8 +307,6 @@ PETSC_EXTERN PetscErrorCode VecView_Plex_Local_CGNS(Vec, PetscViewer);
 PETSC_EXTERN PetscErrorCode VecLoad_Plex_CGNS_Internal(Vec, PetscViewer);
 #endif
 
-PETSC_INTERN PetscErrorCode DMPlexVecGetClosure_Internal(DM, PetscSection, PetscBool, Vec, PetscInt, PetscInt *, PetscScalar *[]);
-PETSC_INTERN PetscErrorCode DMPlexVecGetClosureAtDepth_Internal(DM, PetscSection, Vec, PetscInt, PetscInt, PetscInt *, PetscScalar *[]);
 PETSC_INTERN PetscErrorCode DMPlexClosurePoints_Private(DM, PetscInt, const PetscInt[], IS *);
 PETSC_INTERN PetscErrorCode DMSetFromOptions_NonRefinement_Plex(DM, PetscOptionItems);
 PETSC_INTERN PetscErrorCode DMSetFromOptions_Overlap_Plex(DM, PetscOptionItems, PetscInt *);
@@ -341,6 +340,7 @@ PETSC_INTERN PetscErrorCode DMPlexCreateCGNS_Internal_Serial(MPI_Comm, PetscInt,
 PETSC_INTERN PetscErrorCode DMPlexCreateCGNS_Internal_Parallel(MPI_Comm, PetscInt, PetscBool, DM *);
 PETSC_INTERN PetscErrorCode DMPlexVTKGetCellType_Internal(DM, PetscInt, PetscInt, PetscInt *);
 PETSC_INTERN PetscErrorCode DMPlexGetAdjacency_Internal(DM, PetscInt, PetscBool, PetscBool, PetscBool, PetscInt *, PetscInt *[]);
+PETSC_INTERN PetscErrorCode DMPlexGetMaxAdjacencySize_Internal(DM, PetscBool, PetscInt *);
 PETSC_INTERN PetscErrorCode DMPlexGetRawFaces_Internal(DM, DMPolytopeType, const PetscInt[], PetscInt *, const DMPolytopeType *[], const PetscInt *[], const PetscInt *[]);
 PETSC_INTERN PetscErrorCode DMPlexRestoreRawFaces_Internal(DM, DMPolytopeType, const PetscInt[], PetscInt *, const DMPolytopeType *[], const PetscInt *[], const PetscInt *[]);
 PETSC_INTERN PetscErrorCode DMPlexComputeCellType_Internal(DM, PetscInt, PetscInt, DMPolytopeType *);

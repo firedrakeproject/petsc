@@ -26,7 +26,6 @@ def _picTestIncludes(export=''):
                     '}',
                     'void bar(void){foo();}\n'])
 
-
 isUname_value          = False
 isLinux_value          = False
 isCygwin_value         = False
@@ -352,6 +351,15 @@ class Configure(config.base.Configure):
         if (int(VMAJOR),int(VMINOR)) >= (11,0):
           if log: log.write('Detected Gcc110plus compiler\n')
           return 1
+      else:
+        if config.setCompilers.Configure.isGNU(compiler, log) and config.setCompilers.Configure.isMINGW(compiler, log):
+          (output, error, status) = config.base.Configure.executeShellCommand(compiler+' -dumpversion', log = log)
+          strmatch = re.match(r'(\d+)\.(\d+)',output)
+          if strmatch:
+            VMAJOR,VMINOR = strmatch.groups()
+            if (int(VMAJOR),int(VMINOR)) >= (11,0):
+              if log: log.write('Detected Gcc110plus compiler\n')
+              return 1
       if log: log.write('Did not detect Gcc110plus compiler\n')
     except RuntimeError:
       if log: log.write('Did not detect Gcc110plus compiler due to exception\n')
@@ -370,54 +378,18 @@ class Configure(config.base.Configure):
         if (int(VMAJOR),int(VMINOR)) >= (15,0):
           if log: log.write('Detected Gcc150plus compiler\n')
           return 1
+      else:
+        if config.setCompilers.Configure.isGNU(compiler, log) and config.setCompilers.Configure.isMINGW(compiler, log):
+          (output, error, status) = config.base.Configure.executeShellCommand(compiler+' -dumpversion', log = log)
+          strmatch = re.match(r'(\d+)\.(\d+)',output)
+          if strmatch:
+            VMAJOR,VMINOR = strmatch.groups()
+            if (int(VMAJOR),int(VMINOR)) >= (15,0):
+              if log: log.write('Detected Gcc150plus compiler\n')
+              return 1
       if log: log.write('Did not detect Gcc150plus compiler\n')
     except RuntimeError:
       if log: log.write('Did not detect Gcc150plus compiler due to exception\n')
-      pass
-
-  @staticmethod
-  def isGfortran45x(compiler, log):
-    '''returns true if the compiler is gfortran-4.5.x'''
-    try:
-      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --version', log = log)
-      output = output + error
-      import re
-      if re.match(r'GNU Fortran \(.*\) (4.5.\d+|4.6.0 20100703)', output):
-        if log: log.write('Detected GFortran45x compiler\n')
-        return 1
-    except RuntimeError:
-      pass
-
-  @staticmethod
-  def isGfortran46plus(compiler, log):
-    '''returns true if the compiler is gfortran-4.6.x or later'''
-    try:
-      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --version', log = log)
-      output = output + error
-      import re
-      strmatch = re.match(r'GNU Fortran\s+\(.*\)\s+(\d+)\.(\d+)',output)
-      if strmatch:
-        VMAJOR,VMINOR = strmatch.groups()
-        if (int(VMAJOR),int(VMINOR)) >= (4,6):
-          if log: log.write('Detected GFortran46plus compiler\n')
-          return 1
-    except RuntimeError:
-      pass
-
-  @staticmethod
-  def isGfortran47plus(compiler, log):
-    '''returns true if the compiler is gfortran-4.7.x or later'''
-    try:
-      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --version', log = log)
-      output = output + error
-      import re
-      strmatch = re.match(r'GNU Fortran\s+\(.*\)\s+(\d+)\.(\d+)',output)
-      if strmatch:
-        VMAJOR,VMINOR = strmatch.groups()
-        if (int(VMAJOR),int(VMINOR)) >= (4,7):
-          if log: log.write('Detected GFortran47plus compiler\n')
-          return 1
-    except RuntimeError:
       pass
 
   @staticmethod
@@ -453,35 +425,6 @@ class Configure(config.base.Configure):
       pass
 
   @staticmethod
-  def isG95(compiler, log):
-    '''Returns true if the compiler is g95'''
-    try:
-      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --help | head -n 20', log = log)
-      output = output + error
-      if 'Unrecognised option --help passed to ld' in output:    # NAG f95 compiler
-        return 0
-      if 'http://www.g95.org' in output:
-        if log: log.write('Detected g95 compiler\n')
-        return 1
-    except RuntimeError:
-      pass
-
-  @staticmethod
-  def isCompaqF90(compiler, log):
-    '''Returns true if the compiler is Compaq f90'''
-    try:
-      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --help | head -n 20', log = log)
-      output = output + error
-      if 'Unrecognised option --help passed to ld' in output:    # NAG f95 compiler
-        return 0
-      found = any([s in output for s in ['Compaq Visual Fortran','Digital Visual Fortran']])
-      if found:
-        if log: log.write('Detected Compaq Visual Fortran compiler\n')
-        return 1
-    except RuntimeError:
-      pass
-
-  @staticmethod
   def isSun(compiler, log):
     '''Returns true if the compiler is a Sun/Oracle compiler'''
     try:
@@ -510,9 +453,9 @@ class Configure(config.base.Configure):
   def isIntel(compiler, log):
     '''Returns true if the compiler is a Intel compiler'''
     try:
-      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --help | head -n 80', log = log)
+      (output, error, status) = config.base.Configure.executeShellCommand(compiler+' --version', log = log)
       output = output + error
-      if 'Intel(R)' in output:
+      if 'Intel' in output:
         if log: log.write('Detected Intel compiler\n')
         return 1
     except RuntimeError:
@@ -727,8 +670,8 @@ class Configure(config.base.Configure):
     '''Returns true if system is processor-type is ARM'''
     global isARM_value
     if isARM_value == -1:
-       (output, error, status) = config.base.Configure.executeShellCommand('uname -p', log = log)
-       if not status and (output.lower().strip() == 'arm'):
+       (output, error, status) = config.base.Configure.executeShellCommand('uname -m', log = log)
+       if not status and (output.lower().strip().startswith('arm') or output.lower().strip().startswith('aarch')):
          if log: log.write('Detected ARM processor\n\n')
          isARM_value = True
        else:
@@ -765,6 +708,9 @@ class Configure(config.base.Configure):
     '''Initialize the compiler and linker flags'''
     for language in ['C', 'CUDA', 'HIP', 'SYCL', 'Cxx', 'FC']:
       self.pushLanguage(language)
+      for flagsArg in [config.base.Configure.getCompilerFlagsName(language)]:
+        if flagsArg in self.argDB:
+          self.logPrintWarning('You are overwriting the standard PETSc compiler flags with ' + flagsArg + '="' + self.argDB[flagsArg] + '". Are you sure you want to do this? Generally it is best to let PETSc ./configure determine the flags. You can use ' + flagsArg + '+="' + self.argDB[flagsArg] + '" to provide additional compiler flags instead of overwriting those used by PETSc.')
       for flagsArg in [config.base.Configure.getCompilerFlagsName(language), config.base.Configure.getCompilerFlagsName(language, 1), config.base.Configure.getLinkerFlagsName(language)]:
         if flagsArg in self.argDB: setattr(self, flagsArg, self.argDB[flagsArg])
         else: setattr(self, flagsArg, '')
@@ -810,8 +756,7 @@ class Configure(config.base.Configure):
     return
 
   def checkCxxDialect(self, language, isGNUish=False):
-    """Determine the CXX dialect supported by the compiler (language) [and corresponding compiler
-    option - if any].
+    """Determine the CXX dialect supported by the compiler (language) [and corresponding compiler option - if any].
 
     isGNUish indicates if the compiler is gnu compliant (i.e. clang).
     -with-<lang>-dialect can take options:
@@ -848,31 +793,24 @@ class Configure(config.base.Configure):
     def includes11():
       return textwrap.dedent(
         """
-        // c++11 includes
-        #include <memory>
+        #include <memory> // c++11 includes
         #include <random>
         #include <complex>
         #include <iostream>
         #include <algorithm>
-
         template<class T> void ignore(const T&) { } // silence unused variable warnings
-        class valClass
-        {
+        class valClass {
         public:
           int i;
           valClass() { i = 3; }
           valClass(int x) : i(x) { }
         };
-
-        class MoveSemantics
-        {
+        class MoveSemantics {
           std::unique_ptr<valClass> _member;
-
         public:
           MoveSemantics(int val = 4) : _member(new valClass(val)) { }
           MoveSemantics& operator=(MoveSemantics &&other) noexcept = default;
         };
-
         template<typename T> constexpr T Cubed( T x ) { return x*x*x; }
         auto trailing(int x) -> int { return x+2; }
         enum class Shapes : int {SQUARE,CIRCLE};
@@ -884,12 +822,10 @@ class Configure(config.base.Configure):
     def body11():
       return textwrap.dedent(
         """
-        // c++11 body
-        valClass cls = valClass(); // value initialization
+        valClass cls = valClass(); // c++11 body; // value initialization
         int i = cls.i;             // i is not declared const
         const int& rci = i;        // but rci is
         const_cast<int&>(rci) = 4;
-
         constexpr int big_value = 1234;
         decltype(big_value) ierr = big_value;
         auto ret = trailing(ierr);
@@ -906,29 +842,24 @@ class Configure(config.base.Configure):
         std::cout << x << ret << std::endl;
         std::vector<std::unique_ptr<double>> vector;
         std::sort(vector.begin(), vector.end(), [](std::unique_ptr<double> &a, std::unique_ptr<double> &b) { return *a < *b; });
-        {
-          std::size_t alignment = 0, size = 0, space;
-          void* ptr = nullptr;
-          std::align(alignment, size, ptr, space);
-        }
+        std::size_t alignment = 0, size = 0, space;
+        void* ptr2 = nullptr;
+        std::align(alignment, size, ptr2, space);
         """
       )
 
     def includes14():
-      return '\n'.join((includes11(),textwrap.dedent(
+      return ''.join((includes11(),textwrap.dedent(
         """
-        // c++14 includes
-        #include <type_traits>
-
+        #include <type_traits> // c++14 includes
         template<class T> constexpr T pi = T(3.1415926535897932385L);  // variable template
         """
         )))
 
     def body14():
-      return '\n'.join((body11(),textwrap.dedent(
+      return ''.join((body11(),textwrap.dedent(
         """
-        // c++14 body
-        auto ptr = std::make_unique<int>();
+        auto ptr = std::make_unique<int>();  // c++14 body
         *ptr = 1;
         std::cout << pi<double> << std::endl;
         constexpr const std::complex<double> const_i(0.0,1.0);
@@ -938,108 +869,77 @@ class Configure(config.base.Configure):
       )))
 
     def includes17():
-      return '\n'.join((includes14(),textwrap.dedent(
+      return ''.join((includes14(),textwrap.dedent(
         """
-        // c++17 includes
-        #include <string_view>
+        #include <string_view> // c++17 includes
         #include <any>
         #include <optional>
         #include <variant>
         #include <tuple>
         #include <new>
-
         std::align_val_t dummy;
         [[nodiscard]] int nodiscardFunc() { return 0; }
-        struct S2
-        {
-          // static inline member variables since c++17
-          static inline int var = 8675309;
+        struct S2 {
+          static inline int var = 8675309; // static inline member variables since c++17
           void f(int i);
         };
-        void S2::f(int i)
-        {
+        void S2::f(int i) {
           // until c++17: Error: invalid syntax
           // since c++17: OK: captures the enclosing S2 by copy
           auto lmbd = [=, *this] { std::cout << i << " " << this->var << std::endl; };
           lmbd();
         }
-        std::tuple<double, int, char> foobar()
-        {
-          return {3.8, 0, 'x'};
-        }
+        std::tuple<double, int, char> foobar() { return {3.8, 0, 'x'}; }
         """
       )))
 
     def body17():
-      return '\n'.join((body14(),textwrap.dedent(
+      return ''.join((body14(),textwrap.dedent(
         """
-        // c++17 body
-        std::variant<int,float> v,w;
+        std::variant<int,float> v,w;  // c++17 body
         v = 42;               // v contains int
         int ivar = std::get<int>(v);
         w = std::get<0>(v);   // same effect as the previous line
         w = v;                // same effect as the previous line
-        S2 foo;
-        foo.f(ivar);
+        S2 foo; foo.f(ivar);
         if constexpr (std::is_arithmetic_v<int>) std::cout << "c++17" << std::endl;
         typedef std::integral_constant<Shapes,Shapes::SQUARE> squareShape;
-        // static_assert with no message since c++17
-        static_assert(std::is_same_v<squareShape,squareShape>);
+        static_assert(std::is_same_v<squareShape,squareShape>); // static_assert with no message since c++17
         auto val = nodiscardFunc();ignore(val);
-        // structured binding
-        const auto [ab, cd, ef] = foobar();
+        const auto [ab, cd, ef] = foobar(); // structured binding
         """
       )))
 
     def includes20():
-      return '\n'.join((includes17(),textwrap.dedent(
+      return ''.join((includes17(),textwrap.dedent(
         """
-        // c++20 includes
-        #include <compare>
+        #include <compare> // c++20 includes
         #include <concepts>
-
-        consteval int sqr_cpp20(int n)
-        {
-          return n*n;
-        }
+        consteval int sqr_cpp20(int n) { return n*n; }
         constexpr auto r = sqr_cpp20(10);
         static_assert(r == 100);
-
         const char *g_cpp20() { return "dynamic initialization"; }
         constexpr const char *f_cpp20(bool p) { return p ? "constant initializer" : g_cpp20(); }
         constinit const char *cinit_c = f_cpp20(true); // OK
-
         // Declaration of the concept "Hashable", which is satisfied by any type 'T'
         // such that for values 'a' of type 'T', the expression std::hash<T>{}(a)
         // compiles and its result is convertible to std::size_t
         template <typename T>
-        concept Hashable = requires(T a)
-        {
-          { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>;
-        };
-
+        concept Hashable = requires(T a) { { std::hash<T>{}(a) } -> std::convertible_to<std::size_t>; };
         struct meow {};
-
-        // Constrained C++20 function template:
-        template <Hashable T>
+        template <Hashable T> // Constrained C++20 function template:
         void f_concept(T) {}
-
         void abbrev_f1(auto); // same as template<class T> void abbrev_f1(T)
         void abbrev_f4(const std::destructible auto*, std::floating_point auto&); // same as template<C3 T, C4 U> void abbrev_f4(const T*, U&);
-
-        template<>
-        void abbrev_f4<int>(const int*, const double&); // specialization of abbrev_f4<int, const double> (since C++20)
+        template<> void abbrev_f4<int>(const int*, const double&); // specialization of abbrev_f4<int, const double> (since C++20)
         """
       )))
 
     def body20():
-      return '\n'.join((body17(),textwrap.dedent(
+      return ''.join((body17(),textwrap.dedent(
         """
-        // c++20 body
-        ignore(cinit_c);
-
-        using std::operator""s;
-        f_concept("abc"s);
+        ignore(cinit_c); // c++20 body
+        using std::operator""s; f_concept("abc"s);
         """
       )))
 
@@ -1209,7 +1109,6 @@ class Configure(config.base.Configure):
             raise ConfigureSetupError(mess)
       return dialectIdx
 
-
     maxDialect = checkPackageRange(self.cxxDialectPackageRanges[1],'upper',maxDialect)
     minDialect = checkPackageRange(self.cxxDialectPackageRanges[0],'lower',minDialect)
 
@@ -1236,6 +1135,7 @@ class Configure(config.base.Configure):
           if useFlag:
             # needs compilerOnly = True as we need to keep the flag out of the linker flags
             self.addCompilerFlag(flag,includes=dlct.includes,body=dlct.body,compilerOnly=True)
+            if language == 'SYCL': self.insertPreprocessorFlag(flag) # Workaround for a build error on Aurora. We should add Cxx dialect to preprocessor flags to all languages
           elif not self.checkCompile(includes=dlct.includes,body=dlct.body):
             raise RuntimeError # to mimic addCompilerFlag
         except RuntimeError:
@@ -1350,7 +1250,6 @@ class Configure(config.base.Configure):
           raise OSError(msg) # why OSError?? it isn't caught anywhere in here?
     return
 
-
   def crayCrossCompiler(self,compiler):
     import script
     '''For Cray Intel KNL systems returns the underlying compiler line used by the wrapper compiler if is for KNL systems'''
@@ -1400,7 +1299,6 @@ class Configure(config.base.Configure):
       return ' '.join(newoutput)
     return ''
 
-
   def generateCCompilerGuesses(self):
     '''Determine the C compiler '''
     if hasattr(self, 'CC'):
@@ -1427,7 +1325,7 @@ class Configure(config.base.Configure):
       raise RuntimeError('MPI compiler wrappers in '+self.argDB['with-mpi-dir']+'/bin cannot be found or do not work. See https://petsc.org/release/faq/#invalid-mpi-compilers')
     else:
       if self.useMPICompilers() and 'with-mpi-dir' in self.argDB:
-      # if it gets here these means that self.argDB['with-mpi-dir']/bin does not exist so we should not search for MPI compilers
+      # if it gets here this means that self.argDB['with-mpi-dir']/bin does not exist so we should not search for MPI compilers
       # that is we are turning off the self.useMPICompilers()
         self.logPrintWarning(os.path.join(self.argDB['with-mpi-dir'], 'bin')+ ' dir does not exist! Skipping check for MPI compilers due to potentially incorrect --with-mpi-dir option. Suggest using --with-cc=/path/to/mpicc option instead')
 
@@ -1536,7 +1434,6 @@ class Configure(config.base.Configure):
     raise RuntimeError('Cannot find a C preprocessor')
     return
 
-
   def generateCUDACompilerGuesses(self):
     '''Determine the CUDA compiler using CUDAC, then --with-cudac
        - Any given category can be excluded'''
@@ -1600,7 +1497,6 @@ class Configure(config.base.Configure):
           self.logPrint(str(e))
     return
 
-
   def generateHIPCompilerGuesses(self):
     '''Determine the HIP compiler using HIPC, then --with-hipc
        - Any given category can be excluded'''
@@ -1662,7 +1558,6 @@ class Configure(config.base.Configure):
           self.logPrint(str(e))
     return
 
-
   def generateSYCLCompilerGuesses(self):
     '''Determine the SYCL compiler using SYCLC, then --with-syclc
        - Any given category can be excluded'''
@@ -1719,7 +1614,6 @@ class Configure(config.base.Configure):
         except RuntimeError as e:
           self.logPrint(str(e))
     return
-
 
   def generateCxxCompilerGuesses(self):
     '''Determine the Cxx compiler'''
@@ -1859,7 +1753,6 @@ class Configure(config.base.Configure):
           del self.CXXPP
     return
 
-
   def generateFortranCompilerGuesses(self):
     '''Determine the Fortran compiler'''
 
@@ -1920,6 +1813,7 @@ class Configure(config.base.Configure):
         elif self.CC.find('win32fe_icl') >= 0:
           yield os.path.join(path,'win32fe_ifort')
         yield 'gfortran'
+        yield 'egfortran' # On OpenBSD, the GFortran executable is named egfortran, https://fortran-lang.org/learn/os_setup/install_gfortran/#openbsd
         yield 'g95'
         yield 'xlf90'
         yield 'xlf'
@@ -1997,7 +1891,6 @@ class Configure(config.base.Configure):
     self.popLanguage()
     return
 
-
   def containsInvalidFlag(self, output):
     '''If the output contains evidence that an invalid flag was used, return True'''
     substrings = ('unknown argument', 'ignoring unsupported linker flag', 'unrecognized command line option','unrecognised command line option',
@@ -2050,7 +1943,7 @@ class Configure(config.base.Configure):
     if not flag: return
     flagsArg = self.getCompilerFlagsArg(compilerOnly)
     setattr(self, flagsArg, getattr(self, flagsArg)+' '+flag)
-    self.log.write('Added '+self.language[-1]+' compiler flag '+flag+'\n')
+    self.log.write('Added to '+self.language[-1]+' compiler flag '+flagsArg+': '+flag+'\n')
     return
 
   def addCompilerFlag(self, flag, includes = '', body = '', extraflags = '', compilerOnly = 0):
@@ -2059,6 +1952,14 @@ class Configure(config.base.Configure):
       self.insertCompilerFlag(flag, compilerOnly)
       return
     raise RuntimeError('Bad compiler flag: '+flag)
+
+  def insertPreprocessorFlag(self, flag):
+    '''DANGEROUS: Put in the preprocessor flag without checking'''
+    if not flag: return
+    flagsArg = self.getPreprocessorFlagsArg()
+    setattr(self, flagsArg, getattr(self, flagsArg)+' '+flag)
+    self.log.write('Added to '+self.language[-1]+' preprocessor flag '+flagsArg+': '+flag+'\n')
+    return
 
   @contextlib.contextmanager
   def extraCompilerFlags(self, extraFlags, lang = None, **kwargs):
@@ -2103,7 +2004,7 @@ class Configure(config.base.Configure):
       yield '-Xcompiler -fPIC'
       yield '-fPIC'
       return
-    if config.setCompilers.Configure.isGNU(self.getCompiler(), self.log):
+    if config.setCompilers.Configure.isGNU(self.getCompiler(), self.log) or config.setCompilers.Configure.isClang(self.getCompiler(), self.log) or config.setCompilers.Configure.isIntel(self.getCompiler(), self.log):
       PICFlags = ['-fPIC']
     elif config.setCompilers.Configure.isIBM(self.getCompiler(), self.log):
       PICFlags = ['-qPIC']
@@ -2402,12 +2303,14 @@ class Configure(config.base.Configure):
       yield (self.CC, ['-dynamiclib', '-undefined dynamic_lookup', '-no_compact_unwind'], 'dylib')
     if hasattr(self, 'CXX') and self.mainLanguage == 'Cxx':
       # C++ compiler default
-      yield (self.CXX, ['-qmkshrobj'], 'so')
+      if config.setCompilers.Configure.isIBM(self.CXX, self.log):
+        yield (self.CXX, ['-qmkshrobj'], 'so')
       yield (self.CXX, ['-shared'], 'so')
       yield (self.CXX, ['-dynamic'], 'so')
       yield (self.CC, ['-shared'], 'dll')
     # C compiler default
-    yield (self.CC, ['-qmkshrobj'], 'so')
+      if config.setCompilers.Configure.isIBM(self.CC, self.log):
+        yield (self.CC, ['-qmkshrobj'], 'so')
     yield (self.CC, ['-shared'], 'so')
     yield (self.CC, ['-dynamic'], 'so')
     yield (self.CC, ['-shared'], 'dll')

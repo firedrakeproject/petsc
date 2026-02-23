@@ -12,7 +12,7 @@ PetscErrorCode MatSetUpMultiply_MPIDense(Mat mat)
   if (!mdn->Mvctx) {
     /* Create local vector that is used to scatter into */
     PetscCall(VecDestroy(&mdn->lvec));
-    if (mdn->A) { PetscCall(MatCreateVecs(mdn->A, &mdn->lvec, NULL)); }
+    if (mdn->A) PetscCall(MatCreateVecs(mdn->A, &mdn->lvec, NULL));
     PetscCall(PetscLayoutSetUp(mat->cmap));
     PetscCall(PetscSFCreate(PetscObjectComm((PetscObject)mat), &mdn->Mvctx));
     PetscCall(PetscSFSetGraphWithPattern(mdn->Mvctx, mat->cmap, PETSCSF_PATTERN_ALLGATHER));
@@ -24,7 +24,7 @@ static PetscErrorCode MatCreateSubMatrices_MPIDense_Local(Mat, PetscInt, const I
 
 PetscErrorCode MatCreateSubMatrices_MPIDense(Mat C, PetscInt ismax, const IS isrow[], const IS iscol[], MatReuse scall, Mat *submat[])
 {
-  PetscInt nmax, nstages_local, nstages, i, pos, max_no;
+  PetscInt nmax, nstages, i, pos, max_no;
 
   PetscFunctionBegin;
   /* Allocate memory to hold all the submatrices */
@@ -32,10 +32,10 @@ PetscErrorCode MatCreateSubMatrices_MPIDense(Mat C, PetscInt ismax, const IS isr
   /* Determine the number of stages through which submatrices are done */
   nmax = 20 * 1000000 / (C->cmap->N * sizeof(PetscInt));
   if (!nmax) nmax = 1;
-  nstages_local = ismax / nmax + ((ismax % nmax) ? 1 : 0);
+  nstages = ismax / nmax + ((ismax % nmax) ? 1 : 0);
 
   /* Make sure every processor loops through the nstages */
-  PetscCallMPI(MPIU_Allreduce(&nstages_local, &nstages, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)C)));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &nstages, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)C)));
 
   for (i = 0, pos = 0; i < nstages; i++) {
     if (pos + nmax <= ismax) max_no = nmax;

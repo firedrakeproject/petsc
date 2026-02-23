@@ -26,27 +26,27 @@ typedef enum {
 } FunctionType;
 const char *const FunctionTypes[] = {"constant", "linear", "sin", "x2_x4", "unknown", "FunctionType", "FUNCTION_", NULL};
 
-static PetscErrorCode constant(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode constant(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 1.0;
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode linear(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode linear(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 0.0;
   for (PetscInt d = 0; d < dim; ++d) u[0] += x[d];
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode sinx(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode sinx(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 1;
   for (PetscInt d = 0; d < dim; ++d) u[0] *= PetscSinReal(2. * PETSC_PI * x[d]);
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode x2_x4(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode x2_x4(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 1;
   for (PetscInt d = 0; d < dim; ++d) u[0] *= PetscSqr(x[d]) - PetscSqr(PetscSqr(x[d]));
@@ -319,9 +319,7 @@ static PetscErrorCode TestParticlesToField(DM sw, DM dm, Vec fhat, AppCtx *user)
   PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "L2 projection mass: %20.10e, x-momentum: %20.10e, energy: %20.10e.\n", fmoments[0], fmoments[1], fmoments[2]));
   for (PetscInt m = 0; m < user->Nm; ++m) {
     if (user->pass) {
-      if (PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]) > user->mtol) {
-        PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "p  projection mass: %20.10e, x-momentum: %20.10e, energy: %20.10e.\n", pmoments[0], pmoments[1], pmoments[2]));
-      }
+      if (PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]) > user->mtol) PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "p  projection mass: %20.10e, x-momentum: %20.10e, energy: %20.10e.\n", pmoments[0], pmoments[1], pmoments[2]));
     } else {
       PetscCheck(PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]) <= user->mtol, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Moment %" PetscInt_FMT " error too large %g > %g", m, PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]),
                  user->mtol);
@@ -347,9 +345,7 @@ static PetscErrorCode TestFieldToParticles(DM sw, DM dm, Vec fhat, AppCtx *user)
   PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "L2 projection mass: %20.10e, x-momentum: %20.10e, energy: %20.10e.\n", fmoments[0], fmoments[1], fmoments[2]));
   for (PetscInt m = 0; m < user->Nm; ++m) {
     if (user->pass) {
-      if (PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]) > user->mtol) {
-        PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "p  projection mass: %20.10e, x-momentum: %20.10e, energy: %20.10e.\n", pmoments[0], pmoments[1], pmoments[2]));
-      }
+      if (PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]) > user->mtol) PetscCall(PetscPrintf(PetscObjectComm((PetscObject)dm), "p  projection mass: %20.10e, x-momentum: %20.10e, energy: %20.10e.\n", pmoments[0], pmoments[1], pmoments[2]));
     } else {
       PetscCheck(PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]) <= user->mtol, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Moment %" PetscInt_FMT " error too large %g > %g", m, PetscAbsReal((fmoments[m] - pmoments[m]) / fmoments[m]),
                  user->mtol);

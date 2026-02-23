@@ -92,11 +92,11 @@ static PetscErrorCode PCDestroy_Galerkin(PC pc)
 static PetscErrorCode PCView_Galerkin(PC pc, PetscViewer viewer)
 {
   PC_Galerkin *jac = (PC_Galerkin *)pc->data;
-  PetscBool    iascii;
+  PetscBool    isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  KSP on Galerkin follow\n"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  ---------------------------------\n"));
   }
@@ -135,7 +135,7 @@ static PetscErrorCode PCGalerkinSetInterpolation_Galerkin(PC pc, Mat P)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PCGalerkinSetComputeSubmatrix_Galerkin(PC pc, PetscErrorCode (*computeAsub)(PC, Mat, Mat, Mat *, void *), void *ctx)
+static PetscErrorCode PCGalerkinSetComputeSubmatrix_Galerkin(PC pc, PetscErrorCode (*computeAsub)(PC, Mat, Mat, Mat *, void *), PetscCtx ctx)
 {
   PC_Galerkin *jac = (PC_Galerkin *)pc->data;
 
@@ -228,7 +228,7 @@ PetscErrorCode PCGalerkinSetInterpolation(PC pc, Mat P)
 .seealso: [](ch_ksp), `PC`, `PCCreate()`, `PCSetType()`, `PCType`, `PCGALERKIN`,
           `PCGalerkinSetRestriction()`, `PCGalerkinSetInterpolation()`, `PCGalerkinGetKSP()`
 @*/
-PetscErrorCode PCGalerkinSetComputeSubmatrix(PC pc, PetscErrorCode (*computeAsub)(PC pc, Mat A, Mat Ap, Mat *cAp, void *ctx), void *ctx)
+PetscErrorCode PCGalerkinSetComputeSubmatrix(PC pc, PetscErrorCode (*computeAsub)(PC pc, Mat A, Mat Ap, Mat *cAp, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);

@@ -58,44 +58,45 @@ typedef struct {
   PetscInt          rmax;               /* max nonzeros in any row */ \
   PetscBool         keepnonzeropattern; /* keeps matrix nonzero structure same in calls to MatZeroRows()*/ \
   PetscBool         ignorezeroentries; \
-  PetscBool         free_ij;       /* free the column indices j and row offsets i when the matrix is destroyed */ \
-  PetscBool         free_a;        /* free the numerical values when matrix is destroy */ \
-  Mat_CompressedRow compressedrow; /* use compressed row format */ \
-  PetscInt          nz;            /* nonzeros */ \
-  PetscInt         *i;             /* pointer to beginning of each row */ \
-  PetscInt         *j;             /* column values: j + i[k] - 1 is start of row k */ \
-  PetscInt         *diag;          /* pointers to diagonal elements */ \
-  PetscInt          nonzerorowcnt; /* how many rows have nonzero entries */ \
-  PetscBool         free_diag; \
-  datatype         *a;              /* nonzero elements */ \
-  PetscScalar      *solve_work;     /* work space used in MatSolve */ \
-  IS                row, col, icol; /* index sets, used for reorderings */ \
-  PetscBool         pivotinblocks;  /* pivot inside factorization of each diagonal block */ \
-  Mat               parent;         /* set if this matrix was formed with MatDuplicate(...,MAT_SHARE_NONZERO_PATTERN,....); \
+  PetscBool         free_ij;          /* free the column indices j and row offsets i when the matrix is destroyed */ \
+  PetscBool         free_a;           /* free the numerical values when matrix is destroy */ \
+  Mat_CompressedRow compressedrow;    /* use compressed row format */ \
+  PetscInt          nz;               /* nonzeros */ \
+  PetscInt         *i;                /* pointer to beginning of each row */ \
+  PetscInt         *j;                /* column values: j + i[k] - 1 is start of row k */ \
+  PetscInt         *diag;             /* pointers to diagonal elements */ \
+  PetscObjectState  diagNonzeroState; /* nonzero state of the matrix when diag was obtained */ \
+  PetscBool         diagDense;        /* all entries along the diagonal have been set; i.e. no missing diagonal terms */ \
+  PetscInt          nonzerorowcnt;    /* how many rows have nonzero entries */ \
+  datatype         *a;                /* nonzero elements */ \
+  PetscScalar      *solve_work;       /* work space used in MatSolve */ \
+  IS                row, col, icol;   /* index sets, used for reorderings */ \
+  PetscBool         pivotinblocks;    /* pivot inside factorization of each diagonal block */ \
+  Mat               parent;           /* set if this matrix was formed with MatDuplicate(...,MAT_SHARE_NONZERO_PATTERN,....); \
                                          means that this shares some data structures with the parent including diag, ilen, imax, i, j */ \
-  Mat_SubSppt      *submatis1;      /* used by MatCreateSubMatrices_MPIXAIJ_Local */ \
-  Mat_SeqAIJOps     ops[1]          /* operations for SeqAIJ and its subclasses */
+  Mat_SubSppt      *submatis1;        /* used by MatCreateSubMatrices_MPIXAIJ_Local */ \
+  Mat_SeqAIJOps     ops[1]            /* operations for SeqAIJ and its subclasses */
 
 typedef struct {
   MatTransposeColoring matcoloring;
   Mat                  Bt_den;  /* dense matrix of B^T */
   Mat                  ABt_den; /* dense matrix of A*B^T */
   PetscBool            usecoloring;
-} Mat_MatMatTransMult;
+} MatProductCtx_MatMatTransMult;
 
 typedef struct { /* used by MatTransposeMatMult() */
   Mat At;        /* transpose of the first matrix */
   Mat mA;        /* maij matrix of A */
   Vec bt, ct;    /* vectors to hold locally transposed arrays of B and C */
   /* used by PtAP */
-  void *data;
-  PetscErrorCode (*destroy)(void *);
-} Mat_MatTransMatMult;
+  void              *data;
+  PetscCtxDestroyFn *destroy;
+} MatProductCtx_MatTransMatMult;
 
 typedef struct {
   PetscInt    *api, *apj; /* symbolic structure of A*P */
   PetscScalar *apa;       /* temporary array for storing one row of A*P */
-} Mat_AP;
+} MatProductCtx_AP;
 
 typedef struct {
   MatTransposeColoring matcoloring;
@@ -104,13 +105,13 @@ typedef struct {
   Mat                  ARt;  /* A*R^T used for the case -matrart_color_art */
   MatScalar           *work; /* work array to store columns of A*R^T used in MatMatMatMultNumeric_SeqAIJ_SeqAIJ_SeqDense() */
   /* free intermediate products needed for PtAP */
-  void *data;
-  PetscErrorCode (*destroy)(void *);
-} Mat_RARt;
+  void              *data;
+  PetscCtxDestroyFn *destroy;
+} MatProductCtx_RARt;
 
 typedef struct {
   Mat BC; /* temp matrix for storing B*C */
-} Mat_MatMatMatMult;
+} MatProductCtx_MatMatMatMult;
 
 /*
   MATSEQAIJ format - Compressed row storage (also called Yale sparse matrix
@@ -121,9 +122,10 @@ typedef struct {
 
 /* Info about i-nodes (identical nodes) helper class for SeqAIJ */
 typedef struct {
-  MatScalar *bdiag, *ibdiag, *ssor_work; /* diagonal blocks of matrix used for MatSOR_SeqAIJ_Inode() */
-  PetscInt   bdiagsize;                  /* length of bdiag and ibdiag */
-  PetscBool  ibdiagvalid;                /* do ibdiag[] and bdiag[] contain the most recent values */
+  /* data for  MatSOR_SeqAIJ_Inode() */
+  MatScalar       *bdiag, *ibdiag, *ssor_work; /* diagonal blocks of matrices */
+  PetscInt         bdiagsize;                  /* length of bdiag and ibdiag */
+  PetscObjectState ibdiagState;                /* state of the matrix when  ibdiag[] and bdiag[] were constructed */
 
   PetscBool        use;
   PetscInt         node_count;       /* number of inodes */
@@ -150,12 +152,14 @@ typedef struct {
   Mat_SeqAIJ_Inode inode;
   MatScalar       *saved_values; /* location for stashing nonzero values of matrix */
 
-  PetscScalar *idiag, *mdiag, *ssor_work; /* inverse of diagonal entries, diagonal values and workspace for Eisenstat trick */
-  PetscBool    idiagvalid;                /* current idiag[] and mdiag[] are valid */
-  PetscScalar *ibdiag;                    /* inverses of block diagonals */
-  PetscBool    ibdiagvalid;               /* inverses of block diagonals are valid. */
-  PetscBool    diagonaldense;             /* all entries along the diagonal have been set; i.e. no missing diagonal terms */
-  PetscScalar  fshift, omega;             /* last used omega and fshift */
+  /* data needed for MatSOR_SeqAIJ() */
+  PetscScalar     *mdiag, *idiag; /* diagonal values, inverse of diagonal entries */
+  PetscScalar     *ssor_work;     /* workspace for Eisenstat trick */
+  PetscObjectState idiagState;    /* state of the matrix when mdiag and idiag was obtained */
+  PetscScalar      fshift, omega; /* last used omega and fshift */
+
+  PetscScalar *ibdiag;      /* inverses of block diagonals */
+  PetscBool    ibdiagvalid; /* inverses of block diagonals are valid. */
 
   /* MatSetValues() via hash related fields */
   PetscHMapIJV   ht;
@@ -315,8 +319,7 @@ PETSC_INTERN PetscErrorCode MatCholeskyFactorNumeric_SeqAIJ_inplace(Mat, Mat, co
 PETSC_INTERN PetscErrorCode MatCholeskyFactorNumeric_SeqAIJ(Mat, Mat, const MatFactorInfo *);
 PETSC_INTERN PetscErrorCode MatDuplicate_SeqAIJ(Mat, MatDuplicateOption, Mat *);
 PETSC_INTERN PetscErrorCode MatCopy_SeqAIJ(Mat, Mat, MatStructure);
-PETSC_INTERN PetscErrorCode MatMissingDiagonal_SeqAIJ(Mat, PetscBool *, PetscInt *);
-PETSC_INTERN PetscErrorCode MatMarkDiagonal_SeqAIJ(Mat);
+PETSC_EXTERN PetscErrorCode MatGetDiagonalMarkers_SeqAIJ(Mat, const PetscInt **, PetscBool *);
 PETSC_INTERN PetscErrorCode MatFindZeroDiagonals_SeqAIJ_Private(Mat, PetscInt *, PetscInt **);
 
 PETSC_INTERN PetscErrorCode MatMult_SeqAIJ(Mat, Vec, Vec);
@@ -403,7 +406,7 @@ PETSC_INTERN PetscErrorCode MatRARtNumeric_SeqAIJ_SeqAIJ_colorrart(Mat, Mat, Mat
 
 PETSC_INTERN PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqAIJ(Mat, Mat, PetscReal, Mat);
 PETSC_INTERN PetscErrorCode MatTransposeMatMultNumeric_SeqAIJ_SeqAIJ(Mat, Mat, Mat);
-PETSC_INTERN PetscErrorCode MatDestroy_SeqAIJ_MatTransMatMult(void *);
+PETSC_INTERN PetscErrorCode MatProductCtxDestroy_SeqAIJ_MatTransMatMult(PetscCtxRt);
 
 PETSC_INTERN PetscErrorCode MatMatTransposeMultSymbolic_SeqAIJ_SeqAIJ(Mat, Mat, PetscReal, Mat);
 PETSC_INTERN PetscErrorCode MatMatTransposeMultNumeric_SeqAIJ_SeqAIJ(Mat, Mat, Mat);
@@ -431,8 +434,6 @@ PETSC_INTERN PetscErrorCode MatRestoreColumnIJ_SeqAIJ_Color(Mat, PetscInt, Petsc
 PETSC_INTERN PetscErrorCode MatDestroy_SeqAIJ(Mat);
 PETSC_INTERN PetscErrorCode MatView_SeqAIJ(Mat, PetscViewer);
 
-PETSC_INTERN PetscErrorCode MatSeqAIJInvalidateDiagonal(Mat);
-PETSC_INTERN PetscErrorCode MatSeqAIJInvalidateDiagonal_Inode(Mat);
 PETSC_INTERN PetscErrorCode MatSeqAIJCheckInode(Mat);
 PETSC_INTERN PetscErrorCode MatSeqAIJCheckInode_FactorLU(Mat);
 
@@ -669,7 +670,7 @@ static inline void PetscSparseDensePlusDot_AVX512_Private(PetscScalar *sum, cons
 */
 #define PetscSparseDenseMaxDot(max, r, xv, xi, nnz) \
   do { \
-    for (PetscInt __i = 0; __i < (nnz); __i++) { max = PetscMax(PetscRealPart(max), PetscRealPart((xv)[__i] * (r)[(xi)[__i]])); } \
+    for (PetscInt __i = 0; __i < (nnz); __i++) max = PetscMax(PetscRealPart(max), PetscRealPart((xv)[__i] * (r)[(xi)[__i]])); \
   } while (0)
 
 /*

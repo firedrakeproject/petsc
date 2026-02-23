@@ -1182,12 +1182,12 @@ PetscErrorCode PCSetUpOnBlocks(PC pc)
   `KSPSolve()`.
 
   A routine set by `PCSetModifySubMatrices()` is currently called within
-  the block Jacobi (`PCBJACOBI`) and additive Schwarz (`PCASM`)
-  preconditioners.  All other preconditioners ignore this routine.
+  `PCBJACOBI`, `PCASM`, `PCGASM`, and `PCHPDDM`.
+  All other preconditioners ignore this routine.
 
 .seealso: [](ch_ksp), `PC`, `PCModifySubMatricesFn`, `PCBJACOBI`, `PCASM`, `PCModifySubMatrices()`
 @*/
-PetscErrorCode PCSetModifySubMatrices(PC pc, PCModifySubMatricesFn *func, void *ctx)
+PetscErrorCode PCSetModifySubMatrices(PC pc, PCModifySubMatricesFn *func, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
@@ -1225,7 +1225,7 @@ PetscErrorCode PCSetModifySubMatrices(PC pc, PCModifySubMatricesFn *func, void *
 
 .seealso: [](ch_ksp), `PC`, `PCModifySubMatricesFn`, `PCSetModifySubMatrices()`
 @*/
-PetscErrorCode PCModifySubMatrices(PC pc, PetscInt nsub, const IS row[], const IS col[], Mat submat[], void *ctx)
+PetscErrorCode PCModifySubMatrices(PC pc, PetscInt nsub, const IS row[], const IS col[], Mat submat[], PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
@@ -1238,7 +1238,7 @@ PetscErrorCode PCModifySubMatrices(PC pc, PetscInt nsub, const IS row[], const I
 
 /*@
   PCSetOperators - Sets the matrix associated with the linear system and
-  a (possibly) different one associated with the preconditioner.
+  a (possibly) different one from which the preconditioner will be constructed.
 
   Logically Collective
 
@@ -1247,9 +1247,11 @@ PetscErrorCode PCModifySubMatrices(PC pc, PetscInt nsub, const IS row[], const I
 . Amat - the matrix that defines the linear system
 - Pmat - the matrix to be used in constructing the preconditioner, usually the same as Amat.
 
-  Level: intermediate
+  Level: advanced
 
   Notes:
+  Using this routine directly is rarely needed, the preferred, and equivalent, usage is `KSPSetOperators()`.
+
   Passing a `NULL` for `Amat` or `Pmat` removes the matrix that is currently used.
 
   If you wish to replace either `Amat` or `Pmat` but leave the other one untouched then
@@ -1322,6 +1324,7 @@ PetscErrorCode PCSetReusePreconditioner(PC pc, PetscBool flag)
   PetscValidHeaderSpecific(pc, PC_CLASSID, 1);
   PetscValidLogicalCollectiveBool(pc, flag, 2);
   pc->reusepreconditioner = flag;
+  PetscTryMethod(pc, "PCSetReusePreconditioner_C", (PC, PetscBool), (pc, flag));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1682,7 +1685,7 @@ PetscErrorCode PCSetPostSetUp(PC pc, PetscErrorCode (*postsetup)(PC pc))
   Note:
   `KSPSolve()` calls this routine directly, so it is rarely called by the user.
 
-.seealso: [](ch_ksp), `PC`, `PCSetPreSolve()`, `KSPSetPostSolve()`, `KSPSetPreSolve()`, `PCPreSolve()`, `KSPSolve()`
+.seealso: [](ch_ksp), `PC`, `KSPSetPostSolve()`, `KSPSetPreSolve()`, `PCPreSolve()`, `KSPSolve()`
 @*/
 PetscErrorCode PCPostSolve(PC pc, KSP ksp)
 {
@@ -1790,7 +1793,7 @@ PetscErrorCode PCView(PC pc, PetscViewer viewer)
 {
   PCType            cstr;
   PetscViewerFormat format;
-  PetscBool         iascii, isstring, isbinary, isdraw, pop = PETSC_FALSE;
+  PetscBool         isascii, isstring, isbinary, isdraw, pop = PETSC_FALSE;
 #if defined(PETSC_HAVE_SAWS)
   PetscBool issaws;
 #endif
@@ -1801,7 +1804,7 @@ PetscErrorCode PCView(PC pc, PetscViewer viewer)
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCheckSameComm(pc, 1, viewer, 2);
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
@@ -1809,7 +1812,7 @@ PetscErrorCode PCView(PC pc, PetscViewer viewer)
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSAWS, &issaws));
 #endif
 
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)pc, viewer));
     if (!pc->setupcalled) PetscCall(PetscViewerASCIIPrintf(viewer, "  PC has not been set up so information may be incomplete\n"));
     PetscCall(PetscViewerASCIIPushTab(viewer));
@@ -1822,13 +1825,13 @@ PetscErrorCode PCView(PC pc, PetscViewer viewer)
         pop = PETSC_TRUE;
       }
       if (pc->pmat == pc->mat) {
-        PetscCall(PetscViewerASCIIPrintf(viewer, "  linear system matrix = precond matrix:\n"));
+        PetscCall(PetscViewerASCIIPrintf(viewer, "  linear system matrix, which is also used to construct the preconditioner:\n"));
         PetscCall(PetscViewerASCIIPushTab(viewer));
         PetscCall(MatView(pc->mat, viewer));
         PetscCall(PetscViewerASCIIPopTab(viewer));
       } else {
         if (pc->pmat) {
-          PetscCall(PetscViewerASCIIPrintf(viewer, "  linear system matrix followed by preconditioner matrix:\n"));
+          PetscCall(PetscViewerASCIIPrintf(viewer, "  linear system matrix, followed by the matrix used to construct the preconditioner:\n"));
         } else {
           PetscCall(PetscViewerASCIIPrintf(viewer, "  linear system matrix:\n"));
         }
@@ -1979,7 +1982,7 @@ PetscErrorCode PCComputeOperator(PC pc, MatType mattype, Mat *mat)
   PetscCall(MatGetLocalSize(A, &m, &n));
   PetscCall(MatGetSize(A, &M, &N));
   PetscCall(MatCreateShell(PetscObjectComm((PetscObject)pc), m, n, M, N, pc, &Apc));
-  PetscCall(MatShellSetOperation(Apc, MATOP_MULT, (void (*)(void))MatMult_PC));
+  PetscCall(MatShellSetOperation(Apc, MATOP_MULT, (PetscErrorCodeFn *)MatMult_PC));
   PetscCall(MatComputeOperator(Apc, mattype, mat));
   PetscCall(MatDestroy(&Apc));
   PetscFunctionReturn(PETSC_SUCCESS);

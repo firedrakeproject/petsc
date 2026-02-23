@@ -1427,11 +1427,11 @@ static PetscErrorCode PCSetUp_BDDC(PC pc)
 
   matis = (Mat_IS *)pc->pmat->data;
   /* the following lines of code should be replaced by a better logic between PCIS, PCNN, PCBDDC and other future nonoverlapping preconditioners */
-  /* For BDDC we need to define a local "Neumann" problem different to that defined in PCISSetup
+  /* For BDDC we need to define a local "Neumann" problem different to that defined in PCISSetUp
      Also, BDDC builds its own KSP for the Dirichlet problem */
   rl = pcbddc->recompute_topography;
   if (!pc->setupcalled || pc->flag == DIFFERENT_NONZERO_PATTERN) rl = PETSC_TRUE;
-  PetscCallMPI(MPIU_Allreduce(&rl, &pcbddc->recompute_topography, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)pc)));
+  PetscCallMPI(MPIU_Allreduce(&rl, &pcbddc->recompute_topography, 1, MPI_C_BOOL, MPI_LOR, PetscObjectComm((PetscObject)pc)));
   if (pcbddc->recompute_topography) {
     pcbddc->graphanalyzed    = PETSC_FALSE;
     computeconstraintsmatrix = PETSC_TRUE;
@@ -1442,8 +1442,8 @@ static PetscErrorCode PCSetUp_BDDC(PC pc)
   /* check parameters' compatibility */
   if (!pcbddc->use_deluxe_scaling) pcbddc->deluxe_zerorows = PETSC_FALSE;
   pcbddc->adaptive_selection   = (PetscBool)(pcbddc->adaptive_threshold[0] != 0.0 || pcbddc->adaptive_threshold[1] != 0.0);
-  pcbddc->use_deluxe_scaling   = (PetscBool)(pcbddc->use_deluxe_scaling && size > 1);
-  pcbddc->adaptive_selection   = (PetscBool)(pcbddc->adaptive_selection && size > 1);
+  pcbddc->use_deluxe_scaling   = (PetscBool)(pcbddc->use_deluxe_scaling && (size > 1 || matis->allow_repeated));
+  pcbddc->adaptive_selection   = (PetscBool)(pcbddc->adaptive_selection && (size > 1 || matis->allow_repeated));
   pcbddc->adaptive_userdefined = (PetscBool)(pcbddc->adaptive_selection && pcbddc->adaptive_userdefined);
   if (pcbddc->adaptive_selection) pcbddc->use_faces = PETSC_TRUE;
 
@@ -2455,9 +2455,9 @@ static PetscErrorCode PCBDDCCreateFETIDPOperators_BDDC(PC pc, PetscBool fully_re
   PetscCall(PCBDDCSetupFETIDPMatContext(fetidpmat_ctx));
   PetscCall(MatCreateShell(comm, fetidpmat_ctx->n, fetidpmat_ctx->n, fetidpmat_ctx->N, fetidpmat_ctx->N, fetidpmat_ctx, &newmat));
   PetscCall(PetscObjectSetName((PetscObject)newmat, !fetidpmat_ctx->l2g_lambda_only ? "F" : "G"));
-  PetscCall(MatShellSetOperation(newmat, MATOP_MULT, (void (*)(void))FETIDPMatMult));
-  PetscCall(MatShellSetOperation(newmat, MATOP_MULT_TRANSPOSE, (void (*)(void))FETIDPMatMultTranspose));
-  PetscCall(MatShellSetOperation(newmat, MATOP_DESTROY, (void (*)(void))PCBDDCDestroyFETIDPMat));
+  PetscCall(MatShellSetOperation(newmat, MATOP_MULT, (PetscErrorCodeFn *)FETIDPMatMult));
+  PetscCall(MatShellSetOperation(newmat, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)FETIDPMatMultTranspose));
+  PetscCall(MatShellSetOperation(newmat, MATOP_DESTROY, (PetscErrorCodeFn *)PCBDDCDestroyFETIDPMat));
   /* propagate MatOptions */
   {
     PC_BDDC  *pcbddc = (PC_BDDC *)fetidpmat_ctx->pc->data;
@@ -2608,7 +2608,7 @@ static PetscErrorCode PCBDDCCreateFETIDPOperators_BDDC(PC pc, PetscBool fully_re
 
           PetscCall(MatISGetLocalMat(M, &lM));
           PetscCall(MatGetSize(lM, &n, NULL));
-          PetscCall(PetscContainerGetPointer(c, (void **)&csr));
+          PetscCall(PetscContainerGetPointer(c, &csr));
           PetscCall(PCBDDCSetLocalAdjacencyGraph(bddcipc_ctx->bddc, n, csr, csr + (n + 1), PETSC_COPY_VALUES));
           PetscCall(MatISRestoreLocalMat(M, &lM));
         }

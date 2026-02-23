@@ -8,6 +8,8 @@
 
 PETSC_PRAGMA_DIAGNOSTIC_IGNORED_BEGIN("-Wundef")
 EXTERN_C_BEGIN
+// To suppress compiler warnings
+#define DISABLE_CUSPARSE_DEPRECATED
 #if defined(PETSC_USE_COMPLEX)
   #define CASTDOUBLECOMPLEX     (doublecomplex *)
   #define CASTDOUBLECOMPLEXSTAR (doublecomplex **)
@@ -252,11 +254,11 @@ static PetscErrorCode MatDestroy_SuperLU_DIST(Mat A)
   } else {
     PetscSuperLU_DIST *context;
     MPI_Comm           comm;
-    PetscMPIInt        flg;
+    PetscMPIInt        iflg;
 
     PetscCall(PetscObjectGetComm((PetscObject)A, &comm));
-    PetscCallMPI(MPI_Comm_get_attr(comm, Petsc_Superlu_dist_keyval, &context, &flg));
-    if (flg) context->busy = PETSC_FALSE;
+    PetscCallMPI(MPI_Comm_get_attr(comm, Petsc_Superlu_dist_keyval, &context, &iflg));
+    if (iflg) context->busy = PETSC_FALSE;
   }
 
   PetscCall(PetscFree(A->data));
@@ -417,8 +419,8 @@ static PetscErrorCode MatGetInertia_SuperLU_DIST(Mat F, PetscInt *nneg, PetscInt
   PetscCall(MatSuperluDistGetDiagU(F, diagU));
   for (i = 0; i < M; i++) {
 #if defined(PETSC_USE_COMPLEX)
-    r = PetscImaginaryPart(diagU[i]) / 10.0;
-    PetscCheck(r > -PETSC_MACHINE_EPSILON && r < PETSC_MACHINE_EPSILON, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "diagU[%" PetscInt_FMT "]=%g + i %g is non-real", i, (double)PetscRealPart(diagU[i]), (double)(r * 10.0));
+    r = PetscAbsReal(PetscImaginaryPart(diagU[i]));
+    PetscCheck(r < 1000 * PETSC_MACHINE_EPSILON, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "diagU[%" PetscInt_FMT "]=%g + i %g is non-real", i, (double)PetscRealPart(diagU[i]), (double)PetscImaginaryPart(diagU[i]));
     r = PetscRealPart(diagU[i]);
 #else
     r = diagU[i];
@@ -443,7 +445,7 @@ static PetscErrorCode MatLUFactorNumeric_SuperLU_DIST(Mat F, Mat A, const MatFac
   Mat                Aloc;
   const PetscScalar *av;
   const PetscInt    *ai = NULL, *aj = NULL;
-  PetscInt           nz, dummy;
+  PetscInt           nz, unused;
   int                sinfo; /* SuperLU_Dist info flag is always an int even with long long indices */
   SuperLUStat_t      stat;
   PetscReal         *berr = 0;
@@ -462,7 +464,7 @@ static PetscErrorCode MatLUFactorNumeric_SuperLU_DIST(Mat F, Mat A, const MatFac
     Aloc = A;
   } else SETERRQ(PetscObjectComm((PetscObject)A), PETSC_ERR_SUP, "Not for type %s", ((PetscObject)A)->type_name);
 
-  PetscCall(MatGetRowIJ(Aloc, 0, PETSC_FALSE, PETSC_FALSE, &dummy, &ai, &aj, &flg));
+  PetscCall(MatGetRowIJ(Aloc, 0, PETSC_FALSE, PETSC_FALSE, &unused, &ai, &aj, &flg));
   PetscCheck(flg, PETSC_COMM_SELF, PETSC_ERR_SUP, "GetRowIJ failed");
   PetscCall(MatSeqAIJGetArrayRead(Aloc, &av));
   nz = ai[Aloc->rmap->n];
@@ -524,7 +526,7 @@ static PetscErrorCode MatLUFactorNumeric_SuperLU_DIST(Mat F, Mat A, const MatFac
   else
 #endif
     PetscCall(PetscArraycpy(lu->val, av, nz));
-  PetscCall(MatRestoreRowIJ(Aloc, 0, PETSC_FALSE, PETSC_FALSE, &dummy, &ai, &aj, &flg));
+  PetscCall(MatRestoreRowIJ(Aloc, 0, PETSC_FALSE, PETSC_FALSE, &unused, &ai, &aj, &flg));
   PetscCheck(flg, PETSC_COMM_SELF, PETSC_ERR_SUP, "RestoreRowIJ failed");
   PetscCall(MatSeqAIJRestoreArrayRead(Aloc, &av));
   PetscCall(MatDestroy(&Aloc));
@@ -572,7 +574,7 @@ static PetscErrorCode MatLUFactorNumeric_SuperLU_DIST(Mat F, Mat A, const MatFac
     }
   } else PetscCheck(sinfo >= 0, PETSC_COMM_SELF, PETSC_ERR_LIB, "info = %d, argument in p*gssvx() had an illegal value", sinfo);
 
-  if (lu->options.PrintStat) { PetscStackCallExternalVoid("SuperLU_DIST:PStatPrint", PStatPrint(&lu->options, &stat, &lu->grid)); /* Print the statistics. */ }
+  if (lu->options.PrintStat) PetscStackCallExternalVoid("SuperLU_DIST:PStatPrint", PStatPrint(&lu->options, &stat, &lu->grid)); /* Print the statistics. */
   PetscStackCallExternalVoid("SuperLU_DIST:PStatFree", PStatFree(&stat));
   F->assembled     = PETSC_TRUE;
   F->preallocated  = PETSC_TRUE;
@@ -585,7 +587,7 @@ static PetscErrorCode MatLUFactorSymbolic_SuperLU_DIST(Mat F, Mat A, IS r, IS c,
 {
   Mat_SuperLU_DIST  *lu = (Mat_SuperLU_DIST *)F->data;
   PetscInt           M = A->rmap->N, N = A->cmap->N, indx;
-  PetscMPIInt        size, mpiflg;
+  PetscMPIInt        size, iflg;
   PetscBool          flg, set;
   const char        *colperm[]     = {"NATURAL", "MMD_AT_PLUS_A", "MMD_ATA", "METIS_AT_PLUS_A", "PARMETIS"};
   const char        *rowperm[]     = {"NOROWPERM", "LargeDiag_MC64", "LargeDiag_AWPM", "MY_PERMR"};
@@ -678,19 +680,21 @@ static PetscErrorCode MatLUFactorSymbolic_SuperLU_DIST(Mat F, Mat A, IS r, IS c,
 
   lu->options.IterRefine = NOREFINE;
   PetscCall(PetscOptionsBool("-mat_superlu_dist_iterrefine", "Use iterative refinement", "None", lu->options.IterRefine == NOREFINE ? PETSC_FALSE : PETSC_TRUE, &flg, &set));
-  if (set) {
-    if (flg) lu->options.IterRefine = SLU_DOUBLE;
-    else lu->options.IterRefine = NOREFINE;
-  }
+  if (set && flg) lu->options.IterRefine = SLU_DOUBLE;
 
   if (PetscLogPrintInfo) lu->options.PrintStat = YES;
   else lu->options.PrintStat = NO;
   PetscCall(PetscOptionsDeprecated("-mat_superlu_dist_statprint", "-mat_superlu_dist_printstat", "3.19", NULL));
   PetscCall(PetscOptionsBool("-mat_superlu_dist_printstat", "Print factorization information", "None", (PetscBool)lu->options.PrintStat, (PetscBool *)&lu->options.PrintStat, NULL));
 
-  PetscCallMPI(MPI_Comm_get_attr(comm, Petsc_Superlu_dist_keyval, &context, &mpiflg));
-  if (!mpiflg || context->busy) { /* additional options */
-    if (!mpiflg) {
+#if PETSC_PKG_SUPERLU_DIST_VERSION_GE(8, 0, 0)
+  lu->options.superlu_acc_offload = 1;
+  PetscCall(PetscOptionsBool("-mat_superlu_dist_gpuoffload", "Offload factorization onto the GPUs", "None", (PetscBool)lu->options.superlu_acc_offload, (PetscBool *)&lu->options.superlu_acc_offload, NULL));
+#endif
+
+  PetscCallMPI(MPI_Comm_get_attr(comm, Petsc_Superlu_dist_keyval, &context, &iflg));
+  if (!iflg || context->busy) { /* additional options */
+    if (!iflg) {
       PetscCall(PetscNew(&context));
       context->busy = PETSC_TRUE;
       PetscCallMPI(MPI_Comm_dup(comm, &context->comm));
@@ -754,12 +758,12 @@ static PetscErrorCode MatLUFactorSymbolic_SuperLU_DIST(Mat F, Mat A, IS r, IS c,
     }
 #endif
     PetscCall(PetscInfo(NULL, "Duplicating a communicator for SuperLU_DIST and calling superlu_gridinit()\n"));
-    if (mpiflg) {
+    if (iflg) {
       PetscCall(PetscInfo(NULL, "Communicator attribute already in use so not saving communicator and SuperLU_DIST grid in communicator attribute \n"));
     } else {
       PetscCall(PetscInfo(NULL, "Storing communicator and SuperLU_DIST grid in communicator attribute\n"));
     }
-  } else { /* (mpiflg && !context->busy) */
+  } else { /* (iflg && !context->busy) */
     PetscCall(PetscInfo(NULL, "Reusing communicator and superlu_gridinit() for SuperLU_DIST from communicator attribute.\n"));
     context->busy = PETSC_TRUE;
     lu->grid      = context->grid;
@@ -880,12 +884,12 @@ static PetscErrorCode MatView_Info_SuperLU_DIST(Mat A, PetscViewer viewer)
 
 static PetscErrorCode MatView_SuperLU_DIST(Mat A, PetscViewer viewer)
 {
-  PetscBool         iascii;
+  PetscBool         isascii;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerGetFormat(viewer, &format));
     if (format == PETSC_VIEWER_ASCII_INFO) PetscCall(MatView_Info_SuperLU_DIST(A, viewer));
   }
@@ -900,7 +904,7 @@ static PetscErrorCode MatGetFactor_aij_superlu_dist(Mat A, MatFactorType ftype, 
   PetscMPIInt            size;
   superlu_dist_options_t options;
   PetscBool              flg;
-  char                   string[16];
+  PetscPrecision         precision = PETSC_PRECISION_INVALID;
 
   PetscFunctionBegin;
   /* Create the factorization matrix */
@@ -912,19 +916,20 @@ static PetscErrorCode MatGetFactor_aij_superlu_dist(Mat A, MatFactorType ftype, 
   B->ops->view    = MatView_SuperLU_DIST;
   B->ops->destroy = MatDestroy_SuperLU_DIST;
 
-  /* Set the default input options:
-     options.Fact              = DOFACT;
-     options.Equil             = YES;
-     options.ParSymbFact       = NO;
-     options.ColPerm           = METIS_AT_PLUS_A;
-     options.RowPerm           = LargeDiag_MC64;
-     options.ReplaceTinyPivot  = YES;
-     options.IterRefine        = DOUBLE;
-     options.Trans             = NOTRANS;
-     options.SolveInitialized  = NO; -hold the communication pattern used MatSolve() and MatMatSolve()
-     options.RefineInitialized = NO;
-     options.PrintStat         = YES;
-     options.SymPattern        = NO;
+  /* set_default_options_dist() sets the default input options to the following values:
+     options.Fact                = DOFACT;
+     options.Equil               = YES;
+     options.ParSymbFact         = NO;
+     options.ColPerm             = METIS_AT_PLUS_A;
+     options.RowPerm             = LargeDiag_MC64;
+     options.ReplaceTinyPivot    = NO;
+     options.IterRefine          = SLU_DOUBLE;
+     options.Trans               = NOTRANS;
+     options.SolveInitialized    = NO; -hold the communication pattern used MatSolve() and MatMatSolve()
+     options.RefineInitialized   = NO;
+     options.PrintStat           = YES;
+     options.superlu_acc_offload = 1;
+     options.SymPattern          = NO;
   */
   set_default_options_dist(&options);
 
@@ -951,12 +956,13 @@ static PetscErrorCode MatGetFactor_aij_superlu_dist(Mat A, MatFactorType ftype, 
   lu->matsolve_iscalled    = PETSC_FALSE;
   lu->matmatsolve_iscalled = PETSC_FALSE;
 
-  PetscCall(PetscOptionsGetString(NULL, NULL, "-pc_precision", string, sizeof(string), &flg));
+  PetscOptionsBegin(PetscObjectComm((PetscObject)A), ((PetscObject)A)->prefix, "SuperLU_DIST Options", "Mat");
+  PetscCall(PetscOptionsEnum("-pc_precision", "Precision used by SuperLU_DIST", "MATSOLVERSUPERLU_DIST", PetscPrecisionTypes, (PetscEnum)precision, (PetscEnum *)&precision, &flg));
+  PetscOptionsEnd();
   if (flg) {
-    PetscCall(PetscStrcasecmp(string, "single", &flg));
-    PetscCheck(flg, PetscObjectComm((PetscObject)A), PETSC_ERR_USER_INPUT, "-pc_precision only accepts single as option for SuperLU_DIST");
+    PetscCheck(precision == PETSC_PRECISION_SINGLE || precision == PETSC_PRECISION_DOUBLE, PetscObjectComm((PetscObject)A), PETSC_ERR_USER_INPUT, "-pc_precision only accepts single or double as option for SuperLU_DIST");
 #if defined(PETSC_HAVE_SUPERLU_DIST_SINGLE)
-    lu->singleprecision = PETSC_TRUE;
+    lu->singleprecision = (PetscBool)(precision == PETSC_PRECISION_SINGLE); // It also implies PetscReal is not single; not merely SuperLU_DIST is running in single
 #endif
   }
 
@@ -1002,13 +1008,13 @@ PETSC_INTERN PetscErrorCode MatSolverTypeRegister_SuperLU_DIST(void)
 . -mat_superlu_dist_fact <SamePattern> - (choose one of) `SamePattern`, `SamePattern_SameRowPerm`, `DOFACT`
 . -mat_superlu_dist_iterrefine - use iterative refinement
 . -mat_superlu_dist_printstat - print factorization information
-- -pc_precision single - use SuperLU_DIST single precision with PETSc double precision. Currently this does not accept an options prefix, so
-                         regardless of the `PC` prefix you must use no prefix here
+. -mat_superlu_dist_gpuoffload - offload factorization onto the GPUs, requires SuperLU_DIST 8.0.0 or later
+- -pc_precision single - use SuperLU_DIST single precision with PETSc double precision
 
   Level: beginner
 
   Note:
-    If PETSc was configured with `--with-cuda` then this solver will automatically use the GPUs.
+    If PETSc was configured with `--with-cuda` then this solver will use the GPUs by default.
 
 .seealso: [](ch_matrices), `Mat`, `PCLU`, `PCFactorSetMatSolverType()`, `MatSolverType`, `MatGetFactor()`
 M*/

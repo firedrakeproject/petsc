@@ -1,7 +1,7 @@
 # This script demonstrates solving a symmetric positive definite linear system using PETSc and HPDDM preconditioner
 # It must be run with exactly 4 MPI processes
 # Example run:
-#   mpirun -n 4 python3 hpddm.py -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 20 -pc_hpddm_levels_1_eps_threshold_absolute 0.1 -ksp_monitor
+#   mpiexec -n 4 python3 hpddm.py -pc_hpddm_levels_1_sub_pc_type lu -pc_hpddm_levels_1_eps_nev 20 -pc_hpddm_levels_1_eps_threshold_absolute 0.1 -ksp_monitor
 # For more options, see ${PETSC_DIR}/src/ksp/ksp/tutorials/ex76.c
 
 import sys
@@ -38,7 +38,7 @@ A = A.load(PETSc.Viewer().createBinary(f"{load_dir}/A.dat", "r", comm = PETSc.CO
 # Load an index set (IS) from binary file
 aux_IS  = PETSc.IS().load(PETSc.Viewer().createBinary(f"{load_dir}/is_{rank}_4.dat", "r", comm = PETSc.COMM_SELF))
 # Set the block size of the index set
-aux_IS.setBlockSize(2)
+aux_IS.setBlockSize(A.getBlockSize())
 # Load the Neumann matrix of the current process
 aux_Mat = PETSc.Mat().load(PETSc.Viewer().createBinary(f"{load_dir}/Neumann_{rank}_4.dat", "r", comm = PETSc.COMM_SELF))
 

@@ -192,7 +192,7 @@ PetscReal f_ini(PetscReal x, PetscReal y)
   return f;
 }
 
-PetscErrorCode Initial(Vec global, void *ctx)
+PetscErrorCode Initial(Vec global, PetscCtx ctx)
 {
   Data        *data = (Data *)ctx;
   PetscInt     m, row, col;
@@ -225,7 +225,7 @@ PetscErrorCode Initial(Vec global, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec global, void *ctx)
+PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec global, PetscCtx ctx)
 {
   VecScatter         scatter;
   IS                 from, to;
@@ -398,7 +398,7 @@ PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec x, Mat A, Mat BB, void *ptr)
 }
 
 /* globalout = -a*(u_x+u_y) + epsilon*(u_xx+u_yy) */
-PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec globalin, Vec globalout, void *ctx)
+PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec globalin, Vec globalout, PetscCtx ctx)
 {
   Data              *data = (Data *)ctx;
   PetscInt           m, n, mn;
@@ -531,11 +531,11 @@ PetscErrorCode PostStep(TS ts)
     test:
       suffix: 7
       requires: !single
-      args: -ts_fd -ts_type beuler -test_PostStep -ts_dt .1
+      args: -ts_fd -ts_type beuler -test_PostStep -ts_time_step .1
 
     test:
       suffix: 8
       requires: !single
-      args: -ts_type rk -ts_rk_type 5dp -ts_dt .01 -ts_adapt_type none -ts_view
+      args: -ts_type rk -ts_rk_type 5dp -ts_time_step .01 -ts_adapt_type none -ts_view
 
 TEST*/

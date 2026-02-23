@@ -37,6 +37,7 @@ public:
   PetscErrorCode configure() noexcept;
   PetscErrorCode view(PetscViewer) const noexcept;
   PetscErrorCode getattribute(PetscDeviceAttribute, void *) const noexcept;
+  PetscErrorCode shutdown() noexcept;
 
   PETSC_NODISCARD auto id() const -> decltype(id_) { return id_; }
   PETSC_NODISCARD auto initialized() const -> decltype(devInitialized_) { return devInitialized_; }
@@ -62,26 +63,26 @@ PetscErrorCode Device<T>::DeviceInternal::initialize() noexcept
   if (cupmSetDevice(id()) != cupmErrorDeviceAlreadyInUse) PetscCallCUPM(cupmGetLastError());
   // and in case it doesn't, explicitly call init here
   PetscCallCUPM(cupmInit(0));
+#if PetscDefined(HAVE_CUDA)
+  // nvmlInit() deprecated in NVML 5.319
+  PetscCallNVML(nvmlInit_v2());
+#endif
   // where is this variable defined and when is it set? who knows! but it is defined and set
   // at this point. either way, each device must make this check since I guess MPI might not be
   // aware of all of them?
   if (use_gpu_aware_mpi) {
     bool aware;
 
+    // Even the MPI implementation is configured with GPU-aware, it might still need extra settings to enable it.
+    // So we do the check at runtime with a code that works only with GPU-aware MPI.
     PetscCall(CUPMAwareMPI_(&aware));
-    // For Open MPI, we could do a compile time check with
-    // "defined(PETSC_HAVE_OPENMPI) && defined(MPIX_CUDA_AWARE_SUPPORT) &&
-    // MPIX_CUDA_AWARE_SUPPORT" to see if it is CUDA-aware. However, recent versions of IBM
-    // Spectrum MPI (e.g., 10.3.1) on Summit meet above conditions, but one has to use jsrun
-    // --smpiargs=-gpu to really enable GPU-aware MPI. So we do the check at runtime with a
-    // code that works only with GPU-aware MPI.
     if (PetscUnlikely(!aware)) {
       PetscCall((*PetscErrorPrintf)("PETSc is configured with GPU support, but your MPI is not GPU-aware. For better performance, please use a GPU-aware MPI.\n"));
       PetscCall((*PetscErrorPrintf)("If you do not care, add option -use_gpu_aware_mpi 0. To not see the message again, add the option to your .petscrc, OR add it to the env var PETSC_OPTIONS.\n"));
-      PetscCall((*PetscErrorPrintf)("If you do care, for IBM Spectrum MPI on OLCF Summit, you may need jsrun --smpiargs=-gpu.\n"));
-      PetscCall((*PetscErrorPrintf)("For Open MPI, you need to configure it --with-cuda (https://www.open-mpi.org/faq/?category=buildcuda)\n"));
+      PetscCall((*PetscErrorPrintf)("For Open MPI, you need to configure it with CUDA, ROCm or GPU-aware UCX (https://docs.open-mpi.org/en/main/tuning-apps/accelerators/index.html)\n"));
+      PetscCall((*PetscErrorPrintf)("If you already configured it with GPU-aware UCX, you may need 'mpiexec -n <np> --mca pml ucx' or export 'OMPI_MCA_pml=\"ucx\"' to use it.\n"));
       PetscCall((*PetscErrorPrintf)("For MVAPICH2-GDR, you need to set MV2_USE_CUDA=1 (http://mvapich.cse.ohio-state.edu/userguide/gdr/)\n"));
-      PetscCall((*PetscErrorPrintf)("For Cray-MPICH, you need to set MPICH_GPU_SUPPORT_ENABLED=1 (man mpi to see manual of cray-mpich)\n"));
+      PetscCall((*PetscErrorPrintf)("For Cray-MPICH, export MPICH_GPU_SUPPORT_ENABLED=1 (see its 'man mpi'); for MPICH, export MPIR_CVAR_ENABLE_GPU=1\n"));
       PETSCABORT(PETSC_COMM_SELF, PETSC_ERR_LIB);
     }
   }
@@ -107,17 +108,21 @@ PetscErrorCode Device<T>::DeviceInternal::configure() noexcept
 template <DeviceType T>
 PetscErrorCode Device<T>::DeviceInternal::view(PetscViewer viewer) const noexcept
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
   PetscAssert(initialized(), PETSC_COMM_SELF, PETSC_ERR_COR, "Device %d being viewed before it was initialized or configured", id());
   // we don't print device-specific info in CI-mode
   if (PetscUnlikely(PetscCIEnabled)) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(PetscObjectTypeCompare(PetscObjectCast(viewer), PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare(PetscObjectCast(viewer), PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     MPI_Comm    comm;
     PetscMPIInt rank;
     PetscViewer sviewer;
+
+    int clock, memclock;
+    PetscCallCUPM(cupmDeviceGetAttribute(&clock, cupmDevAttrClockRate, id_));
+    PetscCallCUPM(cupmDeviceGetAttribute(&memclock, cupmDevAttrMemoryClockRate, id_));
 
     PetscCall(PetscObjectGetComm(PetscObjectCast(viewer), &comm));
     PetscCallMPI(MPI_Comm_rank(comm, &rank));
@@ -133,10 +138,10 @@ PetscErrorCode Device<T>::DeviceInternal::view(PetscViewer viewer) const noexcep
     PetscCall(PetscViewerASCIIPrintf(sviewer, "Total Global Memory (bytes): %zu\n", dprop_.totalGlobalMem));
     PetscCall(PetscViewerASCIIPrintf(sviewer, "Total Constant Memory (bytes): %zu\n", dprop_.totalConstMem));
     PetscCall(PetscViewerASCIIPrintf(sviewer, "Shared Memory Per Block (bytes): %zu\n", dprop_.sharedMemPerBlock));
-    PetscCall(PetscViewerASCIIPrintf(sviewer, "Multiprocessor Clock Rate (KHz): %d\n", dprop_.clockRate));
-    PetscCall(PetscViewerASCIIPrintf(sviewer, "Memory Clock Rate (KHz): %d\n", dprop_.memoryClockRate));
+    PetscCall(PetscViewerASCIIPrintf(sviewer, "Multiprocessor Clock Rate (kHz): %d\n", clock));
+    PetscCall(PetscViewerASCIIPrintf(sviewer, "Memory Clock Rate (kHz): %d\n", memclock));
     PetscCall(PetscViewerASCIIPrintf(sviewer, "Memory Bus Width (bits): %d\n", dprop_.memoryBusWidth));
-    PetscCall(PetscViewerASCIIPrintf(sviewer, "Peak Memory Bandwidth (GB/s): %f\n", 2.0 * dprop_.memoryClockRate * (dprop_.memoryBusWidth / 8) / 1.0e6));
+    PetscCall(PetscViewerASCIIPrintf(sviewer, "Peak Memory Bandwidth (GB/s): %f\n", 2.0 * memclock * (dprop_.memoryBusWidth / 8) / 1.0e6));
     PetscCall(PetscViewerASCIIPrintf(sviewer, "Can map host memory: %s\n", dprop_.canMapHostMemory ? "PETSC_TRUE" : "PETSC_FALSE"));
     PetscCall(PetscViewerASCIIPrintf(sviewer, "Can execute multiple kernels concurrently: %s\n", dprop_.concurrentKernels ? "PETSC_TRUE" : "PETSC_FALSE"));
     PetscCall(PetscViewerASCIIPopTab(sviewer));
@@ -156,6 +161,17 @@ PetscErrorCode Device<T>::DeviceInternal::getattribute(PetscDeviceAttribute attr
   case PETSC_DEVICE_ATTR_MAX:
     break;
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+template <DeviceType T>
+PetscErrorCode Device<T>::DeviceInternal::shutdown() noexcept
+{
+  PetscFunctionBegin;
+  if (!initialized()) PetscFunctionReturn(PETSC_SUCCESS);
+#if PetscDefined(HAVE_CUDA)
+  PetscCallNVML(nvmlShutdown());
+#endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -198,7 +214,10 @@ PetscErrorCode Device<T>::finalize_() noexcept
 {
   PetscFunctionBegin;
   if (PetscUnlikely(!initialized_)) PetscFunctionReturn(PETSC_SUCCESS);
-  for (auto &&device : devices_) device.reset();
+  for (auto &&device : devices_) {
+    if (device) PetscCall(device->shutdown());
+    device.reset();
+  }
   defaultDevice_ = PETSC_CUPM_DEVICE_NONE; // disabled by default
   initialized_   = false;
   PetscFunctionReturn(PETSC_SUCCESS);

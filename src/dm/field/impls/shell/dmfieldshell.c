@@ -1,11 +1,11 @@
 #include <petsc/private/dmfieldimpl.h> /*I "petscdmfield.h" I*/
 
 typedef struct _n_DMField_Shell {
-  void *ctx;
+  PetscCtx ctx;
   PetscErrorCode (*destroy)(DMField);
 } DMField_Shell;
 
-PetscErrorCode DMFieldShellGetContext(DMField field, void *ctx)
+PetscErrorCode DMFieldShellGetContext(DMField field, PetscCtxRt ctx)
 {
   PetscBool flg;
 
@@ -13,8 +13,8 @@ PetscErrorCode DMFieldShellGetContext(DMField field, void *ctx)
   PetscValidHeaderSpecific(field, DMFIELD_CLASSID, 1);
   PetscAssertPointer(ctx, 2);
   PetscCall(PetscObjectTypeCompare((PetscObject)field, DMFIELDSHELL, &flg));
-  if (flg) *(void **)ctx = ((DMField_Shell *)field->data)->ctx;
-  else SETERRQ(PetscObjectComm((PetscObject)field), PETSC_ERR_SUP, "Cannot get context from non-shell shield");
+  PetscCheck(flg, PetscObjectComm((PetscObject)field), PETSC_ERR_SUP, "Cannot get context from non-shell shield");
+  *(void **)ctx = ((DMField_Shell *)field->data)->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -248,7 +248,7 @@ PETSC_INTERN PetscErrorCode DMFieldCreate_Shell(DMField field)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMFieldCreateShell(DM dm, PetscInt numComponents, DMFieldContinuity continuity, void *ctx, DMField *field)
+PetscErrorCode DMFieldCreateShell(DM dm, PetscInt numComponents, DMFieldContinuity continuity, PetscCtx ctx, DMField *field)
 {
   DMField        b;
   DMField_Shell *shell;

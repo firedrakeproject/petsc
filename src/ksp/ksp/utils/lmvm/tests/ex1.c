@@ -282,7 +282,7 @@ static PetscErrorCode MatMult_Solve(Mat A, Vec x, Vec y)
   Mat B;
 
   PetscFunctionBegin;
-  PetscCall(MatShellGetContext(A, (void *)&B));
+  PetscCall(MatShellGetContext(A, &B));
   PetscCall(MatSolve(B, x, y));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -292,7 +292,7 @@ static PetscErrorCode MatMult_J0Solve(Mat A, Vec x, Vec y)
   Mat B;
 
   PetscFunctionBegin;
-  PetscCall(MatShellGetContext(A, (void *)&B));
+  PetscCall(MatShellGetContext(A, &B));
   PetscCall(MatLMVMApplyJ0Inv(B, x, y));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -306,7 +306,7 @@ static PetscErrorCode MatComputeInverseOperator(Mat B, Mat *B_k, PetscBool use_J
   PetscCall(MatGetSize(B, &M, &N));
   PetscCall(MatGetLocalSize(B, &m, &n));
   PetscCall(MatCreateShell(PetscObjectComm((PetscObject)B), m, n, M, N, (void *)B, &Binv));
-  PetscCall(MatShellSetOperation(Binv, MATOP_MULT, (void (*)(void))(use_J0 ? MatMult_J0Solve : MatMult_Solve)));
+  PetscCall(MatShellSetOperation(Binv, MATOP_MULT, (PetscErrorCodeFn *)(use_J0 ? MatMult_J0Solve : MatMult_Solve)));
   PetscCall(MatComputeOperator(Binv, MATDENSE, B_k));
   PetscCall(MatDestroy(&Binv));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -402,7 +402,7 @@ static PetscErrorCode TestUpdate(Mat B, PetscInt iter, PetscRandom rand, PetscBo
     PetscCall(MatComputeOperator(B, MATDENSE, &B_k));
     PetscCall(MatDuplicate(B_0, MAT_COPY_VALUES, &B_k_exp));
 
-    for (PetscInt i = oldest; i < next; i++) { PetscCall((*B_update)(B_k_exp, phi, dxs[i], dfs[i])); }
+    for (PetscInt i = oldest; i < next; i++) PetscCall((*B_update)(B_k_exp, phi, dxs[i], dfs[i]));
     PetscCall(MatNorm(B_k_exp, NORM_FROBENIUS, &norm));
     PetscCall(MatAXPY(B_k_exp, -1.0, B_k, SAME_NONZERO_PATTERN));
     PetscCall(MatNorm(B_k_exp, NORM_FROBENIUS, &err));
@@ -423,7 +423,7 @@ static PetscErrorCode TestUpdate(Mat B, PetscInt iter, PetscRandom rand, PetscBo
 
     PetscCall(MatComputeInverseOperator(B, &H_k, PETSC_FALSE));
     PetscCall(MatDuplicate(H_0, MAT_COPY_VALUES, &H_k_exp));
-    for (PetscInt i = oldest; i < next; i++) { PetscCall((*H_update)(H_k_exp, phi, dfs[i], dxs[i])); }
+    for (PetscInt i = oldest; i < next; i++) PetscCall((*H_update)(H_k_exp, phi, dfs[i], dxs[i]));
     PetscCall(MatNorm(H_k_exp, NORM_FROBENIUS, &norm));
     PetscCall(MatAXPY(H_k_exp, -1.0, H_k, SAME_NONZERO_PATTERN));
     PetscCall(MatNorm(H_k_exp, NORM_FROBENIUS, &err));
@@ -448,13 +448,14 @@ static PetscErrorCode MatSetRandomWithShift(Mat J0, PetscRandom rand, PetscBool 
     PetscCall(MatDestroy(&J0H));
   }
   if (is_square) {
-    MPI_Comm   comm;
-    PetscInt   N;
-    Mat        J0copy;
-    PetscReal *real_eig, *imag_eig;
-    KSP        kspeig;
-    PC         pceig;
-    PetscReal  shift;
+    MPI_Comm    comm;
+    PetscInt    N;
+    PetscMPIInt count;
+    Mat         J0copy;
+    PetscReal  *real_eig, *imag_eig;
+    KSP         kspeig;
+    PC          pceig;
+    PetscReal   shift;
 
     PetscCall(PetscObjectGetComm((PetscObject)J0, &comm));
     PetscCall(MatGetSize(J0, &N, NULL));
@@ -468,7 +469,8 @@ static PetscErrorCode MatSetRandomWithShift(Mat J0, PetscRandom rand, PetscBool 
     PetscCall(PCSetType(pceig, PCNONE));
     PetscCall(KSPSetOperators(kspeig, J0copy, J0copy));
     PetscCall(KSPComputeEigenvaluesExplicitly(kspeig, N, real_eig, imag_eig));
-    PetscCallMPI(MPI_Bcast(real_eig, N, MPIU_REAL, 0, comm));
+    PetscCall(PetscMPIIntCast(N, &count));
+    PetscCallMPI(MPI_Bcast(real_eig, count, MPIU_REAL, 0, comm));
     PetscCall(PetscSortReal(N, real_eig));
     shift = PetscMax(2 * PetscAbsReal(real_eig[N - 1]), 2 * PetscAbsReal(real_eig[0]));
     PetscCall(MatShift(J0, shift));
@@ -629,7 +631,7 @@ int main(int argc, char **argv)
 
   PetscCall(PetscCalloc2(n_iter, &dxs, n_iter, &dfs));
 
-  for (PetscInt i = 0; i < n_iter; i++) { PetscCall(MatCreateVecs(B, &dxs[i], &dfs[i])); }
+  for (PetscInt i = 0; i < n_iter; i++) PetscCall(MatCreateVecs(B, &dxs[i], &dfs[i]));
 
   for (PetscInt i = 0; i < n_iter; i++) {
     PetscCall(TestUpdate(B, i, rand, is_hermitian, dxs, dfs, B_0, H_0, B_update, H_update, phi));

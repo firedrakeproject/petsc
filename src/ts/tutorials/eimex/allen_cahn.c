@@ -20,7 +20,7 @@ typedef struct {
 
 static PetscErrorCode RHSFunction(TS, PetscReal, Vec, Vec, void *);
 static PetscErrorCode FormIFunction(TS, PetscReal, Vec, Vec, Vec, void *);
-static PetscErrorCode FormIJacobian(TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, void *ctx);
+static PetscErrorCode FormIJacobian(TS, PetscReal, Vec, Vec, PetscReal, Mat, Mat, PetscCtx ctx);
 static PetscErrorCode FormInitialSolution(TS, Vec, void *);
 
 int main(int argc, char **argv)
@@ -145,7 +145,7 @@ static PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat J, Mat Jpre, void *ctx)
+static PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat J, Mat Jpre, PetscCtx ctx)
 {
   AppCtx            *user = (AppCtx *)ctx;
   PetscScalar        v;
@@ -171,7 +171,7 @@ static PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscRe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode FormInitialSolution(TS ts, Vec U, void *ctx)
+static PetscErrorCode FormInitialSolution(TS ts, Vec U, PetscCtx ctx)
 {
   AppCtx      *user = (AppCtx *)ctx;
   PetscInt     i;
@@ -202,7 +202,7 @@ static PetscErrorCode FormInitialSolution(TS ts, Vec U, void *ctx)
 /*TEST
 
      test:
-       args: -ts_rtol 1e-04 -ts_dt 0.025 -pc_type lu -ksp_error_if_not_converged TRUE -ts_type eimex -ts_adapt_type none -ts_eimex_order_adapt -ts_eimex_max_rows 7 -ts_monitor_draw_solution
+       args: -ts_rtol 1e-04 -ts_time_step 0.025 -pc_type lu -ksp_error_if_not_converged TRUE -ts_type eimex -ts_adapt_type none -ts_eimex_order_adapt -ts_eimex_max_rows 7 -ts_monitor_draw_solution
        requires: x
        timeoutfactor: 3
 

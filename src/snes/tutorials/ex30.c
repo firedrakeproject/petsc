@@ -321,7 +321,6 @@ static inline PetscScalar HorizVelocity(PetscInt i, PetscInt j, AppCtx *user)
 
 /*  isoviscous analytic solution for IC */
 static inline PetscScalar VertVelocity(PetscInt i, PetscInt j, AppCtx *user)
-
 {
   Parameter  *param = user->param;
   GridInfo   *grid  = user->grid;
@@ -512,7 +511,6 @@ static inline PetscScalar XMomentumResidual(Field **x, PetscInt i, PetscInt j, A
 
 /*  computes the residual of the z-component of eqn (1) above */
 static inline PetscScalar ZMomentumResidual(Field **x, PetscInt i, PetscInt j, AppCtx *user)
-
 {
   Parameter  *param = user->param;
   GridInfo   *grid  = user->grid;
@@ -1228,7 +1226,7 @@ static inline PetscScalar PlateModel(PetscInt j, PetscInt plate, AppCtx *user)
   =====================================================================*/
 
 /* ------------------------------------------------------------------- */
-PetscErrorCode SNESConverged_Interactive(SNES snes, PetscInt it, PetscReal xnorm, PetscReal snorm, PetscReal fnorm, SNESConvergedReason *reason, void *ctx)
+PetscErrorCode SNESConverged_Interactive(SNES snes, PetscInt it, PetscReal xnorm, PetscReal snorm, PetscReal fnorm, SNESConvergedReason *reason, PetscCtx ctx)
 /* ------------------------------------------------------------------- */
 {
   AppCtx    *user  = (AppCtx *)ctx;
@@ -1266,7 +1264,7 @@ PetscErrorCode SNESConverged_Interactive(SNES snes, PetscInt it, PetscReal xnorm
 
 /* ------------------------------------------------------------------- */
 #include <signal.h>
-PetscErrorCode InteractiveHandler(int signum, void *ctx)
+PetscErrorCode InteractiveHandler(int signum, PetscCtx ctx)
 /* ------------------------------------------------------------------- */
 {
   AppCtx    *user  = (AppCtx *)ctx;

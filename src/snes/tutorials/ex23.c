@@ -11,13 +11,13 @@ typedef struct {
   PetscInt dummy;
 } AppCtx;
 
-static PetscErrorCode quad_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode quad_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = x[0] * x[0] + x[1] * x[1];
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode quad_p(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode quad_p(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 2.0;
   return PETSC_SUCCESS;
@@ -111,7 +111,7 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
   PetscCall(PetscDSSetExactSolution(ds, 0, quad_u, user));
   PetscCall(PetscDSSetExactSolution(ds, 1, quad_p, user));
   PetscCall(DMGetLabel(dm, "marker", &label));
-  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))quad_u, NULL, user, NULL));
+  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)quad_u, NULL, user, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

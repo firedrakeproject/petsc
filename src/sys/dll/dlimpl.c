@@ -2,13 +2,7 @@
    Low-level routines for managing dynamic link libraries (DLLs).
 */
 
-#include <petscconf.h>
-#if defined(PETSC__GNU_SOURCE)
-  #if !defined(_GNU_SOURCE)
-    #define _GNU_SOURCE 1
-  #endif
-#endif
-
+#define PETSC_DESIRE_FEATURE_TEST_MACROS /* for dlopen() */
 #include <petsc/private/petscimpl.h>
 
 #if defined(PETSC_HAVE_WINDOWS_H)
@@ -254,21 +248,17 @@ PetscErrorCode PetscDLSym(PetscDLHandle handle, const char symbol[], void **valu
               dlflags1 = RTLD_LAZY;
               #endif /* PETSC_HAVE_RTLD_LAZY */
               #if defined(PETSC_HAVE_RTLD_NOW)
-              if (!dlflags1) {
-                dlflags1 = RTLD_NOW;
-              }
+              if (!dlflags1) dlflags1 = RTLD_NOW;
               #endif /* PETSC_HAVE_RTLD_NOW */
               #if defined(PETSC_HAVE_RTLD_LOCAL)
               dlflags2 = RTLD_LOCAL;
               #endif /* PETSC_HAVE_RTLD_LOCAL */
               #if defined(PETSC_HAVE_RTLD_GLOBAL)
-              if (!dlflags2) {
-                dlflags2 = RTLD_GLOBAL;
-              }
+              if (!dlflags2) dlflags2 = RTLD_GLOBAL;
               #endif /* PETSC_HAVE_RTLD_GLOBAL */
             #endif /* !PETSC_HAVE_RTLD_DEFAULT */
             #if defined(PETSC_HAVE_DLERROR)
-              if (!(PETSC_RUNNING_ON_VALGRIND)) { dlerror(); /* clear any previous error; valgrind does not like this */ }
+              if (!(PETSC_RUNNING_ON_VALGRIND)) dlerror(); /* clear any previous error, valgrind does not like this */
             #endif /* PETSC_HAVE_DLERROR */
             #if defined(PETSC_HAVE_RTLD_DEFAULT)
               dlhandle = RTLD_DEFAULT;
@@ -327,7 +317,7 @@ PetscErrorCode PetscDLSym(PetscDLHandle handle, const char symbol[], void **valu
 .seealso: `PetscDLClose()`, `PetscDLSym()`, `PetscDLOpen()`, `PetscDLLibrary`, `PetscLoadDynamicLibrary()`, `PetscDLLibraryAppend()`,
           `PetscDLLibraryRetrieve()`, `PetscDLLibraryOpen()`, `PetscDLLibraryClose()`, `PetscDLLibrarySym()`
 @*/
-PetscErrorCode PetscDLAddr(void (*func)(void), char *name[])
+PetscErrorCode PetscDLAddr(PetscVoidFn *func, char *name[])
 {
   PetscFunctionBegin;
   PetscAssertPointer(name, 2);
@@ -338,11 +328,7 @@ PetscErrorCode PetscDLAddr(void (*func)(void), char *name[])
     Dl_info info;
 
     PetscCheck(dladdr(*(void **)&func, &info), PETSC_COMM_SELF, PETSC_ERR_LIB, "Failed to lookup symbol: %s", dlerror());
-  #ifdef PETSC_HAVE_CXX
     PetscCall(PetscDemangleSymbol(info.dli_sname, name));
-  #else
-    PetscCall(PetscStrallocpy(info.dli_sname, name));
-  #endif
   }
 #endif
   PetscFunctionReturn(PETSC_SUCCESS);

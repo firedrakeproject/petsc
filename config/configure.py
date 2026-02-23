@@ -153,6 +153,7 @@ def chksynonyms():
     name = sys.argv[l]
 
     name = name.replace('download-petsc4py','with-petsc4py')
+    name = name.replace('download-slepc4py','with-slepc4py')
     name = name.replace('with-openmpi','with-mpi')
     name = name.replace('with-mpich','with-mpi')
     name = name.replace('with-blas-lapack','with-blaslapack')
@@ -446,7 +447,6 @@ def petsc_configure(configure_options):
       name = sys.argv[l].split('=')[1]
       sys.argv[l] = '--with-fc='+os.path.join(os.path.abspath('.'),'lib','petsc','bin','petscnagfor')
       break
-
 
   # Check Cray without modules
   check_cray_modules()

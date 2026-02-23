@@ -21,7 +21,7 @@ Input parameters include:\n\
        u_xx = (u_{i+1} - 2u_{i} + u_{i-1})/(h^2)
    We then demonstrate time evolution using the various TS methods by
    running the program via
-       mpiexec -n <procs> ex3 -ts_type <timestepping solver>
+       mpiexec -n <procs> ./ex4 -ts_type <timestepping solver>
 
    We compare the approximate solution with the exact solution, given by
        u_exact(x,t) = exp(-36*pi*pi*t) * sin(6*pi*x) +
@@ -392,7 +392,7 @@ PetscErrorCode ExactSolution(PetscReal t, Vec solution, AppCtx *appctx)
             information about the problem size, workspace and the exact
             solution.
 */
-PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec u, void *ctx)
+PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec u, PetscCtx ctx)
 {
   AppCtx   *appctx = (AppCtx *)ctx; /* user-defined application context */
   PetscReal norm_2, norm_max;
@@ -479,7 +479,7 @@ PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec u, void *ctx)
    - Note that MatSetValues() uses 0-based row and column numbers
      in Fortran as well as in C.
 */
-PetscErrorCode RHSMatrixHeat(TS ts, PetscReal t, Vec X, Mat AA, Mat BB, void *ctx)
+PetscErrorCode RHSMatrixHeat(TS ts, PetscReal t, Vec X, Mat AA, Mat BB, PetscCtx ctx)
 {
   Mat         A      = AA;            /* Jacobian matrix */
   AppCtx     *appctx = (AppCtx *)ctx; /* user-defined application context */
@@ -543,7 +543,7 @@ PetscErrorCode RHSMatrixHeat(TS ts, PetscReal t, Vec X, Mat AA, Mat BB, void *ct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode RHSFunctionHeat(TS ts, PetscReal t, Vec globalin, Vec globalout, void *ctx)
+PetscErrorCode RHSFunctionHeat(TS ts, PetscReal t, Vec globalin, Vec globalout, PetscCtx ctx)
 {
   Mat A;
 

@@ -16,6 +16,7 @@ class Configure(config.package.CMakePackage):
     self.precisions        = ['double']
     self.buildLanguages    = ['Cxx']
     self.minCxxVersion     = 'c++14'
+    self.useddirectly      = 0
     self.builtafterpetsc   = 1
     self.minCmakeVersion   = (3,14,0)
     return
@@ -105,10 +106,6 @@ class Configure(config.package.CMakePackage):
       shutil.rmtree(folder)
     os.mkdir(folder)
 
-    if not hasattr(self.framework, 'packages'):
-      self.framework.packages = []
-    self.framework.packages.append(self)
-
     # these checks are usually done in configureLibrary
     if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
       self.directory = os.path.abspath(os.path.expanduser(self.argDB['prefix']))
@@ -119,7 +116,6 @@ class Configure(config.package.CMakePackage):
       self.include_a = '-I'+os.path.join(self.petscdir.dir,self.arch,'include')
       self.lib_a = [os.path.join(self.petscdir.dir,self.arch,'lib',self.liblist[0][0])]
     self.found_a     = 1
-    self.addDefine('HAVE_AMREX', 1)
     self.addMakeMacro('AMREX_LIB',' '.join(map(self.libraries.getLibArgument, self.lib_a)))
     self.addMakeMacro('AMREX_INCLUDE',self.include_a)
 
@@ -131,8 +127,6 @@ class Configure(config.package.CMakePackage):
        prefix = os.path.join(self.petscdir.dir,self.arch)
        carg = ''
 
-    self.addDefine('HAVE_AMREX',1)
-    self.addMakeMacro('AMREX','yes')
     self.addPost(os.path.join(self.packageDir,'petsc-build'), [carg + ' ' + self.cmake.cmake + ' .. ' + args, self.make.make_jnp + '  ' + self.makerulename,
                                                               '${OMAKE} install'])
     return self.installDir

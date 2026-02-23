@@ -258,11 +258,11 @@ static PetscErrorCode MatView_MPIAdj_ASCII(Mat A, PetscViewer viewer)
 
 static PetscErrorCode MatView_MPIAdj(Mat A, PetscViewer viewer)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(MatView_MPIAdj_ASCII(A, viewer));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(MatView_MPIAdj_ASCII(A, viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -346,9 +346,9 @@ static PetscErrorCode MatEqual_MPIAdj(Mat A, Mat B, PetscBool *flg)
   PetscCall(PetscArraycmp(a->i, b->i, A->rmap->n + 1, &flag));
 
   /* if a->j are the same */
-  PetscCall(PetscMemcmp(a->j, b->j, (a->nz) * sizeof(PetscInt), &flag));
+  PetscCall(PetscArraycmp(a->j, b->j, a->nz, &flag));
 
-  PetscCallMPI(MPIU_Allreduce(&flag, flg, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)A)));
+  PetscCallMPI(MPIU_Allreduce(&flag, flg, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)A)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -680,8 +680,8 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPIAdj,
                                        NULL,
                                        NULL,
                                        NULL,
-                                       NULL,
-                                       /*119*/ MatCreateSubMatricesMPI_MPIAdj,
+                                       MatCreateSubMatricesMPI_MPIAdj,
+                                       /*119*/ NULL,
                                        NULL,
                                        NULL,
                                        NULL,
@@ -704,6 +704,7 @@ static struct _MatOps MatOps_Values = {MatSetValues_MPIAdj,
                                        /*139*/ NULL,
                                        NULL,
                                        NULL,
+                                       NULL,
                                        NULL};
 
 static PetscErrorCode MatMPIAdjSetPreallocation_MPIAdj(Mat B, PetscInt *i, PetscInt *j, PetscInt *values)
@@ -717,7 +718,7 @@ static PetscErrorCode MatMPIAdjSetPreallocation_MPIAdj(Mat B, PetscInt *i, Petsc
   if (values) useedgeweights = PETSC_TRUE;
   else useedgeweights = PETSC_FALSE;
   /* Make everybody knows if they are using edge weights or not */
-  PetscCallMPI(MPIU_Allreduce((int *)&useedgeweights, (int *)&b->useedgeweights, 1, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)B)));
+  PetscCallMPI(MPIU_Allreduce(&useedgeweights, &b->useedgeweights, 1, MPI_C_BOOL, MPI_LOR, PetscObjectComm((PetscObject)B)));
 
   if (PetscDefined(USE_DEBUG)) {
     PetscInt ii;

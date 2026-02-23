@@ -43,12 +43,12 @@ static PetscErrorCode SNESMatrixFreeDestroy2_Private(Mat mat)
 static PetscErrorCode SNESMatrixFreeView2_Private(Mat J, PetscViewer viewer)
 {
   MFCtx_Private *ctx;
-  PetscBool      iascii;
+  PetscBool      isascii;
 
   PetscFunctionBegin;
   PetscCall(MatShellGetContext(J, &ctx));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  SNES matrix-free approximation:\n"));
     if (ctx->jorge) PetscCall(PetscViewerASCIIPrintf(viewer, "    using Jorge's method of determining differencing parameter\n"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "    err=%g (relative error in function evaluation)\n", (double)ctx->error_rel));
@@ -228,9 +228,8 @@ PetscErrorCode MatCreateSNESMFMore(SNES snes, Vec x, Mat *J)
     mfctx->compute_err = PETSC_TRUE;
   }
   if (mfctx->compute_err) mfctx->need_err = PETSC_TRUE;
-  if (mfctx->jorge || mfctx->compute_err) {
-    PetscCall(SNESDiffParameterCreate_More(snes, x, &mfctx->data));
-  } else mfctx->data = NULL;
+  if (mfctx->jorge || mfctx->compute_err) PetscCall(SNESDiffParameterCreate_More(snes, x, &mfctx->data));
+  else mfctx->data = NULL;
 
   PetscCall(PetscOptionsHasHelp(((PetscObject)snes)->options, &flg));
   PetscCall(PetscStrncpy(p, "-", sizeof(p)));
@@ -252,9 +251,9 @@ PetscErrorCode MatCreateSNESMFMore(SNES snes, Vec x, Mat *J)
   PetscCall(MatSetSizes(*J, nloc, n, n, n));
   PetscCall(MatSetType(*J, MATSHELL));
   PetscCall(MatShellSetContext(*J, mfctx));
-  PetscCall(MatShellSetOperation(*J, MATOP_MULT, (void (*)(void))SNESMatrixFreeMult2_Private));
-  PetscCall(MatShellSetOperation(*J, MATOP_DESTROY, (void (*)(void))SNESMatrixFreeDestroy2_Private));
-  PetscCall(MatShellSetOperation(*J, MATOP_VIEW, (void (*)(void))SNESMatrixFreeView2_Private));
+  PetscCall(MatShellSetOperation(*J, MATOP_MULT, (PetscErrorCodeFn *)SNESMatrixFreeMult2_Private));
+  PetscCall(MatShellSetOperation(*J, MATOP_DESTROY, (PetscErrorCodeFn *)SNESMatrixFreeDestroy2_Private));
+  PetscCall(MatShellSetOperation(*J, MATOP_VIEW, (PetscErrorCodeFn *)SNESMatrixFreeView2_Private));
   PetscCall(MatSetUp(*J));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -641,7 +641,6 @@ PetscErrorCode VecStrideSumAll(Vec v, PetscScalar sums[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*----------------------------------------------------------------------------------------------*/
 /*@
   VecStrideGatherAll - Gathers all the single components from a multi-component vector into
   separate vectors.
@@ -1419,7 +1418,7 @@ static PetscScalar ScalarImaginaryPart_Function(PetscScalar x)
 }
 
 /*@
-  VecImaginaryPart - Replaces a complex vector with its imginary part
+  VecImaginaryPart - Replaces a complex vector with its imaginary part
 
   Collective
 
@@ -1742,7 +1741,7 @@ PetscErrorCode VecEqual(Vec vec1, Vec vec2, PetscBool *flg)
       }
     }
     /* combine results from all processors */
-    PetscCallMPI(MPIU_Allreduce(&flg1, flg, 1, MPIU_BOOL, MPI_MIN, PetscObjectComm((PetscObject)vec1)));
+    PetscCallMPI(MPIU_Allreduce(&flg1, flg, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)vec1)));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

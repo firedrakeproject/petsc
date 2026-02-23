@@ -5,7 +5,7 @@ import os
 import sys
 import re
 import itertools
-from hashlib import md5 as new_md5
+from hashlib import sha256 as checksum_algo
 
 def sliding_window(seq, n=2):
   """
@@ -152,7 +152,6 @@ class Package(config.base.Configure):
     self.libraries       = framework.require('config.libraries', self)
     self.programs        = framework.require('config.programs', self)
     self.sourceControl   = framework.require('config.sourceControl',self)
-    self.sourceControl   = framework.require('config.sourceControl',self)
     self.python          = framework.require('config.packages.Python',self)
     try:
       import PETSc.options
@@ -257,7 +256,7 @@ class Package(config.base.Configure):
 
   def getSharedFlag(self,cflags):
     for flag in ['-PIC', '-fPIC', '-KPIC', '-qpic', '-fpic']:
-      if cflags.find(flag) >=0: return flag
+      if cflags.find(flag) >= 0: return flag
     return ''
 
   def getPointerSizeFlag(self,cflags):
@@ -424,7 +423,6 @@ class Package(config.base.Configure):
       return [f for f in flags if not f.startswith(stdFlags)]
     return flags
 
-
   def updatePackageCFlags(self,flags):
     '''To turn off various warnings or errors the compilers may produce with external packages, remove or add appropriate compiler flags'''
     outflags = self.removeVisibilityFlag(flags.split())
@@ -554,13 +552,13 @@ Now rerun configure''' % (self.installDirProvider.dir, '--download-'+self.packag
     return os.path.abspath(installDir)
 
   def getChecksum(self,source, chunkSize = 1024*1024):
-    '''Return the md5 checksum for a given file, which may also be specified by its filename
+    '''Return the checksum for a given file, which may also be specified by its filename
        - The chunkSize argument specifies the size of blocks read from the file'''
     if hasattr(source, 'close'):
       f = source
     else:
       f = open(source, 'rb')
-    m = new_md5()
+    m = checksum_algo()
     size = chunkSize
     buf  = f.read(size)
     while buf:
@@ -641,7 +639,6 @@ Now rerun configure''' % (self.installDirProvider.dir, '--download-'+self.packag
         else: os.environ['PKG_CONFIG_PATH'] = ''
       yield('pkg-config located libraries and includes '+self.PACKAGE, None, l.split(), i)
       raise RuntimeError('pkg-config could not locate correct includes and libraries for '+self.package)
-
 
     if 'with-'+self.package+'-dir' in self.argDB:
       d = self.argDB['with-'+self.package+'-dir']
@@ -1047,30 +1044,35 @@ To use currently downloaded (local) git snapshot - use: --download-'+self.packag
     '''
     steps = ['@echo "=========================================="',\
              '@echo "Building/installing ' + self.name + '. This may take several minutes"',\
-             '@${RM} ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name.lower() + '.build.log']
+             '@${RM} ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.package + '.build.log']
     if not isinstance(rules, list): rules = [rules]
     for rule in rules:
-      steps.append('@cd ' + dir + ' && ' + rule + ' >> ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name.lower() + '.build.log 2>&1 ||\
-                    (echo "***** Error building/installing ' + self.name + '. Check ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name + '.build.log" && exit 1)')
-    self.addMakeRule(self.name.lower() + 'build', '', steps)
+      steps.append('$(shell [ "$(V)" != "1" ] && echo @)cd ' + dir + ' && ' + rule + ' >> ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.package + '.build.log 2>&1 ||\
+                    (echo "***** Error building/installing ' + self.name + '. Check ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.package + '.build.log" && exit 1)')
+    self.addMakeRule(self.package + 'build', '', steps)
     if self.argDB['prefix'] and not 'package-prefix-hash' in self.argDB:
-      self.framework.postinstalls.append(self.name.lower() + 'build')
+      self.framework.postinstalls.append(self.package + 'build')
     else:
-      self.framework.postbuilds.append(self.name.lower() + 'build')
+      self.framework.postbuilds.append(self.package + 'build')
+    self.addDefine('HAVE_' + self.PACKAGE.replace('-','_'), 1)
+    if self.useddirectly:
+      if not hasattr(self.framework, 'packages'):
+        self.framework.packages = []
+      self.framework.packages.append(self)
 
   def addMakeCheck(self, dir, rule):
     '''Adds a small make check for the project'''
-    self.addMakeRule(self.name.lower() + 'check','', \
+    self.addMakeRule(self.package + 'check','', \
                          ['@echo "*** Checking ' + self.name + ' ***"',\
-                          '@cd ' + dir + ' && ' + rule + ' || (echo "***** Error checking ' + self.name + ' ******" && exit 1)'])
-    self.framework.postchecks.append(self.name.lower() + 'check')
+                          '$(shell [ "$(V)" != "1" ] && echo @)cd ' + dir + ' && ' + rule + ' || (echo "***** Error checking ' + self.name + ' ******" && exit 1)'])
+    self.framework.postchecks.append(self.package + 'check')
 
   def addTest(self, dir, rule):
     '''Adds a large make test for the project'''
-    self.addMakeRule(self.name.lower() + 'test','', \
+    self.addMakeRule(self.package + 'test','', \
                          ['@echo "*** Testing ' + self.name + ' ***"',\
-                          '@${RM} ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.name.lower() + '.errorflg',\
-                          '@cd ' + dir + ' && ' + rule + ' || (echo "***** Error testing ' + self.name + ' ******" && exit 1)'])
+                          '@${RM} ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/' + self.package + '.errorflg',\
+                          '$(shell [ "$(V)" != "1" ] && echo @)cd ' + dir + ' && ' + rule + ' || (echo "***** Error testing ' + self.name + ' ******" && exit 1)'])
 
   def configureLibrary(self):
     '''Find an installation and check if it can work with PETSc'''
@@ -1502,7 +1504,6 @@ const char *ver = "petscpkgver(" PetscXstr_({y}) ")";
         raise RuntimeError('Error running make check on PETSc: '+str(e))
     self.installedpetsc = 1
 
-
 '''
 config.package.GNUPackage is a helper class whose intent is to simplify writing configure modules
 for GNU-style packages that are installed using the "configure; make; make install" idiom.
@@ -1542,7 +1543,6 @@ Brief overview of how BuildSystem\'s configuration of packages works.
   for the next phase of configuration.  Below we describe the stages, some of the more typically-used hooks and instance variables in some
   detail.
 
-
   init:
   ----
   The init stage constructs the configure object; it is implemented by its __init__ method.
@@ -1563,7 +1563,6 @@ Brief overview of how BuildSystem\'s configuration of packages works.
   Ideally, a package subclass would extend only the __init__ method and parameterize the remainder of
   the configure process by the appropriate variables.  This is not always possible, since some
   of the package-specific choices depend on
-
 
   setup:
   -----
@@ -1717,8 +1716,6 @@ Brief overview of how BuildSystem\'s configuration of packages works.
    (2) the headers in self.includes have been located.
   If no symbols are supplied in self.functions, no link OR header testing is done.
 
-
-
   Extending package class:
   -----------------------
   Generally, extending the parent package configure class is done by overriding some
@@ -1744,7 +1741,6 @@ Brief overview of how BuildSystem\'s configuration of packages works.
   that use the "configure; make; make install" idiom for the installation -- "GNU packages".
   The main contribution is in the implementation of a generic Install method, which attempts
   to automate the building of a package based on the mostly standard instance variables.
-
 
   Besides running GNU configure, GNUPackage.Install runs installNeeded, make and postInstall
   at the appropriate times, automatically determining whether a rebuild is necessary, saving
@@ -1883,7 +1879,6 @@ class GNUPackage(Package):
           raise RuntimeError('Error in autoreconf: ' + output+err)
       except RuntimeError as e:
         raise RuntimeError('Error running autoreconf on ' + self.PACKAGE+': '+str(e))
-
 
   def Install(self):
     ##### getInstallDir calls this, and it sets up self.packageDir (source download), self.confDir and self.installDir

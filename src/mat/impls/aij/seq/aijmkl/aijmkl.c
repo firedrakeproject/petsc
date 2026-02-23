@@ -164,14 +164,14 @@ static PetscErrorCode MatSeqAIJMKL_setup_structure_from_mkl_handle(MPI_Comm comm
 {
   sparse_index_base_t indexing;
   PetscInt            m, n;
-  PetscInt           *aj, *ai, *dummy;
+  PetscInt           *aj, *ai, *unused;
   MatScalar          *aa;
   Mat_SeqAIJMKL      *aijmkl;
 
   PetscFunctionBegin;
   if (csrA) {
-    /* Note: Must pass in &dummy below since MKL can't accept NULL for this output array we don't actually want. */
-    PetscCallExternal(mkl_sparse_x_export_csr, csrA, &indexing, (MKL_INT *)&m, (MKL_INT *)&n, (MKL_INT **)&ai, (MKL_INT **)&dummy, (MKL_INT **)&aj, &aa);
+    /* Note: Must pass in &unused below since MKL can't accept NULL for this output array we don't actually want. */
+    PetscCallExternal(mkl_sparse_x_export_csr, csrA, &indexing, (MKL_INT *)&m, (MKL_INT *)&n, (MKL_INT **)&ai, (MKL_INT **)&unused, (MKL_INT **)&aj, &aa);
     PetscCheck((m == nrows) && (n == ncols), PETSC_COMM_SELF, PETSC_ERR_LIB, "Number of rows/columns does not match those from mkl_sparse_x_export_csr()");
   } else {
     aj = ai = NULL;
@@ -224,7 +224,7 @@ static PetscErrorCode MatSeqAIJMKL_update_from_mkl_handle(Mat A)
   PetscInt            i;
   PetscInt            nrows, ncols;
   PetscInt            nz;
-  PetscInt           *ai, *aj, *dummy;
+  PetscInt           *ai, *aj, *unused;
   PetscScalar        *aa;
   Mat_SeqAIJMKL      *aijmkl = (Mat_SeqAIJMKL *)A->spptr;
   sparse_index_base_t indexing;
@@ -233,8 +233,8 @@ static PetscErrorCode MatSeqAIJMKL_update_from_mkl_handle(Mat A)
   /* Exit immediately in case of the MKL matrix handle being NULL; this will be the case for empty matrices (zero rows or columns). */
   if (!aijmkl->csrA) PetscFunctionReturn(PETSC_SUCCESS);
 
-  /* Note: Must pass in &dummy below since MKL can't accept NULL for this output array we don't actually want. */
-  PetscCallExternal(mkl_sparse_x_export_csr, aijmkl->csrA, &indexing, (MKL_INT *)&nrows, (MKL_INT *)&ncols, (MKL_INT **)&ai, (MKL_INT **)&dummy, (MKL_INT **)&aj, &aa);
+  /* Note: Must pass in &unused below since MKL can't accept NULL for this output array we don't actually want. */
+  PetscCallExternal(mkl_sparse_x_export_csr, aijmkl->csrA, &indexing, (MKL_INT *)&nrows, (MKL_INT *)&ncols, (MKL_INT **)&ai, (MKL_INT **)&unused, (MKL_INT **)&aj, &aa);
 
   /* We can't just do a copy from the arrays exported by MKL to those used for the PETSc AIJ storage, because the MKL and PETSc
    * representations differ in small ways (e.g., more explicit nonzeros per row due to preallocation). */
@@ -261,7 +261,7 @@ PETSC_INTERN PetscErrorCode MatSeqAIJMKL_view_mkl_handle(Mat A, PetscViewer view
   PetscInt            i, j, k;
   PetscInt            nrows, ncols;
   PetscInt            nz;
-  PetscInt           *ai, *aj, *dummy;
+  PetscInt           *ai, *aj, *unused;
   PetscScalar        *aa;
   Mat_SeqAIJMKL      *aijmkl = (Mat_SeqAIJMKL *)A->spptr;
   sparse_index_base_t indexing;
@@ -275,8 +275,8 @@ PETSC_INTERN PetscErrorCode MatSeqAIJMKL_view_mkl_handle(Mat A, PetscViewer view
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
-  /* Note: Must pass in &dummy below since MKL can't accept NULL for this output array we don't actually want. */
-  PetscCallExternal(mkl_sparse_x_export_csr, aijmkl->csrA, &indexing, (MKL_INT *)&nrows, (MKL_INT *)&ncols, (MKL_INT **)&ai, (MKL_INT **)&dummy, (MKL_INT **)&aj, &aa);
+  /* Note: Must pass in &unused below since MKL can't accept NULL for this output array we don't actually want. */
+  PetscCallExternal(mkl_sparse_x_export_csr, aijmkl->csrA, &indexing, (MKL_INT *)&nrows, (MKL_INT *)&ncols, (MKL_INT **)&ai, (MKL_INT **)&unused, (MKL_INT **)&aj, &aa);
 
   k = 0;
   for (i = 0; i < nrows; i++) {
@@ -1000,11 +1000,7 @@ PETSC_INTERN PetscErrorCode MatConvert_SeqAIJ_SeqAIJMKL(Mat A, MatType type, Mat
   B->ops->destroy     = MatDestroy_SeqAIJMKL;
 
   aijmkl->sparse_optimized = PETSC_FALSE;
-#if defined(PETSC_HAVE_MKL_SPARSE_OPTIMIZE)
-  aijmkl->no_SpMV2 = PETSC_FALSE; /* Default to using the SpMV2 routines if our MKL supports them. */
-#else
-  aijmkl->no_SpMV2 = PETSC_TRUE;
-#endif
+  aijmkl->no_SpMV2         = PetscDefined(HAVE_MKL_SPARSE_OPTIMIZE) ? PETSC_FALSE : PETSC_TRUE; /* Default to using the SpMV2 routines if our MKL supports them. */
   aijmkl->eager_inspection = PETSC_FALSE;
 
   /* Parse command line options. */

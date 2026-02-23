@@ -134,7 +134,7 @@ int main(int argc, char **argv)
   PetscCall(PetscOptionsHasName(NULL, NULL, "-matrixfree", &flg));
   if (flg) {
     PetscCall(MatCreateShell(PETSC_COMM_WORLD, m, m, N, N, (void *)&user, &H_shell));
-    PetscCall(MatShellSetOperation(H_shell, MATOP_MULT, (void (*)(void))MyMatMult));
+    PetscCall(MatShellSetOperation(H_shell, MATOP_MULT, (PetscErrorCodeFn *)MyMatMult));
     PetscCall(MatSetOption(H_shell, MAT_SYMMETRIC, PETSC_TRUE));
     PetscCall(TaoSetHessian(tao, H_shell, H_shell, MatrixFreeHessian, (void *)&user));
   } else {
@@ -719,7 +719,7 @@ static PetscErrorCode MSA_BoundaryConditions(AppCtx *user)
    Output Parameter:
 .  user - user-defined application context
 */
-static PetscErrorCode MSA_Plate(Vec XL, Vec XU, void *ctx)
+static PetscErrorCode MSA_Plate(Vec XL, Vec XU, PetscCtx ctx)
 {
   AppCtx    *user = (AppCtx *)ctx;
   PetscInt   i, j, row;
@@ -934,17 +934,17 @@ PetscErrorCode MyMatMult(Mat H_shell, Vec X, Vec Y)
 
    test:
       suffix: 13
-      args: -tao_monitor_short -mx 8 -my 6 -bmx 3 -bmy 3 -bheight 0.2 -tao_type bnls -tao_gatol 1e-5 -tao_bnk_max_cg_its 3
+      args: -tao_monitor_short -mx 8 -my 6 -bmx 3 -bmy 3 -bheight 0.2 -tao_type bnls -tao_gatol 1e-5 -tao_bnk_max_cg_its 3 -tao_bnk_cg_tao_monitor_short
       requires: !single
 
    test:
       suffix: 14
-      args: -tao_monitor_short -mx 8 -my 6 -bmx 3 -bmy 3 -bheight 0.2 -tao_type bntr -tao_gatol 1e-5 -tao_bnk_max_cg_its 3
+      args: -tao_monitor_short -mx 8 -my 6 -bmx 3 -bmy 3 -bheight 0.2 -tao_type bntr -tao_gatol 1e-5 -tao_bnk_max_cg_its 3 -tao_bnk_cg_tao_monitor_short
       requires: !single
 
    test:
       suffix: 15
-      args: -tao_monitor_short -mx 8 -my 6 -bmx 3 -bmy 3 -bheight 0.2 -tao_type bntl -tao_gatol 1e-5 -tao_bnk_max_cg_its 3
+      args: -tao_monitor_short -mx 8 -my 6 -bmx 3 -bmy 3 -bheight 0.2 -tao_type bntl -tao_gatol 1e-5 -tao_bnk_max_cg_its 3 -tao_bnk_cg_tao_monitor_short
       requires: !single
 
    test:

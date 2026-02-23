@@ -20,10 +20,10 @@ struct _n_DSBoundary {
   PetscInt                field;  /* The field constrained by the condition */
   PetscInt                Nc;     /* The number of constrained field components */
   PetscInt               *comps;  /* The constrained field components */
-  void (*func)(void);             /* Function that provides the boundary values (only for ESSENTIAL conditions) */
-  void (*func_t)(void);           /* Function that provides the time derivative of the boundary values (only for ESSENTIAL conditions) */
-  void      *ctx;                 /* The user context for func and func_t */
-  DSBoundary next;
+  PetscVoidFn            *func;   /* Function that provides the boundary values (only for ESSENTIAL conditions) */
+  PetscVoidFn            *func_t; /* Function that provides the time derivative of the boundary values (only for ESSENTIAL conditions) */
+  void                   *ctx;    /* The user context for func and func_t */
+  DSBoundary              next;
 };
 
 typedef struct {
@@ -54,7 +54,7 @@ PETSC_HASH_MAP(HMapForm, PetscFormKey, PetscChunk, PetscFormKeyHash, PetscFormKe
    0: left = right
    1: left > right
 */
-static inline int Compare_PetscFormKey_Private(const void *left, const void *right, PETSC_UNUSED void *ctx)
+static inline int Compare_PetscFormKey_Private(const void *left, const void *right, PETSC_UNUSED PetscCtx ctx)
 {
   PetscFormKey l = *(const PetscFormKey *)left;
   PetscFormKey r = *(const PetscFormKey *)right;

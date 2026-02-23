@@ -1,4 +1,4 @@
-/***********************************gs.c***************************************
+/*
 
 Author: Henry M. Tufo III
 
@@ -11,13 +11,11 @@ Providence, RI 02912
 
 Last Modification:
 6.21.97
-************************************gs.c**************************************/
 
-/***********************************gs.c***************************************
 File Description:
 -----------------
 
-************************************gs.c**************************************/
+*/
 
 #include <../src/ksp/pc/impls/tfs/tfs.h>
 
@@ -25,11 +23,9 @@ File Description:
 #define TREE_BUF_SZ 2048
 #define GS_VEC_SZ   1
 
-/***********************************gs.c***************************************
+/*
 Type: struct gather_scatter_id
-------------------------------
-
-************************************gs.c**************************************/
+*/
 typedef struct gather_scatter_id {
   PetscInt     id;
   PetscInt     nel_min;
@@ -1158,7 +1154,7 @@ static PetscErrorCode PCTFS_gs_gop_vec_pairwise_plus(PCTFS_gs_id *gs, PetscScala
   do {
     /* Should MPI_ANY_SOURCE be replaced by *list ? In that case do the
         second one *list and do list++ afterwards */
-    PetscCallMPI(MPI_Irecv(in1, *size * step, MPIU_SCALAR, MPI_ANY_SOURCE, MSGTAG1 + *list, gs->PCTFS_gs_comm, msg_ids_in));
+    PetscCallMPI(MPIU_Irecv(in1, *size * step, MPIU_SCALAR, MPI_ANY_SOURCE, MSGTAG1 + *list, gs->PCTFS_gs_comm, msg_ids_in));
     list++;
     msg_ids_in++;
     in1 += *size++ * step;
@@ -1180,7 +1176,7 @@ static PetscErrorCode PCTFS_gs_gop_vec_pairwise_plus(PCTFS_gs_id *gs, PetscScala
       dptr2 += step;
       iptr++;
     }
-    PetscCallMPI(MPI_Isend(dptr3, *msg_size * step, MPIU_SCALAR, *msg_list, MSGTAG1 + PCTFS_my_id, gs->PCTFS_gs_comm, msg_ids_out));
+    PetscCallMPI(MPIU_Isend(dptr3, *msg_size * step, MPIU_SCALAR, *msg_list, MSGTAG1 + PCTFS_my_id, gs->PCTFS_gs_comm, msg_ids_out));
     msg_size++;
     msg_list++;
     msg_ids_out++;
@@ -1347,7 +1343,7 @@ static PetscErrorCode PCTFS_gs_gop_pairwise_plus_hc(PCTFS_gs_id *gs, PetscScalar
     /* Should MPI_ANY_SOURCE be replaced by *list ? In that case do the
         second one *list and do list++ afterwards */
     if ((PCTFS_my_id | mask) == (*list | mask)) {
-      PetscCallMPI(MPI_Irecv(in1, *size, MPIU_SCALAR, MPI_ANY_SOURCE, MSGTAG1 + *list, gs->PCTFS_gs_comm, msg_ids_in));
+      PetscCallMPI(MPIU_Irecv(in1, *size, MPIU_SCALAR, MPI_ANY_SOURCE, MSGTAG1 + *list, gs->PCTFS_gs_comm, msg_ids_in));
       list++;
       msg_ids_in++;
       in1 += *size++;
@@ -1369,7 +1365,7 @@ static PetscErrorCode PCTFS_gs_gop_pairwise_plus_hc(PCTFS_gs_id *gs, PetscScalar
       while (*iptr >= 0) *dptr2++ = *(dptr1 + *iptr++);
       /* CHECK PERSISTENT COMMS MODE FOR ALL THIS STUFF */
       /* is msg_ids_out++ correct? */
-      PetscCallMPI(MPI_Isend(dptr3, *msg_size, MPIU_SCALAR, *list, MSGTAG1 + PCTFS_my_id, gs->PCTFS_gs_comm, msg_ids_out));
+      PetscCallMPI(MPIU_Isend(dptr3, *msg_size, MPIU_SCALAR, *list, MSGTAG1 + PCTFS_my_id, gs->PCTFS_gs_comm, msg_ids_out));
       msg_size++;
       list++;
       msg_ids_out++;

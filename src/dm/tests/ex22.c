@@ -31,8 +31,8 @@ int main(int argc, char **argv)
   PetscCall(DMDACreate3d(PETSC_COMM_WORLD, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, stencil_type, M, N, P, m, n, p, w, s, 0, 0, 0, &da));
   PetscCall(DMSetFromOptions(da));
   PetscCall(DMSetUp(da));
-  PetscCall(DMSetMatType(da, MATMPIBAIJ));
   PetscCall(DMCreateMatrix(da, &mat));
+  PetscCall(MatSetFromOptions(mat));
 
   idx[0].i = 1;
   idx[0].j = 1;
@@ -52,6 +52,24 @@ int main(int argc, char **argv)
   PetscCall(MatAssemblyBegin(mat, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(mat, MAT_FINAL_ASSEMBLY));
 
+  flg = PETSC_FALSE;
+  PetscCall(PetscOptionsGetBool(NULL, NULL, "-test_matdiagonalscalelocal", &flg, NULL));
+  if (flg) {
+    Vec         vec;
+    PetscInt    size;
+    PetscMPIInt rank;
+
+    PetscCall(DMGetLocalVector(da, &vec));
+    PetscCall(VecGetLocalSize(vec, &size));
+    PetscCall(PetscFree(values));
+    PetscCall(VecGetArrayWrite(vec, &values));
+    PetscCallMPI(MPI_Comm_rank(MPI_COMM_WORLD, &rank));
+    for (i = 0; i < size; i++) values[i] = (PetscScalar)(rank + 1);
+    PetscCall(VecRestoreArrayWrite(vec, &values));
+    PetscCall(MatDiagonalScaleLocal(mat, vec));
+    PetscCall(DMRestoreLocalVector(da, &vec));
+  }
+
   /* Free memory */
   PetscCall(PetscFree(values));
   PetscCall(MatDestroy(&mat));
@@ -59,3 +77,31 @@ int main(int argc, char **argv)
   PetscCall(PetscFinalize());
   return 0;
 }
+
+/*TEST
+
+      test:
+         suffix: baij
+         nsize: 2
+         args: -mat_type baij
+         output_file: output/empty.out
+
+      test:
+         suffix: aij
+         nsize: 2
+         args: -mat_type aij
+         output_file: output/empty.out
+
+      test:
+         suffix: baij-diagonalscalelocal
+         nsize: 2
+         args: -mat_type baij -test_matdiagonalscalelocal
+         output_file: output/empty.out
+
+      test:
+         suffix: aij-diagonalscalelocal
+         nsize: 2
+         args: -mat_type aij -test_matdiagonalscalelocal
+         output_file: output/empty.out
+
+TEST*/

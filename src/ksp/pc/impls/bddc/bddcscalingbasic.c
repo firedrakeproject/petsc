@@ -412,7 +412,7 @@ static PetscErrorCode PCBDDCScalingSetUp_Deluxe(PC pc)
     if (!deluxe_ctx->n_simple) {
       deluxe_ctx->n_simple = n_dir + n_com;
       PetscCall(PetscMalloc1(deluxe_ctx->n_simple, &deluxe_ctx->idx_simple_B));
-      if (sub_schurs->is_vertices) {
+      if (n_com) {
         PetscInt        nmap;
         const PetscInt *idxs;
 
@@ -421,7 +421,7 @@ static PetscErrorCode PCBDDCScalingSetUp_Deluxe(PC pc)
         PetscCheck(nmap == n_com, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Error when mapping simply scaled dofs (is_vertices)! %" PetscInt_FMT " != %" PetscInt_FMT, nmap, n_com);
         PetscCall(ISRestoreIndices(sub_schurs->is_vertices, &idxs));
       }
-      if (sub_schurs->is_dir) {
+      if (n_dir) {
         PetscInt        nmap;
         const PetscInt *idxs;
 
@@ -503,10 +503,15 @@ static PetscErrorCode PCBDDCScalingSetUp_Deluxe_Private(PC pc)
     PetscCall(MatCreateSeqDense(PETSC_COMM_SELF, subset_size, subset_size, matdata2 + cum2, &deluxe_ctx->seq_mat_inv_sum[i]));
     PetscCall(MatSetOption(deluxe_ctx->seq_mat_inv_sum[i], MAT_SPD, sub_schurs->is_posdef));
     PetscCall(MatSetOption(deluxe_ctx->seq_mat_inv_sum[i], MAT_HERMITIAN, sub_schurs->is_hermitian));
-    if (sub_schurs->is_hermitian) {
+    switch (sub_schurs->mat_factor_type) {
+    case MAT_FACTOR_CHOLESKY:
       PetscCall(MatCholeskyFactor(deluxe_ctx->seq_mat_inv_sum[i], NULL, NULL));
-    } else {
+      break;
+    case MAT_FACTOR_LU:
       PetscCall(MatLUFactor(deluxe_ctx->seq_mat_inv_sum[i], NULL, NULL, NULL));
+      break;
+    default:
+      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Unsupported factor type %s", MatFactorTypes[sub_schurs->mat_factor_type]);
     }
     if (pcbddc->deluxe_singlemat) {
       Mat X, Y;
@@ -522,7 +527,6 @@ static PetscErrorCode PCBDDCScalingSetUp_Deluxe_Private(PC pc)
       } else {
         PetscCall(MatMatSolve(deluxe_ctx->seq_mat_inv_sum[i], X, Y));
       }
-
       PetscCall(MatDestroy(&deluxe_ctx->seq_mat_inv_sum[i]));
       PetscCall(MatDestroy(&deluxe_ctx->seq_mat[i]));
       PetscCall(MatDestroy(&X));

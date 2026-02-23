@@ -17,7 +17,7 @@ SNES Object: 1 MPI process
     type: bt
       interpolation: cubic
       alpha=1.000000e-04
-    maxstep=1.000000e+08, minlambda=1.000000e-12
+    maxlambda=1.000000e+00, minlambda=1.000000e-12
     tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
     maximum iterations=40
   KSP Object: 1 MPI process
@@ -38,7 +38,7 @@ SNES Object: 1 MPI process
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_coarse_) 1 MPI process
         type: lu
           out-of-place factorization
@@ -46,14 +46,14 @@ SNES Object: 1 MPI process
           using diagonal shift on blocks to prevent zero pivot [INBLOCKS]
           matrix ordering: nd
           factor fill ratio given 5., needed 1.
-            Factored matrix follows:
+            Factored matrix:
               Mat Object: (mg_coarse_) 1 MPI process
                 type: seqaij
                 rows=4, cols=4
                 package used to perform factorization: petsc
                 total: nonzeros=14, allocated nonzeros=14
                   using I-node routines: found 3 nodes, limit used is 5
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 1 MPI process
           type: seqaij
           rows=4, cols=4
@@ -63,12 +63,12 @@ SNES Object: 1 MPI process
     Down solver (pre-smoother) on level 1 -------------------------------
       KSP Object: (mg_levels_1_) 1 MPI process
         type: gmres
-          restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-          happy breakdown tolerance 1e-30
+          restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+          happy breakdown tolerance=1e-30
         maximum iterations=10, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_1_) 1 MPI process
         type: ilu
           out-of-place factorization
@@ -76,14 +76,14 @@ SNES Object: 1 MPI process
           tolerance for zero pivot 2.22045e-14
           matrix ordering: natural
           factor fill ratio given 1., needed 1.
-            Factored matrix follows:
+            Factored matrix:
               Mat Object: (mg_levels_1_) 1 MPI process
                 type: seqaij
                 rows=15, cols=15
                 package used to perform factorization: petsc
                 total: nonzeros=73, allocated nonzeros=73
                   not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 1 MPI process
           type: seqaij
           rows=15, cols=15
@@ -94,12 +94,12 @@ SNES Object: 1 MPI process
     Down solver (pre-smoother) on level 2 -------------------------------
       KSP Object: (mg_levels_2_) 1 MPI process
         type: gmres
-          restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-          happy breakdown tolerance 1e-30
+          restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+          happy breakdown tolerance=1e-30
         maximum iterations=10, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_2_) 1 MPI process
         type: ilu
           out-of-place factorization
@@ -107,14 +107,14 @@ SNES Object: 1 MPI process
           tolerance for zero pivot 2.22045e-14
           matrix ordering: natural
           factor fill ratio given 1., needed 1.
-            Factored matrix follows:
+            Factored matrix:
               Mat Object: (mg_levels_2_) 1 MPI process
                 type: seqaij
                 rows=59, cols=59
                 package used to perform factorization: petsc
                 total: nonzeros=347, allocated nonzeros=347
                   not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 1 MPI process
           type: seqaij
           rows=59, cols=59
@@ -125,12 +125,12 @@ SNES Object: 1 MPI process
     Down solver (pre-smoother) on level 3 -------------------------------
       KSP Object: (mg_levels_3_) 1 MPI process
         type: gmres
-          restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-          happy breakdown tolerance 1e-30
+          restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+          happy breakdown tolerance=1e-30
         maximum iterations=10, nonzero initial guess
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (mg_levels_3_) 1 MPI process
         type: ilu
           out-of-place factorization
@@ -138,14 +138,14 @@ SNES Object: 1 MPI process
           tolerance for zero pivot 2.22045e-14
           matrix ordering: natural
           factor fill ratio given 1., needed 1.
-            Factored matrix follows:
+            Factored matrix:
               Mat Object: (mg_levels_3_) 1 MPI process
                 type: seqaij
                 rows=225, cols=225
                 package used to perform factorization: petsc
                 total: nonzeros=1457, allocated nonzeros=1457
                   not using I-node routines
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 1 MPI process
           type: seqaij
           rows=225, cols=225
@@ -153,7 +153,7 @@ SNES Object: 1 MPI process
           total number of mallocs used during MatSetValues calls=0
             not using I-node routines
     Up solver (post-smoother) same as down solver (pre-smoother)
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 1 MPI process
       type: seqaij
       rows=225, cols=225

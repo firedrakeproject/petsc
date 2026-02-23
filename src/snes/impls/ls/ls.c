@@ -125,7 +125,7 @@ static PetscErrorCode SNESNEWTONLSCheckResidual_Private(SNES snes, Mat A, Vec F,
 static PetscErrorCode SNESSolve_NEWTONLS(SNES snes)
 {
   PetscInt             maxits, i, lits;
-  SNESLineSearchReason lssucceed;
+  SNESLineSearchReason lsreason;
   PetscReal            fnorm, xnorm, ynorm;
   Vec                  Y, X, F;
   SNESLineSearch       linesearch;
@@ -165,13 +165,12 @@ static PetscErrorCode SNESSolve_NEWTONLS(SNES snes)
     PetscCall(VecNormBegin(F, NORM_2, &fnorm));
     PetscCall(VecNormEnd(F, NORM_2, &fnorm));
   } else {
-    if (!snes->vec_func_init_set) {
-      PetscCall(SNESComputeFunction(snes, X, F));
-    } else snes->vec_func_init_set = PETSC_FALSE;
+    if (!snes->vec_func_init_set) PetscCall(SNESComputeFunction(snes, X, F));
+    else snes->vec_func_init_set = PETSC_FALSE;
   }
 
   PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- ||F||  */
-  SNESCheckFunctionNorm(snes, fnorm);
+  SNESCheckFunctionDomainError(snes, fnorm);
   PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
   snes->norm = fnorm;
   PetscCall(PetscObjectSAWsGrantAccess((PetscObject)snes));
@@ -216,7 +215,7 @@ static PetscErrorCode SNESSolve_NEWTONLS(SNES snes)
 
     /* Solve J Y = F, where J is Jacobian matrix */
     PetscCall(SNESComputeJacobian(snes, X, snes->jacobian, snes->jacobian_pre));
-    SNESCheckJacobianDomainerror(snes);
+    SNESCheckJacobianDomainError(snes);
     PetscCall(KSPSetOperators(snes->ksp, snes->jacobian, snes->jacobian_pre));
     PetscCall(KSPSolve(snes->ksp, F, Y));
     SNESCheckKSPSolve(snes);
@@ -233,27 +232,33 @@ static PetscErrorCode SNESSolve_NEWTONLS(SNES snes)
        and evaluate F = function(X) (depends on the line search).
     */
     PetscCall(SNESLineSearchApply(linesearch, X, F, &fnorm, Y));
-    PetscCall(SNESLineSearchGetReason(linesearch, &lssucceed));
-    PetscCall(SNESLineSearchGetNorms(linesearch, &xnorm, &fnorm, &ynorm));
-    PetscCall(PetscInfo(snes, "fnorm=%18.16e, gnorm=%18.16e, ynorm=%18.16e, lssucceed=%d\n", (double)gnorm, (double)fnorm, (double)ynorm, (int)lssucceed));
     if (snes->reason) break;
-    SNESCheckFunctionNorm(snes, fnorm);
-    if (lssucceed) {
+    PetscCall(SNESLineSearchGetNorms(linesearch, &xnorm, &fnorm, &ynorm));
+    PetscCall(PetscInfo(snes, "fnorm=%18.16e, gnorm=%18.16e, ynorm=%18.16e, lsreason=%d\n", (double)gnorm, (double)fnorm, (double)ynorm, (int)lsreason));
+    SNESCheckFunctionDomainError(snes, fnorm);
+    PetscCall(SNESLineSearchGetReason(linesearch, &lsreason));
+    if (lsreason) {
       if (snes->stol * xnorm > ynorm) {
         snes->reason = SNES_CONVERGED_SNORM_RELATIVE;
-        PetscFunctionReturn(PETSC_SUCCESS);
-      }
-      if (++snes->numFailures >= snes->maxFailures) {
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_FUNCTION_DOMAIN) {
+        snes->reason = SNES_DIVERGED_FUNCTION_DOMAIN;
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_NANORINF) {
+        snes->reason = SNES_DIVERGED_FUNCTION_NANORINF;
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_OBJECTIVE_DOMAIN) {
+        snes->reason = SNES_DIVERGED_OBJECTIVE_DOMAIN;
+        break;
+      } else if (lsreason == SNES_LINESEARCH_FAILED_JACOBIAN_DOMAIN) {
+        snes->reason = SNES_DIVERGED_JACOBIAN_DOMAIN;
+        break;
+      } else if (++snes->numFailures >= snes->maxFailures) {
         PetscBool ismin;
+
         snes->reason = SNES_DIVERGED_LINE_SEARCH;
         PetscCall(SNESNEWTONLSCheckLocalMin_Private(snes, snes->jacobian, F, fnorm, &ismin));
         if (ismin) snes->reason = SNES_DIVERGED_LOCAL_MIN;
-        if (snes->errorifnotconverged && snes->reason) {
-          PetscViewer monitor;
-          PetscCall(SNESLineSearchGetDefaultMonitor(linesearch, &monitor));
-          PetscCheck(monitor, PetscObjectComm((PetscObject)snes), PETSC_ERR_NOT_CONVERGED, "SNESSolve has not converged due to %s. Suggest running with -snes_linesearch_monitor", SNESConvergedReasons[snes->reason]);
-          SETERRQ(PetscObjectComm((PetscObject)snes), PETSC_ERR_NOT_CONVERGED, "SNESSolve has not converged due %s.", SNESConvergedReasons[snes->reason]);
-        }
         break;
       }
     }
@@ -308,25 +313,6 @@ static PetscErrorCode SNESDestroy_NEWTONLS(SNES snes)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*
-   SNESView_NEWTONLS - Prints info from the SNESNEWTONLS data structure.
-
-   Input Parameters:
-.  SNES - the SNES context
-.  viewer - visualization context
-
-   Application Interface Routine: SNESView()
-*/
-static PetscErrorCode SNESView_NEWTONLS(SNES snes, PetscViewer viewer)
-{
-  PetscBool iascii;
-
-  PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) { }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 /*MC
    SNESNEWTONLS - Newton based nonlinear solver that uses a line search
 
@@ -357,7 +343,6 @@ PETSC_EXTERN PetscErrorCode SNESCreate_NEWTONLS(SNES snes)
   snes->ops->setup   = SNESSetUp_NEWTONLS;
   snes->ops->solve   = SNESSolve_NEWTONLS;
   snes->ops->destroy = SNESDestroy_NEWTONLS;
-  snes->ops->view    = SNESView_NEWTONLS;
 
   snes->npcside = PC_RIGHT;
   snes->usesksp = PETSC_TRUE;

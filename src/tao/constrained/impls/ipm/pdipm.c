@@ -68,7 +68,7 @@ static PetscErrorCode TaoPDIPMUpdateConstraints(Tao tao, Vec x)
   if (pdipm->Ng) {
     /* (1.a) Inserting updated g(x) */
     PetscCall(VecGetArrayRead(tao->constraints_equality, &garr));
-    PetscCall(PetscMemcpy(carr, garr, pdipm->ng * sizeof(PetscScalar)));
+    PetscCall(PetscArraycpy(carr, garr, pdipm->ng));
     PetscCall(VecRestoreArrayRead(tao->constraints_equality, &garr));
   }
 
@@ -89,7 +89,7 @@ static PetscErrorCode TaoPDIPMUpdateConstraints(Tao tao, Vec x)
   if (pdipm->Nh) {
     /* (2.a) Inserting updated h(x) */
     PetscCall(VecGetArrayRead(tao->constraints_inequality, &harr));
-    PetscCall(PetscMemcpy(carr, harr, pdipm->nh * sizeof(PetscScalar)));
+    PetscCall(PetscArraycpy(carr, harr, pdipm->nh));
     PetscCall(VecRestoreArrayRead(tao->constraints_inequality, &harr));
   }
 
@@ -229,7 +229,7 @@ static PetscErrorCode TaoPDIPMInitializeSolution(Tao tao)
 
   /* Set Initialize X.x = tao->solution */
   PetscCall(VecGetArrayRead(tao->solution, &xarr));
-  PetscCall(PetscMemcpy(Xarr, xarr, pdipm->nx * sizeof(PetscScalar)));
+  PetscCall(PetscArraycpy(Xarr, xarr, pdipm->nx));
   PetscCall(VecRestoreArrayRead(tao->solution, &xarr));
 
   /* Initialize X.lambdae = 0.0 */
@@ -271,7 +271,7 @@ static PetscErrorCode TaoPDIPMInitializeSolution(Tao tao)
    J - Hessian matrix
    Jpre - matrix to build the preconditioner from
 */
-static PetscErrorCode TaoSNESJacobian_PDIPM(SNES snes, Vec X, Mat J, Mat Jpre, void *ctx)
+static PetscErrorCode TaoSNESJacobian_PDIPM(SNES snes, Vec X, Mat J, Mat Jpre, PetscCtx ctx)
 {
   Tao                tao   = (Tao)ctx;
   TAO_PDIPM         *pdipm = (TAO_PDIPM *)tao->data;
@@ -442,7 +442,7 @@ static PetscErrorCode TaoSNESJacobian_PDIPM(SNES snes, Vec X, Mat J, Mat Jpre, v
    Output Parameter:
    F - Updated Lagrangian vector
 */
-static PetscErrorCode TaoSNESFunction_PDIPM(SNES snes, Vec X, Vec F, void *ctx)
+static PetscErrorCode TaoSNESFunction_PDIPM(SNES snes, Vec X, Vec F, PetscCtx ctx)
 {
   Tao                tao   = (Tao)ctx;
   TAO_PDIPM         *pdipm = (TAO_PDIPM *)tao->data;
@@ -547,7 +547,7 @@ static PetscErrorCode TaoSNESFunction_PDIPM(SNES snes, Vec X, Vec F, void *ctx)
   Evaluate F(X); then update tao->gnorm0, tao->step = mu,
   tao->residual = norm2(F_x,F_z) and tao->cnorm = norm2(F_ce,F_ci).
 */
-static PetscErrorCode TaoSNESFunction_PDIPM_residual(SNES snes, Vec X, Vec F, void *ctx)
+static PetscErrorCode TaoSNESFunction_PDIPM_residual(SNES snes, Vec X, Vec F, PetscCtx ctx)
 {
   Tao                tao   = (Tao)ctx;
   TAO_PDIPM         *pdipm = (TAO_PDIPM *)tao->data;
@@ -703,7 +703,7 @@ static PetscErrorCode PCPostSetUp_PDIPM(PC pc)
    are updated as Lambdai = Lambdai + alpha_p*dLambdai. The barrier parameter mu
    is also updated as mu = mu + z'lambdai/Nci
 */
-static PetscErrorCode SNESLineSearch_PDIPM(SNESLineSearch linesearch, void *ctx)
+static PetscErrorCode SNESLineSearch_PDIPM(SNESLineSearch linesearch, PetscCtx ctx)
 {
   Tao                tao   = (Tao)ctx;
   TAO_PDIPM         *pdipm = (TAO_PDIPM *)tao->data;
@@ -758,16 +758,15 @@ static PetscErrorCode SNESLineSearch_PDIPM(SNESLineSearch linesearch, void *ctx)
     Xarr[i + pdipm->off_z] -= alpha_p * dXarr[i + pdipm->off_z];
   }
   PetscCall(VecGetArrayWrite(tao->solution, &taosolarr));
-  PetscCall(PetscMemcpy(taosolarr, Xarr, pdipm->nx * sizeof(PetscScalar)));
+  PetscCall(PetscArraycpy(taosolarr, Xarr, pdipm->nx));
   PetscCall(VecRestoreArrayWrite(tao->solution, &taosolarr));
 
   PetscCall(VecRestoreArrayWrite(X, &Xarr));
   PetscCall(VecRestoreArrayRead(Y, &dXarr));
 
   /* Update mu = mu_update_factor * dot(z,lambdai)/pdipm->nci at updated X */
-  if (pdipm->z) {
-    PetscCall(VecDot(pdipm->z, pdipm->lambdai, &dot));
-  } else dot = 0.0;
+  if (pdipm->z) PetscCall(VecDot(pdipm->z, pdipm->lambdai, &dot));
+  else dot = 0.0;
 
   /* if (PetscAbsReal(pdipm->gradL) < 0.9*pdipm->mu)  */
   pdipm->mu = pdipm->mu_update_factor * dot / pdipm->Nci;
@@ -823,7 +822,7 @@ static PetscErrorCode TaoSolve_PDIPM(Tao tao)
     if (reason < 0) PetscCall(PetscPrintf(PetscObjectComm((PetscObject)pdipm->snes), "SNES solve did not converged due to reason %s\n", SNESConvergedReasons[reason]));
 
     /* Check TAO convergence */
-    PetscCheck(!PetscIsInfOrNanReal(pdipm->obj), PETSC_COMM_SELF, PETSC_ERR_SUP, "User-provided compute function generated Inf or NaN");
+    PetscCheck(!PetscIsInfOrNanReal(pdipm->obj), PETSC_COMM_SELF, PETSC_ERR_SUP, "User-provided compute function generated infinity or NaN");
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1369,15 +1368,15 @@ static PetscErrorCode TaoDestroy_PDIPM(Tao tao)
   PetscCall(MatDestroy(&pdipm->K));
 
   /* Index Sets */
-  if (pdipm->Nxub) { PetscCall(ISDestroy(&pdipm->isxub)); /* Finite upper bound only -inf < x < ub */ }
+  if (pdipm->Nxub) PetscCall(ISDestroy(&pdipm->isxub)); /* Finite upper bound only -inf < x < ub */
 
-  if (pdipm->Nxlb) { PetscCall(ISDestroy(&pdipm->isxlb)); /* Finite lower bound only  lb <= x < inf */ }
+  if (pdipm->Nxlb) PetscCall(ISDestroy(&pdipm->isxlb)); /* Finite lower bound only  lb <= x < inf */
 
-  if (pdipm->Nxfixed) { PetscCall(ISDestroy(&pdipm->isxfixed)); /* Fixed variables         lb =  x = ub */ }
+  if (pdipm->Nxfixed) PetscCall(ISDestroy(&pdipm->isxfixed)); /* Fixed variables         lb =  x = ub */
 
-  if (pdipm->Nxbox) { PetscCall(ISDestroy(&pdipm->isxbox)); /* Boxed variables         lb <= x <= ub */ }
+  if (pdipm->Nxbox) PetscCall(ISDestroy(&pdipm->isxbox)); /* Boxed variables         lb <= x <= ub */
 
-  if (pdipm->Nxfree) { PetscCall(ISDestroy(&pdipm->isxfree)); /* Free variables        -inf <= x <= inf */ }
+  if (pdipm->Nxfree) PetscCall(ISDestroy(&pdipm->isxfree)); /* Free variables        -inf <= x <= inf */
 
   if (pdipm->solve_reduced_kkt) {
     PetscCall(ISDestroy(&pdipm->is1));

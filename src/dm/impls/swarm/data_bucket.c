@@ -236,7 +236,7 @@ PetscErrorCode DMSwarmDataFieldZeroBlock(DMSwarmDataField df, const PetscInt sta
  */
 PetscErrorCode DMSwarmDataBucketSetSizes(DMSwarmDataBucket db, const PetscInt L, const PetscInt buffer)
 {
-  PetscInt  current_allocated, new_used, new_unused, new_buffer, new_allocated, f;
+  PetscInt  current_allocated, current_used, new_used, new_unused, new_buffer, new_allocated, f, end;
   PetscBool any_active_fields;
 
   PetscFunctionBegin;
@@ -245,6 +245,7 @@ PetscErrorCode DMSwarmDataBucketSetSizes(DMSwarmDataBucket db, const PetscInt L,
   PetscCheck(!any_active_fields, PETSC_COMM_SELF, PETSC_ERR_USER, "Cannot safely re-size as at least one DMSwarmDataField is currently being accessed");
 
   current_allocated = db->allocated;
+  current_used      = PetscMax(db->L, 0);
   new_used          = L;
   new_unused        = current_allocated - new_used;
   new_buffer        = db->buffer;
@@ -254,8 +255,11 @@ PetscErrorCode DMSwarmDataBucketSetSizes(DMSwarmDataBucket db, const PetscInt L,
   new_allocated = new_used + new_buffer;
   /* action */
   if (new_allocated > current_allocated) {
-    /* increase size to new_used + new_buffer */
-    for (f = 0; f < db->nfields; f++) PetscCall(DMSwarmDataFieldSetSize(db->field[f], new_allocated));
+    /* increase size to new_used + new_buffer and zero new space */
+    for (f = 0; f < db->nfields; f++) {
+      PetscCall(DMSwarmDataFieldSetSize(db->field[f], new_allocated));
+      PetscCall(DMSwarmDataFieldZeroBlock(db->field[f], current_allocated, new_allocated));
+    }
     db->L         = new_used;
     db->buffer    = new_buffer;
     db->allocated = new_used + new_buffer;
@@ -271,10 +275,13 @@ PetscErrorCode DMSwarmDataBucketSetSizes(DMSwarmDataBucket db, const PetscInt L,
       db->buffer = new_buffer;
     }
   }
-  /* zero all entries from db->L to db->allocated */
-  for (f = 0; f < db->nfields; ++f) {
-    DMSwarmDataField field = db->field[f];
-    PetscCall(DMSwarmDataFieldZeroBlock(field, db->L, db->allocated));
+  /* if we shrunk, zero old entries from new_used to current_used or end of array */
+  end = PetscMin(current_used, new_allocated);
+  if (end > new_used) {
+    for (f = 0; f < db->nfields; ++f) {
+      DMSwarmDataField field = db->field[f];
+      PetscCall(DMSwarmDataFieldZeroBlock(field, new_used, end));
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -445,7 +452,7 @@ PetscErrorCode DMSwarmDataBucketCreateFromSubset(DMSwarmDataBucket DBIn, const P
 }
 
 /* insert into an existing location */
-PetscErrorCode DMSwarmDataFieldInsertPoint(const DMSwarmDataField field, const PetscInt index, const void *ctx)
+PetscErrorCode DMSwarmDataFieldInsertPoint(const DMSwarmDataField field, const PetscInt index, const void *data)
 {
   PetscFunctionBegin;
 #if defined(DMSWARM_DATAFIELD_POINT_ACCESS_GUARD)
@@ -453,7 +460,7 @@ PetscErrorCode DMSwarmDataFieldInsertPoint(const DMSwarmDataField field, const P
   PetscCheck(index >= 0, PETSC_COMM_SELF, PETSC_ERR_USER, "index must be >= 0");
   PetscCheck(index < field->L, PETSC_COMM_SELF, PETSC_ERR_USER, "index must be < %" PetscInt_FMT, field->L);
 #endif
-  PetscCall(PetscMemcpy(DMSWARM_DATAFIELD_point_access(field->data, index, field->atomic_size), ctx, field->atomic_size));
+  PetscCall(PetscMemcpy(DMSWARM_DATAFIELD_point_access(field->data, index, field->atomic_size), data, field->atomic_size));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -555,7 +562,7 @@ PetscErrorCode DMSwarmDataBucketRemovePoint(DMSwarmDataBucket db)
 static PetscErrorCode DMSwarmDataBucketView_stdout(MPI_Comm comm, DMSwarmDataBucket db)
 {
   PetscInt f;
-  double   memory_usage_total, memory_usage_total_local = 0.0;
+  double   memory_usage_total = 0.0;
 
   PetscFunctionBegin;
   PetscCall(PetscPrintf(comm, "DMSwarmDataBucketView: \n"));
@@ -566,9 +573,9 @@ static PetscErrorCode DMSwarmDataBucketView_stdout(MPI_Comm comm, DMSwarmDataBuc
 
   for (f = 0; f < db->nfields; ++f) {
     double memory_usage_f = (double)(db->field[f]->atomic_size * db->allocated) * 1.0e-6;
-    memory_usage_total_local += memory_usage_f;
+    memory_usage_total += memory_usage_f;
   }
-  PetscCallMPI(MPIU_Allreduce(&memory_usage_total_local, &memory_usage_total, 1, MPI_DOUBLE, MPI_SUM, comm));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &memory_usage_total, 1, MPI_DOUBLE, MPI_SUM, comm));
 
   for (f = 0; f < db->nfields; ++f) {
     double memory_usage_f = (double)(db->field[f]->atomic_size * db->allocated) * 1.0e-6;

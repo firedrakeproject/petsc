@@ -19,70 +19,70 @@ static int    OBJGRAD = 2;
 static int    OBJGTS  = 3;
 static size_t NFUNCS  = 4;
 
-static PetscErrorCode ourtaolinesearchobjectiveroutine(TaoLineSearch ls, Vec x, PetscReal *f, void *ctx)
+static PetscErrorCode ourtaolinesearchobjectiveroutine(TaoLineSearch ls, Vec x, PetscReal *f, PetscCtx ctx)
 {
   PetscCallFortranVoidFunction((*(void (*)(TaoLineSearch *, Vec *, PetscReal *, void *, PetscErrorCode *))(((PetscObject)ls)->fortran_func_pointers[OBJ]))(&ls, &x, f, ctx, &ierr));
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode ourtaolinesearchgradientroutine(TaoLineSearch ls, Vec x, Vec g, void *ctx)
+static PetscErrorCode ourtaolinesearchgradientroutine(TaoLineSearch ls, Vec x, Vec g, PetscCtx ctx)
 {
   PetscCallFortranVoidFunction((*(void (*)(TaoLineSearch *, Vec *, Vec *, void *, PetscErrorCode *))(((PetscObject)ls)->fortran_func_pointers[GRAD]))(&ls, &x, &g, ctx, &ierr));
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode ourtaolinesearchobjectiveandgradientroutine(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, void *ctx)
+static PetscErrorCode ourtaolinesearchobjectiveandgradientroutine(TaoLineSearch ls, Vec x, PetscReal *f, Vec g, PetscCtx ctx)
 {
   PetscCallFortranVoidFunction((*(void (*)(TaoLineSearch *, Vec *, PetscReal *, Vec *, void *, PetscErrorCode *))(((PetscObject)ls)->fortran_func_pointers[OBJGRAD]))(&ls, &x, f, &g, ctx, &ierr));
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode ourtaolinesearchobjectiveandgtsroutine(TaoLineSearch ls, Vec x, Vec s, PetscReal *f, PetscReal *gts, void *ctx)
+static PetscErrorCode ourtaolinesearchobjectiveandgtsroutine(TaoLineSearch ls, Vec x, Vec s, PetscReal *f, PetscReal *gts, PetscCtx ctx)
 {
   PetscCallFortranVoidFunction((*(void (*)(TaoLineSearch *, Vec *, Vec *, PetscReal *, PetscReal *, void *, PetscErrorCode *))(((PetscObject)ls)->fortran_func_pointers[OBJGTS]))(&ls, &x, &s, f, gts, ctx, &ierr));
   return PETSC_SUCCESS;
 }
 
-PETSC_EXTERN void taolinesearchsetobjectiveroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, PetscReal *, void *, PetscErrorCode *), void *ctx, PetscErrorCode *ierr)
+PETSC_EXTERN void taolinesearchsetobjectiveroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, PetscReal *, void *, PetscErrorCode *), PetscCtx ctx, PetscErrorCode *ierr)
 {
   PetscObjectAllocateFortranPointers(*ls, NFUNCS);
   if (!func) {
     *ierr = TaoLineSearchSetObjectiveRoutine(*ls, NULL, ctx);
   } else {
-    ((PetscObject)*ls)->fortran_func_pointers[OBJ] = (PetscVoidFn *)func;
+    ((PetscObject)*ls)->fortran_func_pointers[OBJ] = (PetscFortranCallbackFn *)func;
     *ierr                                          = TaoLineSearchSetObjectiveRoutine(*ls, ourtaolinesearchobjectiveroutine, ctx);
   }
 }
 
-PETSC_EXTERN void taolinesearchsetgradientroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, Vec *, void *, PetscErrorCode *), void *ctx, PetscErrorCode *ierr)
+PETSC_EXTERN void taolinesearchsetgradientroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, Vec *, void *, PetscErrorCode *), PetscCtx ctx, PetscErrorCode *ierr)
 {
   PetscObjectAllocateFortranPointers(*ls, NFUNCS);
   if (!func) {
     *ierr = TaoLineSearchSetGradientRoutine(*ls, NULL, ctx);
   } else {
-    ((PetscObject)*ls)->fortran_func_pointers[GRAD] = (PetscVoidFn *)func;
+    ((PetscObject)*ls)->fortran_func_pointers[GRAD] = (PetscFortranCallbackFn *)func;
     *ierr                                           = TaoLineSearchSetGradientRoutine(*ls, ourtaolinesearchgradientroutine, ctx);
   }
 }
 
-PETSC_EXTERN void taolinesearchsetobjectiveandgradientroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, PetscReal *, Vec *, void *, PetscErrorCode *), void *ctx, PetscErrorCode *ierr)
+PETSC_EXTERN void taolinesearchsetobjectiveandgradientroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, PetscReal *, Vec *, void *, PetscErrorCode *), PetscCtx ctx, PetscErrorCode *ierr)
 {
   PetscObjectAllocateFortranPointers(*ls, NFUNCS);
   if (!func) {
     *ierr = TaoLineSearchSetObjectiveAndGradientRoutine(*ls, NULL, ctx);
   } else {
-    ((PetscObject)*ls)->fortran_func_pointers[OBJGRAD] = (PetscVoidFn *)func;
+    ((PetscObject)*ls)->fortran_func_pointers[OBJGRAD] = (PetscFortranCallbackFn *)func;
     *ierr                                              = TaoLineSearchSetObjectiveAndGradientRoutine(*ls, ourtaolinesearchobjectiveandgradientroutine, ctx);
   }
 }
 
-PETSC_EXTERN void taolinesearchsetobjectiveandgtsroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, Vec *, PetscReal *, PetscReal *, void *, PetscErrorCode *), void *ctx, PetscErrorCode *ierr)
+PETSC_EXTERN void taolinesearchsetobjectiveandgtsroutine_(TaoLineSearch *ls, void (*func)(TaoLineSearch *, Vec *, Vec *, PetscReal *, PetscReal *, void *, PetscErrorCode *), PetscCtx ctx, PetscErrorCode *ierr)
 {
   PetscObjectAllocateFortranPointers(*ls, NFUNCS);
   if (!func) {
     *ierr = TaoLineSearchSetObjectiveAndGTSRoutine(*ls, NULL, ctx);
   } else {
-    ((PetscObject)*ls)->fortran_func_pointers[OBJGTS] = (PetscVoidFn *)func;
+    ((PetscObject)*ls)->fortran_func_pointers[OBJGTS] = (PetscFortranCallbackFn *)func;
     *ierr                                             = TaoLineSearchSetObjectiveAndGTSRoutine(*ls, ourtaolinesearchobjectiveandgtsroutine, ctx);
   }
 }

@@ -48,14 +48,12 @@ static PetscErrorCode TSThetaGetX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
 
   PetscFunctionBegin;
   if (X0) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSTheta_X0", X0));
-    } else *X0 = ts->vec_sol;
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSTheta_X0", X0));
+    else *X0 = ts->vec_sol;
   }
   if (Xdot) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSTheta_Xdot", Xdot));
-    } else *Xdot = th->Xdot;
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSTheta_Xdot", Xdot));
+    else *Xdot = th->Xdot;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -72,13 +70,13 @@ static PetscErrorCode TSThetaRestoreX0AndXdot(TS ts, DM dm, Vec *X0, Vec *Xdot)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCoarsenHook_TSTheta(DM fine, DM coarse, void *ctx)
+static PetscErrorCode DMCoarsenHook_TSTheta(DM fine, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMRestrictHook_TSTheta(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
+static PetscErrorCode DMRestrictHook_TSTheta(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec X0, Xdot, X0_c, Xdot_c;
@@ -95,13 +93,13 @@ static PetscErrorCode DMRestrictHook_TSTheta(DM fine, Mat restrct, Vec rscale, M
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainHook_TSTheta(DM dm, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainHook_TSTheta(DM dm, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainRestrictHook_TSTheta(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainRestrictHook_TSTheta(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec X0, Xdot, X0_sub, Xdot_sub;
@@ -709,6 +707,7 @@ static PetscErrorCode TSEvaluateWLTE_Theta(TS ts, NormType wnormtype, PetscInt *
     PetscReal   a = 1 + h_prev / h;
     PetscScalar scal[3];
     Vec         vecs[3];
+
     scal[0] = -1 / a;
     scal[1] = +1 / (a - 1);
     scal[2] = -1 / (a * (a - 1));
@@ -886,7 +885,6 @@ static PetscErrorCode TSForwardGetStages_Theta(TS ts, PetscInt *ns, Mat *stagese
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TSReset_Theta(TS ts)
 {
   TS_Theta *th = (TS_Theta *)ts->data;
@@ -1058,8 +1056,6 @@ static PetscErrorCode TSSetUp_Theta(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 static PetscErrorCode TSAdjointSetUp_Theta(TS ts)
 {
   TS_Theta *th = (TS_Theta *)ts->data;
@@ -1102,11 +1098,11 @@ static PetscErrorCode TSSetFromOptions_Theta(TS ts, PetscOptionItems PetscOption
 static PetscErrorCode TSView_Theta(TS ts, PetscViewer viewer)
 {
   TS_Theta *th = (TS_Theta *)ts->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Theta=%g\n", (double)th->Theta));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Extrapolation=%s\n", th->extrapolate ? "yes" : "no"));
   }
@@ -1186,7 +1182,6 @@ static PetscErrorCode TSGetStages_Theta(TS ts, PetscInt *ns, Vec *Y[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ------------------------------------------------------------ */
 /*MC
       TSTHETA - DAE solver using the implicit Theta method
 

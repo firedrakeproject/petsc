@@ -25,26 +25,27 @@ class CompilerOptions(config.base.Configure):
     # GNU gcc
     if config.setCompilers.Configure.isGNU(compiler, self.log) or config.setCompilers.Configure.isClang(compiler, self.log):
       if bopt == '':
-        flags.extend(['-Wall', '-Wwrite-strings', '-Wno-unknown-pragmas', '-Wno-lto-type-mismatch'])
+        flags.extend(['-Wall', '-Wwrite-strings', '-Wno-unknown-pragmas'])
         if config.setCompilers.Configure.isClang(compiler, self.log):
           # gcc does not support -Wno-implicit-float-conversion so -Wconversion is always noisy
-          flags.extend(['-Wconversion', '-Wno-sign-conversion', '-Wno-float-conversion', '-Wno-implicit-float-conversion', '-Wno-cast-function-type-mismatch'])
-        if config.setCompilers.Configure.isGcc110plus(compiler, self.log):
-          flags.extend(['-Wno-stringop-overflow'])
+          flags.extend(['-Wconversion', '-Wno-sign-conversion', '-Wno-float-conversion', '-Wno-implicit-float-conversion', '-Qunused-arguments'])
+          if config.setCompilers.Configure.isDarwinCatalina(self.log):
+            flags.extend(['-fno-stack-check'])
+        else:
+          flags.extend(['-Wno-lto-type-mismatch'])
+          if config.setCompilers.Configure.isGcc110plus(compiler, self.log):
+            flags.extend(['-Wno-stringop-overflow'])
+          if config.setCompilers.Configure.isARM(self.log):
+            flags.extend(['-mfp16-format=ieee']) #  ARM for utilizing 16 bit storage of floating point
         # skip -fstack-protector for brew gcc - as this gives SEGV
-        if not (config.setCompilers.Configure.isDarwin(self.log) and config.setCompilers.Configure.isGNU(compiler, self.log)):
+        if not ((config.setCompilers.Configure.isDarwin(self.log) or config.setCompilers.Configure.isMINGW(compiler, self.log)) and config.setCompilers.Configure.isGNU(compiler, self.log)):
           flags.extend(['-fstack-protector'])
-        if config.setCompilers.Configure.isDarwinCatalina(self.log) and config.setCompilers.Configure.isClang(compiler, self.log):
-          flags.extend(['-fno-stack-check'])
-        flags.extend(['-mfp16-format=ieee']) #  ARM for utilizing 16 bit storage of floating point
-        if config.setCompilers.Configure.isClang(compiler, self.log):
-          flags.extend(['-Qunused-arguments'])
         if self.argDB['with-visibility']:
           flags.extend(['-fvisibility=hidden'])
         if language == 'CUDA':
           flags.extend(['-x cuda'])
       elif bopt == 'g':
-        flags.extend(['-g3','-O0'])
+        flags.extend(['-O0','-g3'])
       elif bopt == 'O':
         flags.append('-g')
         if config.setCompilers.Configure.isClang(compiler, self.log):
@@ -139,12 +140,12 @@ class CompilerOptions(config.base.Configure):
     # GNU g++
     if config.setCompilers.Configure.isGNU(compiler, self.log) or config.setCompilers.Configure.isClang(compiler, self.log):
       if bopt == '':
-        flags.extend(['-Wall', '-Wwrite-strings', '-Wno-strict-aliasing', '-Wno-unknown-pragmas', '-Wno-lto-type-mismatch'])
+        flags.extend(['-Wall', '-Wwrite-strings', '-Wno-strict-aliasing', '-Wno-unknown-pragmas'])
         if config.setCompilers.Configure.isGNU(compiler, self.log):
-          flags.extend(['-Wno-psabi'])
+          flags.extend(['-Wno-psabi', '-Wno-lto-type-mismatch'])
         if not any([
             # skip -fstack-protector for brew gcc - as this gives SEGV
-            config.setCompilers.Configure.isDarwin(self.log) and config.setCompilers.Configure.isGNU(compiler, self.log),
+            (config.setCompilers.Configure.isDarwin(self.log) or config.setCompilers.Configure.isMINGW(compiler, self.log)) and config.setCompilers.Configure.isGNU(compiler, self.log),
             # hipcc for ROCm-4.0 crashes on some source files with -fstack-protector
             config.setCompilers.Configure.isHIP(compiler, self.log),
         ]):
@@ -161,7 +162,7 @@ class CompilerOptions(config.base.Configure):
           # HIP can cause buggy code with -O0
           flags.extend(['-g'])
         else:
-          flags.extend(['-g','-O0'])
+          flags.extend(['-O0','-g'])
       elif bopt in ['O']:
         flags.append('-g')
         if 'USER' in os.environ:
@@ -253,12 +254,8 @@ class CompilerOptions(config.base.Configure):
     if config.setCompilers.Configure.isGNU(compiler, self.log):
       if bopt == '':
         flags.extend(['-Wall', '-ffree-line-length-none', '-ffree-line-length-0', '-Wno-lto-type-mismatch'])
-        if config.setCompilers.Configure.isGfortran46plus(compiler, self.log):
+        if config.setCompilers.Configure.isGfortran8plus(compiler, self.log):
           flags.extend(['-Wno-unused-dummy-argument']) # Silence warning because dummy parameters are sometimes necessary
-        if not config.setCompilers.Configure.isGfortran47plus(compiler, self.log):
-          flags.extend(['-Wno-unused-variable']) # older gfortran warns about unused common block constants
-        if config.setCompilers.Configure.isGfortran45x(compiler, self.log):
-          flags.extend(['-Wno-line-truncation']) # Work around bug in this series, fixed in 4.6: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=42852
         if config.setCompilers.Configure.isMINGW(compiler, self.log):
           flags.extend(['-fallow-invalid-boz'])
       elif bopt == 'g':
@@ -277,20 +274,23 @@ class CompilerOptions(config.base.Configure):
           flags.extend(['-fast', '-Mnoframe'])
       # Linux Intel
       if config.setCompilers.Configure.isIntel(compiler, self.log) and not re_win32fe_ifort.search(compiler):
-        if bopt == 'g':
-          flags.extend(['-g','-O0'])
+        if bopt == '':
+          flags.append('-fpscomp logicals') # enforce Fortran logical to be compatible with C
+        elif bopt == 'g':
+          flags.extend(['-O0','-g'])
         elif bopt == 'O':
           flags.append('-g')
           flags.append('-O3')
       # Windows Intel
       elif re_win32fe_ifort.search(compiler):
         if bopt == '':
+          flags.append('-fpscomp:logicals') # enforce Fortran logical to be compatible with C
           if self.argDB['with-shared-libraries']:
             flags.extend(['-MD'])
           else:
             flags.extend(['-MT'])
         elif bopt == 'g':
-         flags.extend(['-Z7','-Od'])
+          flags.extend(['-Z7','-Od'])
         elif bopt == 'O':
           flags.extend(['-O3', '-QxW'])
       # NEC
@@ -304,6 +304,13 @@ class CompilerOptions(config.base.Configure):
           flags.append('-g')
           flags.append('-traceback=verbose')
           flags.append('-O0')
+      # NVIDIA
+      elif config.setCompilers.Configure.isNVC(compiler, self.log):
+        flags.append('-Munixlogical') # enforce Fortran logical to be compatible with C
+        if bopt == 'g':
+          flags.extend(['-g','-O0'])
+        elif bopt == 'O':
+          flags.append('-O')
     # Generic
     if not len(flags):
       if bopt == 'g':

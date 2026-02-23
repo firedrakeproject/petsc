@@ -336,10 +336,14 @@ prepend-path PATH "%s"
     if hasattr(self.compilers, 'FC'):
       if self.framework.argDB['with-fortran-bindings']:
         if not self.fortran.fortranIsF90:
-          raise RuntimeError('Error! Fortran compiler "'+self.compilers.FC+'" does not support F90! PETSc fortran bindings require a F90 compiler')
+          raise RuntimeError('Error! Fortran compiler "'+self.compilers.FC+'" does not support F90! PETSc Fortran bindings require a F90 compiler')
+        if not self.fortran.fortranBoolIsInteroperable:
+          raise RuntimeError('Error! Fortran compiler "'+self.compilers.FC+'" does not have a C-interoperable Bool type! PETSc Fortran bindings require an interoperable Bool')
         self.addDefine('USE_FORTRAN_BINDINGS','1')
         if not self.ftncmdline.have_command_argument:
           raise RuntimeError('Error! Fortran compiler "'+self.compilers.FC+'" does not support F2003 GET_COMMAND_ARGUMENT()!')
+        if not self.fortran.fortranInitializePtrInDecl:
+          raise RuntimeError('Error! Fortran compiler "'+self.compilers.FC+'" does not support the F2018 standard allowing initializing pointers in the declaration!')
       self.setCompilers.pushLanguage('FC')
       # need FPPFLAGS in config/setCompilers
       self.addMakeMacro('FPP_FLAGS',self.setCompilers.FPPFLAGS)
@@ -429,6 +433,9 @@ prepend-path PATH "%s"
       if not i.required:
         if i.devicePackage:
           self.addDefine('HAVE_DEVICE',1)
+          if self.languages.devicelanguage == 'C':
+            raise RuntimeError('Cannot use --with-devicelanguage=C with the device package ' + i.name)
+          self.languages.devicelanguage = 'Cxx'
         self.addDefine('HAVE_'+i.PACKAGE.replace('-','_'), 1)  # ONLY list package if it is used directly by PETSc (and not only by another package)
       if not isinstance(i.lib, list):
         i.lib = [i.lib]
@@ -439,6 +446,12 @@ prepend-path PATH "%s"
           i.include = [i.include]
         includes.extend(i.include)
         self.addMakeMacro(i.PACKAGE.replace('-','_')+'_INCLUDE',self.headers.toStringNoDupes(i.include))
+    if self.languages.devicelanguage == '': self.languages.devicelanguage = self.languages.clanguage
+    elif self.languages.devicelanguage == 'Cxx' and not hasattr(self.compilers, 'CXX'):
+      raise RuntimeError('Cannot use --with-devicelanguage=C++ without a valid C++ compiler')
+    if self.getMakeMacro('DEVICELANGUAGE') is None:
+      self.addDefine('DEVICELANGUAGE_'+self.languages.devicelanguage.upper(),'1')
+      self.addMakeMacro('DEVICELANGUAGE',self.languages.devicelanguage.upper())
 
     self.complibs = self.compilers.flibs+self.compilers.cxxlibs+self.compilers.LIBS.split()
     self.PETSC_EXTERNAL_LIB_BASIC = self.libraries.toStringNoDupes(self.packagelibs+self.complibs)
@@ -1388,8 +1401,9 @@ char assert_aligned[(sizeof(struct mystruct)==16)*2-1];
     if hasattr(self.compilers, 'FC') and self.framework.argDB['with-fortran-bindings']:
       self.logPrintBox('Generating Fortran binding')
       try:
-        from utils import generatefortranbindings
-        generatefortranbindings.main(self.petscdir.dir, self.arch.arch)
+        sys.path.append(os.path.join(self.petscdir.dir,'lib','petsc','bin'))
+        import generatefortranbindings
+        generatefortranbindings.main(self.petscdir.dir, '', self.arch.arch, self.mpi.mpi_f08)
       except RuntimeError as e:
         raise RuntimeError('*******Error generating Fortran stubs: '+str(e)+'*******\n')
 

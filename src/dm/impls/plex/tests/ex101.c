@@ -5,7 +5,7 @@ static char help[] = "Verify isoperiodic cone corrections";
 #define EX "ex101.c"
 
 // Creates periodic solution on a [0,1] x D domain for D dimension
-static PetscErrorCode project_function(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode project_function(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscReal x_tot = 0;
 
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
   PetscBool test_cgns_load = PETSC_FALSE;
   PetscInt  num_comps      = 1;
 
-  PetscErrorCode (*funcs)(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx) = {project_function};
+  PetscErrorCode (*funcs)(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx) = {project_function};
 
   PetscFunctionBeginUser;
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
   if (norm > tol) PetscCall(PetscPrintf(comm, "Error! GlobalToLocal result does not match Local projection by norm %g\n", (double)norm));
 
   if (test_cgns_load) {
-#ifndef PETSC_HAVE_CGNS
+#if !defined(PETSC_HAVE_CGNS)
     SETERRQ(comm, PETSC_ERR_SUP, "PETSc not compiled with CGNS support");
 #else
     PetscViewer viewer;
@@ -118,8 +118,8 @@ int main(int argc, char **argv)
 
     { // Force isoperiodic point SF to be created to update sfNatural.
       // Needs to be done before removing the field corresponding to sfNatural
-      PetscSection dummy_section;
-      PetscCall(DMGetGlobalSection(dm_read, &dummy_section));
+      PetscSection unused_section;
+      PetscCall(DMGetGlobalSection(dm_read, &unused_section));
     }
     PetscCall(CreateFEField(dm_read, PETSC_TRUE, num_comps));
 
@@ -175,13 +175,13 @@ int main(int argc, char **argv)
     requires: cgns
     suffix: cgns
     nsize: 3
-    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/2x2x2_Q3_wave.cgns -dm_plex_cgns_parallel -dm_view ::ascii_info_detail -dm_plex_box_label true -dm_plex_box_label_bd periodic,periodic,periodic -petscpartitioner_type simple -test_cgns_load -num_comps 2
+    args: -dm_plex_filename ${DATAFILESPATH}/meshes/2x2x2_Q3_wave.cgns -dm_plex_cgns_parallel -dm_view ::ascii_info_detail -dm_plex_box_label true -dm_plex_box_label_bd periodic,periodic,periodic -petscpartitioner_type simple -test_cgns_load -num_comps 2
 
   test:
     requires: cgns parmetis
     suffix: cgns_parmetis
     nsize: 3
-    args: -dm_plex_filename ${wPETSC_DIR}/share/petsc/datafiles/meshes/2x2x2_Q3_wave.cgns -dm_plex_cgns_parallel -dm_plex_box_label true -dm_plex_box_label_bd periodic,periodic,periodic -petscpartitioner_type parmetis -test_cgns_load -num_comps 2
+    args: -dm_plex_filename ${DATAFILESPATH}/meshes/2x2x2_Q3_wave.cgns -dm_plex_cgns_parallel -dm_plex_box_label true -dm_plex_box_label_bd periodic,periodic,periodic -petscpartitioner_type parmetis -test_cgns_load -num_comps 2
     output_file: output/empty.out
 
 TEST*/

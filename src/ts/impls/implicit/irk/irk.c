@@ -52,13 +52,13 @@ typedef struct {
   Input Parameters:
 + ts           - timestepping context
 . nstages      - number of stages, this is the dimension of the matrices below
-. A            - stage coefficients (dimension nstages*nstages, row-major)
-. b            - step completion table (dimension nstages)
-. c            - abscissa (dimension nstages)
-. binterp      - coefficients of the interpolation formula (dimension nstages)
-. A_inv        - inverse of A (dimension nstages*nstages, row-major)
-. A_inv_rowsum - row sum of the inverse of A (dimension nstages)
-- I_s          - identity matrix (dimension nstages*nstages)
+. A            - stage coefficients (dimension `nstages` * `nstages`, row-major)
+. b            - step completion table (dimension `nstages`)
+. c            - abscissa (dimension `nstages`)
+. binterp      - coefficients of the interpolation formula (dimension `nstages`), optional (use `NULL` to skip)
+. A_inv        - inverse of `A` (dimension `nstages` * `nstages`, row-major), optional (use `NULL` to skip)
+. A_inv_rowsum - row sum of the inverse of `A` (dimension `nstages`), optional (use `NULL` to skip)
+- I_s          - identity matrix (dimension `nstages` * `nstages`), optional (use `NULL` to skip)
 
   Level: advanced
 
@@ -138,7 +138,7 @@ static PetscErrorCode TSIRKCreate_Gauss(TS ts)
     PetscCall(MatAssemblyBegin(A_baij, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(A_baij, MAT_FINAL_ASSEMBLY));
     PetscCall(MatInvertBlockDiagonal(A_baij, &A_inv));
-    PetscCall(PetscMemcpy(gauss_A_inv, A_inv, nstages * nstages * sizeof(PetscScalar)));
+    PetscCall(PetscArraycpy(gauss_A_inv, A_inv, nstages * nstages));
     PetscCall(MatDestroy(&A_baij));
   }
 
@@ -432,9 +432,8 @@ static PetscErrorCode TSIRKGetVecs(TS ts, DM dm, Vec *U)
 
   PetscFunctionBegin;
   if (U) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSIRK_U", U));
-    } else *U = irk->U;
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSIRK_U", U));
+    else *U = irk->U;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -508,26 +507,26 @@ static PetscErrorCode SNESTSFormJacobian_IRK(SNES snes, Vec ZC, Mat JC, Mat JCpr
   dmsave = ts->dm;
   ts->dm = dm;
   PetscCall(VecGetBlockSize(Y[nstages - 1], &bs));
-  if (ts->equation_type <= TS_EQ_ODE_EXPLICIT) { /* Support explicit formulas only */
-    PetscCall(VecStrideGather(ZC, (nstages - 1) * bs, Y[nstages - 1], INSERT_VALUES));
-    PetscCall(MatKAIJGetAIJ(JC, &J));
-    PetscCall(TSComputeIJacobian(ts, ts->ptime + ts->time_step * c[nstages - 1], Y[nstages - 1], Ydot, 0, J, J, PETSC_FALSE));
-    PetscCall(MatKAIJGetS(JC, NULL, NULL, &S));
-    for (i = 0; i < nstages; i++)
-      for (j = 0; j < nstages; j++) S[i + nstages * j] = tab->A_inv[i + nstages * j] / ts->time_step;
-    PetscCall(MatKAIJRestoreS(JC, &S));
-  } else SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "TSIRK %s does not support implicit formula", irk->method_name); /* TODO: need the mass matrix for DAE  */
+  PetscCheck(ts->equation_type <= TS_EQ_ODE_EXPLICIT, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "TSIRK %s does not support implicit formula", irk->method_name); /* TODO: need the mass matrix for DAE  */
+  /* Support explicit formulas only */
+  PetscCall(VecStrideGather(ZC, (nstages - 1) * bs, Y[nstages - 1], INSERT_VALUES));
+  PetscCall(MatKAIJGetAIJ(JC, &J));
+  PetscCall(TSComputeIJacobian(ts, ts->ptime + ts->time_step * c[nstages - 1], Y[nstages - 1], Ydot, 0, J, J, PETSC_FALSE));
+  PetscCall(MatKAIJGetS(JC, NULL, NULL, &S));
+  for (i = 0; i < nstages; i++)
+    for (j = 0; j < nstages; j++) S[i + nstages * j] = tab->A_inv[i + nstages * j] / ts->time_step;
+  PetscCall(MatKAIJRestoreS(JC, &S));
   ts->dm = dmsave;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCoarsenHook_TSIRK(DM fine, DM coarse, void *ctx)
+static PetscErrorCode DMCoarsenHook_TSIRK(DM fine, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMRestrictHook_TSIRK(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
+static PetscErrorCode DMRestrictHook_TSIRK(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec U, U_c;
@@ -542,13 +541,13 @@ static PetscErrorCode DMRestrictHook_TSIRK(DM fine, Mat restrct, Vec rscale, Mat
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainHook_TSIRK(DM dm, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainHook_TSIRK(DM dm, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainRestrictHook_TSIRK(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainRestrictHook_TSIRK(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec U, U_c;
@@ -629,11 +628,11 @@ static PetscErrorCode TSSetFromOptions_IRK(TS ts, PetscOptionItems PetscOptionsO
 static PetscErrorCode TSView_IRK(TS ts, PetscViewer viewer)
 {
   TS_IRK   *irk = (TS_IRK *)ts->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     IRKTableau tab = irk->tableau;
     TSIRKType  irktype;
     char       buf[512];
@@ -822,7 +821,7 @@ static PetscErrorCode TSDestroy_IRK(TS ts)
 }
 
 /*MC
-      TSIRK - ODE and DAE solver using Implicit Runge-Kutta schemes
+  TSIRK - ODE and DAE solver using Implicit Runge-Kutta schemes
 
   Level: beginner
 
@@ -831,7 +830,7 @@ static PetscErrorCode TSDestroy_IRK(TS ts)
 
   Gauss-Legrendre methods are currently supported. These are A-stable symplectic methods with an arbitrary number of stages. The order of accuracy is 2s
   when using s stages. The default method uses three stages and thus has an order of six. The number of stages (thus order) can be set with
-  -ts_irk_nstages or `TSIRKSetNumStages()`.
+  `-ts_irk_nstages` or `TSIRKSetNumStages()`.
 
 .seealso: [](ch_ts), `TSCreate()`, `TS`, `TSSetType()`, `TSIRKSetType()`, `TSIRKGetType()`, `TSIRKGAUSS`, `TSIRKRegister()`, `TSIRKSetNumStages()`, `TSType`
 M*/

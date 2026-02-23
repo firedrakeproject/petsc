@@ -1085,7 +1085,7 @@ PETSC_KERNEL_DECL static void MDot_kernel(const PetscScalar *PETSC_RESTRICT x, c
   // bottom N threads per block write to global memory
   // REVIEW ME: I am ~pretty~ sure we don't need another __syncthreads() here since each thread
   // writes to the same sections in the above loop that it is about to read from below, but
-  // running this under the racecheck tool of cuda-memcheck reports a write-after-write hazard.
+  // running this under the racecheck tool of compute-sanitizer reports a write-after-write hazard.
   __syncthreads();
   if (tx < N) results[bx + tx * gdx] = shmem[tx * MDOT_WORKGROUP_SIZE];
   return;
@@ -2138,8 +2138,13 @@ inline PetscErrorCode VecSeq_CUPM<T>::MinMax_(TupleFuncT &&tuple_ftr, UnaryFuncT
 template <device::cupm::DeviceType T>
 inline PetscErrorCode VecSeq_CUPM<T>::Max(Vec v, PetscInt *p, PetscReal *m) noexcept
 {
+#if CCCL_VERSION >= 3001000
+  using tuple_functor = detail::tuple_compare<cuda::std::greater<PetscReal>>;
+  using unary_functor = cuda::maximum<PetscReal>;
+#else
   using tuple_functor = detail::tuple_compare<thrust::greater<PetscReal>>;
   using unary_functor = thrust::maximum<PetscReal>;
+#endif
 
   PetscFunctionBegin;
   *m = PETSC_MIN_REAL;
@@ -2152,8 +2157,13 @@ inline PetscErrorCode VecSeq_CUPM<T>::Max(Vec v, PetscInt *p, PetscReal *m) noex
 template <device::cupm::DeviceType T>
 inline PetscErrorCode VecSeq_CUPM<T>::Min(Vec v, PetscInt *p, PetscReal *m) noexcept
 {
+#if CCCL_VERSION >= 3001000
+  using tuple_functor = detail::tuple_compare<cuda::std::less<PetscReal>>;
+  using unary_functor = cuda::minimum<PetscReal>;
+#else
   using tuple_functor = detail::tuple_compare<thrust::less<PetscReal>>;
   using unary_functor = thrust::minimum<PetscReal>;
+#endif
 
   PetscFunctionBegin;
   *m = PETSC_MAX_REAL;

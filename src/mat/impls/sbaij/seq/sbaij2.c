@@ -752,11 +752,7 @@ PetscErrorCode MatMultAdd_SeqSBAIJ_1(Mat A, Vec xx, Vec yy, Vec zz)
   PetscInt           mbs = a->mbs, i, n, cval, j, jmin;
   const PetscInt    *aj = a->j, *ai = a->i, *ib;
   PetscInt           nonzerorow = 0;
-#if defined(PETSC_USE_COMPLEX)
-  const int aconj = A->hermitian == PETSC_BOOL3_TRUE;
-#else
-  const int aconj = 0;
-#endif
+  const int          aconj      = PetscDefined(USE_COMPLEX) && A->hermitian == PETSC_BOOL3_TRUE ? 1 : 0;
 
   PetscFunctionBegin;
   PetscCall(VecCopy(yy, zz));
@@ -1393,50 +1389,52 @@ PetscErrorCode MatEqual_SeqSBAIJ(Mat A, Mat B, PetscBool *flg)
   if (!*flg) PetscFunctionReturn(PETSC_SUCCESS);
 
   /* if a->a are the same */
-  PetscCall(PetscArraycmp(a->a, b->a, (a->nz) * (A->rmap->bs) * (A->rmap->bs), flg));
+  PetscCall(PetscArraycmp(a->a, b->a, a->nz * A->rmap->bs * A->rmap->bs, flg));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode MatGetDiagonal_SeqSBAIJ(Mat A, Vec v)
 {
   Mat_SeqSBAIJ    *a = (Mat_SeqSBAIJ *)A->data;
-  PetscInt         i, j, k, row, bs, ambs, bs2;
-  const PetscInt  *ai, *aj;
-  PetscScalar     *x, zero = 0.0;
-  const MatScalar *aa, *aa_j;
+  PetscInt         n;
+  const PetscInt   bs = A->rmap->bs, ambs = a->mbs, bs2 = a->bs2;
+  PetscScalar     *x;
+  const MatScalar *aa = a->a, *aa_j;
+  const PetscInt  *ai = a->i, *adiag;
+  PetscBool        diagDense;
 
   PetscFunctionBegin;
-  bs = A->rmap->bs;
   PetscCheck(!A->factortype || bs <= 1, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Not for factored matrix with bs>1");
-
-  aa   = a->a;
-  ambs = a->mbs;
-
+  PetscCall(MatGetDiagonalMarkers_SeqSBAIJ(A, &adiag, &diagDense));
   if (A->factortype == MAT_FACTOR_CHOLESKY || A->factortype == MAT_FACTOR_ICC) {
-    PetscInt *diag = a->diag;
-    aa             = a->a;
-    ambs           = a->mbs;
-    PetscCall(VecGetArray(v, &x));
-    for (i = 0; i < ambs; i++) x[i] = 1.0 / aa[diag[i]];
-    PetscCall(VecRestoreArray(v, &x));
+    PetscCall(VecGetArrayWrite(v, &x));
+    for (PetscInt i = 0; i < ambs; i++) x[i] = 1.0 / aa[adiag[i]];
+    PetscCall(VecRestoreArrayWrite(v, &x));
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
-  ai  = a->i;
-  aj  = a->j;
-  bs2 = a->bs2;
-  PetscCall(VecSet(v, zero));
-  if (!a->nz) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(VecGetArray(v, &x));
-  for (i = 0; i < ambs; i++) {
-    j = ai[i];
-    if (aj[j] == i) { /* if this is a diagonal element */
-      row  = i * bs;
-      aa_j = aa + j * bs2;
-      for (k = 0; k < bs2; k += (bs + 1), row++) x[row] = aa_j[k];
+  PetscCall(VecGetLocalSize(v, &n));
+  PetscCheck(n == A->rmap->N, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Nonconforming matrix and vector");
+  PetscCall(VecGetArrayWrite(v, &x));
+
+  if (diagDense) {
+    for (PetscInt i = 0, row = 0; i < ambs; i++) {
+      aa_j = aa + adiag[i] * bs2;
+      for (PetscInt k = 0; k < bs2; k += (bs + 1)) x[row++] = aa_j[k];
+    }
+  } else {
+    for (PetscInt i = 0, row = 0; i < ambs; i++) {
+      const PetscInt j = adiag[i];
+
+      if (j != ai[i + 1]) {
+        aa_j = aa + j * bs2;
+        for (PetscInt k = 0; k < bs2; k += (bs + 1)) x[row++] = aa_j[k];
+      } else {
+        for (PetscInt k = 0; k < bs; k++) x[row++] = 0.0;
+      }
     }
   }
-  PetscCall(VecRestoreArray(v, &x));
+  PetscCall(VecRestoreArrayWrite(v, &x));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1448,13 +1446,8 @@ PetscErrorCode MatDiagonalScale_SeqSBAIJ(Mat A, Vec ll, Vec rr)
   MatScalar         *aa, *v;
   PetscInt           i, j, k, lm, M, m, mbs, tmp, bs, bs2;
   const PetscInt    *ai, *aj;
-  PetscBool          flg;
 
   PetscFunctionBegin;
-  if (ll != rr) {
-    PetscCall(VecEqual(ll, rr, &flg));
-    PetscCheck(flg, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "For symmetric format, left and right scaling vectors must be same");
-  }
   if (!ll) PetscFunctionReturn(PETSC_SUCCESS);
   ai  = a->i;
   aj  = a->j;
@@ -1579,11 +1572,7 @@ static PetscErrorCode MatMatMult_SeqSBAIJ_1_Private(Mat A, PetscScalar *b, Petsc
   PetscScalar        x1;
   const MatScalar   *v   = a->a, *vv;
   PetscInt           mbs = a->mbs, i, *idx = a->j, *ii = a->i, j, *jj, n, k;
-#if defined(PETSC_USE_COMPLEX)
-  const int aconj = A->hermitian == PETSC_BOOL3_TRUE;
-#else
-  const int aconj = 0;
-#endif
+  const int          aconj = PetscDefined(USE_COMPLEX) && A->hermitian == PETSC_BOOL3_TRUE ? 1 : 0;
 
   PetscFunctionBegin;
   for (i = 0; i < mbs; i++) {

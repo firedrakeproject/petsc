@@ -50,15 +50,15 @@ use compatible domain decomposition relative to the 3D DMDAs.
 #include <ctype.h> /* toupper() */
 #include <petsc/private/petscimpl.h>
 
-#if defined __SSE2__
+#if defined(__SSE2__)
   #include <emmintrin.h>
 #endif
 
 /* The SSE2 kernels are only for PetscScalar=double on architectures that support it */
 #define USE_SSE2_KERNELS (!defined NO_SSE2 && !defined PETSC_USE_COMPLEX && !defined PETSC_USE_REAL_SINGLE && defined __SSE2__)
 
-#if !defined __STDC_VERSION__ || __STDC_VERSION__ < 199901L
-  #if defined __cplusplus /* C++ restrict is nonstandard and compilers have inconsistent rules about where it can be used */
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L
+  #if defined(__cplusplus) /* C++ restrict is nonstandard and compilers have inconsistent rules about where it can be used */
     #define restrict
   #else
     #define restrict PETSC_RESTRICT
@@ -102,24 +102,24 @@ static const PetscReal HexQDeriv_Lobatto[8][8][3] = {
 };
 /* Stanndard Gauss */
 static const PetscReal HexQInterp_Gauss[8][8] = {
-  {H * H * H, L *H *H, L *L *H, H *L *H, H *H *L, L *H *L, L *L *L, H *L *L},
-  {L * H * H, H *H *H, H *L *H, L *L *H, L *H *L, H *H *L, H *L *L, L *L *L},
-  {L * L * H, H *L *H, H *H *H, L *H *H, L *L *L, H *L *L, H *H *L, L *H *L},
-  {H * L * H, L *L *H, L *H *H, H *H *H, H *L *L, L *L *L, L *H *L, H *H *L},
-  {H * H * L, L *H *L, L *L *L, H *L *L, H *H *H, L *H *H, L *L *H, H *L *H},
-  {L * H * L, H *H *L, H *L *L, L *L *L, L *H *H, H *H *H, H *L *H, L *L *H},
-  {L * L * L, H *L *L, H *H *L, L *H *L, L *L *H, H *L *H, H *H *H, L *H *H},
-  {H * L * L, L *L *L, L *H *L, H *H *L, H *L *H, L *L *H, L *H *H, H *H *H}
+  {H * H * H, L * H * H, L * L * H, H * L * H, H * H * L, L * H * L, L * L * L, H * L * L},
+  {L * H * H, H * H * H, H * L * H, L * L * H, L * H * L, H * H * L, H * L * L, L * L * L},
+  {L * L * H, H * L * H, H * H * H, L * H * H, L * L * L, H * L * L, H * H * L, L * H * L},
+  {H * L * H, L * L * H, L * H * H, H * H * H, H * L * L, L * L * L, L * H * L, H * H * L},
+  {H * H * L, L * H * L, L * L * L, H * L * L, H * H * H, L * H * H, L * L * H, H * L * H},
+  {L * H * L, H * H * L, H * L * L, L * L * L, L * H * H, H * H * H, H * L * H, L * L * H},
+  {L * L * L, H * L * L, H * H * L, L * H * L, L * L * H, H * L * H, H * H * H, L * H * H},
+  {H * L * L, L * L * L, L * H * L, H * H * L, H * L * H, L * L * H, L * H * H, H * H * H}
 };
 static const PetscReal HexQDeriv_Gauss[8][8][3] = {
-  {{M * H * H, H *M *H, H *H *M}, {P * H * H, L *M *H, L *H *M}, {P * L * H, L *P *H, L *L *M}, {M * L * H, H *P *H, H *L *M}, {M * H * L, H *M *L, H *H *P}, {P * H * L, L *M *L, L *H *P}, {P * L * L, L *P *L, L *L *P}, {M * L * L, H *P *L, H *L *P}},
-  {{M * H * H, L *M *H, L *H *M}, {P * H * H, H *M *H, H *H *M}, {P * L * H, H *P *H, H *L *M}, {M * L * H, L *P *H, L *L *M}, {M * H * L, L *M *L, L *H *P}, {P * H * L, H *M *L, H *H *P}, {P * L * L, H *P *L, H *L *P}, {M * L * L, L *P *L, L *L *P}},
-  {{M * L * H, L *M *H, L *L *M}, {P * L * H, H *M *H, H *L *M}, {P * H * H, H *P *H, H *H *M}, {M * H * H, L *P *H, L *H *M}, {M * L * L, L *M *L, L *L *P}, {P * L * L, H *M *L, H *L *P}, {P * H * L, H *P *L, H *H *P}, {M * H * L, L *P *L, L *H *P}},
-  {{M * L * H, H *M *H, H *L *M}, {P * L * H, L *M *H, L *L *M}, {P * H * H, L *P *H, L *H *M}, {M * H * H, H *P *H, H *H *M}, {M * L * L, H *M *L, H *L *P}, {P * L * L, L *M *L, L *L *P}, {P * H * L, L *P *L, L *H *P}, {M * H * L, H *P *L, H *H *P}},
-  {{M * H * L, H *M *L, H *H *M}, {P * H * L, L *M *L, L *H *M}, {P * L * L, L *P *L, L *L *M}, {M * L * L, H *P *L, H *L *M}, {M * H * H, H *M *H, H *H *P}, {P * H * H, L *M *H, L *H *P}, {P * L * H, L *P *H, L *L *P}, {M * L * H, H *P *H, H *L *P}},
-  {{M * H * L, L *M *L, L *H *M}, {P * H * L, H *M *L, H *H *M}, {P * L * L, H *P *L, H *L *M}, {M * L * L, L *P *L, L *L *M}, {M * H * H, L *M *H, L *H *P}, {P * H * H, H *M *H, H *H *P}, {P * L * H, H *P *H, H *L *P}, {M * L * H, L *P *H, L *L *P}},
-  {{M * L * L, L *M *L, L *L *M}, {P * L * L, H *M *L, H *L *M}, {P * H * L, H *P *L, H *H *M}, {M * H * L, L *P *L, L *H *M}, {M * L * H, L *M *H, L *L *P}, {P * L * H, H *M *H, H *L *P}, {P * H * H, H *P *H, H *H *P}, {M * H * H, L *P *H, L *H *P}},
-  {{M * L * L, H *M *L, H *L *M}, {P * L * L, L *M *L, L *L *M}, {P * H * L, L *P *L, L *H *M}, {M * H * L, H *P *L, H *H *M}, {M * L * H, H *M *H, H *L *P}, {P * L * H, L *M *H, L *L *P}, {P * H * H, L *P *H, L *H *P}, {M * H * H, H *P *H, H *H *P}}
+  {{M * H * H, H * M * H, H * H * M}, {P * H * H, L * M * H, L * H * M}, {P * L * H, L * P * H, L * L * M}, {M * L * H, H * P * H, H * L * M}, {M * H * L, H * M * L, H * H * P}, {P * H * L, L * M * L, L * H * P}, {P * L * L, L * P * L, L * L * P}, {M * L * L, H * P * L, H * L * P}},
+  {{M * H * H, L * M * H, L * H * M}, {P * H * H, H * M * H, H * H * M}, {P * L * H, H * P * H, H * L * M}, {M * L * H, L * P * H, L * L * M}, {M * H * L, L * M * L, L * H * P}, {P * H * L, H * M * L, H * H * P}, {P * L * L, H * P * L, H * L * P}, {M * L * L, L * P * L, L * L * P}},
+  {{M * L * H, L * M * H, L * L * M}, {P * L * H, H * M * H, H * L * M}, {P * H * H, H * P * H, H * H * M}, {M * H * H, L * P * H, L * H * M}, {M * L * L, L * M * L, L * L * P}, {P * L * L, H * M * L, H * L * P}, {P * H * L, H * P * L, H * H * P}, {M * H * L, L * P * L, L * H * P}},
+  {{M * L * H, H * M * H, H * L * M}, {P * L * H, L * M * H, L * L * M}, {P * H * H, L * P * H, L * H * M}, {M * H * H, H * P * H, H * H * M}, {M * L * L, H * M * L, H * L * P}, {P * L * L, L * M * L, L * L * P}, {P * H * L, L * P * L, L * H * P}, {M * H * L, H * P * L, H * H * P}},
+  {{M * H * L, H * M * L, H * H * M}, {P * H * L, L * M * L, L * H * M}, {P * L * L, L * P * L, L * L * M}, {M * L * L, H * P * L, H * L * M}, {M * H * H, H * M * H, H * H * P}, {P * H * H, L * M * H, L * H * P}, {P * L * H, L * P * H, L * L * P}, {M * L * H, H * P * H, H * L * P}},
+  {{M * H * L, L * M * L, L * H * M}, {P * H * L, H * M * L, H * H * M}, {P * L * L, H * P * L, H * L * M}, {M * L * L, L * P * L, L * L * M}, {M * H * H, L * M * H, L * H * P}, {P * H * H, H * M * H, H * H * P}, {P * L * H, H * P * H, H * L * P}, {M * L * H, L * P * H, L * L * P}},
+  {{M * L * L, L * M * L, L * L * M}, {P * L * L, H * M * L, H * L * M}, {P * H * L, H * P * L, H * H * M}, {M * H * L, L * P * L, L * H * M}, {M * L * H, L * M * H, L * L * P}, {P * L * H, H * M * H, H * L * P}, {P * H * H, H * P * H, H * H * P}, {M * H * H, L * P * H, L * H * P}},
+  {{M * L * L, H * M * L, H * L * M}, {P * L * L, L * M * L, L * L * M}, {P * H * L, L * P * L, L * H * M}, {M * H * L, H * P * L, H * H * M}, {M * L * H, H * M * H, H * L * P}, {P * L * H, L * M * H, L * L * P}, {P * H * H, L * P * H, L * H * P}, {M * H * H, H * P * H, H * H * P}}
 };
 static const PetscReal (*HexQInterp)[8], (*HexQDeriv)[8][3];
 /* Standard 2x2 Gauss quadrature for the bottom layer. */
@@ -891,7 +891,7 @@ static PetscErrorCode THIFunctionLocal_2D(DMDALocalInfo *info, const Node ***x, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode THIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx)
+static PetscErrorCode THIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, PetscCtx ctx)
 {
   THI             thi = (THI)ctx;
   DM              pack, da3, da2;
@@ -1198,7 +1198,7 @@ static PetscErrorCode THIJacobianLocal_Momentum(DMDALocalInfo *info, const Node 
           const PetscInt rc3blocked[8]                 = {DMDALocalIndex3D(info, i + 0, j + 0, k + 0), DMDALocalIndex3D(info, i + 1, j + 0, k + 0), DMDALocalIndex3D(info, i + 1, j + 1, k + 0), DMDALocalIndex3D(info, i + 0, j + 1, k + 0),
                                                           DMDALocalIndex3D(info, i + 0, j + 0, k + 1), DMDALocalIndex3D(info, i + 1, j + 0, k + 1), DMDALocalIndex3D(info, i + 1, j + 1, k + 1), DMDALocalIndex3D(info, i + 0, j + 1, k + 1)},
                          col2blocked[PRMNODE_SIZE * 4] = {DMDALocalIndex2D(info, i + 0, j + 0), DMDALocalIndex2D(info, i + 1, j + 0), DMDALocalIndex2D(info, i + 1, j + 1), DMDALocalIndex2D(info, i + 0, j + 1)};
-#if !defined COMPUTE_LOWER_TRIANGULAR /* fill in lower-triangular part, this is really cheap compared to computing the entries */
+#if !defined(COMPUTE_LOWER_TRIANGULAR) /* fill in lower-triangular part, this is really cheap compared to computing the entries */
           for (l = 0; l < 8; l++) {
             for (ll = l + 1; ll < 8; ll++) {
               Ke[ll * 2 + 0][l * 2 + 0] = Ke[l * 2 + 0][ll * 2 + 0];
@@ -1268,7 +1268,7 @@ static PetscErrorCode THIJacobianLocal_2D(DMDALocalInfo *info, const Node ***x3,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode THIJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, void *ctx)
+static PetscErrorCode THIJacobian(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A, Mat B, PetscCtx ctx)
 {
   THI             thi = (THI)ctx;
   DM              pack, da3, da2;
@@ -1470,7 +1470,7 @@ static PetscErrorCode THIDAVecView_VTK_XML(THI thi, DM pack, Vec X, const char f
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode THITSMonitor(TS ts, PetscInt step, PetscReal t, Vec X, void *ctx)
+static PetscErrorCode THITSMonitor(TS ts, PetscInt step, PetscReal t, Vec X, PetscCtx ctx)
 {
   THI  thi = (THI)ctx;
   DM   pack;

@@ -148,7 +148,6 @@ PetscErrorCode MatViennaCLCopyFromGPU(Mat A, const ViennaCLAIJMatrix *Agpu)
 
       PetscCall(PetscLogGpuToCpu(row_buffer.raw_size() + col_buffer.raw_size() + (Agpu->nnz() * sizeof(PetscScalar))));
       ViennaCLWaitForGPU();
-      /* TODO: Once a->diag is moved out of MatAssemblyEnd(), invalidate it here. */
     } catch (std::exception const &ex) {
       SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "ViennaCL error: %s", ex.what());
     }
@@ -250,7 +249,6 @@ static PetscErrorCode MatAssemblyEnd_SeqAIJViennaCL(Mat A, MatAssemblyType mode)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* --------------------------------------------------------------------------------*/
 /*@C
   MatCreateSeqAIJViennaCL - Creates a sparse matrix in `MATSEQAIJVIENNACL` (compressed row) format
   (the default parallel PETSc format).  This matrix will ultimately be pushed down

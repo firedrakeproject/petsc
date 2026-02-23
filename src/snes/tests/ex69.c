@@ -107,8 +107,8 @@ int main(int argc, char **argv)
     PetscCall(MatGetLocalSize(Jmf, &mlocal, &nlocal));
     matshellctx.Jmf = Jmf;
     PetscCall(MatCreateShell(PetscObjectComm((PetscObject)Jmf), mlocal, nlocal, PETSC_DECIDE, PETSC_DECIDE, &matshellctx, &J));
-    PetscCall(MatShellSetOperation(J, MATOP_MULT, (void (*)(void))MatMult_MyShell));
-    PetscCall(MatShellSetOperation(J, MATOP_ASSEMBLY_END, (void (*)(void))MatAssemblyEnd_MyShell));
+    PetscCall(MatShellSetOperation(J, MATOP_MULT, (PetscErrorCodeFn *)MatMult_MyShell));
+    PetscCall(MatShellSetOperation(J, MATOP_ASSEMBLY_END, (PetscErrorCodeFn *)MatAssemblyEnd_MyShell));
     PetscCall(SNESSetJacobian(user.snes, J, J, MatMFFDComputeJacobian, NULL));
   }
 
@@ -389,7 +389,7 @@ PetscErrorCode PCApply_MyShell(PC pc, Vec x, Vec y)
 
 PETSC_EXTERN PetscErrorCode SNESComputeJacobian_DMDA(SNES, Vec, Mat, Mat, void *);
 
-PetscErrorCode SNESComputeJacobian_MyShell(SNES snes, Vec X, Mat A, Mat B, void *ctx)
+PetscErrorCode SNESComputeJacobian_MyShell(SNES snes, Vec X, Mat A, Mat B, PetscCtx ctx)
 {
   static PetscInt fail = 0;
 

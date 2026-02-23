@@ -69,7 +69,7 @@ class Configure(config.package.Package):
     help.addArgument('MPI', '-with-mpiexec-tail=<prog>',                         nargs.Arg(None, None, 'The utility you want to put at the very end of "mpiexec -n <np> ..." and right before your executable to launch MPI jobs.'))
     help.addArgument('MPI', '-with-mpi-compilers=<bool>',                        nargs.ArgBool(None, 1, 'Try to use the MPI compilers, e.g. mpicc'))
     help.addArgument('MPI', '-known-mpi-shared-libraries=<bool>',                nargs.ArgBool(None, None, 'Indicates the MPI libraries are shared (the usual test will be skipped)'))
-    help.addArgument('MPI', '-with-mpi-f90module-visibility=<bool>',             nargs.ArgBool(None, 1, 'Indicates the MPI f90 module is available via PETSc module. When disabled, mpi_f08 can be used from user code'))
+    help.addArgument('MPI', '-with-mpi-ftn-module=<mpi or mpi_f08>',                      nargs.ArgString(None, "mpi", 'Specify the MPI Fortran module to build with'))
     return
 
   def setupDependencies(self, framework):
@@ -276,7 +276,7 @@ shared libraries and run with --known-mpi-shared-libraries=1')
     # using mpiexec environmental variables make sure mpiexec matches the MPI libraries and save the variables for testing in PetscInitialize()
     # the variable HAVE_MPIEXEC_ENVIRONMENTAL_VARIABLE is not currently used. PetscInitialize() can check the existence of the environmental variable to
     # determine if the program has been started with the correct mpiexec (will only be set for parallel runs so not clear how to check appropriately)
-    (out, err, ret) = Configure.executeShellCommand(self.mpiexec+' -n 1 printenv', checkCommand = noCheck, timeout = 120, threads = 1, log = self.log)
+    (out, err, ret) = Configure.executeShellCommand(self.mpiexec+' -n 1 printenv | grep -v KEY', checkCommand = noCheck, timeout = 120, threads = 1, log = self.log)
     if ret:
       self.logWrite('Unable to run '+self.mpiexec+' with option "-n 1 printenv"\nThis could be ok, some MPI implementations such as SGI produce a non-zero status with non-MPI programs\n'+out+err)
     else:
@@ -500,18 +500,7 @@ Unable to run hostname to check the network')
                        if (MPI_Neighbor_alltoallv(0,0,0,MPI_INT,0,0,0,MPI_INT,distcomm)) { }\n\
                        if (MPI_Ineighbor_alltoallv(0,0,0,MPI_INT,0,0,0,MPI_INT,distcomm,&req)) { }\n'):
       self.addDefine('HAVE_MPI_NEIGHBORHOOD_COLLECTIVES',1)
-    cuda_aware = 0
-    if hasattr(self, 'ompi_major_version'):
-      openmpi_cuda_test = '#include<mpi.h>\n #include <mpi-ext.h>\n #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT\n #else\n #error This Open MPI is not CUDA-aware\n #endif\n'
-      if self.checkCompile(openmpi_cuda_test):
-        cuda_aware = 1
-    elif hasattr(self, 'mpich_numversion'):
-      if self.libraries.check(self.dlib, "yaksuri_cudai_unpack_wchar_t"):
-        cuda_aware = 1
-    if cuda_aware:
-      self.addDefine('HAVE_MPI_GPU_AWARE', 1)
-    else:
-      self.testoptions = '-use_gpu_aware_mpi 0'
+
     if self.checkLink('#include <mpi.h>\n', 'int ptr[1] = {0}; MPI_Win win = 0; if (MPI_Get_accumulate(ptr,1,MPI_INT,ptr,1,MPI_INT,0,0,1,MPI_INT,MPI_SUM,win)) { }\n'):
       self.addDefine('HAVE_MPI_GET_ACCUMULATE', 1)
     if self.checkLink('#include <mpi.h>\n', 'int ptr[1]; MPI_Win win = 0; MPI_Request req; if (MPI_Rget(ptr,1,MPI_INT,0,1,1,MPI_INT,win,&req)) { }\n'):
@@ -520,7 +509,6 @@ Unable to run hostname to check the network')
     self.compilers.LIBS = oldLibs
     self.logWrite(self.framework.restoreLog())
     return
-
 
   def configureMPI4(self):
     '''Check for functions added to the interface in MPI-4'''
@@ -613,6 +601,30 @@ Unable to run hostname to check the network')
       self.logWrite(self.framework.restoreLog())
     return
 
+  def configureMPIGPUAware(self):
+    '''Check if the MPI supports GPUs. If yes, define HAVE_MPI_GPU_AWARE, otherwise set testoptions to not rely on GPU-aware MPI.'''
+    import re
+    gpu_aware = 0
+    if hasattr(self, 'ompi_major_version') and hasattr(self, 'mpiexec'):
+      # https://docs.open-mpi.org/en/main/tuning-apps/accelerators/rocm.html#checking-that-open-mpi-has-been-built-with-rocm-support
+      # Check if ompi_info prints lines like "MPI extensions: affinity, cuda, ftmpi, rocm"
+      try:
+        ompi_info = os.path.join(os.path.dirname(self.mpiexec), 'ompi_info') # ompi_info should be in the same directory as mpiexec/mpirun
+        (out, err, status) = Configure.executeShellCommand(ompi_info, timeout = 60, log = self.log, threads = 1)
+        if not status and not err:
+          pattern = re.compile(r'^.*MPI extensions:.*\b(cuda|rocm)\b.*$', re.MULTILINE)
+          if pattern.search(out): gpu_aware = 1
+      except:
+        pass
+    elif hasattr(self, 'mpich_numversion'):
+      if (self.cuda.found and self.libraries.check(self.dlib, 'yaksuri_cudai_unpack_wchar_t')) or (self.hip.found and self.libraries.check(self.dlib, 'yaksuri_hipi_unpack_wchar_t')): gpu_aware = 1
+    if gpu_aware:
+      self.addDefine('HAVE_MPI_GPU_AWARE', 1)
+    else:
+      self.log.write('We find the MPI was not configured with GPU support. Add "-use_gpu_aware_mpi 0" to PETSc CI test.\n')
+      self.testoptions = '-use_gpu_aware_mpi 0'
+    return
+
   def configureMPITypes(self):
     '''Checking for MPI Datatype handles'''
     oldFlags = self.compilers.CPPFLAGS
@@ -642,14 +654,12 @@ Unable to run hostname to check the network')
     self.addMakeMacro('MPIEXEC','${PETSC_DIR}/lib/petsc/bin/petsc-mpiexec.uni')
     self.executeTest(self.configureMPIEXEC_TAIL)
     self.framework.saveLog()
-    self.framework.addDefine('MPI_Type_create_struct(count,lens,displs,types,newtype)', 'MPI_Type_struct((count),(lens),(displs),(types),(newtype))')
-    self.framework.addDefine('MPI_Comm_create_errhandler(p_err_fun,p_errhandler)', 'MPI_Errhandler_create((p_err_fun),(p_errhandler))')
-    self.framework.addDefine('MPI_Comm_set_errhandler(comm,p_errhandler)', 'MPI_Errhandler_set((comm),(p_errhandler))')
     self.logWrite(self.framework.restoreLog())
     self.usingMPIUni = 1
     self.found = 1
     self.version = 'PETSc MPIUNI uniprocessor MPI replacement'
     self.executeTest(self.PetscArchMPICheck)
+    self.mpi_f08 = False
     return
 
   def checkDownload(self):
@@ -698,11 +708,6 @@ Unable to run hostname to check the network')
     self.log.write('Checking for fortran mpi_init()\n')
     if not self.libraries.check(self.lib,'', call = '#include "mpif.h"\n       integer ierr\n       call mpi_init(ierr)'):
       raise RuntimeError('Fortran error! mpi_init() could not be located!')
-    # check if mpi.mod exists
-    if self.fortran.fortranIsF90:
-      self.log.write('Checking for mpi.mod\n')
-      if self.libraries.check(self.lib,'', call = '       use mpi\n       integer(kind=selected_int_kind(5)) ierr,rank\n       call mpi_init(ierr)\n       call mpi_comm_rank(MPI_COMM_WORLD,rank,ierr)\n'):
-        self.addDefine('HAVE_MPI_F90MODULE', 1)
     self.compilers.FPPFLAGS = oldFlags
     self.libraries.popLanguage()
     return 0
@@ -935,15 +940,39 @@ Unable to run hostname to check the network')
       self.compilers.CPPFLAGS = oldFlags
     return
 
-
   def configureLibrary(self):
     '''Calls the regular package configureLibrary and then does an additional test needed by MPI'''
     import platform
     if 'with-'+self.package+'-shared' in self.argDB:
       self.argDB['with-'+self.package] = 1
     config.package.Package.configureLibrary(self)
-    if self.argDB['with-mpi-f90module-visibility']:
-      self.addDefine('HAVE_MPI_F90MODULE_VISIBILITY',1)
+    if hasattr(self.compilers, 'FC'):
+      self.mpi_f08 = False
+      if self.argDB['with-mpi-ftn-module'] == 'mpi_f08':
+        self.addDefine('USE_MPI_F08',1)
+        self.mpi_f08 = True
+      elif not self.argDB['with-mpi-ftn-module'] == 'mpi':
+        raise RuntimeError('--with-mpi-ftn-module must be "mpi" or "mpi_f08", not "' + self.argDB['with-mpi-ftn-module'] +'"')
+      self.addDefine('MPI_FTN_MODULE',self.argDB['with-mpi-ftn-module'])
+
+      self.libraries.pushLanguage('FC')
+      oldFlags = self.compilers.FPPFLAGS
+      self.compilers.FPPFLAGS += ' '+self.headers.toString(self.include)
+      if self.mpi_f08:
+        self.log.write('Checking for mpi_f80.mod\n')
+        if self.libraries.check(self.lib,'', call = '       use mpi_f08\n       integer(kind=selected_int_kind(5)) ierr,rank\n       call mpi_init(ierr)\n       call mpi_comm_rank(MPI_COMM_WORLD,rank,ierr)\n'):
+          self.addDefine('HAVE_MPI_FTN_MODULE', 1)
+        else:
+          raise RuntimeError('You requested --with-mpi-ftn-module=mpi_f08 but that module does not exist')
+      else:
+        self.log.write('Checking for mpi.mod\n')
+        if self.libraries.check(self.lib,'', call = '       use mpi\n       integer(kind=selected_int_kind(5)) ierr,rank\n       call mpi_init(ierr)\n       call mpi_comm_rank(MPI_COMM_WORLD,rank,ierr)\n'):
+          self.addDefine('HAVE_MPI_FTN_MODULE', 1)
+        elif 'HAVE_MSMPI' not in self.defines:
+          self.logPrintWarning('Unable to find or use the MPI Fortran module file mpi.mod! PETSc will be configured to use "mpif.h" and not the MPI Fortran module')
+      self.compilers.FPPFLAGS = oldFlags
+      self.libraries.popLanguage()
+
     if self.setCompilers.usedMPICompilers:
       if 'with-mpi-include' in self.argDB: raise RuntimeError('Do not use --with-mpi-include when using MPI compiler wrappers')
       if 'with-mpi-lib' in self.argDB: raise RuntimeError('Do not use --with-mpi-lib when using MPI compiler wrappers')
@@ -961,10 +990,11 @@ You may need to set the environmental variable HWLOC_COMPONENTS to -x86 to preve
     self.executeTest(self.configureMPIX)
     self.executeTest(self.configureMPIEXEC)
     self.executeTest(self.configureMPIEXEC_TAIL)
+    self.executeTest(self.configureMPIGPUAware) # needs self.mpiexec
     self.executeTest(self.configureMPITypes)
     self.executeTest(self.SGIMPICheck)
     self.executeTest(self.CxxMPICheck)
-    self.executeTest(self.FortranMPICheck)
+    self.executeTest(self.FortranMPICheck) #depends on checkMPIDistro
     self.executeTest(self.configureIO) #depends on checkMPIDistro
     self.executeTest(self.findMPIIncludeAndLib)
     self.executeTest(self.PetscArchMPICheck)

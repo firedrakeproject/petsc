@@ -320,11 +320,11 @@ PetscErrorCode PCDestroy_PBJacobi(PC pc)
 static PetscErrorCode PCView_PBJacobi(PC pc, PetscViewer viewer)
 {
   PC_PBJacobi *jac = (PC_PBJacobi *)pc->data;
-  PetscBool    iascii;
+  PetscBool    isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  point-block size %" PetscInt_FMT "\n", jac->bs));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) PetscCall(PetscViewerASCIIPrintf(viewer, "  point-block size %" PetscInt_FMT "\n", jac->bs));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -341,7 +341,7 @@ static PetscErrorCode PCView_PBJacobi(PC pc, PetscViewer viewer)
 
    Developer Notes:
      This should support the `PCSetErrorIfFailure()` flag set to `PETSC_TRUE` to allow
-     the factorization to continue even after a zero pivot is found resulting in a Nan and hence
+     the factorization to continue even after a zero pivot is found resulting in a NaN and hence
      terminating `KSP` with a `KSP_DIVERGED_NANORINF` allowing
      a nonlinear solver/ODE integrator to recover without stopping the program as currently happens.
 

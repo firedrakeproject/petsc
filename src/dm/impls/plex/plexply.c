@@ -1,4 +1,3 @@
-#define PETSCDM_DLL
 #include <petsc/private/dmpleximpl.h> /*I   "petscdmplex.h"   I*/
 
 /*@
@@ -92,9 +91,8 @@ PetscErrorCode DMPlexCreatePLYFromFile(MPI_Comm comm, const char filename[], Pet
             vtype[Nvp] = 'd';
           } else {
             PetscCall(PetscStrncmp(ntype, "uint8", 16, &matchB));
-            if (matchB) {
-              vtype[Nvp] = 'c';
-            } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unable to parse type in PLY file header: %s", line);
+            PetscCheck(matchB, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Unable to parse type in PLY file header: %s", line);
+            vtype[Nvp] = 'c';
           }
         }
         PetscCall(PetscStrncmp(name, "x", 16, &matchB));

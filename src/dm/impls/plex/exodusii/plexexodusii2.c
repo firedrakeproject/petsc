@@ -1,4 +1,3 @@
-#define PETSCDM_DLL
 #include <petsc/private/dmpleximpl.h> /*I   "petscdmplex.h"   I*/
 
 #include <netcdf.h>
@@ -191,18 +190,18 @@ static PetscErrorCode PetscViewerExodusIISetOrder_ExodusII(PetscViewer viewer, P
 }
 
 /*@
-  PetscViewerExodusIISetZonalVariable - Sets the number of zonal variables in an exodusII file
+  PetscViewerExodusIISetZonalVariable - Sets the number of zonal variables in an ExodusII file
 
   Collective;
 
   Input Parameters:
 + viewer - a `PetscViewer` of type `PETSCVIEWEREXODUSII`
-- num    - the number of zonal variables in the exodusII file
+- num    - the number of zonal variables in the ExodusII file
 
   Level: intermediate
 
   Notes:
-  The exodusII API does not allow changing the number of variables in a file so this function will return an error
+  The ExodusII API does not allow changing the number of variables in a file so this function will return an error
   if called twice, called on a read-only file, or called on file for which the number of variables has already been specified
 
 .seealso: `PETSCVIEWEREXODUSII`, `PetscViewer`, `PetscViewerCreate()`, `PetscViewerDestroy()`, `PetscViewerExodusIIOpen()`, `PetscViewerSetType()`, `PetscViewerType`, `PetscViewerExodusIIGetZonalVariable()`
@@ -220,25 +219,25 @@ PetscErrorCode PetscViewerExodusIISetZonalVariable(PetscViewer viewer, PetscExod
 
   exo->numZonalVariables = num;
   PetscCall(PetscMalloc1(num, &exo->zonalVariableNames));
-  for (int i = 0; i < num; i++) { exo->zonalVariableNames[i] = NULL; }
+  for (int i = 0; i < num; i++) exo->zonalVariableNames[i] = NULL;
   PetscCall(PetscViewerExodusIIGetId(viewer, &exoid));
   PetscCallExternal(ex_put_variable_param, exoid, EX_ELEM_BLOCK, num);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  PetscViewerExodusIISetNodalVariable - Sets the number of nodal variables in an exodusII file
+  PetscViewerExodusIISetNodalVariable - Sets the number of nodal variables in an ExodusII file
 
   Collective;
 
   Input Parameters:
 + viewer - a `PetscViewer` of type `PETSCVIEWEREXODUSII`
-- num    - the number of nodal variables in the exodusII file
+- num    - the number of nodal variables in the ExodusII file
 
   Level: intermediate
 
   Notes:
-  The exodusII API does not allow changing the number of variables in a file so this function will return an error
+  The ExodusII API does not allow changing the number of variables in a file so this function will return an error
   if called twice, called on a read-only file, or called on file for which the number of variables has already been specified
 
 .seealso: `PETSCVIEWEREXODUSII`, `PetscViewer`, `PetscViewerCreate()`, `PetscViewerDestroy()`, `PetscViewerExodusIIOpen()`, `PetscViewerSetType()`, `PetscViewerType`, `PetscViewerExodusIIGetNodalVariable()`
@@ -256,14 +255,14 @@ PetscErrorCode PetscViewerExodusIISetNodalVariable(PetscViewer viewer, PetscExod
 
   exo->numNodalVariables = num;
   PetscCall(PetscMalloc1(num, &exo->nodalVariableNames));
-  for (int i = 0; i < num; i++) { exo->nodalVariableNames[i] = NULL; }
+  for (int i = 0; i < num; i++) exo->nodalVariableNames[i] = NULL;
   PetscCall(PetscViewerExodusIIGetId(viewer, &exoid));
   PetscCallExternal(ex_put_variable_param, exoid, EX_NODAL, num);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  PetscViewerExodusIIGetZonalVariable - Gets the number of zonal variables in an exodusII file
+  PetscViewerExodusIIGetZonalVariable - Gets the number of zonal variables in an ExodusII file
 
   Collective
 
@@ -271,12 +270,12 @@ PetscErrorCode PetscViewerExodusIISetNodalVariable(PetscViewer viewer, PetscExod
 . viewer - a `PetscViewer` of type `PETSCVIEWEREXODUSII`
 
   Output Parameter:
-. num - the number variables in the exodusII file
+. num - the number variables in the ExodusII file
 
   Level: intermediate
 
   Notes:
-  The number of variables in the exodusII file is cached in the viewer
+  The number of variables in the ExodusII file is cached in the viewer
 
 .seealso: `PETSCVIEWEREXODUSII`, `PetscViewer`, `PetscViewerCreate()`, `PetscViewerDestroy()`, `PetscViewerExodusIIOpen()`, `PetscViewerSetType()`, `PetscViewerType`, `PetscViewerExodusIIsetZonalVariable()`
 @*/
@@ -296,13 +295,13 @@ PetscErrorCode PetscViewerExodusIIGetZonalVariable(PetscViewer viewer, PetscExod
     PetscCallExternal(ex_get_variable_param, exoid, EX_ELEM_BLOCK, num);
     exo->numZonalVariables = *num;
     PetscCall(PetscMalloc1(*num, &exo->zonalVariableNames));
-    for (int i = 0; i < *num; i++) { exo->zonalVariableNames[i] = NULL; }
+    for (int i = 0; i < *num; i++) exo->zonalVariableNames[i] = NULL;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  PetscViewerExodusIIGetNodalVariable - Gets the number of nodal variables in an exodusII file
+  PetscViewerExodusIIGetNodalVariable - Gets the number of nodal variables in an ExodusII file
 
   Collective
 
@@ -310,7 +309,7 @@ PetscErrorCode PetscViewerExodusIIGetZonalVariable(PetscViewer viewer, PetscExod
 . viewer - a `PetscViewer` of type `PETSCVIEWEREXODUSII`
 
   Output Parameter:
-. num - the number variables in the exodusII file
+. num - the number variables in the ExodusII file
 
   Level: intermediate
 
@@ -335,7 +334,7 @@ PetscErrorCode PetscViewerExodusIIGetNodalVariable(PetscViewer viewer, PetscExod
     PetscCallExternal(ex_get_variable_param, exoid, EX_NODAL, num);
     exo->numNodalVariables = *num;
     PetscCall(PetscMalloc1(*num, &exo->nodalVariableNames));
-    for (int i = 0; i < *num; i++) { exo->nodalVariableNames[i] = NULL; }
+    for (int i = 0; i < *num; i++) exo->nodalVariableNames[i] = NULL;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -647,7 +646,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerCreate_ExodusII(PetscViewer v)
 }
 
 /*@
-  PetscViewerExodusIIGetNodalVariableIndex - return the location of a nodal variable in an exodusII file given its name
+  PetscViewerExodusIIGetNodalVariableIndex - return the location of a nodal variable in an ExodusII file given its name
 
   Collective
 
@@ -699,7 +698,7 @@ PetscErrorCode PetscViewerExodusIIGetNodalVariableIndex(PetscViewer viewer, cons
 }
 
 /*@
-  PetscViewerExodusIIGetZonalVariableIndex - return the location of a zonal variable in an exodusII file given its name
+  PetscViewerExodusIIGetZonalVariableIndex - return the location of a zonal variable in an ExodusII file given its name
 
   Collective
 
@@ -815,14 +814,14 @@ PetscErrorCode DMView_PlexExodusII(DM dm, PetscViewer viewer)
   numCells    = cEnd - cStart;
   numEdges    = eEnd - eStart;
   numVertices = vEnd - vStart;
-  PetscCheck(!(rank && (numCells || numEdges || numVertices)), PETSC_COMM_SELF, PETSC_ERR_SUP, "Writing distributed DM in exodusII format not supported");
+  PetscCheck(!(rank && (numCells || numEdges || numVertices)), PETSC_COMM_SELF, PETSC_ERR_SUP, "Writing distributed DM in ExodusII format not supported");
   if (rank == 0) {
     switch (exo->btype) {
     case FILE_MODE_READ:
     case FILE_MODE_APPEND:
     case FILE_MODE_UPDATE:
     case FILE_MODE_APPEND_UPDATE:
-      /* exodusII does not allow writing geometry to an existing file */
+      /* ExodusII does not allow writing geometry to an existing file */
       SETERRQ(PETSC_COMM_SELF, PETSC_ERR_LIB, "cannot add geometry to existing file %s", exo->filename);
     case FILE_MODE_WRITE:
       /* Create an empty file if one already exists*/
@@ -880,9 +879,8 @@ PetscErrorCode DMView_PlexExodusII(DM dm, PetscViewer viewer)
       PetscCall(DMPlexVecGetClosure(cdm, NULL, coord, cells[0], &closureSize, &xyz));
       switch (dim) {
       case 1:
-        if (closureSize == 2 * dim) {
-          type[cs] = SEGMENT;
-        } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Number of vertices %" PetscInt_FMT " in dimension %" PetscInt_FMT " has no ExodusII type", closureSize / dim, dim);
+        PetscCheck(closureSize == 2 * dim, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Number of vertices %" PetscInt_FMT " in dimension %" PetscInt_FMT " has no ExodusII type", closureSize / dim, dim);
+        type[cs] = SEGMENT;
         break;
       case 2:
         if (closureSize == 3 * dim) {
@@ -1904,7 +1902,7 @@ PetscErrorCode DMPlexCreateExodus(MPI_Comm comm, PetscExodusIIInt exoid, PetscBo
     flag[0] = cellSets ? PETSC_TRUE : PETSC_FALSE;
     flag[1] = faceSets ? PETSC_TRUE : PETSC_FALSE;
     flag[2] = vertSets ? PETSC_TRUE : PETSC_FALSE;
-    PetscCallMPI(MPI_Bcast(flag, n, MPIU_BOOL, 0, comm));
+    PetscCallMPI(MPI_Bcast(flag, n, MPI_C_BOOL, 0, comm));
     if (flag[0]) PetscCall(DMCreateLabel(*dm, "Cell Sets"));
     if (flag[1]) PetscCall(DMCreateLabel(*dm, "Face Sets"));
     if (flag[2]) PetscCall(DMCreateLabel(*dm, "Vertex Sets"));

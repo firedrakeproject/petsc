@@ -1,6 +1,5 @@
 #define PETSC_DESIRE_FEATURE_TEST_MACROS /* for fileno() */
-#define PETSCDM_DLL
-#include <petsc/private/dmpleximpl.h> /*I   "petscdmplex.h"   I*/
+#include <petsc/private/dmpleximpl.h>    /*I   "petscdmplex.h"   I*/
 
 /* Utility struct to store the contents of a Fluent file in memory */
 typedef struct {
@@ -927,7 +926,7 @@ PetscErrorCode DMPlexCreateFluent(MPI_Comm comm, PetscViewer viewer, PetscBool i
     PetscBool flag[n];
 
     flag[0] = faceSets ? PETSC_TRUE : PETSC_FALSE;
-    PetscCallMPI(MPI_Bcast(flag, n, MPIU_BOOL, 0, comm));
+    PetscCallMPI(MPI_Bcast(flag, n, MPI_C_BOOL, 0, comm));
     if (flag[0]) PetscCall(DMCreateLabel(*dm, "Face Sets"));
     // TODO Code to create all the zone labels on each process
   }

@@ -11,15 +11,15 @@ typedef struct {
   VecScatter *scctx;
 } GLVisViewerCtx;
 
-static PetscErrorCode DestroyGLVisViewerCtx_Private(void *vctx)
+static PetscErrorCode DestroyGLVisViewerCtx_Private(PetscCtxRt vctx)
 {
-  GLVisViewerCtx *ctx = (GLVisViewerCtx *)vctx;
+  GLVisViewerCtx *ctx = *(GLVisViewerCtx **)vctx;
   PetscInt        i;
 
   PetscFunctionBegin;
   for (i = 0; i < ctx->nf; i++) PetscCall(VecScatterDestroy(&ctx->scctx[i]));
   PetscCall(PetscFree(ctx->scctx));
-  PetscCall(PetscFree(vctx));
+  PetscCall(PetscFree(ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -480,7 +480,7 @@ static PetscErrorCode DMPlexView_GLVis_ASCII(DM dm, PetscViewer viewer)
   PetscCheck(glvis_container, PetscObjectComm((PetscObject)dm), PETSC_ERR_PLIB, "Missing GLVis container");
   {
     PetscViewerGLVisInfo glvis_info;
-    PetscCall(PetscContainerGetPointer(glvis_container, (void **)&glvis_info));
+    PetscCall(PetscContainerGetPointer(glvis_container, &glvis_info));
     enabled = glvis_info->enabled;
     fmt     = glvis_info->fmt;
   }

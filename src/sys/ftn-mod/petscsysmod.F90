@@ -5,23 +5,20 @@ module petscmpi
 #if defined(PETSC_HAVE_MPIUNI)
   use mpiuni
 #else
-#if defined(PETSC_HAVE_MPI_F90MODULE)
-  use mpi
+#if defined(PETSC_HAVE_MPI_FTN_MODULE)
+  use PETSC_MPI_FTN_MODULE
 #else
 #include "mpif.h"
 #endif
 #endif
 
-  public:: MPIU_REAL, MPIU_SUM, MPIU_SCALAR, MPIU_INTEGER
-  public:: PETSC_COMM_WORLD, PETSC_COMM_SELF
+  MPIU_Datatype :: MPIU_REAL
+  MPIU_Datatype :: MPIU_SCALAR
+  MPIU_Datatype :: MPIU_INTEGER
+  MPIU_Op :: MPIU_SUM
 
-  integer4 :: MPIU_REAL
-  integer4 :: MPIU_SUM
-  integer4 :: MPIU_SCALAR
-  integer4 :: MPIU_INTEGER
-
-  MPI_Comm::PETSC_COMM_WORLD = 0
-  MPI_Comm::PETSC_COMM_SELF = 0
+  MPIU_Comm:: PETSC_COMM_WORLD
+  MPIU_Comm:: PETSC_COMM_SELF
 
 #if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
 !DEC$ ATTRIBUTES DLLEXPORT::MPIU_REAL
@@ -33,22 +30,26 @@ module petscmpi
 #endif
 end module petscmpi
 
-! ------------------------------------------------------------------------
 module petscsysdef
   use, intrinsic :: ISO_C_binding
-#if defined(PETSC_HAVE_MPI_F90MODULE_VISIBILITY)
   use petscmpi
-#else
-  use petscmpi, only: MPIU_REAL,MPIU_SUM,MPIU_SCALAR,MPIU_INTEGER,PETSC_COMM_WORLD,PETSC_COMM_SELF
-#endif
   PetscReal, parameter :: PetscReal_Private = 1.0
-  Integer, parameter   :: PETSC_REAL_KIND = kind(PetscReal_Private)
+  integer, parameter   :: PETSC_REAL_KIND = kind(PetscReal_Private)
 
-  PetscBool, parameter :: PETSC_TRUE = .true.
-  PetscBool, parameter :: PETSC_FALSE = .false.
+  PetscScalar, parameter :: PetscScalar_Private = (1.0, 0.0)
+  integer, parameter   :: PETSC_SCALAR_KIND = kind(PetscScalar_Private)
+
+  PetscInt, parameter :: PetscInt_Private = 1
+  integer, parameter   :: PETSC_INT_KIND = kind(PetscInt_Private)
+
+  PetscMPIInt, parameter :: PetscMPIInt_Private = 1
+  integer, parameter   :: PETSC_MPIINT_KIND = kind(PetscMPIInt_Private)
+
+  PetscBool, parameter :: PETSC_TRUE = .true._C_BOOL
+  PetscBool, parameter :: PETSC_FALSE = .false._C_BOOL
 
   PetscInt, parameter :: PETSC_DECIDE = -1
-  PetscInt, parameter :: PETSC_DECIDE_INTEGER = -1
+  PetscInt, parameter :: PETSC_DECIDE_INTEGER = -1_PETSC_INT_KIND
   PetscReal, parameter :: PETSC_DECIDE_REAL = -1.0_PETSC_REAL_KIND
 #if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_DECIDE
@@ -101,7 +102,7 @@ module petscsysdef
 ! floating point numbers as well as complex and integers.
 !
 ! Representation of complex i
-  PetscComplex, parameter :: PETSC_i = (0.0_PETSC_REAL_KIND,1.0_PETSC_REAL_KIND)
+  PetscComplex, parameter :: PETSC_i = (0.0_PETSC_REAL_KIND, 1.0_PETSC_REAL_KIND)
 
 ! A PETSC_NULL_FUNCTION pointer
 !
@@ -115,25 +116,25 @@ module petscsysdef
   external PETSCATTACHDEBUGGERERRORHANDLER
   external PETSCIGNOREERRORHANDLER
 !
-  external  PetscIsInfOrNanScalar
-  external  PetscIsInfOrNanReal
+  external PetscIsInfOrNanScalar
+  external PetscIsInfOrNanReal
   PetscBool PetscIsInfOrNanScalar
   PetscBool PetscIsInfOrNanReal
 
 #include <../ftn/sys/petscall.h>
 
-  PetscViewer, parameter :: PETSC_VIEWER_STDOUT_SELF  = tPetscViewer(9)
-  PetscViewer, parameter :: PETSC_VIEWER_DRAW_WORLD   = tPetscViewer(4)
-  PetscViewer, parameter :: PETSC_VIEWER_DRAW_SELF    = tPetscViewer(5)
+  PetscViewer, parameter :: PETSC_VIEWER_STDOUT_SELF = tPetscViewer(9)
+  PetscViewer, parameter :: PETSC_VIEWER_DRAW_WORLD = tPetscViewer(4)
+  PetscViewer, parameter :: PETSC_VIEWER_DRAW_SELF = tPetscViewer(5)
   PetscViewer, parameter :: PETSC_VIEWER_SOCKET_WORLD = tPetscViewer(6)
-  PetscViewer, parameter :: PETSC_VIEWER_SOCKET_SELF  = tPetscViewer(7)
+  PetscViewer, parameter :: PETSC_VIEWER_SOCKET_SELF = tPetscViewer(7)
   PetscViewer, parameter :: PETSC_VIEWER_STDOUT_WORLD = tPetscViewer(8)
   PetscViewer, parameter :: PETSC_VIEWER_STDERR_WORLD = tPetscViewer(10)
-  PetscViewer, parameter :: PETSC_VIEWER_STDERR_SELF  = tPetscViewer(11)
+  PetscViewer, parameter :: PETSC_VIEWER_STDERR_SELF = tPetscViewer(11)
   PetscViewer, parameter :: PETSC_VIEWER_BINARY_WORLD = tPetscViewer(12)
-  PetscViewer, parameter :: PETSC_VIEWER_BINARY_SELF  = tPetscViewer(13)
+  PetscViewer, parameter :: PETSC_VIEWER_BINARY_SELF = tPetscViewer(13)
   PetscViewer, parameter :: PETSC_VIEWER_MATLAB_WORLD = tPetscViewer(14)
-  PetscViewer, parameter :: PETSC_VIEWER_MATLAB_SELF  = tPetscViewer(15)
+  PetscViewer, parameter :: PETSC_VIEWER_MATLAB_SELF = tPetscViewer(15)
 
   PetscViewer PETSC_VIEWER_STDOUT_
   PetscViewer PETSC_VIEWER_DRAW_
@@ -156,58 +157,58 @@ module petscsysdef
 !DEC$ ATTRIBUTES DLLEXPORT::PETSC_VIEWER_MATLAB_SELF
 #endif
 
-  PetscErrorCode, parameter :: PETSC_ERR_MEM              = 55
-  PetscErrorCode, parameter :: PETSC_ERR_SUP              = 56
-  PetscErrorCode, parameter :: PETSC_ERR_SUP_SYS          = 57
-  PetscErrorCode, parameter :: PETSC_ERR_ORDER            = 58
-  PetscErrorCode, parameter :: PETSC_ERR_SIG              = 59
-  PetscErrorCode, parameter :: PETSC_ERR_FP               = 72
-  PetscErrorCode, parameter :: PETSC_ERR_COR              = 74
-  PetscErrorCode, parameter :: PETSC_ERR_LIB              = 76
-  PetscErrorCode, parameter :: PETSC_ERR_PLIB             = 77
-  PetscErrorCode, parameter :: PETSC_ERR_MEMC             = 78
-  PetscErrorCode, parameter :: PETSC_ERR_CONV_FAILED      = 82
-  PetscErrorCode, parameter :: PETSC_ERR_USER             = 83
-  PetscErrorCode, parameter :: PETSC_ERR_SYS              = 88
-  PetscErrorCode, parameter :: PETSC_ERR_POINTER          = 70
-  PetscErrorCode, parameter :: PETSC_ERR_MPI_LIB_INCOMP   = 87
+  PetscErrorCode, parameter :: PETSC_ERR_MEM = 55
+  PetscErrorCode, parameter :: PETSC_ERR_SUP = 56
+  PetscErrorCode, parameter :: PETSC_ERR_SUP_SYS = 57
+  PetscErrorCode, parameter :: PETSC_ERR_ORDER = 58
+  PetscErrorCode, parameter :: PETSC_ERR_SIG = 59
+  PetscErrorCode, parameter :: PETSC_ERR_FP = 72
+  PetscErrorCode, parameter :: PETSC_ERR_COR = 74
+  PetscErrorCode, parameter :: PETSC_ERR_LIB = 76
+  PetscErrorCode, parameter :: PETSC_ERR_PLIB = 77
+  PetscErrorCode, parameter :: PETSC_ERR_MEMC = 78
+  PetscErrorCode, parameter :: PETSC_ERR_CONV_FAILED = 82
+  PetscErrorCode, parameter :: PETSC_ERR_USER = 83
+  PetscErrorCode, parameter :: PETSC_ERR_SYS = 88
+  PetscErrorCode, parameter :: PETSC_ERR_POINTER = 70
+  PetscErrorCode, parameter :: PETSC_ERR_MPI_LIB_INCOMP = 87
 
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_SIZ          = 60
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_IDN          = 61
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_WRONG        = 62
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_CORRUPT      = 64
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_OUTOFRANGE   = 63
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_BADPTR       = 68
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_NOTSAMETYPE  = 69
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_NOTSAMECOMM  = 80
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_WRONGSTATE   = 73
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_TYPENOTSET   = 89
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_INCOMP       = 75
-  PetscErrorCode, parameter :: PETSC_ERR_ARG_NULL         = 85
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_SIZ = 60
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_IDN = 61
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_WRONG = 62
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_CORRUPT = 64
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_OUTOFRANGE = 63
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_BADPTR = 68
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_NOTSAMETYPE = 69
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_NOTSAMECOMM = 80
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_WRONGSTATE = 73
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_TYPENOTSET = 89
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_INCOMP = 75
+  PetscErrorCode, parameter :: PETSC_ERR_ARG_NULL = 85
   PetscErrorCode, parameter :: PETSC_ERR_ARG_UNKNOWN_TYPE = 86
 
-  PetscErrorCode, parameter :: PETSC_ERR_FILE_OPEN        = 65
-  PetscErrorCode, parameter :: PETSC_ERR_FILE_READ        = 66
-  PetscErrorCode, parameter :: PETSC_ERR_FILE_WRITE       = 67
-  PetscErrorCode, parameter :: PETSC_ERR_FILE_UNEXPECTED  = 79
+  PetscErrorCode, parameter :: PETSC_ERR_FILE_OPEN = 65
+  PetscErrorCode, parameter :: PETSC_ERR_FILE_READ = 66
+  PetscErrorCode, parameter :: PETSC_ERR_FILE_WRITE = 67
+  PetscErrorCode, parameter :: PETSC_ERR_FILE_UNEXPECTED = 79
 
-  PetscErrorCode, parameter :: PETSC_ERR_MAT_LU_ZRPVT     = 71
-  PetscErrorCode, parameter :: PETSC_ERR_MAT_CH_ZRPVT     = 81
+  PetscErrorCode, parameter :: PETSC_ERR_MAT_LU_ZRPVT = 71
+  PetscErrorCode, parameter :: PETSC_ERR_MAT_CH_ZRPVT = 81
 
-  PetscErrorCode, parameter :: PETSC_ERR_INT_OVERFLOW     = 84
+  PetscErrorCode, parameter :: PETSC_ERR_INT_OVERFLOW = 84
 
-  PetscErrorCode, parameter :: PETSC_ERR_FLOP_COUNT       = 90
-  PetscErrorCode, parameter :: PETSC_ERR_NOT_CONVERGED    = 91
-  PetscErrorCode, parameter :: PETSC_ERR_MISSING_FACTOR   = 92
-  PetscErrorCode, parameter :: PETSC_ERR_OPT_OVERWRITE    = 93
-  PetscErrorCode, parameter :: PETSC_ERR_WRONG_MPI_SIZE   = 94
-  PetscErrorCode, parameter :: PETSC_ERR_USER_INPUT       = 95
-  PetscErrorCode, parameter :: PETSC_ERR_GPU_RESOURCE     = 96
-  PetscErrorCode, parameter :: PETSC_ERR_GPU              = 97
-  PetscErrorCode, parameter :: PETSC_ERR_MPI              = 98
-  PetscErrorCode, parameter :: PETSC_ERR_RETURN           = 99
+  PetscErrorCode, parameter :: PETSC_ERR_FLOP_COUNT = 90
+  PetscErrorCode, parameter :: PETSC_ERR_NOT_CONVERGED = 91
+  PetscErrorCode, parameter :: PETSC_ERR_MISSING_FACTOR = 92
+  PetscErrorCode, parameter :: PETSC_ERR_OPT_OVERWRITE = 93
+  PetscErrorCode, parameter :: PETSC_ERR_WRONG_MPI_SIZE = 94
+  PetscErrorCode, parameter :: PETSC_ERR_USER_INPUT = 95
+  PetscErrorCode, parameter :: PETSC_ERR_GPU_RESOURCE = 96
+  PetscErrorCode, parameter :: PETSC_ERR_GPU = 97
+  PetscErrorCode, parameter :: PETSC_ERR_MPI = 98
+  PetscErrorCode, parameter :: PETSC_ERR_RETURN = 99
 
-  character(len = 80) :: PETSC_NULL_CHARACTER = ''
+  character(len=80) :: PETSC_NULL_CHARACTER = ''
   PetscInt PETSC_NULL_INTEGER, PETSC_NULL_INTEGER_ARRAY(1)
   PetscInt, pointer :: PETSC_NULL_INTEGER_POINTER(:)
   PetscScalar, pointer :: PETSC_NULL_SCALAR_POINTER(:)
@@ -217,7 +218,7 @@ module petscsysdef
   PetscReal, pointer :: PETSC_NULL_REAL_POINTER(:)
   PetscBool PETSC_NULL_BOOL
   PetscEnum PETSC_NULL_ENUM
-  MPI_Comm  PETSC_NULL_MPI_COMM
+  MPIU_Comm PETSC_NULL_MPI_COMM
 !
 !     Basic math constants
 !
@@ -262,11 +263,10 @@ module petscsysdef
 
 end module petscsysdef
 
-!   ------------------------------------------------------------------------
-
 module petscsys
   use, intrinsic :: ISO_C_binding
   use petscsysdef
+  type(c_ptr) :: petscFtnCtx  ! used by automatically generated XXXGetContext() macros
 
 #include <../src/sys/ftn-mod/petscsys.h90>
 #include <../src/sys/ftn-mod/petscviewer.h90>
@@ -277,16 +277,17 @@ module petscsys
   end interface PetscInitialize
 
   interface
-    subroutine PetscSetFortranBasePointers(                &
-      PETSC_NULL_CHARACTER,                                &
-      PETSC_NULL_INTEGER,PETSC_NULL_SCALAR,                &
-      PETSC_NULL_DOUBLE,PETSC_NULL_REAL,                   &
-      PETSC_NULL_BOOL,PETSC_NULL_ENUM,PETSC_NULL_FUNCTION, &
-      PETSC_NULL_MPI_COMM,                                 &
-      PETSC_NULL_INTEGER_ARRAY,PETSC_NULL_SCALAR_ARRAY,    &
-      PETSC_NULL_REAL_ARRAY, APETSC_NULL_INTEGER_POINTER,  &
+    subroutine PetscSetFortranBasePointers( &
+      PETSC_NULL_CHARACTER, &
+      PETSC_NULL_INTEGER, PETSC_NULL_SCALAR, &
+      PETSC_NULL_DOUBLE, PETSC_NULL_REAL, &
+      PETSC_NULL_BOOL, PETSC_NULL_ENUM, PETSC_NULL_FUNCTION, &
+      PETSC_NULL_MPI_COMM, &
+      PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_SCALAR_ARRAY, &
+      PETSC_NULL_REAL_ARRAY, APETSC_NULL_INTEGER_POINTER, &
       PETSC_NULL_SCALAR_POINTER, PETSC_NULL_REAL_POINTER)
       use, intrinsic :: ISO_C_binding
+      use petscmpi
       character(*) PETSC_NULL_CHARACTER
       PetscInt PETSC_NULL_INTEGER
       PetscScalar PETSC_NULL_SCALAR
@@ -295,7 +296,7 @@ module petscsys
       PetscBool PETSC_NULL_BOOL
       PetscEnum PETSC_NULL_ENUM
       external PETSC_NULL_FUNCTION
-      MPI_Comm PETSC_NULL_MPI_COMM
+      MPIU_Comm PETSC_NULL_MPI_COMM
       PetscInt PETSC_NULL_INTEGER_ARRAY(*)
       PetscScalar PETSC_NULL_SCALAR_ARRAY(*)
       PetscReal PETSC_NULL_REAL_ARRAY(*)
@@ -313,7 +314,7 @@ module petscsys
   end interface
 
   interface petscbinaryread
-    subroutine petscbinaryreadcomplex(fd,data,num,count,type,z)
+    subroutine petscbinaryreadcomplex(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -323,7 +324,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadcomplex
-    subroutine petscbinaryreadreal(fd,data,num,count,type,z)
+    subroutine petscbinaryreadreal(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -332,8 +333,8 @@ module petscsys
       PetscInt count
       PetscDataType type
       PetscErrorCode z
-    end subroutine  petscbinaryreadreal
-    subroutine petscbinaryreadint(fd,data,num,count,type,z)
+    end subroutine petscbinaryreadreal
+    subroutine petscbinaryreadint(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -343,7 +344,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadint
-    subroutine petscbinaryreadcomplex1(fd,data,num,count,type,z)
+    subroutine petscbinaryreadcomplex1(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -353,7 +354,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadcomplex1
-    subroutine petscbinaryreadreal1(fd,data,num,count,type,z)
+    subroutine petscbinaryreadreal1(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -363,7 +364,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadreal1
-    subroutine petscbinaryreadint1(fd,data,num,count,type,z)
+    subroutine petscbinaryreadint1(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -373,7 +374,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadint1
-    subroutine petscbinaryreadcomplexcnt(fd,data,num,count,type,z)
+    subroutine petscbinaryreadcomplexcnt(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -383,7 +384,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadcomplexcnt
-    subroutine petscbinaryreadrealcnt(fd,data,num,count,type,z)
+    subroutine petscbinaryreadrealcnt(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -393,7 +394,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadrealcnt
-    subroutine petscbinaryreadintcnt(fd,data,num,count,type,z)
+    subroutine petscbinaryreadintcnt(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -403,7 +404,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadintcnt
-    subroutine petscbinaryreadcomplex1cnt(fd,data,num,count,type,z)
+    subroutine petscbinaryreadcomplex1cnt(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -413,7 +414,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadcomplex1cnt
-    subroutine petscbinaryreadreal1cnt(fd,data,num,count,type,z)
+    subroutine petscbinaryreadreal1cnt(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -423,7 +424,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinaryreadreal1cnt
-    subroutine petscbinaryreadint1cnt(fd,data,num,count,type,z)
+    subroutine petscbinaryreadint1cnt(fd, data, num, count, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -436,7 +437,7 @@ module petscsys
   end interface petscbinaryread
 
   interface petscbinarywrite
-    subroutine petscbinarywritecomplex(fd,data,num,type,z)
+    subroutine petscbinarywritecomplex(fd, data, num, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -445,7 +446,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinarywritecomplex
-    subroutine petscbinarywritereal(fd,data,num,type,z)
+    subroutine petscbinarywritereal(fd, data, num, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -454,7 +455,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinarywritereal
-    subroutine petscbinarywriteint(fd,data,num,type,z)
+    subroutine petscbinarywriteint(fd, data, num, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -463,7 +464,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinarywriteint
-    subroutine petscbinarywritecomplex1(fd,data,num,type,z)
+    subroutine petscbinarywritecomplex1(fd, data, num, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -472,7 +473,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinarywritecomplex1
-    subroutine petscbinarywritereal1(fd,data,num,type,z)
+    subroutine petscbinarywritereal1(fd, data, num, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -481,7 +482,7 @@ module petscsys
       PetscDataType type
       PetscErrorCode z
     end subroutine petscbinarywritereal1
-    subroutine petscbinarywriteint1(fd,data,num,type,z)
+    subroutine petscbinarywriteint1(fd, data, num, type, z)
       use, intrinsic :: ISO_C_binding
       import ePetscDataType
       integer4 fd
@@ -492,66 +493,65 @@ module petscsys
     end subroutine petscbinarywriteint1
   end interface petscbinarywrite
 
-  contains
+contains
 #if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
 !DEC$ ATTRIBUTES DLLEXPORT::PetscInitializeWithHelp
 #endif
-    subroutine PetscInitializeWithHelp(filename,help,ierr)
-      character(len=*) :: filename
-      character(len=*) :: help
-      PetscErrorCode   :: ierr
+  subroutine PetscInitializeWithHelp(filename, help, ierr)
+    character(len=*) :: filename
+    character(len=*) :: help
+    PetscErrorCode   :: ierr
 
-      if (filename .ne. PETSC_NULL_CHARACTER) then
-        call PetscInitializeF(trim(filename),help,ierr)
-        CHKERRQ(ierr)
-      else
-        call PetscInitializeF(filename,help,ierr)
-        CHKERRQ(ierr)
-      endif
-    end subroutine PetscInitializeWithHelp
+    if (filename /= PETSC_NULL_CHARACTER) then
+      call PetscInitializeF(trim(filename), help, ierr)
+      CHKERRQ(ierr)
+    else
+      call PetscInitializeF(filename, help, ierr)
+      CHKERRQ(ierr)
+    end if
+  end subroutine PetscInitializeWithHelp
 
 #if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
 !DEC$ ATTRIBUTES DLLEXPORT::PetscInitializeNoHelp
 #endif
-    subroutine PetscInitializeNoHelp(filename,ierr)
-      character(len=*) :: filename
-      PetscErrorCode   :: ierr
+  subroutine PetscInitializeNoHelp(filename, ierr)
+    character(len=*) :: filename
+    PetscErrorCode   :: ierr
 
-      if (filename .ne. PETSC_NULL_CHARACTER) then
-        call PetscInitializeF(trim(filename),PETSC_NULL_CHARACTER,ierr)
-        CHKERRQ(ierr)
-      else
-        call PetscInitializeF(filename,PETSC_NULL_CHARACTER,ierr)
-        CHKERRQ(ierr)
-      endif
-    end subroutine PetscInitializeNoHelp
+    if (filename /= PETSC_NULL_CHARACTER) then
+      call PetscInitializeF(trim(filename), PETSC_NULL_CHARACTER, ierr)
+      CHKERRQ(ierr)
+    else
+      call PetscInitializeF(filename, PETSC_NULL_CHARACTER, ierr)
+      CHKERRQ(ierr)
+    end if
+  end subroutine PetscInitializeNoHelp
 
 #if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
 !DEC$ ATTRIBUTES DLLEXPORT::PetscInitializeNoArguments
 #endif
-    subroutine PetscInitializeNoArguments(ierr)
-      PetscErrorCode :: ierr
+  subroutine PetscInitializeNoArguments(ierr)
+    PetscErrorCode :: ierr
 
-      call PetscInitializeF(PETSC_NULL_CHARACTER,PETSC_NULL_CHARACTER,ierr)
-      CHKERRQ(ierr)
-    end subroutine PetscInitializeNoArguments
+    call PetscInitializeF(PETSC_NULL_CHARACTER, PETSC_NULL_CHARACTER, ierr)
+    CHKERRQ(ierr)
+  end subroutine PetscInitializeNoArguments
 
 #include <../ftn/sys/petscall.hf90>
 end module petscsys
 
 subroutine F90ArraySetRealPointer(array, sz, j, T)
   use petscsysdef
-  PetscInt :: j,sz
+  PetscInt :: j, sz
   PetscReal, target    :: array(1:sz)
   PetscReal2d, pointer :: T(:)
 
-  T(j+1)%ptr=>array
+  T(j + 1)%ptr => array
 end subroutine F90ArraySetRealPointer
 #if defined(_WIN32) && defined(PETSC_USE_SHARED_LIBRARIES)
 !DEC$ ATTRIBUTES DLLEXPORT:: F90ArraySetRealPointer
 #endif
 
-!------------------------------------------------------------------------
 !TODO: generate the modules below by looping over
 !      ftn/sys/XXX.h90
 !      and skipping those in petscall.h
@@ -561,34 +561,31 @@ module petscbag
 #include <../include/petsc/finclude/petscbag.h>
 #include <../ftn/sys/petscbag.h>
 #include <../ftn/sys/petscbag.h90>
-  contains
+contains
 #include <../ftn/sys/petscbag.hf90>
 end module petscbag
 
-!------------------------------------------------------------------------
 module petscbm
   use petscsys
 #include <../include/petsc/finclude/petscbm.h>
 #include <../ftn/sys/petscbm.h>
 #include <../ftn/sys/petscbm.h90>
-  contains
+contains
 
 #include <../ftn/sys/petscbm.hf90>
 end module petscbm
 
-!------------------------------------------------------------------------
 module petscmatlab
   use petscsys
 #include <../include/petsc/finclude/petscmatlab.h>
 #include <../ftn/sys/petscmatlab.h>
 #include <../ftn/sys/petscmatlab.h90>
 
-  contains
+contains
 
 #include <../ftn/sys/petscmatlab.hf90>
 end module petscmatlab
 
-!------------------------------------------------------------------------
 module petscdraw
   use petscsys
 #include <../include/petsc/finclude/petscdraw.h>
@@ -631,28 +628,27 @@ module petscdraw
   PetscEnum, parameter :: PETSC_DRAW_LAVENDERBLUSH = 31
   PetscEnum, parameter :: PETSC_DRAW_PLUM = 32
 
-  contains
+contains
 
 #include <../ftn/sys/petscdraw.hf90>
 end module petscdraw
 
-!------------------------------------------------------------------------
-subroutine PetscSetCOMM(c1,c2)
+subroutine PetscSetCOMM(c1, c2)
   use, intrinsic :: ISO_C_binding
-  use petscmpi, only: PETSC_COMM_WORLD,PETSC_COMM_SELF
+  use petscmpi
 
   implicit none
-  MPI_Comm c1,c2
+  MPIU_Comm c1, c2
 
-  PETSC_COMM_WORLD    = c1
-  PETSC_COMM_SELF     = c2
+  PETSC_COMM_WORLD = c1
+  PETSC_COMM_SELF = c2
 end
 
 subroutine PetscGetCOMM(c1)
   use, intrinsic :: ISO_C_binding
-  use petscmpi, only: PETSC_COMM_WORLD
+  use petscmpi
   implicit none
-  MPI_Comm c1
+  MPIU_Comm c1
 
   c1 = PETSC_COMM_WORLD
 end subroutine PetscGetCOMM
@@ -660,42 +656,43 @@ end subroutine PetscGetCOMM
 subroutine PetscSetModuleBlock()
   use, intrinsic :: ISO_C_binding
   use petscsys!, only: PETSC_NULL_CHARACTER,PETSC_NULL_INTEGER,&
-     !  PETSC_NULL_SCALAR,PETSC_NULL_DOUBLE,PETSC_NULL_REAL,&
-     !  PETSC_NULL_BOOL,PETSC_NULL_FUNCTION,PETSC_NULL_MPI_COMM
+  !  PETSC_NULL_SCALAR,PETSC_NULL_DOUBLE,PETSC_NULL_REAL,&
+  !  PETSC_NULL_BOOL,PETSC_NULL_FUNCTION,PETSC_NULL_MPI_COMM
   implicit none
 
-  call PetscSetFortranBasePointers(PETSC_NULL_CHARACTER,  &
-     PETSC_NULL_INTEGER,PETSC_NULL_SCALAR,                &
-     PETSC_NULL_DOUBLE,PETSC_NULL_REAL,                   &
-     PETSC_NULL_BOOL,PETSC_NULL_ENUM,PETSC_NULL_FUNCTION, &
-     PETSC_NULL_MPI_COMM,                                 &
-     PETSC_NULL_INTEGER_ARRAY,PETSC_NULL_SCALAR_ARRAY,    &
-     PETSC_NULL_REAL_ARRAY, PETSC_NULL_INTEGER_POINTER,   &
-     PETSC_NULL_SCALAR_POINTER, PETSC_NULL_REAL_POINTER)
+  call PetscSetFortranBasePointers(PETSC_NULL_CHARACTER, &
+                                   PETSC_NULL_INTEGER, PETSC_NULL_SCALAR, &
+                                   PETSC_NULL_DOUBLE, PETSC_NULL_REAL, &
+                                   PETSC_NULL_BOOL, PETSC_NULL_ENUM, PETSC_NULL_FUNCTION, &
+                                   PETSC_NULL_MPI_COMM, &
+                                   PETSC_NULL_INTEGER_ARRAY, PETSC_NULL_SCALAR_ARRAY, &
+                                   PETSC_NULL_REAL_ARRAY, PETSC_NULL_INTEGER_POINTER, &
+                                   PETSC_NULL_SCALAR_POINTER, PETSC_NULL_REAL_POINTER)
 end subroutine PetscSetModuleBlock
 
-subroutine PetscSetModuleBlockMPI(freal,fscalar,fsum,finteger)
+subroutine PetscSetModuleBlockMPI(freal, fscalar, fsum, finteger)
   use, intrinsic :: ISO_C_binding
-  use petscmpi, only: MPIU_REAL,MPIU_SUM,MPIU_SCALAR,MPIU_INTEGER
+  use petscmpi
   implicit none
 
-  integer4 freal,fscalar,fsum,finteger
+  MPIU_Datatype freal, fscalar, finteger
+  MPIU_Op fsum
 
-  MPIU_REAL    = freal
-  MPIU_SCALAR  = fscalar
-  MPIU_SUM     = fsum
+  MPIU_REAL = freal
+  MPIU_SCALAR = fscalar
+  MPIU_SUM = fsum
   MPIU_INTEGER = finteger
 end subroutine PetscSetModuleBlockMPI
 
-subroutine PetscSetModuleBlockNumeric(pi,maxreal,minreal,eps,seps,small,pinf,pninf)
-  use petscsys, only: PETSC_PI,PETSC_MAX_REAL,PETSC_MIN_REAL,&
-       PETSC_MACHINE_EPSILON,PETSC_SQRT_MACHINE_EPSILON,&
-       PETSC_SMALL,PETSC_INFINITY,PETSC_NINFINITY
+subroutine PetscSetModuleBlockNumeric(pi, maxreal, minreal, eps, seps, small, pinf, pninf)
+  use petscsys, only: PETSC_PI, PETSC_MAX_REAL, PETSC_MIN_REAL, &
+                      PETSC_MACHINE_EPSILON, PETSC_SQRT_MACHINE_EPSILON, &
+                      PETSC_SMALL, PETSC_INFINITY, PETSC_NINFINITY
   use, intrinsic :: ISO_C_binding
   implicit none
 
-  PetscReal pi,maxreal,minreal,eps,seps
-  PetscReal small,pinf,pninf
+  PetscReal pi, maxreal, minreal, eps, seps
+  PetscReal small, pinf, pninf
 
   PETSC_PI = pi
   PETSC_MAX_REAL = maxreal

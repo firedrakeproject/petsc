@@ -221,10 +221,13 @@ static PetscErrorCode MatConvert_Normal_AIJ(Mat A, MatType newtype, MatReuse reu
 {
   Mat_Normal *Aa;
   Mat         B;
+  Vec         left, right, dshift;
+  PetscScalar scale, shift;
   PetscInt    m, n, M, N;
 
   PetscFunctionBegin;
   PetscCall(MatShellGetContext(A, &Aa));
+  PetscCall(MatShellGetScalingShifts(A, &shift, &scale, &dshift, &left, &right, (Mat *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED, (IS *)MAT_SHELL_NOT_ALLOWED));
   PetscCall(MatGetSize(A, &M, &N));
   PetscCall(MatGetLocalSize(A, &m, &n));
   if (reuse == MAT_REUSE_MATRIX) {
@@ -238,10 +241,13 @@ static PetscErrorCode MatConvert_Normal_AIJ(Mat A, MatType newtype, MatReuse reu
     PetscCall(MatSetOption(B, MAT_SYMMETRIC, PETSC_TRUE));
   }
   PetscCall(MatProductNumeric(B));
-  if (reuse == MAT_INPLACE_MATRIX) {
-    PetscCall(MatHeaderReplace(A, &B));
-  } else if (reuse == MAT_INITIAL_MATRIX) *newmat = B;
+  if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &B));
+  else if (reuse == MAT_INITIAL_MATRIX) *newmat = B;
   PetscCall(MatConvert(*newmat, MATAIJ, MAT_INPLACE_MATRIX, newmat));
+  PetscCall(MatDiagonalScale(*newmat, left, right));
+  PetscCall(MatScale(*newmat, scale));
+  PetscCall(MatShift(*newmat, shift));
+  if (dshift) PetscCall(MatDiagonalSet(*newmat, dshift, ADD_VALUES));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -294,9 +300,9 @@ static PetscErrorCode MatProductNumeric_Normal_Dense(Mat C)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatNormal_DenseDestroy(void *ctx)
+static PetscErrorCode MatNormal_DenseDestroy(PetscCtxRt ctx)
 {
-  Normal_Dense *contents = (Normal_Dense *)ctx;
+  Normal_Dense *contents = *(Normal_Dense **)ctx;
 
   PetscFunctionBegin;
   PetscCall(MatDestroy(contents->work));
@@ -413,13 +419,13 @@ PetscErrorCode MatCreateNormal(Mat A, Mat *N)
   PetscCall(MatCreateVecs(A, NULL, &Na->w));
 
   PetscCall(MatSetBlockSize(*N, A->cmap->bs));
-  PetscCall(MatShellSetOperation(*N, MATOP_DESTROY, (void (*)(void))MatDestroy_Normal));
-  PetscCall(MatShellSetOperation(*N, MATOP_MULT, (void (*)(void))MatMult_Normal));
-  PetscCall(MatShellSetOperation(*N, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMult_Normal));
-  PetscCall(MatShellSetOperation(*N, MATOP_DUPLICATE, (void (*)(void))MatDuplicate_Normal));
-  PetscCall(MatShellSetOperation(*N, MATOP_GET_DIAGONAL, (void (*)(void))MatGetDiagonal_Normal));
-  PetscCall(MatShellSetOperation(*N, MATOP_GET_DIAGONAL_BLOCK, (void (*)(void))MatGetDiagonalBlock_Normal));
-  PetscCall(MatShellSetOperation(*N, MATOP_COPY, (void (*)(void))MatCopy_Normal));
+  PetscCall(MatShellSetOperation(*N, MATOP_DESTROY, (PetscErrorCodeFn *)MatDestroy_Normal));
+  PetscCall(MatShellSetOperation(*N, MATOP_MULT, (PetscErrorCodeFn *)MatMult_Normal));
+  PetscCall(MatShellSetOperation(*N, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)MatMult_Normal));
+  PetscCall(MatShellSetOperation(*N, MATOP_DUPLICATE, (PetscErrorCodeFn *)MatDuplicate_Normal));
+  PetscCall(MatShellSetOperation(*N, MATOP_GET_DIAGONAL, (PetscErrorCodeFn *)MatGetDiagonal_Normal));
+  PetscCall(MatShellSetOperation(*N, MATOP_GET_DIAGONAL_BLOCK, (PetscErrorCodeFn *)MatGetDiagonalBlock_Normal));
+  PetscCall(MatShellSetOperation(*N, MATOP_COPY, (PetscErrorCodeFn *)MatCopy_Normal));
   (*N)->ops->increaseoverlap   = MatIncreaseOverlap_Normal;
   (*N)->ops->createsubmatrices = MatCreateSubMatrices_Normal;
   (*N)->ops->permute           = MatPermute_Normal;

@@ -171,9 +171,9 @@ PETSC_EXTERN PetscErrorCode PetscFEOpenCLGetRealType(PetscFE, PetscDataType *);
 
 #ifdef PETSC_HAVE_LIBCEED
 
-  #ifndef PLEXFE_QFUNCTION
+  #if !defined(PLEXFE_QFUNCTION)
     #define PLEXFE_QFUNCTION(fname, f0_name, f1_name) \
-      CEED_QFUNCTION(PlexQFunction##fname)(void *ctx, const CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) \
+      CEED_QFUNCTION(PlexQFunction##fname)(PetscCtx ctx, const CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) \
       { \
         const CeedScalar *u = in[0], *du = in[1], *qdata = in[2]; \
         CeedScalar       *v = out[0], *dv = out[1]; \
@@ -208,7 +208,7 @@ PETSC_EXTERN PetscErrorCode PetscFEOpenCLGetRealType(PetscFE, PetscDataType *);
 
 #else
 
-  #ifndef PLEXFE_QFUNCTION
+  #if !defined(PLEXFE_QFUNCTION)
     #define PLEXFE_QFUNCTION(fname, f0_name, f1_name)
   #endif
 

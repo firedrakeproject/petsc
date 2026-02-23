@@ -7,7 +7,7 @@
 KSP Object: 2 MPI processes
   type: pipefgmres
     restart=30
-    happy breakdown tolerance 1e-30
+    happy breakdown tolerance=1e-30
     shift=1.
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-06, absolute=1e-50, divergence=10000.
@@ -16,7 +16,7 @@ KSP Object: 2 MPI processes
 PC Object: 2 MPI processes
   type: jacobi
     type DIAGONAL
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 2 MPI processes
     type: mpiaij
     rows=10, cols=10

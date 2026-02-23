@@ -53,7 +53,7 @@ PetscErrorCode TaoSetVariableBounds(Tao tao, Vec XL, Vec XU)
 
 .seealso: [](ch_tao), `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariableBounds()`
 @*/
-PetscErrorCode TaoSetVariableBoundsRoutine(Tao tao, PetscErrorCode (*func)(Tao tao, Vec xl, Vec xu, void *ctx), void *ctx)
+PetscErrorCode TaoSetVariableBoundsRoutine(Tao tao, PetscErrorCode (*func)(Tao tao, Vec xl, Vec xu, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
@@ -227,7 +227,7 @@ PetscErrorCode TaoComputeConstraints(Tao tao, Vec X, Vec C)
 
 .seealso: [](ch_tao), `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariablevBounds()`
 @*/
-PetscErrorCode TaoSetConstraintsRoutine(Tao tao, Vec c, PetscErrorCode (*func)(Tao tao, Vec x, Vec c, void *ctx), void *ctx)
+PetscErrorCode TaoSetConstraintsRoutine(Tao tao, Vec c, PetscErrorCode (*func)(Tao tao, Vec x, Vec c, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
@@ -326,7 +326,7 @@ PetscErrorCode TaoGetDualVariables(Tao tao, Vec *DE, Vec *DI)
 
 .seealso: [](ch_tao), `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariableBounds()`
 @*/
-PetscErrorCode TaoSetEqualityConstraintsRoutine(Tao tao, Vec ce, PetscErrorCode (*func)(Tao tao, Vec x, Vec ce, void *ctx), void *ctx)
+PetscErrorCode TaoSetEqualityConstraintsRoutine(Tao tao, Vec ce, PetscErrorCode (*func)(Tao tao, Vec x, Vec ce, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
@@ -337,6 +337,39 @@ PetscErrorCode TaoSetEqualityConstraintsRoutine(Tao tao, Vec ce, PetscErrorCode 
   tao->constraints_equality            = ce;
   tao->user_con_equalityP              = ctx;
   tao->ops->computeequalityconstraints = func;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  TaoGetEqualityConstraintsRoutine - Gets the function used to compute equality constraints.
+
+  Not Collective
+
+  Input Parameter:
+. tao - the `Tao` context
+
+  Output Parameters:
++ ci   - the vector to internally hold the constraint computation
+. func - the bounds computation routine
+- ctx  - the (optional) user-defined context
+
+  Calling sequence of `func`:
++ tao - the `Tao` solver
+. x   - point to evaluate equality constraints
+. ci  - vector of equality constraints evaluated at x
+- ctx - the (optional) user-defined function context
+
+  Level: intermediate
+
+.seealso: [](ch_tao), `Tao`, `TaoSolve()`, `TaoGetObjective()`, `TaoGetGradient()`, `TaoGetHessian()`, `TaoGetObjectiveAndGradient()`, `TaoGetInequalityConstraintsRoutine()`
+@*/
+PetscErrorCode TaoGetEqualityConstraintsRoutine(Tao tao, Vec *ci, PetscErrorCode (**func)(Tao tao, Vec x, Vec ci, PetscCtx ctx), PetscCtxRt ctx)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
+  if (ci) *ci = tao->constraints_equality;
+  if (func) *func = tao->ops->computeequalityconstraints;
+  if (ctx) *(void **)ctx = tao->user_con_equalityP;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -361,7 +394,7 @@ PetscErrorCode TaoSetEqualityConstraintsRoutine(Tao tao, Vec ce, PetscErrorCode 
 
 .seealso: [](ch_tao), `Tao`, `TaoSetObjective()`, `TaoSetHessian()`, `TaoSetObjectiveAndGradient()`, `TaoSetVariableBounds()`
 @*/
-PetscErrorCode TaoSetInequalityConstraintsRoutine(Tao tao, Vec ci, PetscErrorCode (*func)(Tao tao, Vec x, Vec ci, void *ctx), void *ctx)
+PetscErrorCode TaoSetInequalityConstraintsRoutine(Tao tao, Vec ci, PetscErrorCode (*func)(Tao tao, Vec x, Vec ci, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
@@ -372,6 +405,39 @@ PetscErrorCode TaoSetInequalityConstraintsRoutine(Tao tao, Vec ci, PetscErrorCod
   tao->ineq_constrained                  = func ? PETSC_TRUE : PETSC_FALSE;
   tao->user_con_inequalityP              = ctx;
   tao->ops->computeinequalityconstraints = func;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/*@C
+  TaoGetInequalityConstraintsRoutine - Gets the function used to compute inequality constraints.
+
+  Not Collective
+
+  Input Parameter:
+. tao - the `Tao` context
+
+  Output Parameters:
++ ci   - the vector to internally hold the constraint computation
+. func - the bounds computation routine
+- ctx  - the (optional) user-defined context
+
+  Calling sequence of `func`:
++ tao - the `Tao` solver
+. x   - point to evaluate inequality constraints
+. ci  - vector of inequality constraints evaluated at x
+- ctx - the (optional) user-defined function context
+
+  Level: intermediate
+
+.seealso: [](ch_tao), `Tao`, `TaoSolve()`, `TaoGetObjective()`, `TaoGetGradient()`, `TaoGetHessian()`, `TaoGetObjectiveAndGradient()`, `TaoGetEqualityConstraintsRoutine()`
+@*/
+PetscErrorCode TaoGetInequalityConstraintsRoutine(Tao tao, Vec *ci, PetscErrorCode (**func)(Tao tao, Vec x, Vec ci, PetscCtx ctx), PetscCtxRt ctx)
+{
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
+  if (ci) *ci = tao->constraints_inequality;
+  if (func) *func = tao->ops->computeinequalityconstraints;
+  if (ctx) *(void **)ctx = tao->user_con_inequalityP;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

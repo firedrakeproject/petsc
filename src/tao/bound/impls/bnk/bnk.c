@@ -68,7 +68,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
   /* Test the initial point for convergence */
   PetscCall(VecFischer(tao->solution, bnk->unprojected_gradient, tao->XL, tao->XU, bnk->W));
   PetscCall(VecNorm(bnk->W, NORM_2, &resnorm));
-  PetscCheck(!PetscIsInfOrNanReal(bnk->f) && !PetscIsInfOrNanReal(resnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
+  PetscCheck(!PetscIsInfOrNanReal(bnk->f) && !PetscIsInfOrNanReal(resnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated infinity or NaN");
   PetscCall(TaoLogConvergenceHistory(tao, bnk->f, resnorm, 0.0, tao->ksp_its));
   PetscCall(TaoMonitor(tao, tao->niter, bnk->f, resnorm, 0.0, 1.0));
   PetscUseTypeMethod(tao, convergencetest, tao->cnvP);
@@ -152,7 +152,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
           PetscCall(VecAXPY(bnk->W, -1.0, bnk->Xold));
           /* Compute the objective at the trial */
           PetscCall(TaoComputeObjective(tao, tao->solution, &ftrial));
-          PetscCheck(!PetscIsInfOrNanReal(bnk->f), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
+          PetscCheck(!PetscIsInfOrNanReal(bnk->f), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated infinity or NaN");
           PetscCall(VecCopy(bnk->Xold, tao->solution));
           if (PetscIsInfOrNanReal(ftrial)) {
             tau = bnk->gamma1_i;
@@ -249,7 +249,7 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
           /* Test the new step for convergence */
           PetscCall(VecFischer(tao->solution, bnk->unprojected_gradient, tao->XL, tao->XU, bnk->W));
           PetscCall(VecNorm(bnk->W, NORM_2, &resnorm));
-          PetscCheck(!PetscIsInfOrNanReal(resnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
+          PetscCheck(!PetscIsInfOrNanReal(resnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated infinity or NaN");
           PetscCall(TaoLogConvergenceHistory(tao, bnk->f, resnorm, 0.0, tao->ksp_its));
           PetscCall(TaoMonitor(tao, tao->niter, bnk->f, resnorm, 0.0, 1.0));
           PetscUseTypeMethod(tao, convergencetest, tao->cnvP);
@@ -274,8 +274,6 @@ PetscErrorCode TaoBNKInitialize(Tao tao, PetscInt initType, PetscBool *needH)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 /* Computes the exact Hessian and extracts its subHessian */
 
 PetscErrorCode TaoBNKComputeHessian(Tao tao)
@@ -291,8 +289,6 @@ PetscErrorCode TaoBNKComputeHessian(Tao tao)
   PetscCall(TaoBNKComputeSubHessian(tao));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/*------------------------------------------------------------*/
 
 /* Routine for estimating the active set */
 
@@ -343,8 +339,6 @@ PetscErrorCode TaoBNKEstimateActiveSet(Tao tao, PetscInt asType)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 /* Routine for bounding the step direction */
 
 PetscErrorCode TaoBNKBoundStep(Tao tao, PetscInt asType, Vec step)
@@ -364,8 +358,6 @@ PetscErrorCode TaoBNKBoundStep(Tao tao, PetscInt asType, Vec step)
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/*------------------------------------------------------------*/
 
 /* Routine for taking a finite number of BNCG iterations to
    accelerate Newton convergence.
@@ -401,8 +393,6 @@ PetscErrorCode TaoBNKTakeCGSteps(Tao tao, PetscBool *terminate)
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/*------------------------------------------------------------*/
 
 /* Routine for computing the Newton step. */
 
@@ -528,8 +518,6 @@ PetscErrorCode TaoBNKComputeStep(Tao tao, PetscBool shift, KSPConvergedReason *k
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 /* Routine for recomputing the predicted reduction for a given step vector */
 
 PetscErrorCode TaoBNKRecomputePred(Tao tao, Vec S, PetscReal *prered)
@@ -560,8 +548,6 @@ PetscErrorCode TaoBNKRecomputePred(Tao tao, Vec S, PetscReal *prered)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 /* Routine for ensuring that the Newton step is a descent direction.
 
    The step direction falls back onto BFGS, scaled gradient and gradient steps
@@ -579,7 +565,7 @@ PetscErrorCode TaoBNKSafeguardStep(Tao tao, KSPConvergedReason ksp_reason, Petsc
   case BNK_NEWTON:
     PetscCall(VecDot(tao->stepdirection, tao->gradient, &gdx));
     if ((gdx >= 0.0) || PetscIsInfOrNanReal(gdx)) {
-      /* Newton step is not descent or direction produced Inf or NaN
+      /* Newton step is not descent or direction produced infinity or NaN
         Update the perturbation for next time */
       if (bnk->pert <= 0.0) {
         PetscBool is_gltr;
@@ -695,8 +681,6 @@ PetscErrorCode TaoBNKSafeguardStep(Tao tao, KSPConvergedReason ksp_reason, Petsc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 /* Routine for performing a bound-projected More-Thuente line search.
 
   Includes fallbacks to BFGS, scaled gradient, and unscaled gradient steps if the
@@ -796,8 +780,6 @@ PetscErrorCode TaoBNKPerformLineSearch(Tao tao, PetscInt *stepType, PetscReal *s
   *reason = ls_reason;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/*------------------------------------------------------------*/
 
 /* Routine for updating the trust radius.
 
@@ -971,8 +953,6 @@ PetscErrorCode TaoBNKUpdateTrustRadius(Tao tao, PetscReal prered, PetscReal actr
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------- */
-
 PetscErrorCode TaoBNKAddStepCounts(Tao tao, PetscInt stepType)
 {
   TAO_BNK *bnk = (TAO_BNK *)tao->data;
@@ -997,12 +977,9 @@ PetscErrorCode TaoBNKAddStepCounts(Tao tao, PetscInt stepType)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------- */
-
 PetscErrorCode TaoSetUp_BNK(Tao tao)
 {
   TAO_BNK *bnk = (TAO_BNK *)tao->data;
-  PetscInt i;
 
   PetscFunctionBegin;
   if (!tao->gradient) PetscCall(VecDuplicate(tao->solution, &tao->gradient));
@@ -1044,10 +1021,6 @@ PetscErrorCode TaoSetUp_BNK(Tao tao)
     PetscCall(TaoSetGradient(bnk->bncg, NULL, tao->ops->computegradient, tao->user_gradP));
     PetscCall(TaoSetObjectiveAndGradient(bnk->bncg, NULL, tao->ops->computeobjectiveandgradient, tao->user_objgradP));
     PetscCall(PetscObjectCopyFortranFunctionPointers((PetscObject)tao, (PetscObject)bnk->bncg));
-    for (i = 0; i < tao->numbermonitors; ++i) {
-      PetscCall(TaoMonitorSet(bnk->bncg, tao->monitor[i], tao->monitorcontext[i], tao->monitordestroy[i]));
-      PetscCall(PetscObjectReference((PetscObject)tao->monitorcontext[i]));
-    }
   }
   bnk->X_inactive    = NULL;
   bnk->G_inactive    = NULL;
@@ -1063,8 +1036,6 @@ PetscErrorCode TaoSetUp_BNK(Tao tao)
   bnk->Hpre_inactive = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/*------------------------------------------------------------*/
 
 PetscErrorCode TaoDestroy_BNK(Tao tao)
 {
@@ -1092,8 +1063,6 @@ PetscErrorCode TaoDestroy_BNK(Tao tao)
   PetscCall(PetscFree(tao->data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/*------------------------------------------------------------*/
 
 PetscErrorCode TaoSetFromOptions_BNK(Tao tao, PetscOptionItems PetscOptionsObject)
 {
@@ -1164,8 +1133,6 @@ PetscErrorCode TaoSetFromOptions_BNK(Tao tao, PetscOptionItems PetscOptionsObjec
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
-
 PetscErrorCode TaoView_BNK(Tao tao, PetscViewer viewer)
 {
   TAO_BNK  *bnk = (TAO_BNK *)tao->data;
@@ -1198,8 +1165,6 @@ PetscErrorCode TaoView_BNK(Tao tao, PetscViewer viewer)
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* ---------------------------------------------------------- */
 
 /*MC
   TAOBNK - Shared base-type for Bounded Newton-Krylov type algorithms.

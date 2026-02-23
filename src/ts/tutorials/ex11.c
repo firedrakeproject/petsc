@@ -141,7 +141,7 @@ static const struct FieldDescription PhysicsFields_Advect[] = {
   {NULL, 0}
 };
 
-static PetscErrorCode PhysicsBoundary_Advect_Inflow(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, void *ctx)
+static PetscErrorCode PhysicsBoundary_Advect_Inflow(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, PetscCtx ctx)
 {
   Physics         phys   = (Physics)ctx;
   Physics_Advect *advect = (Physics_Advect *)phys->data;
@@ -151,7 +151,7 @@ static PetscErrorCode PhysicsBoundary_Advect_Inflow(PetscReal time, const PetscR
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsBoundary_Advect_Outflow(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, void *ctx)
+static PetscErrorCode PhysicsBoundary_Advect_Outflow(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, PetscCtx ctx)
 {
   PetscFunctionBeginUser;
   xG[0] = xI[0];
@@ -208,7 +208,7 @@ static void PhysicsRiemann_Advect(PetscInt dim, PetscInt Nf, const PetscReal *qp
   flux[0] = (wn > 0 ? xL[0] : xR[0]) * wn;
 }
 
-static PetscErrorCode PhysicsSolution_Advect(Model mod, PetscReal time, const PetscReal *x, PetscScalar *u, void *ctx)
+static PetscErrorCode PhysicsSolution_Advect(Model mod, PetscReal time, const PetscReal *x, PetscScalar *u, PetscCtx ctx)
 {
   Physics         phys   = (Physics)ctx;
   Physics_Advect *advect = (Physics_Advect *)phys->data;
@@ -247,7 +247,7 @@ static PetscErrorCode PhysicsSolution_Advect(Model mod, PetscReal time, const Pe
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsFunctional_Advect(Model mod, PetscReal time, const PetscReal *x, const PetscScalar *y, PetscReal *f, void *ctx)
+static PetscErrorCode PhysicsFunctional_Advect(Model mod, PetscReal time, const PetscReal *x, const PetscScalar *y, PetscReal *f, PetscCtx ctx)
 {
   Physics         phys      = (Physics)ctx;
   Physics_Advect *advect    = (Physics_Advect *)phys->data;
@@ -268,8 +268,8 @@ static PetscErrorCode SetUpBC_Advect(DM dm, PetscDS prob, Physics phys)
   PetscFunctionBeginUser;
   /* Register "canned" boundary conditions and defaults for where to apply. */
   PetscCall(DMGetLabel(dm, "Face Sets", &label));
-  PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "inflow", label, PETSC_STATIC_ARRAY_LENGTH(inflowids), inflowids, 0, 0, NULL, (void (*)(void))PhysicsBoundary_Advect_Inflow, NULL, phys, NULL));
-  PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "outflow", label, PETSC_STATIC_ARRAY_LENGTH(outflowids), outflowids, 0, 0, NULL, (void (*)(void))PhysicsBoundary_Advect_Outflow, NULL, phys, NULL));
+  PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "inflow", label, PETSC_STATIC_ARRAY_LENGTH(inflowids), inflowids, 0, 0, NULL, (PetscVoidFn *)PhysicsBoundary_Advect_Inflow, NULL, phys, NULL));
+  PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "outflow", label, PETSC_STATIC_ARRAY_LENGTH(outflowids), outflowids, 0, 0, NULL, (PetscVoidFn *)PhysicsBoundary_Advect_Outflow, NULL, phys, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -279,7 +279,7 @@ static PetscErrorCode PhysicsCreate_Advect(Model mod, Physics phys, PetscOptionI
 
   PetscFunctionBeginUser;
   phys->field_desc = PhysicsFields_Advect;
-  phys->riemann    = (PetscRiemannFn *)PhysicsRiemann_Advect;
+  phys->riemann    = (PetscRiemannFn *)(PetscVoidFn *)PhysicsRiemann_Advect;
   PetscCall(PetscNew(&advect));
   phys->data   = advect;
   mod->setupbc = SetUpBC_Advect;
@@ -331,7 +331,7 @@ static const struct FieldDescription PhysicsFields_SW[] = {
   {NULL,       0  }
 };
 
-static PetscErrorCode PhysicsBoundary_SW_Wall(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, void *ctx)
+static PetscErrorCode PhysicsBoundary_SW_Wall(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *xI, PetscScalar *xG, PetscCtx ctx)
 {
   PetscFunctionBeginUser;
   xG[0] = xI[0];
@@ -340,7 +340,7 @@ static PetscErrorCode PhysicsBoundary_SW_Wall(PetscReal time, const PetscReal *c
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsSolution_SW(Model mod, PetscReal time, const PetscReal *x, PetscScalar *u, void *ctx)
+static PetscErrorCode PhysicsSolution_SW(Model mod, PetscReal time, const PetscReal *x, PetscScalar *u, PetscCtx ctx)
 {
   PetscReal dx[2], r, sigma;
 
@@ -356,7 +356,7 @@ static PetscErrorCode PhysicsSolution_SW(Model mod, PetscReal time, const PetscR
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsFunctional_SW(Model mod, PetscReal time, const PetscReal *coord, const PetscScalar *xx, PetscReal *f, void *ctx)
+static PetscErrorCode PhysicsFunctional_SW(Model mod, PetscReal time, const PetscReal *coord, const PetscScalar *xx, PetscReal *f, PetscCtx ctx)
 {
   Physics       phys = (Physics)ctx;
   Physics_SW   *sw   = (Physics_SW *)phys->data;
@@ -380,7 +380,7 @@ static PetscErrorCode SetUpBC_SW(DM dm, PetscDS prob, Physics phys)
 
   PetscFunctionBeginUser;
   PetscCall(DMGetLabel(dm, "Face Sets", &label));
-  PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "wall", label, PETSC_STATIC_ARRAY_LENGTH(wallids), wallids, 0, 0, NULL, (void (*)(void))PhysicsBoundary_SW_Wall, NULL, phys, NULL));
+  PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "wall", label, PETSC_STATIC_ARRAY_LENGTH(wallids), wallids, 0, 0, NULL, (PetscVoidFn *)PhysicsBoundary_SW_Wall, NULL, phys, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -445,7 +445,7 @@ static PetscErrorCode PhysicsCreate_SW(Model mod, Physics phys, PetscOptionItems
     PetscCall(PetscOptionsReal("-sw_gravity", "Gravitational constant", "", sw->gravity, &sw->gravity, NULL));
     PetscCall(PetscOptionsFList("-sw_riemann", "Riemann solver", "", PhysicsRiemannList_SW, sw_riemann, sw_riemann, sizeof sw_riemann, NULL));
     PetscCall(PetscFunctionListFind(PhysicsRiemannList_SW, sw_riemann, &PhysicsRiemann_SW));
-    phys->riemann = (PetscRiemannFn *)PhysicsRiemann_SW;
+    phys->riemann = (PetscRiemannFn *)(PetscVoidFn *)PhysicsRiemann_SW;
   }
   PetscOptionsHeadEnd();
   phys->maxspeed = PetscSqrtReal(2.0 * sw->gravity); /* Mach 1 for depth of 2 */
@@ -470,7 +470,7 @@ static const struct FieldDescription PhysicsFields_Euler[] = {
 
 /* initial condition */
 int                   initLinearWave(EulerNode *ux, const PetscReal gamma, const PetscReal coord[], const PetscReal Lx);
-static PetscErrorCode PhysicsSolution_Euler(Model mod, PetscReal time, const PetscReal *x, PetscScalar *u, void *ctx)
+static PetscErrorCode PhysicsSolution_Euler(Model mod, PetscReal time, const PetscReal *x, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt       i;
   Physics        phys = (Physics)ctx;
@@ -532,7 +532,7 @@ static PetscErrorCode PhysicsSolution_Euler(Model mod, PetscReal time, const Pet
 }
 
 /* PetscReal* => EulerNode* conversion */
-static PetscErrorCode PhysicsBoundary_Euler_Wall(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *a_xI, PetscScalar *a_xG, void *ctx)
+static PetscErrorCode PhysicsBoundary_Euler_Wall(PetscReal time, const PetscReal *c, const PetscReal *n, const PetscScalar *a_xI, PetscScalar *a_xG, PetscCtx ctx)
 {
   PetscInt         i;
   const EulerNode *xI   = (const EulerNode *)a_xI;
@@ -557,7 +557,7 @@ static PetscErrorCode PhysicsBoundary_Euler_Wall(PetscReal time, const PetscReal
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PhysicsFunctional_Euler(Model mod, PetscReal time, const PetscReal *coord, const PetscScalar *xx, PetscReal *f, void *ctx)
+static PetscErrorCode PhysicsFunctional_Euler(Model mod, PetscReal time, const PetscReal *coord, const PetscScalar *xx, PetscReal *f, PetscCtx ctx)
 {
   Physics          phys = (Physics)ctx;
   Physics_Euler   *eu   = (Physics_Euler *)phys->data;
@@ -583,10 +583,10 @@ static PetscErrorCode SetUpBC_Euler(DM dm, PetscDS prob, Physics phys)
   PetscCall(DMGetLabel(dm, "Face Sets", &label));
   if (eu->type == EULER_LINEAR_WAVE) {
     const PetscInt wallids[] = {100, 101};
-    PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "wall", label, PETSC_STATIC_ARRAY_LENGTH(wallids), wallids, 0, 0, NULL, (void (*)(void))PhysicsBoundary_Euler_Wall, NULL, phys, NULL));
+    PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "wall", label, PETSC_STATIC_ARRAY_LENGTH(wallids), wallids, 0, 0, NULL, (PetscVoidFn *)PhysicsBoundary_Euler_Wall, NULL, phys, NULL));
   } else {
     const PetscInt wallids[] = {100, 101, 200, 300};
-    PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "wall", label, PETSC_STATIC_ARRAY_LENGTH(wallids), wallids, 0, 0, NULL, (void (*)(void))PhysicsBoundary_Euler_Wall, NULL, phys, NULL));
+    PetscCall(PetscDSAddBoundary(prob, DM_BC_NATURAL_RIEMANN, "wall", label, PETSC_STATIC_ARRAY_LENGTH(wallids), wallids, 0, 0, NULL, (PetscVoidFn *)PhysicsBoundary_Euler_Wall, NULL, phys, NULL));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -633,7 +633,7 @@ static PetscErrorCode PhysicsCreate_Euler(Model mod, Physics phys, PetscOptionIt
 
   PetscFunctionBeginUser;
   phys->field_desc = PhysicsFields_Euler;
-  phys->riemann    = (PetscRiemannFn *)PhysicsRiemann_Euler_Godunov;
+  phys->riemann    = (PetscRiemannFn *)(PetscVoidFn *)PhysicsRiemann_Euler_Godunov;
   PetscCall(PetscNew(&eu));
   phys->data     = eu;
   mod->setupbc   = SetUpBC_Euler;
@@ -657,7 +657,7 @@ static PetscErrorCode PhysicsCreate_Euler(Model mod, Physics phys, PetscOptionIt
     eu->itana = 0.57735026918963; /* angle of Euler self similar (SS) shock */
     PetscCall(PetscOptionsFList("-eu_riemann", "Riemann solver", "", PhysicsRiemannList_Euler, eu_riemann, eu_riemann, sizeof eu_riemann, NULL));
     PetscCall(PetscFunctionListFind(PhysicsRiemannList_Euler, eu_riemann, &PhysicsRiemann_Euler));
-    phys->riemann = (PetscRiemannFn *)PhysicsRiemann_Euler;
+    phys->riemann = (PetscRiemannFn *)(PetscVoidFn *)PhysicsRiemann_Euler;
     PetscCall(PetscOptionsReal("-eu_gamma", "Heat capacity ratio", "", eu->gamma, &eu->gamma, NULL));
     PetscCall(PetscOptionsReal("-eu_amach", "Shock speed (Mach)", "", eu->amach, &eu->amach, NULL));
     PetscCall(PetscOptionsReal("-eu_rho2", "Density right of discontinuity", "", eu->rhoR, &eu->rhoR, NULL));
@@ -683,8 +683,8 @@ static PetscErrorCode PhysicsCreate_Euler(Model mod, Physics phys, PetscOptionIt
           PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%s set Euler type: %s\n", PETSC_FUNCTION_NAME, "ss_shock"));
         } else {
           PetscCall(PetscStrcmp(type, "shock_tube", &is));
-          if (is) eu->type = EULER_SHOCK_TUBE;
-          else SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "Unknown Euler type %s", type);
+          PetscCheck(is, PETSC_COMM_WORLD, PETSC_ERR_SUP, "Unknown Euler type %s", type);
+          eu->type = EULER_SHOCK_TUBE;
           PetscCall(PetscPrintf(PETSC_COMM_WORLD, "%s set Euler type: %s\n", PETSC_FUNCTION_NAME, "shock_tube"));
         }
       }
@@ -701,7 +701,7 @@ static PetscErrorCode PhysicsCreate_Euler(Model mod, Physics phys, PetscOptionIt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode ErrorIndicator_Simple(PetscInt dim, PetscReal volume, PetscInt numComps, const PetscScalar u[], const PetscScalar grad[], PetscReal *error, void *ctx)
+static PetscErrorCode ErrorIndicator_Simple(PetscInt dim, PetscReal volume, PetscInt numComps, const PetscScalar u[], const PetscScalar grad[], PetscReal *error, PetscCtx ctx)
 {
   PetscReal err = 0.;
   PetscInt  i, j;
@@ -830,7 +830,7 @@ PetscErrorCode CreateMassMatrix(DM dm, Vec *massMatrix, User user)
 }
 
 /* Behavior will be different for multi-physics or when using non-default boundary conditions */
-static PetscErrorCode ModelSolutionSetDefault(Model mod, SolutionFunction func, void *ctx)
+static PetscErrorCode ModelSolutionSetDefault(Model mod, SolutionFunction func, PetscCtx ctx)
 {
   PetscFunctionBeginUser;
   mod->solution    = func;
@@ -838,7 +838,7 @@ static PetscErrorCode ModelSolutionSetDefault(Model mod, SolutionFunction func, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode ModelFunctionalRegister(Model mod, const char *name, PetscInt *offset, FunctionalFunction func, void *ctx)
+static PetscErrorCode ModelFunctionalRegister(Model mod, const char *name, PetscInt *offset, FunctionalFunction func, PetscCtx ctx)
 {
   FunctionalLink link, *ptr;
   PetscInt       lastoffset = -1;
@@ -926,9 +926,9 @@ static PetscErrorCode SolutionFunctional(PetscInt dim, PetscReal time, const Pet
 
 PetscErrorCode SetInitialCondition(DM dm, Vec X, User user)
 {
-  PetscErrorCode (*func[1])(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx);
-  void *ctx[1];
-  Model mod = user->model;
+  PetscErrorCode (*func[1])(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx);
+  PetscCtx ctx[1];
+  Model    mod = user->model;
 
   PetscFunctionBeginUser;
   func[0] = SolutionFunctional;
@@ -946,7 +946,7 @@ static PetscErrorCode OutputVTK(DM dm, const char *filename, PetscViewer *viewer
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MonitorVTK(TS ts, PetscInt stepnum, PetscReal time, Vec X, void *ctx)
+static PetscErrorCode MonitorVTK(TS ts, PetscInt stepnum, PetscReal time, Vec X, PetscCtx ctx)
 {
   User        user = (User)ctx;
   DM          dm, plex;
@@ -1100,7 +1100,7 @@ typedef struct {
   PetscLimiter noneLimiter;
 } TransferCtx;
 
-static PetscErrorCode adaptToleranceFVMSetUp(TS ts, PetscInt nstep, PetscReal time, Vec sol, PetscBool *resize, void *ctx)
+static PetscErrorCode adaptToleranceFVMSetUp(TS ts, PetscInt nstep, PetscReal time, Vec sol, PetscBool *resize, PetscCtx ctx)
 {
   TransferCtx       *tctx       = (TransferCtx *)ctx;
   PetscFV            fvm        = tctx->fvm;
@@ -1200,7 +1200,7 @@ static PetscErrorCode adaptToleranceFVMSetUp(TS ts, PetscInt nstep, PetscReal ti
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode Transfer(TS ts, PetscInt nv, Vec vecsin[], Vec vecsout[], void *ctx)
+static PetscErrorCode Transfer(TS ts, PetscInt nv, Vec vecsin[], Vec vecsout[], PetscCtx ctx)
 {
   TransferCtx *tctx = (TransferCtx *)ctx;
   DM           dm;
@@ -1647,9 +1647,6 @@ int initLinearWave(EulerNode *ux, const PetscReal gamma, const PetscReal coord[]
   ux->r     = vp[0];         /* density */
   ux->ru[0] = vp[0] * vp[1]; /* x momentum */
   ux->ru[1] = 0.;
-#if defined DIM > 2
-  if (dim > 2) ux->ru[2] = 0.;
-#endif
   /* E = rho * e + rho * v^2/2 = p/(gam-1) + rho*v^2/2 */
   ux->E = vp[2] / (gamma - 1.) + 0.5 * vp[0] * vp[1] * vp[1];
   return 0;

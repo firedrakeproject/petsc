@@ -767,7 +767,7 @@ PetscErrorCode VecViewFromOptions(Vec A, PeOp PetscObject obj, const char name[]
 @*/
 PetscErrorCode VecView(Vec vec, PetscViewer viewer)
 {
-  PetscBool         iascii;
+  PetscBool         isascii;
   PetscViewerFormat format;
   PetscMPIInt       size;
 
@@ -783,8 +783,8 @@ PetscErrorCode VecView(Vec vec, PetscViewer viewer)
 
   PetscCheck(!vec->stash.n && !vec->bstash.n, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Must call VecAssemblyBegin/End() before viewing this vector");
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscInt rows, bs;
 
     PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)vec, viewer));
@@ -1127,7 +1127,7 @@ PetscErrorCode VecResetArray(Vec vec)
   filename. If you copy the binary file, make sure you copy the associated .info file with it.
 
   If using HDF5, you must assign the `Vec` the same name as was used in the Vec
-  that was stored in the file using `PetscObjectSetName(). Otherwise you will
+  that was stored in the file using `PetscObjectSetName()`. Otherwise you will
   get the error message: "Cannot H5DOpen2() with `Vec` name NAMEOFOBJECT".
 
   If the HDF5 file contains a two dimensional array the first dimension is treated as the block size
@@ -1155,19 +1155,12 @@ PetscErrorCode VecResetArray(Vec vec)
 @*/
 PetscErrorCode VecLoad(Vec vec, PetscViewer viewer)
 {
-  PetscBool         isbinary, ishdf5, isadios, isexodusii, iscgns;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(vec, VEC_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCheckSameComm(vec, 1, viewer, 2);
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERBINARY, &isbinary));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERHDF5, &ishdf5));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERCGNS, &iscgns));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERADIOS, &isadios));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWEREXODUSII, &isexodusii));
-  PetscCheck(isbinary || ishdf5 || isadios || isexodusii || iscgns, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONG, "Invalid viewer; open viewer with PetscViewerBinaryOpen()");
 
   PetscCall(VecSetErrorIfLocked(vec, 1));
   if (!((PetscObject)vec)->type_name && !vec->ops->create) PetscCall(VecSetType(vec, VECSTANDARD));
@@ -1217,19 +1210,6 @@ PetscErrorCode VecReciprocal(Vec vec)
 . op  - The name of the operation
 - f   - The function that provides the operation.
 
-  Notes:
-  `f` may be `NULL` to remove the operation from `vec`. Depending on the operation this may be
-  allowed, however some always expect a valid function. In these cases an error will be raised
-  when calling the interface routine in question.
-
-  See `VecOperation` for an up-to-date list of override-able operations. The operations listed
-  there have the form `VECOP_<OPERATION>`, where `<OPERATION>` is the suffix (in all capital
-  letters) of the public interface routine (e.g., `VecView()` -> `VECOP_VIEW`).
-
-  Overriding a particular `Vec`'s operation has no affect on any other `Vec`s past, present,
-  or future. The user should also note that overriding a method is "destructive"; the previous
-  method is not retained in any way.
-
   Level: advanced
 
   Example Usage:
@@ -1248,14 +1228,30 @@ PetscErrorCode VecReciprocal(Vec vec)
   // Calls the VECMPI implementation for VecView()
   VecView(x, viewer);
 
-  VecSetOperation(x, VECOP_VIEW, (void (*)(void))UserVecView);
+  VecSetOperation(x, VECOP_VIEW, (PetscErrorCodeFn *)UserVecView);
   // Now calls UserVecView()
   VecView(x, viewer);
 .ve
 
-.seealso: [](ch_vectors), `Vec`, `VecCreate()`, `MatShellSetOperation()`
+  Notes:
+  `f` may be `NULL` to remove the operation from `vec`. Depending on the operation this may be
+  allowed, however some always expect a valid function. In these cases an error will be raised
+  when calling the interface routine in question.
+
+  See `VecOperation` for an up-to-date list of override-able operations. The operations listed
+  there have the form `VECOP_<OPERATION>`, where `<OPERATION>` is the suffix (in all capital
+  letters) of the public interface routine (e.g., `VecView()` -> `VECOP_VIEW`).
+
+  Overriding a particular `Vec`'s operation has no affect on any other `Vec`s past, present,
+  or future. The user should also note that overriding a method is "destructive"; the previous
+  method is not retained in any way.
+
+  Each function MUST return `PETSC_SUCCESS` on success and
+  nonzero on failure.
+
+.seealso: [](ch_vectors), `Vec`, `VecCreate()`, `VecGetOperation()`, `MatSetOperation()`, `MatShellSetOperation()`
 @*/
-PetscErrorCode VecSetOperation(Vec vec, VecOperation op, void (*f)(void))
+PetscErrorCode VecSetOperation(Vec vec, VecOperation op, PetscErrorCodeFn *f)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(vec, VEC_CLASSID, 1);
@@ -1264,7 +1260,7 @@ PetscErrorCode VecSetOperation(Vec vec, VecOperation op, void (*f)(void))
   } else if (op == VECOP_LOAD && !vec->ops->loadnative) {
     vec->ops->loadnative = vec->ops->load;
   }
-  ((void (**)(void))vec->ops)[(int)op] = f;
+  ((PetscErrorCodeFn **)vec->ops)[(int)op] = f;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

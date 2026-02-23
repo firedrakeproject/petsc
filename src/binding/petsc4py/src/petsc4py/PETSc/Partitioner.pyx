@@ -9,6 +9,7 @@ class PartitionerType(object):
     SHELL           = S_(PETSCPARTITIONERSHELL)
     GATHER          = S_(PETSCPARTITIONERGATHER)
     MATPARTITIONING = S_(PETSCPARTITIONERMATPARTITIONING)
+    MULTISTAGE      = S_(PETSCPARTITIONERMULTISTAGE)
 
 # --------------------------------------------------------------------
 
@@ -96,7 +97,7 @@ cdef class Partitioner(Object):
         part_type = str2bytes(part_type, &cval)
         CHKERR(PetscPartitionerSetType(self.part, cval))
 
-    def getType(self) -> Type:
+    def getType(self) -> str:
         """Return the partitioner type.
 
         Not collective.

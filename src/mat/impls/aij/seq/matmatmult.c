@@ -66,7 +66,6 @@ PETSC_INTERN PetscErrorCode MatSetSeqAIJWithArrays_private(MPI_Comm comm, PetscI
   aij->free_ij = PETSC_FALSE;
   PetscCall(MatCheckCompressedRow(mat, aij->nonzerorowcnt, &aij->compressedrow, aij->i, m, 0.6));
   // Always build the diag info when i, j are set
-  PetscCall(MatMarkDiagonal_SeqAIJ(mat));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -274,7 +273,7 @@ PetscErrorCode MatMatMultNumeric_SeqAIJ_SeqAIJ_Sorted(Mat A, Mat B, Mat C)
   if (!cab_dense) {
     PetscCall(PetscMalloc1(B->cmap->N, &ab_dense));
     PetscCall(PetscObjectContainerCompose((PetscObject)C, "__PETSc__ab_dense", ab_dense, PetscCtxDestroyDefault));
-  } else PetscCall(PetscContainerGetPointer(cab_dense, (void **)&ab_dense));
+  } else PetscCall(PetscContainerGetPointer(cab_dense, &ab_dense));
   PetscCall(PetscArrayzero(ab_dense, B->cmap->N));
 
   /* clean old values in C */
@@ -1199,9 +1198,9 @@ PetscErrorCode MatMatMultSymbolic_SeqAIJ_SeqAIJ_Sorted(Mat A, Mat B, PetscReal f
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatDestroy_SeqAIJ_MatMatMultTrans(void *data)
+static PetscErrorCode MatProductCtxDestroy_SeqAIJ_MatMatMultTrans(PetscCtxRt data)
 {
-  Mat_MatMatTransMult *abt = (Mat_MatMatTransMult *)data;
+  MatProductCtx_MatMatTransMult *abt = *(MatProductCtx_MatMatTransMult **)data;
 
   PetscFunctionBegin;
   PetscCall(MatTransposeColoringDestroy(&abt->matcoloring));
@@ -1213,10 +1212,10 @@ static PetscErrorCode MatDestroy_SeqAIJ_MatMatMultTrans(void *data)
 
 PetscErrorCode MatMatTransposeMultSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat B, PetscReal fill, Mat C)
 {
-  Mat                  Bt;
-  Mat_MatMatTransMult *abt;
-  Mat_Product         *product = C->product;
-  char                *alg;
+  Mat                            Bt;
+  MatProductCtx_MatMatTransMult *abt;
+  Mat_Product                   *product = C->product;
+  char                          *alg;
 
   PetscFunctionBegin;
   PetscCheck(product, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing product struct");
@@ -1238,7 +1237,7 @@ PetscErrorCode MatMatTransposeMultSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat B, PetscReal
   PetscCall(PetscNew(&abt));
 
   product->data    = abt;
-  product->destroy = MatDestroy_SeqAIJ_MatMatMultTrans;
+  product->destroy = MatProductCtxDestroy_SeqAIJ_MatMatMultTrans;
 
   C->ops->mattransposemultnumeric = MatMatTransposeMultNumeric_SeqAIJ_SeqAIJ;
 
@@ -1298,17 +1297,17 @@ PetscErrorCode MatMatTransposeMultSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat B, PetscReal
 
 PetscErrorCode MatMatTransposeMultNumeric_SeqAIJ_SeqAIJ(Mat A, Mat B, Mat C)
 {
-  Mat_SeqAIJ          *a = (Mat_SeqAIJ *)A->data, *b = (Mat_SeqAIJ *)B->data, *c = (Mat_SeqAIJ *)C->data;
-  PetscInt            *ai = a->i, *aj = a->j, *bi = b->i, *bj = b->j, anzi, bnzj, nexta, nextb, *acol, *bcol, brow;
-  PetscInt             cm = C->rmap->n, *ci = c->i, *cj = c->j, i, j, cnzi, *ccol;
-  PetscLogDouble       flops = 0.0;
-  MatScalar           *aa = a->a, *aval, *ba = b->a, *bval, *ca, *cval;
-  Mat_MatMatTransMult *abt;
-  Mat_Product         *product = C->product;
+  Mat_SeqAIJ                    *a = (Mat_SeqAIJ *)A->data, *b = (Mat_SeqAIJ *)B->data, *c = (Mat_SeqAIJ *)C->data;
+  PetscInt                      *ai = a->i, *aj = a->j, *bi = b->i, *bj = b->j, anzi, bnzj, nexta, nextb, *acol, *bcol, brow;
+  PetscInt                       cm = C->rmap->n, *ci = c->i, *cj = c->j, i, j, cnzi, *ccol;
+  PetscLogDouble                 flops = 0.0;
+  MatScalar                     *aa = a->a, *aval, *ba = b->a, *bval, *ca, *cval;
+  MatProductCtx_MatMatTransMult *abt;
+  Mat_Product                   *product = C->product;
 
   PetscFunctionBegin;
   PetscCheck(product, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing product struct");
-  abt = (Mat_MatMatTransMult *)product->data;
+  abt = (MatProductCtx_MatMatTransMult *)product->data;
   PetscCheck(abt, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing product struct");
   /* clear old values in C */
   if (!c->a) {
@@ -1372,13 +1371,13 @@ PetscErrorCode MatMatTransposeMultNumeric_SeqAIJ_SeqAIJ(Mat A, Mat B, Mat C)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode MatDestroy_SeqAIJ_MatTransMatMult(void *data)
+PetscErrorCode MatProductCtxDestroy_SeqAIJ_MatTransMatMult(PetscCtxRt data)
 {
-  Mat_MatTransMatMult *atb = (Mat_MatTransMatMult *)data;
+  MatProductCtx_MatTransMatMult *atb = *(MatProductCtx_MatTransMatMult **)data;
 
   PetscFunctionBegin;
   PetscCall(MatDestroy(&atb->At));
-  if (atb->destroy) PetscCall((*atb->destroy)(atb->data));
+  if (atb->destroy) PetscCall((*atb->destroy)(&atb->data));
   PetscCall(PetscFree(atb));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1417,7 +1416,7 @@ PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat B, PetscReal
   PetscCall(PetscStrcmp(product->alg, "default", &def));
   PetscCall(PetscStrcmp(product->alg, "at*b", &flg));
   if (flg || def) {
-    Mat_MatTransMatMult *atb;
+    MatProductCtx_MatTransMatMult *atb;
 
     PetscCheck(!product->data, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Extra product struct not empty");
     PetscCall(PetscNew(&atb));
@@ -1426,7 +1425,7 @@ PetscErrorCode MatTransposeMatMultSymbolic_SeqAIJ_SeqAIJ(Mat A, Mat B, PetscReal
     PetscCall(MatMatMultSymbolic_SeqAIJ_SeqAIJ(square ? A : At, B, fill, C));
     PetscCall(MatProductSetAlgorithm(C, "at*b"));
     product->data    = atb;
-    product->destroy = MatDestroy_SeqAIJ_MatTransMatMult;
+    product->destroy = MatProductCtxDestroy_SeqAIJ_MatTransMatMult;
     atb->At          = At;
 
     C->ops->mattransposemultnumeric = NULL; /* see MatProductNumeric_AtB_SeqAIJ_SeqAIJ */
@@ -1721,6 +1720,15 @@ PETSC_INTERN PetscErrorCode MatProductSetFromOptions_SeqXBAIJ_SeqDense(Mat C)
   MatCheckProduct(C, 1);
   PetscCheck(product->A, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing A");
   if (product->type == MATPRODUCT_AB || (product->type == MATPRODUCT_AtB && product->A->symmetric == PETSC_BOOL3_TRUE)) PetscCall(MatProductSetFromOptions_SeqXBAIJ_SeqDense_AB(C));
+  else if (product->type == MATPRODUCT_AtB) {
+    PetscBool flg;
+
+    PetscCall(PetscObjectTypeCompare((PetscObject)product->A, MATSEQBAIJ, &flg));
+    if (flg) {
+      C->ops->transposematmultsymbolic = MatTransposeMatMultSymbolic_SeqBAIJ_SeqDense;
+      C->ops->productsymbolic          = MatProductSymbolic_AtB;
+    }
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1947,7 +1955,7 @@ static PetscErrorCode MatProductNumeric_AtB_SeqAIJ_SeqAIJ(Mat C)
     PetscCall((*C->ops->mattransposemultnumeric)(A, B, C));
   } else {
     /* Alg: "matmatmult" -- C = At*B */
-    Mat_MatTransMatMult *atb = (Mat_MatTransMatMult *)product->data;
+    MatProductCtx_MatTransMatMult *atb = (MatProductCtx_MatTransMatMult *)product->data;
 
     PetscCheck(atb, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Missing product struct");
     if (atb->At) {

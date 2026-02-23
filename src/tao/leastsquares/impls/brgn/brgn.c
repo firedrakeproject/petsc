@@ -218,7 +218,7 @@ static PetscErrorCode GNComputeHessian(Tao tao, Vec X, Mat H, Mat Hpre, void *pt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode GNHookFunction(Tao tao, PetscInt iter, void *ctx)
+static PetscErrorCode GNHookFunction(Tao tao, PetscInt iter, PetscCtx ctx)
 {
   TAO_BRGN *gn = (TAO_BRGN *)ctx;
 
@@ -406,7 +406,7 @@ static PetscErrorCode TaoSetUp_BRGN(Tao tao)
 {
   TAO_BRGN *gn = (TAO_BRGN *)tao->data;
   PetscBool is_bnls, is_bntr, is_bntl;
-  PetscInt  i, n, N, K; /* dict has size K*N*/
+  PetscInt  n, N, K; /* dict has size K*N*/
 
   PetscFunctionBegin;
   PetscCheck(tao->ls_res, PetscObjectComm((PetscObject)tao), PETSC_ERR_ORDER, "TaoSetResidualRoutine() must be called before setup!");
@@ -455,7 +455,7 @@ static PetscErrorCode TaoSetUp_BRGN(Tao tao)
       PetscCall(MatSetSizes(gn->H, n, n, N, N));
       PetscCall(MatSetType(gn->H, MATSHELL));
       PetscCall(MatSetOption(gn->H, MAT_SYMMETRIC, PETSC_TRUE));
-      PetscCall(MatShellSetOperation(gn->H, MATOP_MULT, (void (*)(void))GNHessianProd));
+      PetscCall(MatShellSetOperation(gn->H, MATOP_MULT, (PetscErrorCodeFn *)GNHessianProd));
       PetscCall(MatShellSetContext(gn->H, gn));
     }
     PetscCall(MatSetUp(gn->H));
@@ -471,10 +471,6 @@ static PetscErrorCode TaoSetUp_BRGN(Tao tao)
     PetscCall(TaoSetTolerances(gn->subsolver, tao->gatol, tao->grtol, tao->gttol));
     PetscCall(TaoSetMaximumIterations(gn->subsolver, tao->max_it));
     PetscCall(TaoSetMaximumFunctionEvaluations(gn->subsolver, tao->max_funcs));
-    for (i = 0; i < tao->numbermonitors; ++i) {
-      PetscCall(TaoMonitorSet(gn->subsolver, tao->monitor[i], tao->monitorcontext[i], tao->monitordestroy[i]));
-      PetscCall(PetscObjectReference((PetscObject)tao->monitorcontext[i]));
-    }
     PetscCall(TaoSetUp(gn->subsolver));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -660,7 +656,7 @@ static PetscErrorCode TaoBRGNSetDictionaryMatrix_BRGN(Tao tao, Mat dict)
 
 .seealso: `Tao`, `Mat`, `TAOBRGN`
 @*/
-PetscErrorCode TaoBRGNSetRegularizerObjectiveAndGradientRoutine(Tao tao, PetscErrorCode (*func)(Tao tao, Vec u, PetscReal *val, Vec g, void *ctx), void *ctx)
+PetscErrorCode TaoBRGNSetRegularizerObjectiveAndGradientRoutine(Tao tao, PetscErrorCode (*func)(Tao tao, Vec u, PetscReal *val, Vec g, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
@@ -668,7 +664,7 @@ PetscErrorCode TaoBRGNSetRegularizerObjectiveAndGradientRoutine(Tao tao, PetscEr
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TaoBRGNSetRegularizerObjectiveAndGradientRoutine_BRGN(Tao tao, PetscErrorCode (*func)(Tao tao, Vec u, PetscReal *val, Vec g, void *ctx), void *ctx)
+static PetscErrorCode TaoBRGNSetRegularizerObjectiveAndGradientRoutine_BRGN(Tao tao, PetscErrorCode (*func)(Tao tao, Vec u, PetscReal *val, Vec g, PetscCtx ctx), PetscCtx ctx)
 {
   TAO_BRGN *gn = (TAO_BRGN *)tao->data;
 
@@ -698,7 +694,7 @@ static PetscErrorCode TaoBRGNSetRegularizerObjectiveAndGradientRoutine_BRGN(Tao 
 
 .seealso: `Tao`, `Mat`, `TAOBRGN`
 @*/
-PetscErrorCode TaoBRGNSetRegularizerHessianRoutine(Tao tao, Mat Hreg, PetscErrorCode (*func)(Tao tao, Vec u, Mat Hreg, void *ctx), void *ctx)
+PetscErrorCode TaoBRGNSetRegularizerHessianRoutine(Tao tao, Mat Hreg, PetscErrorCode (*func)(Tao tao, Vec u, Mat Hreg, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(tao, TAO_CLASSID, 1);
@@ -706,7 +702,7 @@ PetscErrorCode TaoBRGNSetRegularizerHessianRoutine(Tao tao, Mat Hreg, PetscError
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode TaoBRGNSetRegularizerHessianRoutine_BRGN(Tao tao, Mat Hreg, PetscErrorCode (*func)(Tao tao, Vec u, Mat Hreg, void *ctx), void *ctx)
+static PetscErrorCode TaoBRGNSetRegularizerHessianRoutine_BRGN(Tao tao, Mat Hreg, PetscErrorCode (*func)(Tao tao, Vec u, Mat Hreg, PetscCtx ctx), PetscCtx ctx)
 {
   TAO_BRGN *gn = (TAO_BRGN *)tao->data;
 

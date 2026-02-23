@@ -39,7 +39,7 @@ PC Object: (stokes_) 4 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (stokes_mg_coarse_) 4 MPI processes
       type: redundant
         First (color=0) of 4 PCs follows
@@ -48,7 +48,7 @@ PC Object: (stokes_) 4 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (stokes_mg_coarse_redundant_) 1 MPI process
           type: lu
             out-of-place factorization
@@ -56,21 +56,21 @@ PC Object: (stokes_) 4 MPI processes
             using diagonal shift on blocks to prevent zero pivot [INBLOCKS]
             matrix ordering: nd
             factor fill ratio given 5., needed 3.27988
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: (stokes_mg_coarse_redundant_) 1 MPI process
                   type: seqaij
                   rows=867, cols=867, bs=3
                   package used to perform factorization: petsc
                   total: nonzeros=70875, allocated nonzeros=70875
                     using I-node routines: found 287 nodes, limit used is 5
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: 1 MPI process
             type: seqaij
             rows=867, cols=867, bs=3
             total: nonzeros=21609, allocated nonzeros=21609
             total number of mallocs used during MatSetValues calls=0
               using I-node routines: found 289 nodes, limit used is 5
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 4 MPI processes
         type: mpiaij
         rows=867, cols=867, bs=3
@@ -87,8 +87,8 @@ PC Object: (stokes_) 4 MPI processes
         eigenvalues estimated using gmres with transform: [0. 0.2; 0. 1.1]
         KSP Object: (stokes_mg_levels_1_esteig_) 4 MPI processes
           type: gmres
-            restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-            happy breakdown tolerance 1e-30
+            restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+            happy breakdown tolerance=1e-30
           maximum iterations=10, initial guess is zero
           tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
           left preconditioning
@@ -97,7 +97,7 @@ PC Object: (stokes_) 4 MPI processes
       maximum iterations=1, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (stokes_mg_levels_1_) 4 MPI processes
       type: fieldsplit
         FieldSplit with MULTIPLICATIVE composition: total splits = 2, blocksize = 3
@@ -108,11 +108,11 @@ PC Object: (stokes_) 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (stokes_mg_levels_1_fieldsplit_0_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (stokes_mg_levels_1_fieldsplit_0_) 4 MPI processes
           type: mpiaij
           rows=2178, cols=2178, bs=2
@@ -125,18 +125,18 @@ PC Object: (stokes_) 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (stokes_mg_levels_1_fieldsplit_1_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (stokes_mg_levels_1_fieldsplit_1_) 4 MPI processes
           type: mpiaij
           rows=1089, cols=1089
           total: nonzeros=9409, allocated nonzeros=9409
           total number of mallocs used during MatSetValues calls=0
             not using I-node (on process 0) routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 4 MPI processes
         type: mpiaij
         rows=3267, cols=3267, bs=3
@@ -154,8 +154,8 @@ PC Object: (stokes_) 4 MPI processes
         eigenvalues estimated using gmres with transform: [0. 0.2; 0. 1.1]
         KSP Object: (stokes_mg_levels_2_esteig_) 4 MPI processes
           type: gmres
-            restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-            happy breakdown tolerance 1e-30
+            restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+            happy breakdown tolerance=1e-30
           maximum iterations=10, initial guess is zero
           tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
           left preconditioning
@@ -164,7 +164,7 @@ PC Object: (stokes_) 4 MPI processes
       maximum iterations=1, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (stokes_mg_levels_2_) 4 MPI processes
       type: fieldsplit
         FieldSplit with MULTIPLICATIVE composition: total splits = 2, blocksize = 3
@@ -175,11 +175,11 @@ PC Object: (stokes_) 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (stokes_mg_levels_2_fieldsplit_0_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (stokes_mg_levels_2_fieldsplit_0_) 4 MPI processes
           type: mpiaij
           rows=8450, cols=8450, bs=2
@@ -192,18 +192,18 @@ PC Object: (stokes_) 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (stokes_mg_levels_2_fieldsplit_1_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (stokes_mg_levels_2_fieldsplit_1_) 4 MPI processes
           type: mpiaij
           rows=4225, cols=4225
           total: nonzeros=37249, allocated nonzeros=37249
           total number of mallocs used during MatSetValues calls=0
             not using I-node (on process 0) routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 4 MPI processes
         type: mpiaij
         rows=12675, cols=12675, bs=3
@@ -221,8 +221,8 @@ PC Object: (stokes_) 4 MPI processes
         eigenvalues estimated using gmres with transform: [0. 0.2; 0. 1.1]
         KSP Object: (stokes_mg_levels_3_esteig_) 4 MPI processes
           type: gmres
-            restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-            happy breakdown tolerance 1e-30
+            restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+            happy breakdown tolerance=1e-30
           maximum iterations=10, initial guess is zero
           tolerances: relative=1e-12, absolute=1e-50, divergence=10000.
           left preconditioning
@@ -231,7 +231,7 @@ PC Object: (stokes_) 4 MPI processes
       maximum iterations=1, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (stokes_mg_levels_3_) 4 MPI processes
       type: fieldsplit
         FieldSplit with MULTIPLICATIVE composition: total splits = 2, blocksize = 3
@@ -242,11 +242,11 @@ PC Object: (stokes_) 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (stokes_mg_levels_3_fieldsplit_0_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (stokes_mg_levels_3_fieldsplit_0_) 4 MPI processes
           type: mpiaij
           rows=33282, cols=33282, bs=2
@@ -259,25 +259,25 @@ PC Object: (stokes_) 4 MPI processes
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (stokes_mg_levels_3_fieldsplit_1_) 4 MPI processes
         type: sor
           type = local_symmetric, iterations = 1, local iterations = 1, omega = 1.
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: (stokes_mg_levels_3_fieldsplit_1_) 4 MPI processes
           type: mpiaij
           rows=16641, cols=16641
           total: nonzeros=148225, allocated nonzeros=148225
           total number of mallocs used during MatSetValues calls=0
             not using I-node (on process 0) routines
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 4 MPI processes
         type: mpiaij
         rows=49923, cols=49923, bs=3
         total: nonzeros=1334025, allocated nonzeros=1334025
         total number of mallocs used during MatSetValues calls=0
   Up solver (post-smoother) same as down solver (pre-smoother)
-  linear system matrix followed by preconditioner matrix:
+  linear system matrix, followed by the matrix used to construct the preconditioner:
   Mat Object: 4 MPI processes
     type: mpiaij
     rows=49923, cols=49923, bs=3

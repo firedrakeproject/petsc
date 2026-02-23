@@ -34,7 +34,7 @@
 
 .seealso: `PetscReturnErrorHandler()`
  @*/
-PetscErrorCode PetscIgnoreErrorHandler(MPI_Comm comm, int line, const char *fun, const char *file, PetscErrorCode n, PetscErrorType p, const char *mess, void *ctx)
+PetscErrorCode PetscIgnoreErrorHandler(MPI_Comm comm, int line, const char *fun, const char *file, PetscErrorCode n, PetscErrorType p, const char *mess, PetscCtx ctx)
 {
   (void)comm;
   (void)line;
@@ -45,8 +45,6 @@ PetscErrorCode PetscIgnoreErrorHandler(MPI_Comm comm, int line, const char *fun,
   (void)ctx;
   return n;
 }
-
-/* ---------------------------------------------------------------------------------------*/
 
 static char      arch[128], hostname[128], username[128], pname[PETSC_MAX_PATH_LEN], date[128];
 static PetscBool PetscErrorPrintfInitializeCalled = PETSC_FALSE;
@@ -176,7 +174,7 @@ static PETSC_TLS PetscBool petsc_traceback_error_silent = PETSC_FALSE;
           `PetscAbortErrorHandler()`, `PetscMPIAbortErrorHandler()`, `PetscReturnErrorHandler()`, `PetscEmacsClientErrorHandler()`,
            `PETSC_ERROR_INITIAL`, `PETSC_ERROR_REPEAT`, `PetscErrorCode`, `PetscErrorType`
  @*/
-PetscErrorCode PetscTraceBackErrorHandler(MPI_Comm comm, int line, const char *fun, const char *file, PetscErrorCode n, PetscErrorType p, const char *mess, void *ctx)
+PetscErrorCode PetscTraceBackErrorHandler(MPI_Comm comm, int line, const char *fun, const char *file, PetscErrorCode n, PetscErrorType p, const char *mess, PetscCtx ctx)
 {
   PetscMPIInt rank = 0;
 

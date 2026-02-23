@@ -177,7 +177,7 @@ static PetscErrorCode KSPPIPEFGMRESCycle(PetscInt *itcount, KSP ksp)
     hes[loc_it] = lhh[loc_it] + shift;
 
     /* we delay applying the shift here */
-    for (j = 0; j <= loc_it; j++) { lhh[j] = -lhh[j]; /* flip sign */ }
+    for (j = 0; j <= loc_it; j++) lhh[j] = -lhh[j]; /* flip sign */
 
     /* Compute the norm of the un-normalized new direction using the rearranged formula
        Note that these are shifted ("barred") quantities */
@@ -482,15 +482,15 @@ static PetscErrorCode KSPSetFromOptions_PIPEFGMRES(KSP ksp, PetscOptionItems Pet
 static PetscErrorCode KSPView_PIPEFGMRES(KSP ksp, PetscViewer viewer)
 {
   KSP_PIPEFGMRES *pipefgmres = (KSP_PIPEFGMRES *)ksp->data;
-  PetscBool       iascii, isstring;
+  PetscBool       isascii, isstring;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
 
-  if (iascii) {
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  restart=%" PetscInt_FMT "\n", pipefgmres->max_k));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  happy breakdown tolerance %g\n", (double)pipefgmres->haptol));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  happy breakdown tolerance=%g\n", (double)pipefgmres->haptol));
 #if defined(PETSC_USE_COMPLEX)
     PetscCall(PetscViewerASCIIPrintf(viewer, "  shift=%g+%gi\n", (double)PetscRealPart(pipefgmres->shift), (double)PetscImaginaryPart(pipefgmres->shift)));
 #else
@@ -588,7 +588,7 @@ PETSC_EXTERN PetscErrorCode KSPCreate_PIPEFGMRES(KSP ksp)
 
   pipefgmres->nextra_vecs    = 1;
   pipefgmres->haptol         = 1.0e-30;
-  pipefgmres->q_preallocate  = 0;
+  pipefgmres->q_preallocate  = PETSC_FALSE;
   pipefgmres->delta_allocate = PIPEFGMRES_DELTA_DIRECTIONS;
   pipefgmres->orthog         = NULL;
   pipefgmres->nrs            = NULL;

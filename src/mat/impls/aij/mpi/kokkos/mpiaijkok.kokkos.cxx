@@ -157,13 +157,13 @@ struct MatMatStruct_AtB : public MatMatStruct {
   MatColIdxKokkosView Fojperm;
 };
 
-struct MatProductData_MPIAIJKokkos {
+struct MatProductCtx_MPIAIJKokkos {
   MatMatStruct_AB  *mmAB     = nullptr;
   MatMatStruct_AtB *mmAtB    = nullptr;
   PetscBool         reusesym = PETSC_FALSE;
   Mat               Z        = nullptr; // store Z=AB in computing BtAB
 
-  ~MatProductData_MPIAIJKokkos()
+  ~MatProductCtx_MPIAIJKokkos()
   {
     delete mmAB;
     delete mmAtB;
@@ -171,10 +171,10 @@ struct MatProductData_MPIAIJKokkos {
   }
 };
 
-static PetscErrorCode MatProductDataDestroy_MPIAIJKokkos(void *data)
+static PetscErrorCode MatProductCtxDestroy_MPIAIJKokkos(PetscCtxRt data)
 {
   PetscFunctionBegin;
-  PetscCallCXX(delete static_cast<MatProductData_MPIAIJKokkos *>(data));
+  PetscCallCXX(delete *reinterpret_cast<MatProductCtx_MPIAIJKokkos **>(data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -402,21 +402,21 @@ static PetscErrorCode MatMPIAIJKokkosReduceBegin(MPI_Comm comm, KokkosCsrMatrix 
     for (PetscInt i = 0; i < sendRowCnt; i++) sendRowLen[i] = E_RowLen[rmine[i]];
     recvRowLen[0] = 0; // since we will make it in CSR format later
     recvRowLen++;      // advance the pointer now
-    for (PetscInt i = 0; i < niranks; i++) MPI_Irecv(&recvRowLen[ioffset[i]], ioffset[i + 1] - ioffset[i], MPIU_INT, iranks[i], tag, comm, &reqs[nranks + i]);
-    for (PetscInt i = 0; i < nranks; i++) MPIU_Isend(&sendRowLen[roffset[i]], roffset[i + 1] - roffset[i], MPIU_INT, ranks[i], tag, comm, &reqs[i]);
+    for (PetscInt i = 0; i < niranks; i++) PetscCallMPI(MPIU_Irecv(&recvRowLen[ioffset[i]], ioffset[i + 1] - ioffset[i], MPIU_INT, iranks[i], tag, comm, &reqs[nranks + i]));
+    for (PetscInt i = 0; i < nranks; i++) PetscCallMPI(MPIU_Isend(&sendRowLen[roffset[i]], roffset[i + 1] - roffset[i], MPIU_INT, ranks[i], tag, comm, &reqs[i]));
     PetscCallMPI(MPI_Waitall(nranks + niranks, reqs, MPI_STATUSES_IGNORE));
 
     // Build the real PetscSF for reducing E rows (buffer to buffer)
     rdisp[0] = 0;
     for (PetscInt i = 0; i < niranks; i++) {
       rdisp[i + 1] = rdisp[i];
-      for (PetscInt j = ioffset[i]; j < ioffset[i + 1]; j++) { rdisp[i + 1] += recvRowLen[j]; }
+      for (PetscInt j = ioffset[i]; j < ioffset[i + 1]; j++) rdisp[i + 1] += recvRowLen[j];
     }
     recvRowLen--; // put it back into csr format
     for (PetscInt i = 0; i < recvRowCnt; i++) recvRowLen[i + 1] += recvRowLen[i];
 
-    for (PetscInt i = 0; i < nranks; i++) MPIU_Irecv(&sdisp[i], 1, MPIU_INT, ranks[i], tag, comm, &reqs[i]);
-    for (PetscInt i = 0; i < niranks; i++) MPIU_Isend(&rdisp[i], 1, MPIU_INT, iranks[i], tag, comm, &reqs[nranks + i]);
+    for (PetscInt i = 0; i < nranks; i++) PetscCallMPI(MPIU_Irecv(&sdisp[i], 1, MPIU_INT, ranks[i], tag, comm, &reqs[i]));
+    for (PetscInt i = 0; i < niranks; i++) PetscCallMPI(MPIU_Isend(&rdisp[i], 1, MPIU_INT, iranks[i], tag, comm, &reqs[nranks + i]));
     PetscCallMPI(MPI_Waitall(nranks + niranks, reqs, MPI_STATUSES_IGNORE));
 
     PetscInt     nleaves = 0, Enz = 0;    // leaves are nonzeros I will send
@@ -834,7 +834,7 @@ static PetscErrorCode MatMPIAIJKokkosBcastBegin(Mat E, PetscSF ownerSF, MatReuse
     PetscIntKokkosViewHost rowoffset_h(NoInit("rowoffset_h"), ioffset[niranks] + 1);
     PetscInt              *rowoffset = rowoffset_h.data(); // for each entry (row) indicated in irootloc[], we calculate its destinate offset in copying
     rowoffset[0]                     = 0;
-    for (PetscInt i = 0; i < ioffset[niranks]; i++) { rowoffset[i + 1] = rowoffset[i] + E_RowLen[irootloc[i]]; }
+    for (PetscInt i = 0; i < ioffset[niranks]; i++) rowoffset[i + 1] = rowoffset[i] + E_RowLen[irootloc[i]];
 
     // Copy (global) column indices of the needed rows in E to a buffer, and then bcast to Fj[]
     PetscInt *jbuf, *Fj;
@@ -1270,16 +1270,16 @@ static PetscErrorCode MatProductNumeric_MPIAIJKokkos_AB(Mat_Product *product, Ma
 
 static PetscErrorCode MatProductNumeric_MPIAIJKokkos(Mat C)
 {
-  Mat_MPIAIJ                  *cmpi = static_cast<Mat_MPIAIJ *>(C->data);
-  Mat_Product                 *product;
-  MatProductData_MPIAIJKokkos *pdata;
-  MatProductType               ptype;
-  Mat                          A, B;
+  Mat_MPIAIJ                 *cmpi = static_cast<Mat_MPIAIJ *>(C->data);
+  Mat_Product                *product;
+  MatProductCtx_MPIAIJKokkos *pdata;
+  MatProductType              ptype;
+  Mat                         A, B;
 
   PetscFunctionBegin;
   MatCheckProduct(C, 1); // make sure C is a product
   product = C->product;
-  pdata   = static_cast<MatProductData_MPIAIJKokkos *>(product->data);
+  pdata   = static_cast<MatProductCtx_MPIAIJKokkos *>(product->data);
   ptype   = product->type;
   A       = product->A;
   B       = product->B;
@@ -1307,15 +1307,15 @@ static PetscErrorCode MatProductNumeric_MPIAIJKokkos(Mat C)
 
 static PetscErrorCode MatProductSymbolic_MPIAIJKokkos(Mat C)
 {
-  Mat                          A, B;
-  Mat_Product                 *product;
-  MatProductType               ptype;
-  MatProductData_MPIAIJKokkos *pdata;
-  MatMatStruct                *mm = NULL;
-  PetscInt                     m, n, M, N;
-  Mat                          Cd, Co;
-  MPI_Comm                     comm;
-  Mat_MPIAIJ                  *mpiaij;
+  Mat                         A, B;
+  Mat_Product                *product;
+  MatProductType              ptype;
+  MatProductCtx_MPIAIJKokkos *pdata;
+  MatMatStruct               *mm = NULL;
+  PetscInt                    m, n, M, N;
+  Mat                         Cd, Co;
+  MPI_Comm                    comm;
+  Mat_MPIAIJ                 *mpiaij;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)C, &comm));
@@ -1354,7 +1354,7 @@ static PetscErrorCode MatProductSymbolic_MPIAIJKokkos(Mat C)
   PetscCall(PetscLayoutSetUp(C->cmap));
   PetscCall(MatSetType(C, ((PetscObject)A)->type_name));
 
-  pdata           = new MatProductData_MPIAIJKokkos();
+  pdata           = new MatProductCtx_MPIAIJKokkos();
   pdata->reusesym = product->api_user;
 
   if (ptype == MATPRODUCT_AB) {
@@ -1428,7 +1428,7 @@ static PetscErrorCode MatProductSymbolic_MPIAIJKokkos(Mat C)
     SETERRQ(PetscObjectComm((PetscObject)C), PETSC_ERR_PLIB, "Not for ProductType %s", MatProductTypes[ptype]);
   }
   C->product->data       = pdata;
-  C->product->destroy    = MatProductDataDestroy_MPIAIJKokkos;
+  C->product->destroy    = MatProductCtxDestroy_MPIAIJKokkos;
   C->ops->productnumeric = MatProductNumeric_MPIAIJKokkos;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1540,10 +1540,10 @@ struct MatCOOStruct_MPIAIJKokkos {
   ~MatCOOStruct_MPIAIJKokkos() { PetscCallVoid(PetscSFDestroy(&sf)); }
 };
 
-static PetscErrorCode MatCOOStructDestroy_MPIAIJKokkos(void **data)
+static PetscErrorCode MatCOOStructDestroy_MPIAIJKokkos(PetscCtxRt data)
 {
   PetscFunctionBegin;
-  PetscCallCXX(delete static_cast<MatCOOStruct_MPIAIJKokkos *>(*data));
+  PetscCallCXX(delete *static_cast<MatCOOStruct_MPIAIJKokkos **>(data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1562,7 +1562,7 @@ static PetscErrorCode MatSetPreallocationCOO_MPIAIJKokkos(Mat mat, PetscCount co
 
   // Copy the COO struct to device
   PetscCall(PetscObjectQuery((PetscObject)mat, "__PETSc_MatCOOStruct_Host", (PetscObject *)&container_h));
-  PetscCall(PetscContainerGetPointer(container_h, (void **)&coo_h));
+  PetscCall(PetscContainerGetPointer(container_h, &coo_h));
   PetscCallCXX(coo_d = new MatCOOStruct_MPIAIJKokkos(coo_h));
 
   // Put the COO struct in a container and then attach that to the matrix
@@ -1587,7 +1587,7 @@ static PetscErrorCode MatSetValuesCOO_MPIAIJKokkos(Mat mat, const PetscScalar v[
 
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)mat, "__PETSc_MatCOOStruct_Device", (PetscObject *)&container));
-  PetscCall(PetscContainerGetPointer(container, (void **)&coo));
+  PetscCall(PetscContainerGetPointer(container, &coo));
 
   const auto &n      = coo->n;
   const auto &Annz   = coo->Annz;
@@ -1705,6 +1705,7 @@ static PetscErrorCode MatSetOps_MPIAIJKokkos(Mat B)
   B->ops->productsetfromoptions = MatProductSetFromOptions_MPIAIJKokkos;
   B->ops->destroy               = MatDestroy_MPIAIJKokkos;
   B->ops->shift                 = MatShift_MPIAIJKokkos;
+  B->ops->getcurrentmemtype     = MatGetCurrentMemType_MPIAIJ;
 
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMPIAIJSetPreallocation_C", MatMPIAIJSetPreallocation_MPIAIJKokkos));
   PetscCall(PetscObjectComposeFunction((PetscObject)B, "MatMPIAIJGetLocalMatMerge_C", MatMPIAIJGetLocalMatMerge_MPIAIJKokkos));
@@ -1743,7 +1744,7 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPIAIJKokkos(Mat A, MatType mtype,
 }
 
 /*MC
-   MATAIJKOKKOS - "mpiaijkokkos", a matrix type to be used for CSR sparse matrices with Kokkos
+   MATAIJKOKKOS - "mpiaijkokkos", a matrix type to be used for CSR sparse matrices with Kokkos.
 
    A matrix type using Kokkos-Kernels CrsMatrix type for portability across different device types
 

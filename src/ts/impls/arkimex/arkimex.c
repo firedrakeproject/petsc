@@ -1291,10 +1291,9 @@ static PetscErrorCode TSEvaluateStep_ARKIMEX(TS ts, PetscInt order, Vec X, Petsc
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 unavailable:
-  if (done) *done = PETSC_FALSE;
-  else
-    SETERRQ(PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "ARKIMEX '%s' of order %" PetscInt_FMT " cannot evaluate step at order %" PetscInt_FMT ". Consider using -ts_adapt_type none or a different method that has an embedded estimate.", tab->name,
-            tab->order, order);
+  PetscCheck(done, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP, "ARKIMEX '%s' of order %" PetscInt_FMT " cannot evaluate step at order %" PetscInt_FMT ". Consider using -ts_adapt_type none or a different method that has an embedded estimate.",
+             tab->name, tab->order, order);
+  *done = PETSC_FALSE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1793,14 +1792,12 @@ static PetscErrorCode TSARKIMEXGetVecs(TS ts, DM dm, Vec *Z, Vec *Ydot)
 
   PetscFunctionBegin;
   if (Z) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSARKIMEX_Z", Z));
-    } else *Z = ax->Z;
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSARKIMEX_Z", Z));
+    else *Z = ax->Z;
   }
   if (Ydot) {
-    if (dm && dm != ts->dm) {
-      PetscCall(DMGetNamedGlobalVector(dm, "TSARKIMEX_Ydot", Ydot));
-    } else *Ydot = ax->Ydot;
+    if (dm && dm != ts->dm) PetscCall(DMGetNamedGlobalVector(dm, "TSARKIMEX_Ydot", Ydot));
+    else *Ydot = ax->Ydot;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1866,9 +1863,8 @@ static PetscErrorCode TSARKIMEXGetAlgebraicIS(TS ts, DM dm, IS *alg_is)
   TS_ARKIMEX *ax = (TS_ARKIMEX *)ts->data;
 
   PetscFunctionBegin;
-  if (dm && dm != ts->dm) {
-    PetscCall(PetscObjectQuery((PetscObject)dm, "TSARKIMEX_ALG_IS", (PetscObject *)alg_is));
-  } else *alg_is = ax->alg_is;
+  if (dm && dm != ts->dm) PetscCall(PetscObjectQuery((PetscObject)dm, "TSARKIMEX_ALG_IS", (PetscObject *)alg_is));
+  else *alg_is = ax->alg_is;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1964,13 +1960,13 @@ static PetscErrorCode TSGetStages_ARKIMEX(TS ts, PetscInt *ns, Vec *Y[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMCoarsenHook_TSARKIMEX(DM fine, DM coarse, void *ctx)
+static PetscErrorCode DMCoarsenHook_TSARKIMEX(DM fine, DM coarse, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMRestrictHook_TSARKIMEX(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, void *ctx)
+static PetscErrorCode DMRestrictHook_TSARKIMEX(DM fine, Mat restrct, Vec rscale, Mat inject, DM coarse, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec Z, Z_c;
@@ -1985,13 +1981,13 @@ static PetscErrorCode DMRestrictHook_TSARKIMEX(DM fine, Mat restrct, Vec rscale,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainHook_TSARKIMEX(DM dm, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainHook_TSARKIMEX(DM dm, DM subdm, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMSubDomainRestrictHook_TSARKIMEX(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, void *ctx)
+static PetscErrorCode DMSubDomainRestrictHook_TSARKIMEX(DM dm, VecScatter gscat, VecScatter lscat, DM subdm, PetscCtx ctx)
 {
   TS  ts = (TS)ctx;
   Vec Z, Z_c;
@@ -2057,7 +2053,7 @@ static PetscErrorCode TSAdjointSetUp_ARKIMEX(TS ts)
   PetscFunctionBegin;
   PetscCall(VecDuplicateVecs(ts->vecs_sensi[0], tab->s * ts->numcost, &ark->VecsDeltaLam));
   PetscCall(VecDuplicateVecs(ts->vecs_sensi[0], ts->numcost, &ark->VecsSensiTemp));
-  if (ts->vecs_sensip) { PetscCall(VecDuplicateVecs(ts->vecs_sensip[0], ts->numcost, &ark->VecsSensiPTemp)); }
+  if (ts->vecs_sensip) PetscCall(VecDuplicateVecs(ts->vecs_sensip[0], ts->numcost, &ark->VecsSensiPTemp));
   if (PetscDefined(USE_DEBUG)) {
     PetscBool id = PETSC_FALSE;
     PetscCall(TSARKIMEXTestMassIdentity(ts, &id));
@@ -2118,12 +2114,12 @@ static PetscErrorCode TSSetFromOptions_ARKIMEX(TS ts, PetscOptionItems PetscOpti
 static PetscErrorCode TSView_ARKIMEX(TS ts, PetscViewer viewer)
 {
   TS_ARKIMEX *ark = (TS_ARKIMEX *)ts->data;
-  PetscBool   iascii, dirk;
+  PetscBool   isascii, dirk;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectTypeCompare((PetscObject)ts, TSDIRK, &dirk));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscViewerFormat format;
     ARKTableau        tab = ark->tableau;
     TSARKIMEXType     arktype;
@@ -2189,8 +2185,8 @@ static PetscErrorCode TSLoad_ARKIMEX(TS ts, PetscViewer viewer)
 
   Level: intermediate
 
-.seealso: [](ch_ts), `TSARKIMEXGetType()`, `TSARKIMEX`, `TSARKIMEXType`, `TSARKIMEX1BEE`, `TSARKIMEXA2`, `TSARKIMEXL2`, `TSARKIMEXARS122`, `TSARKIMEX2C`, `TSARKIMEX2D`, `TSARKIMEX2E`, `TSARKIMEXPRSSP2`,
-          `TSARKIMEX3`, `TSARKIMEXBPR3`, `TSARKIMEXARS443`, `TSARKIMEX4`, `TSARKIMEX5`
+.seealso: [](ch_ts), `TSARKIMEXGetType()`, `TSARKIMEX`, `TSARKIMEXType`, `TSARKIMEX1BEE`, `TSARKIMEXA2`, `TSARKIMEXL2`, `TSARKIMEXARS122`, `TSARKIMEX2C`, `TSARKIMEX2D`,
+          `TSARKIMEX2E`, `TSARKIMEXPRSSP2`, `TSARKIMEX3`, `TSARKIMEXBPR3`, `TSARKIMEXARS443`, `TSARKIMEX4`, `TSARKIMEX5`
 @*/
 PetscErrorCode TSARKIMEXSetType(TS ts, TSARKIMEXType arktype)
 {
@@ -2232,6 +2228,9 @@ PetscErrorCode TSARKIMEXGetType(TS ts, TSARKIMEXType *arktype)
   Input Parameters:
 + ts  - timestepping context
 - flg - `PETSC_TRUE` for fully implicit
+
+  Options Database Key:
+. -ts_arkimex_fully_implicit <true,false> - Solve both parts of the equation implicitly
 
   Level: intermediate
 
@@ -2343,22 +2342,29 @@ static PetscErrorCode TSDestroy_ARKIMEX(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ------------------------------------------------------------ */
 /*MC
-      TSARKIMEX - ODE and DAE solver using additive Runge-Kutta IMEX schemes
+  TSARKIMEX - ODE and DAE solver using additive Runge-Kutta IMEX schemes
 
   These methods are intended for problems with well-separated time scales, especially when a slow scale is strongly
   nonlinear such that it is expensive to solve with a fully implicit method. The user should provide the stiff part
   of the equation using `TSSetIFunction()` and the non-stiff part with `TSSetRHSFunction()`.
 
+  Options Database Keys:
++ -ts_arkimex_type <1bee,a2,l2,ars122,2c,2d,2e,prssp2,3,bpr3,ars443,4,5> - Set `TSARKIMEX` scheme type
+. -ts_dirk_type <type>                                                   - Set `TSDIRK` scheme type
+. -ts_arkimex_fully_implicit <true,false>                                - Solve both parts of the equation implicitly
+. -ts_arkimex_fastslowsplit <true,false>                                 - Enables the `TSARKIMEX` solver for a fast-slow system where the RHS is split component-wise,
+                                                                           see `TSRHSSplitSetIS()`
+- -ts_arkimex_initial_guess_extrapolate                                  - Extrapolate the initial guess for the stage solution from stage values of the previous time step
+
   Level: beginner
 
   Notes:
-  The default is `TSARKIMEX3`, it can be changed with `TSARKIMEXSetType()` or -ts_arkimex_type
+  The default is `TSARKIMEX3`, it can be changed with `TSARKIMEXSetType()` or `-ts_arkimex_type`
 
   If the equation is implicit or a DAE, then `TSSetEquationType()` needs to be set accordingly. Refer to the manual for further information.
 
-  Methods with an explicit stage can only be used with ODE in which the stiff part G(t,X,Xdot) has the form Xdot + Ghat(t,X).
+  Methods with an explicit stage can only be used with ODE in which the stiff part $ G(t,X,\dot{X}) $ has the form $ \dot{X} + \hat{G}(t,X)$.
 
   Consider trying `TSROSW` if the stiff part is linear or weakly nonlinear.
 
@@ -2412,8 +2418,6 @@ PETSC_EXTERN PetscErrorCode TSCreate_ARKIMEX(TS ts)
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* ------------------------------------------------------------ */
 
 static PetscErrorCode TSDIRKSetType_DIRK(TS ts, TSDIRKType dirktype)
 {
@@ -2474,12 +2478,12 @@ PetscErrorCode TSDIRKGetType(TS ts, TSDIRKType *dirktype)
 }
 
 /*MC
-      TSDIRK - ODE and DAE solver using Diagonally implicit Runge-Kutta schemes.
+  TSDIRK - ODE and DAE solver using Diagonally implicit Runge-Kutta schemes.
 
   Level: beginner
 
   Notes:
-  The default is `TSDIRKES213SAL`, it can be changed with `TSDIRKSetType()` or -ts_dirk_type.
+  The default is `TSDIRKES213SAL`, it can be changed with `TSDIRKSetType()` or `-ts_dirk_type`.
   The convention used in PETSc to name the DIRK methods is TSDIRK[E][S]PQS[SA][L][A] with:
 + E - whether the method has an explicit first stage
 . S - whether the method is single diagonal
@@ -2512,11 +2516,11 @@ PETSC_EXTERN PetscErrorCode TSCreate_DIRK(TS ts)
 - fastslow - `PETSC_TRUE` enables the `TSARKIMEX` solver for a fast-slow system where the RHS is split component-wise.
 
   Options Database Key:
-. -ts_arkimex_fastslowsplit - <true,false>
+. -ts_arkimex_fastslowsplit <true,false> - enables the `TSARKIMEX` solver for a fast-slow system where the RHS is split component-wise
 
   Level: intermediate
 
-.seealso: [](ch_ts), `TSARKIMEX`, `TSARKIMEXGetFastSlowSplit()`
+.seealso: [](ch_ts), `TSARKIMEX`, `TSARKIMEXGetFastSlowSplit()`, `TSRHSSplitSetIS()`
 @*/
 PetscErrorCode TSARKIMEXSetFastSlowSplit(TS ts, PetscBool fastslow)
 {

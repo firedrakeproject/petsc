@@ -55,7 +55,7 @@ typedef struct {
   phi_t + u . grad phi = -3 + <1, 1, 1> . <1, 1, 1> = 0
 */
 
-static PetscErrorCode analytic_phi(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx)
+static PetscErrorCode analytic_phi(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
 
@@ -64,7 +64,7 @@ static PetscErrorCode analytic_phi(PetscInt dim, PetscReal time, const PetscReal
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode velocity(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx)
+static PetscErrorCode velocity(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   for (d = 0; d < dim; ++d) u[d] = 1.0;
@@ -158,7 +158,7 @@ static PetscErrorCode SetupProblem(DM dm, AppCtx *ctx)
   }
   PetscCall(PetscDSSetExactSolution(ds, 0, analytic_phi, ctx));
   PetscCall(DMGetLabel(dm, "marker", &label));
-  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))analytic_phi, NULL, ctx, NULL));
+  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)analytic_phi, NULL, ctx, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -221,7 +221,7 @@ static PetscErrorCode SetupDiscretization(DM dm, AppCtx *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MonitorError(KSP ksp, PetscInt it, PetscReal rnorm, void *ctx)
+static PetscErrorCode MonitorError(KSP ksp, PetscInt it, PetscReal rnorm, PetscCtx ctx)
 {
   DM                  dm;
   PetscDS             ds;
@@ -253,7 +253,7 @@ static PetscErrorCode MonitorError(KSP ksp, PetscInt it, PetscReal rnorm, void *
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MyTSMonitorError(TS ts, PetscInt step, PetscReal crtime, Vec u, void *ctx)
+static PetscErrorCode MyTSMonitorError(TS ts, PetscInt step, PetscReal crtime, Vec u, PetscCtx ctx)
 {
   DM                  dm;
   PetscDS             ds;
@@ -332,16 +332,16 @@ int main(int argc, char **argv)
   test:
     suffix: 2d_p1p1_r1
     requires: triangle
-    args: -dm_refine 1 -phi_petscspace_degree 1 -vel_petscspace_degree 1 -ts_type beuler -ts_max_steps 10 -ts_dt 0.1 -pc_type lu -snes_monitor_short -snes_converged_reason -ts_monitor
+    args: -dm_refine 1 -phi_petscspace_degree 1 -vel_petscspace_degree 1 -ts_type beuler -ts_max_steps 10 -ts_time_step 0.1 -pc_type lu -snes_monitor_short -snes_converged_reason -ts_monitor
 
   test:
     suffix: 2d_p1p1_sor_r1
     requires: triangle !single
-    args: -dm_refine 1 -phi_petscspace_degree 1 -vel_petscspace_degree 1 -ts_type beuler -ts_max_steps 10 -ts_dt 0.1 -ksp_rtol 1.0e-9 -pc_type sor -snes_monitor_short -snes_converged_reason -ksp_monitor_short -ts_monitor
+    args: -dm_refine 1 -phi_petscspace_degree 1 -vel_petscspace_degree 1 -ts_type beuler -ts_max_steps 10 -ts_time_step 0.1 -ksp_rtol 1.0e-9 -pc_type sor -snes_monitor_short -snes_converged_reason -ksp_monitor_short -ts_monitor
 
   test:
     suffix: 2d_p1p1_mg_r1
     requires: triangle !single
-    args: -dm_refine_hierarchy 1 -phi_petscspace_degree 1 -vel_petscspace_degree 1 -ts_type beuler -ts_max_steps 10 -ts_dt 0.1 -ksp_type fgmres -ksp_rtol 1.0e-9 -pc_type mg -pc_mg_levels 2 -snes_monitor_short -snes_converged_reason -snes_view -ksp_monitor_true_residual -ts_monitor
+    args: -dm_refine_hierarchy 1 -phi_petscspace_degree 1 -vel_petscspace_degree 1 -ts_type beuler -ts_max_steps 10 -ts_time_step 0.1 -ksp_type fgmres -ksp_rtol 1.0e-9 -pc_type mg -pc_mg_levels 2 -snes_monitor_short -snes_converged_reason -snes_view -ksp_monitor_true_residual -ts_monitor
 
 TEST*/

@@ -27,7 +27,7 @@ static PetscErrorCode MatMultTranspose_User(Mat A, Vec X, Vec Y)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MyFunction(void *ctx, Vec x, Vec y)
+static PetscErrorCode MyFunction(PetscCtx ctx, Vec x, Vec y)
 {
   User user = (User)ctx;
 
@@ -55,8 +55,8 @@ int main(int argc, char **args)
   PetscCall(MatCreateVecs(user->B, &base, NULL));
   PetscCall(MatCreateShell(PETSC_COMM_WORLD, 2, 2, 2, 2, user, &S));
   PetscCall(MatSetUp(S));
-  PetscCall(MatShellSetOperation(S, MATOP_MULT, (void (*)(void))MatMult_User));
-  PetscCall(MatShellSetOperation(S, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_User));
+  PetscCall(MatShellSetOperation(S, MATOP_MULT, (PetscErrorCodeFn *)MatMult_User));
+  PetscCall(MatShellSetOperation(S, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)MatMultTranspose_User));
 
   PetscCall(MatShellTestMult(S, MyFunction, base, user, NULL));
   PetscCall(MatShellTestMultTranspose(S, MyFunction, base, user, NULL));

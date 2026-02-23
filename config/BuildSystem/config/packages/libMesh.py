@@ -37,11 +37,8 @@ class Configure(config.package.Package):
        newdir = ' '
        prefix = os.path.join(self.petscdir.dir,self.arch)
 
-    self.addDefine('HAVE_LIBMESH',1)
-    self.addMakeMacro('LIBMESH','yes')
     self.addPost(self.packageDir, [newdir + ' ./configure --prefix=' + prefix,
                                    newdir + ' ' + self.make.make_jnp,
                                    newdir + ' make install'])
     self.logPrintBox('libMesh examples are available at '+os.path.join(self.packageDir,'examples'))
     return self.installDir
-

@@ -267,7 +267,7 @@ PetscErrorCode DMGetCoordinatesLocalized(DM dm, PetscBool *areLocalized)
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscAssertPointer(areLocalized, 2);
   PetscCall(DMGetCoordinatesLocalizedLocal(dm, &localized));
-  PetscCallMPI(MPIU_Allreduce(&localized, areLocalized, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(&localized, areLocalized, 1, MPI_C_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -355,19 +355,18 @@ PetscErrorCode DMLocalizeCoordinates(DM dm)
   PetscCall(DMGetCoordinateDM(dm, &cdm));
   PetscCall(DMConvert(dm, DMPLEX, &plex));
   PetscCall(DMConvert(cdm, DMPLEX, &cplex));
-  if (cplex) {
-    PetscCall(DMPlexGetDepthStratum(cplex, 0, &vStart, &vEnd));
-    PetscCall(DMPlexGetMaxProjectionHeight(cplex, &maxHeight));
-    PetscCall(DMGetWorkArray(dm, 2 * (maxHeight + 1), MPIU_INT, &pStart));
-    pEnd     = &pStart[maxHeight + 1];
-    newStart = vStart;
-    newEnd   = vEnd;
-    for (h = 0; h <= maxHeight; h++) {
-      PetscCall(DMPlexGetHeightStratum(cplex, h, &pStart[h], &pEnd[h]));
-      newStart = PetscMin(newStart, pStart[h]);
-      newEnd   = PetscMax(newEnd, pEnd[h]);
-    }
-  } else SETERRQ(comm, PETSC_ERR_ARG_WRONG, "Coordinate localization requires a DMPLEX coordinate DM");
+  PetscCheck(cplex, comm, PETSC_ERR_ARG_WRONG, "Coordinate localization requires a DMPLEX coordinate DM");
+  PetscCall(DMPlexGetDepthStratum(cplex, 0, &vStart, &vEnd));
+  PetscCall(DMPlexGetMaxProjectionHeight(cplex, &maxHeight));
+  PetscCall(DMGetWorkArray(dm, 2 * (maxHeight + 1), MPIU_INT, &pStart));
+  pEnd     = &pStart[maxHeight + 1];
+  newStart = vStart;
+  newEnd   = vEnd;
+  for (h = 0; h <= maxHeight; h++) {
+    PetscCall(DMPlexGetHeightStratum(cplex, h, &pStart[h], &pEnd[h]));
+    newStart = PetscMin(newStart, pStart[h]);
+    newEnd   = PetscMax(newEnd, pEnd[h]);
+  }
   PetscCall(DMGetCoordinatesLocal(dm, &coordinates));
   PetscCheck(coordinates, comm, PETSC_ERR_SUP, "Missing local coordinate vector");
   PetscCall(DMGetCoordinateSection(dm, &cs));
@@ -410,7 +409,7 @@ PetscErrorCode DMLocalizeCoordinates(DM dm)
       PetscCall(DMPlexVecRestoreClosure(cplex, cs, coordinates, c, &dof, &cellCoords));
     }
   }
-  PetscCallMPI(MPIU_Allreduce(&useDG, &useDGGlobal, 1, MPIU_BOOL, MPI_LOR, comm));
+  PetscCallMPI(MPIU_Allreduce(&useDG, &useDGGlobal, 1, MPI_C_BOOL, MPI_LOR, comm));
   if (!useDGGlobal) goto end;
 
   PetscCall(PetscSectionSetUp(csDG));

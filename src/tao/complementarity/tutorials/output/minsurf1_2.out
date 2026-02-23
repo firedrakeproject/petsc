@@ -19,8 +19,8 @@ Tao Object: 1 MPI process
     Termination reason: SUCCESS
   KSP Object: 1 MPI process
     type: gmres
-      restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-      happy breakdown tolerance 1e-30
+      restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+      happy breakdown tolerance=1e-30
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
@@ -32,14 +32,14 @@ Tao Object: 1 MPI process
       tolerance for zero pivot 2.22045e-14
       matrix ordering: natural
       factor fill ratio given 1., needed 1.
-        Factored matrix follows:
+        Factored matrix:
           Mat Object: 1 MPI process
             type: seqaij
             rows=16, cols=16
             package used to perform factorization: petsc
             total: nonzeros=82, allocated nonzeros=82
               not using I-node routines
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: 1 MPI process
       type: seqaij
       rows=16, cols=16

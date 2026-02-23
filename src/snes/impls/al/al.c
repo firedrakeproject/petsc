@@ -95,7 +95,7 @@ PetscErrorCode SNESNewtonALSetCorrectionType(SNES snes, SNESNewtonALCorrectionTy
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESNewtonALSetFunction_NEWTONAL(SNES snes, SNESFunctionFn *func, void *ctx)
+static PetscErrorCode SNESNewtonALSetFunction_NEWTONAL(SNES snes, SNESFunctionFn *func, PetscCtx ctx)
 {
   SNES_NEWTONAL *al = (SNES_NEWTONAL *)snes->data;
 
@@ -126,7 +126,7 @@ static PetscErrorCode SNESNewtonALSetFunction_NEWTONAL(SNES snes, SNESFunctionFn
 
 .seealso: [](ch_snes), `SNES`, `SNESNEWTONAL`, `SNESNewtonALGetFunction()`, `SNESNewtonALGetLoadParameter()`
 @*/
-PetscErrorCode SNESNewtonALSetFunction(SNES snes, SNESFunctionFn *func, void *ctx)
+PetscErrorCode SNESNewtonALSetFunction(SNES snes, SNESFunctionFn *func, PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
@@ -134,13 +134,13 @@ PetscErrorCode SNESNewtonALSetFunction(SNES snes, SNESFunctionFn *func, void *ct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SNESNewtonALGetFunction_NEWTONAL(SNES snes, SNESFunctionFn **func, void **ctx)
+static PetscErrorCode SNESNewtonALGetFunction_NEWTONAL(SNES snes, SNESFunctionFn **func, PetscCtxRt ctx)
 {
   SNES_NEWTONAL *al = (SNES_NEWTONAL *)snes->data;
 
   PetscFunctionBegin;
   if (func) *func = al->computealfunction;
-  if (ctx) *ctx = al->alctx;
+  if (ctx) *(void **)ctx = al->alctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -158,11 +158,11 @@ static PetscErrorCode SNESNewtonALGetFunction_NEWTONAL(SNES snes, SNESFunctionFn
 
 .seealso: [](ch_snes), `SNES`, `SNESNEWTONAL`, `SNESNewtonALSetFunction()`
 @*/
-PetscErrorCode SNESNewtonALGetFunction(SNES snes, SNESFunctionFn **func, void **ctx)
+PetscErrorCode SNESNewtonALGetFunction(SNES snes, SNESFunctionFn **func, PetscCtxRt ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(snes, SNES_CLASSID, 1);
-  PetscUseMethod(snes, "SNESNewtonALGetFunction_C", (SNES, SNESFunctionFn **, void **), (snes, func, ctx));
+  PetscUseMethod(snes, "SNESNewtonALGetFunction_C", (SNES, SNESFunctionFn **, PetscCtxRt), (snes, func, ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -226,7 +226,7 @@ static PetscErrorCode SNESNewtonALComputeFunction_NEWTONAL(SNES snes, Vec X, Vec
   }
   if (al->scale_rhs && snes->vec_rhs) {
     /* Save original RHS vector values, then scale `snes->vec_rhs` by load parameter */
-    if (!al->vec_rhs_orig) { PetscCall(VecDuplicate(snes->vec_rhs, &al->vec_rhs_orig)); }
+    if (!al->vec_rhs_orig) PetscCall(VecDuplicate(snes->vec_rhs, &al->vec_rhs_orig));
     if (!al->copied_rhs) {
       PetscCall(VecCopy(snes->vec_rhs, al->vec_rhs_orig));
       al->copied_rhs = PETSC_TRUE;
@@ -333,7 +333,7 @@ static PetscErrorCode SNESSolve_NEWTONAL(SNES snes)
     PetscCall(SNESComputeFunction(snes, X, R));
     PetscCall(VecAXPY(R, 1, Q));           /* R <- R + Q */
     PetscCall(VecNorm(R, NORM_2, &fnorm)); /* fnorm <- ||R|| */
-    SNESCheckFunctionNorm(snes, fnorm);
+    SNESCheckFunctionDomainError(snes, fnorm);
 
     /* Monitor convergence */
     PetscCall(SNESConverged(snes, snes->iter, 0.0, 0.0, fnorm));
@@ -346,7 +346,7 @@ static PetscErrorCode SNESSolve_NEWTONAL(SNES snes)
       PetscTryTypeMethod(snes, update, snes->iter);
 
       PetscCall(SNESComputeJacobian(snes, X, snes->jacobian, snes->jacobian_pre));
-      SNESCheckJacobianDomainerror(snes);
+      SNESCheckJacobianDomainError(snes);
       PetscCall(KSPSetOperators(snes->ksp, snes->jacobian, snes->jacobian_pre));
       /* Solve J deltaX_Q = Q, where J is Jacobian matrix */
       PetscCall(KSPSolve(snes->ksp, Q, deltaX_Q));
@@ -484,7 +484,7 @@ static PetscErrorCode SNESSolve_NEWTONAL(SNES snes)
       PetscCall(VecNormEnd(R, NORM_2, &fnorm));
       PetscCall(VecNormEnd(X, NORM_2, &xnorm));
       PetscCall(VecNormEnd(deltaX, NORM_2, &ynorm));
-
+      SNESCheckFunctionDomainError(snes, fnorm);
       if (PetscLogPrintInfo) PetscCall(SNESNewtonALCheckArcLength(snes, DeltaX, data->lambda_update, stepSize));
 
       /* Monitor convergence */

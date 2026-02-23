@@ -602,31 +602,30 @@ static PetscErrorCode SolutionStatsView(DM da, Vec X, PetscViewer viewer)
   const PetscScalar *x;
   PetscInt           imin, imax, Mx, i, j, xs, xm, dof;
   Vec                Xloc;
-  PetscBool          iascii;
+  PetscBool          isascii;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
-    /* PETSc lacks a function to compute total variation norm (difficult in multiple dimensions), we do it here */
-    PetscCall(DMGetLocalVector(da, &Xloc));
-    PetscCall(DMGlobalToLocalBegin(da, X, INSERT_VALUES, Xloc));
-    PetscCall(DMGlobalToLocalEnd(da, X, INSERT_VALUES, Xloc));
-    PetscCall(DMDAVecGetArrayRead(da, Xloc, (void *)&x));
-    PetscCall(DMDAGetCorners(da, &xs, 0, 0, &xm, 0, 0));
-    PetscCall(DMDAGetInfo(da, 0, &Mx, 0, 0, 0, 0, 0, &dof, 0, 0, 0, 0, 0));
-    tvsum = 0;
-    for (i = xs; i < xs + xm; i++) {
-      for (j = 0; j < dof; j++) tvsum += PetscAbsScalar(x[i * dof + j] - x[(i - 1) * dof + j]);
-    }
-    PetscCallMPI(MPIU_Allreduce(&tvsum, &tvgsum, 1, MPIU_SCALAR, MPIU_SUM, PetscObjectComm((PetscObject)da)));
-    PetscCall(DMDAVecRestoreArrayRead(da, Xloc, (void *)&x));
-    PetscCall(DMRestoreLocalVector(da, &Xloc));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  PetscCheck(isascii, PETSC_COMM_SELF, PETSC_ERR_SUP, "Viewer type not supported");
+  /* PETSc lacks a function to compute total variation norm (difficult in multiple dimensions), we do it here */
+  PetscCall(DMGetLocalVector(da, &Xloc));
+  PetscCall(DMGlobalToLocalBegin(da, X, INSERT_VALUES, Xloc));
+  PetscCall(DMGlobalToLocalEnd(da, X, INSERT_VALUES, Xloc));
+  PetscCall(DMDAVecGetArrayRead(da, Xloc, (void *)&x));
+  PetscCall(DMDAGetCorners(da, &xs, 0, 0, &xm, 0, 0));
+  PetscCall(DMDAGetInfo(da, 0, &Mx, 0, 0, 0, 0, 0, &dof, 0, 0, 0, 0, 0));
+  tvsum = 0;
+  for (i = xs; i < xs + xm; i++) {
+    for (j = 0; j < dof; j++) tvsum += PetscAbsScalar(x[i * dof + j] - x[(i - 1) * dof + j]);
+  }
+  PetscCallMPI(MPIU_Allreduce(&tvsum, &tvgsum, 1, MPIU_SCALAR, MPIU_SUM, PetscObjectComm((PetscObject)da)));
+  PetscCall(DMDAVecRestoreArrayRead(da, Xloc, (void *)&x));
+  PetscCall(DMRestoreLocalVector(da, &Xloc));
 
-    PetscCall(VecMin(X, &imin, &xmin));
-    PetscCall(VecMax(X, &imax, &xmax));
-    PetscCall(VecSum(X, &sum));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "Solution range [%g,%g] with minimum at %" PetscInt_FMT ", mean %g, ||x||_TV %g\n", (double)xmin, (double)xmax, imin, (double)(sum / Mx), (double)(tvgsum / Mx)));
-  } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_SUP, "Viewer type not supported");
+  PetscCall(VecMin(X, &imin, &xmin));
+  PetscCall(VecMax(X, &imax, &xmax));
+  PetscCall(VecSum(X, &sum));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "Solution range [%g,%g] with minimum at %" PetscInt_FMT ", mean %g, ||x||_TV %g\n", (double)xmin, (double)xmax, imin, (double)(sum / Mx), (double)(tvgsum / Mx)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -871,25 +870,25 @@ int main(int argc, char *argv[])
       requires: !complex
 
     test:
-      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_dt 0.025 -ts_max_steps 24 -ts_type rk -ts_rk_type 2a -ts_rk_dtratio 2 -ts_rk_multirate -ts_use_splitrhsfunction 0
+      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_time_step 0.025 -ts_max_steps 24 -ts_type rk -ts_rk_type 2a -ts_rk_dtratio 2 -ts_rk_multirate -ts_use_splitrhsfunction 0
 
     test:
       suffix: 2
-      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_dt 0.025 -ts_max_steps 24 -ts_type rk -ts_rk_type 2a -ts_rk_dtratio 2 -ts_rk_multirate -ts_use_splitrhsfunction 1
+      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_time_step 0.025 -ts_max_steps 24 -ts_type rk -ts_rk_type 2a -ts_rk_dtratio 2 -ts_rk_multirate -ts_use_splitrhsfunction 1
       output_file: output/ex7_1.out
 
     test:
       suffix: 3
-      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_dt 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 0
+      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_time_step 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 0
 
     test:
       suffix: 4
-      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_dt 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 1
+      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_time_step 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 1
       output_file: output/ex7_3.out
 
     test:
       suffix: 5
       nsize: 2
-      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_dt 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 1
+      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -ts_time_step 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 1
       output_file: output/ex7_3.out
 TEST*/

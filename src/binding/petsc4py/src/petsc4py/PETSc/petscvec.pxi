@@ -130,6 +130,7 @@ cdef extern from * nogil:
     PetscErrorCode VecConjugate(PetscVec)
     PetscErrorCode VecNormalize(PetscVec, PetscReal*)
     PetscErrorCode VecSum(PetscVec, PetscScalar*)
+    PetscErrorCode VecMean(PetscVec, PetscScalar*)
     PetscErrorCode VecMax(PetscVec, PetscInt*, PetscReal*)
     PetscErrorCode VecMin(PetscVec, PetscInt*, PetscReal*)
     PetscErrorCode VecScale(PetscVec, PetscScalar)
@@ -595,7 +596,7 @@ cdef class _Vec_LocalForm:
     cdef Vec gvec
     cdef Vec lvec
 
-    def __init__(self, Vec gvec):
+    def __cinit__(self, Vec gvec):
         self.gvec = gvec
         self.lvec = Vec()
 

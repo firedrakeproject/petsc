@@ -24,7 +24,7 @@ PetscBool         PFRegisterAllCalled = PETSC_FALSE;
 
 .seealso: `PF`, `PFCreate()`, `PFDestroy()`, `PFSetType()`, `PFApply()`, `PFApplyVec()`
 @*/
-PetscErrorCode PFSet(PF pf, PetscErrorCode (*apply)(void *, PetscInt, const PetscScalar *, PetscScalar *), PetscErrorCode (*applyvec)(void *, Vec, Vec), PetscErrorCode (*view)(void *, PetscViewer), PetscErrorCode (*destroy)(void *), void *ctx)
+PetscErrorCode PFSet(PF pf, PetscErrorCode (*apply)(void *, PetscInt, const PetscScalar *, PetscScalar *), PetscErrorCode (*applyvec)(void *, Vec, Vec), PetscErrorCode (*view)(void *, PetscViewer), PetscErrorCode (*destroy)(PetscCtxRt), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(pf, PF_CLASSID, 1);
@@ -102,8 +102,6 @@ PetscErrorCode PFCreate(MPI_Comm comm, PetscInt dimin, PetscInt dimout, PF *pf)
   *pf = newpf;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* -------------------------------------------------------------------------------*/
 
 /*@
   PFApplyVec - Applies the mathematical function to a vector
@@ -251,7 +249,7 @@ PetscErrorCode PFViewFromOptions(PF A, PetscObject obj, const char name[])
 @*/
 PetscErrorCode PFView(PF pf, PetscViewer viewer)
 {
-  PetscBool         iascii;
+  PetscBool         isascii;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
@@ -260,8 +258,8 @@ PetscErrorCode PFView(PF pf, PetscViewer viewer)
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCheckSameComm(pf, 1, viewer, 2);
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerGetFormat(viewer, &format));
     PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)pf, viewer));
     if (pf->ops->view) {
@@ -356,7 +354,7 @@ PetscErrorCode PFGetType(PF pf, PFType *type)
 
 .seealso: `PF`, `PFSet()`, `PFRegister()`, `PFCreate()`, `DMDACreatePF()`
 @*/
-PetscErrorCode PFSetType(PF pf, PFType type, void *ctx)
+PetscErrorCode PFSetType(PF pf, PFType type, PetscCtx ctx)
 {
   PetscBool match;
   PetscErrorCode (*r)(PF, void *);

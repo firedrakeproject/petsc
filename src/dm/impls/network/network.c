@@ -542,13 +542,11 @@ static PetscErrorCode GetEdgelist_Coupling(DM dm, PetscInt *edges, PetscInt *nme
   PetscCallMPI(MPI_Comm_size(comm, &size));
 
   /* (1) Create global svtx[] from sedgelist */
-  /* --------------------------------------- */
   PetscCall(SharedVtxCreate(dm, network->cloneshared->Nsvtx, sedgelist));
   Nsv  = network->cloneshared->Nsvtx;
   svtx = network->cloneshared->svtx;
 
   /* (2) Merge shared vto vertices to their vfrom vertex with same global vertex index (gidx) */
-  /* --------------------------------------------------------------------------------------- */
   /* (2.1) compute vrage[rank]: global index of 1st local vertex in proc[rank] */
   PetscCall(PetscMalloc1(network->cloneshared->nVertices, &vidxlTog));
 
@@ -1030,7 +1028,7 @@ PetscErrorCode DMNetworkGetNumEdges(DM dm, PeOp PetscInt *nEdges, PeOp PetscInt 
 }
 
 /*@
-  DMNetworkGetVertexRange - Get the bounds [start, end) for the local vertices
+  DMNetworkGetVertexRange - Get the bounds [start, end) (also sometimes called the chart) for the local vertices
 
   Not Collective
 
@@ -1043,7 +1041,7 @@ PetscErrorCode DMNetworkGetNumEdges(DM dm, PeOp PetscInt *nEdges, PeOp PetscInt 
 
   Level: beginner
 
-.seealso: `DM`, `DMNETWORK`, `DMNetworkGetEdgeRange()`
+.seealso: `DM`, `DMNETWORK`, `DMNetworkGetEdgeRange()`, `DMNetworkGetSubnetwork()`
 @*/
 PetscErrorCode DMNetworkGetVertexRange(DM dm, PeOp PetscInt *vStart, PeOp PetscInt *vEnd)
 {
@@ -1056,7 +1054,7 @@ PetscErrorCode DMNetworkGetVertexRange(DM dm, PeOp PetscInt *vStart, PeOp PetscI
 }
 
 /*@
-  DMNetworkGetEdgeRange - Get the bounds [start, end) for the local edges
+  DMNetworkGetEdgeRange - Get the bounds [start, end) (also sometimes called the chart) for the local edges
 
   Not Collective
 
@@ -1069,7 +1067,7 @@ PetscErrorCode DMNetworkGetVertexRange(DM dm, PeOp PetscInt *vStart, PeOp PetscI
 
   Level: beginner
 
-.seealso: `DM`, `DMNETWORK`, `DMNetworkGetVertexRange()`
+.seealso: `DM`, `DMNETWORK`, `DMNetworkGetVertexRange()`, `DMNetworkGetSubnetwork()`
 @*/
 PetscErrorCode DMNetworkGetEdgeRange(DM dm, PeOp PetscInt *eStart, PeOp PetscInt *eEnd)
 {
@@ -1461,7 +1459,7 @@ PetscErrorCode DMNetworkAddComponent(DM dm, PetscInt p, PetscInt componentkey, v
 
 .seealso: `DM`, `DMNETWORK`, `DMNetworkAddComponent()`, `DMNetworkGetNumComponents()`
 @*/
-PetscErrorCode DMNetworkGetComponent(DM dm, PetscInt p, PetscInt compnum, PeOp PetscInt *compkey, PeCtx component, PeOp PetscInt *nvar)
+PetscErrorCode DMNetworkGetComponent(DM dm, PetscInt p, PetscInt compnum, PeOp PetscInt *compkey, PetscCtxRt component, PeOp PetscInt *nvar)
 {
   DM_Network              *network = (DM_Network *)dm->data;
   PetscInt                 offset  = 0;
@@ -2502,7 +2500,6 @@ PetscErrorCode DMCreateMatrix_Network(DM dm, Mat *J)
   PetscCall(MatSetFromOptions(*J));
 
   /* (1) Set matrix preallocation */
-  /*------------------------------*/
   PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   PetscCall(VecCreate(comm, &vd_nz));
   PetscCall(VecSetSizes(vd_nz, localSize, PETSC_DECIDE));
@@ -2511,7 +2508,6 @@ PetscErrorCode DMCreateMatrix_Network(DM dm, Mat *J)
   PetscCall(VecDuplicate(vd_nz, &vo_nz));
 
   /* Set preallocation for edges */
-  /*-----------------------------*/
   PetscCall(DMNetworkGetEdgeRange(dm, &eStart, &eEnd));
 
   PetscCall(PetscMalloc1(localSize, &rows));
@@ -2544,7 +2540,6 @@ PetscErrorCode DMCreateMatrix_Network(DM dm, Mat *J)
   }
 
   /* Set preallocation for vertices */
-  /*--------------------------------*/
   PetscCall(DMNetworkGetVertexRange(dm, &vStart, &vEnd));
   if (vEnd - vStart) vptr = network->Jvptr;
 
@@ -2632,7 +2627,6 @@ PetscErrorCode DMCreateMatrix_Network(DM dm, Mat *J)
   PetscCall(PetscFree2(dnnz, onnz));
 
   /* (2) Set matrix entries for edges */
-  /*----------------------------------*/
   for (e = eStart; e < eEnd; e++) {
     /* Get row indices */
     PetscCall(DMNetworkGetGlobalVecOffset(dm, e, ALL_COMPONENTS, &rstart));
@@ -2662,7 +2656,6 @@ PetscErrorCode DMCreateMatrix_Network(DM dm, Mat *J)
   }
 
   /* Set matrix entries for vertices */
-  /*---------------------------------*/
   for (v = vStart; v < vEnd; v++) {
     /* Get row indices */
     PetscCall(DMNetworkGetGlobalVecOffset(dm, v, ALL_COMPONENTS, &rstart));

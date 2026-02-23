@@ -977,8 +977,8 @@ PetscErrorCode VecStepMax(Vec X, Vec DX, PetscReal *step)
   Level: intermediate
 
   Note:
-  This handles negative values, Inf, and Nan in the expected IEEE floating pointing manner. For example, the square root of a negative real number is Nan
-  and 1/0.0 is Inf.
+  This handles negative values, in infinity, and NaN in the expected IEEE floating pointing manner. For example, the square root of a negative real number is NaN
+  and 1/0.0 is infinity.
 
 .seealso: `Vec`
 @*/
@@ -1003,15 +1003,15 @@ PetscErrorCode VecPow(Vec v, PetscScalar p)
       if (!PetscIsNanScalar(v1[i])) v1[i] = 1.0;
     }
   } else if (0.5 == p) {
-    for (i = 0; i < n; ++i) { v1[i] = PetscSqrtScalar(v1[i]); }
+    for (i = 0; i < n; ++i) v1[i] = PetscSqrtScalar(v1[i]);
   } else if (-0.5 == p) {
-    for (i = 0; i < n; ++i) { v1[i] = 1.0 / PetscSqrtScalar(v1[i]); }
+    for (i = 0; i < n; ++i) v1[i] = 1.0 / PetscSqrtScalar(v1[i]);
   } else if (2.0 == p) {
     for (i = 0; i < n; ++i) v1[i] *= v1[i];
   } else if (-2.0 == p) {
     for (i = 0; i < n; ++i) v1[i] = 1.0 / (v1[i] * v1[i]);
   } else {
-    for (i = 0; i < n; ++i) { v1[i] = PetscPowScalar(v1[i], p); }
+    for (i = 0; i < n; ++i) v1[i] = PetscPowScalar(v1[i], p);
   }
   PetscCall(VecRestoreArray(v, &v1));
   PetscFunctionReturn(PETSC_SUCCESS);

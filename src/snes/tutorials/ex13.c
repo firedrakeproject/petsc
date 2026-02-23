@@ -19,13 +19,13 @@ typedef struct {
   PetscBool viewError;   /* Output the solution error */
 } AppCtx;
 
-static PetscErrorCode zero(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode zero(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   *u = 0.0;
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode trig_inhomogeneous_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode trig_inhomogeneous_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   *u = 0.0;
@@ -33,7 +33,7 @@ static PetscErrorCode trig_inhomogeneous_u(PetscInt dim, PetscReal time, const P
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode trig_homogeneous_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode trig_homogeneous_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   *u = 1.0;
@@ -176,7 +176,7 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
   PetscCall(PetscDSSetJacobian(ds, 0, 0, NULL, NULL, NULL, g3_uu));
   PetscCall(PetscDSSetExactSolution(ds, 0, ex, user));
   PetscCall(DMGetLabel(dm, "marker", &label));
-  if (label) PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))ex, NULL, user, NULL));
+  if (label) PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)ex, NULL, user, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -192,7 +192,7 @@ static PetscErrorCode SetupAdjointProblem(DM dm, AppCtx *user)
   PetscCall(PetscDSSetJacobian(ds, 0, 0, NULL, NULL, NULL, g3_uu));
   PetscCall(PetscDSSetObjective(ds, 0, obj_error_u));
   PetscCall(DMGetLabel(dm, "marker", &label));
-  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))zero, NULL, user, NULL));
+  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)zero, NULL, user, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -384,7 +384,7 @@ static PetscErrorCode ComputeAdjoint(Vec u, AppCtx *user)
     PetscInt  N, i;
     PetscErrorCode (*funcs[1])(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *) = {user->homogeneous ? trig_homogeneous_u : trig_inhomogeneous_u};
     void (*identity[1])(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]) = {f0_identityaux_u};
-    void *ctxs[1] = {0};
+    PetscCtx ctxs[1] = {0};
 
     ctxs[0] = user;
     PetscCall(DMClone(dm, &dmErr));

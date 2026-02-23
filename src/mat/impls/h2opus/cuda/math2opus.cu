@@ -106,7 +106,7 @@ private:
   void              *ctx;
 
 public:
-  PetscFunctionGenerator(MatH2OpusKernelFn *k, int dim, void *ctx)
+  PetscFunctionGenerator(MatH2OpusKernelFn *k, int dim, PetscCtx ctx)
   {
     this->k   = k;
     this->dim = dim;
@@ -533,9 +533,8 @@ static PetscErrorCode MatMultKernel_H2OPUS(Mat A, Vec x, PetscScalar sy, Vec y, 
   #if defined(PETSC_H2OPUS_USE_GPU)
   boundtocpu = A->boundtocpu;
   #endif
-  if (usesf) {
-    PetscCall(PetscSFGetGraph(h2opus->sf, NULL, &n, NULL, NULL));
-  } else n = A->rmap->n;
+  if (usesf) PetscCall(PetscSFGetGraph(h2opus->sf, NULL, &n, NULL, NULL));
+  else n = A->rmap->n;
   if (boundtocpu) {
     PetscCall(VecGetArrayRead(x, (const PetscScalar **)&xx));
     if (sy == 0.0) {
@@ -804,7 +803,7 @@ static PetscErrorCode MatSetUpMultiply_H2OPUS(Mat A)
     PetscCall(ISGetLocalSize(a->h2opus_indexmap, &n));
     PetscCall(ISGetIndices(a->h2opus_indexmap, (const PetscInt **)&idx));
     rid = (PetscBool)(n == A->rmap->n);
-    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &rid, 1, MPIU_BOOL, MPI_LAND, comm));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &rid, 1, MPI_C_BOOL, MPI_LAND, comm));
     if (rid) PetscCall(ISIdentity(a->h2opus_indexmap, &rid));
     if (!rid) {
       if (size > 1) { /* Parallel distribution may be different, save it here for fast path in MatMult (see MatH2OpusSetNativeMult) */
@@ -953,14 +952,14 @@ static PetscErrorCode MatAssemblyEnd_H2OPUS(Mat A, MatAssemblyType assemblytype)
     PetscCall(PetscOptionsGetBool(((PetscObject)A)->options, ((PetscObject)A)->prefix, "-mat_h2opus_check", &check, NULL));
     PetscCall(PetscOptionsGetBool(((PetscObject)A)->options, ((PetscObject)A)->prefix, "-mat_h2opus_check_explicit", &checke, NULL));
     if (check) {
-      Mat       E, Ae;
-      PetscReal n1, ni, n2;
-      PetscReal n1A, niA, n2A;
-      void (*normfunc)(void);
+      Mat               E, Ae;
+      PetscReal         n1, ni, n2;
+      PetscReal         n1A, niA, n2A;
+      PetscErrorCodeFn *normfunc;
 
       Ae = a->sampler->GetSamplingMat();
       PetscCall(MatConvert(A, MATSHELL, MAT_INITIAL_MATRIX, &E));
-      PetscCall(MatShellSetOperation(E, MATOP_NORM, (void (*)(void))MatNorm_H2OPUS));
+      PetscCall(MatShellSetOperation(E, MATOP_NORM, (PetscErrorCodeFn *)MatNorm_H2OPUS));
       PetscCall(MatAXPY(E, -1.0, Ae, DIFFERENT_NONZERO_PATTERN));
       PetscCall(MatNorm(E, NORM_1, &n1));
       PetscCall(MatNorm(E, NORM_INFINITY, &ni));
@@ -986,7 +985,7 @@ static PetscErrorCode MatAssemblyEnd_H2OPUS(Mat A, MatAssemblyType assemblytype)
       }
 
       PetscCall(MatGetOperation(Ae, MATOP_NORM, &normfunc));
-      PetscCall(MatSetOperation(Ae, MATOP_NORM, (void (*)(void))MatNorm_H2OPUS));
+      PetscCall(MatSetOperation(Ae, MATOP_NORM, (PetscErrorCodeFn *)MatNorm_H2OPUS));
       PetscCall(MatNorm(Ae, NORM_1, &n1A));
       PetscCall(MatNorm(Ae, NORM_INFINITY, &niA));
       PetscCall(MatNorm(Ae, NORM_2, &n2A));
@@ -1021,12 +1020,8 @@ static PetscErrorCode MatDuplicate_H2OPUS(Mat B, MatDuplicateOption op, Mat *nA)
 {
   Mat         A;
   Mat_H2OPUS *a, *b = (Mat_H2OPUS *)B->data;
-  #if defined(PETSC_H2OPUS_USE_GPU)
-  PetscBool iscpu = PETSC_FALSE;
-  #else
-  PetscBool iscpu = PETSC_TRUE;
-  #endif
-  MPI_Comm comm;
+  PetscBool   iscpu = PetscDefined(H2OPUS_USE_GPU) ? PETSC_FALSE : PETSC_TRUE;
+  MPI_Comm    comm;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)B, &comm));
@@ -1601,11 +1596,7 @@ PetscErrorCode MatCreateH2OpusFromKernel(MPI_Comm comm, PetscInt m, PetscInt n, 
 {
   Mat         A;
   Mat_H2OPUS *h2opus;
-  #if defined(PETSC_H2OPUS_USE_GPU)
-  PetscBool iscpu = PETSC_FALSE;
-  #else
-  PetscBool iscpu = PETSC_TRUE;
-  #endif
+  PetscBool   iscpu = PetscDefined(H2OPUS_USE_GPU) ? PETSC_FALSE : PETSC_TRUE;
 
   PetscFunctionBegin;
   PetscCheck(m == n, PETSC_COMM_SELF, PETSC_ERR_SUP, "Different row and column local sizes are not supported");

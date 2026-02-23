@@ -46,7 +46,7 @@ typedef struct {
   PetscBool plotting;
   PetscInt  dim;                          /* The topological mesh dimension */
   char      filename[PETSC_MAX_PATH_LEN]; /* The optional ExodusII file */
-  PetscErrorCode (**initialFuncs)(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx);
+  PetscErrorCode (**initialFuncs)(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx);
   PetscReal mu, eta;
   PetscReal perturb;
   TestType  testType;
@@ -418,7 +418,7 @@ static PetscErrorCode CreateMesh(MPI_Comm comm, AppCtx *ctx, DM *dm)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode initialSolution_Omega(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx)
+static PetscErrorCode initialSolution_Omega(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 0.0;
   return PETSC_SUCCESS;
@@ -448,13 +448,13 @@ static PetscErrorCode initialSolution_Psi(PetscInt dim, PetscReal time, const Pe
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode initialSolution_Phi(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx)
+static PetscErrorCode initialSolution_Phi(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 0.0;
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode initialSolution_Jz(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, void *ctx)
+static PetscErrorCode initialSolution_Jz(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nf, PetscScalar *u, PetscCtx ctx)
 {
   u[0] = 0.0;
   return PETSC_SUCCESS;
@@ -513,13 +513,13 @@ static PetscErrorCode SetupProblem(PetscDS prob, DM dm, AppCtx *ctx)
     ctx->initialFuncs[JZ]  = initialSolution_Jz;
     ctx->initialFuncs[PSI] = initialSolution_Psi;
 
-    PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Jz for tilt test", label, 1, &id, JZ, 0, NULL, (void (*)(void))initialSolution_Jz, NULL, ctx, NULL));
-    PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Psi for tilt test", label, 1, &id, PSI, 0, NULL, (void (*)(void))initialSolution_Psi, NULL, ctx, NULL));
+    PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Jz for tilt test", label, 1, &id, JZ, 0, NULL, (PetscVoidFn *)initialSolution_Jz, NULL, ctx, NULL));
+    PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Psi for tilt test", label, 1, &id, PSI, 0, NULL, (PetscVoidFn *)initialSolution_Psi, NULL, ctx, NULL));
     if (ctx->modelType == TWO_FILD) {
       ctx->initialFuncs[OMEGA] = initialSolution_Omega;
       ctx->initialFuncs[PHI]   = initialSolution_Phi;
-      PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Omega for tilt test", label, 1, &id, OMEGA, 0, NULL, (void (*)(void))initialSolution_Omega, NULL, ctx, NULL));
-      PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Phi for tilt test", label, 1, &id, PHI, 0, NULL, (void (*)(void))initialSolution_Phi, NULL, ctx, NULL));
+      PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Omega for tilt test", label, 1, &id, OMEGA, 0, NULL, (PetscVoidFn *)initialSolution_Omega, NULL, ctx, NULL));
+      PetscCall(PetscDSAddBoundary(prob, DM_BC_ESSENTIAL, "Phi for tilt test", label, 1, &id, PHI, 0, NULL, (PetscVoidFn *)initialSolution_Phi, NULL, ctx, NULL));
     }
   } else {
     PetscCheck(0, PetscObjectComm((PetscObject)prob), PETSC_ERR_ARG_WRONG, "Unsupported test type: %s (%d)", testTypes[PetscMin(ctx->testType, NUM_TEST_TYPES)], (int)ctx->testType);
@@ -633,7 +633,7 @@ int main(int argc, char **argv)
       -mg_levels_ksp_type gmres -mg_levels_pc_type jacobi -mu 0.005 -pc_mg_type full -pc_type mg \
       -petscpartitioner_type simple -petscspace_degree 2 -snes_converged_reason -snes_max_it 10 -snes_monitor \
       -snes_rtol 1.e-9 -snes_stol 1.e-9 -ts_adapt_dt_max 0.01 -ts_adapt_monitor -ts_arkimex_type 1bee \
-      -ts_dt 0.001 -ts_max_reject 10 -ts_max_snes_failures unlimited -ts_max_steps 1 -ts_max_time -ts_monitor -ts_type arkimex
+      -ts_time_step 0.001 -ts_max_step_rejections 10 -ts_max_snes_failures unlimited -ts_max_steps 1 -ts_max_time -ts_monitor -ts_type arkimex
     filter: grep -v DM_
 
 TEST*/

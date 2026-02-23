@@ -196,8 +196,8 @@ PetscErrorCode gridToParticles(const DM dm, DM sw, const Vec rhs, Vec work_ferhs
         PetscCall(MatCreateShell(PetscObjectComm((PetscObject)dm), N, N, PETSC_DECIDE, PETSC_DECIDE, matshellctx, &MtM));
         PetscCall(MatTranspose(M_p, MAT_INITIAL_MATRIX, &matshellctx->MpTrans));
         matshellctx->Mp = M_p;
-        PetscCall(MatShellSetOperation(MtM, MATOP_MULT, (void (*)(void))MatMultMtM_SeqAIJ));
-        PetscCall(MatShellSetOperation(MtM, MATOP_MULT_ADD, (void (*)(void))MatMultAddMtM_SeqAIJ));
+        PetscCall(MatShellSetOperation(MtM, MATOP_MULT, (PetscErrorCodeFn *)MatMultMtM_SeqAIJ));
+        PetscCall(MatShellSetOperation(MtM, MATOP_MULT_ADD, (PetscErrorCodeFn *)MatMultAddMtM_SeqAIJ));
         PetscCall(MatCreateSeqAIJ(PETSC_COMM_SELF, N, N, 1, NULL, &D));
         PetscCall(MatViewFromOptions(matshellctx->MpTrans, NULL, "-ftop2_MpT_mat_view"));
         for (PetscInt i = 0; i < N; i++) {
@@ -251,31 +251,9 @@ PetscErrorCode gridToParticles(const DM dm, DM sw, const Vec rhs, Vec work_ferhs
   }
   PetscCall(DMSwarmCreateGlobalVectorFromField(sw, "w_q", &ff)); // this grabs access
   if (!is_lsqr) {
-    PetscErrorCode ierr;
-    ierr = KSPSolve(ksp, work_ferhs, matshellctx->uu);
-    if (!ierr) {
-      // 3) with Moore-Penrose apply Mp: M_p (Mp' Mp)^-1 M
-      PetscCall(MatMult(M_p, matshellctx->uu, ff));
-    } else { // failed
-      PC        pc2;
-      PetscBool is_bjac;
-      PetscCall(PetscInfo(ksp, "Solver failed, probably singular, try lsqr\n"));
-      PetscCall(KSPReset(ksp));
-      PetscCall(KSPSetType(ksp, KSPLSQR));
-      PetscCall(KSPGetPC(ksp, &pc2));
-      PetscCall(PCSetType(pc2, PCNONE)); // should not happen, but could solve stable (Mp Mp^T), move projection Mp before solve
-      PetscCall(KSPSetOptionsPrefix(ksp, "ftop_"));
-      PetscCall(KSPSetFromOptions(ksp));
-      PetscCall(PetscObjectTypeCompare((PetscObject)pc2, PCBJACOBI, &is_bjac));
-      if (is_bjac) {
-        PetscCall(DMSwarmCreateMassMatrixSquare(sw, dm, &PM_p));
-        PetscCall(KSPSetOperators(ksp, M_p, PM_p));
-      } else {
-        PetscCall(KSPSetOperators(ksp, M_p, M_p));
-      }
-      ierr = KSPSolveTranspose(ksp, work_ferhs, ff);
-      if (ierr) { PetscCheck(!ierr, PETSC_COMM_WORLD, PETSC_ERR_PLIB, "backup LSQR solver failed - need to add N_v > N_p Moore-Penrose pseudo-inverse"); }
-    }
+    PetscCall(KSPSolve(ksp, work_ferhs, matshellctx->uu));
+    // 3) with Moore-Penrose apply Mp: M_p (Mp' Mp)^-1 M
+    PetscCall(MatMult(M_p, matshellctx->uu, ff));
     if (D) PetscCall(MatDestroy(&D));
     PetscCall(MatDestroy(&MtM));
     if (matshellctx->MpTrans) PetscCall(MatDestroy(&matshellctx->MpTrans));
@@ -283,10 +261,8 @@ PetscErrorCode gridToParticles(const DM dm, DM sw, const Vec rhs, Vec work_ferhs
     PetscCall(VecDestroy(&matshellctx->uu));
     PetscCall(PetscFree(matshellctx));
   } else {
-    PetscErrorCode ierr;
     // finally with LSQR apply M_p^\dagger
-    ierr = KSPSolveTranspose(ksp, work_ferhs, ff);
-    if (ierr) { PetscCheck(!ierr, PETSC_COMM_WORLD, PETSC_ERR_PLIB, "backup LSQR solver failed - need to add N_v > N_p Moore-Penrose pseudo-inverse"); }
+    PetscCall(KSPSolveTranspose(ksp, work_ferhs, ff));
   }
   PetscCall(KSPDestroy(&ksp));
   PetscCall(MatDestroy(&PM_p));
@@ -526,7 +502,7 @@ PetscErrorCode go(TS ts, Vec X, const PetscInt num_vertices, const PetscInt a_Np
   PetscOptionsEnd();
   // view
   PetscCall(DMViewFromOptions(ctx->plex[g_target], NULL, "-ex30_dm_view"));
-  if (ctx->num_grids > g_target + 1) { PetscCall(DMViewFromOptions(ctx->plex[g_target + 1], NULL, "-ex30_dm_view2")); }
+  if (ctx->num_grids > g_target + 1) PetscCall(DMViewFromOptions(ctx->plex[g_target + 1], NULL, "-ex30_dm_view2"));
   // create mesh mass matrices
   PetscCall(VecZeroEntries(X));
   PetscCall(DMCompositeGetAccessArray(pack, X, nDMs, NULL, globXArray)); // just to duplicate
@@ -679,7 +655,7 @@ PetscErrorCode go(TS ts, Vec X, const PetscInt num_vertices, const PetscInt a_Np
               yy_t[grid][tid][pp++] = lo[1] + 5.e-7;
             } else {
               const PetscInt p0 = NNreal;
-              for (PetscInt pj = 0; pj < 6; pj++) { xx_t[grid][tid][p0 + pj] = yy_t[grid][tid][p0 + pj] = zz_t[grid][tid][p0 + pj] = wp_t[grid][tid][p0 + pj] = 0; }
+              for (PetscInt pj = 0; pj < 6; pj++) xx_t[grid][tid][p0 + pj] = yy_t[grid][tid][p0 + pj] = zz_t[grid][tid][p0 + pj] = wp_t[grid][tid][p0 + pj] = 0;
               xx_t[grid][tid][p0 + 0] = lo[0];
               xx_t[grid][tid][p0 + 1] = hi[0];
               yy_t[grid][tid][p0 + 2] = lo[1];
@@ -846,7 +822,7 @@ PetscErrorCode go(TS ts, Vec X, const PetscInt num_vertices, const PetscInt a_Np
     // restore vector
     PetscCall(DMCompositeRestoreAccessArray(pack, X, nDMs, NULL, globXArray));
     // view initial grid
-    if (v_target >= global_vertex_id_0 && v_target < global_vertex_id_0 + ctx->batch_sz) { PetscCall(DMPlexLandauPrintNorms(X, 0)); }
+    if (v_target >= global_vertex_id_0 && v_target < global_vertex_id_0 + ctx->batch_sz) PetscCall(DMPlexLandauPrintNorms(X, 0));
     // advance
     PetscCall(TSSetSolution(ts, X));
     PetscCall(PetscInfo(pack, "Advance vertex %" PetscInt_FMT " to %" PetscInt_FMT "\n", global_vertex_id_0, global_vertex_id_0 + ctx->batch_sz));
@@ -926,7 +902,7 @@ PetscErrorCode go(TS ts, Vec X, const PetscInt num_vertices, const PetscInt a_Np
                 yy_t[grid][tid][pp++] = lo[1] + 5.e-7;
               } else {
                 const PetscInt p0 = NN - 6;
-                for (PetscInt pj = 0; pj < 6; pj++) { xx_t[grid][tid][p0 + pj] = yy_t[grid][tid][p0 + pj] = zz_t[grid][tid][p0 + pj] = wp_t[grid][tid][p0 + pj] = 0; }
+                for (PetscInt pj = 0; pj < 6; pj++) xx_t[grid][tid][p0 + pj] = yy_t[grid][tid][p0 + pj] = zz_t[grid][tid][p0 + pj] = wp_t[grid][tid][p0 + pj] = 0;
                 xx_t[grid][tid][p0 + 0] = lo[0];
                 xx_t[grid][tid][p0 + 1] = hi[0];
                 yy_t[grid][tid][p0 + 2] = lo[1];
@@ -1125,7 +1101,7 @@ int main(int argc, char **argv)
           -ksp_type gmres -ksp_error_if_not_converged -dm_landau_verbose 4 -print_entropy \
           -ptof_ksp_type cg -ptof_pc_type jacobi -ptof_ksp_rtol 1e-12 -ptof_ksp_error_if_not_converged\
           -snes_converged_reason -snes_monitor -snes_rtol 1e-12 -snes_stol 1e-12 \
-          -ts_dt 0.01 -ts_rtol 1e-1 -ts_exact_final_time stepover -ts_max_snes_failures -1 -ts_max_steps 1 -ts_monitor -ts_type beuler
+          -ts_time_step 0.01 -ts_rtol 1e-1 -ts_exact_final_time stepover -ts_max_snes_failures -1 -ts_max_steps 1 -ts_monitor -ts_type beuler
     test:
       suffix: cpu
       args: -dm_landau_device_type cpu -pc_type jacobi
@@ -1144,7 +1120,7 @@ int main(int argc, char **argv)
           -ftop_ksp_type cg -ftop_pc_type jacobi -ftop_ksp_rtol 1e-12 -ftop_ksp_error_if_not_converged -ksp_type preonly -pc_type lu -ksp_error_if_not_converged \
           -ptof_ksp_type cg -ptof_pc_type jacobi -ptof_ksp_rtol 1e-12 -ptof_ksp_error_if_not_converged \
           -snes_converged_reason -snes_monitor -snes_rtol 1e-12 -snes_stol 1e-12 \
-          -ts_dt 0.1 -ts_exact_final_time stepover -ts_max_snes_failures -1 -ts_max_steps 1 -ts_monitor -ts_type beuler -print_entropy
+          -ts_time_step 0.1 -ts_exact_final_time stepover -ts_max_snes_failures -1 -ts_max_steps 1 -ts_monitor -ts_type beuler -print_entropy
     test:
       suffix: cpu_3d
       args: -dm_landau_device_type cpu
@@ -1156,7 +1132,7 @@ int main(int argc, char **argv)
   test:
     suffix: conserve
     requires: !complex double defined(PETSC_USE_DMLANDAU_2D) !cuda
-    args: -dm_landau_batch_size 4 -dm_refine 0 -dm_landau_num_species_grid 1 -dm_landau_thermal_temps 1 -petscspace_degree 3 -snes_converged_reason -ts_type beuler -ts_dt .1 \
+    args: -dm_landau_batch_size 4 -dm_refine 0 -dm_landau_num_species_grid 1 -dm_landau_thermal_temps 1 -petscspace_degree 3 -snes_converged_reason -ts_type beuler -ts_time_step .1 \
           -ts_max_steps 1 -ksp_type preonly -ksp_error_if_not_converged -snes_rtol 1e-14 -snes_stol 1e-14 -dm_landau_device_type cpu -number_particles_per_dimension 20 \
           -ptof_ksp_type cg -ptof_pc_type jacobi -ptof_ksp_rtol 1e-14 -ptof_ksp_error_if_not_converged -pc_type lu -dm_landau_simplex 1 -use_uniform_particle_grid false -dm_landau_sphere -print_entropy -number_particles_per_dimension 50 -ftop_ksp_type cg -ftop_pc_type jacobi -ftop_ksp_rtol 1e-14
 

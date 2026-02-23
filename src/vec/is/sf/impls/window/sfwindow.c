@@ -759,7 +759,7 @@ static PetscErrorCode PetscSFSetUp_Window(PetscSF sf)
     nranks    = sf->nranks;
     PetscCall(PetscMalloc1(nranks, &w->wcommranks));
     w->is_empty = has_empty;
-    PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, &has_empty, 1, MPIU_BOOL, MPI_LOR, comm));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &has_empty, 1, MPI_C_BOOL, MPI_LOR, comm));
     if (has_empty) {
       PetscMPIInt  rank;
       MPI_Comm     raw_comm;
@@ -952,13 +952,13 @@ static PetscErrorCode PetscSFDestroy_Window(PetscSF sf)
 static PetscErrorCode PetscSFView_Window(PetscSF sf, PetscViewer viewer)
 {
   PetscSF_Window   *w = (PetscSF_Window *)sf->data;
-  PetscBool         iascii;
+  PetscBool         isascii;
   PetscViewerFormat format;
 
   PetscFunctionBegin;
   PetscCall(PetscViewerGetFormat(viewer, &format));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  current flavor=%s synchronization=%s MultiSF sort=%s\n", PetscSFWindowFlavorTypes[w->flavor], PetscSFWindowSyncTypes[w->sync], sf->rankorder ? "rank-order" : "unordered"));
     if (format == PETSC_VIEWER_ASCII_INFO_DETAIL) {
       if (w->info != MPI_INFO_NULL) {
@@ -1194,10 +1194,10 @@ PETSC_INTERN PetscErrorCode PetscSFCreate_Window(PetscSF sf)
   #if PETSC_PKG_OPENMPI_VERSION_LE(1, 6, 0)
   {
     PetscBool ackbug = PETSC_FALSE;
+
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-acknowledge_ompi_onesided_bug", &ackbug, NULL));
-    if (ackbug) {
-      PetscCall(PetscInfo(sf, "Acknowledged Open MPI bug, proceeding anyway. Expect memory corruption.\n"));
-    } else SETERRQ(PetscObjectComm((PetscObject)sf), PETSC_ERR_LIB, "Open MPI is known to be buggy (https://svn.open-mpi.org/trac/ompi/ticket/1905 and 2656), use -acknowledge_ompi_onesided_bug to proceed");
+    PetscCheck(ackbug, PetscObjectComm((PetscObject)sf), PETSC_ERR_LIB, "Open MPI is known to be buggy (https://svn.open-mpi.org/trac/ompi/ticket/1905 and 2656), use -acknowledge_ompi_onesided_bug to proceed");
+    PetscCall(PetscInfo(sf, "Acknowledged Open MPI bug, proceeding anyway. Expect memory corruption.\n"));
   }
   #endif
 #endif

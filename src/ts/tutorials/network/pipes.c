@@ -95,7 +95,7 @@ PetscErrorCode WashNetworkDistribute(MPI_Comm comm, Wash wash)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode WASHIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx)
+PetscErrorCode WASHIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, PetscCtx ctx)
 {
   Wash               wash = (Wash)ctx;
   DM                 networkdm;
@@ -263,11 +263,11 @@ PetscErrorCode WASHSetInitialSolution(DM networkdm, Vec X, Wash wash)
 
     /* if vform is a head vertex: */
     PetscCall(DMNetworkGetComponent(networkdm, vfrom, 0, &vkey, (void **)&junction, NULL));
-    if (junction->type == RESERVOIR) { (xarr + offsetfrom)[1] = wash->H0; /* 1st H */ }
+    if (junction->type == RESERVOIR) (xarr + offsetfrom)[1] = wash->H0; /* 1st H */
 
     /* if vto is an end vertex: */
     PetscCall(DMNetworkGetComponent(networkdm, vto, 0, &vkey, (void **)&junction, NULL));
-    if (junction->type == VALVE) { (xarr + offsetto)[0] = wash->QL; /* last Q */ }
+    if (junction->type == VALVE) (xarr + offsetto)[0] = wash->QL; /* last Q */
     PetscCall(VecRestoreArrayRead(pipe->x, &xarray));
   }
 
@@ -336,7 +336,7 @@ PetscErrorCode PipesView(DM networkdm, PetscInt KeyPipe, Vec X)
   PetscCall(VecView(Xto, PETSC_VIEWER_STDOUT_WORLD));
 
   /* 5. Create isfrom_h for h-variable of pipes; Create scatter; Scatter to Xh */
-  for (i = 0; i < numkeys; i++) { selectedvariables[i][0] = 1; /* h-variable */ }
+  for (i = 0; i < numkeys; i++) selectedvariables[i][0] = 1; /* h-variable */
   PetscCall(DMNetworkCreateIS(networkdm, numkeys, &KeyPipe, blocksize, numselectedvariable, selectedvariables, &isfrom_h));
 
   PetscCall(VecScatterCreate(X, isfrom_h, Xto, NULL, &ctx));
@@ -350,7 +350,7 @@ PetscErrorCode PipesView(DM networkdm, PetscInt KeyPipe, Vec X)
   PetscCall(VecDestroy(&Xto));
 
   /* 6. Create isfrom for all pipe variables; Create scatter; Scatter to Xpipes */
-  for (i = 0; i < numkeys; i++) { blocksize[i] = -1; /* select all the variables of the i-th component */ }
+  for (i = 0; i < numkeys; i++) blocksize[i] = -1; /* select all the variables of the i-th component */
   PetscCall(DMNetworkCreateIS(networkdm, numkeys, &KeyPipe, blocksize, NULL, NULL, &isfrom));
   PetscCall(ISDestroy(&isfrom));
   PetscCall(DMNetworkCreateIS(networkdm, numkeys, &KeyPipe, NULL, NULL, NULL, &isfrom));
@@ -845,7 +845,8 @@ int main(int argc, char **argv)
 
    build:
      depends: pipeInterface.c pipeImpls.c
-     requires: mumps
+     #TODO: bugs in DMNetwork causing segfault with __float128
+     requires: mumps !__float128
 
    test:
       args: -ts_monitor -case 1 -ts_max_steps 1 -pc_factor_mat_solver_type mumps -options_left no -viewX

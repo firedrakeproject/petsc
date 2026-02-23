@@ -52,10 +52,7 @@ static PetscErrorCode PetscSplitReductionCreate(MPI_Comm comm, PetscSplitReducti
   (*sr)->comm    = comm;
   (*sr)->request = MPI_REQUEST_NULL;
   (*sr)->mix     = PETSC_FALSE;
-  (*sr)->async   = PETSC_FALSE;
-#if defined(PETSC_HAVE_MPI_NONBLOCKING_COLLECTIVES)
-  (*sr)->async = PETSC_TRUE; /* Enable by default */
-#endif
+  (*sr)->async   = PetscDefined(HAVE_MPI_NONBLOCKING_COLLECTIVES) ? PETSC_TRUE : PETSC_FALSE; /* Enable by default */
   /* always check for option; so that tests that run on systems without support don't warn about unhandled options */
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-splitreduction_async", &(*sr)->async, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -299,7 +296,7 @@ static PetscMPIInt MPIAPI Petsc_DelReduction(MPI_Comm comm, PETSC_UNUSED PetscMP
 */
 PetscErrorCode PetscSplitReductionGet(MPI_Comm comm, PetscSplitReduction **sr)
 {
-  PetscMPIInt flag;
+  PetscMPIInt iflg;
 
   PetscFunctionBegin;
   PetscCheck(!PetscDefined(HAVE_THREADSAFETY), comm, PETSC_ERR_SUP, "PetscSplitReductionGet() is not thread-safe");
@@ -313,16 +310,14 @@ PetscErrorCode PetscSplitReductionGet(MPI_Comm comm, PetscSplitReduction **sr)
     */
     PetscCallMPI(MPI_Comm_create_keyval(MPI_COMM_NULL_COPY_FN, Petsc_DelReduction, &Petsc_Reduction_keyval, NULL));
   }
-  PetscCallMPI(MPI_Comm_get_attr(comm, Petsc_Reduction_keyval, (void **)sr, &flag));
-  if (!flag) { /* doesn't exist yet so create it and put it in */
+  PetscCallMPI(MPI_Comm_get_attr(comm, Petsc_Reduction_keyval, (void **)sr, &iflg));
+  if (!iflg) { /* doesn't exist yet so create it and put it in */
     PetscCall(PetscSplitReductionCreate(comm, sr));
     PetscCallMPI(MPI_Comm_set_attr(comm, Petsc_Reduction_keyval, *sr));
     PetscCall(PetscInfo(0, "Putting reduction data in an MPI_Comm %ld\n", (long)comm));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* ----------------------------------------------------------------------------------------------------*/
 
 /*@
   VecDotBegin - Starts a split phase dot product computation.
@@ -473,8 +468,6 @@ PetscErrorCode VecTDotEnd(Vec x, Vec y, PetscScalar *result)
   PetscCall(VecDotEnd(x, y, result));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* -------------------------------------------------------------------------*/
 
 /*@
   VecNormBegin - Starts a split phase norm computation.

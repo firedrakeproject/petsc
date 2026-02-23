@@ -26,7 +26,7 @@ SNES Object: 1 MPI process
       norm schedule ALWAYS
       SNESLineSearch Object: (fas_coarse_) 1 MPI process
         type: basic
-        maxstep=1.000000e+08, minlambda=1.000000e-12
+        maxlambda=1.000000e+00, minlambda=1.000000e-12
         tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
         maximum iterations=40
       KSP Object: (fas_coarse_) 1 MPI process
@@ -34,10 +34,10 @@ SNES Object: 1 MPI process
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (fas_coarse_) 1 MPI process
         type: none
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 1 MPI process
           type: seqaij
           rows=9, cols=9
@@ -56,7 +56,7 @@ SNES Object: 1 MPI process
         type: bt
           interpolation: cubic
           alpha=1.000000e-04
-        maxstep=1.000000e+08, minlambda=1.000000e-12
+        maxlambda=1.000000e+00, minlambda=1.000000e-12
         tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
         maximum iterations=40
       KSP Object: (fas_levels_1_) 1 MPI process
@@ -64,10 +64,10 @@ SNES Object: 1 MPI process
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (fas_levels_1_) 1 MPI process
         type: none
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 1 MPI process
           type: seqaij
           rows=49, cols=49
@@ -87,7 +87,7 @@ SNES Object: 1 MPI process
         type: bt
           interpolation: cubic
           alpha=1.000000e-04
-        maxstep=1.000000e+08, minlambda=1.000000e-12
+        maxlambda=1.000000e+00, minlambda=1.000000e-12
         tolerances: relative=1.000000e-08, absolute=1.000000e-15, lambda=1.000000e-08
         maximum iterations=40
       KSP Object: (fas_levels_2_) 1 MPI process
@@ -95,10 +95,10 @@ SNES Object: 1 MPI process
         maximum iterations=10000, initial guess is zero
         tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
         left preconditioning
-        using NONE norm type for convergence test
+        not checking for convergence
       PC Object: (fas_levels_2_) 1 MPI process
         type: none
-        linear system matrix = precond matrix:
+        linear system matrix, which is also used to construct the preconditioner:
         Mat Object: 1 MPI process
           type: seqaij
           rows=225, cols=225

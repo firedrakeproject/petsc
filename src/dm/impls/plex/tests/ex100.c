@@ -6,13 +6,13 @@ static char help[] = "Test CGNS writing output with isoperiodic boundaries\n\n";
 #include <petscviewerhdf5.h>
 #define EX "ex100.c"
 
-static PetscErrorCode project_function(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode project_function(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscReal x_tot = 0;
 
   PetscFunctionBeginUser;
   for (PetscInt d = 0; d < dim; d++) x_tot += x[d];
-  for (PetscInt c = 0; c < Nc; c++) { u[c] = sin(2 * M_PI * x_tot); }
+  for (PetscInt c = 0; c < Nc; c++) u[c] = sin(2 * M_PI * x_tot);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
       PetscCall(PetscFEDestroy(&fe));
     }
 
-    PetscErrorCode (*funcs)(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx) = {project_function};
+    PetscErrorCode (*funcs)(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx) = {project_function};
     PetscCall(DMGetGlobalVector(dm_create, &V));
     PetscCall(DMProjectFunction(dm_create, 0, &funcs, NULL, INSERT_VALUES, V));
     PetscViewer viewer;

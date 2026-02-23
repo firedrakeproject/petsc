@@ -34,8 +34,8 @@ typedef struct {
   PetscInt    postcnt;          // counter for PostEvent calls
 } AppCtx;
 
-PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *ctx);
-PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, void *ctx);
+PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], PetscCtx ctx);
+PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, PetscCtx ctx);
 
 int main(int argc, char **argv)
 {
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 /*
   User callback for defining the event-functions
 */
-PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *ctx)
+PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], PetscCtx ctx)
 {
   PetscInt n   = 0;
   AppCtx  *Ctx = (AppCtx *)ctx;
@@ -148,14 +148,14 @@ PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *
   PetscFunctionBeginUser;
   // for the test purposes, event-functions are defined based on t
   // first event -- on rank-0
-  if (Ctx->rank == 0) { gval[n++] = PetscSinReal(Ctx->pi * t); }
+  if (Ctx->rank == 0) gval[n++] = PetscSinReal(Ctx->pi * t);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*
   User callback for the post-event stuff
 */
-PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, void *ctx)
+PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, PetscCtx ctx)
 {
   AppCtx *Ctx = (AppCtx *)ctx;
 

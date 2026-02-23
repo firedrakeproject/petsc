@@ -7,7 +7,7 @@ static char help[] = "Vlasov example of central orbits\n";
 
   and we probably want it to run fast and not check convergence
 
-    -convest_num_refine 0 -ts_dt 0.01 -ts_max_steps 100 -ts_max_time 100 -output_step 10
+    -convest_num_refine 0 -ts_time_step 0.01 -ts_max_steps 100 -ts_max_time 100 -output_step 10
 */
 
 #include <petscts.h>
@@ -90,7 +90,7 @@ static PetscErrorCode CreateSwarm(DM dm, AppCtx *user, DM *sw)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec G, void *ctx)
+static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec G, PetscCtx ctx)
 {
   DM                 sw;
   const PetscReal   *coords, *vel;
@@ -128,7 +128,7 @@ static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec G, void *ctx)
    J_p = (  0   1)
          (-w^2  0)
 */
-static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat J, Mat P, void *ctx)
+static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat J, Mat P, PetscCtx ctx)
 {
   DM               sw;
   const PetscReal *coords, *vel;
@@ -160,7 +160,7 @@ static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat J, Mat P, void 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSFunctionX(TS ts, PetscReal t, Vec V, Vec Xres, void *ctx)
+static PetscErrorCode RHSFunctionX(TS ts, PetscReal t, Vec V, Vec Xres, PetscCtx ctx)
 {
   DM                 sw;
   const PetscScalar *v;
@@ -181,7 +181,7 @@ static PetscErrorCode RHSFunctionX(TS ts, PetscReal t, Vec V, Vec Xres, void *ct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSFunctionV(TS ts, PetscReal t, Vec X, Vec Vres, void *ctx)
+static PetscErrorCode RHSFunctionV(TS ts, PetscReal t, Vec X, Vec Vres, PetscCtx ctx)
 {
   DM                 sw;
   const PetscScalar *x;
@@ -239,7 +239,7 @@ static PetscErrorCode SetProblem(TS ts)
 
   PetscFunctionBegin;
   PetscCall(TSGetDM(ts, &sw));
-  PetscCall(DMGetApplicationContext(sw, (void **)&user));
+  PetscCall(DMGetApplicationContext(sw, &user));
   // Define unified system for (X, V)
   {
     Mat      J;
@@ -322,14 +322,14 @@ static PetscErrorCode DMSwarmTSRedistribute(TS ts)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode circleSingleX(PetscInt dim, PetscReal time, const PetscReal dummy[], PetscInt p, PetscScalar x[], void *ctx)
+PetscErrorCode circleSingleX(PetscInt dim, PetscReal time, const PetscReal unused[], PetscInt p, PetscScalar x[], PetscCtx ctx)
 {
   x[0] = p + 1.;
   x[1] = 0.;
   return PETSC_SUCCESS;
 }
 
-PetscErrorCode circleSingleV(PetscInt dim, PetscReal time, const PetscReal dummy[], PetscInt p, PetscScalar v[], void *ctx)
+PetscErrorCode circleSingleV(PetscInt dim, PetscReal time, const PetscReal unused[], PetscInt p, PetscScalar v[], PetscCtx ctx)
 {
   v[0] = 0.;
   v[1] = PetscSqrtReal(1000. / (p + 1.));
@@ -337,7 +337,7 @@ PetscErrorCode circleSingleV(PetscInt dim, PetscReal time, const PetscReal dummy
 }
 
 /* Put 5 particles into each circle */
-PetscErrorCode circleMultipleX(PetscInt dim, PetscReal time, const PetscReal dummy[], PetscInt p, PetscScalar x[], void *ctx)
+PetscErrorCode circleMultipleX(PetscInt dim, PetscReal time, const PetscReal unused[], PetscInt p, PetscScalar x[], PetscCtx ctx)
 {
   const PetscInt  n   = 5;
   const PetscReal r0  = (p / n) + 1.;
@@ -349,7 +349,7 @@ PetscErrorCode circleMultipleX(PetscInt dim, PetscReal time, const PetscReal dum
 }
 
 /* Put 5 particles into each circle */
-PetscErrorCode circleMultipleV(PetscInt dim, PetscReal time, const PetscReal dummy[], PetscInt p, PetscScalar v[], void *ctx)
+PetscErrorCode circleMultipleV(PetscInt dim, PetscReal time, const PetscReal unused[], PetscInt p, PetscScalar v[], PetscCtx ctx)
 {
   const PetscInt  n     = 5;
   const PetscReal r0    = (p / n) + 1.;
@@ -473,7 +473,7 @@ static PetscErrorCode ComputeError(TS ts, Vec U, Vec E)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode EnergyMonitor(TS ts, PetscInt step, PetscReal t, Vec U, void *ctx)
+static PetscErrorCode EnergyMonitor(TS ts, PetscInt step, PetscReal t, Vec U, PetscCtx ctx)
 {
   const PetscInt     ostep = ((AppCtx *)ctx)->ostep;
   DM                 sw;
@@ -575,7 +575,7 @@ int main(int argc, char **argv)
      args: -dm_plex_dim 2 -dm_plex_simplex 0 -dm_plex_box_faces 1,1 -dm_plex_box_lower -5,-5 -dm_plex_box_upper 5,5 \
            -dm_swarm_num_particles 2 -dm_swarm_coordinate_function circleSingleX -dm_swarm_velocity_function circleSingleV \
            -ts_type basicsymplectic -ts_convergence_estimate -convest_num_refine 2 \
-           -dm_view -output_step 50 -error -ts_dt 0.01 -ts_max_time 10.0 -ts_max_steps 10
+           -dm_view -output_step 50 -error -ts_time_step 0.01 -ts_max_time 10.0 -ts_max_steps 10
      test:
        suffix: bsi_2d_1
        args: -ts_basicsymplectic_type 1
@@ -587,14 +587,14 @@ int main(int argc, char **argv)
        args: -ts_basicsymplectic_type 3
      test:
        suffix: bsi_2d_4
-       args: -ts_basicsymplectic_type 4 -ts_dt 0.0001
+       args: -ts_basicsymplectic_type 4 -ts_time_step 0.0001
 
    testset:
      requires: defined(PETSC_HAVE_EXECUTABLE_EXPORT)
      args: -dm_swarm_num_particles 2 -dm_swarm_coordinate_function circleSingleX -dm_swarm_velocity_function circleSingleV \
            -ts_type theta -ts_theta_theta 0.5 -ts_convergence_estimate -convest_num_refine 2 \
              -mat_type baij -ksp_error_if_not_converged -pc_type lu \
-           -dm_view -output_step 50 -error -ts_dt 0.01 -ts_max_time 10.0 -ts_max_steps 10
+           -dm_view -output_step 50 -error -ts_time_step 0.01 -ts_max_time 10.0 -ts_max_steps 10
      test:
        suffix: im_2d_0
        args: -dm_plex_dim 2 -dm_plex_simplex 0 -dm_plex_box_faces 1,1 -dm_plex_box_lower -5,-5 -dm_plex_box_upper 5,5
@@ -604,7 +604,7 @@ int main(int argc, char **argv)
      args: -dm_plex_dim 2 -dm_plex_simplex 0 -dm_plex_box_faces 10,10 -dm_plex_box_lower -5,-5 -dm_plex_box_upper 5,5 -petscpartitioner_type simple \
            -dm_swarm_num_particles 2 -dm_swarm_coordinate_function circleSingleX -dm_swarm_velocity_function circleSingleV \
            -ts_type basicsymplectic -ts_convergence_estimate -convest_num_refine 2 \
-           -dm_view -output_step 50 -ts_dt 0.01 -ts_max_time 10.0 -ts_max_steps 10
+           -dm_view -output_step 50 -ts_time_step 0.01 -ts_max_time 10.0 -ts_max_steps 10
      test:
        suffix: bsi_2d_mesh_1
        args: -ts_basicsymplectic_type 1 -error
@@ -635,7 +635,7 @@ int main(int argc, char **argv)
        args: -ts_type basicsymplectic -ts_basicsymplectic_type 2
      test:
        suffix: bsi_2d_multiple_3
-       args: -ts_type basicsymplectic -ts_basicsymplectic_type 3 -ts_dt 0.001
+       args: -ts_type basicsymplectic -ts_basicsymplectic_type 3 -ts_time_step 0.001
      test:
        suffix: im_2d_multiple_0
        args: -ts_type theta -ts_theta_theta 0.5 \

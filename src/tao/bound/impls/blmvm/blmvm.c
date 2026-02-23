@@ -2,7 +2,6 @@
 #include <../src/tao/unconstrained/impls/lmvm/lmvm.h>
 #include <../src/tao/bound/impls/blmvm/blmvm.h>
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoSolve_BLMVM(Tao tao)
 {
   TAO_BLMVM                   *blmP      = (TAO_BLMVM *)tao->data;
@@ -21,7 +20,7 @@ static PetscErrorCode TaoSolve_BLMVM(Tao tao)
   PetscCall(VecBoundGradientProjection(blmP->unprojected_gradient, tao->solution, tao->XL, tao->XU, tao->gradient));
 
   PetscCall(TaoGradientNorm(tao, tao->gradient, NORM_2, &gnorm));
-  PetscCheck(!PetscIsInfOrNanReal(f) && !PetscIsInfOrNanReal(gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated Inf or NaN");
+  PetscCheck(!PetscIsInfOrNanReal(f) && !PetscIsInfOrNanReal(gnorm), PetscObjectComm((PetscObject)tao), PETSC_ERR_USER, "User provided compute function generated infinity or NaN");
 
   tao->reason = TAO_CONTINUE_ITERATING;
   PetscCall(TaoLogConvergenceHistory(tao, f, gnorm, 0.0, tao->ksp_its));
@@ -134,7 +133,6 @@ static PetscErrorCode TaoSetup_BLMVM(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------- */
 static PetscErrorCode TaoDestroy_BLMVM(Tao tao)
 {
   TAO_BLMVM *blmP = (TAO_BLMVM *)tao->data;
@@ -151,7 +149,6 @@ static PetscErrorCode TaoDestroy_BLMVM(Tao tao)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoSetFromOptions_BLMVM(Tao tao, PetscOptionItems PetscOptionsObject)
 {
   TAO_BLMVM *blmP = (TAO_BLMVM *)tao->data;
@@ -169,7 +166,6 @@ static PetscErrorCode TaoSetFromOptions_BLMVM(Tao tao, PetscOptionItems PetscOpt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/*------------------------------------------------------------*/
 static PetscErrorCode TaoView_BLMVM(Tao tao, PetscViewer viewer)
 {
   TAO_BLMVM *lmP = (TAO_BLMVM *)tao->data;
@@ -207,7 +203,6 @@ static PetscErrorCode TaoComputeDual_BLMVM(Tao tao, Vec DXL, Vec DXU)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* ---------------------------------------------------------- */
 /*MC
   TAOBLMVM - Bounded limited memory variable metric is a quasi-Newton method
          for nonlinear minimization with bound constraints. It is an extension

@@ -71,10 +71,11 @@ MPI_Datatype MPIU_INT_MPIINT = 0;
 #endif
 MPI_Datatype MPI_4INT  = 0;
 MPI_Datatype MPIU_4INT = 0;
-MPI_Datatype MPIU_BOOL;
 MPI_Datatype MPIU_ENUM;
 MPI_Datatype MPIU_FORTRANADDR;
 MPI_Datatype MPIU_SIZE_T;
+
+const char *const PetscPrecisionTypes[] = {"INVALID", "BFLOAT16", "__FP16", "SINGLE", "DOUBLE", "__FLOAT128", "PetscPrecisionTypes", "PETSC_PRECISION_", NULL};
 
 /*
        Function that is called to display all error messages
@@ -477,7 +478,7 @@ PETSC_INTERN PetscErrorCode PetscOptionsCheckInitial_Private(const char help[])
   /*
         Setup profiling and logging
   */
-  if (PetscDefined(USE_LOG)) { PetscCall(PetscInfoSetFromOptions(NULL)); }
+  if (PetscDefined(USE_LOG)) PetscCall(PetscInfoSetFromOptions(NULL));
   PetscCall(PetscDetermineInitialFPTrap());
   flg1 = PETSC_FALSE;
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-fp_trap", &flg1, &flag));
@@ -577,7 +578,7 @@ PETSC_INTERN PetscErrorCode PetscOptionsCheckInitial_Private(const char help[])
           any_default = PETSC_TRUE;
         }
       }
-      if (any_default) { PetscCall(PetscLogDefaultBegin()); }
+      if (any_default) PetscCall(PetscLogDefaultBegin());
       if (any_nested) {
         PetscCall(PetscLogNestedBegin());
         PetscReal threshold = PetscRealConstant(0.01);
@@ -634,7 +635,9 @@ PETSC_INTERN PetscErrorCode PetscOptionsCheckInitial_Private(const char help[])
     PetscCall((*PetscHelpPrintf)(comm, " -log_trace [filename]: prints trace of all PETSc calls\n"));
     PetscCall((*PetscHelpPrintf)(comm, " -log_exclude <list,of,classnames>: exclude given classes from logging\n"));
   #if defined(PETSC_HAVE_DEVICE)
-    PetscCall((*PetscHelpPrintf)(comm, " -log_view_gpu_time: log the GPU time for each and event\n"));
+    PetscCall((*PetscHelpPrintf)(comm, " -log_view_gpu_time: log the GPU time for each event\n"));
+    PetscCall((*PetscHelpPrintf)(comm, " -log_view_gpu_energy: log the GPU energy (estimated) for each event\n"));
+    PetscCall((*PetscHelpPrintf)(comm, " -log_view_gpu_energy_meter: log the GPU energy (readings from meters) for each event\n"));
   #endif
   #if defined(PETSC_HAVE_MPE)
     PetscCall((*PetscHelpPrintf)(comm, " -log_mpe: Also create logfile viewable through Jumpshot\n"));

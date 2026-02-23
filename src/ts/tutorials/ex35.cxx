@@ -285,7 +285,7 @@ static PetscErrorCode FormRHSFunction(TS ts, PetscReal t, Vec X, Vec F, void *pt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, void *ctx)
+static PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, PetscCtx ctx)
 {
   UserCtx            user = (UserCtx)ctx;
   DM                 dm;
@@ -347,7 +347,7 @@ static PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec X, Vec Xdot, Vec F, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode FormInitialSolution(TS ts, Vec X, void *ctx)
+PetscErrorCode FormInitialSolution(TS ts, Vec X, PetscCtx ctx)
 {
   UserCtx               user = (UserCtx)ctx;
   PetscReal             vpos[3];
@@ -392,12 +392,12 @@ PetscErrorCode FormInitialSolution(TS ts, Vec X, void *ctx)
       requires: moab !complex
 
     test:
-      args: -n 20 -ts_type rosw -ts_rosw_type 2p -ts_dt 5e-2 -ts_adapt_type none
+      args: -n 20 -ts_type rosw -ts_rosw_type 2p -ts_time_step 5e-2 -ts_adapt_type none
 
     test:
       suffix: 2
       nsize: 2
-      args: -n 50 -ts_type glee -ts_adapt_type none -ts_dt 0.1 -io
+      args: -n 50 -ts_type glee -ts_adapt_type none -ts_time_step 0.1 -io
       TODO:
 
 TEST*/

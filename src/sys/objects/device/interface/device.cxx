@@ -219,19 +219,19 @@ PetscErrorCode PetscDeviceConfigure(PetscDevice device)
 PetscErrorCode PetscDeviceView(PetscDevice device, PetscViewer viewer)
 {
   auto      sub = viewer;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
   PetscValidDevice(device, 1);
   if (viewer) {
     PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
-    PetscCall(PetscObjectTypeCompare(PetscObjectCast(viewer), PETSCVIEWERASCII, &iascii));
+    PetscCall(PetscObjectTypeCompare(PetscObjectCast(viewer), PETSCVIEWERASCII, &isascii));
   } else {
     PetscCall(PetscViewerASCIIGetStdout(PETSC_COMM_WORLD, &viewer));
-    iascii = PETSC_TRUE;
+    isascii = PETSC_TRUE;
   }
 
-  if (iascii) {
+  if (isascii) {
     auto        dtype = PETSC_DEVICE_HOST;
     MPI_Comm    comm;
     PetscMPIInt size;
@@ -252,7 +252,7 @@ PetscErrorCode PetscDeviceView(PetscDevice device, PetscViewer viewer)
   // see if impls has extra viewer stuff
   PetscTryTypeMethod(device, view, sub);
 
-  if (iascii) {
+  if (isascii) {
     // undo the ASCII specific stuff
     PetscCall(PetscViewerASCIIPopTab(sub));
     PetscCall(PetscViewerRestoreSubViewer(viewer, PETSC_COMM_SELF, &sub));
@@ -371,7 +371,7 @@ PetscErrorCode PetscDeviceSetDefaultDeviceType(PetscDeviceType type)
   PetscFunctionBegin;
   PetscValidDeviceType(type, 1);
   if (default_device_type.type != type) {
-    // no need to waster a PetscRegisterFinalize() slot if we don't change it
+    // no need to waste a PetscRegisterFinalize() slot if we don't change it
     default_device_type.type = type;
     PetscCall(default_device_type.register_finalize());
   }
@@ -540,6 +540,10 @@ PetscErrorCode PetscDeviceInitializeQueryOptions_Private(MPI_Comm comm, PetscDev
   PetscFunctionBegin;
   PetscCall(PetscOptionsHasName(nullptr, nullptr, "-log_view_gpu_time", &flg));
   if (flg) PetscCall(PetscLogGpuTime());
+  PetscCall(PetscOptionsHasName(nullptr, nullptr, "-log_view_gpu_energy_meter", &flg));
+  if (flg) PetscCall(PetscLogGpuEnergyMeter());
+  PetscCall(PetscOptionsHasName(nullptr, nullptr, "-log_view_gpu_energy", &flg));
+  if (flg) PetscCall(PetscLogGpuEnergy());
 
   PetscOptionsBegin(comm, nullptr, "PetscDevice Options", "Sys");
   PetscCall(PetscOptionsEList("-device_enable", "How (or whether) to initialize PetscDevices", "PetscDeviceInitialize()", PetscDeviceInitTypes, 3, PetscDeviceInitTypes[initIdx], &initIdx, nullptr));
@@ -678,9 +682,7 @@ PetscErrorCode PetscDeviceInitializeFromOptions_Internal(MPI_Comm comm)
 
   PetscCall(PetscDeviceSetDefaultDeviceType(deviceContextInitDevice));
   PetscCall(PetscDeviceContextSetRootDeviceType_Internal(PETSC_DEVICE_DEFAULT()));
-  /* ----------------------------------------------------------------------------------- */
   /*                       PetscDevice is now fully initialized                          */
-  /* ----------------------------------------------------------------------------------- */
   {
     /*
       query the options db to get the root settings from the user (if any).

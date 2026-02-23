@@ -63,6 +63,7 @@ PetscMPIInt Petsc_SharedTmp_keyval = MPI_KEYVAL_INVALID;
      Declare and set all the string names of the PETSc enums
 */
 const char *const PetscBools[]     = {"FALSE", "TRUE", "PetscBool", "PETSC_", NULL};
+const char *const PetscBool3s[]    = {"FALSE", "TRUE", "UNKNOWN", "PetscBool3", "PETSC_", NULL};
 const char *const PetscCopyModes[] = {"COPY_VALUES", "OWN_POINTER", "USE_POINTER", "PetscCopyMode", "PETSC_", NULL};
 
 PetscBool PetscPreLoadingUsed = PETSC_FALSE;
@@ -469,8 +470,8 @@ PetscErrorCode PetscCitationsInitialize(void)
     and Jose~E. Roman and Karl Rupp and Patrick Sanan and Jason Sarich and Barry~F. Smith and Hansol Suh\n\
     and Stefano Zampini and Hong Zhang and Hong Zhang and Junchao Zhang},\n\
   Title = {{PETSc/TAO} Users Manual},\n\
-  Number = {ANL-21/39 - Revision 3.23},\n\
-  Doi = {10.2172/2565610},\n\
+  Number = {ANL-21/39 - Revision 3.24},\n\
+  Doi = {10.2172/2998643},\n\
   Institution = {Argonne National Laboratory},\n\
   Year = {2025}\n}\n",
                                    NULL));
@@ -900,7 +901,6 @@ PETSC_INTERN PetscErrorCode PetscInitialize_Common(const char *prog, const char 
   PetscCallMPI(MPI_Comm_rank(MPI_COMM_WORLD, &PetscGlobalRank));
   PetscCallMPI(MPI_Comm_size(MPI_COMM_WORLD, &PetscGlobalSize));
 
-  MPIU_BOOL        = MPI_INT;
   MPIU_ENUM        = MPI_INT;
   MPIU_FORTRANADDR = (sizeof(void *) == sizeof(int)) ? MPI_INT : MPIU_INT64;
   if (sizeof(size_t) == sizeof(unsigned)) MPIU_SIZE_T = MPI_UNSIGNED;
@@ -1282,6 +1282,8 @@ PETSC_INTERN PetscErrorCode PetscInitialize_Common(const char *prog, const char 
 . -log_view [:filename:format][,[:filename:format]...] - Prints summary of flop and timing information to screen or file, see `PetscLogView()` (up to 4 viewers)
 . -log_view_memory                                     - Includes in the summary from -log_view the memory used in each event, see `PetscLogView()`.
 . -log_view_gpu_time                                   - Includes in the summary from -log_view the time used in each GPU kernel, see `PetscLogView().
+. -log_view_gpu_energy                                 - Includes in the summary from -log_view the energy (estimated with power*gtime) consumed in each GPU kernel, see `PetscLogView()`.
+. -log_view_gpu_energy_meter                           - Includes in the summary from -log_view the energy (readings from meters) consumed in each GPU kernel, see `PetscLogView()`.
 . -log_exclude: <vec,mat,pc,ksp,snes>                  - excludes subset of object classes from logging
 . -log [filename]                                      - Logs profiling information in a dump file, see `PetscLogDump()`.
 . -log_all [filename]                                  - Same as `-log`.
@@ -1420,8 +1422,8 @@ PETSC_EXTERN PetscErrorCode PetscFreeAlign(void *, int, const char[], const char
   Collective on `PETSC_COMM_WORLD`
 
   Options Database Keys:
-+ -options_view                    - Calls `PetscOptionsView()`
-. -options_left                    - Prints unused options that remain in the database
++ -options_view                    - Calls `PetscOptionsView()` to display all options in the database
+. -options_left                    - Prints unused options that remain in the database (default value is `true`)
 . -objects_dump [all]              - Prints list of objects allocated by the user that have not been freed, the option all cause all outstanding objects to be listed
 . -mpidump                         - Calls PetscMPIDump()
 . -malloc_dump <optional filename> - Calls `PetscMallocDump()`, displays all memory allocated that has not been freed
@@ -1572,7 +1574,7 @@ PetscErrorCode PetscFinalize(void)
   PetscCall(PetscOptionsHasName(NULL, NULL, "-objects_dump", &flg1));
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-options_view", &flg2, NULL));
 
-  if (flg2) { PetscCall(PetscOptionsView(NULL, PETSC_VIEWER_STDOUT_WORLD)); }
+  if (flg2) PetscCall(PetscOptionsView(NULL, PETSC_VIEWER_STDOUT_WORLD));
 
   /* to prevent PETSc -options_left from warning */
   PetscCall(PetscOptionsHasName(NULL, NULL, "-nox", &flg1));
@@ -1582,9 +1584,6 @@ PetscErrorCode PetscFinalize(void)
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-options_left", &flg3, &flg1));
   if (!flg1) flg3 = PETSC_TRUE;
   if (flg3) {
-    if (!flg2 && flg1) { /* have not yet printed the options */
-      PetscCall(PetscOptionsView(NULL, PETSC_VIEWER_STDOUT_WORLD));
-    }
     PetscCall(PetscOptionsAllUsed(NULL, &nopt));
     if (nopt) {
       PetscCall(PetscPrintf(PETSC_COMM_WORLD, "WARNING! There are options you set that were not used!\n"));
@@ -1867,17 +1866,17 @@ PetscMPIInt MPIU_Allreduce_Private(const void *inbuf, void *outbuf, MPIU_Count c
   return err;
 }
 
-// Check if MPIU_Allreduce is called on the same filename:lineno and with the same data count across all processes. Error out if otherwise.
+// Check if MPIU_Allreduce() is called on the same filename:lineno and with the same data count across all processes. Error out if otherwise.
 PetscErrorCode PetscCheckAllreduceSameLineAndCount_Private(MPI_Comm comm, const char *filename, PetscMPIInt lineno, PetscMPIInt count)
 {
-  PetscMPIInt sbuf[4], rbuf[4];
+  PetscMPIInt rbuf[4];
 
   PetscFunctionBegin;
-  sbuf[0] = lineno;
-  sbuf[1] = -sbuf[0];
-  sbuf[2] = count;
-  sbuf[3] = -sbuf[2];
-  PetscCallMPI(MPI_Allreduce(sbuf, rbuf, 4, MPI_INT, MPI_MAX, comm));
+  rbuf[0] = lineno;
+  rbuf[1] = -rbuf[0];
+  rbuf[2] = count;
+  rbuf[3] = -rbuf[2];
+  PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, rbuf, 4, MPI_INT, MPI_MAX, comm));
 
   if (rbuf[0] != -rbuf[1]) {
     size_t      len;
@@ -1924,9 +1923,9 @@ PetscErrorCode PetscCheckAllreduceSameLineAndCount_Private(MPI_Comm comm, const 
 .seealso: `PetscObject`, `PetscCtxDestroyFn`, `PetscObjectDestroy()`, `DMSetApplicationContextDestroy()`,  `PetscContainerSetDestroy()`,
            `PetscObjectContainterCreate()`
 @*/
-PETSC_EXTERN PetscErrorCode PetscCtxDestroyDefault(void **ctx)
+PETSC_EXTERN PetscErrorCode PetscCtxDestroyDefault(PetscCtxRt ctx)
 {
   PetscFunctionBegin;
-  PetscCall(PetscFree(*ctx));
+  PetscCall(PetscFree(*(void **)ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

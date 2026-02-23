@@ -175,11 +175,11 @@ static PetscErrorCode PCSetFromOptions_LSC(PC pc, PetscOptionItems PetscOptionsO
 static PetscErrorCode PCView_LSC(PC pc, PetscViewer viewer)
 {
   PC_LSC   *jac = (PC_LSC *)pc->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPushTab(viewer));
     if (jac->kspL) {
       PetscCall(KSPView(jac->kspL, viewer));
@@ -240,7 +240,7 @@ static PetscErrorCode PCView_LSC(PC pc, PetscViewer viewer)
 .vb
    PetscObjectQuery((PetscObject)Sp,"LSC_L",(PetscObject*)&L);
    PetscObjectQuery((PetscObject)Sp,"LSC_Lp",(PetscObject*)&Lp);
-   if (L) { assembly L }
+   if (L) { assemble L }
    if (Lp) { assemble Lp }
 .ve
 

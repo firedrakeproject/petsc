@@ -199,11 +199,11 @@ static PetscErrorCode SNESView_NGS(SNES snes, PetscViewer viewer)
 {
   PetscErrorCode (*f)(SNES, Vec, Vec, void *);
   SNES_NGS *gs = (SNES_NGS *)snes->data;
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(DMSNESGetNGS(snes->dm, &f, NULL));
     if (f == SNESComputeNGSDefaultSecant) PetscCall(PetscViewerASCIIPrintf(viewer, "  Use finite difference secant approximation with coloring with h = %g \n", (double)gs->h));
   }
@@ -236,12 +236,11 @@ static PetscErrorCode SNESSolve_NGS(SNES snes)
   PetscCall(SNESGetNormSchedule(snes, &normschedule));
   if (normschedule == SNES_NORM_ALWAYS || normschedule == SNES_NORM_INITIAL_ONLY || normschedule == SNES_NORM_INITIAL_FINAL_ONLY) {
     /* compute the initial function and preconditioned update delX */
-    if (!snes->vec_func_init_set) {
-      PetscCall(SNESComputeFunction(snes, X, F));
-    } else snes->vec_func_init_set = PETSC_FALSE;
+    if (!snes->vec_func_init_set) PetscCall(SNESComputeFunction(snes, X, F));
+    else snes->vec_func_init_set = PETSC_FALSE;
 
     PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- ||F||  */
-    SNESCheckFunctionNorm(snes, fnorm);
+    SNESCheckFunctionDomainError(snes, fnorm);
     PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));
     snes->iter = 0;
     snes->norm = fnorm;
@@ -266,7 +265,7 @@ static PetscErrorCode SNESSolve_NGS(SNES snes)
     if (normschedule == SNES_NORM_ALWAYS || ((i == snes->max_its - 1) && (normschedule == SNES_NORM_INITIAL_FINAL_ONLY || normschedule == SNES_NORM_FINAL_ONLY))) {
       PetscCall(SNESComputeFunction(snes, X, F));
       PetscCall(VecNorm(F, NORM_2, &fnorm)); /* fnorm <- ||F||  */
-      SNESCheckFunctionNorm(snes, fnorm);
+      SNESCheckFunctionDomainError(snes, fnorm);
     }
     /* Monitor convergence */
     PetscCall(PetscObjectSAWsTakeAccess((PetscObject)snes));

@@ -308,7 +308,7 @@ static PetscErrorCode DMDAGetWireBasketInterpolation(PC pc, DM da, PC_Exotic *ex
   PetscCall(PetscFree(globals));
   for (i = 0; i < 26; i++) {
     PetscCall(PetscHMapIGetWithDefault(ht, gl[i] + 1, 0, gl + i));
-    --(gl[i]);
+    --gl[i];
   }
   PetscCall(PetscHMapIDestroy(&ht));
   /* PetscIntView(26,gl,PETSC_VIEWER_STDOUT_WORLD); */
@@ -597,7 +597,7 @@ static PetscErrorCode DMDAGetFaceInterpolation(PC pc, DM da, PC_Exotic *exotic, 
   PetscCall(PetscFree(globals));
   for (i = 0; i < 6; i++) {
     PetscCall(PetscHMapIGetWithDefault(ht, gl[i] + 1, 0, gl + i));
-    --(gl[i]);
+    --gl[i];
   }
   PetscCall(PetscHMapIDestroy(&ht));
   /* PetscIntView(6,gl,PETSC_VIEWER_STDOUT_WORLD); */
@@ -737,12 +737,12 @@ static PetscErrorCode PCDestroy_Exotic(PC pc)
 static PetscErrorCode PCView_Exotic(PC pc, PetscViewer viewer)
 {
   PC_MG     *mg = (PC_MG *)pc->data;
-  PetscBool  iascii;
+  PetscBool  isascii;
   PC_Exotic *ctx = (PC_Exotic *)mg->innerctx;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "    Exotic type = %s\n", PCExoticTypes[ctx->type]));
     if (ctx->directSolve) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "      Using direct solver to construct interpolation\n"));

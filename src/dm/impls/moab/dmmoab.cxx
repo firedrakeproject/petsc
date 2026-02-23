@@ -1087,7 +1087,7 @@ PETSC_EXTERN PetscErrorCode DMSetUp_Moab(DM dm)
     PetscCallMPI(MPIU_Allreduce(&dmmoab->lminmax[1], &dmmoab->gminmax[1], 1, MPI_INT, MPI_MAX, ((PetscObject)dm)->comm));
 
     /* set the GID map */
-    for (i = 0; i < totsize; ++i) { dmmoab->gsindices[i] -= dmmoab->gminmax[0]; /* zero based index needed for IS */ }
+    for (i = 0; i < totsize; ++i) dmmoab->gsindices[i] -= dmmoab->gminmax[0]; /* zero based index needed for IS */
     dmmoab->lminmax[0] -= dmmoab->gminmax[0];
     dmmoab->lminmax[1] -= dmmoab->gminmax[0];
 
@@ -1427,15 +1427,15 @@ PETSC_EXTERN PetscErrorCode DMMoabView_HDF5(DM dm, PetscViewer v)
 
 PETSC_EXTERN PetscErrorCode DMView_Moab(DM dm, PetscViewer viewer)
 {
-  PetscBool iascii, ishdf5, isvtk;
+  PetscBool isascii, ishdf5, isvtk;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERVTK, &isvtk));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERHDF5, &ishdf5));
-  if (iascii) {
+  if (isascii) {
     PetscCall(DMMoabView_Ascii(dm, viewer));
   } else if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5) && defined(MOAB_HAVE_HDF5)
@@ -1445,9 +1445,7 @@ PETSC_EXTERN PetscErrorCode DMView_Moab(DM dm, PetscViewer viewer)
 #else
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
-  } else if (isvtk) {
-    PetscCall(DMMoabView_VTK(dm, viewer));
-  }
+  } else if (isvtk) PetscCall(DMMoabView_VTK(dm, viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

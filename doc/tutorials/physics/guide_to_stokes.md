@@ -425,8 +425,8 @@ SNES Object: 1 MPI process
     maximum iterations=40
   KSP Object: 1 MPI process
     type: gmres
-      restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-      happy breakdown tolerance 1e-30
+      restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+      happy breakdown tolerance=1e-30
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-09, absolute=1e-10, divergence=10000.
     left preconditioning
@@ -441,8 +441,8 @@ SNES Object: 1 MPI process
       KSP solver for A00 block
         KSP Object: (fieldsplit_velocity_) 1 MPI process
           type: gmres
-            restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-            happy breakdown tolerance 1e-30
+            restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+            happy breakdown tolerance=1e-30
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
@@ -453,7 +453,7 @@ SNES Object: 1 MPI process
             tolerance for zero pivot 2.22045e-14
             matrix ordering: nd
             factor fill ratio given 5., needed 1.15761
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: 1 MPI process
                   type: seqaij
                   rows=30, cols=30
@@ -476,8 +476,8 @@ SNES Object: 1 MPI process
       KSP solver for S = A11 - A10 inv(A00) A01
         KSP Object: (fieldsplit_pressure_) 1 MPI process
           type: gmres
-            restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-            happy breakdown tolerance 1e-30
+            restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+            happy breakdown tolerance=1e-30
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-09, absolute=1e-50, divergence=10000.
           left preconditioning
@@ -488,7 +488,7 @@ SNES Object: 1 MPI process
             tolerance for zero pivot 2.22045e-14
             matrix ordering: nd
             factor fill ratio given 5., needed 1.2439
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: 1 MPI process
                   type: seqaij
                   rows=9, cols=9
@@ -572,8 +572,8 @@ For each nonlinear step, we use `KSPGMRES` to solve the Newton equation, precond
 $ make -f ./gmakefile test search="snes_tutorials-ex69_p2p1" EXTRA_OPTIONS="-snes_view"
   KSP Object: 1 MPI process
     type: gmres
-      restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-      happy breakdown tolerance 1e-30
+      restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+      happy breakdown tolerance=1e-30
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-09, absolute=1e-10, divergence=10000.
     left preconditioning
@@ -601,8 +601,8 @@ $ make -f ./gmakefile test search="snes_tutorials-ex69_p2p1" EXTRA_OPTIONS="-sne
       KSP solver for A00 block
         KSP Object: (fieldsplit_velocity_) 1 MPI process
           type: gmres
-            restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-            happy breakdown tolerance 1e-30
+            restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+            happy breakdown tolerance=1e-30
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
@@ -613,7 +613,7 @@ $ make -f ./gmakefile test search="snes_tutorials-ex69_p2p1" EXTRA_OPTIONS="-sne
             tolerance for zero pivot 2.22045e-14
             matrix ordering: nd
             factor fill ratio given 5., needed 1.15761
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: 1 MPI process
                   type: seqaij
                   rows=30, cols=30
@@ -642,8 +642,8 @@ $ make -f ./gmakefile test search="snes_tutorials-ex69_p2p1" EXTRA_OPTIONS="-sne
       KSP solver for S = A11 - A10 inv(A00) A01
         KSP Object: (fieldsplit_pressure_) 1 MPI process
           type: gmres
-            restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-            happy breakdown tolerance 1e-30
+            restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+            happy breakdown tolerance=1e-30
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-09, absolute=1e-50, divergence=10000.
           left preconditioning
@@ -654,7 +654,7 @@ $ make -f ./gmakefile test search="snes_tutorials-ex69_p2p1" EXTRA_OPTIONS="-sne
             tolerance for zero pivot 2.22045e-14
             matrix ordering: nd
             factor fill ratio given 5., needed 1.2439
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: 1 MPI process
                   type: seqaij
                   rows=9, cols=9
@@ -685,8 +685,8 @@ $ make -f ./gmakefile test search="snes_tutorials-ex69_p2p1" EXTRA_OPTIONS="-sne
               KSP of A00
                 KSP Object: (fieldsplit_velocity_) 1 MPI process
                   type: gmres
-                    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-                    happy breakdown tolerance 1e-30
+                    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+                    happy breakdown tolerance=1e-30
                   maximum iterations=10000, initial guess is zero
                   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
                   left preconditioning
@@ -697,7 +697,7 @@ $ make -f ./gmakefile test search="snes_tutorials-ex69_p2p1" EXTRA_OPTIONS="-sne
                     tolerance for zero pivot 2.22045e-14
                     matrix ordering: nd
                     factor fill ratio given 5., needed 1.15761
-                      Factored matrix follows:
+                      Factored matrix:
                         Mat Object: 1 MPI process
                           type: seqaij
                           rows=30, cols=30

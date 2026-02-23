@@ -15,9 +15,27 @@
 
   Level: advanced
 
-  Note:
+  Notes:
   See `DMSetApplicationContext()` and `DMGetApplicationContext()` for how to get user information into
   this routine
+
+  The provided function should have a signature matching
+.vb
+   PetscErrorCode your_form_couple_method(DM dm, Mat J, PetscInt *dnz, PetscInt *onz, PetscInt rstart, PetscInt nrows, PetscInt start, PetscInt end);
+.ve
+  where
++ dm     - the composite object
+. J      - the constructed matrix, or `NULL`. If provided, the function should fill the existing nonzero pattern with zeros (only `dm` and `rstart` are valid in this case).
+. dnz    - array counting the number of on-diagonal non-zero entries per row, where on-diagonal means that this process owns both the row and column
+. onz    - array counting the number of off-diagonal non-zero entries per row, where off-diagonal means that this process owns the row
+. rstart - offset into `*nz` arrays, for local row index `r`, update `onz[r - rstart]` or `dnz[r - rstart]`
+. nrows  - number of owned global rows
+. start  - the first owned global index
+- end    - the last owned global index + 1
+
+  If `J` is not `NULL`, then the only other valid parameter is `rstart`
+
+  The user coupling function has a weird and poorly documented interface and is not tested, it should be removed
 
 .seealso: `DMCOMPOSITE`, `DM`
 @*/
@@ -55,12 +73,12 @@ static PetscErrorCode DMDestroy_Composite(DM dm)
 
 static PetscErrorCode DMView_Composite(DM dm, PetscViewer v)
 {
-  PetscBool     iascii;
+  PetscBool     isascii;
   DM_Composite *com = (DM_Composite *)dm->data;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)v, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     struct DMCompositeLink *lnk = com->next;
     PetscInt                i;
 
@@ -78,7 +96,6 @@ static PetscErrorCode DMView_Composite(DM dm, PetscViewer v)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-/* --------------------------------------------------------------------------------------*/
 static PetscErrorCode DMSetUp_Composite(DM dm)
 {
   PetscInt                nprev = 0;
@@ -813,7 +830,7 @@ static PetscErrorCode DMCreateGlobalVector_Composite(DM dm, Vec *gvec)
   PetscCall(VecSetType(*gvec, dm->vectype));
   PetscCall(VecSetSizes(*gvec, com->n, com->N));
   PetscCall(VecSetDM(*gvec, dm));
-  PetscCall(VecSetOperation(*gvec, VECOP_VIEW, (void (*)(void))VecView_DMComposite));
+  PetscCall(VecSetOperation(*gvec, VECOP_VIEW, (PetscErrorCodeFn *)VecView_DMComposite));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1273,9 +1290,9 @@ typedef struct {
   Vec         *vecs;
 } GLVisViewerCtx;
 
-static PetscErrorCode DestroyGLVisViewerCtx_Private(void *vctx)
+static PetscErrorCode DestroyGLVisViewerCtx_Private(PetscCtxRt vctx)
 {
-  GLVisViewerCtx *ctx = (GLVisViewerCtx *)vctx;
+  GLVisViewerCtx *ctx = *(GLVisViewerCtx **)vctx;
   PetscInt        i, n;
 
   PetscFunctionBegin;
@@ -1475,9 +1492,8 @@ static PetscErrorCode DMCreateColoring_Composite(DM dm, ISColoringType ctype, IS
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscCheck(ctype != IS_COLORING_LOCAL, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "Only global coloring supported");
-  if (ctype == IS_COLORING_GLOBAL) {
-    n = com->n;
-  } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Unknown ISColoringType");
+  PetscCheck(ctype == IS_COLORING_GLOBAL, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_OUTOFRANGE, "Unknown ISColoringType");
+  n = com->n;
   PetscCall(PetscMalloc1(n, &colors)); /* freed in ISColoringDestroy() */
 
   PetscCall(PetscOptionsGetBool(((PetscObject)dm)->options, ((PetscObject)dm)->prefix, "-dmcomposite_dense_jacobian", &dense, NULL));
@@ -1507,7 +1523,8 @@ static PetscErrorCode DMCreateColoring_Composite(DM dm, ISColoringType ctype, IS
 static PetscErrorCode DMGlobalToLocalBegin_Composite(DM dm, Vec gvec, InsertMode mode, Vec lvec)
 {
   struct DMCompositeLink *next;
-  PetscScalar            *garray, *larray;
+  const PetscScalar      *garray, *garrayhead;
+  PetscScalar            *larray, *larrayhead;
   DM_Composite           *com = (DM_Composite *)dm->data;
 
   PetscFunctionBegin;
@@ -1516,8 +1533,10 @@ static PetscErrorCode DMGlobalToLocalBegin_Composite(DM dm, Vec gvec, InsertMode
 
   if (!com->setup) PetscCall(DMSetUp(dm));
 
-  PetscCall(VecGetArray(gvec, &garray));
+  PetscCall(VecGetArrayRead(gvec, &garray));
+  garrayhead = garray;
   PetscCall(VecGetArray(lvec, &larray));
+  larrayhead = larray;
 
   /* loop over packed objects, handling one at a time */
   next = com->next;
@@ -1527,9 +1546,9 @@ static PetscErrorCode DMGlobalToLocalBegin_Composite(DM dm, Vec gvec, InsertMode
 
     PetscCall(DMGetGlobalVector(next->dm, &global));
     PetscCall(VecGetLocalSize(global, &N));
-    PetscCall(VecPlaceArray(global, garray));
+    PetscCall(VecPlaceArray(global, garrayhead));
     PetscCall(DMGetLocalVector(next->dm, &local));
-    PetscCall(VecPlaceArray(local, larray));
+    PetscCall(VecPlaceArray(local, larrayhead));
     PetscCall(DMGlobalToLocalBegin(next->dm, global, mode, local));
     PetscCall(DMGlobalToLocalEnd(next->dm, global, mode, local));
     PetscCall(VecResetArray(global));
@@ -1537,13 +1556,12 @@ static PetscErrorCode DMGlobalToLocalBegin_Composite(DM dm, Vec gvec, InsertMode
     PetscCall(DMRestoreGlobalVector(next->dm, &global));
     PetscCall(DMRestoreLocalVector(next->dm, &local));
 
-    larray += next->nlocal;
-    garray += next->n;
+    larrayhead += next->nlocal;
+    garrayhead += next->n;
     next = next->next;
   }
-
-  PetscCall(VecRestoreArray(gvec, NULL));
-  PetscCall(VecRestoreArray(lvec, NULL));
+  PetscCall(VecRestoreArrayRead(gvec, &garray));
+  PetscCall(VecRestoreArray(lvec, &larray));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1559,7 +1577,8 @@ static PetscErrorCode DMGlobalToLocalEnd_Composite(DM dm, Vec gvec, InsertMode m
 static PetscErrorCode DMLocalToGlobalBegin_Composite(DM dm, Vec lvec, InsertMode mode, Vec gvec)
 {
   struct DMCompositeLink *next;
-  PetscScalar            *larray, *garray;
+  const PetscScalar      *larray, *larrayhead;
+  PetscScalar            *garray, *garrayhead;
   DM_Composite           *com = (DM_Composite *)dm->data;
 
   PetscFunctionBegin;
@@ -1569,8 +1588,10 @@ static PetscErrorCode DMLocalToGlobalBegin_Composite(DM dm, Vec lvec, InsertMode
 
   if (!com->setup) PetscCall(DMSetUp(dm));
 
-  PetscCall(VecGetArray(lvec, &larray));
+  PetscCall(VecGetArrayRead(lvec, &larray));
+  larrayhead = larray;
   PetscCall(VecGetArray(gvec, &garray));
+  garrayhead = garray;
 
   /* loop over packed objects, handling one at a time */
   next = com->next;
@@ -1578,9 +1599,9 @@ static PetscErrorCode DMLocalToGlobalBegin_Composite(DM dm, Vec lvec, InsertMode
     Vec global, local;
 
     PetscCall(DMGetLocalVector(next->dm, &local));
-    PetscCall(VecPlaceArray(local, larray));
+    PetscCall(VecPlaceArray(local, larrayhead));
     PetscCall(DMGetGlobalVector(next->dm, &global));
-    PetscCall(VecPlaceArray(global, garray));
+    PetscCall(VecPlaceArray(global, garrayhead));
     PetscCall(DMLocalToGlobalBegin(next->dm, local, mode, global));
     PetscCall(DMLocalToGlobalEnd(next->dm, local, mode, global));
     PetscCall(VecResetArray(local));
@@ -1588,13 +1609,13 @@ static PetscErrorCode DMLocalToGlobalBegin_Composite(DM dm, Vec lvec, InsertMode
     PetscCall(DMRestoreGlobalVector(next->dm, &global));
     PetscCall(DMRestoreLocalVector(next->dm, &local));
 
-    garray += next->n;
-    larray += next->nlocal;
+    garrayhead += next->n;
+    larrayhead += next->nlocal;
     next = next->next;
   }
 
-  PetscCall(VecRestoreArray(gvec, NULL));
-  PetscCall(VecRestoreArray(lvec, NULL));
+  PetscCall(VecRestoreArray(gvec, &garray));
+  PetscCall(VecRestoreArrayRead(lvec, &larray));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1610,7 +1631,8 @@ static PetscErrorCode DMLocalToGlobalEnd_Composite(DM dm, Vec lvec, InsertMode m
 static PetscErrorCode DMLocalToLocalBegin_Composite(DM dm, Vec vec1, InsertMode mode, Vec vec2)
 {
   struct DMCompositeLink *next;
-  PetscScalar            *array1, *array2;
+  const PetscScalar      *array1, *array1head;
+  PetscScalar            *array2, *array2head;
   DM_Composite           *com = (DM_Composite *)dm->data;
 
   PetscFunctionBegin;
@@ -1620,8 +1642,10 @@ static PetscErrorCode DMLocalToLocalBegin_Composite(DM dm, Vec vec1, InsertMode 
 
   if (!com->setup) PetscCall(DMSetUp(dm));
 
-  PetscCall(VecGetArray(vec1, &array1));
+  PetscCall(VecGetArrayRead(vec1, &array1));
+  array1head = array1;
   PetscCall(VecGetArray(vec2, &array2));
+  array2head = array2;
 
   /* loop over packed objects, handling one at a time */
   next = com->next;
@@ -1629,9 +1653,9 @@ static PetscErrorCode DMLocalToLocalBegin_Composite(DM dm, Vec vec1, InsertMode 
     Vec local1, local2;
 
     PetscCall(DMGetLocalVector(next->dm, &local1));
-    PetscCall(VecPlaceArray(local1, array1));
+    PetscCall(VecPlaceArray(local1, array1head));
     PetscCall(DMGetLocalVector(next->dm, &local2));
-    PetscCall(VecPlaceArray(local2, array2));
+    PetscCall(VecPlaceArray(local2, array2head));
     PetscCall(DMLocalToLocalBegin(next->dm, local1, mode, local2));
     PetscCall(DMLocalToLocalEnd(next->dm, local1, mode, local2));
     PetscCall(VecResetArray(local2));
@@ -1639,13 +1663,13 @@ static PetscErrorCode DMLocalToLocalBegin_Composite(DM dm, Vec vec1, InsertMode 
     PetscCall(VecResetArray(local1));
     PetscCall(DMRestoreLocalVector(next->dm, &local1));
 
-    array1 += next->nlocal;
-    array2 += next->nlocal;
+    array1head += next->nlocal;
+    array2head += next->nlocal;
     next = next->next;
   }
 
-  PetscCall(VecRestoreArray(vec1, NULL));
-  PetscCall(VecRestoreArray(vec2, NULL));
+  PetscCall(VecRestoreArrayRead(vec1, &array1));
+  PetscCall(VecRestoreArray(vec2, &array2));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

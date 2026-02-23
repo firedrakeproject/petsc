@@ -1,8 +1,8 @@
 Linear solve converged due to CONVERGED_RTOL iterations 4
 KSP Object: 3 MPI processes
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -17,11 +17,11 @@ PC Object: 3 MPI processes
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (fieldsplit_0_) 3 MPI processes
     type: jacobi
       type DIAGONAL
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: (fieldsplit_0_) 3 MPI processes
       type: mpiaij
       rows=3, cols=3
@@ -34,45 +34,43 @@ PC Object: 3 MPI processes
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (fieldsplit_1_) 3 MPI processes
     type: jacobi
       type DIAGONAL
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: (fieldsplit_1_) 3 MPI processes
       type: mpisbaij
       rows=6, cols=6, bs=2
       total: nonzeros=12, allocated nonzeros=12
       total number of mallocs used during MatSetValues calls=0
-          block size is 2
   Split number 2 Fields  2
   KSP Object: (fieldsplit_2_) 3 MPI processes
     type: preonly
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (fieldsplit_2_) 3 MPI processes
     type: jacobi
       type DIAGONAL
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: (fieldsplit_2_) 3 MPI processes
       type: mpibaij
       rows=12, cols=12, bs=2
       total: nonzeros=24, allocated nonzeros=24
       total number of mallocs used during MatSetValues calls=0
-          block size is 2
   Split number 3 Fields  3
   KSP Object: (fieldsplit_3_) 3 MPI processes
     type: preonly
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (fieldsplit_3_) 3 MPI processes
     type: jacobi
       type DIAGONAL
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: (fieldsplit_3_) 3 MPI processes
       type: transpose
       rows=24, cols=24, bs=2
@@ -84,24 +82,22 @@ PC Object: 3 MPI processes
     maximum iterations=10000, initial guess is zero
     tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
     left preconditioning
-    using NONE norm type for convergence test
+    not checking for convergence
   PC Object: (fieldsplit_4_) 3 MPI processes
     type: jacobi
       type DIAGONAL
-    linear system matrix = precond matrix:
+    linear system matrix, which is also used to construct the preconditioner:
     Mat Object: (fieldsplit_4_) 3 MPI processes
       type: mpiaij
       rows=48, cols=48
       total: nonzeros=0, allocated nonzeros=0
       total number of mallocs used during MatSetValues calls=0
         not using I-node (on process 0) routines
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 3 MPI processes
     type: nest
     rows=93, cols=93
-      Matrix object:
-        type=nest, rows=5, cols=5
-        MatNest structure:
+        MatNest, rows=5, cols=5, structure:
         (0,0) : prefix="fieldsplit_0_", type=mpiaij, rows=3, cols=3
         (0,1) : NULL
         (0,2) : type=mpiaij, rows=3, cols=12

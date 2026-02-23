@@ -18,8 +18,8 @@ Norm2 of Ax - b = {1.11022302462515654e-16}
 Linear solve converged due to CONVERGED_ATOL iterations 0
 KSP Object: 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -30,7 +30,7 @@ PC Object: 1 MPI process
     tolerance for zero pivot 2.22045e-14
     matrix ordering: nd
     factor fill ratio given 0., needed 0.
-      Factored matrix follows:
+      Factored matrix:
         Mat Object: 1 MPI process
           type: superlu_dist
           rows=12, cols=12
@@ -47,7 +47,7 @@ PC Object: 1 MPI process
               Column permutation METIS_AT_PLUS_A
               Parallel symbolic factorization FALSE 
               Repeated factorization SamePattern
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=12, cols=12

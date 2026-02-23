@@ -307,7 +307,7 @@ PetscErrorCode DMAdaptorGetType(DMAdaptor adaptor, DMAdaptorType *type)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscViewerAndFormatCreate_Internal(PetscViewer viewer, PetscViewerFormat format, void *ctx, PetscViewerAndFormat **vf)
+static PetscErrorCode PetscViewerAndFormatCreate_Internal(PetscViewer viewer, PetscViewerFormat format, PetscCtx ctx, PetscViewerAndFormat **vf)
 {
   PetscFunctionBegin;
   PetscCall(PetscViewerAndFormatCreate(viewer, format, vf));
@@ -348,14 +348,14 @@ static PetscErrorCode PetscViewerAndFormatCreate_Internal(PetscViewer viewer, Pe
 
 .seealso: [](ch_snes), `DMAdaptorMonitorError()`, `DMAdaptor`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode DMAdaptorMonitorSet(DMAdaptor adaptor, PetscErrorCode (*monitor)(DMAdaptor adaptor, PetscInt it, DM odm, DM adm, PetscInt Nf, PetscReal enorms[], Vec error, void *ctx), void *ctx, PetscCtxDestroyFn *monitordestroy)
+PetscErrorCode DMAdaptorMonitorSet(DMAdaptor adaptor, PetscErrorCode (*monitor)(DMAdaptor adaptor, PetscInt it, DM odm, DM adm, PetscInt Nf, PetscReal enorms[], Vec error, PetscCtx ctx), PetscCtx ctx, PetscCtxDestroyFn *monitordestroy)
 {
-  PetscBool identical;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(adaptor, DMADAPTOR_CLASSID, 1);
   for (PetscInt i = 0; i < adaptor->numbermonitors; i++) {
-    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))monitor, ctx, monitordestroy, (PetscErrorCode (*)(void))adaptor->monitor[i], adaptor->monitorcontext[i], adaptor->monitordestroy[i], &identical));
+    PetscBool identical;
+
+    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))(PetscVoidFn *)monitor, ctx, monitordestroy, (PetscErrorCode (*)(void))(PetscVoidFn *)adaptor->monitor[i], adaptor->monitorcontext[i], adaptor->monitordestroy[i], &identical));
     if (identical) PetscFunctionReturn(PETSC_SUCCESS);
   }
   PetscCheck(adaptor->numbermonitors < MAXDMADAPTORMONITORS, PetscObjectComm((PetscObject)adaptor), PETSC_ERR_ARG_OUTOFRANGE, "Too many DMAdaptor monitors set");
@@ -406,7 +406,7 @@ PetscErrorCode DMAdaptorMonitorCancel(DMAdaptor adaptor)
 
 .seealso: [](ch_snes), `DMAdaptorMonitorRegister()`, `DMAdaptorMonitorSet()`, `PetscOptionsGetViewer()`
 @*/
-PetscErrorCode DMAdaptorMonitorSetFromOptions(DMAdaptor adaptor, const char opt[], const char name[], void *ctx)
+PetscErrorCode DMAdaptorMonitorSetFromOptions(DMAdaptor adaptor, const char opt[], const char name[], PetscCtx ctx)
 {
   PetscErrorCode (*mfunc)(DMAdaptor, PetscInt, DM, DM, PetscInt, PetscReal[], Vec, void *);
   PetscErrorCode (*cfunc)(PetscViewer, PetscViewerFormat, void *, PetscViewerAndFormat **);
@@ -637,7 +637,7 @@ PetscErrorCode DMAdaptorSetSequenceLength(DMAdaptor adaptor, PetscInt num)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMAdaptorTransferSolution_Exact_Private(DMAdaptor adaptor, DM dm, Vec u, DM adm, Vec au, void *ctx)
+static PetscErrorCode DMAdaptorTransferSolution_Exact_Private(DMAdaptor adaptor, DM dm, Vec u, DM adm, Vec au, PetscCtx ctx)
 {
   PetscFunctionBeginUser;
   PetscCall(DMProjectFunction(adm, 0.0, adaptor->exactSol, adaptor->exactCtx, INSERT_ALL_VALUES, au));
@@ -705,9 +705,7 @@ static PetscErrorCode DMAdaptorPreAdapt(DMAdaptor adaptor, Vec locX)
   PetscCall(PetscObjectGetClassId(obj, &id));
   PetscCall(DMIsForest(adaptor->idm, &isForest));
   if (adaptor->adaptCriterion == DM_ADAPTATION_NONE) {
-    if (isForest) {
-      adaptor->adaptCriterion = DM_ADAPTATION_LABEL;
-    }
+    if (isForest) adaptor->adaptCriterion = DM_ADAPTATION_LABEL;
 #if defined(PETSC_HAVE_PRAGMATIC)
     else {
       adaptor->adaptCriterion = DM_ADAPTATION_METRIC;
@@ -838,7 +836,7 @@ static PetscErrorCode DMAdaptorPostAdapt(DMAdaptor adaptor)
 
 .seealso: [](ch_dmbase), `DMAdaptor`
 */
-static PetscErrorCode DMAdaptorComputeCellErrorIndicator_Gradient(DMAdaptor adaptor, PetscInt dim, PetscInt Nc, const PetscScalar *field, const PetscScalar *gradient, const PetscFVCellGeom *cg, PetscReal *errInd, void *ctx)
+static PetscErrorCode DMAdaptorComputeCellErrorIndicator_Gradient(DMAdaptor adaptor, PetscInt dim, PetscInt Nc, const PetscScalar *field, const PetscScalar *gradient, const PetscFVCellGeom *cg, PetscReal *errInd, PetscCtx ctx)
 {
   PetscReal err = 0.;
   PetscInt  c, d;
@@ -1192,7 +1190,7 @@ PetscErrorCode DMAdaptorMonitorErrorDraw(DMAdaptor adaptor, PetscInt n, DM odm, 
 
 .seealso: [](ch_snes), `PETSCVIEWERDRAW`, `PetscViewerMonitorGLSetUp()`, `DMAdaptor`, `DMAdaptorMonitorSet()`, `DMAdaptorMonitorErrorDrawLG()`
 @*/
-PetscErrorCode DMAdaptorMonitorErrorDrawLGCreate(PetscViewer viewer, PetscViewerFormat format, void *ctx, PetscViewerAndFormat **vf)
+PetscErrorCode DMAdaptorMonitorErrorDrawLGCreate(PetscViewer viewer, PetscViewerFormat format, PetscCtx ctx, PetscViewerAndFormat **vf)
 {
   DMAdaptor adaptor = (DMAdaptor)ctx;
   char    **names;

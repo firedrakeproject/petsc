@@ -2,6 +2,7 @@
 #include <petsc/private/petschpddm.h>
 #include <petscdevice_cuda.h>
 #include <thrust/device_ptr.h>
+#include <thrust/copy.h>
 
 PetscErrorCode KSPSolve_HPDDM_CUDA_Private(KSP_HPDDM *data, const PetscScalar *b, PetscScalar *x, PetscInt n, MPI_Comm comm)
 {
@@ -14,7 +15,7 @@ PetscErrorCode KSPSolve_HPDDM_CUDA_Private(KSP_HPDDM *data, const PetscScalar *b
 #endif
 
   PetscFunctionBegin; // TODO: remove all cudaMemcpy() once HPDDM::IterativeMethod::solve() handles device pointers
-  if (data->precision != PETSC_KSPHPDDM_DEFAULT_PRECISION) {
+  if (data->precision != PETSC_SCALAR_PRECISION) {
     const thrust::device_ptr<const PetscScalar> db = thrust::device_pointer_cast(b);
     const thrust::device_ptr<PetscScalar>       dx = thrust::device_pointer_cast(x);
     K                                          *ptr, *host_ptr;

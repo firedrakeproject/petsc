@@ -69,7 +69,7 @@ PC Object: 8 MPI processes
     PC Object: (mg_coarse_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=16, cols=16, bs=2
@@ -94,11 +94,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_levels_1_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=228, cols=228, bs=2
@@ -124,11 +124,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_levels_2_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=2000, cols=2000, bs=2
@@ -144,11 +144,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_fine_) 8 MPI processes
       type: jacobi
         type ROWL1 (l1-norm off-diagonal scaling 2.500000e-01)
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=3000, cols=3000, bs=3
@@ -156,7 +156,7 @@ PC Object: 8 MPI processes
         total number of mallocs used during MatSetValues calls=0
           using I-node (on process 0) routines: found 125 nodes, limit used is 5
   Up solver (post-smoother) same as down solver (pre-smoother)
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 8 MPI processes
     type: mpiaij
     rows=3000, cols=3000, bs=3
@@ -234,7 +234,7 @@ PC Object: 8 MPI processes
     PC Object: (mg_coarse_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=16, cols=16, bs=2
@@ -259,11 +259,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_levels_1_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=228, cols=228, bs=2
@@ -289,11 +289,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_levels_2_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=2000, cols=2000, bs=2
@@ -309,11 +309,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_fine_) 8 MPI processes
       type: jacobi
         type ROWL1 (l1-norm off-diagonal scaling 2.500000e-01)
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=3000, cols=3000, bs=3
@@ -321,7 +321,7 @@ PC Object: 8 MPI processes
         total number of mallocs used during MatSetValues calls=0
           using I-node (on process 0) routines: found 125 nodes, limit used is 5
   Up solver (post-smoother) same as down solver (pre-smoother)
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 8 MPI processes
     type: mpiaij
     rows=3000, cols=3000, bs=3
@@ -399,7 +399,7 @@ PC Object: 8 MPI processes
     PC Object: (mg_coarse_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=16, cols=16, bs=2
@@ -424,11 +424,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_levels_1_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=228, cols=228, bs=2
@@ -454,11 +454,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_levels_2_) 8 MPI processes
       type: jacobi
         type DIAGONAL
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=2000, cols=2000, bs=2
@@ -474,11 +474,11 @@ PC Object: 8 MPI processes
       maximum iterations=2, nonzero initial guess
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (mg_fine_) 8 MPI processes
       type: jacobi
         type ROWL1 (l1-norm off-diagonal scaling 2.500000e-01)
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: 8 MPI processes
         type: mpiaij
         rows=3000, cols=3000, bs=3
@@ -486,7 +486,7 @@ PC Object: 8 MPI processes
         total number of mallocs used during MatSetValues calls=0
           using I-node (on process 0) routines: found 125 nodes, limit used is 5
   Up solver (post-smoother) same as down solver (pre-smoother)
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 8 MPI processes
     type: mpiaij
     rows=3000, cols=3000, bs=3

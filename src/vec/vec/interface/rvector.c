@@ -201,6 +201,7 @@ PetscErrorCode VecNorm(Vec x, NormType type, PetscReal *val)
   PetscBool flg = PETSC_TRUE;
 
   PetscFunctionBegin;
+  PetscCall(VecLockReadPush(x));
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
   PetscValidType(x, 1);
   VecCheckAssembled(x);
@@ -223,15 +224,14 @@ PetscErrorCode VecNorm(Vec x, NormType type, PetscReal *val)
       PetscCheck((PetscIsNanReal(b2[0]) && PetscIsNanReal(b2[1])) || (-b2[0] == b2[1]), PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "Difference in cached %s norms: local %g", NormTypes[type], (double)*val);
     }
   }
-  if (flg) PetscFunctionReturn(PETSC_SUCCESS);
+  if (!flg) {
+    PetscCall(PetscLogEventBegin(VEC_Norm, x, 0, 0, 0));
+    PetscUseTypeMethod(x, norm, type, val);
+    PetscCall(PetscLogEventEnd(VEC_Norm, x, 0, 0, 0));
 
-  PetscCall(VecLockReadPush(x));
-  PetscCall(PetscLogEventBegin(VEC_Norm, x, 0, 0, 0));
-  PetscUseTypeMethod(x, norm, type, val);
-  PetscCall(PetscLogEventEnd(VEC_Norm, x, 0, 0, 0));
+    if (type != NORM_1_AND_2) PetscCall(PetscObjectComposedDataSetReal((PetscObject)x, NormIds[type], *val));
+  }
   PetscCall(VecLockReadPop(x));
-
-  if (type != NORM_1_AND_2) PetscCall(PetscObjectComposedDataSetReal((PetscObject)x, NormIds[type], *val));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -251,11 +251,6 @@ PetscErrorCode VecNorm(Vec x, NormType type, PetscReal *val)
 - val       - the norm
 
   Level: intermediate
-
-  Developer Notes:
-  `PETSC_HAVE_SLOW_BLAS_NORM2` will cause a C (loop unrolled) version of the norm to be used, rather
-  than the BLAS. This should probably only be used when one is using the FORTRAN BLAS routines
-  (as opposed to vendor provided) because the FORTRAN BLAS `NRM2()` routine is very slow.
 
 .seealso: [](ch_vectors), `Vec`, `VecDot()`, `VecTDot()`, `VecNorm()`, `VecDotBegin()`, `VecDotEnd()`,
           `VecNormBegin()`, `VecNormEnd()`
@@ -303,7 +298,7 @@ PetscErrorCode VecNormalize(Vec x, PetscReal *val)
   PetscCall(PetscLogEventBegin(VEC_Normalize, x, 0, 0, 0));
   PetscCall(VecNorm(x, NORM_2, &norm));
   if (norm == 0.0) PetscCall(PetscInfo(x, "Vector of zero norm can not be normalized; Returning only the zero norm\n"));
-  else if (PetscIsInfOrNanReal(norm)) PetscCall(PetscInfo(x, "Vector with Inf or Nan norm can not be normalized; Returning only the norm\n"));
+  else if (PetscIsInfOrNanReal(norm)) PetscCall(PetscInfo(x, "Vector with infinity or NaN norm can not be normalized; Returning only the norm\n"));
   else {
     PetscScalar s = 1.0 / norm;
     PetscCall(VecScale(x, s));
@@ -1514,11 +1509,11 @@ PetscErrorCode VecGetSubVectorContiguityAndBS_Private(Vec X, IS is, PetscBool *c
   PetscCall(ISContiguousLocal(is, gstart, gend, &lstart, &red[0]));
   /* block size is given by IS if ibs > 1; otherwise, check the vector */
   if (ibs > 1) {
-    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, red, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, red, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
     bs = ibs;
   } else {
     if (n % vbs || vbs == 1) red[1] = PETSC_FALSE; /* this process invalidate the collectiveness of block size */
-    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, red, 2, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, red, 2, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)is)));
     if (red[0] && red[1]) bs = vbs; /* all processes have a valid block size and the access will be contiguous */
   }
 
@@ -2335,7 +2330,7 @@ PetscErrorCode VecGetArrayAndMemType(Vec x, PetscScalar *a[], PetscMemType *mtyp
   PetscFunctionBegin;
   PetscValidHeaderSpecific(x, VEC_CLASSID, 1);
   PetscValidType(x, 1);
-  PetscAssertPointer(a, 2);
+  if (a) PetscAssertPointer(a, 2);
   if (mtype) PetscAssertPointer(mtype, 3);
   PetscCall(VecSetErrorIfLocked(x, 1));
   if (x->ops->getarrayandmemtype) {
@@ -2535,7 +2530,7 @@ PetscErrorCode VecRestoreArrayWriteAndMemType(Vec x, PetscScalar *a[])
   array provided by the user. This is useful to avoid copying an array
   into a vector.
 
-  Logically Collective; No Fortran Support
+  Logically Collective
 
   Input Parameters:
 + vec   - the vector

@@ -87,7 +87,7 @@ static PetscErrorCode PCPreSolve_Eisenstat(PC pc, KSP ksp, Vec b, Vec x)
     pc->mat = eis->shell;
   }
 
-  if (!eis->b[pc->presolvedone - 1]) { PetscCall(VecDuplicate(b, &eis->b[pc->presolvedone - 1])); }
+  if (!eis->b[pc->presolvedone - 1]) PetscCall(VecDuplicate(b, &eis->b[pc->presolvedone - 1]));
 
   /* if nonzero initial guess, modify x */
   PetscCall(KSPGetInitialGuessNonzero(ksp, &nonzero));
@@ -166,11 +166,11 @@ static PetscErrorCode PCSetFromOptions_Eisenstat(PC pc, PetscOptionItems PetscOp
 static PetscErrorCode PCView_Eisenstat(PC pc, PetscViewer viewer)
 {
   PC_Eisenstat *eis = (PC_Eisenstat *)pc->data;
-  PetscBool     iascii;
+  PetscBool     isascii;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  omega = %g\n", (double)eis->omega));
     if (eis->usediag) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "  Using diagonal scaling (default)\n"));
@@ -197,17 +197,15 @@ static PetscErrorCode PCSetUp_Eisenstat(PC pc)
     PetscCall(MatSetType(eis->shell, MATSHELL));
     PetscCall(MatSetUp(eis->shell));
     PetscCall(MatShellSetContext(eis->shell, pc));
-    PetscCall(MatShellSetOperation(eis->shell, MATOP_MULT, (void (*)(void))PCMult_Eisenstat));
-    if (set && sym) PetscCall(MatShellSetOperation(eis->shell, MATOP_MULT_TRANSPOSE, (void (*)(void))PCMult_Eisenstat));
-    PetscCall(MatShellSetOperation(eis->shell, MATOP_NORM, (void (*)(void))PCNorm_Eisenstat));
+    PetscCall(MatShellSetOperation(eis->shell, MATOP_MULT, (PetscErrorCodeFn *)PCMult_Eisenstat));
+    if (set && sym) PetscCall(MatShellSetOperation(eis->shell, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)PCMult_Eisenstat));
+    PetscCall(MatShellSetOperation(eis->shell, MATOP_NORM, (PetscErrorCodeFn *)PCNorm_Eisenstat));
   }
   if (!eis->usediag) PetscFunctionReturn(PETSC_SUCCESS);
-  if (!pc->setupcalled) { PetscCall(MatCreateVecs(pc->pmat, &eis->diag, NULL)); }
+  if (!pc->setupcalled) PetscCall(MatCreateVecs(pc->pmat, &eis->diag, NULL));
   PetscCall(MatGetDiagonal(pc->pmat, eis->diag));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
-
-/* --------------------------------------------------------------------*/
 
 static PetscErrorCode PCEisenstatSetOmega_Eisenstat(PC pc, PetscReal omega)
 {

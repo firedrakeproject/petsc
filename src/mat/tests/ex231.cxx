@@ -62,15 +62,14 @@ int main(int argc, char **argv)
   for (PetscInt proc_id = 0; proc_id < size; ++proc_id) {
     std::string   line;
     std::ifstream dof_file(file[proc_id]);
-    if (dof_file.good()) {
-      while (std::getline(dof_file, line)) {
-        std::vector<PetscInt> dof_indices;
-        std::stringstream     sstream(line);
-        std::string           token;
-        while (std::getline(sstream, token, ' ')) dof_indices.push_back(std::atoi(token.c_str()));
-        elem_dof_indices[proc_id].push_back(dof_indices);
-      }
-    } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN, "Could not open file %s", file[proc_id]);
+    PetscCheck(dof_file.good(), PETSC_COMM_SELF, PETSC_ERR_FILE_OPEN, "Could not open file %s", file[proc_id]);
+    while (std::getline(dof_file, line)) {
+      std::vector<PetscInt> dof_indices;
+      std::stringstream     sstream(line);
+      std::string           token;
+      while (std::getline(sstream, token, ' ')) dof_indices.push_back(std::atoi(token.c_str()));
+      elem_dof_indices[proc_id].push_back(dof_indices);
+    }
   }
 
   // Debugging: Verify we read in elem_dof_indices correctly
@@ -91,7 +90,7 @@ int main(int argc, char **argv)
     for (unsigned int k = 0; k < elem_dof_indices[proc_id].size(); k++) {
       std::vector<PetscInt> &dof_indices = elem_dof_indices[proc_id][k];
       for (unsigned int i = 0; i < dof_indices.size(); ++i)
-        for (unsigned int j = 0; j < dof_indices.size(); ++j) sparsity[dof_indices[i]].insert(dof_indices[j]);
+        for (unsigned int j = 0; j < dof_indices.size(); ++j) sparsity[dof_indices[i]].insert((unsigned int)dof_indices[j]);
     }
 
   // Determine the local nonzeros on this processor

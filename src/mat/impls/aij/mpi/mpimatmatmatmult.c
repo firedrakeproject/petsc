@@ -40,9 +40,8 @@ PETSC_INTERN PetscErrorCode MatProductSetFromOptions_Transpose_AIJ_AIJ(Mat C)
   Mat_Product *product = C->product;
 
   PetscFunctionBegin;
-  if (product->type == MATPRODUCT_ABC) {
-    C->ops->productsymbolic = MatProductSymbolic_ABC_Transpose_AIJ_AIJ;
-  } else SETERRQ(PetscObjectComm((PetscObject)C), PETSC_ERR_SUP, "MatProduct type %s is not supported for Transpose, AIJ and AIJ matrices", MatProductTypes[product->type]);
+  PetscCheck(product->type == MATPRODUCT_ABC, PetscObjectComm((PetscObject)C), PETSC_ERR_SUP, "MatProduct type %s is not supported for Transpose, AIJ and AIJ matrices", MatProductTypes[product->type]);
+  C->ops->productsymbolic = MatProductSymbolic_ABC_Transpose_AIJ_AIJ;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 #endif
@@ -91,26 +90,26 @@ PetscErrorCode MatMatMatMultNumeric_MPIAIJ_MPIAIJ_MPIAIJ(Mat A, Mat B, Mat C, Ma
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatDestroy_MPIAIJ_RARt(void *data)
+static PetscErrorCode MatProductCtxDestroy_MPIAIJ_RARt(PetscCtxRt data)
 {
-  Mat_RARt *rart = (Mat_RARt *)data;
+  MatProductCtx_RARt *rart = *(MatProductCtx_RARt **)data;
 
   PetscFunctionBegin;
   PetscCall(MatDestroy(&rart->Rt));
-  if (rart->destroy) PetscCall((*rart->destroy)(rart->data));
+  if (rart->destroy) PetscCall((*rart->destroy)(&rart->data));
   PetscCall(PetscFree(rart));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode MatProductNumeric_RARt_MPIAIJ_MPIAIJ(Mat C)
 {
-  Mat_RARt *rart;
-  Mat       A, R, Rt;
+  MatProductCtx_RARt *rart;
+  Mat                 A, R, Rt;
 
   PetscFunctionBegin;
   MatCheckProduct(C, 1);
   PetscCheck(C->product->data, PetscObjectComm((PetscObject)C), PETSC_ERR_PLIB, "Product data empty");
-  rart = (Mat_RARt *)C->product->data;
+  rart = (MatProductCtx_RARt *)C->product->data;
   A    = C->product->A;
   R    = C->product->B;
   Rt   = rart->Rt;
@@ -123,8 +122,8 @@ PetscErrorCode MatProductNumeric_RARt_MPIAIJ_MPIAIJ(Mat C)
 
 PetscErrorCode MatProductSymbolic_RARt_MPIAIJ_MPIAIJ(Mat C)
 {
-  Mat       A, R, Rt;
-  Mat_RARt *rart;
+  Mat                 A, R, Rt;
+  MatProductCtx_RARt *rart;
 
   PetscFunctionBegin;
   MatCheckProduct(C, 1);
@@ -142,6 +141,6 @@ PetscErrorCode MatProductSymbolic_RARt_MPIAIJ_MPIAIJ(Mat C)
   rart->data          = C->product->data;
   rart->destroy       = C->product->destroy;
   C->product->data    = rart;
-  C->product->destroy = MatDestroy_MPIAIJ_RARt;
+  C->product->destroy = MatProductCtxDestroy_MPIAIJ_RARt;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -21,12 +21,12 @@ struct _n_PetscViewerGLVis {
   PetscInt               windowsizes[2];
   char                 **fec_type;                                          /* type of elements to be used for visualization, see FiniteElementCollection::Name() */
   PetscErrorCode (*g2lfield)(PetscObject, PetscInt, PetscObject[], void *); /* global to local operation for generating dofs to be visualized */
-  PetscInt    *spacedim;                                                    /* geometrical space dimension (just used to initialize the scene) */
-  PetscObject *Ufield;                                                      /* work vectors for visualization */
-  PetscInt     snapid;                                                      /* snapshot id, use PetscViewerGLVisSetSnapId to change this value*/
-  void        *userctx;                                                     /* User context, used by g2lfield */
-  PetscErrorCode (*destroyctx)(void *);                                     /* destroy routine for userctx */
-  char *fmt;                                                                /* format string for FP values */
+  PetscInt          *spacedim;                                              /* geometrical space dimension (just used to initialize the scene) */
+  PetscObject       *Ufield;                                                /* work vectors for visualization */
+  PetscInt           snapid;                                                /* snapshot id, use PetscViewerGLVisSetSnapId to change this value*/
+  void              *ctx;                                                   /* User context, used by g2lfield */
+  PetscCtxDestroyFn *destroyctx;                                            /* destroy routine for ctx */
+  char              *fmt;                                                   /* format string for FP values */
 };
 typedef struct _n_PetscViewerGLVis *PetscViewerGLVis;
 
@@ -110,7 +110,7 @@ static PetscErrorCode PetscViewerGLVisSetSnapId_GLVis(PetscViewer viewer, PetscI
 . g2l        - User routine to compute the local field vectors to be visualized; PetscObject is used in place of Vec on the prototype
 . Vfield     - array of work vectors, one for each field
 . ctx        - User context to store the relevant data to apply g2lfields
-- destroyctx - Destroy function for userctx
+- destroyctx - Destroy function for ctx
 
   Level: intermediate
 
@@ -125,7 +125,7 @@ static PetscErrorCode PetscViewerGLVisSetSnapId_GLVis(PetscViewer viewer, PetscI
 
 .seealso: [](sec_viewers), `PETSCVIEWERGLVIS`, `PetscViewerGLVisOpen()`, `PetscViewerCreate()`, `PetscViewerSetType()`, `PetscObjectSetName()`
 @*/
-PetscErrorCode PetscViewerGLVisSetFields(PetscViewer viewer, PetscInt nf, const char *fec_type[], PetscInt dim[], PetscErrorCode (*g2l)(PetscObject, PetscInt, PetscObject[], void *), PetscObject Vfield[], void *ctx, PetscErrorCode (*destroyctx)(void *))
+PetscErrorCode PetscViewerGLVisSetFields(PetscViewer viewer, PetscInt nf, const char *fec_type[], PetscInt dim[], PetscErrorCode (*g2l)(PetscObject, PetscInt, PetscObject[], void *), PetscObject Vfield[], PetscCtx ctx, PetscCtxDestroyFn *destroyctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 1);
@@ -134,11 +134,11 @@ PetscErrorCode PetscViewerGLVisSetFields(PetscViewer viewer, PetscInt nf, const 
   PetscAssertPointer(fec_type, 3);
   PetscAssertPointer(dim, 4);
   PetscAssertPointer(Vfield, 6);
-  PetscTryMethod(viewer, "PetscViewerGLVisSetFields_C", (PetscViewer, PetscInt, const char *[], PetscInt[], PetscErrorCode (*)(PetscObject, PetscInt, PetscObject[], void *), PetscObject[], void *, PetscErrorCode (*)(void *)), (viewer, nf, fec_type, dim, g2l, Vfield, ctx, destroyctx));
+  PetscTryMethod(viewer, "PetscViewerGLVisSetFields_C", (PetscViewer, PetscInt, const char *[], PetscInt[], PetscErrorCode (*)(PetscObject, PetscInt, PetscObject[], void *), PetscObject[], void *, PetscCtxDestroyFn *), (viewer, nf, fec_type, dim, g2l, Vfield, ctx, destroyctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscViewerGLVisSetFields_GLVis(PetscViewer viewer, PetscInt nfields, const char *fec_type[], PetscInt dim[], PetscErrorCode (*g2l)(PetscObject, PetscInt, PetscObject[], void *), PetscObject Vfield[], void *ctx, PetscErrorCode (*destroyctx)(void *))
+static PetscErrorCode PetscViewerGLVisSetFields_GLVis(PetscViewer viewer, PetscInt nfields, const char *fec_type[], PetscInt dim[], PetscErrorCode (*g2l)(PetscObject, PetscInt, PetscObject[], void *), PetscObject Vfield[], PetscCtx ctx, PetscCtxDestroyFn *destroyctx)
 {
   PetscViewerGLVis socket = (PetscViewerGLVis)viewer->data;
   PetscInt         i;
@@ -163,15 +163,15 @@ static PetscErrorCode PetscViewerGLVisSetFields_GLVis(PetscViewer viewer, PetscI
   /* number of fields are not allowed to vary */
   PetscCheck(nfields == socket->nwindow, PetscObjectComm((PetscObject)viewer), PETSC_ERR_SUP, "Cannot visualize %" PetscInt_FMT " fields using %" PetscInt_FMT " socket windows", nfields, socket->nwindow);
   socket->g2lfield = g2l;
-  if (socket->destroyctx && socket->userctx) PetscCall((*socket->destroyctx)(socket->userctx));
-  socket->userctx    = ctx;
+  if (socket->destroyctx && socket->ctx) PetscCall((*socket->destroyctx)(&socket->ctx));
+  socket->ctx        = ctx;
   socket->destroyctx = destroyctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscViewerGLVisInfoDestroy_Private(void **ptr)
+static PetscErrorCode PetscViewerGLVisInfoDestroy_Private(PetscCtxRt ptr)
 {
-  PetscViewerGLVisInfo info = (PetscViewerGLVisInfo)*ptr;
+  PetscViewerGLVisInfo info = (PetscViewerGLVisInfo) * (void **)ptr;
 
   PetscFunctionBegin;
   PetscCall(PetscFree(info->fmt));
@@ -197,7 +197,7 @@ static PetscErrorCode PetscViewerGLVisAttachInfo_Private(PetscViewer viewer, Pet
     info->pause   = socket->pause;
     PetscCall(PetscObjectContainerCompose((PetscObject)window, "_glvis_info_container", info, PetscViewerGLVisInfoDestroy_Private));
   } else {
-    PetscCall(PetscContainerGetPointer(container, (void **)&info));
+    PetscCall(PetscContainerGetPointer(container, &info));
   }
   PetscCall(PetscFree(info->fmt));
   PetscCall(PetscStrallocpy(socket->fmt, &info->fmt));
@@ -214,7 +214,7 @@ static PetscErrorCode PetscViewerGLVisGetNewWindow_Private(PetscViewer viewer, P
   PetscCall(PetscViewerASCIISocketOpen(PETSC_COMM_SELF, socket->name, socket->port, &window));
   /* if we could not establish a connection, we disable the socket viewer on all MPI ranks */
   ldis = !viewer ? PETSC_TRUE : PETSC_FALSE;
-  PetscCallMPI(MPIU_Allreduce(&ldis, &dis, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)viewer)));
+  PetscCallMPI(MPIU_Allreduce(&ldis, &dis, 1, MPI_C_BOOL, MPI_LOR, PetscObjectComm((PetscObject)viewer)));
   if (dis) {
     socket->status = PETSCVIEWERGLVIS_DISABLED;
     PetscCall(PetscViewerDestroy(&window));
@@ -243,9 +243,8 @@ PetscErrorCode PetscViewerGLVisSetDM_Internal(PetscViewer viewer, PetscObject dm
     PetscErrorCode (*setupwithdm)(PetscObject, PetscViewer) = NULL;
 
     PetscCall(PetscObjectQueryFunction(dm, "DMSetUpGLVisViewer_C", &setupwithdm));
-    if (setupwithdm) {
-      PetscCall((*setupwithdm)(dm, viewer));
-    } else SETERRQ(PetscObjectComm(dm), PETSC_ERR_SUP, "No support for DM type %s", dm->type_name);
+    PetscCheck(setupwithdm, PetscObjectComm(dm), PETSC_ERR_SUP, "No support for DM type %s", dm->type_name);
+    PetscCall((*setupwithdm)(dm, viewer));
     PetscCall(PetscObjectReference(dm));
     socket->dm = dm;
   }
@@ -330,7 +329,7 @@ PetscErrorCode PetscViewerGLVisGetStatus_Internal(PetscViewer viewer, PetscViewe
     for (i = 0, lconn = PETSC_TRUE; i < socket->nwindow; i++)
       if (!socket->window[i]) lconn = PETSC_FALSE;
 
-    PetscCallMPI(MPIU_Allreduce(&lconn, &conn, 1, MPIU_BOOL, MPI_LAND, PetscObjectComm((PetscObject)viewer)));
+    PetscCallMPI(MPIU_Allreduce(&lconn, &conn, 1, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)viewer)));
     if (conn) socket->status = PETSCVIEWERGLVIS_CONNECTED;
   }
   *sockstatus = socket->status;
@@ -346,7 +345,7 @@ PetscErrorCode PetscViewerGLVisGetDM_Internal(PetscViewer viewer, PetscObject *d
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PetscViewerGLVisGetFields_Internal(PetscViewer viewer, PetscInt *nfield, const char **fec[], PetscInt *spacedim[], PetscErrorCode (**g2lfield)(PetscObject, PetscInt, PetscObject[], void *), PetscObject *Ufield[], void **userctx)
+PetscErrorCode PetscViewerGLVisGetFields_Internal(PetscViewer viewer, PetscInt *nfield, const char **fec[], PetscInt *spacedim[], PetscErrorCode (**g2lfield)(PetscObject, PetscInt, PetscObject[], void *), PetscObject *Ufield[], void **ctx)
 {
   PetscViewerGLVis socket = (PetscViewerGLVis)viewer->data;
 
@@ -356,7 +355,7 @@ PetscErrorCode PetscViewerGLVisGetFields_Internal(PetscViewer viewer, PetscInt *
   if (spacedim) *spacedim = socket->spacedim;
   if (g2lfield) *g2lfield = socket->g2lfield;
   if (Ufield) *Ufield = socket->Ufield;
-  if (userctx) *userctx = socket->userctx;
+  if (ctx) *ctx = socket->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -452,7 +451,7 @@ PetscErrorCode PetscViewerGLVisInitWindow_Internal(PetscViewer viewer, PetscBool
   PetscFunctionBegin;
   PetscCall(PetscObjectQuery((PetscObject)viewer, "_glvis_info_container", (PetscObject *)&container));
   PetscCheck(container, PETSC_COMM_SELF, PETSC_ERR_USER, "Viewer was not obtained from PetscGLVisViewerGetNewWindow_Private");
-  PetscCall(PetscContainerGetPointer(container, (void **)&info));
+  PetscCall(PetscContainerGetPointer(container, &info));
   if (info->init) PetscFunctionReturn(PETSC_SUCCESS);
 
   /* Configure window */
@@ -522,7 +521,7 @@ static PetscErrorCode PetscViewerDestroy_GLVis(PetscViewer viewer)
   PetscCall(PetscFree(socket->fmt));
   PetscCall(PetscViewerDestroy(&socket->meshwindow));
   PetscCall(PetscObjectDestroy(&socket->dm));
-  if (socket->destroyctx && socket->userctx) PetscCall((*socket->destroyctx)(socket->userctx));
+  if (socket->destroyctx && socket->ctx) PetscCall((*socket->destroyctx)(&socket->ctx));
 
   PetscCall(PetscObjectComposeFunction((PetscObject)viewer, "PetscViewerGLVisSetPrecision_C", NULL));
   PetscCall(PetscObjectComposeFunction((PetscObject)viewer, "PetscViewerGLVisSetSnapId_C", NULL));
@@ -667,9 +666,9 @@ PetscViewer PETSC_VIEWER_GLVIS_(MPI_Comm comm)
   if (!flg) {
     type = PETSC_VIEWER_GLVIS_SOCKET;
     PetscCallNull(PetscOptionsGetenv(comm, "PETSC_VIEWER_GLVIS_HOSTNAME", fname, PETSC_MAX_PATH_LEN, &flg));
-    if (!flg) { PetscCallNull(PetscStrncpy(fname, "localhost", sizeof(fname))); }
+    if (!flg) PetscCallNull(PetscStrncpy(fname, "localhost", sizeof(fname)));
     PetscCallNull(PetscOptionsGetenv(comm, "PETSC_VIEWER_GLVIS_PORT", sport, 16, &flg));
-    if (flg) { PetscCallNull(PetscOptionsStringToInt(sport, &port)); }
+    if (flg) PetscCallNull(PetscOptionsStringToInt(sport, &port));
   } else {
     type = PETSC_VIEWER_GLVIS_DUMP;
   }
@@ -714,7 +713,7 @@ PETSC_EXTERN PetscErrorCode PetscViewerCreate_GLVis(PetscViewer viewer)
   #include <unistd.h>
 #endif
 
-#ifndef PETSC_HAVE_WINDOWS_H
+#if !defined(PETSC_HAVE_WINDOWS_H)
 static PetscErrorCode (*PetscViewerDestroy_ASCII)(PetscViewer);
 
 static PetscErrorCode PetscViewerDestroy_ASCII_Socket(PetscViewer viewer)
@@ -818,7 +817,7 @@ PetscErrorCode PetscGLVisCollectiveEnd(MPI_Comm comm, PetscViewer *win)
 
   PetscFunctionBegin;
   flag = PetscGLVisBrokenPipe;
-  PetscCallMPI(MPIU_Allreduce(&flag, &brokenpipe, 1, MPIU_BOOL, MPI_LOR, comm));
+  PetscCallMPI(MPIU_Allreduce(&flag, &brokenpipe, 1, MPI_C_BOOL, MPI_LOR, comm));
   if (brokenpipe) {
     FILE *sock, *null = fopen(PETSC_DEVNULL, "w");
     PetscCall(PetscViewerASCIIGetPointer(*win, &sock));

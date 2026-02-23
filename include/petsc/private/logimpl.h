@@ -1,8 +1,4 @@
 #pragma once
-/* all of the logging files have problems with automatic integer casting so checking is turned off for them here */
-#if defined(__GNUC__) || defined(__clang__)
-  #pragma GCC diagnostic ignored "-Wconversion"
-#endif
 
 #include <petsc/private/petscimpl.h>
 
@@ -207,6 +203,8 @@ PETSC_INTERN PetscInt PetscLogGetTid(void);
 #endif
 
 PETSC_EXTERN PetscBool PetscLogGpuTimeFlag;
+PETSC_EXTERN PetscBool PetscLogGpuEnergyFlag;
+PETSC_EXTERN PetscBool PetscLogGpuEnergyMeterFlag;
 PETSC_INTERN PetscInt  PetscLogNumViewersCreated;
 PETSC_INTERN PetscInt  PetscLogNumViewersDestroyed;
 

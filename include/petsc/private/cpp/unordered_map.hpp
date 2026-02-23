@@ -1,5 +1,10 @@
 #pragma once
 
+#if defined(__clang__)
+  #pragma clang diagnostic push
+  #pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#endif
+
 #include <petsc/private/cpp/type_traits.hpp>
 #include <petsc/private/cpp/utility.hpp>    // std ::pair
 #include <petsc/private/cpp/functional.hpp> // std::hash, std::equal_to
@@ -1145,11 +1150,18 @@ struct indirect_hasher : Hasher {
     return static_cast<const nested_value_type &>(*this)(kv.first);
   }
 
+#if (defined(__GNUC__) || defined(__GNUG__)) && !defined(__clang__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
   template <typename T>
   PETSC_NODISCARD std::size_t operator()(const std::pair<key_type, T> &kv) noexcept
   {
     return static_cast<nested_value_type &>(*this)(kv.first);
   }
+#if (defined(__GNUC__) || defined(__GNUG__)) && !defined(__clang__)
+  #pragma GCC diagnostic pop
+#endif
 
   using nested_value_type::operator();
 };
@@ -1385,3 +1397,7 @@ PETSC_NODISCARD bool operator!=(const UnorderedMap<K, T, H, KE> &lhs, const Unor
 } // namespace Petsc
 
 #undef PETSC_OPTIONAL_GET_KEY
+
+#if defined(__clang__)
+  #pragma clang diagnostic pop
+#endif

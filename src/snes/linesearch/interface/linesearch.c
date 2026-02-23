@@ -96,15 +96,14 @@ PetscErrorCode SNESLineSearchMonitor(SNESLineSearch ls)
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESGetLineSearch()`, `SNESLineSearchMonitorDefault()`, `SNESLineSearchMonitorCancel()`, `PetscCtxDestroyFn`
 @*/
-PetscErrorCode SNESLineSearchMonitorSet(SNESLineSearch ls, PetscErrorCode (*f)(SNESLineSearch ls, void *mctx), void *mctx, PetscCtxDestroyFn *monitordestroy)
+PetscErrorCode SNESLineSearchMonitorSet(SNESLineSearch ls, PetscErrorCode (*f)(SNESLineSearch ls, PetscCtx mctx), PetscCtx mctx, PetscCtxDestroyFn *monitordestroy)
 {
-  PetscInt  i;
-  PetscBool identical;
-
   PetscFunctionBegin;
   PetscValidHeaderSpecific(ls, SNESLINESEARCH_CLASSID, 1);
-  for (i = 0; i < ls->numbermonitors; i++) {
-    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))f, mctx, monitordestroy, (PetscErrorCode (*)(void))ls->monitorftns[i], ls->monitorcontext[i], ls->monitordestroy[i], &identical));
+  for (PetscInt i = 0; i < ls->numbermonitors; i++) {
+    PetscBool identical;
+
+    PetscCall(PetscMonitorCompare((PetscErrorCode (*)(void))(PetscVoidFn *)f, mctx, monitordestroy, (PetscErrorCode (*)(void))(PetscVoidFn *)ls->monitorftns[i], ls->monitorcontext[i], ls->monitordestroy[i], &identical));
     if (identical) PetscFunctionReturn(PETSC_SUCCESS);
   }
   PetscCheck(ls->numbermonitors < MAXSNESLSMONITORS, PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Too many monitors set");
@@ -188,18 +187,18 @@ PetscErrorCode SNESLineSearchCreate(MPI_Comm comm, SNESLineSearch *outlinesearch
   linesearch->fnorm        = 1.0;
   linesearch->ynorm        = 1.0;
   linesearch->xnorm        = 1.0;
-  linesearch->result       = SNES_LINESEARCH_SUCCEEDED;
+  linesearch->reason       = SNES_LINESEARCH_SUCCEEDED;
   linesearch->norms        = PETSC_TRUE;
   linesearch->keeplambda   = PETSC_FALSE;
   linesearch->damping      = 1.0;
-  linesearch->maxstep      = 1e8;
-  linesearch->steptol      = 1e-12;
+  linesearch->maxlambda    = 1.0;
+  linesearch->minlambda    = 1e-12;
   linesearch->rtol         = 1e-8;
   linesearch->atol         = 1e-15;
   linesearch->ltol         = 1e-8;
   linesearch->precheckctx  = NULL;
   linesearch->postcheckctx = NULL;
-  linesearch->max_its      = 1;
+  linesearch->max_it       = 1;
   linesearch->setupcalled  = PETSC_FALSE;
   linesearch->monitor      = NULL;
   *outlinesearch           = linesearch;
@@ -329,7 +328,7 @@ PetscErrorCode SNESLineSearchSetFunction(SNESLineSearch linesearch, PetscErrorCo
           `SNESVISetVariableBounds()`, `SNESVISetComputeVariableBounds()`, `SNESSetFunctionDomainError()`, `SNESSetJacobianDomainError()`
 
 @*/
-PetscErrorCode SNESLineSearchSetPreCheck(SNESLineSearch linesearch, PetscErrorCode (*func)(SNESLineSearch ls, Vec x, Vec d, PetscBool *changed_d, void *ctx), void *ctx)
+PetscErrorCode SNESLineSearchSetPreCheck(SNESLineSearch linesearch, PetscErrorCode (*func)(SNESLineSearch ls, Vec x, Vec d, PetscBool *changed_d, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
@@ -352,12 +351,12 @@ PetscErrorCode SNESLineSearchSetPreCheck(SNESLineSearch linesearch, PetscErrorCo
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESGetLineSearch()`, `SNESLineSearchPreCheck()`, `SNESLineSearchGetPostCheck()`, `SNESLineSearchSetPreCheck()`, `SNESLineSearchSetPostCheck()`
 @*/
-PetscErrorCode SNESLineSearchGetPreCheck(SNESLineSearch linesearch, PetscErrorCode (**func)(SNESLineSearch, Vec, Vec, PetscBool *, void *), void **ctx)
+PetscErrorCode SNESLineSearchGetPreCheck(SNESLineSearch linesearch, PetscErrorCode (**func)(SNESLineSearch, Vec, Vec, PetscBool *, void *), PetscCtxRt ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
   if (func) *func = linesearch->ops->precheck;
-  if (ctx) *ctx = linesearch->precheckctx;
+  if (ctx) *(void **)ctx = linesearch->precheckctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -392,7 +391,7 @@ PetscErrorCode SNESLineSearchGetPreCheck(SNESLineSearch linesearch, PetscErrorCo
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESGetLineSearch()`, `SNESLineSearchPostCheck()`, `SNESLineSearchSetPreCheck()`, `SNESLineSearchGetPreCheck()`, `SNESLineSearchGetPostCheck()`,
           `SNESVISetVariableBounds()`, `SNESVISetComputeVariableBounds()`, `SNESSetFunctionDomainError()`, `SNESSetJacobianDomainError()`
 @*/
-PetscErrorCode SNESLineSearchSetPostCheck(SNESLineSearch linesearch, PetscErrorCode (*func)(SNESLineSearch ls, Vec x, Vec d, Vec w, PetscBool *changed_d, PetscBool *changed_w, void *ctx), void *ctx)
+PetscErrorCode SNESLineSearchSetPostCheck(SNESLineSearch linesearch, PetscErrorCode (*func)(SNESLineSearch ls, Vec x, Vec d, Vec w, PetscBool *changed_d, PetscBool *changed_w, PetscCtx ctx), PetscCtx ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
@@ -415,12 +414,12 @@ PetscErrorCode SNESLineSearchSetPostCheck(SNESLineSearch linesearch, PetscErrorC
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESGetLineSearch()`, `SNESLineSearchGetPreCheck()`, `SNESLineSearchSetPostCheck()`, `SNESLineSearchPostCheck()`, `SNESLineSearchSetPreCheck()`
 @*/
-PetscErrorCode SNESLineSearchGetPostCheck(SNESLineSearch linesearch, PetscErrorCode (**func)(SNESLineSearch, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), void **ctx)
+PetscErrorCode SNESLineSearchGetPostCheck(SNESLineSearch linesearch, PetscErrorCode (**func)(SNESLineSearch, Vec, Vec, Vec, PetscBool *, PetscBool *, void *), PetscCtxRt ctx)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
   if (func) *func = linesearch->ops->postcheck;
-  if (ctx) *ctx = linesearch->postcheckctx;
+  if (ctx) *(void **)ctx = linesearch->postcheckctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -531,7 +530,7 @@ PetscErrorCode SNESLineSearchPostCheck(SNESLineSearch linesearch, Vec X, Vec Y, 
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESSetPicard()`, `SNESGetLineSearch()`, `SNESLineSearchSetPreCheck()`, `SNESLineSearchSetPostCheck()`
 @*/
-PetscErrorCode SNESLineSearchPreCheckPicard(SNESLineSearch linesearch, Vec X, Vec Y, PetscBool *changed, void *ctx)
+PetscErrorCode SNESLineSearchPreCheckPicard(SNESLineSearch linesearch, Vec X, Vec Y, PetscBool *changed, PetscCtx ctx)
 {
   PetscReal   angle = *(PetscReal *)linesearch->precheckctx;
   Vec         Ylast;
@@ -558,6 +557,10 @@ PetscErrorCode SNESLineSearchPreCheckPicard(SNESLineSearch linesearch, Vec X, Ve
   PetscCall(VecDot(Y, Ylast, &dot));
   PetscCall(VecNorm(Y, NORM_2, &ynorm));
   PetscCall(VecNorm(Ylast, NORM_2, &ylastnorm));
+  if (ynorm == 0. || ylastnorm == 0.) {
+    *changed = PETSC_FALSE;
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
   /* Compute the angle between the vectors Y and Ylast, clip to keep inside the domain of acos() */
   theta         = PetscAcosReal((PetscReal)PetscClipInterval(PetscAbsScalar(dot) / (ynorm * ylastnorm), -1.0, 1.0));
   angle_radians = angle * PETSC_PI / 180.;
@@ -591,25 +594,28 @@ PetscErrorCode SNESLineSearchPreCheckPicard(SNESLineSearch linesearch, Vec X, Ve
 + X     - The current solution, on output the new solution
 . F     - The current function value, on output the new function value at the solution value `X`
 . fnorm - The current norm of `F`, on output the new norm of `F`
-- Y     - The current search direction, on output the direction determined by the linesearch, i.e. Xnew = Xold - lambda*Y
+- Y     - The current search direction, on output the direction determined by the linesearch, i.e. `Xnew = Xold - lambda*Y`
 
   Options Database Keys:
-+ -snes_linesearch_type                - basic (or equivalently none), bt, l2, cp, nleqerr, bisection, shell
++ -snes_linesearch_type                - basic (or equivalently none), bt, secant, cp, nleqerr, bisection, shell
 . -snes_linesearch_monitor [:filename] - Print progress of line searches
 . -snes_linesearch_damping             - The linesearch damping parameter, default is 1.0 (no damping)
 . -snes_linesearch_norms               - Turn on/off the linesearch norms computation (SNESLineSearchSetComputeNorms())
-. -snes_linesearch_keeplambda          - Keep the previous search length as the initial guess
+. -snes_linesearch_keeplambda          - Keep the previous `lambda` as the initial guess
 - -snes_linesearch_max_it              - The number of iterations for iterative line searches
 
-  Level: intermediate
+  Level: advanced
 
   Notes:
   This is typically called from within a `SNESSolve()` implementation in order to
   help with convergence of the nonlinear method.  Various `SNES` types use line searches
   in different ways, but the overarching theme is that a line search is used to determine
-  an optimal damping parameter of a step at each iteration of the method.  Each
+  an optimal damping parameter (that is `lambda`) of a step at each iteration of the method. Each
   application of the line search may invoke `SNESComputeFunction()` several times, and
   therefore may be fairly expensive.
+
+  In certain situations `SNESLineSearchApply()` may directly set a `SNESConvergedReason` in the `SNES` object so one should always check
+  this value immediately after the call to `SNESLineSearchApply()`.
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESGetLineSearch()`, `SNESLineSearchCreate()`, `SNESLineSearchGetLambda()`, `SNESLineSearchPreCheck()`, `SNESLineSearchPostCheck()`, `SNESSolve()`, `SNESComputeFunction()`, `SNESLineSearchSetComputeNorms()`,
           `SNESLineSearchType`, `SNESLineSearchSetType()`
@@ -622,7 +628,7 @@ PetscErrorCode SNESLineSearchApply(SNESLineSearch linesearch, Vec X, Vec F, Pets
   PetscValidHeaderSpecific(F, VEC_CLASSID, 3);
   PetscValidHeaderSpecific(Y, VEC_CLASSID, 5);
 
-  linesearch->result = SNES_LINESEARCH_SUCCEEDED;
+  linesearch->reason = SNES_LINESEARCH_SUCCEEDED;
 
   linesearch->vec_sol    = X;
   linesearch->vec_update = Y;
@@ -775,7 +781,7 @@ PetscErrorCode SNESLineSearchMonitorSetFromOptions(SNESLineSearch ls, const char
     PetscCall(PetscViewerAndFormatCreate(viewer, format, &vf));
     PetscCall(PetscViewerDestroy(&viewer));
     if (monitorsetup) PetscCall((*monitorsetup)(ls, vf));
-    PetscCall(SNESLineSearchMonitorSet(ls, (PetscErrorCode (*)(SNESLineSearch, void *))monitor, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy));
+    PetscCall(SNESLineSearchMonitorSet(ls, (PetscErrorCode (*)(SNESLineSearch, PetscCtx))monitor, vf, (PetscCtxDestroyFn *)PetscViewerAndFormatDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -789,19 +795,19 @@ PetscErrorCode SNESLineSearchMonitorSetFromOptions(SNESLineSearch ls, const char
 . linesearch - a `SNESLineSearch` line search context
 
   Options Database Keys:
-+ -snes_linesearch_type <type>                                      - basic (or equivalently none), `bt`, `l2`, `cp`, `nleqerr`, `bisection`, `shell`
-. -snes_linesearch_order <order>                                    - 1, 2, 3.  Most types only support certain orders (`bt` supports 2 or 3)
++ -snes_linesearch_type <type>                                      - basic (or equivalently none), `bt`, `secant`, `cp`, `nleqerr`, `bisection`, `shell`
+. -snes_linesearch_order <order>                                    - 1, 2, 3.  Most types only support certain orders (`bt` supports 1, 2 or 3)
 . -snes_linesearch_norms                                            - Turn on/off the linesearch norms for the basic linesearch typem (`SNESLineSearchSetComputeNorms()`)
-. -snes_linesearch_minlambda                                        - The minimum step length
-. -snes_linesearch_maxstep                                          - The maximum step size
+. -snes_linesearch_minlambda                                        - The minimum `lambda`
+. -snes_linesearch_maxlambda                                        - The maximum `lambda`
 . -snes_linesearch_rtol                                             - Relative tolerance for iterative line searches
 . -snes_linesearch_atol                                             - Absolute tolerance for iterative line searches
-. -snes_linesearch_ltol                                             - Change in lambda tolerance for iterative line searches
+. -snes_linesearch_ltol                                             - Change in `lambda` tolerance for iterative line searches
 . -snes_linesearch_max_it                                           - The number of iterations for iterative line searches
 . -snes_linesearch_monitor [:filename]                              - Print progress of line searches
 . -snes_linesearch_monitor_solution_update [viewer:filename:format] - view each update tried by line search routine
 . -snes_linesearch_damping                                          - The linesearch damping parameter
-. -snes_linesearch_keeplambda                                       - Keep the previous search length as the initial guess.
+. -snes_linesearch_keeplambda                                       - Keep the previous `lambda` as the initial guess.
 . -snes_linesearch_precheck_picard                                  - Use precheck that speeds up convergence of picard method
 - -snes_linesearch_precheck_picard_angle                            - Angle used in Picard precheck method
 
@@ -834,15 +840,18 @@ PetscErrorCode SNESLineSearchSetFromOptions(SNESLineSearch linesearch)
   PetscCall(SNESLineSearchMonitorSetFromOptions(linesearch, "-snes_linesearch_monitor_solution_update", "View correction at each iteration", "SNESLineSearchMonitorSolutionUpdate", SNESLineSearchMonitorSolutionUpdate, NULL));
 
   /* tolerances */
-  PetscCall(PetscOptionsReal("-snes_linesearch_minlambda", "Minimum step length", "SNESLineSearchSetTolerances", linesearch->steptol, &linesearch->steptol, NULL));
-  PetscCall(PetscOptionsReal("-snes_linesearch_maxstep", "Maximum step size", "SNESLineSearchSetTolerances", linesearch->maxstep, &linesearch->maxstep, NULL));
+  PetscCall(PetscOptionsReal("-snes_linesearch_minlambda", "Minimum lambda", "SNESLineSearchSetTolerances", linesearch->minlambda, &linesearch->minlambda, NULL));
+  PetscCall(PetscOptionsReal("-snes_linesearch_maxlambda", "Maximum lambda", "SNESLineSearchSetTolerances", linesearch->maxlambda, &linesearch->maxlambda, NULL));
   PetscCall(PetscOptionsReal("-snes_linesearch_rtol", "Relative tolerance for iterative line search", "SNESLineSearchSetTolerances", linesearch->rtol, &linesearch->rtol, NULL));
   PetscCall(PetscOptionsReal("-snes_linesearch_atol", "Absolute tolerance for iterative line search", "SNESLineSearchSetTolerances", linesearch->atol, &linesearch->atol, NULL));
   PetscCall(PetscOptionsReal("-snes_linesearch_ltol", "Change in lambda tolerance for iterative line search", "SNESLineSearchSetTolerances", linesearch->ltol, &linesearch->ltol, NULL));
-  PetscCall(PetscOptionsInt("-snes_linesearch_max_it", "Maximum iterations for iterative line searches", "SNESLineSearchSetTolerances", linesearch->max_its, &linesearch->max_its, NULL));
+  PetscCall(PetscOptionsInt("-snes_linesearch_max_it", "Maximum iterations for iterative line searches", "SNESLineSearchSetTolerances", linesearch->max_it, &linesearch->max_it, NULL));
+
+  /* deprecated options */
+  PetscCall(PetscOptionsDeprecated("-snes_linesearch_maxstep", "-snes_linesearch_maxlambda", "3.24.0", NULL));
 
   /* damping parameters */
-  PetscCall(PetscOptionsReal("-snes_linesearch_damping", "Line search damping and initial step guess", "SNESLineSearchSetDamping", linesearch->damping, &linesearch->damping, NULL));
+  PetscCall(PetscOptionsReal("-snes_linesearch_damping", "Line search damping (and depending on chosen line search initial lambda guess)", "SNESLineSearchSetDamping", linesearch->damping, &linesearch->damping, NULL));
 
   PetscCall(PetscOptionsBool("-snes_linesearch_keeplambda", "Use previous lambda as damping", "SNESLineSearchSetKeepLambda", linesearch->keeplambda, &linesearch->keeplambda, NULL));
 
@@ -883,7 +892,7 @@ PetscErrorCode SNESLineSearchSetFromOptions(SNESLineSearch linesearch)
 @*/
 PetscErrorCode SNESLineSearchView(SNESLineSearch linesearch, PetscViewer viewer)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
@@ -891,15 +900,15 @@ PetscErrorCode SNESLineSearchView(SNESLineSearch linesearch, PetscViewer viewer)
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCheckSameComm(linesearch, 1, viewer, 2);
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)linesearch, viewer));
     PetscCall(PetscViewerASCIIPushTab(viewer));
     PetscTryTypeMethod(linesearch, view, viewer);
     PetscCall(PetscViewerASCIIPopTab(viewer));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  maxstep=%e, minlambda=%e\n", (double)linesearch->maxstep, (double)linesearch->steptol));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  maxlambda=%e, minlambda=%e\n", (double)linesearch->maxlambda, (double)linesearch->minlambda));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  tolerances: relative=%e, absolute=%e, lambda=%e\n", (double)linesearch->rtol, (double)linesearch->atol, (double)linesearch->ltol));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "  maximum iterations=%" PetscInt_FMT "\n", linesearch->max_its));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "  maximum iterations=%" PetscInt_FMT "\n", linesearch->max_it));
     if (linesearch->ops->precheck) {
       if (linesearch->ops->precheck == SNESLineSearchPreCheckPicard) {
         PetscCall(PetscViewerASCIIPrintf(viewer, "  using precheck step to speed up Picard convergence\n"));
@@ -946,7 +955,7 @@ PetscErrorCode SNESLineSearchGetType(SNESLineSearch linesearch, SNESLineSearchTy
 - type       - The type of line search to be used, see `SNESLineSearchType`
 
   Options Database Key:
-. -snes_linesearch_type <type> - basic (or equivalently none), bt, l2, cp, nleqerr, shell
+. -snes_linesearch_type <type> - basic (or equivalently none), bt, secant, cp, nleqerr, bisection, shell
 
   Level: intermediate
 
@@ -1034,7 +1043,7 @@ PetscErrorCode SNESLineSearchGetSNES(SNESLineSearch linesearch, SNES *snes)
 }
 
 /*@
-  SNESLineSearchGetLambda - Gets the last line search steplength used
+  SNESLineSearchGetLambda - Gets the last line search `lambda` used
 
   Not Collective
 
@@ -1042,7 +1051,7 @@ PetscErrorCode SNESLineSearchGetSNES(SNESLineSearch linesearch, SNES *snes)
 . linesearch - the line search context
 
   Output Parameter:
-. lambda - The last steplength computed during `SNESLineSearchApply()`
+. lambda - The last `lambda` (scaling of the solution update) computed during `SNESLineSearchApply()`
 
   Level: advanced
 
@@ -1050,7 +1059,7 @@ PetscErrorCode SNESLineSearchGetSNES(SNESLineSearch linesearch, SNES *snes)
   This is useful in methods where the solver is ill-scaled and
   requires some adaptive notion of the difference in scale between the
   solution and the function.  For instance, `SNESQN` may be scaled by the
-  line search lambda using the argument -snes_qn_scaling ls.
+  line search `lambda` using the argument -snes_qn_scaling ls.
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchSetLambda()`, `SNESLineSearchGetDamping()`, `SNESLineSearchApply()`
 @*/
@@ -1064,18 +1073,18 @@ PetscErrorCode SNESLineSearchGetLambda(SNESLineSearch linesearch, PetscReal *lam
 }
 
 /*@
-  SNESLineSearchSetLambda - Sets the line search steplength
+  SNESLineSearchSetLambda - Sets the line search `lambda` (scaling of the solution update)
 
   Input Parameters:
 + linesearch - line search context
-- lambda     - The steplength to use
+- lambda     - The `lambda` to use
 
   Level: advanced
 
   Note:
   This routine is typically used within implementations of `SNESLineSearchApply()`
-  to set the final steplength.  This routine (and `SNESLineSearchGetLambda()`) were
-  added in order to facilitate Quasi-Newton methods that use the previous steplength
+  to set the final `lambda`.  This routine (and `SNESLineSearchGetLambda()`) were
+  added to facilitate Quasi-Newton methods that use the previous `lambda`
   as an inner scaling parameter.
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchGetLambda()`
@@ -1097,12 +1106,12 @@ PetscErrorCode SNESLineSearchSetLambda(SNESLineSearch linesearch, PetscReal lamb
 . linesearch - the line search context
 
   Output Parameters:
-+ steptol - The minimum steplength
-. maxstep - The maximum steplength
-. rtol    - The relative tolerance for iterative line searches
-. atol    - The absolute tolerance for iterative line searches
-. ltol    - The change in lambda tolerance for iterative line searches
-- max_its - The maximum number of iterations of the line search
++ minlambda - The minimum `lambda` allowed
+. maxlambda - The maximum `lambda` allowed
+. rtol      - The relative tolerance for iterative line searches
+. atol      - The absolute tolerance for iterative line searches
+. ltol      - The change in `lambda` tolerance for iterative line searches
+- max_it    - The maximum number of iterations of the line search
 
   Level: intermediate
 
@@ -1112,17 +1121,17 @@ PetscErrorCode SNESLineSearchSetLambda(SNESLineSearch linesearch, PetscReal lamb
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchSetTolerances()`
 @*/
-PetscErrorCode SNESLineSearchGetTolerances(SNESLineSearch linesearch, PetscReal *steptol, PetscReal *maxstep, PetscReal *rtol, PetscReal *atol, PetscReal *ltol, PetscInt *max_its)
+PetscErrorCode SNESLineSearchGetTolerances(SNESLineSearch linesearch, PetscReal *minlambda, PetscReal *maxlambda, PetscReal *rtol, PetscReal *atol, PetscReal *ltol, PetscInt *max_it)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
-  if (steptol) {
-    PetscAssertPointer(steptol, 2);
-    *steptol = linesearch->steptol;
+  if (minlambda) {
+    PetscAssertPointer(minlambda, 2);
+    *minlambda = linesearch->minlambda;
   }
-  if (maxstep) {
-    PetscAssertPointer(maxstep, 3);
-    *maxstep = linesearch->maxstep;
+  if (maxlambda) {
+    PetscAssertPointer(maxlambda, 3);
+    *maxlambda = linesearch->maxlambda;
   }
   if (rtol) {
     PetscAssertPointer(rtol, 4);
@@ -1136,9 +1145,9 @@ PetscErrorCode SNESLineSearchGetTolerances(SNESLineSearch linesearch, PetscReal 
     PetscAssertPointer(ltol, 6);
     *ltol = linesearch->ltol;
   }
-  if (max_its) {
-    PetscAssertPointer(max_its, 7);
-    *max_its = linesearch->max_its;
+  if (max_it) {
+    PetscAssertPointer(max_it, 7);
+    *max_it = linesearch->max_it;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1150,19 +1159,19 @@ PetscErrorCode SNESLineSearchGetTolerances(SNESLineSearch linesearch, PetscReal 
 
   Input Parameters:
 + linesearch - the line search context
-. steptol    - The minimum steplength
-. maxstep    - The maximum steplength
+. minlambda  - The minimum `lambda` allowed
+. maxlambda  - The maximum `lambda` allowed
 . rtol       - The relative tolerance for iterative line searches
 . atol       - The absolute tolerance for iterative line searches
-. ltol       - The change in lambda tolerance for iterative line searches
+. ltol       - The change in `lambda` tolerance for iterative line searches
 - max_it     - The maximum number of iterations of the line search
 
   Options Database Keys:
-+ -snes_linesearch_minlambda - The minimum step length
-. -snes_linesearch_maxstep   - The maximum step size
++ -snes_linesearch_minlambda - The minimum `lambda` allowed
+. -snes_linesearch_maxlambda - The maximum `lambda` allowed
 . -snes_linesearch_rtol      - Relative tolerance for iterative line searches
 . -snes_linesearch_atol      - Absolute tolerance for iterative line searches
-. -snes_linesearch_ltol      - Change in lambda tolerance for iterative line searches
+. -snes_linesearch_ltol      - Change in `lambda` tolerance for iterative line searches
 - -snes_linesearch_max_it    - The number of iterations for iterative line searches
 
   Level: intermediate
@@ -1172,25 +1181,26 @@ PetscErrorCode SNESLineSearchGetTolerances(SNESLineSearch linesearch, PetscReal 
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchGetTolerances()`
 @*/
-PetscErrorCode SNESLineSearchSetTolerances(SNESLineSearch linesearch, PetscReal steptol, PetscReal maxstep, PetscReal rtol, PetscReal atol, PetscReal ltol, PetscInt max_it)
+PetscErrorCode SNESLineSearchSetTolerances(SNESLineSearch linesearch, PetscReal minlambda, PetscReal maxlambda, PetscReal rtol, PetscReal atol, PetscReal ltol, PetscInt max_it)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
-  PetscValidLogicalCollectiveReal(linesearch, steptol, 2);
-  PetscValidLogicalCollectiveReal(linesearch, maxstep, 3);
+  PetscValidLogicalCollectiveReal(linesearch, minlambda, 2);
+  PetscValidLogicalCollectiveReal(linesearch, maxlambda, 3);
   PetscValidLogicalCollectiveReal(linesearch, rtol, 4);
   PetscValidLogicalCollectiveReal(linesearch, atol, 5);
   PetscValidLogicalCollectiveReal(linesearch, ltol, 6);
   PetscValidLogicalCollectiveInt(linesearch, max_it, 7);
 
-  if (steptol != (PetscReal)PETSC_DEFAULT) {
-    PetscCheck(steptol >= 0.0, PetscObjectComm((PetscObject)linesearch), PETSC_ERR_ARG_OUTOFRANGE, "Minimum step length %14.12e must be non-negative", (double)steptol);
-    linesearch->steptol = steptol;
+  if (minlambda != (PetscReal)PETSC_DEFAULT) {
+    PetscCheck(minlambda >= 0.0, PetscObjectComm((PetscObject)linesearch), PETSC_ERR_ARG_OUTOFRANGE, "Minimum lambda %14.12e must be non-negative", (double)minlambda);
+    PetscCheck(minlambda < maxlambda, PetscObjectComm((PetscObject)linesearch), PETSC_ERR_ARG_OUTOFRANGE, "Minimum lambda %14.12e must be smaller than maximum lambda %14.12e", (double)minlambda, (double)maxlambda);
+    linesearch->minlambda = minlambda;
   }
 
-  if (maxstep != (PetscReal)PETSC_DEFAULT) {
-    PetscCheck(maxstep >= 0.0, PetscObjectComm((PetscObject)linesearch), PETSC_ERR_ARG_OUTOFRANGE, "Maximum step length %14.12e must be non-negative", (double)maxstep);
-    linesearch->maxstep = maxstep;
+  if (maxlambda != (PetscReal)PETSC_DEFAULT) {
+    PetscCheck(maxlambda > 0.0, PetscObjectComm((PetscObject)linesearch), PETSC_ERR_ARG_OUTOFRANGE, "Maximum lambda %14.12e must be positive", (double)maxlambda);
+    linesearch->maxlambda = maxlambda;
   }
 
   if (rtol != (PetscReal)PETSC_DEFAULT) {
@@ -1210,7 +1220,7 @@ PetscErrorCode SNESLineSearchSetTolerances(SNESLineSearch linesearch, PetscReal 
 
   if (max_it != PETSC_DEFAULT) {
     PetscCheck(max_it >= 0, PetscObjectComm((PetscObject)linesearch), PETSC_ERR_ARG_OUTOFRANGE, "Maximum number of iterations %" PetscInt_FMT " must be non-negative", max_it);
-    linesearch->max_its = max_it;
+    linesearch->max_it = max_it;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1251,10 +1261,11 @@ PetscErrorCode SNESLineSearchGetDamping(SNESLineSearch linesearch, PetscReal *da
 
   Note:
   The `SNESLINESEARCHNONE` line search merely takes the update step scaled by the damping parameter.
-  The use of the damping parameter in the `SNESLINESEARCHL2` and `SNESLINESEARCHCP` line searches is much more subtle;
-  it is used as a starting point in calculating the secant step. However, the eventual
-  step may be of greater length than the damping parameter.  In the `SNESLINESEARCHBT` line search it is
-  used as the maximum possible step length, as the `SNESLINESEARCHBT` line search only backtracks.
+  The use of the damping parameter in the `SNESLINESEARCHSECANT` and `SNESLINESEARCHCP` line searches is much more subtle;
+  it is used as a starting point for the secant method. Depending on the choice for `maxlambda`,
+  the eventual `lambda` may be greater than the damping parameter however.
+  For `SNESLINESEARCHBISECTION` and `SNESLINESEARCHBT` the damping is instead used as the initial guess,
+  below which the line search will not go. Hence, it is the maximum possible value for `lambda`.
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchGetDamping()`
 @*/
@@ -1329,7 +1340,7 @@ PetscErrorCode SNESLineSearchSetOrder(SNESLineSearch linesearch, PetscInt order)
   Output Parameters:
 + xnorm - The norm of the current solution
 . fnorm - The norm of the current function, this is the `norm(function(X))` where `X` is the current solution.
-- ynorm - The norm of the current update (after scaling by the linesearch computed lambda)
+- ynorm - The norm of the current update (after scaling by the linesearch computed `lambda`)
 
   Level: developer
 
@@ -1360,7 +1371,7 @@ PetscErrorCode SNESLineSearchGetNorms(SNESLineSearch linesearch, PetscReal *xnor
 + linesearch - the line search context
 . xnorm      - The norm of the current solution
 . fnorm      - The norm of the current function, this is the `norm(function(X))` where `X` is the current solution
-- ynorm      - The norm of the current update (after scaling by the linesearch computed lambda)
+- ynorm      - The norm of the current update (after scaling by the linesearch computed `lambda`)
 
   Level: developer
 
@@ -1622,7 +1633,7 @@ PetscErrorCode SNESLineSearchSetWorkVecs(SNESLineSearch linesearch, PetscInt nwo
 . linesearch - the line search context
 
   Output Parameter:
-. result - The success or failure status
+. reason - The success or failure status
 
   Level: developer
 
@@ -1632,37 +1643,39 @@ PetscErrorCode SNESLineSearchSetWorkVecs(SNESLineSearch linesearch, PetscInt nwo
 
 .seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchSetReason()`, `SNESLineSearchReason`
 @*/
-PetscErrorCode SNESLineSearchGetReason(SNESLineSearch linesearch, SNESLineSearchReason *result)
+PetscErrorCode SNESLineSearchGetReason(SNESLineSearch linesearch, SNESLineSearchReason *reason)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
-  PetscAssertPointer(result, 2);
-  *result = linesearch->result;
+  PetscAssertPointer(reason, 2);
+  *reason = linesearch->reason;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*@
-  SNESLineSearchSetReason - Sets the success/failure status of the line search application
+  SNESLineSearchSetReason - Sets the success/failure reason of the line search application
 
   Logically Collective; No Fortran Support
 
   Input Parameters:
 + linesearch - the line search context
-- result     - The success or failure status
+- reason     - The success or failure reason
 
   Level: developer
 
-  Note:
+  Notes:
   This is typically called in a `SNESLineSearchType` implementation of `SNESLineSearchApply()` or a `SNESLINESEARCHSHELL` implementation to set
   the success or failure of the line search method.
 
-.seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchReason`, `SNESLineSearchGetSResult()`
+  Do not call this from callbacks provided with `SNESSetFunction()`, instead perhaps use `SNESSetFunctionDomainError()`
+
+.seealso: [](ch_snes), `SNES`, `SNESLineSearch`, `SNESLineSearchReason`, `SNESLineSearchGetSResult()`, `SNESSetFunctionDomainError()`, `SNESSetFunction()`
 @*/
-PetscErrorCode SNESLineSearchSetReason(SNESLineSearch linesearch, SNESLineSearchReason result)
+PetscErrorCode SNESLineSearchSetReason(SNESLineSearch linesearch, SNESLineSearchReason reason)
 {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(linesearch, SNESLINESEARCH_CLASSID, 1);
-  linesearch->result = result;
+  linesearch->reason = reason;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

@@ -11,7 +11,7 @@ typedef struct {
 } AppCtx;
 
 /* (x + y)*dim + d */
-static PetscErrorCode linear(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode linear(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt c;
   for (c = 0; c < Nc; ++c) u[c] = (x[0] + x[1]) * Nc + c;
@@ -19,7 +19,7 @@ static PetscErrorCode linear(PetscInt dim, PetscReal time, const PetscReal x[], 
 }
 
 /* {x, y, z} */
-static PetscErrorCode linear2(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode linear2(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt c;
   for (c = 0; c < Nc; ++c) u[c] = x[c];
@@ -120,7 +120,7 @@ static PetscErrorCode CreateSubdomainMesh(DM dm, DMLabel *domLabel, DM *subdm, A
   PetscCall(DMPlexGetHeightStratum(dm, 0, &cStart, &cEnd));
   PetscCall(DMLabelCreate(PETSC_COMM_SELF, "subdomain", &label));
   for (c = cStart + (cEnd - cStart) / 2; c < cEnd; ++c) PetscCall(DMLabelSetValue(label, c, 1));
-  PetscCall(DMPlexFilter(dm, label, 1, PETSC_FALSE, PETSC_FALSE, NULL, subdm));
+  PetscCall(DMPlexFilter(dm, label, 1, PETSC_FALSE, PETSC_FALSE, PetscObjectComm((PetscObject)dm), NULL, subdm));
   PetscCall(DMGetDimension(*subdm, &dim));
   PetscCall(SetupDiscretization(*subdm, dim, simplex, user));
   PetscCall(PetscObjectSetName((PetscObject)*subdm, "subdomain"));

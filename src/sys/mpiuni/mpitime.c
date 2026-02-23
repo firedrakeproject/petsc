@@ -1,12 +1,12 @@
 #include <petscsys.h>
-#ifndef MPIUNI_H
+#if !defined(MPIUNI_H)
   #error "Wrong mpi.h included! require mpi.h from MPIUNI"
 #endif
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-/* ------------------------------------------------------------------
+/*
    Microsoft Windows has its own time routines
 */
 #if defined(PETSC_USE_MICROSOFT_TIME)
@@ -59,17 +59,13 @@ double MPI_Wtime(void)
   return ptime;
 }
 
-/* ------------------------------------------------------------------
+/*
     The usual Unix time routines.
 */
 #else
 
   #if defined(PETSC_HAVE_SYS_TIME_H)
     #include <sys/time.h>
-  #endif
-
-  #if defined(PETSC_NEEDS_GETTIMEOFDAY_PROTO)
-extern int gettimeofday(struct timeval *, struct timezone *);
   #endif
 
 double MPI_Wtime(void)

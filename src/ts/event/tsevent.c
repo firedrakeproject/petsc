@@ -306,13 +306,13 @@ PetscErrorCode TSSetEventTolerances(TS ts, PetscReal tol, PetscReal vtol[])
 
 .seealso: [](ch_ts), `TSEvent`, `TSCreate()`, `TSSetTimeStep()`, `TSSetConvergedReason()`
 @*/
-PetscErrorCode TSSetEventHandler(TS ts, PetscInt nevents, PetscInt direction[], PetscBool terminate[], PetscErrorCode (*indicator)(TS ts, PetscReal t, Vec U, PetscReal fvalue[], void *ctx), PetscErrorCode (*postevent)(TS ts, PetscInt nevents_zero, PetscInt events_zero[], PetscReal t, Vec U, PetscBool forwardsolve, void *ctx), void *ctx)
+PetscErrorCode TSSetEventHandler(TS ts, PetscInt nevents, PetscInt direction[], PetscBool terminate[], PetscErrorCode (*indicator)(TS ts, PetscReal t, Vec U, PetscReal fvalue[], PetscCtx ctx), PetscErrorCode (*postevent)(TS ts, PetscInt nevents_zero, PetscInt events_zero[], PetscReal t, Vec U, PetscBool forwardsolve, PetscCtx ctx), PetscCtx ctx)
 {
   TSAdapt   adapt;
   PetscReal hmin;
   TSEvent   event;
   PetscBool flg;
-#if defined PETSC_USE_REAL_SINGLE
+#if defined(PETSC_USE_REAL_SINGLE)
   PetscReal tol = 1e-4;
 #else
   PetscReal tol = 1e-6;
@@ -464,7 +464,7 @@ static PetscErrorCode TSPostEvent(TS ts, PetscReal t, Vec U)
   inflag[0] = restart;
   inflag[1] = terminate;
   inflag[2] = statechanged;
-  PetscCallMPI(MPIU_Allreduce(inflag, outflag, 3, MPIU_BOOL, MPI_LOR, ((PetscObject)ts)->comm));
+  PetscCallMPI(MPIU_Allreduce(inflag, outflag, 3, MPI_C_BOOL, MPI_LOR, ((PetscObject)ts)->comm));
   restart      = outflag[0];
   terminate    = outflag[1];
   statechanged = outflag[2];

@@ -116,9 +116,8 @@ static PetscErrorCode PCSetUp_BJacobi(PC pc)
       /* use block from Amat matrix, not Pmat for local MatMult() */
       PetscCall(MatGetDiagonalBlock(pc->mat, &mat));
     }
-    if (pc->pmat != pc->mat || !pc->useAmat) {
-      PetscCall(MatGetDiagonalBlock(pc->pmat, &pmat));
-    } else pmat = mat;
+    if (pc->pmat != pc->mat || !pc->useAmat) PetscCall(MatGetDiagonalBlock(pc->pmat, &pmat));
+    else pmat = mat;
   }
 
   /*
@@ -177,16 +176,16 @@ static PetscErrorCode PCView_BJacobi(PC pc, PetscViewer viewer)
   PC_BJacobi_Multiproc *mpjac = (PC_BJacobi_Multiproc *)jac->data;
   PetscMPIInt           rank;
   PetscInt              i;
-  PetscBool             iascii, isstring, isdraw;
+  PetscBool             isascii, isstring, isdraw;
   PetscViewer           sviewer;
   PetscViewerFormat     format;
   const char           *prefix;
 
   PetscFunctionBegin;
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERSTRING, &isstring));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
-  if (iascii) {
+  if (isascii) {
     if (pc->useAmat) PetscCall(PetscViewerASCIIPrintf(viewer, "  using Amat local matrix, number of blocks = %" PetscInt_FMT "\n", jac->n));
     PetscCall(PetscViewerASCIIPrintf(viewer, "  number of blocks = %" PetscInt_FMT "\n", jac->n));
     PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)pc), &rank));
@@ -1302,7 +1301,6 @@ static PetscErrorCode PCSetUp_BJacobi_Multiproc(PC pc)
     PetscCall(KSPGetOptionsPrefix(jac->ksp[0], &prefix));
     PetscCall(MatSetOptionsPrefix(mpjac->submats, prefix));
 
-    /* create dummy vectors xsub and ysub */
     PetscCall(MatGetLocalSize(mpjac->submats, &m, &n));
     PetscCall(VecCreateMPIWithArray(subcomm, 1, n, PETSC_DECIDE, NULL, &mpjac->xsub));
     PetscCall(VecCreateMPIWithArray(subcomm, 1, m, PETSC_DECIDE, NULL, &mpjac->ysub));

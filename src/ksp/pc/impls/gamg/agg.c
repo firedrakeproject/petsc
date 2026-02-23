@@ -28,7 +28,7 @@ typedef struct {
 - n  - the number of smooths
 
   Options Database Key:
-. -pc_gamg_agg_nsmooths <nsmooth, default=1> - number of smoothing steps to use
+. -pc_gamg_agg_nsmooths <nsmooth, default=1> - the flag
 
   Level: intermediate
 
@@ -71,9 +71,12 @@ static PetscErrorCode PCGAMGSetNSmooths_AGG(PC pc, PetscInt n)
 - n  - 0, 1 or more
 
   Options Database Key:
-. -pc_gamg_aggressive_coarsening <n,default = 1> - Number of levels on which to square the graph on before aggregating it
+. -pc_gamg_aggressive_coarsening <n,default = 1> - the flag
 
   Level: intermediate
+
+  Note:
+  By default, aggressive coarsening squares the matrix (computes $ A^T A$) before coarsening. Calling `PCGAMGSetAggressiveSquareGraph()` with a value of `PETSC_FALSE` changes the aggressive coarsening strategy to use MIS-k, see `PCGAMGMISkSetAggressive()`.
 
 .seealso: [the Users Manual section on PCGAMG](sec_amg), [the Users Manual section on PCMG](sec_mg), [](ch_ksp), `PCGAMG`, `PCGAMGSetThreshold()`, `PCGAMGMISkSetAggressive()`, `PCGAMGSetAggressiveSquareGraph()`, `PCGAMGMISkSetMinDegreeOrdering()`, `PCGAMGSetLowMemoryFilter()`
 @*/
@@ -96,7 +99,7 @@ PetscErrorCode PCGAMGSetAggressiveLevels(PC pc, PetscInt n)
 - n  - 1 or more (default = 2)
 
   Options Database Key:
-. -pc_gamg_aggressive_mis_k <n,default=2> - Number (k) distance in MIS coarsening (>2 is 'aggressive')
+. -pc_gamg_aggressive_mis_k <n,default=2> - the flag
 
   Level: intermediate
 
@@ -112,18 +115,24 @@ PetscErrorCode PCGAMGMISkSetAggressive(PC pc, PetscInt n)
 }
 
 /*@
-  PCGAMGSetAggressiveSquareGraph - Use graph square A'A for aggressive coarsening, old method
+  PCGAMGSetAggressiveSquareGraph - Use graph square, $A^T A$, for aggressive coarsening. Coarsening is slower than the alternative (MIS-2), which is faster and uses less memory
 
   Logically Collective
 
   Input Parameters:
 + pc - the preconditioner context
-- b  - default false - MIS-k is faster
+- b  - default true
 
   Options Database Key:
-. -pc_gamg_aggressive_square_graph <bool,default=false> - Use square graph (A'A) or MIS-k (k=2) for aggressive coarsening
+. -pc_gamg_aggressive_square_graph <bool,default=true> - the flag
 
   Level: intermediate
+
+  Notes:
+  If `b` is `PETSC_FALSE` then MIS-k is used for aggressive coarsening, see `PCGAMGMISkSetAggressive()`
+
+  Squaring the matrix to perform the aggressive coarsening is slower and requires more memory than using MIS-k, but may result in a better preconditioner
+  that converges faster.
 
 .seealso: [the Users Manual section on PCGAMG](sec_amg), [the Users Manual section on PCMG](sec_mg), [](ch_ksp), `PCGAMG`, `PCGAMGSetThreshold()`, `PCGAMGSetAggressiveLevels()`, `PCGAMGMISkSetAggressive()`, `PCGAMGMISkSetMinDegreeOrdering()`, `PCGAMGSetLowMemoryFilter()`
 @*/
@@ -143,10 +152,10 @@ PetscErrorCode PCGAMGSetAggressiveSquareGraph(PC pc, PetscBool b)
 
   Input Parameters:
 + pc - the preconditioner context
-- b  - default true
+- b  - default false
 
   Options Database Key:
-. -pc_gamg_mis_k_minimum_degree_ordering <bool,default=true> - Use minimum degree ordering in greedy MIS algorithm
+. -pc_gamg_mis_k_minimum_degree_ordering <bool,default=false> - the flag
 
   Level: intermediate
 
@@ -171,7 +180,7 @@ PetscErrorCode PCGAMGMISkSetMinDegreeOrdering(PC pc, PetscBool b)
 - b  - default false
 
   Options Database Key:
-. -pc_gamg_low_memory_threshold_filter <bool,default=false> - Use low memory graph/matrix filter
+. -pc_gamg_low_memory_threshold_filter <bool,default=false> - the flag
 
   Level: intermediate
 
@@ -188,20 +197,20 @@ PetscErrorCode PCGAMGSetLowMemoryFilter(PC pc, PetscBool b)
 }
 
 /*@
-  PCGAMGSetGraphSymmetrize - Set the flag to symmetrize the graph used in coarsening
+  PCGAMGSetGraphSymmetrize - Symmetrize graph used for coarsening. Defaults to true, but if matrix has symmetric attribute, then not needed since the graph is already known to be symmetric
 
   Logically Collective
 
   Input Parameters:
 + pc - the preconditioner context
-- b  - default false
+- b  - default true
 
   Options Database Key:
-. -pc_gamg_graph_symmetrize <bool,default=false> - Symmetrize the graph
+. -pc_gamg_graph_symmetrize <bool,default=true> - the flag
 
   Level: intermediate
 
-.seealso: [the Users Manual section on PCGAMG](sec_amg), [the Users Manual section on PCMG](sec_mg), `PCGAMG`, `PCGAMGSetThreshold()`, `PCGAMGSetAggressiveLevels()`,
+.seealso: [the Users Manual section on PCGAMG](sec_amg), [the Users Manual section on PCMG](sec_mg), `PCGAMG`, `PCGAMGSetThreshold()`, `PCGAMGSetAggressiveLevels()`, `MatCreateGraph()`,
   `PCGAMGMISkSetAggressive()`, `PCGAMGSetAggressiveSquareGraph()`, `PCGAMGMISkSetMinDegreeOrdering()`
 @*/
 PetscErrorCode PCGAMGSetGraphSymmetrize(PC pc, PetscBool b)
@@ -294,7 +303,7 @@ static PetscErrorCode PCSetFromOptions_GAMG_AGG(PC pc, PetscOptionItems PetscOpt
   PetscCall(PetscOptionsInt("-pc_gamg_aggressive_coarsening", "Number of aggressive coarsening (MIS-2) levels from finest", "PCGAMGSetAggressiveLevels", pc_gamg_agg->aggressive_coarsening_levels, &pc_gamg_agg->aggressive_coarsening_levels, &n_aggressive_flg));
   if (!n_aggressive_flg)
     PetscCall(PetscOptionsInt("-pc_gamg_square_graph", "Number of aggressive coarsening (MIS-2) levels from finest (deprecated alias for -pc_gamg_aggressive_coarsening)", "PCGAMGSetAggressiveLevels", nsq_graph_old, &nsq_graph_old, &old_sq_provided));
-  PetscCall(PetscOptionsBool("-pc_gamg_aggressive_square_graph", "Use square graph (A'A) or MIS-k (k=2) for aggressive coarsening", "PCGAMGSetAggressiveSquareGraph", new_sqr_graph, &pc_gamg_agg->use_aggressive_square_graph, &new_sq_provided));
+  PetscCall(PetscOptionsBool("-pc_gamg_aggressive_square_graph", "Use square graph $ (A^T A)$ for aggressive coarsening, if false, MIS-k (k=2) is used, see PCGAMGMISkSetAggressive()", "PCGAMGSetAggressiveSquareGraph", new_sqr_graph, &pc_gamg_agg->use_aggressive_square_graph, &new_sq_provided));
   if (!new_sq_provided && old_sq_provided) {
     pc_gamg_agg->aggressive_coarsening_levels = nsq_graph_old; // could be zero
     pc_gamg_agg->use_aggressive_square_graph  = PETSC_TRUE;
@@ -501,11 +510,11 @@ static PetscErrorCode PCSetData_AGG(PC pc, Mat a_A)
 */
 static PetscErrorCode formProl0(PetscCoarsenData *agg_llists, PetscInt bs, PetscInt nSAvec, PetscInt my0crs, PetscInt data_stride, PetscReal data_in[], const PetscInt flid_fgid[], PetscReal **a_data_out, Mat a_Prol)
 {
-  PetscInt        Istart, my0, Iend, nloc, clid, flid = 0, aggID, kk, jj, ii, mm, nSelected, minsz, nghosts, out_data_stride;
-  MPI_Comm        comm;
-  PetscReal      *out_data;
-  PetscCDIntNd   *pos;
-  PCGAMGHashTable fgid_flid;
+  PetscInt      Istart, my0, Iend, nloc, clid, flid = 0, aggID, kk, jj, ii, mm, nSelected, minsz, nghosts, out_data_stride;
+  MPI_Comm      comm;
+  PetscReal    *out_data;
+  PetscCDIntNd *pos;
+  PetscHMapI    fgid_flid;
 
   PetscFunctionBegin;
   PetscCall(PetscObjectGetComm((PetscObject)a_Prol, &comm));
@@ -516,8 +525,9 @@ static PetscErrorCode formProl0(PetscCoarsenData *agg_llists, PetscInt bs, Petsc
   Iend /= bs;
   nghosts = data_stride / bs - nloc;
 
-  PetscCall(PCGAMGHashTableCreate(2 * nghosts + 1, &fgid_flid));
-  for (kk = 0; kk < nghosts; kk++) PetscCall(PCGAMGHashTableAdd(&fgid_flid, flid_fgid[nloc + kk], nloc + kk));
+  PetscCall(PetscHMapICreateWithSize(2 * nghosts + 1, &fgid_flid));
+
+  for (kk = 0; kk < nghosts; kk++) PetscCall(PetscHMapISet(fgid_flid, flid_fgid[nloc + kk], nloc + kk));
 
   /* count selected -- same as number of cols of P */
   for (nSelected = mm = 0; mm < nloc; mm++) {
@@ -572,7 +582,7 @@ static PetscErrorCode formProl0(PetscCoarsenData *agg_llists, PetscInt bs, Petsc
 
         if (gid1 >= my0 && gid1 < Iend) flid = gid1 - my0;
         else {
-          PetscCall(PCGAMGHashTableFind(&fgid_flid, gid1, &flid));
+          PetscCall(PetscHMapIGet(fgid_flid, gid1, &flid));
           PetscCheck(flid >= 0, PETSC_COMM_SELF, PETSC_ERR_PLIB, "Cannot find gid1 in table");
         }
         /* copy in B_i matrix - column-oriented */
@@ -621,7 +631,7 @@ static PetscErrorCode formProl0(PetscCoarsenData *agg_llists, PetscInt bs, Petsc
       }
 
       /* add diagonal block of P0 */
-      for (kk = 0; kk < N; kk++) { cids[kk] = N * cgid + kk; /* global col IDs in P0 */ }
+      for (kk = 0; kk < N; kk++) cids[kk] = N * cgid + kk; /* global col IDs in P0 */
       PetscCall(MatSetValues(a_Prol, M, fids, N, cids, qqr, INSERT_VALUES));
       PetscCall(PetscFree5(qqc, qqr, TAU, WORK, fids));
       clid++;
@@ -629,7 +639,7 @@ static PetscErrorCode formProl0(PetscCoarsenData *agg_llists, PetscInt bs, Petsc
   } /* for all fine nodes */
   PetscCall(MatAssemblyBegin(a_Prol, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(a_Prol, MAT_FINAL_ASSEMBLY));
-  PetscCall(PCGAMGHashTableDestroy(&fgid_flid));
+  PetscCall(PetscHMapIDestroy(&fgid_flid));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -867,7 +877,7 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
     PetscCheck(isAIJ, PETSC_COMM_SELF, PETSC_ERR_USER, "Require AIJ matrix.");
     matA_1 = (Mat_SeqAIJ *)Gmat_1->data;
   }
-  if (nloc > 0) { PetscCheck(!matB_1 || matB_1->compressedrow.use, PETSC_COMM_SELF, PETSC_ERR_PLIB, "matB_1 && !matB_1->compressedrow.use: PETSc bug???"); }
+  if (nloc > 0) PetscCheck(!matB_1 || matB_1->compressedrow.use, PETSC_COMM_SELF, PETSC_ERR_PLIB, "matB_1 && !matB_1->compressedrow.use: PETSc bug???");
   /* get state of locals and selected gid for deleted */
   for (lid = 0; lid < nloc; lid++) {
     lid_parent_gid[lid] = -1.0;
@@ -1032,16 +1042,16 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
   } /* node loop */
 
   if (isMPI) {
-    PetscScalar    *cpcol_2_parent, *cpcol_2_gid;
-    Vec             tempVec, ghostgids2, ghostparents2;
-    PetscInt        cpid, nghost_2;
-    PCGAMGHashTable gid_cpid;
+    PetscScalar *cpcol_2_parent, *cpcol_2_gid;
+    Vec          tempVec, ghostgids2, ghostparents2;
+    PetscInt     cpid, nghost_2;
+    PetscHMapI   gid_cpid;
 
     PetscCall(VecGetSize(mpimat_2->lvec, &nghost_2));
     PetscCall(MatCreateVecs(Gmat_2, &tempVec, NULL));
 
     /* get 'cpcol_2_parent' */
-    for (kk = 0, j = my0; kk < nloc; kk++, j++) { PetscCall(VecSetValues(tempVec, 1, &j, &lid_parent_gid[kk], INSERT_VALUES)); }
+    for (kk = 0, j = my0; kk < nloc; kk++, j++) PetscCall(VecSetValues(tempVec, 1, &j, &lid_parent_gid[kk], INSERT_VALUES));
     PetscCall(VecAssemblyBegin(tempVec));
     PetscCall(VecAssemblyEnd(tempVec));
     PetscCall(VecDuplicate(mpimat_2->lvec, &ghostparents2));
@@ -1064,7 +1074,7 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
     PetscCall(VecDestroy(&tempVec));
 
     /* look for deleted ghosts and add to table */
-    PetscCall(PCGAMGHashTableCreate(2 * nghost_2 + 1, &gid_cpid));
+    PetscCall(PetscHMapICreateWithSize(2 * nghost_2 + 1, &gid_cpid));
     for (cpid = 0; cpid < nghost_2; cpid++) {
       NState state = (NState)PetscRealPart(cpcol_2_state[cpid]);
 
@@ -1075,7 +1085,7 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
         if (sgid_old == -1 && sgid_new != -1) {
           PetscInt gid = (PetscInt)PetscRealPart(cpcol_2_gid[cpid]);
 
-          PetscCall(PCGAMGHashTableAdd(&gid_cpid, gid, cpid));
+          PetscCall(PetscHMapISet(gid_cpid, gid, cpid));
         }
       }
     }
@@ -1094,7 +1104,7 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
 
           PetscCall(PetscCDIntNdGetID(pos, &gid));
           if (gid < my0 || gid >= Iend) {
-            PetscCall(PCGAMGHashTableFind(&gid_cpid, gid, &cpid));
+            PetscCall(PetscHMapIGet(gid_cpid, gid, &cpid));
             if (cpid != -1) {
               /* a moved ghost - */
               /* id_llist_2[lastid] = id_llist_2[flid];    /\* remove 'flid' from list *\/ */
@@ -1106,7 +1116,7 @@ static PetscErrorCode fixAggregatesWithSquare(PC pc, Mat Gmat_2, Mat Gmat_1, Pet
         } /* loop over list of deleted */
       } /* selected */
     }
-    PetscCall(PCGAMGHashTableDestroy(&gid_cpid));
+    PetscCall(PetscHMapIDestroy(&gid_cpid));
 
     /* look at ghosts, see if they changed - and it */
     for (cpid = 0; cpid < nghost_2; cpid++) {
@@ -1212,15 +1222,14 @@ static PetscErrorCode PCGAMGCoarsen_AGG(PC a_pc, Mat *a_Gmat1, PetscCoarsenData 
     }
   }
   // apply minimum degree ordering -- NEW
-  if (pc_gamg_agg->use_minimum_degree_ordering) { PetscCall(PetscSortIntWithArray(nloc, degree, permute)); }
+  if (pc_gamg_agg->use_minimum_degree_ordering) PetscCall(PetscSortIntWithArray(nloc, degree, permute));
   PetscCall(PetscFree(bIndexSet));
   PetscCall(PetscRandomDestroy(&random));
   PetscCall(ISCreateGeneral(PETSC_COMM_SELF, nloc, permute, PETSC_USE_POINTER, &perm));
   PetscCall(PetscLogEventBegin(petsc_gamg_setup_events[GAMG_MIS], 0, 0, 0, 0));
   // square graph
-  if (pc_gamg->current_level < pc_gamg_agg->aggressive_coarsening_levels && pc_gamg_agg->use_aggressive_square_graph) {
-    PetscCall(PCGAMGSquareGraph_GAMG(a_pc, Gmat1, &Gmat2));
-  } else Gmat2 = Gmat1;
+  if (pc_gamg->current_level < pc_gamg_agg->aggressive_coarsening_levels && pc_gamg_agg->use_aggressive_square_graph) PetscCall(PCGAMGSquareGraph_GAMG(a_pc, Gmat1, &Gmat2));
+  else Gmat2 = Gmat1;
   // switch to old MIS-1 for square graph
   if (pc_gamg->current_level < pc_gamg_agg->aggressive_coarsening_levels) {
     if (!pc_gamg_agg->use_aggressive_square_graph) PetscCall(MatCoarsenMISKSetDistance(pc_gamg_agg->crs, pc_gamg_agg->aggressive_mis_k)); // hardwire to MIS-2
@@ -1534,8 +1543,8 @@ static PetscErrorCode PCGAMGOptimizeProlongator_AGG(PC pc, Mat Amat, Mat *a_P)
   Options Database Keys:
 + -pc_gamg_agg_nsmooths <nsmooth, default=1> - number of smoothing steps to use with smooth aggregation to construct prolongation
 . -pc_gamg_aggressive_coarsening <n,default=1> - number of aggressive coarsening (MIS-2) levels from finest.
-. -pc_gamg_aggressive_square_graph <bool,default=false> - Use square graph (A'A) or MIS-k (k=2) for aggressive coarsening
-. -pc_gamg_mis_k_minimum_degree_ordering <bool,default=true> - Use minimum degree ordering in greedy MIS algorithm
+. -pc_gamg_aggressive_square_graph <bool,default=true> - Use square graph (A'A), alternative is MIS-k (k=2), for aggressive coarsening
+. -pc_gamg_mis_k_minimum_degree_ordering <bool,default=false> - Use minimum degree ordering in greedy MIS algorithm
 . -pc_gamg_pc_gamg_asm_hem_aggs <n,default=0> - Number of HEM aggregation steps for ASM smoother
 - -pc_gamg_aggressive_mis_k <n,default=2> - Number (k) distance in MIS coarsening (>2 is 'aggressive')
 

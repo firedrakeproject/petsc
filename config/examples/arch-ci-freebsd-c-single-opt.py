@@ -5,7 +5,7 @@ petsc_hash_pkgs=os.path.join(os.getenv('HOME'),'petsc-hash-pkgs')
 
 configure_options = [
   '--package-prefix-hash='+petsc_hash_pkgs,
-  'CFLAGS=-std=c99 -pedantic -Wno-long-long -Wno-overlength-strings',
+  'CFLAGS=-std=c99 -pedantic -Wcast-function-type -Wno-long-long -Wno-overlength-strings',
   '--with-precision=single',
   '--with-debugging=0',
   '--with-mpi-dir=/home/svcpetsc/soft/mpich-4.2.2',
@@ -14,6 +14,7 @@ configure_options = [
   '--download-parmetis',
   '--download-hypre',
   '--with-strict-petscerrorcode',
+  '--with-devicelanguage=cxx',
 ]
 
 if __name__ == '__main__':

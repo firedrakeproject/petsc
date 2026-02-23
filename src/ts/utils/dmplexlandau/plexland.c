@@ -22,17 +22,15 @@
   #include <omp.h>
 #endif
 
-static PetscErrorCode LandauGPUMapsDestroy(void **ptr)
+static PetscErrorCode LandauGPUMapsDestroy(PetscCtxRt ptr)
 {
-  P4estVertexMaps *maps = (P4estVertexMaps *)*ptr;
+  P4estVertexMaps *maps = *(P4estVertexMaps **)ptr;
 
   PetscFunctionBegin;
   // free device data
   if (maps[0].deviceType != LANDAU_CPU) {
 #if defined(PETSC_HAVE_KOKKOS)
-    if (maps[0].deviceType == LANDAU_KOKKOS) {
-      PetscCall(LandauKokkosDestroyMatMaps(maps, maps[0].numgrids)); // implies Kokkos does
-    }
+    if (maps[0].deviceType == LANDAU_KOKKOS) PetscCall(LandauKokkosDestroyMatMaps(maps, maps[0].numgrids)); // implies Kokkos does
 #endif
   }
   // free host data
@@ -109,7 +107,7 @@ static PetscErrorCode LandauFormJacobian_Internal(Vec a_X, Mat JacP, const Petsc
   PetscCall(PetscObjectQuery((PetscObject)JacP, "assembly_maps", (PetscObject *)&container));
   if (container) {
     PetscCheck(ctx->gpu_assembly, ctx->comm, PETSC_ERR_ARG_WRONG, "maps but no GPU assembly");
-    PetscCall(PetscContainerGetPointer(container, (void **)&maps));
+    PetscCall(PetscContainerGetPointer(container, &maps));
     PetscCheck(maps, ctx->comm, PETSC_ERR_ARG_WRONG, "empty GPU matrix container");
     for (PetscInt i = 0; i < ctx->num_grids * ctx->batch_sz; i++) subJ[i] = NULL;
   } else {
@@ -350,8 +348,8 @@ static PetscErrorCode LandauFormJacobian_Internal(Vec a_X, Mat JacP, const Petsc
             IPf_idx = 0;
             for (PetscInt grid_r = 0, f_off = 0, ipidx = 0; grid_r < ctx->num_grids; grid_r++, f_off = ctx->species_offset[grid_r]) { // IPf_idx += nip_loc_r*Nfloc_r
               PetscInt nip_loc_r = numCells[grid_r] * Nq, Nfloc_r = Nf[grid_r];
-              for (PetscInt ei_r = 0, loc_fdf_idx = 0; ei_r < numCells[grid_r]; ++ei_r) {
-                for (PetscInt qi = 0; qi < Nq; qi++, ipidx++, loc_fdf_idx++) {
+              for (PetscInt ei_r = 0; ei_r < numCells[grid_r]; ++ei_r) {
+                for (PetscInt qi = 0; qi < Nq; qi++, ipidx++) {
                   const PetscReal wi = ww[ipidx], x = xx[ipidx], y = yy[ipidx];
                   PetscReal       temp1[3] = {0, 0, 0}, temp2 = 0;
 #if LANDAU_DIM == 2
@@ -366,7 +364,8 @@ static PetscErrorCode LandauFormJacobian_Internal(Vec a_X, Mat JacP, const Petsc
                   }
 #endif
                   for (PetscInt f = 0; f < Nfloc_r; ++f) {
-                    const PetscInt idx = b_id * IPf_sz_glb + ipf_offset[grid_r] + f * nip_loc_r + ei_r * Nq + qi; // IPf_idx + f*nip_loc_r + loc_fdf_idx;
+                    const PetscInt idx = b_id * IPf_sz_glb + ipf_offset[grid_r] + f * nip_loc_r + ei_r * Nq + qi;
+
                     temp1[0] += dudx[idx] * nu_beta[f + f_off] * invMass[f + f_off] * (*lambdas)[grid][grid_r];
                     temp1[1] += dudy[idx] * nu_beta[f + f_off] * invMass[f + f_off] * (*lambdas)[grid][grid_r];
 #if LANDAU_DIM == 3
@@ -586,201 +585,172 @@ static PetscErrorCode LandauFormJacobian_Internal(Vec a_X, Mat JacP, const Petsc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode GeometryDMLandau(DM base, PetscInt point, PetscInt dim, const PetscReal abc[], PetscReal xyz[], void *a_ctx)
-{
-  PetscReal  r = abc[0], z = abc[1];
-  LandauCtx *ctx = (LandauCtx *)a_ctx;
-
-  PetscFunctionBegin;
-  if (ctx->sphere && dim == 3) { // make sphere: works for one AMR and Q2
-    PetscInt nzero = 0, idx = 0;
-    xyz[0] = r;
-    xyz[1] = z;
-    xyz[2] = abc[2];
-    for (PetscInt i = 0; i < 3; i++) {
-      if (PetscAbs(xyz[i]) < PETSC_SQRT_MACHINE_EPSILON) nzero++;
-      else idx = i;
-    }
-    if (nzero == 2) xyz[idx] *= 1.732050807568877; // sqrt(3)
-    else if (nzero == 1) {
-      for (PetscInt i = 0; i < 3; i++) xyz[i] *= 1.224744871391589; // sqrt(3/2)
-    }
-  } else {
-    xyz[0] = r;
-    xyz[1] = z;
-    if (dim == 3) xyz[2] = abc[2];
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 /* create DMComposite of meshes for each species group */
 static PetscErrorCode LandauDMCreateVMeshes(MPI_Comm comm_self, const PetscInt dim, const char prefix[], LandauCtx *ctx, DM pack)
 {
   PetscFunctionBegin;
-  { /* p4est, quads */
-    /* Create plex mesh of Landau domain */
-    for (PetscInt grid = 0; grid < ctx->num_grids; grid++) {
-      PetscReal par_radius = ctx->radius_par[grid], perp_radius = ctx->radius_perp[grid];
-      if (!ctx->sphere && !ctx->simplex) { // 2 or 3D (only 3D option)
-        PetscReal      lo[] = {-perp_radius, -par_radius, -par_radius}, hi[] = {perp_radius, par_radius, par_radius};
-        DMBoundaryType periodicity[3] = {DM_BOUNDARY_NONE, dim == 2 ? DM_BOUNDARY_NONE : DM_BOUNDARY_NONE, DM_BOUNDARY_NONE};
-        if (dim == 2) lo[0] = 0;
-        else {
-          lo[1] = -perp_radius;
-          hi[1] = perp_radius; // 3D y is a perp
-        }
-        PetscCall(DMPlexCreateBoxMesh(comm_self, dim, PETSC_FALSE, ctx->cells0, lo, hi, periodicity, PETSC_TRUE, 0, PETSC_TRUE, &ctx->plex[grid])); // TODO: make composite and create dm[grid] here
-        PetscCall(DMLocalizeCoordinates(ctx->plex[grid]));                                                                                          /* needed for periodic */
-        if (dim == 3) PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "cube"));
-        else PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "half-plane"));
-      } else if (dim == 2) {
-        size_t len;
-        PetscCall(PetscStrlen(ctx->filename, &len));
-        if (len) {
-          Vec          coords;
-          PetscScalar *x;
-          PetscInt     N;
-          char         str[] = "-dm_landau_view_file_0";
-          str[21] += grid;
-          PetscCall(DMPlexCreateFromFile(comm_self, ctx->filename, "plexland.c", PETSC_TRUE, &ctx->plex[grid]));
-          PetscCall(DMPlexOrient(ctx->plex[grid]));
-          PetscCall(DMGetCoordinatesLocal(ctx->plex[grid], &coords));
-          PetscCall(VecGetSize(coords, &N));
-          PetscCall(VecGetArray(coords, &x));
-          /* scale by domain size */
-          for (PetscInt i = 0; i < N; i += 2) {
-            x[i + 0] *= ctx->radius_perp[grid];
-            x[i + 1] *= ctx->radius_par[grid];
-          }
-          PetscCall(VecRestoreArray(coords, &x));
-          PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], ctx->filename));
-          PetscCall(PetscInfo(ctx->plex[grid], "%" PetscInt_FMT ") Read %s mesh file (%s)\n", grid, ctx->filename, str));
-          PetscCall(DMViewFromOptions(ctx->plex[grid], NULL, str));
-        } else { // simplex forces a sphere
-          PetscInt       numCells = ctx->simplex ? 12 : 6, cell_size = ctx->simplex ? 3 : 4, j;
-          const PetscInt numVerts    = 11;
-          PetscInt       cellsT[][4] = {
-            {0,  1, 6, 5 },
-            {1,  2, 7, 6 },
-            {2,  3, 8, 7 },
-            {3,  4, 9, 8 },
-            {5,  6, 7, 10},
-            {10, 7, 8, 9 }
-          };
-          PetscInt cellsS[][3] = {
-            {0,  1, 6 },
-            {1,  2, 6 },
-            {6,  2, 7 },
-            {7,  2, 8 },
-            {8,  2, 3 },
-            {8,  3, 4 },
-            {0,  6, 5 },
-            {5,  6, 7 },
-            {5,  7, 10},
-            {10, 7, 9 },
-            {9,  7, 8 },
-            {9,  8, 4 }
-          };
-          const PetscInt *pcell = (const PetscInt *)(ctx->simplex ? &cellsS[0][0] : &cellsT[0][0]);
-          PetscReal       coords[11][2], *flatCoords = &coords[0][0];
-          PetscReal       rad = ctx->radius[grid];
-          for (j = 0; j < 5; j++) { // outside edge
-            PetscReal z, r, theta = -PETSC_PI / 2 + (j % 5) * PETSC_PI / 4;
-            r            = rad * PetscCosReal(theta);
-            coords[j][0] = r;
-            z            = rad * PetscSinReal(theta);
-            coords[j][1] = z;
-          }
-          coords[j][0]   = 0;
-          coords[j++][1] = -rad * ctx->sphere_inner_radius_90degree[grid];
-          coords[j][0]   = rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
-          coords[j++][1] = -rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
-          coords[j][0]   = rad * ctx->sphere_inner_radius_90degree[grid];
-          coords[j++][1] = 0;
-          coords[j][0]   = rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
-          coords[j++][1] = rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
-          coords[j][0]   = 0;
-          coords[j++][1] = rad * ctx->sphere_inner_radius_90degree[grid];
-          coords[j][0]   = 0;
-          coords[j++][1] = 0;
-          PetscCall(DMPlexCreateFromCellListPetsc(comm_self, 2, numCells, numVerts, cell_size, ctx->interpolate, pcell, 2, flatCoords, &ctx->plex[grid]));
-          PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "semi-circle"));
-          PetscCall(PetscInfo(ctx->plex[grid], "\t%" PetscInt_FMT ") Make circle %s mesh\n", grid, ctx->simplex ? "simplex" : "tensor"));
-        }
-      } else {
-        PetscCheck(dim == 3 && ctx->sphere && !ctx->simplex, ctx->comm, PETSC_ERR_ARG_WRONG, "not: dim == 3 && ctx->sphere && !ctx->simplex");
-        PetscReal      rad = ctx->radius[grid] / 1.732050807568877, inner_rad = rad * ctx->sphere_inner_radius_45degree[grid], outer_rad = rad;
-        const PetscInt numCells = 7, cell_size = 8, numVerts = 16;
-        const PetscInt cells[][8] = {
-          {0, 3, 2, 1, 4,  5,  6,  7 },
-          {0, 4, 5, 1, 8,  9,  13, 12},
-          {1, 5, 6, 2, 9,  10, 14, 13},
-          {2, 6, 7, 3, 10, 11, 15, 14},
-          {0, 3, 7, 4, 8,  12, 15, 11},
-          {0, 1, 2, 3, 8,  11, 10, 9 },
-          {4, 7, 6, 5, 12, 13, 14, 15}
-        };
-        PetscReal coords[16 /* numVerts */][3];
-        for (PetscInt j = 0; j < 4; j++) { // inner edge, low
-          coords[j][0] = inner_rad * (j == 0 || j == 3 ? 1 : -1);
-          coords[j][1] = inner_rad * (j / 2 < 1 ? 1 : -1);
-          coords[j][2] = inner_rad * -1;
-        }
-        for (PetscInt j = 0, jj = 4; j < 4; j++, jj++) { // inner edge, hi
-          coords[jj][0] = inner_rad * (j == 0 || j == 3 ? 1 : -1);
-          coords[jj][1] = inner_rad * (j / 2 < 1 ? 1 : -1);
-          coords[jj][2] = inner_rad * 1;
-        }
-        for (PetscInt j = 0, jj = 8; j < 4; j++, jj++) { // outer edge, low
-          coords[jj][0] = outer_rad * (j == 0 || j == 3 ? 1 : -1);
-          coords[jj][1] = outer_rad * (j / 2 < 1 ? 1 : -1);
-          coords[jj][2] = outer_rad * -1;
-        }
-        for (PetscInt j = 0, jj = 12; j < 4; j++, jj++) { // outer edge, hi
-          coords[jj][0] = outer_rad * (j == 0 || j == 3 ? 1 : -1);
-          coords[jj][1] = outer_rad * (j / 2 < 1 ? 1 : -1);
-          coords[jj][2] = outer_rad * 1;
-        }
-        PetscCall(DMPlexCreateFromCellListPetsc(comm_self, 3, numCells, numVerts, cell_size, ctx->interpolate, (const PetscInt *)cells, 3, (const PetscReal *)coords, &ctx->plex[grid]));
-        PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "cubed sphere"));
-        PetscCall(PetscInfo(ctx->plex[grid], "\t%" PetscInt_FMT ") Make cubed sphere %s mesh\n", grid, ctx->simplex ? "simplex" : "tensor"));
+  /* p4est, quads */
+  /* Create plex mesh of Landau domain */
+  for (PetscInt grid = 0; grid < ctx->num_grids; grid++) {
+    PetscReal par_radius = ctx->radius_par[grid], perp_radius = ctx->radius_perp[grid];
+    if (!ctx->sphere && !ctx->simplex) { // 2 or 3D (only 3D option)
+      PetscReal      lo[] = {-perp_radius, -par_radius, -par_radius}, hi[] = {perp_radius, par_radius, par_radius};
+      DMBoundaryType periodicity[3] = {DM_BOUNDARY_NONE, dim == 2 ? DM_BOUNDARY_NONE : DM_BOUNDARY_NONE, DM_BOUNDARY_NONE};
+      if (dim == 2) lo[0] = 0;
+      else {
+        lo[1] = -perp_radius;
+        hi[1] = perp_radius; // 3D y is a perp
       }
-      PetscCall(DMSetFromOptions(ctx->plex[grid]));
-    } // grid loop
-    PetscCall(PetscObjectSetOptionsPrefix((PetscObject)pack, prefix));
-    { /* convert to p4est (or whatever), wait for discretization to create pack */
-      char      convType[256];
-      PetscBool flg;
-
-      PetscOptionsBegin(ctx->comm, prefix, "Mesh conversion options", "DMPLEX");
-      PetscCall(PetscOptionsFList("-dm_landau_type", "Convert DMPlex to another format (p4est)", "plexland.c", DMList, DMPLEX, convType, 256, &flg));
-      PetscOptionsEnd();
-      if (flg) {
-        ctx->use_p4est = PETSC_TRUE; /* flag for Forest */
-        for (PetscInt grid = 0; grid < ctx->num_grids; grid++) {
-          DM dmforest;
-          PetscCall(DMConvert(ctx->plex[grid], convType, &dmforest));
-          if (dmforest) {
-            PetscBool isForest;
-            PetscCall(PetscObjectSetOptionsPrefix((PetscObject)dmforest, prefix));
-            PetscCall(DMIsForest(dmforest, &isForest));
-            if (isForest) {
-              if (ctx->sphere) PetscCall(DMForestSetBaseCoordinateMapping(dmforest, GeometryDMLandau, ctx));
-              PetscCall(DMDestroy(&ctx->plex[grid]));
-              ctx->plex[grid] = dmforest; // Forest for adaptivity
-            } else SETERRQ(ctx->comm, PETSC_ERR_PLIB, "Converted to non Forest?");
-          } else SETERRQ(ctx->comm, PETSC_ERR_PLIB, "Convert failed?");
+      PetscCall(DMPlexCreateBoxMesh(comm_self, dim, PETSC_FALSE, ctx->cells0, lo, hi, periodicity, PETSC_TRUE, 0, PETSC_TRUE, &ctx->plex[grid])); // TODO: make composite and create dm[grid] here
+      PetscCall(DMLocalizeCoordinates(ctx->plex[grid]));                                                                                          /* needed for periodic */
+      if (dim == 3) PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "cube"));
+      else PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "half-plane"));
+    } else if (dim == 2) {
+      size_t len;
+      PetscCall(PetscStrlen(ctx->filename, &len));
+      if (len) {
+        Vec          coords;
+        PetscScalar *x;
+        PetscInt     N;
+        char         str[] = "-dm_landau_view_file_0";
+        str[21] += grid;
+        PetscCall(DMPlexCreateFromFile(comm_self, ctx->filename, "plexland.c", PETSC_TRUE, &ctx->plex[grid]));
+        PetscCall(DMPlexOrient(ctx->plex[grid]));
+        PetscCall(DMGetCoordinatesLocal(ctx->plex[grid], &coords));
+        PetscCall(VecGetSize(coords, &N));
+        PetscCall(VecGetArray(coords, &x));
+        /* scale by domain size */
+        for (PetscInt i = 0; i < N; i += 2) {
+          x[i + 0] *= ctx->radius_perp[grid];
+          x[i + 1] *= ctx->radius_par[grid];
         }
-      } else ctx->use_p4est = PETSC_FALSE; /* flag for Forest */
+        PetscCall(VecRestoreArray(coords, &x));
+        PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], ctx->filename));
+        PetscCall(PetscInfo(ctx->plex[grid], "%" PetscInt_FMT ") Read %s mesh file (%s)\n", grid, ctx->filename, str));
+        PetscCall(DMViewFromOptions(ctx->plex[grid], NULL, str));
+      } else { // simplex forces a sphere
+        PetscInt       numCells = ctx->simplex ? 12 : 6, cell_size = ctx->simplex ? 3 : 4, j;
+        const PetscInt numVerts    = 11;
+        PetscInt       cellsT[][4] = {
+          {0,  1, 6, 5 },
+          {1,  2, 7, 6 },
+          {2,  3, 8, 7 },
+          {3,  4, 9, 8 },
+          {5,  6, 7, 10},
+          {10, 7, 8, 9 }
+        };
+        PetscInt cellsS[][3] = {
+          {0,  1, 6 },
+          {1,  2, 6 },
+          {6,  2, 7 },
+          {7,  2, 8 },
+          {8,  2, 3 },
+          {8,  3, 4 },
+          {0,  6, 5 },
+          {5,  6, 7 },
+          {5,  7, 10},
+          {10, 7, 9 },
+          {9,  7, 8 },
+          {9,  8, 4 }
+        };
+        const PetscInt *pcell = (const PetscInt *)(ctx->simplex ? &cellsS[0][0] : &cellsT[0][0]);
+        PetscReal       coords[11][2], *flatCoords = &coords[0][0];
+        PetscReal       rad = ctx->radius[grid];
+        for (j = 0; j < 5; j++) { // outside edge
+          PetscReal z, r, theta = -PETSC_PI / 2 + (j % 5) * PETSC_PI / 4;
+          r            = rad * PetscCosReal(theta);
+          coords[j][0] = r;
+          z            = rad * PetscSinReal(theta);
+          coords[j][1] = z;
+        }
+        coords[j][0]   = 0;
+        coords[j++][1] = -rad * ctx->sphere_inner_radius_90degree[grid];
+        coords[j][0]   = rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
+        coords[j++][1] = -rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
+        coords[j][0]   = rad * ctx->sphere_inner_radius_90degree[grid];
+        coords[j++][1] = 0;
+        coords[j][0]   = rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
+        coords[j++][1] = rad * ctx->sphere_inner_radius_45degree[grid] * 0.707106781186548;
+        coords[j][0]   = 0;
+        coords[j++][1] = rad * ctx->sphere_inner_radius_90degree[grid];
+        coords[j][0]   = 0;
+        coords[j++][1] = 0;
+        PetscCall(DMPlexCreateFromCellListPetsc(comm_self, 2, numCells, numVerts, cell_size, ctx->interpolate, pcell, 2, flatCoords, &ctx->plex[grid]));
+        PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "semi-circle"));
+        PetscCall(PetscInfo(ctx->plex[grid], "\t%" PetscInt_FMT ") Make circle %s mesh\n", grid, ctx->simplex ? "simplex" : "tensor"));
+      }
+    } else {
+      PetscCheck(dim == 3 && ctx->sphere && !ctx->simplex, ctx->comm, PETSC_ERR_ARG_WRONG, "not: dim == 3 && ctx->sphere && !ctx->simplex");
+      PetscReal      rad = ctx->radius[grid], inner_rad = rad * ctx->sphere_inner_radius_90degree[grid], outer_rad = rad;
+      const PetscInt numCells = 7, cell_size = 8, numVerts = 16;
+      const PetscInt cells[][8] = {
+        {0, 3, 2, 1, 4,  5,  6,  7 },
+        {0, 4, 5, 1, 8,  9,  13, 12},
+        {1, 5, 6, 2, 9,  10, 14, 13},
+        {2, 6, 7, 3, 10, 11, 15, 14},
+        {0, 3, 7, 4, 8,  12, 15, 11},
+        {0, 1, 2, 3, 8,  11, 10, 9 },
+        {4, 7, 6, 5, 12, 13, 14, 15}
+      };
+      PetscReal coords[16 /* numVerts */][3];
+      for (PetscInt j = 0; j < 4; j++) { // inner edge, low
+        coords[j][0] = inner_rad * (j == 0 || j == 3 ? 1 : -1);
+        coords[j][1] = inner_rad * (j / 2 < 1 ? 1 : -1);
+        coords[j][2] = inner_rad * -1;
+      }
+      for (PetscInt j = 0, jj = 4; j < 4; j++, jj++) { // inner edge, hi
+        coords[jj][0] = inner_rad * (j == 0 || j == 3 ? 1 : -1);
+        coords[jj][1] = inner_rad * (j / 2 < 1 ? 1 : -1);
+        coords[jj][2] = inner_rad * 1;
+      }
+      for (PetscInt j = 0, jj = 8; j < 4; j++, jj++) { // outer edge, low
+        coords[jj][0] = outer_rad * (j == 0 || j == 3 ? 1 : -1);
+        coords[jj][1] = outer_rad * (j / 2 < 1 ? 1 : -1);
+        coords[jj][2] = outer_rad * -1;
+      }
+      for (PetscInt j = 0, jj = 12; j < 4; j++, jj++) { // outer edge, hi
+        coords[jj][0] = outer_rad * (j == 0 || j == 3 ? 1 : -1);
+        coords[jj][1] = outer_rad * (j / 2 < 1 ? 1 : -1);
+        coords[jj][2] = outer_rad * 1;
+      }
+      PetscCall(DMPlexCreateFromCellListPetsc(comm_self, 3, numCells, numVerts, cell_size, ctx->interpolate, (const PetscInt *)cells, 3, (const PetscReal *)coords, &ctx->plex[grid]));
+      PetscCall(PetscObjectSetName((PetscObject)ctx->plex[grid], "cubed sphere"));
+      PetscCall(PetscInfo(ctx->plex[grid], "\t%" PetscInt_FMT ") Make cubed sphere %s mesh\n", grid, ctx->simplex ? "simplex" : "tensor"));
     }
-  } /* non-file */
+    PetscCall(DMSetOptionsPrefix(ctx->plex[grid], prefix));
+    PetscCall(DMSetFromOptions(ctx->plex[grid]));
+  } // grid loop
+  PetscCall(DMSetOptionsPrefix(pack, prefix));
+  { /* convert to p4est (or whatever), wait for discretization to create pack */
+    char      convType[256];
+    PetscBool flg;
+
+    PetscOptionsBegin(ctx->comm, prefix, "Mesh conversion options", "DMPLEX");
+    PetscCall(PetscOptionsFList("-dm_landau_type", "Convert DMPlex to another format (p4est)", "plexland.c", DMList, DMPLEX, convType, 256, &flg));
+    PetscOptionsEnd();
+    if (flg) {
+      ctx->use_p4est = PETSC_TRUE; /* flag for Forest */
+      for (PetscInt grid = 0; grid < ctx->num_grids; grid++) {
+        DM        dmforest;
+        PetscBool isForest;
+
+        PetscCall(DMConvert(ctx->plex[grid], convType, &dmforest));
+        PetscCheck(dmforest, ctx->comm, PETSC_ERR_PLIB, "Convert failed?");
+        PetscCall(DMSetOptionsPrefix(dmforest, prefix));
+        PetscCall(DMIsForest(dmforest, &isForest));
+        PetscCheck(isForest, ctx->comm, PETSC_ERR_PLIB, "Converted to non Forest?");
+        PetscCall(DMDestroy(&ctx->plex[grid]));
+        ctx->plex[grid] = dmforest; // Forest for adaptivity
+      }
+    } else ctx->use_p4est = PETSC_FALSE; /* flag for Forest */
+  }
   PetscCall(DMSetDimension(pack, dim));
   PetscCall(PetscObjectSetName((PetscObject)pack, "Mesh"));
   PetscCall(DMSetApplicationContext(pack, ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode SetupDS(DM pack, PetscInt dim, PetscInt grid, LandauCtx *ctx)
+static PetscErrorCode SetupDS(DM pack, PetscInt dim, PetscInt grid, const char prefix[], LandauCtx *ctx)
 {
   PetscInt     ii, i0;
   char         buf[256];
@@ -791,7 +761,7 @@ static PetscErrorCode SetupDS(DM pack, PetscInt dim, PetscInt grid, LandauCtx *c
     if (ii == 0) PetscCall(PetscSNPrintf(buf, sizeof(buf), "e"));
     else PetscCall(PetscSNPrintf(buf, sizeof(buf), "i%" PetscInt_FMT, ii));
     /* Setup Discretization - FEM */
-    PetscCall(PetscFECreateDefault(PETSC_COMM_SELF, dim, 1, ctx->simplex, NULL, PETSC_DECIDE, &ctx->fe[ii]));
+    PetscCall(PetscFECreateDefault(PETSC_COMM_SELF, dim, 1, ctx->simplex, prefix, PETSC_DECIDE, &ctx->fe[ii]));
     PetscCall(PetscObjectSetName((PetscObject)ctx->fe[ii], buf));
     PetscCall(DMSetField(ctx->plex[grid], i0, NULL, (PetscObject)ctx->fe[ii]));
   }
@@ -1031,9 +1001,7 @@ static PetscErrorCode adaptToleranceFEM(PetscFE fem, Vec sol, PetscInt type, Pet
   PetscCall(DMLabelDestroy(&adaptLabel));
   *newForest = adaptedDM;
   if (adaptedDM) {
-    if (isForest) {
-      PetscCall(DMForestSetAdaptivityForest(adaptedDM, NULL)); // ????
-    }
+    if (isForest) PetscCall(DMForestSetAdaptivityForest(adaptedDM, NULL)); // ????
     PetscCall(DMConvert(adaptedDM, DMPLEX, &plex));
     PetscCall(DMPlexGetHeightStratum(plex, 0, &cStart, &cEnd));
     PetscCall(PetscInfo(sol, "\t\t\t\t%" PetscInt_FMT ") %" PetscInt_FMT " cells, %" PetscInt_FMT " total quadrature points\n", grid, cEnd - cStart, Nq * (cEnd - cStart)));
@@ -1122,9 +1090,10 @@ static PetscErrorCode ProcessOptions(LandauCtx *ctx, const char prefix[])
   ctx->M              = NULL;
   ctx->J              = NULL;
   /* geometry and grids */
-  ctx->sphere    = PETSC_FALSE;
-  ctx->use_p4est = PETSC_FALSE;
-  ctx->simplex   = PETSC_FALSE;
+  ctx->sphere     = PETSC_FALSE;
+  ctx->map_sphere = PETSC_TRUE;
+  ctx->use_p4est  = PETSC_FALSE;
+  ctx->simplex    = PETSC_FALSE;
   for (PetscInt grid = 0; grid < LANDAU_MAX_GRIDS; grid++) {
     ctx->radius[grid]             = 5.; /* thermal radius (velocity) */
     ctx->radius_perp[grid]        = 5.; /* thermal radius (velocity) */
@@ -1184,8 +1153,8 @@ static PetscErrorCode ProcessOptions(LandauCtx *ctx, const char prefix[])
     ctx->deviceType = LANDAU_CPU;
   } else {
     PetscCall(PetscStrcmp("kokkos", ctx->filename, &flg));
-    if (flg) ctx->deviceType = LANDAU_KOKKOS;
-    else SETERRQ(ctx->comm, PETSC_ERR_ARG_WRONG, "-dm_landau_device_type %s", ctx->filename);
+    PetscCheck(flg, ctx->comm, PETSC_ERR_ARG_WRONG, "-dm_landau_device_type %s", ctx->filename);
+    ctx->deviceType = LANDAU_KOKKOS;
   }
   ctx->filename[0] = '\0';
   PetscCall(PetscOptionsString("-dm_landau_filename", "file to read mesh from", "plexland.c", ctx->filename, ctx->filename, sizeof(ctx->filename), &fileflg));
@@ -1201,6 +1170,7 @@ static PetscErrorCode ProcessOptions(LandauCtx *ctx, const char prefix[])
   PetscCall(PetscOptionsBool("-dm_landau_use_relativistic_corrections", "Use relativistic corrections", "plexland.c", ctx->use_relativistic_corrections, &ctx->use_relativistic_corrections, NULL));
   PetscCall(PetscOptionsBool("-dm_landau_simplex", "Use simplex elements", "plexland.c", ctx->simplex, &ctx->simplex, NULL));
   PetscCall(PetscOptionsBool("-dm_landau_sphere", "use sphere/semi-circle domain instead of rectangle", "plexland.c", ctx->sphere, &ctx->sphere, NULL));
+  PetscCall(PetscOptionsBool("-dm_landau_map_sphere", "Map to sphere/semi-circle domain instead of rectangle", "plexland.c", ctx->map_sphere, &ctx->map_sphere, NULL));
   if (LANDAU_DIM == 2 && ctx->use_relativistic_corrections) ctx->use_relativistic_corrections = PETSC_FALSE; // should warn
   PetscCall(PetscOptionsBool("-dm_landau_use_energy_tensor_trick", "Use Eero's trick of using grad(v^2/2) instead of v as args to Landau tensor to conserve energy with relativistic corrections and Q1 elements", "plexland.c", ctx->use_energy_tensor_trick,
                              &ctx->use_energy_tensor_trick, NULL));
@@ -1214,10 +1184,9 @@ static PetscErrorCode ProcessOptions(LandauCtx *ctx, const char prefix[])
   }
   nt = LANDAU_MAX_SPECIES;
   PetscCall(PetscOptionsRealArray("-dm_landau_thermal_temps", "Temperature of each species [e,i_0,i_1,...] in keV (must be set to set number of species)", "plexland.c", ctx->thermal_temps, &nt, &flg));
-  if (flg) {
-    PetscCall(PetscInfo(dummy, "num_species set to number of thermal temps provided (%" PetscInt_FMT ")\n", nt));
-    ctx->num_species = nt;
-  } else SETERRQ(ctx->comm, PETSC_ERR_ARG_WRONG, "-dm_landau_thermal_temps ,t1,t2,.. must be provided to set the number of species");
+  PetscCheck(flg, ctx->comm, PETSC_ERR_ARG_WRONG, "-dm_landau_thermal_temps ,t1,t2,.. must be provided to set the number of species");
+  PetscCall(PetscInfo(dummy, "num_species set to number of thermal temps provided (%" PetscInt_FMT ")\n", nt));
+  ctx->num_species = nt;
   for (ii = 0; ii < ctx->num_species; ii++) ctx->thermal_temps[ii] *= 1.1604525e7; /* convert to Kelvin */
   nm = LANDAU_MAX_SPECIES - 1;
   PetscCall(PetscOptionsRealArray("-dm_landau_ion_masses", "Mass of each species in units of proton mass [i_0=2,i_1=40...]", "plexland.c", &ctx->masses[1], &nm, &flg));
@@ -1320,10 +1289,14 @@ static PetscErrorCode ProcessOptions(LandauCtx *ctx, const char prefix[])
         if (flg && nt < ctx->num_grids) {
           for (PetscInt grid = nt; grid < ctx->num_grids; grid++) ctx->sphere_inner_radius_90degree[grid] = ctx->sphere_inner_radius_90degree[0];
         } else if (!flg || nt == 0) {
-          if (LANDAU_DIM == 2) {
-            for (PetscInt grid = 0; grid < ctx->num_grids; grid++) ctx->sphere_inner_radius_90degree[grid] = 0.4; // optimized for R=5, Q4, AMR=0
+          if (ctx->sphere && !ctx->simplex && LANDAU_DIM == 3) {
+            for (PetscInt grid = 0; grid < ctx->num_grids; grid++) ctx->sphere_inner_radius_90degree[grid] = 0.35; // optimized for R=6, Q4, AMR=0, 0 refinement
           } else {
-            for (PetscInt grid = 0; grid < ctx->num_grids; grid++) ctx->sphere_inner_radius_90degree[grid] = 0.577 * 0.40;
+            if (LANDAU_DIM == 2) {
+              for (PetscInt grid = 0; grid < ctx->num_grids; grid++) ctx->sphere_inner_radius_90degree[grid] = 0.4; // optimized for R=5, Q4, AMR=0
+            } else {
+              for (PetscInt grid = 0; grid < ctx->num_grids; grid++) ctx->sphere_inner_radius_90degree[grid] = 0.577 * 0.40;
+            }
           }
         }
         nt = LANDAU_MAX_GRIDS;
@@ -1427,7 +1400,7 @@ static PetscErrorCode ProcessOptions(LandauCtx *ctx, const char prefix[])
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode CreateStaticData(PetscInt dim, IS grid_batch_is_inv[], LandauCtx *ctx)
+static PetscErrorCode CreateStaticData(PetscInt dim, IS grid_batch_is_inv[], const char prefix[], LandauCtx *ctx)
 {
   PetscSection     section[LANDAU_MAX_GRIDS], globsection[LANDAU_MAX_GRIDS];
   PetscQuadrature  quad;
@@ -1552,7 +1525,7 @@ static PetscErrorCode CreateStaticData(PetscInt dim, IS grid_batch_is_inv[], Lan
             PetscCall(DMPlexGetClosureIndices(ctx->plex[grid], section[grid], globsection[grid], ej, PETSC_TRUE, &numindices, &indices, NULL, &elMat));
             if (ctx->simplex) {
               PetscCheck(numindices == Nb, ctx->comm, PETSC_ERR_ARG_WRONG, "numindices != Nb numindices=%" PetscInt_FMT " Nb=%" PetscInt_FMT, numindices, Nb);
-              for (PetscInt q = 0; q < numindices; ++q) { maps[grid].gIdx[eidx][fieldA][q] = indices[q]; }
+              for (PetscInt q = 0; q < numindices; ++q) maps[grid].gIdx[eidx][fieldA][q] = indices[q];
               fullNb++;
             } else {
               for (PetscInt f = 0; f < numindices; ++f) { // look for a non-zero on the diagonal (is this too complicated for simplices?)
@@ -1635,9 +1608,7 @@ static PetscErrorCode CreateStaticData(PetscInt dim, IS grid_batch_is_inv[], Lan
         }
       }
 #if defined(PETSC_HAVE_KOKKOS)
-      if (ctx->deviceType == LANDAU_KOKKOS) {
-        PetscCall(LandauKokkosCreateMatMaps(maps, pointMaps, Nf, grid)); // implies Kokkos does
-      }
+      if (ctx->deviceType == LANDAU_KOKKOS) PetscCall(LandauKokkosCreateMatMaps(maps, pointMaps, Nf, grid)); // implies Kokkos does
 #endif
       if (plex_batch) {
         PetscCall(ISRestoreIndices(grid_batch_is_inv[grid], &plex_batch));
@@ -1744,7 +1715,7 @@ static PetscErrorCode CreateStaticData(PetscInt dim, IS grid_batch_is_inv[], Lan
     PetscCall(PetscMalloc4(nip_glb, &ww, nip_glb, &xx, nip_glb, &yy, nip_glb * dim * dim, &invJ_a));
     if (dim == 3) PetscCall(PetscMalloc1(nip_glb, &zz));
     if (ctx->use_energy_tensor_trick) {
-      PetscCall(PetscFECreateDefault(PETSC_COMM_SELF, dim, 1, ctx->simplex, NULL, PETSC_DECIDE, &fe));
+      PetscCall(PetscFECreateDefault(PETSC_COMM_SELF, dim, 1, ctx->simplex, prefix, PETSC_DECIDE, &fe));
       PetscCall(PetscObjectSetName((PetscObject)fe, "energy"));
     }
     /* init each grids static data - no batch */
@@ -1868,7 +1839,7 @@ static PetscErrorCode CreateStaticData(PetscInt dim, IS grid_batch_is_inv[], Lan
       ctx->SData_d.lambdas = (void *)lambdas_p;
       for (PetscInt grid = 0; grid < LANDAU_MAX_GRIDS; grid++) {
         PetscReal (*lambdas)[LANDAU_MAX_GRIDS][LANDAU_MAX_GRIDS] = (PetscReal (*)[LANDAU_MAX_GRIDS][LANDAU_MAX_GRIDS])ctx->SData_d.lambdas;
-        for (PetscInt gridj = 0; gridj < LANDAU_MAX_GRIDS; gridj++) { (*lambdas)[grid][gridj] = ctx->lambdas[grid][gridj]; }
+        for (PetscInt gridj = 0; gridj < LANDAU_MAX_GRIDS; gridj++) (*lambdas)[grid][gridj] = ctx->lambdas[grid][gridj];
       }
     }
     PetscCall(PetscLogEventEnd(ctx->events[7], 0, 0, 0, 0));
@@ -1999,7 +1970,63 @@ static PetscErrorCode LandauCreateJacobianMatrix(MPI_Comm comm, Vec X, IS grid_b
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static void LandauSphereMapping(PetscInt dim, PetscInt Nf, PetscInt NfAux, const PetscInt uOff[], const PetscInt uOff_x[], const PetscScalar u[], const PetscScalar u_t[], const PetscScalar u_x[], const PetscInt aOff[], const PetscInt aOff_x[], const PetscScalar a[], const PetscScalar a_t[], const PetscScalar a_x[], PetscReal t, const PetscReal x[], PetscInt numConstants, const PetscScalar constants[], PetscScalar f[])
+{
+  PetscReal u_max = 0, u_norm = 0, scale, square_inner_radius = PetscRealPart(constants[0]), square_radius = PetscRealPart(constants[1]);
+  PetscInt  d;
+
+  for (d = 0; d < dim; ++d) {
+    PetscReal val = PetscAbsReal(PetscRealPart(u[d]));
+    if (val > u_max) u_max = val;
+    u_norm += PetscRealPart(u[d]) * PetscRealPart(u[d]);
+  }
+  u_norm = PetscSqrtReal(u_norm);
+
+  if (u_max < square_inner_radius) {
+    for (d = 0; d < dim; ++d) f[d] = u[d];
+    return;
+  }
+
+  /*
+    A outer cube has corners at |u| = square_radius.
+    u_1 is the intersection of the ray with the outer cube face.
+    R_max = square_radius * sqrt(3) is radius of sphere we want points on outer cube mapped to.
+    u_0 is the intersection of the ray with the inner cube face.
+    The cube has corners at |u| = square_inner_radius.
+    scale to point linearly between u_0 and u_1 so that a point on the inner face does not move, and a point on the outer face moves to the sphere.
+  */
+  if (u_max > square_radius + 1e-5) (void)PetscPrintf(PETSC_COMM_SELF, "Error: Point outside outer radius: u_max %g > %g\n", (double)u_max, (double)square_radius);
+  /*  if (PetscAbsReal(u_max - square_inner_radius) < 1e-5 || PetscAbsReal(u_max - square_radius) < 1e-5) {
+    (void)PetscPrintf(PETSC_COMM_SELF, "Warning: Point near corner of inner and outer cube: u_max %g, inner %g, outer %g\n", (double)u_max, (double)square_inner_radius, (double)square_radius);
+  } */
+  {
+    PetscReal u_0_norm  = u_norm * square_inner_radius / u_max;
+    PetscReal R_max     = square_radius * PetscSqrtReal((PetscReal)dim);
+    PetscReal t         = (u_max - square_inner_radius) / (square_radius - square_inner_radius);
+    PetscReal rho_prime = (1.0 - t) * u_0_norm + t * R_max;
+    scale               = rho_prime / u_norm;
+  }
+  for (d = 0; d < dim; ++d) f[d] = u[d] * scale;
+}
+
+static PetscErrorCode LandauSphereMesh(DM dm, PetscReal inner, PetscReal radius)
+{
+  DM          cdm;
+  PetscDS     cds;
+  PetscScalar consts[2];
+
+  PetscFunctionBegin;
+  consts[0] = inner;
+  consts[1] = radius;
+  PetscCall(DMGetCoordinateDM(dm, &cdm));
+  PetscCall(DMGetDS(cdm, &cds));
+  PetscCall(PetscDSSetConstants(cds, 2, consts));
+  PetscCall(DMPlexRemapGeometry(dm, 0.0, LandauSphereMapping));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode DMPlexLandauCreateMassMatrix(DM pack, Mat *Amat);
+
 /*@C
   DMPlexLandauCreateVelocitySpace - Create a `DMPLEX` velocity space mesh
 
@@ -2040,7 +2067,7 @@ PetscErrorCode DMPlexLandauCreateVelocitySpace(MPI_Comm comm, PetscInt dim, cons
   PetscCall(LandauDMCreateVMeshes(PETSC_COMM_SELF, dim, prefix, ctx, *pack)); // creates grids (Forest of AMR)
   for (PetscInt grid = 0; grid < ctx->num_grids; grid++) {
     /* create FEM */
-    PetscCall(SetupDS(ctx->plex[grid], dim, grid, ctx));
+    PetscCall(SetupDS(ctx->plex[grid], dim, grid, prefix, ctx));
     /* set initial state */
     PetscCall(DMCreateGlobalVector(ctx->plex[grid], &Xsub[grid]));
     PetscCall(PetscObjectSetName((PetscObject)Xsub[grid], "u_orig"));
@@ -2050,14 +2077,18 @@ PetscErrorCode DMPlexLandauCreateVelocitySpace(MPI_Comm comm, PetscInt dim, cons
     if (ctx->use_p4est) {
       DM plex;
       PetscCall(adapt(grid, ctx, &Xsub[grid])); // forest goes in, plex comes out
-      if (grid == 0) {
-        PetscCall(DMViewFromOptions(ctx->plex[grid], NULL, "-dm_landau_amr_dm_view")); // need to differentiate - todo
-        PetscCall(VecViewFromOptions(Xsub[grid], NULL, "-dm_landau_amr_vec_view"));
-      }
       // convert to plex, all done with this level
       PetscCall(DMConvert(ctx->plex[grid], DMPLEX, &plex));
       PetscCall(DMDestroy(&ctx->plex[grid]));
       ctx->plex[grid] = plex;
+    } else if (ctx->sphere && dim == 3) {
+      if (ctx->map_sphere) PetscCall(LandauSphereMesh(ctx->plex[grid], ctx->radius[grid] * ctx->sphere_inner_radius_90degree[grid], ctx->radius[grid]));
+      PetscCall(LandauSetInitialCondition(ctx->plex[grid], Xsub[grid], grid, 0, 1, ctx));
+    }
+    if (grid == 0) {
+      PetscCall(DMViewFromOptions(ctx->plex[grid], NULL, "-dm_landau_amr_dm_view"));
+      PetscCall(VecSetOptionsPrefix(Xsub[grid], prefix));
+      PetscCall(VecViewFromOptions(Xsub[grid], NULL, "-dm_landau_amr_vec_view"));
     }
 #if !defined(LANDAU_SPECIES_MAJOR)
     PetscCall(DMCompositeAddDM(*pack, ctx->plex[grid]));
@@ -2129,7 +2160,7 @@ PetscErrorCode DMPlexLandauCreateVelocitySpace(MPI_Comm comm, PetscInt dim, cons
   PetscCall(PetscLogEventEnd(ctx->events[12], 0, 0, 0, 0));
 
   // create AMR GPU assembly maps and static GPU data
-  PetscCall(CreateStaticData(dim, grid_batch_is_inv, ctx));
+  PetscCall(CreateStaticData(dim, grid_batch_is_inv, prefix, ctx));
 
   PetscCall(PetscLogEventEnd(ctx->events[13], 0, 0, 0, 0));
 
@@ -2259,9 +2290,7 @@ PetscErrorCode DMPlexLandauDestroyVelocitySpace(DM *dm)
       LandauIdx *coo_elem_offsets = (LandauIdx *)ctx->SData_d.coo_elem_offsets, *coo_elem_fullNb = (LandauIdx *)ctx->SData_d.coo_elem_fullNb, (*coo_elem_point_offsets)[LANDAU_MAX_NQND + 1] = (LandauIdx(*)[LANDAU_MAX_NQND + 1]) ctx->SData_d.coo_elem_point_offsets;
       PetscCall(PetscFree4(ww, xx, yy, invJ));
       if (zz) PetscCall(PetscFree(zz));
-      if (coo_elem_offsets) {
-        PetscCall(PetscFree3(coo_elem_offsets, coo_elem_fullNb, coo_elem_point_offsets)); // could be NULL
-      }
+      if (coo_elem_offsets) PetscCall(PetscFree3(coo_elem_offsets, coo_elem_fullNb, coo_elem_point_offsets)); // could be NULL
       PetscCall(PetscFree4(ctx->SData_d.alpha, ctx->SData_d.beta, ctx->SData_d.invMass, ctx->SData_d.lambdas));
     }
   }

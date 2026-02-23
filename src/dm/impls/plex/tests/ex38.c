@@ -2,7 +2,7 @@ const char help[] = "Test DMPlexInsertBoundaryValues with DMPlexSetClosurePermut
 
 #include <petscdmplex.h>
 
-static PetscErrorCode bc_func(PetscInt dim, PetscReal time, const PetscReal coords[], PetscInt num_comp_u, PetscScalar *u, void *ctx)
+static PetscErrorCode bc_func(PetscInt dim, PetscReal time, const PetscReal coords[], PetscInt num_comp_u, PetscScalar *u, PetscCtx ctx)
 {
   PetscFunctionBeginUser;
   for (PetscInt i = 0; i < num_comp_u; i++) u[i] = coords[i];
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
   DMLabel  label;
   PetscInt marker_ids[] = {1};
   PetscCall(DMGetLabel(dm, "marker", &label));
-  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "mms", label, 1, marker_ids, 0, 0, NULL, (void (*)(void))bc_func, NULL, NULL, NULL));
+  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "mms", label, 1, marker_ids, 0, 0, NULL, (PetscVoidFn *)bc_func, NULL, NULL, NULL));
   PetscCall(DMPlexSetClosurePermutationTensor(dm, PETSC_DETERMINE, NULL));
   {
     DM cdm;

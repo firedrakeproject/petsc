@@ -247,10 +247,10 @@ static PetscErrorCode ADMMInternalHessianUpdate(Mat H, Mat Constraint, PetscBool
 
   PetscFunctionBegin;
   switch (am->update) {
-  case (TAO_ADMM_UPDATE_BASIC):
+  case TAO_ADMM_UPDATE_BASIC:
     break;
-  case (TAO_ADMM_UPDATE_ADAPTIVE):
-  case (TAO_ADMM_UPDATE_ADAPTIVE_RELAXED):
+  case TAO_ADMM_UPDATE_ADAPTIVE:
+  case TAO_ADMM_UPDATE_ADAPTIVE_RELAXED:
     if (H && (am->muold != am->mu)) {
       if (!Identity) {
         PetscCall(MatAXPY(H, am->mu - am->muold, Constraint, DIFFERENT_NONZERO_PATTERN));
@@ -367,9 +367,9 @@ static PetscErrorCode TaoSolve_ADMM(Tao tao)
 
   if (!is_reg_shell) {
     switch (am->regswitch) {
-    case (TAO_ADMM_REGULARIZER_USER):
+    case TAO_ADMM_REGULARIZER_USER:
       break;
-    case (TAO_ADMM_REGULARIZER_SOFT_THRESH):
+    case TAO_ADMM_REGULARIZER_SOFT_THRESH:
       /* Soft Threshold. */
       break;
     }
@@ -546,15 +546,15 @@ static PetscErrorCode TaoSetUp_ADMM(Tao tao)
   if (!am->JB) {
     am->zJI = PETSC_TRUE;
     PetscCall(MatCreateShell(PetscObjectComm((PetscObject)tao), n, n, PETSC_DETERMINE, PETSC_DETERMINE, NULL, &am->JB));
-    PetscCall(MatShellSetOperation(am->JB, MATOP_MULT, (void (*)(void))JacobianIdentityB));
-    PetscCall(MatShellSetOperation(am->JB, MATOP_MULT_TRANSPOSE, (void (*)(void))JacobianIdentityB));
+    PetscCall(MatShellSetOperation(am->JB, MATOP_MULT, (PetscErrorCodeFn *)JacobianIdentityB));
+    PetscCall(MatShellSetOperation(am->JB, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)JacobianIdentityB));
     am->JBpre = am->JB;
   }
   if (!am->JA) {
     am->xJI = PETSC_TRUE;
     PetscCall(MatCreateShell(PetscObjectComm((PetscObject)tao), n, n, PETSC_DETERMINE, PETSC_DETERMINE, NULL, &am->JA));
-    PetscCall(MatShellSetOperation(am->JA, MATOP_MULT, (void (*)(void))JacobianIdentity));
-    PetscCall(MatShellSetOperation(am->JA, MATOP_MULT_TRANSPOSE, (void (*)(void))JacobianIdentity));
+    PetscCall(MatShellSetOperation(am->JA, MATOP_MULT, (PetscErrorCodeFn *)JacobianIdentity));
+    PetscCall(MatShellSetOperation(am->JA, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)JacobianIdentity));
     am->JApre = am->JA;
   }
   PetscCall(MatCreateVecs(am->JA, NULL, &am->Ax));
@@ -1003,7 +1003,7 @@ PetscErrorCode TaoADMMGetRegularizerCoefficient(Tao tao, PetscReal *lambda)
 
 .seealso: `TaoADMMSetRegularizerCoefficient()`, `TaoADMMSetRegularizerConstraintJacobian()`, `TAOADMM`
 @*/
-PetscErrorCode TaoADMMSetMisfitConstraintJacobian(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
+PetscErrorCode TaoADMMSetMisfitConstraintJacobian(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), PetscCtx ctx)
 {
   TAO_ADMM *am = (TAO_ADMM *)tao->data;
 
@@ -1049,7 +1049,7 @@ PetscErrorCode TaoADMMSetMisfitConstraintJacobian(Tao tao, Mat J, Mat Jpre, Pets
 
 .seealso: `TaoADMMSetRegularizerCoefficient()`, `TaoADMMSetMisfitConstraintJacobian()`, `TAOADMM`
 @*/
-PetscErrorCode TaoADMMSetRegularizerConstraintJacobian(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
+PetscErrorCode TaoADMMSetRegularizerConstraintJacobian(Tao tao, Mat J, Mat Jpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), PetscCtx ctx)
 {
   TAO_ADMM *am = (TAO_ADMM *)tao->data;
 
@@ -1093,7 +1093,7 @@ PetscErrorCode TaoADMMSetRegularizerConstraintJacobian(Tao tao, Mat J, Mat Jpre,
 
 .seealso: `TAOADMM`
 @*/
-PetscErrorCode TaoADMMSetMisfitObjectiveAndGradientRoutine(Tao tao, PetscErrorCode (*func)(Tao, Vec, PetscReal *, Vec, void *), void *ctx)
+PetscErrorCode TaoADMMSetMisfitObjectiveAndGradientRoutine(Tao tao, PetscErrorCode (*func)(Tao, Vec, PetscReal *, Vec, void *), PetscCtx ctx)
 {
   TAO_ADMM *am = (TAO_ADMM *)tao->data;
 
@@ -1121,7 +1121,7 @@ PetscErrorCode TaoADMMSetMisfitObjectiveAndGradientRoutine(Tao tao, PetscErrorCo
 
 .seealso: `TAOADMM`
 @*/
-PetscErrorCode TaoADMMSetMisfitHessianRoutine(Tao tao, Mat H, Mat Hpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
+PetscErrorCode TaoADMMSetMisfitHessianRoutine(Tao tao, Mat H, Mat Hpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), PetscCtx ctx)
 {
   TAO_ADMM *am = (TAO_ADMM *)tao->data;
 
@@ -1164,7 +1164,7 @@ PetscErrorCode TaoADMMSetMisfitHessianRoutine(Tao tao, Mat H, Mat Hpre, PetscErr
 
 .seealso: `TAOADMM`
 @*/
-PetscErrorCode TaoADMMSetRegularizerObjectiveAndGradientRoutine(Tao tao, PetscErrorCode (*func)(Tao, Vec, PetscReal *, Vec, void *), void *ctx)
+PetscErrorCode TaoADMMSetRegularizerObjectiveAndGradientRoutine(Tao tao, PetscErrorCode (*func)(Tao, Vec, PetscReal *, Vec, void *), PetscCtx ctx)
 {
   TAO_ADMM *am = (TAO_ADMM *)tao->data;
 
@@ -1192,7 +1192,7 @@ PetscErrorCode TaoADMMSetRegularizerObjectiveAndGradientRoutine(Tao tao, PetscEr
 
 .seealso: `TAOADMM`
 @*/
-PetscErrorCode TaoADMMSetRegularizerHessianRoutine(Tao tao, Mat H, Mat Hpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), void *ctx)
+PetscErrorCode TaoADMMSetRegularizerHessianRoutine(Tao tao, Mat H, Mat Hpre, PetscErrorCode (*func)(Tao, Vec, Mat, Mat, void *), PetscCtx ctx)
 {
   TAO_ADMM *am = (TAO_ADMM *)tao->data;
 

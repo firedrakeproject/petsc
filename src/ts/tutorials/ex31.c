@@ -1239,9 +1239,7 @@ PetscErrorCode SolveODE(char *ptype, PetscReal dt, PetscReal tfinal, PetscInt ma
 
   /* Exact solution */
   PetscCall(VecDuplicate(Y, &Yex));
-  if (PetscAbsReal(final_time - tfinal) > 2. * PETSC_MACHINE_EPSILON) {
-    PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Note: There is a difference between the prescribed final time %g and the actual final time, %g.\n", (double)tfinal, (double)final_time));
-  }
+  if (PetscAbsReal(final_time - tfinal) > 2. * PETSC_MACHINE_EPSILON) PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Note: There is a difference between the prescribed final time %g and the actual final time, %g.\n", (double)tfinal, (double)final_time));
   PetscCall(ExactSolution(Yex, &ptype[0], final_time, exact_flag));
 
   /* Calculate Error */
@@ -1328,7 +1326,7 @@ int main(int argc, char **argv)
       suffix: 4
       # the test is so sensitive that I could not even replace VecMAXPY with a sequence of VECAXPY, so I just disable this GEMV optimization
       args: -vec_maxpy_use_gemv 0
-      args: -ts_type glee -final_time 5 -ts_adapt_type glee -ts_adapt_monitor -ts_max_steps 50 -problem hull1972a3 -ts_max_reject 100 -ts_adapt_glee_use_local 0
+      args: -ts_type glee -final_time 5 -ts_adapt_type glee -ts_adapt_monitor -ts_max_steps 50 -problem hull1972a3 -ts_max_step_rejections 100 -ts_adapt_glee_use_local 0
       timeoutfactor: 3
       requires: !single !__float128
 

@@ -345,9 +345,8 @@ PetscErrorCode FVRHSFunction_2WaySplit(TS ts, PetscReal time, Vec X, Vec F, void
     PetscCall(TSGetTimeStep(ts, &dt));
     PetscCall(TSGetTime(ts, &tnow));
     if (dt > 0.5 / ctx->cfl_idt) {
-      if (1) {
-        PetscCall(PetscPrintf(ctx->comm, "Stability constraint exceeded at t=%g, dt %g > %g\n", (double)tnow, (double)dt, (double)(1 / (2 * ctx->cfl_idt))));
-      } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "Stability constraint exceeded, %g > %g", (double)dt, (double)(ctx->cfl / ctx->cfl_idt));
+      if (1) PetscCall(PetscPrintf(ctx->comm, "Stability constraint exceeded at t=%g, dt %g > %g\n", (double)tnow, (double)dt, (double)(1 / (2 * ctx->cfl_idt))));
+      else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_UNKNOWN_TYPE, "Stability constraint exceeded, %g > %g", (double)dt, (double)(ctx->cfl / ctx->cfl_idt));
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -993,11 +992,11 @@ int main(int argc, char *argv[])
 
     test:
       suffix: 1
-      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -limit mc -ts_dt 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22
+      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -limit mc -ts_time_step 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22
 
     test:
       suffix: 2
-      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -limit mc -ts_dt 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 0
+      args: -da_grid_x 60 -initial 7 -xmin -1 -xmax 1 -hratio 2 -limit mc -ts_time_step 0.025 -ts_max_steps 24 -ts_type mprk -ts_mprk_type 2a22 -ts_use_splitrhsfunction 0
       output_file: output/ex6_1.out
 
 TEST*/

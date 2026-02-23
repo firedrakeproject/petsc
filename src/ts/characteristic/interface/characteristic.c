@@ -20,7 +20,7 @@ static PetscErrorCode CharacteristicSiftDown(Characteristic, Queue, PetscInt, Pe
 
 static PetscErrorCode CharacteristicView(Characteristic c, PetscViewer viewer)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(c, CHARACTERISTIC_CLASSID, 1);
@@ -28,8 +28,8 @@ static PetscErrorCode CharacteristicView(Characteristic c, PetscViewer viewer)
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   PetscCheckSameComm(c, 1, viewer, 2);
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (!iascii) PetscTryTypeMethod(c, view, viewer);
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (!isascii) PetscTryTypeMethod(c, view, viewer);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -248,7 +248,7 @@ PetscErrorCode CharacteristicRegister(const char sname[], PetscErrorCode (*funct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode CharacteristicSetVelocityInterpolation(Characteristic c, DM da, Vec v, Vec vOld, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(Vec, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), void *ctx)
+PetscErrorCode CharacteristicSetVelocityInterpolation(Characteristic c, DM da, Vec v, Vec vOld, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(Vec, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), PetscCtx ctx)
 {
   PetscFunctionBegin;
   c->velocityDA      = da;
@@ -261,7 +261,7 @@ PetscErrorCode CharacteristicSetVelocityInterpolation(Characteristic c, DM da, V
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode CharacteristicSetVelocityInterpolationLocal(Characteristic c, DM da, Vec v, Vec vOld, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(void *, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), void *ctx)
+PetscErrorCode CharacteristicSetVelocityInterpolationLocal(Characteristic c, DM da, Vec v, Vec vOld, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(void *, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), PetscCtx ctx)
 {
   PetscFunctionBegin;
   c->velocityDA          = da;
@@ -274,7 +274,7 @@ PetscErrorCode CharacteristicSetVelocityInterpolationLocal(Characteristic c, DM 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode CharacteristicSetFieldInterpolation(Characteristic c, DM da, Vec v, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(Vec, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), void *ctx)
+PetscErrorCode CharacteristicSetFieldInterpolation(Characteristic c, DM da, Vec v, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(Vec, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), PetscCtx ctx)
 {
   PetscFunctionBegin;
 #if 0
@@ -289,7 +289,7 @@ PetscErrorCode CharacteristicSetFieldInterpolation(Characteristic c, DM da, Vec 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode CharacteristicSetFieldInterpolationLocal(Characteristic c, DM da, Vec v, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(void *, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), void *ctx)
+PetscErrorCode CharacteristicSetFieldInterpolationLocal(Characteristic c, DM da, Vec v, PetscInt numComponents, PetscInt components[], PetscErrorCode (*interp)(void *, PetscReal[], PetscInt, PetscInt[], PetscScalar[], void *), PetscCtx ctx)
 {
   PetscFunctionBegin;
 #if 0
@@ -599,9 +599,8 @@ PetscErrorCode CharacteristicSendCoordinatesBegin(Characteristic c)
   for (n = 1; n < c->numNeighbors; n++) c->localOffsets[n] += c->needCount[0];
   c->needCount[0] = 0;
   /* HACK END */
-  if (c->queueRemoteMax) {
-    PetscCall(PetscMalloc1(c->queueRemoteMax, &c->queueRemote));
-  } else c->queueRemote = NULL;
+  if (c->queueRemoteMax) PetscCall(PetscMalloc1(c->queueRemoteMax, &c->queueRemote));
+  else c->queueRemote = NULL;
   c->queueRemoteSize = c->queueRemoteMax;
 
   /* Send and Receive requests for values at t_n+1/2, giving the coordinates for interpolation */
@@ -627,9 +626,7 @@ PetscErrorCode CharacteristicSendCoordinatesEnd(Characteristic c)
   PetscCallMPI(MPI_Waitall(c->numNeighbors - 1, c->request, c->status));
 #if 0
   PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)c), &rank));
-  for (n = 0; n < c->queueRemoteSize; n++) {
-    PetscCheck(c->neighbors[c->queueRemote[n].proc] != rank,PETSC_COMM_SELF,PETSC_ERR_PLIB, "This is messed up, n = %d proc = %d", n, c->queueRemote[n].proc);
-  }
+  for (n = 0; n < c->queueRemoteSize; n++) PetscCheck(c->neighbors[c->queueRemote[n].proc] != rank,PETSC_COMM_SELF,PETSC_ERR_PLIB, "This is messed up, n = %d proc = %d", n, c->queueRemote[n].proc);
 #endif
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -670,7 +667,7 @@ static PetscErrorCode CharacteristicHeapSort(Characteristic c, Queue queue, Pets
   }
 
   /* SORTING PHASE */
-  for (n = (size / 2) - 1; n >= 0; n--) { PetscCall(CharacteristicSiftDown(c, queue, n, size - 1)); /* Rich had size-1 here, Matt had size*/ }
+  for (n = (size / 2) - 1; n >= 0; n--) PetscCall(CharacteristicSiftDown(c, queue, n, size - 1)); /* Rich had size-1 here, Matt had size*/
   for (n = size - 1; n >= 1; n--) {
     temp     = queue[0];
     queue[0] = queue[n];

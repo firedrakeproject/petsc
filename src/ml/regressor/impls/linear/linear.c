@@ -152,7 +152,6 @@ static PetscErrorCode PetscRegressorSetUp_Linear(PetscRegressor regressor)
     PetscCall(TaoSetSolution(tao, linear->coefficients));
     PetscCall(TaoSetResidualRoutine(tao, linear->residual, EvaluateResidual, linear));
     PetscCall(TaoSetJacobianResidualRoutine(tao, linear->X, linear->X, EvaluateJacobian, linear));
-    if (!linear->use_ksp) PetscCall(TaoBRGNSetRegularizerWeight(tao, regressor->regularizer_weight));
     // Set the regularization type and weight for the BRGN as linear->type dictates:
     // TODO BRGN needs to be BRGNSetRegularizationType
     // PetscOptionsSetValue no longer works due to functioning prefix system
@@ -172,6 +171,7 @@ static PetscErrorCode PetscRegressorSetUp_Linear(PetscRegressor regressor)
     default:
       break;
     }
+    if (!linear->use_ksp) PetscCall(TaoBRGNSetRegularizerWeight(tao, regressor->regularizer_weight));
     PetscCall(TaoSetFromOptions(tao));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -475,7 +475,7 @@ static PetscErrorCode PetscRegressorFit_Linear(PetscRegressor regressor)
     PetscCall(PetscMalloc1(N, &column_means_global));
     PetscCall(VecMean(regressor->target, &target_mean));
     /* We need the means of all columns of regressor->training, placed into a Vec compatible with linear->coefficients.
-     * Note the potential scalability issue: MatGetColumnMeans() computes means of ALL colummns. */
+     * Note the potential scalability issue: MatGetColumnMeans() computes means of ALL columns. */
     PetscCall(MatGetColumnMeans(regressor->training, column_means_global));
     /* TODO: Calculation of the Vec and matrix column means should probably go into the SetUp phase, and also be placed
      *       into a routine that is callable from outside of PetscRegressorFit_Linear(), because we'll want to do the same
@@ -518,7 +518,11 @@ static PetscErrorCode PetscRegressorPredict_Linear(PetscRegressor regressor, Mat
 
    Level: beginner
 
-   Note:
+   Notes:
+   By "linear" we mean that the model is linear in its coefficients, but not necessarily in its input features.
+   One can use the linear regressor to fit polynomial functions by training the model with a design matrix that
+   is a nonlinear function of the input data.
+
    This is the default regressor in `PetscRegressor`.
 
 .seealso: `PetscRegressorCreate()`, `PetscRegressor`, `PetscRegressorSetType()`

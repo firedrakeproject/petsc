@@ -34,6 +34,10 @@ class Configure(config.package.Package):
     self.sharedLibraries = framework.require('PETSc.options.sharedLibraries', self)
     self.installdir      = framework.require('PETSc.options.installDir',self)
     self.mpi             = framework.require('config.packages.MPI',self)
+    self.cython          = framework.require('config.packages.Cython',self)
+    self.slepc           = framework.require('config.packages.SLEPc',self)  # build SLEPc first
+    self.bamg            = framework.require('config.packages.BAMG',self)   # build BAMG first
+    self.odeps           = [self.cython,self.slepc,self.bamg]
     return
 
   def getDir(self):
@@ -70,9 +74,7 @@ class Configure(config.package.Package):
     if numpy_include is not None:
       newdir += 'NUMPY_INCLUDE="'+numpy_include+'" '
 
-    self.addDefine('HAVE_PETSC4PY',1)
     self.addDefine('PETSC4PY_INSTALL_PATH','"'+os.path.join(self.installdir.dir,'lib')+'"')
-    self.addMakeMacro('PETSC4PY','yes')
     cflags = ''
     # by default, multiple flags are added by setup.py (-DNDEBUG -O3 -g), no matter the type of PETSc build
     # this is problematic with Intel compilers, which take extremely long to compile bindings when using -g
@@ -81,7 +83,7 @@ class Configure(config.package.Package):
     if config.setCompilers.Configure.isIntel(self.getCompiler(), self.log):
       cflags = 'CFLAGS=\'\' '
     self.addPost(self.packageDir, ['${RM} -rf build',
-                                   newdir + archflags + cflags + self.python.pyexe + ' setup.py build',
+                                   newdir + archflags + cflags + ' PYTHONPATH=${PETSCPYTHONPATH} ' + self.python.pyexe + ' setup.py build',
                                    'MPICC=${PCC} ' + newdir + archflags + self.python.pyexe +' setup.py install --install-lib=' + installLibPath + ' $(if $(DESTDIR),--root=\'$(DESTDIR)\')'])
     self.pythonpath = installLibPath
     np = self.make.make_test_np
@@ -118,4 +120,3 @@ class Configure(config.package.Package):
   def alternateConfigureLibrary(self):
     '''This is ugly but currently .gitlab-ci.yml is hardwired to use petsc4pytest'''
     self.addMakeRule('petsc4pytest','')
-

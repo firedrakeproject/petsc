@@ -936,7 +936,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-PetscErrorCode ComputeRHS_DMDA(DM da, Vec b, void *ctx)
+PetscErrorCode ComputeRHS_DMDA(DM da, Vec b, PetscCtx ctx)
 {
   UserContext  *user = (UserContext *)ctx;
   PetscInt      i, j, mx, my, xm, ym, xs, ys;
@@ -982,7 +982,7 @@ PetscErrorCode ComputeRho(PetscInt i, PetscInt j, PetscInt mx, PetscInt my, Pets
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode ComputeMatrix_DMDA(DM da, Mat J, Mat jac, void *ctx)
+PetscErrorCode ComputeMatrix_DMDA(DM da, Mat J, Mat jac, PetscCtx ctx)
 {
   UserContext *user = (UserContext *)ctx;
   PetscReal    centerRho;
@@ -1073,7 +1073,7 @@ PetscErrorCode ComputeMatrix_DMDA(DM da, Mat J, Mat jac, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode ComputeMatrix_ShellDA(KSP ksp, Mat J, Mat jac, void *ctx)
+PetscErrorCode ComputeMatrix_ShellDA(KSP ksp, Mat J, Mat jac, PetscCtx ctx)
 {
   DM dm, da;
 
@@ -1103,6 +1103,7 @@ PetscErrorCode ComputeMatrix_ShellDA(KSP ksp, Mat J, Mat jac, void *ctx)
     args: -tid 2 -ksp_monitor_short -ksp_type gcr -pc_type mg -pc_mg_levels 3 -level_nrefs 3 -ndecomps 2 -mg_coarse_pc_type telescope -mg_coarse_pc_telescope_use_coarse_dm -mg_coarse_telescope_pc_type mg -mg_coarse_telescope_pc_mg_levels 3 -level_comm_red_factor 6 -mg_coarse_telescope_mg_coarse_pc_type lu
 
   test:
+    requires: !single
     suffix: mg_3lv_2mg
     nsize: 4
     args: -tid 2 -ksp_monitor_short -ksp_type gcr -pc_type mg -pc_mg_levels 3 -level_nrefs 3 -ndecomps 3 -mg_coarse_pc_type telescope -mg_coarse_pc_telescope_use_coarse_dm -mg_coarse_telescope_pc_type mg -mg_coarse_telescope_pc_mg_levels 3 -mg_coarse_telescope_mg_coarse_pc_type telescope -mg_coarse_telescope_mg_coarse_pc_telescope_use_coarse_dm -mg_coarse_telescope_mg_coarse_telescope_pc_type lu -m 5

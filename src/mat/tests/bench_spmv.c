@@ -32,7 +32,7 @@ void write_file(const char *filename, const char *content)
 {
   FILE *file = NULL;
   file       = fopen(filename, "w");
-  if (file) { fputs(content, file); }
+  if (file) fputs(content, file);
   fclose(file);
 }
 
@@ -270,7 +270,8 @@ int main(int argc, char **args)
   PetscViewer fd;
   PetscReal   starting_spmv_time = 0, *spmv_times;
 
-  PetscCall(PetscOptionsInsertString(NULL, "-log_view_gpu_time -log_view :/dev/null"));
+  PetscCall(PetscOptionsInsertString(NULL, "-log_view :/dev/null"));
+  if (PetscDefined(HAVE_DEVICE)) PetscCall(PetscOptionsInsertString(NULL, "-log_view_gpu_time"));
   PetscCall(PetscInitialize(&argc, &args, NULL, help));
   PetscCall(PetscOptionsGetStringArray(NULL, NULL, "-formats", matformats, &nformats, &flg1));
   if (!flg1) {

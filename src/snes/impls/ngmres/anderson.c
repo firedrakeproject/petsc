@@ -70,12 +70,11 @@ static PetscErrorCode SNESSolve_Anderson(SNES snes)
     }
     PetscCall(VecNorm(F, NORM_2, &fnorm));
   } else {
-    if (!snes->vec_func_init_set) {
-      PetscCall(SNESComputeFunction(snes, X, F));
-    } else snes->vec_func_init_set = PETSC_FALSE;
+    if (!snes->vec_func_init_set) PetscCall(SNESComputeFunction(snes, X, F));
+    else snes->vec_func_init_set = PETSC_FALSE;
 
     PetscCall(VecNorm(F, NORM_2, &fnorm));
-    SNESCheckFunctionNorm(snes, fnorm);
+    SNESCheckFunctionDomainError(snes, fnorm);
   }
   fminnorm = fnorm;
 

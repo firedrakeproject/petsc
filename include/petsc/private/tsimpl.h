@@ -130,9 +130,9 @@ struct _p_TSTrajectory {
   char       *dirname, *filetemplate; /* directory name and file name template for disk checkpoints */
   char       *dirfiletemplate;        /* complete directory and file name template for disk checkpoints */
   PetscErrorCode (*transform)(void *, Vec, Vec *);
-  PetscErrorCode (*transformdestroy)(void *);
-  void *transformctx;
-  void *data;
+  PetscCtxDestroyFn *transformdestroy;
+  void              *transformctx;
+  void              *data;
 };
 
 typedef struct _TS_RHSSplitLink *TS_RHSSplitLink;
@@ -298,6 +298,7 @@ struct _p_TS {
   PetscReal ptime;               /* time at the start of the current step (stage time is internal if it exists) */
   PetscReal time_step;           /* current time increment */
   PetscReal time_step0;          /* proposed time increment at the beginning of the step */
+  PetscReal initial_time_step;   /* proposed time step at start of TSSolve(), actual time step used may differ */
   PetscReal ptime_prev;          /* time at the start of the previous step */
   PetscReal ptime_prev_rollback; /* time at the start of the 2nd previous step to recover from rollback */
   PetscReal solvetime;           /* time at the conclusion of TSSolve() */

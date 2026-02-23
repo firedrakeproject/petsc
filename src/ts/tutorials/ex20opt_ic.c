@@ -34,7 +34,7 @@ PetscErrorCode Adjoint2(Vec, PetscScalar[], User);
 
 /* ----------------------- Explicit form of the ODE  -------------------- */
 
-static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, void *ctx)
+static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, PetscCtx ctx)
 {
   User               user = (User)ctx;
   PetscScalar       *f;
@@ -50,7 +50,7 @@ static PetscErrorCode RHSFunction(TS ts, PetscReal t, Vec U, Vec F, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B, void *ctx)
+static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B, PetscCtx ctx)
 {
   User               user     = (User)ctx;
   PetscReal          mu       = user->mu;
@@ -75,7 +75,7 @@ static PetscErrorCode RHSJacobian(TS ts, PetscReal t, Vec U, Mat A, Mat B, void 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode RHSHessianProductUU(TS ts, PetscReal t, Vec U, Vec *Vl, Vec Vr, Vec *VHV, void *ctx)
+static PetscErrorCode RHSHessianProductUU(TS ts, PetscReal t, Vec U, Vec *Vl, Vec Vr, Vec *VHV, PetscCtx ctx)
 {
   const PetscScalar *vl, *vr, *u;
   PetscScalar       *vhv;
@@ -106,7 +106,7 @@ static PetscErrorCode RHSHessianProductUU(TS ts, PetscReal t, Vec U, Vec *Vl, Ve
 
 /* ----------------------- Implicit form of the ODE  -------------------- */
 
-static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, void *ctx)
+static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, PetscCtx ctx)
 {
   User               user = (User)ctx;
   const PetscScalar *u, *udot;
@@ -124,7 +124,7 @@ static PetscErrorCode IFunction(TS ts, PetscReal t, Vec U, Vec Udot, Vec F, void
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode IJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat A, Mat B, void *ctx)
+static PetscErrorCode IJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a, Mat A, Mat B, PetscCtx ctx)
 {
   User               user     = (User)ctx;
   PetscInt           rowcol[] = {0, 1};
@@ -149,7 +149,7 @@ static PetscErrorCode IJacobian(TS ts, PetscReal t, Vec U, Vec Udot, PetscReal a
 }
 
 /* Monitor timesteps and use interpolation to output at integer multiples of 0.1 */
-static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec U, void *ctx)
+static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec U, PetscCtx ctx)
 {
   const PetscScalar *u;
   PetscReal          tfinal, dt;
@@ -172,7 +172,7 @@ static PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal t, Vec U, void *ct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode IHessianProductUU(TS ts, PetscReal t, Vec U, Vec *Vl, Vec Vr, Vec *VHV, void *ctx)
+static PetscErrorCode IHessianProductUU(TS ts, PetscReal t, Vec U, Vec *Vl, Vec Vr, Vec *VHV, PetscCtx ctx)
 {
   const PetscScalar *vl, *vr, *u;
   PetscScalar       *vhv;
@@ -202,7 +202,7 @@ static PetscErrorCode IHessianProductUU(TS ts, PetscReal t, Vec U, Vec *Vl, Vec 
 
 /* ------------------ User-defined routines for TAO -------------------------- */
 
-static PetscErrorCode FormFunctionGradient(Tao tao, Vec IC, PetscReal *f, Vec G, void *ctx)
+static PetscErrorCode FormFunctionGradient(Tao tao, Vec IC, PetscReal *f, Vec G, PetscCtx ctx)
 {
   User               user_ptr = (User)ctx;
   TS                 ts       = user_ptr->ts;
@@ -232,7 +232,7 @@ static PetscErrorCode FormFunctionGradient(Tao tao, Vec IC, PetscReal *f, Vec G,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode FormHessian(Tao tao, Vec U, Mat H, Mat Hpre, void *ctx)
+static PetscErrorCode FormHessian(Tao tao, Vec U, Mat H, Mat Hpre, PetscCtx ctx)
 {
   User           user_ptr = (User)ctx;
   PetscScalar    harr[2];
@@ -268,7 +268,7 @@ static PetscErrorCode FormHessian(Tao tao, Vec U, Mat H, Mat Hpre, void *ctx)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode MatrixFreeHessian(Tao tao, Vec U, Mat H, Mat Hpre, void *ctx)
+static PetscErrorCode MatrixFreeHessian(Tao tao, Vec U, Mat H, Mat Hpre, PetscCtx ctx)
 {
   User user_ptr = (User)ctx;
 
@@ -511,7 +511,7 @@ int main(int argc, char **argv)
 
     if (mf) {
       PetscCall(MatCreateShell(PETSC_COMM_SELF, 2, 2, 2, 2, (void *)&user, &user.H));
-      PetscCall(MatShellSetOperation(user.H, MATOP_MULT, (void (*)(void))HessianProductMat));
+      PetscCall(MatShellSetOperation(user.H, MATOP_MULT, (PetscErrorCodeFn *)HessianProductMat));
       PetscCall(MatSetOption(user.H, MAT_SYMMETRIC, PETSC_TRUE));
       PetscCall(TaoSetHessian(tao, user.H, user.H, MatrixFreeHessian, (void *)&user));
     } else { /* Create Hessian matrix */
@@ -557,20 +557,20 @@ int main(int argc, char **argv)
       requires: !complex !single
 
     test:
-      args: -ts_type cn -viewer_binary_skip_info -tao_monitor -tao_view -mu 1000 -ts_dt 0.03125
+      args: -ts_type cn -viewer_binary_skip_info -tao_monitor -tao_view -mu 1000 -ts_time_step 0.03125
       output_file: output/ex20opt_ic_1.out
 
     test:
       suffix: 2
-      args: -ts_type beuler -viewer_binary_skip_info -tao_monitor -tao_view -mu 100 -ts_dt 0.01 -tao_type bntr -tao_bnk_pc_type none
+      args: -ts_type beuler -viewer_binary_skip_info -tao_monitor -tao_view -mu 100 -ts_time_step 0.01 -tao_type bntr -tao_bnk_pc_type none
       output_file: output/ex20opt_ic_2.out
 
     test:
       suffix: 3
-      args: -ts_type cn -viewer_binary_skip_info -tao_monitor -tao_view -mu 100 -ts_dt 0.01 -tao_type bntr -tao_bnk_pc_type none
+      args: -ts_type cn -viewer_binary_skip_info -tao_monitor -tao_view -mu 100 -ts_time_step 0.01 -tao_type bntr -tao_bnk_pc_type none
       output_file: output/ex20opt_ic_3.out
 
     test:
       suffix: 4
-      args: -implicitform 0 -ts_dt 0.01 -ts_max_steps 2 -ts_rhs_jacobian_test_mult_transpose -mat_shell_test_mult_transpose_view -ts_rhs_jacobian_test_mult -mat_shell_test_mult_view -mode 1 -my_tao_mf
+      args: -implicitform 0 -ts_time_step 0.01 -ts_max_steps 2 -ts_rhs_jacobian_test_mult_transpose -mat_shell_test_mult_transpose_view -ts_rhs_jacobian_test_mult -mat_shell_test_mult_view -mode 1 -my_tao_mf
 TEST*/

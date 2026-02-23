@@ -525,7 +525,7 @@ PetscErrorCode MatCreateSubMatrices_MPIBAIJ(Mat C, PetscInt ismax, const IS isro
 {
   IS          *isrow_block, *iscol_block;
   Mat_MPIBAIJ *c = (Mat_MPIBAIJ *)C->data;
-  PetscInt     nmax, nstages_local, nstages, i, pos, max_no, N = C->cmap->N, bs = C->rmap->bs;
+  PetscInt     nmax, nstages, i, pos, max_no, N = C->cmap->N, bs = C->rmap->bs;
   Mat_SeqBAIJ *subc;
   Mat_SubSppt *smat;
   PetscBool    sym = PETSC_FALSE, flg[2];
@@ -561,10 +561,10 @@ PetscErrorCode MatCreateSubMatrices_MPIBAIJ(Mat C, PetscInt ismax, const IS isro
   if (!nmax) nmax = 1;
 
   if (scall == MAT_INITIAL_MATRIX) {
-    nstages_local = ismax / nmax + ((ismax % nmax) ? 1 : 0); /* local nstages */
+    nstages = ismax / nmax + ((ismax % nmax) ? 1 : 0); /* local nstages */
 
     /* Make sure every processor loops through the nstages */
-    PetscCallMPI(MPIU_Allreduce(&nstages_local, &nstages, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)C)));
+    PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, &nstages, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)C)));
 
     /* Allocate memory to hold all the submatrices and dummy submatrices */
     PetscCall(PetscCalloc1(ismax + nstages, submat));
@@ -792,7 +792,7 @@ PetscErrorCode MatCreateSubMatrices_MPIBAIJ_local(Mat C, PetscInt ismax, const I
     }
     PetscCall(PetscMalloc1(nrqs, &pa)); /*(proc -array)*/
     for (PetscMPIInt i = 0, j = 0; i < size; i++) {
-      if (w1[i]) { pa[j++] = i; }
+      if (w1[i]) pa[j++] = i;
     }
 
     /* Each message would have a header = 1 + 2*(no of IS) + data */
@@ -1266,9 +1266,8 @@ PetscErrorCode MatCreateSubMatrices_MPIBAIJ_local(Mat C, PetscInt ismax, const I
           /* load the column values for this row into vals*/
           vals = sbuf_aa_i + ct2 * bs2;
           for (l = 0; l < nzB; l++) {
-            if ((bmap[cworkB[l]]) < cstart) {
-              PetscCall(PetscArraycpy(vals + l * bs2, vworkB + l * bs2, bs2));
-            } else break;
+            if ((bmap[cworkB[l]]) < cstart) PetscCall(PetscArraycpy(vals + l * bs2, vworkB + l * bs2, bs2));
+            else break;
           }
           imark = l;
           for (l = 0; l < nzA; l++) PetscCall(PetscArraycpy(vals + (imark + l) * bs2, vworkA + l * bs2, bs2));

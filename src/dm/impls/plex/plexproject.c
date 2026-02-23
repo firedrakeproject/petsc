@@ -111,11 +111,10 @@ static PetscErrorCode DMProjectPoint_Func_Private(DM dm, PetscDS ds, DM dmIn, Pe
             PetscReal        injpoint[3] = {0., 0., 0.};
 
             if (dim != fegeom->dim) {
-              if (isCohesive) {
-                /* We just need to inject into the higher dimensional space assuming the last dimension is collapsed */
-                for (d = 0; d < dim; ++d) injpoint[d] = refpoint[d];
-                refpoint = injpoint;
-              } else SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Reference spatial dimension %" PetscInt_FMT " != %" PetscInt_FMT " dual basis spatial dimension", fegeom->dim, dim);
+              PetscCheck(isCohesive, PETSC_COMM_SELF, PETSC_ERR_ARG_SIZ, "Reference spatial dimension %" PetscInt_FMT " != %" PetscInt_FMT " dual basis spatial dimension", fegeom->dim, dim);
+              /* We just need to inject into the higher dimensional space assuming the last dimension is collapsed */
+              for (d = 0; d < dim; ++d) injpoint[d] = refpoint[d];
+              refpoint = injpoint;
             }
             CoordinatesRefToReal(coordDim, fegeom->dim, fegeom->xi, fegeom->v, fegeom->J, refpoint, x);
             v0 = x;
@@ -531,7 +530,7 @@ static PetscErrorCode DMProjectPoint_BdField_Private(DM dm, PetscDS ds, DM dmIn,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode DMProjectPoint_Private(DM dm, PetscDS ds, DM dmIn, DMEnclosureType encIn, PetscDS dsIn, DM dmAux, DMEnclosureType encAux, PetscDS dsAux, PetscFEGeom *fegeom, PetscInt effectiveHeight, PetscReal time, Vec localU, Vec localA, PetscBool hasFE, PetscBool hasFV, PetscBool isFE[], PetscDualSpace sp[], PetscInt p, PetscTabulation *T, PetscTabulation *TAux, DMBoundaryConditionType type, void (**funcs)(void), void **ctxs, PetscBool fieldActive[], PetscScalar values[])
+static PetscErrorCode DMProjectPoint_Private(DM dm, PetscDS ds, DM dmIn, DMEnclosureType encIn, PetscDS dsIn, DM dmAux, DMEnclosureType encAux, PetscDS dsAux, PetscFEGeom *fegeom, PetscInt effectiveHeight, PetscReal time, Vec localU, Vec localA, PetscBool hasFE, PetscBool hasFV, PetscBool isFE[], PetscDualSpace sp[], PetscInt p, PetscTabulation *T, PetscTabulation *TAux, DMBoundaryConditionType type, PetscVoidFn **funcs, void **ctxs, PetscBool fieldActive[], PetscScalar values[])
 {
   PetscFVCellGeom fvgeom;
   PetscInt        dim, dimEmbed;
@@ -558,7 +557,7 @@ static PetscErrorCode DMProjectPoint_Private(DM dm, PetscDS ds, DM dmIn, DMEnclo
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode PetscDualSpaceGetAllPointsUnion(PetscInt Nf, PetscDualSpace *sp, PetscInt dim, void (**funcs)(void), PetscQuadrature *allPoints)
+static PetscErrorCode PetscDualSpaceGetAllPointsUnion(PetscInt Nf, PetscDualSpace *sp, PetscInt dim, PetscVoidFn **funcs, PetscQuadrature *allPoints)
 {
   PetscReal *points;
   PetscInt   f, numPoints;
@@ -711,7 +710,7 @@ PetscErrorCode DMGetFirstLabeledPoint(DM dm, DM odm, DMLabel label, PetscInt num
 
   If we have a label, we iterate over those points. This will probably break the maxHeight functionality since we do not check the height of those points.
 */
-static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec localU, PetscInt Ncc, const PetscInt comps[], DMLabel label, PetscInt numIds, const PetscInt ids[], DMBoundaryConditionType type, void (**funcs)(void), void **ctxs, InsertMode mode, Vec localX)
+static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec localU, PetscInt Ncc, const PetscInt comps[], DMLabel label, PetscInt numIds, const PetscInt ids[], DMBoundaryConditionType type, PetscVoidFn **funcs, void **ctxs, InsertMode mode, Vec localX)
 {
   DM               plex, dmIn, plexIn, dmAux = NULL, plexAux = NULL, tdm;
   DMEnclosureType  encIn, encAux;
@@ -1114,34 +1113,34 @@ static PetscErrorCode DMProjectLocal_Generic_Plex(DM dm, PetscReal time, Vec loc
 PetscErrorCode DMProjectFunctionLocal_Plex(DM dm, PetscReal time, PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec localX)
 {
   PetscFunctionBegin;
-  PetscCall(DMProjectLocal_Generic_Plex(dm, time, NULL, 0, NULL, NULL, 0, NULL, DM_BC_ESSENTIAL, (void (**)(void))funcs, ctxs, mode, localX));
+  PetscCall(DMProjectLocal_Generic_Plex(dm, time, NULL, 0, NULL, NULL, 0, NULL, DM_BC_ESSENTIAL, (PetscVoidFn **)funcs, ctxs, mode, localX));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode DMProjectFunctionLabelLocal_Plex(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Ncc, const PetscInt comps[], PetscErrorCode (**funcs)(PetscInt, PetscReal, const PetscReal[], PetscInt, PetscScalar *, void *), void **ctxs, InsertMode mode, Vec localX)
 {
   PetscFunctionBegin;
-  PetscCall(DMProjectLocal_Generic_Plex(dm, time, NULL, Ncc, comps, label, numIds, ids, DM_BC_ESSENTIAL, (void (**)(void))funcs, ctxs, mode, localX));
+  PetscCall(DMProjectLocal_Generic_Plex(dm, time, NULL, Ncc, comps, label, numIds, ids, DM_BC_ESSENTIAL, (PetscVoidFn **)funcs, ctxs, mode, localX));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode DMProjectFieldLocal_Plex(DM dm, PetscReal time, Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX)
 {
   PetscFunctionBegin;
-  PetscCall(DMProjectLocal_Generic_Plex(dm, time, localU, 0, NULL, NULL, 0, NULL, DM_BC_ESSENTIAL_FIELD, (void (**)(void))funcs, NULL, mode, localX));
+  PetscCall(DMProjectLocal_Generic_Plex(dm, time, localU, 0, NULL, NULL, 0, NULL, DM_BC_ESSENTIAL_FIELD, (PetscVoidFn **)funcs, NULL, mode, localX));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode DMProjectFieldLabelLocal_Plex(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Ncc, const PetscInt comps[], Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX)
 {
   PetscFunctionBegin;
-  PetscCall(DMProjectLocal_Generic_Plex(dm, time, localU, Ncc, comps, label, numIds, ids, DM_BC_ESSENTIAL_FIELD, (void (**)(void))funcs, NULL, mode, localX));
+  PetscCall(DMProjectLocal_Generic_Plex(dm, time, localU, Ncc, comps, label, numIds, ids, DM_BC_ESSENTIAL_FIELD, (PetscVoidFn **)funcs, NULL, mode, localX));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode DMProjectBdFieldLabelLocal_Plex(DM dm, PetscReal time, DMLabel label, PetscInt numIds, const PetscInt ids[], PetscInt Ncc, const PetscInt comps[], Vec localU, void (**funcs)(PetscInt, PetscInt, PetscInt, const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], const PetscInt[], const PetscInt[], const PetscScalar[], const PetscScalar[], const PetscScalar[], PetscReal, const PetscReal[], const PetscReal[], PetscInt, const PetscScalar[], PetscScalar[]), InsertMode mode, Vec localX)
 {
   PetscFunctionBegin;
-  PetscCall(DMProjectLocal_Generic_Plex(dm, time, localU, Ncc, comps, label, numIds, ids, DM_BC_ESSENTIAL_BD_FIELD, (void (**)(void))funcs, NULL, mode, localX));
+  PetscCall(DMProjectLocal_Generic_Plex(dm, time, localU, Ncc, comps, label, numIds, ids, DM_BC_ESSENTIAL_BD_FIELD, (PetscVoidFn **)funcs, NULL, mode, localX));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

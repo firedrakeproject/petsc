@@ -37,7 +37,7 @@ extern PetscErrorCode InitialConditions(DM da, Vec U);
 extern PetscErrorCode InitializeLambda(DM da, Vec lambda, PetscReal x, PetscReal y);
 extern PetscErrorCode IFunctionLocalPassive(DMDALocalInfo *info, PetscReal t, Field **u, Field **udot, Field **f, void *ptr);
 extern PetscErrorCode IFunctionActive(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec F, void *ptr);
-extern PetscErrorCode IJacobianMatFree(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A_shell, Mat B, void *ctx);
+extern PetscErrorCode IJacobianMatFree(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A_shell, Mat B, PetscCtx ctx);
 
 int main(int argc, char **argv)
 {
@@ -88,8 +88,8 @@ int main(int argc, char **argv)
   PetscCall(DMSetMatType(da, MATSHELL));
   PetscCall(DMCreateMatrix(da, &A));
   PetscCall(MatShellSetContext(A, &matctx));
-  PetscCall(MatShellSetOperation(A, MATOP_MULT, (void (*)(void))PetscAdolcIJacobianVectorProductIDMass));
-  PetscCall(MatShellSetOperation(A, MATOP_MULT_TRANSPOSE, (void (*)(void))PetscAdolcIJacobianTransposeVectorProductIDMass));
+  PetscCall(MatShellSetOperation(A, MATOP_MULT, (PetscErrorCodeFn *)PetscAdolcIJacobianVectorProductIDMass));
+  PetscCall(MatShellSetOperation(A, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)PetscAdolcIJacobianTransposeVectorProductIDMass));
   PetscCall(VecDuplicate(x, &matctx.X));
   PetscCall(VecDuplicate(x, &matctx.Xdot));
   PetscCall(DMGetLocalVector(da, &matctx.localX0));
@@ -414,7 +414,7 @@ PetscErrorCode IFunctionActive(TS ts, PetscReal ftime, Vec U, Vec Udot, Vec F, v
 /*
   Simply acts to pass TS information to the AdolcMatCtx
 */
-PetscErrorCode IJacobianMatFree(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A_shell, Mat B, void *ctx)
+PetscErrorCode IJacobianMatFree(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal a, Mat A_shell, Mat B, PetscCtx ctx)
 {
   AdolcMatCtx *mctx;
   DM           da;

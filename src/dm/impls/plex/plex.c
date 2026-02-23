@@ -11,10 +11,8 @@
 #include <petscblaslapack.h>
 
 /* Logging support */
-PetscLogEvent DMPLEX_Interpolate, DMPLEX_Partition, DMPLEX_Distribute, DMPLEX_DistributeCones, DMPLEX_DistributeLabels, DMPLEX_DistributeSF, DMPLEX_DistributeOverlap, DMPLEX_DistributeField, DMPLEX_DistributeData, DMPLEX_Migrate, DMPLEX_InterpolateSF, DMPLEX_GlobalToNaturalBegin, DMPLEX_GlobalToNaturalEnd, DMPLEX_NaturalToGlobalBegin, DMPLEX_NaturalToGlobalEnd, DMPLEX_Stratify, DMPLEX_Symmetrize, DMPLEX_Preallocate, DMPLEX_ResidualFEM, DMPLEX_JacobianFEM, DMPLEX_InterpolatorFEM, DMPLEX_InjectorFEM, DMPLEX_IntegralFEM, DMPLEX_CreateGmsh, DMPLEX_CreateBoxSFC, DMPLEX_RebalanceSharedPoints, DMPLEX_PartSelf, DMPLEX_PartLabelInvert, DMPLEX_PartLabelCreateSF, DMPLEX_PartStratSF, DMPLEX_CreatePointSF, DMPLEX_LocatePoints, DMPLEX_TopologyView, DMPLEX_LabelsView, DMPLEX_CoordinatesView, DMPLEX_SectionView, DMPLEX_GlobalVectorView, DMPLEX_LocalVectorView, DMPLEX_TopologyLoad, DMPLEX_LabelsLoad, DMPLEX_CoordinatesLoad, DMPLEX_SectionLoad, DMPLEX_GlobalVectorLoad, DMPLEX_LocalVectorLoad;
+PetscLogEvent DMPLEX_Interpolate, DMPLEX_Partition, DMPLEX_Distribute, DMPLEX_DistributeMultistage, DMPLEX_DistributeCones, DMPLEX_DistributeLabels, DMPLEX_DistributeSF, DMPLEX_DistributeOverlap, DMPLEX_DistributeField, DMPLEX_DistributeData, DMPLEX_Migrate, DMPLEX_InterpolateSF, DMPLEX_GlobalToNaturalBegin, DMPLEX_GlobalToNaturalEnd, DMPLEX_NaturalToGlobalBegin, DMPLEX_NaturalToGlobalEnd, DMPLEX_Stratify, DMPLEX_Symmetrize, DMPLEX_Preallocate, DMPLEX_ResidualFEM, DMPLEX_JacobianFEM, DMPLEX_InterpolatorFEM, DMPLEX_InjectorFEM, DMPLEX_IntegralFEM, DMPLEX_CreateGmsh, DMPLEX_CreateBoxSFC, DMPLEX_RebalanceSharedPoints, DMPLEX_PartSelf, DMPLEX_PartLabelInvert, DMPLEX_PartLabelCreateSF, DMPLEX_PartStratSF, DMPLEX_CreatePointSF, DMPLEX_LocatePoints, DMPLEX_TopologyView, DMPLEX_LabelsView, DMPLEX_CoordinatesView, DMPLEX_SectionView, DMPLEX_GlobalVectorView, DMPLEX_LocalVectorView, DMPLEX_TopologyLoad, DMPLEX_LabelsLoad, DMPLEX_CoordinatesLoad, DMPLEX_SectionLoad, DMPLEX_GlobalVectorLoad, DMPLEX_LocalVectorLoad;
 PetscLogEvent DMPLEX_RebalBuildGraph, DMPLEX_RebalRewriteSF, DMPLEX_RebalGatherGraph, DMPLEX_RebalPartition, DMPLEX_RebalScatterPart, DMPLEX_Generate, DMPLEX_GetLocalOffsets, DMPLEX_Uninterpolate;
-
-/* Logging support */
 PetscLogEvent DMPLEX_DistributionView, DMPLEX_DistributionLoad;
 
 PetscBool  Plexcite       = PETSC_FALSE;
@@ -777,20 +775,18 @@ PetscErrorCode VecView_Plex_Native(Vec originalv, PetscViewer viewer)
     /* Natural ordering is the common case for DMDA, NATIVE means plain vector, for PLEX is the opposite */
     /* this need a better fix */
     if (dm->useNatural) {
-      if (dm->sfNatural) {
-        const char *vecname;
-        PetscInt    n, nroots;
+      const char *vecname;
+      PetscInt    n, nroots;
 
-        PetscCall(VecGetLocalSize(originalv, &n));
-        PetscCall(PetscSFGetGraph(dm->sfNatural, &nroots, NULL, NULL, NULL));
-        if (n == nroots) {
-          PetscCall(DMPlexCreateNaturalVector(dm, &v));
-          PetscCall(DMPlexGlobalToNaturalBegin(dm, originalv, v));
-          PetscCall(DMPlexGlobalToNaturalEnd(dm, originalv, v));
-          PetscCall(PetscObjectGetName((PetscObject)originalv, &vecname));
-          PetscCall(PetscObjectSetName((PetscObject)v, vecname));
-        } else SETERRQ(comm, PETSC_ERR_ARG_WRONG, "DM global to natural SF only handles global vectors");
-      } else SETERRQ(comm, PETSC_ERR_ARG_WRONGSTATE, "DM global to natural SF was not created");
+      PetscCheck(dm->sfNatural, comm, PETSC_ERR_ARG_WRONGSTATE, "DM global to natural SF was not created");
+      PetscCall(VecGetLocalSize(originalv, &n));
+      PetscCall(PetscSFGetGraph(dm->sfNatural, &nroots, NULL, NULL, NULL));
+      PetscCheck(n == nroots, comm, PETSC_ERR_ARG_WRONG, "DM global to natural SF only handles global vectors");
+      PetscCall(DMPlexCreateNaturalVector(dm, &v));
+      PetscCall(DMPlexGlobalToNaturalBegin(dm, originalv, v));
+      PetscCall(DMPlexGlobalToNaturalEnd(dm, originalv, v));
+      PetscCall(PetscObjectGetName((PetscObject)originalv, &vecname));
+      PetscCall(PetscObjectSetName((PetscObject)v, vecname));
     } else v = originalv;
   } else v = originalv;
 
@@ -2044,18 +2040,17 @@ static PetscErrorCode DMPlexCreateHighOrderSurrogate_Internal(DM dm, DM *hdm)
 
 #if defined(PETSC_HAVE_EXODUSII)
   #include <exodusII.h>
-  #include <petscviewerexodusii.h>
 #endif
 
 PetscErrorCode DMView_Plex(DM dm, PetscViewer viewer)
 {
-  PetscBool iascii, ishdf5, isvtk, isdraw, flg, isglvis, isexodus, iscgns, ispython;
+  PetscBool isascii, ishdf5, isvtk, isdraw, flg, isglvis, isexodus, iscgns, ispython;
   char      name[PETSC_MAX_PATH_LEN];
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(dm, DM_CLASSID, 1);
   PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERVTK, &isvtk));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERHDF5, &ishdf5));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERDRAW, &isdraw));
@@ -2063,7 +2058,7 @@ PetscErrorCode DMView_Plex(DM dm, PetscViewer viewer)
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWEREXODUSII, &isexodus));
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERCGNS, &iscgns));
   PetscCall(PetscObjectHasFunction((PetscObject)viewer, "PetscViewerPythonViewObject_C", &ispython));
-  if (iascii) {
+  if (isascii) {
     PetscViewerFormat format;
     PetscCall(PetscViewerGetFormat(viewer, &format));
     if (format == PETSC_VIEWER_ASCII_GLVIS) PetscCall(DMPlexView_GLVis(dm, viewer));
@@ -2087,7 +2082,7 @@ PetscErrorCode DMView_Plex(DM dm, PetscViewer viewer)
 #if defined(PETSC_HAVE_EXODUSII)
   } else if (isexodus) {
     /*
-      exodusII requires that all sets be part of exactly one cell set.
+      ExodusII requires that all sets be part of exactly one cell set.
       If the dm does not have a "Cell Sets" label defined, we create one
       with ID 1, containing all cells.
       Note that if the Cell Sets label is defined but does not cover all cells,
@@ -2157,15 +2152,14 @@ PetscErrorCode DMPlexTopologyView(DM dm, PetscViewer viewer)
   PetscCall(PetscLogEventBegin(DMPLEX_TopologyView, viewer, 0, 0, 0));
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
+    IS                globalPointNumbering;
     PetscViewerFormat format;
-    PetscCall(PetscViewerGetFormat(viewer, &format));
-    if (format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE) {
-      IS globalPointNumbering;
 
-      PetscCall(DMPlexCreatePointNumbering(dm, &globalPointNumbering));
-      PetscCall(DMPlexTopologyView_HDF5_Internal(dm, globalPointNumbering, viewer));
-      PetscCall(ISDestroy(&globalPointNumbering));
-    } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 output.", PetscViewerFormats[format]);
+    PetscCall(PetscViewerGetFormat(viewer, &format));
+    PetscCheck(format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 output.", PetscViewerFormats[format]);
+    PetscCall(DMPlexCreatePointNumbering(dm, &globalPointNumbering));
+    PetscCall(DMPlexTopologyView_HDF5_Internal(dm, globalPointNumbering, viewer));
+    PetscCall(ISDestroy(&globalPointNumbering));
 #else
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
@@ -2199,10 +2193,10 @@ PetscErrorCode DMPlexCoordinatesView(DM dm, PetscViewer viewer)
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
+
     PetscCall(PetscViewerGetFormat(viewer, &format));
-    if (format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE) {
-      PetscCall(DMPlexCoordinatesView_HDF5_Internal(dm, viewer));
-    } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 output.", PetscViewerFormats[format]);
+    PetscCheck(format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 output.", PetscViewerFormats[format]);
+    PetscCall(DMPlexCoordinatesView_HDF5_Internal(dm, viewer));
 #else
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
@@ -2239,11 +2233,10 @@ PetscErrorCode DMPlexLabelsView(DM dm, PetscViewer viewer)
     PetscViewerFormat format;
 
     PetscCall(PetscViewerGetFormat(viewer, &format));
-    if (format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE) {
-      PetscCall(DMPlexCreatePointNumbering(dm, &globalPointNumbering));
-      PetscCall(DMPlexLabelsView_HDF5_Internal(dm, globalPointNumbering, viewer));
-      PetscCall(ISDestroy(&globalPointNumbering));
-    } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCheck(format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCall(DMPlexCreatePointNumbering(dm, &globalPointNumbering));
+    PetscCall(DMPlexLabelsView_HDF5_Internal(dm, globalPointNumbering, viewer));
+    PetscCall(ISDestroy(&globalPointNumbering));
 #else
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
@@ -2501,10 +2494,10 @@ PetscErrorCode DMPlexTopologyLoad(DM dm, PetscViewer viewer, PetscSF *globalToLo
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
+
     PetscCall(PetscViewerGetFormat(viewer, &format));
-    if (format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE) {
-      PetscCall(DMPlexTopologyLoad_HDF5_Internal(dm, viewer, globalToLocalPointSF));
-    } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCheck(format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCall(DMPlexTopologyLoad_HDF5_Internal(dm, viewer, globalToLocalPointSF));
 #else
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
@@ -2541,10 +2534,10 @@ PetscErrorCode DMPlexCoordinatesLoad(DM dm, PetscViewer viewer, PetscSF globalTo
   if (ishdf5) {
 #if defined(PETSC_HAVE_HDF5)
     PetscViewerFormat format;
+
     PetscCall(PetscViewerGetFormat(viewer, &format));
-    if (format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE) {
-      PetscCall(DMPlexCoordinatesLoad_HDF5_Internal(dm, viewer, globalToLocalPointSF));
-    } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCheck(format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCall(DMPlexCoordinatesLoad_HDF5_Internal(dm, viewer, globalToLocalPointSF));
 #else
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
@@ -2586,9 +2579,8 @@ PetscErrorCode DMPlexLabelsLoad(DM dm, PetscViewer viewer, PetscSF globalToLocal
     PetscViewerFormat format;
 
     PetscCall(PetscViewerGetFormat(viewer, &format));
-    if (format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE) {
-      PetscCall(DMPlexLabelsLoad_HDF5_Internal(dm, viewer, globalToLocalPointSF));
-    } else SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCheck(format == PETSC_VIEWER_HDF5_PETSC || format == PETSC_VIEWER_DEFAULT || format == PETSC_VIEWER_NATIVE, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "PetscViewerFormat %s not supported for HDF5 input.", PetscViewerFormats[format]);
+    PetscCall(DMPlexLabelsLoad_HDF5_Internal(dm, viewer, globalToLocalPointSF));
 #else
     SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "HDF5 not supported in this build.\nPlease reconfigure using --download-hdf5");
 #endif
@@ -3365,7 +3357,7 @@ PetscErrorCode DMPlexGetConeRecursive(DM dm, IS points, PeOp PetscInt *depth, Pe
       PetscCall(PetscSectionGetOffset(sections_[d], i, &co));
       if (cn > 1) {
         PetscCall(DMPlexGetCone(dm, arr[i], &cone));
-        PetscCall(PetscMemcpy(&newarr[co], cone, cn * sizeof(PetscInt)));
+        PetscCall(PetscArraycpy(&newarr[co], cone, cn));
       } else {
         newarr[co] = arr[i];
       }
@@ -4218,7 +4210,7 @@ PetscErrorCode DMPlexGetTransitiveClosure_Internal(DM dm, PetscInt p, PetscInt o
   Input Parameters:
 + dm      - The `DMPLEX`
 . p       - The mesh point
-- useCone - `PETSC_TRUE` for the closure, otherwise return the star
+- useCone - `PETSC_TRUE` for the closure, otherwise return the support
 
   Input/Output Parameter:
 . points - The points and point orientations, interleaved as pairs [p0, o0, p1, o1, ...];
@@ -6684,6 +6676,9 @@ PetscErrorCode DMPlexVecGetOrientedClosure(DM dm, PetscSection section, PetscBoo
   Level: intermediate
 
   Notes:
+  This is used for getting the all values in a `Vec` in the closure of a mesh point.
+  To get only the values in the closure of a mesh point at a specific depth (for example, at mesh vertices), use `DMPlexVecGetClosureAtDepth()`.
+
   `DMPlexVecGetClosure()`/`DMPlexVecRestoreClosure()` only allocates the values array if it set to `NULL` in the
   calling function. This is because `DMPlexVecGetClosure()` is typically called in the inner loop of a `Vec` or `Mat`
   assembly function, and a user may already have allocated storage for this operation.
@@ -6720,7 +6715,7 @@ PetscErrorCode DMPlexVecGetOrientedClosure(DM dm, PetscSection section, PetscBoo
 .ve
   and it will be allocated internally by PETSc to hold the values returned
 
-.seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexVecRestoreClosure()`, `DMPlexVecSetClosure()`, `DMPlexMatSetClosure()`
+.seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexVecGetClosureAtDepth()`, `DMPlexVecRestoreClosure()`, `DMPlexVecSetClosure()`, `DMPlexMatSetClosure()`
 @*/
 PetscErrorCode DMPlexVecGetClosure(DM dm, PetscSection section, Vec v, PetscInt point, PetscInt *csize, PetscScalar *values[])
 {
@@ -6729,7 +6724,68 @@ PetscErrorCode DMPlexVecGetClosure(DM dm, PetscSection section, Vec v, PetscInt 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DMPlexVecGetClosureAtDepth_Internal(DM dm, PetscSection section, Vec v, PetscInt point, PetscInt depth, PetscInt *csize, PetscScalar *values[])
+/*@C
+  DMPlexVecGetClosureAtDepth - Get an array of the values on the closure of 'point' that are at a specific depth
+
+  Not collective
+
+  Input Parameters:
++ dm      - The `DM`
+. section - The section describing the layout in `v`, or `NULL` to use the default section
+. v       - The local vector
+. depth   - The depth of mesh points that should be returned
+- point   - The point in the `DM`
+
+  Input/Output Parameters:
++ csize  - The size of the input values array, or `NULL`; on output the number of values in the closure
+- values - An array to use for the values, or *values = `NULL` to have it allocated automatically;
+           if the user provided `NULL`, it is a borrowed array and should not be freed, use  `DMPlexVecRestoreClosure()` to return it
+
+  Level: intermediate
+
+  Notes:
+  This is used for getting the values in a `Vec` associated with specific mesh points.
+  For example, to get only the values at mesh vertices, pass `depth=0`. To get all the values in the closure of a mesh point, use `DMPlexVecGetClosure()`.
+
+  `DMPlexVecGetClosureAtDepth()`/`DMPlexVecRestoreClosure()` only allocates the values array if it set to `NULL` in the
+  calling function. This is because `DMPlexVecGetClosureAtDepth()` is typically called in the inner loop of a `Vec` or `Mat`
+  assembly function, and a user may already have allocated storage for this operation.
+
+  A typical use could be
+.vb
+   values = NULL;
+   PetscCall(DMPlexVecGetClosureAtDepth(dm, NULL, v, p, depth, &clSize, &values));
+   for (cl = 0; cl < clSize; ++cl) {
+     <Compute on closure>
+   }
+   PetscCall(DMPlexVecRestoreClosure(dm, NULL, v, p, &clSize, &values));
+.ve
+  or
+.vb
+   PetscMalloc1(clMaxSize, &values);
+   for (p = pStart; p < pEnd; ++p) {
+     clSize = clMaxSize;
+     PetscCall(DMPlexVecGetClosureAtDepth(dm, NULL, v, p, depth, &clSize, &values));
+     for (cl = 0; cl < clSize; ++cl) {
+       <Compute on closure>
+     }
+   }
+   PetscFree(values);
+.ve
+
+  Fortran Notes:
+  The `csize` argument is present in the Fortran binding. Since the Fortran `values` array contains its length information this argument may not be needed.
+  In that case one may pass `PETSC_NULL_INTEGER` for `csize`.
+
+  `values` must be declared with
+.vb
+  PetscScalar,dimension(:),pointer   :: values
+.ve
+  and it will be allocated internally by PETSc to hold the values returned
+
+.seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMPlexVecGetClosure()`, `DMPlexVecRestoreClosure()`, `DMPlexVecSetClosure()`, `DMPlexMatSetClosure()`
+@*/
+PetscErrorCode DMPlexVecGetClosureAtDepth(DM dm, PetscSection section, Vec v, PetscInt point, PetscInt depth, PetscInt *csize, PetscScalar *values[])
 {
   DMLabel            depthLabel;
   PetscSection       clSection;
@@ -7765,7 +7821,7 @@ static PetscErrorCode DMPlexAnchorsGetSubMatIndices(PetscInt nPoints, const Pets
       // only apply permutations on one side
       PetscCall(DMPlexGetIndicesPointFields_Internal(indices_section, PETSC_TRUE, b, bOff, fEnd, PETSC_TRUE, perms, perms ? p : -1, NULL, tmpIndices));
       for (PetscInt f = 0; f < numFields; f++) {
-        for (PetscInt i = fStart[f]; i < fEnd[f]; i++) { indices[fieldOffsets[f]++] = (cSecDof > 0) ? tmpIndices[i] : -(tmpIndices[i] + 1); }
+        for (PetscInt i = fStart[f]; i < fEnd[f]; i++) indices[fieldOffsets[f]++] = (cSecDof > 0) ? tmpIndices[i] : -(tmpIndices[i] + 1);
       }
     } else {
       PetscInt bEnd = 0;
@@ -7947,7 +8003,7 @@ PETSC_INTERN PetscErrorCode DMPlexAnchorsGetSubMatModification(DM dm, PetscSecti
     for (PetscInt f = 0; f < PetscMax(1, numFields); f++) {
       PetscInt fStart    = oldOffsets[f];
       PetscInt fNewStart = newOffsets[f];
-      for (PetscInt p = 0, newP = 0, o = fStart, oNew = fNewStart; p < numPoints; p++) {
+      for (PetscInt p = 0, o = fStart, oNew = fNewStart; p < numPoints; p++) {
         PetscInt b    = points[2 * p];
         PetscInt bDof = 0, bSecDof = 0, bOff;
 
@@ -7962,7 +8018,7 @@ PETSC_INTERN PetscErrorCode DMPlexAnchorsGetSubMatModification(DM dm, PetscSecti
         if (b >= aStart && b < aEnd) PetscCall(PetscSectionGetDof(aSec, b, &bDof));
         if (bDof) {
           PetscCall(PetscSectionGetOffset(aSec, b, &bOff));
-          for (PetscInt q = 0; q < bDof; q++, newP++) {
+          for (PetscInt q = 0; q < bDof; q++) {
             PetscInt a = anchors[bOff + q], aDof = 0;
 
             if (a >= sStart && a < sEnd) {
@@ -7984,7 +8040,6 @@ PETSC_INTERN PetscErrorCode DMPlexAnchorsGetSubMatModification(DM dm, PetscSecti
           // Insert the identity matrix in this block
           for (PetscInt d = 0; d < bSecDof; d++) modMat[(o + d) * newNumIndices + oNew + d] = 1;
           oNew += bSecDof;
-          newP++;
         }
         o += bSecDof;
       }
@@ -8183,10 +8238,10 @@ static PetscErrorCode DMPlexGetClosureIndices_Internal(DM dm, PetscSection secti
             PetscScalar fval = flip[i];
 
             if (multiplyRight) {
-              for (k = 0; k < nRows; ++k) { valCopy[Ni * k + (foffset + i)] *= fval; }
+              for (k = 0; k < nRows; ++k) valCopy[Ni * k + (foffset + i)] *= fval;
             }
             if (multiplyLeft) {
-              for (k = 0; k < nCols; ++k) { valCopy[nCols * (foffset + i) + k] *= fval; }
+              for (k = 0; k < nCols; ++k) valCopy[nCols * (foffset + i) + k] *= fval;
             }
           }
         }
@@ -8287,7 +8342,7 @@ static PetscErrorCode DMPlexGetClosureIndices_Internal(DM dm, PetscSection secti
   Output Parameters:
 + numIndices - The number of dof indices in the closure of point with the input sections
 . indices    - The dof indices
-. outOffsets - Array to write the field offsets into, or `NULL`
+. outOffsets - Array, of length the number of fields plus 1, to write the field offsets into, or `NULL`
 - values     - The input values, which may be modified if sign flips are induced by the point symmetries, or `NULL`
 
   Level: advanced
@@ -8922,7 +8977,7 @@ PetscErrorCode DMPlexGetDepthStratumGlobalSize(DM dm, PetscInt depth, PetscInt *
     PetscCall(PetscFindInt(p, Nl, leaves, &loc));
     if (loc < 0) ++lsize;
   }
-  PetscCallMPI(MPI_Allreduce(&lsize, gsize, 1, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(&lsize, gsize, 1, MPIU_INT, MPI_SUM, PetscObjectComm((PetscObject)dm)));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -10163,7 +10218,7 @@ static PetscErrorCode DMGetFullDM(DM dm, DM *odm)
   PetscAssertPointer(odm, 2);
   PetscCall(DMGetLocalSection(dm, &section));
   PetscCall(PetscSectionHasConstraints(section, &hasConstraints));
-  PetscCallMPI(MPIU_Allreduce(&hasConstraints, &ghasConstraints, 1, MPIU_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
+  PetscCallMPI(MPIU_Allreduce(&hasConstraints, &ghasConstraints, 1, MPI_C_BOOL, MPI_LOR, PetscObjectComm((PetscObject)dm)));
   if (!ghasConstraints) {
     PetscCall(PetscObjectReference((PetscObject)dm));
     *odm = dm;
@@ -10801,7 +10856,7 @@ PetscErrorCode DMCreateSubDomainDM_Plex(DM dm, DMLabel label, PetscInt value, IS
   PetscCheck(section, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must set default section for DM before splitting subdomain");
   PetscCheck(subdm, PetscObjectComm((PetscObject)dm), PETSC_ERR_ARG_WRONG, "Must set output subDM for splitting subdomain");
   /* Create subdomain */
-  PetscCall(DMPlexFilter(dm, label, value, PETSC_FALSE, PETSC_FALSE, NULL, subdm));
+  PetscCall(DMPlexFilter(dm, label, value, PETSC_FALSE, PETSC_FALSE, PetscObjectComm((PetscObject)dm), NULL, subdm));
   /* Create submodel */
   PetscCall(DMPlexGetSubpointIS(*subdm, &subis));
   PetscCall(PetscSectionCreateSubmeshSection(section, subis, &subsection));
@@ -10916,8 +10971,8 @@ PetscErrorCode DMCreateSubDomainDM_Plex(DM dm, DMLabel label, PetscInt value, IS
   DMPlexMonitorThroughput - Report the cell throughput of FE integration
 
   Input Parameters:
-+ dm    - The `DM`
-- dummy - unused argument
++ dm     - The `DM`
+- unused - unused argument
 
   Options Database Key:
 . -dm_plex_monitor_throughput - Activate the monitor
@@ -10926,7 +10981,7 @@ PetscErrorCode DMCreateSubDomainDM_Plex(DM dm, DMLabel label, PetscInt value, IS
 
 .seealso: [](ch_unstructured), `DM`, `DMPLEX`, `DMSetFromOptions()`, `DMPlexCreate()`
 @*/
-PetscErrorCode DMPlexMonitorThroughput(DM dm, void *dummy)
+PetscErrorCode DMPlexMonitorThroughput(DM dm, void *unused)
 {
   PetscLogHandler default_handler;
 

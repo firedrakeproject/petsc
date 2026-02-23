@@ -28,7 +28,7 @@ static PetscErrorCode ProcessOptions(MPI_Comm comm, AppCtx *options)
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode trig_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode trig_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   *u = 0.0;
@@ -66,7 +66,7 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
   PetscCall(PetscDSSetJacobian(prob, 0, 0, NULL, NULL, NULL, g3_uu));
   PetscCall(PetscDSSetExactSolution(prob, 0, trig_u, user));
   PetscCall(DMGetLabel(dm, "marker", &label));
-  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))trig_u, NULL, user, NULL));
+  PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)trig_u, NULL, user, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -95,7 +95,7 @@ static PetscErrorCode SetupDiscretization(DM dm, const char name[], PetscErrorCo
 }
 
 /* PetscObjectContainerCompose() compose requires void ** signature on destructor */
-static PetscErrorCode PetscFEGeomDestroy_Void(void **ctx)
+static PetscErrorCode PetscFEGeomDestroy_Void(PetscCtxRt ctx)
 {
   return PetscFEGeomDestroy((PetscFEGeom **)ctx);
 }
@@ -111,7 +111,7 @@ PetscErrorCode CellRangeGetFEGeom(IS cellIS, DMField coordField, PetscQuadrature
   PetscCall(PetscSNPrintf(composeStr, 32, "CellRangeGetFEGeom_%" PetscInt64_FMT "\n", id));
   PetscCall(PetscObjectQuery((PetscObject)cellIS, composeStr, (PetscObject *)&container));
   if (container) {
-    PetscCall(PetscContainerGetPointer(container, (void **)geom));
+    PetscCall(PetscContainerGetPointer(container, geom));
   } else {
     PetscCall(DMFieldCreateFEGeom(coordField, cellIS, quad, mode, geom));
     PetscCall(PetscObjectContainerCompose((PetscObject)cellIS, composeStr, *geom, PetscFEGeomDestroy_Void));

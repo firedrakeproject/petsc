@@ -531,9 +531,7 @@ static PetscErrorCode PCApply_BJKOKKOS(PC pc, Vec bin, Vec xout)
 
   PetscFunctionBegin;
   PetscCallMPI(MPI_Comm_rank(PetscObjectComm((PetscObject)A), &rank));
-  if (!A->spptr) {
-    Aseq = ((Mat_MPIAIJ *)A->data)->A; // MPI
-  }
+  if (!A->spptr) Aseq = ((Mat_MPIAIJ *)A->data)->A; // MPI
   PetscCall(MatSeqAIJKokkosSyncDevice(Aseq));
   {
     PetscInt           maxit = jac->ksp->max_it;
@@ -565,7 +563,7 @@ static PetscErrorCode PCApply_BJKOKKOS(PC pc, Vec bin, Vec xout)
     PetscCall(PetscObjectQuery((PetscObject)A, "plex_batch_is", (PetscObject *)&container));
     if (container) {
       PetscCall(VecDuplicate(bin, &bvec));
-      PetscCall(PetscContainerGetPointer(container, (void **)&plex_batch));
+      PetscCall(PetscContainerGetPointer(container, &plex_batch));
       PetscCall(VecScatterBegin(plex_batch, bin, bvec, INSERT_VALUES, SCATTER_FORWARD));
       PetscCall(VecScatterEnd(plex_batch, bin, bvec, INSERT_VALUES, SCATTER_FORWARD));
       SETERRQ(PetscObjectComm((PetscObject)A), PETSC_ERR_USER, "No plex_batch_is -- require NO field major ordering for now");
@@ -585,7 +583,7 @@ static PetscErrorCode PCApply_BJKOKKOS(PC pc, Vec bin, Vec xout)
     PetscCall(PetscObjectQuery((PetscObject)A, "batch size", (PetscObject *)&container));
     if (container) {
       PetscInt *pNf = NULL;
-      PetscCall(PetscContainerGetPointer(container, (void **)&pNf));
+      PetscCall(PetscContainerGetPointer(container, &pNf));
       batch_sz = *pNf; // number of times to repeat the DMs
     } else batch_sz = 1;
     PetscCheck(nBlk % batch_sz == 0, PetscObjectComm((PetscObject)pc), PETSC_ERR_ARG_WRONG, "batch_sz = %" PetscInt_FMT ", nBlk = %" PetscInt_FMT, batch_sz, nBlk);
@@ -775,9 +773,7 @@ static PetscErrorCode PCSetUp_BJKOKKOS(PC pc)
   PetscCheck(A, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_WRONG, "No matrix - A is used above");
   PetscCall(PetscObjectTypeCompareAny((PetscObject)A, &flg, MATSEQAIJKOKKOS, MATMPIAIJKOKKOS, MATAIJKOKKOS, ""));
   PetscCheck(flg, PetscObjectComm((PetscObject)A), PETSC_ERR_ARG_WRONG, "must use '-[dm_]mat_type aijkokkos -[dm_]vec_type kokkos' for -pc_type bjkokkos");
-  if (!A->spptr) {
-    Aseq = ((Mat_MPIAIJ *)A->data)->A; // MPI
-  }
+  if (!A->spptr) Aseq = ((Mat_MPIAIJ *)A->data)->A; // MPI
   PetscCall(MatSeqAIJKokkosSyncDevice(Aseq));
   {
     PetscInt    Istart, Iend;
@@ -1053,12 +1049,12 @@ static PetscErrorCode PCDestroy_BJKOKKOS(PC pc)
 static PetscErrorCode PCView_BJKOKKOS(PC pc, PetscViewer viewer)
 {
   PC_PCBJKOKKOS *jac = (PC_PCBJKOKKOS *)pc->data;
-  PetscBool      iascii;
+  PetscBool      isascii;
 
   PetscFunctionBegin;
   if (!jac->ksp) PetscCall(PCBJKOKKOSCreateKSP_BJKOKKOS(pc));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
-  if (iascii) {
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
+  if (isascii) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "  Batched device linear solver: Krylov (KSP) method with Jacobi preconditioning\n"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "\t\tnwork = %" PetscInt_FMT ", rel tol = %e, abs tol = %e, div tol = %e, max it =%" PetscInt_FMT ", type = %s\n", jac->nwork, jac->ksp->rtol, jac->ksp->abstol, jac->ksp->divtol, jac->ksp->max_it,
                                      ((PetscObject)jac->ksp)->type_name));

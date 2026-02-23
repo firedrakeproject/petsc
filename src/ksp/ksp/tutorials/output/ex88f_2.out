@@ -3,8 +3,8 @@
     Linear solve converged due to CONVERGED_RTOL iterations 1
 KSP Object: 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -16,14 +16,14 @@ PC Object: 1 MPI process
     tolerance for zero pivot 2.22045e-14
     matrix ordering: natural
     factor fill ratio given 1., needed 1.
-      Factored matrix follows:
+      Factored matrix:
         Mat Object: 1 MPI process
           type: seqaij
           rows=20, cols=20
           package used to perform factorization: petsc
           total: nonzeros=56, allocated nonzeros=56
             not using I-node routines
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=20, cols=20
@@ -35,13 +35,13 @@ KSP Object: (mpi_linear_solver_server_) 1 MPI process
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
-  using NONE norm type for convergence test
+  not checking for convergence
 PC Object: (mpi_linear_solver_server_) 1 MPI process
   type: mpi
   Running MPI linear solver server directly on rank 0 due to its small size
   Desired minimum number of nonzeros per rank for MPI parallel solve 10000
   *** Use -mpi_linear_solver_server_view to statistics on all the solves ***
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=20, cols=20
@@ -53,8 +53,8 @@ PC Object: (mpi_linear_solver_server_) 1 MPI process
     Linear solve converged due to CONVERGED_RTOL iterations 1
 KSP Object: 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -66,14 +66,14 @@ PC Object: 1 MPI process
     tolerance for zero pivot 2.22045e-14
     matrix ordering: natural
     factor fill ratio given 1., needed 1.
-      Factored matrix follows:
+      Factored matrix:
         Mat Object: 1 MPI process
           type: seqaij
           rows=20, cols=20
           package used to perform factorization: petsc
           total: nonzeros=56, allocated nonzeros=56
             not using I-node routines
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=20, cols=20
@@ -85,13 +85,13 @@ KSP Object: (mpi_linear_solver_server_) 1 MPI process
   maximum iterations=10000, initial guess is zero
   tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
   left preconditioning
-  using NONE norm type for convergence test
+  not checking for convergence
 PC Object: (mpi_linear_solver_server_) 1 MPI process
   type: mpi
   Running MPI linear solver server directly on rank 0 due to its small size
   Desired minimum number of nonzeros per rank for MPI parallel solve 10000
   *** Use -mpi_linear_solver_server_view to statistics on all the solves ***
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=20, cols=20

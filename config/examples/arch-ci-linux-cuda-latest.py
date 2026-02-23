@@ -16,9 +16,12 @@ if __name__ == '__main__':
     'CXXOPTFLAGS=-g -O',
     '--with-precision=double',
     '--with-clanguage=c',
-    '--with-mpi-dir=/software/mpich-430p2-cuda129',
-    '--with-cuda-dir=/usr/local/cuda-12.9',
+    '--with-mpi-dir=/software/mpich-5.0.0b1-cuda131',
+    '--with-cuda-dir=/usr/local/cuda-13.1',
+    '--download-umpire',
     '--download-hypre=1',
+    '--download-superlu_dist',
+    '--with-cxx-dialect=17',
     '--with-strict-petscerrorcode',
   ]
 

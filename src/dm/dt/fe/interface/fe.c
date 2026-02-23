@@ -193,14 +193,14 @@ PetscErrorCode PetscFEViewFromOptions(PetscFE A, PeOp PetscObject obj, const cha
 @*/
 PetscErrorCode PetscFEView(PetscFE fem, PetscViewer viewer)
 {
-  PetscBool iascii;
+  PetscBool isascii;
 
   PetscFunctionBegin;
   PetscValidHeaderSpecific(fem, PETSCFE_CLASSID, 1);
   if (viewer) PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
   if (!viewer) PetscCall(PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)fem), &viewer));
   PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)fem, viewer));
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &isascii));
   PetscTryTypeMethod(fem, view, viewer);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -2417,10 +2417,10 @@ PetscErrorCode PetscFEEvaluateFieldJets_Internal(PetscDS ds, PetscInt Nf, PetscI
 
 PetscErrorCode PetscFEEvaluateFieldJets_Hybrid_Internal(PetscDS ds, PetscInt Nf, PetscInt rc, PetscInt qc, PetscTabulation Tab[], const PetscInt rf[], const PetscInt qf[], PetscTabulation Tabf[], PetscFEGeom *fegeom, PetscFEGeom *fegeomNbr, const PetscScalar coefficients[], const PetscScalar coefficients_t[], PetscScalar u[], PetscScalar u_x[], PetscScalar u_t[])
 {
-  PetscInt dOffset = 0, fOffset = 0, f, g;
+  PetscInt dOffset = 0, fOffset = 0, f;
 
-  /* f is the field number in the DS, g is the field number in u[] */
-  for (f = 0, g = 0; f < Nf; ++f) {
+  /* f is the field number in the DS */
+  for (f = 0; f < Nf; ++f) {
     PetscBool isCohesive;
     PetscInt  Ns, s;
 
@@ -2436,7 +2436,7 @@ PetscErrorCode PetscFEEvaluateFieldJets_Hybrid_Internal(PetscDS ds, PetscInt Nf,
       const PetscInt  Nbf = T->Nb;
       const PetscInt  Ncf = T->Nc;
 
-      for (s = 0; s < Ns; ++s, ++g) {
+      for (s = 0; s < Ns; ++s) {
         const PetscInt   r  = isCohesive ? rc : rf[s];
         const PetscInt   q  = isCohesive ? qc : qf[s];
         const PetscReal *Bq = &T->T[0][(r * Nq + q) * Nbf * Ncf];
@@ -2596,7 +2596,7 @@ PetscErrorCode PetscFEUpdateElementVec_Hybrid_Internal(PetscFE fe, PetscTabulati
           for (PetscInt g = 0; g < (_NbJ); ++g) { \
             const PetscScalar *tBDJ = tmpBasisDerJ + (g * (_NcJ) + gc) * (_dE); \
             PetscScalar        s    = 0.0; \
-            for (PetscInt df = 0; df < _dE; ++df) { s += G[df] * tBDJ[df]; } \
+            for (PetscInt df = 0; df < _dE; ++df) s += G[df] * tBDJ[df]; \
             elemMat[(offsetI + f) * totDim + (offsetJ + g)] += s * tBIv; \
           } \
         } \
@@ -2614,7 +2614,7 @@ PetscErrorCode PetscFEUpdateElementVec_Hybrid_Internal(PetscFE fe, PetscTabulati
           for (PetscInt f = 0; f < (_NbI); ++f) { \
             const PetscScalar *tBDI = tmpBasisDerI + (f * (_NcI) + fc) * (_dE); \
             PetscScalar        s    = 0.0; \
-            for (PetscInt df = 0; df < _dE; ++df) { s += tBDI[df] * G[df]; } \
+            for (PetscInt df = 0; df < _dE; ++df) s += tBDI[df] * G[df]; \
             elemMat[(offsetI + f) * totDim + (offsetJ + g)] += s * tBJv; \
           } \
         } \
@@ -2633,7 +2633,7 @@ PetscErrorCode PetscFEUpdateElementVec_Hybrid_Internal(PetscFE fe, PetscTabulati
             PetscScalar        s    = 0.0; \
             const PetscScalar *tBDJ = tmpBasisDerJ + (g * (_NcJ) + gc) * (_dE); \
             for (PetscInt df = 0; df < (_dE); ++df) { \
-              for (PetscInt dg = 0; dg < (_dE); ++dg) { s += tBDI[df] * G[df * (_dE) + dg] * tBDJ[dg]; } \
+              for (PetscInt dg = 0; dg < (_dE); ++dg) s += tBDI[df] * G[df * (_dE) + dg] * tBDJ[dg]; \
             } \
             elemMat[(offsetI + f) * totDim + (offsetJ + g)] += s; \
           } \
@@ -2693,7 +2693,7 @@ PetscErrorCode PetscFEUpdateElementMat_Internal(PetscFE feI, PetscFE feJ, PetscI
           const PetscInt j    = offsetJ + g; /* Element matrix column */
           const PetscInt fOff = i * totDim + j;
 
-          for (PetscInt gc = 0; gc < NcJ; ++gc) { elemMat[fOff] += bI * g0[fc * NcJ + gc] * tmpBasisJ[g * NcJ + gc]; }
+          for (PetscInt gc = 0; gc < NcJ; ++gc) elemMat[fOff] += bI * g0[fc * NcJ + gc] * tmpBasisJ[g * NcJ + gc];
         }
       }
     }
@@ -2721,7 +2721,7 @@ PetscErrorCode PetscFEUpdateElementMat_Internal(PetscFE feI, PetscFE feJ, PetscI
           for (PetscInt gc = 0; gc < NcJ; ++gc) {
             const PetscInt gidx = g * NcJ + gc; /* Trial function basis index */
 
-            for (PetscInt df = 0; df < dE; ++df) { elemMat[fOff] += bI * g1[(fc * NcJ + gc) * dE + df] * tmpBasisDerJ[gidx * dE + df]; }
+            for (PetscInt df = 0; df < dE; ++df) elemMat[fOff] += bI * g1[(fc * NcJ + gc) * dE + df] * tmpBasisDerJ[gidx * dE + df];
           }
         }
       }
@@ -2751,7 +2751,7 @@ PetscErrorCode PetscFEUpdateElementMat_Internal(PetscFE feI, PetscFE feJ, PetscI
           for (PetscInt fc = 0; fc < NcI; ++fc) {
             const PetscInt fidx = f * NcI + fc; /* Test function basis index */
 
-            for (PetscInt df = 0; df < dE; ++df) { elemMat[fOff] += tmpBasisDerI[fidx * dE + df] * g2[(fc * NcJ + gc) * dE + df] * bJ; }
+            for (PetscInt df = 0; df < dE; ++df) elemMat[fOff] += tmpBasisDerI[fidx * dE + df] * g2[(fc * NcJ + gc) * dE + df] * bJ;
           }
         }
       }
@@ -2782,7 +2782,7 @@ PetscErrorCode PetscFEUpdateElementMat_Internal(PetscFE feI, PetscFE feJ, PetscI
             const PetscInt gidx = g * NcJ + gc; /* Trial function basis index */
 
             for (PetscInt df = 0; df < dE; ++df) {
-              for (PetscInt dg = 0; dg < dE; ++dg) { elemMat[fOff] += tmpBasisDerI[fidx * dE + df] * g3[((fc * NcJ + gc) * dE + df) * dE + dg] * tmpBasisDerJ[gidx * dE + dg]; }
+              for (PetscInt dg = 0; dg < dE; ++dg) elemMat[fOff] += tmpBasisDerI[fidx * dE + df] * g3[((fc * NcJ + gc) * dE + df) * dE + dg] * tmpBasisDerJ[gidx * dE + dg];
             }
           }
         }

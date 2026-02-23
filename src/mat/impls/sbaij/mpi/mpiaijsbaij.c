@@ -16,6 +16,8 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPISBAIJ(Mat A, MatType newtype, M
 
   PetscFunctionBegin;
   if (reuse != MAT_REUSE_MATRIX) {
+    const PetscBool3 symmetric = A->symmetric, hermitian = A->hermitian, spd = A->spd;
+
     PetscCall(MatDisAssemble_MPIAIJ(A, PETSC_FALSE));
     PetscCall(MatGetSize(A, &m, &n));
     PetscCall(MatGetLocalSize(A, &lm, &ln));
@@ -30,6 +32,9 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPISBAIJ(Mat A, MatType newtype, M
     PetscCall(PetscFree(o_nnz));
     PetscCall(MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY));
+    if (symmetric != PETSC_BOOL3_UNKNOWN) PetscCall(MatSetOption(A, MAT_SYMMETRIC, PetscBool3ToBool(symmetric)));
+    if (hermitian != PETSC_BOOL3_UNKNOWN) PetscCall(MatSetOption(A, MAT_HERMITIAN, PetscBool3ToBool(hermitian)));
+    if (spd != PETSC_BOOL3_UNKNOWN) PetscCall(MatSetOption(A, MAT_SPD, PetscBool3ToBool(spd)));
   } else M = *newmat;
 
   /* reuse may not be equal to MAT_REUSE_MATRIX, but the basic converter will reallocate or replace newmat if this value is not used */
@@ -37,9 +42,8 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIAIJ_MPISBAIJ(Mat A, MatType newtype, M
   /*                      MAT_INPLACE_MATRIX, it will be replaced with MatHeaderReplace below                                        */
   PetscCall(MatConvert_Basic(A, newtype, MAT_REUSE_MATRIX, &M));
 
-  if (reuse == MAT_INPLACE_MATRIX) {
-    PetscCall(MatHeaderReplace(A, &M));
-  } else *newmat = M;
+  if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &M));
+  else *newmat = M;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -56,6 +60,7 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIBAIJ_MPISBAIJ(Mat A, MatType newtype, 
   const PetscScalar *vwork;
   const PetscInt    *cwork;
   PetscInt           bs = A->rmap->bs;
+  const PetscInt    *adiag;
 
   PetscFunctionBegin;
   if (reuse != MAT_REUSE_MATRIX) {
@@ -63,9 +68,9 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIBAIJ_MPISBAIJ(Mat A, MatType newtype, 
     PetscCall(MatGetLocalSize(A, &lm, &ln));
     PetscCall(PetscMalloc2(lm / bs, &d_nnz, lm / bs, &o_nnz));
 
-    PetscCall(MatMarkDiagonal_SeqBAIJ(mpimat->A));
+    PetscCall(MatGetDiagonalMarkers_SeqBAIJ(mpimat->A, &adiag, NULL));
     for (i = 0; i < lm / bs; i++) {
-      d_nnz[i] = Aa->i[i + 1] - Aa->diag[i];
+      d_nnz[i] = Aa->i[i + 1] - adiag[i];
       o_nnz[i] = Ba->i[i + 1] - Ba->i[i];
     }
 
@@ -88,8 +93,7 @@ PETSC_INTERN PetscErrorCode MatConvert_MPIBAIJ_MPISBAIJ(Mat A, MatType newtype, 
   PetscCall(MatAssemblyBegin(M, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(M, MAT_FINAL_ASSEMBLY));
 
-  if (reuse == MAT_INPLACE_MATRIX) {
-    PetscCall(MatHeaderReplace(A, &M));
-  } else *newmat = M;
+  if (reuse == MAT_INPLACE_MATRIX) PetscCall(MatHeaderReplace(A, &M));
+  else *newmat = M;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

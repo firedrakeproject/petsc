@@ -1,9 +1,8 @@
 !
 ! PETSc Program to test HDF5 viewer and HDF5 attribute I/O
 !
-program main
-#include <petsc/finclude/petscsys.h>
 #include <petsc/finclude/petscvec.h>
+program main
   use petscsys
   use petscvec
   implicit none
@@ -17,16 +16,16 @@ program main
   ! initialize PETSc
   PetscCallA(PetscInitialize(ierr))
   ! create and write a vector
-  PetscCallA(VecCreate(PETSC_COMM_WORLD,x,ierr))
-  PetscCallA(PetscObjectSetName(x,"vec",ierr))
-  PetscCallA(VecSetSizes(x,3,PETSC_DETERMINE,ierr))
-  PetscCallA(VecSetType(x,VECSTANDARD,ierr))
-  PetscCallA(VecSet(x,one,ierr))
-  PetscCallA(PetscViewerCreate(PETSC_COMM_WORLD,viewer,ierr))
+  PetscCallA(VecCreate(PETSC_COMM_WORLD, x, ierr))
+  PetscCallA(PetscObjectSetName(x, "vec", ierr))
+  PetscCallA(VecSetSizes(x, 3, PETSC_DETERMINE, ierr))
+  PetscCallA(VecSetType(x, VECSTANDARD, ierr))
+  PetscCallA(VecSet(x, one, ierr))
+  PetscCallA(PetscViewerCreate(PETSC_COMM_WORLD, viewer, ierr))
   PetscCallA(PetscViewerSetType(viewer, PETSCVIEWERHDF5, ierr))
   PetscCallA(PetscViewerFileSetMode(viewer, FILE_MODE_WRITE, ierr))
   PetscCallA(PetscViewerFileSetName(viewer, "ex80f.hdf5", ierr))
-  PetscCallA(VecView(x,viewer,ierr))
+  PetscCallA(VecView(x, viewer, ierr))
   PetscCallA(PetscViewerHDF5WriteAttribute(viewer, "vec", "int_attribute", ival, ierr))
   PetscCallA(PetscViewerHDF5WriteAttribute(viewer, "vec", "float_attribute", rval, ierr))
   PetscCallA(PetscViewerDestroy(viewer, ierr))

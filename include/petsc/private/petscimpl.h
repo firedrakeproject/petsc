@@ -14,13 +14,11 @@
 
 #if PetscDefined(USE_DEBUG) && !PetscDefined(HAVE_THREADSAFETY)
 PETSC_INTERN PetscErrorCode PetscStackSetCheck(PetscBool);
-PETSC_INTERN PetscErrorCode PetscStackView(FILE *);
 PETSC_INTERN PetscErrorCode PetscStackReset(void);
 PETSC_INTERN PetscErrorCode PetscStackCopy(PetscStack *, PetscStack *);
 PETSC_INTERN PetscErrorCode PetscStackPrint(PetscStack *, FILE *);
 #else
   #define PetscStackSetCheck(check)         PETSC_SUCCESS
-  #define PetscStackView(file)              PETSC_SUCCESS
   #define PetscStackReset()                 PETSC_SUCCESS
   #define PetscStackCopy(stackin, stackout) PETSC_SUCCESS
   #define PetscStackPrint(stack, file)      PETSC_SUCCESS
@@ -56,19 +54,48 @@ typedef struct {
   PetscErrorCode (*destroy)(PetscObject *);
 } PetscOps;
 
+/*E
+   PetscFortranCallbackType  - Indicates if a Fortran callback stored in a `PetscObject` is associated with the class or the current particular type of the object
+
+  Values:
++ `PETSC_FORTRAN_CALLBACK_CLASS`   - the callback is associated with the class
+- `PETSC_FORTRAN_CALLBACK_SUBTYPE` - the callback is associated with the current particular subtype
+
+  Level: developer
+
+  Developer Note:
+  The two sets of callbacks are stored in different arrays in the `PetscObject` because the `PETSC_FORTRAN_CALLBACK_SUBTYPE` callbacks must
+  be removed whenever the type of the object is changed (because they are not appropriate for other types). The removal is done in
+  `PetscObjectChangeTypeName()`.
+
+.seealso: `PetscFortranCallbackFn`, `PetscObjectSetFortranCallback()`, `PetscObjectGetFortranCallback()`, `PetscObjectChangeTypeName()`
+E*/
 typedef enum {
   PETSC_FORTRAN_CALLBACK_CLASS,
   PETSC_FORTRAN_CALLBACK_SUBTYPE,
   PETSC_FORTRAN_CALLBACK_MAXTYPE
 } PetscFortranCallbackType;
+
 typedef size_t PetscFortranCallbackId;
 #define PETSC_SMALLEST_FORTRAN_CALLBACK ((PetscFortranCallbackId)1000)
 PETSC_EXTERN PetscErrorCode PetscFortranCallbackRegister(PetscClassId, const char *, PetscFortranCallbackId *);
 PETSC_EXTERN PetscErrorCode PetscFortranCallbackGetSizes(PetscClassId, PetscFortranCallbackId *, PetscFortranCallbackId *);
 
+/*S
+  PetscFortranCallbackFn - A prototype of a Fortran function provided as a callback
+
+  Level: advanced
+
+  Notes:
+  `PetscFortranCallbackFn *` plays the role of `void *` for function pointers in the PETSc Fortran API.
+
+.seealso: `PetscVoidFn`, `PetscErrorCodeFn`
+S*/
+PETSC_EXTERN_TYPEDEF typedef void(PetscFortranCallbackFn)(void);
+
 typedef struct {
-  void (*func)(void);
-  void *ctx;
+  PetscFortranCallbackFn *func;
+  void                   *ctx;
 } PetscFortranCallback;
 
 /*
@@ -109,16 +136,16 @@ typedef struct _p_PetscObject {
   PetscObjectState *scalarcomposedstate, *scalarstarcomposedstate;
   PetscScalar      *scalarcomposeddata, **scalarstarcomposeddata;
 #endif
-  void (**fortran_func_pointers)(void);             /* used by Fortran interface functions to stash user provided Fortran functions */
-  PetscFortranCallbackId num_fortran_func_pointers; /* number of Fortran function pointers allocated */
-  PetscFortranCallback  *fortrancallback[PETSC_FORTRAN_CALLBACK_MAXTYPE];
-  PetscFortranCallbackId num_fortrancallback[PETSC_FORTRAN_CALLBACK_MAXTYPE];
-  void                  *python_context;
+  PetscFortranCallbackFn **fortran_func_pointers;     /* used by Fortran interface functions to stash user provided Fortran functions */
+  PetscFortranCallbackId   num_fortran_func_pointers; /* number of Fortran function pointers allocated */
+  PetscFortranCallback    *fortrancallback[PETSC_FORTRAN_CALLBACK_MAXTYPE];
+  PetscFortranCallbackId   num_fortrancallback[PETSC_FORTRAN_CALLBACK_MAXTYPE];
+  void                    *python_context;
   PetscErrorCode (*python_destroy)(void *);
 
   PetscInt noptionhandler;
-  PetscErrorCode (*optionhandler[PETSC_MAX_OPTIONS_HANDLER])(PetscObject, PetscOptionItems, void *);
-  PetscErrorCode (*optiondestroy[PETSC_MAX_OPTIONS_HANDLER])(PetscObject, void *);
+  PetscErrorCode (*optionhandler[PETSC_MAX_OPTIONS_HANDLER])(PetscObject, PetscOptionItems, PetscCtx);
+  PetscErrorCode (*optiondestroy[PETSC_MAX_OPTIONS_HANDLER])(PetscObject, PetscCtxRt);
   void *optionctx[PETSC_MAX_OPTIONS_HANDLER];
 #if defined(PETSC_HAVE_SAWS)
   PetscBool amsmem;          /* if PETSC_TRUE then this object is registered with SAWs and visible to clients */
@@ -148,7 +175,7 @@ typedef struct _p_PetscObject {
 
 .seealso: `PetscObject`, `PetscObjectDestroy()`
 S*/
-PETSC_EXTERN_TYPEDEF typedef PetscErrorCode(PetscObjectDestroyFn)(PetscObject *obj);
+PETSC_EXTERN_TYPEDEF typedef PetscErrorCode PetscObjectDestroyFn(PetscObject *obj);
 
 PETSC_EXTERN_TYPEDEF typedef PetscObjectDestroyFn *PetscObjectDestroyFunction;
 
@@ -166,7 +193,7 @@ PETSC_EXTERN_TYPEDEF typedef PetscObjectDestroyFn *PetscObjectDestroyFunction;
 
 .seealso: `PetscObject`, `PetscObjectDestroy()`, `PetscViewer`, `PetscObjectView()`
 S*/
-PETSC_EXTERN_TYPEDEF typedef PetscErrorCode(PetscObjectViewFn)(PetscObject obj, PetscViewer v);
+PETSC_EXTERN_TYPEDEF typedef PetscErrorCode PetscObjectViewFn(PetscObject obj, PetscViewer v);
 
 PETSC_EXTERN_TYPEDEF typedef PetscObjectViewFn *PetscObjectViewFunction;
 
@@ -368,8 +395,8 @@ PETSC_EXTERN PetscErrorCode                PetscHeaderDestroy_Private(PetscObjec
 PETSC_INTERN PetscErrorCode                PetscHeaderDestroy_Private_Unlogged(PetscObject, PetscBool);
 PETSC_SINGLE_LIBRARY_INTERN PetscErrorCode PetscHeaderReset_Internal(PetscObject);
 PETSC_EXTERN PetscErrorCode                PetscObjectCopyFortranFunctionPointers(PetscObject, PetscObject);
-PETSC_EXTERN PetscErrorCode                PetscObjectSetFortranCallback(PetscObject, PetscFortranCallbackType, PetscFortranCallbackId *, void (*)(void), void *ctx);
-PETSC_EXTERN PetscErrorCode                PetscObjectGetFortranCallback(PetscObject, PetscFortranCallbackType, PetscFortranCallbackId, void (**)(void), void **ctx);
+PETSC_EXTERN PetscErrorCode                PetscObjectSetFortranCallback(PetscObject, PetscFortranCallbackType, PetscFortranCallbackId *, PetscFortranCallbackFn *, PetscCtx ctx);
+PETSC_EXTERN PetscErrorCode                PetscObjectGetFortranCallback(PetscObject, PetscFortranCallbackType, PetscFortranCallbackId, PetscFortranCallbackFn **, void **ctx);
 
 PETSC_INTERN PetscErrorCode PetscCitationsInitialize(void);
 PETSC_INTERN PetscErrorCode PetscFreeMPIResources(void);
@@ -449,14 +476,8 @@ struct PetscAssertPointerImpl {
       #define PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(T, PETSC_TYPE) \
         template <> \
         struct PetscAssertPointerImpl<T *> { \
-          PETSC_NODISCARD static constexpr PetscDataType type() noexcept \
-          { \
-            return PETSC_TYPE; \
-          } \
-          PETSC_NODISCARD static constexpr const char *string() noexcept \
-          { \
-            return PetscStringize(T); \
-          } \
+          PETSC_NODISCARD static constexpr PetscDataType type() noexcept { return PETSC_TYPE; } \
+          PETSC_NODISCARD static constexpr const char   *string() noexcept { return PetscStringize(T); } \
         }; \
         template <> \
         struct PetscAssertPointerImpl<const T *> : PetscAssertPointerImpl<T *> { }; \
@@ -494,7 +515,7 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
       #define PETSC_GENERIC_CV(type, result) type * : result, const type * : result, volatile type * : result, const volatile type * : result
 
       #if PetscDefined(HAVE_COMPLEX)
-        #define PETSC_GENERIC_CV_COMPLEX(result) PETSC_GENERIC_CV(PetscComplex, result)
+        #define PETSC_GENERIC_CV_COMPLEX(result) , PETSC_GENERIC_CV(PetscComplex, result)
       #else
         #define PETSC_GENERIC_CV_COMPLEX(result)
       #endif
@@ -512,13 +533,13 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
           PETSC_GENERIC_CV(       int32_t, PETSC_INT32), \
           PETSC_GENERIC_CV(      uint32_t, PETSC_INT32), \
           PETSC_GENERIC_CV(       int64_t, PETSC_INT64), \
-          PETSC_GENERIC_CV(      uint64_t, PETSC_INT64), \
+          PETSC_GENERIC_CV(      uint64_t, PETSC_INT64) \
           PETSC_GENERIC_CV_COMPLEX(PETSC_COMPLEX))
 
       #define PETSC_GENERIC_CV_STRINGIZE(type) PETSC_GENERIC_CV(type, PetscStringize(type))
 
       #if PetscDefined(HAVE_COMPLEX)
-        #define PETSC_GENERIC_CV_STRINGIZE_COMPLEX PETSC_GENERIC_CV_STRINGIZE(PetscComplex)
+        #define PETSC_GENERIC_CV_STRINGIZE_COMPLEX , PETSC_GENERIC_CV_STRINGIZE(PetscComplex)
       #else
         #define PETSC_GENERIC_CV_STRINGIZE_COMPLEX
       #endif
@@ -536,7 +557,7 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
           PETSC_GENERIC_CV_STRINGIZE(int32_t), \
           PETSC_GENERIC_CV_STRINGIZE(uint32_t), \
           PETSC_GENERIC_CV_STRINGIZE(int64_t), \
-          PETSC_GENERIC_CV_STRINGIZE(uint64_t), \
+          PETSC_GENERIC_CV_STRINGIZE(uint64_t) \
           PETSC_GENERIC_CV_STRINGIZE_COMPLEX)
     #else // PETSC_C_VERSION >= 11 || defined(__cplusplus)
       #define PetscAssertPointer_PetscDataType(h) PETSC_CHAR
@@ -797,11 +818,11 @@ PETSC_ASSERT_POINTER_IMPL_SPECIALIZATION(PetscComplex, PETSC_COMPLEX);
 
     #define PetscValidLogicalCollectiveBool(a, b, arg) \
       do { \
-        PetscMPIInt b0 = (PetscMPIInt)(b), b1[2]; \
-        b1[0]          = -b0; \
-        b1[1]          = b0; \
-        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPI_INT, MPI_MAX, PetscObjectComm((PetscObject)(a)))); \
-        PetscCheck(-b1[0] == b1[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Bool value must be same on all processes, argument # %d", arg); \
+        PetscBool b0 = (PetscBool)(b), b1[2]; \
+        b1[0]        = !b0; \
+        b1[1]        = b0; \
+        PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, b1, 2, MPI_C_BOOL, MPI_LAND, PetscObjectComm((PetscObject)(a)))); \
+        PetscCheck(!b1[0] == b1[1], PetscObjectComm((PetscObject)(a)), PETSC_ERR_ARG_WRONG, "Bool value must be same on all processes, argument # %d", arg); \
       } while (0)
 
     #define PetscValidLogicalCollectiveEnum(a, b, arg) \
@@ -1619,3 +1640,39 @@ struct _n_PetscObjectList {
   PetscObject     obj;
   PetscObjectList next;
 };
+
+/*E
+    PetscPrecision - Precision of a real number
+
+    Values:
++   `PETSC_PRECISION_INVALID`     - an invalid value
+.   `PETSC_PRECISION_BFLOAT16`    - half precision (Google Brain bfloat16)
+.   `PETSC_PRECISION___FP16`      - half precison (IEEE FP16)
+.   `PETSC_PRECISION_SINGLE`      - single precision
+.   `PETSC_PRECISION_DOUBLE`      - double precision
+-   `PETSC_PRECISION___FLOAT128`  - quadruple precision (__float128)
+
+    Level: intermediate
+E*/
+
+typedef enum {
+  PETSC_PRECISION_INVALID = 0,
+  PETSC_PRECISION_BFLOAT16,
+  PETSC_PRECISION___FP16,
+  PETSC_PRECISION_SINGLE,
+  PETSC_PRECISION_DOUBLE,
+  PETSC_PRECISION___FLOAT128
+} PetscPrecision;
+
+// The precision of PetscScalar and PetscReal
+#if defined(PETSC_USE_REAL___FP16)
+  #define PETSC_SCALAR_PRECISION PETSC_PRECISION___FP16
+#elif defined(PETSC_USE_REAL_SINGLE)
+  #define PETSC_SCALAR_PRECISION PETSC_PRECISION_SINGLE
+#elif defined(PETSC_USE_REAL_DOUBLE)
+  #define PETSC_SCALAR_PRECISION PETSC_PRECISION_DOUBLE
+#elif defined(PETSC_USE_REAL___FLOAT128)
+  #define PETSC_SCALAR_PRECISION PETSC_PRECISION___FLOAT128
+#endif
+
+PETSC_EXTERN const char *const PetscPrecisionTypes[];

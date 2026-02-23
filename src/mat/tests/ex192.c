@@ -129,7 +129,7 @@ int main(int argc, char **args)
   }
 
 #if defined(PETSC_USE_COMPLEX)
-  if (isolver == 0 && symm && !data_provided) { /* MUMPS (5.0.0) does not have support for hermitian matrices, so make them symmetric */
+  if (isolver == 0 && symm && !data_provided) { /* MUMPS (5.0.0) does not have support for Hermitian matrices, so make them symmetric */
     PetscScalar im  = PetscSqrtScalar((PetscScalar)-1.);
     PetscScalar val = -1.0;
     val             = val + im;
@@ -144,9 +144,7 @@ int main(int argc, char **args)
   /* Test LU/Cholesky Factorization */
   use_lu = PETSC_FALSE;
   if (!symm) use_lu = PETSC_TRUE;
-#if defined(PETSC_USE_COMPLEX)
-  if (isolver == 1) use_lu = PETSC_TRUE;
-#endif
+  if (PetscDefined(USE_COMPLEX) && isolver == 1) use_lu = PETSC_TRUE;
   if (cuda && symm && !herm) use_lu = PETSC_TRUE;
 
   if (herm && !use_lu) { /* test also conversion routines inside the solver packages */
@@ -380,6 +378,38 @@ int main(int argc, char **args)
      test:
        requires: cuda defined(PETSC_HAVE_CUSOLVERDNDPOTRI)
        suffix: mumps_cuda_3
+       args: -symmetric_solve -hermitian_solve -cuda_solve
+       output_file: output/ex192_mumps_3.out
+
+   testset:
+     requires: mumps double !complex defined(PETSC_HAVE_MUMPS_MIXED_PRECISION)
+     args: -solver 0 -pc_precision single -tol 3.4e-4
+
+     test:
+       suffix: mumps_s
+       output_file: output/ex192_mumps.out
+
+     test:
+       requires: cuda
+       suffix: mumps_cuda_s
+       args: -cuda_solve
+       output_file: output/ex192_mumps.out
+     test:
+       suffix: mumps_2_s
+       args: -symmetric_solve
+       output_file: output/ex192_mumps_2.out
+     test:
+       requires: cuda
+       suffix: mumps_cuda_2_s
+       args: -symmetric_solve -cuda_solve
+       output_file: output/ex192_mumps_2.out
+     test:
+       suffix: mumps_3_s
+       args: -symmetric_solve -hermitian_solve
+       output_file: output/ex192_mumps_3.out
+     test:
+       requires: cuda defined(PETSC_HAVE_CUSOLVERDNDPOTRI)
+       suffix: mumps_cuda_3_s
        args: -symmetric_solve -hermitian_solve -cuda_solve
        output_file: output/ex192_mumps_3.out
 

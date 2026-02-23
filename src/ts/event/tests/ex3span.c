@@ -48,8 +48,8 @@ typedef struct {
   PetscInt    m;                // local size of A
 } AppCtx;
 
-PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *ctx);
-PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, void *ctx);
+PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], PetscCtx ctx);
+PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, PetscCtx ctx);
 PetscErrorCode Fill_mat(PetscReal coeff, PetscInt m, Mat A); // Fills the system matrix (2*2)
 
 int main(int argc, char **argv)
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
 /*
   User callback for defining the event-functions
 */
-PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *ctx)
+PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], PetscCtx ctx)
 {
   PetscInt n   = 0;
   AppCtx  *Ctx = (AppCtx *)ctx;
@@ -231,14 +231,14 @@ PetscErrorCode EventFunction(TS ts, PetscReal t, Vec U, PetscReal gval[], void *
   }
 
   // third event -- on rank = 1%ctx.size
-  if (Ctx->rank == 1 % Ctx->size) { gval[n++] = PetscSinReal(Ctx->pi * t); }
+  if (Ctx->rank == 1 % Ctx->size) gval[n++] = PetscSinReal(Ctx->pi * t);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /*
   User callback for the post-event stuff
 */
-PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, void *ctx)
+PetscErrorCode Postevent(TS ts, PetscInt nev_zero, PetscInt evs_zero[], PetscReal t, Vec U, PetscBool fwd, PetscCtx ctx)
 {
   AppCtx   *Ctx         = (AppCtx *)ctx;
   PetscBool mat_changed = PETSC_FALSE;
@@ -312,7 +312,7 @@ PetscErrorCode Fill_mat(PetscReal coeff, PetscInt m, Mat A)
     requires: !single
     output_file: output/ex3span_1.out
     args: -ts_monitor -ts_adapt_type none -restart
-    args: -dtpost 0.1127 -D 0.0015 -dir 0 -ts_max_time 9.8 -ts_dt 0.18
+    args: -dtpost 0.1127 -D 0.0015 -dir 0 -ts_max_time 9.8 -ts_time_step 0.18
     nsize: 1
 
   test:
@@ -320,7 +320,7 @@ PetscErrorCode Fill_mat(PetscReal coeff, PetscInt m, Mat A)
     requires: single
     output_file: output/ex3span_1single.out
     args: -ts_monitor -ts_adapt_type none -restart -ts_event_dt_min 1e-6
-    args: -dtpost 0.1127 -D 0.0015 -dir 0 -ts_max_time 9.8 -ts_dt 0.18
+    args: -dtpost 0.1127 -D 0.0015 -dir 0 -ts_max_time 9.8 -ts_time_step 0.18
     nsize: 1
 
   test:
@@ -357,7 +357,7 @@ PetscErrorCode Fill_mat(PetscReal coeff, PetscInt m, Mat A)
     args: -dtpost 0.1125
     args: -D 0.0025
     args: -dir {{0 -1 1}}
-    args: -ts_dt 0.3025
+    args: -ts_time_step 0.3025
     args: -ts_type {{rk bdf}}
     filter: grep "Final time ="
     filter_output: grep "Final time ="

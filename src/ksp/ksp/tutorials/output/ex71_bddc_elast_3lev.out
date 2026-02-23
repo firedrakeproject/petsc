@@ -61,21 +61,21 @@ PC Object: 8 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (pc_bddc_dirichlet_) 1 MPI process
       type: lu
         out-of-place factorization
         tolerance for zero pivot 2.22045e-14
         matrix ordering: nd
         factor fill ratio given 5., needed 1.55143
-          Factored matrix follows:
+          Factored matrix:
             Mat Object: (pc_bddc_dirichlet_) 1 MPI process
               type: seqaij
               rows=144, cols=144, bs=3
               package used to perform factorization: petsc
               total: nonzeros=9774, allocated nonzeros=9774
                 using I-node routines: found 45 nodes, limit used is 5
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (pc_bddc_dirichlet_) 1 MPI process
         type: seqaij
         rows=144, cols=144, bs=3
@@ -88,21 +88,21 @@ PC Object: 8 MPI processes
       maximum iterations=10000, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (pc_bddc_neumann_) 1 MPI process
       type: lu
         out-of-place factorization
         tolerance for zero pivot 2.22045e-14
         matrix ordering: nd
         factor fill ratio given 5., needed 2.16719
-          Factored matrix follows:
+          Factored matrix:
             Mat Object: (pc_bddc_neumann_) 1 MPI process
               type: seqaij
               rows=279, cols=279, bs=3
               package used to perform factorization: petsc
               total: nonzeros=30915, allocated nonzeros=30915
                 using I-node routines: found 85 nodes, limit used is 5
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (pc_bddc_neumann_) 1 MPI process
         type: seqaij
         rows=279, cols=279, bs=3
@@ -116,7 +116,7 @@ PC Object: 8 MPI processes
       maximum iterations=1, initial guess is zero
       tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
       left preconditioning
-      using NONE norm type for convergence test
+      not checking for convergence
     PC Object: (pc_bddc_coarse_) 8 MPI processes
       type: bddc
         Use verbose output: 0
@@ -174,10 +174,10 @@ PC Object: 8 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_dirichlet_l1_) 1 MPI process
           type: none
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (pc_bddc_dirichlet_l1_) 1 MPI process
             type: seqaij
             rows=0, cols=0
@@ -190,21 +190,21 @@ PC Object: 8 MPI processes
           maximum iterations=10000, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_neumann_l1_) 1 MPI process
           type: lu
             out-of-place factorization
             tolerance for zero pivot 2.22045e-14
             matrix ordering: nd
             factor fill ratio given 5., needed 1.
-              Factored matrix follows:
+              Factored matrix:
                 Mat Object: (pc_bddc_neumann_l1_) 1 MPI process
                   type: seqaij
                   rows=33, cols=33
                   package used to perform factorization: petsc
                   total: nonzeros=1089, allocated nonzeros=1089
                     using I-node routines: found 7 nodes, limit used is 5
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (pc_bddc_neumann_l1_) 1 MPI process
             type: seqaij
             rows=33, cols=33
@@ -217,7 +217,7 @@ PC Object: 8 MPI processes
           maximum iterations=1, initial guess is zero
           tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
           left preconditioning
-          using NONE norm type for convergence test
+          not checking for convergence
         PC Object: (pc_bddc_coarse_l1_) 8 MPI processes
           type: redundant
             First (color=0) of 8 PCs follows
@@ -226,41 +226,41 @@ PC Object: 8 MPI processes
               maximum iterations=10000, initial guess is zero
               tolerances: relative=1e-05, absolute=1e-50, divergence=10000.
               left preconditioning
-              using NONE norm type for convergence test
+              not checking for convergence
             PC Object: (pc_bddc_coarse_l1_redundant_) 1 MPI process
               type: lu
                 out-of-place factorization
                 tolerance for zero pivot 2.22045e-14
                 matrix ordering: nd
                 factor fill ratio given 5., needed 1.25187
-                  Factored matrix follows:
+                  Factored matrix:
                     Mat Object: (pc_bddc_coarse_l1_redundant_) 1 MPI process
                       type: seqaij
                       rows=63, cols=63
                       package used to perform factorization: petsc
                       total: nonzeros=3181, allocated nonzeros=3181
                         using I-node routines: found 16 nodes, limit used is 5
-              linear system matrix = precond matrix:
+              linear system matrix, which is also used to construct the preconditioner:
               Mat Object: 1 MPI process
                 type: seqaij
                 rows=63, cols=63
                 total: nonzeros=2541, allocated nonzeros=2541
                 total number of mallocs used during MatSetValues calls=0
                   using I-node routines: found 21 nodes, limit used is 5
-          linear system matrix = precond matrix:
+          linear system matrix, which is also used to construct the preconditioner:
           Mat Object: (pc_bddc_coarse_l1_) 8 MPI processes
             type: mpiaij
             rows=63, cols=63
-            total: nonzeros=2541, allocated nonzeros=3267
+            total: nonzeros=2541, allocated nonzeros=2541
             total number of mallocs used during MatSetValues calls=0
               using I-node (on process 0) routines: found 2 nodes, limit used is 5
-      linear system matrix = precond matrix:
+      linear system matrix, which is also used to construct the preconditioner:
       Mat Object: (pc_bddc_coarse_) 8 MPI processes
         type: is
         rows=159, cols=159
         total: nonzeros=23328, allocated nonzeros=23328
         total number of mallocs used during MatSetValues calls=0
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 8 MPI processes
     type: is
     rows=2160, cols=2160, bs=3

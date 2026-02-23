@@ -379,7 +379,7 @@ PetscErrorCode ExactSolution(PetscReal t, Vec solution, AppCtx *appctx)
             information about the problem size, workspace and the exact
             solution.
 */
-PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec u, void *ctx)
+PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec u, PetscCtx ctx)
 {
   AppCtx   *appctx = (AppCtx *)ctx; /* user-defined application context */
   PetscReal norm_2, norm_max, dt, dttol;
@@ -459,7 +459,7 @@ PetscErrorCode Monitor(TS ts, PetscInt step, PetscReal time, Vec u, void *ctx)
    Recall that MatSetValues() uses 0-based row and column numbers
    in Fortran as well as in C.
 */
-PetscErrorCode RHSMatrixHeat(TS ts, PetscReal t, Vec X, Mat AA, Mat BB, void *ctx)
+PetscErrorCode RHSMatrixHeat(TS ts, PetscReal t, Vec X, Mat AA, Mat BB, PetscCtx ctx)
 {
   Mat         A      = AA;            /* Jacobian matrix */
   AppCtx     *appctx = (AppCtx *)ctx; /* user-defined application context */
@@ -519,7 +519,7 @@ PetscErrorCode RHSMatrixHeat(TS ts, PetscReal t, Vec X, Mat AA, Mat BB, void *ct
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode IFunctionHeat(TS ts, PetscReal t, Vec X, Vec Xdot, Vec r, void *ctx)
+PetscErrorCode IFunctionHeat(TS ts, PetscReal t, Vec X, Vec Xdot, Vec r, PetscCtx ctx)
 {
   AppCtx *appctx = (AppCtx *)ctx; /* user-defined application context */
 
@@ -529,7 +529,7 @@ PetscErrorCode IFunctionHeat(TS ts, PetscReal t, Vec X, Vec Xdot, Vec r, void *c
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode IJacobianHeat(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal s, Mat A, Mat B, void *ctx)
+PetscErrorCode IJacobianHeat(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal s, Mat A, Mat B, PetscCtx ctx)
 {
   AppCtx *appctx = (AppCtx *)ctx; /* user-defined application context */
 
@@ -546,11 +546,11 @@ PetscErrorCode IJacobianHeat(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal s, M
 /*TEST
 
     test:
-      args: -nox -ts_type ssp -ts_dt 0.0005
+      args: -nox -ts_type ssp -ts_time_step 0.0005
 
     test:
       suffix: 2
-      args: -nox -ts_type ssp -ts_dt 0.0005 -time_dependent_rhs 1
+      args: -nox -ts_type ssp -ts_time_step 0.0005 -time_dependent_rhs 1
 
     test:
       suffix: 3
@@ -571,27 +571,27 @@ PetscErrorCode IJacobianHeat(TS ts, PetscReal t, Vec X, Vec Xdot, PetscReal s, M
     test:
       requires: !single
       suffix: pod_guess
-      args: -nox -ts_type beuler -use_ifunc -ts_dt 0.0005 -ksp_guess_type pod -pc_type none -ksp_converged_reason
+      args: -nox -ts_type beuler -use_ifunc -ts_time_step 0.0005 -ksp_guess_type pod -pc_type none -ksp_converged_reason
 
     test:
       requires: !single
       suffix: pod_guess_Ainner
-      args: -nox -ts_type beuler -use_ifunc -ts_dt 0.0005 -ksp_guess_type pod -ksp_guess_pod_Ainner -pc_type none -ksp_converged_reason
+      args: -nox -ts_type beuler -use_ifunc -ts_time_step 0.0005 -ksp_guess_type pod -ksp_guess_pod_Ainner -pc_type none -ksp_converged_reason
 
     test:
       requires: !single
       suffix: fischer_guess
-      args: -nox -ts_type beuler -use_ifunc -ts_dt 0.0005 -ksp_guess_type fischer -pc_type none -ksp_converged_reason
+      args: -nox -ts_type beuler -use_ifunc -ts_time_step 0.0005 -ksp_guess_type fischer -pc_type none -ksp_converged_reason
 
     test:
       requires: !single
       suffix: fischer_guess_2
-      args: -nox -ts_type beuler -use_ifunc -ts_dt 0.0005 -ksp_guess_type fischer -ksp_guess_fischer_model 2,10 -pc_type none -ksp_converged_reason
+      args: -nox -ts_type beuler -use_ifunc -ts_time_step 0.0005 -ksp_guess_type fischer -ksp_guess_fischer_model 2,10 -pc_type none -ksp_converged_reason
 
     test:
       requires: !single
       suffix: fischer_guess_3
-      args: -nox -ts_type beuler -use_ifunc -ts_dt 0.0005 -ksp_guess_type fischer -ksp_guess_fischer_model 3,10 -pc_type none -ksp_converged_reason
+      args: -nox -ts_type beuler -use_ifunc -ts_time_step 0.0005 -ksp_guess_type fischer -ksp_guess_fischer_model 3,10 -pc_type none -ksp_converged_reason
 
     test:
       requires: !single

@@ -24,7 +24,7 @@
    Developer Note:
    Shortened form of PETSc optional
 
-.seealso: `PeNS`, `PeNSS`, `PeCtx`, `PetscInitialize()`
+.seealso: `PeNS`, `PeNSS`, `PetscCtxRt`, `PetscInitialize()`
 M*/
 #define PeOp
 
@@ -41,7 +41,7 @@ M*/
    Developer Note:
    Shortened form of PETSc non-standard
 
-.seealso: `PeOp`, `PeNSS`, `PeCtx`, `PetscInitialize()`
+.seealso: `PeOp`, `PeNSS`, `PetscCtxRt`, `PetscInitialize()`
 M*/
 #define PeNS
 
@@ -60,7 +60,7 @@ M*/
    Developer Note:
    Shortened form of PETSc non-standard stub
 
-.seealso: `PeOp`, `PeNS`, `PeCtx`, `PetscInitialize()`
+.seealso: `PeOp`, `PeNS`, `PetscCtxRt`, `PetscInitialize()`
 M*/
 #define PeNSS
 
@@ -132,7 +132,7 @@ M*/
    Note: with MPICH and OpenMPI, accept versions [x.y.z, x+1.0.0) as compatible
 */
 #if defined(PETSC_HAVE_MPIUNI)
-  #ifndef MPIUNI_H
+  #if !defined(MPIUNI_H)
     #error "PETSc was configured with --with-mpi=0 but now appears to be compiling using a different mpi.h"
   #endif
 #elif defined(PETSC_HAVE_I_MPI)
@@ -185,7 +185,7 @@ M*/
 #endif
 
 PETSC_EXTERN MPI_Datatype MPIU_ENUM PETSC_ATTRIBUTE_MPI_TYPE_TAG(PetscEnum);
-PETSC_EXTERN MPI_Datatype MPIU_BOOL PETSC_ATTRIBUTE_MPI_TYPE_TAG(PetscBool);
+#define MPIU_BOOL MPI_C_BOOL PETSC_DEPRECATED_MACRO(3, 24, 0, "MPI_C_BOOL", )
 
 /*MC
    MPIU_INT - Portable MPI datatype corresponding to `PetscInt` independent of the precision of `PetscInt`
@@ -304,7 +304,7 @@ M*/
    Fortran Note:
    Use `PETSC_DECIDE_INTEGER` or `PETSC_DECIDE_REAL`.
 
-.seealso: `PETSC_DEFAULT`, `PETSC_IGNORE`, `PETSC_DETERMINE`, `PETSC_UNLIMITED'
+.seealso: `PETSC_DEFAULT`, `PETSC_IGNORE`, `PETSC_DETERMINE`, `PETSC_UNLIMITED`
 M*/
 
 /*MC
@@ -328,7 +328,7 @@ M*/
    I would like to use const `PetscInt` `PETSC_DETERMINE` = `PETSC_DECIDE`; but for
    some reason this is not allowed by the standard even though `PETSC_DECIDE` is a constant value.
 
-.seealso: `PETSC_DECIDE`, `PETSC_DEFAULT`, `PETSC_IGNORE`, `VecSetSizes()`, `PETSC_UNLIMITED'
+.seealso: `PETSC_DECIDE`, `PETSC_DEFAULT`, `PETSC_IGNORE`, `VecSetSizes()`, `PETSC_UNLIMITED`
 M*/
 
 /*MC
@@ -342,7 +342,7 @@ M*/
    Fortran Note:
    Use `PETSC_CURRENT_INTEGER` or `PETSC_CURRENT_REAL`.
 
-.seealso: `PETSC_DECIDE`, `PETSC_IGNORE`, `PETSC_DETERMINE`, `PETSC_DEFAULT`, `PETSC_UNLIMITED'
+.seealso: `PETSC_DECIDE`, `PETSC_IGNORE`, `PETSC_DETERMINE`, `PETSC_DEFAULT`, `PETSC_UNLIMITED`
 M*/
 
 /*MC
@@ -357,7 +357,7 @@ M*/
    Unfortunately this was used for two different purposes in the past, to actually trigger the use of a default value or to continue the
    use of currently set value (in, for example, `KSPSetTolerances()`.
 
-.seealso: `PETSC_DECIDE`, `PETSC_IGNORE`, `PETSC_DETERMINE`, `PETSC_CURRENT`, `PETSC_UNLIMITED'
+.seealso: `PETSC_DECIDE`, `PETSC_IGNORE`, `PETSC_DETERMINE`, `PETSC_CURRENT`, `PETSC_UNLIMITED`
 M*/
 
 /* These MUST be preprocessor defines! see https://gitlab.com/petsc/petsc/-/issues/1370 */
@@ -1282,49 +1282,53 @@ PETSC_EXTERN MPI_Op MPIU_SUM___FP16___FLOAT128;
 */
 
 /*S
-  PetscVoidFn - A prototype of a void (fn)(void) function
+  PetscVoidFn - A prototype of a `void fn(void)` function
 
-  Level: developer
+  Level: advanced
 
   Notes:
+  `PetscVoidFn *` plays the role of `void *` for function pointers in the PETSc API that do not return an error code.
+  It is used where a function pointer is needed but it is not possible to use the full prototype of the function.
+
+  `PetscErrorCodeFn` is similar to `PetscVoidFn` but should be used when the function returns a `PetscErrorCode`
+
   The deprecated `PetscVoidFunction` works as a replacement for `PetscVoidFn` *.
 
   The deprecated `PetscVoidStarFunction` works as a replacement for `PetscVoidFn` **.
 
-.seealso: `PetscObject`, `PetscObjectDestroy()`
+.seealso: `PetscErrorCodeFn`, `PetscObject`, `PetscObjectDestroy()`
 S*/
-PETSC_EXTERN_TYPEDEF typedef void(PetscVoidFn)(void);
+PETSC_EXTERN_TYPEDEF typedef void PetscVoidFn(void);
 
 PETSC_EXTERN_TYPEDEF typedef PetscVoidFn  *PetscVoidFunction;
 PETSC_EXTERN_TYPEDEF typedef PetscVoidFn **PetscVoidStarFunction;
 
 /*S
-  PetscErrorCodeFn - A prototype of a PetscErrorCode (fn)(void) function
+  PetscErrorCodeFn - a function typedef that represents abstractly a function that returns a PETSc error code
+  and takes any number of arguments. Since C/C++ has no way to express this concept, it is implemented as `void (fn)(void)`.
 
-  Level: developer
+  Level: advanced
 
   Notes:
+  `PetscErrorCodeFn *` plays the role of `void *` for function pointers in the PETSc API that return an error code.
+  It is used where a function pointer is needed but it is not possible to use the full prototype of the function,
+  for example `VecSetOperation()`.
+
+  `PetscVoidFn` is similar to `PetscErrorCodeFn` but should be used when the function does not return a `PetscErrorCode`.
+
   The deprecated `PetscErrorCodeFunction` works as a replacement for `PetscErrorCodeFn` *.
 
-.seealso: `PetscObject`, `PetscObjectDestroy()`
+  Developer Notes:
+  This function type is equivalent to `PetscVoidFn`*.
+
+  At the C/C++ syntax level this construct adds nothing of value to the PETSc source code. It provides a way, at the abstract
+  PETSc API level, to indicate specifically functions that return PETSc error codes as opposed to any C/C++ function.
+
+.seealso: `PetscVoidFn`, `PetscObject`, `PetscObjectDestroy()`, `VecSetOperation()`
 S*/
-PETSC_EXTERN_TYPEDEF typedef PetscErrorCode(PetscErrorCodeFn)(void);
+PETSC_EXTERN_TYPEDEF typedef void PetscErrorCodeFn(void);
 
 PETSC_EXTERN_TYPEDEF typedef PetscErrorCodeFn *PetscErrorCodeFunction;
-
-/*S
-  PetscCtxDestroyFn - A prototype of a `PetscErrorCode (*)(void **)` function that is used to free user contexts
-
-  Level: intermediate
-
-  Note:
-  Used in the prototype of functions such as `DMSetApplicationContextDestroy()`
-
-.seealso: `PetscObject`, `PetscCtxDestroyDefault()`, `PetscObjectDestroy()`, `DMSetApplicationContextDestroy()`
-S*/
-PETSC_EXTERN_TYPEDEF typedef PetscErrorCode(PetscCtxDestroyFn)(void **);
-
-PETSC_EXTERN PetscCtxDestroyFn PetscCtxDestroyDefault;
 
 /*
     Defines PETSc error handling.
@@ -1376,8 +1380,6 @@ PETSC_EXTERN PetscErrorCode PetscPythonFinalize(void);
 PETSC_EXTERN PetscErrorCode PetscPythonPrintError(void);
 PETSC_EXTERN PetscErrorCode PetscPythonMonitorSet(PetscObject, const char[]);
 
-PETSC_EXTERN PetscErrorCode PetscMonitorCompare(PetscErrorCode (*)(void), void *, PetscCtxDestroyFn *, PetscErrorCode (*)(void), void *, PetscCtxDestroyFn *, PetscBool *);
-
 /*
     Functions that can act on any PETSc object.
 */
@@ -1398,8 +1400,8 @@ PETSC_EXTERN PetscErrorCode PetscObjectGetNewTag(PetscObject, PetscMPIInt *);
 PETSC_EXTERN PetscErrorCode PetscObjectCompose(PetscObject, const char[], PetscObject);
 PETSC_EXTERN PetscErrorCode PetscObjectRemoveReference(PetscObject, const char[]);
 PETSC_EXTERN PetscErrorCode PetscObjectQuery(PetscObject, const char[], PetscObject *);
-PETSC_EXTERN PetscErrorCode PetscObjectComposeFunction_Private(PetscObject, const char[], void (*)(void));
-#define PetscObjectComposeFunction(a, b, ...) PetscObjectComposeFunction_Private((a), (b), (PetscVoidFn *)(__VA_ARGS__))
+PETSC_EXTERN PetscErrorCode PetscObjectComposeFunction_Private(PetscObject, const char[], PetscErrorCodeFn *);
+#define PetscObjectComposeFunction(a, b, ...) PetscObjectComposeFunction_Private((a), (b), (PetscErrorCodeFn *)(__VA_ARGS__))
 PETSC_EXTERN PetscErrorCode PetscObjectSetFromOptions(PetscObject);
 PETSC_EXTERN PetscErrorCode PetscObjectSetUp(PetscObject);
 PETSC_EXTERN PetscErrorCode PetscObjectSetPrintedOptions(PetscObject);
@@ -1455,7 +1457,117 @@ M*/
 
 .seealso: `PetscObjectParameterSetDefault()`, `PetscInitialize()`, `PetscFinalize()`, `PetscObject`, `SNESParametersInitialize()`
 M*/
-#define PetscObjectParameterDeclare(type, NAME) type NAME, default_##NAME
+#define PetscObjectParameterDeclare(type, NAME)    type NAME, default_##NAME
+#define PetscObjectParameterDeclarePtr(type, NAME) type *NAME, *default_##NAME
+
+/*MC
+   PetscCtx - indicates an argument that can be a pointer to any C struct (or Fortran derived type).
+
+   Level: developer
+
+   Notes:
+   This should not be used for arrays of unknown type.
+
+   Fortran Notes:
+   A Fortran code that calls a function with a `PetscCtx` argument would declare the variable `ctx` with
+.vb
+   type(AppType) :: ctx
+.ve
+   where `AppType` is a Fortran derived type. Or the argument can be a `PetscObject`.
+
+   Developer Note:
+   `PetscCtx` is used instead of `void *` in PETSc code to enhance the clarity of the PETSc source code since `void *` serves so many different roles.
+   The getAPI() code processor also uses the variable type to generate correct bindings for other languages.
+
+.seealso: [](sec_fortran_context), `PetscCtxRt`, PetscCtxDestroyFn()`, `PeOp`, `PeNS`, `PetscInitialize()`, `DMGetApplicationContext()`,
+          `DMSetApplicationContextDestroy()`
+M*/
+typedef void *PetscCtx;
+
+/*MC
+   PetscCtxRt - indicates an argument that returns a pointer to a C struct (or Fortran derived type) which is generally an application context
+
+   Level: developer
+
+   Notes:
+   A PETSc object (in C or Fortran) can be used as a PETSc context
+
+   This should not be used for functions that return pointers to arrays of unknown type. Thus it is used for, for example,
+   `KSPGetApplicationContext()` but not used for `DMNetworkGetComponent()`
+
+   A PETSc object (in C or Fortran) can be used as a PETSc context
+
+   It is also used for functions that destroy an application context. For example, the destroy function passed to `DMSetApplicationContextDestroy()`
+   which has a prototype of `PetscCtxDestroyFn()`
+
+   This typedef is not part of the PETSc public API and should only be used in PETSc source code.
+
+   For pointers to arrays of unknown type and for functions that return PETSc internal objects that are opaque to users, such
+   as `KSPMonitorDynamicToleranceCreate()` a `void **` should be used.
+
+   Fortran Notes:
+   A Fortran code that calls a function with a `PetscCtxRt` argument must declare the variable `ctx` with
+.vb
+   type(AppType), pointer :: ctx
+.ve
+   where `AppType` is a Fortran derived type.
+
+   If one passes a PETSc function with a `PetscCtxRt` argument as an argument in Fortran one must use the function named suffixed with `Cptr`,
+   for example `KSPConvergedDefaultDestroyCptr`, see src/ksp/ksp/tutorials/ex1f.F90.
+
+   Developer Notes:
+   C++ compilers generate a warning or error if one passes a pointer to a pointer to a specific type (instead of `void`), for example,
+.vb
+   extern calledfunction(void **);
+   SomeCtx *ctx;
+   calledfunction(&ctx);   << warning that it is passing a pointer to a pointer to a SomeCtx instead of a void **
+.ve
+   By using the common practice of prototyping the function as
+.vb
+   extern calledfunction(void *);
+.ve
+   the warning message is averted.
+
+   `PetscCtxRt` is used instead of `void *` in PETSc code to enhance the clarity of the PETSc source code since `void *` serves so many different roles.
+   The getAPI() code processor also uses the variable type to generate correct bindings for other languages.
+
+   The Fortran C stub and Fortran interface definition generated for functions with a `PetscCtxRt` argument are the C function name suffixed with
+   `Cptr`, for example `KSPConvergedDefaultDestroyCptr`. The Fortran user API is a macro with the original C funtion name, for example,
+   `KSPConvergedDefaultDestroy` that calls the  `KSPConvergedDefaultDestroyCptr` version and then calls `c_f_pointer()` to handle the equivalent of a `void**` cast
+   to the users Fortran derived type argument.
+
+.seealso: [](sec_fortran_context), `PetscCtx`, `PetscCtxDestroyFn()`, `PeOp`, `PeNS`, `PetscInitialize()`, `DMGetApplicationContext()`,
+          `DMSetApplicationContextDestroy()`
+M*/
+typedef void *PetscCtxRt;
+
+/*S
+  PetscCtxDestroyFn - A prototype of a `PetscErrorCode (*)(PetscCtxRt)` function that is used to free application contexts
+
+  Level: intermediate
+
+  Notes:
+  Used in the prototype of functions such as `DMSetApplicationContextDestroy()`
+
+  The function argument is a `PetscCtxRt` which is psychologically equivalent to a `void **` meaning that this function is called with a pointer to
+  the application context (which is itself a pointer) thus the destroy implementation must first reference the context via, for example,
+  `*(AppCtx **)arg`. Note that syntactically `PetscCtxRt` is defined as a `void *`, this is because C++ does
+  not accept passing a pointer to a pointer to a `void**` but it does accept passing a pointer to a pointer to `void *`.
+
+  PETSc destroy functions take the address of the context (rather than just the context) so that that the destroy function can "zero the pointer" when
+  appropriate, preventing accidental later use of a dangling pointer.
+
+.seealso: `PetscObject`, `PetscCtxDestroyDefault()`, `PetscObjectDestroy()`, `DMSetApplicationContextDestroy()`
+S*/
+PETSC_EXTERN_TYPEDEF typedef PetscErrorCode PetscCtxDestroyFn(PetscCtxRt);
+
+PETSC_EXTERN PetscCtxDestroyFn PetscCtxDestroyDefault;
+PETSC_DEPRECATED_FUNCTION(3, 23, 0, "PetscCtxDestroyDefault()", ) static inline PetscErrorCode PetscContainerCtxDestroyDefault(PetscCtxRt a)
+{
+  return PetscCtxDestroyDefault(a);
+}
+
+PETSC_EXTERN PetscErrorCode PetscMonitorCompare(PetscErrorCode (*)(void), void *, PetscCtxDestroyFn *, PetscErrorCode (*)(void), void *, PetscCtxDestroyFn *, PetscBool *);
 
 #include <petscviewertypes.h>
 #include <petscoptions.h>
@@ -1468,9 +1580,9 @@ PETSC_EXTERN PetscErrorCode PetscObjectsListGetGlobalNumbering(MPI_Comm, PetscIn
 PETSC_EXTERN PetscErrorCode PetscMemoryView(PetscViewer, const char[]);
 PETSC_EXTERN PetscErrorCode PetscObjectPrintClassNamePrefixType(PetscObject, PetscViewer);
 PETSC_EXTERN PetscErrorCode PetscObjectView(PetscObject, PetscViewer);
-#define PetscObjectQueryFunction(obj, name, fptr) PetscObjectQueryFunction_Private((obj), (name), (PetscVoidFn **)(fptr))
+#define PetscObjectQueryFunction(obj, name, fptr) PetscObjectQueryFunction_Private((obj), (name), (PetscErrorCodeFn **)(fptr))
 PETSC_EXTERN PetscErrorCode PetscObjectHasFunction(PetscObject, const char[], PetscBool *);
-PETSC_EXTERN PetscErrorCode PetscObjectQueryFunction_Private(PetscObject, const char[], void (**)(void));
+PETSC_EXTERN PetscErrorCode PetscObjectQueryFunction_Private(PetscObject, const char[], PetscErrorCodeFn **);
 PETSC_EXTERN PetscErrorCode PetscObjectSetOptionsPrefix(PetscObject, const char[]);
 PETSC_EXTERN PetscErrorCode PetscObjectAppendOptionsPrefix(PetscObject, const char[]);
 PETSC_EXTERN PetscErrorCode PetscObjectPrependOptionsPrefix(PetscObject, const char[]);
@@ -1517,10 +1629,8 @@ PETSC_EXTERN PetscErrorCode PetscStackSAWsViewOff(void);
 PETSC_EXTERN PetscErrorCode PetscDLOpen(const char[], PetscDLMode, PetscDLHandle *);
 PETSC_EXTERN PetscErrorCode PetscDLClose(PetscDLHandle *);
 PETSC_EXTERN PetscErrorCode PetscDLSym(PetscDLHandle, const char[], void **);
-PETSC_EXTERN PetscErrorCode PetscDLAddr(void (*)(void), char *[]);
-#ifdef PETSC_HAVE_CXX
+PETSC_EXTERN PetscErrorCode PetscDLAddr(PetscVoidFn *, char *[]);
 PETSC_EXTERN PetscErrorCode PetscDemangleSymbol(const char *, char *[]);
-#endif
 
 PETSC_EXTERN PetscErrorCode PetscMallocGetStack(void *, PetscStack **);
 
@@ -1539,12 +1649,12 @@ PETSC_EXTERN PetscErrorCode PetscObjectListDuplicate(PetscObjectList, PetscObjec
   link libraries that will be loaded as needed.
 */
 
-#define PetscFunctionListAdd(list, name, fptr) PetscFunctionListAdd_Private((list), (name), (PetscVoidFn *)(fptr))
-PETSC_EXTERN PetscErrorCode PetscFunctionListAdd_Private(PetscFunctionList *, const char[], PetscVoidFn *);
+#define PetscFunctionListAdd(list, name, fptr) PetscFunctionListAdd_Private((list), (name), (PetscErrorCodeFn *)(fptr))
+PETSC_EXTERN PetscErrorCode PetscFunctionListAdd_Private(PetscFunctionList *, const char[], PetscErrorCodeFn *);
 PETSC_EXTERN PetscErrorCode PetscFunctionListDestroy(PetscFunctionList *);
 PETSC_EXTERN PetscErrorCode PetscFunctionListClear(PetscFunctionList);
-#define PetscFunctionListFind(list, name, fptr) PetscFunctionListFind_Private((list), (name), (PetscVoidFn **)(fptr))
-PETSC_EXTERN PetscErrorCode PetscFunctionListFind_Private(PetscFunctionList, const char[], PetscVoidFn **);
+#define PetscFunctionListFind(list, name, fptr) PetscFunctionListFind_Private((list), (name), (PetscErrorCodeFn **)(fptr))
+PETSC_EXTERN PetscErrorCode PetscFunctionListFind_Private(PetscFunctionList, const char[], PetscErrorCodeFn **);
 PETSC_EXTERN PetscErrorCode PetscFunctionListPrintTypes(MPI_Comm, FILE *, const char[], const char[], const char[], const char[], PetscFunctionList, const char[], const char[]);
 PETSC_EXTERN PetscErrorCode PetscFunctionListDuplicate(PetscFunctionList, PetscFunctionList *);
 PETSC_EXTERN PetscErrorCode PetscFunctionListView(PetscFunctionList, PetscViewer);
@@ -1666,46 +1776,6 @@ PETSC_EXTERN PetscErrorCode PetscSynchronizedFGets(MPI_Comm, FILE *, size_t, cha
 PETSC_EXTERN PetscErrorCode PetscStartMatlab(MPI_Comm, const char[], const char[], FILE **);
 PETSC_EXTERN PetscErrorCode PetscGetPetscDir(const char *[]);
 
-/*MC
-   PeCtx - indicates an argument that returns a pointer to a user defined C struct (or Fortran derived type)
-
-   Level: developer
-
-   Notes:
-   This is not part of the PETSc public API and should only be used in PETSc source code.
-
-   This should not be used for functions that return PETSc objects, or pointers to arrays of unknown type. Thus it is used for, for example,
-   `KSPGetApplicationContext()` but not used for `DMNetworkGetComponent()`
-
-   For pointers to arrays of unknown type and for functions that return PETSc internal objects that are opaque to users, such
-   as `KSPMonitorDynamicToleranceCreate()` a `void **` should be used.
-
-   Fortran Note:
-   Should only be used with user defined Fortran datatypes
-.vb
-   type(tUserType), pointer :: ctx
-.ve
-
-   Developer Note:
-   Put this in function declaration for the argument type instead of `void *`, or `void **`.
-
-   C compilers generate a warning or error if one passes a pointer to a pointer to a specific type (instead of `void`), for example,
-.vb
-   extern calledfunction(void **);
-   SomeCtx *ctx;
-   calledfunction(&ctx);   << warning that it is passing a pointer to a pointer to a SomeCtx instead of a void **
-.ve
-   By using the common practice of prototyping the function as
-.vb
-   extern calledfunction(void *);
-.ve
-   the warning message is averted. `PeCtx` is used in PETSc source code so that the getAPI() code processor knows the argument is
-   actually handled internally as `void **` so it can generate correct bindings for other languages.
-
-.seealso: `PeOp`, `PeNS`, `PetscInitialize()`
-M*/
-typedef void *PeCtx;
-
 PETSC_EXTERN PetscClassId   PETSC_CONTAINER_CLASSID;
 PETSC_EXTERN PetscErrorCode PetscContainerGetPointer(PetscContainer, void *);
 PETSC_EXTERN PetscErrorCode PetscContainerSetPointer(PetscContainer, void *);
@@ -1714,12 +1784,7 @@ PETSC_EXTERN PetscErrorCode PetscContainerCreate(MPI_Comm, PetscContainer *);
 PETSC_EXTERN PetscErrorCode PetscContainerSetCtxDestroy(PetscContainer, PetscCtxDestroyFn *);
 PETSC_EXTERN PETSC_DEPRECATED_FUNCTION(3, 23, 0, "PetscContainerSetCtxDestroy()", ) PetscErrorCode PetscContainerSetUserDestroy(PetscContainer, PetscErrorCode (*)(void *));
 PETSC_EXTERN PetscErrorCode PetscObjectContainerCompose(PetscObject, const char *name, void *, PetscCtxDestroyFn *);
-PETSC_EXTERN PetscErrorCode PetscObjectContainerQuery(PetscObject, const char *, PeCtx);
-
-PETSC_DEPRECATED_FUNCTION(3, 23, 0, "PetscCtxDestroyDefault()", ) static inline PetscErrorCode PetscContainerCtxDestroyDefault(void **a)
-{
-  return PetscCtxDestroyDefault(a);
-}
+PETSC_EXTERN PetscErrorCode PetscObjectContainerQuery(PetscObject, const char *, PetscCtxRt);
 
 /*
    For use in debuggers
@@ -2479,8 +2544,8 @@ PETSC_EXTERN PetscErrorCode PetscGatherMessageLengths2(MPI_Comm, PetscMPIInt, Pe
 PETSC_EXTERN PetscErrorCode PetscPostIrecvInt(MPI_Comm, PetscMPIInt, PetscMPIInt, const PetscMPIInt[], const PetscMPIInt[], PetscInt ***, MPI_Request **);
 PETSC_EXTERN PetscErrorCode PetscPostIrecvScalar(MPI_Comm, PetscMPIInt, PetscMPIInt, const PetscMPIInt[], const PetscMPIInt[], PetscScalar ***, MPI_Request **);
 PETSC_EXTERN PetscErrorCode PetscCommBuildTwoSided(MPI_Comm, PetscMPIInt, MPI_Datatype, PetscMPIInt, const PetscMPIInt[], const void *, PetscMPIInt *, PetscMPIInt *[], void *) PETSC_ATTRIBUTE_MPI_POINTER_WITH_TYPE(6, 3);
-PETSC_EXTERN PetscErrorCode PetscCommBuildTwoSidedF(MPI_Comm, PetscMPIInt, MPI_Datatype, PetscMPIInt, const PetscMPIInt[], const void *, PetscMPIInt *, PetscMPIInt **, void *, PetscMPIInt, PetscErrorCode (*send)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, PetscMPIInt, void *, MPI_Request[], void *), PetscErrorCode (*recv)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, void *, MPI_Request[], void *), void *ctx) PETSC_ATTRIBUTE_MPI_POINTER_WITH_TYPE(6, 3);
-PETSC_EXTERN PetscErrorCode PetscCommBuildTwoSidedFReq(MPI_Comm, PetscMPIInt, MPI_Datatype, PetscMPIInt, const PetscMPIInt[], const void *, PetscMPIInt *, PetscMPIInt **, void *, PetscMPIInt, MPI_Request **, MPI_Request **, PetscErrorCode (*send)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, PetscMPIInt, void *, MPI_Request[], void *), PetscErrorCode (*recv)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, void *, MPI_Request[], void *), void *ctx) PETSC_ATTRIBUTE_MPI_POINTER_WITH_TYPE(6, 3);
+PETSC_EXTERN PetscErrorCode PetscCommBuildTwoSidedF(MPI_Comm, PetscMPIInt, MPI_Datatype, PetscMPIInt, const PetscMPIInt[], const void *, PetscMPIInt *, PetscMPIInt **, void *, PetscMPIInt, PetscErrorCode (*send)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, PetscMPIInt, void *, MPI_Request[], void *), PetscErrorCode (*recv)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, void *, MPI_Request[], void *), void *) PETSC_ATTRIBUTE_MPI_POINTER_WITH_TYPE(6, 3);
+PETSC_EXTERN PetscErrorCode PetscCommBuildTwoSidedFReq(MPI_Comm, PetscMPIInt, MPI_Datatype, PetscMPIInt, const PetscMPIInt[], const void *, PetscMPIInt *, PetscMPIInt **, void *, PetscMPIInt, MPI_Request **, MPI_Request **, PetscErrorCode (*send)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, PetscMPIInt, void *, MPI_Request[], void *), PetscErrorCode (*recv)(MPI_Comm, const PetscMPIInt[], PetscMPIInt, void *, MPI_Request[], void *), PetscCtx ctx) PETSC_ATTRIBUTE_MPI_POINTER_WITH_TYPE(6, 3);
 
 PETSC_EXTERN PetscErrorCode PetscCommBuildTwoSidedSetType(MPI_Comm, PetscBuildTwoSidedType);
 PETSC_EXTERN PetscErrorCode PetscCommBuildTwoSidedGetType(MPI_Comm, PetscBuildTwoSidedType *);
@@ -2905,7 +2970,7 @@ typedef struct {
   PetscInt n;
   void    *addr[3];
 } PCMPIServerAddresses;
-PETSC_EXTERN PetscCtxDestroyFn PCMPIServerAddressesDestroy;
+PETSC_EXTERN PetscErrorCode PCMPIServerAddressesDestroy(PetscCtxRt);
 
 #define PETSC_HAVE_FORTRAN PETSC_DEPRECATED_MACRO(3, 20, 0, "PETSC_USE_FORTRAN_BINDINGS", ) PETSC_USE_FORTRAN_BINDINGS
 
@@ -2925,3 +2990,9 @@ M*/
 
 /* this is required to force PetscDevice to be visible at the system level for the Fortran interface */
 #include <petscdevicetypes.h>
+
+#if PetscDefined(USE_DEBUG) && !PetscDefined(HAVE_THREADSAFETY)
+PETSC_EXTERN PetscErrorCode PetscStackView(FILE *);
+#else
+  #define PetscStackView(file) PETSC_SUCCESS
+#endif

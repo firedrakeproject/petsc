@@ -91,7 +91,7 @@ int main(int argc, char **argv)
   PetscCall(MatSetSizes(Hreg, PETSC_DECIDE, PETSC_DECIDE, user.N, user.N));
   PetscCall(MatSetType(Hreg, MATSHELL));
   PetscCall(MatSetUp(Hreg));
-  PetscCall(MatShellSetOperation(Hreg, MATOP_MULT, (void (*)(void))EvaluateRegularizerHessianProd));
+  PetscCall(MatShellSetOperation(Hreg, MATOP_MULT, (PetscErrorCodeFn *)EvaluateRegularizerHessianProd));
   PetscCall(TaoBRGNSetRegularizerHessianRoutine(tao, Hreg, EvaluateRegularizerHessian, (void *)&user));
 
   /* Check for any TAO command line arguments */
@@ -281,14 +281,14 @@ PetscErrorCode InitializeUserData(AppCtx *user)
       args: -path ${DATAFILESPATH}/tao/tomography
 
       test:
-         args: -tao_max_it 1000 -tao_brgn_regularization_type l1dict -tao_brgn_regularizer_weight 1e-8 -tao_brgn_l1_smooth_epsilon 1e-6 -tao_gatol 1.e-8
+         args: -tao_max_it 10 -tao_brgn_regularization_type l1dict -tao_brgn_regularizer_weight 1e-8 -tao_brgn_l1_smooth_epsilon 1e-6 -tao_gatol 1.e-8
 
       test:
          suffix: 2
-         args: -tao_monitor -tao_max_it 1000 -tao_brgn_regularization_type l2prox -tao_brgn_regularizer_weight 1e-8 -tao_gatol 1.e-6
+         args: -tao_monitor -tao_max_it 1000 -tao_brgn_regularization_type l2prox -tao_brgn_regularizer_weight 1e-8 -tao_gatol 1.e-6 -tao_brgn_subsolver_tao_monitor
 
       test:
          suffix: 3
-         args: -tao_monitor -tao_max_it 1000 -tao_brgn_regularization_type user -tao_brgn_regularizer_weight 1e-8 -tao_gatol 1.e-6
+         args: -tao_monitor -tao_max_it 1000 -tao_brgn_regularization_type user -tao_brgn_regularizer_weight 1e-8 -tao_gatol 1.e-6 -tao_brgn_subsolver_tao_monitor
 
 TEST*/

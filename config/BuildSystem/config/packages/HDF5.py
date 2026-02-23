@@ -35,8 +35,9 @@ class Configure(config.package.CMakePackage):
     self.mathlib        = framework.require('config.packages.mathlib',self)
     self.zlib           = framework.require('config.packages.zlib',self)
     self.szlib          = framework.require('config.packages.szlib',self)
+    self.flibs          = framework.require('config.packages.flibs',self)
     self.deps           = [self.mathlib]
-    self.odeps          = [self.mpi, self.zlib,self.szlib]
+    self.odeps          = [self.mpi, self.zlib,self.szlib,self.flibs]
     return
 
   def applyPatches(self):
@@ -82,7 +83,8 @@ class Configure(config.package.CMakePackage):
     # and expect our standard linking to be sufficient.  Thus we try to link the Fortran/CXX
     # libraries, but fall back to linking only C.
     if hasattr(self.compilers, 'FC') and self.argDB['with-hdf5-fortran-bindings']:
-      self.liblist = [['libhdf5_hl_fortran.a','libhdf5_fortran.a'] + libs for libs in self.liblist] \
+      self.liblist = [['libhdf5_hl_fortran.a','libhdf5_fortran.a', 'libhdf5_hl_f90cstub.a', 'libhdf5_f90cstub.a'] + libs for libs in self.liblist] \
+                   + [['libhdf5_hl_fortran.a','libhdf5_fortran.a'] + libs for libs in self.liblist] \
                    + [['libhdf5hl_fortran.a','libhdf5_fortran.a'] + libs for libs in self.liblist] \
                    + self.liblist
     if hasattr(self.compilers, 'CXX') and self.argDB['with-hdf5-cxx-bindings']:
@@ -102,4 +104,3 @@ class Configure(config.package.CMakePackage):
       if output.find('foundbeast') > -1:
         if i.endswith('_H'): i = i[0:-2]
         self.addDefine('HDF5_HAVE_'+i, 1)
-

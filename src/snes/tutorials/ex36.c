@@ -45,7 +45,7 @@ typedef struct {
   ModType  modType; /* Model type */
 } AppCtx;
 
-static PetscErrorCode trig_homogeneous_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode trig_homogeneous_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   PetscInt d;
   *u = 1.0;
@@ -53,7 +53,7 @@ static PetscErrorCode trig_homogeneous_u(PetscInt dim, PetscReal time, const Pet
   return PETSC_SUCCESS;
 }
 
-static PetscErrorCode oscillatory_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, void *ctx)
+static PetscErrorCode oscillatory_u(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt Nc, PetscScalar *u, PetscCtx ctx)
 {
   Parameter      *param = (Parameter *)ctx;
   const PetscReal eps   = param->epsilon;
@@ -130,7 +130,7 @@ static PetscErrorCode SetupParameters(MPI_Comm comm, AppCtx *user)
 
   PetscFunctionBeginUser;
   PetscCall(PetscBagCreate(comm, sizeof(Parameter), &user->bag));
-  PetscCall(PetscBagGetData(user->bag, (void **)&p));
+  PetscCall(PetscBagGetData(user->bag, &p));
   PetscCall(PetscBagSetName(user->bag, "par", "Homogenization parameters"));
   bag = user->bag;
   PetscCall(PetscBagRegisterReal(bag, &p->epsilon, 1.0, "epsilon", "Wavelength of fine scale oscillation"));
@@ -165,14 +165,14 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
     PetscCall(PetscDSSetJacobian(ds, 0, 0, NULL, NULL, NULL, g3_uu));
     PetscCall(DMGetLabel(dm, "marker", &label));
     ex = trig_homogeneous_u;
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))ex, NULL, ctx, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)ex, NULL, ctx, NULL));
     break;
   case MOD_OSCILLATORY:
     PetscCall(PetscDSSetResidual(ds, 0, f0_oscillatory_u, f1_oscillatory_u));
     PetscCall(PetscDSSetJacobian(ds, 0, 0, NULL, NULL, NULL, g3_oscillatory_uu));
     PetscCall(DMGetLabel(dm, "marker", &label));
     ex = oscillatory_u;
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (void (*)(void))ex, NULL, ctx, NULL));
+    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "wall", label, 1, &id, 0, 0, NULL, (PetscVoidFn *)ex, NULL, ctx, NULL));
     break;
   default:
     SETERRQ(PetscObjectComm((PetscObject)ds), PETSC_ERR_ARG_WRONG, "Unsupported model type: %s (%d)", modTypes[PetscMin(user->modType, NUM_MOD_TYPES)], user->modType);
@@ -183,7 +183,7 @@ static PetscErrorCode SetupPrimalProblem(DM dm, AppCtx *user)
     Parameter  *param;
     PetscScalar constants[NUM_CONSTANTS];
 
-    PetscCall(PetscBagGetData(user->bag, (void **)&param));
+    PetscCall(PetscBagGetData(user->bag, &param));
 
     constants[EPSILON] = param->epsilon;
     PetscCall(PetscDSSetConstants(ds, NUM_CONSTANTS, constants));
@@ -270,7 +270,7 @@ static PetscErrorCode DestroyCoarseProjection(Mat Pi)
   ProjStruct *ctx;
 
   PetscFunctionBegin;
-  PetscCall(MatShellGetContext(Pi, (void **)&ctx));
+  PetscCall(MatShellGetContext(Pi, &ctx));
   PetscCall(MatDestroy(&ctx->Mcoarse));
   PetscCall(MatDestroy(&ctx->Mfine));
   PetscCall(MatDestroy(&ctx->Ifine));
@@ -288,7 +288,7 @@ static PetscErrorCode CoarseProjection(Mat Pi, Vec x, Vec y)
   ProjStruct *ctx;
 
   PetscFunctionBegin;
-  PetscCall(MatShellGetContext(Pi, (void **)&ctx));
+  PetscCall(MatShellGetContext(Pi, &ctx));
   PetscCall(MatMult(ctx->Mfine, x, ctx->tmpfine));
   PetscCall(PetscObjectSetName((PetscObject)ctx->tmpfine, "Fine DG RHS"));
   PetscCall(PetscObjectSetOptionsPrefix((PetscObject)ctx->tmpfine, "fine_dg_"));
@@ -324,8 +324,8 @@ static PetscErrorCode CreateCoarseProjection(DM dmc, DM dmf, Mat *Pi)
   PetscCall(KSPSetOperators(ctx->kspCoarse, ctx->Mcoarse, ctx->Mcoarse));
   PetscCall(KSPSetFromOptions(ctx->kspCoarse));
   PetscCall(MatCreateShell(PetscObjectComm((PetscObject)dmc), m, n, M, N, ctx, Pi));
-  PetscCall(MatShellSetOperation(*Pi, MATOP_DESTROY, (void (*)(void))DestroyCoarseProjection));
-  PetscCall(MatShellSetOperation(*Pi, MATOP_MULT, (void (*)(void))CoarseProjection));
+  PetscCall(MatShellSetOperation(*Pi, MATOP_DESTROY, (PetscErrorCodeFn *)DestroyCoarseProjection));
+  PetscCall(MatShellSetOperation(*Pi, MATOP_MULT, (PetscErrorCodeFn *)CoarseProjection));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -341,7 +341,7 @@ static PetscErrorCode DestroyQuasiInterpolator(Mat P)
   QuasiInterp *ctx;
 
   PetscFunctionBegin;
-  PetscCall(MatShellGetContext(P, (void **)&ctx));
+  PetscCall(MatShellGetContext(P, &ctx));
   PetscCall(MatDestroy(&ctx->Ifdg));
   PetscCall(MatDestroy(&ctx->Pi));
   PetscCall(VecDestroy(&ctx->tmpc));
@@ -358,7 +358,7 @@ static PetscErrorCode QuasiInterpolate(Mat P, Vec x, Vec y)
   Vec          ly;
 
   PetscFunctionBegin;
-  PetscCall(MatShellGetContext(P, (void **)&ctx));
+  PetscCall(MatShellGetContext(P, &ctx));
   PetscCall(MatMult(ctx->Ifdg, x, ctx->tmpf));
 
   PetscCall(PetscObjectSetName((PetscObject)ctx->tmpf, "Fine DG Potential"));
@@ -426,8 +426,8 @@ static PetscErrorCode CreateQuasiInterpolator(DM dmc, DM dmf, Mat *P)
   PetscCall(DMDestroy(&dmcdg));
 
   PetscCall(MatCreateShell(PetscObjectComm((PetscObject)dmc), m, n, M, N, ctx, P));
-  PetscCall(MatShellSetOperation(*P, MATOP_DESTROY, (void (*)(void))DestroyQuasiInterpolator));
-  PetscCall(MatShellSetOperation(*P, MATOP_MULT, (void (*)(void))QuasiInterpolate));
+  PetscCall(MatShellSetOperation(*P, MATOP_DESTROY, (PetscErrorCodeFn *)DestroyQuasiInterpolator));
+  PetscCall(MatShellSetOperation(*P, MATOP_MULT, (PetscErrorCodeFn *)QuasiInterpolate));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

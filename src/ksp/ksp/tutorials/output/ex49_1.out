@@ -10,8 +10,8 @@
   8 KSP Residual norm 0.00894835
 KSP Object: (elas_) 1 MPI process
   type: gmres
-    restart=30, using Classical (unmodified) Gram-Schmidt Orthogonalization with no iterative refinement
-    happy breakdown tolerance 1e-30
+    restart=30, using classical (unmodified) Gram-Schmidt orthogonalization with no iterative refinement
+    happy breakdown tolerance=1e-30
   maximum iterations=10000, initial guess is zero
   tolerances: relative=0.005, absolute=1e-50, divergence=10000.
   left preconditioning
@@ -23,14 +23,14 @@ PC Object: (elas_) 1 MPI process
     tolerance for zero pivot 2.22045e-14
     matrix ordering: natural
     factor fill ratio given 1., needed 1.
-      Factored matrix follows:
+      Factored matrix:
         Mat Object: (elas_) 1 MPI process
           type: seqaij
           rows=1178, cols=1178, bs=2
           package used to perform factorization: petsc
           total: nonzeros=20020, allocated nonzeros=20020
             using I-node routines: found 589 nodes, limit used is 5
-  linear system matrix = precond matrix:
+  linear system matrix, which is also used to construct the preconditioner:
   Mat Object: 1 MPI process
     type: seqaij
     rows=1178, cols=1178, bs=2

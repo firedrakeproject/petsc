@@ -2984,12 +2984,19 @@ PetscErrorCode ComputeLaplacian(DM dm, Mat *oL)
 PetscErrorCode DMCreateColoring_Plex(DM dm, ISColoringType ctype, ISColoring *coloring)
 {
   Mat L;
+  MatColoring mc;
   //char[] prefix;
   PetscFunctionBegin;
   PetscCall(ComputeLaplacian(dm, &L));
   //PetscCall(MatGetOptionsPrefix(L, &prefix));
   //PetscCall(OptionSetInt(prefix+"mat_coloring_type", ctype));
-  PetscCall(MatColoringCreate(L, (MatColoring*)coloring));
+
+  PetscCall(MatColoringCreate(L, &mc));
+  PetscCall(MatColoringSetType(mc, MATCOLORINGSL));
+  PetscCall(MatColoringSetFromOptions(mc));
+  PetscCall(MatColoringApply(mc, coloring));
+  PetscCall(MatColoringDestroy(&mc));
+
   PetscCall(MatDestroy(&L));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

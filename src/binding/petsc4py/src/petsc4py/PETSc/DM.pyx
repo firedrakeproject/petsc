@@ -2324,6 +2324,22 @@ cdef class DM(Object):
         self.set_attr('__operators__', context)
         CHKERR(DMKSPSetComputeOperators(self.dm, KSP_ComputeOps, <void*>context))
 
+    def createColoring(self) -> list:
+        """Return graph coloring.
+
+        Collective.
+
+        """
+        cdef PetscInt ncolors = 0
+        cdef PetscIS *iscolors = NULL
+        cdef ISColoring iscoloring = NULL
+
+        CHKERR(DMCreateColoring(self.dm, IS_COLORING_LOCAL, &iscoloring))
+        CHKERR(ISColoringGetIS(iscoloring, PETSC_USE_POINTER, &ncolors, &iscolors))
+
+        cdef list isets = [ref_IS(iscolors[i]) for i from 0 <= i < ncolors]
+        return isets
+
     def createFieldDecomposition(self) -> tuple[list, list, list]:
         """Return field splitting information.
 
